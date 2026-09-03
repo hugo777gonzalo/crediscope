@@ -1,0 +1,8 @@
+# Config del Supabase CLI para este proyecto (Edge Functions locales/deploy).
+
+[functions.explore-novadata]
+# El explorador no pasa por Supabase Auth (se usa antes de tener un
+# proyecto/sesión configurada) — recibe las credenciales de Novadata
+# directo en el body. Sin esto, el gateway de Supabase rechazaría la
+# llamada por no traer un JWT válido.
+verify_jwt = false
