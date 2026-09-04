@@ -79,6 +79,41 @@ export async function getLatestAnalysis(cedula) {
   return result;
 }
 
+// ---------- Configuración operativa (parametrización) ----------
+// Tablas planas con RLS (cualquier autenticado lee/actualiza), sin pasar
+// por una Edge Function — ver supabase/migrations/006_runtime_config.sql
+// y supabase/functions/_shared/runtime-config.ts (quien las consume en
+// tiempo de consulta).
+
+export async function getResourceConfig() {
+  const { data, error } = await supabase.from("novadata_resource_config").select("*").order("bloque").order("recurso");
+  if (error) throw error;
+  return data;
+}
+
+export async function updateResourceConfig(recurso, { enabled, motivo }) {
+  const { error } = await supabase
+    .from("novadata_resource_config")
+    .update({ enabled, motivo: motivo || null, updated_at: new Date().toISOString() })
+    .eq("recurso", recurso);
+  if (error) throw error;
+}
+
+export async function getFieldConfig() {
+  const { data, error } = await supabase.from("standard_profile_field_config").select("*").order("grupo").order("campo");
+  if (error) throw error;
+  return data;
+}
+
+export async function updateFieldConfig(grupo, campo, { enabled, motivo }) {
+  const { error } = await supabase
+    .from("standard_profile_field_config")
+    .update({ enabled, motivo: motivo || null, updated_at: new Date().toISOString() })
+    .eq("grupo", grupo)
+    .eq("campo", campo);
+  if (error) throw error;
+}
+
 // Llama a la Edge Function `explore-novadata` con credenciales de
 // Novadata que el usuario ingresa en el momento (no las secrets de
 // servicio). No pasa por Supabase Auth ni persiste nada — solo para

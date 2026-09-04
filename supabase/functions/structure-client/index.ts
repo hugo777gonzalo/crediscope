@@ -12,6 +12,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
 import { classifyProfile, CLASSIFICATION_VERSION } from "../_shared/classify.ts";
+import { loadDisabledFields, loadDisabledResources } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -62,13 +63,19 @@ Deno.serve(async (req) => {
     }
 
     // 2. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
-    const raw = await fetchAllBlocks(cedula);
+    //    Recursos deshabilitados en novadata_resource_config se saltan
+    //    (ver _shared/runtime-config.ts).
+    const disabledResources = await loadDisabledResources(serviceClient);
+    const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
     // 3. Estructura estandarizada
     const { profile, blockStatus } = buildStandardProfile(raw, cedula);
 
     // 4. Clasificación en 4 segmentos (positivo/negativo/complementario/sin_información)
-    const classification = classifyProfile(profile);
+    //    Campos deshabilitados en standard_profile_field_config quedan
+    //    fuera de la clasificación por completo.
+    const disabledFields = await loadDisabledFields(serviceClient);
+    const classification = classifyProfile(profile, disabledFields);
 
     // 5. Persistir
     const { data: saved, error: saveError } = await serviceClient
@@ -98,7 +105,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    const mensaje =
+      err instanceof Error ? err.message : (err as { message?: string })?.message ?? JSON.stringify(err);
+    return new Response(JSON.stringify({ error: mensaje }), {
       status: 500,
       headers: { ...corsHeaders, "content-type": "application/json" },
     });

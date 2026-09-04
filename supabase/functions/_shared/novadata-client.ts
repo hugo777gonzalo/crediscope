@@ -202,20 +202,28 @@ const RECURSOS_POR_BLOQUE: Record<string, Record<string, string>> = {
 function aggregateStatus(results: BlockResult<unknown>[]): BlockFetchStatus {
   if (results.length === 0) return "faltante";
   if (results.some((r) => r.status === "ok")) return "ok";
-  if (results.every((r) => r.status === "faltante")) return "faltante";
+  if (results.every((r) => r.status === "deshabilitado")) return "deshabilitado";
+  if (results.every((r) => r.status === "faltante" || r.status === "deshabilitado")) return "faltante";
   return "error";
 }
 
 async function fetchGroup(
   recursos: Record<string, string>,
   cedula: string,
+  disabledResources: Set<string>,
   credentials?: NovadataCredentials
 ): Promise<BlockResult<RawMultiRecurso>> {
   const entries = Object.entries(recursos);
   if (entries.length === 0) {
     return { status: "faltante", data: null, errorMessage: "Sin recursos confirmados para este bloque todavía" };
   }
-  const results = await Promise.all(entries.map(([, path]) => fetchResource(path, cedula, credentials)));
+  const results = await Promise.all(
+    entries.map(([key, path]) =>
+      disabledResources.has(key)
+        ? Promise.resolve<BlockResult<NovadataEnvelope>>({ status: "deshabilitado", data: null })
+        : fetchResource(path, cedula, credentials)
+    )
+  );
   const data: RawMultiRecurso = {};
   entries.forEach(([key], i) => {
     data[key] = results[i];
@@ -223,17 +231,23 @@ async function fetchGroup(
   return { status: aggregateStatus(results), data };
 }
 
-export async function fetchAllBlocks(cedula: string, credentials?: NovadataCredentials): Promise<RawNovadataResponse> {
+export async function fetchAllBlocks(
+  cedula: string,
+  credentials?: NovadataCredentials,
+  disabledResources: Set<string> = new Set()
+): Promise<RawNovadataResponse> {
   const [general, sociodemografica, trabajo, iess, vehiculos, funcionJudicial, fiscalia, bancos, cooperativas] = await Promise.all([
-    fetchResource<RawGeneral>("data-services/novacredit/pn_inf_basica", cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.sociodemografica, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.trabajo, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.iess, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.vehiculos, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.funcion_judicial, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.fiscalia, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.bancos, cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.cooperativas, cedula, credentials),
+    disabledResources.has("general")
+      ? Promise.resolve<BlockResult<RawGeneral>>({ status: "deshabilitado", data: null })
+      : fetchResource<RawGeneral>("data-services/novacredit/pn_inf_basica", cedula, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.sociodemografica, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.trabajo, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.iess, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.vehiculos, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.funcion_judicial, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.fiscalia, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.bancos, cedula, disabledResources, credentials),
+    fetchGroup(RECURSOS_POR_BLOQUE.cooperativas, cedula, disabledResources, credentials),
   ]);
 
   return {

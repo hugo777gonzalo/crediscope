@@ -12,7 +12,7 @@
 // ClientContext + max_tokens:4000, algunos clientes con mucho historial
 // seguían generando JSON cortado a medias (SyntaxError al parsear).
 
-import type { GuardrailResult, LlmScoringResult, StandardClientProfile } from "./types.ts";
+import type { GuardrailResult, LlmScoringResult } from "./types.ts";
 import { FRAMEWORK_VERSION, INTERPRETIVE_FRAMEWORK } from "./interpretive-framework.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
@@ -41,7 +41,11 @@ function resultadoDeFallback(mensaje: string, data?: Record<string, unknown>): L
   };
 }
 
-export async function scoreWithLlm(profile: StandardClientProfile, guardrail: GuardrailResult): Promise<LlmScoringResult> {
+// profile: normalmente un StandardClientProfile, pero puede llegar con
+// campos deshabilitados redactados a null (ver runtime-config.ts
+// redactDisabledFields) — por eso el tipo es laxo acá, ya no es el
+// StandardClientProfile completo garantizado.
+export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: GuardrailResult): Promise<LlmScoringResult> {
   if (!ANTHROPIC_API_KEY) {
     return resultadoDeFallback("falta ANTHROPIC_API_KEY en las secrets de la Edge Function");
   }

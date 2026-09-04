@@ -13,6 +13,7 @@ import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
 import { runGuardrails } from "../_shared/guardrails.ts";
 import { scoreWithLlm, FRAMEWORK_VERSION } from "../_shared/llm-scoring.ts";
+import { loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -76,7 +77,11 @@ Deno.serve(async (req) => {
     if (runError) throw runError;
 
     // 3. Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
-    const raw = await fetchAllBlocks(cedula);
+    //    Recursos deshabilitados en novadata_resource_config se saltan
+    //    (ver _shared/runtime-config.ts) — fuentes públicas/externas que
+    //    pueden fallar o deshabilitarse.
+    const disabledResources = await loadDisabledResources(serviceClient);
+    const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
     // 4. Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
     // ClientContext casi crudo de antes, mucho más liviana para el LLM.
@@ -88,8 +93,12 @@ Deno.serve(async (req) => {
 
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
     // consulta igual aunque haya guardrail bloqueante, para tener
-    // razonamiento/contexto — pero el score final se fuerza abajo.
-    const llmResult = await scoreWithLlm(profile, guardrail);
+    // razonamiento/contexto — pero el score final se fuerza abajo. Campos
+    // deshabilitados en standard_profile_field_config no se le mandan al
+    // LLM (dato considerado poco confiable).
+    const disabledFields = await loadDisabledFields(serviceClient);
+    const llmProfile = redactDisabledFields(profile, disabledFields);
+    const llmResult = await scoreWithLlm(llmProfile, guardrail);
     const finalScore = guardrail.bloqueado ? 1 : llmResult.score;
 
     // 7. Persistir resultado

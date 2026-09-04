@@ -31,7 +31,12 @@ export type BlockKey =
   | "bancos"
   | "cooperativas";
 
-export type BlockFetchStatus = "ok" | "faltante" | "error";
+// "deshabilitado" = el recurso/bloque no se consultó porque un admin lo
+// desactivó en novadata_resource_config (ver runtime-config.ts) — a
+// propósito distinto de "faltante" (Novadata no tenía datos) o "error"
+// (falló la consulta), para no confundir una decisión operativa con una
+// falla real de la fuente.
+export type BlockFetchStatus = "ok" | "faltante" | "error" | "deshabilitado";
 
 export interface BlockResult<T> {
   status: BlockFetchStatus;

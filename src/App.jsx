@@ -4,6 +4,7 @@ import Login from "./pages/Login.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import ClientReport from "./pages/ClientReport.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
+import AdminConfig from "./pages/AdminConfig.jsx";
 
 function RequireSession({ children }) {
   const { session, loading } = useSession();
@@ -25,6 +26,11 @@ export default function App() {
           <Link to="/explorar" style={{ color: "#cbd5e1", textDecoration: "none", fontSize: 14 }}>
             Explorador Novadata
           </Link>
+          {session ? (
+            <Link to="/admin/configuracion" style={{ color: "#cbd5e1", textDecoration: "none", fontSize: 14 }}>
+              Configuración
+            </Link>
+          ) : null}
           {session ? <span className="crediscope-muted" style={{ color: "#cbd5e1" }}>{session.user.email}</span> : null}
         </nav>
       </header>
@@ -47,6 +53,14 @@ export default function App() {
             element={
               <RequireSession>
                 <ClientReport />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/admin/configuracion"
+            element={
+              <RequireSession>
+                <AdminConfig />
               </RequireSession>
             }
           />

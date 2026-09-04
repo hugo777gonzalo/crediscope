@@ -176,7 +176,11 @@ function flatten(obj: Record<string, unknown>, grupo: string, out: Array<{ campo
   }
 }
 
-export function classifyProfile(profile: StandardClientProfile): ClassifiedProfile {
+// disabledFields: set de "grupo.campo" deshabilitados en
+// standard_profile_field_config (ver runtime-config.ts) — se excluyen
+// por completo del resultado (ni siquiera caen en "sin_informacion"),
+// no se muestran ni se mandan al LLM.
+export function classifyProfile(profile: StandardClientProfile, disabledFields: Set<string> = new Set()): ClassifiedProfile {
   const positivos: CampoClasificado[] = [];
   const negativos: CampoClasificado[] = [];
   const complementarios: CampoClasificado[] = [];
@@ -190,6 +194,7 @@ export function classifyProfile(profile: StandardClientProfile): ClassifiedProfi
     flatten(seccion, grupo, campos);
 
     for (const { campo, valor } of campos) {
+      if (disabledFields.has(`${grupo}.${campo}`)) continue;
       const item: CampoClasificado = {
         grupo,
         campo,
