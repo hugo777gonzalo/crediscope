@@ -6,20 +6,20 @@
 // BlockStatus.jsx) — son solo strings de presentación.
 
 const ORDEN_GRUPOS = [
-  "comportamientoInterno",
+  "compliance",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCivil",
   "riesgoPenal",
-  "compliance",
   "laboral",
   "tributario",
   "seguridadSocial",
   "patrimonio",
-  "transitoVehicular",
   "familia",
-  "contacto",
   "identidad",
+  "contacto",
+  "transitoVehicular",
+  "comportamientoInterno",
 ];
 
 const ETIQUETAS_GRUPO = {

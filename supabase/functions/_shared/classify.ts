@@ -40,24 +40,30 @@ export interface ClassifiedProfile {
 
 export const CLASSIFICATION_VERSION = "clasificacion-v1";
 
-// Orden de grupos por importancia para el análisis crediticio (ver
-// docs/reagrupacion-propuesta.md) — el mismo orden se usa para mostrar
-// los grupos en la web.
+// Orden de grupos por importancia para el análisis crediticio — definido
+// por el usuario (framework-v3, ver interpretive-framework.ts) — el
+// mismo orden se usa para mostrar los grupos en la web
+// (src/components/ClassifiedProfile.jsx duplica este orden).
+//
+// comportamientoInterno queda AL FINAL a propósito: solo aplica a
+// clientes que ya son clientes internos de Novadata (poco frecuente en
+// la muestra) — cuando no hay dato no es un hueco de información, es
+// que el eje no aplica. Ver nota en interpretive-framework.ts.
 export const ORDEN_GRUPOS = [
-  "comportamientoInterno",
+  "compliance",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCivil",
   "riesgoPenal",
-  "compliance",
   "laboral",
   "tributario",
   "seguridadSocial",
   "patrimonio",
-  "transitoVehicular",
   "familia",
-  "contacto",
   "identidad",
+  "contacto",
+  "transitoVehicular",
+  "comportamientoInterno",
   "metaConsulta",
 ] as const;
 
