@@ -1,4 +1,4 @@
-// Orquestador principal: ingesta Novadata -> arma contexto por eje ->
+// Orquestador principal: ingesta Novadata -> Estructura Estandarizada ->
 // guardrails duros -> scoring aproximado por LLM -> persiste en Supabase.
 // Este mismo endpoint HTTP sirve tanto a la interfaz web (via
 // supabase.functions.invoke, con el JWT del analista) como a sistemas
@@ -10,7 +10,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
-import { buildClientContext } from "../_shared/normalize.ts";
+import { buildStandardProfile } from "../_shared/process.ts";
 import { runGuardrails } from "../_shared/guardrails.ts";
 import { scoreWithLlm, FRAMEWORK_VERSION } from "../_shared/llm-scoring.ts";
 
@@ -78,8 +78,9 @@ Deno.serve(async (req) => {
     // 3. Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
     const raw = await fetchAllBlocks(cedula);
 
-    // 4. Contexto curado por eje (ver _shared/normalize.ts)
-    const { context, blockStatus } = buildClientContext(raw, cedula);
+    // 4. Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
+    // ClientContext casi crudo de antes, mucho más liviana para el LLM.
+    const { profile, blockStatus } = buildStandardProfile(raw, cedula);
 
     // 5. Guardrails determinísticos (fallecido, listas de control/PEP/OFAC,
     // cédula inconsistente) — NO se delegan al LLM, ver _shared/guardrails.ts
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
     // consulta igual aunque haya guardrail bloqueante, para tener
     // razonamiento/contexto — pero el score final se fuerza abajo.
-    const llmResult = await scoreWithLlm(context, guardrail);
+    const llmResult = await scoreWithLlm(profile, guardrail);
     const finalScore = guardrail.bloqueado ? 1 : llmResult.score;
 
     // 7. Persistir resultado
@@ -131,7 +132,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    const mensaje =
+      err instanceof Error ? err.message : (err as { message?: string })?.message ?? JSON.stringify(err);
+    return new Response(JSON.stringify({ error: mensaje }), {
       status: 500,
       headers: { ...corsHeaders, "content-type": "application/json" },
     });

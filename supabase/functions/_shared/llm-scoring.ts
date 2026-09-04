@@ -1,11 +1,18 @@
-// Motor de scoring real: le pasa el ClientContext (curado por eje, ver
-// normalize.ts) y el marco interpretativo (ver interpretive-framework.ts)
-// a Claude, y este devuelve un score APROXIMADO (1-999) + pros/contras +
-// razonamiento. A propósito no es determinístico — ver la nota de diseño
-// en types.ts sobre por qué el scoring vive acá y no en un motor de
-// reglas, y guardrails.ts para lo poco que SÍ se resuelve determinísticamente.
+// Motor de scoring real: le pasa el StandardClientProfile (ya calculado
+// / procesado, ver process.ts — NO el ClientContext casi crudo de antes)
+// y el marco interpretativo (ver interpretive-framework.ts) a Claude, y
+// este devuelve un score APROXIMADO (1-999) + pros/contras + razonamiento.
+// A propósito no es determinístico — ver la nota de diseño en types.ts
+// sobre por qué el scoring vive acá y no en un motor de reglas, y
+// guardrails.ts para lo poco que SÍ se resuelve determinísticamente.
+//
+// Cambiar la entrada de ClientContext a StandardClientProfile redujo el
+// payload de entrada considerablemente (booleanos/números en vez de
+// arrays completos) — esto era necesario, no solo una optimización: con
+// ClientContext + max_tokens:4000, algunos clientes con mucho historial
+// seguían generando JSON cortado a medias (SyntaxError al parsear).
 
-import type { ClientContext, GuardrailResult, LlmScoringResult } from "./types.ts";
+import type { GuardrailResult, LlmScoringResult, StandardClientProfile } from "./types.ts";
 import { FRAMEWORK_VERSION, INTERPRETIVE_FRAMEWORK } from "./interpretive-framework.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
@@ -34,13 +41,13 @@ function resultadoDeFallback(mensaje: string, data?: Record<string, unknown>): L
   };
 }
 
-export async function scoreWithLlm(context: ClientContext, guardrail: GuardrailResult): Promise<LlmScoringResult> {
+export async function scoreWithLlm(profile: StandardClientProfile, guardrail: GuardrailResult): Promise<LlmScoringResult> {
   if (!ANTHROPIC_API_KEY) {
     return resultadoDeFallback("falta ANTHROPIC_API_KEY en las secrets de la Edge Function");
   }
 
   const userPayload = {
-    clientContext: context,
+    standardClientProfile: profile,
     guardrailHallazgos: guardrail.hallazgos, // ya resueltos de forma determinística — no recalcular
   };
 

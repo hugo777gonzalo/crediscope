@@ -32,8 +32,13 @@
 > (validada contra los 25 clientes reales — incluidos los casos
 > específicos que reportó el usuario — ver
 > `research/CrediScope_Estructura_Estandarizada_Validacion.xlsx`).
-> Todavía NO conectada a `analyze-client`/`llm-scoring` — sigue en
-> validación con el usuario.
+>
+> **v3 — conectada a `analyze-client`/`llm-scoring` (`framework-v1`,
+> ver [interpretive-framework.ts](../supabase/functions/_shared/interpretive-framework.ts)).**
+> El LLM ahora recibe el `StandardClientProfile` en vez del
+> `ClientContext` casi crudo — payload ~4-5x más chico, lo que resolvió
+> cortes de respuesta a medias por `max_tokens` (`SyntaxError` al
+> parsear el JSON de salida) en clientes con mucho historial judicial.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 
