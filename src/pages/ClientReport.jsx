@@ -1,15 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { analyzeClient, getLatestAnalysis } from "../lib/api.js";
+import { analyzeClient, getLatestAnalysis, structureClient, getLatestProfile } from "../lib/api.js";
 import ScoreBadge from "../components/ScoreBadge.jsx";
 import BlockStatus from "../components/BlockStatus.jsx";
+import ClassifiedProfile from "../components/ClassifiedProfile.jsx";
 
 export default function ClientReport() {
   const { cedula } = useParams();
+
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
+
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [structuring, setStructuring] = useState(false);
+  const [profileError, setProfileError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -24,9 +31,23 @@ export default function ClientReport() {
     }
   }, [cedula]);
 
+  const loadProfile = useCallback(async () => {
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const latest = await getLatestProfile(cedula);
+      setProfile(latest);
+    } catch (err) {
+      setProfileError(err.message);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, [cedula]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadProfile();
+  }, [load, loadProfile]);
 
   async function handleAnalyze() {
     setAnalyzing(true);
@@ -41,14 +62,65 @@ export default function ClientReport() {
     }
   }
 
+  async function handleStructure() {
+    setStructuring(true);
+    setProfileError(null);
+    try {
+      const fresh = await structureClient(cedula);
+      setProfile(fresh);
+    } catch (err) {
+      setProfileError(err.message);
+    } finally {
+      setStructuring(false);
+    }
+  }
+
   return (
     <div>
       <p>
         <Link to="/">&larr; Buscar otro cliente</Link>
       </p>
+
+      {/* ---------- Estructura Estandarizada (sin LLM) ---------- */}
       <div className="crediscope-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h2 style={{ margin: 0 }}>Cliente {cedula}</h2>
+          <h2 style={{ margin: 0 }}>Cliente {cedula} — Estructura Estandarizada</h2>
+          <p className="crediscope-muted">
+            {profile
+              ? `Última consulta: ${new Date(profile.created_at).toLocaleString()} (sin LLM)`
+              : "Sin consulta previa."}
+          </p>
+        </div>
+        <button className="crediscope-btn" onClick={handleStructure} disabled={structuring}>
+          {structuring ? "Consultando..." : "Consultar y clasificar (sin LLM)"}
+        </button>
+      </div>
+
+      {profileError ? (
+        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
+          <p style={{ color: "var(--bad)" }}>{profileError}</p>
+        </div>
+      ) : null}
+
+      {profileLoading ? <p className="crediscope-muted">Cargando...</p> : null}
+
+      {profile ? (
+        <>
+          <div className="crediscope-card">
+            <h3>Estado por bloque</h3>
+            <BlockStatus blockStatus={profile.block_status} />
+            <p className="crediscope-muted" style={{ marginTop: 8 }}>
+              Estructura {profile.structure_version} · Clasificación {profile.classification_version}
+            </p>
+          </div>
+          <ClassifiedProfile classification={profile.classification} />
+        </>
+      ) : null}
+
+      {/* ---------- Score por LLM (aproximado) ---------- */}
+      <div className="crediscope-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24 }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Score por LLM</h2>
           {result ? (
             <p className="crediscope-muted">
               Último análisis: {new Date(result.created_at).toLocaleString()}

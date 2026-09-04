@@ -23,6 +23,42 @@ export async function analyzeClient(cedula) {
   return data;
 }
 
+// Llama a la Edge Function `structure-client`: ingesta -> estructura
+// estandarizada -> clasificación en 4 segmentos -> persiste en
+// client_profiles. NO pasa por el LLM. Usa las credenciales de Novadata
+// de las secrets de la función (el usuario no las escribe acá) — a
+// diferencia de explore-novadata, esto sí requiere sesión y sí persiste.
+export async function structureClient(cedula) {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase no está configurado.");
+  }
+  const { data, error } = await supabase.functions.invoke("structure-client", {
+    body: { cedula },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function getLatestProfile(cedula) {
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .select("id, cedula")
+    .eq("cedula", cedula)
+    .maybeSingle();
+  if (clientError) throw clientError;
+  if (!client) return null;
+
+  const { data: result, error: resultError } = await supabase
+    .from("client_profiles")
+    .select("*")
+    .eq("client_id", client.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (resultError) throw resultError;
+  return result;
+}
+
 export async function getLatestAnalysis(cedula) {
   const { data: client, error: clientError } = await supabase
     .from("clients")

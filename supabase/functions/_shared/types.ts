@@ -118,6 +118,179 @@ export interface ClientContext {
   ejes: Record<BlockKey, EjeContext>;
 }
 
+// ---------- Estructura estandarizada (procesada/calculada) ----------
+// Sucesora de ClientContext — reemplaza arrays crudos por campos YA
+// calculados (conteos, sumas, booleanos, "el más reciente") para que el
+// LLM reciba mucho menos texto por persona. Ver docs/estructura-estandarizada.md
+// y process.ts (que la construye) — validada con 25 clientes reales antes
+// de conectarla al scoring (ver scripts/reprocess-sample.mjs, la versión
+// Node usada para esa validación; debe mantenerse en sync con process.ts).
+//
+// Convención de null vs 0: los conteos/sumas son 0 (no null) cuando el
+// eje SÍ se consultó pero no hay registros — null se reserva para "no se
+// pudo calcular" (ej. MAX de un array vacío, o el eje vino faltante/error
+// — ver metaConsulta).
+//
+// Grupos según Cambios_Reagrupacion (usuario, v1): "comportamientoInterno"
+// es un grupo nuevo que separa el scoring propio de Novadata
+// (personasIncumplimientos) de comportamientoBancario, por su peso.
+
+export interface StandardClientProfile {
+  cedula: string;
+  consultadoEn: string; // ISO timestamp
+
+  identidad: {
+    nombreCompleto: string | null;
+    edad: number | null;
+    genero: string | null;
+    estadoCivil: string | null;
+    nivelEducacion: string | null;
+    profesiones: string[];
+    fallecido: boolean;
+    tieneConyuge: boolean;
+    cantonNacimiento: string | null;
+    provinciaNacimiento: string | null;
+    paisOrigen: string | null;
+    paisOrigenIso3: string | null;
+    paisOrigenIso: number | null;
+    esExtranjero: boolean | null;
+    añosCasado: number | null; // null si no hay cónyuge ACTUAL (evita usar fechaMatrimonio de un matrimonio ya disuelto)
+    edadConyuge: number | null;
+  };
+
+  contacto: {
+    numeroDirecciones: number;
+    numeroTelefonos: number;
+    numeroCorreos: number;
+    direccionActualizada12M: boolean;
+    telefonoActualizado12M: boolean;
+    correoActualizado12M: boolean;
+  };
+
+  familia: {
+    numeroHijos: number;
+    tieneHijoMenorEdad: boolean;
+    padresFallecidos: number;
+    tieneHijos: boolean;
+  };
+
+  laboral: {
+    empleoActual: { empleador: string | null; cargo: string | null; salarioAprox: number | null } | null;
+    numeroEmpleadoresUltimos24Meses: number;
+    ingresoPromedioUltimos6Meses: number | null;
+    esEmpleadorOAdministrador: boolean;
+    tieneRucActivo: boolean;
+    tieneEstablecimientoActivo: boolean;
+    esIndependiente: boolean;
+    numeroEmpleadosRegistrados: number;
+    tipoEmpleador: string | null;
+    obligacionesPatronalesEnMora: boolean | null; // null si no aplica (no es empleador)
+  };
+
+  tributario: {
+    pagaISD: boolean;
+    montoMaximoISD: number | null;
+    fechaMasRecienteISD: number | null; // periodoFiscal (año)
+    generaImpuestoRenta: boolean;
+    montoMaximoImpuestoRenta: number | null;
+    fechaMasRecienteImpuestoRenta: number | null;
+    esAfiliadoUnipersonal: boolean; // false si nunca tuvo RUC (no "no se sabe")
+  };
+
+  seguridadSocial: {
+    afiliadoIessActivo: boolean;
+    esPensionista: boolean;
+    esJubilado: boolean;
+    estadoAfiliacionIess: string | null;
+  };
+
+  patrimonio: {
+    numeroVehiculos: number;
+    valorAvaluoVehiculos: number;
+    numeroInmuebles: number;
+    numeroInversiones: number;
+    tieneVehiculos: boolean;
+    numeroAutos: number;
+    numeroVehiculosPesados: number;
+    numeroMotos: number;
+    valorComercialTotalVehiculos: number;
+    valorVentaTotalVehiculos: number;
+    valorPromedioTotalVehiculos: number;
+  };
+
+  // "Comportamiento Bancos BIESS Diners" (Cambios_Reagrupacion, grupo 8)
+  comportamientoBancario: {
+    numeroOperacionesCentralRiesgo: number;
+    peorCalificacionRiesgo: string | null;
+    tieneOperacionJudicializada: boolean;
+    tieneOperacionCastigada: boolean;
+    saldoTotalVigente: number;
+    numeroCreditosFormales: number;
+    numeroDeudasRetail: number;
+    diasMoraMaximaRetail: number | null;
+    totalDeudaRetail: number;
+    tieneCreditoIessBiess: boolean;
+    diasMoraCreditoIessBiess: number | null;
+  };
+
+  // "Comportamiento Cooperativas" (grupo 9)
+  comportamientoCooperativas: {
+    numeroOperaciones: number;
+    diasMoraMaxima: number | null;
+    saldoTotal: number;
+    tieneOperacionJudicializada: boolean;
+    tieneOperacionCastigada: boolean;
+  };
+
+  // "Comportamiento Interno" (grupo 14, NUEVO) — el scoring propio de
+  // Novadata (basesInternas.personasIncumplimientos), separado del resto
+  // de comportamientoBancario por su peso.
+  comportamientoInterno: {
+    novadataResultadoHabitoPago: string | null;
+    novadataPerfilInterno: string | null;
+    novadataDiasMoraMaxima: number | null;
+    novadataDiasMoraVigente: number | null;
+    novadataSaldoCapitalVigente: number | null;
+    esClienteInterno: boolean;
+  };
+
+  transitoVehicular: {
+    tieneLicenciaVigente: boolean;
+    puntosLicencia: number | null;
+    numeroMultas: number;
+    valorAdeudadoTransito: number;
+  };
+
+  riesgoJudicialCivil: {
+    numeroDemandasComoDemandado: number;
+    tiposDemandasComoDemandado: string[]; // demanda.delito, NO tipoDemanda.descripcion (ver nota en process.ts)
+    numeroDemandasComoOfendido: number;
+    pensionAlimenticiaEnMora: boolean;
+    deudaPensionAlimenticia: number | null;
+    demandaProblemaCrediticio: boolean;
+  };
+
+  riesgoPenal: {
+    tieneAntecedentesPenales: boolean | null;
+    descripcionAntecedentes: string | null;
+    numeroDenunciasFiscalia: number;
+  };
+
+  compliance: {
+    enListaControl: boolean;
+    enListaNegra: boolean;
+    impedimentoCargosPublicos: boolean;
+    causalImpedimento: string | null;
+    registraSercopContraloria: boolean;
+  };
+
+  metaConsulta: {
+    ejesOk: string[];
+    ejesFaltantes: string[];
+    ejesConError: string[];
+  };
+}
+
 // ---------- Resultado del scoring por LLM ----------
 
 export interface LlmScoringResult {

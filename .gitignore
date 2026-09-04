@@ -4,3 +4,7 @@ dist
 .env.functions
 .DS_Store
 supabase/.temp
+
+# Caché local de consultas crudas a Novadata para diseñar la estructura
+# estandarizada — datos personales reales de clientes, NUNCA a git.
+research/
