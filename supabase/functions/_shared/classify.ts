@@ -126,6 +126,9 @@ const REGLAS: Record<string, Regla> = {
   "compliance.enListaNegra": (v) => (v ? "negativo" : "positivo"),
   "compliance.impedimentoCargosPublicos": (v) => (v ? "negativo" : "positivo"),
   "compliance.registraSercopContraloria": (v) => (v ? "negativo" : "positivo"),
+  // esPersonaExpuestaPoliticamente: SIN regla a propósito — PEP es un
+  // dato de compliance/AML, no una señal de riesgo crediticio (decisión
+  // explícita del usuario). Cae en "complementario" sea true o false.
 
   // ---- laboral ----
   "laboral.tieneEstablecimientoActivo": (v) => (v ? "positivo" : null),

@@ -90,11 +90,21 @@ export interface RawNovadataResponse {
 
 // ---------- Guardrails (determinísticos, no delegados al LLM) ----------
 
-export type GuardrailCode = "fallecido" | "cedula_inconsistente" | "lista_control" | "lista_negra" | "pep_ofac_interno";
+export type GuardrailCode =
+  | "fallecido"
+  | "cedula_inconsistente"
+  | "lista_control"
+  | "lista_negra"
+  | "listas_control_interno"
+  | "pep";
 
 export interface GuardrailFinding {
   code: GuardrailCode;
   message: string;
+  // true => este hallazgo por sí solo fuerza bloqueado=true. false => es
+  // informativo (ej. PEP, cédula inconsistente): se muestra en el
+  // análisis pero NO fuerza el score a 1 ni se debe tratar como negativo.
+  blocking: boolean;
 }
 
 export interface GuardrailResult {
@@ -282,6 +292,11 @@ export interface StandardClientProfile {
     impedimentoCargosPublicos: boolean;
     causalImpedimento: string | null;
     registraSercopContraloria: boolean;
+    // Persona Expuesta Políticamente (cargo público relevante, actual o
+    // pasado) — dato de compliance/AML, NO es señal de riesgo crediticio
+    // ni descalifica al cliente. Ver guardrails.ts: a propósito no
+    // fuerza bloqueado=true.
+    esPersonaExpuestaPoliticamente: boolean;
   };
 
   metaConsulta: {

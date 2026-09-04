@@ -367,7 +367,10 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- compliance (guardrail, informativo) ----
-  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr", "personaPublicasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
+  // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
+  // ver guardrails.ts: no es señal de riesgo crediticio.
+  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
+  const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr({ x: { data: basesInternas } }, "x", "tpeps").length;
   const sercopData = obj(fiscalia, "sercop", "data");
   const impedimento = obj(judicial, "impedimentoCargosPublicos", "data");
   const compliance = {
@@ -376,6 +379,7 @@ function buildStandardProfile(raw, cedula) {
     impedimentoCargosPublicos: Boolean(impedimento?.registraImpedimento),
     causalImpedimento: impedimento?.causales?.[0]?.causal ?? null,
     registraSercopContraloria: Boolean((sercopData?.contraloria?.registros?.length ?? 0) > 0 || (sercopData?.sercop?.registros?.length ?? 0) > 0),
+    esPersonaExpuestaPoliticamente: totalPep > 0,
   };
 
   const blockStatus = {

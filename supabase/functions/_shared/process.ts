@@ -8,10 +8,8 @@
 // reglas debe reflejarse en AMBOS archivos (se mantienen en sync a mano,
 // no hay build step compartido entre Deno y Node en este proyecto).
 //
-// NOTA: todavía no está conectada a analyze-client/llm-scoring — sigue en
-// validación (ver research/standard-profiles/*.json y el Excel de
-// validación). Cuando se apruebe, reemplaza a buildClientContext() como
-// entrada del LLM.
+// Conectada a analyze-client/llm-scoring desde framework-v1 — es la
+// entrada real del LLM (ver interpretive-framework.ts).
 
 import type { BlockStatusMap, RawNovadataResponse, StandardClientProfile } from "./types.ts";
 
@@ -374,10 +372,13 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   };
 
   // ---- compliance (guardrail, informativo) ----
-  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr", "personaPublicasOpr"].reduce(
+  // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
+  // ver guardrails.ts: no es señal de riesgo crediticio.
+  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce(
     (s, c) => s + arr(bancos, "listasControl", c).length,
     0
   );
+  const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
   const sercopData = obj(fiscalia, "sercop", "data");
   const impedimento = obj(judicial, "impedimentoCargosPublicos", "data");
   const compliance: StandardClientProfile["compliance"] = {
@@ -389,6 +390,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
       (((sercopData?.contraloria as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0 ||
         (((sercopData?.sercop as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0
     ),
+    esPersonaExpuestaPoliticamente: totalPep > 0,
   };
 
   const blockStatus: BlockStatusMap = {
