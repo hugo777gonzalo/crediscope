@@ -207,6 +207,11 @@ function buildStandardProfile(raw, cedula) {
   // NO establecimientoActEconomica — ver rucRegistroActivo().
   const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucRegistroActivo);
   const rucReferencia = contribuyenteRegistros.find(rucRegistroActivo) ?? contribuyenteRegistros[0] ?? null;
+  // establecimientoActEconomica: detalle por establecimiento (ver nota
+  // en process.ts) — sus fechas vienen DD/MM/YYYY, no se usan acá.
+  const establecimientos = arr(trabajo, "establecimientoActEconomica", "datosEstablecimientoActEco");
+  const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
+  const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
@@ -253,6 +258,9 @@ function buildStandardProfile(raw, cedula) {
     fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
     fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
     fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
+    numeroEstablecimientosActivos,
+    numeroEstablecimientosInactivos,
+    tieneEstablecimientosRegistrados: establecimientos.length > 0,
   };
 
   // ---- tributario (SRI) ----

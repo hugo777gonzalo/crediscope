@@ -194,6 +194,16 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   const empleados = arr(trabajo, "empleados", "empleados");
   const empleadosIdsUnicos = new Set(empleados.map((e) => e.ci).filter(Boolean));
   const contribuyenteRegistros = arr(trabajo, "contribuyente", "datosContribuyente");
+  // establecimientoActEconomica: SÍ trae detalle por establecimiento
+  // (num_establecimiento, estado_establecimiento ABIERTO/CERRADO) — una
+  // persona puede tener el RUC activo con un establecimiento abierto y
+  // otro cerrado. Ojo: sus fechas (fech_inscripcion, fech_cierre, etc.)
+  // vienen en formato DD/MM/YYYY — "08/03/2016" con `new Date(...)` se
+  // interpreta como MM/DD (ambiguo), NO se usan acá por eso, solo el
+  // conteo por estado_establecimiento.
+  const establecimientos = arr(trabajo, "establecimientoActEconomica", "datosEstablecimientoActEco");
+  const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
+  const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // tieneEstablecimientoActivo: fuente correcta es contribuyente (RUC),
   // NO establecimientoActEconomica — ver rucRegistroActivo().
   const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucRegistroActivo);
@@ -257,6 +267,9 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
     fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
     fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
+    numeroEstablecimientosActivos,
+    numeroEstablecimientosInactivos,
+    tieneEstablecimientosRegistrados: establecimientos.length > 0,
   };
 
   // ---- tributario (SRI) ----

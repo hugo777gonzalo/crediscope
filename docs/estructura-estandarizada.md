@@ -54,6 +54,21 @@
 > el SRI sin ir a la data cruda de Novadata cada vez. Nota: el SRI
 > también muestra una "fecha de actualización" que **Novadata no
 > provee** en este recurso — no se puede exponer.
+>
+> El usuario señaló que el estado del RUC (a nivel de contribuyente) es
+> DISTINTO del estado de cada establecimiento — una persona puede tener
+> el RUC activo con un establecimiento abierto y otro cerrado.
+> Confirmado con datos reales: la cédula 0502937675 tiene 2
+> establecimientos (el SRI solo mostraba la matriz). El recurso
+> `establecimientoActEconomica` (dejado de usar para
+> `tieneEstablecimientoActivo` en v2 por ser la fuente equivocada para
+> ESE campo) sí trae `estado_establecimiento` por establecimiento — se
+> agregaron 3 campos nuevos en `laboral`: `numeroEstablecimientosActivos`,
+> `numeroEstablecimientosInactivos`, `tieneEstablecimientosRegistrados`.
+> No reemplazan a `tieneEstablecimientoActivo` (que sigue siendo a nivel
+> de RUC, per spec original del usuario). Ojo: las fechas de este
+> recurso vienen en formato DD/MM/YYYY, no se usaron para evitar el
+> parseo ambiguo de `Date`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

@@ -144,6 +144,11 @@ const REGLAS: Record<string, Regla> = {
   // SIN regla a propósito — son fechas de auditoría/contexto (para
   // validar tieneRucActivo/tieneEstablecimientoActivo contra el SRI),
   // no señales de riesgo por sí solas. Caen en "complementario".
+  "laboral.numeroEstablecimientosActivos": (v) => ((v as number) > 0 ? "positivo" : null),
+  // numeroEstablecimientosInactivos/tieneEstablecimientosRegistrados:
+  // SIN regla — tener un establecimiento cerrado no es necesariamente
+  // negativo (pudo cerrar y abrir otro), y solo "tener establecimientos
+  // registrados" (sin decir si activos) no es una señal por sí sola.
 
   // ---- seguridadSocial ----
   "seguridadSocial.afiliadoIessActivo": (v) => (v ? "positivo" : null),

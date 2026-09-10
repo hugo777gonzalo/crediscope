@@ -207,6 +207,15 @@ export interface StandardClientProfile {
     fechaInicioActividadesRuc: string | null; // YYYY-MM-DD
     fechaCeseActividadesRuc: string | null; // más reciente entre cancelación y suspensión definitiva
     fechaReinicioActividadesRuc: string | null;
+    // El estado del RUC (tieneRucActivo, a nivel de contribuyente) es
+    // DISTINTO del estado de cada establecimiento — una persona puede
+    // tener el RUC activo con un establecimiento abierto y otro
+    // cerrado. Fuente: establecimientoActEconomica (por eso son campos
+    // aparte, no reemplazan a tieneEstablecimientoActivo que sigue
+    // siendo a nivel de RUC — ver process.ts).
+    numeroEstablecimientosActivos: number;
+    numeroEstablecimientosInactivos: number;
+    tieneEstablecimientosRegistrados: boolean;
   };
 
   tributario: {
