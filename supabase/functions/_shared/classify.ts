@@ -140,6 +140,10 @@ const REGLAS: Record<string, Regla> = {
   "laboral.tieneEstablecimientoActivo": (v) => (v ? "positivo" : null),
   "laboral.tieneRucActivo": (v) => (v ? "positivo" : null),
   "laboral.obligacionesPatronalesEnMora": (v) => (v === true ? "negativo" : v === false ? "positivo" : null),
+  // fechaInicioActividadesRuc/fechaCeseActividadesRuc/fechaReinicioActividadesRuc:
+  // SIN regla a propósito — son fechas de auditoría/contexto (para
+  // validar tieneRucActivo/tieneEstablecimientoActivo contra el SRI),
+  // no señales de riesgo por sí solas. Caen en "complementario".
 
   // ---- seguridadSocial ----
   "seguridadSocial.afiliadoIessActivo": (v) => (v ? "positivo" : null),

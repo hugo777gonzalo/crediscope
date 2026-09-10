@@ -39,6 +39,21 @@
 > `ClientContext` casi crudo — payload ~4-5x más chico, lo que resolvió
 > cortes de respuesta a medias por `max_tokens` (`SyntaxError` al
 > parsear el JSON de salida) en clientes con mucho historial judicial.
+>
+> **v4 — auditoría contra el SRI real (cédulas 0502937691 y
+> 0502937675), corrigió `laboral.tieneRucActivo`:** leía `.obligado`
+> ("obligado a llevar contabilidad" — casi siempre "NO" para personas
+> naturales de régimen general, sin relación con el estado del RUC), lo
+> que hacía que el campo diera `false` casi siempre sin importar el
+> estado real. Ahora usa la misma fuente/lógica que
+> `tieneEstablecimientoActivo` (`rucRegistroActivo()`). También se
+> agregaron 3 campos de auditoría en `laboral`:
+> `fechaInicioActividadesRuc`, `fechaCeseActividadesRuc`,
+> `fechaReinicioActividadesRuc` (fechas crudas del registro RUC activo,
+> o el primero disponible) — para poder validar estos booleanos contra
+> el SRI sin ir a la data cruda de Novadata cada vez. Nota: el SRI
+> también muestra una "fecha de actualización" que **Novadata no
+> provee** en este recurso — no se puede exponer.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

@@ -200,6 +200,13 @@ export interface StandardClientProfile {
     numeroEmpleadosRegistrados: number;
     tipoEmpleador: string | null;
     obligacionesPatronalesEnMora: boolean | null; // null si no aplica (no es empleador)
+    // Fechas crudas del registro RUC (contribuyente) — del registro
+    // activo si existe, si no del primero disponible. Para auditar
+    // tieneRucActivo/tieneEstablecimientoActivo contra el SRI sin tener
+    // que ir a la data cruda de Novadata cada vez.
+    fechaInicioActividadesRuc: string | null; // YYYY-MM-DD
+    fechaCeseActividadesRuc: string | null; // más reciente entre cancelación y suspensión definitiva
+    fechaReinicioActividadesRuc: string | null;
   };
 
   tributario: {

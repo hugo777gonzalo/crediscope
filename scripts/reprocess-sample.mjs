@@ -69,14 +69,22 @@ function num(v) {
 // null cuando la persona nunca tuvo RUC — ver 1759544552).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
 // si fecha_reinicio_actividades es posterior a la más reciente de esas dos.
-function rucRegistroActivo(c) {
-  if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
+function ceseMasReciente(c) {
   const cancelacion = parseFecha(c.fecha_cancelacion);
   const suspension = parseFecha(c.fecha_suspension_definitiva);
-  if (!cancelacion && !suspension) return true;
-  const ceseMasReciente = [cancelacion, suspension].filter(Boolean).sort((a, b) => b.getTime() - a.getTime())[0];
+  return [cancelacion, suspension].filter(Boolean).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+}
+
+function rucRegistroActivo(c) {
+  if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
+  const cese = ceseMasReciente(c);
+  if (!cese) return true;
   const reinicio = parseFecha(c.fecha_reinicio_actividades);
-  return Boolean(reinicio && reinicio.getTime() > ceseMasReciente.getTime());
+  return Boolean(reinicio && reinicio.getTime() > cese.getTime());
+}
+
+function formatFechaISO(d) {
+  return d ? d.toISOString().slice(0, 10) : null;
 }
 
 // ---------- Helpers de acceso a datos ----------
@@ -198,6 +206,7 @@ function buildStandardProfile(raw, cedula) {
   // tieneEstablecimientoActivo: fuente correcta es contribuyente (RUC),
   // NO establecimientoActEconomica — ver rucRegistroActivo().
   const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucRegistroActivo);
+  const rucReferencia = contribuyenteRegistros.find(rucRegistroActivo) ?? contribuyenteRegistros[0] ?? null;
   const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
@@ -232,13 +241,18 @@ function buildStandardProfile(raw, cedula) {
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
     })(),
     esEmpleadorOAdministrador: empleados.length > 0 || arr(trabajo, "administraciones", "administraciones").length > 0,
-    tieneRucActivo: contribuyenteRegistros.some((c) => String(c.obligado ?? "").toUpperCase() !== "NO"),
+    // corregido: antes leía .obligado ("obligado a llevar contabilidad",
+    // sin relación con el estado del RUC) — ver la misma nota en process.ts.
+    tieneRucActivo: tieneEstablecimientoActivo,
     tieneEstablecimientoActivo,
     // --- nuevos ---
     esIndependiente: tieneEstablecimientoActivo,
     numeroEmpleadosRegistrados: empleadosIdsUnicos.size,
     tipoEmpleador: empleados[0]?.tipEmp ?? null,
     obligacionesPatronalesEnMora: cumplimientoAfiliaciones.length > 0 ? obligacionesEnMora : null,
+    fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
+    fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
+    fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
   };
 
   // ---- tributario (SRI) ----

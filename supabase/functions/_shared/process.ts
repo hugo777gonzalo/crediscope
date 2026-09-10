@@ -21,6 +21,10 @@ function parseFecha(v: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function formatFechaISO(d: Date | null): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
 function edadDesde(fecha: unknown): number | null {
   const d = parseFecha(fecha);
   if (!d) return null;
@@ -54,14 +58,18 @@ function dentroUltimos3Meses(fecha: unknown): boolean {
 // null cuando la persona nunca tuvo RUC — ver 1759544552).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
 // si fecha_reinicio_actividades es posterior a la más reciente de esas dos.
-function rucRegistroActivo(c: AnyRecord): boolean {
-  if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
+function ceseMasReciente(c: AnyRecord): Date | null {
   const cancelacion = parseFecha(c.fecha_cancelacion);
   const suspension = parseFecha(c.fecha_suspension_definitiva);
-  if (!cancelacion && !suspension) return true;
-  const ceseMasReciente = [cancelacion, suspension].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0];
+  return [cancelacion, suspension].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+}
+
+function rucRegistroActivo(c: AnyRecord): boolean {
+  if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
+  const cese = ceseMasReciente(c);
+  if (!cese) return true;
   const reinicio = parseFecha(c.fecha_reinicio_actividades);
-  return Boolean(reinicio && reinicio.getTime() > ceseMasReciente.getTime());
+  return Boolean(reinicio && reinicio.getTime() > cese.getTime());
 }
 
 function num(v: unknown): number | null {
@@ -189,6 +197,10 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // tieneEstablecimientoActivo: fuente correcta es contribuyente (RUC),
   // NO establecimientoActEconomica — ver rucRegistroActivo().
   const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucRegistroActivo);
+  // Registro RUC de referencia para las fechas expuestas: el activo si
+  // hay uno, si no el primero disponible (persona natural normalmente
+  // tiene un solo registro, pero Novadata devuelve un array).
+  const rucReferencia = (contribuyenteRegistros.find(rucRegistroActivo) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
   const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
@@ -229,12 +241,22 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
     })(),
     esEmpleadorOAdministrador: empleados.length > 0 || arr(trabajo, "administraciones", "administraciones").length > 0,
-    tieneRucActivo: contribuyenteRegistros.some((c) => String(c.obligado ?? "").toUpperCase() !== "NO"),
+    // tieneRucActivo antes leía .obligado ("obligado a llevar
+    // contabilidad" — NO tiene relación con el estado del RUC, casi
+    // siempre "NO" para personas naturales de régimen general, así que
+    // este campo daba false casi siempre). Corregido para usar la misma
+    // fuente/lógica que tieneEstablecimientoActivo (rucRegistroActivo) —
+    // validado contra SRI real, cédulas 0502937691 (activo) y
+    // 0502937675 (suspendido).
+    tieneRucActivo: tieneEstablecimientoActivo,
     tieneEstablecimientoActivo,
     esIndependiente: tieneEstablecimientoActivo,
     numeroEmpleadosRegistrados: empleadosIdsUnicos.size,
     tipoEmpleador: (empleados[0]?.tipEmp as string) ?? null,
     obligacionesPatronalesEnMora: cumplimientoAfiliaciones.length > 0 ? obligacionesEnMora : null,
+    fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
+    fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
+    fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
   };
 
   // ---- tributario (SRI) ----
