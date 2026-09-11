@@ -355,12 +355,26 @@ function buildStandardProfile(raw, cedula) {
 
   // ---- transitoVehicular ----
   const licencia = arr(vehiculosData, "licenciaConducir", "licencia")[0] ?? null;
-  const multas = [...arr(bancos, "deudasAnt", "deudaAnts"), ...arr(bancos, "deudasAmt", "deudaAmt"), ...arr(bancos, "deudasEmov", "deudaEmov")];
+  // Ver nota completa en process.ts: deudasAnt es plano (monto en
+  // .total), deudasEmov trae 1 resumen por persona con .infraccion[]
+  // anidado (contar el resumen como multa fue el bug de "todos tienen
+  // una multa"), deudasAmt se trata igual por prudencia (nunca visto
+  // poblado).
+  const esResumenConInfracciones = (r) => Array.isArray(r.infraccion);
+  const fuentesTransito = [arr(bancos, "deudasAnt", "deudaAnts"), arr(bancos, "deudasAmt", "deudaAmt"), arr(bancos, "deudasEmov", "deudaEmov")];
+  const numeroMultas = fuentesTransito.reduce(
+    (total, registros) => total + registros.reduce((s, r) => s + (esResumenConInfracciones(r) ? r.infraccion.length : 1), 0),
+    0
+  );
+  const valorAdeudadoTransito = fuentesTransito.reduce(
+    (total, registros) => total + registros.reduce((s, r) => s + (num(esResumenConInfracciones(r) ? r.valorAdeudado : r.total) ?? 0), 0),
+    0
+  );
   const transitoVehicular = {
     tieneLicenciaVigente: Boolean(licencia),
     puntosLicencia: licencia ? num(licencia.puntos) : null,
-    numeroMultas: multas.length,
-    valorAdeudadoTransito: multas.reduce((s, m) => s + (num(m.valorAdeudado) ?? 0), 0),
+    numeroMultas,
+    valorAdeudadoTransito,
   };
 
   // ---- riesgoJudicialCivil ----

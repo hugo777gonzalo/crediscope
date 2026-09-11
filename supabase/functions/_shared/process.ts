@@ -375,12 +375,34 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
 
   // ---- transitoVehicular ----
   const licencia = (arr(vehiculosData, "licenciaConducir", "licencia")[0] as AnyRecord | undefined) ?? null;
-  const multas = [...arr(bancos, "deudasAnt", "deudaAnts"), ...arr(bancos, "deudasAmt", "deudaAmt"), ...arr(bancos, "deudasEmov", "deudaEmov")];
+  // deudasAnt/Amt/Emov son 3 fuentes de "deudas de tránsito" pero NO
+  // comparten forma. deudasAnt (única confirmada con datos reales, 4/25
+  // en la muestra de validación) es un array PLANO — cada elemento ES
+  // una multa, con el monto en .total (NO .valorAdeudado, ese campo no
+  // existe en estos registros). deudasEmov trae un array con 1 elemento
+  // RESUMEN por persona (infraccion: [] en el 100% de la muestra) — las
+  // multas reales estarían anidadas en .infraccion[], nunca se vio
+  // poblado. Contar ese resumen como si fuera 1 multa real es el bug
+  // reportado por el usuario ("todos los clientes tienen una multa" —
+  // era el resumen vacío de EMOV). El monto ya viene pre-agregado en
+  // .valorAdeudado del resumen. deudasAmt nunca se ha visto poblado
+  // (0/25) — se trata con la misma detección automática por prudencia;
+  // a validar con un caso real cuando aparezca.
+  const esResumenConInfracciones = (r: AnyRecord): boolean => Array.isArray(r.infraccion);
+  const fuentesTransito = [arr(bancos, "deudasAnt", "deudaAnts"), arr(bancos, "deudasAmt", "deudaAmt"), arr(bancos, "deudasEmov", "deudaEmov")];
+  const numeroMultas = fuentesTransito.reduce(
+    (total, registros) => total + registros.reduce((s, r) => s + (esResumenConInfracciones(r) ? (r.infraccion as unknown[]).length : 1), 0),
+    0
+  );
+  const valorAdeudadoTransito = fuentesTransito.reduce(
+    (total, registros) => total + registros.reduce((s, r) => s + (num(esResumenConInfracciones(r) ? r.valorAdeudado : r.total) ?? 0), 0),
+    0
+  );
   const transitoVehicular: StandardClientProfile["transitoVehicular"] = {
     tieneLicenciaVigente: Boolean(licencia),
     puntosLicencia: licencia ? num(licencia.puntos) : null,
-    numeroMultas: multas.length,
-    valorAdeudadoTransito: multas.reduce((s, m) => s + (num(m.valorAdeudado) ?? 0), 0),
+    numeroMultas,
+    valorAdeudadoTransito,
   };
 
   // ---- riesgoJudicialCivil ----

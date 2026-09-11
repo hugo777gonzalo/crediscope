@@ -69,6 +69,22 @@
 > de RUC, per spec original del usuario). Ojo: las fechas de este
 > recurso vienen en formato DD/MM/YYYY, no se usaron para evitar el
 > parseo ambiguo de `Date`.
+>
+> **v5 — auditoría de `transitoVehicular`, reportada por el usuario:
+> "todos los clientes tienen una multa".** Confirmado como bug, no
+> coincidencia: `deudasEmov` trae 1 registro RESUMEN por persona
+> (`infraccion: []` en el 100% de la muestra de 25) — se estaba
+> contando ese resumen como 1 multa real, sin importar si la persona
+> tenía o no infracciones. Además `deudasAnt` (única fuente con datos
+> reales confirmados, 4/25) usa el campo `.total`, no `.valorAdeudado`
+> (que no existe en esos registros) — el monto se estaba perdiendo para
+> esos clientes. `numeroMultas`/`valorAdeudadoTransito` ahora detectan
+> automáticamente si un registro es "resumen con `.infraccion[]`
+> anidado" (EMOV, y por prudencia AMT — nunca se ha visto poblado en la
+> muestra) vs "registro plano" (ANT). Tras el fix: 21/25 clientes pasan
+> de `numeroMultas=1` a `numeroMultas=0`; los 4 con datos reales de ANT
+> quedan con el monto correcto (validado a mano contra la suma de
+> `.total`).
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 
