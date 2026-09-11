@@ -116,6 +116,28 @@
 > reales: cédula 0961413416 aparece como SOSPECHOSO en una denuncia por
 > ABUSO DE CONFIANZA — antes se contaba igual que las denuncias donde
 > otros clientes son solo denunciantes/víctimas. `framework-v5`.
+>
+> **v8 — auditoría de valuación de vehículos, pedida por el usuario
+> ("para el tema de colaterales, es importante llegar al valor más
+> aproximado").** Novadata trae hasta 8 campos de precio distintos por
+> vehículo que NO coinciden entre sí: `valorAvaluo` (avalúo fiscal SRI,
+> depreciación lineal — castiga fuerte vehículos viejos, ej. $82 en una
+> moto 2016 o $1,200 en un camión 1984), `precioPromedio`/
+> `precioComercial`/`precioVentaPublico` (casi siempre idénticos entre
+> sí, precio de mercado actual), `precioMinimo`/`precioMaximo` (rango
+> de mercado), `precioVentaPromedio` (promedio de comercial y promedio
+> cuando difieren, confirmado con 2 casos reales) y `precioVenta`
+> (sospechosamente alto en vehículos viejos — ej. Nissan X-Trail 2010:
+> `precioVenta=$29,990` vs `precioMaximo=$20,500` de mercado actual —
+> parece ser precio de lista cuando el vehículo era nuevo, se le
+> consultó al usuario y confirmó excluirlo). Nuevo campo
+> `patrimonio.valorColateralVehiculos`: suma, por vehículo, el MÁXIMO
+> entre `valorAvaluo`/`precioPromedio`/`precioMinimo`/`precioMaximo`/
+> `precioComercial`/`precioVentaPublico`/`precioVentaPromedio` (sin
+> `precioVenta`) — `valorAvaluo` sirve de piso para vehículos donde los
+> campos de mercado vienen todos en 0 (confirmado con un caso real,
+> Suzuki Grand Vitara con `precioPromedio=0` pero `precioComercial`
+> poblado). `framework-v6`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

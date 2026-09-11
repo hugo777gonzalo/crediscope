@@ -321,6 +321,20 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // ---- patrimonio ----
   const vehiculos = arr(vehiculosData, "vehiculos", "personaVehiculo");
   const sumVeh = (field: string) => vehiculos.reduce((s, v) => s + (num(v[field]) ?? 0), 0);
+  // valorColateralVehiculos: para colaterales importa el valor más
+  // aproximado a mercado ACTUAL, tomando por cada vehículo el máximo
+  // entre sus distintas fuentes de precio (auditoría pedida por el
+  // usuario — Novadata da varios precios por vehículo que no
+  // coinciden: valorAvaluo usa depreciación lineal SRI y castiga fuerte
+  // vehículos viejos, ej. $82 en una moto 2016). A propósito NO incluye
+  // precioVenta: para vehículos viejos ese campo parece ser el precio
+  // de lista cuando el vehículo era nuevo (ej. Nissan X-Trail 2010:
+  // precioVenta=$29990 vs precioMaximo=$20500 de mercado actual),
+  // incluirlo sobrestimaría el colateral. valorAvaluo SÍ se incluye en
+  // el máximo (nunca es el más alto en la práctica, pero sirve de piso
+  // para vehículos donde los campos de mercado vienen todos en 0).
+  const CAMPOS_VALOR_VEHICULO = ["valorAvaluo", "precioPromedio", "precioMinimo", "precioMaximo", "precioComercial", "precioVentaPublico", "precioVentaPromedio"];
+  const valorMaximoVehiculo = (v: AnyRecord): number => Math.max(0, ...CAMPOS_VALOR_VEHICULO.map((c) => num(v[c]) ?? 0));
   const patrimonio: StandardClientProfile["patrimonio"] = {
     numeroVehiculos: vehiculos.length,
     valorAvaluoVehiculos: sumVeh("valorAvaluo"),
@@ -333,6 +347,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     valorComercialTotalVehiculos: sumVeh("precioComercial"),
     valorVentaTotalVehiculos: sumVeh("precioVentaPublico"),
     valorPromedioTotalVehiculos: sumVeh("precioVentaPromedio"),
+    valorColateralVehiculos: vehiculos.reduce((s, v) => s + valorMaximoVehiculo(v), 0),
   };
 
   // ---- comportamientoBancario ----

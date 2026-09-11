@@ -247,6 +247,12 @@ export interface StandardClientProfile {
     valorComercialTotalVehiculos: number;
     valorVentaTotalVehiculos: number;
     valorPromedioTotalVehiculos: number;
+    // Suma, por vehículo, del máximo entre valorAvaluo/precioPromedio/
+    // precioMinimo/precioMaximo/precioComercial/precioVentaPublico/
+    // precioVentaPromedio (NO incluye precioVenta — ver process.ts). El
+    // valor a usar para colaterales: más cercano a mercado actual que
+    // valorAvaluo (depreciación lineal castiga fuerte vehículos viejos).
+    valorColateralVehiculos: number;
   };
 
   // "Comportamiento Bancos BIESS Diners" (Cambios_Reagrupacion, grupo 8)

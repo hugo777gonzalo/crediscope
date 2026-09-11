@@ -301,6 +301,11 @@ function buildStandardProfile(raw, cedula) {
   // ---- patrimonio ----
   const vehiculos = arr(vehiculosData, "vehiculos", "personaVehiculo");
   const sum = (field) => vehiculos.reduce((s, v) => s + (num(v[field]) ?? 0), 0);
+  // valorColateralVehiculos: ver nota completa en process.ts. Máximo por
+  // vehículo entre las fuentes de precio de mercado (NO precioVenta,
+  // que parece ser precio de lista cuando era nuevo).
+  const CAMPOS_VALOR_VEHICULO = ["valorAvaluo", "precioPromedio", "precioMinimo", "precioMaximo", "precioComercial", "precioVentaPublico", "precioVentaPromedio"];
+  const valorMaximoVehiculo = (v) => Math.max(0, ...CAMPOS_VALOR_VEHICULO.map((c) => num(v[c]) ?? 0));
   const patrimonio = {
     numeroVehiculos: vehiculos.length,
     valorAvaluoVehiculos: sum("valorAvaluo"),
@@ -314,6 +319,7 @@ function buildStandardProfile(raw, cedula) {
     valorComercialTotalVehiculos: sum("precioComercial"),
     valorVentaTotalVehiculos: sum("precioVentaPublico"),
     valorPromedioTotalVehiculos: sum("precioVentaPromedio"),
+    valorColateralVehiculos: vehiculos.reduce((s, v) => s + valorMaximoVehiculo(v), 0),
   };
 
   // ---- comportamientoBancario (ex "formal": bancos/BIESS/Diners) ----

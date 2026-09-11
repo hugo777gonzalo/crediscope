@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v5) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v6) ***
 // El orden de importancia de los 14 grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -51,11 +51,21 @@
 // lista el rol de cada parte (denunciante/víctima/perjudicado/
 // sospechoso) por cédula.
 //
+// v6: nuevo campo patrimonio.valorColateralVehiculos (auditoría pedida
+// por el usuario sobre los distintos precios de vehículo que da
+// Novadata) — suma, por vehículo, el máximo entre valorAvaluo/
+// precioPromedio/precioMinimo/precioMaximo/precioComercial/
+// precioVentaPublico/precioVentaPromedio (NO precioVenta, que parece
+// ser precio de lista cuando el vehículo era nuevo — ver process.ts).
+// Es el valor a usar para todo lo relacionado a colaterales/patrimonio
+// real — valorAvaluoVehiculos (depreciación lineal fiscal) sigue
+// existiendo pero ya no es la fuente recomendada para eso.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de guardrails.ts (que ya se
 // resolvieron de forma determinística, no los debe recalcular).
 
-export const FRAMEWORK_VERSION = "framework-v5";
+export const FRAMEWORK_VERSION = "framework-v6";
 
 export const INTERPRETIVE_FRAMEWORK = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -137,7 +147,11 @@ en orden de importancia (definido explícitamente por el negocio):
 8. patrimonio — numeroVehiculos, valorAvaluoVehiculos, etc. Ausencia de
    patrimonio NO es negativa — puede ser alguien joven o de bajos
    ingresos formales, no un mal pagador. Solo suma como positivo si hay
-   patrimonio relevante.
+   patrimonio relevante. Para el VALOR de los vehículos usa
+   valorColateralVehiculos (no valorAvaluoVehiculos) — es el más
+   cercano a precio de mercado actual, ya que valorAvaluoVehiculos usa
+   depreciación lineal fiscal y castiga fuerte vehículos viejos (puede
+   mostrar $80 en una moto que vale mucho más en la realidad).
 
 9. familia — numeroHijos, tieneHijoMenorEdad: contexto de carga
    familiar, no es señal de riesgo directa.
