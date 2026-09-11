@@ -437,12 +437,19 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   );
   const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
   const sercopData = obj(fiscalia, "sercop", "data");
-  const impedimento = obj(judicial, "impedimentoCargosPublicos", "data");
+  // impedimentoCargosPublicos.data es un ARRAY (no un objeto como el
+  // resto de recursos "singleton") — obj() lo rechazaba por tipo y
+  // devolvía null siempre, así que este campo daba false/null sin
+  // importar la realidad (bug encontrado auditando cédula 0502937691,
+  // que SÍ tiene registraImpedimento=true real). Se agrega sobre todos
+  // los elementos del array por si acaso viniera más de uno.
+  const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
+  const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
   const compliance: StandardClientProfile["compliance"] = {
     enListaControl: totalListasControl > 0,
     enListaNegra: Boolean(((bancos?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
-    impedimentoCargosPublicos: Boolean(impedimento?.registraImpedimento),
-    causalImpedimento: ((impedimento?.causales as AnyRecord[] | undefined)?.[0]?.causal as string) ?? null,
+    impedimentoCargosPublicos: Boolean(impedimentoActivo),
+    causalImpedimento: ((impedimentoActivo?.causales as AnyRecord[] | undefined)?.[0]?.causal as string) ?? null,
     registraSercopContraloria: Boolean(
       (((sercopData?.contraloria as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0 ||
         (((sercopData?.sercop as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0

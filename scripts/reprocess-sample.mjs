@@ -408,12 +408,14 @@ function buildStandardProfile(raw, cedula) {
   const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
   const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr({ x: { data: basesInternas } }, "x", "tpeps").length;
   const sercopData = obj(fiscalia, "sercop", "data");
-  const impedimento = obj(judicial, "impedimentoCargosPublicos", "data");
+  // impedimentoCargosPublicos.data es un ARRAY, no objeto — ver nota en process.ts.
+  const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
+  const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
   const compliance = {
     enListaControl: totalListasControl > 0,
     enListaNegra: Boolean(bancos?.listaNegra?.data?.listaNegra),
-    impedimentoCargosPublicos: Boolean(impedimento?.registraImpedimento),
-    causalImpedimento: impedimento?.causales?.[0]?.causal ?? null,
+    impedimentoCargosPublicos: Boolean(impedimentoActivo),
+    causalImpedimento: impedimentoActivo?.causales?.[0]?.causal ?? null,
     registraSercopContraloria: Boolean((sercopData?.contraloria?.registros?.length ?? 0) > 0 || (sercopData?.sercop?.registros?.length ?? 0) > 0),
     esPersonaExpuestaPoliticamente: totalPep > 0,
   };

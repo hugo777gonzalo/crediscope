@@ -85,6 +85,25 @@
 > de `numeroMultas=1` a `numeroMultas=0`; los 4 con datos reales de ANT
 > quedan con el monto correcto (validado a mano contra la suma de
 > `.total`).
+>
+> **v6 — auditoría de `compliance.impedimentoCargosPublicos`, bug más
+> grave encontrado en esta ronda.** `impedimentoCargosPublicos.data` es
+> un ARRAY (no un objeto como el resto de recursos "singleton" de
+> fiscalía/judicial) — el helper `obj()` rechaza arrays por tipo y
+> devolvía `null` siempre, así que este campo daba `false`/`null` **para
+> absolutamente todos los clientes, sin importar la realidad**.
+> Encontrado auditando cédula 0502937691 (la misma del caso RUC): SÍ
+> tiene `registraImpedimento: true` real, con causal "DEUDORES A
+> ENTIDADES DEL SECTOR PUBLICO" — se estaba mostrando como "sin
+> impedimento" (clasificado "positivo") cuando en realidad tiene un
+> impedimento legal vigente para contratar con el Estado. En la muestra
+> de 25 solo 1 caso tiene esta condición (es infrecuente, la mayoría de
+> consultas a este recurso vienen "faltante"), pero para ESE caso el
+> dato mostrado era exactamente el opuesto de la realidad. De paso se
+> corrigió el texto del marco interpretativo (`framework-v4`): decía que
+> este campo ya era un guardrail resuelto aparte — nunca lo fue (no
+> existe en `guardrails.ts`) — ahora es explícito que el LLM debe
+> juzgarlo y penalizar fuerte.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

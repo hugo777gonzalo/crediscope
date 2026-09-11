@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v3) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v4) ***
 // El orden de importancia de los 14 grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -32,11 +32,22 @@
 // patrimonio, familia, identidad, contacto, transitoVehicular,
 // comportamientoInterno (último — solo si hay dato, ver más abajo).
 //
+// v4: corrige una imprecisión — el texto decía que impedimentoCargosPublicos
+// ya era un guardrail resuelto aparte (igual que enListaControl/
+// enListaNegra), pero NUNCA lo fue: no existe en guardrails.ts (ver
+// GuardrailCode). El campo SÍ le llegaba al LLM en el profile, pero el
+// texto le decía "no te preocupes, ya está resuelto" — el LLM podía
+// estar sub-ponderando un hallazgo grave real (auditoría reveló un bug
+// de parseo aparte que lo escondía por completo, ya corregido en
+// process.ts — ver impedimentoRegistros). Ahora el texto es explícito:
+// impedimentoCargosPublicos SÍ le toca juzgarlo al LLM, y debe penalizar
+// fuerte.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de guardrails.ts (que ya se
 // resolvieron de forma determinística, no los debe recalcular).
 
-export const FRAMEWORK_VERSION = "framework-v3";
+export const FRAMEWORK_VERSION = "framework-v4";
 
 export const INTERPRETIVE_FRAMEWORK = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -67,12 +78,12 @@ narrativa (ej. estabilidad de ingresos por un cargo público).
 CÓMO PENSAR EL SCORE (guía, no fórmula rígida) — por grupo del profile,
 en orden de importancia (definido explícitamente por el negocio):
 
-1. compliance — enListaControl, enListaNegra, impedimentoCargosPublicos
-   ya son guardrails resueltos aparte (fuerzan el score si true), pero
-   el hecho de que este grupo sea la máxima prioridad del negocio
-   confirma que hay que tratarlos con total seriedad en tu narrativa.
-   registraSercopContraloria no es guardrail duro pero sí penaliza
-   fuerte (inhabilidad para contratar con el Estado). esPersonaExpuestaPoliticamente
+1. compliance — enListaControl y enListaNegra SÍ ya son guardrails
+   resueltos aparte (fuerzan el score si true). impedimentoCargosPublicos
+   y registraSercopContraloria NO son guardrails duros — SÍ te toca
+   juzgarlos, y deben penalizar fuerte (inhabilidad legal para contratar
+   con el Estado / ejercer cargos públicos — señal grave de riesgo
+   legal/reputacional, no un dato menor). esPersonaExpuestaPoliticamente
    NO penaliza — ver nota arriba sobre PEP.
 
 2. comportamientoBancario — la fuente más directa de comportamiento de
