@@ -256,10 +256,18 @@ function buildStandardProfile(raw, cedula) {
           salarioAprox: num(ultimoMecanizado.personaIngreso?.valor),
         }
       : null,
-    // Nota: la muestra actual tiene historial laboral (tiess) desactualizado
-    // frente a la fecha "de hoy" del entorno — esta ventana de 24 meses
-    // puede dar 0 para casi todos hasta que se refresque la muestra.
-    numeroEmpleadoresUltimos24Meses: new Set(tiess.filter((t) => { const m = mesesDesde(t.fecIng); return m !== null && m <= 24; }).map((t) => t.nomEmp)).size,
+    // Empleadores ACTIVOS en algún momento de los últimos 24 meses (ver
+    // misma nota en process.ts) — fecSal vacío = sigue activo hoy.
+    numeroEmpleadoresUltimos24Meses: new Set(
+      tiess
+        .filter((t) => {
+          const fecSal = String(t.fecSal ?? "").trim();
+          if (!fecSal) return true;
+          const m = mesesDesde(fecSal);
+          return m !== null && m <= 24;
+        })
+        .map((t) => t.nomEmp)
+    ).size,
     ingresoPromedioUltimos6Meses: (() => {
       const ultimos6 = mecanizadoOrdenado.slice(0, 6).map((t) => num(t.personaIngreso?.valor)).filter((n) => n !== null);
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
@@ -354,6 +362,7 @@ function buildStandardProfile(raw, cedula) {
     tieneOperacionConDemanda: buroCredito.some((r) => num(r.judicial) > 0),
     tieneOperacionCastigada: buroCredito.some((r) => num(r.castigo) > 0),
     saldoTotalVigente: buroCredito.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0),
+    saldoEnMoraBuroCredito: buroCredito.reduce((s, r) => s + (num(r.saldomora) ?? num(r.mora) ?? 0), 0),
     numeroCreditosFormales: arr(bancos, "creditoHipotecario", "prestamos").length + arr(bancos, "creditoQuirografario", "prestamos").length,
     numeroDeudasRetail: retails.length,
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
@@ -364,10 +373,12 @@ function buildStandardProfile(raw, cedula) {
 
   // ---- comportamientoCooperativas ----
   const coop = arr(cooperativas, "buroCreditoCoop", "datosSuper");
+  const CAMPOS_VENCIDO_COOP = Array.from({ length: 11 }, (_, i) => `val_venc_${i + 1}`);
   const comportamientoCooperativas = {
     numeroOperaciones: coop.length,
     diasMoraMaxima: coop.length ? Math.max(...coop.map((c) => num(c.num_dias_morosidad) ?? 0)) : null,
     saldoTotal: coop.reduce((s, c) => s + (num(c.val_saldo_total) ?? 0), 0),
+    saldoEnMora: coop.reduce((s, c) => s + CAMPOS_VENCIDO_COOP.reduce((s2, campo) => s2 + (num(c[campo]) ?? 0), 0), 0),
     tieneOperacionConDemanda: coop.some((c) => num(c.val_dem_judicial) > 0),
     tieneOperacionCastigada: coop.some((c) => num(c.val_cart_castigada) > 0),
   };
@@ -448,8 +459,20 @@ function buildStandardProfile(raw, cedula) {
   // ---- cumplimiento (control de bloqueo, informativo) ----
   // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
   // ver controles-bloqueo.ts: no es señal de riesgo crediticio.
-  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
+  // homonimosOpr/tconsephomonimos EXCLUIDOS a propósito — ver nota en process.ts.
+  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
+  const totalHomonimos = arr(bancos, "listasControl", "homonimosOpr").length + arr({ x: { data: basesInternas } }, "x", "tconsephomonimos").length;
   const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr({ x: { data: basesInternas } }, "x", "tpeps").length;
+  const pepRegistros = [...arr(bancos, "listasControl", "personaPublicasOpr"), ...arr({ x: { data: basesInternas } }, "x", "tpeps")];
+  const pepMasReciente = [...pepRegistros].sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")))[0];
+  const detallePep = pepMasReciente
+    ? {
+        cargo: pepMasReciente.cargo ?? null,
+        empresa: pepMasReciente.empresa ?? pepMasReciente.empresaSector ?? null,
+        sueldo: num(pepMasReciente.sueldo),
+        fecha: pepMasReciente.fecha ?? null,
+      }
+    : null;
   const sercopData = obj(fiscalia, "sercop", "data");
   // impedimentoCargosPublicos.data es un ARRAY, no objeto — ver nota en process.ts.
   const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
@@ -462,11 +485,13 @@ function buildStandardProfile(raw, cedula) {
   ]);
   const cumplimiento = {
     enListaControl: totalListasControl > 0,
+    tieneHomonimoEnListaControl: totalHomonimos > 0,
     enListaNegra: Boolean(bancos?.listaNegra?.data?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),
     causalImpedimento: impedimentoActivo?.causales?.[0]?.causal ?? null,
     registraSercopContraloria: Boolean((sercopData?.contraloria?.registros?.length ?? 0) > 0 || (sercopData?.sercop?.registros?.length ?? 0) > 0),
     esPersonaExpuestaPoliticamente: totalPep > 0,
+    detallePep,
     tieneDelitoGraveSeguridad: categoriasSeguridad.size > 0,
     categoriasDelitoGraveSeguridad: [...categoriasSeguridad],
   };

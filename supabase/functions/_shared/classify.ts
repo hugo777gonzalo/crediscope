@@ -121,11 +121,17 @@ const REGLAS: Record<string, Regla> = {
   "comportamientoBancario.tieneOperacionCastigada": (v) => (v ? "negativo" : "positivo"),
   "comportamientoBancario.diasMoraMaximaRetail": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
   "comportamientoBancario.diasMoraCreditoIessBiess": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
+  // saldoEnMoraBuroCredito: puede ser >0 con saldoTotalVigente=0 (una
+  // operación totalmente en default no cuenta como "vigente") — ver nota
+  // en process.ts. Caso real: cédula 0401592829, 4 operaciones
+  // calificación E, saldoVigente=0 en todas, $11,812.67 reales en mora.
+  "comportamientoBancario.saldoEnMoraBuroCredito": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
 
   // ---- comportamientoCooperativas ----
   "comportamientoCooperativas.tieneOperacionConDemanda": (v) => (v ? "negativo" : "positivo"),
   "comportamientoCooperativas.tieneOperacionCastigada": (v) => (v ? "negativo" : "positivo"),
   "comportamientoCooperativas.diasMoraMaxima": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
+  "comportamientoCooperativas.saldoEnMora": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
 
   // ---- riesgoJudicialCrediticio ----
   // Reemplaza a riesgoJudicialCivil.demandaProblemaCrediticio (booleano)
@@ -146,12 +152,15 @@ const REGLAS: Record<string, Regla> = {
 
   // ---- cumplimiento ----
   "cumplimiento.enListaControl": (v) => (v ? "negativo" : "positivo"),
+  // tieneHomonimoEnListaControl: SIN regla a propósito — es OTRA persona
+  // con el mismo nombre, cédula distinta (ver controles-bloqueo.ts). No
+  // descalifica al cliente, cae en "complementario" sea true o false.
   "cumplimiento.enListaNegra": (v) => (v ? "negativo" : "positivo"),
   "cumplimiento.impedimentoCargosPublicos": (v) => (v ? "negativo" : "positivo"),
   "cumplimiento.registraSercopContraloria": (v) => (v ? "negativo" : "positivo"),
-  // esPersonaExpuestaPoliticamente: SIN regla a propósito — PEP es un
-  // dato de cumplimiento/PLA-FT, no una señal de riesgo crediticio
-  // (decisión explícita del usuario). Cae en "complementario" sea true o false.
+  // esPersonaExpuestaPoliticamente/detallePep: SIN regla a propósito —
+  // PEP es un dato de cumplimiento/PLA-FT, no una señal de riesgo
+  // crediticio (decisión explícita del usuario). Cae en "complementario".
   "cumplimiento.tieneDelitoGraveSeguridad": (v) => (v ? "negativo" : "positivo"),
   // categoriasDelitoGraveSeguridad: SIN regla — es el detalle (array de
   // strings) de tieneDelitoGraveSeguridad, no se clasifica aparte.

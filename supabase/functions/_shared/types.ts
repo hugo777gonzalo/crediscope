@@ -102,6 +102,7 @@ export type CodigoControlBloqueo =
   | "lista_negra"
   | "listas_control_interno"
   | "pep"
+  | "homonimo_en_lista_control"
   | "delito_grave_seguridad";
 
 export interface HallazgoControlBloqueo {
@@ -271,6 +272,13 @@ export interface StandardClientProfile {
     tieneOperacionConDemanda: boolean;
     tieneOperacionCastigada: boolean;
     saldoTotalVigente: number;
+    // Monto total en mora (campos mora/saldomora por operación) — antes
+    // no se extraía, dejando a saldoTotalVigente como único indicador de
+    // deuda aunque no refleja atrasos. Sin caso real en la muestra
+    // actual con valor >0 (calificaciones vistas: A1-B2, ninguna con
+    // mora) — se extrae de forma proactiva para cerrar el hueco del
+    // schema, a confirmar la forma exacta cuando aparezca un caso real.
+    saldoEnMoraBuroCredito: number;
     numeroCreditosFormales: number;
     numeroDeudasRetail: number;
     diasMoraMaximaRetail: number | null;
@@ -284,6 +292,9 @@ export interface StandardClientProfile {
     numeroOperaciones: number;
     diasMoraMaxima: number | null;
     saldoTotal: number;
+    // Ver nota de saldoEnMoraBuroCredito en comportamientoBancario —
+    // mismo hueco, misma decisión.
+    saldoEnMora: number;
     tieneOperacionConDemanda: boolean;
     tieneOperacionCastigada: boolean;
   };
@@ -338,6 +349,13 @@ export interface StandardClientProfile {
 
   cumplimiento: {
     enListaControl: boolean;
+    // Homónimo: Novadata encontró a alguien más con el MISMO NOMBRE pero
+    // CÉDULA DISTINTA en una lista de control — no es el cliente. Dato
+    // informativo, nunca descalifica (ver controles-bloqueo.ts, código
+    // homonimo_en_lista_control: a propósito no bloqueante). Confirmado
+    // con casos reales que la identificación del homónimo nunca coincide
+    // con la del cliente consultado.
+    tieneHomonimoEnListaControl: boolean;
     enListaNegra: boolean;
     impedimentoCargosPublicos: boolean;
     causalImpedimento: string | null;
@@ -347,6 +365,16 @@ export interface StandardClientProfile {
     // crediticio ni descalifica al cliente. Ver controles-bloqueo.ts: a
     // propósito no fuerza bloqueado=true.
     esPersonaExpuestaPoliticamente: boolean;
+    // Detalle del registro PEP más reciente — confirmado con datos
+    // reales (cargo/empresa/sueldo/fecha vienen poblados en Novadata),
+    // antes se descartaba a un booleano sin contexto pese a que el
+    // prompt del LLM ya asumía que existía este detalle.
+    detallePep: {
+      cargo: string | null;
+      empresa: string | null;
+      sueldo: number | null;
+      fecha: string | null;
+    } | null;
     // Delitos graves de seguridad (lavado de activos, narcotráfico/
     // tráfico de sustancias, trata de personas, tenencia/porte de
     // armas, extorsión) — control de bloqueo duro, fuerza el score a 1

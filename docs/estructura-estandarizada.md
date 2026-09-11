@@ -194,6 +194,48 @@
 >   "colateral" (confirmado con el usuario — de uso estándar en la
 >   industria crediticia ecuatoriana).
 > `marco-v8`.
+>
+> **v11 — auditoría sobre 10 clientes nuevos** (con datos que los 25
+> iniciales no tenían: buró de crédito rico, IESS rico, listas negras,
+> homónimos), a pedido del usuario. Encontró 1 bug de bloqueo duro y 3
+> huecos de datos:
+> - **BUG**: `homonimosOpr`/`tconsephomonimos` se trataban igual que
+>   OFAC/providencias (bloqueante, fuerza score a 1) — pero sus
+>   registros NUNCA traen la cédula del cliente consultado, son OTRA
+>   persona con el mismo nombre. Confirmado con 4 casos reales
+>   (identificación del "homónimo" nunca coincide con la del cliente:
+>   cédulas 1713210456, 1714000419, y 2 casos en 0912771995). Ahora es
+>   informativo, no bloqueante —
+>   `cumplimiento.tieneHomonimoEnListaControl`, hallazgo
+>   `homonimo_en_lista_control` con `bloqueante: false`.
+> - `cumplimiento.detallePep` (nuevo) — antes PEP se colapsaba a un
+>   booleano; ahora expone `cargo`/`empresa`/`sueldo`/`fecha` del
+>   registro PEP más reciente (confirmado poblado en 5/35 clientes
+>   reales, ej. cédula 0916036452: "Director Administrativo, GAD
+>   Samborondón, $2,368, 2024-11-25").
+> - `comportamientoBancario.saldoEnMoraBuroCredito` /
+>   `comportamientoCooperativas.saldoEnMora` (nuevos) — `saldoVigente`/
+>   `saldoTotal` NO incluyen lo que está en mora (campos separados en
+>   Novadata). Caso real (cédula 0401592829): 4 operaciones bancarias
+>   calificación E, `saldoVigente = 0` en las 4, pero **$11,812.67**
+>   reales en mora (`saldomora`) — `saldoTotalVigente` solo hubiera
+>   mostrado $0, ocultando un default severo.
+> - `laboral.numeroEmpleadoresUltimos24Meses` (redefinido) — antes
+>   contaba empleadores por fecha de INGRESO en los últimos 24 meses: un
+>   empleo estable de años daba 0, igual que un cliente sin empleo hace
+>   2 años (mismo valor, casos opuestos — bug de semántica, no de
+>   cálculo). Ahora cuenta empleadores ACTIVOS en algún momento de los
+>   últimos 24 meses, usando `fecSal` (fecha de salida, vacía si el
+>   empleo sigue activo hoy) — caso real cédula 1717947368 (empleo
+>   estable desde 2018): pasó de 0 a 1.
+> - Se refrescó la caché local de los 25 clientes originales
+>   (`research/novadata-raw/`, gitignored) con `--force`, porque
+>   guardaban datos de buró de crédito con las claves de recurso viejas
+>   (`centralRiesgo*`, previas al rename a `buroCredito*` de `marco-v8`)
+>   — el refresco reveló el caso real de mora de arriba, que antes
+>   quedaba oculto en la muestra local (no afectaba producción, que
+>   siempre consulta Novadata en vivo).
+> `marco-v9`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

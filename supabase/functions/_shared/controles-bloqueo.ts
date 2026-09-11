@@ -55,14 +55,14 @@ export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedul
   const listasControl = bancos?.listasControl?.data as Record<string, unknown> | undefined;
   // personaPublicasOpr = PEP — se cuenta aparte, NO entra en este total
   // (ver nota de cabecera: PEP no es bloqueante).
-  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce((sum, campo) => {
+  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce((sum, campo) => {
     const v = listasControl?.[campo];
     return sum + (Array.isArray(v) ? v.length : 0);
   }, 0);
   if (totalListasControl > 0) {
     hallazgos.push({
       code: "lista_control",
-      message: `Aparece en ${totalListasControl} registro(s) de listas de control (OFAC/homónimos/providencias)`,
+      message: `Aparece en ${totalListasControl} registro(s) de listas de control (OFAC/providencias)`,
       bloqueante: true,
     });
   }
@@ -73,13 +73,37 @@ export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedul
   }
 
   const basesInternas = bancos?.basesInternas?.data as Record<string, unknown> | undefined;
-  const controlInterno = ["tofac", "tofac2", "tconsepvinculados", "tconsephomonimos", "tprovidencias"].reduce(
-    (sum, campo) => {
-      const v = basesInternas?.[campo];
-      return sum + (Array.isArray(v) ? v.length : v ? 1 : 0);
-    },
-    0
-  );
+  // homonimosOpr/tconsephomonimos excluidos a propósito de los totales
+  // bloqueantes de arriba/abajo: Novadata reporta que EXISTE alguien más
+  // con el mismo nombre en alguna lista — el registro trae una
+  // identificación DISTINTA a la del cliente consultado (confirmado en
+  // varios casos reales: nunca coincide la cédula). No es evidencia de
+  // que el cliente esté en una lista, es evidencia de que su nombre es
+  // parecido al de alguien que sí lo está — por eso es informativo, no
+  // bloqueante (mismo trato que PEP). Se reporta aparte abajo.
+  const homonimosOpr = Array.isArray(listasControl?.homonimosOpr)
+    ? (listasControl!.homonimosOpr as Record<string, unknown>[])
+    : [];
+  const tconsephomonimos = Array.isArray(basesInternas?.tconsephomonimos)
+    ? (basesInternas!.tconsephomonimos as Record<string, unknown>[])
+    : [];
+  const todosHomonimos = [...homonimosOpr, ...tconsephomonimos];
+  if (todosHomonimos.length > 0) {
+    const cedulasHomonimos = todosHomonimos
+      .map((h) => (h.identificacion as string) ?? (h.cedula as string))
+      .filter(Boolean)
+      .join(", ");
+    hallazgos.push({
+      code: "homonimo_en_lista_control",
+      message: `Aparece ${todosHomonimos.length} homónimo(s) (mismo nombre, cédula distinta: ${cedulasHomonimos}) en listas de control — no es el cliente, requiere revisión manual si se sospecha relación`,
+      bloqueante: false,
+    });
+  }
+
+  const controlInterno = ["tofac", "tofac2", "tconsepvinculados", "tprovidencias"].reduce((sum, campo) => {
+    const v = basesInternas?.[campo];
+    return sum + (Array.isArray(v) ? v.length : v ? 1 : 0);
+  }, 0);
   if (controlInterno > 0) {
     hallazgos.push({
       code: "listas_control_interno",

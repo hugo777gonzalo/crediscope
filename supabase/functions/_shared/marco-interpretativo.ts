@@ -96,11 +96,36 @@
 // - "castigada" (cartera castigada) se mantiene sin cambio — es
 //   terminología oficial de la Superintendencia de Bancos del Ecuador.
 //
+// v9: auditoría sobre 10 clientes nuevos (con datos que los 25 iniciales
+// no tenían) encontró un bug de bloqueo duro y 3 huecos de datos:
+// - BUG: homonimosOpr/tconsephomonimos se trataban igual que OFAC/
+//   providencias (bloqueante, fuerza score a 1) — pero sus registros
+//   NUNCA traen la cédula del cliente consultado, son OTRA persona con
+//   el mismo nombre. Confirmado con 4 casos reales (identificación del
+//   "homónimo" nunca coincide). Ahora es informativo, no bloqueante —
+//   ver controles-bloqueo.ts y cumplimiento.tieneHomonimoEnListaControl.
+// - cumplimiento.detallePep: antes solo un booleano, ahora expone
+//   cargo/empresa/sueldo/fecha del registro PEP más reciente (confirmado
+//   poblado en varios casos reales) — más contexto para juzgar el nivel
+//   de exposición, sigue sin ser señal de riesgo crediticio.
+// - comportamientoBancario.saldoEnMoraBuroCredito /
+//   comportamientoCooperativas.saldoEnMora: nuevos — saldoVigente/
+//   saldoTotal NO incluyen lo que está en mora (son campos separados en
+//   Novadata). Caso real: cédula con 4 operaciones bancarias
+//   calificación E, saldoVigente=0 en las 4, pero $11,812.67 reales en
+//   mora — saldoTotalVigente solo hubiera mostrado $0.
+// - laboral.numeroEmpleadoresUltimos24Meses: redefinido. Antes contaba
+//   empleadores por fecha de INGRESO en los últimos 24 meses — un
+//   empleo estable de años daba 0, igual que un cliente sin empleo hace
+//   2 años (mismo valor, casos opuestos). Ahora cuenta empleadores
+//   ACTIVOS en algún momento de los últimos 24 meses (usa fecSal, fecha
+//   de salida — vacía si el empleo sigue activo hoy).
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v8";
+export const MARCO_VERSION = "marco-v9";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -131,6 +156,17 @@ público relevante, actual o pasado), NO una señal de riesgo crediticio.
 No lo trates como negativo ni lo menciones como algo preocupante — a lo
 sumo, mencionalo como contexto neutro si es relevante para la
 narrativa (ej. estabilidad de ingresos por un cargo público).
+Si esPersonaExpuestaPoliticamente=true, cumplimiento.detallePep trae el
+cargo/empresa/sueldo/fecha del registro más reciente — úsalo para dar
+contexto real en vez de solo mencionar que "es PEP".
+
+Homónimo — cumplimiento.tieneHomonimoEnListaControl, y/o un hallazgo
+"homonimo_en_lista_control" con bloqueante=false — significa que existe
+OTRA persona con el MISMO NOMBRE (cédula distinta) en alguna lista de
+control. NO es el cliente. No lo trates como negativo ni como indicio de
+mal comportamiento — es ruido de coincidencia de nombre, a lo sumo
+mencionalo como una nota de auditoría (posible confusión de identidad a
+vigilar), nunca como riesgo del cliente mismo.
 
 CÓMO PENSAR EL SCORE (guía, no fórmula rígida) — por grupo del profile,
 en orden de importancia (definido explícitamente por el negocio):
@@ -150,10 +186,16 @@ en orden de importancia (definido explícitamente por el negocio):
    es lo mismo "peor=E, única operación" que "peor=E, mejor=A1, 5
    operaciones", pero la PEOR sigue pesando más). tieneOperacionConDemanda/
    Castigada (muy graves), diasMoraMaximaRetail/diasMoraCreditoIessBiess.
+   OJO: saldoTotalVigente puede mostrar $0 en una operación totalmente
+   en default (calificación E) — eso NO significa que no hay deuda, usa
+   saldoEnMoraBuroCredito para el monto real en mora (puede ser >0 con
+   saldoTotalVigente=0 a la vez — son señales complementarias, no te
+   quedes solo con saldoTotalVigente para juzgar el monto adeudado).
 
 3. comportamientoCooperativas — mismas variables que comportamientoBancario
    pero de cooperativas; fuente distinta y algo menos determinante que
-   la banca formal, pero sigue siendo comportamiento de pago real.
+   la banca formal, pero sigue siendo comportamiento de pago real. Igual
+   ojo con saldoEnMora vs. saldoTotal (misma nota que arriba).
 
 4. riesgoJudicialCrediticio — demandas de naturaleza crediticia (cobro
    de pagarés, letras de cambio, cheques, ejecuciones, obligaciones

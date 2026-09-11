@@ -270,10 +270,20 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
           salarioAprox: num((ultimoMecanizado?.personaIngreso as AnyRecord | undefined)?.valor),
         }
       : null,
-    // Nota: si la muestra de referencia tiene historial laboral
-    // desactualizado frente a "hoy", esta ventana puede dar 0 seguido.
+    // Empleadores ACTIVOS en algún momento de los últimos 24 meses — NO
+    // "empleadores que iniciaron en los últimos 24 meses" (versión
+    // anterior, con bug de semántica: un empleo estable de años daba 0,
+    // igual que un cliente sin empleo hace 2 años; ambos casos opuestos
+    // colapsaban al mismo valor). fecSal vacío = sigue activo hoy.
     numeroEmpleadoresUltimos24Meses: new Set(
-      tiess.filter((t) => { const m = mesesDesde(t.fecIng); return m !== null && m <= 24; }).map((t) => t.nomEmp)
+      tiess
+        .filter((t) => {
+          const fecSal = String(t.fecSal ?? "").trim();
+          if (!fecSal) return true;
+          const m = mesesDesde(fecSal);
+          return m !== null && m <= 24;
+        })
+        .map((t) => t.nomEmp)
     ).size,
     ingresoPromedioUltimos6Meses: (() => {
       const ultimos6 = mecanizadoOrdenado
@@ -401,6 +411,14 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     tieneOperacionConDemanda: buroCredito.some((r) => (num(r.judicial) ?? 0) > 0),
     tieneOperacionCastigada: buroCredito.some((r) => (num(r.castigo) ?? 0) > 0),
     saldoTotalVigente: buroCredito.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0),
+    // saldoVigente NO incluye lo que está en mora (son campos separados
+    // en el recurso) — un cliente con una operación totalmente en
+    // default podría mostrar saldoTotalVigente=0 sin esto. Se prioriza
+    // saldomora (nombre coincide con el patrón monetario del resto del
+    // recurso: saldoVigente, saldo0_1, etc.) sobre mora como respaldo.
+    // Sin caso real en la muestra actual con valor >0 para confirmar la
+    // forma exacta (calificaciones vistas: A1-B2, ninguna con mora).
+    saldoEnMoraBuroCredito: buroCredito.reduce((s, r) => s + (num(r.saldomora) ?? num(r.mora) ?? 0), 0),
     numeroCreditosFormales: arr(bancos, "creditoHipotecario", "prestamos").length + arr(bancos, "creditoQuirografario", "prestamos").length,
     numeroDeudasRetail: retails.length,
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
@@ -411,10 +429,17 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
 
   // ---- comportamientoCooperativas ----
   const coop = arr(cooperativas, "buroCreditoCoop", "datosSuper");
+  // val_venc_1..11: buckets de antigüedad de lo vencido (a diferencia de
+  // val_saldo_total, que es el saldo total sin distinguir cuánto está
+  // realmente atrasado) — confirmado con caso real (cédula 0401592829,
+  // 2 operaciones en cooperativas distintas con $928.39+$1353.12 en
+  // buckets vencidos de un saldo total de $14,732.18).
+  const CAMPOS_VENCIDO_COOP = Array.from({ length: 11 }, (_, i) => `val_venc_${i + 1}`);
   const comportamientoCooperativas: StandardClientProfile["comportamientoCooperativas"] = {
     numeroOperaciones: coop.length,
     diasMoraMaxima: coop.length ? Math.max(...coop.map((c) => num(c.num_dias_morosidad) ?? 0)) : null,
     saldoTotal: coop.reduce((s, c) => s + (num(c.val_saldo_total) ?? 0), 0),
+    saldoEnMora: coop.reduce((s, c) => s + CAMPOS_VENCIDO_COOP.reduce((s2, campo) => s2 + (num(c[campo]) ?? 0), 0), 0),
     tieneOperacionConDemanda: coop.some((c) => (num(c.val_dem_judicial) ?? 0) > 0),
     tieneOperacionCastigada: coop.some((c) => (num(c.val_cart_castigada) ?? 0) > 0),
   };
@@ -514,11 +539,27 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // ---- cumplimiento (control de bloqueo, informativo) ----
   // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
   // ver controles-bloqueo.ts: no es señal de riesgo crediticio.
-  const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce(
+  // homonimosOpr/tconsephomonimos EXCLUIDOS a propósito: son otra persona
+  // con el mismo nombre, cédula distinta — ver controles-bloqueo.ts,
+  // código homonimo_en_lista_control (bug encontrado auditando cédulas
+  // 1713210456/1714000419: la identificación del "homónimo" nunca
+  // coincide con la del cliente consultado).
+  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce(
     (s, c) => s + arr(bancos, "listasControl", c).length,
     0
   );
+  const totalHomonimos = arr(bancos, "listasControl", "homonimosOpr").length + arr(biWrap, "x", "tconsephomonimos").length;
   const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
+  const pepRegistros = [...arr(bancos, "listasControl", "personaPublicasOpr"), ...arr(biWrap, "x", "tpeps")];
+  const pepMasReciente = [...pepRegistros].sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")))[0] as AnyRecord | undefined;
+  const detallePep = pepMasReciente
+    ? {
+        cargo: (pepMasReciente.cargo as string) ?? null,
+        empresa: (pepMasReciente.empresa as string) ?? (pepMasReciente.empresaSector as string) ?? null,
+        sueldo: num(pepMasReciente.sueldo),
+        fecha: (pepMasReciente.fecha as string) ?? null,
+      }
+    : null;
   const sercopData = obj(fiscalia, "sercop", "data");
   // impedimentoCargosPublicos.data es un ARRAY (no un objeto como el
   // resto de recursos "singleton") — obj() lo rechazaba por tipo y
@@ -541,6 +582,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   ]);
   const cumplimiento: StandardClientProfile["cumplimiento"] = {
     enListaControl: totalListasControl > 0,
+    tieneHomonimoEnListaControl: totalHomonimos > 0,
     enListaNegra: Boolean(((bancos?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),
     causalImpedimento: ((impedimentoActivo?.causales as AnyRecord[] | undefined)?.[0]?.causal as string) ?? null,
@@ -549,6 +591,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
         (((sercopData?.sercop as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0
     ),
     esPersonaExpuestaPoliticamente: totalPep > 0,
+    detallePep,
     tieneDelitoGraveSeguridad: categoriasSeguridad.size > 0,
     categoriasDelitoGraveSeguridad: [...categoriasSeguridad],
   };
