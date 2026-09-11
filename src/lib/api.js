@@ -9,9 +9,9 @@ const FUNCTIONS_URL =
   (isSupabaseConfigured ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1` : "http://localhost:54321/functions/v1");
 
 // Llama a la Edge Function `analyze-client`, que orquesta la ingesta de
-// Novadata, corre los guardrails + el scoring por LLM, y persiste el
-// resultado. El mismo endpoint sirve como API para sistemas externos
-// (ver supabase/functions/analyze-client/index.ts).
+// Novadata, corre los controles de bloqueo + el scoring por LLM, y
+// persiste el resultado. El mismo endpoint sirve como API para sistemas
+// externos (ver supabase/functions/analyze-client/index.ts).
 export async function analyzeClient(cedula) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no está configurado.");

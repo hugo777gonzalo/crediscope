@@ -1,9 +1,9 @@
 // Orquestador principal: ingesta Novadata -> Estructura Estandarizada ->
-// guardrails duros -> scoring aproximado por LLM -> persiste en Supabase.
-// Este mismo endpoint HTTP sirve tanto a la interfaz web (via
-// supabase.functions.invoke, con el JWT del analista) como a sistemas
-// externos que quieran consumir el análisis vía API (con su propio
-// JWT/API key de servicio).
+// controles de bloqueo duros -> scoring aproximado por LLM -> persiste
+// en Supabase. Este mismo endpoint HTTP sirve tanto a la interfaz web
+// (via supabase.functions.invoke, con el JWT del analista) como a
+// sistemas externos que quieran consumir el análisis vía API (con su
+// propio JWT/API key de servicio).
 //
 // Body esperado: { "cedula": "0102030405" }
 
@@ -11,8 +11,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
-import { runGuardrails } from "../_shared/guardrails.ts";
-import { scoreWithLlm, FRAMEWORK_VERSION } from "../_shared/llm-scoring.ts";
+import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
+import { scoreWithLlm, MARCO_VERSION } from "../_shared/llm-scoring.ts";
 import { loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -87,19 +87,20 @@ Deno.serve(async (req) => {
     // ClientContext casi crudo de antes, mucho más liviana para el LLM.
     const { profile, blockStatus } = buildStandardProfile(raw, cedula);
 
-    // 5. Guardrails determinísticos (fallecido, listas de control/PEP/OFAC,
-    // cédula inconsistente) — NO se delegan al LLM, ver _shared/guardrails.ts
-    const guardrail = runGuardrails(raw, cedula);
+    // 5. Controles de bloqueo determinísticos (fallecido, listas de
+    // control/PEP/OFAC, cédula inconsistente) — NO se delegan al LLM,
+    // ver _shared/controles-bloqueo.ts
+    const controlBloqueo = evaluarControlesBloqueo(raw, cedula);
 
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
-    // consulta igual aunque haya guardrail bloqueante, para tener
-    // razonamiento/contexto — pero el score final se fuerza abajo. Campos
-    // deshabilitados en standard_profile_field_config no se le mandan al
-    // LLM (dato considerado poco confiable).
+    // consulta igual aunque haya un control de bloqueo bloqueante, para
+    // tener razonamiento/contexto — pero el score final se fuerza abajo.
+    // Campos deshabilitados en standard_profile_field_config no se le
+    // mandan al LLM (dato considerado poco confiable).
     const disabledFields = await loadDisabledFields(serviceClient);
     const llmProfile = redactDisabledFields(profile, disabledFields);
-    const llmResult = await scoreWithLlm(llmProfile, guardrail);
-    const finalScore = guardrail.bloqueado ? 1 : llmResult.score;
+    const llmResult = await scoreWithLlm(llmProfile, controlBloqueo);
+    const finalScore = controlBloqueo.bloqueado ? 1 : llmResult.score;
 
     // 7. Persistir resultado
     const { data: analysis, error: analysisError } = await serviceClient
@@ -108,12 +109,12 @@ Deno.serve(async (req) => {
         ingestion_run_id: run.id,
         client_id: client.id,
         crediscope_score: finalScore,
-        rules_version: FRAMEWORK_VERSION,
+        rules_version: MARCO_VERSION,
         block_status: blockStatus,
         positives: llmResult.positives,
         negatives: llmResult.negatives,
         missing_info: llmResult.missingInfo,
-        inconsistencies: guardrail.hallazgos.map((h) => h.message),
+        inconsistencies: controlBloqueo.hallazgos.map((h) => h.message),
         narrative_summary: llmResult.reasoning,
         llm_model: llmResult.llmModel,
         llm_stop_reason: llmResult.llmStopReason,
@@ -134,7 +135,7 @@ Deno.serve(async (req) => {
       actor: actorId,
       action: "client.analyze",
       client_id: client.id,
-      meta: { ingestion_run_id: run.id, crediscope_score: finalScore, guardrail_bloqueado: guardrail.bloqueado },
+      meta: { ingestion_run_id: run.id, crediscope_score: finalScore, control_bloqueado: controlBloqueo.bloqueado },
     });
 
     return new Response(JSON.stringify(analysis), {

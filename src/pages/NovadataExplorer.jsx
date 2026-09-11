@@ -105,11 +105,11 @@ export default function NovadataExplorer() {
         </div>
       ) : null}
 
-      {result?.guardrail?.hallazgos?.length > 0 ? (
+      {result?.controlBloqueo?.hallazgos?.length > 0 ? (
         <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <h3 style={{ color: "var(--bad)" }}>Guardrails activados</h3>
+          <h3 style={{ color: "var(--bad)" }}>Controles de bloqueo activados</h3>
           <ul className="crediscope-list">
-            {result.guardrail.hallazgos.map((h, i) => (
+            {result.controlBloqueo.hallazgos.map((h, i) => (
               <li key={i}>
                 <strong>{h.code}</strong>: {h.message}
               </li>

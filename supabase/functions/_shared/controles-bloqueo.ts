@@ -2,25 +2,26 @@
 // LLM. Son hechos binarios objetivos (¿está fallecido? ¿aparece en una
 // lista de sanciones?), no juicios de riesgo crediticio donde un
 // resultado "aproximado" tenga sentido. Cada hallazgo indica si es
-// `blocking` — solo esos fuerzan `bloqueado: true` (y por tanto el
+// `bloqueante` — solo esos fuerzan `bloqueado: true` (y por tanto el
 // score a 1 en analyze-client/index.ts sin importar lo que devuelva el
-// LLM). Un hallazgo no-blocking se informa igual (aparece en
+// LLM). Un hallazgo no-bloqueante se informa igual (aparece en
 // `hallazgos`) pero no descalifica al cliente por sí solo.
 //
-// PEP (persona expuesta políticamente) es a propósito NO blocking: ser
-// PEP es un dato de compliance/AML (requiere debida diligencia
+// PEP (persona expuesta políticamente) es a propósito NO bloqueante: ser
+// PEP es un dato de cumplimiento/PLA-FT (Prevención de Lavado de
+// Activos y Financiamiento del Terrorismo — requiere debida diligencia
 // reforzada), no una señal de mal comportamiento de pago — decisión
 // explícita del usuario, no asumir lo contrario.
 //
 // Delitos graves de seguridad (lavado de activos, narcotráfico, trata
-// de personas, armas, extorsión) SÍ son blocking — a diferencia de PEP,
-// decisión explícita del usuario: tan graves como aparecer en listas
-// de sanciones.
+// de personas, armas, extorsión) SÍ son bloqueantes — a diferencia de
+// PEP, decisión explícita del usuario: tan graves como aparecer en
+// listas de sanciones.
 //
 // El resto de la evaluación (laboral, judicial, financiero, patrimonio)
 // SÍ queda a criterio del LLM — ver llm-scoring.ts.
 
-import type { GuardrailFinding, GuardrailResult, RawNovadataResponse } from "./types.ts";
+import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RawNovadataResponse } from "./types.ts";
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -28,8 +29,8 @@ function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdic
   return Boolean((persona.informacionAdicional as string | undefined)?.toUpperCase().includes("FALLEC"));
 }
 
-export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string): GuardrailResult {
-  const hallazgos: GuardrailFinding[] = [];
+export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedula: string): ResultadoControlBloqueo {
+  const hallazgos: HallazgoControlBloqueo[] = [];
 
   const persona = raw.general.data?.personaNatural;
 
@@ -37,7 +38,7 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
     hallazgos.push({
       code: "fallecido",
       message: "Novadata registra a esta persona como fallecida — posible suplantación de identidad",
-      blocking: true,
+      bloqueante: true,
     });
   }
 
@@ -46,14 +47,14 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
     hallazgos.push({
       code: "cedula_inconsistente",
       message: `La cédula del bloque "Información general" (${cedulaGeneral}) no coincide con la cédula consultada (${requestedCedula})`,
-      blocking: false,
+      bloqueante: false,
     });
   }
 
   const bancos = raw.bancos.data;
   const listasControl = bancos?.listasControl?.data as Record<string, unknown> | undefined;
   // personaPublicasOpr = PEP — se cuenta aparte, NO entra en este total
-  // (ver nota de cabecera: PEP no es blocking).
+  // (ver nota de cabecera: PEP no es bloqueante).
   const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce((sum, campo) => {
     const v = listasControl?.[campo];
     return sum + (Array.isArray(v) ? v.length : 0);
@@ -62,13 +63,13 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
     hallazgos.push({
       code: "lista_control",
       message: `Aparece en ${totalListasControl} registro(s) de listas de control (OFAC/homónimos/providencias)`,
-      blocking: true,
+      bloqueante: true,
     });
   }
 
   const listaNegra = bancos?.listaNegra?.data?.listaNegra;
   if (listaNegra) {
-    hallazgos.push({ code: "lista_negra", message: "Aparece en la lista negra interna de Novadata", blocking: true });
+    hallazgos.push({ code: "lista_negra", message: "Aparece en la lista negra interna de Novadata", bloqueante: true });
   }
 
   const basesInternas = bancos?.basesInternas?.data as Record<string, unknown> | undefined;
@@ -83,7 +84,7 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
     hallazgos.push({
       code: "listas_control_interno",
       message: `Aparece en ${controlInterno} registro(s) de listas internas de control (OFAC/CONSEP/providencias)`,
-      blocking: true,
+      bloqueante: true,
     });
   }
 
@@ -94,15 +95,15 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
     hallazgos.push({
       code: "pep",
       message:
-        "Persona Expuesta Políticamente (cargo público relevante, actual o pasado) — dato informativo de compliance, NO descalifica al cliente",
-      blocking: false,
+        "Persona Expuesta Políticamente (cargo público relevante, actual o pasado) — dato informativo de cumplimiento, NO descalifica al cliente",
+      bloqueante: false,
     });
   }
 
   // Delitos graves de seguridad (lavado de activos, narcotráfico/
   // tráfico de sustancias, trata de personas, tenencia/porte de armas,
   // extorsión) — mismo trato que las listas de sanciones, decisión
-  // explícita del usuario: guardrail duro. Se revisan demandas
+  // explícita del usuario: control de bloqueo duro. Se revisan demandas
   // (funcion_judicial), denuncias y descripción de antecedentes
   // penales (fiscalía).
   //
@@ -115,20 +116,20 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
   const antecedentesDescripcion = (raw.fiscalia.data?.antecedentesPenales?.data as Record<string, unknown> | undefined)?.antecedentes as
     | Record<string, unknown>
     | undefined;
-  const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; keywords: string[] }> = [
-    { categoria: "Lavado de activos", keywords: ["LAVADO"] },
+  const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClave: string[] }> = [
+    { categoria: "Lavado de activos", palabrasClave: ["LAVADO"] },
     {
       categoria: "Narcotráfico / tráfico de sustancias",
-      keywords: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
+      palabrasClave: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
     },
-    { categoria: "Trata de personas", keywords: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
-    { categoria: "Tenencia/porte de armas", keywords: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
-    { categoria: "Extorsión", keywords: ["EXTORSIÓN", "EXTORSION"] },
-  ].map((c) => ({ categoria: c.categoria, keywords: c.keywords.map((k) => k.toUpperCase()) }));
+    { categoria: "Trata de personas", palabrasClave: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
+    { categoria: "Tenencia/porte de armas", palabrasClave: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
+    { categoria: "Extorsión", palabrasClave: ["EXTORSIÓN", "EXTORSION"] },
+  ].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()) }));
   const categoriasEnTexto = (texto: unknown): string[] => {
     if (!texto) return [];
     const up = String(texto).toUpperCase();
-    return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.keywords.some((kw) => up.includes(kw))).map((c) => c.categoria);
+    return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.palabrasClave.some((kw) => up.includes(kw))).map((c) => c.categoria);
   };
   const categoriasEncontradas = new Set([
     ...(demandas ?? []).flatMap((d) => categoriasEnTexto((d.demanda as Record<string, unknown> | undefined)?.delito)),
@@ -139,11 +140,11 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
     hallazgos.push({
       code: "delito_grave_seguridad",
       message: `Registra delito(s) grave(s) de seguridad: ${[...categoriasEncontradas].join(", ")}`,
-      blocking: true,
+      bloqueante: true,
     });
   }
 
-  const bloqueado = hallazgos.some((h) => h.blocking);
+  const bloqueado = hallazgos.some((h) => h.bloqueante);
 
   return { bloqueado, hallazgos };
 }

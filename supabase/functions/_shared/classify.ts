@@ -13,7 +13,7 @@
 // ofensor" = negativo, "sin demandas ofensor" = positivo): se mapeó a
 // riesgoJudicialCivil.numeroDemandasComoDemandado (ser DEMANDADO, no
 // "ofendido"/víctima — eso sigue como complementario, no penaliza, ver
-// interpretive-framework.ts). Confirmar si la intención era otra.
+// marco-interpretativo.ts). Confirmar si la intención era otra.
 //
 // Sin lógica de Deno — se puede importar igual desde process.ts (Deno)
 // o probar con tsx/Node contra research/standard-profiles/*.json.
@@ -41,14 +41,14 @@ export interface ClassifiedProfile {
 export const CLASSIFICATION_VERSION = "clasificacion-v1";
 
 // Orden de grupos por importancia para el análisis crediticio — definido
-// por el usuario (ver interpretive-framework.ts) — el mismo orden se
+// por el usuario (ver marco-interpretativo.ts) — el mismo orden se
 // usa para mostrar los grupos en la web
 // (src/components/ClassifiedProfile.jsx duplica este orden).
 //
 // comportamientoInterno queda AL FINAL a propósito: solo aplica a
 // clientes que ya son clientes internos de Novadata (poco frecuente en
 // la muestra) — cuando no hay dato no es un hueco de información, es
-// que el eje no aplica. Ver nota en interpretive-framework.ts.
+// que el eje no aplica. Ver nota en marco-interpretativo.ts.
 //
 // riesgoJudicialCrediticio (demandas de cobro/pagarés/ejecuciones) se
 // separó de riesgoJudicialCivil (el resto: laboral, familia, tránsito,
@@ -56,7 +56,7 @@ export const CLASSIFICATION_VERSION = "clasificacion-v1";
 // comportamiento de pago, va justo después de comportamiento bancario/
 // cooperativas; la segunda es mayormente contexto.
 export const ORDEN_GRUPOS = [
-  "compliance",
+  "cumplimiento",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCrediticio",
@@ -81,7 +81,7 @@ export const ETIQUETAS_GRUPO: Record<string, string> = {
   riesgoJudicialCrediticio: "Riesgo Judicial Crediticio",
   riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
   riesgoPenal: "Riesgo Penal / Fiscalía",
-  compliance: "Compliance y Listas de Control",
+  cumplimiento: "Cumplimiento y Listas de Control",
   laboral: "Situación Laboral e Ingresos",
   tributario: "Situación Tributaria (SRI)",
   seguridadSocial: "Seguridad Social",
@@ -115,13 +115,15 @@ const REGLAS: Record<string, Regla> = {
 
   // ---- comportamientoBancario ----
   "comportamientoBancario.peorCalificacionRiesgo": (v) => (["A1", "A2", "A3"].includes(String(v)) ? "positivo" : "negativo"),
-  "comportamientoBancario.tieneOperacionJudicializada": (v) => (v ? "negativo" : "positivo"),
+  // mejorCalificacionRiesgo: SIN regla — la peor ya captura la señal de
+  // riesgo relevante, la mejor es solo contexto (ver marco-interpretativo.ts).
+  "comportamientoBancario.tieneOperacionConDemanda": (v) => (v ? "negativo" : "positivo"),
   "comportamientoBancario.tieneOperacionCastigada": (v) => (v ? "negativo" : "positivo"),
   "comportamientoBancario.diasMoraMaximaRetail": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
   "comportamientoBancario.diasMoraCreditoIessBiess": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
 
   // ---- comportamientoCooperativas ----
-  "comportamientoCooperativas.tieneOperacionJudicializada": (v) => (v ? "negativo" : "positivo"),
+  "comportamientoCooperativas.tieneOperacionConDemanda": (v) => (v ? "negativo" : "positivo"),
   "comportamientoCooperativas.tieneOperacionCastigada": (v) => (v ? "negativo" : "positivo"),
   "comportamientoCooperativas.diasMoraMaxima": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
 
@@ -142,15 +144,15 @@ const REGLAS: Record<string, Regla> = {
   // perjudicado no dice nada sobre comportamiento de pago (mismo
   // criterio que numeroDemandasComoOfendido).
 
-  // ---- compliance ----
-  "compliance.enListaControl": (v) => (v ? "negativo" : "positivo"),
-  "compliance.enListaNegra": (v) => (v ? "negativo" : "positivo"),
-  "compliance.impedimentoCargosPublicos": (v) => (v ? "negativo" : "positivo"),
-  "compliance.registraSercopContraloria": (v) => (v ? "negativo" : "positivo"),
+  // ---- cumplimiento ----
+  "cumplimiento.enListaControl": (v) => (v ? "negativo" : "positivo"),
+  "cumplimiento.enListaNegra": (v) => (v ? "negativo" : "positivo"),
+  "cumplimiento.impedimentoCargosPublicos": (v) => (v ? "negativo" : "positivo"),
+  "cumplimiento.registraSercopContraloria": (v) => (v ? "negativo" : "positivo"),
   // esPersonaExpuestaPoliticamente: SIN regla a propósito — PEP es un
-  // dato de compliance/AML, no una señal de riesgo crediticio (decisión
-  // explícita del usuario). Cae en "complementario" sea true o false.
-  "compliance.tieneDelitoGraveSeguridad": (v) => (v ? "negativo" : "positivo"),
+  // dato de cumplimiento/PLA-FT, no una señal de riesgo crediticio
+  // (decisión explícita del usuario). Cae en "complementario" sea true o false.
+  "cumplimiento.tieneDelitoGraveSeguridad": (v) => (v ? "negativo" : "positivo"),
   // categoriasDelitoGraveSeguridad: SIN regla — es el detalle (array de
   // strings) de tieneDelitoGraveSeguridad, no se clasifica aparte.
 

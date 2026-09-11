@@ -16,7 +16,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildClientContext } from "../_shared/normalize.ts";
-import { runGuardrails } from "../_shared/guardrails.ts";
+import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
   try {
     const raw = await fetchAllBlocks(cedula, { username, password });
     const { context, blockStatus } = buildClientContext(raw, cedula);
-    const guardrail = runGuardrails(raw, cedula);
+    const controlBloqueo = evaluarControlesBloqueo(raw, cedula);
 
-    return new Response(JSON.stringify({ raw, context, blockStatus, guardrail }), {
+    return new Response(JSON.stringify({ raw, context, blockStatus, controlBloqueo }), {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   } catch (err) {

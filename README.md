@@ -21,7 +21,7 @@ agrupando los recursos reales de Novadata que corresponden a cada uno
 - ✅ **Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función
   Judicial, Fiscalía, Bancos, Cooperativas** — cableados con los
   recursos reales confirmados por los 2 HAR, incluyendo casos con datos
-  poblados (demandas, central de riesgo con mora, antecedentes penales
+  poblados (demandas, buró de crédito con mora, antecedentes penales
   con descripción) — `normalize.ts` ya extrae campos reales, no solo
   conteos.
 - ❌ **BIESS eliminado** — no corresponde a ningún dato real de Novadata
@@ -43,17 +43,17 @@ pondera muchos puntos y da un resultado aproximado se ajusta mejor al
 objetivo.
 
 Con una excepción: **2-3 verificaciones se mantienen determinísticas
-("guardrails"), fuera del criterio del LLM** — persona fallecida y
-coincidencia en listas de sanciones/PEP/lista negra. Son hechos
-binarios objetivos, no juicios de riesgo, así que no tiene sentido
-dejarlos a una estimación aproximada. Si se activa un guardrail, el
-score se fuerza a 1 sin importar lo que diga el LLM. Todo lo demás
+("controles de bloqueo"), fuera del criterio del LLM** — persona
+fallecida y coincidencia en listas de sanciones/PEP/lista negra. Son
+hechos binarios objetivos, no juicios de riesgo, así que no tiene
+sentido dejarlos a una estimación aproximada. Si se activa un control
+de bloqueo, el score se fuerza a 1 sin importar lo que diga el LLM. Todo lo demás
 (laboral, judicial, financiero, patrimonio) queda enteramente a
 criterio del LLM, guiado por el marco interpretativo.
 
 Antes de usarlo en producción real hace falta:
 
-1. **Validar el marco interpretativo** (`supabase/functions/_shared/interpretive-framework.ts`)
+1. **Validar el marco interpretativo** (`supabase/functions/_shared/marco-interpretativo.ts`)
    con el negocio — hoy es un `framework-v0` razonable pero ilustrativo,
    no la política real de riesgo de la empresa. Es texto plano, no
    requiere tocar código para ajustarlo.
@@ -76,8 +76,8 @@ Edge Function analyze-client (Deno, en Supabase)
    |
    |-- 1. fetchAllBlocks()     -> novadata-client.ts         (9 bloques, ~40 recursos reales, en paralelo)
    |-- 2. buildClientContext() -> normalize.ts                (raw Novadata -> contexto curado por eje)
-   |-- 3. runGuardrails()      -> guardrails.ts                (DETERMINÍSTICO: fallecido, listas de control/PEP)
-   |-- 4. scoreWithLlm()       -> llm-scoring.ts + interpretive-framework.ts  (score APROXIMADO 1-999 + pros/contras)
+   |-- 3. evaluarControlesBloqueo() -> controles-bloqueo.ts    (DETERMINÍSTICO: fallecido, listas de control/PEP)
+   |-- 4. scoreWithLlm()       -> llm-scoring.ts + marco-interpretativo.ts  (score APROXIMADO 1-999 + pros/contras)
    v
 Supabase Postgres: clients, ingestion_runs, analysis_results,
                     scoring_rules_versions, audit_log
@@ -117,7 +117,7 @@ supabase functions serve analyze-client --env-file .env.functions
 
 Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD` configurados, cada bloque
 devuelve `status: "error"` (no rompe el pipeline) — útil para probar el
-flujo completo (buildClientContext -> guardrails -> llm-scoring ->
+flujo completo (buildClientContext -> controles-bloqueo -> llm-scoring ->
 persistencia) antes de tener acceso real a Novadata.
 
 ### Explorador de Novadata (sin proyecto Supabase todavía)
@@ -163,7 +163,7 @@ clientes: consentimiento, retención, y quién puede consultar qué.
 
 ## Próximos pasos sugeridos
 
-- Validar/iterar el marco interpretativo (`interpretive-framework.ts`)
+- Validar/iterar el marco interpretativo (`marco-interpretativo.ts`)
   con el negocio — es el artefacto más importante a afinar ahora que la
   ingesta está cableada.
 - Confirmar campos internos pendientes en `normalize.ts` con más casos

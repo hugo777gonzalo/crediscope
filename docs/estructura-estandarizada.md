@@ -161,6 +161,39 @@
 > ACTIVOS...") — el resto de palabras clave son terminología del COIP
 > por conocimiento general, sin validar contra casos reales; ajustar si
 > aparece un caso real que no se detecta. `framework-v7`.
+>
+> **v10 — ajuste de terminología en todo el proyecto, a pedido del
+> usuario** (usar español ecuatoriano estándar de la industria
+> financiera/legal, salvo que no exista término en español):
+> - `compliance` → **`cumplimiento`** (grupo del StandardClientProfile
+>   y todo lo derivado: clasificación, prompt del LLM, frontend).
+> - "guardrail" → **"control de bloqueo"** (`guardrails.ts` →
+>   `controles-bloqueo.ts`; `GuardrailResult`/`GuardrailFinding`/`GuardrailCode`
+>   → `ResultadoControlBloqueo`/`HallazgoControlBloqueo`/`CodigoControlBloqueo`;
+>   campo `blocking` → `bloqueante`; la clave `guardrailHallazgos` que
+>   recibe el LLM → `hallazgosControlBloqueo`).
+> - "AML" → **"PLA/FT"** (Prevención de Lavado de Activos y
+>   Financiamiento del Terrorismo — sigla oficial ecuatoriana).
+> - "central de riesgos" → **"buró de crédito"**
+>   (`numeroOperacionesCentralRiesgo` → `numeroOperacionesBuroCredito`;
+>   recursos de ingesta `centralRiesgoSuper`/`Diners`/`Coop` →
+>   `buroCreditoSuper`/`Diners`/`Coop`).
+> - `tieneOperacionJudicializada` → **`tieneOperacionConDemanda`**
+>   ("demanda" es más común que "judicializada").
+> - `peorCalificacionRiesgo` ahora tiene su contraparte
+>   **`mejorCalificacionRiesgo`** — un cliente con 2+ operaciones de
+>   crédito puede tener calificaciones distintas; antes solo se exponía
+>   la peor (la señal de riesgo más relevante, sigue pesando más), ahora
+>   se ve también la mejor como contexto.
+> - "`interpretive-framework.ts`" → **"`marco-interpretativo.ts`"**
+>   (`FRAMEWORK_VERSION`/`INTERPRETIVE_FRAMEWORK` →
+>   `MARCO_VERSION`/`MARCO_INTERPRETATIVO`).
+> - Se mantienen sin cambio: "castigada" (cartera castigada — término
+>   oficial de la Superintendencia de Bancos del Ecuador), OFAC/CONSEP/COIP
+>   (nombres propios), PEP (ya es sigla en español), "score" y
+>   "colateral" (confirmado con el usuario — de uso estándar en la
+>   industria crediticia ecuatoriana).
+> `marco-v8`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

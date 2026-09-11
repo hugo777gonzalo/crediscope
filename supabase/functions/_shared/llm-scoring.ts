@@ -1,10 +1,10 @@
 // Motor de scoring real: le pasa el StandardClientProfile (ya calculado
 // / procesado, ver process.ts — NO el ClientContext casi crudo de antes)
-// y el marco interpretativo (ver interpretive-framework.ts) a Claude, y
+// y el marco interpretativo (ver marco-interpretativo.ts) a Claude, y
 // este devuelve un score APROXIMADO (1-999) + pros/contras + razonamiento.
 // A propósito no es determinístico — ver la nota de diseño en types.ts
 // sobre por qué el scoring vive acá y no en un motor de reglas, y
-// guardrails.ts para lo poco que SÍ se resuelve determinísticamente.
+// controles-bloqueo.ts para lo poco que SÍ se resuelve determinísticamente.
 //
 // Cambiar la entrada de ClientContext a StandardClientProfile redujo el
 // payload de entrada considerablemente (booleanos/números en vez de
@@ -12,8 +12,8 @@
 // ClientContext + max_tokens:4000, algunos clientes con mucho historial
 // seguían generando JSON cortado a medias (SyntaxError al parsear).
 
-import type { GuardrailResult, LlmScoringResult } from "./types.ts";
-import { FRAMEWORK_VERSION, INTERPRETIVE_FRAMEWORK } from "./interpretive-framework.ts";
+import type { ResultadoControlBloqueo, LlmScoringResult } from "./types.ts";
+import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 // Solo hace falta si la API key es de las "vinculadas a identidad"
@@ -27,7 +27,7 @@ function extraerJson(texto: string): unknown {
   return JSON.parse(limpio);
 }
 
-function resultadoDeFallback(mensaje: string, data?: Record<string, unknown>): LlmScoringResult {
+function resultadoPorDefecto(mensaje: string, data?: Record<string, unknown>): LlmScoringResult {
   return {
     score: 500,
     positives: [],
@@ -45,14 +45,14 @@ function resultadoDeFallback(mensaje: string, data?: Record<string, unknown>): L
 // campos deshabilitados redactados a null (ver runtime-config.ts
 // redactDisabledFields) — por eso el tipo es laxo acá, ya no es el
 // StandardClientProfile completo garantizado.
-export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: GuardrailResult): Promise<LlmScoringResult> {
+export async function scoreWithLlm(profile: Record<string, unknown>, controlBloqueo: ResultadoControlBloqueo): Promise<LlmScoringResult> {
   if (!ANTHROPIC_API_KEY) {
-    return resultadoDeFallback("falta ANTHROPIC_API_KEY en las secrets de la Edge Function");
+    return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function");
   }
 
   const userPayload = {
     standardClientProfile: profile,
-    guardrailHallazgos: guardrail.hallazgos, // ya resueltos de forma determinística — no recalcular
+    hallazgosControlBloqueo: controlBloqueo.hallazgos, // ya resueltos de forma determinística — no recalcular
   };
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -70,7 +70,7 @@ export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: 
       // real de tamaño normal) — el presupuesto tiene que cubrir eso Y
       // el JSON completo de salida, si no la respuesta se corta a medias.
       max_tokens: 4000,
-      system: INTERPRETIVE_FRAMEWORK,
+      system: MARCO_INTERPRETATIVO,
       messages: [{ role: "user", content: JSON.stringify(userPayload) }],
     }),
   });
@@ -78,7 +78,7 @@ export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: 
   if (!res.ok) {
     const errText = await res.text();
     const requestId = res.headers.get("request-id") ?? res.headers.get("x-request-id") ?? "sin request-id";
-    return resultadoDeFallback(
+    return resultadoPorDefecto(
       `error del LLM (HTTP ${res.status} ${res.statusText}, request-id=${requestId}, payload=${JSON.stringify(userPayload).length} chars): ${errText}`
     );
   }
@@ -91,7 +91,7 @@ export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: 
   );
   const texto = bloqueTexto?.text;
   if (typeof texto !== "string") {
-    return resultadoDeFallback(
+    return resultadoPorDefecto(
       `respuesta inesperada del LLM (sin bloque de texto, stop_reason: ${data?.stop_reason})`,
       data
     );
@@ -112,8 +112,8 @@ export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: 
       llmRequestId: data?.id,
     };
   } catch (err) {
-    return resultadoDeFallback(`no se pudo interpretar la respuesta del LLM como JSON: ${String(err)}`, data);
+    return resultadoPorDefecto(`no se pudo interpretar la respuesta del LLM como JSON: ${String(err)}`, data);
   }
 }
 
-export { FRAMEWORK_VERSION };
+export { MARCO_VERSION };

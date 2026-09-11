@@ -100,7 +100,7 @@ function obj(multi, recurso, campo) {
 
 // Palabras clave (unión de las 3 listas del pedido, deduplicadas) para
 // detectar demandas de naturaleza crediticia/de cobro.
-const KEYWORDS_PROBLEMA_CREDITICIO = [
+const PALABRAS_CLAVE_PROBLEMA_CREDITICIO = [
   "COBRO DE PAGARÉ A LA ORDEN", "PAGARÉ", "PAGARE", "COBRO DE DINERO", "PAGO DE DINERO",
   "COBRO DE CHEQUE", "CHEQUE", "CHEQUE PRESENTADO AL COBRO FUERA DE PLAZO",
   "COBRO DE LETRA DE CAMBIO", "LETRA DE CAMBIO", "CONTRATO DE MUTUO", "PRÉSTAMO", "PRESTAMO",
@@ -119,26 +119,26 @@ const KEYWORDS_PROBLEMA_CREDITICIO = [
 function esDemandaProblemaCrediticio(delito) {
   if (!delito) return false;
   const up = String(delito).toUpperCase();
-  return KEYWORDS_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
+  return PALABRAS_CLAVE_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
 }
 
 // Delitos graves de seguridad -- ver nota completa en process.ts
-// (guardrail duro, SIN VALIDAR CONTRA CASOS REALES salvo lavado de activos).
+// (control de bloqueo duro, SIN VALIDAR CONTRA CASOS REALES salvo lavado de activos).
 const CATEGORIAS_DELITO_GRAVE_SEGURIDAD = [
-  { categoria: "Lavado de activos", keywords: ["LAVADO"] },
+  { categoria: "Lavado de activos", palabrasClave: ["LAVADO"] },
   {
     categoria: "Narcotráfico / tráfico de sustancias",
-    keywords: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
+    palabrasClave: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
   },
-  { categoria: "Trata de personas", keywords: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
-  { categoria: "Tenencia/porte de armas", keywords: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
-  { categoria: "Extorsión", keywords: ["EXTORSIÓN", "EXTORSION"] },
-].map((c) => ({ categoria: c.categoria, keywords: c.keywords.map((k) => k.toUpperCase()) }));
+  { categoria: "Trata de personas", palabrasClave: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
+  { categoria: "Tenencia/porte de armas", palabrasClave: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
+  { categoria: "Extorsión", palabrasClave: ["EXTORSIÓN", "EXTORSION"] },
+].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()) }));
 
 function categoriasDelitoGraveSeguridad(texto) {
   if (!texto) return [];
   const up = String(texto).toUpperCase();
-  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.keywords.some((kw) => up.includes(kw))).map((c) => c.categoria);
+  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.palabrasClave.some((kw) => up.includes(kw))).map((c) => c.categoria);
 }
 
 // ---------- Construcción del perfil estandarizado ----------
@@ -342,14 +342,18 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- comportamientoBancario (ex "formal": bancos/BIESS/Diners) ----
-  const centralRiesgo = [...arr(bancos, "centralRiesgoSuper", "datosSuper"), ...arr(bancos, "centralRiesgoDiners", "datosSuper")];
+  // buró de crédito (antes "central de riesgos"). peorCalificacionRiesgo/
+  // mejorCalificacionRiesgo: ver nota completa en process.ts.
+  const buroCredito = [...arr(bancos, "buroCreditoSuper", "datosSuper"), ...arr(bancos, "buroCreditoDiners", "datosSuper")];
   const retails = arr(bancos, "retails", "retails");
+  const calificacionesBuroCredito = buroCredito.map((r) => r.calificacion).filter(Boolean).sort();
   const comportamientoBancario = {
-    numeroOperacionesCentralRiesgo: centralRiesgo.length,
-    peorCalificacionRiesgo: centralRiesgo.map((r) => r.calificacion).filter(Boolean).sort().pop() ?? null,
-    tieneOperacionJudicializada: centralRiesgo.some((r) => num(r.judicial) > 0),
-    tieneOperacionCastigada: centralRiesgo.some((r) => num(r.castigo) > 0),
-    saldoTotalVigente: centralRiesgo.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0),
+    numeroOperacionesBuroCredito: buroCredito.length,
+    peorCalificacionRiesgo: calificacionesBuroCredito.at(-1) ?? null,
+    mejorCalificacionRiesgo: calificacionesBuroCredito[0] ?? null,
+    tieneOperacionConDemanda: buroCredito.some((r) => num(r.judicial) > 0),
+    tieneOperacionCastigada: buroCredito.some((r) => num(r.castigo) > 0),
+    saldoTotalVigente: buroCredito.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0),
     numeroCreditosFormales: arr(bancos, "creditoHipotecario", "prestamos").length + arr(bancos, "creditoQuirografario", "prestamos").length,
     numeroDeudasRetail: retails.length,
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
@@ -359,12 +363,12 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- comportamientoCooperativas ----
-  const coop = arr(cooperativas, "centralRiesgoCoop", "datosSuper");
+  const coop = arr(cooperativas, "buroCreditoCoop", "datosSuper");
   const comportamientoCooperativas = {
     numeroOperaciones: coop.length,
     diasMoraMaxima: coop.length ? Math.max(...coop.map((c) => num(c.num_dias_morosidad) ?? 0)) : null,
     saldoTotal: coop.reduce((s, c) => s + (num(c.val_saldo_total) ?? 0), 0),
-    tieneOperacionJudicializada: coop.some((c) => num(c.val_dem_judicial) > 0),
+    tieneOperacionConDemanda: coop.some((c) => num(c.val_dem_judicial) > 0),
     tieneOperacionCastigada: coop.some((c) => num(c.val_cart_castigada) > 0),
   };
 
@@ -441,22 +445,22 @@ function buildStandardProfile(raw, cedula) {
     numeroDenunciasComoVictima: denuncias.length - numeroDenunciasComoSospechoso,
   };
 
-  // ---- compliance (guardrail, informativo) ----
+  // ---- cumplimiento (control de bloqueo, informativo) ----
   // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
-  // ver guardrails.ts: no es señal de riesgo crediticio.
+  // ver controles-bloqueo.ts: no es señal de riesgo crediticio.
   const totalListasControl = ["ofacsOpr", "homonimosOpr", "providenciasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
   const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr({ x: { data: basesInternas } }, "x", "tpeps").length;
   const sercopData = obj(fiscalia, "sercop", "data");
   // impedimentoCargosPublicos.data es un ARRAY, no objeto — ver nota en process.ts.
   const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
-  // Delitos graves de seguridad -- ver nota completa en process.ts (guardrail duro).
+  // Delitos graves de seguridad -- ver nota completa en process.ts (control de bloqueo duro).
   const categoriasSeguridad = new Set([
     ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
     ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
     ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
   ]);
-  const compliance = {
+  const cumplimiento = {
     enListaControl: totalListasControl > 0,
     enListaNegra: Boolean(bancos?.listaNegra?.data?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),
@@ -499,7 +503,7 @@ function buildStandardProfile(raw, cedula) {
     riesgoJudicialCrediticio,
     riesgoJudicialCivil,
     riesgoPenal,
-    compliance,
+    cumplimiento,
     metaConsulta: { ejesOk, ejesFaltantes, ejesConError },
   };
 }

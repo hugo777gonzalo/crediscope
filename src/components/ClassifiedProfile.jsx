@@ -6,7 +6,7 @@
 // BlockStatus.jsx) — son solo strings de presentación.
 
 const ORDEN_GRUPOS = [
-  "compliance",
+  "cumplimiento",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCrediticio",
@@ -30,7 +30,7 @@ const ETIQUETAS_GRUPO = {
   riesgoJudicialCrediticio: "Riesgo Judicial Crediticio",
   riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
   riesgoPenal: "Riesgo Penal / Fiscalía",
-  compliance: "Compliance y Listas de Control",
+  cumplimiento: "Cumplimiento y Listas de Control",
   laboral: "Situación Laboral e Ingresos",
   tributario: "Situación Tributaria (SRI)",
   seguridadSocial: "Seguridad Social",

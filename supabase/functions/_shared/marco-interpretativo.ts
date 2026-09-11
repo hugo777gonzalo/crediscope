@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v7) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v8) ***
 // El orden de importancia de los grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -19,29 +19,30 @@
 // de campo abajo son EXACTAMENTE los de StandardClientProfile
 // (types.ts) — si ese tipo cambia, actualizar esto también.
 //
-// v2: PEP (persona expuesta políticamente) dejó de ser guardrail duro —
-// decisión explícita del usuario: ser PEP es un dato de compliance/AML
-// (debida diligencia reforzada), no una señal de mal comportamiento de
-// pago, y no debe descalificar al cliente. Ver guardrails.ts
-// (GuardrailFinding.blocking) y compliance.esPersonaExpuestaPoliticamente.
+// v2: PEP (persona expuesta políticamente) dejó de ser control de
+// bloqueo duro — decisión explícita del usuario: ser PEP es un dato de
+// cumplimiento/PLA-FT (debida diligencia reforzada), no una señal de
+// mal comportamiento de pago, y no debe descalificar al cliente. Ver
+// controles-bloqueo.ts (HallazgoControlBloqueo.bloqueante) y
+// cumplimiento.esPersonaExpuestaPoliticamente.
 //
 // v3: orden de importancia de los 14 grupos definido explícitamente por
 // el usuario (mismo orden que ORDEN_GRUPOS en classify.ts):
-// compliance, comportamientoBancario, comportamientoCooperativas,
+// cumplimiento, comportamientoBancario, comportamientoCooperativas,
 // riesgoJudicialCivil, riesgoPenal, laboral=tributario, seguridadSocial,
 // patrimonio, familia, identidad, contacto, transitoVehicular,
 // comportamientoInterno (último — solo si hay dato, ver más abajo).
 //
 // v4: corrige una imprecisión — el texto decía que impedimentoCargosPublicos
-// ya era un guardrail resuelto aparte (igual que enListaControl/
-// enListaNegra), pero NUNCA lo fue: no existe en guardrails.ts (ver
-// GuardrailCode). El campo SÍ le llegaba al LLM en el profile, pero el
-// texto le decía "no te preocupes, ya está resuelto" — el LLM podía
-// estar sub-ponderando un hallazgo grave real (auditoría reveló un bug
-// de parseo aparte que lo escondía por completo, ya corregido en
-// process.ts — ver impedimentoRegistros). Ahora el texto es explícito:
-// impedimentoCargosPublicos SÍ le toca juzgarlo al LLM, y debe penalizar
-// fuerte.
+// ya era un control de bloqueo resuelto aparte (igual que enListaControl/
+// enListaNegra), pero NUNCA lo fue: no existe en controles-bloqueo.ts
+// (ver CodigoControlBloqueo). El campo SÍ le llegaba al LLM en el
+// profile, pero el texto le decía "no te preocupes, ya está resuelto" —
+// el LLM podía estar sub-ponderando un hallazgo grave real (auditoría
+// reveló un bug de parseo aparte que lo escondía por completo, ya
+// corregido en process.ts — ver impedimentoRegistros). Ahora el texto
+// es explícito: impedimentoCargosPublicos SÍ le toca juzgarlo al LLM, y
+// debe penalizar fuerte.
 //
 // v5: numeroDenunciasFiscalia (contaba todas las denuncias por igual,
 // sin mirar el rol del cliente) se reemplaza por
@@ -63,24 +64,45 @@
 //
 // v7: separa riesgoJudicialCivil en 2 grupos, a pedido del usuario —
 // riesgoJudicialCrediticio (demandas de cobro/pagarés/ejecuciones,
-// filtradas con KEYWORDS_PROBLEMA_CREDITICIO, reemplaza al booleano
-// demandaProblemaCrediticio que existía en riesgoJudicialCivil) y
-// riesgoJudicialCivil (el resto — laboral, familia, tránsito,
-// propiedad). Además se agrega compliance.tieneDelitoGraveSeguridad/
-// categoriasDelitoGraveSeguridad — guardrail duro nuevo para lavado de
-// activos, narcotráfico/tráfico de sustancias, trata de personas,
-// tenencia/porte de armas y extorsión (mismo trato que listas de
-// sanciones). Confirmado con un caso real: demanda "317 LAVADO DE
-// ACTIVOS..." — el resto de categorías, terminología COIP sin validar
-// contra casos reales (ver process.ts).
+// filtradas con PALABRAS_CLAVE_PROBLEMA_CREDITICIO, reemplaza al
+// booleano demandaProblemaCrediticio que existía en riesgoJudicialCivil)
+// y riesgoJudicialCivil (el resto — laboral, familia, tránsito,
+// propiedad). Además se agrega cumplimiento.tieneDelitoGraveSeguridad/
+// categoriasDelitoGraveSeguridad — control de bloqueo duro nuevo para
+// lavado de activos, narcotráfico/tráfico de sustancias, trata de
+// personas, tenencia/porte de armas y extorsión (mismo trato que
+// listas de sanciones). Confirmado con un caso real: demanda "317
+// LAVADO DE ACTIVOS..." — el resto de categorías, terminología COIP
+// sin validar contra casos reales (ver process.ts).
+//
+// v8: ajuste de terminología en todo el proyecto, a pedido del usuario
+// (usar español ecuatoriano estándar de la industria financiera/legal,
+// salvo que no exista término en español):
+// - "guardrail" -> "control de bloqueo" (archivo guardrails.ts ->
+//   controles-bloqueo.ts, GuardrailResult -> ResultadoControlBloqueo,
+//   GuardrailFinding -> HallazgoControlBloqueo, GuardrailCode ->
+//   CodigoControlBloqueo, campo blocking -> bloqueante, la clave
+//   guardrailHallazgos que recibe el LLM -> hallazgosControlBloqueo).
+// - "compliance" -> "cumplimiento" (grupo del profile y todo lo derivado).
+// - "AML" -> "PLA/FT" (Prevención de Lavado de Activos y Financiamiento
+//   del Terrorismo — sigla oficial ecuatoriana, más precisa que traducir AML).
+// - "central de riesgos" -> "buró de crédito" (numeroOperacionesCentralRiesgo
+//   -> numeroOperacionesBuroCredito).
+// - "tieneOperacionJudicializada" -> "tieneOperacionConDemanda" ("demanda"
+//   es más común que "judicializada").
+// - peorCalificacionRiesgo ahora tiene su contraparte mejorCalificacionRiesgo
+//   (un cliente con 2+ operaciones puede tener calificaciones distintas;
+//   antes solo se exponía la peor, ahora se ven ambos extremos).
+// - "castigada" (cartera castigada) se mantiene sin cambio — es
+//   terminología oficial de la Superintendencia de Bancos del Ecuador.
 //
 // El LLM recibe esto como parte de su system prompt, junto con el
-// StandardClientProfile y los hallazgos de guardrails.ts (que ya se
-// resolvieron de forma determinística, no los debe recalcular).
+// StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
+// se resolvieron de forma determinística, no los debe recalcular).
 
-export const FRAMEWORK_VERSION = "framework-v7";
+export const MARCO_VERSION = "marco-v8";
 
-export const INTERPRETIVE_FRAMEWORK = `
+export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
 natural en Ecuador a partir de su StandardClientProfile — información de
 Novadata YA PROCESADA Y CALCULADA (conteos, sumas, booleanos, "el más
@@ -95,16 +117,16 @@ contradigas): persona fallecida, coincidencia en listas de sanciones
 (OFAC/homónimos/providencias/lista negra/CONSEP), delitos graves de
 seguridad (lavado de activos, narcotráfico/tráfico de sustancias, trata
 de personas, tenencia/porte de armas, extorsión — ver
-compliance.tieneDelitoGraveSeguridad/categoriasDelitoGraveSeguridad en
-el profile) — ver guardrailHallazgos, aparte del profile, campo
-blocking=true. Si alguno de esos guardrails está activo, igual redacta
-tu análisis normalmente (explica lo que ves), pero asume que el score
-final lo va a forzar el sistema a 1 sin importar tu número — no te
-preocupes por eso.
+cumplimiento.tieneDelitoGraveSeguridad/categoriasDelitoGraveSeguridad en
+el profile) — ver hallazgosControlBloqueo, aparte del profile, campo
+bloqueante=true. Si alguno de esos controles de bloqueo está activo,
+igual redacta tu análisis normalmente (explica lo que ves), pero asume
+que el score final lo va a forzar el sistema a 1 sin importar tu número
+— no te preocupes por eso.
 
-PEP (persona expuesta políticamente) — compliance.esPersonaExpuestaPoliticamente
-en el profile, y/o un hallazgo "pep" en guardrailHallazgos con
-blocking=false — es DISTINTO: es un dato de compliance/AML (cargo
+PEP (persona expuesta políticamente) — cumplimiento.esPersonaExpuestaPoliticamente
+en el profile, y/o un hallazgo "pep" en hallazgosControlBloqueo con
+bloqueante=false — es DISTINTO: es un dato de cumplimiento/PLA-FT (cargo
 público relevante, actual o pasado), NO una señal de riesgo crediticio.
 No lo trates como negativo ni lo menciones como algo preocupante — a lo
 sumo, mencionalo como contexto neutro si es relevante para la
@@ -113,18 +135,21 @@ narrativa (ej. estabilidad de ingresos por un cargo público).
 CÓMO PENSAR EL SCORE (guía, no fórmula rígida) — por grupo del profile,
 en orden de importancia (definido explícitamente por el negocio):
 
-1. compliance — enListaControl y enListaNegra SÍ ya son guardrails
-   resueltos aparte (fuerzan el score si true). impedimentoCargosPublicos
-   y registraSercopContraloria NO son guardrails duros — SÍ te toca
-   juzgarlos, y deben penalizar fuerte (inhabilidad legal para contratar
-   con el Estado / ejercer cargos públicos — señal grave de riesgo
-   legal/reputacional, no un dato menor). esPersonaExpuestaPoliticamente
+1. cumplimiento — enListaControl y enListaNegra SÍ ya son controles de
+   bloqueo resueltos aparte (fuerzan el score si true). impedimentoCargosPublicos
+   y registraSercopContraloria NO son controles de bloqueo duros — SÍ te
+   toca juzgarlos, y deben penalizar fuerte (inhabilidad legal para
+   contratar con el Estado / ejercer cargos públicos — señal grave de
+   riesgo legal/reputacional, no un dato menor). esPersonaExpuestaPoliticamente
    NO penaliza — ver nota arriba sobre PEP.
 
 2. comportamientoBancario — la fuente más directa de comportamiento de
-   pago real: peorCalificacionRiesgo (A1 mejor .. E peor),
-   tieneOperacionJudicializada/Castigada (muy graves),
-   diasMoraMaximaRetail/diasMoraCreditoIessBiess.
+   pago real (buró de crédito): peorCalificacionRiesgo (A1 mejor .. E
+   peor) es la señal más importante — si el cliente tiene varias
+   operaciones, también viene mejorCalificacionRiesgo como contexto (no
+   es lo mismo "peor=E, única operación" que "peor=E, mejor=A1, 5
+   operaciones", pero la PEOR sigue pesando más). tieneOperacionConDemanda/
+   Castigada (muy graves), diasMoraMaximaRetail/diasMoraCreditoIessBiess.
 
 3. comportamientoCooperativas — mismas variables que comportamientoBancario
    pero de cooperativas; fuente distinta y algo menos determinante que
@@ -218,7 +243,7 @@ INFORMACIÓN FALTANTE — cómo interpretarla:
 INCONSISTENCIAS:
 - Si notas contradicciones entre grupos, menciónalo como parte de tu
   análisis narrativo — es una señal cualitativa más para tu juicio, no
-  un guardrail duro.
+  un control de bloqueo duro.
 
 FORMATO DE SALIDA:
 Responde ÚNICAMENTE con JSON válido, sin texto fuera del JSON, con esta

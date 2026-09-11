@@ -242,7 +242,7 @@ export function buildClientContext(raw: RawNovadataResponse, cedula: string): { 
     },
   };
 
-  const centralRiesgoResumen = (r: Record<string, unknown>) => ({
+  const buroCreditoResumen = (r: Record<string, unknown>) => ({
     entidad: r.entnombre ?? r.razon_social,
     calificacion: r.calificacion,
     diasMora: r.mora ?? r.num_dias_morosidad,
@@ -254,8 +254,8 @@ export function buildClientContext(raw: RawNovadataResponse, cedula: string): { 
   const ejeBancos: EjeContext = {
     status: raw.bancos.status,
     resumen: {
-      centralRiesgo: [...arr(bancos, "centralRiesgoSuper", "datosSuper"), ...arr(bancos, "centralRiesgoDiners", "datosSuper")].map(
-        centralRiesgoResumen
+      buroCredito: [...arr(bancos, "buroCreditoSuper", "datosSuper"), ...arr(bancos, "buroCreditoDiners", "datosSuper")].map(
+        buroCreditoResumen
       ),
       retails: arr(bancos, "retails", "retails").map((r) => ({
         institucion: r.institucion,
@@ -282,7 +282,7 @@ export function buildClientContext(raw: RawNovadataResponse, cedula: string): { 
   const ejeCooperativas: EjeContext = {
     status: raw.cooperativas.status,
     resumen: {
-      centralRiesgoCoop: arr(cooperativas, "centralRiesgoCoop", "datosSuper").map((c) => ({
+      buroCreditoCoop: arr(cooperativas, "buroCreditoCoop", "datosSuper").map((c) => ({
         entidad: c.razon_social,
         diasMora: c.num_dias_morosidad,
         saldo: c.val_saldo_total,

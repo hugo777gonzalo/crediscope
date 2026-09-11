@@ -39,7 +39,7 @@
 // IESS/BIESS) además de listas de control adicionales (tpeps, tofac,
 // tofac2, tconsepvinculados, tconsephomonimos, tprovidencias). Se pide
 // una sola vez dentro del grupo "bancos" pero normalize.ts y
-// guardrails.ts leen las partes que les corresponden de ahí — no hace
+// controles-bloqueo.ts leen las partes que les corresponden de ahí — no hace
 // falta pedirlo de nuevo por eje.
 
 import type { BlockFetchStatus, BlockResult, NovadataEnvelope, RawGeneral, RawMultiRecurso, RawNovadataResponse } from "./types.ts";
@@ -186,8 +186,8 @@ const RECURSOS_POR_BLOQUE: Record<string, Record<string, string>> = {
     deudasEmov: "data-services/novacredit/pn_deudas_emov",
     deudasFirmes: "data-services/novacredit/pn_deudas_firmes",
     deudores: "data-services/novacredit/pn_deudores",
-    centralRiesgoDiners: "api/consultas/novacredit/central_riesgo/get_inf_diners",
-    centralRiesgoSuper: "api/consultas/novacredit/central_riesgo/get_inf_super",
+    buroCreditoDiners: "api/consultas/novacredit/central_riesgo/get_inf_diners",
+    buroCreditoSuper: "api/consultas/novacredit/central_riesgo/get_inf_super",
     listasControl: "data-services/novacredit/pn_listas_control",
     listaNegra: "data-services/novacredit/pn_lista_negra",
     inversiones: "data-services/novacredit/pn_inversiones",
@@ -195,7 +195,7 @@ const RECURSOS_POR_BLOQUE: Record<string, Record<string, string>> = {
     basesInternas: "data-services/novacredit/nova_bases_internas",
   },
   cooperativas: {
-    centralRiesgoCoop: "api/consultas/novacredit/central_riesgo/get_inf_coop",
+    buroCreditoCoop: "api/consultas/novacredit/central_riesgo/get_inf_coop",
   },
 };
 

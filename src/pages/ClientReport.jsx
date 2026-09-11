@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { analyzeClient, getLatestAnalysis, structureClient, getLatestProfile } from "../lib/api.js";
-import ScoreBadge from "../components/ScoreBadge.jsx";
+import InsigniaScore from "../components/InsigniaScore.jsx";
 import BlockStatus from "../components/BlockStatus.jsx";
 import ClassifiedProfile from "../components/ClassifiedProfile.jsx";
 
@@ -145,7 +145,7 @@ export default function ClientReport() {
       {result ? (
         <>
           <div className="crediscope-card">
-            <ScoreBadge score={result.crediscope_score} rulesVersion={result.rules_version} />
+            <InsigniaScore score={result.crediscope_score} rulesVersion={result.rules_version} />
           </div>
 
           <div className="crediscope-card">

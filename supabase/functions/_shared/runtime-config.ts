@@ -17,7 +17,7 @@ export async function loadDisabledResources(client: SupabaseClient): Promise<Set
   return new Set((data ?? []).map((r) => r.recurso as string));
 }
 
-// Set de campos DESHABILITADOS, como "grupo.campo" (ej. "compliance.enListaControl").
+// Set de campos DESHABILITADOS, como "grupo.campo" (ej. "cumplimiento.enListaControl").
 export async function loadDisabledFields(client: SupabaseClient): Promise<Set<string>> {
   const { data, error } = await client.from("standard_profile_field_config").select("grupo, campo").eq("enabled", false);
   if (error) throw error;

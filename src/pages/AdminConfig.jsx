@@ -7,7 +7,7 @@ import { getResourceConfig, updateResourceConfig, getFieldConfig, updateFieldCon
 //   B. Campos de Estructura Estandarizada — qué campos usar en
 //      clasificación/LLM (para apagar uno que reporte datos
 //      inconsistentes mientras se investiga).
-// Cualquier analista autenticado puede togglear — no hay rol admin
+// Cualquier analista autenticado puede activar/desactivar — no hay rol admin
 // separado todavía en este proyecto.
 
 function ConfigRow({ item, labelKey, onSave }) {

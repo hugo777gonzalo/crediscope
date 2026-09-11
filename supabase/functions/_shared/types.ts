@@ -10,12 +10,12 @@
 //
 // Diseño: el score NO lo calcula una fórmula determinística. Un LLM
 // (llm-scoring.ts) recibe el ClientContext (curado por eje, ver abajo) y
-// el marco interpretativo (ver interpretive-framework.ts) y devuelve un
+// el marco interpretativo (ver marco-interpretativo.ts) y devuelve un
 // score aproximado + pros/contras + razonamiento. Lo único
-// determinístico son los "guardrails" (guardrails.ts): hechos binarios
-// objetivos (persona fallecida, coincidencia en listas de
-// control/OFAC/PEP/lista negra) que NO deben quedar a criterio
-// aproximado del LLM — ver GuardrailResult.
+// determinístico son los "controles de bloqueo" (controles-bloqueo.ts):
+// hechos binarios objetivos (persona fallecida, coincidencia en listas
+// de control/OFAC/PEP/lista negra) que NO deben quedar a criterio
+// aproximado del LLM — ver ResultadoControlBloqueo.
 //
 // BIESS: descartado como bloque — no corresponde a ningún dato real de
 // Novadata (confirmado por el usuario, no es un endpoint que exista).
@@ -55,7 +55,7 @@ export interface RawGeneral {
     nombre: string;
     tipoIdentificacion?: { idTipoIdentificacion: number; descripcion: string };
     fechaNacimiento?: string; // "YYYY-MM-DD"
-    fechaDefuncion?: string | null; // presente => persona fallecida, señal crítica (ver guardrails)
+    fechaDefuncion?: string | null; // presente => persona fallecida, señal crítica (ver controles-bloqueo.ts)
     informacionAdicional?: string | null; // ej. "CIUDADANO." o menciones de fallecimiento
     genero?: { idGenero: number; descripcion: string };
     [key: string]: unknown;
@@ -93,9 +93,9 @@ export interface RawNovadataResponse {
   cooperativas: BlockResult<RawMultiRecurso>;
 }
 
-// ---------- Guardrails (determinísticos, no delegados al LLM) ----------
+// ---------- Controles de bloqueo (determinísticos, no delegados al LLM) ----------
 
-export type GuardrailCode =
+export type CodigoControlBloqueo =
   | "fallecido"
   | "cedula_inconsistente"
   | "lista_control"
@@ -104,18 +104,18 @@ export type GuardrailCode =
   | "pep"
   | "delito_grave_seguridad";
 
-export interface GuardrailFinding {
-  code: GuardrailCode;
+export interface HallazgoControlBloqueo {
+  code: CodigoControlBloqueo;
   message: string;
   // true => este hallazgo por sí solo fuerza bloqueado=true. false => es
   // informativo (ej. PEP, cédula inconsistente): se muestra en el
   // análisis pero NO fuerza el score a 1 ni se debe tratar como negativo.
-  blocking: boolean;
+  bloqueante: boolean;
 }
 
-export interface GuardrailResult {
+export interface ResultadoControlBloqueo {
   bloqueado: boolean; // true => score se fuerza a 1 sin importar el criterio del LLM
-  hallazgos: GuardrailFinding[];
+  hallazgos: HallazgoControlBloqueo[];
 }
 
 // ---------- Contexto curado por eje (lo que ve el LLM) ----------
@@ -257,10 +257,18 @@ export interface StandardClientProfile {
   };
 
   // "Comportamiento Bancos BIESS Diners" (Cambios_Reagrupacion, grupo 8)
+  // numeroOperacionesBuroCredito/calificacionRiesgo: fuente es el buró
+  // de crédito (antes "central de riesgos"). Un cliente con 2+
+  // operaciones puede tener calificaciones distintas — se exponen ambos
+  // extremos: peorCalificacionRiesgo (la señal de riesgo más relevante,
+  // pesa fuerte aunque las demás operaciones estén bien) y
+  // mejorCalificacionRiesgo (contexto: no es lo mismo "peor=E, única
+  // operación" que "peor=E, mejor=A1, 5 operaciones").
   comportamientoBancario: {
-    numeroOperacionesCentralRiesgo: number;
+    numeroOperacionesBuroCredito: number;
     peorCalificacionRiesgo: string | null;
-    tieneOperacionJudicializada: boolean;
+    mejorCalificacionRiesgo: string | null;
+    tieneOperacionConDemanda: boolean;
     tieneOperacionCastigada: boolean;
     saldoTotalVigente: number;
     numeroCreditosFormales: number;
@@ -276,7 +284,7 @@ export interface StandardClientProfile {
     numeroOperaciones: number;
     diasMoraMaxima: number | null;
     saldoTotal: number;
-    tieneOperacionJudicializada: boolean;
+    tieneOperacionConDemanda: boolean;
     tieneOperacionCastigada: boolean;
   };
 
@@ -302,7 +310,7 @@ export interface StandardClientProfile {
   // Demandas de cobro/pagarés/letras de cambio/ejecuciones — señal
   // fuerte de comportamiento de pago (separado de riesgoJudicialCivil a
   // pedido del usuario; antes era el booleano demandaProblemaCrediticio
-  // dentro de ese grupo). Ver KEYWORDS_PROBLEMA_CREDITICIO en process.ts.
+  // dentro de ese grupo). Ver PALABRAS_CLAVE_PROBLEMA_CREDITICIO en process.ts.
   riesgoJudicialCrediticio: {
     numeroDemandasComoDemandado: number;
     tiposDemandasComoDemandado: string[];
@@ -328,23 +336,23 @@ export interface StandardClientProfile {
     numeroDenunciasComoVictima: number; // denunciante/víctima/perjudicado — SOLO CONTEXTO, no penaliza
   };
 
-  compliance: {
+  cumplimiento: {
     enListaControl: boolean;
     enListaNegra: boolean;
     impedimentoCargosPublicos: boolean;
     causalImpedimento: string | null;
     registraSercopContraloria: boolean;
     // Persona Expuesta Políticamente (cargo público relevante, actual o
-    // pasado) — dato de compliance/AML, NO es señal de riesgo crediticio
-    // ni descalifica al cliente. Ver guardrails.ts: a propósito no
-    // fuerza bloqueado=true.
+    // pasado) — dato de cumplimiento/PLA-FT, NO es señal de riesgo
+    // crediticio ni descalifica al cliente. Ver controles-bloqueo.ts: a
+    // propósito no fuerza bloqueado=true.
     esPersonaExpuestaPoliticamente: boolean;
     // Delitos graves de seguridad (lavado de activos, narcotráfico/
     // tráfico de sustancias, trata de personas, tenencia/porte de
-    // armas, extorsión) — guardrail duro, fuerza el score a 1 igual que
-    // las listas de sanciones (ver guardrails.ts). Palabras clave SIN
-    // validar contra casos reales excepto lavado de activos — ver nota
-    // en process.ts.
+    // armas, extorsión) — control de bloqueo duro, fuerza el score a 1
+    // igual que las listas de sanciones (ver controles-bloqueo.ts).
+    // Palabras clave SIN validar contra casos reales excepto lavado de
+    // activos — ver nota en process.ts.
     tieneDelitoGraveSeguridad: boolean;
     categoriasDelitoGraveSeguridad: string[]; // qué categoría(s) se detectaron, ej. ["Extorsión"]
   };
@@ -372,13 +380,4 @@ export interface LlmScoringResult {
   llmStopReason?: string;
   llmUsage?: Record<string, unknown>;
   llmRequestId?: string;
-}
-
-export interface AnalysisResult extends LlmScoringResult {
-  clientId: string;
-  ingestionRunId: string;
-  blockStatus: BlockStatusMap;
-  guardrail: GuardrailResult;
-  frameworkVersion: string;
-  createdAt: string;
 }

@@ -39,7 +39,7 @@ create table ingestion_runs (
 
 -- ---------- VERSIONES DEL MARCO INTERPRETATIVO ----------
 -- El score lo calcula un LLM guiado por un marco interpretativo en
--- lenguaje natural (ver supabase/functions/_shared/interpretive-framework.ts),
+-- lenguaje natural (ver supabase/functions/_shared/marco-interpretativo.ts),
 -- no una fórmula de pesos numéricos — `weights` queda sin uso real,
 -- se mantiene por compatibilidad de esquema. Cada análisis queda ligado
 -- a la versión del marco que lo produjo, para poder auditar/reproducir
