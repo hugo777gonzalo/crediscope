@@ -122,6 +122,25 @@ function esDemandaProblemaCrediticio(delito) {
   return KEYWORDS_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
 }
 
+// Delitos graves de seguridad -- ver nota completa en process.ts
+// (guardrail duro, SIN VALIDAR CONTRA CASOS REALES salvo lavado de activos).
+const CATEGORIAS_DELITO_GRAVE_SEGURIDAD = [
+  { categoria: "Lavado de activos", keywords: ["LAVADO"] },
+  {
+    categoria: "Narcotráfico / tráfico de sustancias",
+    keywords: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
+  },
+  { categoria: "Trata de personas", keywords: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
+  { categoria: "Tenencia/porte de armas", keywords: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
+  { categoria: "Extorsión", keywords: ["EXTORSIÓN", "EXTORSION"] },
+].map((c) => ({ categoria: c.categoria, keywords: c.keywords.map((k) => k.toUpperCase()) }));
+
+function categoriasDelitoGraveSeguridad(texto) {
+  if (!texto) return [];
+  const up = String(texto).toUpperCase();
+  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.keywords.some((kw) => up.includes(kw))).map((c) => c.categoria);
+}
+
 // ---------- Construcción del perfil estandarizado ----------
 
 function buildStandardProfile(raw, cedula) {
@@ -383,21 +402,25 @@ function buildStandardProfile(raw, cedula) {
     valorAdeudadoTransito,
   };
 
-  // ---- riesgoJudicialCivil ----
+  // ---- riesgoJudicialCrediticio / riesgoJudicialCivil ----
+  // Separados a pedido del usuario -- ver nota completa en process.ts.
   const demandas = arr(judicial, "demandas", "demandas");
   const demandasOfendido = arr(judicial, "demandasOfendido", "demandas");
   const pensionAliment = [...arr(judicial, "pensionAlimenticia", "supas"), ...arr(judicial, "pensionAlimenticiaNovadata", "supas")];
+  const delitoDe = (d) => d.demanda?.delito;
+  const demandasCrediticias = demandas.filter((d) => esDemandaProblemaCrediticio(delitoDe(d)));
+  const demandasCivilesResto = demandas.filter((d) => !esDemandaProblemaCrediticio(delitoDe(d)));
+  const tiposUnicos = (ds) => [...new Set(ds.map(delitoDe).filter(Boolean))];
+  const riesgoJudicialCrediticio = {
+    numeroDemandasComoDemandado: demandasCrediticias.length,
+    tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias),
+  };
   const riesgoJudicialCivil = {
-    numeroDemandasComoDemandado: demandas.length,
-    // ojo: tipoDemanda.descripcion es el ROL ("DEMANDADO"/"OFENDIDO",
-    // siempre el mismo valor según el recurso) — el tipo de caso real
-    // vive en demanda.delito (ej. "COBRO DE PAGARÉ A LA ORDEN").
-    tiposDemandasComoDemandado: [...new Set(demandas.map((d) => d.demanda?.delito).filter(Boolean))],
+    numeroDemandasComoDemandado: demandasCivilesResto.length,
+    tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
     numeroDemandasComoOfendido: demandasOfendido.length,
     pensionAlimenticiaEnMora: pensionAliment.some((p) => (num(p.totalDeuda) ?? 0) > 0),
     deudaPensionAlimenticia: pensionAliment.length ? Math.max(...pensionAliment.map((p) => num(p.totalDeuda) ?? 0)) : null,
-    // --- nuevo ---
-    demandaProblemaCrediticio: demandas.some((d) => esDemandaProblemaCrediticio(d.demanda?.delito)),
   };
 
   // ---- riesgoPenal ----
@@ -427,6 +450,12 @@ function buildStandardProfile(raw, cedula) {
   // impedimentoCargosPublicos.data es un ARRAY, no objeto — ver nota en process.ts.
   const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
+  // Delitos graves de seguridad -- ver nota completa en process.ts (guardrail duro).
+  const categoriasSeguridad = new Set([
+    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
+    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
+    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
+  ]);
   const compliance = {
     enListaControl: totalListasControl > 0,
     enListaNegra: Boolean(bancos?.listaNegra?.data?.listaNegra),
@@ -434,6 +463,8 @@ function buildStandardProfile(raw, cedula) {
     causalImpedimento: impedimentoActivo?.causales?.[0]?.causal ?? null,
     registraSercopContraloria: Boolean((sercopData?.contraloria?.registros?.length ?? 0) > 0 || (sercopData?.sercop?.registros?.length ?? 0) > 0),
     esPersonaExpuestaPoliticamente: totalPep > 0,
+    tieneDelitoGraveSeguridad: categoriasSeguridad.size > 0,
+    categoriasDelitoGraveSeguridad: [...categoriasSeguridad],
   };
 
   const blockStatus = {
@@ -465,6 +496,7 @@ function buildStandardProfile(raw, cedula) {
     comportamientoCooperativas,
     comportamientoInterno,
     transitoVehicular,
+    riesgoJudicialCrediticio,
     riesgoJudicialCivil,
     riesgoPenal,
     compliance,

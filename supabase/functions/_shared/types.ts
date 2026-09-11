@@ -101,7 +101,8 @@ export type GuardrailCode =
   | "lista_control"
   | "lista_negra"
   | "listas_control_interno"
-  | "pep";
+  | "pep"
+  | "delito_grave_seguridad";
 
 export interface GuardrailFinding {
   code: GuardrailCode;
@@ -298,13 +299,23 @@ export interface StandardClientProfile {
     valorAdeudadoTransito: number;
   };
 
+  // Demandas de cobro/pagarés/letras de cambio/ejecuciones — señal
+  // fuerte de comportamiento de pago (separado de riesgoJudicialCivil a
+  // pedido del usuario; antes era el booleano demandaProblemaCrediticio
+  // dentro de ese grupo). Ver KEYWORDS_PROBLEMA_CREDITICIO en process.ts.
+  riesgoJudicialCrediticio: {
+    numeroDemandasComoDemandado: number;
+    tiposDemandasComoDemandado: string[];
+  };
+
+  // Demandas civiles NO crediticias (laboral, familia, tránsito,
+  // propiedad, etc.) — contexto, no comportamiento de pago directo.
   riesgoJudicialCivil: {
     numeroDemandasComoDemandado: number;
     tiposDemandasComoDemandado: string[]; // demanda.delito, NO tipoDemanda.descripcion (ver nota en process.ts)
     numeroDemandasComoOfendido: number;
     pensionAlimenticiaEnMora: boolean;
     deudaPensionAlimenticia: number | null;
-    demandaProblemaCrediticio: boolean;
   };
 
   riesgoPenal: {
@@ -328,6 +339,14 @@ export interface StandardClientProfile {
     // ni descalifica al cliente. Ver guardrails.ts: a propósito no
     // fuerza bloqueado=true.
     esPersonaExpuestaPoliticamente: boolean;
+    // Delitos graves de seguridad (lavado de activos, narcotráfico/
+    // tráfico de sustancias, trata de personas, tenencia/porte de
+    // armas, extorsión) — guardrail duro, fuerza el score a 1 igual que
+    // las listas de sanciones (ver guardrails.ts). Palabras clave SIN
+    // validar contra casos reales excepto lavado de activos — ver nota
+    // en process.ts.
+    tieneDelitoGraveSeguridad: boolean;
+    categoriasDelitoGraveSeguridad: string[]; // qué categoría(s) se detectaron, ej. ["Extorsión"]
   };
 
   metaConsulta: {

@@ -12,6 +12,11 @@
 // reforzada), no una señal de mal comportamiento de pago — decisión
 // explícita del usuario, no asumir lo contrario.
 //
+// Delitos graves de seguridad (lavado de activos, narcotráfico, trata
+// de personas, armas, extorsión) SÍ son blocking — a diferencia de PEP,
+// decisión explícita del usuario: tan graves como aparecer en listas
+// de sanciones.
+//
 // El resto de la evaluación (laboral, judicial, financiero, patrimonio)
 // SÍ queda a criterio del LLM — ver llm-scoring.ts.
 
@@ -91,6 +96,50 @@ export function runGuardrails(raw: RawNovadataResponse, requestedCedula: string)
       message:
         "Persona Expuesta Políticamente (cargo público relevante, actual o pasado) — dato informativo de compliance, NO descalifica al cliente",
       blocking: false,
+    });
+  }
+
+  // Delitos graves de seguridad (lavado de activos, narcotráfico/
+  // tráfico de sustancias, trata de personas, tenencia/porte de armas,
+  // extorsión) — mismo trato que las listas de sanciones, decisión
+  // explícita del usuario: guardrail duro. Se revisan demandas
+  // (funcion_judicial), denuncias y descripción de antecedentes
+  // penales (fiscalía).
+  //
+  // *** SIN VALIDAR CONTRA CASOS REALES *** salvo lavado de activos
+  // (caso real confirmado, cédula 0704385103, en demandas). El resto de
+  // palabras clave son terminología del COIP por conocimiento general —
+  // ajustar si aparece un caso real que no se detecta.
+  const demandas = (raw.funcion_judicial.data?.demandas?.data as Record<string, unknown> | undefined)?.demandas as Record<string, unknown>[] | undefined;
+  const denuncias = (raw.fiscalia.data?.denuncias?.data as Record<string, unknown> | undefined)?.denuncias as Record<string, unknown>[] | undefined;
+  const antecedentesDescripcion = (raw.fiscalia.data?.antecedentesPenales?.data as Record<string, unknown> | undefined)?.antecedentes as
+    | Record<string, unknown>
+    | undefined;
+  const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; keywords: string[] }> = [
+    { categoria: "Lavado de activos", keywords: ["LAVADO"] },
+    {
+      categoria: "Narcotráfico / tráfico de sustancias",
+      keywords: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
+    },
+    { categoria: "Trata de personas", keywords: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
+    { categoria: "Tenencia/porte de armas", keywords: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
+    { categoria: "Extorsión", keywords: ["EXTORSIÓN", "EXTORSION"] },
+  ].map((c) => ({ categoria: c.categoria, keywords: c.keywords.map((k) => k.toUpperCase()) }));
+  const categoriasEnTexto = (texto: unknown): string[] => {
+    if (!texto) return [];
+    const up = String(texto).toUpperCase();
+    return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.keywords.some((kw) => up.includes(kw))).map((c) => c.categoria);
+  };
+  const categoriasEncontradas = new Set([
+    ...(demandas ?? []).flatMap((d) => categoriasEnTexto((d.demanda as Record<string, unknown> | undefined)?.delito)),
+    ...(denuncias ?? []).flatMap((d) => categoriasEnTexto(d.delito)),
+    ...categoriasEnTexto(antecedentesDescripcion?.descripcion),
+  ]);
+  if (categoriasEncontradas.size > 0) {
+    hallazgos.push({
+      code: "delito_grave_seguridad",
+      message: `Registra delito(s) grave(s) de seguridad: ${[...categoriasEncontradas].join(", ")}`,
+      blocking: true,
     });
   }
 

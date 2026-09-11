@@ -138,6 +138,29 @@
 > campos de mercado vienen todos en 0 (confirmado con un caso real,
 > Suzuki Grand Vitara con `precioPromedio=0` pero `precioComercial`
 > poblado). `framework-v6`.
+>
+> **v9 — separación de "Función Judicial" en 2 grupos, pedida por el
+> usuario.** `riesgoJudicialCivil` mezclaba demandas de cobro/pagarés/
+> ejecuciones (señal fuerte de comportamiento de pago) con demandas
+> civiles genéricas (laboral, familia, tránsito, propiedad — contexto).
+> Nuevo grupo `riesgoJudicialCrediticio` (`numeroDemandasComoDemandado`,
+> `tiposDemandasComoDemandado`, filtradas con `KEYWORDS_PROBLEMA_CREDITICIO`)
+> reemplaza al booleano `demandaProblemaCrediticio` que vivía dentro de
+> `riesgoJudicialCivil`. Posición en el orden de prioridad: justo
+> después de `comportamientoCooperativas`, antes de `riesgoJudicialCivil`.
+>
+> De paso, a pedido del usuario ("temas de seguridad que hoy son los
+> principales problemas del Ecuador"), se agregó
+> `compliance.tieneDelitoGraveSeguridad`/`categoriasDelitoGraveSeguridad`
+> — guardrail duro nuevo (fuerza el score a 1, mismo trato que listas de
+> sanciones) para lavado de activos, narcotráfico/tráfico de sustancias,
+> trata de personas, tenencia/porte de armas y extorsión. Se revisan
+> demandas, denuncias y descripción de antecedentes penales. **Ojo:**
+> de estas categorías, solo lavado de activos tiene un caso real
+> confirmado en la muestra (cédula 0704385103, demanda "317 LAVADO DE
+> ACTIVOS...") — el resto de palabras clave son terminología del COIP
+> por conocimiento general, sin validar contra casos reales; ajustar si
+> aparece un caso real que no se detecta. `framework-v7`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

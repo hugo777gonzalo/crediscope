@@ -41,18 +41,25 @@ export interface ClassifiedProfile {
 export const CLASSIFICATION_VERSION = "clasificacion-v1";
 
 // Orden de grupos por importancia para el análisis crediticio — definido
-// por el usuario (framework-v3, ver interpretive-framework.ts) — el
-// mismo orden se usa para mostrar los grupos en la web
+// por el usuario (ver interpretive-framework.ts) — el mismo orden se
+// usa para mostrar los grupos en la web
 // (src/components/ClassifiedProfile.jsx duplica este orden).
 //
 // comportamientoInterno queda AL FINAL a propósito: solo aplica a
 // clientes que ya son clientes internos de Novadata (poco frecuente en
 // la muestra) — cuando no hay dato no es un hueco de información, es
 // que el eje no aplica. Ver nota en interpretive-framework.ts.
+//
+// riesgoJudicialCrediticio (demandas de cobro/pagarés/ejecuciones) se
+// separó de riesgoJudicialCivil (el resto: laboral, familia, tránsito,
+// propiedad) a pedido del usuario — la primera es señal de
+// comportamiento de pago, va justo después de comportamiento bancario/
+// cooperativas; la segunda es mayormente contexto.
 export const ORDEN_GRUPOS = [
   "compliance",
   "comportamientoBancario",
   "comportamientoCooperativas",
+  "riesgoJudicialCrediticio",
   "riesgoJudicialCivil",
   "riesgoPenal",
   "laboral",
@@ -71,7 +78,8 @@ export const ETIQUETAS_GRUPO: Record<string, string> = {
   comportamientoInterno: "Comportamiento Interno (Novadata)",
   comportamientoBancario: "Comportamiento Bancos / BIESS / Diners",
   comportamientoCooperativas: "Comportamiento Cooperativas",
-  riesgoJudicialCivil: "Riesgo Judicial / Civil",
+  riesgoJudicialCrediticio: "Riesgo Judicial Crediticio",
+  riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
   riesgoPenal: "Riesgo Penal / Fiscalía",
   compliance: "Compliance y Listas de Control",
   laboral: "Situación Laboral e Ingresos",
@@ -117,11 +125,15 @@ const REGLAS: Record<string, Regla> = {
   "comportamientoCooperativas.tieneOperacionCastigada": (v) => (v ? "negativo" : "positivo"),
   "comportamientoCooperativas.diasMoraMaxima": (v) => ((v as number) > 0 ? "negativo" : (v as number) === 0 ? "positivo" : null),
 
-  // ---- riesgoJudicialCivil ----
+  // ---- riesgoJudicialCrediticio ----
+  // Reemplaza a riesgoJudicialCivil.demandaProblemaCrediticio (booleano)
+  // — mismo criterio, ahora como conteo en su propio grupo.
+  "riesgoJudicialCrediticio.numeroDemandasComoDemandado": (v) => ((v as number) > 0 ? "negativo" : "positivo"),
+
+  // ---- riesgoJudicialCivil (otros, no crediticio) ----
   // "demandas como ofensor" (usuario) = DEMANDADO — ver nota al inicio.
   "riesgoJudicialCivil.numeroDemandasComoDemandado": (v) => ((v as number) > 0 ? "negativo" : "positivo"),
   "riesgoJudicialCivil.pensionAlimenticiaEnMora": (v) => (v ? "negativo" : null),
-  "riesgoJudicialCivil.demandaProblemaCrediticio": (v) => (v ? "negativo" : null),
 
   // ---- riesgoPenal ----
   "riesgoPenal.tieneAntecedentesPenales": (v) => (v === true ? "negativo" : v === false ? "positivo" : null),
@@ -138,6 +150,9 @@ const REGLAS: Record<string, Regla> = {
   // esPersonaExpuestaPoliticamente: SIN regla a propósito — PEP es un
   // dato de compliance/AML, no una señal de riesgo crediticio (decisión
   // explícita del usuario). Cae en "complementario" sea true o false.
+  "compliance.tieneDelitoGraveSeguridad": (v) => (v ? "negativo" : "positivo"),
+  // categoriasDelitoGraveSeguridad: SIN regla — es el detalle (array de
+  // strings) de tieneDelitoGraveSeguridad, no se clasifica aparte.
 
   // ---- laboral ----
   "laboral.tieneEstablecimientoActivo": (v) => (v ? "positivo" : null),

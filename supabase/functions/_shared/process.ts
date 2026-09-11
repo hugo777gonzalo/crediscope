@@ -113,6 +113,38 @@ function esDemandaProblemaCrediticio(delito: unknown): boolean {
   return KEYWORDS_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
 }
 
+// Delitos graves de seguridad (lavado de activos, narcotráfico/tráfico
+// de sustancias, trata de personas, tenencia/porte de armas, extorsión)
+// — mismo tratamiento que las listas de sanciones: guardrail duro (ver
+// guardrails.ts), no un juicio del LLM, a pedido explícito del usuario
+// (son "los principales problemas de seguridad del Ecuador" hoy).
+// Se revisan demandas (funcion_judicial), denuncias y descripción de
+// antecedentes penales (fiscalía).
+//
+// *** SIN VALIDAR CONTRA CASOS REALES *** — ninguno de los 25 clientes
+// de la muestra tiene estos delitos, así que las palabras clave son la
+// terminología del COIP (Código Orgánico Integral Penal) por
+// conocimiento general, NO confirmadas contra un caso real como sí se
+// hizo con "LAVADO DE ACTIVOS" (ese caso real SÍ existe, cédula
+// 0704385103). Si aparece un caso real que esta lista no detecta,
+// avisar para ajustar las palabras clave.
+const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; keywords: string[] }> = [
+  { categoria: "Lavado de activos", keywords: ["LAVADO"] },
+  {
+    categoria: "Narcotráfico / tráfico de sustancias",
+    keywords: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
+  },
+  { categoria: "Trata de personas", keywords: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
+  { categoria: "Tenencia/porte de armas", keywords: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
+  { categoria: "Extorsión", keywords: ["EXTORSIÓN", "EXTORSION"] },
+].map((c) => ({ categoria: c.categoria, keywords: c.keywords.map((k) => k.toUpperCase()) }));
+
+function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
+  if (!texto) return [];
+  const up = String(texto).toUpperCase();
+  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.keywords.some((kw) => up.includes(kw))).map((c) => c.categoria);
+}
+
 export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;
@@ -420,19 +452,31 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     valorAdeudadoTransito,
   };
 
-  // ---- riesgoJudicialCivil ----
+  // ---- riesgoJudicialCrediticio / riesgoJudicialCivil ----
+  // Separados a pedido del usuario: antes "riesgoJudicialCivil" mezclaba
+  // demandas de cobro/pagarés/ejecuciones (señal de comportamiento de
+  // pago, alto peso) con demandas civiles genéricas (laboral, familia,
+  // tránsito, propiedad — contexto, bajo peso). demandaProblemaCrediticio
+  // (booleano) se reemplaza por este split — ya no existe como campo.
   const demandas = arr(judicial, "demandas", "demandas");
   const demandasOfendido = arr(judicial, "demandasOfendido", "demandas");
   const pensionAliment = [...arr(judicial, "pensionAlimenticia", "supas"), ...arr(judicial, "pensionAlimenticiaNovadata", "supas")];
+  // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el tipo
+  // de caso real vive en demanda.delito.
+  const delitoDe = (d: AnyRecord): string | undefined => (d.demanda as AnyRecord | undefined)?.delito as string | undefined;
+  const demandasCrediticias = demandas.filter((d) => esDemandaProblemaCrediticio(delitoDe(d)));
+  const demandasCivilesResto = demandas.filter((d) => !esDemandaProblemaCrediticio(delitoDe(d)));
+  const tiposUnicos = (ds: AnyRecord[]) => [...new Set(ds.map(delitoDe).filter((x): x is string => Boolean(x)))];
+  const riesgoJudicialCrediticio: StandardClientProfile["riesgoJudicialCrediticio"] = {
+    numeroDemandasComoDemandado: demandasCrediticias.length,
+    tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias),
+  };
   const riesgoJudicialCivil: StandardClientProfile["riesgoJudicialCivil"] = {
-    numeroDemandasComoDemandado: demandas.length,
-    // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el
-    // tipo de caso real vive en demanda.delito.
-    tiposDemandasComoDemandado: [...new Set(demandas.map((d) => (d.demanda as AnyRecord | undefined)?.delito as string | undefined).filter((x): x is string => Boolean(x)))],
+    numeroDemandasComoDemandado: demandasCivilesResto.length,
+    tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
     numeroDemandasComoOfendido: demandasOfendido.length,
     pensionAlimenticiaEnMora: pensionAliment.some((p) => (num(p.totalDeuda) ?? 0) > 0),
     deudaPensionAlimenticia: pensionAliment.length ? Math.max(...pensionAliment.map((p) => num(p.totalDeuda) ?? 0)) : null,
-    demandaProblemaCrediticio: demandas.some((d) => esDemandaProblemaCrediticio((d.demanda as AnyRecord | undefined)?.delito)),
   };
 
   // ---- riesgoPenal ----
@@ -475,6 +519,16 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // los elementos del array por si acaso viniera más de uno.
   const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
+  // Delitos graves de seguridad (lavado, narcotráfico, trata, armas,
+  // extorsión): se revisan demandas (funcion_judicial), denuncias y la
+  // descripción de antecedentes penales — ver guardrails.ts, donde esto
+  // además fuerza el score a 1 (guardrail duro, mismo trato que listas
+  // de sanciones). Ver nota "SIN VALIDAR CONTRA CASOS REALES" arriba.
+  const categoriasSeguridad = new Set([
+    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
+    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
+    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
+  ]);
   const compliance: StandardClientProfile["compliance"] = {
     enListaControl: totalListasControl > 0,
     enListaNegra: Boolean(((bancos?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
@@ -485,6 +539,8 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
         (((sercopData?.sercop as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0
     ),
     esPersonaExpuestaPoliticamente: totalPep > 0,
+    tieneDelitoGraveSeguridad: categoriasSeguridad.size > 0,
+    categoriasDelitoGraveSeguridad: [...categoriasSeguridad],
   };
 
   const blockStatus: BlockStatusMap = {
@@ -513,6 +569,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     comportamientoCooperativas,
     comportamientoInterno,
     transitoVehicular,
+    riesgoJudicialCrediticio,
     riesgoJudicialCivil,
     riesgoPenal,
     compliance,
