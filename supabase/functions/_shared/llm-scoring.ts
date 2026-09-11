@@ -77,7 +77,10 @@ export async function scoreWithLlm(profile: Record<string, unknown>, guardrail: 
 
   if (!res.ok) {
     const errText = await res.text();
-    return resultadoDeFallback(`error del LLM (HTTP ${res.status}): ${errText}`);
+    const requestId = res.headers.get("request-id") ?? res.headers.get("x-request-id") ?? "sin request-id";
+    return resultadoDeFallback(
+      `error del LLM (HTTP ${res.status} ${res.statusText}, request-id=${requestId}, payload=${JSON.stringify(userPayload).length} chars): ${errText}`
+    );
   }
 
   const data = await res.json();
