@@ -396,10 +396,20 @@ function buildStandardProfile(raw, cedula) {
 
   // ---- riesgoPenal ----
   const antecedentes = obj(fiscalia, "antecedentesPenales", "antecedentes");
+  // Ver nota completa en process.ts: hay que mirar el rol del propio
+  // cliente en cada denuncia (denunciante/victima/perjudicado = solo
+  // contexto, sospechoso = penaliza).
+  const denuncias = arr(fiscalia, "denuncias", "denuncias");
+  const esSospechosoEnDenuncia = (d) =>
+    (Array.isArray(d.detalleDenuncia) ? d.detalleDenuncia : []).some(
+      (p) => p.cedula === cedula && String(p.estado ?? "").toUpperCase().includes("SOSPECHOSO")
+    );
+  const numeroDenunciasComoSospechoso = denuncias.filter(esSospechosoEnDenuncia).length;
   const riesgoPenal = {
     tieneAntecedentesPenales: antecedentes ? antecedentes.descripcion !== "NO" : null,
     descripcionAntecedentes: antecedentes && antecedentes.descripcion !== "NO" ? antecedentes.descripcion : null,
-    numeroDenunciasFiscalia: arr(fiscalia, "denuncias", "denuncias").length,
+    numeroDenunciasComoSospechoso,
+    numeroDenunciasComoVictima: denuncias.length - numeroDenunciasComoSospechoso,
   };
 
   // ---- compliance (guardrail, informativo) ----

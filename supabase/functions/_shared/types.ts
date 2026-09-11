@@ -304,7 +304,11 @@ export interface StandardClientProfile {
   riesgoPenal: {
     tieneAntecedentesPenales: boolean | null;
     descripcionAntecedentes: string | null;
-    numeroDenunciasFiscalia: number;
+    // Reemplaza a numeroDenunciasFiscalia (contaba todas las denuncias
+    // por igual, sin mirar el rol del cliente) — mismo criterio que
+    // numeroDemandasComoDemandado/ComoOfendido en riesgoJudicialCivil.
+    numeroDenunciasComoSospechoso: number; // penaliza
+    numeroDenunciasComoVictima: number; // denunciante/víctima/perjudicado — SOLO CONTEXTO, no penaliza
   };
 
   compliance: {

@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v4) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (framework-v5) ***
 // El orden de importancia de los 14 grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -43,11 +43,19 @@
 // impedimentoCargosPublicos SÍ le toca juzgarlo al LLM, y debe penalizar
 // fuerte.
 //
+// v5: numeroDenunciasFiscalia (contaba todas las denuncias por igual,
+// sin mirar el rol del cliente) se reemplaza por
+// numeroDenunciasComoSospechoso/numeroDenunciasComoVictima — mismo
+// criterio que numeroDemandasComoDemandado/ComoOfendido en
+// riesgoJudicialCivil. Se leen de denuncias[].detalleDenuncia[], que
+// lista el rol de cada parte (denunciante/víctima/perjudicado/
+// sospechoso) por cédula.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de guardrails.ts (que ya se
 // resolvieron de forma determinística, no los debe recalcular).
 
-export const FRAMEWORK_VERSION = "framework-v4";
+export const FRAMEWORK_VERSION = "framework-v5";
 
 export const INTERPRETIVE_FRAMEWORK = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -108,9 +116,11 @@ en orden de importancia (definido explícitamente por el negocio):
 5. riesgoPenal — tieneAntecedentesPenales + descripcionAntecedentes: lee
    la descripción — no es lo mismo un delito patrimonial/económico (muy
    relevante para crédito) que uno sin relación con honestidad
-   financiera. numeroDenunciasFiscalia por sí solo pesa poco (ver nota
-   de numeroDemandasComoOfendido arriba, aplica igual acá si son
-   denuncias donde la persona es víctima).
+   financiera. numeroDenunciasComoSospechoso > 0 SÍ penaliza (la persona
+   aparece como sospechosa en una denuncia penal). numeroDenunciasComoVictima
+   es SOLO CONTEXTO — ser denunciante/víctima/perjudicado de un delito no
+   dice nada sobre comportamiento de pago, no lo penalices (mismo
+   criterio que numeroDemandasComoOfendido arriba).
 
 6. laboral y tributario (MISMO peso) — dan CONTEXTO DE CAPACIDAD de
    pago, no de comportamiento. empleoActual (empleador, cargo,

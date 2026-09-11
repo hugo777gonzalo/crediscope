@@ -422,10 +422,25 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
 
   // ---- riesgoPenal ----
   const antecedentes = obj(fiscalia, "antecedentesPenales", "antecedentes");
+  // denuncias[].detalleDenuncia lista a TODAS las partes (denunciante,
+  // víctima, perjudicado, sospechoso) — hay que mirar el rol del propio
+  // cliente en cada denuncia, igual que se hizo con
+  // numeroDemandasComoDemandado/ComoOfendido en riesgoJudicialCivil. Ser
+  // denunciante/víctima/perjudicado es SOLO CONTEXTO (no penaliza); ser
+  // sospechoso sí. Si detalleDenuncia no trae la cédula del cliente (no
+  // debería pasar, pero por si acaso), se trata como no-sospechoso por
+  // default — no penalizar ante datos faltantes.
+  const denuncias = arr(fiscalia, "denuncias", "denuncias");
+  const esSospechosoEnDenuncia = (d: AnyRecord): boolean =>
+    (Array.isArray(d.detalleDenuncia) ? (d.detalleDenuncia as AnyRecord[]) : []).some(
+      (p) => p.cedula === cedula && String(p.estado ?? "").toUpperCase().includes("SOSPECHOSO")
+    );
+  const numeroDenunciasComoSospechoso = denuncias.filter(esSospechosoEnDenuncia).length;
   const riesgoPenal: StandardClientProfile["riesgoPenal"] = {
     tieneAntecedentesPenales: antecedentes ? antecedentes.descripcion !== "NO" : null,
     descripcionAntecedentes: antecedentes && antecedentes.descripcion !== "NO" ? (antecedentes.descripcion as string) : null,
-    numeroDenunciasFiscalia: arr(fiscalia, "denuncias", "denuncias").length,
+    numeroDenunciasComoSospechoso,
+    numeroDenunciasComoVictima: denuncias.length - numeroDenunciasComoSospechoso,
   };
 
   // ---- compliance (guardrail, informativo) ----

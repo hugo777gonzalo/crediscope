@@ -125,7 +125,10 @@ const REGLAS: Record<string, Regla> = {
 
   // ---- riesgoPenal ----
   "riesgoPenal.tieneAntecedentesPenales": (v) => (v === true ? "negativo" : v === false ? "positivo" : null),
-  "riesgoPenal.numeroDenunciasFiscalia": (v) => ((v as number) > 0 ? "negativo" : null),
+  "riesgoPenal.numeroDenunciasComoSospechoso": (v) => ((v as number) > 0 ? "negativo" : null),
+  // numeroDenunciasComoVictima: SIN regla — ser denunciante/víctima/
+  // perjudicado no dice nada sobre comportamiento de pago (mismo
+  // criterio que numeroDemandasComoOfendido).
 
   // ---- compliance ----
   "compliance.enListaControl": (v) => (v ? "negativo" : "positivo"),

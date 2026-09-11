@@ -104,6 +104,18 @@
 > este campo ya era un guardrail resuelto aparte — nunca lo fue (no
 > existe en `guardrails.ts`) — ahora es explícito que el LLM debe
 > juzgarlo y penalizar fuerte.
+>
+> **v7 — `riesgoPenal.numeroDenunciasFiscalia` no distinguía el rol del
+> cliente en la denuncia** (denunciante/víctima/perjudicado vs
+> sospechoso), mismo criterio ya aplicado a
+> `numeroDemandasComoDemandado`/`ComoOfendido` en `riesgoJudicialCivil`
+> pero que no se había extendido a fiscalía. `denuncias[].detalleDenuncia[]`
+> trae el rol de cada parte por cédula — se reemplaza por
+> `numeroDenunciasComoSospechoso` (penaliza) y
+> `numeroDenunciasComoVictima` (solo contexto). Confirmado con datos
+> reales: cédula 0961413416 aparece como SOSPECHOSO en una denuncia por
+> ABUSO DE CONFIANZA — antes se contaba igual que las denuncias donde
+> otros clientes son solo denunciantes/víctimas. `framework-v5`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 
