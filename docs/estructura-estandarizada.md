@@ -265,6 +265,26 @@
 >   (contradecía la nota de homónimos de `marco-v9`, que es
 >   informativa).
 > `marco-v10`.
+>
+> **v13 — refina 3 criterios cualitativos del prompt**, sin cambios al
+> `StandardClientProfile` (surgió de la fase de diseño de la vista
+> "Perfil del Cliente", conversación aparte a esta auditoría):
+> - `patrimonio`: un vehículo/inmueble ahora se explica también como
+>   **colateral potencial** que reduce el riesgo real de la operación,
+>   no solo como señal de solvencia — puede compensar señales negativas
+>   de otros grupos.
+> - `riesgoJudicialCivil`: `deudaPensionAlimenticia > 0` sin mora ahora
+>   se trata como un **gasto fijo comprometido** que resta capacidad de
+>   pago real (antes solo se explicaba el caso de mora, que ya
+>   penalizaba).
+> - `identidad`: `nivelEducacion` (tercer/cuarto nivel) pasa a ser un
+>   atenuante leve de contexto de capacidad (empleabilidad) — única
+>   excepción parcial del grupo. Edad, estado civil y género siguen
+>   explícitamente **sin ningún peso** en el score, en cualquier
+>   dirección — decisión explícita del usuario para evitar
+>   discriminación indirecta, mismo criterio que ya aplicaba a
+>   `familia`.
+> `marco-v11`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v10) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v11) ***
 // El orden de importancia de los grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -144,11 +144,31 @@
 // de sanciones (contradecía la nota de homónimos agregada en marco-v9,
 // que es informativa) — ya no aparece ahí.
 //
+// v11: refina 3 criterios cualitativos a pedido del usuario, sin tocar
+// el StandardClientProfile (ningún campo nuevo, solo lenguaje del
+// prompt):
+// - patrimonio (grupo 10): un vehículo/inmueble ahora se explica
+//   también como COLATERAL POTENCIAL (reduce el riesgo real de la
+//   operación), no solo como señal de solvencia — puede compensar
+//   señales negativas de otros grupos.
+// - riesgoJudicialCivil (grupo 6): pensionAlimenticiaEnMora ya
+//   distinguía mora=negativo; se agrega la contraparte —
+//   deudaPensionAlimenticia > 0 SIN mora no es negativo, pero SÍ es un
+//   gasto fijo comprometido que resta capacidad de pago real (mismo
+//   trato que una cuota de préstamo vigente).
+// - identidad (grupo 12): nivelEducacion (tercer/cuarto nivel) pasa a
+//   ser un atenuante LEVE de contexto de capacidad (empleabilidad) —
+//   única excepción parcial dentro del grupo. edad/estadoCivil/género
+//   siguen explícitamente prohibidos de penalizar o favorecer el score
+//   en cualquier dirección (riesgo de discriminación indirecta,
+//   decisión explícita del usuario tras discutirlo) — mismo criterio ya
+//   aplicado a familia (grupo 11).
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v10";
+export const MARCO_VERSION = "marco-v11";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -245,8 +265,15 @@ en orden de importancia (definido explícitamente por el negocio):
      tránsito, no necesariamente indica mal pagador.
    - numeroDemandasComoOfendido es SOLO CONTEXTO — ser víctima de un
      delito no dice nada sobre comportamiento de pago, no lo penalices.
-   - pensionAlimenticiaEnMora: SÍ es señal real de comportamiento de
-     pago — es incumplir una obligación económica exigible.
+   - pensionAlimenticiaEnMora=true: señal FUERTE de comportamiento de
+     pago — es incumplir una obligación económica exigible, trátalo con
+     peso similar a una demanda de cobro.
+   - pensionAlimenticiaEnMora=false pero deudaPensionAlimenticia > 0: NO
+     es negativo (está al día), pero SÍ es un gasto fijo comprometido
+     que ya sale de su ingreso — tenelo en cuenta igual que tendrías en
+     cuenta una cuota de préstamo vigente al evaluar cuánto ingreso
+     disponible le queda realmente, no asumas que todo el ingreso
+     reportado está libre para nueva deuda.
 
 7. riesgoPenal — tieneAntecedentesPenales + descripcionAntecedentes: lee
    la descripción — no es lo mismo un delito patrimonial/económico (muy
@@ -271,18 +298,29 @@ en orden de importancia (definido explícitamente por el negocio):
 
 10. patrimonio — numeroVehiculos, valorAvaluoVehiculos, etc. Ausencia de
     patrimonio NO es negativa — puede ser alguien joven o de bajos
-    ingresos formales, no un mal pagador. Solo suma como positivo si hay
-    patrimonio relevante. Para el VALOR de los vehículos usa
-    valorColateralVehiculos (no valorAvaluoVehiculos) — es el más
-    cercano a precio de mercado actual, ya que valorAvaluoVehiculos usa
-    depreciación lineal fiscal y castiga fuerte vehículos viejos (puede
-    mostrar $80 en una moto que vale mucho más en la realidad).
+    ingresos formales, no un mal pagador. Un vehículo o inmueble NO es
+    solo una señal de solvencia — es un COLATERAL POTENCIAL que reduce
+    el riesgo real de la operación (hay algo que ejecutar si el cliente
+    incumple). Trátalo como un atenuante concreto que puede compensar
+    señales negativas de otros grupos, no solo como dato de contexto.
+    Para el VALOR de los vehículos usa valorColateralVehiculos (no
+    valorAvaluoVehiculos) — es el más cercano a precio de mercado
+    actual, ya que valorAvaluoVehiculos usa depreciación lineal fiscal y
+    castiga fuerte vehículos viejos (puede mostrar $80 en una moto que
+    vale mucho más en la realidad).
 
 11. familia — numeroHijos, tieneHijoMenorEdad: contexto de carga
-    familiar, no es señal de riesgo directa.
+    familiar, no es señal de riesgo directa. NO lo uses para penalizar
+    ni para favorecer el score en ninguna dirección — es información
+    demográfica, no de comportamiento de pago.
 
-12. identidad — edad, estadoCivil, nivelEducacion, profesiones: contexto
-    puro.
+12. identidad — edad, estadoCivil, genero, profesiones: contexto puro,
+    NO los uses para penalizar ni favorecer el score en ninguna
+    dirección (riesgo de discriminación indirecta, decisión explícita
+    del usuario). nivelEducacion es la única excepción parcial: un
+    tercer/cuarto nivel es un atenuante LEVE de contexto de capacidad
+    (empleabilidad, mismo espíritu que el grupo 8 laboral/tributario) —
+    nunca una regla dura, y su ausencia NO es negativa.
 
 13. contacto — estabilidad de dirección/teléfono/correo en los últimos
     12 meses: contexto puro, señal débil.
