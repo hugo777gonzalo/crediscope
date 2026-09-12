@@ -114,6 +114,24 @@ export async function updateFieldConfig(grupo, campo, { enabled, motivo }) {
   if (error) throw error;
 }
 
+// Visibilidad de segmentos en "Perfil del Cliente" (nombre comercial de
+// la Estructura Estandarizada) — separado de standard_profile_field_config:
+// esto no afecta qué se calcula, solo qué se muestra en la UI del
+// analista. modo: "con_datos" | "siempre" | "nunca".
+export async function getSegmentConfig() {
+  const { data, error } = await supabase.from("standard_profile_segment_config").select("*").order("grupo");
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSegmentConfig(grupo, { modo, motivo }) {
+  const { error } = await supabase
+    .from("standard_profile_segment_config")
+    .update({ modo, motivo: motivo || null, updated_at: new Date().toISOString() })
+    .eq("grupo", grupo);
+  if (error) throw error;
+}
+
 // Llama a la Edge Function `explore-novadata` con credenciales de
 // Novadata que el usuario ingresa en el momento (no las secrets de
 // servicio). No pasa por Supabase Auth ni persiste nada — solo para
