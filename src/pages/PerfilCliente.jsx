@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getLatestProfile, structureClient, getSegmentConfig } from "../lib/api.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
+import ClienteHeader from "../components/ClienteHeader.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // "Perfil del Cliente" — nombre comercial de la Estructura Estandarizada
 // (internamente sigue siendo ese término). A propósito NO clasifica en
@@ -56,7 +58,9 @@ export default function PerfilCliente() {
   return (
     <div>
       <p>
-        <Link to="/">&larr; Buscar otro cliente</Link>
+        <Link to="/" className="crediscope-muted" style={{ textDecoration: "none" }}>
+          Buscar otro cliente
+        </Link>
       </p>
 
       <div className="crediscope-tabs">
@@ -66,21 +70,18 @@ export default function PerfilCliente() {
         </Link>
       </div>
 
-      <div className="crediscope-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h2 style={{ margin: 0 }}>
-            {standardProfile?.identidad?.nombreCompleto ? `${standardProfile.identidad.nombreCompleto} — ` : ""}
-            Perfil del Cliente
-          </h2>
-          <p className="crediscope-muted">
-            Cédula {cedula}
-            {profile ? ` · Última consulta: ${new Date(profile.created_at).toLocaleString()}` : ""}
-          </p>
-        </div>
-        <button className="crediscope-btn" onClick={handleStructure} disabled={structuring}>
-          {structuring ? "Consultando..." : profile ? "Reconsultar" : "Consultar"}
-        </button>
-      </div>
+      <ClienteHeader
+        nombreCompleto={standardProfile?.identidad?.nombreCompleto}
+        cedula={cedula}
+        acciones={
+          <button className="crediscope-btn" onClick={handleStructure} disabled={structuring}>
+            {structuring ? "Consultando..." : profile ? "Reconsultar" : "Consultar"}
+          </button>
+        }
+        infoTooltip={
+          profile ? <InfoTooltip texto={`Última consulta: ${new Date(profile.created_at).toLocaleString()}`} /> : null
+        }
+      />
 
       {error ? (
         <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>

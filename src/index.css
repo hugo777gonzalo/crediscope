@@ -48,10 +48,46 @@ a {
 
 .crediscope-main {
   flex: 1;
-  padding: 24px;
-  max-width: 960px;
+  padding: 24px 32px;
+  max-width: 1440px;
   width: 100%;
   margin: 0 auto;
+}
+
+.crediscope-segment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.crediscope-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+}
+
+.crediscope-tooltip-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 8px;
+  width: 260px;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.crediscope-tooltip-wrap:hover .crediscope-tooltip-bubble,
+.crediscope-tooltip-wrap:focus .crediscope-tooltip-bubble {
+  visibility: visible;
+  opacity: 1;
 }
 
 .crediscope-card {

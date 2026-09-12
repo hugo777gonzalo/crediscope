@@ -239,6 +239,22 @@ export const GRUPOS_CONFIG = {
   },
 };
 
+// Novadata devuelve nombreCompleto como "APELLIDO1 APELLIDO2 NOMBRE1
+// NOMBRE2" (convención de registro civil ecuatoriano). Para un header
+// premium mostramos solo "Nombre1 Apellido1" — heurística de 4 tokens;
+// si no calza (compuestos, un solo nombre, etc.) se muestra el nombre
+// completo humanizado entero, más seguro que adivinar mal el orden.
+export function nombreCorto(nombreCompleto) {
+  if (!nombreCompleto) return null;
+  const partes = nombreCompleto.trim().split(/\s+/);
+  const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  if (partes.length === 4) {
+    const [apellido1, , nombre1] = partes;
+    return `${capitalizar(nombre1)} ${capitalizar(apellido1)}`;
+  }
+  return partes.map(capitalizar).join(" ");
+}
+
 export function filasVisibles(profile, grupo) {
   const config = GRUPOS_CONFIG[grupo];
   if (!config) return [];

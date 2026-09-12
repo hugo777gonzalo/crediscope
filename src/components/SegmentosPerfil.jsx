@@ -1,4 +1,22 @@
 import { useState } from "react";
+import {
+  ShieldCheck,
+  ShieldAlert,
+  Landmark,
+  Building2,
+  Scale,
+  Gavel,
+  Siren,
+  Briefcase,
+  Receipt,
+  HeartPulse,
+  Home,
+  Users,
+  User,
+  MapPin,
+  Car,
+  Database,
+} from "lucide-react";
 import { GRUPOS_CONFIG, filasVisibles } from "../lib/perfilClienteCampos.js";
 
 // Renderiza el Perfil del Cliente (tarjetas por segmento + aviso de
@@ -45,10 +63,33 @@ const ETIQUETAS_GRUPO = {
   comportamientoInterno: "Comportamiento Interno (Novadata)",
 };
 
+const ICONOS_GRUPO = {
+  cumplimiento: ShieldCheck,
+  riesgoSeguridadCiudadana: ShieldAlert,
+  comportamientoBancario: Landmark,
+  comportamientoCooperativas: Building2,
+  riesgoJudicialCrediticio: Scale,
+  riesgoJudicialCivil: Gavel,
+  riesgoPenal: Siren,
+  laboral: Briefcase,
+  tributario: Receipt,
+  seguridadSocial: HeartPulse,
+  patrimonio: Home,
+  familia: Users,
+  identidad: User,
+  contacto: MapPin,
+  transitoVehicular: Car,
+  comportamientoInterno: Database,
+};
+
 function SegmentoCard({ grupo, filas, mensajeVacio }) {
+  const Icono = ICONOS_GRUPO[grupo];
   return (
-    <div className="crediscope-card" style={{ padding: "14px 20px" }}>
-      <p style={{ fontWeight: 600, margin: "0 0 6px" }}>{ETIQUETAS_GRUPO[grupo]}</p>
+    <div className="crediscope-card" style={{ padding: "14px 20px", marginBottom: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        {Icono ? <Icono size={18} color="var(--text-muted)" /> : null}
+        <p style={{ fontWeight: 600, margin: 0 }}>{ETIQUETAS_GRUPO[grupo]}</p>
+      </div>
       {filas.length > 0 ? (
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}>
           {filas.map((f, i) => (
@@ -88,7 +129,7 @@ function ListaSegmentos({ standardProfile, segmentConfig }) {
   const modoPorGrupo = {};
   for (const s of segmentConfig || []) modoPorGrupo[s.grupo] = s.modo;
 
-  return ORDEN_GRUPOS.map((grupo) => {
+  const tarjetas = ORDEN_GRUPOS.map((grupo) => {
     const modo = modoPorGrupo[grupo] ?? "con_datos";
     if (modo === "nunca") return null;
     const config = GRUPOS_CONFIG[grupo];
@@ -96,6 +137,8 @@ function ListaSegmentos({ standardProfile, segmentConfig }) {
     if (modo === "con_datos" && !tienePresencia) return null;
     return <SegmentoCard key={grupo} grupo={grupo} filas={filasVisibles(standardProfile, grupo)} mensajeVacio={config?.mensajeVacio} />;
   });
+
+  return <div className="crediscope-segment-grid">{tarjetas}</div>;
 }
 
 export default function SegmentosPerfil({ standardProfile, segmentConfig, controlBloqueo, collapsible = false }) {

@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { analyzeClient, getLatestAnalysis, getLatestProfile, structureClient, getSegmentConfig } from "../lib/api.js";
-import InsigniaScore from "../components/InsigniaScore.jsx";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
+import ClienteHeader from "../components/ClienteHeader.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // "Análisis con IA" — nombre comercial del scoring por LLM. Antes de
 // correrlo, decide si reutiliza el Perfil del Cliente ya consultado
@@ -83,7 +84,9 @@ export default function AnalisisIA() {
   return (
     <div>
       <p>
-        <Link to={`/perfil/${cedula}`}>&larr; Ver Perfil del Cliente</Link>
+        <Link to="/" className="crediscope-muted" style={{ textDecoration: "none" }}>
+          Buscar otro cliente
+        </Link>
       </p>
 
       <div className="crediscope-tabs">
@@ -93,41 +96,38 @@ export default function AnalisisIA() {
         <span className="crediscope-tab crediscope-tab-active">Análisis con IA</span>
       </div>
 
-      <div className="crediscope-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h2 style={{ margin: 0 }}>Análisis con IA — Cliente {cedula}</h2>
-          {result ? (
-            <p className="crediscope-muted">Último análisis: {new Date(result.created_at).toLocaleString()}</p>
-          ) : (
-            <p className="crediscope-muted">Sin análisis previo.</p>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {!loading && profileReciente ? (
-            <button className="crediscope-btn" onClick={handleAnalyzeReuse} disabled={analyzing}>
-              {analyzing ? "Analizando..." : "Analizar"}
-            </button>
-          ) : null}
-          {!loading ? (
-            <button className="crediscope-btn crediscope-btn-ghost" onClick={handleReconsultAndAnalyze} disabled={analyzing}>
-              {analyzing ? "Analizando..." : profileReciente ? "Reconsultar y analizar" : "Consultar y analizar"}
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {!loading && profile ? (
-        <p className="crediscope-muted" style={{ marginTop: -8 }}>
-          {profileReciente
-            ? `Perfil del Cliente consultado hace ${Math.floor(diasDesde(profile.created_at))} día(s) — se reutiliza sin volver a consultar Novadata.`
-            : `Perfil del Cliente tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar Novadata antes de analizar.`}
-        </p>
-      ) : null}
-      {!loading && !profile ? (
-        <p className="crediscope-muted" style={{ marginTop: -8 }}>
-          Sin Perfil del Cliente todavía — hace falta consultar Novadata antes de analizar.
-        </p>
-      ) : null}
+      <ClienteHeader
+        nombreCompleto={profile?.standard_profile?.identidad?.nombreCompleto}
+        cedula={cedula}
+        score={result?.crediscope_score}
+        acciones={
+          <>
+            {!loading && profileReciente ? (
+              <button className="crediscope-btn" onClick={handleAnalyzeReuse} disabled={analyzing}>
+                {analyzing ? "Analizando..." : "Analizar"}
+              </button>
+            ) : null}
+            {!loading ? (
+              <button className="crediscope-btn crediscope-btn-ghost" onClick={handleReconsultAndAnalyze} disabled={analyzing}>
+                {analyzing ? "Analizando..." : profileReciente ? "Reconsultar y analizar" : "Consultar y analizar"}
+              </button>
+            ) : null}
+          </>
+        }
+        infoTooltip={
+          !loading ? (
+            <InfoTooltip
+              texto={
+                profile
+                  ? profileReciente
+                    ? `Perfil del Cliente consultado hace ${Math.floor(diasDesde(profile.created_at))} día(s) — se reutiliza sin volver a consultar Novadata.`
+                    : `Perfil del Cliente tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar Novadata antes de analizar.`
+                  : "Sin Perfil del Cliente todavía — hace falta consultar Novadata antes de analizar."
+              }
+            />
+          ) : null
+        }
+      />
 
       {error ? (
         <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
@@ -139,10 +139,6 @@ export default function AnalisisIA() {
 
       {result ? (
         <>
-          <div className="crediscope-card">
-            <InsigniaScore score={result.crediscope_score} rulesVersion={result.rules_version} />
-          </div>
-
           <div className="crediscope-card">
             <h3>Resumen</h3>
             <p>{result.narrative_summary}</p>
