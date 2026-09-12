@@ -113,22 +113,25 @@ function esDemandaProblemaCrediticio(delito: unknown): boolean {
   return PALABRAS_CLAVE_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
 }
 
-// Delitos graves de seguridad (lavado de activos, narcotráfico/tráfico
-// de sustancias, trata de personas, tenencia/porte de armas, extorsión)
-// — mismo tratamiento que las listas de sanciones: control de bloqueo
-// duro (ver controles-bloqueo.ts), no un juicio del LLM, a pedido
-// explícito del usuario (son "los principales problemas de seguridad
-// del Ecuador" hoy). Se revisan demandas (funcion_judicial), denuncias
-// y descripción de antecedentes penales (fiscalía).
+// Delitos de seguridad ciudadana (lavado de activos, narcotráfico/
+// tráfico de sustancias, trata de personas, tenencia/porte de armas,
+// extorsión, delincuencia organizada, asociación ilícita, asesinato/
+// homicidio intencional) — mismo tratamiento que las listas de
+// sanciones: control de bloqueo duro (ver controles-bloqueo.ts), no un
+// juicio del LLM, a pedido explícito del usuario (son "los principales
+// problemas de seguridad del Ecuador" hoy). Se revisan demandas
+// (funcion_judicial), denuncias y descripción de antecedentes penales
+// (fiscalía). Expuesto también como grupo propio del profile — ver
+// riesgoSeguridadCiudadana más abajo.
 //
-// *** SIN VALIDAR CONTRA CASOS REALES *** — ninguno de los 25 clientes
-// de la muestra tiene estos delitos, así que las palabras clave son la
-// terminología del COIP (Código Orgánico Integral Penal) por
-// conocimiento general, NO confirmadas contra un caso real como sí se
-// hizo con "LAVADO DE ACTIVOS" (ese caso real SÍ existe, cédula
-// 0704385103). Si aparece un caso real que esta lista no detecta,
-// avisar para ajustar las palabras clave.
-const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClave: string[] }> = [
+// *** SIN VALIDAR CONTRA CASOS REALES *** salvo lavado de activos,
+// extorsión, tenencia de armas, delincuencia organizada, asociación
+// ilícita y asesinato/homicidio — confirmados con casos reales
+// (cédulas 0704385103, 1204212029, 1309022935, 0927016063). Narco-
+// tráfico/tráfico de sustancias y trata de personas siguen siendo
+// terminología del COIP por conocimiento general — ajustar si aparece
+// un caso real que no se detecta.
+const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClave: string[]; excluir?: string[] }> = [
   { categoria: "Lavado de activos", palabrasClave: ["LAVADO"] },
   {
     categoria: "Narcotráfico / tráfico de sustancias",
@@ -137,12 +140,25 @@ const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClav
   { categoria: "Trata de personas", palabrasClave: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
   { categoria: "Tenencia/porte de armas", palabrasClave: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
   { categoria: "Extorsión", palabrasClave: ["EXTORSIÓN", "EXTORSION"] },
-].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()) }));
+  { categoria: "Delincuencia organizada", palabrasClave: ["DELINCUENCIA ORGANIZADA"] },
+  { categoria: "Asociación ilícita", palabrasClave: ["ASOCIACIÓN ILÍCITA", "ASOCIACION ILICITA"] },
+  // HOMICIDIO a secas también matchea "homicidio culposo"/"preterin-
+  // tencional" (COIP Art. 145-147: negligente, ej. accidente de
+  // tránsito con muerte) — severidad y perfil de riesgo muy distintos
+  // a un homicidio intencional. Se excluyen explícitamente.
+  {
+    categoria: "Asesinato / homicidio intencional",
+    palabrasClave: ["ASESINATO", "HOMICIDIO"],
+    excluir: ["CULPOSO", "PRETERINTENCIONAL"],
+  },
+].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()), excluir: c.excluir?.map((k) => k.toUpperCase()) }));
 
 function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
   if (!texto) return [];
   const up = String(texto).toUpperCase();
-  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.palabrasClave.some((kw) => up.includes(kw))).map((c) => c.categoria);
+  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter(
+    (c) => c.palabrasClave.some((kw) => up.includes(kw)) && !(c.excluir ?? []).some((kw) => up.includes(kw))
+  ).map((c) => c.categoria);
 }
 
 export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap } {
@@ -569,17 +585,6 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // los elementos del array por si acaso viniera más de uno.
   const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
-  // Delitos graves de seguridad (lavado, narcotráfico, trata, armas,
-  // extorsión): se revisan demandas (funcion_judicial), denuncias y la
-  // descripción de antecedentes penales — ver controles-bloqueo.ts,
-  // donde esto además fuerza el score a 1 (control de bloqueo duro,
-  // mismo trato que listas de sanciones). Ver nota "SIN VALIDAR CONTRA
-  // CASOS REALES" arriba.
-  const categoriasSeguridad = new Set([
-    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
-    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
-    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
-  ]);
   const cumplimiento: StandardClientProfile["cumplimiento"] = {
     enListaControl: totalListasControl > 0,
     tieneHomonimoEnListaControl: totalHomonimos > 0,
@@ -592,8 +597,22 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     ),
     esPersonaExpuestaPoliticamente: totalPep > 0,
     detallePep,
-    tieneDelitoGraveSeguridad: categoriasSeguridad.size > 0,
-    categoriasDelitoGraveSeguridad: [...categoriasSeguridad],
+  };
+
+  // ---- riesgoSeguridadCiudadana (grupo propio, control de bloqueo duro) ----
+  // Se revisan demandas (funcion_judicial), denuncias y la descripción
+  // de antecedentes penales — ver controles-bloqueo.ts, donde esto
+  // además fuerza el score a 1 (control de bloqueo duro, mismo trato
+  // que listas de sanciones). Ver nota "SIN VALIDAR CONTRA CASOS
+  // REALES" arriba.
+  const categoriasSeguridad = new Set([
+    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
+    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
+    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
+  ]);
+  const riesgoSeguridadCiudadana: StandardClientProfile["riesgoSeguridadCiudadana"] = {
+    tieneDelitoSeguridadCiudadana: categoriasSeguridad.size > 0,
+    categoriasDelitoSeguridadCiudadana: [...categoriasSeguridad],
   };
 
   const blockStatus: BlockStatusMap = {
@@ -626,6 +645,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     riesgoJudicialCivil,
     riesgoPenal,
     cumplimiento,
+    riesgoSeguridadCiudadana,
     metaConsulta: {
       ejesOk: entries.filter(([, v]) => v === "ok").map(([k]) => k),
       ejesFaltantes: entries.filter(([, v]) => v === "faltante").map(([k]) => k),

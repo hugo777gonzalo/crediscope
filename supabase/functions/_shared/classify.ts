@@ -57,6 +57,7 @@ export const CLASSIFICATION_VERSION = "clasificacion-v1";
 // cooperativas; la segunda es mayormente contexto.
 export const ORDEN_GRUPOS = [
   "cumplimiento",
+  "riesgoSeguridadCiudadana",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCrediticio",
@@ -82,6 +83,7 @@ export const ETIQUETAS_GRUPO: Record<string, string> = {
   riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
   riesgoPenal: "Riesgo Penal / Fiscalía",
   cumplimiento: "Cumplimiento y Listas de Control",
+  riesgoSeguridadCiudadana: "Riesgo de Seguridad Ciudadana",
   laboral: "Situación Laboral e Ingresos",
   tributario: "Situación Tributaria (SRI)",
   seguridadSocial: "Seguridad Social",
@@ -161,9 +163,11 @@ const REGLAS: Record<string, Regla> = {
   // esPersonaExpuestaPoliticamente/detallePep: SIN regla a propósito —
   // PEP es un dato de cumplimiento/PLA-FT, no una señal de riesgo
   // crediticio (decisión explícita del usuario). Cae en "complementario".
-  "cumplimiento.tieneDelitoGraveSeguridad": (v) => (v ? "negativo" : "positivo"),
-  // categoriasDelitoGraveSeguridad: SIN regla — es el detalle (array de
-  // strings) de tieneDelitoGraveSeguridad, no se clasifica aparte.
+
+  // ---- riesgoSeguridadCiudadana ----
+  "riesgoSeguridadCiudadana.tieneDelitoSeguridadCiudadana": (v) => (v ? "negativo" : "positivo"),
+  // categoriasDelitoSeguridadCiudadana: SIN regla — es el detalle (array
+  // de strings) de tieneDelitoSeguridadCiudadana, no se clasifica aparte.
 
   // ---- laboral ----
   "laboral.tieneEstablecimientoActivo": (v) => (v ? "positivo" : null),

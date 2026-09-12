@@ -103,7 +103,7 @@ export type CodigoControlBloqueo =
   | "listas_control_interno"
   | "pep"
   | "homonimo_en_lista_control"
-  | "delito_grave_seguridad";
+  | "delito_seguridad_ciudadana";
 
 export interface HallazgoControlBloqueo {
   code: CodigoControlBloqueo;
@@ -375,14 +375,23 @@ export interface StandardClientProfile {
       sueldo: number | null;
       fecha: string | null;
     } | null;
-    // Delitos graves de seguridad (lavado de activos, narcotráfico/
-    // tráfico de sustancias, trata de personas, tenencia/porte de
-    // armas, extorsión) — control de bloqueo duro, fuerza el score a 1
-    // igual que las listas de sanciones (ver controles-bloqueo.ts).
-    // Palabras clave SIN validar contra casos reales excepto lavado de
-    // activos — ver nota en process.ts.
-    tieneDelitoGraveSeguridad: boolean;
-    categoriasDelitoGraveSeguridad: string[]; // qué categoría(s) se detectaron, ej. ["Extorsión"]
+  };
+
+  // "Riesgo de Seguridad Ciudadana" — grupo propio, mismo nivel que
+  // Riesgo Judicial Crediticio/Civil, a pedido explícito del usuario
+  // (antes vivía como 2 campos sueltos dentro de cumplimiento). Cubre
+  // lavado de activos, narcotráfico/tráfico de sustancias, trata de
+  // personas, tenencia/porte de armas, extorsión, delincuencia
+  // organizada, asociación ilícita y asesinato/homicidio intencional —
+  // control de bloqueo duro, fuerza el score a 1 igual que las listas
+  // de sanciones (ver controles-bloqueo.ts). Confirmado con casos
+  // reales (extorsión, tenencia de armas, delincuencia organizada,
+  // asociación ilícita, asesinato, lavado de activos) — narcotráfico y
+  // trata de personas siguen sin caso real, palabras clave por
+  // conocimiento general del COIP (ver nota en process.ts).
+  riesgoSeguridadCiudadana: {
+    tieneDelitoSeguridadCiudadana: boolean;
+    categoriasDelitoSeguridadCiudadana: string[]; // ej. ["Extorsión", "Delincuencia organizada"]
   };
 
   metaConsulta: {

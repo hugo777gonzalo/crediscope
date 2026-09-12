@@ -236,6 +236,35 @@
 >   quedaba oculto en la muestra local (no afectaba producción, que
 >   siempre consulta Novadata en vivo).
 > `marco-v9`.
+>
+> **v12 — nuevo grupo `riesgoSeguridadCiudadana`**, mismo nivel que
+> Riesgo Judicial Crediticio/Civil (justo después de `cumplimiento`), a
+> pedido del usuario. Antes vivía como 2 campos sueltos dentro de
+> `cumplimiento` (`tieneDelitoGraveSeguridad`/`categoriasDelitoGraveSeguridad`,
+> ahora `tieneDelitoSeguridadCiudadana`/`categoriasDelitoSeguridadCiudadana`).
+> Validado con 4 cédulas reales aportadas específicamente para esto
+> (0910521939, 1309022935, 1204212029, 0927016063):
+> - Confirmó funcionando **extorsión**, **tenencia de armas** y **lavado
+>   de activos** (2 casos reales más, sumados al original).
+> - Encontró un hueco real: **"DELINCUENCIA ORGANIZADA"** (COIP Art.
+>   369) aparecía 4 veces en 2 de los 4 clientes y no estaba en ninguna
+>   palabra clave — se agrega como categoría nueva.
+> - Se agregan también **"Asociación ilícita"** (COIP Art. 370,
+>   preparatorio/relacionado, 2 casos reales) y **"Asesinato/homicidio
+>   intencional"** (aparecido real y reiterado en 1 cliente) — esta
+>   última excluye explícitamente "homicidio culposo"/"preterintencional"
+>   (ej. muerte por accidente de tránsito), perfil de riesgo muy
+>   distinto a un homicidio intencional.
+> - Narcotráfico/tráfico de sustancias y trata de personas siguen sin
+>   caso real que las confirme.
+> - Código de hallazgo renombrado: `delito_grave_seguridad` ->
+>   `delito_seguridad_ciudadana`.
+> - De paso se corrigió una inconsistencia real en
+>   `marco-interpretativo.ts`: la lista de "controles ya resueltos"
+>   seguía mencionando homónimos como bloqueante de sanciones
+>   (contradecía la nota de homónimos de `marco-v9`, que es
+>   informativa).
+> `marco-v10`.
 
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 

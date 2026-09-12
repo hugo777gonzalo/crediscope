@@ -122,8 +122,9 @@ function esDemandaProblemaCrediticio(delito) {
   return PALABRAS_CLAVE_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
 }
 
-// Delitos graves de seguridad -- ver nota completa en process.ts
-// (control de bloqueo duro, SIN VALIDAR CONTRA CASOS REALES salvo lavado de activos).
+// Delitos de seguridad ciudadana -- ver nota completa en process.ts
+// (control de bloqueo duro; confirmado con casos reales salvo
+// narcotráfico y trata de personas).
 const CATEGORIAS_DELITO_GRAVE_SEGURIDAD = [
   { categoria: "Lavado de activos", palabrasClave: ["LAVADO"] },
   {
@@ -133,12 +134,21 @@ const CATEGORIAS_DELITO_GRAVE_SEGURIDAD = [
   { categoria: "Trata de personas", palabrasClave: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
   { categoria: "Tenencia/porte de armas", palabrasClave: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
   { categoria: "Extorsión", palabrasClave: ["EXTORSIÓN", "EXTORSION"] },
-].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()) }));
+  { categoria: "Delincuencia organizada", palabrasClave: ["DELINCUENCIA ORGANIZADA"] },
+  { categoria: "Asociación ilícita", palabrasClave: ["ASOCIACIÓN ILÍCITA", "ASOCIACION ILICITA"] },
+  {
+    categoria: "Asesinato / homicidio intencional",
+    palabrasClave: ["ASESINATO", "HOMICIDIO"],
+    excluir: ["CULPOSO", "PRETERINTENCIONAL"],
+  },
+].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()), excluir: c.excluir?.map((k) => k.toUpperCase()) }));
 
 function categoriasDelitoGraveSeguridad(texto) {
   if (!texto) return [];
   const up = String(texto).toUpperCase();
-  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter((c) => c.palabrasClave.some((kw) => up.includes(kw))).map((c) => c.categoria);
+  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter(
+    (c) => c.palabrasClave.some((kw) => up.includes(kw)) && !(c.excluir ?? []).some((kw) => up.includes(kw))
+  ).map((c) => c.categoria);
 }
 
 // ---------- Construcción del perfil estandarizado ----------
@@ -477,12 +487,6 @@ function buildStandardProfile(raw, cedula) {
   // impedimentoCargosPublicos.data es un ARRAY, no objeto — ver nota en process.ts.
   const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
-  // Delitos graves de seguridad -- ver nota completa en process.ts (control de bloqueo duro).
-  const categoriasSeguridad = new Set([
-    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
-    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
-    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
-  ]);
   const cumplimiento = {
     enListaControl: totalListasControl > 0,
     tieneHomonimoEnListaControl: totalHomonimos > 0,
@@ -492,8 +496,17 @@ function buildStandardProfile(raw, cedula) {
     registraSercopContraloria: Boolean((sercopData?.contraloria?.registros?.length ?? 0) > 0 || (sercopData?.sercop?.registros?.length ?? 0) > 0),
     esPersonaExpuestaPoliticamente: totalPep > 0,
     detallePep,
-    tieneDelitoGraveSeguridad: categoriasSeguridad.size > 0,
-    categoriasDelitoGraveSeguridad: [...categoriasSeguridad],
+  };
+
+  // ---- riesgoSeguridadCiudadana (grupo propio, control de bloqueo duro) ----
+  const categoriasSeguridad = new Set([
+    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
+    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
+    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
+  ]);
+  const riesgoSeguridadCiudadana = {
+    tieneDelitoSeguridadCiudadana: categoriasSeguridad.size > 0,
+    categoriasDelitoSeguridadCiudadana: [...categoriasSeguridad],
   };
 
   const blockStatus = {
@@ -529,6 +542,7 @@ function buildStandardProfile(raw, cedula) {
     riesgoJudicialCivil,
     riesgoPenal,
     cumplimiento,
+    riesgoSeguridadCiudadana,
     metaConsulta: { ejesOk, ejesFaltantes, ejesConError },
   };
 }

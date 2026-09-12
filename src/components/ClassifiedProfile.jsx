@@ -7,6 +7,7 @@
 
 const ORDEN_GRUPOS = [
   "cumplimiento",
+  "riesgoSeguridadCiudadana",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCrediticio",
@@ -31,6 +32,7 @@ const ETIQUETAS_GRUPO = {
   riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
   riesgoPenal: "Riesgo Penal / Fiscalía",
   cumplimiento: "Cumplimiento y Listas de Control",
+  riesgoSeguridadCiudadana: "Riesgo de Seguridad Ciudadana",
   laboral: "Situación Laboral e Ingresos",
   tributario: "Situación Tributaria (SRI)",
   seguridadSocial: "Seguridad Social",

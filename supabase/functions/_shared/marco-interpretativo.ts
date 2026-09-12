@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v8) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v10) ***
 // El orden de importancia de los grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -121,11 +121,34 @@
 //   ACTIVOS en algún momento de los últimos 24 meses (usa fecSal, fecha
 //   de salida — vacía si el empleo sigue activo hoy).
 //
+// v10: nuevo grupo riesgoSeguridadCiudadana (mismo nivel que Riesgo
+// Judicial Crediticio/Civil, justo después de cumplimiento), a pedido
+// del usuario — antes vivía como 2 campos sueltos dentro de
+// cumplimiento (tieneDelitoGraveSeguridad/categoriasDelitoGraveSeguridad,
+// ahora tieneDelitoSeguridadCiudadana/categoriasDelitoSeguridadCiudadana).
+// Validado con 4 cédulas reales aportadas por el usuario específicamente
+// para esto (0910521939, 1309022935, 1204212029, 0927016063) — confirmó
+// funcionando extorsión, tenencia de armas y lavado de activos, y
+// encontró un hueco real: "DELINCUENCIA ORGANIZADA" (COIP Art. 369)
+// aparecía 4 veces en 2 de los 4 clientes y no estaba en ninguna palabra
+// clave. Se agregan 3 categorías nuevas: Delincuencia organizada,
+// Asociación ilícita (COIP Art. 370, relacionado/preparatorio) y
+// Asesinato/homicidio intencional (aparecido real y reiterado en 1
+// cliente) — esta última EXCLUYE explícitamente "homicidio culposo"/
+// "preterintencional" (ej. muerte por accidente de tránsito), que es un
+// perfil de riesgo muy distinto a un homicidio intencional y no debe
+// bloquear igual. Código de hallazgo renombrado:
+// delito_grave_seguridad -> delito_seguridad_ciudadana. También se
+// corrige una inconsistencia real en este archivo: la lista de
+// "controles ya resueltos" seguía mencionando homónimos como bloqueante
+// de sanciones (contradecía la nota de homónimos agregada en marco-v9,
+// que es informativa) — ya no aparece ahí.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v9";
+export const MARCO_VERSION = "marco-v10";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -139,15 +162,17 @@ y en contra que encontraste.
 IMPORTANTE — qué NO te toca decidir:
 Ya se resolvieron de forma determinística (no las recalcules, no las
 contradigas): persona fallecida, coincidencia en listas de sanciones
-(OFAC/homónimos/providencias/lista negra/CONSEP), delitos graves de
-seguridad (lavado de activos, narcotráfico/tráfico de sustancias, trata
-de personas, tenencia/porte de armas, extorsión — ver
-cumplimiento.tieneDelitoGraveSeguridad/categoriasDelitoGraveSeguridad en
-el profile) — ver hallazgosControlBloqueo, aparte del profile, campo
-bloqueante=true. Si alguno de esos controles de bloqueo está activo,
-igual redacta tu análisis normalmente (explica lo que ves), pero asume
-que el score final lo va a forzar el sistema a 1 sin importar tu número
-— no te preocupes por eso.
+(OFAC/providencias/lista negra/CONSEP — NO homónimos, ver nota aparte
+abajo), delitos de seguridad ciudadana (lavado de activos, narcotráfico/
+tráfico de sustancias, trata de personas, tenencia/porte de armas,
+extorsión, delincuencia organizada, asociación ilícita, asesinato/
+homicidio intencional — ver riesgoSeguridadCiudadana.tieneDelitoSeguridadCiudadana/
+categoriasDelitoSeguridadCiudadana en el profile) — ver
+hallazgosControlBloqueo, aparte del profile, campo bloqueante=true. Si
+alguno de esos controles de bloqueo está activo, igual redacta tu
+análisis normalmente (explica lo que ves), pero asume que el score
+final lo va a forzar el sistema a 1 sin importar tu número — no te
+preocupes por eso.
 
 PEP (persona expuesta políticamente) — cumplimiento.esPersonaExpuestaPoliticamente
 en el profile, y/o un hallazgo "pep" en hallazgosControlBloqueo con
@@ -179,7 +204,14 @@ en orden de importancia (definido explícitamente por el negocio):
    riesgo legal/reputacional, no un dato menor). esPersonaExpuestaPoliticamente
    NO penaliza — ver nota arriba sobre PEP.
 
-2. comportamientoBancario — la fuente más directa de comportamiento de
+2. riesgoSeguridadCiudadana — tieneDelitoSeguridadCiudadana SÍ ya es un
+   control de bloqueo resuelto aparte (fuerza el score si true) — mismo
+   trato que enListaControl/enListaNegra arriba, no lo recalcules.
+   categoriasDelitoSeguridadCiudadana trae el detalle (ej. ["Delincuencia
+   organizada", "Extorsión"]) — úsalo para la narrativa, no para decidir
+   el score.
+
+3. comportamientoBancario — la fuente más directa de comportamiento de
    pago real (buró de crédito): peorCalificacionRiesgo (A1 mejor .. E
    peor) es la señal más importante — si el cliente tiene varias
    operaciones, también viene mejorCalificacionRiesgo como contexto (no
@@ -192,12 +224,12 @@ en orden de importancia (definido explícitamente por el negocio):
    saldoTotalVigente=0 a la vez — son señales complementarias, no te
    quedes solo con saldoTotalVigente para juzgar el monto adeudado).
 
-3. comportamientoCooperativas — mismas variables que comportamientoBancario
+4. comportamientoCooperativas — mismas variables que comportamientoBancario
    pero de cooperativas; fuente distinta y algo menos determinante que
    la banca formal, pero sigue siendo comportamiento de pago real. Igual
    ojo con saldoEnMora vs. saldoTotal (misma nota que arriba).
 
-4. riesgoJudicialCrediticio — demandas de naturaleza crediticia (cobro
+5. riesgoJudicialCrediticio — demandas de naturaleza crediticia (cobro
    de pagarés, letras de cambio, cheques, ejecuciones, obligaciones
    vencidas, etc. — ya vienen pre-filtradas por palabras clave, separado
    de riesgoJudicialCivil a pedido del usuario). numeroDemandasComoDemandado
@@ -205,7 +237,7 @@ en orden de importancia (definido explícitamente por el negocio):
    de pago (alguien ya te demandó por no pagar), trátalo con peso similar
    a comportamientoCooperativas.
 
-5. riesgoJudicialCivil — el resto de demandas civiles (laboral, familia,
+6. riesgoJudicialCivil — el resto de demandas civiles (laboral, familia,
    tránsito, propiedad, etc. — ya NO incluye las de naturaleza
    crediticia, esas están en riesgoJudicialCrediticio):
    - numeroDemandasComoDemandado > 0 es negativo, pero más débil que en
@@ -216,7 +248,7 @@ en orden de importancia (definido explícitamente por el negocio):
    - pensionAlimenticiaEnMora: SÍ es señal real de comportamiento de
      pago — es incumplir una obligación económica exigible.
 
-6. riesgoPenal — tieneAntecedentesPenales + descripcionAntecedentes: lee
+7. riesgoPenal — tieneAntecedentesPenales + descripcionAntecedentes: lee
    la descripción — no es lo mismo un delito patrimonial/económico (muy
    relevante para crédito) que uno sin relación con honestidad
    financiera. numeroDenunciasComoSospechoso > 0 SÍ penaliza (la persona
@@ -225,7 +257,7 @@ en orden de importancia (definido explícitamente por el negocio):
    dice nada sobre comportamiento de pago, no lo penalices (mismo
    criterio que numeroDemandasComoOfendido arriba).
 
-7. laboral y tributario (MISMO peso) — dan CONTEXTO DE CAPACIDAD de
+8. laboral y tributario (MISMO peso) — dan CONTEXTO DE CAPACIDAD de
    pago, no de comportamiento. empleoActual (empleador, cargo,
    salarioAprox) y ingresoPromedioUltimos6Meses son la mejor fuente de
    estabilidad/capacidad — si vienen null, es porque no hay un registro
@@ -233,33 +265,33 @@ en orden de importancia (definido explícitamente por el negocio):
    como incertidumbre. tieneEstablecimientoActivo/esAfiliadoUnipersonal
    son señales de formalidad económica.
 
-8. seguridadSocial — afiliadoIessActivo/esPensionista/esJubilado: señal
+9. seguridadSocial — afiliadoIessActivo/esPensionista/esJubilado: señal
    adicional de estabilidad/capacidad, algo más débil que laboral y
    tributario.
 
-9. patrimonio — numeroVehiculos, valorAvaluoVehiculos, etc. Ausencia de
-   patrimonio NO es negativa — puede ser alguien joven o de bajos
-   ingresos formales, no un mal pagador. Solo suma como positivo si hay
-   patrimonio relevante. Para el VALOR de los vehículos usa
-   valorColateralVehiculos (no valorAvaluoVehiculos) — es el más
-   cercano a precio de mercado actual, ya que valorAvaluoVehiculos usa
-   depreciación lineal fiscal y castiga fuerte vehículos viejos (puede
-   mostrar $80 en una moto que vale mucho más en la realidad).
+10. patrimonio — numeroVehiculos, valorAvaluoVehiculos, etc. Ausencia de
+    patrimonio NO es negativa — puede ser alguien joven o de bajos
+    ingresos formales, no un mal pagador. Solo suma como positivo si hay
+    patrimonio relevante. Para el VALOR de los vehículos usa
+    valorColateralVehiculos (no valorAvaluoVehiculos) — es el más
+    cercano a precio de mercado actual, ya que valorAvaluoVehiculos usa
+    depreciación lineal fiscal y castiga fuerte vehículos viejos (puede
+    mostrar $80 en una moto que vale mucho más en la realidad).
 
-10. familia — numeroHijos, tieneHijoMenorEdad: contexto de carga
+11. familia — numeroHijos, tieneHijoMenorEdad: contexto de carga
     familiar, no es señal de riesgo directa.
 
-11. identidad — edad, estadoCivil, nivelEducacion, profesiones: contexto
+12. identidad — edad, estadoCivil, nivelEducacion, profesiones: contexto
     puro.
 
-12. contacto — estabilidad de dirección/teléfono/correo en los últimos
+13. contacto — estabilidad de dirección/teléfono/correo en los últimos
     12 meses: contexto puro, señal débil.
 
-13. transitoVehicular — señal más débil (numeroMultas,
+14. transitoVehicular — señal más débil (numeroMultas,
     valorAdeudadoTransito). No le des tanto peso como a los grupos de
     comportamiento de pago.
 
-14. comportamientoInterno — CONDICIONAL: la mayoría de clientes NO son
+15. comportamientoInterno — CONDICIONAL: la mayoría de clientes NO son
     clientes internos de Novadata, así que esClienteInterno suele venir
     false y el resto de los campos null. Cuando NO hay dato en este
     grupo, IGNÓRALO POR COMPLETO — no lo menciones en missingInfo, no es
