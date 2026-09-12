@@ -3,6 +3,7 @@ import { useSession } from "./lib/useSession.js";
 import Login from "./pages/Login.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import ClientReport from "./pages/ClientReport.jsx";
+import PerfilCliente from "./pages/PerfilCliente.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
 
@@ -45,6 +46,14 @@ export default function App() {
             element={
               <RequireSession>
                 <ClientSearch />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/perfil/:cedula"
+            element={
+              <RequireSession>
+                <PerfilCliente />
               </RequireSession>
             }
           />

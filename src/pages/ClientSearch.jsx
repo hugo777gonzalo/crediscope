@@ -9,7 +9,7 @@ export default function ClientSearch() {
     e.preventDefault();
     const value = cedula.trim();
     if (!value) return;
-    navigate(`/clientes/${encodeURIComponent(value)}`);
+    navigate(`/perfil/${encodeURIComponent(value)}`);
   }
 
   return (

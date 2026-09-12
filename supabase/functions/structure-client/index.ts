@@ -12,6 +12,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
 import { classifyProfile, CLASSIFICATION_VERSION } from "../_shared/classify.ts";
+import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledFields, loadDisabledResources } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -77,6 +78,12 @@ Deno.serve(async (req) => {
     const disabledFields = await loadDisabledFields(serviceClient);
     const classification = classifyProfile(profile, disabledFields);
 
+    // 4b. Controles de bloqueo — determinísticos, no dependen del LLM.
+    //     Perfil del Cliente necesita saber si hay un bloqueo activo
+    //     para mostrar el aviso, aunque todavía no se corrió el
+    //     Análisis con IA.
+    const controlBloqueo = evaluarControlesBloqueo(raw, cedula);
+
     // 5. Persistir
     const { data: saved, error: saveError } = await serviceClient
       .from("client_profiles")
@@ -84,6 +91,7 @@ Deno.serve(async (req) => {
         client_id: client.id,
         standard_profile: profile,
         classification,
+        control_bloqueo: controlBloqueo,
         block_status: blockStatus,
         structure_version: PROCESS_VERSION,
         classification_version: CLASSIFICATION_VERSION,
