@@ -23,6 +23,24 @@ function humanizarTexto(texto) {
   return normal.charAt(0).toUpperCase() + normal.slice(1);
 }
 
+// meses -> "X años Y meses" / "X años" / "Y meses" — más legible que un
+// número crudo de meses para antigüedad laboral/de actividad económica.
+function formatMeses(totalMeses) {
+  const anios = Math.floor(totalMeses / 12);
+  const meses = totalMeses % 12;
+  if (anios === 0) return `${meses} mes${meses === 1 ? "" : "es"}`;
+  if (meses === 0) return `${anios} año${anios === 1 ? "" : "s"}`;
+  return `${anios} año${anios === 1 ? "" : "s"} ${meses} mes${meses === 1 ? "" : "es"}`;
+}
+
+const ETIQUETAS_ESTADO_ACTIVIDAD = {
+  sin_ruc: "Sin RUC",
+  activa_sin_interrupciones: "Activa (sin interrupciones)",
+  activa_reactivada: "Activa (reactivada)",
+  inactiva_nunca_reactivada: "Inactiva (nunca reactivada)",
+  inactiva_tras_reactivacion: "Inactiva (tras una reactivación)",
+};
+
 export function formatValor(valor, tipo) {
   switch (tipo) {
     case "moneda":
@@ -33,6 +51,10 @@ export function formatValor(valor, tipo) {
       return "Sí";
     case "texto":
       return humanizarTexto(String(valor));
+    case "meses":
+      return formatMeses(valor);
+    case "estado_actividad":
+      return ETIQUETAS_ESTADO_ACTIVIDAD[valor] ?? valor;
     default:
       return String(valor);
   }
@@ -44,7 +66,7 @@ export function valorVisible(profile, campo, tipo) {
   if (valor === null || valor === undefined) return null;
   if (tipo === "booleano_si_true") return valor === true ? true : null;
   if (tipo === "lista") return Array.isArray(valor) && valor.length > 0 ? valor : null;
-  if ((tipo === "numero" || tipo === "moneda") && valor === 0) return null;
+  if ((tipo === "numero" || tipo === "moneda" || tipo === "meses") && valor === 0) return null;
   if (tipo === "texto" && valor === "") return null;
   return valor;
 }
@@ -94,8 +116,13 @@ export const GRUPOS_CONFIG = {
       ["empleoActual.salarioAprox", "Salario aproximado", "moneda"],
       ["ingresoPromedioUltimos6Meses", "Ingreso promedio (6m)", "moneda"],
       ["numeroEmpleadoresUltimos24Meses", "Empleadores activos (24m)", "numero"],
+      ["antiguedadEmpleoActualMeses", "Antigüedad en el empleo actual", "meses"],
+      ["duracionEmpleoMasLargoMeses", "Empleo más largo registrado", "meses"],
       ["tieneRucActivo", "RUC activo", "booleano_si_true"],
       ["tieneEstablecimientoActivo", "Establecimiento activo", "booleano_si_true"],
+      ["estadoActividadEconomica", "Estado de la actividad económica", "estado_actividad"],
+      ["antiguedadUltimaEtapaActivaMeses", "Antigüedad de la actividad económica", "meses"],
+      ["mesesInactivoActividadEconomica", "Tiempo inactiva", "meses"],
       ["esIndependiente", "Independiente", "booleano_si_true"],
       ["numeroEmpleadosRegistrados", "Empleados registrados", "numero"],
     ],

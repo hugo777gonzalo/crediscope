@@ -218,6 +218,33 @@ export interface StandardClientProfile {
     numeroEstablecimientosActivos: number;
     numeroEstablecimientosInactivos: number;
     tieneEstablecimientosRegistrados: boolean;
+    // Estado y antigüedad de la actividad económica — Novadata/SRI solo
+    // guardan la fecha del cese y del reinicio MÁS RECIENTES, no un
+    // historial completo de ciclos, así que "años desde el inicio" solo
+    // alcanza cuando nunca hubo cese. Ver los 5 casos documentados en
+    // process.ts (caso real confirmado: cédula 0502932429 — reinicio
+    // 2014 anterior al cese 2018, o sea inactiva hace ~8 años pese a
+    // que el inicio fue en 2009).
+    estadoActividadEconomica:
+      | "sin_ruc"
+      | "activa_sin_interrupciones"
+      | "activa_reactivada"
+      | "inactiva_nunca_reactivada"
+      | "inactiva_tras_reactivacion"
+      | null;
+    antiguedadUltimaEtapaActivaMeses: number | null; // de la racha activa actual (si activa) o de la última antes de cesar (si inactiva)
+    mesesInactivoActividadEconomica: number | null; // null si está activa
+    // Antigüedad laboral — fuente tiess (fecIng/fecSal), independiente
+    // de empleoActual (fuente trabajoHistoricosMecanizado, puede diferir
+    // levemente en el nombre del empleador). Solo se reporta si hay al
+    // menos 3 snapshots mensuales confirmados para ese empleo — evita
+    // mostrar antigüedad de 1 mes como si fuera un dato sólido.
+    antiguedadEmpleoActualMeses: number | null;
+    // Empleo más largo registrado históricamente (incluye el actual si
+    // es el más largo) — señal de estabilidad aparte de la antigüedad
+    // actual: alguien con un empleo corto hoy pero años de tenencias
+    // largas es más estable que alguien que salta de trabajo en trabajo.
+    duracionEmpleoMasLargoMeses: number | null;
   };
 
   tributario: {

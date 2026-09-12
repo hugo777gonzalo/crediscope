@@ -5,7 +5,7 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v11) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v12) ***
 // El orden de importancia de los grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta
@@ -164,11 +164,39 @@
 //   decisión explícita del usuario tras discutirlo) — mismo criterio ya
 //   aplicado a familia (grupo 11).
 //
+// v12: agrega 5 campos nuevos de estabilidad laboral y de actividad
+// económica (laboral), a pedido del usuario, validados con caso real
+// (cédula 0502932429, "Cristina Bearrazueta"):
+// - estadoActividadEconomica/antiguedadUltimaEtapaActivaMeses/
+//   mesesInactivoActividadEconomica: Novadata/SRI solo guardan la fecha
+//   del cese y del reinicio MÁS RECIENTES, no un historial completo de
+//   ciclos — "años desde el inicio" puede ser muy engañoso. Caso real:
+//   inicio 2009, reinicio 2014, cese 2018 -> el reinicio es ANTERIOR al
+//   cese más reciente, o sea la persona está INACTIVA hace ~8 años
+//   (mesesInactivoActividadEconomica=99), no "activa hace 16 años"
+//   como leería alguien mirando solo fechaInicioActividadesRuc. Se
+//   documentan los 5 casos posibles en process.ts.
+// - antiguedadEmpleoActualMeses/duracionEmpleoMasLargoMeses: antigüedad
+//   del empleo actual (fuente tiess, independiente de empleoActual) y
+//   la duración del empleo más largo registrado históricamente — señal
+//   de estabilidad que antes no existía. Solo se reporta la antigüedad
+//   actual si hay al menos 3 snapshots mensuales confirmados.
+//
+// BUG encontrado de paso implementando esto (afecta código ya en
+// producción desde marco-v9): tiess.fecIng/fecSal vienen en formato
+// DD/MM/YYYY, pero se parseaban con new Date() directo, que interpreta
+// slashes como MM/DD/YYYY (americano) — confirmado con un valor real
+// inequívoco ("13/12/2024", día 13 no puede ser mes, daba Invalid
+// Date). Afectaba a numeroEmpleadoresUltimos24Meses en 36 de 40
+// clientes de la muestra (340 fechas con día>12, prueba de que el
+// bug era real y no solo teórico). Se agrega parseFechaDDMMYYYY()
+// dedicado — ver process.ts.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v11";
+export const MARCO_VERSION = "marco-v12";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -291,6 +319,29 @@ en orden de importancia (definido explícitamente por el negocio):
    de IESS confiable de los últimos 3 meses, no asumas lo peor, trátalo
    como incertidumbre. tieneEstablecimientoActivo/esAfiliadoUnipersonal
    son señales de formalidad económica.
+   - antiguedadEmpleoActualMeses: SÍ es señal real de estabilidad — más
+     meses en el mismo empleo es positivo. null significa que el empleo
+     actual tiene menos de 3 meses confirmados en el registro (muy
+     reciente, no necesariamente malo, trátalo como incertidumbre, no
+     como negativo).
+   - duracionEmpleoMasLargoMeses: contexto adicional de trayectoria —
+     alguien con un empleo actual corto pero un empleo pasado largo (ej.
+     8+ años) es más estable que alguien que salta de trabajo en
+     trabajo, aunque su antigüedad actual sea baja. Complementa, no
+     reemplaza, a antiguedadEmpleoActualMeses.
+   - estadoActividadEconomica/antiguedadUltimaEtapaActivaMeses/
+     mesesInactivoActividadEconomica: OJO — estos NO reemplazan a
+     tieneEstablecimientoActivo/tieneRucActivo (que ya reflejan
+     correctamente si está activo hoy), son el detalle de CUÁNTO tiempo
+     y en qué situación. "activa_sin_interrupciones" o "activa_reactivada"
+     con antiguedadUltimaEtapaActivaMeses alto es positivo (formalidad
+     económica sostenida). "inactiva_nunca_reactivada" o
+     "inactiva_tras_reactivacion" NO es necesariamente negativo por sí
+     solo (dejar de facturar no es una falta), pero sí le resta peso a
+     tieneEstablecimientoActivo/esAfiliadoUnipersonal como señal de
+     formalidad VIGENTE — no cuentes esa formalidad como algo activo hoy
+     si el estado dice inactiva. mesesInactivoActividadEconomica alto
+     (años) refuerza que es historia pasada, no situación actual.
 
 9. seguridadSocial — afiliadoIessActivo/esPensionista/esJubilado: señal
    adicional de estabilidad/capacidad, algo más débil que laboral y

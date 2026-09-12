@@ -47,6 +47,23 @@ function mesesDesde(fecha) {
   return (ahora.getFullYear() - d.getFullYear()) * 12 + (ahora.getMonth() - d.getMonth());
 }
 
+function mesesEntreFechas(d1, d2) {
+  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+}
+
+// tiess (fecIng/fecSal) viene en DD/MM/YYYY -- ver nota completa en process.ts.
+function parseFechaDDMMYYYY(v) {
+  const m = typeof v === "string" ? v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/) : null;
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function mesesDesdeDDMMYYYY(v) {
+  const d = parseFechaDDMMYYYY(v);
+  return d ? mesesEntreFechas(d, new Date()) : null;
+}
+
 function dentroUltimos12Meses(fecha) {
   const meses = mesesDesde(fecha);
   return meses !== null && meses >= 0 && meses <= 12;
@@ -241,6 +258,29 @@ function buildStandardProfile(raw, cedula) {
   const establecimientos = arr(trabajo, "establecimientoActEconomica", "datosEstablecimientoActEco");
   const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
+  // Estado y antigüedad de la actividad económica -- ver los 5 casos
+  // documentados en process.ts.
+  const inicioActividad = parseFecha(rucReferencia?.fecha_inicio_actividades);
+  const ceseActividad = rucReferencia ? ceseMasReciente(rucReferencia) : null;
+  const reinicioActividad = parseFecha(rucReferencia?.fecha_reinicio_actividades);
+  const ahoraActividad = new Date();
+  let estadoActividadEconomica = null;
+  let antiguedadUltimaEtapaActivaMeses = null;
+  let mesesInactivoActividadEconomica = null;
+  if (!rucReferencia?.ruc) {
+    estadoActividadEconomica = "sin_ruc";
+  } else if (!ceseActividad) {
+    estadoActividadEconomica = "activa_sin_interrupciones";
+    antiguedadUltimaEtapaActivaMeses = inicioActividad ? mesesEntreFechas(inicioActividad, ahoraActividad) : null;
+  } else if (reinicioActividad && reinicioActividad > ceseActividad) {
+    estadoActividadEconomica = "activa_reactivada";
+    antiguedadUltimaEtapaActivaMeses = mesesEntreFechas(reinicioActividad, ahoraActividad);
+  } else {
+    const inicioUltimaEtapa = reinicioActividad ?? inicioActividad;
+    estadoActividadEconomica = reinicioActividad ? "inactiva_tras_reactivacion" : "inactiva_nunca_reactivada";
+    antiguedadUltimaEtapaActivaMeses = inicioUltimaEtapa ? mesesEntreFechas(inicioUltimaEtapa, ceseActividad) : null;
+    mesesInactivoActividadEconomica = mesesEntreFechas(ceseActividad, ahoraActividad);
+  }
   const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
@@ -258,6 +298,32 @@ function buildStandardProfile(raw, cedula) {
   );
   const ultimoMecanizado = mecanizadoOrdenado[0] ?? null;
   const empleoActualConfiable = ultimoMecanizado && dentroUltimos3Meses(ultimoMecanizado.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
+  // Antigüedad laboral -- fuente tiess (fecIng/fecSal), independiente
+  // de empleoActual -- ver nota completa en process.ts.
+  const tiessActivos = tiess.filter((t) => !String(t.fecSal ?? "").trim());
+  const tiessActivoMasReciente = [...tiessActivos].sort(
+    (a, b) => (num(b.anio) ?? 0) * 12 + (num(b.mes) ?? 0) - ((num(a.anio) ?? 0) * 12 + (num(a.mes) ?? 0))
+  )[0];
+  const fecIngEmpleoActual = tiessActivoMasReciente ? parseFechaDDMMYYYY(tiessActivoMasReciente.fecIng) : null;
+  const snapshotsEmpleoActual = tiessActivoMasReciente
+    ? tiess.filter((t) => t.fecIng === tiessActivoMasReciente.fecIng && t.nomEmp === tiessActivoMasReciente.nomEmp).length
+    : 0;
+  const antiguedadEmpleoActualMeses =
+    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad) : null;
+  const empleosUnicos = new Map();
+  for (const t of tiess) {
+    const clave = `${t.nomEmp}|${t.fecIng}|${t.fecSal}`;
+    if (!empleosUnicos.has(clave)) empleosUnicos.set(clave, t);
+  }
+  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses, t) => {
+    const inicio = parseFechaDDMMYYYY(t.fecIng);
+    if (!inicio) return maxMeses;
+    const finStr = String(t.fecSal ?? "").trim();
+    const fin = finStr ? parseFechaDDMMYYYY(finStr) : ahoraActividad;
+    if (!fin) return maxMeses;
+    const duracion = mesesEntreFechas(inicio, fin);
+    return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
+  }, null);
   const laboral = {
     empleoActual: empleoActualConfiable
       ? {
@@ -273,7 +339,7 @@ function buildStandardProfile(raw, cedula) {
         .filter((t) => {
           const fecSal = String(t.fecSal ?? "").trim();
           if (!fecSal) return true;
-          const m = mesesDesde(fecSal);
+          const m = mesesDesdeDDMMYYYY(fecSal);
           return m !== null && m <= 24;
         })
         .map((t) => t.nomEmp)
@@ -298,6 +364,11 @@ function buildStandardProfile(raw, cedula) {
     numeroEstablecimientosActivos,
     numeroEstablecimientosInactivos,
     tieneEstablecimientosRegistrados: establecimientos.length > 0,
+    estadoActividadEconomica,
+    antiguedadUltimaEtapaActivaMeses,
+    mesesInactivoActividadEconomica,
+    antiguedadEmpleoActualMeses,
+    duracionEmpleoMasLargoMeses,
   };
 
   // ---- tributario (SRI) ----

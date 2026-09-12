@@ -42,6 +42,34 @@ function mesesDesde(fecha: unknown): number | null {
   return (ahora.getFullYear() - d.getFullYear()) * 12 + (ahora.getMonth() - d.getMonth());
 }
 
+// Meses entre 2 fechas ya parseadas (no strings) — usado para
+// antigüedad de actividad económica/empleo, donde el punto de
+// referencia no siempre es "hoy" (ej. cuánto duró una etapa que ya
+// terminó).
+function mesesEntreFechas(d1: Date, d2: Date): number {
+  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+}
+
+// tiess (fecIng/fecSal) viene en DD/MM/YYYY — confirmado con un valor
+// real inequívoco ("13/12/2024", día 13 no puede ser mes). parseFecha
+// (arriba) asume ISO/YYYY-MM-DD y usa new Date() directo, que interpreta
+// slashes como MM/DD/YYYY (americano): "03/02/2025" (3 de febrero)
+// pasaba a leerse como 2 de marzo, y "13/12/2024" directamente daba
+// Invalid Date. Mismo problema que ya se había detectado (y evitado a
+// propósito) en establecimientoActEconomica — ver nota ahí. NO usar
+// parseFecha/mesesDesde con estos 2 campos.
+function parseFechaDDMMYYYY(v: unknown): Date | null {
+  const m = typeof v === "string" ? v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/) : null;
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function mesesDesdeDDMMYYYY(v: unknown): number | null {
+  const d = parseFechaDDMMYYYY(v);
+  return d ? mesesEntreFechas(d, new Date()) : null;
+}
+
 function dentroUltimos12Meses(fecha: unknown): boolean {
   const meses = mesesDesde(fecha);
   return meses !== null && meses >= 0 && meses <= 12;
@@ -259,6 +287,45 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // hay uno, si no el primero disponible (persona natural normalmente
   // tiene un solo registro, pero Novadata devuelve un array).
   const rucReferencia = (contribuyenteRegistros.find(rucRegistroActivo) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
+  // Estado y antigüedad de la actividad económica: Novadata/SRI solo
+  // guardan la fecha del cese MÁS RECIENTE y la del reinicio MÁS
+  // RECIENTE, no un historial completo de ciclos — por eso "16 años
+  // desde el inicio" puede ser engañoso si la persona reinició y volvió
+  // a cesar (caso real: cédula 0502932429, inicio 2009, reinicio 2014,
+  // cese 2018 — el reinicio es ANTERIOR al cese más reciente, o sea
+  // hoy está INACTIVA hace ~8 años, no "activa hace 16"). 5 casos:
+  //   1. Sin RUC -> "sin_ruc".
+  //   2. Sin cese registrado -> activa desde el inicio.
+  //   3. Cese sin reinicio nunca -> inactiva, nunca reactivada; la
+  //      etapa activa (única) duró inicio..cese.
+  //   4. Cese + reinicio POSTERIOR al cese -> activa (reactivada); solo
+  //      podemos medir la antigüedad de la racha actual (reinicio..hoy)
+  //      — no existe dato de cuánto duró la etapa activa anterior al
+  //      cese, no se debe inventar.
+  //   5. Cese + reinicio ANTERIOR o igual al cese (el caso real de
+  //      arriba) -> inactiva tras una reactivación; la última etapa
+  //      activa duró reinicio..cese.
+  const inicioActividad = parseFecha(rucReferencia?.fecha_inicio_actividades);
+  const ceseActividad = rucReferencia ? ceseMasReciente(rucReferencia) : null;
+  const reinicioActividad = parseFecha(rucReferencia?.fecha_reinicio_actividades);
+  const ahoraActividad = new Date();
+  let estadoActividadEconomica: StandardClientProfile["laboral"]["estadoActividadEconomica"] = null;
+  let antiguedadUltimaEtapaActivaMeses: number | null = null;
+  let mesesInactivoActividadEconomica: number | null = null;
+  if (!rucReferencia?.ruc) {
+    estadoActividadEconomica = "sin_ruc";
+  } else if (!ceseActividad) {
+    estadoActividadEconomica = "activa_sin_interrupciones";
+    antiguedadUltimaEtapaActivaMeses = inicioActividad ? mesesEntreFechas(inicioActividad, ahoraActividad) : null;
+  } else if (reinicioActividad && reinicioActividad > ceseActividad) {
+    estadoActividadEconomica = "activa_reactivada";
+    antiguedadUltimaEtapaActivaMeses = mesesEntreFechas(reinicioActividad, ahoraActividad);
+  } else {
+    const inicioUltimaEtapa = reinicioActividad ?? inicioActividad;
+    estadoActividadEconomica = reinicioActividad ? "inactiva_tras_reactivacion" : "inactiva_nunca_reactivada";
+    antiguedadUltimaEtapaActivaMeses = inicioUltimaEtapa ? mesesEntreFechas(inicioUltimaEtapa, ceseActividad) : null;
+    mesesInactivoActividadEconomica = mesesEntreFechas(ceseActividad, ahoraActividad);
+  }
   const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
@@ -275,6 +342,43 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   const mecanizadoOrdenado = [...mecanizado].sort((a, b) => baseDateTs(b) - baseDateTs(a));
   const ultimoMecanizado = (mecanizadoOrdenado[0] as AnyRecord | undefined) ?? null;
   const empleoActualConfiable = Boolean(ultimoMecanizado) && dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
+  // Antigüedad laboral: fuente es tiess (trae fecIng/fecSal), NO
+  // trabajoHistoricosMecanizado (fuente de empleoActual arriba) — son
+  // 2 recursos independientes que pueden diferir levemente en el
+  // nombre del empleador (ej. "S. A." vs "S.A."), por diseño no se
+  // cruzan entre sí. "Actual" = fecSal vacío, tomando el snapshot con
+  // (anio,mes) más reciente. Solo se reporta la antigüedad si hay al
+  // menos 3 snapshots mensuales confirmados para ese fecIng — un
+  // empleo que recién aparece (1-2 meses) puede no ser estable
+  // todavía, mejor no reportar un número que dé falsa confianza.
+  const tiessActivos = tiess.filter((t) => !String(t.fecSal ?? "").trim());
+  const tiessActivoMasReciente = [...tiessActivos].sort(
+    (a, b) => (num(b.anio) ?? 0) * 12 + (num(b.mes) ?? 0) - ((num(a.anio) ?? 0) * 12 + (num(a.mes) ?? 0))
+  )[0] as AnyRecord | undefined;
+  const fecIngEmpleoActual = tiessActivoMasReciente ? parseFechaDDMMYYYY(tiessActivoMasReciente.fecIng) : null;
+  const snapshotsEmpleoActual = tiessActivoMasReciente
+    ? tiess.filter((t) => t.fecIng === tiessActivoMasReciente.fecIng && t.nomEmp === tiessActivoMasReciente.nomEmp).length
+    : 0;
+  const antiguedadEmpleoActualMeses =
+    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad) : null;
+  // Empleo más largo registrado (histórico, incluye el actual si es el
+  // más largo) — señal de estabilidad aparte de la antigüedad actual:
+  // alguien con un empleo corto hoy pero años de tenencias largas es
+  // más estable que alguien que salta de trabajo en trabajo.
+  const empleosUnicos = new Map<string, AnyRecord>();
+  for (const t of tiess) {
+    const clave = `${t.nomEmp}|${t.fecIng}|${t.fecSal}`;
+    if (!empleosUnicos.has(clave)) empleosUnicos.set(clave, t);
+  }
+  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses: number | null, t) => {
+    const inicio = parseFechaDDMMYYYY(t.fecIng);
+    if (!inicio) return maxMeses;
+    const finStr = String(t.fecSal ?? "").trim();
+    const fin = finStr ? parseFechaDDMMYYYY(finStr) : ahoraActividad;
+    if (!fin) return maxMeses;
+    const duracion = mesesEntreFechas(inicio, fin);
+    return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
+  }, null);
   const laboral: StandardClientProfile["laboral"] = {
     empleoActual: empleoActualConfiable
       ? {
@@ -296,7 +400,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
         .filter((t) => {
           const fecSal = String(t.fecSal ?? "").trim();
           if (!fecSal) return true;
-          const m = mesesDesde(fecSal);
+          const m = mesesDesdeDDMMYYYY(fecSal);
           return m !== null && m <= 24;
         })
         .map((t) => t.nomEmp)
@@ -328,6 +432,11 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     numeroEstablecimientosActivos,
     numeroEstablecimientosInactivos,
     tieneEstablecimientosRegistrados: establecimientos.length > 0,
+    estadoActividadEconomica,
+    antiguedadUltimaEtapaActivaMeses,
+    mesesInactivoActividadEconomica,
+    antiguedadEmpleoActualMeses,
+    duracionEmpleoMasLargoMeses,
   };
 
   // ---- tributario (SRI) ----
