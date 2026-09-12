@@ -14,14 +14,25 @@ function get(obj, path) {
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
+// Novadata devuelve varios campos de texto en MAYÚSCULAS_CON_GUION_BAJO
+// (nivelEducacion, estadoCivil, genero, tipos de demanda, etc.) — se
+// normalizan a formato de lectura sin perder la palabra completa.
+function humanizarTexto(texto) {
+  if (texto !== texto.toUpperCase()) return texto; // ya viene con formato propio (ej. nombres propios)
+  const normal = texto.replace(/_/g, " ").toLowerCase();
+  return normal.charAt(0).toUpperCase() + normal.slice(1);
+}
+
 export function formatValor(valor, tipo) {
   switch (tipo) {
     case "moneda":
       return MONEDA.format(valor);
     case "lista":
-      return valor.join(", ");
+      return valor.map(humanizarTexto).join(", ");
     case "booleano_si_true":
       return "Sí";
+    case "texto":
+      return humanizarTexto(String(valor));
     default:
       return String(valor);
   }
