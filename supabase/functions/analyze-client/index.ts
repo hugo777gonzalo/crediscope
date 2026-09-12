@@ -5,10 +5,20 @@
 // sistemas externos que quieran consumir el análisis vía API (con su
 // propio JWT/API key de servicio).
 //
-// Body esperado: { "cedula": "0102030405" }
+// Body esperado: { "cedula": "0102030405", "profileId"?: "uuid" }
+//
+// profileId (opcional, usado por "Análisis con IA" en la web): id de un
+// client_profiles ya generado por structure-client. Si viene, se
+// reutiliza ese standard_profile/control_bloqueo tal cual — SIN volver
+// a consultar Novadata — para que el análisis explique exactamente lo
+// que el analista vio en Perfil del Cliente (ventana de reutilización:
+// 7 días, decisión de la UI, no de este endpoint). Si no viene (uso
+// típico de sistemas externos vía API), se consulta Novadata en fresco
+// como siempre.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import type { BlockStatusMap, ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
@@ -30,9 +40,11 @@ Deno.serve(async (req) => {
   }
 
   let cedula: string | undefined;
+  let profileId: string | undefined;
   try {
     const body = await req.json();
     cedula = body?.cedula;
+    profileId = body?.profileId;
   } catch {
     // body inválido, se maneja abajo
   }
@@ -76,21 +88,44 @@ Deno.serve(async (req) => {
       .single();
     if (runError) throw runError;
 
-    // 3. Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
-    //    Recursos deshabilitados en novadata_resource_config se saltan
-    //    (ver _shared/runtime-config.ts) — fuentes públicas/externas que
-    //    pueden fallar o deshabilitarse.
-    const disabledResources = await loadDisabledResources(serviceClient);
-    const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
+    // 3-5. Estructura Estandarizada + controles de bloqueo: reutilizados
+    // de un client_profiles existente si viene profileId (ver nota de
+    // cabecera), o calculados en fresco si no.
+    let profile: StandardClientProfile;
+    let blockStatus: BlockStatusMap;
+    let controlBloqueo: ResultadoControlBloqueo;
 
-    // 4. Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
-    // ClientContext casi crudo de antes, mucho más liviana para el LLM.
-    const { profile, blockStatus } = buildStandardProfile(raw, cedula);
+    if (profileId) {
+      const { data: reused, error: reusedError } = await serviceClient
+        .from("client_profiles")
+        .select("standard_profile, control_bloqueo, block_status")
+        .eq("id", profileId)
+        .eq("client_id", client.id)
+        .maybeSingle();
+      if (reusedError) throw reusedError;
+      if (!reused) throw new Error("No se encontró el perfil a reutilizar (profileId) para esta cédula");
+      profile = reused.standard_profile;
+      blockStatus = reused.block_status;
+      controlBloqueo = reused.control_bloqueo;
+    } else {
+      // Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
+      // Recursos deshabilitados en novadata_resource_config se saltan
+      // (ver _shared/runtime-config.ts) — fuentes públicas/externas que
+      // pueden fallar o deshabilitarse.
+      const disabledResources = await loadDisabledResources(serviceClient);
+      const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
-    // 5. Controles de bloqueo determinísticos (fallecido, listas de
-    // control/PEP/OFAC, cédula inconsistente) — NO se delegan al LLM,
-    // ver _shared/controles-bloqueo.ts
-    const controlBloqueo = evaluarControlesBloqueo(raw, cedula);
+      // Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
+      // ClientContext casi crudo de antes, mucho más liviana para el LLM.
+      const built = buildStandardProfile(raw, cedula);
+      profile = built.profile;
+      blockStatus = built.blockStatus;
+
+      // Controles de bloqueo determinísticos (fallecido, listas de
+      // control/PEP/OFAC, cédula inconsistente) — NO se delegan al LLM,
+      // ver _shared/controles-bloqueo.ts
+      controlBloqueo = evaluarControlesBloqueo(raw, cedula);
+    }
 
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
     // consulta igual aunque haya un control de bloqueo bloqueante, para

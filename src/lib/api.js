@@ -8,16 +8,19 @@ const FUNCTIONS_URL =
   import.meta.env.VITE_FUNCTIONS_URL ||
   (isSupabaseConfigured ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1` : "http://localhost:54321/functions/v1");
 
-// Llama a la Edge Function `analyze-client`, que orquesta la ingesta de
-// Novadata, corre los controles de bloqueo + el scoring por LLM, y
-// persiste el resultado. El mismo endpoint sirve como API para sistemas
-// externos (ver supabase/functions/analyze-client/index.ts).
-export async function analyzeClient(cedula) {
+// Llama a la Edge Function `analyze-client`, que corre los controles de
+// bloqueo + el scoring por LLM, y persiste el resultado. El mismo
+// endpoint sirve como API para sistemas externos (ver
+// supabase/functions/analyze-client/index.ts). `profileId` (opcional):
+// id de un client_profiles ya generado por structureClient — si viene,
+// se reutiliza ese Perfil del Cliente en vez de volver a consultar
+// Novadata (ver "Análisis con IA").
+export async function analyzeClient(cedula, { profileId } = {}) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no está configurado.");
   }
   const { data, error } = await supabase.functions.invoke("analyze-client", {
-    body: { cedula },
+    body: { cedula, profileId },
   });
   if (error) throw error;
   return data;
