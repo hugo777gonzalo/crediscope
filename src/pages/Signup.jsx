@@ -1,59 +1,24 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Mail } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient.js";
+import { useSession } from "../lib/useSession.js";
 import LogoMark from "../components/LogoMark.jsx";
 
-const LARGO_CODIGO = 6;
-
-// Crear cuenta pública, en 2 pasos -- a pedido del usuario, verificación
-// de correo con un código (como Netflix/Disney+), no un link mágico.
-// Requiere 2 cambios de configuración en el dashboard de Supabase que
-// no se pueden hacer por código (ver 024_signup_publico.sql): "Confirm
-// email" activado, y el template de "Confirm signup" mostrando
-// {{ .Token }}. El rol siempre queda "analista" -- lo fuerza el
-// trigger de la base (handle_new_user), nunca este formulario.
-function CampoCodigo({ valor, onChange }) {
-  const refs = useRef([]);
-
-  function actualizarDigito(i, char) {
-    const limpio = char.replace(/\D/g, "").slice(-1);
-    const nuevo = valor.split("");
-    nuevo[i] = limpio;
-    const siguiente = nuevo.join("").padEnd(LARGO_CODIGO, " ").slice(0, LARGO_CODIGO);
-    onChange(siguiente.trimEnd());
-    if (limpio && i < LARGO_CODIGO - 1) refs.current[i + 1]?.focus();
-  }
-
-  function manejarTeclado(i, e) {
-    if (e.key === "Backspace" && !valor[i] && i > 0) refs.current[i - 1]?.focus();
-  }
-
-  function manejarPegado(e) {
-    e.preventDefault();
-    const pegado = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, LARGO_CODIGO);
-    onChange(pegado);
-    refs.current[Math.min(pegado.length, LARGO_CODIGO - 1)]?.focus();
-  }
-
-  return (
-    <div className="crediscope-otp-row" onPaste={manejarPegado}>
-      {Array.from({ length: LARGO_CODIGO }).map((_, i) => (
-        <input
-          key={i}
-          ref={(el) => (refs.current[i] = el)}
-          className="crediscope-otp-digit"
-          inputMode="numeric"
-          maxLength={1}
-          value={valor[i] ?? ""}
-          onChange={(e) => actualizarDigito(i, e.target.value)}
-          onKeyDown={(e) => manejarTeclado(i, e)}
-          autoFocus={i === 0}
-        />
-      ))}
-    </div>
-  );
-}
-
+// Crear cuenta pública, en 2 pasos. Idealmente el paso 2 verifica el
+// correo con un código de 6 dígitos (como Netflix/Disney+) -- ESO
+// QUEDÓ PENDIENTE: Supabase no deja editar el contenido de sus
+// plantillas de correo (para mostrar {{ .Token }} en vez de un link)
+// salvo que se configure SMTP propio (Project Settings > Authentication
+// > SMTP Settings, ej. Resend). Mientras tanto el paso 2 es un simple
+// "revisá tu correo y hacé click en el link" -- Supabase redirige de
+// vuelta a esta app (ver Site URL en Authentication > URL Configuration,
+// tiene que apuntar acá, no al localhost:3000 por defecto) y
+// supabase-js detecta la sesión sola desde el link, incluso si se abrió
+// en otra pestaña (sincroniza sesión entre pestañas vía localStorage).
+// Cuando se configure SMTP, reintroducir el campo de código acá (ver
+// historial de este archivo) y agregar {{ .Token }} al template de
+// "Confirm signup".
 export default function Signup() {
   const [paso, setPaso] = useState("datos");
   const [email, setEmail] = useState("");
@@ -61,12 +26,20 @@ export default function Signup() {
   const [entidad, setEntidad] = useState("");
   const [password, setPassword] = useState("");
   const [confirmarPassword, setConfirmarPassword] = useState("");
-  const [codigo, setCodigo] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  const { session } = useSession();
   const navigate = useNavigate();
+
+  // Si el usuario confirma el correo haciendo click en el link (en esta
+  // misma pestaña o en otra -- supabase-js sincroniza sesión entre
+  // pestañas vía localStorage), la sesión se activa sola y hay que
+  // sacarlo de esta pantalla de espera.
+  useEffect(() => {
+    if (paso === "verificar" && session) navigate("/");
+  }, [paso, session, navigate]);
 
   async function handleSubmitDatos(e) {
     e.preventDefault();
@@ -97,23 +70,6 @@ export default function Signup() {
     setPaso("verificar");
   }
 
-  async function handleSubmitCodigo(e) {
-    e.preventDefault();
-    setError(null);
-    if (codigo.length !== LARGO_CODIGO) {
-      setError(`Ingresá los ${LARGO_CODIGO} dígitos del código.`);
-      return;
-    }
-    setLoading(true);
-    const { error: otpError } = await supabase.auth.verifyOtp({ email, token: codigo, type: "signup" });
-    setLoading(false);
-    if (otpError) {
-      setError("Código incorrecto o vencido. Pedí uno nuevo si hace falta.");
-      return;
-    }
-    navigate("/");
-  }
-
   async function handleReenviar() {
     setReenviando(true);
     setError(null);
@@ -124,7 +80,7 @@ export default function Signup() {
       setError(resendError.message);
       return;
     }
-    setMensaje("Te reenviamos el código.");
+    setMensaje("Te reenviamos el correo.");
   }
 
   if (!isSupabaseConfigured) {
@@ -218,21 +174,19 @@ export default function Signup() {
           </>
         ) : (
           <>
-            <h1 className="crediscope-auth-title">Verificá tu correo</h1>
+            <div className="crediscope-auth-icon-circle">
+              <Mail size={26} />
+            </div>
+            <h1 className="crediscope-auth-title">Revisá tu correo</h1>
             <p className="crediscope-auth-subtitle">
-              Te enviamos un código de {LARGO_CODIGO} dígitos a <strong>{email}</strong>.
+              Te enviamos un mail a <strong>{email}</strong> con un link para confirmar tu cuenta. Abrilo desde este mismo navegador —
+              al confirmar, esta pantalla te va a llevar sola a CrediScope.
             </p>
-            <form onSubmit={handleSubmitCodigo} className="crediscope-auth-form">
-              <CampoCodigo valor={codigo} onChange={setCodigo} />
-              {error ? <p className="crediscope-auth-error">{error}</p> : null}
-              {mensaje ? <p className="crediscope-auth-mensaje">{mensaje}</p> : null}
-              <button className="crediscope-btn crediscope-auth-submit" type="submit" disabled={loading}>
-                {loading ? "Verificando..." : "Confirmar código"}
-              </button>
-              <button type="button" className="crediscope-btn crediscope-btn-ghost" onClick={handleReenviar} disabled={reenviando}>
-                {reenviando ? "Reenviando..." : "Reenviar código"}
-              </button>
-            </form>
+            {error ? <p className="crediscope-auth-error">{error}</p> : null}
+            {mensaje ? <p className="crediscope-auth-mensaje">{mensaje}</p> : null}
+            <button type="button" className="crediscope-btn crediscope-btn-ghost crediscope-auth-submit" onClick={handleReenviar} disabled={reenviando}>
+              {reenviando ? "Reenviando..." : "Reenviar correo"}
+            </button>
           </>
         )}
 

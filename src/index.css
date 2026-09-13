@@ -486,6 +486,18 @@ a {
   margin-bottom: 20px;
 }
 
+.crediscope-auth-icon-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--panel-muted);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
 .crediscope-auth-title {
   font-size: 22px;
   font-weight: 700;
@@ -545,6 +557,9 @@ a {
   margin: 22px 0 0;
 }
 
+/* Sin uso mientras el signup verifique por link (ver nota en Signup.jsx)
+   -- se queda para cuando se configure SMTP propio y vuelva el campo
+   de código de 6 dígitos. */
 .crediscope-otp-row {
   display: flex;
   justify-content: center;
