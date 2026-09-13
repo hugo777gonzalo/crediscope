@@ -58,7 +58,7 @@ const ETIQUETAS_GRUPO = {
   identidad: "SocioDemográficas",
   contacto: "Contacto y Domicilio",
   transitoVehicular: "Tránsito Vehicular",
-  comportamientoInterno: "Comportamiento Interno (Novadata)",
+  comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
   metaConsulta: "Metadata de la Consulta",
 };
 
@@ -306,7 +306,7 @@ export default function AdminConfig() {
           </div>
           <ConfigSection
             title={`A. Fuentes de Ingesta (${resources.length})`}
-            description="Recursos individuales de Novadata — fuentes públicas/externas que pueden fallar, deshabilitarse o tener controles de acceso."
+            description="Recursos individuales de las fuentes de información — públicas/externas que pueden fallar, deshabilitarse o tener controles de acceso."
             items={resources}
             groupField="bloque"
             labelKey="recurso"

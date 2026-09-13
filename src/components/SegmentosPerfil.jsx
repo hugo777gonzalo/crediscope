@@ -60,7 +60,7 @@ const ETIQUETAS_GRUPO = {
   identidad: "SocioDemográficas",
   contacto: "Contacto y Domicilio",
   transitoVehicular: "Tránsito Vehicular",
-  comportamientoInterno: "Comportamiento Interno (Novadata)",
+  comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
 };
 
 const ICONOS_GRUPO = {

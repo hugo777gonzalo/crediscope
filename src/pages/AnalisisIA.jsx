@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { analyzeClient, getLatestAnalysis, getLatestProfile, structureClient, getSegmentConfig } from "../lib/api.js";
+import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
+import AnalisisResultado from "../components/AnalisisResultado.jsx";
 
 // "Análisis con IA" — nombre comercial del scoring por LLM. Antes de
 // correrlo, decide si reutiliza el Perfil del Cliente ya consultado
@@ -50,6 +52,10 @@ export default function AnalisisIA() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setUltimaCedula(cedula);
+  }, [cedula]);
 
   async function handleAnalyzeReuse() {
     setAnalyzing(true);
@@ -120,9 +126,9 @@ export default function AnalisisIA() {
               texto={
                 profile
                   ? profileReciente
-                    ? `Perfil del Cliente consultado hace ${Math.floor(diasDesde(profile.created_at))} día(s) — se reutiliza sin volver a consultar Novadata.`
-                    : `Perfil del Cliente tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar Novadata antes de analizar.`
-                  : "Sin Perfil del Cliente todavía — hace falta consultar Novadata antes de analizar."
+                    ? `Perfil del Cliente consultado hace ${Math.floor(diasDesde(profile.created_at))} día(s) — se reutiliza sin volver a consultar la fuente de datos.`
+                    : `Perfil del Cliente tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`
+                  : "Sin Perfil del Cliente todavía — hace falta consultar la fuente de datos antes de analizar."
               }
             />
           ) : null
@@ -137,52 +143,7 @@ export default function AnalisisIA() {
 
       {loading ? <p className="crediscope-muted">Cargando...</p> : null}
 
-      {result ? (
-        <>
-          <div className="crediscope-card">
-            <h3>Resumen</h3>
-            <p>{result.narrative_summary}</p>
-          </div>
-
-          <div className="crediscope-card">
-            <h3>Puntos positivos</h3>
-            <ul className="crediscope-list">
-              {(result.positives || []).map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="crediscope-card">
-            <h3>Puntos negativos</h3>
-            <ul className="crediscope-list">
-              {(result.negatives || []).map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="crediscope-card">
-            <h3>Información faltante</h3>
-            <ul className="crediscope-list">
-              {(result.missing_info || []).map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
-          {result.inconsistencies && result.inconsistencies.length > 0 ? (
-            <div className="crediscope-card">
-              <h3>Inconsistencias detectadas</h3>
-              <ul className="crediscope-list">
-                {result.inconsistencies.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </>
-      ) : null}
+      <AnalisisResultado result={result} />
 
       <SegmentosPerfil
         standardProfile={profile?.standard_profile}

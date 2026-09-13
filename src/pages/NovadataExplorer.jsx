@@ -65,7 +65,7 @@ export default function NovadataExplorer() {
   return (
     <div>
       <div className="crediscope-card">
-        <h2>Explorador de Novadata</h2>
+        <h2>Explorador de Fuentes</h2>
         <p className="crediscope-muted">
           Consulta en vivo los 9 ejes mapeados. No guarda nada — es solo para inspeccionar la ingesta. La
           contraseña no se persiste en ningún lado, se usa una sola vez para pedir el token.
@@ -73,7 +73,7 @@ export default function NovadataExplorer() {
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 360, marginTop: 12 }}>
           <input
             className="crediscope-input"
-            placeholder="Usuario Novadata"
+            placeholder="Usuario de la fuente"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
@@ -81,7 +81,7 @@ export default function NovadataExplorer() {
           <input
             className="crediscope-input"
             type="password"
-            placeholder="Contraseña Novadata"
+            placeholder="Contraseña de la fuente"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

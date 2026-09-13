@@ -1,9 +1,15 @@
 import { Routes, Route, Navigate, Link } from "react-router-dom";
 import { useSession } from "./lib/useSession.js";
+import { useProfile, esAdmin } from "./lib/useProfile.js";
+import { getUltimaCedula } from "./lib/ultimaCedula.js";
 import Login from "./pages/Login.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
 import PerfilCliente from "./pages/PerfilCliente.jsx";
+import Historial from "./pages/Historial.jsx";
+import HistorialPerfilDetalle from "./pages/HistorialPerfilDetalle.jsx";
+import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
+import Reportes from "./pages/Reportes.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
 
@@ -14,33 +20,86 @@ function RequireSession({ children }) {
   return children;
 }
 
+// Explorador de Fuentes y Configuración son solo para admin -- ocultar
+// el link del menú no alcanza, hay que bloquear la ruta directa
+// también. loading cubre tanto la sesión como el perfil (useProfile ya
+// combina ambos), para no redirigir de más mientras carga.
+function RequireAdmin({ children }) {
+  const { session, loading: sessionLoading } = useSession();
+  const { profile, loading: profileLoading } = useProfile();
+  if (sessionLoading || profileLoading) return null;
+  if (!session) return <Navigate to="/login" replace />;
+  if (!esAdmin(profile)) return <Navigate to="/" replace />;
+  return children;
+}
+
+// Menú "Evaluación Crediticia": Buscar Cliente siempre lleva a la
+// búsqueda; Perfil del Cliente/Análisis con IA abren directo el último
+// cliente visto en este navegador (ver ultimaCedula.js) si hay uno —
+// si no, cualquiera de los 3 lleva a Buscar Cliente primero.
+function MenuEvaluacionCrediticia() {
+  const ultimaCedula = getUltimaCedula();
+  return (
+    <div className="crediscope-navdrop">
+      <span className="crediscope-navlink">Evaluación Crediticia ▾</span>
+      <div className="crediscope-navdrop-menu">
+        <Link to="/">Buscar Cliente</Link>
+        <Link to={ultimaCedula ? `/perfil/${ultimaCedula}` : "/"}>Perfil del Cliente</Link>
+        <Link to={ultimaCedula ? `/analisis/${ultimaCedula}` : "/"}>Análisis con IA</Link>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const { session } = useSession();
+  const { profile } = useProfile();
 
   return (
     <div className="crediscope-shell">
       <header className="crediscope-topbar">
-        <Link to="/" style={{ color: "#fff", textDecoration: "none" }}>
-          <strong>CrediScope</strong> — Score de Información Interna
+        <Link to="/" className="crediscope-brand">
+          CrediScope
         </Link>
-        <nav style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link to="/explorar" style={{ color: "#cbd5e1", textDecoration: "none", fontSize: 14 }}>
-            Explorador Novadata
-          </Link>
-          {session ? (
-            <Link to="/admin/configuracion" style={{ color: "#cbd5e1", textDecoration: "none", fontSize: 14 }}>
-              Configuración
+        {session ? (
+          <nav className="crediscope-nav">
+            <MenuEvaluacionCrediticia />
+            <Link className="crediscope-navlink" to="/historial">
+              Historial
             </Link>
-          ) : null}
-          {session ? <span className="crediscope-muted" style={{ color: "#cbd5e1" }}>{session.user.email}</span> : null}
-        </nav>
+            <Link className="crediscope-navlink" to="/reportes">
+              Reportes
+            </Link>
+            {esAdmin(profile) ? (
+              <>
+                <Link className="crediscope-navlink" to="/explorar">
+                  Explorador de Fuentes
+                </Link>
+                <Link className="crediscope-navlink" to="/admin/configuracion">
+                  Configuración
+                </Link>
+              </>
+            ) : null}
+            {profile ? (
+              <span className="crediscope-userbadge">
+                {profile.entidad ? <span className="crediscope-userbadge-entidad">{profile.entidad}</span> : null}
+                <span>{profile.nombre_corto}</span>
+              </span>
+            ) : null}
+          </nav>
+        ) : null}
       </header>
       <main className="crediscope-main">
         <Routes>
           <Route path="/login" element={<Login />} />
-          {/* Sin RequireSession: sirve para probar la ingesta de Novadata
-              antes de tener un proyecto Supabase real configurado. */}
-          <Route path="/explorar" element={<NovadataExplorer />} />
+          <Route
+            path="/explorar"
+            element={
+              <RequireAdmin>
+                <NovadataExplorer />
+              </RequireAdmin>
+            }
+          />
           <Route
             path="/"
             element={
@@ -66,11 +125,43 @@ export default function App() {
             }
           />
           <Route
-            path="/admin/configuracion"
+            path="/historial"
             element={
               <RequireSession>
-                <AdminConfig />
+                <Historial />
               </RequireSession>
+            }
+          />
+          <Route
+            path="/historial/perfil/:id"
+            element={
+              <RequireSession>
+                <HistorialPerfilDetalle />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/historial/analisis/:id"
+            element={
+              <RequireSession>
+                <HistorialAnalisisDetalle />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/reportes"
+            element={
+              <RequireSession>
+                <Reportes />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/admin/configuracion"
+            element={
+              <RequireAdmin>
+                <AdminConfig />
+              </RequireAdmin>
             }
           />
         </Routes>

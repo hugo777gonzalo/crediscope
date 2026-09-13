@@ -42,8 +42,106 @@ a {
   justify-content: space-between;
 }
 
-.crediscope-topbar strong {
+.crediscope-brand {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 17px;
   letter-spacing: 0.04em;
+}
+
+.crediscope-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.crediscope-navlink {
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.crediscope-navlink:hover {
+  color: #fff;
+}
+
+.crediscope-navdrop {
+  position: relative;
+}
+
+.crediscope-navdrop-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  padding: 6px;
+  min-width: 180px;
+  z-index: 20;
+}
+
+.crediscope-navdrop:hover .crediscope-navdrop-menu,
+.crediscope-navdrop:focus-within .crediscope-navdrop-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.crediscope-navdrop-menu a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.crediscope-navdrop-menu a:hover {
+  background: var(--panel-muted);
+}
+
+.crediscope-userbadge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+  font-size: 13px;
+  color: #fff;
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.crediscope-userbadge-entidad {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.crediscope-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.crediscope-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.crediscope-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 .crediscope-main {

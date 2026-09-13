@@ -262,11 +262,11 @@ export const GRUPOS_CONFIG = {
     ],
   },
   comportamientoInterno: {
-    mensajeVacio: "No es cliente interno de Novadata.",
+    mensajeVacio: "No es cliente interno de la fuente externa.",
     presencia: (p) => Boolean(p.comportamientoInterno?.esClienteInterno),
     campos: [
-      ["novadataResultadoHabitoPago", "Hábito de pago (Novadata)", "texto"],
-      ["novadataPerfilInterno", "Perfil interno (Novadata)", "texto"],
+      ["novadataResultadoHabitoPago", "Hábito de pago (fuente externa)", "texto"],
+      ["novadataPerfilInterno", "Perfil interno (fuente externa)", "texto"],
       ["novadataDiasMoraMaxima", "Días mora máxima", "numero"],
       ["novadataDiasMoraVigente", "Días mora vigente", "numero"],
       ["novadataSaldoCapitalVigente", "Saldo capital vigente", "moneda"],

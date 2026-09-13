@@ -82,6 +82,64 @@ export async function getLatestAnalysis(cedula) {
   return result;
 }
 
+// ---------- Historial ----------
+// A diferencia de getLatestProfile/getLatestAnalysis (que solo traen lo
+// más reciente para Perfil del Cliente/Análisis con IA), esto trae TODA
+// la línea de tiempo de un cliente para el visor histórico de solo
+// lectura — ver src/pages/Historial.jsx.
+
+export async function getHistorialCliente(cedula) {
+  const { data: client, error: clientError } = await supabase.from("clients").select("id, cedula").eq("cedula", cedula).maybeSingle();
+  if (clientError) throw clientError;
+  if (!client) return { client: null, eventos: [] };
+
+  const [{ data: perfiles, error: perfilesError }, { data: analisis, error: analisisError }] = await Promise.all([
+    supabase
+      .from("client_profiles")
+      .select("id, created_at, structure_version")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("analysis_results")
+      .select("id, created_at, crediscope_score, rules_version")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false }),
+  ]);
+  if (perfilesError) throw perfilesError;
+  if (analisisError) throw analisisError;
+
+  const eventos = [
+    ...(perfiles || []).map((p) => ({ tipo: "perfil", id: p.id, created_at: p.created_at, version: p.structure_version })),
+    ...(analisis || []).map((a) => ({
+      tipo: "analisis",
+      id: a.id,
+      created_at: a.created_at,
+      version: a.rules_version,
+      score: a.crediscope_score,
+    })),
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  return { client, eventos };
+}
+
+// Perfil del Cliente por id (snapshot puntual, no "el más reciente") —
+// incluye la cédula del cliente vía join para el header del visor.
+export async function getPerfilPorId(id) {
+  const { data, error } = await supabase.from("client_profiles").select("*, clients(cedula)").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Análisis con IA por id (snapshot puntual). No trae el Perfil del
+// Cliente asociado (analysis_results no guarda referencia a un
+// client_profiles.id específico, solo a ingestion_run_id) — el visor de
+// Historial para análisis muestra solo el resultado, sin segmentos.
+export async function getAnalisisPorId(id) {
+  const { data, error } = await supabase.from("analysis_results").select("*, clients(cedula)").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // ---------- Configuración operativa (parametrización) ----------
 // Tablas planas con RLS (cualquier autenticado lee/actualiza), sin pasar
 // por una Edge Function — ver supabase/migrations/006_runtime_config.sql

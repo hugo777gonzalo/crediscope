@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getLatestProfile, structureClient, getSegmentConfig } from "../lib/api.js";
+import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
@@ -39,6 +40,10 @@ export default function PerfilCliente() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setUltimaCedula(cedula);
+  }, [cedula]);
 
   async function handleStructure() {
     setStructuring(true);
