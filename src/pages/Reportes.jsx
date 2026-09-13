@@ -11,6 +11,31 @@ import { ORDEN_GRUPOS, ETIQUETAS_GRUPO, formatValor } from "../lib/perfilCliente
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+function formatDuracion(ms) {
+  if (ms === null || ms === undefined) return "—";
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function FilaTiempo({ etiqueta, stats }) {
+  return (
+    <div className="crediscope-tiempo-row">
+      <span className="crediscope-tiempo-etiqueta">{etiqueta}</span>
+      {stats.n === 0 ? (
+        <span className="crediscope-muted">Sin datos todavía</span>
+      ) : (
+        <span className="crediscope-tiempo-valores">
+          <span>
+            prom. <strong>{formatDuracion(stats.promedioMs)}</strong>
+          </span>
+          <span className="crediscope-muted">mín. {formatDuracion(stats.minMs)}</span>
+          <span className="crediscope-muted">máx. {formatDuracion(stats.maxMs)}</span>
+          <span className="crediscope-muted">({stats.n} consultas)</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
 function TarjetaKpi({ etiqueta, valor, detalle }) {
   return (
     <div className="crediscope-card crediscope-kpi">
@@ -239,6 +264,12 @@ export default function Reportes() {
               />
             ))
           )}
+        </div>
+
+        <div className="crediscope-card">
+          <h3>Tiempos de respuesta</h3>
+          <FilaTiempo etiqueta="Ingesta a la fuente (consulta nueva)" stats={metricas.tiempos.ingesta} />
+          <FilaTiempo etiqueta="Análisis con IA (LLM)" stats={metricas.tiempos.llm} />
         </div>
       </div>
 

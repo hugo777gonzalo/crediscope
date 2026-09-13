@@ -455,6 +455,31 @@ a {
   color: var(--text-muted);
 }
 
+.crediscope-tiempo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.crediscope-tiempo-row:last-child {
+  border-bottom: none;
+}
+
+.crediscope-tiempo-etiqueta {
+  color: var(--text);
+}
+
+.crediscope-tiempo-valores {
+  display: flex;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 640px) {
   .crediscope-barrapct-row,
   .crediscope-eje-row {

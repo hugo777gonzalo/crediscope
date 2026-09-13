@@ -150,10 +150,14 @@ export async function getDatosReporteGerencial() {
   const [{ data: perfilesRaw, error: e1 }, { data: analisisRaw, error: e2 }, { data: perfilesUsuarios, error: e3 }] = await Promise.all([
     supabase
       .from("client_profiles")
-      .select("id, client_id, standard_profile, control_bloqueo, created_at, requested_by")
+      .select("id, client_id, standard_profile, control_bloqueo, created_at, requested_by, duracion_ms")
       .order("client_id")
       .order("created_at", { ascending: false }),
-    supabase.from("analysis_results").select("id, client_id, crediscope_score, created_at").order("client_id").order("created_at", { ascending: false }),
+    supabase
+      .from("analysis_results")
+      .select("id, client_id, crediscope_score, created_at, duracion_ingesta_ms, duracion_llm_ms")
+      .order("client_id")
+      .order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, nombre_corto"),
   ]);
   if (e1) throw e1;

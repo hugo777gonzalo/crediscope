@@ -67,10 +67,12 @@ Deno.serve(async (req) => {
     //    Recursos deshabilitados en novadata_resource_config se saltan
     //    (ver _shared/runtime-config.ts).
     const disabledResources = await loadDisabledResources(serviceClient);
+    const inicioIngesta = Date.now();
     const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
     // 3. Estructura estandarizada
     const { profile, blockStatus } = buildStandardProfile(raw, cedula);
+    const duracionMs = Date.now() - inicioIngesta;
 
     // 4. Clasificación en 4 segmentos (positivo/negativo/complementario/sin_información)
     //    Campos deshabilitados en standard_profile_field_config quedan
@@ -96,6 +98,7 @@ Deno.serve(async (req) => {
         structure_version: PROCESS_VERSION,
         classification_version: CLASSIFICATION_VERSION,
         requested_by: actorId,
+        duracion_ms: duracionMs,
       })
       .select("*")
       .single();

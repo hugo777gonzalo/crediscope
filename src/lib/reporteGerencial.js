@@ -44,6 +44,19 @@ function ultimosNMeses(n) {
   return meses;
 }
 
+// Sobre TODAS las filas (no deduplicadas) -- el tiempo de respuesta de
+// una consulta puntual no cambia si ese cliente se reconsultó después.
+function estadisticasDuracion(valoresMs) {
+  const validos = valoresMs.filter((v) => typeof v === "number" && v >= 0);
+  if (validos.length === 0) return { n: 0, promedioMs: null, minMs: null, maxMs: null };
+  return {
+    n: validos.length,
+    promedioMs: Math.round(validos.reduce((a, b) => a + b, 0) / validos.length),
+    minMs: Math.min(...validos),
+    maxMs: Math.max(...validos),
+  };
+}
+
 export function calcularMetricas({ perfilesRaw, analisisRaw, nombrePorId }) {
   const perfiles = ultimoPorCliente(perfilesRaw);
   const analisis = ultimoPorCliente(analisisRaw);
@@ -92,6 +105,17 @@ export function calcularMetricas({ perfilesRaw, analisisRaw, nombrePorId }) {
   }
   const actividadPorAnalista = Object.entries(conteoPorAnalista).sort((a, b) => b[1] - a[1]);
 
+  // Ingesta a la fuente: puede venir de structure-client (client_profiles.
+  // duracion_ms, el camino que usa toda la UI) o de analyze-client cuando
+  // se llama sin profileId (analysis_results.duracion_ingesta_ms -- solo
+  // pasa con integraciones externas por API, la UI siempre pasa por
+  // structure-client primero). Se combinan: ambas son "cuánto tardó
+  // ingestar a la fuente", sin importar qué endpoint lo disparó.
+  const tiempos = {
+    ingesta: estadisticasDuracion([...perfilesRaw.map((p) => p.duracion_ms), ...analisisRaw.map((a) => a.duracion_ingesta_ms)]),
+    llm: estadisticasDuracion(analisisRaw.map((a) => a.duracion_llm_ms)),
+  };
+
   return {
     totalClientes,
     totalAnalizados,
@@ -112,6 +136,7 @@ export function calcularMetricas({ perfilesRaw, analisisRaw, nombrePorId }) {
     patrimonio: { conRespaldoPatrimonial, pct: pct(conRespaldoPatrimonial), valorColateralTotal },
     consultasPorMes,
     actividadPorAnalista,
+    tiempos,
     perfiles,
   };
 }

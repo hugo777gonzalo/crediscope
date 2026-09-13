@@ -94,6 +94,9 @@ Deno.serve(async (req) => {
     let profile: StandardClientProfile;
     let blockStatus: BlockStatusMap;
     let controlBloqueo: ResultadoControlBloqueo;
+    // null si se reutiliza un client_profiles existente (no hay ingesta
+    // en esta corrida, ver duracion_ingesta_ms en la migración).
+    let duracionIngestaMs: number | null;
 
     if (profileId) {
       const { data: reused, error: reusedError } = await serviceClient
@@ -107,12 +110,14 @@ Deno.serve(async (req) => {
       profile = reused.standard_profile;
       blockStatus = reused.block_status;
       controlBloqueo = reused.control_bloqueo;
+      duracionIngestaMs = null;
     } else {
       // Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
       // Recursos deshabilitados en novadata_resource_config se saltan
       // (ver _shared/runtime-config.ts) — fuentes públicas/externas que
       // pueden fallar o deshabilitarse.
       const disabledResources = await loadDisabledResources(serviceClient);
+      const inicioIngesta = Date.now();
       const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
       // Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
@@ -125,6 +130,7 @@ Deno.serve(async (req) => {
       // control/PEP/OFAC, cédula inconsistente) — NO se delegan al LLM,
       // ver _shared/controles-bloqueo.ts
       controlBloqueo = evaluarControlesBloqueo(raw, cedula);
+      duracionIngestaMs = Date.now() - inicioIngesta;
     }
 
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
@@ -134,7 +140,9 @@ Deno.serve(async (req) => {
     // mandan al LLM (dato considerado poco confiable).
     const disabledFields = await loadDisabledFields(serviceClient);
     const llmProfile = redactDisabledFields(profile, disabledFields);
+    const inicioLlm = Date.now();
     const llmResult = await scoreWithLlm(llmProfile, controlBloqueo);
+    const duracionLlmMs = Date.now() - inicioLlm;
     const finalScore = controlBloqueo.bloqueado ? 1 : llmResult.score;
 
     // 7. Persistir resultado
@@ -155,6 +163,8 @@ Deno.serve(async (req) => {
         llm_stop_reason: llmResult.llmStopReason,
         llm_usage: llmResult.llmUsage,
         llm_request_id: llmResult.llmRequestId,
+        duracion_ingesta_ms: duracionIngestaMs,
+        duracion_llm_ms: duracionLlmMs,
       })
       .select("*")
       .single();
