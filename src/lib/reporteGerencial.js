@@ -64,6 +64,15 @@ export function calcularMetricas({ perfilesRaw, analisisRaw, nombrePorId }) {
   const totalClientes = perfiles.length;
   const totalAnalizados = analisis.length;
 
+  // Distribución de la acción sugerida (marco-v14). Los análisis
+  // anteriores a esa versión no tienen recomendación -- se cuentan
+  // aparte para no inflar ninguna categoría con datos que no existen.
+  const distribucionRecomendacion = { aprobar: 0, revisar: 0, observar: 0, negar: 0, sinDato: 0 };
+  for (const a of analisis) {
+    if (a.recomendacion && a.recomendacion in distribucionRecomendacion) distribucionRecomendacion[a.recomendacion]++;
+    else distribucionRecomendacion.sinDato++;
+  }
+
   const distribucionScore = { bueno: 0, medio: 0, malo: 0 };
   let sumaScore = 0;
   for (const a of analisis) {
@@ -121,6 +130,7 @@ export function calcularMetricas({ perfilesRaw, analisisRaw, nombrePorId }) {
     totalAnalizados,
     scorePromedio,
     distribucionScore,
+    distribucionRecomendacion,
     riesgo: [
       { etiqueta: "Con demanda de cobro/crediticia", valor: conDemandaCrediticia, pct: pct(conDemandaCrediticia) },
       { etiqueta: "Calificación baja en buró (D/E)", valor: conCalificacionBaja, pct: pct(conCalificacionBaja) },

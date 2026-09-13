@@ -106,6 +106,7 @@ export default function AnalisisIA() {
         nombreCompleto={profile?.standard_profile?.identidad?.nombreCompleto}
         cedula={cedula}
         score={result?.crediscope_score}
+        recomendacion={result?.recomendacion}
         acciones={
           <>
             {!loading && profileReciente ? (

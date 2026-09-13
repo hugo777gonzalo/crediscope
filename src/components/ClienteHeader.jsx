@@ -1,4 +1,5 @@
 import { nombreCorto } from "../lib/perfilClienteCampos.js";
+import RecomendacionBadge from "./RecomendacionBadge.jsx";
 
 function scoreClass(score) {
   if (score >= 700) return "crediscope-score-good";
@@ -9,7 +10,7 @@ function scoreClass(score) {
 // Header condensado y compartido entre Perfil del Cliente y Análisis
 // con IA: Nombre | Cédula | Score (si hay). El nombre/pestaña de la
 // sección NO se repite acá — ya la dice la barra de pestañas arriba.
-export default function ClienteHeader({ nombreCompleto, cedula, score, acciones, infoTooltip }) {
+export default function ClienteHeader({ nombreCompleto, cedula, score, recomendacion, acciones, infoTooltip }) {
   const nombre = nombreCorto(nombreCompleto);
 
   return (
@@ -17,6 +18,7 @@ export default function ClienteHeader({ nombreCompleto, cedula, score, acciones,
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         {nombre ? <span style={{ fontSize: 20, fontWeight: 600 }}>{nombre}</span> : null}
         <span className="crediscope-muted">{cedula}</span>
+        {recomendacion ? <RecomendacionBadge recomendacion={recomendacion} /> : null}
         {score !== undefined && score !== null ? (
           <span className={`crediscope-score ${scoreClass(score)}`} style={{ fontSize: 32 }}>
             {score}

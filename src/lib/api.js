@@ -101,7 +101,7 @@ export async function getHistorialCliente(cedula) {
       .order("created_at", { ascending: false }),
     supabase
       .from("analysis_results")
-      .select("id, created_at, crediscope_score, rules_version")
+      .select("id, created_at, crediscope_score, recomendacion, rules_version")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false }),
   ]);
@@ -116,6 +116,7 @@ export async function getHistorialCliente(cedula) {
       created_at: a.created_at,
       version: a.rules_version,
       score: a.crediscope_score,
+      recomendacion: a.recomendacion,
     })),
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -155,7 +156,7 @@ export async function getDatosReporteGerencial() {
       .order("created_at", { ascending: false }),
     supabase
       .from("analysis_results")
-      .select("id, client_id, crediscope_score, created_at, duracion_ingesta_ms, duracion_llm_ms")
+      .select("id, client_id, crediscope_score, recomendacion, created_at, duracion_ingesta_ms, duracion_llm_ms")
       .order("client_id")
       .order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, nombre_corto"),

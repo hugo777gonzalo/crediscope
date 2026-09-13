@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { getHistorialCliente } from "../lib/api.js";
+import RecomendacionBadge from "../components/RecomendacionBadge.jsx";
 
 // Buscador histórico de consultas de un cliente — a diferencia de
 // Perfil del Cliente/Análisis con IA (que solo muestran lo más
@@ -86,7 +87,16 @@ export default function Historial() {
                   <tr key={`${ev.tipo}-${ev.id}`}>
                     <td>{new Date(ev.created_at).toLocaleString()}</td>
                     <td>{ETIQUETAS_TIPO[ev.tipo]}</td>
-                    <td>{ev.tipo === "analisis" ? `Score ${ev.score} (${ev.version})` : ev.version}</td>
+                    <td>
+                      {ev.tipo === "analisis" ? (
+                        <>
+                          Score {ev.score} ({ev.version}){" "}
+                          {ev.recomendacion ? <RecomendacionBadge recomendacion={ev.recomendacion} size="small" /> : null}
+                        </>
+                      ) : (
+                        ev.version
+                      )}
+                    </td>
                     <td>
                       <Link className="crediscope-btn crediscope-btn-ghost" to={`/historial/${ev.tipo}/${ev.id}`}>
                         Ver

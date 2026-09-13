@@ -144,6 +144,9 @@ Deno.serve(async (req) => {
     const llmResult = await scoreWithLlm(llmProfile, controlBloqueo);
     const duracionLlmMs = Date.now() - inicioLlm;
     const finalScore = controlBloqueo.bloqueado ? 1 : llmResult.score;
+    // Mismo criterio que el score: un control de bloqueo bloqueante no
+    // se delega al criterio del LLM (ver marco-interpretativo.ts v14).
+    const finalRecomendacion = controlBloqueo.bloqueado ? "negar" : llmResult.recomendacion;
 
     // 7. Persistir resultado
     const { data: analysis, error: analysisError } = await serviceClient
@@ -152,6 +155,7 @@ Deno.serve(async (req) => {
         ingestion_run_id: run.id,
         client_id: client.id,
         crediscope_score: finalScore,
+        recomendacion: finalRecomendacion,
         rules_version: MARCO_VERSION,
         block_status: blockStatus,
         positives: llmResult.positives,
@@ -180,7 +184,12 @@ Deno.serve(async (req) => {
       actor: actorId,
       action: "client.analyze",
       client_id: client.id,
-      meta: { ingestion_run_id: run.id, crediscope_score: finalScore, control_bloqueado: controlBloqueo.bloqueado },
+      meta: {
+        ingestion_run_id: run.id,
+        crediscope_score: finalScore,
+        recomendacion: finalRecomendacion,
+        control_bloqueado: controlBloqueo.bloqueado,
+      },
     });
 
     return new Response(JSON.stringify(analysis), {

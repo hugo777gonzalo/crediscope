@@ -261,6 +261,25 @@ a {
   line-height: 1;
 }
 
+.crediscope-recomendacion {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: help;
+  white-space: nowrap;
+}
+
+.crediscope-recomendacion-small {
+  padding: 2px 9px;
+  font-size: 11.5px;
+  border-width: 1px;
+}
+
 .crediscope-score-good { color: var(--good); }
 .crediscope-score-mid { color: var(--warn); }
 .crediscope-score-bad { color: var(--bad); }

@@ -463,8 +463,15 @@ export interface StandardClientProfile {
 
 // ---------- Resultado del scoring por LLM ----------
 
+// Acción sugerida al analista, además del score. "revisar" y "observar"
+// NO son lo mismo: revisar = tengo la información y el caso es
+// limítrofe; observar = falta información y con ella la decisión podría
+// cambiar en cualquier dirección (ver marco-interpretativo.ts, v14).
+export type RecomendacionAccion = "aprobar" | "revisar" | "observar" | "negar";
+
 export interface LlmScoringResult {
   score: number; // 1-999, APROXIMADO — el LLM lo estima con el marco interpretativo, no es una fórmula
+  recomendacion: RecomendacionAccion;
   positives: string[];
   negatives: string[];
   missingInfo: string[];

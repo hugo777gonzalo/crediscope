@@ -11,6 +11,13 @@ import { ORDEN_GRUPOS, ETIQUETAS_GRUPO, formatValor } from "../lib/perfilCliente
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+const RECOMENDACIONES_ORDEN = [
+  ["aprobar", "Aprobar", "var(--good)"],
+  ["revisar", "Revisar", "var(--warn)"],
+  ["observar", "Observar", "var(--brand)"],
+  ["negar", "Negar", "var(--bad)"],
+];
+
 function formatDuracion(ms) {
   if (ms === null || ms === undefined) return "—";
   return `${(ms / 1000).toFixed(1)}s`;
@@ -233,6 +240,34 @@ export default function Reportes() {
         <div className="crediscope-card">
           <h3>Consultas por mes (últimos 6 meses)</h3>
           <GraficoTendencia datos={tendenciaConsultas} />
+        </div>
+
+        <div className="crediscope-card">
+          <h3>Acción recomendada</h3>
+          {metricas.totalAnalizados === metricas.distribucionRecomendacion.sinDato ? (
+            <p className="crediscope-muted">Todavía no hay análisis con recomendación de acción (se registra desde marco-v14).</p>
+          ) : (
+            <>
+              {RECOMENDACIONES_ORDEN.map(([clave, etiqueta, color]) => (
+                <BarraPorcentaje
+                  key={clave}
+                  etiqueta={etiqueta}
+                  valor={metricas.distribucionRecomendacion[clave]}
+                  pct={
+                    metricas.totalAnalizados
+                      ? Math.round((metricas.distribucionRecomendacion[clave] / metricas.totalAnalizados) * 100)
+                      : 0
+                  }
+                  color={color}
+                />
+              ))}
+              {metricas.distribucionRecomendacion.sinDato > 0 ? (
+                <p className="crediscope-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+                  {metricas.distribucionRecomendacion.sinDato} análisis previos a marco-v14 no tienen recomendación registrada.
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
 
         <div className="crediscope-card">

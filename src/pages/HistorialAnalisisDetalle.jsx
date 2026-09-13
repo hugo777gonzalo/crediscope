@@ -49,6 +49,7 @@ export default function HistorialAnalisisDetalle() {
           <ClienteHeader
             cedula={result.clients?.cedula}
             score={result.crediscope_score}
+            recomendacion={result.recomendacion}
             infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${new Date(result.created_at).toLocaleString()} (${result.rules_version}) — vista de solo lectura del Historial.`} />}
           />
           <AnalisisResultado result={result} />

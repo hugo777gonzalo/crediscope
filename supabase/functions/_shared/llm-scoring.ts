@@ -12,8 +12,18 @@
 // ClientContext + max_tokens:4000, algunos clientes con mucho historial
 // seguían generando JSON cortado a medias (SyntaxError al parsear).
 
-import type { ResultadoControlBloqueo, LlmScoringResult } from "./types.ts";
+import type { ResultadoControlBloqueo, LlmScoringResult, RecomendacionAccion } from "./types.ts";
 import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
+
+const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "observar", "negar"];
+
+// Si el LLM devuelve algo fuera de la lista (o nada), se cae a
+// "revisar" — el valor más conservador: no aprueba ni rechaza solo,
+// deja el caso en manos del analista.
+function normalizarRecomendacion(valor: unknown): RecomendacionAccion {
+  const limpio = String(valor ?? "").trim().toLowerCase();
+  return (RECOMENDACIONES_VALIDAS as string[]).includes(limpio) ? (limpio as RecomendacionAccion) : "revisar";
+}
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 // Solo hace falta si la API key es de las "vinculadas a identidad"
@@ -30,6 +40,9 @@ function extraerJson(texto: string): unknown {
 function resultadoPorDefecto(mensaje: string, data?: Record<string, unknown>): LlmScoringResult {
   return {
     score: 500,
+    // Sin respuesta del LLM no hay juicio posible: queda en manos del
+    // analista, nunca en "aprobar" por defecto.
+    recomendacion: "revisar",
     positives: [],
     negatives: [],
     missingInfo: [`No se pudo obtener el scoring del LLM: ${mensaje}`],
@@ -102,6 +115,7 @@ export async function scoreWithLlm(profile: Record<string, unknown>, controlBloq
     const score = Math.max(1, Math.min(999, Math.round(Number(parsed.score) || 500)));
     return {
       score,
+      recomendacion: normalizarRecomendacion(parsed.recomendacion),
       positives: Array.isArray(parsed.positives) ? parsed.positives.map(String) : [],
       negatives: Array.isArray(parsed.negatives) ? parsed.negatives.map(String) : [],
       missingInfo: Array.isArray(parsed.missingInfo) ? parsed.missingInfo.map(String) : [],
