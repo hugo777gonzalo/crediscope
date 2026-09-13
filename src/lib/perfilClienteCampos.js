@@ -8,7 +8,7 @@
 // todos los campos del grupo, solo los que aportan valor de lectura
 // rápida a un analista.
 
-function get(obj, path) {
+export function get(obj, path) {
   return path.split(".").reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
 }
 
@@ -301,3 +301,48 @@ export function filasVisibles(profile, grupo) {
     })
     .filter(Boolean);
 }
+
+// Mismo orden/etiquetas que ORDEN_GRUPOS/ETIQUETAS_GRUPO en
+// SegmentosPerfil.jsx (duplicado a propósito, mismo criterio que ese
+// archivo y AdminConfig.jsx -- son mapas de 16 líneas, no vale la pena
+// una dependencia cruzada para esto) -- se exportan acá también para
+// el selector de eje del Reporte Gerencial (Reportes.jsx), que
+// necesita iterar los grupos en el mismo orden/nombre que ve el
+// analista en Perfil del Cliente.
+export const ORDEN_GRUPOS = [
+  "cumplimiento",
+  "riesgoSeguridadCiudadana",
+  "comportamientoBancario",
+  "comportamientoCooperativas",
+  "riesgoJudicialCrediticio",
+  "riesgoJudicialCivil",
+  "riesgoPenal",
+  "laboral",
+  "tributario",
+  "seguridadSocial",
+  "patrimonio",
+  "familia",
+  "identidad",
+  "contacto",
+  "transitoVehicular",
+  "comportamientoInterno",
+];
+
+export const ETIQUETAS_GRUPO = {
+  cumplimiento: "Cumplimiento y Listas de Control",
+  riesgoSeguridadCiudadana: "Riesgo de Seguridad Ciudadana",
+  comportamientoBancario: "Comportamiento Bancos / BIESS / Diners",
+  comportamientoCooperativas: "Comportamiento Cooperativas",
+  riesgoJudicialCrediticio: "Riesgo Judicial Crediticio",
+  riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
+  riesgoPenal: "Riesgo Penal / Fiscalía",
+  laboral: "Situación Laboral e Ingresos",
+  tributario: "Situación Tributaria (SRI)",
+  seguridadSocial: "Seguridad Social",
+  patrimonio: "Patrimonio",
+  familia: "Núcleo Familiar",
+  identidad: "SocioDemográficas",
+  contacto: "Contacto y Domicilio",
+  transitoVehicular: "Tránsito Vehicular",
+  comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
+};

@@ -140,6 +140,30 @@ export async function getAnalisisPorId(id) {
   return data;
 }
 
+// ---------- Reporte Gerencial de Gestión ----------
+// Trae TODOS los client_profiles/analysis_results (no uno por cliente)
+// -- la deduplicación "último por cliente" y el resto de la agregación
+// vive en reporteGerencial.js, para poder calcular tanto métricas
+// "estado actual de la cartera" (deduplicadas) como "volumen de
+// trabajo" (todas las consultas) desde los mismos datos.
+export async function getDatosReporteGerencial() {
+  const [{ data: perfilesRaw, error: e1 }, { data: analisisRaw, error: e2 }, { data: perfilesUsuarios, error: e3 }] = await Promise.all([
+    supabase
+      .from("client_profiles")
+      .select("id, client_id, standard_profile, control_bloqueo, created_at, requested_by")
+      .order("client_id")
+      .order("created_at", { ascending: false }),
+    supabase.from("analysis_results").select("id, client_id, crediscope_score, created_at").order("client_id").order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, nombre_corto"),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  if (e3) throw e3;
+
+  const nombrePorId = Object.fromEntries((perfilesUsuarios || []).map((p) => [p.id, p.nombre_corto]));
+  return { perfilesRaw: perfilesRaw || [], analisisRaw: analisisRaw || [], nombrePorId };
+}
+
 // ---------- Configuración operativa (parametrización) ----------
 // Tablas planas con RLS (cualquier autenticado lee/actualiza), sin pasar
 // por una Edge Function — ver supabase/migrations/006_runtime_config.sql
