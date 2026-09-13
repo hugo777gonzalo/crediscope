@@ -141,6 +141,140 @@ export async function getAnalisisPorId(id) {
   return data;
 }
 
+// ---------- Retroalimentación (resultado real de los créditos) ----------
+
+// Clientes analizados, para pre-llenar la plantilla. Se toma el ÚLTIMO
+// análisis de cada cliente: es el que el área de crédito tuvo a la
+// vista al decidir.
+export async function getClientesParaPlantilla() {
+  const { data, error } = await supabase
+    .from("analysis_results")
+    .select("id, client_id, crediscope_score, recomendacion, created_at, clients(cedula)")
+    .order("client_id")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const vistos = new Set();
+  const filas = [];
+  for (const a of data || []) {
+    if (vistos.has(a.client_id)) continue;
+    vistos.add(a.client_id);
+    filas.push({
+      cedula: a.clients?.cedula ?? "",
+      clientId: a.client_id,
+      analysisResultId: a.id,
+      fechaAnalisis: new Date(a.created_at).toLocaleDateString("es-EC"),
+      score: a.crediscope_score,
+      recomendacion: a.recomendacion ?? "",
+    });
+  }
+  return filas;
+}
+
+// Resuelve, para cada cédula del Excel, a qué análisis y a qué perfil
+// congelado corresponde. Se elige el más reciente ANTERIOR a la fecha
+// de desembolso (el que el analista tuvo a la vista); si no hay fecha
+// de desembolso, el más reciente disponible.
+//
+// El perfil se guarda aparte del análisis porque analysis_results no
+// referencia a client_profiles, y el backtesting necesita el perfil tal
+// como estaba ese día -- nunca reconsultar la fuente, o el modelo
+// "acertaría" siempre al ver la mora que todavía no había ocurrido.
+export async function vincularFilasConAnalisis(filas) {
+  const cedulas = [...new Set(filas.map((f) => f.cedula))];
+  const { data: clientes, error: errClientes } = await supabase.from("clients").select("id, cedula").in("cedula", cedulas);
+  if (errClientes) throw errClientes;
+  const clientePorCedula = Object.fromEntries((clientes || []).map((c) => [c.cedula, c.id]));
+  const clientIds = Object.values(clientePorCedula);
+
+  let analisis = [];
+  let perfiles = [];
+  if (clientIds.length) {
+    const [{ data: a, error: errA }, { data: p, error: errP }] = await Promise.all([
+      supabase.from("analysis_results").select("id, client_id, created_at").in("client_id", clientIds),
+      supabase.from("client_profiles").select("id, client_id, created_at").in("client_id", clientIds),
+    ]);
+    if (errA) throw errA;
+    if (errP) throw errP;
+    analisis = a || [];
+    perfiles = p || [];
+  }
+
+  const masCercanoAntes = (candidatos, clientId, fechaCorte) => {
+    const propios = candidatos
+      .filter((c) => c.client_id === clientId)
+      .filter((c) => !fechaCorte || new Date(c.created_at) <= new Date(`${fechaCorte}T23:59:59`))
+      .sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
+    return propios[0] ?? null;
+  };
+
+  return filas.map((f) => {
+    const clientId = clientePorCedula[f.cedula] ?? null;
+    if (!clientId) return { ...f, clientId: null, analysisResultId: null, clientProfileId: null };
+    return {
+      ...f,
+      clientId,
+      analysisResultId: masCercanoAntes(analisis, clientId, f.fechaDesembolso)?.id ?? null,
+      clientProfileId: masCercanoAntes(perfiles, clientId, f.fechaDesembolso)?.id ?? null,
+    };
+  });
+}
+
+export async function guardarPaqueteFeedback({ etiqueta, notas, archivoNombre, filas }) {
+  const { data: sesion } = await supabase.auth.getUser();
+  const fechas = filas.map((f) => f.fechaDesembolso).filter(Boolean).sort();
+
+  const { data: paquete, error: errPaquete } = await supabase
+    .from("feedback_paquetes")
+    .insert({
+      etiqueta,
+      notas: notas || null,
+      archivo_nombre: archivoNombre || null,
+      periodo_desde: fechas[0] ?? null,
+      periodo_hasta: fechas.at(-1) ?? null,
+      total_filas: filas.length,
+      total_default: filas.filter((f) => f.huboDefault === true).length,
+      total_vinculados: filas.filter((f) => f.analysisResultId).length,
+      cargado_por: sesion?.user?.id ?? null,
+    })
+    .select("*")
+    .single();
+  if (errPaquete) throw errPaquete;
+
+  const { error: errCreditos } = await supabase.from("feedback_creditos").insert(
+    filas.map((f) => ({
+      paquete_id: paquete.id,
+      cedula: f.cedula,
+      client_id: f.clientId,
+      analysis_result_id: f.analysisResultId,
+      client_profile_id: f.clientProfileId,
+      desembolsado: f.desembolsado,
+      monto: f.monto,
+      producto: f.producto,
+      plazo_meses: f.plazoMeses,
+      fecha_desembolso: f.fechaDesembolso,
+      hubo_default: f.huboDefault,
+      fecha_default: f.fechaDefault,
+      tipo_default: f.tipoDefault,
+      dias_mora_max: f.diasMoraMax,
+      observaciones: f.observaciones,
+    }))
+  );
+  if (errCreditos) throw errCreditos;
+  return paquete;
+}
+
+export async function getPaquetesFeedback() {
+  const { data, error } = await supabase.from("feedback_paquetes").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function eliminarPaqueteFeedback(id) {
+  const { error } = await supabase.from("feedback_paquetes").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ---------- Reporte Gerencial de Gestión ----------
 // Trae TODOS los client_profiles/analysis_results (no uno por cliente)
 // -- la deduplicación "último por cliente" y el resto de la agregación

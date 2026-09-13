@@ -13,6 +13,7 @@ import Historial from "./pages/Historial.jsx";
 import HistorialPerfilDetalle from "./pages/HistorialPerfilDetalle.jsx";
 import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
 import Reportes from "./pages/Reportes.jsx";
+import Retroalimentacion from "./pages/Retroalimentacion.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
 import LogoMark from "./components/LogoMark.jsx";
@@ -90,6 +91,9 @@ export default function App() {
             </Link>
             {esAdmin(profile) ? (
               <>
+                <Link className="crediscope-navlink" to="/retroalimentacion">
+                  Retroalimentación
+                </Link>
                 <Link className="crediscope-navlink" to="/explorar">
                   Explorador de Fuentes
                 </Link>
@@ -174,6 +178,14 @@ export default function App() {
               <RequireSession>
                 <Reportes />
               </RequireSession>
+            }
+          />
+          <Route
+            path="/retroalimentacion"
+            element={
+              <RequireAdmin>
+                <Retroalimentacion />
+              </RequireAdmin>
             }
           />
           <Route
