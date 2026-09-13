@@ -35,19 +35,26 @@ function edadDesde(fecha: unknown): number | null {
   return edad;
 }
 
+// Meses ENTEROS transcurridos entre 2 fechas ya parseadas (no strings) —
+// usado para antigüedad de actividad económica/empleo, donde el punto
+// de referencia no siempre es "hoy" (ej. cuánto duró una etapa que ya
+// terminó). Resta 1 si el día del mes de d2 todavía no alcanza al de
+// d1 (mismo criterio que edadDesde) — sin este ajuste, año*12+mes solo
+// compara año/mes e ignora el día, redondeando SIEMPRE hacia arriba en
+// promedio (bug real: cédula 0501578256, cese 2021-09-30, hoy
+// 2026-09-12 -> daba 60 meses/"5 años" exactos en vez de 59/"4 años 11
+// meses" -- confirmado contra una herramienta externa que mostraba "4
+// años" para la misma fecha).
+function mesesEntreFechas(d1: Date, d2: Date): number {
+  let meses = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+  if (d2.getDate() < d1.getDate()) meses--;
+  return meses;
+}
+
 function mesesDesde(fecha: unknown): number | null {
   const d = parseFecha(fecha);
   if (!d) return null;
-  const ahora = new Date();
-  return (ahora.getFullYear() - d.getFullYear()) * 12 + (ahora.getMonth() - d.getMonth());
-}
-
-// Meses entre 2 fechas ya parseadas (no strings) — usado para
-// antigüedad de actividad económica/empleo, donde el punto de
-// referencia no siempre es "hoy" (ej. cuánto duró una etapa que ya
-// terminó).
-function mesesEntreFechas(d1: Date, d2: Date): number {
-  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+  return mesesEntreFechas(d, new Date());
 }
 
 // tiess (fecIng/fecSal) viene en DD/MM/YYYY — confirmado con un valor
@@ -92,6 +99,21 @@ function ceseMasReciente(c: AnyRecord): Date | null {
   return [cancelacion, suspension].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 }
 
+// Tipo del cese más reciente — SRI distingue "cancelación" (puede ser
+// un trámite ordinario, ej. cambio de régimen) de "suspensión
+// definitiva" (case real: cédula 0501578256, fecha_cancelacion Y
+// fecha_suspension_definitiva coinciden en 2021/09/30 con
+// observ_solicitud_suspension="CESE DE ACTIVIDADES") — se prioriza la
+// etiqueta "suspension_definitiva" cuando esa fecha coincide con el
+// cese resuelto (incluye el caso de empate). Informativo para
+// marco-interpretativo.ts, no cambia estadoActividadEconomica.
+function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" | null {
+  const cese = ceseMasReciente(c);
+  if (!cese) return null;
+  const suspension = parseFecha(c.fecha_suspension_definitiva);
+  return suspension && suspension.getTime() === cese.getTime() ? "suspension_definitiva" : "cancelacion";
+}
+
 function rucRegistroActivo(c: AnyRecord): boolean {
   if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
   const cese = ceseMasReciente(c);
@@ -110,6 +132,16 @@ function arr(multi: AnyRecord | null | undefined, recurso: string, campo: string
   const v = (multi?.[recurso] as AnyRecord | undefined)?.data as AnyRecord | undefined;
   const items = v?.[campo];
   return Array.isArray(items) ? (items as AnyRecord[]) : [];
+}
+
+// Status del recurso puntual (BlockResult.status) — a diferencia de
+// arr()/obj(), que solo miran si HAY registros, esto distingue "el
+// recurso se consultó bien y no trajo nada" (status "ok", 0 registros
+// reales) de "el recurso falló/no trajo datos" (status "faltante"/
+// "error"/"deshabilitado") — necesario para no confundir "confirmado
+// que NO aplica" con "no lo sabemos" (ver seguridadSocial más abajo).
+function estadoRecurso(multi: AnyRecord | null | undefined, recurso: string): string | undefined {
+  return (multi?.[recurso] as AnyRecord | undefined)?.status as string | undefined;
 }
 
 function obj(multi: AnyRecord | null | undefined, recurso: string, campo: string): AnyRecord | null {
@@ -139,6 +171,43 @@ function esDemandaProblemaCrediticio(delito: unknown): boolean {
   if (!delito) return false;
   const up = String(delito).toUpperCase();
   return PALABRAS_CLAVE_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
+}
+
+// pn_supa/pn_supa/novadata (pensión alimenticia): el nombre completo
+// viene en 2 órdenes de palabras distintos según la fuente
+// (pn_inf_basica: "Apellido1 Apellido2 Nombre1 Nombre2"; pn_supa:
+// "Nombre1 Nombre2 Apellido1 Apellido2") — se compara por conjunto de
+// palabras, no por igualdad textual.
+function mismoNombre(a: unknown, b: unknown): boolean {
+  const normalizar = (s: unknown) =>
+    String(s ?? "").toUpperCase().trim().split(/\s+/).filter(Boolean).sort().join(" ");
+  const na = normalizar(a);
+  const nb = normalizar(b);
+  return na !== "" && na === nb;
+}
+
+// pn_supa/novadata trae representanteLegal (representa a quien RECIBE
+// la pensión) y obligadoPrincipal (quien DEBE pagarla) como 2 personas
+// DISTINTAS. BUG real encontrado auditando el reporte del usuario
+// (cédula 0501578256): el código anterior marcaba pensionAlimenticiaEnMora
+// para CUALQUIER registro de pn_supa donde apareciera el cliente, sin
+// mirar su rol — ahí representanteLegal="MONICA JANETH PICHUCHO PEREZ"
+// (la cliente) y obligadoPrincipal="ENRIQUE XAVIER CORNEJO ALBAN" (otra
+// persona), con totalDeuda=$2866.63: la deuda es de Cornejo Alban, no
+// de la cliente, que en este caso es a quien LE DEBEN. Auditando los 40
+// clientes de la muestra: 6 de 12 casos con pensionAlimenticiaEnMora=true
+// eran en realidad este mismo error (cliente = representanteLegal, no
+// obligado) — no es un caso aislado.
+// pn_supa (sin /novadata) NO trae obligadoPrincipal, solo
+// representanteLegal — si el cliente coincide con ese campo, por
+// eliminación NO es el obligado (son los únicos 2 roles del registro);
+// si no coincide con ninguno de los 2 campos conocidos, no se penaliza
+// por datos faltantes (mismo criterio que numeroDenunciasComoSospechoso
+// en riesgoPenal).
+function esClienteObligadoSupa(p: AnyRecord, nombreCliente: string | null): boolean {
+  if (p.obligadoPrincipal) return mismoNombre(p.obligadoPrincipal, nombreCliente);
+  if (mismoNombre(p.representanteLegal, nombreCliente)) return false;
+  return false;
 }
 
 // Delitos de seguridad ciudadana (lavado de activos, narcotráfico/
@@ -351,30 +420,74 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // menos 3 snapshots mensuales confirmados para ese fecIng — un
   // empleo que recién aparece (1-2 meses) puede no ser estable
   // todavía, mejor no reportar un número que dé falsa confianza.
+  //
+  // "Último snapshot confirmado" por registro/grupo — tiess trae un
+  // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Novadata
+  // nunca vio una salida registrada", NO "sigue activo hoy" (mismo
+  // hueco de dato que afiliacionIess/estadoAfiliacionIess más abajo).
+  // BUG real corregido acá (cédula 0501578256, validado contra el
+  // mecanizado del IESS): el único empleo de esta persona tiene su
+  // último snapshot en 2021-11 (~4 años atrás) con fecSal vacío --
+  // numeroEmpleadoresUltimos24Meses/antiguedadEmpleoActualMeses/
+  // duracionEmpleoMasLargoMeses usaban `ahoraActividad` (hoy) como fin
+  // en ese caso, dando antigüedad "actual" de 6 años 5 meses para un
+  // empleo que en realidad no hay evidencia de que continúe desde
+  // hace años. Se usa el (anio,mes) del snapshot en vez de "hoy" como
+  // referencia de "hasta cuándo hay evidencia real" en los 3 campos.
+  const anioMesA0 = (t: AnyRecord): number | null => {
+    const anio = num(t.anio);
+    const mes = num(t.mes);
+    return anio !== null && mes !== null ? anio * 12 + (mes - 1) : null;
+  };
+  const fechaDeAnioMesA0 = (anioMesA0Val: number): Date => new Date(Math.floor(anioMesA0Val / 12), anioMesA0Val % 12, 1);
+  const mesesDesdeUltimaEvidenciaActiva = (t: AnyRecord): number | null => {
+    const fecSal = String(t.fecSal ?? "").trim();
+    if (fecSal) return mesesDesdeDDMMYYYY(fecSal);
+    const a0 = anioMesA0(t);
+    return a0 !== null ? mesesEntreFechas(fechaDeAnioMesA0(a0), ahoraActividad) : null;
+  };
   const tiessActivos = tiess.filter((t) => !String(t.fecSal ?? "").trim());
-  const tiessActivoMasReciente = [...tiessActivos].sort(
-    (a, b) => (num(b.anio) ?? 0) * 12 + (num(b.mes) ?? 0) - ((num(a.anio) ?? 0) * 12 + (num(a.mes) ?? 0))
-  )[0] as AnyRecord | undefined;
+  const tiessActivoMasReciente = [...tiessActivos].sort((a, b) => (anioMesA0(b) ?? -Infinity) - (anioMesA0(a) ?? -Infinity))[0] as
+    | AnyRecord
+    | undefined;
   const fecIngEmpleoActual = tiessActivoMasReciente ? parseFechaDDMMYYYY(tiessActivoMasReciente.fecIng) : null;
   const snapshotsEmpleoActual = tiessActivoMasReciente
     ? tiess.filter((t) => t.fecIng === tiessActivoMasReciente.fecIng && t.nomEmp === tiessActivoMasReciente.nomEmp).length
     : 0;
+  // "Actual" además exige que el snapshot más reciente de ESE empleo
+  // sea confiable (mismo umbral de 3 meses que empleoActualConfiable
+  // arriba) — si el último dato que tenemos es de hace años, no se
+  // puede afirmar que sigue siendo el empleo ACTUAL de la persona.
+  const antiguedadEmpleoActualConfiable =
+    tiessActivoMasReciente !== undefined && (mesesDesdeUltimaEvidenciaActiva(tiessActivoMasReciente) ?? Infinity) <= 3;
   const antiguedadEmpleoActualMeses =
-    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad) : null;
+    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 && antiguedadEmpleoActualConfiable
+      ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad)
+      : null;
   // Empleo más largo registrado (histórico, incluye el actual si es el
   // más largo) — señal de estabilidad aparte de la antigüedad actual:
   // alguien con un empleo corto hoy pero años de tenencias largas es
   // más estable que alguien que salta de trabajo en trabajo.
-  const empleosUnicos = new Map<string, AnyRecord>();
+  const empleosUnicos = new Map<string, { fecIng: unknown; fecSal: unknown; ultimoAnioMesA0: number | null }>();
   for (const t of tiess) {
     const clave = `${t.nomEmp}|${t.fecIng}|${t.fecSal}`;
-    if (!empleosUnicos.has(clave)) empleosUnicos.set(clave, t);
+    const a0 = anioMesA0(t);
+    const existente = empleosUnicos.get(clave);
+    if (!existente) {
+      empleosUnicos.set(clave, { fecIng: t.fecIng, fecSal: t.fecSal, ultimoAnioMesA0: a0 });
+    } else if (a0 !== null && (existente.ultimoAnioMesA0 === null || a0 > existente.ultimoAnioMesA0)) {
+      existente.ultimoAnioMesA0 = a0;
+    }
   }
-  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses: number | null, t) => {
-    const inicio = parseFechaDDMMYYYY(t.fecIng);
+  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses: number | null, e) => {
+    const inicio = parseFechaDDMMYYYY(e.fecIng);
     if (!inicio) return maxMeses;
-    const finStr = String(t.fecSal ?? "").trim();
-    const fin = finStr ? parseFechaDDMMYYYY(finStr) : ahoraActividad;
+    const finStr = String(e.fecSal ?? "").trim();
+    // Sin fecha de salida: el fin es el ÚLTIMO snapshot confirmado de
+    // ese empleo, no "hoy" — ver nota arriba (si el empleo sigue
+    // activo de verdad, ese último snapshot ES el mes actual o uno muy
+    // reciente, así que no pierde precisión en ese caso).
+    const fin = finStr ? parseFechaDDMMYYYY(finStr) : e.ultimoAnioMesA0 !== null ? fechaDeAnioMesA0(e.ultimoAnioMesA0) : null;
     if (!fin) return maxMeses;
     const duracion = mesesEntreFechas(inicio, fin);
     return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
@@ -390,17 +503,18 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
           salarioAprox: num((ultimoMecanizado?.personaIngreso as AnyRecord | undefined)?.valor),
         }
       : null,
-    // Empleadores ACTIVOS en algún momento de los últimos 24 meses — NO
-    // "empleadores que iniciaron en los últimos 24 meses" (versión
-    // anterior, con bug de semántica: un empleo estable de años daba 0,
-    // igual que un cliente sin empleo hace 2 años; ambos casos opuestos
-    // colapsaban al mismo valor). fecSal vacío = sigue activo hoy.
+    // Empleadores con evidencia de actividad en algún momento de los
+    // últimos 24 meses — NO "empleadores que iniciaron en los últimos
+    // 24 meses" (bug de semántica de una versión muy anterior: un
+    // empleo estable de años daba 0, igual que un cliente sin empleo
+    // hace 2 años). fecSal vacío YA NO se trata como "sigue activo
+    // hoy" sin más (bug real corregido junto con antiguedadEmpleoActualMeses
+    // arriba, mismo caso 0501578256) — se usa mesesDesdeUltimaEvidenciaActiva,
+    // que para fecSal vacío mira el (anio,mes) real del snapshot.
     numeroEmpleadoresUltimos24Meses: new Set(
       tiess
         .filter((t) => {
-          const fecSal = String(t.fecSal ?? "").trim();
-          if (!fecSal) return true;
-          const m = mesesDesdeDDMMYYYY(fecSal);
+          const m = mesesDesdeUltimaEvidenciaActiva(t);
           return m !== null && m <= 24;
         })
         .map((t) => t.nomEmp)
@@ -435,6 +549,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     estadoActividadEconomica,
     antiguedadUltimaEtapaActivaMeses,
     mesesInactivoActividadEconomica,
+    tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
     antiguedadEmpleoActualMeses,
     duracionEmpleoMasLargoMeses,
   };
@@ -475,9 +590,22 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   };
 
   // ---- seguridadSocial ----
+  // BUG real (auditoría pedida por el usuario, cédulas 0502932429 y
+  // 0501578256): pn_afiliacion_iess viene "faltante" (Novadata no pudo
+  // traer datos de ESE recurso puntual) en 32 de los 40 clientes de la
+  // muestra -- incluyendo personas con historial laboral extenso y real
+  // en tiess/mecanizado. afiliadoIessActivo devolvía `false` en todos
+  // esos casos, indistinguible de "se consultó bien y de verdad no está
+  // afiliado" -- eso es lo que hacía que el LLM reportara una
+  // "inconsistencia" (afiliación inactiva) contra un empleo real
+  // confirmado por otras fuentes. Ahora es null cuando el recurso mismo
+  // no trajo datos (estadoRecursoAfilIess !== "ok"), reservando
+  // false/true para cuando SÍ se consultó y el estado real es conocido.
+  const estadoRecursoAfilIess = estadoRecurso(iess, "afiliacionIess");
   const afilIess = (arr(iess, "afiliacionIess", "afiliacionIess")[0] as AnyRecord | undefined) ?? null;
   const seguridadSocial: StandardClientProfile["seguridadSocial"] = {
-    afiliadoIessActivo: afilIess ? String(afilIess.estado ?? "").toUpperCase().startsWith("ACTIVO") : false,
+    afiliadoIessActivo:
+      estadoRecursoAfilIess !== "ok" ? null : afilIess ? String(afilIess.estado ?? "").toUpperCase().startsWith("ACTIVO") : false,
     // esPensionista: hay que leer el campo .estado (booleano real) de
     // cada registro, no solo si el recurso trajo algún registro.
     esPensionista: arr(iess, "pensionista", "pensionista").some((p) => p.estado === true),
@@ -620,6 +748,10 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   const demandas = arr(judicial, "demandas", "demandas");
   const demandasOfendido = arr(judicial, "demandasOfendido", "demandas");
   const pensionAliment = [...arr(judicial, "pensionAlimenticia", "supas"), ...arr(judicial, "pensionAlimenticiaNovadata", "supas")];
+  // Solo cuenta como deuda/mora DEL CLIENTE la que le corresponde como
+  // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
+  // 0501578256 aparecía en mora por una deuda de otra persona).
+  const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
   // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el tipo
   // de caso real vive en demanda.delito.
   const delitoDe = (d: AnyRecord): string | undefined => (d.demanda as AnyRecord | undefined)?.delito as string | undefined;
@@ -634,8 +766,10 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     numeroDemandasComoDemandado: demandasCivilesResto.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
     numeroDemandasComoOfendido: demandasOfendido.length,
-    pensionAlimenticiaEnMora: pensionAliment.some((p) => (num(p.totalDeuda) ?? 0) > 0),
-    deudaPensionAlimenticia: pensionAliment.length ? Math.max(...pensionAliment.map((p) => num(p.totalDeuda) ?? 0)) : null,
+    pensionAlimenticiaEnMora: pensionAlimentComoObligado.some((p) => (num(p.totalDeuda) ?? 0) > 0),
+    deudaPensionAlimenticia: pensionAlimentComoObligado.length
+      ? Math.max(...pensionAlimentComoObligado.map((p) => num(p.totalDeuda) ?? 0))
+      : null,
   };
 
   // ---- riesgoPenal ----

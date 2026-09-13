@@ -193,6 +193,10 @@ export interface StandardClientProfile {
 
   laboral: {
     empleoActual: { empleador: string | null; cargo: string | null; salarioAprox: number | null } | null;
+    // Empleadores con evidencia de actividad en algún momento de los
+    // últimos 24 meses (fecSal, o si viene vacío, el último snapshot
+    // (anio,mes) confirmado — NO se asume "activo hoy" solo porque
+    // Novadata nunca registró una salida, ver antiguedadEmpleoActualMeses).
     numeroEmpleadoresUltimos24Meses: number;
     ingresoPromedioUltimos6Meses: number | null;
     esEmpleadorOAdministrador: boolean;
@@ -234,16 +238,32 @@ export interface StandardClientProfile {
       | null;
     antiguedadUltimaEtapaActivaMeses: number | null; // de la racha activa actual (si activa) o de la última antes de cesar (si inactiva)
     mesesInactivoActividadEconomica: number | null; // null si está activa
+    // Tipo del cese más reciente del RUC (null si nunca hubo cese) —
+    // SRI distingue "cancelación" (puede ser un trámite ordinario) de
+    // "suspensión definitiva" (case real: cédula 0501578256, fecha de
+    // suspensión definitiva = fecha de cancelación, con
+    // observ_solicitud_suspension="CESE DE ACTIVIDADES"). Informativo,
+    // no cambia estadoActividadEconomica ni el score por sí solo.
+    tipoUltimoCeseRuc: "cancelacion" | "suspension_definitiva" | null;
     // Antigüedad laboral — fuente tiess (fecIng/fecSal), independiente
     // de empleoActual (fuente trabajoHistoricosMecanizado, puede diferir
     // levemente en el nombre del empleador). Solo se reporta si hay al
-    // menos 3 snapshots mensuales confirmados para ese empleo — evita
-    // mostrar antigüedad de 1 mes como si fuera un dato sólido.
+    // menos 3 snapshots mensuales confirmados para ese empleo Y el
+    // último snapshot es reciente (≤3 meses) — fecSal vacío en tiess
+    // NO significa "sigue activo hoy", solo "Novadata nunca registró
+    // una salida" (caso real: cédula 0501578256, único empleo con
+    // último snapshot en 2021-11 y fecSal vacío — sin este chequeo daba
+    // "6 años 5 meses de antigüedad actual" para un empleo sin
+    // evidencia real desde hace ~4 años).
     antiguedadEmpleoActualMeses: number | null;
     // Empleo más largo registrado históricamente (incluye el actual si
     // es el más largo) — señal de estabilidad aparte de la antigüedad
     // actual: alguien con un empleo corto hoy pero años de tenencias
     // largas es más estable que alguien que salta de trabajo en trabajo.
+    // Cuando fecSal viene vacío, la duración se cuenta hasta el ÚLTIMO
+    // snapshot confirmado de ese empleo, no hasta hoy (mismo caso real
+    // de arriba — evita inflar la duración de un empleo abandonado que
+    // nunca se cerró formalmente en el dato).
     duracionEmpleoMasLargoMeses: number | null;
   };
 
@@ -258,7 +278,13 @@ export interface StandardClientProfile {
   };
 
   seguridadSocial: {
-    afiliadoIessActivo: boolean;
+    // null si el recurso pn_afiliacion_iess no trajo datos (Novadata no
+    // pudo consultarlo para esta persona) — DISTINTO de false (se
+    // consultó bien y el estado real es "no afiliado"/inactivo). Hueco
+    // de dato frecuente: 32 de 40 clientes de la muestra de auditoría
+    // traen este recurso "faltante" pese a tener empleo real confirmado
+    // por otras fuentes (tiess/mecanizado) — ver process.ts.
+    afiliadoIessActivo: boolean | null;
     esPensionista: boolean;
     esJubilado: boolean;
     estadoAfiliacionIess: string | null;
@@ -360,6 +386,13 @@ export interface StandardClientProfile {
     numeroDemandasComoDemandado: number;
     tiposDemandasComoDemandado: string[]; // demanda.delito, NO tipoDemanda.descripcion (ver nota en process.ts)
     numeroDemandasComoOfendido: number;
+    // Solo cuenta la deuda/mora del registro pn_supa donde el CLIENTE es
+    // el obligado a pagar (ver esClienteObligadoSupa en process.ts) — un
+    // registro donde el cliente es representanteLegal significa que a
+    // él/ella LE DEBEN, no al revés. BUG real corregido: 6 de 12
+    // clientes de la muestra de auditoría con pensionAlimenticiaEnMora=true
+    // eran en realidad este error de rol (caso confirmado: cédula
+    // 0501578256).
     pensionAlimenticiaEnMora: boolean;
     deudaPensionAlimenticia: number | null;
   };

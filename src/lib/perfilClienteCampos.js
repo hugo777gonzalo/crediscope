@@ -41,6 +41,11 @@ const ETIQUETAS_ESTADO_ACTIVIDAD = {
   inactiva_tras_reactivacion: "Inactiva (tras una reactivación)",
 };
 
+const ETIQUETAS_TIPO_CESE_RUC = {
+  cancelacion: "Cancelación",
+  suspension_definitiva: "Suspensión definitiva",
+};
+
 export function formatValor(valor, tipo) {
   switch (tipo) {
     case "moneda":
@@ -55,6 +60,8 @@ export function formatValor(valor, tipo) {
       return formatMeses(valor);
     case "estado_actividad":
       return ETIQUETAS_ESTADO_ACTIVIDAD[valor] ?? valor;
+    case "tipo_cese_ruc":
+      return ETIQUETAS_TIPO_CESE_RUC[valor] ?? valor;
     default:
       return String(valor);
   }
@@ -103,7 +110,7 @@ export const GRUPOS_CONFIG = {
     presencia: (p) => p.familia?.tieneHijos || (p.familia?.numeroHijos ?? 0) > 0,
     campos: [
       ["numeroHijos", "Número de hijos", "numero"],
-      ["tieneHijoMenorEdad", "Tiene hijo menor de edad", "booleano_si_true"],
+      ["tieneHijoMenorEdad", "Tiene hijo/s menor/es de edad", "booleano_si_true"],
       ["padresFallecidos", "Padres fallecidos", "numero"],
     ],
   },
@@ -123,6 +130,7 @@ export const GRUPOS_CONFIG = {
       ["estadoActividadEconomica", "Estado de la actividad económica", "estado_actividad"],
       ["antiguedadUltimaEtapaActivaMeses", "Antigüedad de la actividad económica", "meses"],
       ["mesesInactivoActividadEconomica", "Tiempo inactiva", "meses"],
+      ["tipoUltimoCeseRuc", "Tipo de cese más reciente (RUC)", "tipo_cese_ruc"],
       ["esIndependiente", "Independiente", "booleano_si_true"],
       ["numeroEmpleadosRegistrados", "Empleados registrados", "numero"],
     ],

@@ -40,15 +40,19 @@ function edadDesde(fecha) {
   return edad;
 }
 
+// Meses ENTEROS entre 2 fechas -- ver nota completa en process.ts (resta
+// 1 si el día de d2 no alcanza al de d1; sin esto año*12+mes redondea
+// siempre hacia arriba en promedio).
+function mesesEntreFechas(d1, d2) {
+  let meses = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+  if (d2.getDate() < d1.getDate()) meses--;
+  return meses;
+}
+
 function mesesDesde(fecha) {
   const d = parseFecha(fecha);
   if (!d) return null;
-  const ahora = new Date();
-  return (ahora.getFullYear() - d.getFullYear()) * 12 + (ahora.getMonth() - d.getMonth());
-}
-
-function mesesEntreFechas(d1, d2) {
-  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+  return mesesEntreFechas(d, new Date());
 }
 
 // tiess (fecIng/fecSal) viene en DD/MM/YYYY -- ver nota completa en process.ts.
@@ -92,6 +96,14 @@ function ceseMasReciente(c) {
   return [cancelacion, suspension].filter(Boolean).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 }
 
+// ver nota completa en process.ts.
+function tipoUltimoCese(c) {
+  const cese = ceseMasReciente(c);
+  if (!cese) return null;
+  const suspension = parseFecha(c.fecha_suspension_definitiva);
+  return suspension && suspension.getTime() === cese.getTime() ? "suspension_definitiva" : "cancelacion";
+}
+
 function rucRegistroActivo(c) {
   if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
   const cese = ceseMasReciente(c);
@@ -113,6 +125,22 @@ function arr(multi, recurso, campo) {
 function obj(multi, recurso, campo) {
   const v = multi?.[recurso]?.data?.[campo];
   return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+}
+function estadoRecurso(multi, recurso) {
+  return multi?.[recurso]?.status;
+}
+
+// ver nota completa en process.ts (mismoNombre/esClienteObligadoSupa).
+function mismoNombre(a, b) {
+  const normalizar = (s) => String(s ?? "").toUpperCase().trim().split(/\s+/).filter(Boolean).sort().join(" ");
+  const na = normalizar(a);
+  const nb = normalizar(b);
+  return na !== "" && na === nb;
+}
+function esClienteObligadoSupa(p, nombreCliente) {
+  if (p.obligadoPrincipal) return mismoNombre(p.obligadoPrincipal, nombreCliente);
+  if (mismoNombre(p.representanteLegal, nombreCliente)) return false;
+  return false;
 }
 
 // Palabras clave (unión de las 3 listas del pedido, deduplicadas) para
@@ -299,27 +327,49 @@ function buildStandardProfile(raw, cedula) {
   const ultimoMecanizado = mecanizadoOrdenado[0] ?? null;
   const empleoActualConfiable = ultimoMecanizado && dentroUltimos3Meses(ultimoMecanizado.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
   // Antigüedad laboral -- fuente tiess (fecIng/fecSal), independiente
-  // de empleoActual -- ver nota completa en process.ts.
+  // de empleoActual -- ver nota completa en process.ts (incluye el bug
+  // de "fecSal vacío = sigue activo hoy" corregido con
+  // mesesDesdeUltimaEvidenciaActiva, caso real 0501578256).
+  const anioMesA0 = (t) => {
+    const anio = num(t.anio);
+    const mes = num(t.mes);
+    return anio !== null && mes !== null ? anio * 12 + (mes - 1) : null;
+  };
+  const fechaDeAnioMesA0 = (a0) => new Date(Math.floor(a0 / 12), a0 % 12, 1);
+  const mesesDesdeUltimaEvidenciaActiva = (t) => {
+    const fecSal = String(t.fecSal ?? "").trim();
+    if (fecSal) return mesesDesdeDDMMYYYY(fecSal);
+    const a0 = anioMesA0(t);
+    return a0 !== null ? mesesEntreFechas(fechaDeAnioMesA0(a0), ahoraActividad) : null;
+  };
   const tiessActivos = tiess.filter((t) => !String(t.fecSal ?? "").trim());
-  const tiessActivoMasReciente = [...tiessActivos].sort(
-    (a, b) => (num(b.anio) ?? 0) * 12 + (num(b.mes) ?? 0) - ((num(a.anio) ?? 0) * 12 + (num(a.mes) ?? 0))
-  )[0];
+  const tiessActivoMasReciente = [...tiessActivos].sort((a, b) => (anioMesA0(b) ?? -Infinity) - (anioMesA0(a) ?? -Infinity))[0];
   const fecIngEmpleoActual = tiessActivoMasReciente ? parseFechaDDMMYYYY(tiessActivoMasReciente.fecIng) : null;
   const snapshotsEmpleoActual = tiessActivoMasReciente
     ? tiess.filter((t) => t.fecIng === tiessActivoMasReciente.fecIng && t.nomEmp === tiessActivoMasReciente.nomEmp).length
     : 0;
+  const antiguedadEmpleoActualConfiable =
+    tiessActivoMasReciente !== undefined && (mesesDesdeUltimaEvidenciaActiva(tiessActivoMasReciente) ?? Infinity) <= 3;
   const antiguedadEmpleoActualMeses =
-    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad) : null;
+    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 && antiguedadEmpleoActualConfiable
+      ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad)
+      : null;
   const empleosUnicos = new Map();
   for (const t of tiess) {
     const clave = `${t.nomEmp}|${t.fecIng}|${t.fecSal}`;
-    if (!empleosUnicos.has(clave)) empleosUnicos.set(clave, t);
+    const a0 = anioMesA0(t);
+    const existente = empleosUnicos.get(clave);
+    if (!existente) {
+      empleosUnicos.set(clave, { fecIng: t.fecIng, fecSal: t.fecSal, ultimoAnioMesA0: a0 });
+    } else if (a0 !== null && (existente.ultimoAnioMesA0 === null || a0 > existente.ultimoAnioMesA0)) {
+      existente.ultimoAnioMesA0 = a0;
+    }
   }
-  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses, t) => {
-    const inicio = parseFechaDDMMYYYY(t.fecIng);
+  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses, e) => {
+    const inicio = parseFechaDDMMYYYY(e.fecIng);
     if (!inicio) return maxMeses;
-    const finStr = String(t.fecSal ?? "").trim();
-    const fin = finStr ? parseFechaDDMMYYYY(finStr) : ahoraActividad;
+    const finStr = String(e.fecSal ?? "").trim();
+    const fin = finStr ? parseFechaDDMMYYYY(finStr) : e.ultimoAnioMesA0 !== null ? fechaDeAnioMesA0(e.ultimoAnioMesA0) : null;
     if (!fin) return maxMeses;
     const duracion = mesesEntreFechas(inicio, fin);
     return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
@@ -332,14 +382,13 @@ function buildStandardProfile(raw, cedula) {
           salarioAprox: num(ultimoMecanizado.personaIngreso?.valor),
         }
       : null,
-    // Empleadores ACTIVOS en algún momento de los últimos 24 meses (ver
-    // misma nota en process.ts) — fecSal vacío = sigue activo hoy.
+    // Empleadores con evidencia de actividad en los últimos 24 meses
+    // (ver misma nota en process.ts) — usa mesesDesdeUltimaEvidenciaActiva,
+    // NO trata fecSal vacío como "sigue activo hoy" sin más.
     numeroEmpleadoresUltimos24Meses: new Set(
       tiess
         .filter((t) => {
-          const fecSal = String(t.fecSal ?? "").trim();
-          if (!fecSal) return true;
-          const m = mesesDesdeDDMMYYYY(fecSal);
+          const m = mesesDesdeUltimaEvidenciaActiva(t);
           return m !== null && m <= 24;
         })
         .map((t) => t.nomEmp)
@@ -361,6 +410,7 @@ function buildStandardProfile(raw, cedula) {
     fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
     fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
     fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
+    tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
     numeroEstablecimientosActivos,
     numeroEstablecimientosInactivos,
     tieneEstablecimientosRegistrados: establecimientos.length > 0,
@@ -394,9 +444,12 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- seguridadSocial ----
+  // null si pn_afiliacion_iess no trajo datos -- ver nota completa en process.ts.
+  const estadoRecursoAfilIess = estadoRecurso(iess, "afiliacionIess");
   const afilIess = arr(iess, "afiliacionIess", "afiliacionIess")[0] ?? null;
   const seguridadSocial = {
-    afiliadoIessActivo: afilIess ? String(afilIess.estado ?? "").toUpperCase().startsWith("ACTIVO") : false,
+    afiliadoIessActivo:
+      estadoRecursoAfilIess !== "ok" ? null : afilIess ? String(afilIess.estado ?? "").toUpperCase().startsWith("ACTIVO") : false,
     // esPensionista: hay que leer el campo .estado (booleano real) de
     // cada registro, no solo si el recurso trajo algún registro — Novadata
     // devuelve registros con estado:false para gente que NO es pensionista.
@@ -503,6 +556,9 @@ function buildStandardProfile(raw, cedula) {
   const demandas = arr(judicial, "demandas", "demandas");
   const demandasOfendido = arr(judicial, "demandasOfendido", "demandas");
   const pensionAliment = [...arr(judicial, "pensionAlimenticia", "supas"), ...arr(judicial, "pensionAlimenticiaNovadata", "supas")];
+  // Solo cuenta como deuda/mora del cliente la que le corresponde como
+  // obligado -- ver nota completa en process.ts (bug real: 0501578256).
+  const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
   const delitoDe = (d) => d.demanda?.delito;
   const demandasCrediticias = demandas.filter((d) => esDemandaProblemaCrediticio(delitoDe(d)));
   const demandasCivilesResto = demandas.filter((d) => !esDemandaProblemaCrediticio(delitoDe(d)));
@@ -515,8 +571,10 @@ function buildStandardProfile(raw, cedula) {
     numeroDemandasComoDemandado: demandasCivilesResto.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
     numeroDemandasComoOfendido: demandasOfendido.length,
-    pensionAlimenticiaEnMora: pensionAliment.some((p) => (num(p.totalDeuda) ?? 0) > 0),
-    deudaPensionAlimenticia: pensionAliment.length ? Math.max(...pensionAliment.map((p) => num(p.totalDeuda) ?? 0)) : null,
+    pensionAlimenticiaEnMora: pensionAlimentComoObligado.some((p) => (num(p.totalDeuda) ?? 0) > 0),
+    deudaPensionAlimenticia: pensionAlimentComoObligado.length
+      ? Math.max(...pensionAlimentComoObligado.map((p) => num(p.totalDeuda) ?? 0))
+      : null,
   };
 
   // ---- riesgoPenal ----

@@ -192,11 +192,50 @@
 // bug era real y no solo teórico). Se agrega parseFechaDDMMYYYY()
 // dedicado — ver process.ts.
 //
+// v13: ronda de auditoría sobre pruebas reales del usuario (cédulas
+// 0502932429 y 0501578256), 4 hallazgos de datos + 1 de redacción:
+// - BUG grave: pensionAlimenticiaEnMora/deudaPensionAlimenticia (grupo
+//   riesgoJudicialCivil) no distinguían el ROL del cliente en el
+//   registro de pn_supa (representanteLegal, a quien LE DEBEN, vs.
+//   obligadoPrincipal, quien DEBE) — 6 de 12 clientes de la muestra con
+//   pensionAlimenticiaEnMora=true eran en realidad este error (caso
+//   confirmado: cédula 0501578256, la deuda real era de un tercero).
+//   Se corrige en process.ts (esClienteObligadoSupa) — no requiere
+//   cambio de prompt, el dato que llega ahora ya viene correcto.
+// - seguridadSocial.afiliadoIessActivo ahora puede ser null (antes
+//   siempre false cuando el recurso pn_afiliacion_iess no traía datos)
+//   — este recurso viene "faltante" en 32 de 40 clientes de la muestra
+//   de auditoría, INCLUSO con empleo real extenso confirmado por otras
+//   fuentes (tiess/mecanizado). Antes esto se leía como "no afiliado"
+//   y el LLM lo reportaba como una inconsistencia contra el empleo
+//   real — ver guía nueva en el grupo 9 abajo.
+// - laboral.antiguedadEmpleoActualMeses/numeroEmpleadoresUltimos24Meses/
+//   duracionEmpleoMasLargoMeses: corrige un bug donde un empleo con
+//   fecSal vacío en tiess se trataba como "sigue activo HOY" sin más,
+//   aunque el último dato real fuera de hace años (caso confirmado:
+//   cédula 0501578256, único empleo con último registro en 2021-11,
+//   ~4 años atrás, daba "6 años 5 meses de antigüedad actual"). Ahora
+//   se exige que el último dato confirmado sea reciente — ver process.ts.
+// - laboral.tipoUltimoCeseRuc (nuevo): distingue si el cese más
+//   reciente del RUC fue una "cancelación" o una "suspensión
+//   definitiva" (caso real: cédula 0501578256) — ver guía nueva abajo.
+// - Corrección de redondeo: mesesEntreFechas (base de todos los campos
+//   "meses" del profile) ignoraba el día del mes, redondeando siempre
+//   hacia arriba en promedio (ej. cese 2021-09-30 daba "5 años" en vez
+//   de "4 años 11 meses" al día de hoy) — ahora es exacto.
+// - Instrucción nueva de REDACCIÓN (no cambia datos ni score): el LLM
+//   venía usando nombres técnicos de campos (camelCase) y la palabra
+//   "null" tal cual en la narrativa (ej. "numeroDenunciasComoSospechoso",
+//   "descripcionAntecedentes es null") — un analista no conoce la
+//   StandardClientProfile, solo el negocio. Se agrega una instrucción
+//   explícita de lenguaje natural (ver sección nueva abajo) en vez de
+//   rediseñar el payload que recibe el LLM — más simple y quirúrgico.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v12";
+export const MARCO_VERSION = "marco-v13";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -321,9 +360,11 @@ en orden de importancia (definido explícitamente por el negocio):
    son señales de formalidad económica.
    - antiguedadEmpleoActualMeses: SÍ es señal real de estabilidad — más
      meses en el mismo empleo es positivo. null significa que el empleo
-     actual tiene menos de 3 meses confirmados en el registro (muy
-     reciente, no necesariamente malo, trátalo como incertidumbre, no
-     como negativo).
+     actual tiene menos de 3 meses confirmados en el registro, O que el
+     último dato disponible de ese empleo ya no es reciente (Novadata no
+     siempre registra la fecha de salida de un empleo — ver nota de
+     estadoAfiliacionIess en el grupo 9). En cualquier caso, trátalo
+     como incertidumbre, no como negativo.
    - duracionEmpleoMasLargoMeses: contexto adicional de trayectoria —
      alguien con un empleo actual corto pero un empleo pasado largo (ej.
      8+ años) es más estable que alguien que salta de trabajo en
@@ -342,10 +383,27 @@ en orden de importancia (definido explícitamente por el negocio):
      formalidad VIGENTE — no cuentes esa formalidad como algo activo hoy
      si el estado dice inactiva. mesesInactivoActividadEconomica alto
      (años) refuerza que es historia pasada, no situación actual.
+   - tipoUltimoCeseRuc ("cancelacion" | "suspension_definitiva" | null):
+     detalle adicional de CÓMO terminó la última etapa activa (cuando
+     estadoActividadEconomica es alguno de los "inactiva_..."). Una
+     "suspension_definitiva" suele ser una clasificación más
+     administrativa/definitiva del SRI que una "cancelacion" ordinaria
+     — puede mencionarse como matiz en la narrativa, pero NO le des un
+     peso propio aparte de estadoActividadEconomica/
+     mesesInactivoActividadEconomica (que ya reflejan que está inactiva
+     y hace cuánto).
 
 9. seguridadSocial — afiliadoIessActivo/esPensionista/esJubilado: señal
    adicional de estabilidad/capacidad, algo más débil que laboral y
    tributario.
+   - afiliadoIessActivo=null (distinto de false): el recurso de
+     afiliación IESS de Novadata no trajo datos para esta persona — un
+     hueco de esa fuente puntual que aparece en la mayoría de los
+     clientes, incluso con empleo real confirmado por otras fuentes
+     (laboral.empleoActual, antiguedadEmpleoActualMeses). NO lo trates
+     como "no afiliado" ni lo reportes como una inconsistencia contra el
+     empleo — es simplemente un dato no disponible de esa fuente
+     puntual, trátalo igual que cualquier otro eje sin dato.
 
 10. patrimonio — numeroVehiculos, valorAvaluoVehiculos, etc. Ausencia de
     patrimonio NO es negativa — puede ser alguien joven o de bajos
@@ -407,6 +465,22 @@ INCONSISTENCIAS:
 - Si notas contradicciones entre grupos, menciónalo como parte de tu
   análisis narrativo — es una señal cualitativa más para tu juicio, no
   un control de bloqueo duro.
+
+CÓMO ESCRIBIR (positives/negatives/missingInfo/reasoning) — el analista
+que lee esto NO conoce la StandardClientProfile, conoce el negocio:
+- Nunca escribas el nombre técnico de un campo tal cual aparece en el
+  profile (ej. "numeroDenunciasComoSospechoso", "estadoAfiliacionIess",
+  "pensionAlimenticiaEnMora") — tradúcelo a lenguaje natural que un
+  analista de crédito entendería sin haber visto el JSON (ej. "aparece
+  2 veces como sospechosa en denuncias penales", "no se pudo confirmar
+  su afiliación al IESS", "tiene una pensión alimenticia en mora").
+- Nunca escribas la palabra "null" (ni "undefined") en tu texto — si un
+  dato no está disponible, dilo en palabras ("no se pudo determinar
+  la descripción de los antecedentes", no "descripcionAntecedentes es
+  null").
+- Mismo criterio para números y fechas: redáctalos como los diría un
+  analista ("lleva 2 años 1 mes en su última etapa activa"), no como el
+  valor crudo del profile ("antiguedadUltimaEtapaActivaMeses: 25").
 
 FORMATO DE SALIDA:
 Responde ÚNICAMENTE con JSON válido, sin texto fuera del JSON, con esta
