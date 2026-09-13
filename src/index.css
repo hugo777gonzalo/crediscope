@@ -129,6 +129,24 @@ a {
   letter-spacing: 0.04em;
 }
 
+.crediscope-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+}
+
+.crediscope-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
 .crediscope-table {
   width: 100%;
   border-collapse: collapse;
@@ -442,4 +460,113 @@ a {
   .crediscope-eje-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Login / Crear cuenta ---------- */
+
+.crediscope-auth-shell {
+  display: flex;
+  justify-content: center;
+  padding-top: clamp(24px, 8vh, 96px);
+}
+
+.crediscope-auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 32px;
+  box-shadow: 0 24px 48px -28px rgba(21, 17, 58, 0.35);
+}
+
+.crediscope-auth-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.crediscope-auth-title {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.crediscope-auth-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.crediscope-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.crediscope-auth-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 10px 0 -2px;
+}
+
+.crediscope-auth-label:first-child {
+  margin-top: 0;
+}
+
+.crediscope-auth-error {
+  color: var(--bad);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.crediscope-auth-mensaje {
+  color: var(--good);
+  font-size: 13px;
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+.crediscope-auth-submit {
+  margin-top: 18px;
+  width: 100%;
+  padding: 12px;
+  font-weight: 600;
+}
+
+.crediscope-auth-footer {
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin: 22px 0 0;
+}
+
+.crediscope-otp-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.crediscope-otp-digit {
+  width: 44px;
+  height: 52px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-muted);
+  color: var(--text);
+}
+
+.crediscope-otp-digit:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: var(--panel);
 }

@@ -1,8 +1,11 @@
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { useSession } from "./lib/useSession.js";
 import { useProfile, esAdmin } from "./lib/useProfile.js";
 import { getUltimaCedula } from "./lib/ultimaCedula.js";
+import { supabase } from "./lib/supabaseClient.js";
 import Login from "./pages/Login.jsx";
+import Signup from "./pages/Signup.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
 import PerfilCliente from "./pages/PerfilCliente.jsx";
@@ -52,6 +55,19 @@ function MenuEvaluacionCrediticia() {
   );
 }
 
+function BotonSalir() {
+  const navigate = useNavigate();
+  async function handleClick() {
+    await supabase.auth.signOut();
+    navigate("/login");
+  }
+  return (
+    <button className="crediscope-logout-btn" onClick={handleClick} title="Cerrar sesión" aria-label="Cerrar sesión">
+      <LogOut size={16} />
+    </button>
+  );
+}
+
 export default function App() {
   const { session } = useSession();
   const { profile } = useProfile();
@@ -88,12 +104,14 @@ export default function App() {
                 <span>{profile.nombre_corto}</span>
               </span>
             ) : null}
+            <BotonSalir />
           </nav>
         ) : null}
       </header>
       <main className="crediscope-main">
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/crear-cuenta" element={<Signup />} />
           <Route
             path="/explorar"
             element={
