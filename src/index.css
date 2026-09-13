@@ -1,15 +1,20 @@
 :root {
-  --bg: #0f172a;
+  /* Índigo & Oro -- identidad de CrediScope como plataforma de
+     analítica avanzada con IA (no un dashboard genérico azul-SaaS). El
+     dorado (--gold) es un acento puntual (ícono, detalles), nunca un
+     color de fondo/superficie. */
+  --bg: #15113a;
   --panel: #ffffff;
-  --panel-muted: #f1f5f9;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --brand: #2563eb;
-  --brand-dark: #1d4ed8;
-  --good: #16a34a;
-  --bad: #dc2626;
-  --warn: #d97706;
+  --panel-muted: #f5f4fb;
+  --border: #e3e0f0;
+  --text: #171334;
+  --text-muted: #665f85;
+  --brand: #4338ca;
+  --brand-dark: #3730a3;
+  --gold: #c9992b;
+  --good: #15803d;
+  --bad: #b91c1c;
+  --warn: #a16207;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
@@ -43,6 +48,9 @@ a {
 }
 
 .crediscope-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: #fff;
   text-decoration: none;
   font-weight: 700;
@@ -57,7 +65,7 @@ a {
 }
 
 .crediscope-navlink {
-  color: #cbd5e1;
+  color: rgba(255, 255, 255, 0.72);
   text-decoration: none;
   font-size: 14px;
   cursor: pointer;
@@ -116,7 +124,7 @@ a {
 
 .crediscope-userbadge-entidad {
   font-size: 11px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.55);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

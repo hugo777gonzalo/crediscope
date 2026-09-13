@@ -12,6 +12,7 @@ import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
 import Reportes from "./pages/Reportes.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
+import LogoMark from "./components/LogoMark.jsx";
 
 function RequireSession({ children }) {
   const { session, loading } = useSession();
@@ -59,6 +60,7 @@ export default function App() {
     <div className="crediscope-shell">
       <header className="crediscope-topbar">
         <Link to="/" className="crediscope-brand">
+          <LogoMark size={26} />
           CrediScope
         </Link>
         {session ? (
