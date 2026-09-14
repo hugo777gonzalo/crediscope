@@ -15,6 +15,7 @@ import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
 import Reportes from "./pages/Reportes.jsx";
 import Retroalimentacion from "./pages/Retroalimentacion.jsx";
 import InformeFeedback from "./pages/InformeFeedback.jsx";
+import VersionesCriterio from "./pages/VersionesCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
 import LogoMark from "./components/LogoMark.jsx";
@@ -186,6 +187,14 @@ export default function App() {
             element={
               <RequireAdmin>
                 <Retroalimentacion />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/retroalimentacion/versiones"
+            element={
+              <RequireAdmin>
+                <VersionesCriterio />
               </RequireAdmin>
             }
           />

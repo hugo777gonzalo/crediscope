@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Download, Upload, Trash2, Sparkles, FileText } from "lucide-react";
+import { Download, Upload, Trash2, Sparkles, FileText, History } from "lucide-react";
 import {
   getClientesParaPlantilla,
   vincularFilasConAnalisis,
@@ -162,11 +162,17 @@ export default function Retroalimentacion() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ marginBottom: 4 }}>Retroalimentación</h2>
-        <p className="crediscope-muted">
-          Cargá el resultado real de los créditos para que el sistema pueda contrastar sus recomendaciones con lo que efectivamente pasó.
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
+        <div>
+          <h2 style={{ marginBottom: 4 }}>Retroalimentación</h2>
+          <p className="crediscope-muted" style={{ margin: 0 }}>
+            Cargá el resultado real de los créditos para que el sistema pueda contrastar sus recomendaciones con lo que efectivamente pasó.
+          </p>
+        </div>
+        <Link className="crediscope-btn crediscope-btn-ghost" to="/retroalimentacion/versiones">
+          <History size={15} style={{ marginRight: 7, verticalAlign: "-2px" }} />
+          Historial del criterio
+        </Link>
       </div>
 
       {error ? (

@@ -337,6 +337,50 @@ export async function ponerEnVigencia(id, vigente) {
   if (error) throw error;
 }
 
+// ---------- Versiones del criterio ----------
+// Cada vez que cambia el conjunto de ajustes vigentes se congela una
+// versión numerada (lo hace un trigger en la base, así queda registrado
+// venga el cambio de donde venga). Cada análisis guarda con qué versión
+// se produjo.
+
+export async function getVersionesCriterio() {
+  const { data, error } = await supabase
+    .from("criterio_versiones")
+    .select("*")
+    .order("numero", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getUsoPorVersion() {
+  const { data, error } = await supabase.from("analysis_results").select("criterio_version_id");
+  if (error) throw error;
+  const conteo = {};
+  for (const r of data || []) {
+    if (r.criterio_version_id) conteo[r.criterio_version_id] = (conteo[r.criterio_version_id] ?? 0) + 1;
+  }
+  return conteo;
+}
+
+// Repone los ajustes que regían en esa versión. No borra historia:
+// queda una versión nueva con ese contenido.
+export async function revertirCriterio(versionId) {
+  const { data: sesion } = await supabase.auth.getUser();
+  const { error } = await supabase.rpc("revertir_criterio", {
+    p_version_id: versionId,
+    p_actor: sesion?.user?.id ?? null,
+  });
+  if (error) throw error;
+}
+
+// Vuelve al criterio base sin ajustes. Es la salida más segura ante un
+// problema cuyo origen todavía no se identificó.
+export async function desactivarTodosLosAjustes() {
+  const { data: sesion } = await supabase.auth.getUser();
+  const { error } = await supabase.rpc("desactivar_todos_los_ajustes", { p_actor: sesion?.user?.id ?? null });
+  if (error) throw error;
+}
+
 export async function correrBacktest(paqueteId, propuestaIds) {
   const { data, error } = await supabase.functions.invoke("correr-backtest", { body: { paqueteId, propuestaIds } });
   if (error) throw error;

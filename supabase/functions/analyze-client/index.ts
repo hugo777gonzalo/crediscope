@@ -23,7 +23,7 @@ import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION } from "../_shared/llm-scoring.ts";
-import { loadAjustesVigentes, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
+import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -138,13 +138,13 @@ Deno.serve(async (req) => {
     // tener razonamiento/contexto — pero el score final se fuerza abajo.
     // Campos deshabilitados en standard_profile_field_config no se le
     // mandan al LLM (dato considerado poco confiable).
-    const [disabledFields, ajustesVigentes] = await Promise.all([
+    const [disabledFields, criterio] = await Promise.all([
       loadDisabledFields(serviceClient),
-      loadAjustesVigentes(serviceClient),
+      loadCriterioVigente(serviceClient),
     ]);
     const llmProfile = redactDisabledFields(profile, disabledFields);
     const inicioLlm = Date.now();
-    const llmResult = await scoreWithLlm(llmProfile, controlBloqueo, ajustesVigentes);
+    const llmResult = await scoreWithLlm(llmProfile, controlBloqueo, criterio.ajustes);
     const duracionLlmMs = Date.now() - inicioLlm;
     const finalScore = controlBloqueo.bloqueado ? 1 : llmResult.score;
     // Mismo criterio que el score: un control de bloqueo bloqueante no
@@ -160,6 +160,10 @@ Deno.serve(async (req) => {
         crediscope_score: finalScore,
         recomendacion: finalRecomendacion,
         rules_version: MARCO_VERSION,
+        // Qué criterio efectivo (marco base + ajustes vigentes) produjo
+        // este análisis. Sin esto, un resultado raro no se puede
+        // auditar después.
+        criterio_version_id: criterio.versionId,
         block_status: blockStatus,
         positives: llmResult.positives,
         negatives: llmResult.negatives,

@@ -23,16 +23,26 @@ export async function loadDisabledResources(client: SupabaseClient): Promise<Set
 // nuevo, así el ciclo de calibración cierra sin necesidad de un
 // despliegue: el marco base sigue versionado en código y cada ajuste
 // vigente queda registrado en la base con quién lo aprobó y cuándo.
-export async function loadAjustesVigentes(client: SupabaseClient): Promise<string[]> {
+// Devuelve el criterio efectivo vigente: los textos de los ajustes y la
+// versión a la que corresponden. El análisis guarda ese id (ver
+// analysis_results.criterio_version_id) para que después se pueda
+// reconstruir con qué criterio exacto se produjo -- sin eso, un
+// análisis que salga raro es imposible de auditar.
+export async function loadCriterioVigente(
+  client: SupabaseClient
+): Promise<{ ajustes: string[]; versionId: string | null; numeroVersion: number | null }> {
   const { data, error } = await client
-    .from("feedback_propuestas")
-    .select("cambio_sugerido")
-    .eq("estado", "aprobada")
-    .eq("tipo", "criterio_modelo")
-    .not("vigente_desde", "is", null)
-    .order("vigente_desde");
+    .from("criterio_versiones")
+    .select("id, numero, ajustes")
+    .order("numero", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
-  return (data ?? []).map((r) => r.cambio_sugerido as string).filter(Boolean);
+  if (!data) return { ajustes: [], versionId: null, numeroVersion: null };
+  const ajustes = Array.isArray(data.ajustes)
+    ? (data.ajustes as Array<{ texto?: string }>).map((a) => a?.texto ?? "").filter(Boolean)
+    : [];
+  return { ajustes, versionId: data.id as string, numeroVersion: data.numero as number };
 }
 
 // Set de campos DESHABILITADOS, como "grupo.campo" (ej. "cumplimiento.enListaControl").

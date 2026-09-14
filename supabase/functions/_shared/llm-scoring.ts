@@ -100,7 +100,10 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
       // responder (confirmado: ~800 tokens de thinking con un contexto
       // real de tamaño normal) — el presupuesto tiene que cubrir eso Y
       // el JSON completo de salida, si no la respuesta se corta a medias.
-      max_tokens: 4000,
+      // Con 4000 seguía cortándose en clientes con historial rico
+      // (positivos/negativos largos): el análisis devolvía el fallback
+      // de score 500 en vez de un resultado real.
+      max_tokens: 6000,
       system: marco,
       messages: [{ role: "user", content: JSON.stringify(userPayload) }],
     }),
