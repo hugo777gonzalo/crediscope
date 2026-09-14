@@ -5,7 +5,17 @@
 -- consultan en vivo desde la Edge Function `analyze-client` y se
 -- descartan tras normalizarlos y calcular el resultado.
 --
--- Pegar en el editor SQL de Supabase. Requiere la extensión pgcrypto.
+-- Este archivo es el esquema INICIAL. Todo lo posterior (roles,
+-- client_profiles, parametrización, retroalimentación, versionado del
+-- criterio) vive en supabase/migrations/, numerado y en orden — leer
+-- solo este archivo da una foto incompleta de la base actual.
+--
+-- Se aplica a mano: pegar en el editor SQL de Supabase, o
+-- `supabase db query --linked --file <archivo>`. El historial de
+-- migraciones del proyecto remoto está vacío a propósito, así que
+-- `supabase db push` reaplicaría todo desde la 001.
+--
+-- Requiere la extensión pgcrypto.
 -- ============================================================
 
 create extension if not exists pgcrypto with schema extensions;

@@ -1,176 +1,243 @@
-# CrediScope — Score de Información Interna
+# CrediScope
 
-Agente interno de análisis crediticio: consulta la web Novadata (9
-bloques de información de un cliente), y un LLM (Claude) evalúa toda la
-información agregada para producir un **score aproximado** de riesgo
-crediticio (1-999) junto con puntos a favor/en contra y qué información
-falta — persiste el resultado en Supabase y lo expone tanto en una
-interfaz web para analistas como vía API para otros sistemas.
+Análisis crediticio asistido por IA. Consulta la información de una
+persona en Novadata (9 bloques, ~50 recursos), la procesa a una
+**Estructura Estandarizada** de 16 grupos, y un LLM (Claude) la evalúa
+guiado por un **marco interpretativo** en lenguaje natural para producir
+un **score aproximado** (1-999), una **recomendación de acción**
+(aprobar / revisar / observar / negar), puntos a favor y en contra, y
+qué información falta.
 
-## Estado de este scaffold
+Todo queda persistido en Supabase y se expone tanto en la interfaz web
+para analistas como vía API para otros sistemas.
 
-Este es el andamiaje inicial del proyecto. **No está conectado a un
-proyecto Supabase real todavía**, pero la ingesta de Novadata sí — se
-confirmó con 2 HAR reales capturados de la interfaz web (uno de una
-persona sin historial, otro con demandas/mora/antecedentes reales) que
-**los 9 bloques** ya están cableados contra producción (2026-09),
-agrupando los recursos reales de Novadata que corresponden a cada uno
-(ver `RECURSOS_POR_BLOQUE` en `novadata-client.ts`):
+## Estado (2026-09)
 
-- ✅ **Información general** (`pn_inf_basica`) — forma rica confirmada.
-- ✅ **Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función
-  Judicial, Fiscalía, Bancos, Cooperativas** — cableados con los
-  recursos reales confirmados por los 2 HAR, incluyendo casos con datos
-  poblados (demandas, buró de crédito con mora, antecedentes penales
-  con descripción) — `normalize.ts` ya extrae campos reales, no solo
-  conteos.
-- ❌ **BIESS eliminado** — no corresponde a ningún dato real de Novadata
-  (confirmado por el usuario).
-- ⚠️ Correcciones importantes encontradas en el camino: **vehículos SÍ
-  se consulta directo por cédula** (`pn_vehiculos/general/{cedula}`, no
-  por placa); **`pn_supa` es pensión alimenticia** (child support), no
-  tránsito vehicular — se movió de Vehículos a Función Judicial;
-  **`pn_retails`** trae datos financieros (mora/deuda), se movió de
-  Trabajo a Bancos.
+En uso interno, sobre un proyecto Supabase real y con clientes reales.
+La ingesta de Novadata está cableada contra producción (confirmada con
+HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
+El frontend se despliega solo a GitHub Pages en cada push a `main`.
 
-### Pivote de diseño: scoring por LLM, no por fórmula
+- **Marco interpretativo:** `marco-v14` (`MARCO_VERSION` en
+  `supabase/functions/_shared/marco-interpretativo.ts`). Cada versión
+  tiene su fila en `scoring_rules_versions` — subir la constante sin
+  crear la fila rompe la FK al guardar un análisis.
+- **Criterio vigente:** marco base + ajustes aprobados por el área,
+  versionado en `criterio_versiones`. Cada análisis guarda con qué
+  versión se hizo (`analysis_results.criterio_version_id`).
 
-La primera versión de este scaffold calculaba el score con un motor de
-reglas numérico determinístico. Se cambió a pedido explícito: hay
-demasiada señal cualitativa (tipo de demanda, severidad de una mora,
-patrón de estabilidad laboral) para reducir a pesos fijos — un LLM que
-pondera muchos puntos y da un resultado aproximado se ajusta mejor al
-objetivo.
+Lo que **sigue pendiente de validación del negocio**: los criterios
+*dentro* de cada grupo del marco (qué campo pesa cuánto, qué se
+considera grave). El *orden de importancia* de los grupos sí lo definió
+el usuario. El marco es texto plano: se ajusta sin tocar lógica.
 
-Con una excepción: **2-3 verificaciones se mantienen determinísticas
-("controles de bloqueo"), fuera del criterio del LLM** — persona
-fallecida y coincidencia en listas de sanciones/PEP/lista negra. Son
-hechos binarios objetivos, no juicios de riesgo, así que no tiene
-sentido dejarlos a una estimación aproximada. Si se activa un control
-de bloqueo, el score se fuerza a 1 sin importar lo que diga el LLM. Todo lo demás
-(laboral, judicial, financiero, patrimonio) queda enteramente a
-criterio del LLM, guiado por el marco interpretativo.
-
-Antes de usarlo en producción real hace falta:
-
-1. **Validar el marco interpretativo** (`supabase/functions/_shared/marco-interpretativo.ts`)
-   con el negocio — hoy es un `framework-v0` razonable pero ilustrativo,
-   no la política real de riesgo de la empresa. Es texto plano, no
-   requiere tocar código para ajustarlo.
-2. **Confirmar la forma interna de los recursos que aún no se vieron
-   poblados** en ningún caso de prueba (algunos siguen con campos
-   parcialmente inferidos) → ajustar `normalize.ts`.
-3. **Un proyecto Supabase nuevo** (dashboard de Supabase) → correr
-   `supabase/schema.sql` en el editor SQL, y llenar `.env` /
-   `.env.functions` con las credenciales.
-4. **Una API key de Anthropic** para el scoring (`ANTHROPIC_API_KEY` en
-   `.env.functions`).
+Otros pendientes abiertos están al final de este archivo.
 
 ## Arquitectura
 
 ```
-Frontend (Vite/React, estático)
-   |  supabase.functions.invoke("analyze-client")
+Frontend (Vite/React, estático, GitHub Pages)
+   |  supabase.functions.invoke(...)
    v
-Edge Function analyze-client (Deno, en Supabase)
+Edge Functions (Deno, en Supabase)
    |
-   |-- 1. fetchAllBlocks()     -> novadata-client.ts         (9 bloques, ~40 recursos reales, en paralelo)
-   |-- 2. buildClientContext() -> normalize.ts                (raw Novadata -> contexto curado por eje)
-   |-- 3. evaluarControlesBloqueo() -> controles-bloqueo.ts    (DETERMINÍSTICO: fallecido, listas de control/PEP)
-   |-- 4. scoreWithLlm()       -> llm-scoring.ts + marco-interpretativo.ts  (score APROXIMADO 1-999 + pros/contras)
+   |-- structure-client    Novadata -> Estructura Estandarizada -> clasificación -> client_profiles
+   |-- analyze-client      (lo anterior, o un perfil ya guardado) -> controles de bloqueo -> LLM -> analysis_results
+   |-- explore-novadata    inspección cruda de la ingesta (solo admin)
+   |-- analizar-feedback   informe "Esto encontramos" sobre un paquete de resultados reales
+   |-- proponer-ajustes    propuestas de ajuste al criterio, para aprobación humana
+   |-- correr-backtest     re-corre casos reales con el criterio candidato y compara
    v
-Supabase Postgres: clients, ingestion_runs, analysis_results,
-                    scoring_rules_versions, audit_log
+Supabase Postgres (ver "Base de datos")
 ```
 
-Las credenciales de Novadata y la `service_role key` de Supabase viven
-**solo** en las secrets de la Edge Function — nunca se exponen al
-navegador. El frontend solo tiene la `anon key` (de lectura, limitada
-por RLS).
+Las credenciales de Novadata, la API key de Anthropic y la
+`service_role key` viven **solo** en las secrets de las Edge Functions —
+nunca llegan al navegador. El frontend solo tiene la `anon key`,
+limitada por RLS.
+
+### El pipeline de evaluación
+
+1. **Ingesta** — `novadata-client.ts`. Los 9 bloques en paralelo
+   (general, sociodemográfica, trabajo, IESS, vehículos, función
+   judicial, fiscalía, bancos, cooperativas). Cada bloque reporta `ok` /
+   `faltante` / `error` por separado: eso es lo que permite después
+   interpretar "información faltante" como señal de negocio y no como
+   falla del sistema.
+2. **Estructura Estandarizada** — `process.ts` (`buildStandardProfile`).
+   Convierte el crudo en 16 grupos de campos normalizados (booleanos,
+   conteos, montos) en vez de arrays completos. La fuente de verdad del
+   contrato es `StandardClientProfile` en `types.ts`.
+3. **Clasificación** — `classify.ts`. Cada campo cae en positivo /
+   negativo / complementario / sin información. Es lo que se muestra en
+   Perfil del Cliente, y no depende del LLM.
+4. **Controles de bloqueo** — `controles-bloqueo.ts`. Determinísticos, a
+   propósito fuera del criterio del LLM: persona fallecida, listas de
+   sanciones/lista negra, y delitos graves de seguridad ciudadana. Si se
+   activa uno, el score se fuerza a 1 y la recomendación a "negar", sin
+   importar lo que devuelva el LLM. **PEP no es bloqueante** — es un
+   dato de cumplimiento (PLA-FT, debida diligencia reforzada), no una
+   señal de mal comportamiento de pago.
+5. **Scoring** — `llm-scoring.ts` + `marco-interpretativo.ts`. Todo lo
+   demás (laboral, judicial, financiero, patrimonio) queda a criterio
+   del LLM. Al marco base se le suman en tiempo de ejecución los ajustes
+   vigentes (ver abajo), sin reescribirlo.
+
+**Por qué el score no es una fórmula:** fue un cambio deliberado
+respecto del primer andamiaje, que sí calculaba con pesos fijos. Hay
+demasiada señal cualitativa (tipo de demanda, severidad de una mora,
+patrón de estabilidad laboral) para reducir a un scorecard numérico.
+
+## Ciclo de calibración (Retroalimentación)
+
+El modelo mejora con resultados reales de crédito, en 5 etapas, con
+aprobación humana en el medio. Pensado para que lo opere el área de
+Crédito/Riesgos, no un perfil técnico.
+
+1. **Cargar resultados reales** — plantilla de Excel (identificación,
+   fecha, si incumplió, tipo, observaciones del área). `feedback_paquetes`
+   / `feedback_creditos`.
+2. **Cruce con lo que el modelo dijo** — se resuelve por fecha contra el
+   análisis de entonces. Los casos "recomendamos negar pero se
+   desembolsó" salen del propio dato, sin campos manuales extra.
+3. **Informe "Esto encontramos"** — `analizar-feedback`. Las
+   estadísticas se calculan en código (tienen que ser exactas y
+   reproducibles); el LLM aporta solo lo cualitativo: sobre todo separar
+   los incumplimientos que **eran previsibles** con la información
+   disponible de los que fueron por causas externas.
+4. **Propuestas de ajuste** — `proponer-ajustes`. Nacen en estado
+   pendiente; una persona del área las aprueba, rechaza o pide cambios.
+   Aprobar y poner en vigencia son dos pasos distintos.
+5. **Prueba contra casos reales** — `correr-backtest`. Re-corre casos con
+   el criterio candidato. Dos reglas sostienen su validez: usa el
+   **perfil congelado** de la fecha original (nunca reconsulta la fuente,
+   que hoy ya tiene registrada la mora que entonces no existía), y evalúa
+   incumplimientos **y** créditos que pagaron bien, para que endurecer el
+   criterio siempre muestre su costo.
+
+### Versionado y reversión del criterio
+
+Cada vez que cambia el conjunto de ajustes vigentes, un trigger congela
+una versión en `criterio_versiones` con el **texto completo** de lo que
+regía (no referencias: una versión histórica tiene que seguir diciendo
+qué se aplicó aunque después se edite o borre la propuesta). Solo se
+registra si el criterio *efectivo* cambió — aprobar algo sin ponerlo en
+vigencia no ensucia el historial.
+
+Desde `/retroalimentacion/versiones` se puede volver a una versión
+anterior (`revertir_criterio`) o desactivar todos los ajustes de golpe
+(`desactivar_todos_los_ajustes`), para el caso de un error no
+identificado donde no se sabe cuál ajuste falló. Ninguna de las dos
+borra historia: revertir crea una versión nueva.
+
+## Secciones de la app y acceso por rol
+
+El rol vive en `profiles.rol` (`analista` / `admin`) y se aplica en RLS,
+no solo ocultando enlaces del menú.
+
+| Sección | Ruta | Acceso |
+| --- | --- | --- |
+| Evaluación Crediticia (Buscar Cliente, Perfil del Cliente, Análisis con IA) | `/`, `/perfil/:cedula`, `/analisis/:cedula` | analista |
+| Historial | `/historial` | analista |
+| Reportes (Reporte Gerencial de Gestión) | `/reportes` | analista |
+| Retroalimentación | `/retroalimentacion` | admin |
+| Explorador de Fuentes | `/explorar` | admin |
+| Configuración | `/admin/configuracion` | admin |
+
+Autenticación por correo y contraseña (Supabase Auth). Cualquiera puede
+crear su cuenta desde `/crear-cuenta`; el rol se fuerza a `analista` en
+el trigger — el auto-registro nunca puede crear un admin.
+
+## Base de datos
+
+`supabase/schema.sql` es el esquema **inicial**; todo lo posterior está
+en `supabase/migrations/`, numeradas y en orden. Se aplican a mano (SQL
+editor del dashboard, o `supabase db query --linked --file <archivo>`) —
+el historial de migraciones del proyecto remoto está vacío a propósito,
+así que **`supabase db push` volvería a aplicar todas desde la 001**.
+
+Tablas principales:
+
+- `clients`, `ingestion_runs`, `analysis_results`, `audit_log`,
+  `scoring_rules_versions` — el núcleo (schema.sql).
+- `client_profiles` — la Estructura Estandarizada calculada, con su
+  clasificación y el control de bloqueo. Es lo que permite reutilizar un
+  perfil reciente, y lo que congela el pasado para las pruebas del ciclo
+  de calibración.
+- `profiles` — nombre corto, entidad financiera y rol de cada usuario.
+- `novadata_resource_config`, `standard_profile_field_config`,
+  `standard_profile_segment_config` — qué recursos/campos están activos,
+  configurables desde la app sin desplegar.
+- `feedback_paquetes`, `feedback_creditos`, `feedback_informes`,
+  `feedback_propuestas`, `feedback_backtests`, `criterio_versiones` — el
+  ciclo de calibración.
+
+Se guardan **solo los resultados**, nunca el crudo de Novadata: se
+consulta en vivo y se descarta tras procesarlo. Toda consulta queda
+auditada en `audit_log`, y solo las Edge Functions (con `service_role
+key`) escriben resultados — el navegador nunca escribe directo.
+
+Los bloques incluyen Fiscalía, Función Judicial y Bancos: información
+muy sensible. Revisar cumplimiento con la LOPDP (Ecuador) —
+consentimiento, retención, y quién puede consultar qué.
 
 ## Desarrollo local
 
 ```bash
 npm install
-cp .env.example .env         # llenar con las credenciales del proyecto Supabase
+cp .env.example .env         # credenciales del proyecto Supabase
 npm run dev
 ```
 
-Sin `.env` configurado, el frontend arranca igual y muestra un aviso de
-"Supabase no configurado" en vez de fallar.
+Sin `.env`, el frontend arranca igual y muestra un aviso de "Supabase no
+configurado" en vez de fallar.
 
 ### Edge Functions (requiere Supabase CLI)
 
 ```bash
 supabase login
-supabase link --project-ref <tu-project-ref>
-cp .env.functions.example .env.functions   # llenar credenciales
+supabase link --project-ref <project-ref>
+cp .env.functions.example .env.functions
 supabase secrets set --env-file .env.functions
 supabase functions deploy analyze-client
 ```
 
-Para probar localmente antes de desplegar:
+Para probar antes de desplegar (requiere Docker corriendo):
 
 ```bash
 supabase functions serve analyze-client --env-file .env.functions
 ```
 
-Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD` configurados, cada bloque
-devuelve `status: "error"` (no rompe el pipeline) — útil para probar el
-flujo completo (buildClientContext -> controles-bloqueo -> llm-scoring ->
-persistencia) antes de tener acceso real a Novadata.
+Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD`, cada bloque devuelve
+`status: "error"` sin romper el pipeline — sirve para probar el flujo
+completo de punta a punta.
 
-### Explorador de Novadata (sin proyecto Supabase todavía)
+### Explorador de Fuentes
 
-`src/pages/NovadataExplorer.jsx` (ruta `/explorar`, sin login) deja
-ingresar usuario/contraseña de Novadata y una cédula, y muestra el
-resumen curado + los datos raw de los 9 ejes — sin persistir nada. Sirve
-para inspeccionar la ingesta antes de tener el proyecto Supabase real.
-Requiere **Docker corriendo** (lo usa `supabase functions serve` para el
-runtime de Edge Functions):
-
-```bash
-supabase functions serve explore-novadata --no-verify-jwt
-npm run dev
-```
-
-Y abrir `http://localhost:5173/explorar` (el frontend ya apunta por
-defecto a `http://localhost:54321/functions/v1`; para cambiarlo, fijar
-`VITE_FUNCTIONS_URL` en `.env`). La contraseña que se ingresa ahí nunca
-se guarda — viaja en el body del POST, se usa una vez para pedir el
-token de Novadata y se descarta.
+`src/pages/NovadataExplorer.jsx` (`/explorar`, **solo admin**) consulta
+todos los recursos de una cédula y muestra el resumen curado más el
+crudo de los 9 ejes, sin persistir nada. La contraseña que se ingresa
+ahí nunca se guarda: viaja en el body del POST, se usa una vez para
+pedir el token de Novadata y se descarta.
 
 **Nota de seguridad:** la contraseña de Novadata es una credencial de
-Active Directory — si en algún momento se escribió o pegó en un chat,
-una terminal compartida, o cualquier lugar fuera de las secrets de la
-Edge Function, rotarla. Nunca debe quedar en el código ni en `.env`
+Active Directory. Si en algún momento se escribió o pegó en un chat, una
+terminal compartida, o cualquier lugar fuera de las secrets de la Edge
+Function, rotarla. Nunca debe quedar en el código ni en un `.env`
 versionado (`.gitignore` ya excluye `.env` y `.env.functions`).
 
-## Base de datos
+## Pendientes
 
-`supabase/schema.sql` — pegar directo en el editor SQL de Supabase (no
-usa el sistema de migraciones del CLI, igual que el proyecto
-`raton-perez`). Guarda **solo los resultados del análisis**, nunca los
-datos crudos de Novadata (esos se consultan en vivo y se descartan tras
-normalizarse).
-
-Dado que los bloques incluyen Fiscalía, Función Judicial y Bancos
-(información muy sensible), toda escritura queda auditada en
-`audit_log` y solo la Edge Function (con `service_role key`) puede
-escribir resultados — el cliente nunca escribe directo. Revisar
-cumplimiento con la LOPDP (Ecuador) antes de manejar datos reales de
-clientes: consentimiento, retención, y quién puede consultar qué.
-
-## Próximos pasos sugeridos
-
-- Validar/iterar el marco interpretativo (`marco-interpretativo.ts`)
-  con el negocio — es el artefacto más importante a afinar ahora que la
-  ingesta está cableada.
-- Confirmar campos internos pendientes en `normalize.ts` con más casos
-  de prueba reales.
-- Definir roles de acceso (analista vs. admin) si se necesita más
-  granularidad que "cualquier autenticado puede leer todo".
-- Considerar registrar el `reasoning` completo del LLM junto con la
-  versión exacta del prompt usado (ya se guarda `rules_version` =
-  `framework-v0`) para poder auditar por qué un cliente obtuvo tal score
-  incluso siendo un resultado aproximado.
+- **Validar el marco interpretativo con el negocio** — lo más importante
+  a afinar; ver arriba.
+- **Confirmar campos internos** en `process.ts`/`normalize.ts` para los
+  recursos que todavía no se vieron poblados en ningún caso real.
+- **SMTP propio (ej. Resend)** para volver al código de 6 dígitos en
+  Crear Cuenta. Hoy la verificación es por enlace: Supabase no deja
+  editar el contenido de sus plantillas (para mostrar `{{ .Token }}`)
+  salvo con SMTP propio. Ver la nota en `src/pages/Signup.jsx`.
+- **Conector de buró de crédito (Equifax)** — a la espera de
+  credenciales de API. Se descartó automatizar el portal web: es una
+  fuente regulada y frágil. Cuando llegue la documentación de campos,
+  armar `buro-equifax.ts` como conector tipado más la propuesta de mapeo
+  a la Estructura Estandarizada.

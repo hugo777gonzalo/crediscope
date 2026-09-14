@@ -48,4 +48,13 @@ create trigger on_auth_user_created
 --    Hay que agregar {{ .Token }} en el cuerpo del mail para que el
 --    usuario reciba el código de 6 dígitos que el formulario le va a
 --    pedir ingresar (en vez de solo poder hacer click en el link).
+--
+-- ACTUALIZACIÓN (probado contra el proyecto real): el punto 2 NO se
+-- pudo hacer — Supabase no habilita la edición de plantillas sin SMTP
+-- propio configurado (Project Settings > Authentication > SMTP), y
+-- además el Site URL por defecto apunta a localhost:3000, lo que rompía
+-- el redirect del enlace. Mientras no haya SMTP propio (ej. Resend), el
+-- flujo vigente es por ENLACE, no por código — ver la nota al inicio de
+-- src/pages/Signup.jsx. El trigger de abajo no cambia: sirve igual para
+-- los dos flujos.
 -- ---------------------------------------------------------------

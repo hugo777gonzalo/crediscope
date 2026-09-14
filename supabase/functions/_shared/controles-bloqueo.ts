@@ -2,10 +2,11 @@
 // LLM. Son hechos binarios objetivos (¿está fallecido? ¿aparece en una
 // lista de sanciones?), no juicios de riesgo crediticio donde un
 // resultado "aproximado" tenga sentido. Cada hallazgo indica si es
-// `bloqueante` — solo esos fuerzan `bloqueado: true` (y por tanto el
-// score a 1 en analyze-client/index.ts sin importar lo que devuelva el
-// LLM). Un hallazgo no-bloqueante se informa igual (aparece en
-// `hallazgos`) pero no descalifica al cliente por sí solo.
+// `bloqueante` — solo esos fuerzan `bloqueado: true` (y por tanto, en
+// analyze-client/index.ts, el score a 1 y la recomendación de acción a
+// "negar", sin importar lo que devuelva el LLM). Un hallazgo
+// no-bloqueante se informa igual (aparece en `hallazgos`) pero no
+// descalifica al cliente por sí solo.
 //
 // PEP (persona expuesta políticamente) es a propósito NO bloqueante: ser
 // PEP es un dato de cumplimiento/PLA-FT (Prevención de Lavado de

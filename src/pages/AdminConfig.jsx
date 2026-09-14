@@ -17,11 +17,12 @@ import {
 //   C. Segmentos de Perfil del Cliente — qué segmentos se MUESTRAN en
 //      la UI del analista (no afecta cálculo ni el LLM, ver nota en
 //      016_segment_display_config.sql).
-// Cualquier analista autenticado puede activar/desactivar — no hay rol admin
-// separado todavía en este proyecto.
+// Solo admin: la ruta está detrás de RequireAdmin (App.jsx) y las
+// policies de update de estas tablas exigen rol admin (ver
+// 022_profiles_roles.sql) — ocultar el enlace del menú no alcanzaba.
 
 // Duplica el orden/etiquetas de grupo del backend a propósito (mismo
-// patrón que ClassifiedProfile.jsx) — son solo strings de presentación.
+// patrón que SegmentosPerfil.jsx) — son solo strings de presentación.
 const ORDEN_GRUPOS = [
   "cumplimiento",
   "riesgoSeguridadCiudadana",

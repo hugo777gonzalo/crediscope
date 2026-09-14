@@ -1,9 +1,10 @@
 // Explorador de Novadata: consulta TODOS los recursos mapeados para una
 // cédula usando credenciales que el usuario ingresa en el momento (no
 // las secrets de servicio) y devuelve tanto el resumen curado por eje
-// como los datos crudos — para inspeccionar la ingesta sin necesitar un
-// proyecto Supabase real todavía (no persiste nada, no usa la base de
-// datos). Pensado para correr con `supabase functions serve` en local.
+// como los datos crudos — para inspeccionar la ingesta sin persistir
+// nada ni tocar la base de datos. Es la sección "Explorador de Fuentes"
+// de la app (solo admin, ver App.jsx) y sirve igual corriendo con
+// `supabase functions serve` en local.
 //
 // Body esperado: { "username": "...", "password": "...", "cedula": "..." }
 //

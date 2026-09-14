@@ -3,7 +3,8 @@ import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
 // (por defecto, el puerto local de `supabase functions serve`) — así el
-// explorador funciona sin tener un proyecto Supabase real todavía.
+// explorador se puede probar contra funciones corriendo en local sin
+// tocar las desplegadas.
 const FUNCTIONS_URL =
   import.meta.env.VITE_FUNCTIONS_URL ||
   (isSupabaseConfigured ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1` : "http://localhost:54321/functions/v1");

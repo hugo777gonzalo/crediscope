@@ -5,7 +5,9 @@
 // severidad de una mora, patrón de estabilidad laboral) para reducir a
 // una fórmula rígida.
 //
-// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO (marco-v12) ***
+// *** ESTO SIGUE EN VALIDACIÓN CON EL NEGOCIO ***
+// (la versión vigente es MARCO_VERSION, al final de este archivo — no
+// repetirla acá arriba: se desactualiza en cada ronda)
 // El orden de importancia de los grupos ya lo definió el usuario
 // (ver nota v3 abajo); los criterios DENTRO de cada grupo (qué campo
 // pesa cuánto, qué se considera grave) siguen siendo una propuesta

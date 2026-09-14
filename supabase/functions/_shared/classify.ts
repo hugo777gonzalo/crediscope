@@ -43,7 +43,7 @@ export const CLASSIFICATION_VERSION = "clasificacion-v1";
 // Orden de grupos por importancia para el análisis crediticio — definido
 // por el usuario (ver marco-interpretativo.ts) — el mismo orden se
 // usa para mostrar los grupos en la web
-// (src/components/ClassifiedProfile.jsx duplica este orden).
+// (src/components/SegmentosPerfil.jsx duplica este orden).
 //
 // comportamientoInterno queda AL FINAL a propósito: solo aplica a
 // clientes que ya son clientes internos de Novadata (poco frecuente en
