@@ -64,7 +64,9 @@ export function construirTablaAnalitica(registros) {
       marco_version: a.rules_version ?? "",
       criterio_version: a.criterio_versiones?.numero ?? "",
       estructura_version: a.client_profiles?.structure_version ?? "",
-      tiene_perfil: perfil ? 1 : 0,
+      // De dónde salió el perfil de esta fila: registrado al correr la
+      // solicitud, o deducido después por fecha (ver 034/035).
+      perfil_vinculo: a.client_profile_vinculo ?? (perfil ? "exacto" : "sin_perfil"),
       analisis_id: a.id,
     };
 
@@ -86,19 +88,26 @@ const COMO_LEER = [
   ["· Las listas (ej. profesiones) vienen separadas por \" | \"."],
   ["· hubo_incumplimiento vacío = ese crédito todavía no tiene resultado cargado."],
   [],
+  ["La columna perfil_vinculo dice de dónde salió la información de esa fila:"],
+  ["· exacto — quedó registrada al correr la solicitud. Es la información con la que se evaluó."],
+  ["· inferido_anterior — se dedujo por fecha (solicitudes viejas). El perfil es anterior a la"],
+  ["  solicitud, así que es una aproximación razonable."],
+  ["· inferido_posterior — se dedujo por fecha pero el perfil es POSTERIOR a la solicitud: puede"],
+  ["  incluir información que todavía no existía al evaluar. Excluir estas filas de cualquier"],
+  ["  análisis sobre qué se podía saber de antemano."],
+  ["· sin_perfil — esa solicitud no tiene información guardada; solo score y recomendación."],
+  [],
   ["Advertencias antes de sacar conclusiones:"],
   ["1. Solo hay resultado real de los créditos que se desembolsaron. De los que se negaron no se"],
   ["   sabe qué habría pasado, así que toda tasa que calcules está condicionada a haber aprobado."],
   ["2. Con pocos incumplimientos, revisar muchas variables a la vez produce correlaciones fuertes"],
   ["   por puro azar. Conviene elegir de antemano las variables a mirar."],
-  ["3. El perfil es el del día del análisis, congelado. Es lo correcto: refleja lo que se sabía"],
-  ["   entonces, no lo que se supo después."],
   [],
   ["Contiene información personal, judicial y financiera de personas identificadas."],
   ["Tratar el archivo con el mismo cuidado que cualquier reporte del core (LOPDP)."],
 ];
 
-export function descargarTablaAnalitica(registros) {
+export function descargarTablaAnalitica(registros, { desde, hasta } = {}) {
   const filas = construirTablaAnalitica(registros);
   if (filas.length === 0) throw new Error("Todavía no hay análisis para exportar.");
 
@@ -125,7 +134,9 @@ export function descargarTablaAnalitica(registros) {
   XLSX.utils.book_append_sheet(libro, hoja, "Datos");
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(COMO_LEER), "Cómo leer");
 
-  const hoy = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(libro, `CrediScope_Datos_Analiticos_${hoy}.xlsx`);
+  // El nombre lleva el rango exportado: si no, dos descargas distintas
+  // terminan siendo dos archivos indistinguibles en la misma carpeta.
+  const rango = desde && hasta ? `${desde}_a_${hasta}` : new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(libro, `CrediScope_Solicitudes_${rango}.xlsx`);
   return filas.length;
 }

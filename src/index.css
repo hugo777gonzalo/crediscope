@@ -629,3 +629,56 @@ a {
   border-color: var(--brand);
   background: var(--panel);
 }
+
+/* Información de Solicitudes (Reportes): rango de fechas + total + descarga.
+   En una fila en escritorio; en pantallas angostas los campos se apilan y
+   el total se va a su propia línea, para que el botón nunca quede cortado. */
+.crediscope-descarga-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.crediscope-descarga-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.crediscope-descarga-campo label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.crediscope-descarga-campo input {
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--panel);
+}
+
+.crediscope-descarga-campo input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+/* El total empuja el botón al extremo derecho y queda centrado entre ambos. */
+.crediscope-descarga-total {
+  flex: 1;
+  text-align: center;
+  font-size: 14.5px;
+  color: var(--text-muted);
+  padding-bottom: 9px;
+  min-width: 200px;
+}
+
+.crediscope-descarga-total strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}

@@ -119,13 +119,15 @@ Crédito/Riesgos, no un perfil técnico.
    incumplimientos **y** créditos que pagaron bien, para que endurecer el
    criterio siempre muestre su costo.
 
-### Datos para análisis
+## Información de Solicitudes (datos para análisis)
 
-Retroalimentación tiene un exportable (`src/lib/exportAnalitico.js`) con
-una fila por análisis: los ~125 campos de la Estructura Estandarizada
-con los que se evaluó a esa persona, el score, la recomendación, la
-versión del criterio y — cuando ya se cargó la cosecha — si el crédito
-incumplió. Los Sí/No salen como 1/0 porque es una tabla para calcular.
+Reportes tiene una sección de descarga (`src/lib/exportAnalitico.js`) con
+una fila por solicitud en el rango de fechas que se elija: los ~125
+campos de la Estructura Estandarizada con los que se evaluó a esa
+persona, el score, la recomendación, la versión del criterio y — cuando
+ya se cargó la cosecha — si el crédito incumplió. Los Sí/No salen como
+1/0 porque es una tabla para calcular. El total se cuenta en el servidor
+antes de descargar: cada perfil son ~10 KB.
 
 Es lo que permite hacer el análisis estadístico (correlación contra el
 incumplimiento, tasas por variable) en Power BI o Excel, sin programar
@@ -133,6 +135,14 @@ cada consulta. El archivo lleva una hoja con las reservas del caso: solo
 los créditos desembolsados tienen resultado, así que toda tasa está
 condicionada a haber aprobado; y con pocos incumplimientos, revisar
 muchas variables a la vez produce correlaciones por puro azar.
+
+La columna `perfil_vinculo` dice de dónde salió la información de cada
+fila — `exacto` (lo registró el sistema al correr la solicitud),
+`inferido_anterior` / `inferido_posterior` (deducido por fecha en el
+histórico previo a la 032) o `sin_perfil`. **`inferido_posterior` hay
+que excluirlo** de cualquier análisis sobre qué se podía saber de
+antemano: el perfil es posterior a la solicitud y puede traer
+información que entonces no existía.
 
 ### Versionado y reversión del criterio
 
@@ -158,7 +168,7 @@ no solo ocultando enlaces del menú.
 | --- | --- | --- |
 | Evaluación Crediticia (Buscar Cliente, Perfil del Cliente, Análisis con IA) | `/`, `/perfil/:cedula`, `/analisis/:cedula` | analista |
 | Historial | `/historial` | analista |
-| Reportes (Reporte Gerencial de Gestión) | `/reportes` | analista |
+| Reportes (Reporte Gerencial de Gestión + Información de Solicitudes) | `/reportes` | analista |
 | Retroalimentación | `/retroalimentacion` | admin |
 | Explorador de Fuentes | `/explorar` | admin |
 | Configuración | `/admin/configuracion` | admin |
@@ -181,9 +191,10 @@ Tablas principales:
   `scoring_rules_versions` — el núcleo (schema.sql).
 - `client_profiles` — la Estructura Estandarizada calculada y el control
   de bloqueo, congelados con su fecha. Todo análisis apunta al suyo
-  (`analysis_results.client_profile_id`): es lo que permite reutilizar
-  un perfil reciente, auditar con qué información se evaluó a alguien, y
-  analizar después contra el resultado real del crédito.
+  (`analysis_results.client_profile_id`, y `client_profile_vinculo` dice
+  si ese vínculo es exacto o deducido por fecha): es lo que permite
+  reutilizar un perfil reciente, auditar con qué información se evaluó a
+  alguien, y analizar después contra el resultado real del crédito.
 - `profiles` — nombre corto, entidad financiera y rol de cada usuario.
 - `novadata_resource_config`, `standard_profile_field_config`,
   `standard_profile_segment_config` — qué recursos/campos están activos,

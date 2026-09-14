@@ -511,25 +511,74 @@ export async function exploreNovadata({ username, password, cedula }) {
   return data;
 }
 
-// ---------- Datos para análisis ----------
+// ---------- Información de solicitudes (datos para análisis) ----------
 
-// Una fila por análisis con el perfil completo que lo produjo, para
+// Las fechas llegan como "AAAA-MM-DD" desde los selectores. Se
+// convierten al instante local correspondiente (Ecuador, UTC-5): sin
+// esto, una solicitud de las 19:00 del día "hasta" quedaría fuera por
+// caer al día siguiente en UTC.
+function rangoAInstantes(desde, hasta) {
+  return {
+    inicio: desde ? new Date(`${desde}T00:00:00`).toISOString() : null,
+    fin: hasta ? new Date(`${hasta}T23:59:59.999`).toISOString() : null,
+  };
+}
+
+function aplicarRango(query, desde, hasta) {
+  const { inicio, fin } = rangoAInstantes(desde, hasta);
+  let q = query;
+  if (inicio) q = q.gte("created_at", inicio);
+  if (fin) q = q.lte("created_at", fin);
+  return q;
+}
+
+// Primera y última solicitud registradas, para que el selector de
+// fechas arranque cubriendo todo en vez de un rango arbitrario.
+export async function getRangoFechasSolicitudes() {
+  const [{ data: primera, error: e1 }, { data: ultima, error: e2 }] = await Promise.all([
+    supabase.from("analysis_results").select("created_at").order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    supabase.from("analysis_results").select("created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  const aFecha = (v) => (v ? new Date(v).toLocaleDateString("sv-SE") : null); // sv-SE = AAAA-MM-DD local
+  return { desde: aFecha(primera?.created_at), hasta: aFecha(ultima?.created_at) };
+}
+
+// Cuántas solicitudes caen en el rango. Se cuenta en el servidor
+// (head: true no trae filas) para poder mostrar el total sin descargar
+// los perfiles completos, que son ~10 KB cada uno.
+export async function getConteoSolicitudes({ desde, hasta } = {}) {
+  const { count, error } = await aplicarRango(
+    supabase.from("analysis_results").select("id", { count: "exact", head: true }),
+    desde,
+    hasta
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Una fila por solicitud con el perfil completo que la produjo, para
 // exportar y trabajar afuera (ver src/lib/exportAnalitico.js). El
 // resultado real del crédito viene de feedback_creditos cuando ya se
 // cargó la cosecha correspondiente.
 //
 // El límite existe porque cada perfil son ~10 KB: sin tope, esta
-// consulta crece sin control a medida que se acumulan análisis.
-export async function getDatosAnaliticos({ limite = 5000 } = {}) {
-  const { data, error } = await supabase
-    .from("analysis_results")
-    .select(
-      "id, created_at, crediscope_score, recomendacion, rules_version, " +
-        "clients(cedula), " +
-        "client_profiles(standard_profile, structure_version), " +
-        "criterio_versiones(numero), " +
-        "feedback_creditos(desembolsado, monto, producto, plazo_meses, fecha_desembolso, hubo_default, tipo_default, dias_mora_max)"
-    )
+// consulta crece sin control a medida que se acumulan solicitudes.
+export async function getDatosAnaliticos({ desde, hasta, limite = 5000 } = {}) {
+  const { data, error } = await aplicarRango(
+    supabase
+      .from("analysis_results")
+      .select(
+        "id, created_at, crediscope_score, recomendacion, rules_version, client_profile_vinculo, " +
+          "clients(cedula), " +
+          "client_profiles(standard_profile, structure_version), " +
+          "criterio_versiones(numero), " +
+          "feedback_creditos(desembolsado, monto, producto, plazo_meses, fecha_desembolso, hubo_default, tipo_default, dias_mora_max)"
+      ),
+    desde,
+    hasta
+  )
     .order("created_at", { ascending: false })
     .limit(limite);
   if (error) throw error;
