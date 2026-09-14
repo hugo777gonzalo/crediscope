@@ -58,10 +58,28 @@ function resultadoPorDefecto(mensaje: string, data?: Record<string, unknown>): L
 // campos deshabilitados redactados a null (ver runtime-config.ts
 // redactDisabledFields) — por eso el tipo es laxo acá, ya no es el
 // StandardClientProfile completo garantizado.
-export async function scoreWithLlm(profile: Record<string, unknown>, controlBloqueo: ResultadoControlBloqueo): Promise<LlmScoringResult> {
+export async function scoreWithLlm(
+  profile: Record<string, unknown>,
+  controlBloqueo: ResultadoControlBloqueo,
+  // Ajustes al criterio aprobados y puestos en vigencia por el área de
+  // Crédito/Riesgos (ver runtime-config.ts loadAjustesVigentes). Se
+  // suman al marco base en vez de reescribirlo: el criterio original
+  // sigue versionado en código y cada ajuste es reversible por
+  // separado.
+  ajustesVigentes: string[] = []
+): Promise<LlmScoringResult> {
   if (!ANTHROPIC_API_KEY) {
     return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function");
   }
+
+  const marco = ajustesVigentes.length
+    ? `${MARCO_INTERPRETATIVO}
+
+AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
+Los siguientes criterios se incorporaron a partir del análisis de
+resultados reales. Tienen el mismo peso que el resto del marco:
+${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
+    : MARCO_INTERPRETATIVO;
 
   const userPayload = {
     standardClientProfile: profile,
@@ -83,7 +101,7 @@ export async function scoreWithLlm(profile: Record<string, unknown>, controlBloq
       // real de tamaño normal) — el presupuesto tiene que cubrir eso Y
       // el JSON completo de salida, si no la respuesta se corta a medias.
       max_tokens: 4000,
-      system: MARCO_INTERPRETATIVO,
+      system: marco,
       messages: [{ role: "user", content: JSON.stringify(userPayload) }],
     }),
   });

@@ -23,7 +23,7 @@ import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION } from "../_shared/llm-scoring.ts";
-import { loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
+import { loadAjustesVigentes, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -138,10 +138,13 @@ Deno.serve(async (req) => {
     // tener razonamiento/contexto — pero el score final se fuerza abajo.
     // Campos deshabilitados en standard_profile_field_config no se le
     // mandan al LLM (dato considerado poco confiable).
-    const disabledFields = await loadDisabledFields(serviceClient);
+    const [disabledFields, ajustesVigentes] = await Promise.all([
+      loadDisabledFields(serviceClient),
+      loadAjustesVigentes(serviceClient),
+    ]);
     const llmProfile = redactDisabledFields(profile, disabledFields);
     const inicioLlm = Date.now();
-    const llmResult = await scoreWithLlm(llmProfile, controlBloqueo);
+    const llmResult = await scoreWithLlm(llmProfile, controlBloqueo, ajustesVigentes);
     const duracionLlmMs = Date.now() - inicioLlm;
     const finalScore = controlBloqueo.bloqueado ? 1 : llmResult.score;
     // Mismo criterio que el score: un control de bloqueo bloqueante no

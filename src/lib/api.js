@@ -291,6 +291,69 @@ export async function getInformeFeedback(id) {
   return data;
 }
 
+// ---------- Propuestas de ajuste y backtesting ----------
+
+export async function generarPropuestas(informeId) {
+  const { data, error } = await supabase.functions.invoke("proponer-ajustes", { body: { informeId } });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function getPropuestas(informeId) {
+  const { data, error } = await supabase
+    .from("feedback_propuestas")
+    .select("*")
+    .eq("informe_id", informeId)
+    .order("created_at");
+  if (error) throw error;
+  return data || [];
+}
+
+// Aprobar / rechazar / pedir cambios. Aprobar NO pone el ajuste en
+// vigencia: son dos pasos distintos a propósito, para poder aprobar
+// algo y activarlo recién después de verlo en backtesting.
+export async function revisarPropuesta(id, { estado, comentario }) {
+  const { data: sesion } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("feedback_propuestas")
+    .update({
+      estado,
+      comentario_revisor: comentario || null,
+      revisada_por: sesion?.user?.id ?? null,
+      revisada_en: new Date().toISOString(),
+      // Si se desaprueba algo que estaba vigente, deja de regir.
+      ...(estado === "aprobada" ? {} : { vigente_desde: null }),
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function ponerEnVigencia(id, vigente) {
+  const { error } = await supabase
+    .from("feedback_propuestas")
+    .update({ vigente_desde: vigente ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function correrBacktest(paqueteId, propuestaIds) {
+  const { data, error } = await supabase.functions.invoke("correr-backtest", { body: { paqueteId, propuestaIds } });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function getBacktests(paqueteId) {
+  const { data, error } = await supabase
+    .from("feedback_backtests")
+    .select("*")
+    .eq("paquete_id", paqueteId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 export async function getPaquetesFeedback() {
   const { data, error } = await supabase.from("feedback_paquetes").select("*").order("created_at", { ascending: false });
   if (error) throw error;

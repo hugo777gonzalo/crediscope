@@ -17,6 +17,24 @@ export async function loadDisabledResources(client: SupabaseClient): Promise<Set
   return new Set((data ?? []).map((r) => r.recurso as string));
 }
 
+// Ajustes al criterio del modelo que el área de Crédito/Riesgos aprobó
+// Y puso en vigencia, a partir del análisis de resultados reales (ver
+// migración 029). Se suman al marco interpretativo en cada análisis
+// nuevo, así el ciclo de calibración cierra sin necesidad de un
+// despliegue: el marco base sigue versionado en código y cada ajuste
+// vigente queda registrado en la base con quién lo aprobó y cuándo.
+export async function loadAjustesVigentes(client: SupabaseClient): Promise<string[]> {
+  const { data, error } = await client
+    .from("feedback_propuestas")
+    .select("cambio_sugerido")
+    .eq("estado", "aprobada")
+    .eq("tipo", "criterio_modelo")
+    .not("vigente_desde", "is", null)
+    .order("vigente_desde");
+  if (error) throw error;
+  return (data ?? []).map((r) => r.cambio_sugerido as string).filter(Boolean);
+}
+
 // Set de campos DESHABILITADOS, como "grupo.campo" (ej. "cumplimiento.enListaControl").
 export async function loadDisabledFields(client: SupabaseClient): Promise<Set<string>> {
   const { data, error } = await client.from("standard_profile_field_config").select("grupo, campo").eq("enabled", false);

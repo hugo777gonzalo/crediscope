@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { AlertTriangle, CloudRain, HelpCircle, Scale } from "lucide-react";
-import { getInformeFeedback } from "../lib/api.js";
+import { AlertTriangle, CloudRain, HelpCircle, Scale, Lightbulb } from "lucide-react";
+import { getInformeFeedback, getPropuestas, generarPropuestas, correrBacktest, getBacktests } from "../lib/api.js";
+import PropuestasAjuste from "../components/PropuestasAjuste.jsx";
+import ResultadoBacktest from "../components/ResultadoBacktest.jsx";
 
 // Informe "Esto encontramos": el diagnóstico de una cosecha de créditos
 // contra lo que el modelo había recomendado. Pensado para que lo lea una
@@ -55,16 +57,69 @@ function TarjetaKpi({ etiqueta, valor, detalle, color }) {
 export default function InformeFeedback() {
   const { id } = useParams();
   const [informe, setInforme] = useState(null);
+  const [propuestas, setPropuestas] = useState([]);
+  const [backtest, setBacktest] = useState(null);
+  const [seleccionadas, setSeleccionadas] = useState([]);
+  const [generando, setGenerando] = useState(false);
+  const [probando, setProbando] = useState(false);
+  const [sinPropuestas, setSinPropuestas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const cargar = useCallback(async () => {
+    const inf = await getInformeFeedback(id);
+    setInforme(inf);
+    const props = await getPropuestas(id);
+    setPropuestas(props);
+    // Por defecto quedan marcadas para probar las aprobadas que aún no
+    // están en vigencia: son justo las que falta validar.
+    setSeleccionadas(props.filter((p) => p.tipo === "criterio_modelo" && p.estado === "aprobada").map((p) => p.id));
+    if (inf?.paquete_id) {
+      const bts = await getBacktests(inf.paquete_id);
+      setBacktest(bts[0] ?? null);
+    }
+  }, [id]);
+
   useEffect(() => {
     setLoading(true);
-    getInformeFeedback(id)
-      .then(setInforme)
+    cargar()
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [cargar]);
+
+  async function handleGenerarPropuestas() {
+    setGenerando(true);
+    setError(null);
+    setSinPropuestas(null);
+    try {
+      const res = await generarPropuestas(id);
+      if (!res.propuestas || res.propuestas.length === 0) {
+        setSinPropuestas(res.sinPropuestas ?? "No hay ajustes que proponer con fundamento a partir de este informe.");
+      }
+      await cargar();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGenerando(false);
+    }
+  }
+
+  async function handleProbar() {
+    setProbando(true);
+    setError(null);
+    try {
+      const res = await correrBacktest(informe.paquete_id, seleccionadas);
+      setBacktest(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProbando(false);
+    }
+  }
+
+  function alternarSeleccion(propuestaId) {
+    setSeleccionadas((prev) => (prev.includes(propuestaId) ? prev.filter((x) => x !== propuestaId) : [...prev, propuestaId]));
+  }
 
   if (loading) return <p className="crediscope-muted">Cargando informe...</p>;
   if (error)
@@ -236,6 +291,34 @@ export default function InformeFeedback() {
           </ul>
         </div>
       ) : null}
+
+      {propuestas.length === 0 ? (
+        <div className="crediscope-card">
+          <h3>¿Qué ajustamos?</h3>
+          <p className="crediscope-muted" style={{ marginTop: 0 }}>
+            A partir de este diagnóstico, el sistema puede proponer ajustes concretos al criterio del modelo y recomendaciones
+            para el proceso de crédito. Vos decidís cuáles se aprueban: nada se aplica solo.
+          </p>
+          {sinPropuestas ? (
+            <p style={{ color: "var(--warn)", fontSize: 13.5 }}>{sinPropuestas}</p>
+          ) : null}
+          <button className="crediscope-btn" onClick={handleGenerarPropuestas} disabled={generando}>
+            <Lightbulb size={15} style={{ marginRight: 7, verticalAlign: "-2px" }} />
+            {generando ? "Analizando..." : "Proponer ajustes"}
+          </button>
+        </div>
+      ) : (
+        <PropuestasAjuste
+          propuestas={propuestas}
+          onCambio={cargar}
+          onProbar={handleProbar}
+          probando={probando}
+          seleccionadas={seleccionadas}
+          onSeleccionar={alternarSeleccion}
+        />
+      )}
+
+      <ResultadoBacktest backtest={backtest} />
     </div>
   );
 }
