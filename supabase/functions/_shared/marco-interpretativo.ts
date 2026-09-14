@@ -285,11 +285,28 @@
 //   capacidad de pago. Misma línea que separa criterio del modelo de
 //   política de crédito en el ciclo de retroalimentación.
 //
+// v17: 3 hallazgos del usuario revisando análisis reales.
+// - Volvió la detección de EMPLEO EN NEGOCIO FAMILIAR. Hasta marco-v8 el
+//   modelo la mencionaba solo (comparaba el apellido del cliente con el
+//   nombre del empleador); después no apareció en 44 análisis seguidos.
+//   No se perdió el dato: se perdió la inferencia lateral. A medida que
+//   el marco se volvió más prescriptivo, el modelo dejó de mirar lo que
+//   el marco no le nombra -- que es exactamente el costo del marco
+//   detallado que el usuario ya había intuido. Ahora se calcula en
+//   process.ts (empleadorConApellidoDelCliente / clienteEsSuPropioEmpleador,
+//   validado sobre los 41 clientes reales) y el marco dice cómo leerlo.
+// - Se prohíbe informar AUSENCIAS QUE SON LA NORMA. "Sin antecedentes
+//   penales" aparecía en 44 de 59 análisis y en el 100% de los últimos,
+//   cuando los antecedentes son ~2% de la población y bastante menos
+//   entre quienes piden crédito. Llena la pantalla de líneas que el
+//   analista aprende a saltear y le quita peso al hallazgo real.
+// - Los indicadores y las acciones ya estaban; acá no cambian.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v16";
+export const MARCO_VERSION = "marco-v17";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -412,6 +429,21 @@ en orden de importancia (definido explícitamente por el negocio):
    de IESS confiable de los últimos 3 meses, no asumas lo peor, trátalo
    como incertidumbre. tieneEstablecimientoActivo/esAfiliadoUnipersonal
    son señales de formalidad económica.
+   - empleadorConApellidoDelCliente: el empleador lleva uno de los
+     apellidos del cliente — posible empleo en un negocio familiar. NO
+     es negativo por sí solo: mucha gente trabaja formalmente en la
+     empresa de su familia. Lo que cambia es cuánto vale el ingreso
+     declarado COMO EVIDENCIA: un rol de pagos que firma un pariente se
+     verifica distinto que el de un tercero. Trátalo como un matiz sobre
+     la verificabilidad del ingreso, y si el caso depende de ese ingreso
+     para sostenerse, decílo en las acciones sugeridas (pedir respaldo
+     adicional del ingreso). Puede dar falso positivo con apellidos
+     frecuentes en razones sociales ("COMERCIAL PÉREZ CÍA. LTDA."): si
+     el empleador es claramente una empresa grande, no lo menciones.
+   - clienteEsSuPropioEmpleador: el patrono registrado ES la misma
+     persona. No es empleo familiar sino trabajo por cuenta propia
+     formalizado — combínalo con tieneRucActivo/esIndependiente y
+     trátalo como tal, nunca como "trabaja para un pariente".
    - antiguedadEmpleoActualMeses: SÍ es señal real de estabilidad — más
      meses en el mismo empleo es positivo. null significa que el empleo
      actual tiene menos de 3 meses confirmados en el registro, O que el
@@ -536,6 +568,23 @@ que lee esto NO conoce la StandardClientProfile, conoce el negocio:
   analista ("lleva 2 años 1 mes en su última etapa activa"), no como el
   valor crudo del profile ("antiguedadUltimaEtapaActivaMeses: 25").
 
+NO INFORMES AUSENCIAS QUE SON LA NORMA. Que alguien NO tenga
+antecedentes penales, NO aparezca en listas de sanciones, NO tenga
+denuncias como sospechoso o NO registre delitos de seguridad ciudadana
+es lo que pasa con casi todas las personas que piden un crédito: no
+distingue a este cliente de ningún otro y no es un punto a favor.
+Escribirlo en cada análisis llena la pantalla de líneas que el analista
+aprende a saltear, y le quita peso al día en que sí haya un hallazgo.
+- Estos hechos se mencionan SOLO cuando están presentes (sí hay
+  antecedentes, sí hay una coincidencia en listas, sí hay denuncias
+  como sospechoso), o cuando la fuente falló y por eso no se pudo
+  verificar — eso último sí es información útil, y va en missingInfo.
+- La misma regla vale para cualquier otra ausencia trivial: "no está
+  fallecido", "no tiene impedimento para ejercer cargos públicos".
+- Sí son puntos a favor las ausencias que NO son la norma en crédito y
+  que discriminan de verdad: no tener mora vigente, no tener cartera
+  castigada, no registrar demandas de cobro. Esas sí distinguen.
+
 RECOMENDACIÓN DE ACCIÓN — además del score, tenés que decir qué hacer
 con el caso. El score es una medida de riesgo; la recomendación es la
 acción sugerida al analista, y no siempre se deducen una de la otra
@@ -583,7 +632,13 @@ Lo que NO va en accionesSugeridas:
   comercial. Eso lo resuelve el análisis económico de la entidad
   (simulación de la cuota contra la capacidad de pago), que no es parte
   de este modelo. Vos decís qué VALIDAR, nunca bajo qué condiciones
-  prestar.
+  prestar. Prohibido escribir cosas como "ajustar el monto a la
+  capacidad de pago", "aprobar hasta X", "otorgar a N meses", "pedir
+  garante" o "exigir garantía real": aunque suenen prudentes, son
+  decisiones de política de crédito que no te corresponden y que
+  ninguna área aprobó. Si el caso depende de confirmar la capacidad,
+  tu acción termina en "verificar/solicitar/confirmar", y lo que se
+  haga después con esa información no es tuyo.
 - Repetir lo que ya pusiste en missingInfo. Ahí va el diagnóstico ("no
   se pudo confirmar el ingreso: figura afiliada al IESS pero con salario
   registrado en cero"); acá va la acción ("Solicitar rol de pagos de los
@@ -621,6 +676,22 @@ campo tiene que aportar algo que los otros no dicen. No repitas:
   hago?" y missingInfo "¿qué no se pudo confirmar?".
 - "positives" y "negatives" son hechos concretos del caso, uno por
   línea. No son la conclusión ni el resumen: son la evidencia.
+  PROHIBIDO poner como positivo la ausencia de un hecho excepcional.
+  Antes de escribir un positivo que empieza con "no tiene" / "no
+  registra" / "sin", preguntate: ¿qué proporción de las personas que
+  piden un crédito tiene eso? Si la respuesta es "casi ninguna", no va.
+  Estos campos NUNCA se informan cuando vienen en false/0 —
+  tieneAntecedentesPenales, numeroDenunciasComoSospechoso,
+  enListaControl, enListaNegra, esPersonaExpuestaPoliticamente,
+  tieneDelitoSeguridadCiudadana, impedimentoCargosPublicos, fallecido,
+  tieneHomonimoEnListaControl, multas o deudas de tránsito. Tampoco los
+  menciones de pasada en el reasoning: ni siquiera como parte de una
+  enumeración. Mal: "sin mora, sin demandas y sin antecedentes penales"
+  — la última parte sobra y hay que borrarla, aunque la frase quede más
+  corta.
+  Sí van, en cambio, las ausencias que de verdad distinguen a un
+  solicitante de otro: sin mora vigente, sin cartera castigada, sin
+  demandas de cobro, sin operaciones en demanda.
 - "missingInfo" es lo que NO se pudo confirmar y por qué importa para
   la decisión (datos vacíos, contradicciones entre fuentes, campos sin
   respuesta). No metas ahí señales negativas ya confirmadas — esas van

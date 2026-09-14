@@ -193,6 +193,17 @@ export interface StandardClientProfile {
 
   laboral: {
     empleoActual: { empleador: string | null; cargo: string | null; salarioAprox: number | null } | null;
+    // ¿El empleador lleva alguno de los apellidos del cliente? Señal de
+    // empleo en negocio familiar: no es riesgo por sí sola, pero cambia
+    // cuánto vale el ingreso reportado como evidencia. null = no hay
+    // empleo actual o falta el nombre. Ver la nota en process.ts sobre
+    // falsos positivos con apellidos frecuentes en razones sociales.
+    empleadorConApellidoDelCliente: boolean | null;
+    // El patrono registrado ES el propio cliente: trabajo por cuenta
+    // propia formalizado, no empleo familiar. Se separa porque sin esta
+    // distinción los dos casos se confunden (2 de 7 positivos en la
+    // muestra real eran esto).
+    clienteEsSuPropioEmpleador: boolean | null;
     // Empleadores con evidencia de actividad en algún momento de los
     // últimos 24 meses (fecSal, o si viene vacío, el último snapshot
     // (anio,mes) confirmado — NO se asume "activo hoy" solo porque

@@ -92,14 +92,34 @@ export async function scoreWithLlm(
     return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function");
   }
 
-  const marco = ajustesVigentes.length
-    ? `${MARCO_INTERPRETATIVO}
-
-AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
+  // El marco va en un bloque aparte y CACHEADO, los ajustes en otro sin
+  // cachear. Son ~5.600 tokens idénticos en cada análisis: sin caché se
+  // pagan completos todas las veces, y son la mayor parte del costo
+  // (medido: 9.400 tokens de entrada promedio, contra 4.000 en las
+  // primeras versiones — el marco creció ronda tras ronda de auditoría).
+  // Una lectura de caché cuesta ~10% de lo que cuesta procesarlo de
+  // nuevo, así que un analista que revisa varios clientes seguidos paga
+  // el marco una sola vez.
+  //
+  // Los ajustes quedan FUERA del bloque cacheado a propósito: cambian
+  // cuando el área los pone en vigencia, y si estuvieran adentro cada
+  // cambio invalidaría el caché del marco entero.
+  const bloquesSistema: Array<Record<string, unknown>> = [
+    {
+      type: "text",
+      text: MARCO_INTERPRETATIVO,
+      cache_control: { type: "ephemeral" },
+    },
+  ];
+  if (ajustesVigentes.length) {
+    bloquesSistema.push({
+      type: "text",
+      text: `AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
 Los siguientes criterios se incorporaron a partir del análisis de
 resultados reales. Tienen el mismo peso que el resto del marco:
-${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
-    : MARCO_INTERPRETATIVO;
+${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
+    });
+  }
 
   const userPayload = {
     standardClientProfile: profile,
@@ -124,7 +144,7 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
       // (positivos/negativos largos): el análisis devolvía el fallback
       // de score 500 en vez de un resultado real.
       max_tokens: 6000,
-      system: marco,
+      system: bloquesSistema,
       messages: [{ role: "user", content: JSON.stringify(userPayload) }],
     }),
   });

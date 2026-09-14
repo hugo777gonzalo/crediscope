@@ -186,6 +186,65 @@ function mismoNombre(a: unknown, b: unknown): boolean {
   return na !== "" && na === nb;
 }
 
+// ¿El empleador lleva el apellido del cliente? Señal de empleo en
+// negocio familiar, que no es mala por sí sola pero SÍ cambia cuánto
+// vale el ingreso reportado como evidencia: un rol de pagos que firma
+// un pariente se verifica distinto que uno de un tercero.
+//
+// Se calcula acá y no se deja al criterio del LLM a propósito. Es una
+// comparación de texto, y el modelo dejó de hacerla: hasta marco-v8 la
+// mencionaba solo, después no volvió a aparecer en ningún análisis (44
+// análisis seguidos sin una sola mención). A medida que el marco se
+// volvió más prescriptivo, el modelo dejó de mirar lo que el marco no
+// le nombra.
+//
+// nombreCompleto de pn_inf_basica viene "Apellido1 Apellido2 Nombre1
+// Nombre2", así que los apellidos son las 2 primeras palabras. Se
+// exigen 4+ letras para no disparar con partículas ("DE", "DEL") y se
+// busca palabra completa dentro del nombre del empleador.
+//
+// OJO: da falsos positivos con apellidos frecuentes en razones sociales
+// ("COMERCIAL PEREZ CIA. LTDA."). Por eso es informativo y el marco lo
+// trata como matiz sobre la verificabilidad del ingreso, nunca como
+// penalización automática.
+// Validando contra los 41 clientes reales cacheados aparecieron 2 casos
+// que la primera versión marcaba mal:
+//   - El cliente figura como su PROPIO empleador (nombre completo igual
+//     al del patrono): eso es trabajo por cuenta propia, no un negocio
+//     familiar. Se separa en su propio campo.
+//   - Los nombres vienen con la Ñ corrompida en algunos registros de la
+//     fuente ("PICHUCHO MU?OZ"), así que la comparación no puede exigir
+//     igualdad exacta de todas las palabras.
+function relacionConEmpleador(
+  nombreEmpleador: unknown,
+  nombreCliente: unknown
+): { esElMismoCliente: boolean; comparteApellido: boolean } | null {
+  const limpiar = (s: unknown) =>
+    String(s ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // tildes
+      .replace(/[^A-Z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+  const empleador = limpiar(nombreEmpleador);
+  const cliente = limpiar(nombreCliente);
+  if (empleador.length === 0 || cliente.length < 3) return null;
+
+  // "Apellido1 Apellido2 Nombre1 Nombre2" (formato de pn_inf_basica).
+  const apellidos = cliente.slice(0, 2).filter((a) => a.length >= 4);
+  const nombres = cliente.slice(2).filter((n) => n.length >= 4);
+  if (apellidos.length === 0) return null;
+
+  const comparteApellido = apellidos.some((apellido) => empleador.includes(apellido));
+  // Es la misma persona si además aparecen TODOS sus nombres de pila:
+  // un pariente comparte apellidos pero no se llama igual.
+  const esElMismoCliente = comparteApellido && nombres.length > 0 && nombres.every((n) => empleador.includes(n));
+
+  return { esElMismoCliente, comparteApellido: comparteApellido && !esElMismoCliente };
+}
+
 // pn_supa/novadata trae representanteLegal (representa a quien RECIBE
 // la pensión) y obligadoPrincipal (quien DEBE pagarla) como 2 personas
 // DISTINTAS. BUG real encontrado auditando el reporte del usuario
@@ -417,6 +476,12 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   const mecanizadoOrdenado = [...mecanizado].sort((a, b) => baseDateTs(b) - baseDateTs(a));
   const ultimoMecanizado = (mecanizadoOrdenado[0] as AnyRecord | undefined) ?? null;
   const empleoActualConfiable = Boolean(ultimoMecanizado) && dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
+  const relacionEmpleador = relacionConEmpleador(
+    ((ultimoMecanizado?.personaPatrono as AnyRecord | undefined)?.nombreComercial as string) ??
+      ((ultimoMecanizado?.personaPatrono as AnyRecord | undefined)?.nombre as string) ??
+      null,
+    (persona?.nombre as string) ?? null
+  );
   // Antigüedad laboral: fuente es tiess (trae fecIng/fecSal), NO
   // trabajoHistoricosMecanizado (fuente de empleoActual arriba) — son
   // 2 recursos independientes que pueden diferir levemente en el
@@ -509,6 +574,11 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
           salarioAprox: num((ultimoMecanizado?.personaIngreso as AnyRecord | undefined)?.valor),
         }
       : null,
+    // Solo tiene sentido si HAY empleo actual confiable: si no, se
+    // estaría describiendo a un empleador que ya no existe (la primera
+    // versión lo marcaba igual y daba 4 falsos positivos sobre 41).
+    empleadorConApellidoDelCliente: empleoActualConfiable ? (relacionEmpleador?.comparteApellido ?? null) : null,
+    clienteEsSuPropioEmpleador: empleoActualConfiable ? (relacionEmpleador?.esElMismoCliente ?? null) : null,
     // Empleadores con evidencia de actividad en algún momento de los
     // últimos 24 meses — NO "empleadores que iniciaron en los últimos
     // 24 meses" (bug de semántica de una versión muy anterior: un

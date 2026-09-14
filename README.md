@@ -19,7 +19,7 @@ La ingesta de Novadata está cableada contra producción (confirmada con
 HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
 El frontend se despliega solo a GitHub Pages en cada push a `main`.
 
-- **Marco interpretativo:** `marco-v16` (`MARCO_VERSION` en
+- **Marco interpretativo:** `marco-v17` (`MARCO_VERSION` en
   `supabase/functions/_shared/marco-interpretativo.ts`). Cada versión
   tiene su fila en `scoring_rules_versions` — subir la constante sin
   crear la fila rompe la FK al guardar un análisis.
@@ -52,6 +52,12 @@ Edge Functions (Deno, en Supabase)
    v
 Supabase Postgres (ver "Base de datos")
 ```
+
+El marco se envía con **caché de prompt** (`cache_control` en llm-scoring.ts):
+son ~5.600 tokens idénticos en cada análisis y, sin caché, se pagaban
+completos todas las veces. Los ajustes vigentes van en un bloque aparte
+sin cachear, para que ponerlos en vigencia no invalide el caché del
+marco entero.
 
 Las credenciales de Novadata, la API key de Anthropic y la
 `service_role key` viven **solo** en las secrets de las Edge Functions —

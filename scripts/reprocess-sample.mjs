@@ -137,6 +137,32 @@ function mismoNombre(a, b) {
   const nb = normalizar(b);
   return na !== "" && na === nb;
 }
+// Espejo de relacionConEmpleador en process.ts (ver allá la nota sobre
+// los 2 falsos positivos que encontró la validación: cliente que es su
+// propio empleador, y la Ñ corrompida en algunos registros).
+function relacionConEmpleador(nombreEmpleador, nombreCliente) {
+  const limpiar = (s) =>
+    String(s ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // tildes
+      .replace(/[^A-Z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+  const empleador = limpiar(nombreEmpleador);
+  const cliente = limpiar(nombreCliente);
+  if (empleador.length === 0 || cliente.length < 3) return null;
+
+  const apellidos = cliente.slice(0, 2).filter((a) => a.length >= 4);
+  const nombres = cliente.slice(2).filter((n) => n.length >= 4);
+  if (apellidos.length === 0) return null;
+
+  const comparteApellido = apellidos.some((apellido) => empleador.includes(apellido));
+  const esElMismoCliente = comparteApellido && nombres.length > 0 && nombres.every((n) => empleador.includes(n));
+  return { esElMismoCliente, comparteApellido: comparteApellido && !esElMismoCliente };
+}
+
 function esClienteObligadoSupa(p, nombreCliente) {
   if (p.obligadoPrincipal) return mismoNombre(p.obligadoPrincipal, nombreCliente);
   if (mismoNombre(p.representanteLegal, nombreCliente)) return false;
@@ -326,6 +352,10 @@ function buildStandardProfile(raw, cedula) {
   );
   const ultimoMecanizado = mecanizadoOrdenado[0] ?? null;
   const empleoActualConfiable = ultimoMecanizado && dentroUltimos3Meses(ultimoMecanizado.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
+  const relacionEmpleador = relacionConEmpleador(
+    ultimoMecanizado?.personaPatrono?.nombreComercial ?? ultimoMecanizado?.personaPatrono?.nombre ?? null,
+    persona?.nombre ?? null
+  );
   // Antigüedad laboral -- fuente tiess (fecIng/fecSal), independiente
   // de empleoActual -- ver nota completa en process.ts (incluye el bug
   // de "fecSal vacío = sigue activo hoy" corregido con
@@ -382,6 +412,8 @@ function buildStandardProfile(raw, cedula) {
           salarioAprox: num(ultimoMecanizado.personaIngreso?.valor),
         }
       : null,
+    empleadorConApellidoDelCliente: empleoActualConfiable ? (relacionEmpleador?.comparteApellido ?? null) : null,
+    clienteEsSuPropioEmpleador: empleoActualConfiable ? (relacionEmpleador?.esElMismoCliente ?? null) : null,
     // Empleadores con evidencia de actividad en los últimos 24 meses
     // (ver misma nota en process.ts) — usa mesesDesdeUltimaEvidenciaActiva,
     // NO trata fecSal vacío como "sigue activo hoy" sin más.
