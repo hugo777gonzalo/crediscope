@@ -479,6 +479,9 @@ export type NivelHistorial = "excelente" | "bueno" | "regular" | "malo" | "sin h
 export interface LlmScoringResult {
   score: number; // 1-999, APROXIMADO — el LLM lo estima con el marco interpretativo, no es una fórmula
   recomendacion: RecomendacionAccion;
+  // Qué hacer con el caso: 2-4 pasos concretos (marco-v16). Es lo único
+  // accionable del análisis — el resto explica o describe.
+  accionesSugeridas: string[];
   indicadorRiesgo: NivelRiesgo | null;
   indicadorHistorial: NivelHistorial | null;
   positives: string[];

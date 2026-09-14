@@ -55,7 +55,7 @@ export default function AnalisisResultado({ result, ocultarListaControl = false 
         </div>
       ) : null}
 
-      <RecomendacionCard recomendacion={result.recomendacion} />
+      <RecomendacionCard recomendacion={result.recomendacion} acciones={result.acciones_sugeridas || []} />
 
       <div className="crediscope-secciones">
         <SeccionDesplegable Icono={CircleCheck} titulo="Puntos positivos" cantidad={positivos.length} color="var(--good)">

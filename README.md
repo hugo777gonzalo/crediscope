@@ -19,7 +19,7 @@ La ingesta de Novadata está cableada contra producción (confirmada con
 HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
 El frontend se despliega solo a GitHub Pages en cada push a `main`.
 
-- **Marco interpretativo:** `marco-v15` (`MARCO_VERSION` en
+- **Marco interpretativo:** `marco-v16` (`MARCO_VERSION` en
   `supabase/functions/_shared/marco-interpretativo.ts`). Cada versión
   tiene su fila en `scoring_rules_versions` — subir la constante sin
   crear la fila rompe la FK al guardar un análisis.
@@ -85,11 +85,20 @@ limitada por RLS.
    señal de mal comportamiento de pago.
 5. **Scoring** — `llm-scoring.ts` + `marco-interpretativo.ts`. Todo lo
    demás (laboral, judicial, financiero, patrimonio) queda a criterio
-   del LLM, que devuelve score, recomendación de acción, dos indicadores
-   de lectura rápida (riesgo e historial de pago), la evidencia a favor
-   y en contra, y lo que no se pudo confirmar. Al marco base se le suman
-   en tiempo de ejecución los ajustes vigentes (ver abajo), sin
+   del LLM, que devuelve score, recomendación de acción con 2-4 pasos
+   concretos de qué validar o pedirle al cliente, dos indicadores de
+   lectura rápida (riesgo e historial de pago), la evidencia a favor y
+   en contra, y lo que no se pudo confirmar. Cada campo contesta una
+   pregunta distinta: el resumen el porqué, las acciones el qué hago,
+   las observaciones lo que no se pudo confirmar. Al marco base se le
+   suman en tiempo de ejecución los ajustes vigentes (ver abajo), sin
    reescribirlo.
+
+   El modelo tiene prohibido proponer **condiciones comerciales**
+   (montos, plazos, cuotas, tasas, garantías): eso lo resuelve el
+   análisis económico de la entidad, que simula la cuota contra la
+   capacidad de pago. Misma frontera que separa criterio del modelo de
+   política de crédito en el ciclo de calibración.
 
    El tercer indicador del diseño, **capacidad de pago, queda pendiente**:
    no hay todavía una fuente de ingresos confiable con qué estimarla, y

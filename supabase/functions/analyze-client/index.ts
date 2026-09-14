@@ -192,6 +192,11 @@ Deno.serve(async (req) => {
         // por una lista de control.
         indicador_riesgo: llmResult.indicadorRiesgo,
         indicador_historial: llmResult.indicadorHistorial,
+        // Las acciones se guardan tal cual las dio el modelo incluso si
+        // hay control de bloqueo: aunque el caso se niegue, saber qué
+        // habría que verificar sigue sirviendo (un homónimo en listas,
+        // por ejemplo, se despeja verificando identidad).
+        acciones_sugeridas: llmResult.accionesSugeridas,
         rules_version: MARCO_VERSION,
         // Qué criterio efectivo (marco base + ajustes vigentes) produjo
         // este análisis. Sin esto, un resultado raro no se puede

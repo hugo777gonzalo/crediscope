@@ -60,6 +60,7 @@ function resultadoPorDefecto(mensaje: string, data?: Record<string, unknown>): L
     // Sin respuesta del LLM no hay juicio posible: queda en manos del
     // analista, nunca en "aprobar" por defecto.
     recomendacion: "revisar",
+    accionesSugeridas: [],
     indicadorRiesgo: null,
     indicadorHistorial: null,
     positives: [],
@@ -156,6 +157,12 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
     return {
       score,
       recomendacion: normalizarRecomendacion(parsed.recomendacion),
+      // Tope de 5: el marco pide entre 2 y 4. Si el modelo se entusiasma
+      // y devuelve una lista larga, se corta — una "recomendación" de 9
+      // pasos deja de ser accionable y nadie la sigue.
+      accionesSugeridas: Array.isArray(parsed.accionesSugeridas)
+        ? parsed.accionesSugeridas.map(String).map((a) => a.trim()).filter(Boolean).slice(0, 5)
+        : [],
       indicadorRiesgo: normalizarNivel(parsed.indicadorRiesgo, NIVELES_RIESGO),
       indicadorHistorial: normalizarNivel(parsed.indicadorHistorial, NIVELES_HISTORIAL),
       positives: Array.isArray(parsed.positives) ? parsed.positives.map(String) : [],

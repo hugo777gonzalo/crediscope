@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertTriangle, Eye, XCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Eye, XCircle, ArrowRight } from "lucide-react";
 import { ETIQUETAS_RECOMENDACION } from "./RecomendacionBadge.jsx";
 
 // La recomendación en grande, como sección propia: es lo que el
@@ -9,6 +9,11 @@ import { ETIQUETAS_RECOMENDACION } from "./RecomendacionBadge.jsx";
 // El sustantivo ("Aprobación") y no el verbo ("Aprobar") a propósito:
 // es el dictamen del análisis, no una orden al analista. La decisión
 // sigue siendo suya.
+//
+// Debajo van las acciones concretas del caso (marco-v16). Antes acá
+// había una frase fija por etiqueta, la misma para todos los clientes:
+// tenía forma de análisis sin serlo. Los análisis anteriores a v16 no
+// tienen acciones y se dice, en vez de rellenar el espacio.
 
 const PRESENTACION = {
   aprobar: { titulo: "Aprobación", Icono: CheckCircle2, fondo: "#f0fdf4" },
@@ -17,24 +22,43 @@ const PRESENTACION = {
   negar: { titulo: "Negación", Icono: XCircle, fondo: "#fef2f2" },
 };
 
-export default function RecomendacionCard({ recomendacion }) {
+export default function RecomendacionCard({ recomendacion, acciones = [] }) {
   const base = ETIQUETAS_RECOMENDACION[recomendacion];
   const extra = PRESENTACION[recomendacion];
+  if (!base && !acciones.length) return null;
   if (!base || !extra) return null;
   const { Icono } = extra;
 
   return (
     <div className="crediscope-recomendacion-card" style={{ borderColor: base.color, background: extra.fondo }}>
-      <span style={{ color: base.color, flexShrink: 0 }}>
-        <Icono size={34} strokeWidth={2.2} />
-      </span>
-      <div>
-        <p className="crediscope-recomendacion-card-label">Recomendación</p>
-        <p className="crediscope-recomendacion-card-titulo" style={{ color: base.color }}>
-          {extra.titulo}
-        </p>
-        <p className="crediscope-recomendacion-card-detalle">{base.detalle}</p>
+      <div className="crediscope-recomendacion-card-cabecera">
+        <span style={{ color: base.color, flexShrink: 0 }}>
+          <Icono size={34} strokeWidth={2.2} />
+        </span>
+        <div>
+          <p className="crediscope-recomendacion-card-label">Recomendación</p>
+          <p className="crediscope-recomendacion-card-titulo" style={{ color: base.color }}>
+            {extra.titulo}
+          </p>
+        </div>
       </div>
+
+      {acciones.length > 0 ? (
+        <ul className="crediscope-acciones">
+          {acciones.map((accion, i) => (
+            <li key={i}>
+              <span style={{ color: base.color }}>
+                <ArrowRight size={15} />
+              </span>
+              <span>{accion}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="crediscope-recomendacion-card-detalle">
+          Este análisis es anterior a la versión que sugiere los pasos a seguir. Volvé a analizarlo para obtenerlos.
+        </p>
+      )}
     </div>
   );
 }
