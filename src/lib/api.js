@@ -264,6 +264,33 @@ export async function guardarPaqueteFeedback({ etiqueta, notas, archivoNombre, f
   return paquete;
 }
 
+// Genera el informe "Esto encontramos" de un paquete. Las estadísticas
+// las calcula la Edge Function en código (no el LLM) y el LLM aporta la
+// lectura cualitativa -- ver analizar-feedback/index.ts.
+export async function generarInformeFeedback(paqueteId) {
+  const { data, error } = await supabase.functions.invoke("analizar-feedback", { body: { paqueteId } });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function getInformesFeedback(paqueteId) {
+  const query = supabase.from("feedback_informes").select("*").order("created_at", { ascending: false });
+  const { data, error } = paqueteId ? await query.eq("paquete_id", paqueteId) : await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getInformeFeedback(id) {
+  const { data, error } = await supabase
+    .from("feedback_informes")
+    .select("*, feedback_paquetes(etiqueta, periodo_desde, periodo_hasta)")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function getPaquetesFeedback() {
   const { data, error } = await supabase.from("feedback_paquetes").select("*").order("created_at", { ascending: false });
   if (error) throw error;

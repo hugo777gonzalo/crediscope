@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { Download, Upload, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Download, Upload, Trash2, Sparkles, FileText } from "lucide-react";
 import {
   getClientesParaPlantilla,
   vincularFilasConAnalisis,
   guardarPaqueteFeedback,
   getPaquetesFeedback,
   eliminarPaqueteFeedback,
+  generarInformeFeedback,
+  getInformesFeedback,
 } from "../lib/api.js";
 import { generarPlantilla, leerArchivo } from "../lib/feedbackExcel.js";
 
@@ -30,9 +33,12 @@ function fechaCorta(valor) {
 
 export default function Retroalimentacion() {
   const [paquetes, setPaquetes] = useState([]);
+  const [informesPorPaquete, setInformesPorPaquete] = useState({});
+  const [analizando, setAnalizando] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [descargando, setDescargando] = useState(false);
+  const navigate = useNavigate();
 
   const [archivo, setArchivo] = useState(null);
   const [previsualizacion, setPrevisualizacion] = useState(null);
@@ -44,11 +50,31 @@ export default function Retroalimentacion() {
     setLoading(true);
     setError(null);
     try {
-      setPaquetes(await getPaquetesFeedback());
+      const [lista, informes] = await Promise.all([getPaquetesFeedback(), getInformesFeedback()]);
+      setPaquetes(lista);
+      // Solo interesa el informe más reciente de cada paquete: vienen
+      // ordenados por fecha descendente, así que el primero gana.
+      const porPaquete = {};
+      for (const inf of informes) {
+        if (!porPaquete[inf.paquete_id]) porPaquete[inf.paquete_id] = inf;
+      }
+      setInformesPorPaquete(porPaquete);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAnalizar(paqueteId) {
+    setAnalizando(paqueteId);
+    setError(null);
+    try {
+      const informe = await generarInformeFeedback(paqueteId);
+      navigate(`/retroalimentacion/informe/${informe.id}`);
+    } catch (err) {
+      setError(err.message);
+      setAnalizando(null);
     }
   }
 
@@ -266,13 +292,34 @@ export default function Retroalimentacion() {
                   <td>{p.total_default}</td>
                   <td>{p.total_vinculados}</td>
                   <td>
-                    <button
-                      className="crediscope-btn crediscope-btn-ghost"
-                      onClick={() => handleEliminar(p.id, p.etiqueta)}
-                      title="Eliminar paquete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      {informesPorPaquete[p.id] ? (
+                        <Link
+                          className="crediscope-btn crediscope-btn-ghost"
+                          to={`/retroalimentacion/informe/${informesPorPaquete[p.id].id}`}
+                          title="Ver el informe generado"
+                        >
+                          <FileText size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                          Ver informe
+                        </Link>
+                      ) : null}
+                      <button
+                        className="crediscope-btn"
+                        onClick={() => handleAnalizar(p.id)}
+                        disabled={analizando === p.id}
+                        title="Analizar este paquete y generar el informe"
+                      >
+                        <Sparkles size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                        {analizando === p.id ? "Analizando..." : informesPorPaquete[p.id] ? "Regenerar" : "Analizar"}
+                      </button>
+                      <button
+                        className="crediscope-btn crediscope-btn-ghost"
+                        onClick={() => handleEliminar(p.id, p.etiqueta)}
+                        title="Eliminar paquete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
