@@ -41,7 +41,7 @@ Frontend (Vite/React, estático, GitHub Pages)
    v
 Edge Functions (Deno, en Supabase)
    |
-   |-- structure-client    Novadata -> Estructura Estandarizada -> clasificación -> client_profiles
+   |-- structure-client    Novadata -> Estructura Estandarizada -> client_profiles (Perfil del Cliente)
    |-- analyze-client      (lo anterior, o un perfil ya guardado) -> controles de bloqueo -> LLM -> analysis_results
    |-- explore-novadata    inspección cruda de la ingesta (solo admin)
    |-- analizar-feedback   informe "Esto encontramos" sobre un paquete de resultados reales
@@ -68,9 +68,17 @@ limitada por RLS.
    Convierte el crudo en 16 grupos de campos normalizados (booleanos,
    conteos, montos) en vez de arrays completos. La fuente de verdad del
    contrato es `StandardClientProfile` en `types.ts`.
-3. **Clasificación** — `classify.ts`. Cada campo cae en positivo /
-   negativo / complementario / sin información. Es lo que se muestra en
-   Perfil del Cliente, y no depende del LLM.
+3. **Perfil del Cliente** — lo que ve el analista: esos mismos 16 grupos
+   en tarjetas, con los campos que tienen dato real
+   (`perfilClienteCampos.js` + `SegmentosPerfil.jsx`, y qué segmentos se
+   muestran lo decide `standard_profile_segment_config`). Es
+   **puramente informativo: no marca positivo ni negativo** — qué juega
+   a favor y qué en contra lo determina el Análisis con IA (paso 5).
+   *Nota:* `classify.ts` sigue calculando una clasificación por campo
+   (positivo / negativo / complementario / sin información) que se
+   guarda en `client_profiles.classification`, pero hoy no la consume
+   nadie — ni la web, ni el LLM, ni los reportes. Quedó de una etapa
+   anterior del diseño.
 4. **Controles de bloqueo** — `controles-bloqueo.ts`. Determinísticos, a
    propósito fuera del criterio del LLM: persona fallecida, listas de
    sanciones/lista negra, y delitos graves de seguridad ciudadana. Si se
@@ -160,10 +168,10 @@ Tablas principales:
 
 - `clients`, `ingestion_runs`, `analysis_results`, `audit_log`,
   `scoring_rules_versions` — el núcleo (schema.sql).
-- `client_profiles` — la Estructura Estandarizada calculada, con su
-  clasificación y el control de bloqueo. Es lo que permite reutilizar un
-  perfil reciente, y lo que congela el pasado para las pruebas del ciclo
-  de calibración.
+- `client_profiles` — la Estructura Estandarizada calculada y el control
+  de bloqueo (más la columna `classification`, hoy sin consumidores).
+  Es lo que permite reutilizar un perfil reciente, y lo que congela el
+  pasado para las pruebas del ciclo de calibración.
 - `profiles` — nombre corto, entidad financiera y rol de cada usuario.
 - `novadata_resource_config`, `standard_profile_field_config`,
   `standard_profile_segment_config` — qué recursos/campos están activos,

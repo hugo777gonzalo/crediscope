@@ -1,6 +1,17 @@
 // Clasifica un StandardClientProfile en 4 segmentos, campo por campo:
 //   positivo | negativo | complementario | sin_informacion
 //
+// *** OJO: HOY NADIE CONSUME ESTA CLASIFICACIÓN ***
+// structure-client la calcula y la guarda en
+// client_profiles.classification, pero no la lee ni la web (Perfil del
+// Cliente muestra los 16 grupos tal cual, puramente informativo — ver
+// SegmentosPerfil.jsx), ni el LLM (llm-scoring.ts le manda el
+// StandardClientProfile completo y es él quien decide qué juega a favor
+// y qué en contra), ni los reportes. Quedó de una etapa anterior del
+// diseño. Lo que SÍ se sigue usando de este archivo son ORDEN_GRUPOS y
+// ETIQUETAS_GRUPO. Antes de afinar las reglas de abajo, decidir si esto
+// vuelve a tener un consumidor o se retira.
+//
 // *** ESTO ES UNA VERSIÓN PRELIMINAR (clasificacion-v1) — a afinar ***
 // Cada campo tiene una regla fija (qué valor es positivo/negativo); los
 // campos sin regla explícita caen en "complementario" (informativos, no
