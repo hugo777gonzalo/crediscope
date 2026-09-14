@@ -46,11 +46,46 @@ function Item({ to, Icono, texto, activo, colapsado, onClick }) {
   );
 }
 
+// Sección con subsecciones. Colapsado el menú, el grupo no despliega
+// nada: primero lo expande, que es lo que el usuario quería al hacer
+// clic en un rubro que no puede leer.
+function Grupo({ Icono, texto, activo, colapsado, expandirMenu, hijos }) {
+  const [abierto, setAbierto] = useState(activo);
+
+  return (
+    <div>
+      <button
+        type="button"
+        className={`crediscope-menu-item crediscope-menu-grupo ${activo ? "crediscope-menu-item-activo" : ""}`}
+        onClick={() => (colapsado ? expandirMenu() : setAbierto((v) => !v))}
+        title={colapsado ? texto : undefined}
+        aria-expanded={abierto}
+      >
+        <Icono size={19} />
+        {!colapsado ? (
+          <>
+            <span>{texto}</span>
+            <ChevronDown size={15} className={`crediscope-menu-chevron ${abierto ? "crediscope-menu-chevron-abierto" : ""}`} />
+          </>
+        ) : null}
+      </button>
+      {!colapsado && abierto ? (
+        <div className="crediscope-menu-sub">
+          {hijos.map(({ to, texto: textoHijo, activo: activoHijo }) => (
+            <Link key={to} to={to} className={activoHijo ? "crediscope-menu-sub-activo" : ""}>
+              {textoHijo}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function MenuLateral({ profile }) {
   const { pathname } = useLocation();
   const [colapsado, setColapsado] = useState(leerColapsado);
   const enEvaluacion = pathname === "/" || pathname.startsWith("/perfil") || pathname.startsWith("/analisis");
-  const [evaluacionAbierta, setEvaluacionAbierta] = useState(enEvaluacion);
   const ultimaCedula = getUltimaCedula();
   const admin = esAdmin(profile);
 
@@ -87,39 +122,32 @@ export default function MenuLateral({ profile }) {
       <nav className="crediscope-menu-nav">
         <Item to="/" Icono={Home} texto="Inicio" activo={pathname === "/"} colapsado={colapsado} />
 
-        <div>
-          <button
-            type="button"
-            className={`crediscope-menu-item crediscope-menu-grupo ${enEvaluacion ? "crediscope-menu-item-activo" : ""}`}
-            onClick={() => (colapsado ? setColapsado(false) : setEvaluacionAbierta((v) => !v))}
-            title={colapsado ? "Evaluación Crediticia" : undefined}
-            aria-expanded={evaluacionAbierta}
-          >
-            <ClipboardCheck size={19} />
-            {!colapsado ? (
-              <>
-                <span>Evaluación Crediticia</span>
-                <ChevronDown size={15} className={`crediscope-menu-chevron ${evaluacionAbierta ? "crediscope-menu-chevron-abierto" : ""}`} />
-              </>
-            ) : null}
-          </button>
-          {!colapsado && evaluacionAbierta ? (
-            <div className="crediscope-menu-sub">
-              <Link to="/" className={pathname === "/" ? "crediscope-menu-sub-activo" : ""}>
-                Buscar Cliente
-              </Link>
-              <Link to={ultimaCedula ? `/perfil/${ultimaCedula}` : "/"} className={pathname.startsWith("/perfil") ? "crediscope-menu-sub-activo" : ""}>
-                Perfil del Cliente
-              </Link>
-              <Link to={ultimaCedula ? `/analisis/${ultimaCedula}` : "/"} className={pathname.startsWith("/analisis") ? "crediscope-menu-sub-activo" : ""}>
-                Análisis con IA
-              </Link>
-            </div>
-          ) : null}
-        </div>
+        <Grupo
+          Icono={ClipboardCheck}
+          texto="Evaluación Crediticia"
+          activo={enEvaluacion}
+          colapsado={colapsado}
+          expandirMenu={() => setColapsado(false)}
+          hijos={[
+            { to: "/", texto: "Buscar Cliente", activo: pathname === "/" },
+            { to: ultimaCedula ? `/perfil/${ultimaCedula}` : "/", texto: "Perfil del Cliente", activo: pathname.startsWith("/perfil") },
+            { to: ultimaCedula ? `/analisis/${ultimaCedula}` : "/", texto: "Análisis con IA", activo: pathname.startsWith("/analisis") },
+          ]}
+        />
 
         <Item to="/historial" Icono={FileStack} texto="Solicitudes" activo={pathname.startsWith("/historial")} colapsado={colapsado} />
-        <Item to="/reportes" Icono={BarChart3} texto="Reportes" activo={pathname.startsWith("/reportes")} colapsado={colapsado} />
+
+        <Grupo
+          Icono={BarChart3}
+          texto="Reportes"
+          activo={pathname.startsWith("/reportes")}
+          colapsado={colapsado}
+          expandirMenu={() => setColapsado(false)}
+          hijos={[
+            { to: "/reportes", texto: "Inteligencia de Negocios", activo: pathname === "/reportes" },
+            { to: "/reportes/descargas", texto: "Descargas", activo: pathname.startsWith("/reportes/descargas") },
+          ]}
+        />
 
         {admin ? (
           <>

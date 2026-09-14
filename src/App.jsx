@@ -12,6 +12,7 @@ import Historial from "./pages/Historial.jsx";
 import HistorialPerfilDetalle from "./pages/HistorialPerfilDetalle.jsx";
 import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
 import Reportes from "./pages/Reportes.jsx";
+import Descargas from "./pages/Descargas.jsx";
 import Retroalimentacion from "./pages/Retroalimentacion.jsx";
 import InformeFeedback from "./pages/InformeFeedback.jsx";
 import VersionesCriterio from "./pages/VersionesCriterio.jsx";
@@ -47,7 +48,8 @@ const TITULOS = [
   [/^\/perfil/, "Evaluación Crediticia"],
   [/^\/analisis/, "Evaluación Crediticia"],
   [/^\/historial/, "Solicitudes"],
-  [/^\/reportes/, "Reportes"],
+  [/^\/reportes\/descargas/, "Descargas"],
+  [/^\/reportes/, "Inteligencia de Negocios"],
   [/^\/retroalimentacion/, "Retroalimentación"],
   [/^\/explorar/, "Explorador de Fuentes"],
   [/^\/admin/, "Configuración"],
@@ -170,6 +172,14 @@ export default function App() {
             element={
               <RequireSession>
                 <Reportes />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/reportes/descargas"
+            element={
+              <RequireSession>
+                <Descargas />
               </RequireSession>
             }
           />

@@ -128,9 +128,18 @@ Crédito/Riesgos, no un perfil técnico.
    incumplimientos **y** créditos que pagaron bien, para que endurecer el
    criterio siempre muestre su costo.
 
-## Información de Solicitudes (datos para análisis)
+## Reportes: Inteligencia de Negocios y Descargas
 
-Reportes tiene una sección de descarga (`src/lib/exportAnalitico.js`) con
+Son dos cosas distintas y por eso viven en pantallas separadas.
+**Inteligencia de Negocios** (`Reportes.jsx`) es un tablero EN VIVO
+sobre toda la cartera consultada — volumen, tendencia, distribución de
+score, riesgo y cumplimiento, actividad por analista, tiempos — pensado
+para mirarse en pantalla con una jefatura. **Descargas**
+(`Descargas.jsx`) son los reportes planos, para bajar y trabajar afuera.
+
+### Descargas › Información de Solicitudes
+
+El exportable (`src/lib/exportAnalitico.js`) trae
 una fila por solicitud en el rango de fechas que se elija: los ~125
 campos de la Estructura Estandarizada con los que se evaluó a esa
 persona, el score, la recomendación, la versión del criterio y — cuando
@@ -177,7 +186,8 @@ no solo ocultando enlaces del menú.
 | --- | --- | --- |
 | Evaluación Crediticia (Buscar Cliente, Perfil del Cliente, Análisis con IA) | `/`, `/perfil/:cedula`, `/analisis/:cedula` | analista |
 | Solicitudes (historial de consultas y análisis) | `/historial` | analista |
-| Reportes (Reporte Gerencial de Gestión + Información de Solicitudes) | `/reportes` | analista |
+| Reportes › Inteligencia de Negocios (tablero en vivo) | `/reportes` | analista |
+| Reportes › Descargas (reportes planos) | `/reportes/descargas` | analista |
 | Retroalimentación | `/retroalimentacion` | admin |
 | Explorador de Fuentes | `/explorar` | admin |
 | Configuración | `/admin/configuracion` | admin |
