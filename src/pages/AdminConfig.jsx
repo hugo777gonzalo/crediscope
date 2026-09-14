@@ -11,9 +11,9 @@ import {
 // Pantalla de administración de las 3 capas de parametrización operativa
 // (ver supabase/migrations/006_runtime_config.sql y 016_segment_display_config.sql):
 //   A. Fuentes de Ingesta — qué recursos de Novadata consultar.
-//   B. Campos de Estructura Estandarizada — qué campos usar en
-//      clasificación/LLM (para apagar uno que reporte datos
-//      inconsistentes mientras se investiga).
+//   B. Campos de Estructura Estandarizada — qué campos se le mandan al
+//      Score por LLM (para apagar uno que reporte datos inconsistentes
+//      mientras se investiga; se sigue guardando igual en el perfil).
 //   C. Segmentos de Perfil del Cliente — qué segmentos se MUESTRAN en
 //      la UI del analista (no afecta cálculo ni el LLM, ver nota en
 //      016_segment_display_config.sql).
@@ -325,7 +325,7 @@ export default function AdminConfig() {
           </div>
           <ConfigSection
             title={`B. Campos de la Estructura Estandarizada (${fields.length})`}
-            description="Campos calculados del StandardClientProfile — desactiva uno si reporta datos inconsistentes mientras se investiga la causa. Se excluye por completo de la clasificación y del Score por LLM."
+            description="Campos calculados del StandardClientProfile — desactiva uno si reporta datos inconsistentes mientras se investiga la causa. No se le manda al Score por LLM, pero se sigue guardando en el perfil."
             items={fields}
             groupField="grupo"
             labelKey="campo"

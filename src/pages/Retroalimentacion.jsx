@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Download, Upload, Trash2, Sparkles, FileText, History } from "lucide-react";
+import { Download, Upload, Trash2, Sparkles, FileText, History, Table2 } from "lucide-react";
 import {
   getClientesParaPlantilla,
   vincularFilasConAnalisis,
@@ -9,8 +9,10 @@ import {
   eliminarPaqueteFeedback,
   generarInformeFeedback,
   getInformesFeedback,
+  getDatosAnaliticos,
 } from "../lib/api.js";
 import { generarPlantilla, leerArchivo } from "../lib/feedbackExcel.js";
+import { descargarTablaAnalitica } from "../lib/exportAnalitico.js";
 
 // Retroalimentación: el área de Crédito/Riesgos carga el resultado real
 // de los créditos (se desembolsó, cayó en default, por qué) para que el
@@ -38,6 +40,8 @@ export default function Retroalimentacion() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [descargando, setDescargando] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const [exportado, setExportado] = useState(null);
   const navigate = useNavigate();
 
   const [archivo, setArchivo] = useState(null);
@@ -81,6 +85,21 @@ export default function Retroalimentacion() {
   useEffect(() => {
     cargarPaquetes();
   }, []);
+
+  async function handleExportarDatos() {
+    setExportando(true);
+    setExportado(null);
+    setError(null);
+    try {
+      const registros = await getDatosAnaliticos();
+      const cuantas = descargarTablaAnalitica(registros);
+      setExportado(cuantas);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setExportando(false);
+    }
+  }
 
   async function handleDescargarPlantilla() {
     setDescargando(true);
@@ -332,6 +351,28 @@ export default function Retroalimentacion() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="crediscope-card">
+        <h3>
+          <Table2 size={17} style={{ marginRight: 7, verticalAlign: "-3px" }} />
+          Datos para análisis
+        </h3>
+        <p className="crediscope-muted" style={{ marginTop: 0 }}>
+          Una fila por análisis con toda la información con la que se evaluó a la persona, el score, la recomendación y — cuando ya
+          se cargó la cosecha — si el crédito incumplió. Es la base para cruzar cualquier variable contra el incumplimiento en Power
+          BI o Excel, sin depender de esta pantalla.
+        </p>
+        <button className="crediscope-btn crediscope-btn-ghost" onClick={handleExportarDatos} disabled={exportando}>
+          <Download size={15} style={{ marginRight: 7, verticalAlign: "-2px" }} />
+          {exportando ? "Preparando..." : "Descargar tabla de datos"}
+        </button>
+        {exportado ? (
+          <p className="crediscope-muted" style={{ marginBottom: 0, marginTop: 10 }}>
+            Se descargaron {exportado} análisis. El archivo trae una hoja con las advertencias a tener en cuenta antes de sacar
+            conclusiones.
+          </p>
+        ) : null}
       </div>
     </div>
   );

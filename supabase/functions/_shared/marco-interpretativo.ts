@@ -28,8 +28,9 @@
 // controles-bloqueo.ts (HallazgoControlBloqueo.bloqueante) y
 // cumplimiento.esPersonaExpuestaPoliticamente.
 //
-// v3: orden de importancia de los 14 grupos definido explícitamente por
-// el usuario (mismo orden que ORDEN_GRUPOS en classify.ts):
+// v3: orden de importancia de los grupos definido explícitamente por
+// el usuario (el mismo orden se usa para mostrarlos en la web, ver
+// src/components/SegmentosPerfil.jsx):
 // cumplimiento, comportamientoBancario, comportamientoCooperativas,
 // riesgoJudicialCivil, riesgoPenal, laboral=tributario, seguridadSocial,
 // patrimonio, familia, identidad, contacto, transitoVehicular,

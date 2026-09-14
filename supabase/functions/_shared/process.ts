@@ -258,6 +258,12 @@ function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
   ).map((c) => c.categoria);
 }
 
+// Versión de esta capa de procesamiento — se guarda en
+// client_profiles.structure_version para saber con qué lógica se armó
+// cada perfil. Vive acá (y no en quien lo persiste) para que
+// structure-client y analyze-client no puedan discrepar.
+export const PROCESS_VERSION = "estructura-v2"; // ver docs/estructura-estandarizada.md
+
 export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;

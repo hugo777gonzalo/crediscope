@@ -1,6 +1,5 @@
 // Orquestador del flujo SIN LLM:
-//   Ingesta Novadata -> Estructura Estandarizada -> Clasificación (4
-//   segmentos) -> Persistencia -> Web.
+//   Ingesta Novadata -> Estructura Estandarizada -> Persistencia -> Web.
 // Usa las credenciales de servicio de Novadata (secrets de la función,
 // no las escribe el usuario) y requiere un usuario autenticado de
 // Supabase (igual que analyze-client) porque persiste en client_profiles.
@@ -10,14 +9,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
-import { buildStandardProfile } from "../_shared/process.ts";
-import { classifyProfile, CLASSIFICATION_VERSION } from "../_shared/classify.ts";
+import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
-import { loadDisabledFields, loadDisabledResources } from "../_shared/runtime-config.ts";
+import { loadDisabledResources } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const PROCESS_VERSION = "estructura-v2"; // ver docs/estructura-estandarizada.md
 
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -74,13 +71,7 @@ Deno.serve(async (req) => {
     const { profile, blockStatus } = buildStandardProfile(raw, cedula);
     const duracionMs = Date.now() - inicioIngesta;
 
-    // 4. Clasificación en 4 segmentos (positivo/negativo/complementario/sin_información)
-    //    Campos deshabilitados en standard_profile_field_config quedan
-    //    fuera de la clasificación por completo.
-    const disabledFields = await loadDisabledFields(serviceClient);
-    const classification = classifyProfile(profile, disabledFields);
-
-    // 4b. Controles de bloqueo — determinísticos, no dependen del LLM.
+    // 4. Controles de bloqueo — determinísticos, no dependen del LLM.
     //     Perfil del Cliente necesita saber si hay un bloqueo activo
     //     para mostrar el aviso, aunque todavía no se corrió el
     //     Análisis con IA.
@@ -92,11 +83,9 @@ Deno.serve(async (req) => {
       .insert({
         client_id: client.id,
         standard_profile: profile,
-        classification,
         control_bloqueo: controlBloqueo,
         block_status: blockStatus,
         structure_version: PROCESS_VERSION,
-        classification_version: CLASSIFICATION_VERSION,
         requested_by: actorId,
         duracion_ms: duracionMs,
       })

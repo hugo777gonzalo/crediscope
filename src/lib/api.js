@@ -28,10 +28,10 @@ export async function analyzeClient(cedula, { profileId } = {}) {
 }
 
 // Llama a la Edge Function `structure-client`: ingesta -> estructura
-// estandarizada -> clasificación en 4 segmentos -> persiste en
-// client_profiles. NO pasa por el LLM. Usa las credenciales de Novadata
-// de las secrets de la función (el usuario no las escribe acá) — a
-// diferencia de explore-novadata, esto sí requiere sesión y sí persiste.
+// estandarizada -> persiste en client_profiles. NO pasa por el LLM.
+// Usa las credenciales de Novadata de las secrets de la función (el
+// usuario no las escribe acá) — a diferencia de explore-novadata, esto
+// sí requiere sesión y sí persiste.
 export async function structureClient(cedula) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no está configurado.");
@@ -132,10 +132,9 @@ export async function getPerfilPorId(id) {
   return data;
 }
 
-// Análisis con IA por id (snapshot puntual). No trae el Perfil del
-// Cliente asociado (analysis_results no guarda referencia a un
-// client_profiles.id específico, solo a ingestion_run_id) — el visor de
-// Historial para análisis muestra solo el resultado, sin segmentos.
+// Análisis con IA por id (snapshot puntual). Desde la 032 el análisis
+// referencia el perfil con el que se hizo (client_profile_id); el visor
+// de Historial todavía muestra solo el resultado, sin los segmentos.
 export async function getAnalisisPorId(id) {
   const { data, error } = await supabase.from("analysis_results").select("*, clients(cedula)").eq("id", id).maybeSingle();
   if (error) throw error;
@@ -177,10 +176,12 @@ export async function getClientesParaPlantilla() {
 // de desembolso (el que el analista tuvo a la vista); si no hay fecha
 // de desembolso, el más reciente disponible.
 //
-// El perfil se guarda aparte del análisis porque analysis_results no
-// referencia a client_profiles, y el backtesting necesita el perfil tal
-// como estaba ese día -- nunca reconsultar la fuente, o el modelo
-// "acertaría" siempre al ver la mora que todavía no había ocurrido.
+// El perfil se guarda junto al crédito porque el backtesting necesita
+// el perfil tal como estaba ese día -- nunca reconsultar la fuente, o
+// el modelo "acertaría" siempre al ver la mora que todavía no había
+// ocurrido. Desde la 032 cada análisis dice con qué perfil se hizo
+// (client_profile_id): se usa ese, que es exacto. El cruce por fecha
+// queda solo para los análisis viejos que no alcanzaron a registrarlo.
 export async function vincularFilasConAnalisis(filas) {
   const cedulas = [...new Set(filas.map((f) => f.cedula))];
   const { data: clientes, error: errClientes } = await supabase.from("clients").select("id, cedula").in("cedula", cedulas);
@@ -192,7 +193,7 @@ export async function vincularFilasConAnalisis(filas) {
   let perfiles = [];
   if (clientIds.length) {
     const [{ data: a, error: errA }, { data: p, error: errP }] = await Promise.all([
-      supabase.from("analysis_results").select("id, client_id, created_at").in("client_id", clientIds),
+      supabase.from("analysis_results").select("id, client_id, created_at, client_profile_id").in("client_id", clientIds),
       supabase.from("client_profiles").select("id, client_id, created_at").in("client_id", clientIds),
     ]);
     if (errA) throw errA;
@@ -212,11 +213,13 @@ export async function vincularFilasConAnalisis(filas) {
   return filas.map((f) => {
     const clientId = clientePorCedula[f.cedula] ?? null;
     if (!clientId) return { ...f, clientId: null, analysisResultId: null, clientProfileId: null };
+    const analisisElegido = masCercanoAntes(analisis, clientId, f.fechaDesembolso);
     return {
       ...f,
       clientId,
-      analysisResultId: masCercanoAntes(analisis, clientId, f.fechaDesembolso)?.id ?? null,
-      clientProfileId: masCercanoAntes(perfiles, clientId, f.fechaDesembolso)?.id ?? null,
+      analysisResultId: analisisElegido?.id ?? null,
+      clientProfileId:
+        analisisElegido?.client_profile_id ?? masCercanoAntes(perfiles, clientId, f.fechaDesembolso)?.id ?? null,
     };
   });
 }
@@ -506,4 +509,29 @@ export async function exploreNovadata({ username, password, cedula }) {
     throw new Error(data?.error || `Error consultando Novadata (HTTP ${res.status})`);
   }
   return data;
+}
+
+// ---------- Datos para análisis ----------
+
+// Una fila por análisis con el perfil completo que lo produjo, para
+// exportar y trabajar afuera (ver src/lib/exportAnalitico.js). El
+// resultado real del crédito viene de feedback_creditos cuando ya se
+// cargó la cosecha correspondiente.
+//
+// El límite existe porque cada perfil son ~10 KB: sin tope, esta
+// consulta crece sin control a medida que se acumulan análisis.
+export async function getDatosAnaliticos({ limite = 5000 } = {}) {
+  const { data, error } = await supabase
+    .from("analysis_results")
+    .select(
+      "id, created_at, crediscope_score, recomendacion, rules_version, " +
+        "clients(cedula), " +
+        "client_profiles(standard_profile, structure_version), " +
+        "criterio_versiones(numero), " +
+        "feedback_creditos(desembolsado, monto, producto, plazo_meses, fecha_desembolso, hubo_default, tipo_default, dias_mora_max)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
 }

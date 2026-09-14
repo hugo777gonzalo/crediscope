@@ -14,13 +14,14 @@
 // que el analista vio en Perfil del Cliente (ventana de reutilización:
 // 7 días, decisión de la UI, no de este endpoint). Si no viene (uso
 // típico de sistemas externos vía API), se consulta Novadata en fresco
-// como siempre.
+// y el perfil resultante SE GUARDA igual — el análisis siempre queda
+// atado a la data estructurada que lo produjo (ver 032).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import type { BlockStatusMap, ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
-import { buildStandardProfile } from "../_shared/process.ts";
+import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION } from "../_shared/llm-scoring.ts";
 import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
@@ -97,6 +98,9 @@ Deno.serve(async (req) => {
     // null si se reutiliza un client_profiles existente (no hay ingesta
     // en esta corrida, ver duracion_ingesta_ms en la migración).
     let duracionIngestaMs: number | null;
+    // Perfil al que queda atado este análisis. Siempre existe: si no se
+    // reutiliza uno, se persiste el que se acaba de calcular (ver 032).
+    let clientProfileId: string;
 
     if (profileId) {
       const { data: reused, error: reusedError } = await serviceClient
@@ -111,6 +115,7 @@ Deno.serve(async (req) => {
       blockStatus = reused.block_status;
       controlBloqueo = reused.control_bloqueo;
       duracionIngestaMs = null;
+      clientProfileId = profileId;
     } else {
       // Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
       // Recursos deshabilitados en novadata_resource_config se saltan
@@ -131,6 +136,27 @@ Deno.serve(async (req) => {
       // ver _shared/controles-bloqueo.ts
       controlBloqueo = evaluarControlesBloqueo(raw, cedula);
       duracionIngestaMs = Date.now() - inicioIngesta;
+
+      // Se persiste ANTES de llamar al LLM, a propósito: el crudo de
+      // Novadata se descarta y esta es la única copia de la información
+      // con la que se evaluó al cliente. Si el LLM falla, el perfil
+      // igual queda guardado (auditable, reprocesable, y analizable
+      // después contra el resultado real del crédito). Ver 032.
+      const { data: guardado, error: perfilError } = await serviceClient
+        .from("client_profiles")
+        .insert({
+          client_id: client.id,
+          standard_profile: profile,
+          control_bloqueo: controlBloqueo,
+          block_status: blockStatus,
+          structure_version: PROCESS_VERSION,
+          requested_by: actorId,
+          duracion_ms: duracionIngestaMs,
+        })
+        .select("id")
+        .single();
+      if (perfilError) throw perfilError;
+      clientProfileId = guardado.id;
     }
 
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
@@ -164,6 +190,10 @@ Deno.serve(async (req) => {
         // este análisis. Sin esto, un resultado raro no se puede
         // auditar después.
         criterio_version_id: criterio.versionId,
+        // Con qué data estructurada exactamente se evaluó. Antes se
+        // cruzaba por cercanía de fecha, que es ambiguo en cuanto hay
+        // dos consultas del mismo cliente el mismo día (ver 032).
+        client_profile_id: clientProfileId,
         block_status: blockStatus,
         positives: llmResult.positives,
         negatives: llmResult.negatives,

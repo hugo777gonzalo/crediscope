@@ -43,6 +43,7 @@ Edge Functions (Deno, en Supabase)
    |
    |-- structure-client    Novadata -> Estructura Estandarizada -> client_profiles (Perfil del Cliente)
    |-- analyze-client      (lo anterior, o un perfil ya guardado) -> controles de bloqueo -> LLM -> analysis_results
+   |                       (si consulta en fresco, guarda también el perfil: ningún análisis queda sin su data)
    |-- explore-novadata    inspección cruda de la ingesta (solo admin)
    |-- analizar-feedback   informe "Esto encontramos" sobre un paquete de resultados reales
    |-- proponer-ajustes    propuestas de ajuste al criterio, para aprobación humana
@@ -74,11 +75,6 @@ limitada por RLS.
    muestran lo decide `standard_profile_segment_config`). Es
    **puramente informativo: no marca positivo ni negativo** — qué juega
    a favor y qué en contra lo determina el Análisis con IA (paso 5).
-   *Nota:* `classify.ts` sigue calculando una clasificación por campo
-   (positivo / negativo / complementario / sin información) que se
-   guarda en `client_profiles.classification`, pero hoy no la consume
-   nadie — ni la web, ni el LLM, ni los reportes. Quedó de una etapa
-   anterior del diseño.
 4. **Controles de bloqueo** — `controles-bloqueo.ts`. Determinísticos, a
    propósito fuera del criterio del LLM: persona fallecida, listas de
    sanciones/lista negra, y delitos graves de seguridad ciudadana. Si se
@@ -122,6 +118,21 @@ Crédito/Riesgos, no un perfil técnico.
    que hoy ya tiene registrada la mora que entonces no existía), y evalúa
    incumplimientos **y** créditos que pagaron bien, para que endurecer el
    criterio siempre muestre su costo.
+
+### Datos para análisis
+
+Retroalimentación tiene un exportable (`src/lib/exportAnalitico.js`) con
+una fila por análisis: los ~125 campos de la Estructura Estandarizada
+con los que se evaluó a esa persona, el score, la recomendación, la
+versión del criterio y — cuando ya se cargó la cosecha — si el crédito
+incumplió. Los Sí/No salen como 1/0 porque es una tabla para calcular.
+
+Es lo que permite hacer el análisis estadístico (correlación contra el
+incumplimiento, tasas por variable) en Power BI o Excel, sin programar
+cada consulta. El archivo lleva una hoja con las reservas del caso: solo
+los créditos desembolsados tienen resultado, así que toda tasa está
+condicionada a haber aprobado; y con pocos incumplimientos, revisar
+muchas variables a la vez produce correlaciones por puro azar.
 
 ### Versionado y reversión del criterio
 
@@ -169,9 +180,10 @@ Tablas principales:
 - `clients`, `ingestion_runs`, `analysis_results`, `audit_log`,
   `scoring_rules_versions` — el núcleo (schema.sql).
 - `client_profiles` — la Estructura Estandarizada calculada y el control
-  de bloqueo (más la columna `classification`, hoy sin consumidores).
-  Es lo que permite reutilizar un perfil reciente, y lo que congela el
-  pasado para las pruebas del ciclo de calibración.
+  de bloqueo, congelados con su fecha. Todo análisis apunta al suyo
+  (`analysis_results.client_profile_id`): es lo que permite reutilizar
+  un perfil reciente, auditar con qué información se evaluó a alguien, y
+  analizar después contra el resultado real del crédito.
 - `profiles` — nombre corto, entidad financiera y rol de cada usuario.
 - `novadata_resource_config`, `standard_profile_field_config`,
   `standard_profile_segment_config` — qué recursos/campos están activos,
