@@ -6,11 +6,10 @@ import InfoTooltip from "../components/InfoTooltip.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
 
 // Visor de SOLO LECTURA de un Análisis con IA puntual del Historial.
-// No muestra el Perfil del Cliente asociado: analysis_results no guarda
-// una referencia al client_profiles.id exacto usado en ese momento
-// (solo a ingestion_run_id), así que no hay forma confiable de
-// reconstruir ESE snapshot puntual de la Estructura Estandarizada —
-// mostrar el perfil "más reciente" sería engañoso en un visor histórico.
+// Todavía no muestra el Perfil del Cliente asociado, aunque desde la
+// 032 el análisis sí referencia el perfil exacto con el que se hizo
+// (client_profile_id) y ya se podría reconstruir ese momento: queda
+// como mejora pendiente, no como imposibilidad.
 export default function HistorialAnalisisDetalle() {
   const { id } = useParams();
   const [result, setResult] = useState(null);

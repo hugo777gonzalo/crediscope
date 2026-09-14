@@ -185,6 +185,13 @@ Deno.serve(async (req) => {
         client_id: client.id,
         crediscope_score: finalScore,
         recomendacion: finalRecomendacion,
+        // Etiquetas de lectura rápida (marco-v15). Se guardan tal cual
+        // las dio el modelo: un control de bloqueo fuerza el score y la
+        // recomendación, pero no el diagnóstico -- si el historial de
+        // pago era excelente, sigue siéndolo aunque el caso se niegue
+        // por una lista de control.
+        indicador_riesgo: llmResult.indicadorRiesgo,
+        indicador_historial: llmResult.indicadorHistorial,
         rules_version: MARCO_VERSION,
         // Qué criterio efectivo (marco base + ajustes vigentes) produjo
         // este análisis. Sin esto, un resultado raro no se puede

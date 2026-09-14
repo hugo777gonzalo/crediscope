@@ -141,9 +141,12 @@ function ListaSegmentos({ standardProfile, segmentConfig }) {
   return <div className="crediscope-segment-grid">{tarjetas}</div>;
 }
 
-export default function SegmentosPerfil({ standardProfile, segmentConfig, controlBloqueo, collapsible = false }) {
+// mostrarAviso: en "Análisis con IA" los hallazgos de listas de control
+// ya se muestran completos arriba (ListaControlPanel) -- repetir el
+// mismo aviso más abajo le quita peso justo a lo que más importa.
+export default function SegmentosPerfil({ standardProfile, segmentConfig, controlBloqueo, collapsible = false, mostrarAviso = true }) {
   const [expandido, setExpandido] = useState(!collapsible);
-  const hallazgosBloqueantes = (controlBloqueo?.hallazgos || []).filter((h) => h.bloqueante);
+  const hallazgosBloqueantes = mostrarAviso ? (controlBloqueo?.hallazgos || []).filter((h) => h.bloqueante) : [];
 
   if (!standardProfile) return null;
 

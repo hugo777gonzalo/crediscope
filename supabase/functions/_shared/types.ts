@@ -469,9 +469,18 @@ export interface StandardClientProfile {
 // cambiar en cualquier dirección (ver marco-interpretativo.ts, v14).
 export type RecomendacionAccion = "aprobar" | "revisar" | "observar" | "negar";
 
+// Indicadores de lectura rápida (marco-v15). Son etiquetas para mostrar
+// como estado junto al score, no prosa. null cuando el modelo no
+// devolvió un valor válido — la pantalla los omite antes que inventar
+// una etiqueta.
+export type NivelRiesgo = "muy bajo" | "bajo" | "moderado" | "alto" | "muy alto";
+export type NivelHistorial = "excelente" | "bueno" | "regular" | "malo" | "sin historial";
+
 export interface LlmScoringResult {
   score: number; // 1-999, APROXIMADO — el LLM lo estima con el marco interpretativo, no es una fórmula
   recomendacion: RecomendacionAccion;
+  indicadorRiesgo: NivelRiesgo | null;
+  indicadorHistorial: NivelHistorial | null;
   positives: string[];
   negatives: string[];
   missingInfo: string[];

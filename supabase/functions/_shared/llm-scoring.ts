@@ -12,10 +12,27 @@
 // ClientContext + max_tokens:4000, algunos clientes con mucho historial
 // seguían generando JSON cortado a medias (SyntaxError al parsear).
 
-import type { ResultadoControlBloqueo, LlmScoringResult, RecomendacionAccion } from "./types.ts";
+import type {
+  ResultadoControlBloqueo,
+  LlmScoringResult,
+  RecomendacionAccion,
+  NivelHistorial,
+  NivelRiesgo,
+} from "./types.ts";
 import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "observar", "negar"];
+const NIVELES_RIESGO: NivelRiesgo[] = ["muy bajo", "bajo", "moderado", "alto", "muy alto"];
+const NIVELES_HISTORIAL: NivelHistorial[] = ["excelente", "bueno", "regular", "malo", "sin historial"];
+
+// Los indicadores son etiquetas cerradas (marco-v15). Si el modelo
+// devuelve cualquier otra cosa se guarda null y la pantalla no muestra
+// el indicador: mejor un hueco que una etiqueta inventada, que el
+// analista leería como un juicio del sistema.
+function normalizarNivel<T extends string>(valor: unknown, validos: T[]): T | null {
+  const limpio = String(valor ?? "").trim().toLowerCase();
+  return (validos as string[]).includes(limpio) ? (limpio as T) : null;
+}
 
 // Si el LLM devuelve algo fuera de la lista (o nada), se cae a
 // "revisar" — el valor más conservador: no aprueba ni rechaza solo,
@@ -43,6 +60,8 @@ function resultadoPorDefecto(mensaje: string, data?: Record<string, unknown>): L
     // Sin respuesta del LLM no hay juicio posible: queda en manos del
     // analista, nunca en "aprobar" por defecto.
     recomendacion: "revisar",
+    indicadorRiesgo: null,
+    indicadorHistorial: null,
     positives: [],
     negatives: [],
     missingInfo: [`No se pudo obtener el scoring del LLM: ${mensaje}`],
@@ -137,6 +156,8 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
     return {
       score,
       recomendacion: normalizarRecomendacion(parsed.recomendacion),
+      indicadorRiesgo: normalizarNivel(parsed.indicadorRiesgo, NIVELES_RIESGO),
+      indicadorHistorial: normalizarNivel(parsed.indicadorHistorial, NIVELES_HISTORIAL),
       positives: Array.isArray(parsed.positives) ? parsed.positives.map(String) : [],
       negatives: Array.isArray(parsed.negatives) ? parsed.negatives.map(String) : [],
       missingInfo: Array.isArray(parsed.missingInfo) ? parsed.missingInfo.map(String) : [],

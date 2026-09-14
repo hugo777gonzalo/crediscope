@@ -1,8 +1,7 @@
-import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useSession } from "./lib/useSession.js";
 import { useProfile, esAdmin } from "./lib/useProfile.js";
-import { getUltimaCedula } from "./lib/ultimaCedula.js";
 import { supabase } from "./lib/supabaseClient.js";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
@@ -18,7 +17,7 @@ import InformeFeedback from "./pages/InformeFeedback.jsx";
 import VersionesCriterio from "./pages/VersionesCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
-import LogoMark from "./components/LogoMark.jsx";
+import MenuLateral from "./components/MenuLateral.jsx";
 
 function RequireSession({ children }) {
   const { session, loading } = useSession();
@@ -40,22 +39,22 @@ function RequireAdmin({ children }) {
   return children;
 }
 
-// Menú "Evaluación Crediticia": Buscar Cliente siempre lleva a la
-// búsqueda; Perfil del Cliente/Análisis con IA abren directo el último
-// cliente visto en este navegador (ver ultimaCedula.js) si hay uno —
-// si no, cualquiera de los 3 lleva a Buscar Cliente primero.
-function MenuEvaluacionCrediticia() {
-  const ultimaCedula = getUltimaCedula();
-  return (
-    <div className="crediscope-navdrop">
-      <span className="crediscope-navlink">Evaluación Crediticia ▾</span>
-      <div className="crediscope-navdrop-menu">
-        <Link to="/">Buscar Cliente</Link>
-        <Link to={ultimaCedula ? `/perfil/${ultimaCedula}` : "/"}>Perfil del Cliente</Link>
-        <Link to={ultimaCedula ? `/analisis/${ultimaCedula}` : "/"}>Análisis con IA</Link>
-      </div>
-    </div>
-  );
+// Título de la sección en la barra superior, a partir de la ruta — la
+// identidad de la app la lleva el menú lateral, así que arriba conviene
+// decir dónde está parado el analista y no repetir la marca.
+const TITULOS = [
+  [/^\/$/, "Evaluación Crediticia"],
+  [/^\/perfil/, "Evaluación Crediticia"],
+  [/^\/analisis/, "Evaluación Crediticia"],
+  [/^\/historial/, "Solicitudes"],
+  [/^\/reportes/, "Reportes"],
+  [/^\/retroalimentacion/, "Retroalimentación"],
+  [/^\/explorar/, "Explorador de Fuentes"],
+  [/^\/admin/, "Configuración"],
+];
+
+function tituloDeSeccion(pathname) {
+  return TITULOS.find(([patron]) => patron.test(pathname))?.[1] ?? "CrediScope";
 }
 
 function BotonSalir() {
@@ -74,36 +73,29 @@ function BotonSalir() {
 export default function App() {
   const { session } = useSession();
   const { profile } = useProfile();
+  const { pathname } = useLocation();
+
+  // Login y Crear cuenta se ven a pantalla completa: sin sesión no hay
+  // menú que mostrar, y meterlas en el armazón dejaría una barra vacía.
+  if (!session) {
+    return (
+      <main className="crediscope-main crediscope-main-suelto">
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/crear-cuenta" element={<Signup />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+      </main>
+    );
+  }
 
   return (
     <div className="crediscope-shell">
-      <header className="crediscope-topbar">
-        <Link to="/" className="crediscope-brand">
-          <LogoMark size={26} />
-          CrediScope
-        </Link>
-        {session ? (
-          <nav className="crediscope-nav">
-            <MenuEvaluacionCrediticia />
-            <Link className="crediscope-navlink" to="/historial">
-              Historial
-            </Link>
-            <Link className="crediscope-navlink" to="/reportes">
-              Reportes
-            </Link>
-            {esAdmin(profile) ? (
-              <>
-                <Link className="crediscope-navlink" to="/retroalimentacion">
-                  Retroalimentación
-                </Link>
-                <Link className="crediscope-navlink" to="/explorar">
-                  Explorador de Fuentes
-                </Link>
-                <Link className="crediscope-navlink" to="/admin/configuracion">
-                  Configuración
-                </Link>
-              </>
-            ) : null}
+      <MenuLateral profile={profile} />
+      <div className="crediscope-contenido">
+        <header className="crediscope-topbar">
+          <span className="crediscope-topbar-titulo">{tituloDeSeccion(pathname)}</span>
+          <div className="crediscope-topbar-derecha">
             {profile ? (
               <span className="crediscope-userbadge">
                 {profile.entidad ? <span className="crediscope-userbadge-entidad">{profile.entidad}</span> : null}
@@ -111,10 +103,9 @@ export default function App() {
               </span>
             ) : null}
             <BotonSalir />
-          </nav>
-        ) : null}
-      </header>
-      <main className="crediscope-main">
+          </div>
+        </header>
+        <main className="crediscope-main">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/crear-cuenta" element={<Signup />} />
@@ -215,7 +206,8 @@ export default function App() {
             }
           />
         </Routes>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

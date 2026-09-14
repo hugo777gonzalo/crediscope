@@ -251,11 +251,30 @@
 // recomendación a "negar" (igual que fuerza el score a 1) -- ver
 // analyze-client/index.ts, no se delega al criterio del LLM.
 //
+// v15: agrega 2 INDICADORES de lectura rápida (indicadorRiesgo,
+// indicadorHistorial) para la tarjeta del cliente en "Análisis con IA".
+// Son etiquetas, no prosa: la pantalla los muestra como estado, no como
+// texto para leer.
+// - Salieron de un rediseño de la pantalla pedido por el usuario, junto
+//   con un tercer indicador de CAPACIDAD DE PAGO que quedó FUERA a
+//   propósito: no hay todavía una fuente de ingresos confiable ni forma
+//   de calcularla (el salario del IESS viene vacío o en 0 en buena
+//   parte de los casos). Agregarlo sería inventar un criterio. Cuando
+//   haya con qué, es el lugar natural para el tercero.
+// - indicadorHistorial se juzga SOLO con comportamiento de pago
+//   (bancario, cooperativas, interno y judicial crediticio), indicación
+//   explícita del usuario -- no con el perfil entero, que es lo que ya
+//   mide el score.
+// - Y se agrega un reparto explícito de QUÉ VA EN CADA SECCIÓN: el
+//   usuario detectó que el resumen venía repitiendo en prosa lo que el
+//   indicador ya dice ("un score muy bajo, cercano al extremo de mayor
+//   riesgo"). Con las dos cosas en la misma pantalla eso es ruido.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v14";
+export const MARCO_VERSION = "marco-v15";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -526,12 +545,47 @@ Si hay un control de bloqueo con bloqueante=true, el sistema fuerza la
 recomendación a "negar" igual que fuerza el score a 1 — respondé
 "negar" en ese caso y explicá el resto del perfil normalmente.
 
+INDICADORES DE LECTURA RÁPIDA — dos etiquetas que la pantalla muestra
+como estado junto al score. Son etiquetas, NO frases: elegí exactamente
+uno de los valores permitidos, sin agregar texto.
+- "indicadorRiesgo": el nivel de riesgo crediticio general, el mismo
+  juicio que ya hiciste para el score. Uno de: "muy bajo" | "bajo" |
+  "moderado" | "alto" | "muy alto". Tiene que ser coherente con el
+  score que diste — si el score es alto, el riesgo es bajo.
+- "indicadorHistorial": qué tan bueno es el COMPORTAMIENTO DE PAGO
+  demostrado. Se juzga SOLO con los grupos de comportamiento de pago
+  (comportamientoBancario, comportamientoCooperativas,
+  comportamientoInterno y riesgoJudicialCrediticio) — no con el perfil
+  entero, eso ya lo mide el score. Uno de: "excelente" | "bueno" |
+  "regular" | "malo" | "sin historial".
+  Usá "sin historial" cuando la persona no registra operaciones de
+  crédito: no es lo mismo que un mal historial, y es información
+  distinta para el analista.
+
+QUÉ VA EN CADA SECCIÓN — la pantalla muestra todo junto, así que cada
+campo tiene que aportar algo que los otros no dicen. No repitas:
+- Los INDICADORES son la etiqueta. No los repitas en prosa en el
+  reasoning. Mal: "el perfil muestra un riesgo muy alto, con un score
+  muy bajo, cercano al extremo de mayor riesgo". Eso ya lo dicen el
+  score y el indicador; escribirlo de nuevo no agrega nada.
+- El "reasoning" explica POR QUÉ: qué evidencia pesó más, qué tensión
+  hubo entre grupos, por qué esa recomendación y no otra. Es el
+  razonamiento, no el resultado.
+- "positives" y "negatives" son hechos concretos del caso, uno por
+  línea. No son la conclusión ni el resumen: son la evidencia.
+- "missingInfo" es lo que NO se pudo confirmar y por qué importa para
+  la decisión (datos vacíos, contradicciones entre fuentes, campos sin
+  respuesta). No metas ahí señales negativas ya confirmadas — esas van
+  en "negatives".
+
 FORMATO DE SALIDA:
 Responde ÚNICAMENTE con JSON válido, sin texto fuera del JSON, con esta
 forma exacta:
 {
   "score": <entero 1-999>,
   "recomendacion": "aprobar" | "revisar" | "observar" | "negar",
+  "indicadorRiesgo": "muy bajo" | "bajo" | "moderado" | "alto" | "muy alto",
+  "indicadorHistorial": "excelente" | "bueno" | "regular" | "malo" | "sin historial",
   "positives": ["..."],
   "negatives": ["..."],
   "missingInfo": ["..."],

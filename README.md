@@ -5,8 +5,9 @@ persona en Novadata (9 bloques, ~50 recursos), la procesa a una
 **Estructura Estandarizada** de 16 grupos, y un LLM (Claude) la evalúa
 guiado por un **marco interpretativo** en lenguaje natural para producir
 un **score aproximado** (1-999), una **recomendación de acción**
-(aprobar / revisar / observar / negar), puntos a favor y en contra, y
-qué información falta.
+(aprobar / revisar / observar / negar), indicadores de riesgo e
+historial de pago, puntos a favor y en contra, y qué quedó sin
+confirmar.
 
 Todo queda persistido en Supabase y se expone tanto en la interfaz web
 para analistas como vía API para otros sistemas.
@@ -18,7 +19,7 @@ La ingesta de Novadata está cableada contra producción (confirmada con
 HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
 El frontend se despliega solo a GitHub Pages en cada push a `main`.
 
-- **Marco interpretativo:** `marco-v14` (`MARCO_VERSION` en
+- **Marco interpretativo:** `marco-v15` (`MARCO_VERSION` en
   `supabase/functions/_shared/marco-interpretativo.ts`). Cada versión
   tiene su fila en `scoring_rules_versions` — subir la constante sin
   crear la fila rompe la FK al guardar un análisis.
@@ -84,8 +85,16 @@ limitada por RLS.
    señal de mal comportamiento de pago.
 5. **Scoring** — `llm-scoring.ts` + `marco-interpretativo.ts`. Todo lo
    demás (laboral, judicial, financiero, patrimonio) queda a criterio
-   del LLM. Al marco base se le suman en tiempo de ejecución los ajustes
-   vigentes (ver abajo), sin reescribirlo.
+   del LLM, que devuelve score, recomendación de acción, dos indicadores
+   de lectura rápida (riesgo e historial de pago), la evidencia a favor
+   y en contra, y lo que no se pudo confirmar. Al marco base se le suman
+   en tiempo de ejecución los ajustes vigentes (ver abajo), sin
+   reescribirlo.
+
+   El tercer indicador del diseño, **capacidad de pago, queda pendiente**:
+   no hay todavía una fuente de ingresos confiable con qué estimarla, y
+   calcularla igual sería inventar un criterio. La pantalla lo muestra
+   como "sin fuente" en vez de ocultarlo.
 
 **Por qué el score no es una fórmula:** fue un cambio deliberado
 respecto del primer andamiaje, que sí calculaba con pesos fijos. Hay
@@ -167,7 +176,7 @@ no solo ocultando enlaces del menú.
 | Sección | Ruta | Acceso |
 | --- | --- | --- |
 | Evaluación Crediticia (Buscar Cliente, Perfil del Cliente, Análisis con IA) | `/`, `/perfil/:cedula`, `/analisis/:cedula` | analista |
-| Historial | `/historial` | analista |
+| Solicitudes (historial de consultas y análisis) | `/historial` | analista |
 | Reportes (Reporte Gerencial de Gestión + Información de Solicitudes) | `/reportes` | analista |
 | Retroalimentación | `/retroalimentacion` | admin |
 | Explorador de Fuentes | `/explorar` | admin |
