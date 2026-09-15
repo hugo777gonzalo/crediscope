@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, ShieldQuestion, Building2, FileWarning } from "lucide-react";
-import { getPerfilesConFuentesIngreso } from "../lib/api.js";
+import { getResumenFuentesIngreso } from "../lib/api.js";
 import {
   consolidar,
   ETIQUETA_SEGMENTO,
@@ -60,7 +60,7 @@ export default function FuentesIngreso() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getPerfilesConFuentesIngreso()
+    getResumenFuentesIngreso()
       .then(setPerfiles)
       .catch((err) => setError(err.message));
   }, []);

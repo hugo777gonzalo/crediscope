@@ -592,13 +592,31 @@ export async function getDatosAnaliticos({ desde, hasta, limite = 5000 } = {}) {
 // deduplica por cliente en el front (ver fuentesIngresoConsolidado.js):
 // el standard_profile completo es pesado, pero es la única forma de
 // llegar al grupo sin duplicar la clasificación en columnas.
-export async function getPerfilesConFuentesIngreso({ limite = 3000 } = {}) {
+// Panorama: solo las columnas denormalizadas (ver 043). Antes bajaba el
+// standard_profile completo de cada cliente para leerle tres campos --
+// ~10 KB por persona, 30 MB con 3.000 clientes en cada carga.
+export async function getResumenFuentesIngreso({ limite = 5000 } = {}) {
   const { data, error } = await supabase
     .from("client_profiles")
-    .select("id, client_id, created_at, standard_profile, clients(cedula)")
+    .select("id, client_id, created_at, fuente_segmento, fuente_estado, fuente_version, fuente_corte, fuente_piso_ingreso, duracion_fuentes_ms, clients(cedula)")
     .order("client_id")
     .order("created_at", { ascending: false })
     .limit(limite);
+  if (error) throw error;
+  return data || [];
+}
+
+// Detalle: acá sí hace falta el perfil completo (fuentes, señales, qué
+// pedir), pero filtrado por segmento en el servidor para no traer la
+// cartera entera.
+export async function getPerfilesConFuentesIngreso({ segmento = null, estado = null, limite = 300 } = {}) {
+  let q = supabase
+    .from("client_profiles")
+    .select("id, client_id, created_at, standard_profile, fuente_segmento, fuente_estado, clients(cedula)")
+    .not("fuente_segmento", "is", null);
+  if (segmento) q = q.eq("fuente_segmento", segmento);
+  if (estado) q = q.eq("fuente_estado", estado);
+  const { data, error } = await q.order("client_id").order("created_at", { ascending: false }).limit(limite);
   if (error) throw error;
   return data || [];
 }

@@ -81,7 +81,13 @@ export type Segmento =
   | "publico" | "diplomatico" | "dependiente_privado" | "empleo_domestico"
   | "independiente" | "agricola" | "trabajo_hogar"
   | "jubilado" | "jubilado_con_ingreso_adicional"
-  | "ingresos_mixtos" | "informal_o_sin_actividad";
+  | "ingresos_mixtos" | "informal_o_sin_actividad"
+  // Aporta bajo un código de empleador que no está en el mapa, o que
+  // llegó sin el prefijo numérico. Existe como segmento propio para que
+  // el caso SE VEA: mandarlo a "dependiente privado" —lo que hacía
+  // antes— lo escondía entre 137 clientes correctos, y encima con
+  // estado confirmada.
+  | "no_clasificado";
 
 export type EstadoSegmento = "confirmada" | "provisional" | "indeterminada";
 
@@ -123,11 +129,23 @@ export interface AnalisisFuentesIngreso {
 
 type AnyRecord = Record<string, unknown>;
 
+// Valida el rango a propósito: un mes 99 en los datos construía
+// "2026-99", que por comparación de texto queda por encima del corte y
+// disparaba la falsa alarma de "el corte quedó desactualizado".
 function mesClave(anio: unknown, mes: unknown): string | null {
   const a = Number(anio);
   const m = Number(mes);
-  if (!a || !m) return null;
+  if (!Number.isInteger(a) || a < 1950 || a > 2100) return null;
+  if (!Number.isInteger(m) || m < 1 || m > 12) return null;
   return `${a}-${String(m).padStart(2, "0")}`;
+}
+
+// Un monto solo cuenta si es positivo. La fuente devuelve ceros y algún
+// negativo suelto, y un negativo arrastra el piso de ingreso hacia abajo
+// sin que nadie lo note.
+function montoValido(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function diferenciaEnMeses(desde: string, hasta: string): number {
@@ -163,7 +181,7 @@ const SEGMENTO_POR_NATURALEZA: Record<Naturaleza, Segmento> = {
   cuenta_propia: "independiente",
   agricola: "agricola",
   hogar: "trabajo_hogar",
-  otro: "dependiente_privado",
+  otro: "no_clasificado",
 };
 
 export function analizarFuentesIngreso(
@@ -207,7 +225,7 @@ export function analizarFuentesIngreso(
   for (const a of aportesVigentes) {
     const codigo = codigoTipoEmpleador(a.tipEmp);
     const naturaleza: Naturaleza = (codigo && NATURALEZA_POR_CODIGO[codigo]) ?? "otro";
-    const monto = Number(a.salario) || null;
+    const monto = montoValido(a.salario);
     const esAutoafiliado = naturaleza === "cuenta_propia";
     const evidencia: CalidadEvidencia = esAutoafiliado
       ? monto !== null && monto > sbu * 1.05
@@ -270,7 +288,7 @@ export function analizarFuentesIngreso(
       if (k && k > mesNomina) mesNomina = k;
     }
     const delMes = empleados.filter((e) => mesClave(e.anio, e.mes) === mesNomina);
-    const nomina = delMes.reduce((acc, e) => acc + (Number(e.salario) || 0), 0);
+    const nomina = delMes.reduce((acc, e) => acc + (montoValido(e.salario) ?? 0), 0);
     senalesDeEscala.push({
       senal: "nómina que paga",
       valor: Math.round(nomina),
@@ -369,8 +387,16 @@ export function analizarFuentesIngreso(
   } else if (ordenadas.length > 0) {
     const [naturaleza, monto] = ordenadas[0];
     segmento = SEGMENTO_POR_NATURALEZA[naturaleza];
-    estadoSegmento = naturaleza === "cuenta_propia" || naturaleza === "agricola" ? "provisional" : "confirmada";
-    motivoSegmento = `${Math.round((monto / totalReportado) * 100)}% del ingreso reportado en el corte ${corte} viene de ${ETIQUETA_NATURALEZA[naturaleza]}.`;
+    // "otro" nunca se da por confirmado: es un código que no conocemos,
+    // así que el caso tiene que llegar a una persona.
+    estadoSegmento =
+      naturaleza === "cuenta_propia" || naturaleza === "agricola" || naturaleza === "otro" ? "provisional" : "confirmada";
+    motivoSegmento =
+      naturaleza === "otro"
+        ? `Aporta bajo un tipo de empleador que el módulo no reconoce (${String(
+            aportesVigentes.find((a) => !NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""])?.tipEmp ?? "sin etiqueta"
+          ).slice(0, 60)}). Requiere revisión manual.`
+        : `${Math.round((monto / totalReportado) * 100)}% del ingreso reportado en el corte ${corte} viene de ${ETIQUETA_NATURALEZA[naturaleza]}.`;
     // El aporte dice de dónde cotiza, no de dónde vive: si paga una
     // nómina mayor que su propio aporte, el ingreso principal está en
     // su actividad y no en ese vínculo.

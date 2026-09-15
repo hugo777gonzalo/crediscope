@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
     // 3. Estructura estandarizada
-    const { profile, blockStatus } = buildStandardProfile(raw, cedula);
+    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, cedula);
     const duracionMs = Date.now() - inicioIngesta;
 
     // 4. Controles de bloqueo — determinísticos, no dependen del LLM.
@@ -83,6 +83,15 @@ Deno.serve(async (req) => {
       .insert({
         client_id: client.id,
         standard_profile: profile,
+        // Copia consultable de la clasificación (ver 043): el JSON sigue
+        // siendo la fuente de verdad, esto evita bajar el perfil entero
+        // para agrupar o cruzar con resultados reales.
+        fuente_segmento: profile.fuentesIngreso?.segmento ?? null,
+        fuente_estado: profile.fuentesIngreso?.estadoSegmento ?? null,
+        fuente_version: profile.fuentesIngreso?.version ?? null,
+        fuente_corte: profile.fuentesIngreso?.corteIessUsado ?? null,
+        fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
+        duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
         block_status: blockStatus,
         structure_version: PROCESS_VERSION,

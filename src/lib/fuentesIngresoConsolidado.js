@@ -19,6 +19,7 @@ export const ETIQUETA_SEGMENTO = {
   jubilado_con_ingreso_adicional: "Jubilado con ingreso adicional",
   ingresos_mixtos: "Ingresos mixtos",
   informal_o_sin_actividad: "Informal o sin actividad",
+  no_clasificado: "Tipo de aporte no reconocido",
 };
 
 // Por qué existe cada segmento: no es de dónde viene la plata, es cómo
@@ -36,6 +37,7 @@ export const RIESGO_SEGMENTO = {
   jubilado_con_ingreso_adicional: "Pensión estable más una actividad a verificar",
   ingresos_mixtos: "Diversificado: dos fuentes de naturaleza distinta",
   informal_o_sin_actividad: "No se puede determinar si hay ingreso",
+  no_clasificado: "Código de empleador fuera del catálogo: requiere revisión manual",
 };
 
 export const ETIQUETA_EVIDENCIA = {
@@ -54,9 +56,29 @@ export const ETIQUETA_ESTADO = {
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 export const formatMoneda = (n) => (n === null || n === undefined ? "—" : MONEDA.format(n));
 
+// Acepta las dos formas: las columnas planas del resumen (lo que usa el
+// panorama) o el perfil completo (lo que usa el detalle). Así una sola
+// función sirve a las dos pantallas sin que ninguna baje de más.
+function clasificacionDe(p) {
+  if (p.standard_profile?.fuentesIngreso) return p.standard_profile.fuentesIngreso;
+  if (!p.fuente_segmento) return null;
+  return {
+    segmento: p.fuente_segmento,
+    estadoSegmento: p.fuente_estado,
+    version: p.fuente_version,
+    corteIessUsado: p.fuente_corte,
+    pisoIngresoMensualReportado: p.fuente_piso_ingreso === null ? null : Number(p.fuente_piso_ingreso),
+    fuentes: [],
+    senalesDeEscala: [],
+    paraConfirmar: [],
+    apareceEnUltimoCorte: null,
+    corteDesactualizado: false,
+  };
+}
+
 export function consolidar(perfilesRaw) {
   const perfiles = ultimoPorCliente(perfilesRaw)
-    .map((p) => ({ fila: p, f: p.standard_profile?.fuentesIngreso }))
+    .map((p) => ({ fila: p, f: clasificacionDe(p) }))
     .filter((x) => x.f?.segmento);
 
   const total = perfiles.length;

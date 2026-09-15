@@ -324,7 +324,7 @@ function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
 // structure-client y analyze-client no puedan discrepar.
 export const PROCESS_VERSION = "estructura-v2"; // ver docs/estructura-estandarizada.md
 
-export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap } {
+export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap; duracionFuentesMs: number } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;
   const socio = raw.sociodemografica?.data as unknown as AnyRecord | null;
@@ -348,6 +348,13 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   const conyuge = g?.personaNaturalConyuge as AnyRecord | undefined;
   const conyugePersona = conyuge?.personaConyuge as AnyRecord | undefined;
   const tieneConyugeActual = Boolean(conyugePersona?.nombre);
+  // Se mide aparte de la duración total del perfil: duracion_ms está
+  // dominada por la ingesta (~27s) y taparía cualquier degradación de
+  // este módulo, que corre en milisegundos.
+  const inicioFuentes = Date.now();
+  const fuentesIngreso = analizarFuentesIngreso(raw, (persona?.nombre as string) ?? null);
+  const duracionFuentesMs = Date.now() - inicioFuentes;
+
   const identidad: StandardClientProfile["identidad"] = {
     nombreCompleto: (persona?.nombre as string) ?? null,
     edad: edadDesde(persona?.fechaNacimiento),
@@ -989,7 +996,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     riesgoPenal,
     cumplimiento,
     riesgoSeguridadCiudadana,
-    fuentesIngreso: analizarFuentesIngreso(raw, identidad.nombreCompleto),
+    fuentesIngreso,
 
     metaConsulta: {
       ejesOk: entries.filter(([, v]) => v === "ok").map(([k]) => k),
@@ -998,5 +1005,5 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     },
   };
 
-  return { profile, blockStatus };
+  return { profile, blockStatus, duracionFuentesMs };
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { getPerfilesConFuentesIngreso } from "../lib/api.js";
+import { getResumenFuentesIngreso } from "../lib/api.js";
 import { consolidar } from "../lib/fuentesIngresoConsolidado.js";
 
 // Parámetros operativos del módulo. Hoy son de solo lectura: el valor
@@ -18,7 +18,7 @@ export default function FuentesParametros() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getPerfilesConFuentesIngreso()
+    getResumenFuentesIngreso()
       .then(setPerfiles)
       .catch((err) => setError(err.message));
   }, []);

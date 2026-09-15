@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getPerfilesConFuentesIngreso } from "../lib/api.js";
+import { getPerfilesConFuentesIngreso, getResumenFuentesIngreso } from "../lib/api.js";
 import { ultimoPorCliente } from "../lib/reporteGerencial.js";
 import {
   ETIQUETA_SEGMENTO,
@@ -22,35 +22,36 @@ const COLOR_ESTADO = { confirmada: "var(--good)", provisional: "var(--warn)", in
 export default function FuentesClientes() {
   const [params, setParams] = useSearchParams();
   const [perfiles, setPerfiles] = useState(null);
+  // Las opciones del filtro salen del resumen de TODA la cartera: si se
+  // derivaran del resultado filtrado, al elegir un segmento el desplegable
+  // se quedaría con esa única opción y no habría forma de volver.
+  const [segmentosPresentes, setSegmentosPresentes] = useState([]);
   const [error, setError] = useState(null);
 
   const segmentoFiltro = params.get("segmento") ?? "";
   const estadoFiltro = params.get("estado") ?? "";
 
   useEffect(() => {
-    getPerfilesConFuentesIngreso()
+    // El filtro va al servidor: traer la cartera entera para descartarla
+    // en el navegador no escala.
+    getPerfilesConFuentesIngreso({ segmento: segmentoFiltro || null, estado: estadoFiltro || null })
       .then(setPerfiles)
       .catch((err) => setError(err.message));
-  }, []);
+  }, [segmentoFiltro, estadoFiltro]);
 
   const filas = useMemo(() => {
     if (!perfiles) return [];
     return ultimoPorCliente(perfiles)
       .map((p) => ({ fila: p, f: p.standard_profile?.fuentesIngreso }))
       .filter((x) => x.f?.segmento)
-      .filter((x) => (segmentoFiltro ? x.f.segmento === segmentoFiltro : true))
-      .filter((x) => (estadoFiltro ? x.f.estadoSegmento === estadoFiltro : true));
+      ;
   }, [perfiles, segmentoFiltro, estadoFiltro]);
 
-  const segmentosPresentes = useMemo(() => {
-    if (!perfiles) return [];
-    const set = new Set(
-      ultimoPorCliente(perfiles)
-        .map((p) => p.standard_profile?.fuentesIngreso?.segmento)
-        .filter(Boolean)
-    );
-    return [...set];
-  }, [perfiles]);
+  useEffect(() => {
+    getResumenFuentesIngreso()
+      .then((todos) => setSegmentosPresentes([...new Set(ultimoPorCliente(todos).map((p) => p.fuente_segmento).filter(Boolean))]))
+      .catch(() => setSegmentosPresentes([]));
+  }, []);
 
   function cambiar(clave, valor) {
     const siguiente = new URLSearchParams(params);
