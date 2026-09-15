@@ -9,6 +9,7 @@ import {
   Settings,
   Wallet,
   Receipt,
+  Layers,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
@@ -167,6 +168,18 @@ export default function MenuLateral({ profile }) {
 
         {admin ? (
           <>
+            <Grupo
+              Icono={Layers}
+              texto="Consultas por lote"
+              activo={pathname.startsWith("/lotes")}
+              colapsado={colapsado}
+              expandirMenu={() => setColapsado(false)}
+              hijos={[
+                { to: "/lotes", texto: "Lotes corridos", activo: pathname === "/lotes" },
+                { to: "/lotes/nuevo", texto: "Cargar archivo", activo: pathname.startsWith("/lotes/nuevo") },
+              ]}
+            />
+
             <Grupo
               Icono={Receipt}
               texto="Costos"

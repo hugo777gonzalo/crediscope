@@ -24,6 +24,9 @@ import InformeFeedback from "./pages/InformeFeedback.jsx";
 import VersionesCriterio from "./pages/VersionesCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
+import Lotes from "./pages/Lotes.jsx";
+import LoteNuevo from "./pages/LoteNuevo.jsx";
+import LoteDetalle from "./pages/LoteDetalle.jsx";
 import Costos from "./pages/Costos.jsx";
 import CostosConsultas from "./pages/CostosConsultas.jsx";
 import CostosCorridas from "./pages/CostosCorridas.jsx";
@@ -67,6 +70,9 @@ const TITULOS = [
   [/^\/fuentes\/reglas/, "Reglas de clasificación"],
   [/^\/fuentes\/parametros/, "Parámetros"],
   [/^\/fuentes/, "Fuentes de Ingreso"],
+  [/^\/lotes\/nuevo/, "Cargar un lote"],
+  [/^\/lotes\/./, "Detalle del lote"],
+  [/^\/lotes/, "Consultas por lote"],
   [/^\/costos\/consultas/, "Costo por consulta"],
   [/^\/costos\/corridas/, "Corridas masivas"],
   [/^\/costos\/llamadas/, "Detalle de llamadas"],
@@ -219,6 +225,34 @@ export default function App() {
               <RequireSession>
                 <Descargas />
               </RequireSession>
+            }
+          />
+          {/* Consultas por lote: cargar un archivo con miles de cédulas
+              y consultarlas es otro nivel de exposición que buscar un
+              cliente a la vez. Administración, en la ruta y en la
+              política de la base (058). */}
+          <Route
+            path="/lotes"
+            element={
+              <RequireAdmin>
+                <Lotes />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/lotes/nuevo"
+            element={
+              <RequireAdmin>
+                <LoteNuevo />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/lotes/:id"
+            element={
+              <RequireAdmin>
+                <LoteDetalle />
+              </RequireAdmin>
             }
           />
           {/* Costos es solo para administración: no es un dato

@@ -717,3 +717,101 @@ export async function getGastoDelMes() {
   if (error) throw error;
   return data;
 }
+
+// ---------- Consultas por lote ----------
+
+export async function getLotes({ limite = 50 } = {}) {
+  const { data, error } = await supabase
+    .from("lotes_resumen")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getLote(id) {
+  const { data, error } = await supabase.from("lotes_resumen").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Crea el lote y sus ítems. Se insertan en tandas porque una sola
+// sentencia con miles de filas la rechaza el servidor por tamaño.
+export async function crearLote({ nombre, archivo, items, totales }) {
+  const { data: { user } = {} } = await supabase.auth.getUser();
+  const { data: lote, error } = await supabase
+    .from("lotes")
+    .insert({
+      nombre,
+      archivo,
+      estado: "preparado",
+      total_lineas: totales.lineas,
+      total_validas: totales.validas,
+      total_duplicadas: totales.duplicadas,
+      total_descartadas: totales.descartadas,
+      creado_por: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const TANDA = 500;
+  for (let i = 0; i < items.length; i += TANDA) {
+    const { error: e } = await supabase.from("lote_items").insert(
+      items.slice(i, i + TANDA).map((it) => ({
+        lote_id: lote.id,
+        ingresado: it.ingresado,
+        fila_archivo: it.fila,
+        cedula: it.cedula,
+        tipo_identificacion: it.tipo,
+        estado: it.estado,
+        motivo: it.motivo ?? null,
+      }))
+    );
+    if (e) throw e;
+  }
+  return lote.id;
+}
+
+// Arrancar es un cambio de estado: el trabajador del servidor toma de
+// acá. La pantalla no consulta nada, así que cerrarla no detiene el
+// lote.
+export async function arrancarLote(id) {
+  const { data, error } = await supabase
+    .from("lotes")
+    .update({ estado: "en_proceso", iniciado_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("estado", "preparado")
+    .select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("No se pudo arrancar: el lote ya no estaba en estado preparado.");
+}
+
+export async function cancelarLote(id) {
+  const { error } = await supabase.from("lotes").update({ estado: "cancelado" }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function getItemsLote(id, { estado = null, limite = 5000 } = {}) {
+  let q = supabase
+    .from("lote_items")
+    .select("id, ingresado, fila_archivo, cedula, tipo_identificacion, estado, motivo, duracion_ms, procesado_at")
+    .eq("lote_id", id);
+  if (estado) q = q.eq("estado", estado);
+  const { data, error } = await q.order("fila_archivo").limit(limite);
+  if (error) throw error;
+  return data || [];
+}
+
+// Los perfiles generados por este lote, con todo lo que hace falta para
+// las hojas del Excel.
+export async function getPerfilesDeLote(id, { limite = 5000 } = {}) {
+  const { data, error } = await supabase
+    .from("client_profiles")
+    .select("id, created_at, standard_profile, structure_version, clients(cedula)")
+    .eq("lote_id", id)
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
+}
