@@ -4,6 +4,7 @@ import { AlertTriangle, CloudRain, HelpCircle, Scale, Lightbulb } from "lucide-r
 import { getInformeFeedback, getPropuestas, generarPropuestas, correrBacktest, getBacktests } from "../lib/api.js";
 import PropuestasAjuste from "../components/PropuestasAjuste.jsx";
 import ResultadoBacktest from "../components/ResultadoBacktest.jsx";
+import { formatearFecha } from "../lib/fechas.js";
 
 // Informe "Esto encontramos": el diagnóstico de una cosecha de créditos
 // contra lo que el modelo había recomendado. Pensado para que lo lea una
@@ -145,7 +146,7 @@ export default function InformeFeedback() {
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Esto encontramos</h2>
         <p className="crediscope-muted">
-          {informe.feedback_paquetes?.etiqueta} · informe generado el {new Date(informe.created_at).toLocaleDateString("es-EC")} ·{" "}
+          {informe.feedback_paquetes?.etiqueta} · informe generado el {formatearFecha(informe.created_at)} ·{" "}
           {informe.casos_enviados} caso(s) analizado(s)
         </p>
       </div>

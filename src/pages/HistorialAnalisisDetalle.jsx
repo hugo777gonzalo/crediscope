@@ -4,6 +4,7 @@ import { getAnalisisPorId } from "../lib/api.js";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
+import { formatearFechaHora } from "../lib/fechas.js";
 
 // Visor de SOLO LECTURA de un Análisis con IA puntual del Historial.
 // Todavía no muestra el Perfil del Cliente asociado, aunque desde la
@@ -52,7 +53,7 @@ export default function HistorialAnalisisDetalle() {
             cedula={result.clients?.cedula}
             score={result.fallo ? null : result.crediscope_score}
             recomendacion={result.fallo ? null : result.recomendacion}
-            infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${new Date(result.created_at).toLocaleString()} (${result.rules_version}) — vista de solo lectura del Historial.`} />}
+            infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${formatearFechaHora(result.created_at)} (${result.rules_version}) — vista de solo lectura del Historial.`} />}
           />
           <AnalisisResultado result={result} />
         </>

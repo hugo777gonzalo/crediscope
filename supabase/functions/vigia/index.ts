@@ -4,7 +4,7 @@
 // POR QUÉ HACE FALTA
 //
 // Sin tráfico, "cero fallas" y "el servicio está caído" son el mismo
-// dato. La madrugada del 2026-09-11 el proveedor de IA devolvió 500,
+// dato. La noche del 2026-09-10 el proveedor de IA devolvió 500,
 // 500, 520 y 500 en seis minutos; lo supimos dos días después, y solo
 // porque alguien casualmente estaba consultando en ese momento. Si
 // hubiera pasado a las 4 de la mañana de un domingo, no habría quedado

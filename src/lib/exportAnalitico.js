@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { diaEcuador, fechaHoraOrdenable, hoyEcuador } from "./fechas.js";
 
 // Tabla analítica: una fila por análisis, con TODOS los campos de la
 // Estructura Estandarizada que lo produjo, más el score, la
@@ -47,7 +48,12 @@ export function construirTablaAnalitica(registros) {
 
     const fila = {
       cedula: a.clients?.cedula ?? "",
-      fecha_analisis: a.created_at ? a.created_at.slice(0, 10) : "",
+      // Día de Ecuador, no el de la fecha guardada: un análisis de las
+      // 20:00 figuraba con la fecha del día siguiente, y esta planilla
+      // es la que se usa para correlacionar contra el incumplimiento.
+      // Un día corrido ahí corre toda la serie.
+      fecha_analisis: diaEcuador(a.created_at),
+      hora_analisis: fechaHoraOrdenable(a.created_at).slice(11),
       score: a.crediscope_score ?? "",
       recomendacion: a.recomendacion ?? "",
       // Resultado real del crédito (vacío mientras no se cargue el
@@ -87,6 +93,7 @@ const COMO_LEER = [
   ["· Una celda vacía es dato que no existe, no un cero."],
   ["· Las listas (ej. profesiones) vienen separadas por \" | \"."],
   ["· hubo_incumplimiento vacío = ese crédito todavía no tiene resultado cargado."],
+  ["· fecha_analisis y hora_analisis están en hora de Ecuador continental (UTC-5)."],
   [],
   ["La columna perfil_vinculo dice de dónde salió la información de esa fila:"],
   ["· exacto — quedó registrada al correr la solicitud. Es la información con la que se evaluó."],
@@ -136,7 +143,7 @@ export function descargarTablaAnalitica(registros, { desde, hasta } = {}) {
 
   // El nombre lleva el rango exportado: si no, dos descargas distintas
   // terminan siendo dos archivos indistinguibles en la misma carpeta.
-  const rango = desde && hasta ? `${desde}_a_${hasta}` : new Date().toISOString().slice(0, 10);
+  const rango = desde && hasta ? `${desde}_a_${hasta}` : hoyEcuador();
   XLSX.writeFile(libro, `CrediScope_Solicitudes_${rango}.xlsx`);
   return filas.length;
 }

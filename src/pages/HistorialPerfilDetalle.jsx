@@ -4,6 +4,7 @@ import { getPerfilPorId, getSegmentConfig } from "../lib/api.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
+import { formatearFechaHora } from "../lib/fechas.js";
 
 // Visor de SOLO LECTURA de un Perfil del Cliente puntual del Historial —
 // mismo snapshot que se vio ese día, sin botón de reconsultar (a
@@ -53,7 +54,7 @@ export default function HistorialPerfilDetalle() {
           <ClienteHeader
             nombreCompleto={standardProfile?.identidad?.nombreCompleto}
             cedula={profile.clients?.cedula}
-            infoTooltip={<InfoTooltip texto={`Perfil del Cliente consultado el ${new Date(profile.created_at).toLocaleString()} — vista de solo lectura del Historial.`} />}
+            infoTooltip={<InfoTooltip texto={`Perfil del Cliente consultado el ${formatearFechaHora(profile.created_at)} — vista de solo lectura del Historial.`} />}
           />
           <SegmentosPerfil standardProfile={standardProfile} segmentConfig={segmentConfig} controlBloqueo={profile.control_bloqueo} />
         </>

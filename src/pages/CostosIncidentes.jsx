@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShieldAlert, Clock, Wallet, Radio } from "lucide-react";
 import { getConsumoLlm, getEstadoServicio, getIncidentes } from "../lib/api.js";
+import { haceCuanto } from "../lib/fechas.js";
 import {
   incidentes,
   agrupar,
@@ -47,16 +48,6 @@ const DEPENDE_DE = {
   llm: "Proveedor del modelo de lenguaje",
   fuente_datos: "Proveedor de información crediticia",
 };
-
-function haceCuanto(iso) {
-  if (!iso) return "—";
-  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (min < 1) return "recién";
-  if (min < 60) return `hace ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `hace ${h} h`;
-  return `hace ${Math.floor(h / 24)} d`;
-}
 
 // Estado en vivo según el último chequeo del vigía. Va arriba de todo
 // porque responde la pregunta que trae a alguien a esta pantalla:
@@ -337,7 +328,7 @@ export default function CostosIncidentes() {
           <div className="crediscope-card">
             <h3>Qué falta para enterarse a tiempo</h3>
             <p style={{ marginTop: 0 }}>
-              Todo lo de arriba se reconstruyó <strong>después</strong>. La madrugada del 11 el proveedor estuvo caído seis
+              Todo lo de arriba se reconstruyó <strong>después</strong>. La noche del 10 el proveedor estuvo caído seis
               minutos y nadie lo supo hasta hoy, porque el error se guardaba dentro del análisis y desde afuera esas consultas
               se veían normales. Con la causa ya clasificada y guardada, lo que falta es que alguien mire y avise:
             </p>

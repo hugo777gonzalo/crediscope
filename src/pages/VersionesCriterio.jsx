@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { History, Undo2, ShieldAlert } from "lucide-react";
 import { getVersionesCriterio, getUsoPorVersion, revertirCriterio, desactivarTodosLosAjustes } from "../lib/api.js";
+import { formatearFechaHora } from "../lib/fechas.js";
 
 // Historial del criterio con el que el modelo evalúa. Cada vez que se
 // pone o quita un ajuste de vigencia queda congelada una versión con el
@@ -143,7 +144,7 @@ export default function VersionesCriterio() {
               {versiones.slice(1).map((v) => (
                 <tr key={v.id}>
                   <td>{v.numero}</td>
-                  <td>{new Date(v.created_at).toLocaleString("es-EC")}</td>
+                  <td>{formatearFechaHora(v.created_at)}</td>
                   <td>{v.motivo ?? "—"}</td>
                   <td>{(v.ajustes ?? []).length}</td>
                   <td>{uso[v.id] ?? 0}</td>

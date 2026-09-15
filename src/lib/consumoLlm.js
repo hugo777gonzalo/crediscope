@@ -8,6 +8,8 @@
 // que se lee solo, sin ese número al lado, invita a creer que es
 // completo cuando no lo es.
 
+import { minutoEcuador } from "./fechas.js";
+
 export const ETIQUETA_FUNCION = {
   "analyze-client": "Análisis de cliente",
   "analizar-feedback": "Informe de retroalimentación",
@@ -48,8 +50,9 @@ export const money2 = (n) => (n === null || n === undefined ? "—" : MONEDA2.fo
 export const num = (n) => (n === null || n === undefined ? "—" : NUM.format(Math.round(n)));
 export const centavos = (n) => (n === null || n === undefined ? "—" : `${(n * 100).toFixed(1)}¢`);
 
-export const dia = (iso) => (iso ?? "").slice(0, 10);
-export const fechaHora = (iso) => (iso ?? "").slice(0, 16).replace("T", " ");
+// Reexportadas para que las pantallas de Costos no tengan que conocer
+// dos módulos. La zona horaria vive en fechas.js y solo ahí.
+export { diaEcuador as dia, fechaHoraOrdenable as fechaHora } from "./fechas.js";
 
 const vacio = () => ({
   llamadas: 0,
@@ -128,7 +131,11 @@ export function soloExitosas(filas) {
 export function corridas(filas) {
   const g = new Map();
   for (const r of filas) {
-    const minuto = (r.created_at ?? "").slice(0, 16);
+    // Al minuto y en hora de Ecuador: agrupar por el texto crudo de la
+    // fecha guardada funcionaría igual, pero el día que alguien lea
+    // esta clave en un registro tiene que coincidir con lo que vio en
+    // pantalla.
+    const minuto = minutoEcuador(r.created_at);
     const paquete = r.contexto?.paquete_id ?? r.contexto?.informe_id ?? "";
     const k = `${r.funcion}|${minuto}|${paquete}`;
     if (!g.has(k)) {

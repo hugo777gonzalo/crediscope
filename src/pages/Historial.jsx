@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getHistorialCliente } from "../lib/api.js";
 import RecomendacionBadge from "../components/RecomendacionBadge.jsx";
 import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
+import { formatearFechaHora } from "../lib/fechas.js";
 
 // Buscador histórico de consultas de un cliente — a diferencia de
 // Perfil del Cliente/Análisis con IA (que solo muestran lo más
@@ -86,7 +87,7 @@ export default function Historial() {
               <tbody>
                 {eventos.map((ev) => (
                   <tr key={`${ev.tipo}-${ev.id}`}>
-                    <td>{new Date(ev.created_at).toLocaleString()}</td>
+                    <td>{formatearFechaHora(ev.created_at)}</td>
                     <td>{ETIQUETAS_TIPO[ev.tipo]}</td>
                     <td>
                       {/* Un análisis fallido en la línea de tiempo no

@@ -91,6 +91,7 @@ equivocarse: es **olvidarse de actualizarlos**.
 | 3.3 | Códigos de tipo de empleador de la fuente | 8 naturalezas mapeadas | Cuando la fuente agrega uno | Código |
 | 3.4 | Antigüedad máxima del perfil para reutilizarlo sin volver a consultar | 7 días | Decisión de negocio | Código (`AnalisisIA.jsx`) |
 | 3.5 | Umbrales del SRI de "obligado a llevar contabilidad" | Sin confirmar | Cada año fiscal | Pendiente de confirmar |
+| 3.6 | Zona horaria del día operativo | Ecuador continental (UTC-5) | Solo si se opera fuera del continente | Código (`fechas.js`, `fecha_ec()`) |
 
 > **3.1 se autodetecta viejo.** Si un cliente trae un mes posterior al
 > configurado, la pantalla de Fuentes de Ingreso › Parámetros lo avisa.
@@ -100,6 +101,13 @@ equivocarse: es **olvidarse de actualizarlos**.
 > **3.4 tiene costo.** Bajarlo a 1 día da datos más frescos y multiplica
 > las consultas a la fuente. Subirlo a 30 abarata y arriesga analizar
 > sobre información vieja. Es una decisión de riesgo, no técnica.
+
+> **3.6 define cuándo empieza y termina un día.** Los instantes se
+> guardan de forma absoluta y no dependen de nada; lo que sí depende es
+> el corte del día y del mes. Con el corte en UTC, todo lo que pasara
+> después de las 19:00 —que en una financiera es buena parte del día—
+> se contaba al día siguiente. Solo hace falta revisarlo si la
+> institución opera en Galápagos, que está una hora atrás.
 
 ---
 

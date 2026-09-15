@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getConsumoLlm } from "../lib/api.js";
+import { hoyEcuador } from "../lib/fechas.js";
 import {
   totales,
   ETIQUETA_FUNCION,
@@ -44,7 +45,7 @@ function descargarCsv(filas) {
   const url = URL.createObjectURL(new Blob(["﻿" + lineas.join("\n")], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = `crediscope-consumo-llm-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `crediscope-consumo-llm-${hoyEcuador()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

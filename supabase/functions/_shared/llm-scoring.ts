@@ -210,7 +210,7 @@ async function pedirScoring(
 // Un 429 o un error 5xx del proveedor no son un problema del cliente ni
 // del criterio: son un mal momento. Que lleguen al analista como "no se
 // pudo analizar" convierte un bache de segundos en una consulta perdida.
-// La madrugada del 2026-09-11 el proveedor devolvió 500, 500, 520 y 500
+// La noche del 2026-09-10 el proveedor devolvió 500, 500, 520 y 500
 // en seis minutos y cada uno terminó en un análisis fallido.
 //
 // El presupuesto total es lo que impide que el remedio sea peor: del

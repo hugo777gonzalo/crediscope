@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
+import { inicioDelDia, finDelDia, diaEcuador, formatearFecha } from "./fechas.js";
 
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
@@ -164,7 +165,7 @@ export async function getClientesParaPlantilla() {
       cedula: a.clients?.cedula ?? "",
       clientId: a.client_id,
       analysisResultId: a.id,
-      fechaAnalisis: new Date(a.created_at).toLocaleDateString("es-EC"),
+      fechaAnalisis: formatearFecha(a.created_at),
       score: a.crediscope_score,
       recomendacion: a.recomendacion ?? "",
     });
@@ -206,7 +207,10 @@ export async function vincularFilasConAnalisis(filas) {
   const masCercanoAntes = (candidatos, clientId, fechaCorte) => {
     const propios = candidatos
       .filter((c) => c.client_id === clientId)
-      .filter((c) => !fechaCorte || new Date(c.created_at) <= new Date(`${fechaCorte}T23:59:59`))
+      // El corte es el fin de ese día EN ECUADOR: acá se decide con qué
+      // perfil se evaluó un crédito desembolsado, y correr el límite
+      // cinco horas puede elegir un perfil que el analista no vio.
+      .filter((c) => !fechaCorte || new Date(c.created_at) <= new Date(finDelDia(fechaCorte)))
       .sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
     return propios[0] ?? null;
   };
@@ -514,15 +518,17 @@ export async function exploreNovadata({ username, password, cedula }) {
 
 // ---------- Información de solicitudes (datos para análisis) ----------
 
-// Las fechas llegan como "AAAA-MM-DD" desde los selectores. Se
-// convierten al instante local correspondiente (Ecuador, UTC-5): sin
-// esto, una solicitud de las 19:00 del día "hasta" quedaría fuera por
-// caer al día siguiente en UTC.
+// Las fechas llegan como "AAAA-MM-DD" desde los selectores y se
+// convierten al instante exacto en que empieza y termina ese día EN
+// ECUADOR. Sin esto, una solicitud de las 19:00 del día "hasta" queda
+// fuera por caer al día siguiente en UTC.
+//
+// Antes se armaban con `new Date("...T00:00:00")`, que interpreta la
+// hora del NAVEGADOR: acertaba mientras quien filtraba estuviera en
+// Ecuador y dejaba de acertar desde cualquier otro país. Ahora el
+// desfase es explícito (ver fechas.js).
 function rangoAInstantes(desde, hasta) {
-  return {
-    inicio: desde ? new Date(`${desde}T00:00:00`).toISOString() : null,
-    fin: hasta ? new Date(`${hasta}T23:59:59.999`).toISOString() : null,
-  };
+  return { inicio: inicioDelDia(desde), fin: finDelDia(hasta) };
 }
 
 function aplicarRango(query, desde, hasta) {
@@ -542,8 +548,10 @@ export async function getRangoFechasSolicitudes() {
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
-  const aFecha = (v) => (v ? new Date(v).toLocaleDateString("sv-SE") : null); // sv-SE = AAAA-MM-DD local
-  return { desde: aFecha(primera?.created_at), hasta: aFecha(ultima?.created_at) };
+  // En hora de Ecuador: si la primera solicitud fue a las 20:00, su
+  // día en UTC es el siguiente y el selector arrancaría un día tarde,
+  // dejando esa misma solicitud fuera del rango que dice cubrirla.
+  return { desde: diaEcuador(primera?.created_at) || null, hasta: diaEcuador(ultima?.created_at) || null };
 }
 
 // Cuántas solicitudes caen en el rango. Se cuenta en el servidor
@@ -629,8 +637,10 @@ export async function getPerfilesConFuentesIngreso({ segmento = null, estado = n
 // una ida al servidor por pestaña.
 export async function getConsumoLlm({ desde = null, hasta = null, limite = 5000 } = {}) {
   let q = supabase.from("llm_costos").select("*");
-  if (desde) q = q.gte("created_at", `${desde}T00:00:00`);
-  if (hasta) q = q.lte("created_at", `${hasta}T23:59:59`);
+  // Con desfase explícito: un texto sin zona lo interpreta el servidor
+  // en la suya (UTC), y el rango quedaba corrido cinco horas.
+  if (desde) q = q.gte("created_at", inicioDelDia(desde));
+  if (hasta) q = q.lte("created_at", finDelDia(hasta));
   const { data, error } = await q.order("created_at", { ascending: false }).limit(limite);
   if (error) throw error;
   return data || [];

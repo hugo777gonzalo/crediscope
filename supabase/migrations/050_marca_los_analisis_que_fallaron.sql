@@ -1,7 +1,7 @@
 -- Marca como fallidos los análisis que ya estaban guardados como si
 -- fueran buenos.
 --
--- Son 7 sobre 63. Cuatro de ellos son de la madrugada del 2026-09-11 y
+-- Son 7 sobre 63. Cuatro de ellos son de la noche del 2026-09-10 y
 -- cuentan una historia: HTTP 500, 500, 520, 500 seguidos. El proveedor
 -- estuvo caído y nadie se enteró -- ni en el momento ni después, porque
 -- el error se guardó en el campo del resumen y desde afuera esas filas

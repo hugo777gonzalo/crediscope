@@ -11,6 +11,7 @@ import {
   getInformesFeedback,
 } from "../lib/api.js";
 import { generarPlantilla, leerArchivo } from "../lib/feedbackExcel.js";
+import { formatearFecha, hoyEcuador } from "../lib/fechas.js";
 
 // Retroalimentación: el área de Crédito/Riesgos carga el resultado real
 // de los créditos (se desembolsó, cayó en default, por qué) para que el
@@ -28,7 +29,7 @@ function fechaCorta(valor) {
   if (!valor) return "—";
   const soloFecha = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (soloFecha) return `${Number(soloFecha[3])}/${Number(soloFecha[2])}/${soloFecha[1]}`;
-  return new Date(valor).toLocaleDateString("es-EC");
+  return formatearFecha(valor);
 }
 
 export default function Retroalimentacion() {
@@ -91,7 +92,7 @@ export default function Retroalimentacion() {
         setError("Todavía no hay clientes analizados para incluir en la plantilla.");
         return;
       }
-      generarPlantilla(filas, `retroalimentacion-crediscope-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      generarPlantilla(filas, `retroalimentacion-crediscope-${hoyEcuador()}.xlsx`);
     } catch (err) {
       setError(err.message);
     } finally {

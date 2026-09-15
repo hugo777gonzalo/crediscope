@@ -5,6 +5,7 @@ import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
+import { formatearFechaHora } from "../lib/fechas.js";
 
 // "Perfil del Cliente" — nombre comercial de la Estructura Estandarizada
 // (internamente sigue siendo ese término). A propósito NO clasifica en
@@ -84,7 +85,7 @@ export default function PerfilCliente() {
           </button>
         }
         infoTooltip={
-          profile ? <InfoTooltip texto={`Última consulta: ${new Date(profile.created_at).toLocaleString()}`} /> : null
+          profile ? <InfoTooltip texto={`Última consulta: ${formatearFechaHora(profile.created_at)}`} /> : null
         }
       />
 

@@ -6,7 +6,7 @@
 -- importa:
 --
 --   1. Sin tráfico no hay dato. "Cero fallas" y "el servicio está
---      caído" se ven idénticos. La madrugada del 2026-09-11 el
+--      caído" se ven idénticos. La noche del 2026-09-10 el
 --      proveedor estuvo caído seis minutos y solo lo supimos porque
 --      alguien casualmente estaba consultando.
 --

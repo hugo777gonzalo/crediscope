@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, AlertOctagon } from "lucide-react";
+import { formatearFecha } from "../lib/fechas.js";
 
 // Resultado de probar un ajuste contra los créditos reales. La lectura
 // que importa es de dos lados: cuántos incumplimientos habríamos
@@ -30,7 +31,7 @@ export default function ResultadoBacktest({ backtest }) {
       <h3>Resultado de la prueba</h3>
       <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
         Se volvieron a evaluar {backtest.casos_evaluados} créditos reales con el criterio ajustado, usando la información tal como
-        estaba el día del análisis original. Probado el {new Date(backtest.created_at).toLocaleDateString("es-EC")}.
+        estaba el día del análisis original. Probado el {formatearFecha(backtest.created_at)}.
         {c.casosSinComparacion ? (
           <>
             {" "}

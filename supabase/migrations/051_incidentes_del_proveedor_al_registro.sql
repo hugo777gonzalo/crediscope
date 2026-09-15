@@ -4,7 +4,7 @@
 -- La reconstrucción del historial (045) solo trajo llamadas con tokens
 -- de salida, porque buscaba costo. Pero una caída del proveedor no
 -- genera tokens y sigue siendo el incidente más importante de todos:
--- las cuatro llamadas de la madrugada del 2026-09-11 (HTTP 500, 500,
+-- las cuatro llamadas de la noche del 2026-09-10 (HTTP 500, 500,
 -- 520, 500) no estaban en el registro, así que el historial de
 -- incidentes arrancaba sin la única caída real que tuvimos.
 --
