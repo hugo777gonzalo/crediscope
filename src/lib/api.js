@@ -584,3 +584,21 @@ export async function getDatosAnaliticos({ desde, hasta, limite = 5000 } = {}) {
   if (error) throw error;
   return data || [];
 }
+
+// ---------- Fuentes de ingreso ----------
+
+// Perfiles con su clasificación de fuentes de ingreso (la calcula
+// fuentes-ingreso.ts al generar cada perfil). Se traen todos y se
+// deduplica por cliente en el front (ver fuentesIngresoConsolidado.js):
+// el standard_profile completo es pesado, pero es la única forma de
+// llegar al grupo sin duplicar la clasificación en columnas.
+export async function getPerfilesConFuentesIngreso({ limite = 3000 } = {}) {
+  const { data, error } = await supabase
+    .from("client_profiles")
+    .select("id, client_id, created_at, standard_profile, clients(cedula)")
+    .order("client_id")
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
+}

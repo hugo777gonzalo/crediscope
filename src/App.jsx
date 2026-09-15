@@ -12,6 +12,10 @@ import Historial from "./pages/Historial.jsx";
 import HistorialPerfilDetalle from "./pages/HistorialPerfilDetalle.jsx";
 import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
 import Reportes from "./pages/Reportes.jsx";
+import FuentesIngreso from "./pages/FuentesIngreso.jsx";
+import FuentesClientes from "./pages/FuentesClientes.jsx";
+import FuentesReglas from "./pages/FuentesReglas.jsx";
+import FuentesParametros from "./pages/FuentesParametros.jsx";
 import Descargas from "./pages/Descargas.jsx";
 import Retroalimentacion from "./pages/Retroalimentacion.jsx";
 import InformeFeedback from "./pages/InformeFeedback.jsx";
@@ -50,6 +54,10 @@ const TITULOS = [
   [/^\/historial/, "Solicitudes"],
   [/^\/reportes\/descargas/, "Descargas"],
   [/^\/reportes/, "Inteligencia de Negocios"],
+  [/^\/fuentes\/clientes/, "Clientes por segmento"],
+  [/^\/fuentes\/reglas/, "Reglas de clasificación"],
+  [/^\/fuentes\/parametros/, "Parámetros"],
+  [/^\/fuentes/, "Fuentes de Ingreso"],
   [/^\/retroalimentacion/, "Retroalimentación"],
   [/^\/explorar/, "Explorador de Fuentes"],
   [/^\/admin/, "Configuración"],
@@ -181,6 +189,38 @@ export default function App() {
               <RequireSession>
                 <Descargas />
               </RequireSession>
+            }
+          />
+          <Route
+            path="/fuentes"
+            element={
+              <RequireSession>
+                <FuentesIngreso />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/fuentes/clientes"
+            element={
+              <RequireSession>
+                <FuentesClientes />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/fuentes/reglas"
+            element={
+              <RequireSession>
+                <FuentesReglas />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/fuentes/parametros"
+            element={
+              <RequireAdmin>
+                <FuentesParametros />
+              </RequireAdmin>
             }
           />
           <Route

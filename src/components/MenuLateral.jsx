@@ -7,6 +7,7 @@ import {
   BarChart3,
   MessageSquareReply,
   Settings,
+  Wallet,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
@@ -136,6 +137,20 @@ export default function MenuLateral({ profile }) {
         />
 
         <Item to="/historial" Icono={FileStack} texto="Solicitudes" activo={pathname.startsWith("/historial")} colapsado={colapsado} />
+
+        <Grupo
+          Icono={Wallet}
+          texto="Fuentes de Ingreso"
+          activo={pathname.startsWith("/fuentes")}
+          colapsado={colapsado}
+          expandirMenu={() => setColapsado(false)}
+          hijos={[
+            { to: "/fuentes", texto: "Panorama", activo: pathname === "/fuentes" },
+            { to: "/fuentes/clientes", texto: "Clientes por segmento", activo: pathname.startsWith("/fuentes/clientes") },
+            { to: "/fuentes/reglas", texto: "Reglas", activo: pathname.startsWith("/fuentes/reglas") },
+            ...(admin ? [{ to: "/fuentes/parametros", texto: "Parámetros", activo: pathname.startsWith("/fuentes/parametros") }] : []),
+          ]}
+        />
 
         <Grupo
           Icono={BarChart3}
