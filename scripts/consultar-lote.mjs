@@ -24,6 +24,19 @@
 //    cédula que no existe en la fuente no puede abortar las otras dos
 //    mil.
 //
+// SOBRE LA CONCURRENCIA -- medido, no supuesto
+//
+// El cuello de botella NO es la fuente de datos: es el límite de
+// cómputo de la función que la consulta. Con 36 pedidos en paralelo la
+// mediana de una consulta pasó de 41 a 86 segundos, el 28% de las
+// exitosas necesitó reintento y aparecieron dos errores que solo salen
+// por saturación: WORKER_RESOURCE_LIMIT y el corte a los 150 segundos.
+//
+// Más hilos no es más rápido a partir de cierto punto: los pedidos
+// hacen cola adentro de la función, cada uno tarda más, los de la cola
+// se cortan por tiempo y se reintentan -- trabajo pagado dos veces. Si
+// vuelven a aparecer esos dos errores, BAJAR la concurrencia.
+//
 // Uso:
 //   node scripts/consultar-lote.mjs <archivo-de-cedulas> [concurrencia]
 
@@ -100,6 +113,12 @@ async function consultarUna(cedula) {
         const f = data?.standard_profile?.fuentesIngreso ?? null;
         return {
           cedula,
+          // Cuándo terminó. Sin esto el ritmo real solo se puede
+          // deducir de los avisos de progreso, que vienen redondeados
+          // -- y con tandas que terminan en bloque, esa cuenta da
+          // tiempos negativos. Una corrida de dos horas tiene que poder
+          // explicarse después.
+          fin: new Date().toISOString(),
           ok: true,
           perfilId: data?.id ?? null,
           segmento: f?.segmento ?? null,
@@ -114,10 +133,10 @@ async function consultarUna(cedula) {
       // 4xx que no sea 429: la cédula o el pedido tienen un problema
       // que no se arregla repitiendo.
       if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-        return { cedula, ok: false, http: res.status, error: texto, segundos, intento };
+        return { cedula, fin: new Date().toISOString(), ok: false, http: res.status, error: texto, segundos, intento };
       }
       if (intento === INTENTOS) {
-        return { cedula, ok: false, http: res.status, error: texto, segundos, intento };
+        return { cedula, fin: new Date().toISOString(), ok: false, http: res.status, error: texto, segundos, intento };
       }
     } catch (err) {
       if (intento === INTENTOS) {
