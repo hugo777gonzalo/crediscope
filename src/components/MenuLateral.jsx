@@ -8,6 +8,7 @@ import {
   MessageSquareReply,
   Settings,
   Wallet,
+  Receipt,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
@@ -166,6 +167,20 @@ export default function MenuLateral({ profile }) {
 
         {admin ? (
           <>
+            <Grupo
+              Icono={Receipt}
+              texto="Costos"
+              activo={pathname.startsWith("/costos")}
+              colapsado={colapsado}
+              expandirMenu={() => setColapsado(false)}
+              hijos={[
+                { to: "/costos", texto: "Panorama", activo: pathname === "/costos" },
+                { to: "/costos/consultas", texto: "Costo por consulta", activo: pathname.startsWith("/costos/consultas") },
+                { to: "/costos/corridas", texto: "Corridas masivas", activo: pathname.startsWith("/costos/corridas") },
+                { to: "/costos/llamadas", texto: "Detalle de llamadas", activo: pathname.startsWith("/costos/llamadas") },
+                { to: "/costos/tarifas", texto: "Tarifas", activo: pathname.startsWith("/costos/tarifas") },
+              ]}
+            />
             <Item
               to="/retroalimentacion"
               Icono={MessageSquareReply}

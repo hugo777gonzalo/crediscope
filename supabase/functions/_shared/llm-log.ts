@@ -12,6 +12,11 @@ export interface UsoLlm {
   output_tokens?: number;
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
+  // El razonamiento interno viene DENTRO de output_tokens, no aparte.
+  // Se guarda por separado porque es donde crece el costo: cada
+  // criterio nuevo del marco no alarga la respuesta, alarga la
+  // deliberación -- y se factura como salida.
+  output_tokens_details?: { thinking_tokens?: number };
 }
 
 export interface LlamadaLlm {
@@ -52,6 +57,7 @@ export async function registrarLlamadaLlm(client: SupabaseClient, llamada: Llama
       tokens_salida: uso.output_tokens ?? 0,
       tokens_cache_escritura: uso.cache_creation_input_tokens ?? 0,
       tokens_cache_lectura: uso.cache_read_input_tokens ?? 0,
+      tokens_razonamiento: uso.output_tokens_details?.thinking_tokens ?? null,
       duracion_ms: llamada.duracionMs ?? null,
       request_id: llamada.requestId ?? null,
       es_prueba: llamada.esPrueba ?? false,

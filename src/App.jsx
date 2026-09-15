@@ -22,6 +22,11 @@ import InformeFeedback from "./pages/InformeFeedback.jsx";
 import VersionesCriterio from "./pages/VersionesCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import AdminConfig from "./pages/AdminConfig.jsx";
+import Costos from "./pages/Costos.jsx";
+import CostosConsultas from "./pages/CostosConsultas.jsx";
+import CostosCorridas from "./pages/CostosCorridas.jsx";
+import CostosLlamadas from "./pages/CostosLlamadas.jsx";
+import CostosTarifas from "./pages/CostosTarifas.jsx";
 import MenuLateral from "./components/MenuLateral.jsx";
 
 function RequireSession({ children }) {
@@ -58,6 +63,11 @@ const TITULOS = [
   [/^\/fuentes\/reglas/, "Reglas de clasificación"],
   [/^\/fuentes\/parametros/, "Parámetros"],
   [/^\/fuentes/, "Fuentes de Ingreso"],
+  [/^\/costos\/consultas/, "Costo por consulta"],
+  [/^\/costos\/corridas/, "Corridas masivas"],
+  [/^\/costos\/llamadas/, "Detalle de llamadas"],
+  [/^\/costos\/tarifas/, "Tarifas"],
+  [/^\/costos/, "Costos"],
   [/^\/retroalimentacion/, "Retroalimentación"],
   [/^\/explorar/, "Explorador de Fuentes"],
   [/^\/admin/, "Configuración"],
@@ -189,6 +199,50 @@ export default function App() {
               <RequireSession>
                 <Descargas />
               </RequireSession>
+            }
+          />
+          {/* Costos es solo para administración: no es un dato
+              operativo, es el margen del negocio. La política de la
+              base también lo restringe (046), así que ocultar el link
+              no es la única defensa. */}
+          <Route
+            path="/costos"
+            element={
+              <RequireAdmin>
+                <Costos />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/costos/consultas"
+            element={
+              <RequireAdmin>
+                <CostosConsultas />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/costos/corridas"
+            element={
+              <RequireAdmin>
+                <CostosCorridas />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/costos/llamadas"
+            element={
+              <RequireAdmin>
+                <CostosLlamadas />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/costos/tarifas"
+            element={
+              <RequireAdmin>
+                <CostosTarifas />
+              </RequireAdmin>
             }
           />
           <Route

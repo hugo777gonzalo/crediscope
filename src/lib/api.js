@@ -620,3 +620,27 @@ export async function getPerfilesConFuentesIngreso({ segmento = null, estado = n
   if (error) throw error;
   return data || [];
 }
+
+// ---------- Consumo del LLM ----------
+// El registro de llamadas es la única fuente del costo. Se lee entero
+// (son decenas, no millones) y se agrupa en el navegador: cada pantalla
+// de Costos necesita un corte distinto y traer uno por consulta sería
+// una ida al servidor por pestaña.
+export async function getConsumoLlm({ desde = null, hasta = null, limite = 5000 } = {}) {
+  let q = supabase.from("llm_costos").select("*");
+  if (desde) q = q.gte("created_at", `${desde}T00:00:00`);
+  if (hasta) q = q.lte("created_at", `${hasta}T23:59:59`);
+  const { data, error } = await q.order("created_at", { ascending: false }).limit(limite);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getTarifasLlm() {
+  const { data, error } = await supabase
+    .from("llm_precios")
+    .select("*")
+    .order("modelo")
+    .order("vigente_desde", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
