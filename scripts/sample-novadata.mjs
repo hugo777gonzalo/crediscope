@@ -20,6 +20,14 @@ const FUNCTIONS_URL =
   process.env.CREDISCOPE_FUNCTIONS_URL ?? "https://ibrptvrjyclpmqbjdxyq.supabase.co/functions/v1";
 const OUT_DIR = path.resolve("research/novadata-raw");
 const FORCE = process.argv.includes("--force");
+// Cuántas cédulas se consultan a la vez. Cada cédula dispara ~50
+// recursos EN PARALELO dentro de explore-novadata, así que la carga
+// real contra la fuente es concurrencia x 50 peticiones simultáneas.
+// El default queda en 1 y subirlo es una decisión consciente.
+const CONCURRENCIA = Math.max(
+  1,
+  Number(process.argv.find((a) => a.startsWith("--concurrency="))?.split("=")[1] ?? 1)
+);
 const listFile = process.argv.find((a) => !a.startsWith("--") && a.endsWith(".txt"));
 
 if (!listFile) {
@@ -48,13 +56,14 @@ let consultadas = 0;
 let saltadas = 0;
 let fallidas = 0;
 
-for (const cedula of cedulas) {
+const total = cedulas.length;
+
+async function consultarUna(cedula) {
   const outFile = path.join(OUT_DIR, `${cedula}.json`);
   if (!FORCE && fs.existsSync(outFile)) {
     saltadas++;
-    continue;
+    return;
   }
-  process.stdout.write(`Consultando ${cedula}... `);
   try {
     const res = await fetch(`${FUNCTIONS_URL}/explore-novadata`, {
       method: "POST",
@@ -63,18 +72,35 @@ for (const cedula of cedulas) {
     });
     const data = await res.json();
     if (!res.ok) {
-      console.log(`ERROR HTTP ${res.status}: ${data?.error ?? "?"}`);
+      console.log(`${cedula}: ERROR HTTP ${res.status} — ${data?.error ?? "?"}`);
       fallidas++;
-      continue;
+      return;
     }
     fs.writeFileSync(outFile, JSON.stringify(data));
-    console.log(`OK (${JSON.stringify(data).length} bytes)`);
     consultadas++;
   } catch (err) {
-    console.log("ERROR:", String(err));
+    console.log(`${cedula}: ERROR ${String(err)}`);
     fallidas++;
   }
+  const hechas = consultadas + fallidas + saltadas;
+  if (hechas % 10 === 0 || hechas === total) {
+    console.log(`avance ${hechas}/${total} — ok: ${consultadas} | fallidas: ${fallidas} | en caché: ${saltadas}`);
+  }
 }
+
+// Pool de trabajadores sobre una cola compartida: mantiene CONCURRENCIA
+// consultas vivas todo el tiempo, en vez de avanzar por tandas (donde
+// cada tanda espera a la cédula más lenta antes de empezar la
+// siguiente, y algunas tardan 50s contra 11s de otras).
+const cola = [...cedulas];
+console.log(`Consultando con ${CONCURRENCIA} hilo(s) en paralelo...`);
+await Promise.all(
+  Array.from({ length: CONCURRENCIA }, async () => {
+    for (let cedula = cola.shift(); cedula; cedula = cola.shift()) {
+      await consultarUna(cedula);
+    }
+  })
+);
 
 console.log(`\nListo. Nuevas: ${consultadas} | Ya en caché (saltadas): ${saltadas} | Fallidas: ${fallidas}`);
 console.log(`Total en caché ahora: ${fs.readdirSync(OUT_DIR).filter((f) => f.endsWith(".json")).length}`);
