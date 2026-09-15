@@ -203,9 +203,15 @@ no solo ocultando enlaces del menú.
 | Solicitudes (historial de consultas y análisis) | `/historial` | analista |
 | Reportes › Inteligencia de Negocios (tablero en vivo) | `/reportes` | analista |
 | Reportes › Descargas (reportes planos) | `/reportes/descargas` | analista |
+| Fuentes de Ingreso (Panorama, Clientes por segmento, Reglas) | `/fuentes` | analista |
+| Fuentes de Ingreso › Parámetros | `/fuentes/parametros` | admin |
+| Costos (Panorama, Costo por consulta, Corridas masivas, Detalle de llamadas, Fallas e incidentes, Tarifas) | `/costos` | admin |
 | Retroalimentación | `/retroalimentacion` | admin |
 | Explorador de Fuentes | `/explorar` | admin |
 | Configuración | `/admin/configuracion` | admin |
+
+Costos es admin en la ruta **y** en la política de la base: no es un dato
+operativo, es el margen del negocio.
 
 Autenticación por correo y contraseña (Supabase Auth). Cualquiera puede
 crear su cuenta desde `/crear-cuenta`; el rol se fuerza a `analista` en
@@ -290,6 +296,17 @@ Active Directory. Si en algún momento se escribió o pegó en un chat, una
 terminal compartida, o cualquier lugar fuera de las secrets de la Edge
 Function, rotarla. Nunca debe quedar en el código ni en un `.env`
 versionado (`.gitignore` ya excluye `.env` y `.env.functions`).
+
+## Puesta en marcha en una institución
+
+`docs/puesta-en-marcha-ifi.md` es el temario de la sesión de trabajo con
+la IFI: los ~35 parámetros que hay que decidir juntos antes del primer
+cliente real, agrupados por quién los decide (política de crédito,
+datos del país, costo, seguridad, servicio), cada uno con su valor
+actual y si se cambia por código, por pantalla o por base.
+
+Buena parte sigue en código a propósito — el primer despliegue se afina
+así. El destino es que todo eso viva en una pantalla de administración.
 
 ## Pendientes
 
