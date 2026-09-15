@@ -595,11 +595,25 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
         })
         .map((t) => t.nomEmp)
     ).size,
+    // Se suma POR MES y recién después se promedian los meses. Antes se
+    // tomaban los 6 registros más recientes y se promediaban sin más —
+    // pero quien tiene 2 empleos simultáneos tiene 2 registros por mes,
+    // así que esos 6 registros eran 3 meses y el promedio daba la MITAD
+    // de su ingreso real. Bug confirmado sobre la muestra: 4 personas
+    // afectadas, 2 de ellas con el ingreso reportado exactamente a la
+    // mitad (cédulas 0105712012 y 0922854674).
     ingresoPromedioUltimos6Meses: (() => {
-      const ultimos6 = mecanizadoOrdenado
+      const porMes = new Map<string, number>();
+      for (const t of mecanizadoOrdenado) {
+        const mes = String((t as AnyRecord).baseDate ?? "");
+        const valor = num((t.personaIngreso as AnyRecord | undefined)?.valor);
+        if (!mes || valor === null) continue;
+        porMes.set(mes, (porMes.get(mes) ?? 0) + valor);
+      }
+      const ultimos6 = [...porMes.entries()]
+        .sort((a, b) => b[0].localeCompare(a[0]))
         .slice(0, 6)
-        .map((t) => num((t.personaIngreso as AnyRecord | undefined)?.valor))
-        .filter((n): n is number => n !== null);
+        .map(([, total]) => total);
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
     })(),
     esEmpleadorOAdministrador: empleados.length > 0 || arr(trabajo, "administraciones", "administraciones").length > 0,

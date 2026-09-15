@@ -425,8 +425,18 @@ function buildStandardProfile(raw, cedula) {
         })
         .map((t) => t.nomEmp)
     ).size,
+    // Espejo de process.ts: se suma por mes y después se promedian los
+    // meses. Ver allá la nota del bug (2 empleos simultáneos daban la
+    // mitad del ingreso real).
     ingresoPromedioUltimos6Meses: (() => {
-      const ultimos6 = mecanizadoOrdenado.slice(0, 6).map((t) => num(t.personaIngreso?.valor)).filter((n) => n !== null);
+      const porMes = new Map();
+      for (const t of mecanizadoOrdenado) {
+        const mes = String(t.baseDate ?? "");
+        const valor = num(t.personaIngreso?.valor);
+        if (!mes || valor === null) continue;
+        porMes.set(mes, (porMes.get(mes) ?? 0) + valor);
+      }
+      const ultimos6 = [...porMes.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6).map(([, total]) => total);
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
     })(),
     esEmpleadorOAdministrador: empleados.length > 0 || arr(trabajo, "administraciones", "administraciones").length > 0,
