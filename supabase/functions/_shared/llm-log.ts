@@ -6,6 +6,7 @@
 // no parte del resultado.
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { clasificarFallo } from "./fallos-llm.ts";
 
 export interface UsoLlm {
   input_tokens?: number;
@@ -53,6 +54,10 @@ export async function registrarLlamadaLlm(client: SupabaseClient, llamada: Llama
       // encabezado, y esta tabla se lee en tablero.
       error: llamada.error ? String(llamada.error).slice(0, 500) : null,
       stop_reason: llamada.stopReason ?? null,
+      // La causa se clasifica acá, en un solo lugar, para que toda
+      // llamada fallida quede comparable venga de donde venga: análisis,
+      // backtest o informe de retroalimentación.
+      fallo_tipo: llamada.exito ? null : clasificarFallo(llamada.error, llamada.stopReason).tipo,
       tokens_entrada: uso.input_tokens ?? 0,
       tokens_salida: uso.output_tokens ?? 0,
       tokens_cache_escritura: uso.cache_creation_input_tokens ?? 0,

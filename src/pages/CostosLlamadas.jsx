@@ -7,6 +7,7 @@ import {
   ETIQUETA_NATURALEZA,
   ETIQUETA_ORIGEN,
   DESCRIPCION_ORIGEN,
+  ETIQUETA_FALLO,
   money,
   num,
   fechaHora,
@@ -211,8 +212,11 @@ export default function CostosLlamadas() {
                       "—"
                     )}
                     {r.contexto?.marco ? <div className="crediscope-muted" style={{ fontSize: 12 }}>{r.contexto.marco}</div> : null}
-                    {!r.exito && r.error ? (
-                      <div style={{ color: "var(--bad)", fontSize: 12, maxWidth: 320 }}>{r.error}</div>
+                    {!r.exito ? (
+                      <div style={{ color: "var(--bad)", fontSize: 12, maxWidth: 320 }}>
+                        <strong>{ETIQUETA_FALLO[r.fallo_tipo] ?? "Falla sin clasificar"}</strong>
+                        {r.error ? <div>{r.error}</div> : null}
+                      </div>
                     ) : null}
                   </td>
                   <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.origen_medicion === "sin_datos" ? "—" : num(r.tokens_entrada)}</td>

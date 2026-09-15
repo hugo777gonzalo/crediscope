@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient.js";
 import LogoMark from "../components/LogoMark.jsx";
+import { iniciarSesionVigilada } from "../lib/caducidadSesion.js";
 
-export default function Login() {
+export default function Login({ avisoCaducidad = null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -20,6 +21,7 @@ export default function Login() {
       setError(authError.message === "Invalid login credentials" ? "Correo o contraseña incorrectos." : authError.message);
       return;
     }
+    iniciarSesionVigilada();
     navigate("/");
   }
 
@@ -71,6 +73,10 @@ export default function Login() {
             autoComplete="current-password"
             required
           />
+          {/* Por qué lo sacaron. Sin esto, volver a encontrar la
+              pantalla de ingreso después de un rato se lee como que el
+              sistema se rompió. */}
+          {avisoCaducidad && !error ? <p className="crediscope-auth-aviso">{avisoCaducidad}</p> : null}
           {error ? <p className="crediscope-auth-error">{error}</p> : null}
           <button className="crediscope-btn crediscope-auth-submit" type="submit" disabled={loading}>
             {loading ? "Ingresando..." : "Ingresar"}

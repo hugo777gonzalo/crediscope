@@ -24,6 +24,7 @@ import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
+import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
@@ -261,7 +262,12 @@ Deno.serve(async (req) => {
         negatives: llmResult.negatives,
         missing_info: llmResult.missingInfo,
         inconsistencies: controlBloqueo.hallazgos.map((h) => h.message),
-        narrative_summary: llmResult.reasoning,
+        // Si el análisis falló, el resumen queda vacío: lo que había
+        // ahí era el texto crudo del error de la API, y en pantalla se
+        // leía como si fuera el criterio sobre el cliente.
+        narrative_summary: llmResult.fallo ? null : llmResult.reasoning,
+        fallo: llmResult.fallo ?? null,
+        fallo_tipo: llmResult.fallo ? clasificarFallo(llmResult.fallo, llmResult.llmStopReason).tipo : null,
         llm_model: llmResult.llmModel,
         llm_stop_reason: llmResult.llmStopReason,
         llm_usage: llmResult.llmUsage,

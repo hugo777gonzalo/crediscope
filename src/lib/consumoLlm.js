@@ -143,3 +143,81 @@ export function corridas(filas) {
     .map((a) => ({ ...a, modelos: [...a.modelos], msPromedio: a.conMs ? Math.round(a.ms / a.conMs) : null }))
     .sort((x, y) => (x.inicio < y.inicio ? 1 : -1));
 }
+
+export const ETIQUETA_FALLO = {
+  tope_de_gasto: "Tope de consumo alcanzado",
+  credencial: "Credencial rechazada",
+  limite_velocidad: "Límite de velocidad",
+  proveedor_caido: "Proveedor caído",
+  respuesta_cortada: "Respuesta cortada",
+  respuesta_ilegible: "Respuesta ilegible",
+  sin_conexion: "Sin conexión",
+  desconocido: "Sin clasificar",
+};
+
+// Quién tiene que resolverlo. Es la línea que separa lo que cuenta
+// contra nuestro compromiso de servicio de lo que se informa como
+// indisponibilidad de un tercero.
+export const RESPONSABLE_FALLO = {
+  tope_de_gasto: "nosotros",
+  credencial: "nosotros",
+  limite_velocidad: "nosotros",
+  respuesta_cortada: "nosotros",
+  respuesta_ilegible: "nosotros",
+  desconocido: "nosotros",
+  proveedor_caido: "proveedor",
+  sin_conexion: "proveedor",
+};
+
+export const QUE_HACER_FALLO = {
+  tope_de_gasto: "Ampliar el tope mensual en la consola del proveedor. Se previene avisando al 70% del presupuesto.",
+  credencial: "Renovar la clave y recargarla en las variables de la función.",
+  limite_velocidad: "Espaciar las consultas o pedir más cuota. Con volumen sostenido, hace falta una cola.",
+  proveedor_caido: "No se corrige: se comunica. Avisar a los usuarios y seguir con lo que no depende del modelo.",
+  respuesta_cortada: "Subir el techo de tokens de salida o recortar lo que se envía.",
+  respuesta_ilegible: "Revisar el formato que exige el marco. Si aparece en varios clientes, es del criterio.",
+  sin_conexion: "Revisar la salida a internet de la función y el estado de la red del proveedor.",
+  desconocido: "Leer el detalle técnico y agregar la causa al clasificador.",
+};
+
+// Un incidente no es una llamada fallida: es una racha de fallas de la
+// misma causa. Cuatro errores del proveedor en seis minutos son UN
+// corte de seis minutos, y esa es la cifra que sostiene un compromiso
+// de tiempo de resolución -- contar cuatro incidentes de duración cero
+// no dice nada de cuánto estuvo caído el servicio.
+//
+// `cortePorMinutos` es cuánto silencio separa dos incidentes. Con poco
+// tráfico conviene que sea generoso: entre dos intentos del mismo
+// problema puede pasar media hora sin que se haya resuelto nada.
+export function incidentes(filas, cortePorMinutos = 60) {
+  const fallidas = filas
+    .filter((r) => !r.exito)
+    .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+
+  const salida = [];
+  for (const r of fallidas) {
+    const causa = r.fallo_tipo ?? "desconocido";
+    const ultimo = salida.find((i) => i.causa === causa && i.abierto);
+    const t = new Date(r.created_at).getTime();
+    if (ultimo && t - new Date(ultimo.fin).getTime() <= cortePorMinutos * 60000) {
+      ultimo.fin = r.created_at;
+      ultimo.llamadas++;
+      ultimo.costo += Number(r.costo_usd ?? 0);
+      continue;
+    }
+    for (const i of salida) if (i.causa === causa) i.abierto = false;
+    salida.push({
+      causa,
+      inicio: r.created_at,
+      fin: r.created_at,
+      llamadas: 1,
+      costo: Number(r.costo_usd ?? 0),
+      abierto: true,
+      ejemplo: r.error ?? null,
+    });
+  }
+
+  return salida
+    .map((i) => ({ ...i, minutos: Math.round((new Date(i.fin).getTime() - new Date(i.inicio).getTime()) / 60000) }))
+    .sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
+}

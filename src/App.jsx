@@ -4,6 +4,8 @@ import { useSession } from "./lib/useSession.js";
 import { useProfile, esAdmin } from "./lib/useProfile.js";
 import { supabase } from "./lib/supabaseClient.js";
 import Login from "./pages/Login.jsx";
+import { useCaducidadSesion } from "./lib/useCaducidadSesion.js";
+import { MENSAJE_CADUCIDAD, limpiarVigilancia } from "./lib/caducidadSesion.js";
 import Signup from "./pages/Signup.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
@@ -26,6 +28,7 @@ import Costos from "./pages/Costos.jsx";
 import CostosConsultas from "./pages/CostosConsultas.jsx";
 import CostosCorridas from "./pages/CostosCorridas.jsx";
 import CostosLlamadas from "./pages/CostosLlamadas.jsx";
+import CostosIncidentes from "./pages/CostosIncidentes.jsx";
 import CostosTarifas from "./pages/CostosTarifas.jsx";
 import MenuLateral from "./components/MenuLateral.jsx";
 
@@ -66,6 +69,7 @@ const TITULOS = [
   [/^\/costos\/consultas/, "Costo por consulta"],
   [/^\/costos\/corridas/, "Corridas masivas"],
   [/^\/costos\/llamadas/, "Detalle de llamadas"],
+  [/^\/costos\/incidentes/, "Fallas e incidentes"],
   [/^\/costos\/tarifas/, "Tarifas"],
   [/^\/costos/, "Costos"],
   [/^\/retroalimentacion/, "Retroalimentación"],
@@ -80,6 +84,10 @@ function tituloDeSeccion(pathname) {
 function BotonSalir() {
   const navigate = useNavigate();
   async function handleClick() {
+    // Salir a mano también apaga los relojes de caducidad: si no, el
+    // próximo ingreso hereda la inactividad acumulada del anterior y
+    // puede cerrarse solo a los pocos segundos.
+    limpiarVigilancia();
     await supabase.auth.signOut();
     navigate("/login");
   }
@@ -94,6 +102,10 @@ export default function App() {
   const { session } = useSession();
   const { profile } = useProfile();
   const { pathname } = useLocation();
+  // La sesión caduca por inactividad y por tiempo total -- ver
+  // caducidadSesion.js. El motivo se conserva para explicárselo en la
+  // pantalla de ingreso.
+  const { motivo } = useCaducidadSesion(Boolean(session));
 
   // Login y Crear cuenta se ven a pantalla completa: sin sesión no hay
   // menú que mostrar, y meterlas en el armazón dejaría una barra vacía.
@@ -101,7 +113,7 @@ export default function App() {
     return (
       <main className="crediscope-main crediscope-main-suelto">
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<Login avisoCaducidad={motivo ? MENSAJE_CADUCIDAD[motivo] : null} />} />
             <Route path="/crear-cuenta" element={<Signup />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
@@ -127,8 +139,14 @@ export default function App() {
         </header>
         <main className="crediscope-main">
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/crear-cuenta" element={<Signup />} />
+          {/* Con sesión activa, Login y Crear cuenta no tienen nada que
+              hacer: mostrarlas acá dibujaba el formulario de ingreso
+              dentro de la aplicación, con el menú y el nombre del
+              usuario ya visibles alrededor. Parecía que la sesión no
+              valía, o peor, que se puede ver el sistema sin entrar.
+              Quien ya entró y llega a /login va a donde iba. */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/crear-cuenta" element={<Navigate to="/" replace />} />
           <Route
             path="/explorar"
             element={
@@ -234,6 +252,14 @@ export default function App() {
             element={
               <RequireAdmin>
                 <CostosLlamadas />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/costos/incidentes"
+            element={
+              <RequireAdmin>
+                <CostosIncidentes />
               </RequireAdmin>
             }
           />

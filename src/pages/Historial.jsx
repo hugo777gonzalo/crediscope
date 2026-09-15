@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { getHistorialCliente } from "../lib/api.js";
 import RecomendacionBadge from "../components/RecomendacionBadge.jsx";
+import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
 
 // Buscador histórico de consultas de un cliente — a diferencia de
 // Perfil del Cliente/Análisis con IA (que solo muestran lo más
@@ -88,7 +89,15 @@ export default function Historial() {
                     <td>{new Date(ev.created_at).toLocaleString()}</td>
                     <td>{ETIQUETAS_TIPO[ev.tipo]}</td>
                     <td>
-                      {ev.tipo === "analisis" ? (
+                      {/* Un análisis fallido en la línea de tiempo no
+                          puede leerse igual que uno bueno: mostrar
+                          "Score 500 · Revisar" hacía pasar el valor
+                          neutro por un veredicto sobre el cliente. */}
+                      {ev.tipo === "analisis" && ev.falloTipo ? (
+                        <span style={{ color: "var(--bad)" }}>
+                          No se completó — {ETIQUETA_FALLO[ev.falloTipo] ?? "falla sin clasificar"} ({ev.version})
+                        </span>
+                      ) : ev.tipo === "analisis" ? (
                         <>
                           Score {ev.score} ({ev.version}){" "}
                           {ev.recomendacion ? <RecomendacionBadge recomendacion={ev.recomendacion} size="small" /> : null}

@@ -178,6 +178,7 @@ export default function MenuLateral({ profile }) {
                 { to: "/costos/consultas", texto: "Costo por consulta", activo: pathname.startsWith("/costos/consultas") },
                 { to: "/costos/corridas", texto: "Corridas masivas", activo: pathname.startsWith("/costos/corridas") },
                 { to: "/costos/llamadas", texto: "Detalle de llamadas", activo: pathname.startsWith("/costos/llamadas") },
+                { to: "/costos/incidentes", texto: "Fallas e incidentes", activo: pathname.startsWith("/costos/incidentes") },
                 { to: "/costos/tarifas", texto: "Tarifas", activo: pathname.startsWith("/costos/tarifas") },
               ]}
             />

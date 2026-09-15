@@ -33,6 +33,7 @@ import type {
   NivelRiesgo,
 } from "./types.ts";
 import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
+import { clasificarFallo } from "./fallos-llm.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "observar", "negar"];
 const NIVELES_RIESGO: NivelRiesgo[] = ["muy bajo", "bajo", "moderado", "alto", "muy alto"];
@@ -91,7 +92,9 @@ function resultadoPorDefecto(mensaje: string, modelo: string, data?: Record<stri
     indicadorHistorial: null,
     positives: [],
     negatives: [],
-    missingInfo: [`No se pudo obtener el scoring del LLM: ${mensaje}`],
+    // Lo que ve el analista, en su idioma. El texto crudo del error
+    // viaja en `fallo` y se muestra aparte, como detalle técnico.
+    missingInfo: [clasificarFallo(mensaje, data?.stop_reason as string | undefined).mensajeUsuario],
     reasoning: mensaje,
     fallo: mensaje,
     llmModel: modelo,

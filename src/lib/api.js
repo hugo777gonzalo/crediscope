@@ -102,7 +102,7 @@ export async function getHistorialCliente(cedula) {
       .order("created_at", { ascending: false }),
     supabase
       .from("analysis_results")
-      .select("id, created_at, crediscope_score, recomendacion, rules_version")
+      .select("id, created_at, crediscope_score, recomendacion, rules_version, fallo_tipo")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false }),
   ]);
@@ -118,6 +118,7 @@ export async function getHistorialCliente(cedula) {
       version: a.rules_version,
       score: a.crediscope_score,
       recomendacion: a.recomendacion,
+      falloTipo: a.fallo_tipo,
     })),
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 

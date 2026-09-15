@@ -1,6 +1,7 @@
 import { Sparkles, CircleCheck, TriangleAlert, FileText, ShieldAlert } from "lucide-react";
 import RecomendacionCard from "./RecomendacionCard.jsx";
 import SeccionDesplegable from "./SeccionDesplegable.jsx";
+import AnalisisFallido from "./AnalisisFallido.jsx";
 
 // Resultado de "Análisis con IA": resumen, recomendación y el detalle
 // en secciones que se despliegan (positivos, negativos, observaciones).
@@ -39,6 +40,17 @@ export default function AnalisisResultado({ result, ocultarListaControl = false 
   const negativos = result.negatives || [];
   const observaciones = result.missing_info || [];
   const hallazgos = ocultarListaControl ? [] : result.inconsistencies || [];
+
+  // Un análisis fallido no se maquilla: no hay resumen, no hay
+  // recomendación, y las secciones vacías no se dibujan como si el
+  // modelo hubiera mirado al cliente y no hubiera encontrado nada.
+  if (result.fallo) {
+    return (
+      <div className="crediscope-resultado">
+        <AnalisisFallido fallo={result.fallo} tipo={result.fallo_tipo} />
+      </div>
+    );
+  }
 
   return (
     <div className="crediscope-resultado">

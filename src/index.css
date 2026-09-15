@@ -1164,3 +1164,12 @@ a {
   font-size: 13.5px;
   color: var(--text-muted);
 }
+
+/* Aviso de sesión caducada: no es un error del usuario ni una buena
+   noticia, así que no va ni en rojo ni en verde. */
+.crediscope-auth-aviso {
+  color: var(--warn);
+  font-size: 13px;
+  margin: 6px 0 0;
+  text-align: center;
+}

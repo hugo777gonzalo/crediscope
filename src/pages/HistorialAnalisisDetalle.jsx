@@ -45,10 +45,13 @@ export default function HistorialAnalisisDetalle() {
 
       {result ? (
         <>
+          {/* Un análisis que falló no muestra puntaje ni recomendación:
+              los valores guardados son el neutro por defecto, no un
+              juicio sobre esta persona. */}
           <ClienteHeader
             cedula={result.clients?.cedula}
-            score={result.crediscope_score}
-            recomendacion={result.recomendacion}
+            score={result.fallo ? null : result.crediscope_score}
+            recomendacion={result.fallo ? null : result.recomendacion}
             infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${new Date(result.created_at).toLocaleString()} (${result.rules_version}) — vista de solo lectura del Historial.`} />}
           />
           <AnalisisResultado result={result} />

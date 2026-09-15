@@ -129,10 +129,15 @@ export default function AnalisisIA() {
                 {nombre ? <p className="crediscope-cliente-nombre">{nombre}</p> : null}
                 <p className="crediscope-cliente-cedula">{cedula}</p>
               </div>
-              {result?.recomendacion ? <RecomendacionBadge recomendacion={result.recomendacion} size="small" /> : null}
+              {result?.recomendacion && !result?.fallo ? (
+                <RecomendacionBadge recomendacion={result.recomendacion} size="small" />
+              ) : null}
             </div>
 
-            <ScoreGauge score={result?.crediscope_score} />
+            {/* Si el análisis falló, el marcador queda sin valor: el
+                500 guardado es el valor neutro por defecto, no un
+                puntaje, y dibujarlo lo hacía pasar por resultado. */}
+            <ScoreGauge score={result?.fallo ? null : result?.crediscope_score} />
 
             <div className="crediscope-cliente-acciones">
               {!loading && profileReciente ? (
