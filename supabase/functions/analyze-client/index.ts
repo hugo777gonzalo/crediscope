@@ -185,24 +185,35 @@ Deno.serve(async (req) => {
     // Registro de consumo del LLM. Se hace pase lo que pase con la
     // inserción del análisis: la llamada ya se pagó, y si el insert
     // falla es justamente cuando más importa que quede el rastro.
-    const registrarConsumo = (analysisResultId: string | null) =>
-      registrarLlamadaLlm(serviceClient, {
-        funcion: "analyze-client",
-        modelo: llmResult.llmModel,
-        exito: !llmResult.fallo,
-        error: llmResult.fallo ?? null,
-        stopReason: llmResult.llmStopReason ?? null,
-        uso: llmResult.llmUsage as Record<string, number> | undefined,
-        duracionMs: duracionLlmMs,
-        requestId: llmResult.llmRequestId ?? null,
-        clientId: client.id,
-        analysisResultId,
-        contexto: { cedula, reutilizoPerfil: Boolean(profileId) },
-        esPrueba,
-        razonamiento: CONFIG_LLM.razonamiento,
-        maxTokens: CONFIG_LLM.maxTokens,
-        actor: actorId,
-      });
+    // Un scoring puede ser 1 o 2 llamadas (cascada: modelo base y, si el
+    // caso cae en la zona gris, escalamiento a Sonnet). Se registran por
+    // separado: si se guardara solo la última, el costo de un caso
+    // escalado quedaría a la mitad y la medición del ahorro sería falsa.
+    const registrarConsumo = async (analysisResultId: string | null) => {
+      for (const llamada of llmResult.llamadas) {
+        await registrarLlamadaLlm(serviceClient, {
+          funcion: "analyze-client",
+          modelo: llamada.modelo,
+          exito: llamada.exito,
+          error: llamada.error ?? null,
+          stopReason: llamada.stopReason ?? null,
+          uso: llamada.uso as Record<string, number> | undefined,
+          duracionMs: llamada.duracionMs,
+          requestId: llamada.requestId ?? null,
+          clientId: client.id,
+          analysisResultId,
+          contexto: {
+            cedula,
+            reutilizoPerfil: Boolean(profileId),
+            escalamiento: Boolean(llamada.escalamiento),
+          },
+          esPrueba,
+          razonamiento: CONFIG_LLM.razonamiento,
+          maxTokens: CONFIG_LLM.maxTokens,
+          actor: actorId,
+        });
+      }
+    };
 
     // 7. Persistir resultado
     const { data: analysis, error: analysisError } = await serviceClient

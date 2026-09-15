@@ -491,6 +491,22 @@ export type RecomendacionAccion = "aprobar" | "revisar" | "observar" | "negar";
 export type NivelRiesgo = "muy bajo" | "bajo" | "moderado" | "alto" | "muy alto";
 export type NivelHistorial = "excelente" | "bueno" | "regular" | "malo" | "sin historial";
 
+// Metadata de cada llamada al modelo dentro de un scoring. Son 1 o 2:
+// el modelo base siempre, y el de escalamiento cuando el caso cae en la
+// zona gris (ver la cascada en llm-scoring.ts). Se devuelven para que
+// quien orquesta registre el consumo de las dos por separado -- si solo
+// se registrara la última, el costo del caso escalado quedaría a mitad.
+export interface LlamadaRealizada {
+  modelo: string;
+  exito: boolean;
+  error?: string | null;
+  stopReason?: string;
+  uso?: Record<string, unknown>;
+  requestId?: string;
+  duracionMs: number;
+  escalamiento?: boolean;
+}
+
 export interface LlmScoringResult {
   score: number; // 1-999, APROXIMADO — el LLM lo estima con el marco interpretativo, no es una fórmula
   recomendacion: RecomendacionAccion;
@@ -511,6 +527,7 @@ export interface LlmScoringResult {
   llmStopReason?: string;
   llmUsage?: Record<string, unknown>;
   llmRequestId?: string;
+  llamadas: LlamadaRealizada[];
   // Mensaje de error cuando el scoring cayó al resultado por defecto.
   // Sin esto no se puede distinguir "el modelo respondió score 500" de
   // "falló y devolvimos 500" al registrar el consumo (ver llm-log.ts).
