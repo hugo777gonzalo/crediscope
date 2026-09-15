@@ -49,6 +49,12 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_WORKSPACE_ID = Deno.env.get("ANTHROPIC_WORKSPACE_ID") ?? "";
 const MODEL = "claude-sonnet-5";
 
+// Configuración que define el grueso del costo, exportada para que el
+// registro de consumo pueda explicarlo (ver llm-log.ts / 041).
+// razonamiento "activo" = el modelo razona por defecto y no se le envía
+// nada; ese razonamiento interno es ~70% de los tokens de salida.
+export const CONFIG_LLM = { razonamiento: "activo" as const, maxTokens: 6000 };
+
 function extraerJson(texto: string): unknown {
   const limpio = texto.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   return JSON.parse(limpio);
@@ -144,7 +150,7 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
       // Con 4000 seguía cortándose en clientes con historial rico
       // (positivos/negativos largos): el análisis devolvía el fallback
       // de score 500 en vez de un resultado real.
-      max_tokens: 6000,
+      max_tokens: CONFIG_LLM.maxTokens,
       system: bloquesSistema,
       messages: [{ role: "user", content: JSON.stringify(userPayload) }],
     }),

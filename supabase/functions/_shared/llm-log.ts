@@ -28,6 +28,10 @@ export interface LlamadaLlm {
   contexto?: Record<string, unknown>;
   esPrueba?: boolean;
   actor?: string | null;
+  // Con qué configuración corrió: define el grueso del costo (el
+  // razonamiento interno es ~70% de los tokens de salida).
+  razonamiento?: "activo" | "desactivado" | "adaptativo";
+  maxTokens?: number;
 }
 
 export async function registrarLlamadaLlm(client: SupabaseClient, llamada: LlamadaLlm): Promise<void> {
@@ -51,6 +55,8 @@ export async function registrarLlamadaLlm(client: SupabaseClient, llamada: Llama
       duracion_ms: llamada.duracionMs ?? null,
       request_id: llamada.requestId ?? null,
       es_prueba: llamada.esPrueba ?? false,
+      razonamiento: llamada.razonamiento ?? null,
+      max_tokens: llamada.maxTokens ?? null,
       actor: llamada.actor ?? null,
     });
     if (error) console.error("No se pudo registrar la llamada al LLM:", error.message);

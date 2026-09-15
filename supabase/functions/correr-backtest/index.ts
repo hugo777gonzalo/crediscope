@@ -238,6 +238,8 @@ Deno.serve(async (req) => {
               marcoCandidato,
               ({ exito, error, data, duracionMs }) =>
                 registrarLlamadaLlm(serviceClient, {
+                  razonamiento: "activo" as const,
+                  maxTokens: 6000,
                   funcion: "correr-backtest",
                   modelo: (data?.model as string) ?? MODEL,
                   exito,

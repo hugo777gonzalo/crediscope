@@ -253,6 +253,8 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const errText = await res.text();
       await registrarLlamadaLlm(serviceClient, {
+        razonamiento: "activo" as const,
+        maxTokens: 16000,
         funcion: "analizar-feedback",
         modelo: MODEL,
         exito: false,
@@ -268,6 +270,8 @@ Deno.serve(async (req) => {
     // JSON: una respuesta cortada por presupuesto se pagó igual, y es
     // justo el caso que interesa ver en el consumo.
     await registrarLlamadaLlm(serviceClient, {
+      razonamiento: "activo" as const,
+      maxTokens: 16000,
       funcion: "analizar-feedback",
       modelo: (data?.model as string) ?? MODEL,
       exito: data?.stop_reason !== "max_tokens",

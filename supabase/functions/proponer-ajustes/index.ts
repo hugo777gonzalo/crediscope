@@ -108,6 +108,8 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const errText = await res.text();
       await registrarLlamadaLlm(serviceClient, {
+        razonamiento: "activo" as const,
+        maxTokens: 8000,
         funcion: "proponer-ajustes",
         modelo: MODEL,
         exito: false,
@@ -120,6 +122,8 @@ Deno.serve(async (req) => {
 
     const data = await res.json();
     await registrarLlamadaLlm(serviceClient, {
+      razonamiento: "activo" as const,
+      maxTokens: 8000,
       funcion: "proponer-ajustes",
       modelo: (data?.model as string) ?? MODEL,
       exito: data?.stop_reason !== "max_tokens",

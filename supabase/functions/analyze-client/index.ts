@@ -23,7 +23,7 @@ import type { BlockStatusMap, ResultadoControlBloqueo, StandardClientProfile } f
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
-import { scoreWithLlm, MARCO_VERSION } from "../_shared/llm-scoring.ts";
+import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
 import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
@@ -199,6 +199,8 @@ Deno.serve(async (req) => {
         analysisResultId,
         contexto: { cedula, reutilizoPerfil: Boolean(profileId) },
         esPrueba,
+        razonamiento: CONFIG_LLM.razonamiento,
+        maxTokens: CONFIG_LLM.maxTokens,
         actor: actorId,
       });
 
