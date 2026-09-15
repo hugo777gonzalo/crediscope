@@ -152,6 +152,8 @@ export interface ClientContext {
 // es un grupo nuevo que separa el scoring propio de Novadata
 // (personasIncumplimientos) de comportamientoBancario, por su peso.
 
+import type { AnalisisFuentesIngreso } from "./fuentes-ingreso.ts";
+
 export interface StandardClientProfile {
   cedula: string;
   consultadoEn: string; // ISO timestamp
@@ -468,6 +470,11 @@ export interface StandardClientProfile {
     tieneDelitoSeguridadCiudadana: boolean;
     categoriasDelitoSeguridadCiudadana: string[]; // ej. ["Extorsión", "Delincuencia organizada"]
   };
+
+  // De qué vive el cliente y qué tan evidenciado está (ver
+  // fuentes-ingreso.ts). Módulo aparte porque sus reglas cambian a otro
+  // ritmo que el resto del perfil.
+  fuentesIngreso: AnalisisFuentesIngreso;
 
   metaConsulta: {
     ejesOk: string[];

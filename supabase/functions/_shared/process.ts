@@ -12,6 +12,7 @@
 // entrada real del LLM (ver marco-interpretativo.ts).
 
 import type { BlockStatusMap, RawNovadataResponse, StandardClientProfile } from "./types.ts";
+import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -988,6 +989,8 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     riesgoPenal,
     cumplimiento,
     riesgoSeguridadCiudadana,
+    fuentesIngreso: analizarFuentesIngreso(raw, identidad.nombreCompleto),
+
     metaConsulta: {
       ejesOk: entries.filter(([, v]) => v === "ok").map(([k]) => k),
       ejesFaltantes: entries.filter(([, v]) => v === "faltante").map(([k]) => k),
