@@ -22,7 +22,11 @@ const PRESENTACION = {
   negar: { titulo: "Negación", Icono: XCircle, fondo: "#fef2f2" },
 };
 
-export default function RecomendacionCard({ recomendacion, acciones = [] }) {
+// `origen` se usa cuando el dictamen no lo puso el modelo. Decirlo no
+// es un detalle técnico: un "Negación" que salió de una regla de
+// control se sostiene sin el modelo, y quien lo lee tiene derecho a
+// saber que nadie leyó el caso completo.
+export default function RecomendacionCard({ recomendacion, acciones = [], origen = null }) {
   const base = ETIQUETAS_RECOMENDACION[recomendacion];
   const extra = PRESENTACION[recomendacion];
   if (!base && !acciones.length) return null;
@@ -40,6 +44,9 @@ export default function RecomendacionCard({ recomendacion, acciones = [] }) {
           <p className="crediscope-recomendacion-card-titulo" style={{ color: base.color }}>
             {extra.titulo}
           </p>
+          {origen ? (
+            <p className="crediscope-muted" style={{ margin: "2px 0 0", fontSize: 12.5 }}>{origen}</p>
+          ) : null}
         </div>
       </div>
 

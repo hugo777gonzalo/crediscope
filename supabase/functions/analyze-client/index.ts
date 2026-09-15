@@ -268,6 +268,15 @@ Deno.serve(async (req) => {
         narrative_summary: llmResult.fallo ? null : llmResult.reasoning,
         fallo: llmResult.fallo ?? null,
         fallo_tipo: llmResult.fallo ? clasificarFallo(llmResult.fallo, llmResult.llmStopReason).tipo : null,
+        // Quién decidió. Un control de bloqueo niega por una regla
+        // nuestra y eso sigue valiendo aunque el proveedor del modelo
+        // esté caído: ahí hay veredicto, y esconderlo detrás de "no se
+        // pudo analizar" sería perder una respuesta correcta.
+        veredicto_origen: controlBloqueo.bloqueado
+          ? "control_bloqueo"
+          : llmResult.fallo
+            ? "sin_veredicto"
+            : "modelo",
         llm_model: llmResult.llmModel,
         llm_stop_reason: llmResult.llmStopReason,
         llm_usage: llmResult.llmUsage,

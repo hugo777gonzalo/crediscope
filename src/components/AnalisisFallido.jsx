@@ -55,7 +55,10 @@ const MENSAJES = {
   },
 };
 
-export default function AnalisisFallido({ fallo, tipo }) {
+// `hayVeredicto`: cuando un control de bloqueo ya decidió el caso, la
+// advertencia sobre el puntaje neutro no corresponde -- ese puntaje sí
+// es un resultado, puesto por una regla nuestra.
+export default function AnalisisFallido({ fallo, tipo, hayVeredicto = false }) {
   const [abierto, setAbierto] = useState(false);
   const m = MENSAJES[tipo] ?? MENSAJES.desconocido;
 
@@ -68,10 +71,17 @@ export default function AnalisisFallido({ fallo, tipo }) {
           <p style={{ margin: "0 0 8px" }}>{m.que}</p>
           <p className="crediscope-muted" style={{ margin: 0 }}>{m.ahora}</p>
 
-          <p style={{ margin: "12px 0 0", fontSize: 13 }}>
-            <strong>El puntaje que aparece no es un resultado.</strong> Cuando el análisis falla, CrediScope deja el marcador
-            en su valor neutro y la recomendación en "revisar" para que nadie lo tome por una opinión del sistema.
-          </p>
+          {hayVeredicto ? (
+            <p style={{ margin: "12px 0 0", fontSize: 13 }}>
+              <strong>El caso igual quedó resuelto.</strong> Un control de bloqueo lo decidió por una regla nuestra, que no
+              depende del proveedor. Lo que falta es la lectura del caso en lenguaje natural, no el dictamen.
+            </p>
+          ) : (
+            <p style={{ margin: "12px 0 0", fontSize: 13 }}>
+              <strong>El puntaje que aparece no es un resultado.</strong> Cuando el análisis falla, CrediScope deja el marcador
+              en su valor neutro y la recomendación en "revisar" para que nadie lo tome por una opinión del sistema.
+            </p>
+          )}
 
           {fallo ? (
             <>

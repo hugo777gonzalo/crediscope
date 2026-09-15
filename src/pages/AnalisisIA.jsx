@@ -177,7 +177,7 @@ export default function AnalisisIA() {
               </p>
             </div>
           ) : null}
-          <AnalisisResultado result={result} ocultarListaControl />
+          <AnalisisResultado result={result} ocultarListaControl perfil={profile} cedula={cedula} />
         </div>
       </div>
 

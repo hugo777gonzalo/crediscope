@@ -2,6 +2,7 @@ import { Sparkles, CircleCheck, TriangleAlert, FileText, ShieldAlert } from "luc
 import RecomendacionCard from "./RecomendacionCard.jsx";
 import SeccionDesplegable from "./SeccionDesplegable.jsx";
 import AnalisisFallido from "./AnalisisFallido.jsx";
+import LoQueSiHay from "./LoQueSiHay.jsx";
 
 // Resultado de "Análisis con IA": resumen, recomendación y el detalle
 // en secciones que se despliegan (positivos, negativos, observaciones).
@@ -33,7 +34,10 @@ function ListaItems({ items, Icono, color }) {
 // bloqueantes (ListaControlPanel). Acá solo se muestran cuando no hay
 // esa versión más completa -- el Historial, donde lo único guardado con
 // el análisis son los mensajes.
-export default function AnalisisResultado({ result, ocultarListaControl = false }) {
+// `perfil` y `cedula` solo se usan cuando el análisis falló, para poder
+// ofrecer lo que no depende del modelo. El visor del Historial no los
+// pasa: ahí se está mirando un registro viejo, no resolviendo un caso.
+export default function AnalisisResultado({ result, ocultarListaControl = false, perfil = null, cedula = null }) {
   if (!result) return null;
 
   const positivos = result.positives || [];
@@ -44,10 +48,26 @@ export default function AnalisisResultado({ result, ocultarListaControl = false 
   // Un análisis fallido no se maquilla: no hay resumen, no hay
   // recomendación, y las secciones vacías no se dibujan como si el
   // modelo hubiera mirado al cliente y no hubiera encontrado nada.
+  //
+  // Pero tampoco se tira todo. Si un control de bloqueo ya decidió, ese
+  // veredicto vale sin el modelo y se muestra; y en cualquier caso se
+  // ofrece lo determinístico, que no depende del proveedor caído.
   if (result.fallo) {
+    const decidioElControl = result.veredicto_origen === "control_bloqueo";
     return (
       <div className="crediscope-resultado">
-        <AnalisisFallido fallo={result.fallo} tipo={result.fallo_tipo} />
+        {decidioElControl ? (
+          <RecomendacionCard
+            recomendacion={result.recomendacion}
+            acciones={hallazgos.length ? hallazgos : ["Verificar la identidad del cliente contra el hallazgo de la lista de control."]}
+            origen="Decidido por una regla de control, sin intervención del modelo."
+          />
+        ) : null}
+        <AnalisisFallido fallo={result.fallo} tipo={result.fallo_tipo} hayVeredicto={decidioElControl} />
+        {/* Los hallazgos van completos y no `hallazgos`: acá se cuenta
+            cuántos hay, y en Análisis con IA esa variable llega vacía
+            porque el panel de listas los muestra aparte. */}
+        <LoQueSiHay perfil={perfil} cedula={cedula} hallazgos={result.inconsistencies || []} />
       </div>
     );
   }
