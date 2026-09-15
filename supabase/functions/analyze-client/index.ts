@@ -25,6 +25,7 @@ import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
+import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
@@ -61,6 +62,20 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   }
+
+  // Mismo criterio que structure-client: un RUC de persona natural se
+  // convierte en su cédula, y lo que no es una persona natural se
+  // rechaza antes de gastar una consulta a la fuente y una llamada al
+  // modelo. Acá importa el doble, porque este endpoint también cuesta
+  // dinero.
+  const ident = clasificarIdentificacion(cedula);
+  if (!ident.consultable) {
+    return new Response(JSON.stringify({ error: ident.mensaje, tipoIdentificacion: ident.tipo, ingresado: ident.ingresado }), {
+      status: 400,
+      headers: { ...corsHeaders, "content-type": "application/json" },
+    });
+  }
+  cedula = ident.cedula as string;
 
   // Identificar al actor (analista o sistema externo) a partir del JWT
   // reenviado en Authorization, solo para fines de auditoría.

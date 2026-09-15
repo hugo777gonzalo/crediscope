@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { getLatestProfile, structureClient, getSegmentConfig } from "../lib/api.js";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
+import { Info } from "lucide-react";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
@@ -17,6 +18,8 @@ import { formatearFechaHora } from "../lib/fechas.js";
 
 export default function PerfilCliente() {
   const { cedula } = useParams();
+  const [params] = useSearchParams();
+  const desdeRuc = params.get("desdeRuc");
 
   const [profile, setProfile] = useState(null);
   const [segmentConfig, setSegmentConfig] = useState(null);
@@ -88,6 +91,21 @@ export default function PerfilCliente() {
           profile ? <InfoTooltip texto={`Última consulta: ${formatearFechaHora(profile.created_at)}`} /> : null
         }
       />
+
+      {/* Se llegó escribiendo un RUC. Decirlo no es un detalle: quien
+          buscó por RUC podría creer que está viendo la actividad del
+          establecimiento, y está viendo a la persona. */}
+      {desdeRuc ? (
+        <div className="crediscope-card" style={{ borderColor: "var(--brand)" }}>
+          <p style={{ margin: 0, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <Info size={18} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              Buscaste el RUC <strong>{desdeRuc}</strong>. Lo que ves es la <strong>persona natural</strong> detrás de ese RUC,
+              cédula {cedula} — no la actividad del establecimiento.
+            </span>
+          </p>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>

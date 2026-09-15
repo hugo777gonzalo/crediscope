@@ -124,6 +124,24 @@ function isEstadoOk(body: unknown): boolean {
   return !estado || estado.codigo === "OK";
 }
 
+function mensajeDelEstado(body: unknown): string | undefined {
+  const estado = (body as { estado?: { codigo?: string; mensaje?: string } } | undefined)?.estado;
+  return estado?.codigo === "ERROR" ? estado.mensaje : undefined;
+}
+
+// La fuente responde HTTP 200 incluso cuando la persona no existe: lo
+// dice adentro del cuerpo, en estado.mensaje. Hasta ahora eso se
+// trataba igual que "esta persona no tiene datos en este bloque", y el
+// resultado era un Perfil del Cliente completo y en blanco: nada
+// avisaba que esa cédula no corresponde a nadie.
+//
+// Se mira el bloque de identidad y no cualquiera: que alguien no tenga
+// vehículos es normal; que no exista en el registro de personas no.
+export function personaNoExiste(general: { status: string; errorMessage?: string }): string | null {
+  const m = general?.errorMessage ?? "";
+  return /no existe/i.test(m) ? m : null;
+}
+
 // path puede incluir sub-segmentos fijos antes de la cédula, ej.
 // "pn_credito/hipotecario" -> GET .../pn_credito/hipotecario/{cedula}
 async function fetchResource<T = NovadataEnvelope>(
@@ -150,7 +168,9 @@ async function fetchResource<T = NovadataEnvelope>(
     }
     const body = await res.json();
     if (!isEstadoOk(body)) {
-      return { status: "faltante", data: null };
+      // El motivo viaja aunque el bloque quede como faltante: es lo que
+      // permite distinguir después "sin datos" de "no existe".
+      return { status: "faltante", data: null, errorMessage: mensajeDelEstado(body) };
     }
     return { status: "ok", data: body as T };
   } catch (err) {

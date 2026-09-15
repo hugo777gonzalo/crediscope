@@ -8,7 +8,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { fetchAllBlocks } from "../_shared/novadata-client.ts";
+import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
+import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources } from "../_shared/runtime-config.ts";
@@ -36,6 +37,21 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   }
+
+  // Qué escribieron realmente. La validación de la pantalla es una
+  // cortesía; esta es la que vale, porque a este endpoint también lo
+  // llaman sistemas de afuera. Un RUC de persona natural se convierte
+  // en su cédula y se sigue; lo que no es una persona natural se
+  // rechaza acá, antes de gastar una consulta.
+  const ident = clasificarIdentificacion(cedula);
+  if (!ident.consultable) {
+    return new Response(JSON.stringify({ error: ident.mensaje, tipoIdentificacion: ident.tipo, ingresado: ident.ingresado }), {
+      status: 400,
+      headers: { ...corsHeaders, "content-type": "application/json" },
+    });
+  }
+  const ingresado = ident.ingresado;
+  cedula = ident.cedula as string;
 
   let actorId: string | null = null;
   const authHeader = req.headers.get("Authorization");
@@ -66,6 +82,30 @@ Deno.serve(async (req) => {
     const disabledResources = await loadDisabledResources(serviceClient);
     const inicioIngesta = Date.now();
     const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
+
+    // 2b. ¿Existe esta persona?
+    //
+    // La fuente responde HTTP 200 aunque no exista: lo dice adentro del
+    // cuerpo. Sin esta comprobación se guardaba un Perfil del Cliente
+    // completo y en blanco, que desde afuera se ve igual que el de
+    // alguien sin historial. Un analista podía leerlo como "esta
+    // persona no tiene deudas" cuando en realidad esa persona no
+    // existe.
+    const noExiste = personaNoExiste(raw.general);
+    if (noExiste) {
+      const esRuc = ident.tipo === "ruc_persona_natural";
+      return new Response(
+        JSON.stringify({
+          error: esRuc
+            ? `La fuente no encuentra a la persona con cédula ${cedula}, que son los 10 primeros dígitos del RUC ${ingresado}. Si ese RUC es de una empresa, hay que buscar al representante por su cédula.`
+            : `La fuente no encuentra a ninguna persona con la cédula ${cedula}. El número es válido en su forma, así que puede ser un dígito cambiado o una cédula que la fuente todavía no tiene.`,
+          tipoIdentificacion: "no_existe",
+          ingresado,
+          cedula,
+        }),
+        { status: 404, headers: { ...corsHeaders, "content-type": "application/json" } }
+      );
+    }
 
     // 3. Estructura estandarizada
     const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, cedula);
