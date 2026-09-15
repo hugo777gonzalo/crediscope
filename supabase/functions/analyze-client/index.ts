@@ -215,6 +215,7 @@ Deno.serve(async (req) => {
             cedula,
             reutilizoPerfil: Boolean(profileId),
             escalamiento: Boolean(llamada.escalamiento),
+            intento: llamada.intento ?? 1,
             // Con qué versión del criterio corrió. Es lo que permite
             // ver en Costos que el gasto sube con cada marco nuevo y no
             // con el volumen.

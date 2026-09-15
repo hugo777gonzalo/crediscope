@@ -68,7 +68,10 @@ const CATALOGO: Record<TipoFallo, Omit<Fallo, "tipo">> = {
   respuesta_cortada: {
     mensajeUsuario: "El análisis quedó a medias: la respuesta superó el largo permitido.",
     queHacer: "Subir el techo de tokens de salida o recortar lo que se le manda. Es un caso más grande que el promedio.",
-    reintentable: true,
+    // Reintentar con el mismo pedido y el mismo techo vuelve a cortarse
+    // en el mismo lugar, y se paga otra vez. Solo se resuelve cambiando
+    // el techo o lo que se envía.
+    reintentable: false,
     responsable: "nosotros",
   },
   respuesta_ilegible: {

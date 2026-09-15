@@ -512,6 +512,11 @@ export interface LlamadaRealizada {
   requestId?: string;
   duracionMs: number;
   escalamiento?: boolean;
+  // Número de intento sobre el mismo pedido, empezando en 1. Un
+  // reintento es una llamada aparte y se paga aparte: si no quedara
+  // registrado, el costo por consulta se vería más barato de lo que es
+  // y una racha de fallas del proveedor pasaría por una sola falla.
+  intento?: number;
 }
 
 export interface LlmScoringResult {

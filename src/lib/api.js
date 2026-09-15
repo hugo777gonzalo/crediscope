@@ -645,3 +645,22 @@ export async function getTarifasLlm() {
   if (error) throw error;
   return data || [];
 }
+
+// ---------- Vigía: estado del servicio e incidentes ----------
+// Son dos lecturas chicas y siempre van juntas: el estado responde
+// "¿funciona ahora?" y los incidentes, "¿cuánto estuvo sin funcionar?".
+export async function getEstadoServicio() {
+  const { data, error } = await supabase.from("servicio_estado").select("*").order("componente");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getIncidentes({ limite = 200 } = {}) {
+  const { data, error } = await supabase
+    .from("incidentes_con_duracion")
+    .select("*")
+    .order("inicio", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
+}

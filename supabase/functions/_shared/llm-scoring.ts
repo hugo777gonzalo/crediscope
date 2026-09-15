@@ -205,6 +205,63 @@ async function pedirScoring(
   };
 }
 
+// Reintentos ante fallas pasajeras.
+//
+// Un 429 o un error 5xx del proveedor no son un problema del cliente ni
+// del criterio: son un mal momento. Que lleguen al analista como "no se
+// pudo analizar" convierte un bache de segundos en una consulta perdida.
+// La madrugada del 2026-09-11 el proveedor devolvió 500, 500, 520 y 500
+// en seis minutos y cada uno terminó en un análisis fallido.
+//
+// El presupuesto total es lo que impide que el remedio sea peor: del
+// otro lado hay alguien esperando frente a una pantalla, así que se
+// reintenta mientras eso no se note demasiado y se abandona después.
+// Para una caída larga de verdad esto no alcanza -- ahí hace falta
+// encolar el pedido y resolverlo fuera de la espera del usuario.
+const REINTENTOS = {
+  intentosMaximos: 3,
+  esperaBaseMs: 1_200,
+  esperaMaximaMs: 8_000,
+  presupuestoMs: 30_000,
+};
+
+const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Espera creciente con una parte al azar: si varias consultas fallan a
+// la vez, reintentar todas en el mismo instante vuelve a tumbar lo que
+// se está recuperando.
+function esperaDelIntento(intento: number): number {
+  const crece = REINTENTOS.esperaBaseMs * Math.pow(2, intento - 1);
+  return Math.min(crece, REINTENTOS.esperaMaximaMs) * (0.7 + Math.random() * 0.6);
+}
+
+async function pedirScoringConReintentos(
+  modelo: string,
+  bloquesSistema: Array<Record<string, unknown>>,
+  userPayload: Record<string, unknown>
+): Promise<{ resultado: LlmScoringResult; llamadas: LlamadaRealizada[] }> {
+  const arranque = Date.now();
+  const llamadas: LlamadaRealizada[] = [];
+  let ultimo: { resultado: LlmScoringResult; llamada: LlamadaRealizada } | null = null;
+
+  for (let intento = 1; intento <= REINTENTOS.intentosMaximos; intento++) {
+    ultimo = await pedirScoring(modelo, bloquesSistema, userPayload);
+    llamadas.push({ ...ultimo.llamada, intento });
+
+    if (!ultimo.resultado.fallo) return { resultado: ultimo.resultado, llamadas };
+
+    const fallo = clasificarFallo(ultimo.resultado.fallo, ultimo.llamada.stopReason);
+    if (!fallo.reintentable) break;
+    if (intento === REINTENTOS.intentosMaximos) break;
+
+    const espera = esperaDelIntento(intento);
+    if (Date.now() - arranque + espera > REINTENTOS.presupuestoMs) break;
+    await dormir(espera);
+  }
+
+  return { resultado: ultimo!.resultado, llamadas };
+}
+
 // profile: normalmente un StandardClientProfile, pero puede llegar con
 // campos deshabilitados redactados a null (ver runtime-config.ts
 // redactDisabledFields) — por eso el tipo es laxo acá, ya no es el
@@ -254,8 +311,8 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
     hallazgosControlBloqueo: controlBloqueo.hallazgos, // ya resueltos de forma determinística — no recalcular
   };
 
-  const base = await pedirScoring(MODELO_BASE, bloquesSistema, userPayload);
-  const llamadas: LlamadaRealizada[] = [base.llamada];
+  const base = await pedirScoringConReintentos(MODELO_BASE, bloquesSistema, userPayload);
+  const llamadas: LlamadaRealizada[] = [...base.llamadas];
 
   // Escala a Sonnet en 2 casos: el resultado cayó en la zona gris, o el
   // modelo base falló (ahí Sonnet actúa además de respaldo).
@@ -266,8 +323,20 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
     return { ...base.resultado, llamadas };
   }
 
-  const escalado = await pedirScoring(MODELO_ESCALAMIENTO, bloquesSistema, userPayload);
-  llamadas.push({ ...escalado.llamada, escalamiento: true });
+  // Hay fallas que no mejoran cambiando de modelo: el tope de consumo y
+  // la credencial son de la cuenta entera, no del modelo. Escalar ahí
+  // es una segunda llamada con fracaso garantizado -- se vio el
+  // 2026-09-15, donde Haiku falló por tope y Sonnet falló idéntico un
+  // segundo después.
+  if (base.resultado.fallo) {
+    const tipo = clasificarFallo(base.resultado.fallo).tipo;
+    if (tipo === "tope_de_gasto" || tipo === "credencial") {
+      return { ...base.resultado, llamadas };
+    }
+  }
+
+  const escalado = await pedirScoringConReintentos(MODELO_ESCALAMIENTO, bloquesSistema, userPayload);
+  for (const l of escalado.llamadas) llamadas.push({ ...l, escalamiento: true });
 
   // Si el escalamiento también falla, vale lo que haya dado el base
   // (aunque sea el resultado por defecto): nunca se pierde el análisis

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShieldAlert, Clock, Wallet, Radio } from "lucide-react";
-import { getConsumoLlm } from "../lib/api.js";
+import { getConsumoLlm, getEstadoServicio, getIncidentes } from "../lib/api.js";
 import {
   incidentes,
   agrupar,
@@ -38,14 +38,103 @@ function Kpi({ Icono, etiqueta, valor, detalle, color }) {
   );
 }
 
+const ETIQUETA_COMPONENTE = {
+  llm: "Análisis con IA",
+  fuente_datos: "Fuente de datos",
+};
+
+const DEPENDE_DE = {
+  llm: "Proveedor del modelo de lenguaje",
+  fuente_datos: "Proveedor de información crediticia",
+};
+
+function haceCuanto(iso) {
+  if (!iso) return "—";
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return "recién";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.floor(h / 24)} d`;
+}
+
+// Estado en vivo según el último chequeo del vigía. Va arriba de todo
+// porque responde la pregunta que trae a alguien a esta pantalla:
+// ¿está funcionando ahora?
+function Semaforo({ estado }) {
+  if (!estado?.length) return null;
+  const caidos = estado.filter((e) => e.estado === "caido");
+  const todoBien = caidos.length === 0 && estado.every((e) => e.estado === "operativo");
+
+  return (
+    <div className="crediscope-card" style={{ borderColor: todoBien ? "var(--good)" : "var(--bad)" }}>
+      <h3 style={{ marginTop: 0 }}>Estado ahora</h3>
+      <p className="crediscope-muted" style={{ marginTop: 0 }}>
+        Según el último chequeo automático. Corre cada quince minutos, haya o no consultas.
+      </p>
+      <table className="crediscope-table">
+        <thead>
+          <tr>
+            <th>Componente</th>
+            <th>Estado</th>
+            <th>Desde</th>
+            <th>Último chequeo</th>
+            <th style={{ textAlign: "right" }}>Respuesta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {estado.map((e) => (
+            <tr key={e.componente}>
+              <td>
+                <strong>{ETIQUETA_COMPONENTE[e.componente] ?? e.componente}</strong>
+                <div className="crediscope-muted" style={{ fontSize: 12 }}>{DEPENDE_DE[e.componente]}</div>
+              </td>
+              <td>
+                <span
+                  className="crediscope-tag"
+                  style={{
+                    background: "var(--panel-muted)",
+                    color: e.estado === "operativo" ? "var(--good)" : e.estado === "caido" ? "var(--bad)" : "var(--text-muted)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {e.estado === "operativo" ? "Operativo" : e.estado === "caido" ? "Caído" : "Sin datos"}
+                </span>
+                {e.ultimo_fallo_tipo ? (
+                  <div className="crediscope-muted" style={{ fontSize: 12 }}>{ETIQUETA_FALLO[e.ultimo_fallo_tipo]}</div>
+                ) : null}
+              </td>
+              <td style={{ fontSize: 13 }}>{haceCuanto(e.desde)}</td>
+              <td style={{ fontSize: 13 }}>{haceCuanto(e.ultimo_chequeo)}</td>
+              <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                {e.duracion_ms ? `${e.duracion_ms} ms` : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {caidos.length > 0 && caidos.length < estado.length ? (
+        <p style={{ marginBottom: 0 }}>
+          <strong>El servicio funciona en modo reducido.</strong> El Perfil del Cliente y las Fuentes de Ingreso siguen
+          disponibles: no dependen de lo que está caído.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function CostosIncidentes() {
   const [filas, setFilas] = useState(null);
+  const [estado, setEstado] = useState(null);
+  const [vigilados, setVigilados] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     getConsumoLlm()
       .then(setFilas)
       .catch((err) => setError(err.message));
+    getEstadoServicio().then(setEstado).catch(() => setEstado([]));
+    getIncidentes().then(setVigilados).catch(() => setVigilados([]));
   }, []);
 
   const d = useMemo(() => {
@@ -86,6 +175,54 @@ export default function CostosIncidentes() {
           Cuándo el análisis dejó de funcionar, por qué, cuánto duró y de quién dependía resolverlo.
         </p>
       </div>
+
+      <Semaforo estado={estado} />
+
+      {vigilados.length > 0 ? (
+        <div className="crediscope-card">
+          <h3>Detectados por el vigía</h3>
+          <p className="crediscope-muted" style={{ marginTop: 0 }}>
+            Cortes que encontró el chequeo automático, hubiera o no alguien consultando. Es la diferencia entre enterarse y
+            deducirlo después.
+          </p>
+          <div style={{ overflowX: "auto" }}>
+            <table className="crediscope-table">
+              <thead>
+                <tr>
+                  <th>Inicio</th>
+                  <th>Componente</th>
+                  <th>Causa</th>
+                  <th style={{ textAlign: "right" }}>Duración</th>
+                  <th style={{ textAlign: "right" }}>Chequeos</th>
+                  <th>Responde</th>
+                  <th>Avisado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vigilados.map((i) => (
+                  <tr key={i.id}>
+                    <td style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fechaHora(i.inicio)}</td>
+                    <td>{ETIQUETA_COMPONENTE[i.componente] ?? i.componente}</td>
+                    <td>{ETIQUETA_FALLO[i.causa] ?? i.causa}</td>
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: i.abierto ? 700 : 400 }}>
+                      {i.minutos} min{i.abierto ? " · abierto" : ""}
+                    </td>
+                    <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{i.chequeos_fallidos}</td>
+                    <td style={{ fontSize: 13 }}>{i.responsable === "proveedor" ? "Proveedor" : "Nosotros"}</td>
+                    <td style={{ fontSize: 13, color: i.notificado_at ? undefined : "var(--warn)" }}>
+                      {i.notificado_at ? fechaHora(i.notificado_at) : "Nadie fue avisado"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
+            «Nadie fue avisado» es literal: el vigía detecta y registra, todavía no manda avisos. Esa columna es la lista de
+            trabajo del canal de alertas cuando se construya.
+          </p>
+        </div>
+      ) : null}
 
       {!d ? (
         <p className="crediscope-muted">Cargando...</p>
@@ -206,8 +343,8 @@ export default function CostosIncidentes() {
             </p>
             <ul className="crediscope-list">
               <li>
-                <strong>Un vigía que corra solo.</strong> Sin tráfico, cero fallas y servicio caído se ven idénticos: hace
-                falta una consulta de prueba periódica que confirme que el circuito completo responde.
+                <s>Un vigía que corra solo.</s> <strong>Listo:</strong> cada quince minutos comprueba el modelo y la fuente de
+                datos, y deja constancia aunque nadie esté consultando.
               </li>
               <li>
                 <strong>Un aviso que llegue al teléfono.</strong> Un tablero que hay que abrir no sirve a las cuatro de la

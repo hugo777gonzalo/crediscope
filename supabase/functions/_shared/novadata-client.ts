@@ -87,6 +87,38 @@ async function getAccessToken(credentials?: NovadataCredentials): Promise<string
   return token.value;
 }
 
+// Prueba de vida de la fuente de datos, para el vigía.
+//
+// Pide un token con las credenciales de servicio, sin consultar a
+// ninguna persona: verifica red, credenciales y que el proveedor esté
+// en pie, sin tocar datos de nadie ni dejar rastro en la auditoría de
+// consultas. Salta el cache a propósito -- un token guardado en memoria
+// diría que todo está bien aunque el proveedor esté caído.
+export async function probarFuenteDeDatos(): Promise<{ ok: boolean; error?: string; duracionMs: number }> {
+  const inicio = Date.now();
+  try {
+    const res = await fetch(`${NOVADATA_BASE_URL}/auth/realms/novacredit/protocol/openid-connect/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        username: NOVADATA_USERNAME,
+        password: NOVADATA_PASSWORD,
+        client_id: NOVADATA_CLIENT_ID,
+        grant_type: "password",
+      }),
+    });
+    const duracionMs = Date.now() - inicio;
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status} ${res.statusText}`, duracionMs };
+    }
+    const data = await res.json();
+    if (!data?.access_token) return { ok: false, error: "respuesta sin token de acceso", duracionMs };
+    return { ok: true, duracionMs };
+  } catch (err) {
+    return { ok: false, error: String(err), duracionMs: Date.now() - inicio };
+  }
+}
+
 function isEstadoOk(body: unknown): boolean {
   const estado = (body as { estado?: { codigo?: string } } | undefined)?.estado;
   return !estado || estado.codigo === "OK";
