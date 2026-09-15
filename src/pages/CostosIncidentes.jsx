@@ -347,16 +347,16 @@ export default function CostosIncidentes() {
                 datos, y deja constancia aunque nadie esté consultando.
               </li>
               <li>
-                <strong>Un aviso que llegue al teléfono.</strong> Un tablero que hay que abrir no sirve a las cuatro de la
-                mañana.
+                <s>Un aviso por incidente, no por llamada.</s> <strong>Listo:</strong> se avisa al abrirse y al cerrarse, una
+                sola vez cada uno. Ver <Link to="/costos/avisos">Avisos</Link>.
               </li>
               <li>
-                <strong>Avisar antes, no después.</strong> El tope de consumo es el único incidente que se puede anticipar:
-                avisando al 70% del presupuesto deja de ser una caída y pasa a ser una tarea.
+                <s>Avisar antes, no después.</s> <strong>Listo:</strong> con un presupuesto mensual definido, el vigía avisa al
+                70%, 85% y 100% antes de que el servicio se pare.
               </li>
               <li>
-                <strong>Un aviso por incidente, no por llamada.</strong> Con reintentos, una caída de diez minutos puede
-                generar decenas de errores; que manden decenas de mensajes garantiza que se dejen de leer.
+                <strong>Falta el canal.</strong> Todo lo anterior detecta, registra y prepara el mensaje — pero mientras no
+                haya canal configurado, nadie lo recibe. Es lo único que queda entre esto y enterarse a tiempo.
               </li>
             </ul>
             <p className="crediscope-muted" style={{ marginBottom: 0 }}>

@@ -29,6 +29,7 @@ import CostosConsultas from "./pages/CostosConsultas.jsx";
 import CostosCorridas from "./pages/CostosCorridas.jsx";
 import CostosLlamadas from "./pages/CostosLlamadas.jsx";
 import CostosIncidentes from "./pages/CostosIncidentes.jsx";
+import CostosAvisos from "./pages/CostosAvisos.jsx";
 import CostosTarifas from "./pages/CostosTarifas.jsx";
 import MenuLateral from "./components/MenuLateral.jsx";
 
@@ -70,6 +71,7 @@ const TITULOS = [
   [/^\/costos\/corridas/, "Corridas masivas"],
   [/^\/costos\/llamadas/, "Detalle de llamadas"],
   [/^\/costos\/incidentes/, "Fallas e incidentes"],
+  [/^\/costos\/avisos/, "Avisos"],
   [/^\/costos\/tarifas/, "Tarifas"],
   [/^\/costos/, "Costos"],
   [/^\/retroalimentacion/, "Retroalimentación"],
@@ -260,6 +262,14 @@ export default function App() {
             element={
               <RequireAdmin>
                 <CostosIncidentes />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/costos/avisos"
+            element={
+              <RequireAdmin>
+                <CostosAvisos />
               </RequireAdmin>
             }
           />

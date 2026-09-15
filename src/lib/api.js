@@ -664,3 +664,46 @@ export async function getIncidentes({ limite = 200 } = {}) {
   if (error) throw error;
   return data || [];
 }
+
+export async function getAvisos({ limite = 100 } = {}) {
+  const { data, error } = await supabase
+    .from("alertas")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getConfigOperativa() {
+  const { data, error } = await supabase.from("config_operativa").select("*").order("clave");
+  if (error) throw error;
+  return data || [];
+}
+
+// La única escritura directa desde el navegador a un parámetro de
+// operación. Se justifica porque no hay nada que derivar ni validar
+// contra otra fuente: es un número que alguien decide. La clave no se
+// puede inventar -- la política de la base solo permite actualizar
+// filas que ya existen.
+export async function guardarConfigOperativa(clave, valor) {
+  // El .select() no es adorno: una actualización que la política de la
+  // base rechaza NO devuelve error, devuelve cero filas. Sin esto la
+  // pantalla diría "Guardado" y no habría guardado nada -- el peor de
+  // los dos resultados posibles, porque nadie vuelve a mirar.
+  const { data, error } = await supabase
+    .from("config_operativa")
+    .update({ valor, actualizado_at: new Date().toISOString() })
+    .eq("clave", clave)
+    .select("clave");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("No se guardó: la cuenta no tiene permiso para cambiar parámetros de operación.");
+  }
+}
+
+export async function getGastoDelMes() {
+  const { data, error } = await supabase.from("gasto_del_mes").select("*").maybeSingle();
+  if (error) throw error;
+  return data;
+}

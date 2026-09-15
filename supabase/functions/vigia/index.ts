@@ -41,6 +41,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { probarFuenteDeDatos } from "../_shared/novadata-client.ts";
+import { avisar, hayCanal } from "../_shared/notificador.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -150,14 +151,38 @@ async function chequearFuente(): Promise<Chequeo> {
   };
 }
 
+const NOMBRE_COMPONENTE: Record<string, string> = {
+  llm: "el análisis con IA",
+  fuente_datos: "la fuente de datos",
+};
+
+const NOMBRE_CAUSA: Record<string, string> = {
+  tope_de_gasto: "se alcanzó el tope de consumo contratado",
+  credencial: "el proveedor rechazó nuestras credenciales",
+  limite_velocidad: "el proveedor está limitando el ritmo de pedidos",
+  proveedor_caido: "el proveedor no está respondiendo",
+  sin_conexion: "no se pudo establecer la conexión",
+  respuesta_ilegible: "la respuesta no se pudo interpretar",
+  desconocido: "una causa que todavía no está clasificada",
+};
+
+function minutosDesde(iso: string): number {
+  return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+}
+
 // Abre, sostiene o cierra el incidente de un componente según lo que
 // haya dado el chequeo. Un incidente abierto de OTRA causa se cierra y
 // se abre uno nuevo: pasar de "tope de consumo" a "proveedor caído" son
 // dos problemas distintos con dos responsables distintos.
-async function conciliarIncidente(c: Chequeo): Promise<string | null> {
+//
+// Devuelve además si este chequeo fue el que ABRIÓ el incidente, que es
+// el único momento en que corresponde avisar. Sostenerlo no se avisa:
+// con reintentos, una caída de diez minutos genera decenas de errores y
+// decenas de mensajes garantizan que se dejen de leer.
+async function conciliarIncidente(c: Chequeo): Promise<{ id: string | null; abrio: boolean; cerro: { id: string; inicio: string } | null }> {
   const { data: abierto } = await serviceClient
     .from("incidentes")
-    .select("id, causa, chequeos_fallidos")
+    .select("id, causa, inicio, chequeos_fallidos")
     .eq("componente", c.componente)
     .is("fin", null)
     .order("inicio", { ascending: false })
@@ -169,8 +194,9 @@ async function conciliarIncidente(c: Chequeo): Promise<string | null> {
   if (c.ok) {
     if (abierto) {
       await serviceClient.from("incidentes").update({ fin: ahora }).eq("id", abierto.id);
+      return { id: null, abrio: false, cerro: { id: abierto.id as string, inicio: abierto.inicio as string } };
     }
-    return null;
+    return { id: null, abrio: false, cerro: null };
   }
 
   if (abierto && abierto.causa === c.falloTipo) {
@@ -181,9 +207,10 @@ async function conciliarIncidente(c: Chequeo): Promise<string | null> {
         detalle: c.error?.slice(0, 500) ?? null,
       })
       .eq("id", abierto.id);
-    return abierto.id as string;
+    return { id: abierto.id as string, abrio: false, cerro: null };
   }
 
+  const cerro = abierto ? { id: abierto.id as string, inicio: abierto.inicio as string } : null;
   if (abierto) {
     await serviceClient.from("incidentes").update({ fin: ahora }).eq("id", abierto.id);
   }
@@ -199,7 +226,99 @@ async function conciliarIncidente(c: Chequeo): Promise<string | null> {
     .select("id")
     .single();
 
-  return (nuevo?.id as string) ?? null;
+  return { id: (nuevo?.id as string) ?? null, abrio: Boolean(nuevo?.id), cerro };
+}
+
+// Avisa cuando un incidente se abre y cuando se cierra. El aviso de
+// recuperación no es adorno: sin él, quien recibió el primer mensaje no
+// tiene forma de saber si el problema sigue, y termina revisando a mano
+// justo lo que este sistema vino a evitar.
+async function avisarDelIncidente(
+  c: Chequeo,
+  r: { id: string | null; abrio: boolean; cerro: { id: string; inicio: string } | null }
+) {
+  const componente = NOMBRE_COMPONENTE[c.componente] ?? c.componente;
+
+  if (r.abrio && r.id) {
+    const causa = NOMBRE_CAUSA[c.falloTipo ?? "desconocido"] ?? "una causa desconocida";
+    const deQuien =
+      c.responsable === "proveedor"
+        ? "Depende del proveedor: no se corrige desde acá, se comunica."
+        : "Depende de nosotros.";
+    const reducido =
+      c.componente === "llm"
+        ? "\nEl Perfil del Cliente y las Fuentes de Ingreso siguen funcionando: no dependen del modelo."
+        : "";
+    await avisar(serviceClient, {
+      tipo: "incidente_abierto",
+      referencia: r.id,
+      titulo: `CrediScope: se cayó ${componente}`,
+      cuerpo: `Causa: ${causa}.\n${deQuien}${reducido}\n\nDetalle: ${(c.error ?? "").slice(0, 300)}`,
+    });
+  }
+
+  if (r.cerro) {
+    await avisar(serviceClient, {
+      tipo: "incidente_cerrado",
+      referencia: r.cerro.id,
+      titulo: `CrediScope: volvió ${componente}`,
+      cuerpo: `Estuvo sin funcionar ${minutosDesde(r.cerro.inicio)} minutos.`,
+    });
+  }
+}
+
+// El único incidente que se puede anticipar.
+//
+// Todos los demás se avisan cuando ya ocurrieron. El tope de consumo no:
+// se ve venir con días de anticipación mirando lo que va del mes. Avisar
+// al 70% lo convierte de caída en tarea -- que es exactamente lo que no
+// pasó el 2026-09-15, cuando el servicio quedó parado sin que nadie
+// hubiera visto el saldo bajar.
+//
+// Lo que se mide es NUESTRO consumo registrado, no la factura del
+// proveedor: no incluye lo que no se pudo medir, ni impuestos, ni
+// descuentos. El aviso lo dice, para que nadie lo tome por un estado de
+// cuenta.
+async function revisarPresupuesto() {
+  const { data: config } = await serviceClient
+    .from("config_operativa")
+    .select("clave, valor")
+    .in("clave", ["presupuesto_llm_mensual_usd", "avisos_presupuesto_pct"]);
+
+  const mapa = Object.fromEntries((config ?? []).map((c) => [c.clave, c.valor]));
+  const presupuesto = Number(mapa["presupuesto_llm_mensual_usd"] ?? 0);
+  // Sin presupuesto definido no hay contra qué comparar. Se sale en
+  // silencio: inventar un umbral sería peor que no avisar.
+  if (!Number.isFinite(presupuesto) || presupuesto <= 0) return;
+
+  const umbrales = (Array.isArray(mapa["avisos_presupuesto_pct"]) ? mapa["avisos_presupuesto_pct"] : [70, 85, 100])
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .sort((a, b) => a - b);
+
+  const { data: gasto } = await serviceClient.from("gasto_del_mes").select("*").maybeSingle();
+  if (!gasto) return;
+
+  const gastado = Number(gasto.gastado_usd ?? 0);
+  const pct = (gastado / presupuesto) * 100;
+  const sinMedir = Number(gasto.llamadas_sin_medir ?? 0);
+
+  // Solo el umbral más alto alcanzado: si se cruzan dos de una, avisar
+  // los dos es ruido -- el más alto ya contiene al otro.
+  const alcanzado = umbrales.filter((u) => pct >= u).pop();
+  if (!alcanzado) return;
+
+  await avisar(serviceClient, {
+    tipo: "presupuesto",
+    referencia: `${gasto.mes}:${alcanzado}`,
+    titulo: `CrediScope: ${alcanzado}% del presupuesto del mes`,
+    cuerpo:
+      `Van ${gastado.toFixed(2)} dólares de ${presupuesto.toFixed(2)} en ${gasto.mes}.\n` +
+      (sinMedir > 0
+        ? `Hay ${sinMedir} llamadas que no se pudieron valuar, así que el gasto real es mayor.\n`
+        : "") +
+      "Es consumo registrado por nosotros, no la factura del proveedor.",
+  });
 }
 
 async function registrarEstado(c: Chequeo, incidenteId: string | null) {
@@ -251,13 +370,34 @@ Deno.serve(async (req) => {
     const chequeos = await Promise.all([chequearLlm(), chequearFuente()]);
 
     for (const c of chequeos) {
-      const incidenteId = await conciliarIncidente(c);
-      await registrarEstado(c, incidenteId);
+      const r = await conciliarIncidente(c);
+      await registrarEstado(c, r.id);
+      await avisarDelIncidente(c, r);
     }
+
+    // El canal es un componente más: un sistema de alertas sin canal
+    // configurado falla en silencio por definición, porque justamente
+    // no puede avisar que no puede avisar.
+    await serviceClient
+      .from("servicio_estado")
+      .update({
+        estado: hayCanal() ? "operativo" : "caido",
+        ultimo_chequeo: new Date().toISOString(),
+        ultimo_fallo_tipo: hayCanal() ? null : "sin_canal",
+        ultimo_error: hayCanal()
+          ? null
+          : "Faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en las secrets de la Edge Function.",
+      })
+      .eq("componente", "canal_aviso");
+
+    // Va después de los chequeos y no antes: si el servicio se acaba de
+    // caer, lo primero que tiene que salir es esa noticia.
+    await revisarPresupuesto();
 
     return new Response(
       JSON.stringify({
         momento: new Date().toISOString(),
+        canalDeAviso: hayCanal() ? "telegram" : "sin configurar",
         chequeos: chequeos.map((c) => ({
           componente: c.componente,
           estado: c.ok ? "operativo" : "caido",
