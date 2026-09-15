@@ -302,11 +302,20 @@
 //   analista aprende a saltear y le quita peso al hallazgo real.
 // - Los indicadores y las acciones ya estaban; acá no cambian.
 //
+// v18: nuevo campo tienePensionAlimenticia. El usuario consultó su
+// propia cédula y el análisis le dijo que tenía una pensión alimenticia
+// al día; no tiene ninguna. El dato de la fuente estaba bien (cero
+// registros) y el perfil también (pensionAlimenticiaEnMora=false): el
+// problema era que ese false significaba dos cosas opuestas -- "no
+// tiene" y "tiene y paga al día". Mismo error de diseño que
+// numeroEmpleadoresUltimos24Meses en v9. Medido sobre 388 clientes
+// reales: 351 sin pensión se veían igual que 18 al día.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v17";
+export const MARCO_VERSION = "marco-v18";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -403,15 +412,23 @@ en orden de importancia (definido explícitamente por el negocio):
      tránsito, no necesariamente indica mal pagador.
    - numeroDemandasComoOfendido es SOLO CONTEXTO — ser víctima de un
      delito no dice nada sobre comportamiento de pago, no lo penalices.
-   - pensionAlimenticiaEnMora=true: señal FUERTE de comportamiento de
-     pago — es incumplir una obligación económica exigible, trátalo con
-     peso similar a una demanda de cobro.
-   - pensionAlimenticiaEnMora=false pero deudaPensionAlimenticia > 0: NO
-     es negativo (está al día), pero SÍ es un gasto fijo comprometido
-     que ya sale de su ingreso — tenelo en cuenta igual que tendrías en
-     cuenta una cuota de préstamo vigente al evaluar cuánto ingreso
-     disponible le queda realmente, no asumas que todo el ingreso
-     reportado está libre para nueva deuda.
+   - PENSIÓN ALIMENTICIA — mirá SIEMPRE tienePensionAlimenticia primero:
+     · tienePensionAlimenticia=false: la persona NO tiene ninguna
+       pensión alimenticia a su cargo. No la menciones en ningún lado:
+       ni como positivo, ni como gasto comprometido, ni como dato
+       faltante. Los otros dos campos no significan nada en este caso.
+     · tienePensionAlimenticia=true y pensionAlimenticiaEnMora=true:
+       señal FUERTE de comportamiento de pago — es incumplir una
+       obligación económica exigible, trátalo con peso similar a una
+       demanda de cobro.
+     · tienePensionAlimenticia=true y pensionAlimenticiaEnMora=false: NO
+       es negativo (está al día), pero SÍ es un gasto fijo comprometido
+       que ya sale de su ingreso — tenelo en cuenta igual que tendrías
+       en cuenta una cuota de préstamo vigente al evaluar cuánto ingreso
+       disponible le queda, no asumas que todo el ingreso reportado está
+       libre para nueva deuda. Si deudaPensionAlimenticia viene sin
+       monto, ahí sí corresponde decir que no se pudo determinar cuánto
+       compromete.
 
 7. riesgoPenal — tieneAntecedentesPenales + descripcionAntecedentes: lee
    la descripción — no es lo mismo un delito patrimonial/económico (muy

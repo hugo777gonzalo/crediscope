@@ -842,6 +842,15 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     numeroDemandasComoDemandado: demandasCivilesResto.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
     numeroDemandasComoOfendido: demandasOfendido.length,
+    // Distingue "no tiene pensión alimenticia" de "tiene y está al
+    // día": con solo pensionAlimenticiaEnMora=false los dos casos se
+    // ven idénticos, y el modelo leyó el segundo donde había el
+    // primero. Caso real reportado por el usuario sobre su propia
+    // cédula (0502937675, sin un solo registro en pn_supa): el análisis
+    // decía "no se conoce el monto de la pensión comprometida, solo que
+    // está al día". Mismo tipo de error que numeroEmpleadoresUltimos24Meses
+    // en v9 — un valor que significa dos cosas opuestas.
+    tienePensionAlimenticia: pensionAlimentComoObligado.length > 0,
     pensionAlimenticiaEnMora: pensionAlimentComoObligado.some((p) => (num(p.totalDeuda) ?? 0) > 0),
     deudaPensionAlimenticia: pensionAlimentComoObligado.length
       ? Math.max(...pensionAlimentComoObligado.map((p) => num(p.totalDeuda) ?? 0))

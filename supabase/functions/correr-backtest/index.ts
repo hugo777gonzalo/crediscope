@@ -19,6 +19,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_INTERPRETATIVO, MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
+import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -50,7 +51,16 @@ resultados reales. Tienen el mismo peso que el resto del marco:
 ${cambios.map((c, i) => `${i + 1}. ${c}`).join("\n")}`;
 }
 
-async function evaluarCaso(perfil: AnyRecord, controlBloqueo: AnyRecord | null, marco: string) {
+// registrar: cada caso es una llamada aparte al modelo, y una corrida
+// completa son hasta 20. Sin registrarlas una por una, el mayor
+// consumidor del sistema queda invisible en la contabilidad.
+async function evaluarCaso(
+  perfil: AnyRecord,
+  controlBloqueo: AnyRecord | null,
+  marco: string,
+  registrar: (datos: { exito: boolean; error?: string | null; data?: AnyRecord | null; duracionMs: number }) => Promise<void>
+) {
+  const inicio = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -79,8 +89,18 @@ async function evaluarCaso(perfil: AnyRecord, controlBloqueo: AnyRecord | null, 
       ],
     }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    const errText = (await res.text()).slice(0, 200);
+    await registrar({ exito: false, error: `HTTP ${res.status}: ${errText}`, duracionMs: Date.now() - inicio });
+    throw new Error(`HTTP ${res.status}: ${errText}`);
+  }
   const data = await res.json();
+  await registrar({
+    exito: data?.stop_reason !== "max_tokens",
+    error: data?.stop_reason === "max_tokens" ? "respuesta cortada por límite de tokens" : null,
+    data,
+    duracionMs: Date.now() - inicio,
+  });
   const bloque = (data?.content as Array<{ type: string; text?: string }> | undefined)?.find((b) => b.type === "text");
   if (!bloque?.text) throw new Error(`sin bloque de texto (stop_reason: ${data?.stop_reason})`);
   const limpio = bloque.text.trim().replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();
@@ -215,7 +235,20 @@ Deno.serve(async (req) => {
             const despues = await evaluarCaso(
               perfilRow.standard_profile as AnyRecord,
               (perfilRow.control_bloqueo as AnyRecord | null) ?? null,
-              marcoCandidato
+              marcoCandidato,
+              ({ exito, error, data, duracionMs }) =>
+                registrarLlamadaLlm(serviceClient, {
+                  funcion: "correr-backtest",
+                  modelo: (data?.model as string) ?? MODEL,
+                  exito,
+                  error: error ?? null,
+                  stopReason: (data?.stop_reason as string) ?? null,
+                  uso: data?.usage as Record<string, number> | undefined,
+                  duracionMs,
+                  requestId: (data?.id as string) ?? null,
+                  clientId: (c.client_id as string) ?? null,
+                  contexto: { paquete_id: paqueteId, cedula: c.cedula, propuestas: propuestaIds?.length ?? 0 },
+                })
             );
             return {
               cedula: c.cedula,

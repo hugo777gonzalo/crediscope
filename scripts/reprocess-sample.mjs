@@ -603,6 +603,8 @@ function buildStandardProfile(raw, cedula) {
     numeroDemandasComoDemandado: demandasCivilesResto.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
     numeroDemandasComoOfendido: demandasOfendido.length,
+    // Espejo de process.ts: distingue "no tiene" de "tiene y al día".
+    tienePensionAlimenticia: pensionAlimentComoObligado.length > 0,
     pensionAlimenticiaEnMora: pensionAlimentComoObligado.some((p) => (num(p.totalDeuda) ?? 0) > 0),
     deudaPensionAlimenticia: pensionAlimentComoObligado.length
       ? Math.max(...pensionAlimentComoObligado.map((p) => num(p.totalDeuda) ?? 0))

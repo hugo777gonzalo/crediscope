@@ -404,6 +404,10 @@ export interface StandardClientProfile {
     // clientes de la muestra de auditoría con pensionAlimenticiaEnMora=true
     // eran en realidad este error de rol (caso confirmado: cédula
     // 0501578256).
+    // false => no tiene ninguna pensión alimenticia a su cargo. Sin
+    // este campo, pensionAlimenticiaEnMora=false significaba a la vez
+    // "no tiene" y "tiene y está al día" (ver process.ts).
+    tienePensionAlimenticia: boolean;
     pensionAlimenticiaEnMora: boolean;
     deudaPensionAlimenticia: number | null;
   };
@@ -507,4 +511,8 @@ export interface LlmScoringResult {
   llmStopReason?: string;
   llmUsage?: Record<string, unknown>;
   llmRequestId?: string;
+  // Mensaje de error cuando el scoring cayó al resultado por defecto.
+  // Sin esto no se puede distinguir "el modelo respondió score 500" de
+  // "falló y devolvimos 500" al registrar el consumo (ver llm-log.ts).
+  fallo?: string;
 }

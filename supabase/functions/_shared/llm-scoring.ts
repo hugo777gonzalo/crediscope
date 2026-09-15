@@ -67,6 +67,7 @@ function resultadoPorDefecto(mensaje: string, data?: Record<string, unknown>): L
     negatives: [],
     missingInfo: [`No se pudo obtener el scoring del LLM: ${mensaje}`],
     reasoning: mensaje,
+    fallo: mensaje,
     llmModel: MODEL,
     llmStopReason: data?.stop_reason as string | undefined,
     llmUsage: data?.usage as Record<string, unknown> | undefined,

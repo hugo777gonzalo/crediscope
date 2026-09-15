@@ -13,6 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_PROPUESTAS } from "../_shared/marco-retroalimentacion.ts";
 import { MARCO_INTERPRETATIVO, MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
+import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -85,6 +86,7 @@ Deno.serve(async (req) => {
       })),
     };
 
+    const inicioLlm = Date.now();
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -104,10 +106,30 @@ Deno.serve(async (req) => {
       }),
     });
     if (!res.ok) {
-      throw new Error(`Error del LLM (HTTP ${res.status}): ${(await res.text()).slice(0, 400)}`);
+      const errText = await res.text();
+      await registrarLlamadaLlm(serviceClient, {
+        funcion: "proponer-ajustes",
+        modelo: MODEL,
+        exito: false,
+        error: `HTTP ${res.status}: ${errText.slice(0, 300)}`,
+        duracionMs: Date.now() - inicioLlm,
+        contexto: { informe_id: informeId },
+      });
+      throw new Error(`Error del LLM (HTTP ${res.status}): ${errText.slice(0, 400)}`);
     }
 
     const data = await res.json();
+    await registrarLlamadaLlm(serviceClient, {
+      funcion: "proponer-ajustes",
+      modelo: (data?.model as string) ?? MODEL,
+      exito: data?.stop_reason !== "max_tokens",
+      error: data?.stop_reason === "max_tokens" ? "respuesta cortada por límite de tokens" : null,
+      stopReason: data?.stop_reason,
+      uso: data?.usage,
+      duracionMs: Date.now() - inicioLlm,
+      requestId: data?.id,
+      contexto: { informe_id: informeId },
+    });
     const bloqueTexto = (data?.content as Array<{ type: string; text?: string }> | undefined)?.find((b) => b.type === "text");
     if (!bloqueTexto?.text) throw new Error(`Respuesta inesperada del LLM (stop_reason: ${data?.stop_reason})`);
     const limpio = bloqueTexto.text.trim().replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();

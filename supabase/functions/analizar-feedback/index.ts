@@ -25,6 +25,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_RETROALIMENTACION, MARCO_RETROALIMENTACION_VERSION } from "../_shared/marco-retroalimentacion.ts";
 import { MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
+import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -229,6 +230,7 @@ Deno.serve(async (req) => {
       casos,
     };
 
+    const inicioLlm = Date.now();
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -250,10 +252,32 @@ Deno.serve(async (req) => {
     });
     if (!res.ok) {
       const errText = await res.text();
+      await registrarLlamadaLlm(serviceClient, {
+        funcion: "analizar-feedback",
+        modelo: MODEL,
+        exito: false,
+        error: `HTTP ${res.status}: ${errText.slice(0, 300)}`,
+        duracionMs: Date.now() - inicioLlm,
+        contexto: { paquete_id: paqueteId },
+      });
       throw new Error(`Error del LLM (HTTP ${res.status}): ${errText.slice(0, 400)}`);
     }
 
     const data = await res.json();
+    // Se registra apenas responde, antes de intentar interpretar el
+    // JSON: una respuesta cortada por presupuesto se pagó igual, y es
+    // justo el caso que interesa ver en el consumo.
+    await registrarLlamadaLlm(serviceClient, {
+      funcion: "analizar-feedback",
+      modelo: (data?.model as string) ?? MODEL,
+      exito: data?.stop_reason !== "max_tokens",
+      error: data?.stop_reason === "max_tokens" ? "respuesta cortada por límite de tokens" : null,
+      stopReason: data?.stop_reason,
+      uso: data?.usage,
+      duracionMs: Date.now() - inicioLlm,
+      requestId: data?.id,
+      contexto: { paquete_id: paqueteId },
+    });
     const bloqueTexto = (data?.content as Array<{ type: string; text?: string }> | undefined)?.find((b) => b.type === "text");
     if (!bloqueTexto?.text) {
       throw new Error(`Respuesta inesperada del LLM (stop_reason: ${data?.stop_reason})`);

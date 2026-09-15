@@ -25,6 +25,7 @@ import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION } from "../_shared/llm-scoring.ts";
 import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
+import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -42,10 +43,14 @@ Deno.serve(async (req) => {
 
   let cedula: string | undefined;
   let profileId: string | undefined;
+  // Marca las corridas de verificación del equipo técnico para que su
+  // consumo quede identificado en vez de borrarse (ver llm_llamadas).
+  let esPrueba = false;
   try {
     const body = await req.json();
     cedula = body?.cedula;
     profileId = body?.profileId;
+    esPrueba = body?.esPrueba === true;
   } catch {
     // body inválido, se maneja abajo
   }
@@ -177,6 +182,26 @@ Deno.serve(async (req) => {
     // se delega al criterio del LLM (ver marco-interpretativo.ts v14).
     const finalRecomendacion = controlBloqueo.bloqueado ? "negar" : llmResult.recomendacion;
 
+    // Registro de consumo del LLM. Se hace pase lo que pase con la
+    // inserción del análisis: la llamada ya se pagó, y si el insert
+    // falla es justamente cuando más importa que quede el rastro.
+    const registrarConsumo = (analysisResultId: string | null) =>
+      registrarLlamadaLlm(serviceClient, {
+        funcion: "analyze-client",
+        modelo: llmResult.llmModel,
+        exito: !llmResult.fallo,
+        error: llmResult.fallo ?? null,
+        stopReason: llmResult.llmStopReason ?? null,
+        uso: llmResult.llmUsage as Record<string, number> | undefined,
+        duracionMs: duracionLlmMs,
+        requestId: llmResult.llmRequestId ?? null,
+        clientId: client.id,
+        analysisResultId,
+        contexto: { cedula, reutilizoPerfil: Boolean(profileId) },
+        esPrueba,
+        actor: actorId,
+      });
+
     // 7. Persistir resultado
     const { data: analysis, error: analysisError } = await serviceClient
       .from("analysis_results")
@@ -221,7 +246,11 @@ Deno.serve(async (req) => {
       })
       .select("*")
       .single();
-    if (analysisError) throw analysisError;
+    if (analysisError) {
+      await registrarConsumo(null);
+      throw analysisError;
+    }
+    await registrarConsumo(analysis.id);
 
     await serviceClient
       .from("ingestion_runs")
