@@ -28,7 +28,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
-import { estadoDeLosBloques, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
+import { estadoDeLosBloques, estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
@@ -70,20 +70,33 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   const { data: cliente } = await serviceClient.from("clients").select("id").eq("cedula", cedula).maybeSingle();
   if (!cliente) return null;
   const desde = new Date(Date.now() - dias * 86_400_000).toISOString();
+  // Se mira EL ÚLTIMO perfil, no el último que sirva.
+  //
+  // Parece lo mismo y no lo es. Filtrar por ejes_ok adentro de la
+  // consulta hacía que una persona con un perfil bueno de hace cinco
+  // días y uno vacío de ayer se diera por vigente con el viejo: el lote
+  // no la consultaba, y todas las pantallas --que muestran el ÚLTIMO
+  // perfil-- seguían mostrando el vacío. El caso se reparaba en los
+  // papeles y se quedaba roto en la pantalla. Pasó con 3 personas de la
+  // reconsulta del 2026-09-16.
+  //
+  // La pregunta correcta es "¿el perfil actual de esta persona sirve y
+  // es reciente?", y el perfil actual es el último, sin condiciones.
   const { data } = await serviceClient
     .from("client_profiles")
-    .select("id, client_id")
+    .select("id, client_id, ejes_ok, created_at")
     .eq("client_id", cliente.id)
-    .gte("created_at", desde)
-    // Reciente no alcanza: tiene que servir. Un perfil donde la fuente
-    // no contestó ningún eje es una consulta pendiente, no un perfil
-    // vigente -- y reutilizarlo hacía exactamente lo contrario de lo
-    // que hay que hacer con él, que es volver a consultarlo.
-    .gt("ejes_ok", 0)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data ?? null;
+
+  if (!data) return null;
+  // Vacío: es una consulta pendiente, no un perfil vigente.
+  if ((data.ejes_ok ?? 0) === 0) return null;
+  // Y tiene que caer dentro de la ventana de validez.
+  if (data.created_at < desde) return null;
+
+  return { id: data.id, client_id: data.client_id };
 }
 
 async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>, dias: number, corteIess: string): Promise<void> {
@@ -129,6 +142,7 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
     // vacíos del 2026-09-15, y el resumen del lote los contó como
     // correctos. Ver _shared/calidad-de-la-consulta.ts.
     const estadoBloques = estadoDeLosBloques(raw);
+    const estadoDeCadaFuente = estadoPorFuente(raw);
     if (!laConsultaSirve(estadoBloques)) throw new Error(`HTTP 503 ${porQueNoSirve(estadoBloques)}`);
 
     const noExiste = personaNoExiste(raw.general);
@@ -177,6 +191,12 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
         // poder excluir consultas vacías sin abrir el JSON de cada
         // perfil -- ver 065 y calidad-de-la-consulta.ts.
         ejes_ok: profile.metaConsulta.ejesOk.length,
+        // El detalle por fuente, al lado del agregado por bloque.
+        // Nueve bloques pueden decir ok con trece fuentes caídas --
+        // ver la migración 068.
+        estado_por_fuente: estadoDeCadaFuente,
+        fuentes_ok: cuantasFuentesContestaron(estadoDeCadaFuente),
+        fuentes_totales: Object.keys(estadoDeCadaFuente).length,
         structure_version: PROCESS_VERSION,
         duracion_ms: Date.now() - inicio,
         // De dónde salió. El dato es el mismo que el de una consulta

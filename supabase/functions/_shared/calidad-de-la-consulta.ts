@@ -50,6 +50,38 @@ export function estadoDeLosBloques(raw: RawNovadataResponse): BlockStatusMap {
 }
 
 /**
+ * El estado de cada FUENTE, una por una.
+ *
+ * Los nueve bloques esconden la mitad de la verdad. `aggregateStatus`
+ * marca un bloque como "ok" si contestó AL MENOS UNA de sus fuentes, y
+ * el bloque `bancos` tiene catorce: puede figurar en verde con trece
+ * caídas. Con eso, "9 de 9 ejes" puede querer decir "9 de 52 fuentes".
+ *
+ * Esto guarda el detalle que ya viene en la respuesta cruda y que hasta
+ * ahora se tiraba al agregarlo. Convive con block_status mientras dure
+ * la transición -- ver la migración 068.
+ */
+export function estadoPorFuente(raw: RawNovadataResponse): Record<string, string> {
+  // `general` es el único bloque de una sola fuente: su `data` es la
+  // respuesta en sí, no un mapa de fuentes.
+  const salida: Record<string, string> = { general: raw.general.status };
+
+  for (const [bloque, resultado] of Object.entries(raw)) {
+    if (bloque === "general") continue;
+    const porRecurso = (resultado as { data?: unknown })?.data as Record<string, { status?: string }> | null | undefined;
+    if (!porRecurso || typeof porRecurso !== "object") continue;
+    for (const [fuente, r] of Object.entries(porRecurso)) {
+      if (r && typeof r === "object" && "status" in r) salida[fuente] = String(r.status);
+    }
+  }
+  return salida;
+}
+
+export function cuantasFuentesContestaron(estado: Record<string, string>): number {
+  return Object.values(estado).filter((s) => s === "ok").length;
+}
+
+/**
  * Los ejes que la fuente contestó de verdad.
  *
  * "faltante" NO cuenta como error: significa que la fuente respondió y

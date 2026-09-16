@@ -14,7 +14,7 @@ import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
-import { estadoDeLosBloques, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
+import { estadoDeLosBloques, estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
     // trabajador de lotes usa ese código para reintentar en vez de dar
     // la cédula por perdida.
     const blockStatusPrevio = estadoDeLosBloques(raw);
+    const estadoDeCadaFuente = estadoPorFuente(raw);
     if (!laConsultaSirve(blockStatusPrevio)) {
       return new Response(
         JSON.stringify({
@@ -195,6 +196,12 @@ Deno.serve(async (req) => {
         // poder excluir consultas vacías sin abrir el JSON de cada
         // perfil -- ver 065 y calidad-de-la-consulta.ts.
         ejes_ok: profile.metaConsulta.ejesOk.length,
+        // El detalle por fuente, al lado del agregado por bloque.
+        // Nueve bloques pueden decir ok con trece fuentes caídas --
+        // ver la migración 068.
+        estado_por_fuente: estadoDeCadaFuente,
+        fuentes_ok: cuantasFuentesContestaron(estadoDeCadaFuente),
+        fuentes_totales: Object.keys(estadoDeCadaFuente).length,
         structure_version: PROCESS_VERSION,
         requested_by: actorId,
         duracion_ms: duracionMs,
