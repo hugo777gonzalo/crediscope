@@ -37,14 +37,54 @@
 // se cortan por tiempo y se reintentan -- trabajo pagado dos veces. Si
 // vuelven a aparecer esos dos errores, BAJAR la concurrencia.
 //
+// PREFERIR "CONSULTAS POR LOTE" ANTES QUE ESTO
+//
+// La aplicación tiene el módulo de lotes, que hace lo mismo con
+// reintentos, reanudación y --sobre todo-- el registro de quién lo
+// ordenó. Este guion existe para trabajo puntual fuera de la pantalla;
+// no es el camino normal.
+//
+// POR QUÉ AHORA PIDE UN RESPONSABLE
+//
+// Se autentica con la clave de servicio, y para una clave de servicio
+// no hay usuario: el registro de auditoría guardaba actor nulo. La
+// auditoría del 2026-09-16 encontró 2.637 consultas así -- Función
+// Judicial, Fiscalía y comportamiento bancario de 2.500 personas
+// reales, sin poder responder quién lo ordenó. El responsable se manda
+// en cada pedido y queda grabado.
+//
 // Uso:
-//   node scripts/consultar-lote.mjs <archivo-de-cedulas> [concurrencia]
+//   node scripts/consultar-lote.mjs <archivo-de-cedulas> <uuid-responsable> [concurrencia]
+//
+// El uuid sale de la tabla profiles: es la persona que se hace cargo de
+// esta corrida.
 
 import fs from "node:fs";
 import path from "node:path";
 
 const ARCHIVO = process.argv[2] ?? "research/cedulas_lote_2026-09-15.txt";
-const CONCURRENCIA = Number(process.argv[3] ?? 24);
+const RESPONSABLE = process.argv[3];
+const CONCURRENCIA = Number(process.argv[4] ?? 24);
+
+// Sin responsable no arranca. No es una validación de forma: es lo que
+// separa una consulta auditable de miles de consultas anónimas a datos
+// sensibles de personas reales.
+if (!/^[0-9a-f-]{36}$/i.test(RESPONSABLE ?? "")) {
+  console.error(
+    [
+      "Falta el responsable de esta corrida.",
+      "",
+      "  node scripts/consultar-lote.mjs <archivo> <uuid-responsable> [concurrencia]",
+      "",
+      "El uuid sale de la tabla profiles. Queda grabado en el registro de",
+      "auditoría de cada persona consultada.",
+      "",
+      "Para trabajo normal usá Consultas por lote en la aplicación: hace lo",
+      "mismo y ya registra quién lo pidió.",
+    ].join("\n")
+  );
+  process.exit(1);
+}
 const SALIDA = path.resolve(`research/lote-${path.basename(ARCHIVO, ".txt")}.jsonl`);
 
 // Reintentos para lo pasajero. Mismo criterio que el análisis: el
@@ -104,7 +144,10 @@ async function consultarUna(cedula) {
           apikey: env.SUPABASE_SERVICE_ROLE_KEY,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cedula }),
+        // actorId: quién se hace cargo. La función lo usa solo cuando no
+        // hay usuario en el encabezado, que es el caso de la clave de
+        // servicio -- no se puede suplantar a nadie con esto.
+        body: JSON.stringify({ cedula, actorId: RESPONSABLE }),
       });
       const segundos = Math.round((Date.now() - t0) / 1000);
 

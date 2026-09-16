@@ -27,9 +27,13 @@ Deno.serve(async (req) => {
   }
 
   let cedula: string | undefined;
+  // Quién dice el llamador que lo pidió. Solo se usa si no hay usuario
+  // en el encabezado -- ver la nota más abajo.
+  let actorDeclarado: string | undefined;
   try {
     const body = await req.json();
     cedula = body?.cedula;
+    actorDeclarado = body?.actorId;
   } catch {
     // body inválido, se maneja abajo
   }
@@ -63,6 +67,25 @@ Deno.serve(async (req) => {
     });
     const { data } = await userClient.auth.getUser();
     actorId = data.user?.id ?? null;
+  }
+
+  // Quién lo pidió, cuando no hay una sesión de usuario detrás.
+  //
+  // La auditoría del 2026-09-16 encontró 2.637 consultas con actor nulo:
+  // las corrió un guion que se autentica con la clave de servicio, y
+  // `getUser()` no devuelve a nadie para una clave de servicio. El
+  // resultado es que se consultó Función Judicial, Fiscalía y
+  // comportamiento bancario de 2.500 personas reales y el sistema no
+  // puede responder quién lo ordenó -- que es exactamente para lo que
+  // existe el registro.
+  //
+  // No se puede suplantar a nadie: si HAY usuario en el encabezado, su
+  // id gana siempre. Esto solo llena el hueco cuando no hay ninguno, y
+  // para llegar ahí hay que tener la clave de servicio, que ya es
+  // confianza total. Mismo criterio que el trabajador de lotes, que
+  // graba lote.creado_por.
+  if (!actorId && typeof actorDeclarado === "string" && actorDeclarado.length > 0) {
+    actorId = actorDeclarado;
   }
 
   try {

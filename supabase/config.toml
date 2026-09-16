@@ -6,3 +6,29 @@
 # directo en el body. Sin esto, el gateway de Supabase rechazaría la
 # llamada por no traer un JWT válido.
 verify_jwt = false
+
+# El vigía y el trabajador de lotes los dispara el programador de tareas
+# de la base (pg_cron + pg_net), que manda un encabezado propio y no un
+# JWT de usuario: no hay sesión detrás de una tarea programada. Se
+# autentican con VIGIA_CLAVE, una clave dedicada que NO es la de
+# servicio -- ver el chequeo de x-vigia-clave en cada uno.
+#
+# Queda escrito acá, y no solo en la línea de comandos con que se
+# desplegó, porque un ajuste de seguridad que vive en la memoria de
+# quien despliega no es un ajuste: el 2026-09-16 se desplegaron estas
+# cuatro funciones con --no-verify-jwt de una y eso abrió dos que no
+# debían abrirse.
+[functions.vigia]
+verify_jwt = false
+
+[functions.procesar-lote]
+verify_jwt = false
+
+# Las dos que SÍ exigen sesión de usuario. Se listan explícitamente
+# aunque true sea el valor por defecto: lo que está escrito se revisa,
+# lo que se omite se asume.
+[functions.structure-client]
+verify_jwt = true
+
+[functions.analyze-client]
+verify_jwt = true

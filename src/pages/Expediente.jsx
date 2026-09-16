@@ -592,8 +592,14 @@ function construirLineaDeTiempo(datos) {
 // Hasta que exista una vista con los nombres, solo se puede nombrar a
 // quien está mirando. Decir "otro usuario" es peor que decir un nombre,
 // pero mucho mejor que inventarlo.
+//
+// Y sin actor NO se dice "proceso automático": eso afirma algo que no
+// consta. Las 2.637 consultas con actor nulo las ordenó una persona a
+// través de un guion que se autenticaba con la clave de servicio; lo
+// que falta no es el responsable, es el registro. Desde el 2026-09-16
+// el guion no arranca sin uno.
 function quienEs(actor, miId, miNombre) {
-  if (!actor) return "Proceso automático";
+  if (!actor) return "Sin registrar";
   if (actor === miId) return miNombre ?? "Vos";
   return "Otro usuario";
 }
