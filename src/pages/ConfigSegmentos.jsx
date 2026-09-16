@@ -36,7 +36,12 @@ const MODOS = [
     detalle: "Aparece cuando la persona tiene algo en ese segmento. Evita llenar la pantalla de vacíos.",
   },
   {
-    valor: "oculto",
+    // El valor es "nunca" y no "oculto": es el que la base viene
+    // usando desde la 016 y el que lee SegmentosPerfil. La etiqueta sí
+    // dice "Oculto", que es lo que la persona entiende -- pero
+    // inventar un valor nuevo para que el código se leyera mejor fue
+    // exactamente lo que rompió el guardado.
+    valor: "nunca",
     etiqueta: "Oculto",
     Icono: EyeOff,
     color: "var(--text-muted)",

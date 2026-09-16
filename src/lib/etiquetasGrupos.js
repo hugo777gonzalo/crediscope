@@ -27,4 +27,9 @@ export const ETIQUETAS_GRUPO = {
   transitoVehicular: "Tránsito Vehicular",
   comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
   fuentesIngreso: "Fuentes de Ingreso",
+  // No es información del cliente: es el registro de qué bloques de la
+  // fuente respondieron, cuáles vinieron vacíos y cuáles fallaron. Sirve
+  // para auditar la consulta, no para evaluar a la persona -- por eso
+  // viene oculto de fábrica.
+  metaConsulta: "Estado de la consulta (técnico)",
 };
