@@ -44,10 +44,72 @@ const PRESUPUESTO_MS = 100_000;
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 type Item = { id: string; cedula: string; ingresado: string; intentos: number; lote_id: string };
+type Lote = { id: string; creado_por: string | null };
 
-async function consultarItem(item: Item, deshabilitados: Set<string>): Promise<void> {
+// Cuántos días vale un perfil antes de volver a preguntarle a la
+// fuente. Es un parámetro del negocio y vive en la base (ver 061): con
+// qué frecuencia cambia la información no lo decide el código.
+async function diasDeValidez(): Promise<number> {
+  const { data } = await serviceClient
+    .from("config_operativa")
+    .select("valor")
+    .eq("clave", "dias_validez_perfil")
+    .maybeSingle();
+  const n = Number(data?.valor ?? 7);
+  return Number.isFinite(n) && n > 0 ? n : 7;
+}
+
+// El perfil vigente de esta persona, si lo hay.
+//
+// Es la razón de ser del módulo: un lote no tiene que volver a
+// consultar a quien ya fue consultado hace poco, venga esa consulta de
+// otro lote o de un analista. La auditoría encontró que sí lo hacía.
+async function perfilVigente(cedula: string, dias: number): Promise<{ id: string; client_id: string } | null> {
+  const { data: cliente } = await serviceClient.from("clients").select("id").eq("cedula", cedula).maybeSingle();
+  if (!cliente) return null;
+  const desde = new Date(Date.now() - dias * 86_400_000).toISOString();
+  const { data } = await serviceClient
+    .from("client_profiles")
+    .select("id, client_id")
+    .eq("client_id", cliente.id)
+    .gte("created_at", desde)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>, dias: number): Promise<void> {
   const inicio = Date.now();
   try {
+    const vigente = await perfilVigente(item.cedula, dias);
+    if (vigente) {
+      // También se audita reutilizar. No se consultó a la fuente, pero
+      // los datos de esa persona entran igual al resultado del lote y
+      // salen en el archivo que alguien descarga. Para quien pregunte
+      // después "¿quién vio mis datos?", reutilizar y consultar son lo
+      // mismo; la diferencia es con el proveedor, no con la persona.
+      await serviceClient.from("audit_log").insert({
+        actor: lote.creado_por,
+        action: "lote.reutiliza",
+        client_id: vigente.client_id,
+        meta: { lote_id: item.lote_id, client_profile_id: vigente.id, ingresado: item.ingresado, dias_validez: dias },
+      });
+
+      await serviceClient
+        .from("lote_items")
+        .update({
+          estado: "reutilizado",
+          client_profile_id: vigente.id,
+          motivo: `Ya tenía un Perfil del Cliente de menos de ${dias} días. No se consultó la fuente.`,
+          duracion_ms: Date.now() - inicio,
+          intentos: item.intentos + 1,
+          procesado_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+      return;
+    }
+
     const raw = await fetchAllBlocks(item.cedula, undefined, deshabilitados);
 
     const noExiste = personaNoExiste(raw.general);
@@ -99,10 +161,25 @@ async function consultarItem(item: Item, deshabilitados: Set<string>): Promise<v
         // por qué puerta entró.
         origen: "lote",
         lote_id: item.lote_id,
+        // Quién ordenó el lote. El camino individual lo guarda y este no
+        // lo hacía: un perfil sin solicitante no se puede auditar.
+        requested_by: lote.creado_por,
       })
       .select("id")
       .single();
     if (errorPerfil) throw errorPerfil;
+
+    // La misma huella que deja una consulta individual. Consultar
+    // Función Judicial, Fiscalía y deudas de miles de personas sin
+    // registrar quién lo ordenó era el hallazgo más serio de la
+    // auditoría: si mañana alguien pregunta por qué se consultó a una
+    // persona, la respuesta tiene que existir.
+    await serviceClient.from("audit_log").insert({
+      actor: lote.creado_por,
+      action: "lote.consulta",
+      client_id: client.id,
+      meta: { lote_id: item.lote_id, client_profile_id: guardado.id, ingresado: item.ingresado },
+    });
 
     await serviceClient
       .from("lote_items")
@@ -116,16 +193,31 @@ async function consultarItem(item: Item, deshabilitados: Set<string>): Promise<v
       })
       .eq("id", item.id);
   } catch (err) {
-    // Una cédula que falla no puede tumbar el lote. Queda anotada con
-    // su motivo y el resto sigue.
+    // Una cédula que falla no puede tumbar el lote. Pero tampoco puede
+    // darse por perdida al primer tropiezo: un corte de red o un mal
+    // momento de la fuente no son un problema de esa persona, y
+    // marcarlos como error definitivo obliga a rearmar el archivo y
+    // volver a subirlo por algo que se resolvía solo.
+    //
+    // Vuelve a la cola hasta tres intentos; recién ahí se da por
+    // fallida. Los intentos quedan contados, así que si una cédula
+    // necesitó tres, eso también se ve.
+    const mensaje = String(err);
+    const pasajero = /fetch|network|timeout|socket|HTTP 5\d\d|429/i.test(mensaje);
+    const intentos = item.intentos + 1;
+    const reintentable = pasajero && intentos < 3;
+
     await serviceClient
       .from("lote_items")
       .update({
-        estado: "error",
-        motivo: String(err).slice(0, 400),
+        estado: reintentable ? "pendiente" : "error",
+        motivo: reintentable
+          ? `Falla pasajera en el intento ${intentos}, vuelve a la cola: ${mensaje.slice(0, 250)}`
+          : mensaje.slice(0, 400),
         duracion_ms: Date.now() - inicio,
-        intentos: item.intentos + 1,
-        procesado_at: new Date().toISOString(),
+        intentos,
+        tomado_at: null,
+        procesado_at: reintentable ? null : new Date().toISOString(),
       })
       .eq("id", item.id);
   }
@@ -148,7 +240,7 @@ Deno.serve(async (req) => {
   // paralelo se pisarían en la misma función y ninguno avanzaría bien.
   const { data: lote } = await serviceClient
     .from("lotes")
-    .select("id")
+    .select("id, creado_por")
     .eq("estado", "en_proceso")
     .order("created_at", { ascending: true })
     .limit(1)
@@ -166,6 +258,7 @@ Deno.serve(async (req) => {
   await serviceClient.rpc("liberar_items_abandonados", { minutos: 10 });
 
   const deshabilitados = await loadDisabledResources(serviceClient);
+  const dias = await diasDeValidez();
   let procesados = 0;
 
   while (Date.now() - arranque < PRESUPUESTO_MS) {
@@ -180,16 +273,31 @@ Deno.serve(async (req) => {
 
     // Se marcan en curso antes de trabajarlas: si dos invocaciones se
     // superponen -- el programador dispara cada minuto y una corrida
-    // puede durar más -- no pueden tomar las mismas cédulas.
+    // dura hasta cien segundos, así que se superponen seguido -- no
+    // pueden tomar las mismas cédulas.
+    //
+    // Y se trabaja SOLO sobre lo que la marca devolvió. Antes se
+    // marcaban y después se procesaba la lista leída, sin mirar cuántas
+    // se habían logrado marcar: si otra corrida había ganado, esta
+    // consultaba igual a las mismas personas. Dos consultas pagadas,
+    // dos perfiles idénticos, el doble de tiempo. La condición
+    // `estado = pendiente` en la marca es lo que decide quién gana; el
+    // que pierde tiene que enterarse, no seguir de largo.
     const ids = pendientes.map((p) => p.id);
-    await serviceClient
+    const { data: tomadas } = await serviceClient
       .from("lote_items")
       .update({ estado: "en_curso", tomado_at: new Date().toISOString() })
       .in("id", ids)
-      .eq("estado", "pendiente");
+      .eq("estado", "pendiente")
+      .select("id, cedula, ingresado, intentos, lote_id");
 
-    await Promise.all(pendientes.map((p) => consultarItem(p as Item, deshabilitados)));
-    procesados += pendientes.length;
+    // Nada que marcar: otra corrida se las llevó. Se cede el turno en
+    // vez de volver a intentar, que sería girar en el vacío golpeando
+    // la base hasta agotar el presupuesto.
+    if (!tomadas || tomadas.length === 0) break;
+
+    await Promise.all(tomadas.map((p) => consultarItem(p as Item, lote as Lote, deshabilitados, dias)));
+    procesados += tomadas.length;
   }
 
   // ¿Quedó algo? Si no, el lote terminó.

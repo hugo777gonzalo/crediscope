@@ -804,14 +804,37 @@ export async function getItemsLote(id, { estado = null, limite = 5000 } = {}) {
   return data || [];
 }
 
-// Los perfiles generados por este lote, con todo lo que hace falta para
-// las hojas del Excel.
+// Los perfiles de este lote, para las hojas del Excel.
+//
+// Se buscan por el vínculo del ítem y NO por lote_id. La diferencia
+// importa desde que el lote reutiliza perfiles vigentes en vez de
+// volver a consultar: esos perfiles pertenecen a otro lote o a una
+// consulta individual, así que filtrar por lote_id los dejaría afuera y
+// el Excel saldría sin esas personas -- justo las que el módulo evitó
+// reconsultar.
 export async function getPerfilesDeLote(id, { limite = 5000 } = {}) {
-  const { data, error } = await supabase
-    .from("client_profiles")
-    .select("id, created_at, standard_profile, structure_version, clients(cedula)")
+  const { data: items, error: errorItems } = await supabase
+    .from("lote_items")
+    .select("client_profile_id")
     .eq("lote_id", id)
+    .not("client_profile_id", "is", null)
     .limit(limite);
-  if (error) throw error;
-  return data || [];
+  if (errorItems) throw errorItems;
+
+  const ids = items.map((i) => i.client_profile_id);
+  if (ids.length === 0) return [];
+
+  // De a tandas: una consulta con miles de identificadores en la
+  // dirección la rechaza el servidor por largo.
+  const TANDA = 200;
+  const salida = [];
+  for (let i = 0; i < ids.length; i += TANDA) {
+    const { data, error } = await supabase
+      .from("client_profiles")
+      .select("id, created_at, standard_profile, structure_version, clients(cedula)")
+      .in("id", ids.slice(i, i + TANDA));
+    if (error) throw error;
+    salida.push(...(data || []));
+  }
+  return salida;
 }

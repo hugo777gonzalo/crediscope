@@ -25,7 +25,8 @@ const ETIQUETA_ESTADO = {
 const ETIQUETA_ITEM = {
   pendiente: "Pendiente",
   en_curso: "Consultando",
-  ok: "Con perfil",
+  ok: "Con perfil nuevo",
+  reutilizado: "Ya tenía perfil",
   error: "Error",
   descartado: "No consultable",
   duplicado: "Repetida",
@@ -33,6 +34,7 @@ const ETIQUETA_ITEM = {
 
 const COLOR_ITEM = {
   ok: "var(--good)",
+  reutilizado: "var(--brand)",
   error: "var(--bad)",
   descartado: "var(--warn)",
   duplicado: "var(--text-muted)",
@@ -90,7 +92,7 @@ export default function LoteDetalle() {
   if (!lote) return <p className="crediscope-muted">Cargando...</p>;
 
   const total = Number(lote.total_validas) || 0;
-  const hechas = Number(lote.correctas) + Number(lote.con_error);
+  const hechas = Number(lote.correctas) + Number(lote.reutilizadas ?? 0) + Number(lote.con_error);
   const pct = total ? Math.round((hechas / total) * 100) : 0;
   const visibles = filtro ? items.filter((i) => i.estado === filtro) : items;
 
@@ -126,7 +128,7 @@ export default function LoteDetalle() {
               Cancelar
             </button>
           ) : null}
-          <button className="crediscope-btn" onClick={descargar} disabled={descargando || Number(lote.correctas) === 0}>
+          <button className="crediscope-btn" onClick={descargar} disabled={descargando || Number(lote.correctas) + Number(lote.reutilizadas ?? 0) === 0}>
             <Download size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
             {descargando ? "Armando el archivo..." : "Descargar resultados"}
           </button>
@@ -180,6 +182,18 @@ export default function LoteDetalle() {
                 <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{lote.correctas}</td>
                 <td className="crediscope-muted" style={{ fontSize: 13 }}>Disponibles también para el flujo normal</td>
               </tr>
+              {Number(lote.reutilizadas ?? 0) > 0 ? (
+                <tr>
+                  <td style={{ color: "var(--brand)" }}>
+                    <CheckCircle2 size={15} style={{ marginRight: 6, verticalAlign: "-3px" }} />
+                    Ya tenían perfil vigente
+                  </td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{lote.reutilizadas}</td>
+                  <td className="crediscope-muted" style={{ fontSize: 13 }}>
+                    No se consultó la fuente. El dato está igual en el archivo descargado.
+                  </td>
+                </tr>
+              ) : null}
               <tr>
                 <td style={{ color: "var(--bad)" }}>
                   <AlertTriangle size={15} style={{ marginRight: 6, verticalAlign: "-3px" }} />
