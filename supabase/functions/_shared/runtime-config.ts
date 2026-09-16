@@ -68,3 +68,43 @@ export function redactDisabledFields(profile: StandardClientProfile, disabledFie
   }
   return copia;
 }
+
+// El corte del registro del IESS, deducido de los propios datos.
+//
+// Antes era una constante en el código y había que actualizarla a mano
+// cada dos o tres meses. El problema no era editarla: era saber CUÁNDO.
+// El proveedor no avisa que publicó un corte nuevo, así que el valor se
+// quedaba viejo hasta que alguien lo notaba.
+//
+// Los datos sí lo saben. Cada perfil guarda el corte con el que se
+// clasificó, y cuando un cliente trae un mes más nuevo que el conocido,
+// el módulo usa el del cliente. Así que el mes más alto visto en los
+// perfiles recientes ES el corte vigente: el primero que llega con datos
+// nuevos lo mueve para todos.
+//
+// Los 90 días acotan la ventana a propósito: un perfil viejo no puede
+// arrastrar el corte hacia atrás, y uno muy viejo no debería opinar.
+export async function loadCorteIess(client: SupabaseClient, porDefecto: string): Promise<string> {
+  const desde = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const { data, error } = await client
+    .from("client_profiles")
+    .select("fuente_corte")
+    .not("fuente_corte", "is", null)
+    .gte("created_at", desde)
+    .order("fuente_corte", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data?.fuente_corte) return porDefecto;
+
+  const visto = String(data.fuente_corte);
+  if (!/^\d{4}-\d{2}$/.test(visto)) return porDefecto;
+
+  // Un mes futuro no puede ser un corte: sería un dato corrupto de un
+  // solo cliente moviendo el corte de toda la cartera. Se admite el mes
+  // en curso y ni uno más.
+  const ahora = new Date();
+  const tope = `${ahora.getUTCFullYear()}-${String(ahora.getUTCMonth() + 1).padStart(2, "0")}`;
+  if (visto > tope) return porDefecto;
+
+  return visto > porDefecto ? visto : porDefecto;
+}

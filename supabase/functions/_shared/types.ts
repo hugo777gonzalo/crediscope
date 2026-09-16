@@ -194,7 +194,12 @@ export interface StandardClientProfile {
   };
 
   laboral: {
-    empleoActual: { empleador: string | null; cargo: string | null; salarioAprox: number | null } | null;
+    // TODOS los empleos vigentes al último corte del IESS, no uno solo:
+    // el 33% de la cartera tiene más de uno y nombrarlos de a uno
+    // escondía al segundo empleador -- que es justo donde aparece el
+    // empleo familiar. Vacía = sin registro confiable de los últimos 3
+    // meses, que no es lo mismo que no trabajar.
+    empleosActuales: Array<{ empleador: string | null; cargo: string | null; salarioAprox: number | null }>;
     // ¿El empleador lleva alguno de los apellidos del cliente? Señal de
     // empleo en negocio familiar: no es riesgo por sí sola, pero cambia
     // cuánto vale el ingreso reportado como evidencia. null = no hay

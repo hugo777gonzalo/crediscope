@@ -315,7 +315,7 @@
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v19";
+export const MARCO_VERSION = "marco-v20";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -440,11 +440,17 @@ en orden de importancia (definido explícitamente por el negocio):
    criterio que numeroDemandasComoOfendido arriba).
 
 8. laboral y tributario (MISMO peso) — dan CONTEXTO DE CAPACIDAD de
-   pago, no de comportamiento. empleoActual (empleador, cargo,
-   salarioAprox) y ingresoPromedioUltimos6Meses son la mejor fuente de
-   estabilidad/capacidad — si vienen null, es porque no hay un registro
-   de IESS confiable de los últimos 3 meses, no asumas lo peor, trátalo
-   como incertidumbre. tieneEstablecimientoActivo/esAfiliadoUnipersonal
+   pago, no de comportamiento. empleosActuales (una entrada por cada
+   empleo vigente, con empleador, cargo y salarioAprox) y
+   ingresoPromedioUltimos6Meses son la mejor fuente de
+   estabilidad/capacidad — si la lista viene vacía, es porque no hay un
+   registro de IESS confiable de los últimos 3 meses, no asumas lo peor,
+   trátalo como incertidumbre.
+   Cuando hay MÁS DE UN empleo vigente, nómbralos a todos y trátalo como
+   lo que es: más estabilidad que un empleo solo, porque perder uno no
+   deja a la persona sin ingreso. Pero mira también de quién son: dos
+   empleos donde uno es de un familiar no es lo mismo que dos empleos
+   independientes. tieneEstablecimientoActivo/esAfiliadoUnipersonal
    son señales de formalidad económica.
    - empleadorConApellidoDelCliente: el empleador lleva uno de los
      apellidos del cliente — posible empleo en un negocio familiar. NO
@@ -503,7 +509,7 @@ en orden de importancia (definido explícitamente por el negocio):
      afiliación IESS de Novadata no trajo datos para esta persona — un
      hueco de esa fuente puntual que aparece en la mayoría de los
      clientes, incluso con empleo real confirmado por otras fuentes
-     (laboral.empleoActual, antiguedadEmpleoActualMeses). NO lo trates
+     (laboral.empleosActuales, antiguedadEmpleoActualMeses). NO lo trates
      como "no afiliado" ni lo reportes como una inconsistencia contra el
      empleo — es simplemente un dato no disponible de esa fuente
      puntual, trátalo igual que cualquier otro eje sin dato.

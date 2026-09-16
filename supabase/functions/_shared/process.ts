@@ -324,7 +324,12 @@ function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
 // structure-client y analyze-client no puedan discrepar.
 export const PROCESS_VERSION = "estructura-v2"; // ver docs/estructura-estandarizada.md
 
-export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap; duracionFuentesMs: number } {
+// corteIess: el corte vigente del registro del IESS. Llega de afuera
+// porque se deduce de los datos ya consultados (ver loadCorteIess) en
+// vez de estar fijo en el código: el proveedor no avisa cuándo publica
+// uno nuevo, pero el primer cliente que llega con datos más frescos lo
+// delata. Si no se pasa, se usa el último conocido.
+export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, corteIess?: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap; duracionFuentesMs: number } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;
   const socio = raw.sociodemografica?.data as unknown as AnyRecord | null;
@@ -352,7 +357,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   // dominada por la ingesta (~27s) y taparía cualquier degradación de
   // este módulo, que corre en milisegundos.
   const inicioFuentes = Date.now();
-  const fuentesIngreso = analizarFuentesIngreso(raw, (persona?.nombre as string) ?? null);
+  const fuentesIngreso = analizarFuentesIngreso(raw, (persona?.nombre as string) ?? null, corteIess);
   const duracionFuentesMs = Date.now() - inicioFuentes;
 
   const identidad: StandardClientProfile["identidad"] = {
@@ -484,12 +489,58 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
   const mecanizadoOrdenado = [...mecanizado].sort((a, b) => baseDateTs(b) - baseDateTs(a));
   const ultimoMecanizado = (mecanizadoOrdenado[0] as AnyRecord | undefined) ?? null;
   const empleoActualConfiable = Boolean(ultimoMecanizado) && dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
-  const relacionEmpleador = relacionConEmpleador(
-    ((ultimoMecanizado?.personaPatrono as AnyRecord | undefined)?.nombreComercial as string) ??
-      ((ultimoMecanizado?.personaPatrono as AnyRecord | undefined)?.nombre as string) ??
-      null,
-    (persona?.nombre as string) ?? null
+
+  // TODOS los empleos del último corte, no solo el primero.
+  //
+  // Quien tiene dos trabajos a la vez tiene DOS registros con el mismo
+  // baseDate. Tomar el primero de la lista ordenada nombraba a uno y
+  // escondía al otro: medido sobre la cartera, 834 de 2.564 personas
+  // (el 33%) tienen más de una fuente vigente. El ingreso ya sumaba
+  // bien -- se corrigió en marco-v19 -- pero el perfil seguía diciendo
+  // que trabajan en un solo lado.
+  //
+  // Esconder al segundo empleador no es un detalle de presentación:
+  // dos empleos son más estabilidad que uno, y un segundo empleador que
+  // resulta ser un familiar es exactamente la señal que el módulo de
+  // control busca.
+  const nombreEmpleador = (r: AnyRecord | undefined): string | null =>
+    ((r?.personaPatrono as AnyRecord | undefined)?.nombreComercial as string) ??
+    ((r?.personaPatrono as AnyRecord | undefined)?.nombre as string) ??
+    null;
+
+  const corteMasReciente = ultimoMecanizado?.baseDate ?? null;
+  const registrosDelCorte = empleoActualConfiable
+    ? mecanizadoOrdenado.filter((r) => (r as AnyRecord).baseDate === corteMasReciente)
+    : [];
+
+  const empleosActuales = registrosDelCorte.map((r) => ({
+    empleador: nombreEmpleador(r as AnyRecord),
+    cargo: (((r as AnyRecord).cargo as AnyRecord | undefined)?.nombre as string) ?? null,
+    salarioAprox: num(((r as AnyRecord).personaIngreso as AnyRecord | undefined)?.valor),
+  }));
+
+  // Las señales de vínculo familiar miran a TODOS los empleadores
+  // vigentes: alcanza con que UNO sea un familiar o el propio cliente
+  // para que el caso merezca revisión. Antes solo se evaluaba el
+  // primero, así que un segundo empleo con el suegro pasaba
+  // desapercibido.
+  const relaciones = registrosDelCorte.map((r) =>
+    relacionConEmpleador(nombreEmpleador(r as AnyRecord), (persona?.nombre as string) ?? null)
   );
+  const relacionEmpleador = empleoActualConfiable
+    ? {
+        comparteApellido: relaciones.some((x) => x?.comparteApellido === true)
+          ? true
+          : relaciones.some((x) => x?.comparteApellido === false)
+            ? false
+            : null,
+        esElMismoCliente: relaciones.some((x) => x?.esElMismoCliente === true)
+          ? true
+          : relaciones.some((x) => x?.esElMismoCliente === false)
+            ? false
+            : null,
+      }
+    : null;
   // Antigüedad laboral: fuente es tiess (trae fecIng/fecSal), NO
   // trabajoHistoricosMecanizado (fuente de empleoActual arriba) — son
   // 2 recursos independientes que pueden diferir levemente en el
@@ -572,16 +623,10 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string): 
     return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
   }, null);
   const laboral: StandardClientProfile["laboral"] = {
-    empleoActual: empleoActualConfiable
-      ? {
-          empleador:
-            ((ultimoMecanizado?.personaPatrono as AnyRecord | undefined)?.nombreComercial as string) ??
-            ((ultimoMecanizado?.personaPatrono as AnyRecord | undefined)?.nombre as string) ??
-            null,
-          cargo: ((ultimoMecanizado?.cargo as AnyRecord | undefined)?.nombre as string) ?? null,
-          salarioAprox: num((ultimoMecanizado?.personaIngreso as AnyRecord | undefined)?.valor),
-        }
-      : null,
+    // Lista, no un solo empleo. Vacía cuando no hay registro confiable
+    // de los últimos 3 meses -- que no es lo mismo que no trabajar, es
+    // que el IESS todavía no publicó un corte reciente.
+    empleosActuales: empleosActuales,
     // Solo tiene sentido si HAY empleo actual confiable: si no, se
     // estaría describiendo a un empleador que ya no existe (la primera
     // versión lo marcaba igual y daba 4 falsos positivos sobre 41).

@@ -28,8 +28,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
+import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
-import { loadDisabledResources } from "../_shared/runtime-config.ts";
+import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -79,7 +80,7 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   return data ?? null;
 }
 
-async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>, dias: number): Promise<void> {
+async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>, dias: number, corteIess: string): Promise<void> {
   const inicio = Date.now();
   try {
     const vigente = await perfilVigente(item.cedula, dias);
@@ -138,7 +139,7 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
       client = creado;
     }
 
-    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, item.cedula);
+    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, item.cedula, corteIess);
     const controlBloqueo = evaluarControlesBloqueo(raw, item.cedula);
 
     const { data: guardado, error: errorPerfil } = await serviceClient
@@ -259,6 +260,7 @@ Deno.serve(async (req) => {
 
   const deshabilitados = await loadDisabledResources(serviceClient);
   const dias = await diasDeValidez();
+  const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
   let procesados = 0;
 
   while (Date.now() - arranque < PRESUPUESTO_MS) {
@@ -296,7 +298,7 @@ Deno.serve(async (req) => {
     // la base hasta agotar el presupuesto.
     if (!tomadas || tomadas.length === 0) break;
 
-    await Promise.all(tomadas.map((p) => consultarItem(p as Item, lote as Lote, deshabilitados, dias)));
+    await Promise.all(tomadas.map((p) => consultarItem(p as Item, lote as Lote, deshabilitados, dias, corteIess)));
     procesados += tomadas.length;
   }
 

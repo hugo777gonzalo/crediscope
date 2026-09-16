@@ -11,8 +11,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
+import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
-import { loadDisabledResources } from "../_shared/runtime-config.ts";
+import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -108,7 +109,8 @@ Deno.serve(async (req) => {
     }
 
     // 3. Estructura estandarizada
-    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, cedula);
+    const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
+    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, cedula, corteIess);
     const duracionMs = Date.now() - inicioIngesta;
 
     // 4. Controles de bloqueo — determinísticos, no dependen del LLM.

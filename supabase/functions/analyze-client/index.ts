@@ -22,11 +22,12 @@ import { corsHeaders } from "../_shared/cors.ts";
 import type { BlockStatusMap, ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
+import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
-import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, redactDisabledFields } from "../_shared/runtime-config.ts";
+import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, loadCorteIess, redactDisabledFields } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -148,7 +149,8 @@ Deno.serve(async (req) => {
 
       // Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
       // ClientContext casi crudo de antes, mucho más liviana para el LLM.
-      const built = buildStandardProfile(raw, cedula);
+      const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
+      const built = buildStandardProfile(raw, cedula, corteIess);
       profile = built.profile;
       blockStatus = built.blockStatus;
 

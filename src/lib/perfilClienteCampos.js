@@ -62,6 +62,18 @@ export function formatValor(valor, tipo) {
       return ETIQUETAS_ESTADO_ACTIVIDAD[valor] ?? valor;
     case "tipo_cese_ruc":
       return ETIQUETAS_TIPO_CESE_RUC[valor] ?? valor;
+    // Una línea por empleo vigente. Con dos trabajos a la vez, juntarlos
+    // en una sola frase hace que no se sepa qué cargo va con qué
+    // empleador ni qué sueldo paga cada uno.
+    case "empleos":
+      return valor
+        .map((e) => {
+          const partes = [e.empleador ?? "Empleador sin nombre"];
+          if (e.cargo) partes.push(humanizarTexto(String(e.cargo)));
+          if (e.salarioAprox) partes.push(MONEDA.format(e.salarioAprox));
+          return partes.join(" · ");
+        })
+        .join("\n");
     default:
       return String(valor);
   }
@@ -72,7 +84,7 @@ export function valorVisible(profile, campo, tipo) {
   const valor = get(profile, campo);
   if (valor === null || valor === undefined) return null;
   if (tipo === "booleano_si_true") return valor === true ? true : null;
-  if (tipo === "lista") return Array.isArray(valor) && valor.length > 0 ? valor : null;
+  if (tipo === "lista" || tipo === "empleos") return Array.isArray(valor) && valor.length > 0 ? valor : null;
   if ((tipo === "numero" || tipo === "moneda" || tipo === "meses") && valor === 0) return null;
   if (tipo === "texto" && valor === "") return null;
   return valor;
@@ -116,11 +128,11 @@ export const GRUPOS_CONFIG = {
   },
   laboral: {
     mensajeVacio: "Sin empleo, RUC ni establecimiento activo registrados.",
-    presencia: (p) => Boolean(p.laboral?.empleoActual) || p.laboral?.tieneRucActivo || p.laboral?.tieneEstablecimientoActivo,
+    presencia: (p) => Boolean(p.laboral?.empleosActuales?.length) || p.laboral?.tieneRucActivo || p.laboral?.tieneEstablecimientoActivo,
     campos: [
-      ["empleoActual.empleador", "Empleador", "texto"],
-      ["empleoActual.cargo", "Cargo", "texto"],
-      ["empleoActual.salarioAprox", "Salario aproximado", "moneda"],
+      // Todos los empleos vigentes. Un tercio de la cartera tiene más
+      // de uno y antes se veía uno solo.
+      ["empleosActuales", "Empleos vigentes", "empleos"],
       ["ingresoPromedioUltimos6Meses", "Ingreso promedio (6m)", "moneda"],
       ["numeroEmpleadoresUltimos24Meses", "Empleadores activos (24m)", "numero"],
       ["antiguedadEmpleoActualMeses", "Antigüedad en el empleo actual", "meses"],
