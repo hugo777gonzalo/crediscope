@@ -19,6 +19,7 @@ export const ETIQUETA_SEGMENTO = {
   jubilado_con_ingreso_adicional: "Jubilado con ingreso adicional",
   ingresos_mixtos: "Ingresos mixtos",
   informal_o_sin_actividad: "Informal o sin actividad",
+  sin_datos: "Sin datos: la fuente no respondió",
   no_clasificado: "Tipo de aporte no reconocido",
 };
 
@@ -37,6 +38,10 @@ export const RIESGO_SEGMENTO = {
   jubilado_con_ingreso_adicional: "Pensión estable más una actividad a verificar",
   ingresos_mixtos: "Diversificado: dos fuentes de naturaleza distinta",
   informal_o_sin_actividad: "No se puede determinar si hay ingreso",
+  // No es un riesgo del cliente: es una consulta que hay que repetir.
+  // Mezclarlo con "informal" convertía una caída de la fuente en un
+  // juicio sobre la persona -- le pasó a 373 el 2026-09-15.
+  sin_datos: "No dice nada de la persona: hay que volver a consultarla",
   no_clasificado: "Código de empleador fuera del catálogo: requiere revisión manual",
 };
 

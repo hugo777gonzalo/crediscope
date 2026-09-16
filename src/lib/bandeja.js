@@ -35,6 +35,10 @@ export const ETIQUETA_ESTADO_BANDEJA = {
   analizado: "Analizado",
   sin_analisis: "Sin analizar",
   no_completado: "No se completó",
+  // La fuente no contestó un solo eje. No se sabe nada de esta persona,
+  // y lo que hay guardado no la describe: hay que volver a consultarla.
+  // Ver _shared/calidad-de-la-consulta.ts.
+  consulta_fallida: "La consulta falló",
   sin_consulta: "Sin consultar",
 };
 
@@ -42,6 +46,7 @@ export const COLOR_ESTADO_BANDEJA = {
   analizado: "var(--brand)",
   sin_analisis: "var(--text-muted)",
   no_completado: "var(--bad)",
+  consulta_fallida: "var(--warn)",
   sin_consulta: "var(--text-muted)",
 };
 
@@ -50,6 +55,7 @@ export const COLOR_ESTADO_BANDEJA = {
 export function colorFranja(fila) {
   if (fila.recomendacion) return colorRecomendacion(fila.recomendacion);
   if (fila.estado === "no_completado") return "var(--bad)";
+  if (fila.estado === "consulta_fallida") return "var(--warn)";
   return "transparent";
 }
 

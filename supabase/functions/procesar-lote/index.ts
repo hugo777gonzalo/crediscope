@@ -28,6 +28,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
+import { estadoDeLosBloques, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
@@ -74,6 +75,11 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
     .select("id, client_id")
     .eq("client_id", cliente.id)
     .gte("created_at", desde)
+    // Reciente no alcanza: tiene que servir. Un perfil donde la fuente
+    // no contestó ningún eje es una consulta pendiente, no un perfil
+    // vigente -- y reutilizarlo hacía exactamente lo contrario de lo
+    // que hay que hacer con él, que es volver a consultarlo.
+    .gt("ejes_ok", 0)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -112,6 +118,18 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
     }
 
     const raw = await fetchAllBlocks(item.cedula, undefined, deshabilitados);
+
+    // Si la fuente no contestó un solo eje, esta cédula no se consultó:
+    // se intentó. Se lanza para caer en el manejo de fallas de abajo,
+    // que la devuelve a la cola en vez de marcarla como hecha.
+    //
+    // Antes esto terminaba en `estado: "ok"` con un perfil en blanco,
+    // porque fetchAllBlocks no lanza excepción por bloque fallido y el
+    // perfil se guardaba igual. Así se produjeron los 373 perfiles
+    // vacíos del 2026-09-15, y el resumen del lote los contó como
+    // correctos. Ver _shared/calidad-de-la-consulta.ts.
+    const estadoBloques = estadoDeLosBloques(raw);
+    if (!laConsultaSirve(estadoBloques)) throw new Error(`HTTP 503 ${porQueNoSirve(estadoBloques)}`);
 
     const noExiste = personaNoExiste(raw.general);
     if (noExiste) {
@@ -155,6 +173,10 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
         duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
         block_status: blockStatus,
+        // Cuántos ejes contestó la fuente. Se guarda plano para
+        // poder excluir consultas vacías sin abrir el JSON de cada
+        // perfil -- ver 065 y calidad-de-la-consulta.ts.
+        ejes_ok: profile.metaConsulta.ejesOk.length,
         structure_version: PROCESS_VERSION,
         duracion_ms: Date.now() - inicio,
         // De dónde salió. El dato es el mismo que el de una consulta

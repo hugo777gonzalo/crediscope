@@ -27,8 +27,9 @@
 // riesgo que hoy se estaba perdiendo.
 
 import type { RawNovadataResponse } from "./types.ts";
+import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 
-export const FUENTES_INGRESO_VERSION = "fuentes-v1";
+export const FUENTES_INGRESO_VERSION = "fuentes-v2";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -82,6 +83,12 @@ export type Segmento =
   | "independiente" | "agricola" | "trabajo_hogar"
   | "jubilado" | "jubilado_con_ingreso_adicional"
   | "ingresos_mixtos" | "informal_o_sin_actividad"
+  // La fuente no contestó el bloque que trae los aportes. No es un
+  // juicio sobre la persona: es la ausencia de la consulta. Existe como
+  // segmento propio porque la alternativa era decir "informal", que sí
+  // es un juicio -- y se dijo sobre 373 personas por una caída de una
+  // hora. Ver _shared/calidad-de-la-consulta.ts.
+  | "sin_datos"
   // Aporta bajo un código de empleador que no está en el mapa, o que
   // llegó sin el prefijo numérico. Existe como segmento propio para que
   // el caso SE VEA: mandarlo a "dependiente privado" —lo que hacía
@@ -421,6 +428,18 @@ export function analizarFuentesIngreso(
     motivoSegmento = rucActivo
       ? "Sin aportes vigentes, pero con RUC activo ante el SRI."
       : "Sin aportes vigentes ni RUC activo; registra declaraciones al SRI.";
+  } else if (!sePuedeAfirmarQueNoAporta(raw)) {
+    // No encontramos aportes, pero tampoco preguntamos bien: el bloque
+    // que los trae no contestó. "No aporta" y "no sé si aporta" son
+    // cosas distintas y hasta hoy salían por la misma puerta.
+    //
+    // El 2026-09-15 una caída de una hora mandó 373 personas a
+    // "informal o sin actividad" por esta rama. El 74% de ese segmento
+    // era, en realidad, una falla de red descrita como si fuera la vida
+    // de alguien. Ver _shared/calidad-de-la-consulta.ts.
+    segmento = "sin_datos";
+    estadoSegmento = "indeterminada";
+    motivoSegmento = `La fuente no respondió el bloque que trae los aportes al IESS (estado: ${raw.bancos?.status ?? "desconocido"}). No se puede afirmar que esta persona no aporte: no se pudo consultar.`;
   } else {
     segmento = "informal_o_sin_actividad";
     estadoSegmento = "indeterminada";

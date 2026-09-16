@@ -76,6 +76,36 @@ async function enviarPorTelegram(texto: string): Promise<{ ok: boolean; error?: 
  * la vez, y el que pierde tiene que enterarse por el error, no mandar
  * un segundo mensaje.
  */
+// Los estados de los que se puede volver: nunca salió de acá.
+// `enviada` no está en la lista, que es el punto.
+const PENDIENTES = ["sin_canal", "fallida"];
+
+async function reintentarSiQuedoPendiente(client: SupabaseClient, aviso: Aviso, texto: string): Promise<boolean> {
+  if (!hayCanal()) return false;
+
+  const { data: fila } = await client
+    .from("alertas")
+    .select("estado")
+    .eq("tipo", aviso.tipo)
+    .eq("referencia", aviso.referencia)
+    .maybeSingle();
+
+  if (!fila || !PENDIENTES.includes(fila.estado)) return false;
+
+  const r = await enviarPorTelegram(texto);
+  await client
+    .from("alertas")
+    .update({
+      canal: "telegram",
+      estado: r.ok ? "enviada" : "fallida",
+      detalle: r.error ?? (r.ok ? "Reintentado: el aviso original no había salido." : null),
+    })
+    .eq("tipo", aviso.tipo)
+    .eq("referencia", aviso.referencia);
+
+  return r.ok;
+}
+
 export async function avisar(client: SupabaseClient, aviso: Aviso): Promise<boolean> {
   const texto = aviso.cuerpo ? `${aviso.titulo}\n\n${aviso.cuerpo}` : aviso.titulo;
 
@@ -92,9 +122,20 @@ export async function avisar(client: SupabaseClient, aviso: Aviso): Promise<bool
     detalle: hayCanal() ? null : "No hay canal de aviso configurado: faltan TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID.",
   });
 
-  // 23505 = ya existe. No es un error: es el mecanismo funcionando.
+  // 23505 = ya existe.
+  //
+  // Hasta la auditoría del 2026-09-16 eso significaba "ya avisado" y se
+  // devolvía sin mirar nada más. El problema: una fila registrada NO es
+  // una fila entregada. El aviso del 70% del presupuesto de septiembre
+  // se disparó a las 16:11 del 15, cuando todavía no había canal
+  // configurado, quedó en `sin_canal`, y quedó también marcado como
+  // avisado para siempre -- nadie lo iba a recibir nunca.
+  //
+  // Un aviso que no salió sigue siendo un aviso pendiente. Se reintenta
+  // en cuanto haya por dónde mandarlo; lo que no se repite es lo que ya
+  // llegó.
   if (errorReserva) {
-    if (errorReserva.code === "23505") return false;
+    if (errorReserva.code === "23505") return await reintentarSiQuedoPendiente(client, aviso, texto);
     console.error("No se pudo registrar el aviso:", errorReserva.message);
     return false;
   }

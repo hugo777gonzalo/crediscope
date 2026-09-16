@@ -46,6 +46,9 @@ const TARJETAS = [
   { clave: "observar", etiqueta: "Observar", color: "var(--brand)", filtro: ["recomendacion", "observar"] },
   { clave: "negar", etiqueta: "Negar", color: "var(--bad)", filtro: ["recomendacion", "negar"] },
   { clave: "sin_analisis", etiqueta: "Sin analizar", color: "var(--text-muted)", filtro: ["estado", "sin_analisis"] },
+  // Las que hay que volver a consultar. Tienen su propia tarjeta
+  // porque son trabajo pendiente nuestro, no de un analista.
+  { clave: "consulta_fallida", etiqueta: "Consulta falló", color: "var(--warn)", filtro: ["estado", "consulta_fallida"] },
   { clave: "con_bloqueo", etiqueta: "Con bloqueo", color: "var(--bad)", filtro: null },
 ];
 

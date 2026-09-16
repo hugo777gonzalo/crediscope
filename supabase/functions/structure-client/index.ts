@@ -14,6 +14,7 @@ import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
+import { estadoDeLosBloques, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -65,26 +66,39 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 1. Cliente: obtener o crear
-    let { data: client } = await serviceClient.from("clients").select("id").eq("cedula", cedula).maybeSingle();
-    if (!client) {
-      const { data: created, error: createError } = await serviceClient
-        .from("clients")
-        .insert({ cedula })
-        .select("id")
-        .single();
-      if (createError) throw createError;
-      client = created;
-    }
-
-    // 2. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
+    // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
     //    Recursos deshabilitados en novadata_resource_config se saltan
     //    (ver _shared/runtime-config.ts).
     const disabledResources = await loadDisabledResources(serviceClient);
     const inicioIngesta = Date.now();
     const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
 
-    // 2b. ¿Existe esta persona?
+    // 2. ¿La fuente contestó algo?
+    //
+    // Esto va ANTES de mirar si la persona existe, porque si ningún eje
+    // respondió tampoco sabemos si existe. El 2026-09-15 una caída de
+    // una hora dejó 373 perfiles en blanco guardados como si fueran
+    // personas sin historial, y clasificados como "informal o sin
+    // actividad". Ver _shared/calidad-de-la-consulta.ts.
+    //
+    // 503 y no 500: el problema es de la fuente y es pasajero. El
+    // trabajador de lotes usa ese código para reintentar en vez de dar
+    // la cédula por perdida.
+    const blockStatusPrevio = estadoDeLosBloques(raw);
+    if (!laConsultaSirve(blockStatusPrevio)) {
+      return new Response(
+        JSON.stringify({
+          error: porQueNoSirve(blockStatusPrevio),
+          tipoIdentificacion: "fuente_sin_respuesta",
+          ingresado,
+          cedula,
+          bloques: blockStatusPrevio,
+        }),
+        { status: 503, headers: { ...corsHeaders, "content-type": "application/json" } }
+      );
+    }
+
+    // 3. ¿Existe esta persona?
     //
     // La fuente responde HTTP 200 aunque no exista: lo dice adentro del
     // cuerpo. Sin esta comprobación se guardaba un Perfil del Cliente
@@ -108,18 +122,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Estructura estandarizada
+    // 4. Cliente: obtener o crear.
+    //
+    // Recién acá, y no al principio. Dar de alta al cliente antes de
+    // consultar dejaba una fila por cada número tecleado: quien escribía
+    // una cédula que la fuente no conoce se llevaba un 404 y dejaba el
+    // cliente creado. `clients` terminaba siendo la lista de lo que se
+    // escribió, no la de las personas consultadas.
+    let { data: client } = await serviceClient.from("clients").select("id").eq("cedula", cedula).maybeSingle();
+    if (!client) {
+      const { data: created, error: createError } = await serviceClient
+        .from("clients")
+        .insert({ cedula })
+        .select("id")
+        .single();
+      if (createError) throw createError;
+      client = created;
+    }
+
+    // 5. Estructura estandarizada
     const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
     const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, cedula, corteIess);
     const duracionMs = Date.now() - inicioIngesta;
 
-    // 4. Controles de bloqueo — determinísticos, no dependen del LLM.
+    // 6. Controles de bloqueo — determinísticos, no dependen del LLM.
     //     Perfil del Cliente necesita saber si hay un bloqueo activo
     //     para mostrar el aviso, aunque todavía no se corrió el
     //     Análisis con IA.
     const controlBloqueo = evaluarControlesBloqueo(raw, cedula);
 
-    // 5. Persistir
+    // 7. Persistir
     const { data: saved, error: saveError } = await serviceClient
       .from("client_profiles")
       .insert({
@@ -136,6 +168,10 @@ Deno.serve(async (req) => {
         duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
         block_status: blockStatus,
+        // Cuántos ejes contestó la fuente. Se guarda plano para
+        // poder excluir consultas vacías sin abrir el JSON de cada
+        // perfil -- ver 065 y calidad-de-la-consulta.ts.
+        ejes_ok: profile.metaConsulta.ejesOk.length,
         structure_version: PROCESS_VERSION,
         requested_by: actorId,
         duracion_ms: duracionMs,
@@ -144,7 +180,7 @@ Deno.serve(async (req) => {
       .single();
     if (saveError) throw saveError;
 
-    // 6. Auditoría (mismo patrón que analyze-client)
+    // 8. Auditoría (mismo patrón que analyze-client)
     await serviceClient.from("audit_log").insert({
       actor: actorId,
       action: "client.structure",

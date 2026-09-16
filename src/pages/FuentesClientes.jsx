@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getPerfilesConFuentesIngreso, getResumenFuentesIngreso } from "../lib/api.js";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getPerfilesConFuentesIngreso, getResumenFuentesIngreso, CLIENTES_POR_PAGINA } from "../lib/api.js";
 import { ultimoPorCliente } from "../lib/reporteGerencial.js";
 import {
   ETIQUETA_SEGMENTO,
@@ -21,7 +22,7 @@ const COLOR_ESTADO = { confirmada: "var(--good)", provisional: "var(--warn)", in
 
 export default function FuentesClientes() {
   const [params, setParams] = useSearchParams();
-  const [perfiles, setPerfiles] = useState(null);
+  const [datos, setDatos] = useState(null);
   // Las opciones del filtro salen del resumen de TODA la cartera: si se
   // derivaran del resultado filtrado, al elegir un segmento el desplegable
   // se quedaría con esa única opción y no habría forma de volver.
@@ -30,22 +31,23 @@ export default function FuentesClientes() {
 
   const segmentoFiltro = params.get("segmento") ?? "";
   const estadoFiltro = params.get("estado") ?? "";
+  const pagina = Number(params.get("pagina") ?? 0);
 
   useEffect(() => {
-    // El filtro va al servidor: traer la cartera entera para descartarla
-    // en el navegador no escala.
-    getPerfilesConFuentesIngreso({ segmento: segmentoFiltro || null, estado: estadoFiltro || null })
-      .then(setPerfiles)
+    // El filtrado, la deduplicación por cliente y el conteo los hace la
+    // base. Acá llega la página que se está mirando y el total real --
+    // no un recorte silencioso de 300 filas, que es lo que había.
+    getPerfilesConFuentesIngreso({ segmento: segmentoFiltro || null, estado: estadoFiltro || null, pagina })
+      .then(setDatos)
       .catch((err) => setError(err.message));
-  }, [segmentoFiltro, estadoFiltro]);
+  }, [segmentoFiltro, estadoFiltro, pagina]);
 
   const filas = useMemo(() => {
-    if (!perfiles) return [];
-    return ultimoPorCliente(perfiles)
+    if (!datos) return [];
+    return (datos.filas || [])
       .map((p) => ({ fila: p, f: p.standard_profile?.fuentesIngreso }))
-      .filter((x) => x.f?.segmento)
-      ;
-  }, [perfiles, segmentoFiltro, estadoFiltro]);
+      .filter((x) => x.f?.segmento);
+  }, [datos]);
 
   useEffect(() => {
     getResumenFuentesIngreso()
@@ -57,6 +59,10 @@ export default function FuentesClientes() {
     const siguiente = new URLSearchParams(params);
     if (valor) siguiente.set(clave, valor);
     else siguiente.delete(clave);
+    // Cambiar un filtro vuelve a la primera página: quedarse en la
+    // página 7 de un resultado que ahora tiene 2 es una pantalla vacía
+    // sin explicación.
+    if (clave !== "pagina") siguiente.delete("pagina");
     setParams(siguiente, { replace: true });
   }
 
@@ -78,7 +84,10 @@ export default function FuentesClientes() {
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ marginBottom: 4 }}>Clientes por segmento</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          {perfiles ? `${filas.length} cliente(s)` : "Cargando..."}
+          {/* El total es el de verdad, no el de la página. Decir "292
+              cliente(s)" cuando hay 814 fue el hallazgo; decir "1-50 de
+              814" es la corrección. */}
+          {datos ? `${datos.total.toLocaleString("es-EC")} cliente(s)` : "Cargando..."}
           {segmentoFiltro ? ` · ${ETIQUETA_SEGMENTO[segmentoFiltro] ?? segmentoFiltro}` : ""}
           {segmentoFiltro && RIESGO_SEGMENTO[segmentoFiltro] ? ` — ${RIESGO_SEGMENTO[segmentoFiltro]}` : ""}
         </p>
@@ -111,7 +120,7 @@ export default function FuentesClientes() {
         </div>
       </div>
 
-      {perfiles && filas.length === 0 ? (
+      {datos && filas.length === 0 ? (
         <div className="crediscope-card">
           <p className="crediscope-muted" style={{ margin: 0 }}>Ningún cliente con ese filtro.</p>
         </div>
@@ -180,6 +189,33 @@ export default function FuentesClientes() {
           ) : null}
         </div>
       ))}
+
+      {datos && datos.total > CLIENTES_POR_PAGINA ? (
+        <div className="crediscope-card">
+          <div className="crediscope-paginacion" style={{ marginTop: 0, paddingTop: 0, borderTop: "none" }}>
+            <span className="crediscope-muted">
+              {pagina * CLIENTES_POR_PAGINA + 1}–{pagina * CLIENTES_POR_PAGINA + filas.length} de{" "}
+              {datos.total.toLocaleString("es-EC")}
+            </span>
+            <div className="crediscope-paginacion-botones">
+              <button
+                className="crediscope-btn crediscope-btn-ghost"
+                disabled={pagina === 0}
+                onClick={() => cambiar("pagina", String(pagina - 1))}
+              >
+                <ChevronLeft size={15} style={{ verticalAlign: "-2px" }} /> Anterior
+              </button>
+              <button
+                className="crediscope-btn crediscope-btn-ghost"
+                disabled={(pagina + 1) * CLIENTES_POR_PAGINA >= datos.total}
+                onClick={() => cambiar("pagina", String(pagina + 1))}
+              >
+                Siguiente <ChevronRight size={15} style={{ verticalAlign: "-2px" }} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

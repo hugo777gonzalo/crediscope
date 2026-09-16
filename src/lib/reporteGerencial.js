@@ -11,19 +11,29 @@ import { get, GRUPOS_CONFIG } from "./perfilClienteCampos.js";
 // las consultas, deduplicar ahí ocultaría el volumen real de trabajo.
 //
 // Escala: esto trae TODO client_profiles/analysis_results a memoria y
-// agrega en JS -- correcto y simple mientras la cartera sea de cientos/
-// pocos miles de clientes (hoy: decenas). Si crece mucho, esto debería
-// moverse a una vista/agregación en Postgres.
+// agrega en JS. Al 2026-09-16 la cartera son 2.566 clientes y 2.681
+// perfiles, así que la advertencia de "si crece mucho, moverlo a una
+// vista" ya venció: el camino está hecho (ver bandeja_solicitudes en la
+// 063, que deduplica por cliente en la base) y falta migrar estas
+// métricas ahí. Mientras tanto funciona, pero cada carga del Reporte
+// Gerencial baja la cartera entera.
 
+// Compara fechas en vez de confiar en el orden en que llegaron las
+// filas.
+//
+// Antes se quedaba con la PRIMERA fila de cada cliente, dando por hecho
+// que quien llama ordenó por fecha descendente. Funcionaba porque todos
+// los llamadores lo hacían; el día que uno se olvide, esto devuelve la
+// consulta más vieja de cada persona y no hay forma de notarlo mirando
+// la pantalla. Un supuesto que solo se verifica leyendo el código de
+// otro archivo no es un supuesto, es una trampa.
 export function ultimoPorCliente(rows) {
-  const vistos = new Set();
-  const out = [];
+  const porCliente = new Map();
   for (const r of rows || []) {
-    if (vistos.has(r.client_id)) continue;
-    vistos.add(r.client_id);
-    out.push(r);
+    const previo = porCliente.get(r.client_id);
+    if (!previo || new Date(r.created_at) > new Date(previo.created_at)) porCliente.set(r.client_id, r);
   }
-  return out;
+  return [...porCliente.values()];
 }
 
 function claseScore(score) {

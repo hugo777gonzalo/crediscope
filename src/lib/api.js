@@ -195,7 +195,10 @@ export async function vincularFilasConAnalisis(filas) {
   let perfiles = [];
   if (clientIds.length) {
     const [{ data: a, error: errA }, { data: p, error: errP }] = await Promise.all([
-      supabase.from("analysis_results").select("id, client_id, created_at, client_profile_id").in("client_id", clientIds),
+      supabase
+        .from("analysis_results")
+        .select("id, client_id, created_at, client_profile_id, client_profile_vinculo")
+        .in("client_id", clientIds),
       supabase.from("client_profiles").select("id, client_id, created_at").in("client_id", clientIds),
     ]);
     if (errA) throw errA;
@@ -215,16 +218,43 @@ export async function vincularFilasConAnalisis(filas) {
     return propios[0] ?? null;
   };
 
+  // El perfil que el análisis dice haber usado solo sirve si pudo
+  // haberlo usado.
+  //
+  // La 034 vinculó hacia atrás los análisis viejos que no registraban su
+  // perfil, y la 035 dejó anotada la calidad de cada vínculo. Nueve de
+  // los 63 quedaron en `inferido_posterior`: el perfil que tienen
+  // asignado se creó DESPUÉS del análisis, así que no pudo ser su
+  // insumo.
+  //
+  // Para mirar histórico da lo mismo. Para backtesting no: evaluar un
+  // crédito con un perfil construido después es dejar que el modelo vea
+  // la mora que todavía no había ocurrido. Un modelo que "acierta" así
+  // es peor que no medir, porque el número tranquiliza.
+  const VINCULOS_CONFIABLES = ["exacto", "inferido_anterior"];
+
   return filas.map((f) => {
     const clientId = clientePorCedula[f.cedula] ?? null;
     if (!clientId) return { ...f, clientId: null, analysisResultId: null, clientProfileId: null };
     const analisisElegido = masCercanoAntes(analisis, clientId, f.fechaDesembolso);
+
+    // Cuando el vínculo no es confiable se busca el perfil más reciente
+    // anterior al ANÁLISIS (no al desembolso): es lo más parecido a lo
+    // que el analista tuvo enfrente.
+    const perfilDelAnalisis =
+      analisisElegido && VINCULOS_CONFIABLES.includes(analisisElegido.client_profile_vinculo)
+        ? analisisElegido.client_profile_id
+        : (analisisElegido
+            ? perfiles
+                .filter((p) => p.client_id === clientId && new Date(p.created_at) <= new Date(analisisElegido.created_at))
+                .sort((x, y) => new Date(y.created_at) - new Date(x.created_at))[0]?.id
+            : null) ?? null;
+
     return {
       ...f,
       clientId,
       analysisResultId: analisisElegido?.id ?? null,
-      clientProfileId:
-        analisisElegido?.client_profile_id ?? masCercanoAntes(perfiles, clientId, f.fechaDesembolso)?.id ?? null,
+      clientProfileId: perfilDelAnalisis ?? masCercanoAntes(perfiles, clientId, f.fechaDesembolso)?.id ?? null,
     };
   });
 }
@@ -615,19 +645,60 @@ export async function getResumenFuentesIngreso({ limite = 5000 } = {}) {
   return data || [];
 }
 
+export const CLIENTES_POR_PAGINA = 50;
+
 // Detalle: acá sí hace falta el perfil completo (fuentes, señales, qué
-// pedir), pero filtrado por segmento en el servidor para no traer la
-// cartera entera.
-export async function getPerfilesConFuentesIngreso({ segmento = null, estado = null, limite = 300 } = {}) {
+// pedir).
+//
+// Antes esto traía hasta 300 filas de client_profiles, filtraba por
+// segmento y deduplicaba en el navegador. Tenía dos fallas que la
+// auditoría del 2026-09-16 midió:
+//
+//   · El límite era invisible. Con 814 independientes en la cartera la
+//     pantalla mostraba 292 y rotulaba "292 cliente(s)". Faltaban 522 y
+//     nada lo decía -- y al lado, el panorama decía 814. Dos pantallas
+//     del mismo módulo con números distintos, y la que lista nombres
+//     era la que mentía.
+//
+//   · Filtraba ANTES de quedarse con la última consulta. Alguien cuya
+//     consulta vieja decía "independiente" y la nueva dice "sector
+//     público" seguía apareciendo entre los independientes. Hoy hay 5
+//     personas así.
+//
+// Las dos se arreglan con lo mismo: el filtrado y la deduplicación los
+// hace la vista bandeja_solicitudes en la base, que ya trabaja sobre el
+// último perfil de cada cliente. Acá solo se traen los perfiles
+// completos de la página que se está mirando -- cincuenta, no
+// trescientos.
+export async function getPerfilesConFuentesIngreso({ segmento = null, estado = null, pagina = 0, porPagina = CLIENTES_POR_PAGINA } = {}) {
   let q = supabase
-    .from("client_profiles")
-    .select("id, client_id, created_at, standard_profile, fuente_segmento, fuente_estado, clients(cedula)")
+    .from("bandeja_solicitudes")
+    .select("perfil_id, client_id, cedula, perfil_at", { count: "exact" })
     .not("fuente_segmento", "is", null);
   if (segmento) q = q.eq("fuente_segmento", segmento);
   if (estado) q = q.eq("fuente_estado", estado);
-  const { data, error } = await q.order("client_id").order("created_at", { ascending: false }).limit(limite);
+
+  const desde = pagina * porPagina;
+  const { data: cabeceras, error, count } = await q
+    .order("perfil_at", { ascending: false })
+    .range(desde, desde + porPagina - 1);
   if (error) throw error;
-  return data || [];
+
+  const ids = (cabeceras || []).map((c) => c.perfil_id).filter(Boolean);
+  if (ids.length === 0) return { filas: [], total: count ?? 0, pagina, porPagina };
+
+  const { data: perfiles, error: errorPerfiles } = await supabase
+    .from("client_profiles")
+    .select("id, client_id, created_at, standard_profile, fuente_segmento, fuente_estado, clients(cedula)")
+    .in("id", ids);
+  if (errorPerfiles) throw errorPerfiles;
+
+  // Se respeta el orden que trajo la vista: `in` no lo garantiza, y una
+  // lista que se reordena sola entre páginas repite o saltea gente.
+  const porId = new Map((perfiles || []).map((p) => [p.id, p]));
+  const filas = ids.map((id) => porId.get(id)).filter(Boolean);
+
+  return { filas, total: count ?? 0, pagina, porPagina };
 }
 
 // ---------- Consumo del LLM ----------
