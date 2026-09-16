@@ -1212,3 +1212,659 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   LA BANDEJA DE SOLICITUDES
+   Una tabla densa para barrer volumen. Las decisiones que la
+   sostienen, porque ninguna es decorativa:
+
+   - La franja de color al borde de la fila. El resultado se lee sin
+     buscar la columna de resultado, que en una tabla de ocho columnas
+     siempre queda lejos de donde mira el ojo.
+   - La barra bajo el puntaje. "690" obliga a recordar que el tope es
+     999; la barra lo muestra.
+   - Los accesos siempre en la misma posición. Perfil, Ingresos y
+     Análisis son tres destinos fijos: que no se muevan los convierte
+     en memoria muscular en una semana.
+   ============================================================ */
+
+.crediscope-bandeja-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: flex-end;
+}
+
+.crediscope-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crediscope-filtro label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.crediscope-filtro select,
+.crediscope-filtro input {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--panel);
+  min-width: 0;
+}
+
+.crediscope-filtro input:focus,
+.crediscope-filtro select:focus {
+  outline: 2px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  outline-offset: 1px;
+  border-color: var(--brand);
+}
+
+/* Los filtros activos, como fichas que se pueden sacar de a una. Un
+   formulario con seis casillas no dice de un vistazo cuáles están
+   puestas; estas sí, y se quitan donde se leen. */
+.crediscope-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.crediscope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent);
+  border-radius: 999px;
+  padding: 3px 6px 3px 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.crediscope-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.crediscope-chip button:hover {
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+/* Franja de totales. Más chata que crediscope-kpi-grid: acá los
+   números acompañan a la tabla, no son el contenido de la pantalla.
+   Cada celda es un filtro: ver "3 para revisar" y no poder hacer clic
+   es mostrarle al analista su trabajo detrás de un vidrio. */
+.crediscope-franja {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.crediscope-franja-celda {
+  background: var(--panel);
+  padding: 11px 14px;
+  border: none;
+  border-top: 2px solid transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.crediscope-franja-celda:hover {
+  background: var(--panel-muted);
+}
+
+.crediscope-franja-celda[aria-pressed="true"] {
+  border-top-color: currentColor;
+  background: var(--panel-muted);
+}
+
+.crediscope-franja-celda:disabled {
+  cursor: default;
+}
+
+.crediscope-franja-celda:disabled:hover {
+  background: var(--panel);
+}
+
+.crediscope-franja-etiqueta {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crediscope-franja-valor {
+  display: block;
+  margin-top: 3px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* Tabla de la bandeja: más apretada que crediscope-table y con la
+   primera columna anclada al color del resultado. */
+.crediscope-bandeja-scroll {
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 0 20px;
+}
+
+.crediscope-bandeja-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 940px;
+}
+
+.crediscope-bandeja-tabla th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 10px 9px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.crediscope-bandeja-tabla td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.crediscope-bandeja-tabla tbody tr:hover {
+  background: var(--panel-muted);
+}
+
+.crediscope-franja-fila {
+  border-left: 3px solid transparent;
+  padding-left: 9px;
+}
+
+.crediscope-celda-sub {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 1px;
+}
+
+.crediscope-celda-fuerte {
+  font-weight: 600;
+}
+
+.crediscope-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-score-celda {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.crediscope-score-riel {
+  height: 3px;
+  width: 52px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 4px;
+  margin-left: auto;
+  overflow: hidden;
+}
+
+.crediscope-score-riel span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.crediscope-accesos {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.crediscope-acceso {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-muted);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.crediscope-acceso:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.crediscope-abrir {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--brand);
+  border-radius: 7px;
+  color: var(--brand);
+  background: var(--panel);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.crediscope-abrir:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
+.crediscope-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.crediscope-paginacion-botones {
+  display: flex;
+  gap: 8px;
+}
+
+/* Marca discreta de que una fila viene de una corrida por lote y no de
+   una consulta que alguien pidió. Mezclar las dos sin distinguirlas
+   hacía parecer que 2.500 personas habían sido evaluadas una por una. */
+.crediscope-sello-lote {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 4px;
+  padding: 0 4px;
+  vertical-align: 1px;
+}
+
+/* ============================================================
+   EL EXPEDIENTE
+   Pantalla completa con URL propia, no una ventana emergente: se pega
+   en un chat, se abren tres en pestañas y se recarga sin perderlo.
+   ============================================================ */
+
+.crediscope-exp-cabecera {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+}
+
+.crediscope-exp-migas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.crediscope-exp-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13.5px;
+}
+
+.crediscope-exp-volver:hover {
+  color: var(--brand);
+}
+
+.crediscope-exp-identidad {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.crediscope-exp-identidad h2 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.crediscope-exp-cedula {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Los sellos: lo que contesta en dos segundos si hay que preocuparse.
+   Etiqueta chica arriba, valor grande abajo, y el color solo cuando el
+   valor lo amerita -- si todo se pinta, nada resalta. */
+.crediscope-sellos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.crediscope-sello {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 7px 13px;
+  background: var(--panel-muted);
+  min-width: 0;
+}
+
+.crediscope-sello-etiqueta {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.crediscope-sello-valor {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crediscope-exp-grid {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* La navegación se queda quieta mientras el contenido se desplaza. Con
+   dieciséis grupos de perfil más la línea de tiempo, una barra que se
+   va con el scroll obliga a subir hasta arriba para cambiar de
+   sección. */
+.crediscope-exp-nav {
+  position: sticky;
+  top: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.crediscope-exp-nav a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13.5px;
+}
+
+.crediscope-exp-nav a:hover {
+  background: var(--panel-muted);
+  color: var(--text);
+}
+
+.crediscope-exp-nav-activo {
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.crediscope-exp-nav-cuenta {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.crediscope-exp-seccion {
+  scroll-margin-top: 16px;
+}
+
+.crediscope-exp-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.crediscope-exp-titulo::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Las cuatro cajas de "lo que decide este caso". Borde superior
+   coloreado en vez de fondo: a cuatro cajas con fondo de color la
+   pantalla se le va la mano, y lo que hay que comparar es el veredicto,
+   no el envase. */
+.crediscope-veredictos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.crediscope-veredicto {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--text-muted);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.crediscope-veredicto-rot {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.crediscope-veredicto-valor {
+  margin: 5px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-veredicto-pie {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Pares etiqueta/valor en dos columnas. El mismo patrón en todo el
+   expediente, para que leer un dato sea siempre el mismo gesto. */
+.crediscope-pares {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0 24px;
+}
+
+.crediscope-par {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.crediscope-par-etiqueta {
+  color: var(--text-muted);
+}
+
+.crediscope-par-valor {
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La línea de tiempo: lo que convierte cuatro pantallas de datos en un
+   expediente. Se lee de arriba (lo último) hacia abajo. */
+.crediscope-tiempo {
+  border-left: 2px solid var(--border);
+  margin-left: 6px;
+  padding-left: 20px;
+}
+
+.crediscope-hito {
+  position: relative;
+  padding-bottom: 18px;
+}
+
+.crediscope-hito:last-child {
+  padding-bottom: 0;
+}
+
+.crediscope-hito::before {
+  content: "";
+  position: absolute;
+  left: -26px;
+  top: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 2px var(--brand);
+}
+
+.crediscope-hito-pendiente::before {
+  background: var(--panel);
+  box-shadow: 0 0 0 2px var(--border);
+}
+
+.crediscope-hito-cuando {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-hito-que {
+  margin: 1px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.crediscope-hito-quien {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.crediscope-hito-acciones {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+/* Lo que todavía no existe, dicho en la pantalla en vez de escondido.
+   Un hueco marcado es información; un hueco disimulado es una mentira
+   por omisión. */
+.crediscope-pendiente {
+  border: 1px dashed color-mix(in srgb, var(--text-muted) 45%, transparent);
+  border-radius: 10px;
+  padding: 13px 15px;
+  background: transparent;
+}
+
+.crediscope-pendiente p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.crediscope-pendiente strong {
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .crediscope-exp-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .crediscope-exp-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .crediscope-exp-nav a {
+    white-space: nowrap;
+  }
+
+  .crediscope-exp-nav-cuenta {
+    display: none;
+  }
+}

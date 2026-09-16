@@ -10,6 +10,8 @@ import Signup from "./pages/Signup.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
 import PerfilCliente from "./pages/PerfilCliente.jsx";
+import Solicitudes from "./pages/Solicitudes.jsx";
+import Expediente from "./pages/Expediente.jsx";
 import Historial from "./pages/Historial.jsx";
 import HistorialPerfilDetalle from "./pages/HistorialPerfilDetalle.jsx";
 import HistorialAnalisisDetalle from "./pages/HistorialAnalisisDetalle.jsx";
@@ -65,7 +67,12 @@ const TITULOS = [
   [/^\/$/, "Evaluación Crediticia"],
   [/^\/perfil/, "Evaluación Crediticia"],
   [/^\/analisis/, "Evaluación Crediticia"],
-  [/^\/historial/, "Solicitudes"],
+  // El expediente pone el nombre de la persona en su propia cabecera:
+  // repetirlo arriba gastaba la única línea que dice en qué módulo está
+  // parado el analista.
+  [/^\/solicitudes\/./, "Expediente"],
+  [/^\/solicitudes/, "Solicitudes"],
+  [/^\/historial/, "Historial de un cliente"],
   [/^\/reportes\/descargas/, "Descargas"],
   [/^\/reportes/, "Inteligencia de Negocios"],
   [/^\/fuentes\/clientes/, "Clientes por segmento"],
@@ -189,6 +196,25 @@ export default function App() {
             element={
               <RequireSession>
                 <AnalisisIA />
+              </RequireSession>
+            }
+          />
+          {/* La bandeja y el expediente. El expediente tiene ruta
+              propia a propósito: se comparte por enlace, se abren
+              varios en pestañas y sobrevive a recargar la página. */}
+          <Route
+            path="/solicitudes"
+            element={
+              <RequireSession>
+                <Solicitudes />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/solicitudes/:cedula"
+            element={
+              <RequireSession>
+                <Expediente />
               </RequireSession>
             }
           />

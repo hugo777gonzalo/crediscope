@@ -838,3 +838,172 @@ export async function getPerfilesDeLote(id, { limite = 5000 } = {}) {
   }
   return salida;
 }
+
+// ---------- La bandeja de solicitudes ----------
+// Una fila por persona consultada, con su último Perfil del Cliente y
+// su último Análisis con IA. El "quedarse con el último" lo resuelve la
+// vista bandeja_solicitudes (063) en la base: traerse la cartera entera
+// al navegador para descartar el 60% no escala, y a 2.681 perfiles con
+// el JSON completo adentro ya se nota.
+//
+// Los filtros y el orden viajan al servidor por la misma razón. La
+// paginación es por rango (`range`), que es lo que PostgREST entiende.
+
+export const BANDEJA_POR_PAGINA = 50;
+
+// Cada orden nombra una columna de la vista. Se declara acá y no se
+// arma con texto libre desde la pantalla: una columna inventada en la
+// URL se convertiría en un error de PostgREST en la cara del analista.
+export const ORDENES_BANDEJA = {
+  reciente: { columna: "ultima_actividad", asc: false, texto: "Más reciente" },
+  antiguo: { columna: "ultima_actividad", asc: true, texto: "Más antiguo" },
+  score_alto: { columna: "score", asc: false, texto: "Puntaje más alto" },
+  score_bajo: { columna: "score", asc: true, texto: "Puntaje más bajo" },
+  piso_alto: { columna: "fuente_piso_ingreso", asc: false, texto: "Mayor piso de ingreso" },
+  piso_bajo: { columna: "fuente_piso_ingreso", asc: true, texto: "Menor piso de ingreso" },
+};
+
+// `desde`/`hasta` llegan como día suelto (2026-09-15) y se expanden al
+// día completo en hora de Ecuador -- ver fechas.js. Sin eso, "hasta el
+// 15" dejaba afuera todo lo del 15 después de medianoche.
+function filtrosBandeja({ desde, hasta, busqueda, recomendacion, segmento, estado, origen }) {
+  return {
+    p_desde: desde ? inicioDelDia(desde) : null,
+    p_hasta: hasta ? finDelDia(hasta) : null,
+    p_busqueda: busqueda ? busqueda.trim() : null,
+    p_recomendacion: recomendacion || null,
+    p_segmento: segmento || null,
+    p_estado: estado || null,
+    p_origen: origen || null,
+  };
+}
+
+export async function getBandejaSolicitudes(filtros = {}) {
+  const { orden = "reciente", pagina = 0, porPagina = BANDEJA_POR_PAGINA } = filtros;
+  const f = filtrosBandeja(filtros);
+  const criterio = ORDENES_BANDEJA[orden] ?? ORDENES_BANDEJA.reciente;
+
+  let q = supabase.from("bandeja_solicitudes").select("*", { count: "exact" });
+
+  if (f.p_desde) q = q.gte("ultima_actividad", f.p_desde);
+  if (f.p_hasta) q = q.lte("ultima_actividad", f.p_hasta);
+  if (f.p_recomendacion) q = q.eq("recomendacion", f.p_recomendacion);
+  if (f.p_segmento) q = q.eq("fuente_segmento", f.p_segmento);
+  if (f.p_estado) q = q.eq("estado", f.p_estado);
+  if (f.p_origen) q = q.eq("perfil_origen", f.p_origen);
+  if (f.p_busqueda) {
+    // Una sola caja para cédula y nombre: el analista tiene uno de los
+    // dos y no tiene por qué decirnos cuál. Los dígitos se buscan por
+    // el principio de la cédula, las letras por cualquier parte del
+    // nombre.
+    const esCedula = /^\d+$/.test(f.p_busqueda);
+    q = esCedula
+      ? q.like("cedula", `${f.p_busqueda}%`)
+      : q.ilike("nombre", `%${f.p_busqueda}%`);
+  }
+
+  // nullsFirst: false deja abajo a los que todavía no tienen puntaje ni
+  // piso. Ordenar por "puntaje más alto" y encontrar arriba una fila
+  // vacía es desconcertante.
+  q = q.order(criterio.columna, { ascending: criterio.asc, nullsFirst: false });
+  // Desempate estable: sin esto, dos filas con el mismo puntaje pueden
+  // cambiar de orden entre páginas y la misma persona aparecer dos
+  // veces o ninguna.
+  if (criterio.columna !== "ultima_actividad") q = q.order("ultima_actividad", { ascending: false });
+
+  const desdeFila = pagina * porPagina;
+  const { data, error, count } = await q.range(desdeFila, desdeFila + porPagina - 1);
+  if (error) throw error;
+  return { filas: data || [], total: count ?? 0, pagina, porPagina };
+}
+
+// Los totales de la franja superior. Van aparte de la lista porque la
+// lista viene paginada: contar sus 50 filas daría el total de la página
+// y no el de la búsqueda.
+export async function getBandejaConteos(filtros = {}) {
+  const { data, error } = await supabase.rpc("bandeja_conteos", filtrosBandeja(filtros));
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
+// Los segmentos presentes en la cartera, para el desplegable. Salen de
+// la cartera entera y no del resultado filtrado: si se derivaran del
+// resultado, al elegir un segmento el desplegable se quedaría con esa
+// única opción y no habría forma de volver (mismo criterio que
+// FuentesClientes.jsx).
+export async function getSegmentosDeLaCartera() {
+  const { data, error } = await supabase
+    .from("bandeja_solicitudes")
+    .select("fuente_segmento")
+    .not("fuente_segmento", "is", null);
+  if (error) throw error;
+  return [...new Set((data || []).map((f) => f.fuente_segmento))].sort();
+}
+
+// ---------- El expediente ----------
+// Todo lo que se sabe de una persona, en una sola llamada. Las cinco
+// consultas van en paralelo: encadenarlas sumaría cinco viajes de ida y
+// vuelta para dibujar una pantalla.
+export async function getExpediente(cedula) {
+  const { data: client, error: errorClient } = await supabase
+    .from("clients")
+    .select("id, cedula, created_at")
+    .eq("cedula", cedula)
+    .maybeSingle();
+  if (errorClient) throw errorClient;
+  if (!client) return null;
+
+  const [perfiles, analisis, auditoria, cabecera, perfilCompleto, analisisCompleto] = await Promise.all([
+    supabase
+      .from("client_profiles")
+      .select("id, created_at, structure_version, origen, lote_id, fuente_segmento, fuente_piso_ingreso, fuente_estado, fuente_corte, duracion_ms")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("analysis_results")
+      .select("id, created_at, crediscope_score, recomendacion, rules_version, fallo, fallo_tipo, veredicto_origen, indicador_riesgo, indicador_historial, duracion_llm_ms, client_profile_id")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("audit_log")
+      .select("id, action, actor, meta, created_at")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    // La fila de la bandeja: ya trae resumido lo que la cabecera
+    // necesita, sin volver a derivarlo acá.
+    supabase.from("bandeja_solicitudes").select("*").eq("cedula", cedula).maybeSingle(),
+    // El último perfil y el último análisis COMPLETOS. Los dos primeros
+    // traen solo columnas livianas para la línea de tiempo: pedir el
+    // standard_profile entero de las veinte consultas de una persona
+    // serían megabytes para mostrar uno.
+    supabase
+      .from("client_profiles")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("analysis_results")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  for (const r of [perfiles, analisis, auditoria, cabecera, perfilCompleto, analisisCompleto]) {
+    if (r.error) throw r.error;
+  }
+
+  return {
+    client,
+    cabecera: cabecera.data,
+    perfil: perfilCompleto.data,
+    analisis: analisisCompleto.data,
+    consultas: perfiles.data || [],
+    analisisPrevios: analisis.data || [],
+    auditoria: auditoria.data || [],
+  };
+}

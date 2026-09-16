@@ -138,7 +138,21 @@ export default function MenuLateral({ profile }) {
           ]}
         />
 
-        <Item to="/historial" Icono={FileStack} texto="Solicitudes" activo={pathname.startsWith("/historial")} colapsado={colapsado} />
+        {/* La bandeja es ahora la puerta de entrada al trabajo del día.
+            El buscador viejo por cédula sigue existiendo en /historial,
+            pero como subsección: buscar el historial de UNA persona es
+            un caso particular de abrir su expediente. */}
+        <Grupo
+          Icono={FileStack}
+          texto="Solicitudes"
+          activo={pathname.startsWith("/solicitudes") || pathname.startsWith("/historial")}
+          colapsado={colapsado}
+          expandirMenu={() => setColapsado(false)}
+          hijos={[
+            { to: "/solicitudes", texto: "Bandeja", activo: pathname === "/solicitudes" },
+            { to: "/historial", texto: "Historial por cédula", activo: pathname.startsWith("/historial") },
+          ]}
+        />
 
         <Grupo
           Icono={Wallet}
