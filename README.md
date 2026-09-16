@@ -297,6 +297,18 @@ terminal compartida, o cualquier lugar fuera de las secrets de la Edge
 Function, rotarla. Nunca debe quedar en el código ni en un `.env`
 versionado (`.gitignore` ya excluye `.env` y `.env.functions`).
 
+## Hacia dónde va
+
+`docs/arquitectura-fabrica-de-credito.md` es la definición estratégica:
+CrediScope hoy evalúa personas, y una fábrica de crédito procesa
+solicitudes. Ahí está qué falta para cerrar esa brecha (la solicitud
+como entidad, la capacidad de pago, el registro de la decisión y la
+política separada del criterio), y cómo se reorganiza lo ya construido
+alrededor del ciclo del crédito en vez del orden en que se fue
+haciendo.
+
+Está en pausa por decisión del negocio, no descartada.
+
 ## Puesta en marcha en una institución
 
 `docs/puesta-en-marcha-ifi.md` es el temario de la sesión de trabajo con
