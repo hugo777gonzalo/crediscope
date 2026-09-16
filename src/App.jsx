@@ -23,7 +23,9 @@ import Retroalimentacion from "./pages/Retroalimentacion.jsx";
 import InformeFeedback from "./pages/InformeFeedback.jsx";
 import VersionesCriterio from "./pages/VersionesCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
-import AdminConfig from "./pages/AdminConfig.jsx";
+import ConfigFuentes from "./pages/ConfigFuentes.jsx";
+import ConfigCampos from "./pages/ConfigCampos.jsx";
+import ConfigSegmentos from "./pages/ConfigSegmentos.jsx";
 import Lotes from "./pages/Lotes.jsx";
 import LoteNuevo from "./pages/LoteNuevo.jsx";
 import LoteDetalle from "./pages/LoteDetalle.jsx";
@@ -82,6 +84,9 @@ const TITULOS = [
   [/^\/costos/, "Costos"],
   [/^\/retroalimentacion/, "Retroalimentación"],
   [/^\/explorar/, "Explorador de Fuentes"],
+  [/^\/admin\/fuentes/, "Fuentes que consultamos"],
+  [/^\/admin\/campos/, "Campos del análisis"],
+  [/^\/admin\/segmentos/, "Qué ve el analista"],
   [/^\/admin/, "Configuración"],
 ];
 
@@ -372,13 +377,32 @@ export default function App() {
             }
           />
           <Route
-            path="/admin/configuracion"
+            path="/admin/fuentes"
             element={
               <RequireAdmin>
-                <AdminConfig />
+                <ConfigFuentes />
               </RequireAdmin>
             }
           />
+          <Route
+            path="/admin/campos"
+            element={
+              <RequireAdmin>
+                <ConfigCampos />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/segmentos"
+            element={
+              <RequireAdmin>
+                <ConfigSegmentos />
+              </RequireAdmin>
+            }
+          />
+          {/* La ruta vieja sigue viva: había enlaces y marcadores
+              apuntando acá antes de que fueran tres pantallas. */}
+          <Route path="/admin/configuracion" element={<Navigate to="/admin/fuentes" replace />} />
         </Routes>
         </main>
       </div>

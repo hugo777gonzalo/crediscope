@@ -1173,3 +1173,42 @@ a {
   margin: 6px 0 0;
   text-align: center;
 }
+
+/* Una opción de configuración: nombre con su interruptor, motivo y
+   guardado. En grilla y no en tabla porque en pantalla angosta las
+   columnas de una tabla no pueden apilarse. */
+.crediscope-config-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 260px) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.crediscope-config-fila:first-child {
+  border-top: 0;
+}
+.crediscope-config-fila-nombre {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  min-width: 0;
+  cursor: pointer;
+}
+.crediscope-config-fila-nombre input {
+  margin-top: 3px;
+  flex: none;
+  accent-color: var(--brand);
+  width: 16px;
+  height: 16px;
+}
+.crediscope-config-fila-nombre code {
+  font-size: 13px;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .crediscope-config-fila {
+    grid-template-columns: 1fr;
+  }
+}

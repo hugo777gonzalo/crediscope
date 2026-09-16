@@ -203,23 +203,25 @@ export default function MenuLateral({ profile }) {
               activo={pathname.startsWith("/retroalimentacion")}
               colapsado={colapsado}
             />
-            <Item
-              to="/admin/configuracion"
+            {/* Tres pantallas y no una: los tres interruptores se
+                parecen y tienen consecuencias distintas. Apagar una
+                fuente deja de consultar el dato; apagar un campo lo
+                guarda pero lo saca del criterio; ocultar un segmento
+                solo cambia lo que se ve. Mezclarlas invitaba a apagar
+                una creyendo que se apagaba otra. */}
+            <Grupo
               Icono={Settings}
               texto="Configuración"
               activo={pathname.startsWith("/admin") || pathname.startsWith("/explorar")}
               colapsado={colapsado}
+              expandirMenu={() => setColapsado(false)}
+              hijos={[
+                { to: "/admin/fuentes", texto: "Fuentes que consultamos", activo: pathname.startsWith("/admin/fuentes") },
+                { to: "/admin/campos", texto: "Campos del análisis", activo: pathname.startsWith("/admin/campos") },
+                { to: "/admin/segmentos", texto: "Qué ve el analista", activo: pathname.startsWith("/admin/segmentos") },
+                { to: "/explorar", texto: "Explorador de Fuentes", activo: pathname.startsWith("/explorar") },
+              ]}
             />
-            {!colapsado && (pathname.startsWith("/admin") || pathname.startsWith("/explorar")) ? (
-              <div className="crediscope-menu-sub">
-                <Link to="/admin/configuracion" className={pathname.startsWith("/admin") ? "crediscope-menu-sub-activo" : ""}>
-                  Parámetros
-                </Link>
-                <Link to="/explorar" className={pathname.startsWith("/explorar") ? "crediscope-menu-sub-activo" : ""}>
-                  Explorador de Fuentes
-                </Link>
-              </div>
-            ) : null}
           </>
         ) : null}
       </nav>

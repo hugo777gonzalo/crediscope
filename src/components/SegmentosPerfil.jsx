@@ -18,6 +18,7 @@ import {
   Database,
 } from "lucide-react";
 import { GRUPOS_CONFIG, filasVisibles } from "../lib/perfilClienteCampos.js";
+import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
 
 // Renderiza el Perfil del Cliente (tarjetas por segmento + aviso de
 // controles de bloqueo) — compartido entre PerfilCliente.jsx (vista
@@ -44,24 +45,6 @@ const ORDEN_GRUPOS = [
   "comportamientoInterno",
 ];
 
-const ETIQUETAS_GRUPO = {
-  cumplimiento: "Cumplimiento y Listas de Control",
-  riesgoSeguridadCiudadana: "Riesgo de Seguridad Ciudadana",
-  comportamientoBancario: "Comportamiento Bancos / BIESS / Diners",
-  comportamientoCooperativas: "Comportamiento Cooperativas",
-  riesgoJudicialCrediticio: "Riesgo Judicial Crediticio",
-  riesgoJudicialCivil: "Riesgo Judicial / Civil (otros)",
-  riesgoPenal: "Riesgo Penal / Fiscalía",
-  laboral: "Situación Laboral e Ingresos",
-  tributario: "Situación Tributaria (SRI)",
-  seguridadSocial: "Seguridad Social",
-  patrimonio: "Patrimonio",
-  familia: "Núcleo Familiar",
-  identidad: "SocioDemográficas",
-  contacto: "Contacto y Domicilio",
-  transitoVehicular: "Tránsito Vehicular",
-  comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
-};
 
 const ICONOS_GRUPO = {
   cumplimiento: ShieldCheck,
