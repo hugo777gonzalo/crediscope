@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { getDatosReporteGerencial } from "../lib/api.js";
-import { calcularMetricas, agregarCampo, camposDeEje } from "../lib/reporteGerencial.js";
+import { useEffect, useState } from "react";
+import { getMetricasGerenciales, agregarPorCampo } from "../lib/api.js";
+import { camposDeEje } from "../lib/reporteGerencial.js";
 import { ORDEN_GRUPOS, ETIQUETAS_GRUPO, formatValor } from "../lib/perfilClienteCampos.js";
 
 // Inteligencia de Negocios -- a pedido del usuario, un tablero EN
@@ -132,9 +132,40 @@ function GraficoTendencia({ datos }) {
   );
 }
 
-function ExploradorPorEje({ perfiles }) {
+// El agregado de cada campo lo hace la base, uno por uno. Era la razón
+// real por la que el tablero bajaba el perfil completo de las 2.565
+// personas: para mirar un campo había que tener los 124.
+//
+// Se piden en paralelo al cambiar de grupo -- son diez o doce campos y
+// cada uno es una cuenta sobre el último perfil de cada cliente.
+function ExploradorPorEje() {
   const [grupo, setGrupo] = useState(ORDEN_GRUPOS[0]);
+  const [resultados, setResultados] = useState({});
+  const [cargando, setCargando] = useState(true);
   const campos = camposDeEje(grupo);
+
+  useEffect(() => {
+    let vigente = true;
+    setCargando(true);
+    setResultados({});
+    Promise.all(
+      campos.map(([campoPath, , tipo]) =>
+        agregarPorCampo(`${grupo}.${campoPath}`, tipo)
+          .then((r) => [`${grupo}.${campoPath}`, r])
+          // Un campo que falla no puede dejar el grupo entero en blanco.
+          .catch(() => [`${grupo}.${campoPath}`, { tipo: "vacio", conDato: 0 }]),
+      ),
+    )
+      .then((pares) => vigente && setResultados(Object.fromEntries(pares)))
+      .finally(() => vigente && setCargando(false));
+    return () => {
+      vigente = false;
+    };
+    // `campos` se deriva de `grupo`: depender de los dos volvería a
+    // pedir todo en cada render, porque camposDeEje devuelve un arreglo
+    // nuevo cada vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grupo]);
 
   return (
     <div className="crediscope-card">
@@ -151,11 +182,13 @@ function ExploradorPorEje({ perfiles }) {
       <div style={{ display: "grid", gap: 10 }}>
         {campos.map(([campoPath, etiqueta, tipo]) => {
           const ruta = `${grupo}.${campoPath}`;
-          const resultado = agregarCampo(perfiles, ruta, tipo);
+          const resultado = resultados[ruta] ?? { tipo: cargando ? "cargando" : "vacio", conDato: 0 };
           return (
             <div key={ruta} className="crediscope-eje-row">
               <span className="crediscope-eje-etiqueta">{etiqueta}</span>
               <span className="crediscope-eje-valor">
+                {resultado.tipo === "cargando" && <span className="crediscope-muted">...</span>}
+                {resultado.tipo === "cargando" && <span className="crediscope-muted">…</span>}
                 {resultado.tipo === "vacio" && <span className="crediscope-muted">Sin datos</span>}
                 {resultado.tipo === "porcentaje" && (
                   <>
@@ -180,18 +213,19 @@ function ExploradorPorEje({ perfiles }) {
 }
 
 export default function Reportes() {
-  const [datos, setDatos] = useState(null);
+  const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Los números llegan calculados. Antes acá se bajaban TODOS los
+  // perfiles y análisis con el standard_profile completo adentro --unos
+  // 30 MB-- para agregarlos en el navegador.
   useEffect(() => {
-    getDatosReporteGerencial()
-      .then(setDatos)
+    getMetricasGerenciales()
+      .then(setMetricas)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
-
-  const metricas = useMemo(() => (datos ? calcularMetricas(datos) : null), [datos]);
 
   if (loading) return <p className="crediscope-muted">Cargando reporte...</p>;
   if (error)
@@ -308,7 +342,7 @@ export default function Reportes() {
         </div>
       </div>
 
-      <ExploradorPorEje perfiles={metricas.perfiles} />
+      <ExploradorPorEje />
     </div>
   );
 }

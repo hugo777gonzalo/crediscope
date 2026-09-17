@@ -250,12 +250,16 @@ export default function App() {
               </RequireSession>
             }
           />
+          {/* Bajar la cartera entera en un archivo no es leer un
+              cliente: son 2.565 personas con Fiscalía, Función Judicial
+              y comportamiento bancario adentro, en un archivo que sale
+              del sistema y ya no vuelve. Administración. */}
           <Route
             path="/reportes/descargas"
             element={
-              <RequireSession>
+              <RequireAdmin>
                 <Descargas />
-              </RequireSession>
+              </RequireAdmin>
             }
           />
           {/* Consultas por lote: cargar un archivo con miles de cédulas

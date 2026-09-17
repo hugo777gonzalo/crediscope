@@ -1,22 +1,19 @@
-import { get, GRUPOS_CONFIG } from "./perfilClienteCampos.js";
+import { GRUPOS_CONFIG } from "./perfilClienteCampos.js";
 
-// Métricas agregadas para el Reporte Gerencial de Gestión (pestaña
-// Reportes) -- pensado para un Jefe/Coordinador/Sub-gerente, sobre TODA
-// la cartera de clientes consultados, no un cliente a la vez.
+// Lo que queda de la agregación en el navegador.
 //
-// Base de cálculo: el último client_profiles/analysis_results de cada
-// cliente (deduplicado por client_id) -- una persona reconsultada 5
-// veces cuenta 1 vez en "distribución de score"/"riesgo", no 5. Para
-// "actividad"/"tendencia" (cuánto se usó la app) SÍ se cuentan todas
-// las consultas, deduplicar ahí ocultaría el volumen real de trabajo.
+// Hasta el 2026-09-16 este archivo calculaba TODO el Reporte Gerencial
+// acá: se bajaban los client_profiles y analysis_results completos --con
+// el standard_profile de cada persona adentro-- y se agregaba en
+// memoria. Con decenas de clientes era correcto y simple; con 2.565 y
+// 3.054 perfiles son unos 30 MB por carga de pantalla.
 //
-// Escala: esto trae TODO client_profiles/analysis_results a memoria y
-// agrega en JS. Al 2026-09-16 la cartera son 2.566 clientes y 2.681
-// perfiles, así que la advertencia de "si crece mucho, moverlo a una
-// vista" ya venció: el camino está hecho (ver bandeja_solicitudes en la
-// 063, que deduplica por cliente en la base) y falta migrar estas
-// métricas ahí. Mientras tanto funciona, pero cada carga del Reporte
-// Gerencial baja la cartera entera.
+// El cálculo se movió a la base: metricas_gerenciales() y
+// agregar_por_campo(), migración 070. Acá sobrevive lo que sigue siendo
+// del navegador: la deduplicación por cliente, que usan las pantallas
+// que ya tienen sus filas en la mano, y la lista de campos de cada eje,
+// que sale de la misma curación que ve el analista en Perfil del
+// Cliente.
 
 // Compara fechas en vez de confiar en el orden en que llegaron las
 // filas.
@@ -36,164 +33,9 @@ export function ultimoPorCliente(rows) {
   return [...porCliente.values()];
 }
 
-function claseScore(score) {
-  if (score >= 700) return "bueno";
-  if (score >= 400) return "medio";
-  return "malo";
-}
-
-const NOMBRES_MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-
-function ultimosNMeses(n) {
-  const ahora = new Date();
-  const meses = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-    meses.push({ clave: `${d.getFullYear()}-${d.getMonth()}`, etiqueta: `${NOMBRES_MES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}` });
-  }
-  return meses;
-}
-
-// Sobre TODAS las filas (no deduplicadas) -- el tiempo de respuesta de
-// una consulta puntual no cambia si ese cliente se reconsultó después.
-function estadisticasDuracion(valoresMs) {
-  const validos = valoresMs.filter((v) => typeof v === "number" && v >= 0);
-  if (validos.length === 0) return { n: 0, promedioMs: null, minMs: null, maxMs: null };
-  return {
-    n: validos.length,
-    promedioMs: Math.round(validos.reduce((a, b) => a + b, 0) / validos.length),
-    minMs: Math.min(...validos),
-    maxMs: Math.max(...validos),
-  };
-}
-
-export function calcularMetricas({ perfilesRaw, analisisRaw, nombrePorId }) {
-  const perfiles = ultimoPorCliente(perfilesRaw);
-  const analisis = ultimoPorCliente(analisisRaw);
-
-  const totalClientes = perfiles.length;
-  const totalAnalizados = analisis.length;
-
-  // Distribución de la acción sugerida (marco-v14). Los análisis
-  // anteriores a esa versión no tienen recomendación -- se cuentan
-  // aparte para no inflar ninguna categoría con datos que no existen.
-  const distribucionRecomendacion = { aprobar: 0, revisar: 0, observar: 0, negar: 0, sinDato: 0 };
-  for (const a of analisis) {
-    if (a.recomendacion && a.recomendacion in distribucionRecomendacion) distribucionRecomendacion[a.recomendacion]++;
-    else distribucionRecomendacion.sinDato++;
-  }
-
-  const distribucionScore = { bueno: 0, medio: 0, malo: 0 };
-  let sumaScore = 0;
-  for (const a of analisis) {
-    sumaScore += a.crediscope_score;
-    distribucionScore[claseScore(a.crediscope_score)]++;
-  }
-  const scorePromedio = totalAnalizados ? Math.round(sumaScore / totalAnalizados) : null;
-
-  const pct = (n) => (totalClientes ? Math.round((n / totalClientes) * 100) : 0);
-
-  const conDemandaCrediticia = perfiles.filter((p) => (get(p.standard_profile, "riesgoJudicialCrediticio.numeroDemandasComoDemandado") ?? 0) > 0).length;
-  const conCalificacionBaja = perfiles.filter((p) => ["D", "E"].includes(get(p.standard_profile, "comportamientoBancario.peorCalificacionRiesgo"))).length;
-  const conMora = perfiles.filter(
-    (p) => (get(p.standard_profile, "comportamientoBancario.saldoEnMoraBuroCredito") ?? 0) > 0 || (get(p.standard_profile, "comportamientoCooperativas.saldoEnMora") ?? 0) > 0
-  ).length;
-  const conBloqueo = perfiles.filter((p) => p.control_bloqueo?.bloqueado).length;
-
-  const independientes = perfiles.filter((p) => get(p.standard_profile, "laboral.esIndependiente")).length;
-  const dependientes = perfiles.filter((p) => get(p.standard_profile, "laboral.empleoActual")).length;
-  const jubilados = perfiles.filter((p) => get(p.standard_profile, "seguridadSocial.esJubilado")).length;
-  const pensionistas = perfiles.filter((p) => get(p.standard_profile, "seguridadSocial.esPensionista")).length;
-
-  const conRespaldoPatrimonial = perfiles.filter((p) => get(p.standard_profile, "patrimonio.tieneVehiculos") || (get(p.standard_profile, "patrimonio.numeroInmuebles") ?? 0) > 0).length;
-  const valorColateralTotal = perfiles.reduce((s, p) => s + (get(p.standard_profile, "patrimonio.valorColateralVehiculos") ?? 0), 0);
-
-  const meses = ultimosNMeses(6);
-  const consultasPorMes = meses.map((m) => ({
-    ...m,
-    total: perfilesRaw.filter((p) => {
-      const d = new Date(p.created_at);
-      return `${d.getFullYear()}-${d.getMonth()}` === m.clave;
-    }).length,
-  }));
-
-  const conteoPorAnalista = {};
-  for (const p of perfilesRaw) {
-    const nombre = nombrePorId[p.requested_by] || "Sin asignar";
-    conteoPorAnalista[nombre] = (conteoPorAnalista[nombre] || 0) + 1;
-  }
-  const actividadPorAnalista = Object.entries(conteoPorAnalista).sort((a, b) => b[1] - a[1]);
-
-  // Ingesta a la fuente: puede venir de structure-client (client_profiles.
-  // duracion_ms, el camino que usa toda la UI) o de analyze-client cuando
-  // se llama sin profileId (analysis_results.duracion_ingesta_ms -- solo
-  // pasa con integraciones externas por API, la UI siempre pasa por
-  // structure-client primero). Se combinan: ambas son "cuánto tardó
-  // ingestar a la fuente", sin importar qué endpoint lo disparó.
-  const tiempos = {
-    ingesta: estadisticasDuracion([...perfilesRaw.map((p) => p.duracion_ms), ...analisisRaw.map((a) => a.duracion_ingesta_ms)]),
-    llm: estadisticasDuracion(analisisRaw.map((a) => a.duracion_llm_ms)),
-  };
-
-  return {
-    totalClientes,
-    totalAnalizados,
-    scorePromedio,
-    distribucionScore,
-    distribucionRecomendacion,
-    riesgo: [
-      { etiqueta: "Con demanda de cobro/crediticia", valor: conDemandaCrediticia, pct: pct(conDemandaCrediticia) },
-      { etiqueta: "Calificación baja en buró (D/E)", valor: conCalificacionBaja, pct: pct(conCalificacionBaja) },
-      { etiqueta: "Mora bancaria o en cooperativas", valor: conMora, pct: pct(conMora) },
-      { etiqueta: "Control de bloqueo activo", valor: conBloqueo, pct: pct(conBloqueo) },
-    ],
-    laboral: [
-      { etiqueta: "Independientes", valor: independientes, pct: pct(independientes) },
-      { etiqueta: "Dependientes (empleo actual)", valor: dependientes, pct: pct(dependientes) },
-      { etiqueta: "Jubilados", valor: jubilados, pct: pct(jubilados) },
-      { etiqueta: "Pensionistas", valor: pensionistas, pct: pct(pensionistas) },
-    ],
-    patrimonio: { conRespaldoPatrimonial, pct: pct(conRespaldoPatrimonial), valorColateralTotal },
-    consultasPorMes,
-    actividadPorAnalista,
-    tiempos,
-    perfiles,
-  };
-}
-
-// ---------- Explorador por eje ----------
-// Reutiliza GRUPOS_CONFIG (la misma curación de campos que ve el
-// analista en Perfil del Cliente) para agregar CUALQUIER eje sin
-// lógica particular por grupo: según el `tipo` de cada campo, calcula
-// % (booleano), promedio (numero/moneda/meses) o distribución de
-// valores más frecuentes (texto/lista/estado).
-export function agregarCampo(perfiles, campo, tipo) {
-  const valores = perfiles.map((p) => get(p.standard_profile, campo)).filter((v) => v !== null && v !== undefined && v !== "");
-  const conDato = valores.length;
-  if (conDato === 0) return { tipo: "vacio", conDato: 0 };
-
-  if (tipo === "booleano_si_true") {
-    const conTrue = valores.filter((v) => v === true).length;
-    return { tipo: "porcentaje", conDato, pct: Math.round((conTrue / perfiles.length) * 100) };
-  }
-  if (tipo === "numero" || tipo === "moneda" || tipo === "meses") {
-    const promedio = valores.reduce((a, b) => a + b, 0) / valores.length;
-    return { tipo: "promedio", conDato, promedio };
-  }
-  const contador = {};
-  const agregarValor = (v) => {
-    contador[v] = (contador[v] || 0) + 1;
-  };
-  for (const v of valores) {
-    if (Array.isArray(v)) v.forEach(agregarValor);
-    else agregarValor(v);
-  }
-  const top = Object.entries(contador)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
-  return { tipo: "distribucion", conDato, top };
-}
-
+// Los campos de un eje, con su tipo. El tipo es lo que decide qué
+// calcula agregar_por_campo() del lado de la base: porcentaje para los
+// booleanos, promedio para los números, distribución para el resto.
 export function camposDeEje(grupo) {
   return GRUPOS_CONFIG[grupo]?.campos ?? [];
 }

@@ -176,7 +176,7 @@ export default function MenuLateral({ profile }) {
           expandirMenu={() => setColapsado(false)}
           hijos={[
             { to: "/reportes", texto: "Inteligencia de Negocios", activo: pathname === "/reportes" },
-            { to: "/reportes/descargas", texto: "Descargas", activo: pathname.startsWith("/reportes/descargas") },
+            ...(admin ? [{ to: "/reportes/descargas", texto: "Descargas", activo: pathname.startsWith("/reportes/descargas") }] : []),
           ]}
         />
 
