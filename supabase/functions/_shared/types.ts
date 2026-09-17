@@ -175,6 +175,14 @@ export interface StandardClientProfile {
     esExtranjero: boolean | null;
     añosCasado: number | null; // null si no hay cónyuge ACTUAL (evita usar fechaMatrimonio de un matrimonio ya disuelto)
     edadConyuge: number | null;
+    // Del registro de títulos (SENESCYT vía pn_titulos). Hasta marco-v20
+    // el nivel de educación venía solo de la ficha general; esto lo
+    // respalda con el título concreto y la institución que lo emitió --
+    // o lo contradice, que es igual de informativo.
+    titulosRegistrados: number;
+    tituloMasAlto: string | null;
+    nivelMaximoSegunTitulos: string | null;
+    institucionTituloMasAlto: string | null;
   };
 
   contacto: {
@@ -224,6 +232,21 @@ export interface StandardClientProfile {
     numeroEmpleadosRegistrados: number;
     tipoEmpleador: string | null;
     obligacionesPatronalesEnMora: boolean | null; // null si no aplica (no es empleador)
+    // Del historial de empleos (pn_trabajo_historicos), que trae algo
+    // que el mecanizado no: QUIÉN es el empleador. El riesgo de un
+    // dependiente es en buena medida el riesgo de quien le paga.
+    historialEmpleosRegistrados: number;
+    // El techo de lo que esta persona ganó alguna vez. Complementa el
+    // piso que sale del IESS: los dos juntos acotan el ingreso real
+    // mucho mejor que cualquiera solo.
+    salarioMasAltoRegistrado: number | null;
+    cargoVigente: string | null;
+    // ACTIVA, INDEFINIDA, DISOLUCION... Un empleador que no está activo
+    // es un riesgo de continuidad del ingreso, no del cliente.
+    empleadorVigenteSituacionLegal: string | null;
+    empleadorVigenteTipoCompania: string | null;
+    empleadorVigenteAntiguedadAnios: number | null;
+    empleadoresJuridicos: number;
     // Fechas crudas del registro RUC (contribuyente) — del registro
     // activo si existe, si no del primero disponible. Para auditar
     // tieneRucActivo/tieneEstablecimientoActivo contra el SRI sin tener
@@ -306,6 +329,18 @@ export interface StandardClientProfile {
     esPensionista: boolean;
     esJubilado: boolean;
     estadoAfiliacionIess: string | null;
+    // Cobertura de salud, de pn_afiliacion_salud. Responde por las tres
+    // entidades a la vez (IESS, ISSFA, ISSPOL) diciendo cuál registra
+    // cobertura. Es una corroboración independiente del empleo formal:
+    // "seguro general tiempo completo" no lo tiene alguien sin relación
+    // de dependencia vigente.
+    tieneCoberturaSalud: boolean | null;
+    entidadesSaludConCobertura: string[];
+    tipoSeguroSalud: string | null;
+    // Regímenes especiales. No son mejores ni peores: son OTRA fuente de
+    // ingreso, con su propia estabilidad y sus propios plazos.
+    afiliadoSeguridadPolicial: boolean;
+    afiliadoSeguridadMilitar: boolean;
   };
 
   patrimonio: {
@@ -340,6 +375,11 @@ export interface StandardClientProfile {
     numeroOperacionesBuroCredito: number;
     peorCalificacionRiesgo: string | null;
     mejorCalificacionRiesgo: string | null;
+    // De pn_deudores. Solo la presencia: el recurso vino vacío en las 16
+    // personas con las que se inspeccionó, así que no se conoce la
+    // estructura de un registro. Figurar es una señal; no figurar, que
+    // es el caso de todos hasta ahora, también.
+    figuraEnRegistroDeudores: boolean;
     tieneOperacionConDemanda: boolean;
     tieneOperacionCastigada: boolean;
     saldoTotalVigente: number;
@@ -387,6 +427,13 @@ export interface StandardClientProfile {
     puntosLicencia: number | null;
     numeroMultas: number;
     valorAdeudadoTransito: number;
+    // Solo el conteo, a propósito: estos dos recursos vinieron vacíos en
+    // las 16 personas con las que se inspeccionó la forma, así que no se
+    // conoce la estructura de un registro. Contar lo que hay es lo único
+    // que se puede afirmar sin inventar; cuando aparezca uno con datos,
+    // se enriquece. Ver fuentes_que_despertaron.
+    numeroSiniestros: number;
+    numeroPolizas: number;
   };
 
   // Demandas de cobro/pagarés/letras de cambio/ejecuciones — señal

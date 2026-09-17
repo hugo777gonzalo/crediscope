@@ -71,7 +71,9 @@ export function estadoPorFuente(raw: RawNovadataResponse): Record<string, string
     const porRecurso = (resultado as { data?: unknown })?.data as Record<string, { status?: string }> | null | undefined;
     if (!porRecurso || typeof porRecurso !== "object") continue;
     for (const [fuente, r] of Object.entries(porRecurso)) {
-      if (r && typeof r === "object" && "status" in r) salida[fuente] = String(r.status);
+      if (r && typeof r === "object" && "status" in r) {
+        salida[fuente] = r.status === "ok" && !traeContenido(r) ? "ok_vacio" : String(r.status);
+      }
     }
   }
   return salida;
@@ -79,6 +81,36 @@ export function estadoPorFuente(raw: RawNovadataResponse): Record<string, string
 
 export function cuantasFuentesContestaron(estado: Record<string, string>): number {
   return Object.values(estado).filter((s) => s === "ok").length;
+}
+
+/**
+ * ¿La fuente contestó con algo adentro, o contestó vacío?
+ *
+ * Tres de las 52 fuentes se descartaron el 2026-09-16 porque nunca
+ * traen nada: dos dan 404 sistemático y una responde OK con el sobre
+ * vacío. "Nunca" quiere decir "no en las 16 personas con las que se
+ * miró", y eso no es una garantía: el proveedor puede arreglar una ruta
+ * o empezar a poblar un padrón sin avisarle a nadie.
+ *
+ * Por eso se distingue `ok` de `ok_vacio`: si alguna de las tres
+ * empieza a traer contenido, queda registrado en cada perfil y la vista
+ * fuentes_que_despertaron lo muestra. Es la diferencia entre descartar
+ * algo y perderlo de vista.
+ */
+function traeContenido(resultado: unknown): boolean {
+  const payload = (resultado as { data?: unknown })?.data;
+  const interior = ((payload as { data?: unknown })?.data ?? payload) as Record<string, unknown> | null;
+  if (!interior || typeof interior !== "object") return false;
+  for (const [clave, valor] of Object.entries(interior)) {
+    // `estado` es el sobre de la respuesta, no su contenido: viene
+    // siempre, incluso cuando no hay nada.
+    if (clave === "estado") continue;
+    if (Array.isArray(valor) && valor.length > 0) return true;
+    if (valor && typeof valor === "object" && Object.keys(valor).length > 0) return true;
+    if (typeof valor === "string" && valor !== "") return true;
+    if (typeof valor === "number") return true;
+  }
+  return false;
 }
 
 /**

@@ -322,6 +322,45 @@ function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
 // client_profiles.structure_version para saber con qué lógica se armó
 // cada perfil. Vive acá (y no en quien lo persiste) para que
 // structure-client y analyze-client no puedan discrepar.
+
+// ---------- Las nueve fuentes que se consultaban y nadie leía ----------
+//
+// La auditoría del 2026-09-16 encontró que 12 de las 52 fuentes se
+// pedían en cada corrida y ningún código usaba la respuesta. Se
+// inspeccionaron contra 16 personas de la cartera para ver qué traen de
+// verdad, y de ahí salieron estos campos. Tres quedaron afuera: dos que
+// dan 404 sistemático y una sin relación con crédito.
+//
+// El corte entre las que traen dato y las que no cambia qué se puede
+// extraer: de titulos, trabajoHistoricos, afiliacionSalud y
+// afiliacionSiisspol se conoce la estructura y se leen campos; de
+// siniestros, polizas, deudores, afiliacionIsspol y
+// afiliacionIssfacCertMedico vinieron vacías en las 16, así que solo se
+// cuenta lo que hay. Contar es lo único afirmable sin inventar una
+// estructura que nadie vio.
+
+// Novadata marca "sigue empleado" con una fecha centinela de 1900 en
+// vez de dejar el campo vacío. Sin esto, todo empleo histórico parecía
+// terminado.
+const ANTES_DE_1950 = new Date("1950-01-01").getTime();
+function sinFechaDeSalida(v: unknown): boolean {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return true;
+  return n < ANTES_DE_1950 || n > Date.now();
+}
+
+function aniosDesdeMs(v: unknown): number | null {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < ANTES_DE_1950) return null;
+  const anios = (Date.now() - n) / (365.25 * 24 * 3600 * 1000);
+  return anios >= 0 && anios < 200 ? Math.floor(anios) : null;
+}
+
+function textoDe(v: unknown): string | null {
+  const t = String(v ?? "").trim();
+  return t === "" ? null : t;
+}
+
 export const PROCESS_VERSION = "estructura-v2"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
@@ -384,6 +423,31 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
       return m !== null ? Math.floor(m / 12) : null;
     })() : null,
     edadConyuge: tieneConyugeActual ? edadDesde(conyugePersona?.fechaNacimiento) : null,
+    ...(() => {
+      // El título de mayor nivel manda. `nivelEducacion.nivel` es un
+      // número ordenable que trae la propia fuente, así que no hace
+      // falta interpretar el texto ("TERCER_NIVEL" contra "CUARTO").
+      const titulos = arr(socio, "titulos", "titulos");
+      const conNivel = titulos
+        .map((t) => {
+          const titulo = (t.titulo as AnyRecord | undefined) ?? {};
+          const nivel = (titulo.nivelEducacion as AnyRecord | undefined) ?? {};
+          return {
+            descripcion: textoDe(titulo.descripcion),
+            nivelTexto: textoDe(nivel.descripcion),
+            nivel: Number(nivel.nivel ?? -1),
+            institucion: textoDe(((t.establecimientoEducativo as AnyRecord | undefined) ?? {}).descripcion),
+          };
+        })
+        .sort((a, b) => b.nivel - a.nivel);
+      const alto = conNivel[0] ?? null;
+      return {
+        titulosRegistrados: titulos.length,
+        tituloMasAlto: alto?.descripcion ?? null,
+        nivelMaximoSegunTitulos: alto?.nivelTexto ?? null,
+        institucionTituloMasAlto: alto?.institucion ?? null,
+      };
+    })(),
   };
 
   // ---- contacto ----
@@ -683,6 +747,49 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     numeroEmpleadosRegistrados: empleadosIdsUnicos.size,
     tipoEmpleador: (empleados[0]?.tipEmp as string) ?? null,
     obligacionesPatronalesEnMora: cumplimientoAfiliaciones.length > 0 ? obligacionesEnMora : null,
+    ...(() => {
+      // pn_trabajo_historicos trae algo que el mecanizado del IESS no:
+      // QUIÉN es el empleador. Su RUC, su situación legal, su tipo de
+      // compañía y desde cuándo existe.
+      //
+      // Para un dependiente eso no es información de contexto: el
+      // riesgo de que deje de cobrar es en buena medida el riesgo de
+      // quien le paga. Un empleador constituido hace treinta años y
+      // ACTIVA no es lo mismo que uno de situación INDEFINIDA, y hasta
+      // hoy el análisis no veía ninguna de las dos cosas.
+      const historial = arr(trabajo, "trabajoHistoricos", "trabajosHistoricos");
+      const registros = historial.map((h) => {
+        const t = (h.personaTrabajo as AnyRecord | undefined) ?? {};
+        const patrono = (t.personaPatrono as AnyRecord | undefined) ?? {};
+        return {
+          vigente: sinFechaDeSalida(t.fechaAfiliacionHasta),
+          ingreso: Number(t.fechaIngreso ?? 0),
+          salario: num((t.personaIngreso as AnyRecord | undefined)?.valor),
+          cargo: textoDe((t.cargo as AnyRecord | undefined)?.nombre),
+          esJuridica: String(patrono.tipoPersona ?? "").toUpperCase() === "JURIDICA",
+          situacion: textoDe((patrono.situacionLegal as AnyRecord | undefined)?.nombre),
+          tipoCompania: textoDe((patrono.tipoCompania as AnyRecord | undefined)?.nombre),
+          antiguedadEmpleador: aniosDesdeMs(patrono.fechaConstitucion),
+          patronoId: textoDe(patrono.identificacion),
+        };
+      });
+
+      // El vigente más reciente. Si ninguno figura sin fecha de salida,
+      // no se inventa uno: los campos quedan en null y eso se lee como
+      // "no hay empleo vigente registrado acá", que es la verdad.
+      const vigente = registros.filter((r) => r.vigente).sort((a, b) => b.ingreso - a.ingreso)[0] ?? null;
+      const salarios = registros.map((r) => r.salario).filter((v): v is number => typeof v === "number" && v > 0);
+
+      return {
+        historialEmpleosRegistrados: registros.length,
+        salarioMasAltoRegistrado: salarios.length > 0 ? Math.max(...salarios) : null,
+        cargoVigente: vigente?.cargo ?? null,
+        empleadorVigenteSituacionLegal: vigente?.situacion ?? null,
+        empleadorVigenteTipoCompania: vigente?.tipoCompania ?? null,
+        empleadorVigenteAntiguedadAnios: vigente?.antiguedadEmpleador ?? null,
+        empleadoresJuridicos: new Set(registros.filter((r) => r.esJuridica && r.patronoId).map((r) => r.patronoId)).size,
+      };
+    })(),
     fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
     fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
     fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
@@ -754,6 +861,34 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     esPensionista: arr(iess, "pensionista", "pensionista").some((p) => p.estado === true),
     esJubilado: arr(iess, "jubilados", "trabajos").length > 0,
     estadoAfiliacionIess: (afilIess?.estado as string) ?? null,
+    ...(() => {
+      // pn_afiliacion_salud responde por las tres entidades a la vez y
+      // dice cuál registra cobertura. Es una corroboración INDEPENDIENTE
+      // del empleo formal: "seguro general tiempo completo" no lo tiene
+      // alguien sin relación de dependencia vigente, y no viene del
+      // mismo recurso que ya se usa para el empleo.
+      const salud = arr(iess, "afiliacionSalud", "afiliacionSalud");
+      const conCobertura = salud.filter((a) => a.registraCobertura === true);
+      const estadoSalud = estadoRecurso(iess, "afiliacionSalud");
+      return {
+        // null y no false cuando el recurso no contestó: mismo criterio
+        // que afiliadoIessActivo, por la misma razón.
+        tieneCoberturaSalud: estadoSalud !== "ok" ? null : conCobertura.length > 0,
+        entidadesSaludConCobertura: conCobertura.map((a) => textoDe(a.entidad)).filter((x): x is string => Boolean(x)),
+        tipoSeguroSalud: textoDe(conCobertura[0]?.tipoSeguro),
+        // Los regímenes especiales tienen dos puertas cada uno. Se
+        // miran las dos: siisspol responde siempre con una frase que
+        // descarta, isspol trae las afiliaciones cuando las hay.
+        afiliadoSeguridadPolicial:
+          arr(iess, "afiliacionIsspol", "afiliaciones").length > 0 ||
+          arr(iess, "afiliacionSiisspol", "afiliacionSiisspol").some(
+            (a) => Array.isArray(a.afiliaciones) && (a.afiliaciones as unknown[]).length > 0,
+          ),
+        afiliadoSeguridadMilitar:
+          arr(iess, "afiliacionIssfacCertMedico", "afiliaciones").length > 0 ||
+          arr(iess, "afiliacionIssfacFuerzaArmada", "afiliaciones").length > 0,
+      };
+    })(),
   };
 
   // ---- patrimonio ----
@@ -801,6 +936,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   const creditosIess = [...tcredQ, ...tcredH];
   const calificacionesBuroCredito = buroCredito.map((r) => r.calificacion as string).filter(Boolean).sort();
   const comportamientoBancario: StandardClientProfile["comportamientoBancario"] = {
+    figuraEnRegistroDeudores: arr(bancos, "deudores", "deudores").length > 0,
     numeroOperacionesBuroCredito: buroCredito.length,
     peorCalificacionRiesgo: calificacionesBuroCredito.at(-1) ?? null,
     mejorCalificacionRiesgo: calificacionesBuroCredito[0] ?? null,
@@ -876,6 +1012,11 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     0
   );
   const transitoVehicular: StandardClientProfile["transitoVehicular"] = {
+    // Solo el conteo: los dos recursos vinieron vacíos en las 16
+    // personas con las que se inspeccionó la forma, así que no se
+    // conoce la estructura de un registro. Ver fuentes_que_despertaron.
+    numeroSiniestros: arr(vehiculosData, "siniestros", "siniestros").length,
+    numeroPolizas: arr(vehiculosData, "polizas", "polizas").length,
     tieneLicenciaVigente: Boolean(licencia),
     puntosLicencia: licencia ? num(licencia.puntos) : null,
     numeroMultas,

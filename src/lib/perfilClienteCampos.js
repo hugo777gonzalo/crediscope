@@ -103,6 +103,12 @@ export const GRUPOS_CONFIG = {
       ["cantonNacimiento", "Cantón de nacimiento", "texto"],
       ["provinciaNacimiento", "Provincia de nacimiento", "texto"],
       ["esExtranjero", "Extranjero", "booleano_si_true"],
+      // Del registro de títulos. Respalda --o contradice-- el nivel de
+      // educación de la ficha general, que es lo único que había.
+      ["titulosRegistrados", "Títulos registrados", "numero"],
+      ["tituloMasAlto", "Título de mayor nivel", "texto"],
+      ["nivelMaximoSegunTitulos", "Nivel según títulos", "texto"],
+      ["institucionTituloMasAlto", "Institución que lo emitió", "texto"],
     ],
   },
   contacto: {
@@ -138,6 +144,16 @@ export const GRUPOS_CONFIG = {
       ["antiguedadEmpleoActualMeses", "Antigüedad en el empleo actual", "meses"],
       ["duracionEmpleoMasLargoMeses", "Empleo más largo registrado", "meses"],
       ["tieneRucActivo", "RUC activo", "booleano_si_true"],
+      // Del historial de empleos: quién es el empleador, no solo cuánto
+      // pagó. Para un dependiente, el riesgo de quedarse sin ingreso es
+      // en buena medida el riesgo de quien le paga.
+      ["cargoVigente", "Cargo", "texto"],
+      ["empleadorVigenteSituacionLegal", "Situación legal del empleador", "texto"],
+      ["empleadorVigenteTipoCompania", "Tipo de compañía del empleador", "texto"],
+      ["empleadorVigenteAntiguedadAnios", "Años del empleador", "numero"],
+      ["salarioMasAltoRegistrado", "Salario más alto registrado", "moneda"],
+      ["historialEmpleosRegistrados", "Empleos en el historial", "numero"],
+      ["empleadoresJuridicos", "Empleadores que son empresa", "numero"],
       ["tieneEstablecimientoActivo", "Establecimiento activo", "booleano_si_true"],
       ["estadoActividadEconomica", "Estado de la actividad económica", "estado_actividad"],
       ["antiguedadUltimaEtapaActivaMeses", "Antigüedad de la actividad económica", "meses"],
@@ -166,6 +182,15 @@ export const GRUPOS_CONFIG = {
       ["esPensionista", "Pensionista", "booleano_si_true"],
       ["esJubilado", "Jubilado", "booleano_si_true"],
       ["estadoAfiliacionIess", "Estado afiliación IESS", "texto"],
+      // Cobertura de salud: corroboración independiente del empleo
+      // formal. "Seguro general tiempo completo" no lo tiene alguien sin
+      // relación de dependencia vigente, y no sale del mismo recurso que
+      // ya se usa para el empleo.
+      ["tieneCoberturaSalud", "Cobertura de salud", "booleano_si_true"],
+      ["entidadesSaludConCobertura", "Entidades con cobertura", "lista"],
+      ["tipoSeguroSalud", "Tipo de seguro", "texto"],
+      ["afiliadoSeguridadPolicial", "Régimen policial (ISSPOL)", "booleano_si_true"],
+      ["afiliadoSeguridadMilitar", "Régimen militar (ISSFA)", "booleano_si_true"],
     ],
   },
   patrimonio: {
@@ -189,6 +214,9 @@ export const GRUPOS_CONFIG = {
       ["saldoEnMoraBuroCredito", "Saldo en mora", "moneda"],
       ["tieneOperacionConDemanda", "Con demanda", "booleano_si_true"],
       ["tieneOperacionCastigada", "Cartera castigada", "booleano_si_true"],
+      // De pn_deudores. Solo la presencia: el recurso vino vacío en las
+      // 16 personas con las que se inspeccionó.
+      ["figuraEnRegistroDeudores", "Figura en registro de deudores", "booleano_si_true"],
       ["numeroDeudasRetail", "Deudas retail", "numero"],
       ["totalDeudaRetail", "Total deuda retail", "moneda"],
       ["tieneCreditoIessBiess", "Crédito IESS/BIESS", "booleano_si_true"],
@@ -271,6 +299,11 @@ export const GRUPOS_CONFIG = {
       ["puntosLicencia", "Puntos de licencia", "numero"],
       ["numeroMultas", "Multas", "numero"],
       ["valorAdeudadoTransito", "Valor adeudado", "moneda"],
+      // Solo el conteo: los dos recursos vinieron vacíos en las 16
+      // personas con las que se inspeccionó la forma. Cuando aparezca
+      // uno con datos se puede abrir el detalle.
+      ["numeroSiniestros", "Siniestros", "numero"],
+      ["numeroPolizas", "Pólizas", "numero"],
     ],
   },
   comportamientoInterno: {
