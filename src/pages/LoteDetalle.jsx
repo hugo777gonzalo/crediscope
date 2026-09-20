@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Play, Download, Ban, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
-import { getLote, getItemsLote, getPerfilesDeLote, arrancarLote, cancelarLote } from "../lib/api.js";
+import { getLote, getItemsLote, perfilesDeLotePorTanda, contarPerfilesDeLote, arrancarLote, cancelarLote } from "../lib/api.js";
 import { descargarExcelLote } from "../lib/exportLote.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 
@@ -48,6 +48,7 @@ export default function LoteDetalle() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
   const [descargando, setDescargando] = useState(false);
+  const [avance, setAvance] = useState(null);
   const [filtro, setFiltro] = useState("");
 
   const cargar = useCallback(async () => {
@@ -72,14 +73,25 @@ export default function LoteDetalle() {
 
   async function descargar() {
     setDescargando(true);
+    setAvance(null);
     setError(null);
     try {
-      const perfiles = await getPerfilesDeLote(id);
-      descargarExcelLote({ lote, items, perfiles });
+      // Cuántas personas van a entrar, antes de traer ninguna. Un lote
+      // grande tarda, y saber el número desde el principio es la
+      // diferencia entre esperar y creer que se colgó.
+      const total = await contarPerfilesDeLote(id);
+      setAvance({ hechos: 0, total });
+      await descargarExcelLote({
+        lote,
+        items,
+        tandasDePerfiles: perfilesDeLotePorTanda(id),
+        avisarAvance: setAvance,
+      });
     } catch (e) {
       setError(e.message);
     } finally {
       setDescargando(false);
+      setAvance(null);
     }
   }
 
@@ -130,7 +142,14 @@ export default function LoteDetalle() {
           ) : null}
           <button className="crediscope-btn" onClick={descargar} disabled={descargando || Number(lote.correctas) + Number(lote.reutilizadas ?? 0) === 0}>
             <Download size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-            {descargando ? "Armando el archivo..." : "Descargar resultados"}
+            {/* Con miles de personas esto tarda. Un botón que solo dice
+                "armando" durante dos minutos se lee como colgado; el
+                número de a cuántas va, no. */}
+            {descargando
+              ? avance?.total
+                ? `Armando el archivo... ${avance.hechos} de ${avance.total}`
+                : "Armando el archivo..."
+              : "Descargar resultados"}
           </button>
         </div>
       </div>

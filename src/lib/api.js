@@ -782,39 +782,30 @@ export async function getLote(id) {
 // Crea el lote y sus ítems. Se insertan en tandas porque una sola
 // sentencia con miles de filas la rechaza el servidor por tamaño.
 export async function crearLote({ nombre, archivo, items, totales }) {
-  const { data: { user } = {} } = await supabase.auth.getUser();
-  const { data: lote, error } = await supabase
-    .from("lotes")
-    .insert({
-      nombre,
-      archivo,
-      estado: "preparado",
-      total_lineas: totales.lineas,
-      total_validas: totales.validas,
-      total_duplicadas: totales.duplicadas,
-      total_descartadas: totales.descartadas,
-      creado_por: user?.id ?? null,
-    })
-    .select("id")
-    .single();
+  // Una sola llamada, una sola transacción (ver 073). Antes esto
+  // insertaba el lote y después los ítems de a 500 desde acá: si una
+  // tanda fallaba quedaba un lote con la mitad de sus cédulas y con los
+  // totales del archivo completo guardados encima -- la pantalla decía
+  // "4.800 válidas" sobre 2.300 ítems reales y el Excel salía
+  // incompleto sin que nada avisara.
+  const { data, error } = await supabase.rpc("crear_lote", {
+    p_nombre: nombre,
+    p_archivo: archivo,
+    p_total_lineas: totales.lineas,
+    p_total_validas: totales.validas,
+    p_total_duplicadas: totales.duplicadas,
+    p_total_descartadas: totales.descartadas,
+    p_items: items.map((it) => ({
+      ingresado: it.ingresado,
+      fila: it.fila,
+      cedula: it.cedula,
+      tipo: it.tipo,
+      estado: it.estado,
+      motivo: it.motivo ?? "",
+    })),
+  });
   if (error) throw error;
-
-  const TANDA = 500;
-  for (let i = 0; i < items.length; i += TANDA) {
-    const { error: e } = await supabase.from("lote_items").insert(
-      items.slice(i, i + TANDA).map((it) => ({
-        lote_id: lote.id,
-        ingresado: it.ingresado,
-        fila_archivo: it.fila,
-        cedula: it.cedula,
-        tipo_identificacion: it.tipo,
-        estado: it.estado,
-        motivo: it.motivo ?? null,
-      }))
-    );
-    if (e) throw e;
-  }
-  return lote.id;
+  return data;
 }
 
 // Arrancar es un cambio de estado: el trabajador del servidor toma de
@@ -831,9 +822,14 @@ export async function arrancarLote(id) {
   if (!data?.length) throw new Error("No se pudo arrancar: el lote ya no estaba en estado preparado.");
 }
 
+// Cancelar también descarta lo que quedó pendiente o tomado (ver 073).
+// Antes solo marcaba el lote: los ítems en_curso quedaban así para
+// siempre y el resumen reportaba pendientes de un lote que nadie iba a
+// procesar. Devuelve cuántos se liberaron, para poder decirlo.
 export async function cancelarLote(id) {
-  const { error } = await supabase.from("lotes").update({ estado: "cancelado" }).eq("id", id);
+  const { data, error } = await supabase.rpc("cancelar_lote", { p_lote: id });
   if (error) throw error;
+  return data ?? 0;
 }
 
 export async function getItemsLote(id, { estado = null, limite = 5000 } = {}) {
@@ -855,31 +851,62 @@ export async function getItemsLote(id, { estado = null, limite = 5000 } = {}) {
 // consulta individual, así que filtrar por lote_id los dejaría afuera y
 // el Excel saldría sin esas personas -- justo las que el módulo evitó
 // reconsultar.
-export async function getPerfilesDeLote(id, { limite = 5000 } = {}) {
-  const { data: items, error: errorItems } = await supabase
-    .from("lote_items")
-    .select("client_profile_id")
-    .eq("lote_id", id)
-    .not("client_profile_id", "is", null)
-    .limit(limite);
-  if (errorItems) throw errorItems;
+// Los perfiles de este lote, de a tandas, para las hojas del Excel.
+//
+// Devuelve un iterador y no un arreglo: con 5.000 personas, tener los
+// 5.000 perfiles completos en memoria a la vez son unos 50 MB de JSON
+// --además del libro de Excel que se arma encima-- y eso tumba la
+// pestaña. Quien consume esto se queda con las filas planas de cada
+// tanda y suelta los perfiles; las filas pesan una fracción.
+//
+// Y ya no hay tope silencioso. Antes cortaba en 5.000 sin decirlo: un
+// lote más grande bajaba incompleto y el archivo se veía igual de
+// terminado.
+//
+// Se buscan por el vínculo del ítem y NO por lote_id. La diferencia
+// importa desde que el lote reutiliza perfiles vigentes en vez de
+// volver a consultar: esos perfiles pertenecen a otro lote o a una
+// consulta individual, así que filtrar por lote_id los dejaría afuera y
+// el Excel saldría sin esas personas -- justo las que el módulo evitó
+// reconsultar.
+export async function* perfilesDeLotePorTanda(id, { tanda = 200 } = {}) {
+  const ids = [];
+  const PAGINA_IDS = 1000;
+  for (let desde = 0; ; desde += PAGINA_IDS) {
+    const { data, error } = await supabase
+      .from("lote_items")
+      .select("client_profile_id")
+      .eq("lote_id", id)
+      .not("client_profile_id", "is", null)
+      .range(desde, desde + PAGINA_IDS - 1);
+    if (error) throw error;
+    ids.push(...(data || []).map((i) => i.client_profile_id));
+    if (!data || data.length < PAGINA_IDS) break;
+  }
+  if (ids.length === 0) return;
 
-  const ids = items.map((i) => i.client_profile_id);
-  if (ids.length === 0) return [];
-
-  // De a tandas: una consulta con miles de identificadores en la
-  // dirección la rechaza el servidor por largo.
-  const TANDA = 200;
-  const salida = [];
-  for (let i = 0; i < ids.length; i += TANDA) {
+  // De a tandas también en la ida: una consulta con miles de
+  // identificadores en la dirección la rechaza el servidor por largo.
+  for (let i = 0; i < ids.length; i += tanda) {
     const { data, error } = await supabase
       .from("client_profiles")
       .select("id, created_at, standard_profile, structure_version, clients(cedula)")
-      .in("id", ids.slice(i, i + TANDA));
+      .in("id", ids.slice(i, i + tanda));
     if (error) throw error;
-    salida.push(...(data || []));
+    yield { perfiles: data || [], hechos: Math.min(i + tanda, ids.length), total: ids.length };
   }
-  return salida;
+}
+
+// Cuántas personas va a traer el Excel, sin traer ninguna. Sirve para
+// avisar antes de empezar cuando el archivo va a ser grande.
+export async function contarPerfilesDeLote(id) {
+  const { count, error } = await supabase
+    .from("lote_items")
+    .select("client_profile_id", { count: "exact", head: true })
+    .eq("lote_id", id)
+    .not("client_profile_id", "is", null);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // ---------- La bandeja de solicitudes ----------

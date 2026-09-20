@@ -159,27 +159,43 @@ const COMO_LEER = [
   ["Las fechas están en hora de Ecuador continental (UTC-5)."],
 ];
 
-export function descargarExcelLote({ lote, items, perfiles }) {
+// Los perfiles llegan de a tandas y no todos juntos.
+//
+// Con 5.000 personas, tener los 5.000 standard_profile completos en
+// memoria a la vez son unos 50 MB de JSON, y encima se arma el libro de
+// Excel: la pestaña se cae. Acá cada tanda se convierte en filas
+// planas --cadenas y números, una fracción del peso-- y el perfil se
+// suelta enseguida.
+//
+// `avisarAvance` es opcional y sirve para que la pantalla diga en qué
+// va: una descarga de cinco mil personas tarda, y una barra quieta se
+// lee como colgada.
+export async function descargarExcelLote({ lote, items, tandasDePerfiles, avisarAvance }) {
   const libro = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(hojaResumenProceso(lote, items)), "Resumen del proceso");
 
-  // Perfil del Cliente: una fila por persona, con todo aplanado.
-  const filasPerfil = perfiles.map((p) => {
-    const fila = { cedula: p.clients?.cedula ?? "", fecha_consulta: diaEcuador(p.created_at), version_estructura: p.structure_version ?? "" };
-    aplanar(p.standard_profile, "", fila);
-    return fila;
-  });
+  const filasPerfil = [];
+  const resumenIngresos = [];
+  const detalleIngresos = [];
+
+  for await (const { perfiles, hechos, total } of tandasDePerfiles) {
+    for (const p of perfiles) {
+      const fila = { cedula: p.clients?.cedula ?? "", fecha_consulta: diaEcuador(p.created_at), version_estructura: p.structure_version ?? "" };
+      aplanar(p.standard_profile, "", fila);
+      filasPerfil.push(fila);
+      resumenIngresos.push(filaResumenIngresos(p));
+      detalleIngresos.push(...filasDetalleIngresos(p));
+    }
+    avisarAvance?.({ hechos, total });
+  }
+
   if (filasPerfil.length) {
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasPerfil), "Perfil del Cliente");
   }
-
-  const resumenIngresos = perfiles.map(filaResumenIngresos);
   if (resumenIngresos.length) {
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(resumenIngresos), "Ingresos (resumen)");
   }
-
-  const detalleIngresos = perfiles.flatMap(filasDetalleIngresos);
   if (detalleIngresos.length) {
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(detalleIngresos), "Ingresos (detalle)");
   }
