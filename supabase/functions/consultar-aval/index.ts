@@ -1,7 +1,15 @@
 // Orquestador de la consulta al buró Aval (fuente independiente):
-//   Consulta Aval -> gate (¿sirve?) -> Perfil de Aval -> Persistencia.
+//   Reutilizar (si hay consulta vigente) -> si no, Consultar -> gate ->
+//   Perfil + Estructura -> Persistencia.
 // Requiere usuario autenticado de Supabase (igual que structure-client)
 // porque persiste en consultas_aval y consulta un buró de crédito.
+//
+// REUTILIZACIÓN (Aval cuesta): si la persona ya tiene una consulta vigente
+// (Aval publica el 18; el 18 caduca todo — ver aval-vigencia.ts), se
+// reutiliza sin volver a pagar. Múltiples solicitudes de un mismo cliente en
+// el período comparten la misma consulta. Solo se guardan y reutilizan las
+// exitosas (A200); una fallida no deja fila, así que la próxima solicitud la
+// vuelve a consultar. `forzar: true` en el body salta la reutilización.
 //
 // Body esperado: { "identificacion": "0102030405", "tipoIdentificacion": "C" }
 // (acepta "cedula" como alias; tipoIdentificacion por defecto "C").
@@ -19,6 +27,7 @@ import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { consultarAval, laConsultaAvalSirve, porQueNoSirveAval, type TipoIdentificacionAval } from "../_shared/aval-client.ts";
 import { construirPerfilAval, PERFIL_AVAL_VERSION } from "../_shared/aval-perfil.ts";
 import { construirEstructuraAval, AVAL_ESTRUCTURA_VERSION } from "../_shared/aval-estructura.ts";
+import { estaVigenteAval, finVigenciaAval } from "../_shared/aval-vigencia.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -35,6 +44,7 @@ Deno.serve(async (req) => {
   let identificacion: string | undefined;
   let tipoIdentificacion: TipoIdentificacionAval = "C";
   let actorDeclarado: string | undefined;
+  let forzar = false; // salta la reutilización y consulta de nuevo (refresco manual)
   try {
     const body = await req.json();
     identificacion = body?.identificacion ?? body?.cedula;
@@ -42,6 +52,7 @@ Deno.serve(async (req) => {
       tipoIdentificacion = body.tipoIdentificacion;
     }
     actorDeclarado = body?.actorId;
+    forzar = body?.forzar === true;
   } catch {
     // body inválido, se maneja abajo
   }
@@ -87,6 +98,27 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // 0. Reutilización: si ya hay una consulta VIGENTE de esta persona, se
+    //    reutiliza (Aval cuesta). Solo se guardan las exitosas, así que
+    //    cualquier fila previa es un A200; si está vencida o no hay, se
+    //    consulta. `forzar` salta este atajo.
+    if (!forzar) {
+      const { data: previa } = await serviceClient
+        .from("consultas_aval")
+        .select("*")
+        .eq("identificacion", identConsultar)
+        .eq("tipo_identificacion", tipoIdentificacion)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (previa && estaVigenteAval(previa.created_at)) {
+        return new Response(
+          JSON.stringify({ ...previa, reutilizada: true, vigente_hasta: finVigenciaAval().toISOString() }),
+          { headers: { ...corsHeaders, "content-type": "application/json" } },
+        );
+      }
+    }
+
     // 1. Consultar Aval.
     const respuesta = await consultarAval(identConsultar, tipoIdentificacion);
 
@@ -189,7 +221,7 @@ Deno.serve(async (req) => {
       meta: { consulta_aval_id: guardado.id, identificacion: identConsultar, intentos: respuesta.intentos, duracion_ms: respuesta.duracionMs },
     });
 
-    return new Response(JSON.stringify(guardado), {
+    return new Response(JSON.stringify({ ...guardado, reutilizada: false, vigente_hasta: finVigenciaAval().toISOString() }), {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   } catch (err) {
