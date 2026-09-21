@@ -32,3 +32,8 @@ verify_jwt = true
 
 [functions.analyze-client]
 verify_jwt = true
+
+# Consulta al buró Aval: persiste en consultas_aval y consulta un buró de
+# crédito, así que exige sesión de usuario igual que las dos de arriba.
+[functions.consultar-aval]
+verify_jwt = true
