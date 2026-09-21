@@ -1,30 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Info } from "lucide-react";
 import { getResourceConfig, updateResourceConfig } from "../lib/api.js";
 import GrupoConfigurable from "../components/GrupoConfigurable.jsx";
 import FilaConfig from "../components/FilaConfig.jsx";
+import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
 
 // Qué le preguntamos a la fuente de datos.
 //
-// Cada recurso es una consulta distinta al proveedor. Apagar uno no
+// Cada recurso es una consulta distinta al proveedor. Desactivar uno no
 // borra nada de lo ya guardado: simplemente deja de pedirse de acá en
 // adelante. Sirve para dos cosas muy concretas -- una fuente que está
 // caída y hace fallar la consulta entera, y una fuente que la
 // institución decide no consultar por política propia.
 //
-// Agrupados por bloque de negocio, que es como se piensan: "el bloque
-// judicial", no "doce recursos sueltos".
-
-const ETIQUETA_BLOQUE = {
-  general: "Identidad",
-  sociodemografica: "Sociodemográfica",
-  trabajo: "Laboral y tributario",
-  iess: "Seguridad social",
-  vehiculos: "Vehículos",
-  funcion_judicial: "Función Judicial",
-  fiscalia: "Fiscalía",
-  bancos: "Bancos y buró de crédito",
-  cooperativas: "Cooperativas",
-};
+// Agrupado por los mismos grupos del Perfil del Cliente que usa
+// ConfigCampos (ETIQUETAS_GRUPO) -- no por los 9 bloques heredados de la
+// primera integración (ver migración 067). Una fuente puede alimentar
+// más de un grupo (16 de 52 lo hacen), así que aparece en cada card que
+// le corresponde: es la representación fiel de un mapa muchos a muchos,
+// no un árbol.
+//
+// GRUPO_SIN_USO es un bucket aparte para las fuentes que no alimentan
+// ningún grupo -- ninguna pantalla lee lo que devuelven (columna
+// `la_lee_alguien` de novadata_resource_config). Se consultan igual en
+// cada corrida; verlas juntas es lo que permite decidir con el dato a
+// la vista si vale la pena seguir pidiéndolas.
+const GRUPO_SIN_USO = "_sin_uso";
+const ETIQUETA_SIN_USO = "Sin uso conocido";
 
 export default function ConfigFuentes() {
   const [items, setItems] = useState(null);
@@ -50,14 +52,19 @@ export default function ConfigFuentes() {
     const visibles = t ? items.filter((i) => i.recurso.toLowerCase().includes(t)) : items;
     const mapa = new Map();
     for (const i of visibles) {
-      if (!mapa.has(i.bloque)) mapa.set(i.bloque, []);
-      mapa.get(i.bloque).push(i);
+      const gruposDeEsta = i.alimenta_grupos?.length ? i.alimenta_grupos : [GRUPO_SIN_USO];
+      for (const g of gruposDeEsta) {
+        if (!mapa.has(g)) mapa.set(g, []);
+        mapa.get(g).push(i);
+      }
     }
-    return [...mapa.entries()].map(([bloque, lista]) => ({
-      bloque,
-      lista: lista.sort((a, b) => a.recurso.localeCompare(b.recurso)),
-      activos: lista.filter((x) => x.enabled).length,
-    }));
+    return [...mapa.entries()]
+      .map(([grupo, lista]) => ({
+        grupo,
+        lista: lista.sort((a, b) => a.recurso.localeCompare(b.recurso)),
+        activos: lista.filter((x) => x.enabled).length,
+      }))
+      .sort((a, b) => (a.grupo === GRUPO_SIN_USO ? 1 : b.grupo === GRUPO_SIN_USO ? -1 : a.grupo.localeCompare(b.grupo)));
   }, [items, filtro]);
 
   async function guardar(item, cambio) {
@@ -68,7 +75,9 @@ export default function ConfigFuentes() {
   async function todoElGrupo(lista, enabled) {
     // De a uno y en paralelo: reusa el mismo camino auditado que el
     // cambio individual en vez de una ruta especial que podría
-    // divergir.
+    // divergir. Ojo: una fuente que alimenta varios grupos puede
+    // aparecer en más de una lista -- updateResourceConfig es
+    // idempotente por recurso, así que pedirla dos veces no rompe nada.
     await Promise.all(
       lista
         .filter((i) => i.enabled !== enabled)
@@ -78,15 +87,23 @@ export default function ConfigFuentes() {
   }
 
   const totalActivos = items?.filter((i) => i.enabled).length ?? 0;
+  const descripcion =
+    "Cada recurso es una consulta distinta a la fuente de datos. Desactivar uno no borra nada de lo ya guardado: deja de pedirse de acá en adelante.";
 
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
-        <h2 style={{ marginBottom: 4 }}>Fuentes que consultamos</h2>
-        <p className="crediscope-muted" style={{ margin: 0, maxWidth: "66ch" }}>
-          Cada recurso es una consulta distinta a la fuente de datos. Apagar uno no borra nada de lo ya guardado: deja de
-          pedirse de acá en adelante. {items ? <strong>{totalActivos} de {items.length} activos.</strong> : null}
-        </p>
+        <h2 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+          Fuentes que consultamos
+          <span title={descripcion} style={{ display: "inline-flex", cursor: "help", color: "var(--text-muted)" }}>
+            <Info size={16} />
+          </span>
+        </h2>
+        {items ? (
+          <p className="crediscope-muted" style={{ margin: 0 }}>
+            <strong>{totalActivos} de {items.length} activos.</strong>
+          </p>
+        ) : null}
       </div>
 
       {error ? (
@@ -114,8 +131,9 @@ export default function ConfigFuentes() {
         <div className="crediscope-secciones">
           {grupos.map((g) => (
             <GrupoConfigurable
-              key={g.bloque}
-              titulo={ETIQUETA_BLOQUE[g.bloque] ?? g.bloque}
+              key={g.grupo}
+              titulo={g.grupo === GRUPO_SIN_USO ? ETIQUETA_SIN_USO : ETIQUETAS_GRUPO[g.grupo] ?? g.grupo}
+              descripcion={g.grupo === GRUPO_SIN_USO ? "Se consultan en cada corrida y ningún campo del perfil usa la respuesta." : undefined}
               activos={g.activos}
               total={g.lista.length}
               abiertoPorDefecto={Boolean(filtro)}

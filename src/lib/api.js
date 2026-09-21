@@ -454,8 +454,18 @@ export async function eliminarPaqueteFeedback(id) {
 // y supabase/functions/_shared/runtime-config.ts (quien las consume en
 // tiempo de consulta).
 
+// Se lee de la vista `fuentes_de_consulta` (migración 067), no de la tabla
+// directo: la tabla trae `bloque`, la agrupación heredada de la primera
+// integración (9 bloques, uno por fuente). La relación real entre fuentes y
+// grupos del Perfil del Cliente es muchos a muchos -- 16 de 52 fuentes
+// alimentan más de un grupo -- y la vista ya trae ese mapa en
+// `alimenta_grupos`. Los alias mantienen el nombre de campo que ya usaba
+// toda la pantalla (`recurso`, `enabled`) para no tener que tocarla entera.
 export async function getResourceConfig() {
-  const { data, error } = await supabase.from("novadata_resource_config").select("*").order("bloque").order("recurso");
+  const { data, error } = await supabase
+    .from("fuentes_de_consulta")
+    .select("recurso:fuente, enabled:habilitada, motivo, proveedor, ruta, la_lee_alguien, alimenta_grupos, cuantos_grupos")
+    .order("recurso");
   if (error) throw error;
   return data;
 }

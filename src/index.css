@@ -228,6 +228,19 @@ a {
   border: 1px solid var(--border);
 }
 
+/* Botón cuadrado de solo ícono, para cuando el texto no entra en una
+   tarjeta angosta (ver GrupoConfigurable). El sentido va en title/
+   aria-label, no en texto visible. */
+.crediscope-btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 .crediscope-score {
   font-size: 48px;
   font-weight: 700;

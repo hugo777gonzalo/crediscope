@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Power } from "lucide-react";
+import { ChevronDown, Power, PowerOff } from "lucide-react";
 
 // Un grupo de opciones de configuración, plegable, con un interruptor
 // para todo el grupo.
@@ -11,14 +11,21 @@ import { ChevronDown, Power } from "lucide-react";
 // tocar. El título con el contador dice el volumen; el detalle se abre
 // bajo demanda, igual que en Análisis con IA.
 //
-// Por qué el interruptor de grupo: apagar una fuente de información
+// Por qué el interruptor de grupo: desactivar una fuente de información
 // entera es una operación real — "hoy el Registro Civil está caído, no
 // lo consultemos" — y hacerla de a una casilla sobre doce recursos es
 // invitar a que queden tres prendidos por descuido.
 //
 // El contador dice CUÁNTOS ESTÁN ACTIVOS sobre el total, no cuántos
 // hay. Es lo que alguien necesita ver de un vistazo: un grupo que dice
-// "8 de 12" tiene cuatro cosas apagadas y eso merece una mirada.
+// "8 de 12" tiene cuatro cosas desactivadas y eso merece una mirada.
+//
+// El interruptor es solo ícono (no "Activar todo"/"Desactivar todo" en
+// texto): con nueve o más grupos por pantalla, el texto no entraba en
+// una tarjeta de ~190px y quedaba recortado por el overflow:hidden del
+// contenedor -- invisible, no ausente. El ícono cambia de sentido según
+// el estado (Power para encender lo que falta, PowerOff para apagar lo
+// que sobra) y lleva el texto en el title/aria-label.
 
 export default function GrupoConfigurable({
   titulo,
@@ -79,13 +86,14 @@ export default function GrupoConfigurable({
         {onTodo ? (
           <button
             type="button"
-            className="crediscope-btn crediscope-btn-ghost"
-            style={{ padding: "5px 11px", fontSize: 12.5, whiteSpace: "nowrap", marginRight: 12 }}
+            className="crediscope-btn crediscope-btn-ghost crediscope-btn-icono"
+            style={{ marginRight: 12 }}
             disabled={aplicando}
             onClick={() => aplicarATodo(!todoActivo)}
-            title={todoActivo ? "Apagar todo el grupo" : "Encender todo el grupo"}
+            title={todoActivo ? "Desactivar todo el grupo" : "Activar todo el grupo"}
+            aria-label={todoActivo ? "Desactivar todo el grupo" : "Activar todo el grupo"}
           >
-            {aplicando ? "..." : todoActivo ? "Apagar todo" : "Encender todo"}
+            {todoActivo ? <PowerOff size={16} /> : <Power size={16} />}
           </button>
         ) : null}
       </div>

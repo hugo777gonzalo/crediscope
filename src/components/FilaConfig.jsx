@@ -39,7 +39,12 @@ export default function FilaConfig({ item, etiqueta, descripcion, onSave }) {
   return (
     <div className="crediscope-config-fila" style={{ opacity: enabled ? 1 : 0.55 }}>
       <label className="crediscope-config-fila-nombre">
-        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          aria-label={enabled ? `Desactivar ${etiqueta}` : `Activar ${etiqueta}`}
+        />
         <span>
           <code>{etiqueta}</code>
           {descripcion ? (
