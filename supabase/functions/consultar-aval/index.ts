@@ -90,14 +90,39 @@ Deno.serve(async (req) => {
     // 1. Consultar Aval.
     const respuesta = await consultarAval(identConsultar, tipoIdentificacion);
 
-    // 2. ¿Sirve? Solo un A200 se guarda. Un A500 o un fetch caído NO dejan
-    //    fila: sería el perfil-en-blanco del 2026-09-15. 503 si es pasajero
-    //    (para que un futuro lote reintente); 500 si falta configuración.
+    // 2. ¿Sirve? Solo un A200 se guarda. Todo lo demás NO deja fila: sería el
+    //    perfil-en-blanco del 2026-09-15. El HTTP y si se reintenta dependen
+    //    de la familia (ver aval-client.ts): transitorio -> 503 reintentable;
+    //    configuración -> 500/502 (arreglar credenciales/producto, no reintentar);
+    //    solicitud -> 400; identificación -> 422. El cliente ya agotó los
+    //    reintentos de la familia transitorio con su tope y backoff.
     if (!laConsultaAvalSirve(respuesta)) {
-      const status = respuesta.status === "sin_config" ? 500 : 503;
+      // Registro durable del fallo, listo para una vista de salud/sobrecarga
+      // (todavía sin UI): familia, intentos, si se agotó el tope, duración.
+      await serviceClient.from("audit_log").insert({
+        actor: actorId,
+        action: "aval.consulta.fallo",
+        meta: {
+          identificacion: identConsultar,
+          familia: respuesta.familia,
+          codigo: respuesta.codigo ?? null,
+          intentos: respuesta.intentos,
+          agotoReintentos: respuesta.agotoReintentos ?? false,
+          duracion_ms: respuesta.duracionMs,
+          mensaje: porQueNoSirveAval(respuesta),
+        },
+      });
       return new Response(
-        JSON.stringify({ error: porQueNoSirveAval(respuesta), codigo: respuesta.codigo, ingresado, identificacion: identConsultar }),
-        { status, headers: { ...corsHeaders, "content-type": "application/json" } },
+        JSON.stringify({
+          error: porQueNoSirveAval(respuesta),
+          familia: respuesta.familia,
+          codigo: respuesta.codigo,
+          intentos: respuesta.intentos,
+          agotoReintentos: respuesta.agotoReintentos ?? false,
+          ingresado,
+          identificacion: identConsultar,
+        }),
+        { status: respuesta.httpStatus, headers: { ...corsHeaders, "content-type": "application/json" } },
       );
     }
 
@@ -161,7 +186,7 @@ Deno.serve(async (req) => {
       actor: actorId,
       action: "aval.consulta",
       client_id: clientId,
-      meta: { consulta_aval_id: guardado.id, identificacion: identConsultar },
+      meta: { consulta_aval_id: guardado.id, identificacion: identConsultar, intentos: respuesta.intentos, duracion_ms: respuesta.duracionMs },
     });
 
     return new Response(JSON.stringify(guardado), {
