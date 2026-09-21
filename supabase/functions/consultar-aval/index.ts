@@ -18,6 +18,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { consultarAval, laConsultaAvalSirve, porQueNoSirveAval, type TipoIdentificacionAval } from "../_shared/aval-client.ts";
 import { construirPerfilAval, PERFIL_AVAL_VERSION } from "../_shared/aval-perfil.ts";
+import { construirEstructuraAval, AVAL_ESTRUCTURA_VERSION } from "../_shared/aval-estructura.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -100,8 +101,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Normalizar al Perfil de Aval.
+    // 3. Normalizar. El sobre para la estructura lleva responseCode y result;
+    //    perfil = normalización full, estructura = estructura estandarizada.
+    const sobre = { responseCode: respuesta.codigo, transactionNumber: respuesta.transactionNumber, result: respuesta.result };
     const perfil = construirPerfilAval(respuesta.result ?? {}, identConsultar);
+    const estructura = construirEstructuraAval(sobre);
 
     // 4. Enlace blando a la persona (solo cédula): buscar-o-crear el cliente
     //    para que consultas_aval.client_id una esta fuente con Novadata y
@@ -135,6 +139,8 @@ Deno.serve(async (req) => {
         },
         perfil,
         perfil_version: PERFIL_AVAL_VERSION,
+        estructura,
+        estructura_version: AVAL_ESTRUCTURA_VERSION,
         response_code: respuesta.codigo,
         transaction_number: respuesta.transactionNumber,
         score: perfil.resumen.score,
