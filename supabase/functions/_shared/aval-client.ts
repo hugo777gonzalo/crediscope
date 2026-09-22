@@ -232,10 +232,20 @@ export function porQueNoSirveAval(r: RespuestaAval): string {
   switch (r.familia) {
     case "sin_config":
       return "Aval no está configurado. No se consultó.";
-    case "transitorio":
-      return r.agotoReintentos
-        ? `Aval no respondió bien tras ${r.intentos} intento(s) — posible sobrecarga u hora pico. No se guardó; reintentar más tarde.`
-        : `Aval tuvo un error transitorio${cod}. No se guardó; reintentar más tarde.`;
+    case "transitorio": {
+      // Distinguir "no hubo respuesta" de "respondió mal" no es un matiz:
+      // sin `httpAval` nunca se estableció la conexión (red, certificado,
+      // o la salida del servidor hacia Aval), y decirle "posible sobrecarga,
+      // reintentar más tarde" a un certificado rechazado o una IP no
+      // habilitada manda a la persona a reintentar algo que no va a andar
+      // nunca. Pasó en producción el 2026-09-22: el fallo real era de
+      // conexión y el mensaje hablaba de hora pico.
+      const detalle = r.errorMessage ? ` Detalle técnico: ${r.errorMessage}.` : "";
+      if (r.httpAval === undefined) {
+        return `No se pudo establecer conexión con Aval tras ${r.intentos} intento(s). No es un problema de esta persona ni de sobrecarga: el servidor no alcanza a Aval (certificado del ambiente de prueba, o salida de IP no habilitada por Aval).${detalle} No se guardó nada.`;
+      }
+      return `Aval respondió con un error temporal (HTTP ${r.httpAval})${cod} tras ${r.intentos} intento(s). No se guardó; reintentar más tarde.`;
+    }
     case "configuracion":
       return `Aval rechazó por configuración${cod}. Revisar credenciales/producto/contrato con Aval — reintentar no ayuda. No se guardó.`;
     case "solicitud":

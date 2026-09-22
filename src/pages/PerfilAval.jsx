@@ -119,8 +119,23 @@ export default function PerfilAval() {
 
       {loading ? <p className="crediscope-muted">Cargando...</p> : null}
 
-      {!loading && !consulta && !error ? (
-        <p className="crediscope-muted">Sin consulta previa a Aval — usá el botón de arriba.</p>
+      {/* La limitación se dice acá, no se descubre apretando el botón.
+          Aval solo acepta IPs de Ecuador y su ambiente de prueba usa un
+          certificado que Deno rechaza; las Edge Functions de Supabase
+          egresan desde fuera de Ecuador, así que consultar DESDE la app
+          desplegada todavía falla. Lo que se ve son consultas ya
+          guardadas (traídas desde una IP ecuatoriana). */}
+      {!loading && !consulta ? (
+        <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
+          <p style={{ margin: 0 }}>
+            <strong>Sin consulta previa a Aval para esta cédula.</strong>
+          </p>
+          <p className="crediscope-muted" style={{ marginBottom: 0 }}>
+            Consultar desde la app desplegada todavía no funciona: Aval solo admite conexiones desde IPs de Ecuador y el
+            servidor sale a internet desde fuera del país. Queda pendiente resolver la salida (proxy o servidor en Ecuador).
+            Mientras tanto, esta pantalla muestra las consultas que ya estén guardadas.
+          </p>
+        </div>
       ) : null}
 
       {estructura ? (

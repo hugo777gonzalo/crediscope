@@ -464,8 +464,13 @@ export async function eliminarPaqueteFeedback(id) {
 export async function getResourceConfig() {
   const { data, error } = await supabase
     .from("fuentes_de_consulta")
+    // El order va con el nombre REAL de la columna de la vista (`fuente`),
+    // no con el alias `recurso`: PostgREST resuelve `order` contra el
+    // esquema, no contra la lista de select. Con el alias tira
+    // "column fuentes_de_consulta.recurso does not exist" y la pantalla
+    // entera queda en error.
     .select("recurso:fuente, enabled:habilitada, motivo, proveedor, ruta, la_lee_alguien, alimenta_grupos, cuantos_grupos")
-    .order("recurso");
+    .order("fuente");
   if (error) throw error;
   return data;
 }
@@ -506,9 +511,21 @@ export async function getProveedor(clave) {
   return data;
 }
 
+// Se pide .select() y se cuenta a propósito: una actualización bloqueada
+// por RLS devuelve 0 filas SIN error (ver CLAUDE.md). Sin este chequeo, la
+// pantalla decía "guardado" y el valor no cambiaba -- que es exactamente
+// lo que pasó cuando `proveedores` no tenía política de UPDATE (migración
+// 077). El error explícito es lo que convierte ese silencio en un aviso.
 export async function updateProveedor(clave, { activo, notas }) {
-  const { error } = await supabase.from("proveedores").update({ activo, notas }).eq("clave", clave);
+  const { data, error } = await supabase
+    .from("proveedores")
+    .update({ activo, notas })
+    .eq("clave", clave)
+    .select("clave");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`No se pudo actualizar el proveedor ${clave}: la base no aceptó el cambio (permisos).`);
+  }
 }
 
 // Última consulta de Aval guardada para esta cédula, tal como la deja
@@ -551,12 +568,16 @@ export async function getAvalFieldConfig() {
 }
 
 export async function updateAvalFieldConfig(grupo, campo, { enabled, motivo }) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("aval_field_config")
     .update({ enabled, motivo: motivo || null, updated_at: new Date().toISOString() })
     .eq("grupo", grupo)
-    .eq("campo", campo);
+    .eq("campo", campo)
+    .select("campo"); // ver nota en updateProveedor: 0 filas por RLS no es un error
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`No se pudo actualizar el campo ${campo}: la base no aceptó el cambio (permisos).`);
+  }
 }
 
 // Visibilidad de segmentos en "Perfil del Cliente" (nombre comercial de

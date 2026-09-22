@@ -158,6 +158,11 @@ Deno.serve(async (req) => {
           agotoReintentos: respuesta.agotoReintentos ?? false,
           duracion_ms: respuesta.duracionMs,
           mensaje: porQueNoSirveAval(respuesta),
+          // La causa TÉCNICA, además del mensaje para la persona: sin esto,
+          // un fallo de conexión quedaba registrado solo como "posible
+          // sobrecarga" y había que adivinar si era cert, IP o red.
+          http_aval: respuesta.httpAval ?? null,
+          detalle_tecnico: respuesta.errorMessage ?? null,
         },
       });
       return new Response(
