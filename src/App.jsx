@@ -10,6 +10,7 @@ import Signup from "./pages/Signup.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
 import PerfilCliente from "./pages/PerfilCliente.jsx";
+import PerfilAval from "./pages/PerfilAval.jsx";
 import Solicitudes from "./pages/Solicitudes.jsx";
 import Expediente from "./pages/Expediente.jsx";
 import Historial from "./pages/Historial.jsx";
@@ -198,6 +199,14 @@ export default function App() {
             element={
               <RequireSession>
                 <AnalisisIA />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/aval/:cedula"
+            element={
+              <RequireSession>
+                <PerfilAval />
               </RequireSession>
             }
           />

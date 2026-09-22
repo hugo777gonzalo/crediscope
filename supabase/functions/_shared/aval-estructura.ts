@@ -55,7 +55,7 @@
 
 import { montoANumero } from "./aval-perfil.ts";
 
-export const AVAL_ESTRUCTURA_VERSION = "aval-estructura-v2";
+export const AVAL_ESTRUCTURA_VERSION = "aval-estructura-v3";
 
 const arr = (r: any, n: string): any[] => (Array.isArray(r?.[n]) ? r[n] : []);
 const s0 = (r: any, n: string): any => arr(r, n)[0] ?? {};
@@ -88,6 +88,24 @@ function esFilaResumen(o: any): boolean {
   return o.razonSocial === "-" || o.nombreCasaCobranza === "-" || o.fechaCorte === "TOTAL" || o.fechaCorteReporte === "TOTAL";
 }
 const filasReales = (r: any, seg: string): any[] => arr(r, seg).filter((o) => !esFilaResumen(o));
+
+export interface FactorScore {
+  factor: string;
+  valor: unknown;
+  efecto: "+" | "-" | string;
+}
+
+/**
+ * Los 10 factores de factoresScore, en su forma natural (factor/valor/
+ * efecto) -- para graficar (v3, pantalla "Perfil Aval" del analista). Los
+ * campos fac_* de ESPEC son la misma información aplanada con nombre
+ * estable, para el admin y el marco interpretativo; esta lista es la que
+ * necesita una tabla o un gráfico de barras +/-, y no tiene sentido
+ * reconstruirla desde los fac_* cuando Aval ya la entrega así.
+ */
+export function construirFactoresScore(r: any): FactorScore[] {
+  return arr(r, "factoresScore").map((f) => ({ factor: String(f.factor ?? ""), valor: f.valor, efecto: f.efecto === "+" || f.efecto === "-" ? f.efecto : String(f.efecto ?? "") }));
+}
 
 export interface DeudaPorEntidad {
   sector: string;
@@ -318,5 +336,6 @@ export function construirEstructuraAval(sobre: any): Record<string, unknown> {
   for (const [, campo, , , , , get] of ESPEC) o[campo] = get(r, sobre);
   o.deudasPorEntidad = construirDeudasPorEntidad(r);
   o.deudasComoCodeudorGarante = construirDeudasComoCodeudorGarante(r);
+  o.factoresScore = construirFactoresScore(r);
   return o;
 }

@@ -511,6 +511,39 @@ export async function updateProveedor(clave, { activo, notas }) {
   if (error) throw error;
 }
 
+// Última consulta de Aval guardada para esta cédula, tal como la deja
+// consultar-aval (respuesta_cruda + perfil + estructura + columnas
+// planas). null si nunca se consultó. No llama a Aval -- es una lectura
+// simple, sin costo, igual que getLatestProfile con Novadata.
+export async function getLatestAvalConsulta(cedula) {
+  const { data, error } = await supabase
+    .from("consultas_aval")
+    .select("*")
+    .eq("identificacion", cedula)
+    .eq("tipo_identificacion", "C")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Llama a la Edge Function `consultar-aval`: reutiliza la consulta
+// vigente si existe, o consulta de nuevo (con costo real) -- ver
+// aval-vigencia.ts. La pantalla decide CUÁNDO ofrecer el botón; acá no
+// hace falta pasar `forzar` porque el único caso en que esta pantalla
+// llama a esto es cuando ya no hay nada vigente para reutilizar.
+export async function consultarAval(cedula) {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase no está configurado.");
+  }
+  const { data, error } = await supabase.functions.invoke("consultar-aval", {
+    body: { identificacion: cedula, tipoIdentificacion: "C" },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function getAvalFieldConfig() {
   const { data, error } = await supabase.from("aval_field_config").select("*").order("grupo").order("campo");
   if (error) throw error;

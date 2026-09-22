@@ -77,6 +77,9 @@ export default function PerfilCliente() {
         <Link className="crediscope-tab" to={`/analisis/${cedula}`}>
           Análisis con IA
         </Link>
+        <Link className="crediscope-tab" to={`/aval/${cedula}`}>
+          Aval
+        </Link>
       </div>
 
       <ClienteHeader
