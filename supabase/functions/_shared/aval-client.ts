@@ -23,10 +23,17 @@
 // lo mismo. El reintento tiene TOPE y backoff para no saturar ningún server,
 // y timeout por intento para no colgarse cuando Aval está en hora pico.
 //
-// DOS BLOQUEOS PARA PRODUCCIÓN (por eso hoy se prueba en local desde una IP
-// ecuatoriana): api-test.avalburo.com usa cert no válido (en Deno hace falta
-// Deno.createHttpClient) y solo admite IPs de Ecuador (las Edge Functions
-// egresan global). Falta resolver el egreso ecuatoriano.
+// LO QUE SÍ BLOQUEABA (medido el 2026-09-22, corrigiendo dos suposiciones):
+//   - El WAF de Aval devuelve 403 "Access Denied" (HTML) al User-Agent por
+//     defecto de Deno. Se manda un User-Agent propio -- ver USER_AGENT.
+//   - NO era el certificado: valida bien (curl con verificación normal da
+//     ssl_verify_result=0). La bandera para ignorar TLS que traía el
+//     probador local se había puesto "por las dudas" leyendo el PDF, sin
+//     comprobar que hiciera falta, y de ahí se propagó como si fuera un
+//     hecho.
+//   - Tampoco se confirmó nunca que la IP de salida fuera el problema: el
+//     403 se reproduce desde una IP habilitada con solo cambiar el
+//     User-Agent.
 
 const AVAL_BASE_URL = Deno.env.get("AVAL_BASE_URL") ?? "https://api-test.avalburo.com/services/V8/getWebService";
 const AVAL_USUARIO = Deno.env.get("AVAL_USUARIO") ?? "";
@@ -108,13 +115,30 @@ function cabeceraAuth(cred: CredencialesAval): string {
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Aval tiene un WAF que responde 403 "Access Denied" (HTML) al User-Agent
+// por defecto de Deno. Medido el 2026-09-22 desde una IP habilitada: con
+// `Deno/2.1.4` da 403; con `CrediScope/1.0` la petición llega a la
+// aplicación. Durante horas se creyó que el problema era el certificado y
+// la IP de salida -- ninguna de las dos: el certificado valida bien
+// (ssl_verify_result=0) y la conexión se establece. Era el User-Agent.
+// Ojo: un UA con una URL adentro ("CrediScope/1.0 (+https://...)") también
+// lo bloquea, así que conviene dejarlo simple.
+const USER_AGENT = "CrediScope/1.0";
+
 interface Intento {
   codigo?: string;
   mensaje?: string;
   transactionNumber?: string;
   result?: Record<string, unknown>;
   httpAval?: number;
-  motivoRed?: string; // "timeout", o el error de red/cert
+  // SOLO cuando no hubo respuesta HTTP (red, TLS, timeout). No se usa para
+  // "respondió pero el cuerpo no era JSON": eso ES una respuesta, y
+  // marcarla acá la clasificaba como transitorio y la reintentaba, porque
+  // clasificarRespuestaAval mira motivoRed antes que el status. Así un 403
+  // permanente se reintentaba 3 veces y salía como "posible sobrecarga".
+  motivoRed?: string;
+  // Diagnóstico cuando SÍ hubo respuesta HTTP pero no venía en JSON.
+  detalle?: string;
 }
 
 // Un solo intento, con timeout que corta un request colgado (hora pico).
@@ -124,7 +148,7 @@ async function unIntento(body: unknown, auth: string): Promise<Intento> {
   try {
     const res = await fetch(AVAL_BASE_URL, {
       method: "POST",
-      headers: { Authorization: auth, "Content-Type": "application/json" },
+      headers: { Authorization: auth, "Content-Type": "application/json", "User-Agent": USER_AGENT },
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
@@ -137,7 +161,12 @@ async function unIntento(body: unknown, auth: string): Promise<Intento> {
       transactionNumber: typeof json?.transactionNumber === "string" ? json.transactionNumber : undefined,
       result: (json?.result ?? undefined) as Record<string, unknown> | undefined,
       httpAval: res.status,
-      motivoRed: !res.ok && !json ? `HTTP ${res.status} (cuerpo no-JSON)` : undefined,
+      // Hubo respuesta: la clasificación la decide el status, no esto.
+      // 500 y no 200 caracteres: el 403 del WAF (Akamai) trae al final un
+      // "Reference #..." que es lo único con lo que el soporte de Aval
+      // puede decir POR QUÉ rechazó. Cortarlo antes deja el diagnóstico a
+      // medias.
+      detalle: json ? undefined : `HTTP ${res.status}, cuerpo no-JSON: ${texto.slice(0, 500)}`,
     };
   } catch (err) {
     // AbortError = timeout; el resto = red/cert.
@@ -211,7 +240,7 @@ export async function consultarAval(
     duracionMs: Date.now() - inicio,
     intentos,
     agotoReintentos,
-    errorMessage: it.mensaje ?? it.motivoRed ?? it.codigo,
+    errorMessage: it.mensaje ?? it.motivoRed ?? it.detalle ?? it.codigo,
   };
 }
 
@@ -247,6 +276,12 @@ export function porQueNoSirveAval(r: RespuestaAval): string {
       return `Aval respondió con un error temporal (HTTP ${r.httpAval})${cod} tras ${r.intentos} intento(s). No se guardó; reintentar más tarde.`;
     }
     case "configuracion":
+      // Un 401/403 SIN responseCode no viene de la aplicación de Aval: lo
+      // corta su WAF antes (respuesta HTML "Access Denied"). Decir
+      // "revisá las credenciales" ahí manda a buscar donde no es.
+      if (!r.codigo && (r.httpAval === 403 || r.httpAval === 401)) {
+        return `Aval rechazó la petición antes de procesarla (HTTP ${r.httpAval}, respuesta no-JSON). No llegó a la aplicación: lo cortó su filtro de acceso (User-Agent, origen o IP). Reintentar no ayuda. No se guardó.`;
+      }
       return `Aval rechazó por configuración${cod}. Revisar credenciales/producto/contrato con Aval — reintentar no ayuda. No se guardó.`;
     case "solicitud":
       return `La consulta enviada a Aval no es válida${cod}. No se guardó.`;
