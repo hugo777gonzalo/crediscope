@@ -26,8 +26,8 @@ import { esAdmin } from "../lib/useProfile.js";
 // todo el día en Evaluación Crediticia gana ancho útil para las
 // tarjetas del análisis.
 //
-// Perfil del Cliente y Análisis con IA necesitan una cédula: llevan a
-// la del último cliente visto en este navegador (ver ultimaCedula.js) o
+// Perfil del Cliente, Análisis con IA y Aval necesitan una cédula: llevan
+// a la del último cliente visto en este navegador (ver ultimaCedula.js) o
 // a Buscar Cliente si todavía no hay ninguno.
 
 const CLAVE_COLAPSADO = "crediscope.menu.colapsado";
@@ -88,7 +88,7 @@ function Grupo({ Icono, texto, activo, colapsado, expandirMenu, hijos }) {
 export default function MenuLateral({ profile }) {
   const { pathname } = useLocation();
   const [colapsado, setColapsado] = useState(leerColapsado);
-  const enEvaluacion = pathname === "/" || pathname.startsWith("/perfil") || pathname.startsWith("/analisis");
+  const enEvaluacion = pathname === "/" || pathname.startsWith("/perfil") || pathname.startsWith("/analisis") || pathname.startsWith("/aval");
   const ultimaCedula = getUltimaCedula();
   const admin = esAdmin(profile);
 
@@ -135,6 +135,7 @@ export default function MenuLateral({ profile }) {
             { to: "/", texto: "Buscar Cliente", activo: pathname === "/" },
             { to: ultimaCedula ? `/perfil/${ultimaCedula}` : "/", texto: "Perfil del Cliente", activo: pathname.startsWith("/perfil") },
             { to: ultimaCedula ? `/analisis/${ultimaCedula}` : "/", texto: "Análisis con IA", activo: pathname.startsWith("/analisis") },
+            { to: ultimaCedula ? `/aval/${ultimaCedula}` : "/", texto: "Aval", activo: pathname.startsWith("/aval") },
           ]}
         />
 
