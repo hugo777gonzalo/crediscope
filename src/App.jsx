@@ -26,7 +26,9 @@ import InformeFeedback from "./pages/InformeFeedback.jsx";
 import VersionesCriterio from "./pages/VersionesCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import ConfigFuentes from "./pages/ConfigFuentes.jsx";
+import ConfigFuentesAval from "./pages/ConfigFuentesAval.jsx";
 import ConfigCampos from "./pages/ConfigCampos.jsx";
+import ConfigCamposAval from "./pages/ConfigCamposAval.jsx";
 import ConfigSegmentos from "./pages/ConfigSegmentos.jsx";
 import Lotes from "./pages/Lotes.jsx";
 import LoteNuevo from "./pages/LoteNuevo.jsx";
@@ -406,8 +408,9 @@ export default function App() {
               </RequireAdmin>
             }
           />
+          <Route path="/admin/fuentes" element={<Navigate to="/admin/fuentes/novadata" replace />} />
           <Route
-            path="/admin/fuentes"
+            path="/admin/fuentes/novadata"
             element={
               <RequireAdmin>
                 <ConfigFuentes />
@@ -415,10 +418,27 @@ export default function App() {
             }
           />
           <Route
-            path="/admin/campos"
+            path="/admin/fuentes/aval"
+            element={
+              <RequireAdmin>
+                <ConfigFuentesAval />
+              </RequireAdmin>
+            }
+          />
+          <Route path="/admin/campos" element={<Navigate to="/admin/campos/novadata" replace />} />
+          <Route
+            path="/admin/campos/novadata"
             element={
               <RequireAdmin>
                 <ConfigCampos />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/campos/aval"
+            element={
+              <RequireAdmin>
+                <ConfigCamposAval />
               </RequireAdmin>
             }
           />

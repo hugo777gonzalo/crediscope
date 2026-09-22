@@ -3,6 +3,7 @@ import { Info } from "lucide-react";
 import { getResourceConfig, updateResourceConfig } from "../lib/api.js";
 import GrupoConfigurable from "../components/GrupoConfigurable.jsx";
 import FilaConfig from "../components/FilaConfig.jsx";
+import PestanasProveedor from "../components/PestanasProveedor.jsx";
 import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
 
 // Qué le preguntamos a la fuente de datos.
@@ -92,6 +93,8 @@ export default function ConfigFuentes() {
 
   return (
     <div>
+      <PestanasProveedor base="fuentes" activo="novadata" />
+
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
           Fuentes que consultamos

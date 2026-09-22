@@ -98,6 +98,22 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // -1. ¿Aval está prendido como proveedor? A diferencia de Novadata, que
+    //     tiene 52 endpoints apagables uno por uno, Aval es una sola llamada
+    //     atómica: el on/off es de todo o nada, y vive en `proveedores`
+    //     (migración 067) -- creada para justo este caso. Se chequea ANTES
+    //     de mirar si hay una consulta vigente para reutilizar, porque
+    //     reutilizar una fila vieja mientras el proveedor está apagado por
+    //     decisión operativa (ej. contrato suspendido) seguiría sirviendo
+    //     datos de una fuente que la institución decidió no usar.
+    const { data: proveedor } = await serviceClient.from("proveedores").select("activo, notas").eq("clave", "aval").maybeSingle();
+    if (proveedor && !proveedor.activo) {
+      return new Response(
+        JSON.stringify({ error: `Aval está desactivado como proveedor.${proveedor.notas ? ` ${proveedor.notas}` : ""}`, familia: "sin_config" }),
+        { status: 503, headers: { ...corsHeaders, "content-type": "application/json" } },
+      );
+    }
+
     // 0. Reutilización: si ya hay una consulta VIGENTE de esta persona, se
     //    reutiliza (Aval cuesta). Solo se guardan las exitosas, así que
     //    cualquier fila previa es un A200; si está vencida o no hay, se

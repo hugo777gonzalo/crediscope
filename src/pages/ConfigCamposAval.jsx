@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Info } from "lucide-react";
-import { getFieldConfig, updateFieldConfig } from "../lib/api.js";
+import { getAvalFieldConfig, updateAvalFieldConfig } from "../lib/api.js";
 import GrupoConfigurable from "../components/GrupoConfigurable.jsx";
 import FilaConfig from "../components/FilaConfig.jsx";
 import PestanasProveedor from "../components/PestanasProveedor.jsx";
-import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
 
-// Qué campos del Perfil del Cliente entran al Análisis con IA.
+// Análogo a ConfigCampos.jsx pero para la estructura estandarizada de
+// Aval (aval-estructura.ts). Los grupos ya vienen en castellano legible
+// desde ESPEC (Score, Deuda actual, Deuda contingente...) -- a diferencia
+// de Novadata, que necesita ETIQUETAS_GRUPO para traducir claves internas
+// como "comportamientoBancario".
 //
-// Apagar un campo NO lo borra: se sigue calculando y guardando en el
-// perfil, pero viaja en blanco hacia el modelo. Sirve para dos cosas:
-// sacar de la ecuación un campo que está reportando mal mientras se
-// investiga, y excluir información que la institución decide no
-// ponderar por política propia.
-//
-// La diferencia con apagar una fuente importa: una fuente apagada deja
-// de consultarse y el dato no existe; un campo apagado existe, se
-// guarda y se puede ver -- solo no pesa en el criterio.
+// Identidad, clientesPeorScore, responseCode y transactionNumber no
+// aparecen en esta lista: son CAMPOS_NO_PARA_LLM en aval-estructura.ts,
+// una exclusión de diseño (no debe influir el análisis, o es metadato de
+// control), no una decisión operativa que competa togglear acá.
 
-export default function ConfigCampos() {
+export default function ConfigCamposAval() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [filtro, setFiltro] = useState("");
@@ -26,7 +24,7 @@ export default function ConfigCampos() {
   const cargar = useCallback(async () => {
     setError(null);
     try {
-      setItems(await getFieldConfig());
+      setItems(await getAvalFieldConfig());
     } catch (e) {
       setError(e.message);
     }
@@ -53,7 +51,7 @@ export default function ConfigCampos() {
   }, [items, filtro]);
 
   async function guardar(item, cambio) {
-    await updateFieldConfig(item.grupo, item.campo, cambio);
+    await updateAvalFieldConfig(item.grupo, item.campo, cambio);
     await cargar();
   }
 
@@ -61,22 +59,22 @@ export default function ConfigCampos() {
     await Promise.all(
       lista
         .filter((i) => i.enabled !== enabled)
-        .map((i) => updateFieldConfig(i.grupo, i.campo, { enabled, motivo: i.motivo || "" }))
+        .map((i) => updateAvalFieldConfig(i.grupo, i.campo, { enabled, motivo: i.motivo || "" }))
     );
     await cargar();
   }
 
   const totalActivos = items?.filter((i) => i.enabled).length ?? 0;
   const descripcion =
-    "Un campo apagado se sigue calculando y guardando en el perfil, pero viaja en blanco hacia el modelo: existe y se puede ver, solo no pesa en el criterio.";
+    "Un campo apagado se sigue calculando y guardando en la estructura de Aval, pero viaja en blanco hacia el modelo: existe y se puede ver, solo no pesa en el criterio.";
 
   return (
     <div>
-      <PestanasProveedor base="campos" activo="novadata" />
+      <PestanasProveedor base="campos" activo="aval" />
 
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-          Campos que pesan en el análisis
+          Campos de Aval que pesan en el análisis
           <span title={descripcion} style={{ display: "inline-flex", cursor: "help", color: "var(--text-muted)" }}>
             <Info size={16} />
           </span>
@@ -114,7 +112,7 @@ export default function ConfigCampos() {
           {grupos.map((g) => (
             <GrupoConfigurable
               key={g.grupo}
-              titulo={ETIQUETAS_GRUPO[g.grupo] ?? g.grupo}
+              titulo={g.grupo}
               activos={g.activos}
               total={g.lista.length}
               abiertoPorDefecto={Boolean(filtro)}

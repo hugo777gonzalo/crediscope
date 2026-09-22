@@ -493,6 +493,39 @@ export async function updateFieldConfig(grupo, campo, { enabled, motivo }) {
   if (error) throw error;
 }
 
+// ---------- Configuración de Aval ----------
+// Aval no tiene 52 endpoints apagables como Novadata (una sola llamada
+// atómica por persona), así que el análogo real de ConfigFuentes es un
+// único on/off en `proveedores` (migración 067/076); el análogo de
+// ConfigCampos es aval_field_config, mismo esquema que
+// standard_profile_field_config -- ver 076_configuracion_de_aval.sql.
+
+export async function getProveedor(clave) {
+  const { data, error } = await supabase.from("proveedores").select("*").eq("clave", clave).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProveedor(clave, { activo, notas }) {
+  const { error } = await supabase.from("proveedores").update({ activo, notas }).eq("clave", clave);
+  if (error) throw error;
+}
+
+export async function getAvalFieldConfig() {
+  const { data, error } = await supabase.from("aval_field_config").select("*").order("grupo").order("campo");
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAvalFieldConfig(grupo, campo, { enabled, motivo }) {
+  const { error } = await supabase
+    .from("aval_field_config")
+    .update({ enabled, motivo: motivo || null, updated_at: new Date().toISOString() })
+    .eq("grupo", grupo)
+    .eq("campo", campo);
+  if (error) throw error;
+}
+
 // Visibilidad de segmentos en "Perfil del Cliente" (nombre comercial de
 // la Estructura Estandarizada) — separado de standard_profile_field_config:
 // esto no afecta qué se calcula, solo qué se muestra en la UI del
