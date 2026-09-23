@@ -9,7 +9,7 @@
 // ver isEstadoOk() en novadata-client.ts.
 //
 // Diseño: el score NO lo calcula una fórmula determinística. Un LLM
-// (llm-scoring.ts) recibe el ClientContext (curado por eje, ver abajo) y
+// (llm-scoring.ts) recibe el StandardClientProfile (ver process.ts) y
 // el marco interpretativo (ver marco-interpretativo.ts) y devuelve un
 // score aproximado + pros/contras + razonamiento. Lo único
 // determinístico son los "controles de bloqueo" (controles-bloqueo.ts):
@@ -17,34 +17,24 @@
 // de control/OFAC/PEP/lista negra) que NO deben quedar a criterio
 // aproximado del LLM — ver ResultadoControlBloqueo.
 //
-// BIESS: descartado como bloque — no corresponde a ningún dato real de
-// Novadata (confirmado por el usuario, no es un endpoint que exista).
+// BIESS: descartado — no corresponde a ningún dato real de Novadata
+// (confirmado por el usuario, no es un endpoint que exista).
 
-export type BlockKey =
-  | "general"
-  | "sociodemografica"
-  | "trabajo"
-  | "iess"
-  | "vehiculos"
-  | "funcion_judicial"
-  | "fiscalia"
-  | "bancos"
-  | "cooperativas";
-
-// "deshabilitado" = el recurso/bloque no se consultó porque un admin lo
+// "deshabilitado" = la fuente no se consultó porque un admin la
 // desactivó en novadata_resource_config (ver runtime-config.ts) — a
 // propósito distinto de "faltante" (Novadata no tenía datos) o "error"
 // (falló la consulta), para no confundir una decisión operativa con una
 // falla real de la fuente.
-export type BlockFetchStatus = "ok" | "faltante" | "error" | "deshabilitado";
+export type EstadoFuente = "ok" | "faltante" | "error" | "deshabilitado";
 
-export interface BlockResult<T> {
-  status: BlockFetchStatus;
+export interface ResultadoFuente<T> {
+  status: EstadoFuente;
   data: T | null;
   errorMessage?: string;
 }
 
-export type BlockStatusMap = Record<BlockKey, BlockFetchStatus>;
+// El estado de cada fuente consultada, una entrada por fuente.
+export type EstadoPorFuente = Record<string, EstadoFuente>;
 
 // ---------- pn_inf_basica (bloque "general") ----------
 // Confirmado contra producción (2026-09).
@@ -74,24 +64,24 @@ export interface NovadataEnvelope {
   estado: { codigo: string; mensaje: string | null };
   // El nombre del campo array/objeto varía por recurso (personaVehiculo,
   // afiliacionIess, demandas, direcciones, datosSuper...) — se accede
-  // dinámicamente en normalize.ts.
+  // dinámicamente en process.ts.
   [campo: string]: unknown;
 }
 
-// Recurso individual: nombre corto -> resultado de esa llamada a Novadata.
-export type RawMultiRecurso = Record<string, BlockResult<NovadataEnvelope>>;
-
-export interface RawNovadataResponse {
-  general: BlockResult<RawGeneral>;
-  sociodemografica: BlockResult<RawMultiRecurso>;
-  trabajo: BlockResult<RawMultiRecurso>;
-  iess: BlockResult<RawMultiRecurso>;
-  vehiculos: BlockResult<RawMultiRecurso>;
-  funcion_judicial: BlockResult<RawMultiRecurso>;
-  fiscalia: BlockResult<RawMultiRecurso>;
-  bancos: BlockResult<RawMultiRecurso>;
-  cooperativas: BlockResult<RawMultiRecurso>;
-}
+// Una entrada por fuente consultada: nombre corto -> resultado de esa
+// llamada a Novadata. Plana, sin la capa intermedia de los nueve
+// bloques que existió hasta la migración 078.
+//
+// El nombre corto de cada fuente es único entre las 52 y por eso la
+// tabla puede ser plana: es la misma clave que usa
+// novadata_resource_config.recurso, así que lo que se lee acá y lo que
+// se apaga desde la pantalla de configuración se llaman igual.
+//
+// `general` se declara aparte porque es la única con forma rica ya
+// tipada (RawGeneral); el resto comparte el sobre genérico.
+export type RespuestaNovadata = {
+  general: ResultadoFuente<RawGeneral>;
+} & Record<string, ResultadoFuente<NovadataEnvelope> | ResultadoFuente<RawGeneral>>;
 
 // ---------- Controles de bloqueo (determinísticos, no delegados al LLM) ----------
 
@@ -119,25 +109,9 @@ export interface ResultadoControlBloqueo {
   hallazgos: HallazgoControlBloqueo[];
 }
 
-// ---------- Contexto curado por eje (lo que ve el LLM) ----------
-// Cada eje trae su estado de disponibilidad + un resumen RECORTADO
-// (nombres, fechas, montos, estados) — no el payload crudo completo de
-// Novadata (que incluye árboles de canton/provincia/país innecesarios
-// para el juicio crediticio). Ver buildClientContext() en normalize.ts.
-
-export interface EjeContext {
-  status: BlockFetchStatus;
-  resumen: unknown;
-}
-
-export interface ClientContext {
-  cedula: string;
-  ejes: Record<BlockKey, EjeContext>;
-}
-
 // ---------- Estructura estandarizada (procesada/calculada) ----------
-// Sucesora de ClientContext — reemplaza arrays crudos por campos YA
-// calculados (conteos, sumas, booleanos, "el más reciente") para que el
+// Reemplaza arrays crudos por campos YA calculados (conteos, sumas,
+// booleanos, "el más reciente") para que el
 // LLM reciba mucho menos texto por persona. Ver docs/estructura-estandarizada.md
 // y process.ts (que la construye) — validada con 25 clientes reales antes
 // de conectarla al scoring (ver scripts/reprocess-sample.mjs, la versión
@@ -528,10 +502,22 @@ export interface StandardClientProfile {
   // ritmo que el resto del perfil.
   fuentesIngreso: AnalisisFuentesIngreso;
 
+  // Qué se pudo medir en esta consulta, fuente por fuente, en los tres
+  // estados de docs/declaracion-de-disponibilidad.md. `sinDatos` es
+  // evidencia ("no tiene deudas" es un hecho); `noMedidas` es un hueco
+  // del que no se concluye nada.
+  //
+  // Antes de estructura-v3 esto contaba los nueve bloques y se llamaba
+  // ejesOk/ejesFaltantes/ejesConError. Nueve bloques exageran: uno
+  // figuraba "ok" con una sola de sus catorce fuentes contestando, así
+  // que "9 de 9 ejes" podía querer decir "14 de 52 fuentes" -- medido
+  // sobre los perfiles del 2026-09-17, que reportaban 9/9 con 14 a 25
+  // fuentes reales. Los perfiles anteriores conservan las claves viejas
+  // y hay que leer las dos formas (ver calidad-de-la-consulta.ts).
   metaConsulta: {
-    ejesOk: string[];
-    ejesFaltantes: string[];
-    ejesConError: string[];
+    fuentesConDatos: string[];
+    fuentesSinDatos: string[];
+    fuentesNoMedidas: string[];
   };
 }
 

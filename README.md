@@ -1,7 +1,7 @@
 # CrediScope
 
 Análisis crediticio asistido por IA. Consulta la información de una
-persona en Novadata (9 bloques, ~50 recursos), la procesa a una
+persona en Novadata (52 fuentes), la procesa a una
 **Estructura Estandarizada** de 16 grupos, y un LLM (Claude) la evalúa
 guiado por un **marco interpretativo** en lenguaje natural para producir
 un **score aproximado** (1-999), una **recomendación de acción**
@@ -66,12 +66,17 @@ limitada por RLS.
 
 ### El pipeline de evaluación
 
-1. **Ingesta** — `novadata-client.ts`. Los 9 bloques en paralelo
-   (general, sociodemográfica, trabajo, IESS, vehículos, función
-   judicial, fiscalía, bancos, cooperativas). Cada bloque reporta `ok` /
-   `faltante` / `error` por separado: eso es lo que permite después
+1. **Ingesta** — `novadata-client.ts`. Las 52 fuentes en paralelo, sin
+   agrupar. Cada una reporta `ok` / `faltante` / `error` /
+   `deshabilitado` por separado: eso es lo que permite después
    interpretar "información faltante" como señal de negocio y no como
    falla del sistema.
+
+   Hasta la migración 078 las fuentes pasaban por nueve "bloques" de
+   negocio que agregaban su estado, y ahí se perdía justamente esa
+   distinción: un bloque figuraba `ok` con UNA de sus catorce fuentes
+   respondiendo. La relación real entre fuentes y grupos del perfil es
+   muchos a muchos y vive en la tabla `fuente_grupo`.
 2. **Estructura Estandarizada** — `process.ts` (`buildStandardProfile`).
    Convierte el crudo en 16 grupos de campos normalizados (booleanos,
    conteos, montos) en vez de arrays completos. La fuente de verdad del
@@ -248,8 +253,8 @@ consulta en vivo y se descarta tras procesarlo. Toda consulta queda
 auditada en `audit_log`, y solo las Edge Functions (con `service_role
 key`) escriben resultados — el navegador nunca escribe directo.
 
-Los bloques incluyen Fiscalía, Función Judicial y Bancos: información
-muy sensible. Revisar cumplimiento con la LOPDP (Ecuador) —
+Las fuentes incluyen Fiscalía, Función Judicial y buró de crédito:
+información muy sensible. Revisar cumplimiento con la LOPDP (Ecuador) —
 consentimiento, retención, y quién puede consultar qué.
 
 ## Desarrollo local
@@ -286,8 +291,8 @@ completo de punta a punta.
 ### Explorador de Fuentes
 
 `src/pages/NovadataExplorer.jsx` (`/explorar`, **solo admin**) consulta
-todos los recursos de una cédula y muestra el resumen curado más el
-crudo de los 9 ejes, sin persistir nada. La contraseña que se ingresa
+las 52 fuentes de una cédula y muestra el estado y el crudo de cada
+una, sin persistir nada. La contraseña que se ingresa
 ahí nunca se guarda: viaja en el body del POST, se usa una vez para
 pedir el token de Novadata y se descarta.
 

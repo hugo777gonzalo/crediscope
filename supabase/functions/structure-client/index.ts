@@ -8,13 +8,13 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
+import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
-import { estadoDeLosBloques, estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
+import { estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -94,29 +94,28 @@ Deno.serve(async (req) => {
     //    (ver _shared/runtime-config.ts).
     const disabledResources = await loadDisabledResources(serviceClient);
     const inicioIngesta = Date.now();
-    const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
+    const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
 
     // 2. ¿La fuente contestó algo?
     //
-    // Esto va ANTES de mirar si la persona existe, porque si ningún eje
-    // respondió tampoco sabemos si existe. El 2026-09-15 una caída de
-    // una hora dejó 373 perfiles en blanco guardados como si fueran
-    // personas sin historial, y clasificados como "informal o sin
+    // Esto va ANTES de mirar si la persona existe, porque si ninguna
+    // fuente respondió tampoco sabemos si existe. El 2026-09-15 una
+    // caída de una hora dejó 373 perfiles en blanco guardados como si
+    // fueran personas sin historial, y clasificados como "informal o sin
     // actividad". Ver _shared/calidad-de-la-consulta.ts.
     //
     // 503 y no 500: el problema es de la fuente y es pasajero. El
     // trabajador de lotes usa ese código para reintentar en vez de dar
     // la cédula por perdida.
-    const blockStatusPrevio = estadoDeLosBloques(raw);
     const estadoDeCadaFuente = estadoPorFuente(raw);
-    if (!laConsultaSirve(blockStatusPrevio)) {
+    if (!laConsultaSirve(estadoDeCadaFuente)) {
       return new Response(
         JSON.stringify({
-          error: porQueNoSirve(blockStatusPrevio),
+          error: porQueNoSirve(estadoDeCadaFuente),
           tipoIdentificacion: "fuente_sin_respuesta",
           ingresado,
           cedula,
-          bloques: blockStatusPrevio,
+          fuentes: estadoDeCadaFuente,
         }),
         { status: 503, headers: { ...corsHeaders, "content-type": "application/json" } }
       );
@@ -166,7 +165,7 @@ Deno.serve(async (req) => {
 
     // 5. Estructura estandarizada
     const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
-    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, cedula, corteIess);
+    const { profile, duracionFuentesMs } = buildStandardProfile(raw, cedula, corteIess);
     const duracionMs = Date.now() - inicioIngesta;
 
     // 6. Controles de bloqueo — determinísticos, no dependen del LLM.
@@ -191,14 +190,11 @@ Deno.serve(async (req) => {
         fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
         duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
-        block_status: blockStatus,
-        // Cuántos ejes contestó la fuente. Se guarda plano para
-        // poder excluir consultas vacías sin abrir el JSON de cada
-        // perfil -- ver 065 y calidad-de-la-consulta.ts.
-        ejes_ok: profile.metaConsulta.ejesOk.length,
-        // El detalle por fuente, al lado del agregado por bloque.
-        // Nueve bloques pueden decir ok con trece fuentes caídas --
-        // ver la migración 068.
+
+        // Qué contestó cada fuente. Se guarda plano (fuentes_ok) además
+        // del detalle para poder excluir consultas vacías sin abrir el
+        // JSON de cada perfil -- ver 065, 068 y 078. `ejes_ok` ya no se
+        // escribe: contaba los nueve bloques, que exageraban.
         estado_por_fuente: estadoDeCadaFuente,
         fuentes_ok: cuantasFuentesContestaron(estadoDeCadaFuente),
         fuentes_totales: Object.keys(estadoDeCadaFuente).length,

@@ -26,9 +26,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { fetchAllBlocks, personaNoExiste } from "../_shared/novadata-client.ts";
+import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
-import { estadoDeLosBloques, estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
+import { estadoPorFuente, cuantasFuentesContestaron, elPerfilSirve, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
@@ -72,7 +72,7 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   const desde = new Date(Date.now() - dias * 86_400_000).toISOString();
   // Se mira EL ÚLTIMO perfil, no el último que sirva.
   //
-  // Parece lo mismo y no lo es. Filtrar por ejes_ok adentro de la
+  // Parece lo mismo y no lo es. Filtrar por la calidad adentro de la
   // consulta hacía que una persona con un perfil bueno de hace cinco
   // días y uno vacío de ayer se diera por vigente con el viejo: el lote
   // no la consultaba, y todas las pantallas --que muestran el ÚLTIMO
@@ -84,15 +84,18 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   // es reciente?", y el perfil actual es el último, sin condiciones.
   const { data } = await serviceClient
     .from("client_profiles")
-    .select("id, client_id, ejes_ok, created_at")
+    .select("id, client_id, fuentes_ok, ejes_ok, created_at")
     .eq("client_id", cliente.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!data) return null;
-  // Vacío: es una consulta pendiente, no un perfil vigente.
-  if ((data.ejes_ok ?? 0) === 0) return null;
+  // Vacío: es una consulta pendiente, no un perfil vigente. Se leen las
+  // dos épocas -- los 2.681 perfiles anteriores al 2026-09-17 sólo
+  // tienen ejes_ok, y mirando sólo fuentes_ok el lote los reconsultaría
+  // a todos. Ver elPerfilSirve().
+  if (!elPerfilSirve(data)) return null;
   // Y tiene que caer dentro de la ventana de validez.
   if (data.created_at < desde) return null;
 
@@ -130,20 +133,19 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
       return;
     }
 
-    const raw = await fetchAllBlocks(item.cedula, undefined, deshabilitados);
+    const raw = await consultarTodasLasFuentes(item.cedula, undefined, deshabilitados);
 
-    // Si la fuente no contestó un solo eje, esta cédula no se consultó:
-    // se intentó. Se lanza para caer en el manejo de fallas de abajo,
-    // que la devuelve a la cola en vez de marcarla como hecha.
+    // Si la fuente no contestó ni una, esta cédula no se consultó: se
+    // intentó. Se lanza para caer en el manejo de fallas de abajo, que
+    // la devuelve a la cola en vez de marcarla como hecha.
     //
     // Antes esto terminaba en `estado: "ok"` con un perfil en blanco,
-    // porque fetchAllBlocks no lanza excepción por bloque fallido y el
-    // perfil se guardaba igual. Así se produjeron los 373 perfiles
-    // vacíos del 2026-09-15, y el resumen del lote los contó como
-    // correctos. Ver _shared/calidad-de-la-consulta.ts.
-    const estadoBloques = estadoDeLosBloques(raw);
+    // porque consultarTodasLasFuentes no lanza excepción por una fuente
+    // caída y el perfil se guardaba igual. Así se produjeron los 373
+    // perfiles vacíos del 2026-09-15, y el resumen del lote los contó
+    // como correctos. Ver _shared/calidad-de-la-consulta.ts.
     const estadoDeCadaFuente = estadoPorFuente(raw);
-    if (!laConsultaSirve(estadoBloques)) throw new Error(`HTTP 503 ${porQueNoSirve(estadoBloques)}`);
+    if (!laConsultaSirve(estadoDeCadaFuente)) throw new Error(`HTTP 503 ${porQueNoSirve(estadoDeCadaFuente)}`);
 
     const noExiste = personaNoExiste(raw.general);
     if (noExiste) {
@@ -171,7 +173,7 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
       client = creado;
     }
 
-    const { profile, blockStatus, duracionFuentesMs } = buildStandardProfile(raw, item.cedula, corteIess);
+    const { profile, duracionFuentesMs } = buildStandardProfile(raw, item.cedula, corteIess);
     const controlBloqueo = evaluarControlesBloqueo(raw, item.cedula);
 
     const { data: guardado, error: errorPerfil } = await serviceClient
@@ -186,14 +188,11 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
         fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
         duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
-        block_status: blockStatus,
-        // Cuántos ejes contestó la fuente. Se guarda plano para
-        // poder excluir consultas vacías sin abrir el JSON de cada
-        // perfil -- ver 065 y calidad-de-la-consulta.ts.
-        ejes_ok: profile.metaConsulta.ejesOk.length,
-        // El detalle por fuente, al lado del agregado por bloque.
-        // Nueve bloques pueden decir ok con trece fuentes caídas --
-        // ver la migración 068.
+
+        // Qué contestó cada fuente. Se guarda plano (fuentes_ok) además
+        // del detalle para poder excluir consultas vacías sin abrir el
+        // JSON de cada perfil -- ver 065, 068 y 078. `ejes_ok` ya no se
+        // escribe: contaba los nueve bloques, que exageraban.
         estado_por_fuente: estadoDeCadaFuente,
         fuentes_ok: cuantasFuentesContestaron(estadoDeCadaFuente),
         fuentes_totales: Object.keys(estadoDeCadaFuente).length,
@@ -245,7 +244,18 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
     // Vuelve a la cola hasta tres intentos; recién ahí se da por
     // fallida. Los intentos quedan contados, así que si una cédula
     // necesitó tres, eso también se ve.
-    const mensaje = String(err);
+    // Un error de PostgREST es un objeto plano, no un Error: String()
+    // lo convierte en "[object Object]" y el motivo guardado no dice
+    // nada. Pasó con esta misma migración -- el lote falló entero y el
+    // motivo no alcanzaba ni para saber qué columna se quejaba.
+    const mensaje =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null
+          ? [(err as Record<string, unknown>).message, (err as Record<string, unknown>).details, (err as Record<string, unknown>).hint, (err as Record<string, unknown>).code]
+              .filter(Boolean)
+              .join(" | ") || JSON.stringify(err)
+          : String(err);
     const pasajero = /fetch|network|timeout|socket|HTTP 5\d\d|429/i.test(mensaje);
     const intentos = item.intentos + 1;
     const reintentable = pasajero && intentos < 3;

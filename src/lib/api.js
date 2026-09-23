@@ -456,7 +456,7 @@ export async function eliminarPaqueteFeedback(id) {
 
 // Se lee de la vista `fuentes_de_consulta` (migración 067), no de la tabla
 // directo: la tabla trae `bloque`, la agrupación heredada de la primera
-// integración (9 bloques, uno por fuente). La relación real entre fuentes y
+// integración, ya retirada del código en la 078. La relación real entre fuentes y
 // grupos del Perfil del Cliente es muchos a muchos -- 16 de 52 fuentes
 // alimentan más de un grupo -- y la vista ya trae ese mapa en
 // `alimenta_grupos`. Los alias mantienen el nombre de campo que ya usaba

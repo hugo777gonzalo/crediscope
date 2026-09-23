@@ -26,10 +26,16 @@
 // sí en el anterior se desvinculó hace poco, y eso es una señal de
 // riesgo que hoy se estaba perdiendo.
 
-import type { RawNovadataResponse } from "./types.ts";
+import type { RespuestaNovadata } from "./types.ts";
 import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 
-export const FUENTES_INGRESO_VERSION = "fuentes-v2";
+// v3: la guarda de "no sé si aporta" pasa a mirar basesInternas, la
+// fuente que realmente trae los aportes, en vez del bloque `bancos`
+// entero. El bloque figuraba "ok" porque contestaba cualquiera de sus
+// otras trece fuentes, así que se afirmaba "no aporta" con los aportes
+// sin consultar. La clasificación no cambió; cambió cuándo se permite
+// emitirla.
+export const FUENTES_INGRESO_VERSION = "fuentes-v3";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -83,11 +89,11 @@ export type Segmento =
   | "independiente" | "agricola" | "trabajo_hogar"
   | "jubilado" | "jubilado_con_ingreso_adicional"
   | "ingresos_mixtos" | "informal_o_sin_actividad"
-  // La fuente no contestó el bloque que trae los aportes. No es un
-  // juicio sobre la persona: es la ausencia de la consulta. Existe como
-  // segmento propio porque la alternativa era decir "informal", que sí
-  // es un juicio -- y se dijo sobre 373 personas por una caída de una
-  // hora. Ver _shared/calidad-de-la-consulta.ts.
+  // La fuente que trae los aportes no contestó. No es un juicio sobre
+  // la persona: es la ausencia de la consulta. Existe como segmento
+  // propio porque la alternativa era decir "informal", que sí es un
+  // juicio -- y se dijo sobre 373 personas por una caída de una hora.
+  // Ver _shared/calidad-de-la-consulta.ts.
   | "sin_datos"
   // Aporta bajo un código de empleador que no está en el mapa, o que
   // llegó sin el prefijo numérico. Existe como segmento propio para que
@@ -192,17 +198,17 @@ const SEGMENTO_POR_NATURALEZA: Record<Naturaleza, Segmento> = {
 };
 
 export function analizarFuentesIngreso(
-  raw: RawNovadataResponse,
+  raw: RespuestaNovadata,
   nombreCliente: string | null,
   corteConocido: string = CORTE_IESS_CONOCIDO
 ): AnalisisFuentesIngreso {
-  const bancos = (raw.bancos?.data ?? {}) as AnyRecord;
-  const trabajo = (raw.trabajo?.data ?? {}) as AnyRecord;
-  const iess = (raw.iess?.data ?? {}) as AnyRecord;
-  const judicial = (raw.funcion_judicial?.data ?? {}) as AnyRecord;
+  // Las 52 fuentes consultadas, planas. Se llaman "consultadas" y no
+  // "fuentes" porque en este archivo una fuente es de dónde sale la
+  // plata de alguien, no un endpoint de Novadata.
+  const consultadas = raw as unknown as AnyRecord;
 
-  const basesInternas = (((bancos.basesInternas as AnyRecord)?.data as AnyRecord)?.data ??
-    ((bancos.basesInternas as AnyRecord)?.data as AnyRecord) ?? {}) as AnyRecord;
+  const basesInternas = (((consultadas.basesInternas as AnyRecord)?.data as AnyRecord)?.data ??
+    ((consultadas.basesInternas as AnyRecord)?.data as AnyRecord) ?? {}) as AnyRecord;
   const aportes = (Array.isArray(basesInternas.tiess) ? basesInternas.tiess : []) as AnyRecord[];
 
   // ---- Corte y vigencia ----
@@ -253,7 +259,7 @@ export function analizarFuentesIngreso(
   }
 
   // Jubilación
-  const jubilados = ((iess.jubilados as AnyRecord)?.data as AnyRecord)?.trabajos;
+  const jubilados = ((consultadas.jubilados as AnyRecord)?.data as AnyRecord)?.trabajos;
   const esJubilado = Array.isArray(jubilados) && jubilados.length > 0;
   if (esJubilado) {
     fuentes.push({
@@ -270,8 +276,8 @@ export function analizarFuentesIngreso(
   // Pensión alimenticia que PERCIBE (como representante legal). No es la
   // que paga -- esa es un egreso y vive en riesgoJudicialCivil.
   const supas = [
-    ...((((judicial.pensionAlimenticia as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
-    ...((((judicial.pensionAlimenticiaNovadata as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
+    ...((((consultadas.pensionAlimenticia as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
+    ...((((consultadas.pensionAlimenticiaNovadata as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
   ];
   if (supas.some((s) => mismoNombre(s.representanteLegal, nombreCliente))) {
     fuentes.push({
@@ -287,7 +293,7 @@ export function analizarFuentesIngreso(
 
   // ---- Señales de escala (tamaño de la actividad, no ingreso) ----
   const senalesDeEscala: SenalEscala[] = [];
-  const empleados = ((((trabajo.empleados as AnyRecord)?.data as AnyRecord)?.empleados as AnyRecord[]) ?? []);
+  const empleados = ((((consultadas.empleados as AnyRecord)?.data as AnyRecord)?.empleados as AnyRecord[]) ?? []);
   if (empleados.length) {
     let mesNomina = "";
     for (const e of empleados) {
@@ -303,7 +309,7 @@ export function analizarFuentesIngreso(
     });
   }
 
-  const contribuyentes = ((((trabajo.contribuyente as AnyRecord)?.data as AnyRecord)?.datosContribuyente as AnyRecord[]) ?? [])
+  const contribuyentes = ((((consultadas.contribuyente as AnyRecord)?.data as AnyRecord)?.datosContribuyente as AnyRecord[]) ?? [])
     .filter((c) => c.ruc && c.fecha_inscripcion_ruc);
   const rucActivo = contribuyentes.some((c) => !c.fecha_cancelacion && !c.fecha_suspension_definitiva);
   if (contribuyentes.some((c) => String(c.obligado).toUpperCase() === "SI")) {
@@ -314,7 +320,7 @@ export function analizarFuentesIngreso(
     });
   }
 
-  const establecimientos = (trabajo.establecimientoActEconomica as AnyRecord)?.data as AnyRecord | undefined;
+  const establecimientos = (consultadas.establecimientoActEconomica as AnyRecord)?.data as AnyRecord | undefined;
   const numEstablecimientos = establecimientos
     ? Object.values(establecimientos).filter(Array.isArray).reduce((acc, v) => acc + (v as unknown[]).length, 0)
     : 0;
@@ -326,7 +332,7 @@ export function analizarFuentesIngreso(
     });
   }
 
-  const declaraRenta = ((((trabajo.sriImpuestoRenta as AnyRecord)?.data as AnyRecord)?.data as AnyRecord[]) ?? [])
+  const declaraRenta = ((((consultadas.sriImpuestoRenta as AnyRecord)?.data as AnyRecord)?.data as AnyRecord[]) ?? [])
     .some((x) => Array.isArray(x.impuestosRenta) && (x.impuestosRenta as unknown[]).length > 0);
 
   // Actividad económica propia sin monto asociado: no es una cifra pero
@@ -439,7 +445,7 @@ export function analizarFuentesIngreso(
     // de alguien. Ver _shared/calidad-de-la-consulta.ts.
     segmento = "sin_datos";
     estadoSegmento = "indeterminada";
-    motivoSegmento = `La fuente no respondió el bloque que trae los aportes al IESS (estado: ${raw.bancos?.status ?? "desconocido"}). No se puede afirmar que esta persona no aporte: no se pudo consultar.`;
+    motivoSegmento = `La fuente que trae los aportes al IESS (basesInternas) no respondió (estado: ${raw.basesInternas?.status ?? "desconocido"}). No se puede afirmar que esta persona no aporte: no se pudo consultar.`;
   } else {
     segmento = "informal_o_sin_actividad";
     estadoSegmento = "indeterminada";

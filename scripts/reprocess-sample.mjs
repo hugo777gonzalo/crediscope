@@ -227,16 +227,11 @@ function categoriasDelitoGraveSeguridad(texto) {
 function buildStandardProfile(raw, cedula) {
   const g = raw.general?.data;
   const persona = g?.personaNatural;
-  const socio = raw.sociodemografica?.data;
-  const trabajo = raw.trabajo?.data;
-  const iess = raw.iess?.data;
-  const vehiculosData = raw.vehiculos?.data;
-  const judicial = raw.funcion_judicial?.data;
-  const fiscalia = raw.fiscalia?.data;
-  const bancos = raw.bancos?.data;
-  const cooperativas = raw.cooperativas?.data;
+  // Las 52 fuentes, planas: sin la capa de nueve bloques que se retiró
+  // en la migración 078. Tiene que seguir espejando a process.ts.
+  const fuentes = raw;
 
-  const basesInternas = bancos?.basesInternas?.data;
+  const basesInternas = fuentes?.basesInternas?.data;
   const personasIncump = arr({ x: { data: basesInternas } }, "x", "personasIncumplimientos")[0] ?? null;
   const tiess = arr({ x: { data: basesInternas } }, "x", "tiess");
   const tcredQ = arr({ x: { data: basesInternas } }, "x", "tcredQuirografarios");
@@ -270,10 +265,10 @@ function buildStandardProfile(raw, cedula) {
   // ---- contacto ----
   // Nota: numeroX/conteos son 0 (no null) cuando el eje SÍ se consultó
   // pero no hay registros — null se reserva para "no se pudo saber"
-  // (ver metaConsulta.ejesFaltantes/ejesConError).
-  const direcciones = arr(socio, "direcciones", "direcciones");
-  const telefonos = arr(socio, "telefonos", "telefonos");
-  const correos = arr(socio, "correo", "correos");
+  // (ver metaConsulta.fuentesNoMedidas).
+  const direcciones = arr(fuentes, "direcciones", "direcciones");
+  const telefonos = arr(fuentes, "telefonos", "telefonos");
+  const correos = arr(fuentes, "correo", "correos");
   const contacto = {
     numeroDirecciones: direcciones.length,
     numeroTelefonos: telefonos.length,
@@ -285,8 +280,8 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- familia ----
-  const hijos = arr(socio, "hijos", "personasNatural");
-  const padres = arr(socio, "padres", "personasNatural");
+  const hijos = arr(fuentes, "hijos", "personasNatural");
+  const padres = arr(fuentes, "padres", "personasNatural");
   const hijosIdsUnicos = new Set(hijos.map((h) => h.identificacion).filter(Boolean));
   const familia = {
     numeroHijos: hijos.length,
@@ -300,16 +295,16 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- laboral ----
-  const empleados = arr(trabajo, "empleados", "empleados");
+  const empleados = arr(fuentes, "empleados", "empleados");
   const empleadosIdsUnicos = new Set(empleados.map((e) => e.ci).filter(Boolean));
-  const contribuyenteRegistros = arr(trabajo, "contribuyente", "datosContribuyente");
+  const contribuyenteRegistros = arr(fuentes, "contribuyente", "datosContribuyente");
   // tieneEstablecimientoActivo: fuente correcta es contribuyente (RUC),
   // NO establecimientoActEconomica — ver rucRegistroActivo().
   const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucRegistroActivo);
   const rucReferencia = contribuyenteRegistros.find(rucRegistroActivo) ?? contribuyenteRegistros[0] ?? null;
   // establecimientoActEconomica: detalle por establecimiento (ver nota
   // en process.ts) — sus fechas vienen DD/MM/YYYY, no se usan acá.
-  const establecimientos = arr(trabajo, "establecimientoActEconomica", "datosEstablecimientoActEco");
+  const establecimientos = arr(fuentes, "establecimientoActEconomica", "datosEstablecimientoActEco");
   const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // Estado y antigüedad de la actividad económica -- ver los 5 casos
@@ -335,7 +330,7 @@ function buildStandardProfile(raw, cedula) {
     antiguedadUltimaEtapaActivaMeses = inicioUltimaEtapa ? mesesEntreFechas(inicioUltimaEtapa, ceseActividad) : null;
     mesesInactivoActividadEconomica = mesesEntreFechas(ceseActividad, ahoraActividad);
   }
-  const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
+  const cumplimientoAfiliaciones = arr(fuentes, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
     if (!t) return false;
@@ -346,7 +341,7 @@ function buildStandardProfile(raw, cedula) {
   // mensual de IESS) — basesInternas.tiess NO tiene baseDate. Se
   // descarta si el registro más reciente disponible tiene más de 3
   // meses (frecuencia máxima de actualización de estos datos).
-  const mecanizado = arr(trabajo, "trabajoHistoricosMecanizado", "mecanizadoEmpleados");
+  const mecanizado = arr(fuentes, "trabajoHistoricosMecanizado", "mecanizadoEmpleados");
   const mecanizadoOrdenado = [...mecanizado].sort(
     (a, b) => (parseFecha(b.baseDate ? `${b.baseDate}-01` : null)?.getTime() ?? 0) - (parseFecha(a.baseDate ? `${a.baseDate}-01` : null)?.getTime() ?? 0)
   );
@@ -439,7 +434,7 @@ function buildStandardProfile(raw, cedula) {
       const ultimos6 = [...porMes.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6).map(([, total]) => total);
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
     })(),
-    esEmpleadorOAdministrador: empleados.length > 0 || arr(trabajo, "administraciones", "administraciones").length > 0,
+    esEmpleadorOAdministrador: empleados.length > 0 || arr(fuentes, "administraciones", "administraciones").length > 0,
     // corregido: antes leía .obligado ("obligado a llevar contabilidad",
     // sin relación con el estado del RUC) — ver la misma nota en process.ts.
     tieneRucActivo: tieneEstablecimientoActivo,
@@ -464,7 +459,7 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- tributario (SRI) ----
-  const sriData = obj(trabajo, "sriImpuestoRenta", "data") ?? arr(trabajo, "sriImpuestoRenta", "data")[0] ?? null;
+  const sriData = obj(fuentes, "sriImpuestoRenta", "data") ?? arr(fuentes, "sriImpuestoRenta", "data")[0] ?? null;
   const impuestosISD = sriData?.impuestosISD ?? [];
   const impuestosRenta = sriData?.impuestosRenta ?? [];
   const maxISD = impuestosISD.reduce((max, x) => (num(x.valor) !== null && num(x.valor) > (max ?? -Infinity) ? num(x.valor) : max), null);
@@ -487,22 +482,22 @@ function buildStandardProfile(raw, cedula) {
 
   // ---- seguridadSocial ----
   // null si pn_afiliacion_iess no trajo datos -- ver nota completa en process.ts.
-  const estadoRecursoAfilIess = estadoRecurso(iess, "afiliacionIess");
-  const afilIess = arr(iess, "afiliacionIess", "afiliacionIess")[0] ?? null;
+  const estadoRecursoAfilIess = estadoRecurso(fuentes, "afiliacionIess");
+  const afilIess = arr(fuentes, "afiliacionIess", "afiliacionIess")[0] ?? null;
   const seguridadSocial = {
     afiliadoIessActivo:
       estadoRecursoAfilIess !== "ok" ? null : afilIess ? String(afilIess.estado ?? "").toUpperCase().startsWith("ACTIVO") : false,
     // esPensionista: hay que leer el campo .estado (booleano real) de
     // cada registro, no solo si el recurso trajo algún registro — Novadata
     // devuelve registros con estado:false para gente que NO es pensionista.
-    esPensionista: arr(iess, "pensionista", "pensionista").some((p) => p.estado === true),
-    esJubilado: arr(iess, "jubilados", "trabajos").length > 0,
+    esPensionista: arr(fuentes, "pensionista", "pensionista").some((p) => p.estado === true),
+    esJubilado: arr(fuentes, "jubilados", "trabajos").length > 0,
     // --- nuevo ---
     estadoAfiliacionIess: afilIess?.estado ?? null,
   };
 
   // ---- patrimonio ----
-  const vehiculos = arr(vehiculosData, "vehiculos", "personaVehiculo");
+  const vehiculos = arr(fuentes, "vehiculos", "personaVehiculo");
   const sum = (field) => vehiculos.reduce((s, v) => s + (num(v[field]) ?? 0), 0);
   // valorColateralVehiculos: ver nota completa en process.ts. Máximo por
   // vehículo entre las fuentes de precio de mercado (NO precioVenta,
@@ -512,8 +507,8 @@ function buildStandardProfile(raw, cedula) {
   const patrimonio = {
     numeroVehiculos: vehiculos.length,
     valorAvaluoVehiculos: sum("valorAvaluo"),
-    numeroInmuebles: arr(socio, "bienesInmueble", "bienesInmueble").length,
-    numeroInversiones: arr(bancos, "inversiones", "inversiones").length,
+    numeroInmuebles: arr(fuentes, "bienesInmueble", "bienesInmueble").length,
+    numeroInversiones: arr(fuentes, "inversiones", "inversiones").length,
     // --- nuevos ---
     tieneVehiculos: vehiculos.length > 0,
     numeroAutos: vehiculos.filter((v) => v.tipoComercial === "autos").length,
@@ -528,8 +523,8 @@ function buildStandardProfile(raw, cedula) {
   // ---- comportamientoBancario (ex "formal": bancos/BIESS/Diners) ----
   // buró de crédito (antes "central de riesgos"). peorCalificacionRiesgo/
   // mejorCalificacionRiesgo: ver nota completa en process.ts.
-  const buroCredito = [...arr(bancos, "buroCreditoSuper", "datosSuper"), ...arr(bancos, "buroCreditoDiners", "datosSuper")];
-  const retails = arr(bancos, "retails", "retails");
+  const buroCredito = [...arr(fuentes, "buroCreditoSuper", "datosSuper"), ...arr(fuentes, "buroCreditoDiners", "datosSuper")];
+  const retails = arr(fuentes, "retails", "retails");
   const calificacionesBuroCredito = buroCredito.map((r) => r.calificacion).filter(Boolean).sort();
   const comportamientoBancario = {
     numeroOperacionesBuroCredito: buroCredito.length,
@@ -539,7 +534,7 @@ function buildStandardProfile(raw, cedula) {
     tieneOperacionCastigada: buroCredito.some((r) => num(r.castigo) > 0),
     saldoTotalVigente: buroCredito.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0),
     saldoEnMoraBuroCredito: buroCredito.reduce((s, r) => s + (num(r.saldomora) ?? num(r.mora) ?? 0), 0),
-    numeroCreditosFormales: arr(bancos, "creditoHipotecario", "prestamos").length + arr(bancos, "creditoQuirografario", "prestamos").length,
+    numeroCreditosFormales: arr(fuentes, "creditoHipotecario", "prestamos").length + arr(fuentes, "creditoQuirografario", "prestamos").length,
     numeroDeudasRetail: retails.length,
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
     totalDeudaRetail: retails.reduce((s, r) => s + (num(r.totalDeuda) ?? 0), 0),
@@ -548,7 +543,7 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- comportamientoCooperativas ----
-  const coop = arr(cooperativas, "buroCreditoCoop", "datosSuper");
+  const coop = arr(fuentes, "buroCreditoCoop", "datosSuper");
   const CAMPOS_VENCIDO_COOP = Array.from({ length: 11 }, (_, i) => `val_venc_${i + 1}`);
   const comportamientoCooperativas = {
     numeroOperaciones: coop.length,
@@ -570,14 +565,14 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- transitoVehicular ----
-  const licencia = arr(vehiculosData, "licenciaConducir", "licencia")[0] ?? null;
+  const licencia = arr(fuentes, "licenciaConducir", "licencia")[0] ?? null;
   // Ver nota completa en process.ts: deudasAnt es plano (monto en
   // .total), deudasEmov trae 1 resumen por persona con .infraccion[]
   // anidado (contar el resumen como multa fue el bug de "todos tienen
   // una multa"), deudasAmt se trata igual por prudencia (nunca visto
   // poblado).
   const esResumenConInfracciones = (r) => Array.isArray(r.infraccion);
-  const fuentesTransito = [arr(bancos, "deudasAnt", "deudaAnts"), arr(bancos, "deudasAmt", "deudaAmt"), arr(bancos, "deudasEmov", "deudaEmov")];
+  const fuentesTransito = [arr(fuentes, "deudasAnt", "deudaAnts"), arr(fuentes, "deudasAmt", "deudaAmt"), arr(fuentes, "deudasEmov", "deudaEmov")];
   const numeroMultas = fuentesTransito.reduce(
     (total, registros) => total + registros.reduce((s, r) => s + (esResumenConInfracciones(r) ? r.infraccion.length : 1), 0),
     0
@@ -595,9 +590,9 @@ function buildStandardProfile(raw, cedula) {
 
   // ---- riesgoJudicialCrediticio / riesgoJudicialCivil ----
   // Separados a pedido del usuario -- ver nota completa en process.ts.
-  const demandas = arr(judicial, "demandas", "demandas");
-  const demandasOfendido = arr(judicial, "demandasOfendido", "demandas");
-  const pensionAliment = [...arr(judicial, "pensionAlimenticia", "supas"), ...arr(judicial, "pensionAlimenticiaNovadata", "supas")];
+  const demandas = arr(fuentes, "demandas", "demandas");
+  const demandasOfendido = arr(fuentes, "demandasOfendido", "demandas");
+  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaNovadata", "supas")];
   // Solo cuenta como deuda/mora del cliente la que le corresponde como
   // obligado -- ver nota completa en process.ts (bug real: 0501578256).
   const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
@@ -622,11 +617,11 @@ function buildStandardProfile(raw, cedula) {
   };
 
   // ---- riesgoPenal ----
-  const antecedentes = obj(fiscalia, "antecedentesPenales", "antecedentes");
+  const antecedentes = obj(fuentes, "antecedentesPenales", "antecedentes");
   // Ver nota completa en process.ts: hay que mirar el rol del propio
   // cliente en cada denuncia (denunciante/victima/perjudicado = solo
   // contexto, sospechoso = penaliza).
-  const denuncias = arr(fiscalia, "denuncias", "denuncias");
+  const denuncias = arr(fuentes, "denuncias", "denuncias");
   const esSospechosoEnDenuncia = (d) =>
     (Array.isArray(d.detalleDenuncia) ? d.detalleDenuncia : []).some(
       (p) => p.cedula === cedula && String(p.estado ?? "").toUpperCase().includes("SOSPECHOSO")
@@ -643,10 +638,10 @@ function buildStandardProfile(raw, cedula) {
   // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
   // ver controles-bloqueo.ts: no es señal de riesgo crediticio.
   // homonimosOpr/tconsephomonimos EXCLUIDOS a propósito — ver nota en process.ts.
-  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce((s, c) => s + arr(bancos, "listasControl", c).length, 0);
-  const totalHomonimos = arr(bancos, "listasControl", "homonimosOpr").length + arr({ x: { data: basesInternas } }, "x", "tconsephomonimos").length;
-  const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr({ x: { data: basesInternas } }, "x", "tpeps").length;
-  const pepRegistros = [...arr(bancos, "listasControl", "personaPublicasOpr"), ...arr({ x: { data: basesInternas } }, "x", "tpeps")];
+  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce((s, c) => s + arr(fuentes, "listasControl", c).length, 0);
+  const totalHomonimos = arr(fuentes, "listasControl", "homonimosOpr").length + arr({ x: { data: basesInternas } }, "x", "tconsephomonimos").length;
+  const totalPep = arr(fuentes, "listasControl", "personaPublicasOpr").length + arr({ x: { data: basesInternas } }, "x", "tpeps").length;
+  const pepRegistros = [...arr(fuentes, "listasControl", "personaPublicasOpr"), ...arr({ x: { data: basesInternas } }, "x", "tpeps")];
   const pepMasReciente = [...pepRegistros].sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")))[0];
   const detallePep = pepMasReciente
     ? {
@@ -656,14 +651,14 @@ function buildStandardProfile(raw, cedula) {
         fecha: pepMasReciente.fecha ?? null,
       }
     : null;
-  const sercopData = obj(fiscalia, "sercop", "data");
+  const sercopData = obj(fuentes, "sercop", "data");
   // impedimentoCargosPublicos.data es un ARRAY, no objeto — ver nota en process.ts.
-  const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
+  const impedimentoRegistros = arr(fuentes, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
   const cumplimiento = {
     enListaControl: totalListasControl > 0,
     tieneHomonimoEnListaControl: totalHomonimos > 0,
-    enListaNegra: Boolean(bancos?.listaNegra?.data?.listaNegra),
+    enListaNegra: Boolean(fuentes?.listaNegra?.data?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),
     causalImpedimento: impedimentoActivo?.causales?.[0]?.causal ?? null,
     registraSercopContraloria: Boolean((sercopData?.contraloria?.registros?.length ?? 0) > 0 || (sercopData?.sercop?.registros?.length ?? 0) > 0),
@@ -682,20 +677,12 @@ function buildStandardProfile(raw, cedula) {
     categoriasDelitoSeguridadCiudadana: [...categoriasSeguridad],
   };
 
-  const blockStatus = {
-    general: raw.general?.status,
-    sociodemografica: raw.sociodemografica?.status,
-    trabajo: raw.trabajo?.status,
-    iess: raw.iess?.status,
-    vehiculos: raw.vehiculos?.status,
-    funcion_judicial: raw.funcion_judicial?.status,
-    fiscalia: raw.fiscalia?.status,
-    bancos: raw.bancos?.status,
-    cooperativas: raw.cooperativas?.status,
-  };
-  const ejesOk = Object.entries(blockStatus).filter(([, v]) => v === "ok").map(([k]) => k);
-  const ejesFaltantes = Object.entries(blockStatus).filter(([, v]) => v === "faltante").map(([k]) => k);
-  const ejesConError = Object.entries(blockStatus).filter(([, v]) => v === "error").map(([k]) => k);
+  // Los tres estados de docs/declaracion-de-disponibilidad.md. Tiene
+  // que dar lo mismo que process.ts: si una cambia, la otra también.
+  const estado = Object.entries(raw).filter(([, r]) => r && typeof r === "object" && "status" in r);
+  const fuentesConDatos = estado.filter(([, r]) => r.status === "ok").map(([k]) => k);
+  const fuentesSinDatos = estado.filter(([, r]) => r.status === "faltante").map(([k]) => k);
+  const fuentesNoMedidas = estado.filter(([, r]) => r.status === "error" || r.status === "deshabilitado").map(([k]) => k);
 
   return {
     cedula,
@@ -716,7 +703,7 @@ function buildStandardProfile(raw, cedula) {
     riesgoPenal,
     cumplimiento,
     riesgoSeguridadCiudadana,
-    metaConsulta: { ejesOk, ejesFaltantes, ejesConError },
+    metaConsulta: { fuentesConDatos, fuentesSinDatos, fuentesNoMedidas },
   };
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { metaDeLaConsulta } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 import {
   ArrowLeft,
   IdCard,
@@ -140,7 +141,10 @@ export default function Expediente() {
   const f = sp?.fuentesIngreso ?? null;
   const hallazgos = perfil?.control_bloqueo?.hallazgos ?? [];
   const nombre = nombreCorto(sp?.identidad?.nombreCompleto) ?? "Sin nombre en la fuente";
-  const meta = sp?.metaConsulta ?? null;
+  // Entiende las dos épocas: los perfiles anteriores a estructura-v3
+  // cuentan bloques (nueve) y los nuevos, fuentes (52). Leer sólo la
+  // forma nueva mostraría "respondió 0" en los 3.059 perfiles viejos.
+  const meta = sp?.metaConsulta ? metaDeLaConsulta(sp.metaConsulta) : null;
 
   return (
     <div>
@@ -231,17 +235,24 @@ export default function Expediente() {
               <Veredicto rot="Veces consultada" valor={consultas.length} pie={`${analisisPrevios.length} análisis corridos`} />
             </div>
 
-            {/* Qué respondió la fuente y qué no. No es información de la
+            {/* Qué se pudo medir y qué no. No es información de la
                 persona: es si el expediente está completo -- y decidir
-                sobre un expediente con dos ejes en blanco sin saberlo es
-                distinto de decidir sobre uno completo. */}
+                sobre un expediente con dos secciones sin medir, sin
+                saberlo, es distinto de decidir sobre uno completo.
+                Se listan sólo las NO MEDIDAS: las que contestaron "no
+                hay nada" no son un hueco, y nombrarlas al lado de las
+                caídas es volver a mezclar las dos cosas que esta
+                pantalla tiene que distinguir.
+                Los perfiles viejos cuentan bloques y se dice, porque
+                "9 de 9" y "18 de 52" no son la misma medida. */}
             {meta ? (
               <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                La fuente respondió <strong>{meta.ejesOk?.length ?? 0}</strong> ejes
-                {meta.ejesFaltantes?.length ? `, devolvió ${meta.ejesFaltantes.length} vacíos` : ""}
-                {meta.ejesConError?.length ? ` y falló en ${meta.ejesConError.length}` : ""}.
-                {meta.ejesFaltantes?.length || meta.ejesConError?.length
-                  ? ` Sin dato: ${[...(meta.ejesFaltantes ?? []), ...(meta.ejesConError ?? [])].join(", ")}.`
+                Trajeron datos <strong>{meta.conDatos.length}</strong>{" "}
+                {meta.porBloques ? "ejes (medición vieja, por bloques)" : "fuentes"}
+                {meta.sinDatos.length ? `, ${meta.sinDatos.length} contestaron que no hay nada` : ""}
+                {meta.noMedidas.length ? ` y ${meta.noMedidas.length} no se pudieron medir` : ""}.
+                {meta.noMedidas.length
+                  ? ` Sin medir: ${meta.noMedidas.join(", ")}.`
                   : ""}
               </p>
             ) : null}

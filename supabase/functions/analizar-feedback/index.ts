@@ -25,6 +25,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_RETROALIMENTACION, MARCO_RETROALIMENTACION_VERSION } from "../_shared/marco-retroalimentacion.ts";
 import { MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
+import { metaDeLaConsulta } from "../_shared/calidad-de-la-consulta.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -71,7 +72,15 @@ function extractoPerfil(perfil: AnyRecord | null): AnyRecord | null {
     tieneVehiculos: g("patrimonio", "tieneVehiculos"),
     numeroInmuebles: g("patrimonio", "numeroInmuebles"),
     valorColateralVehiculos: g("patrimonio", "valorColateralVehiculos"),
-    ejesFaltantes: ((perfil.metaConsulta as AnyRecord | undefined)?.ejesFaltantes ?? null),
+    // Lo que NO se pudo medir, que es lo que vuelve dudoso un análisis.
+    // Las fuentes que contestaron "no hay nada" no van acá: son un dato
+    // y no un hueco.
+    //
+    // Se leen las dos épocas -- antes de estructura-v3 esto nombraba
+    // bloques y se llamaba ejesConError. Leer sólo la forma nueva
+    // devolvería una lista vacía para los 3.059 perfiles anteriores,
+    // sin avisar.
+    fuentesNoMedidas: metaDeLaConsulta(perfil.metaConsulta as Record<string, unknown> | undefined).noMedidas,
   };
 }
 

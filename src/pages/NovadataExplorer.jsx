@@ -1,36 +1,22 @@
 import { useState } from "react";
 import { exploreNovadata } from "../lib/api.js";
 
-const EJE_LABELS = {
-  general: "Información general",
-  sociodemografica: "Sociodemográfica",
-  trabajo: "Trabajo",
-  iess: "Aportes IESS",
-  vehiculos: "Vehículos",
-  funcion_judicial: "Función Judicial",
-  fiscalia: "Fiscalía",
-  bancos: "Bancos",
-  cooperativas: "Cooperativas",
-};
-
 function tagClass(status) {
   if (status === "ok") return "crediscope-tag-ok";
-  if (status === "faltante") return "crediscope-tag-warn";
+  if (status === "faltante" || status === "ok_vacio") return "crediscope-tag-warn";
   return "crediscope-tag-bad";
 }
 
-function EjeCard({ ejeKey, status, resumen, raw }) {
+// Las fuentes se muestran cerradas: son 52 y abrirlas todas de entrada
+// convierte la pantalla en kilómetros de JSON.
+function FuenteCard({ fuente, status, raw }) {
   const [verRaw, setVerRaw] = useState(false);
   return (
     <div className="crediscope-card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ margin: 0 }}>{EJE_LABELS[ejeKey] || ejeKey}</h3>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <h3 style={{ margin: 0, fontSize: "1rem" }}>{fuente}</h3>
         <span className={`crediscope-tag ${tagClass(status)}`}>{status}</span>
       </div>
-      <p className="crediscope-muted" style={{ marginTop: 8 }}>
-        Resumen
-      </p>
-      <pre className="crediscope-pre">{JSON.stringify(resumen, null, 2)}</pre>
       <button className="crediscope-btn crediscope-btn-ghost" onClick={() => setVerRaw((v) => !v)} style={{ marginTop: 8 }}>
         {verRaw ? "Ocultar datos raw" : "Ver datos raw"}
       </button>
@@ -67,7 +53,7 @@ export default function NovadataExplorer() {
       <div className="crediscope-card">
         <h2>Explorador de Fuentes</h2>
         <p className="crediscope-muted">
-          Consulta en vivo los 9 ejes mapeados. No guarda nada — es solo para inspeccionar la ingesta. La
+          Consulta en vivo las 52 fuentes mapeadas. No guarda nada — es solo para inspeccionar la ingesta. La
           contraseña no se persiste en ningún lado, se usa una sola vez para pedir el token.
         </p>
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 360, marginTop: 12 }}>
@@ -119,15 +105,11 @@ export default function NovadataExplorer() {
       ) : null}
 
       {result
-        ? Object.keys(EJE_LABELS).map((ejeKey) => (
-            <EjeCard
-              key={ejeKey}
-              ejeKey={ejeKey}
-              status={result.context.ejes[ejeKey]?.status}
-              resumen={result.context.ejes[ejeKey]?.resumen}
-              raw={result.raw[ejeKey]?.data}
-            />
-          ))
+        ? Object.keys(result.estado ?? {})
+            .sort()
+            .map((fuente) => (
+              <FuenteCard key={fuente} fuente={fuente} status={result.estado[fuente]} raw={result.raw[fuente]?.data} />
+            ))
         : null}
     </div>
   );

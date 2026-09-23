@@ -3,7 +3,7 @@
 // POR QUÉ EXISTE ESTE ARCHIVO
 //
 // El 2026-09-15, entre las 17:00 y las 18:00, la fuente falló. De 914
-// consultas de esa hora, 373 devolvieron error en los nueve bloques:
+// consultas de esa hora, 373 devolvieron error en todas las fuentes:
 // cero información sobre esas personas. El sistema guardó un Perfil del
 // Cliente igual, y la clasificación de ingresos --al no encontrar
 // aportes ni RUC-- cayó en su rama por defecto y las etiquetó como
@@ -14,9 +14,9 @@
 // ser basura, y 370 personas quedaron descritas por una caída de red.
 //
 // La falla fue invisible en las cuatro capas porque en ninguna había
-// una pregunta como esta. `fetchAllBlocks` no lanza excepción: devuelve
-// `status: "error"` adentro de cada bloque, y todo lo de abajo lo trata
-// igual que un bloque vacío. La única defensa que existía
+// una pregunta como esta. `consultarTodasLasFuentes` no lanza excepción:
+// devuelve `status: "error"` adentro de cada fuente, y todo lo de abajo
+// lo trata igual que una fuente vacía. La única defensa que existía
 // --`personaNoExiste`-- busca el texto "no existe" y un error técnico
 // pasa de largo.
 //
@@ -25,56 +25,22 @@
 // aplicar el mismo criterio. Dos copias de esta regla es exactamente
 // cómo volvería a pasar por una sola de las dos puertas.
 
-import type { BlockStatusMap, RawNovadataResponse } from "./types.ts";
-
-/**
- * El estado de cada bloque, leído de la respuesta cruda.
- *
- * `buildStandardProfile` arma el mismo mapa, pero lo devuelve al final
- * de construir las 125 propiedades del perfil. Acá hace falta antes:
- * la pregunta "¿vale la pena seguir?" se contesta apenas vuelve la
- * fuente, no después de estructurar el vacío.
- */
-export function estadoDeLosBloques(raw: RawNovadataResponse): BlockStatusMap {
-  return {
-    general: raw.general.status,
-    sociodemografica: raw.sociodemografica.status,
-    trabajo: raw.trabajo.status,
-    iess: raw.iess.status,
-    vehiculos: raw.vehiculos.status,
-    funcion_judicial: raw.funcion_judicial.status,
-    fiscalia: raw.fiscalia.status,
-    bancos: raw.bancos.status,
-    cooperativas: raw.cooperativas.status,
-  };
-}
+import type { RespuestaNovadata } from "./types.ts";
 
 /**
  * El estado de cada FUENTE, una por una.
  *
- * Los nueve bloques esconden la mitad de la verdad. `aggregateStatus`
- * marca un bloque como "ok" si contestó AL MENOS UNA de sus fuentes, y
- * el bloque `bancos` tiene catorce: puede figurar en verde con trece
- * caídas. Con eso, "9 de 9 ejes" puede querer decir "9 de 52 fuentes".
- *
- * Esto guarda el detalle que ya viene en la respuesta cruda y que hasta
- * ahora se tiraba al agregarlo. Convive con block_status mientras dure
- * la transición -- ver la migración 068.
+ * Hasta la migración 078 esto se agregaba a nueve bloques y el detalle
+ * se tiraba. Un bloque figuraba "ok" si contestaba AL MENOS UNA de sus
+ * fuentes, y `bancos` tenía catorce: podía estar en verde con trece
+ * caídas. Medido sobre los perfiles del 2026-09-17, "9 de 9 ejes" quería
+ * decir entre 14 y 25 de 52 fuentes.
  */
-export function estadoPorFuente(raw: RawNovadataResponse): Record<string, string> {
-  // `general` es el único bloque de una sola fuente: su `data` es la
-  // respuesta en sí, no un mapa de fuentes.
-  const salida: Record<string, string> = { general: raw.general.status };
-
-  for (const [bloque, resultado] of Object.entries(raw)) {
-    if (bloque === "general") continue;
-    const porRecurso = (resultado as { data?: unknown })?.data as Record<string, { status?: string }> | null | undefined;
-    if (!porRecurso || typeof porRecurso !== "object") continue;
-    for (const [fuente, r] of Object.entries(porRecurso)) {
-      if (r && typeof r === "object" && "status" in r) {
-        salida[fuente] = r.status === "ok" && !traeContenido(r) ? "ok_vacio" : String(r.status);
-      }
-    }
+export function estadoPorFuente(raw: RespuestaNovadata): Record<string, string> {
+  const salida: Record<string, string> = {};
+  for (const [fuente, resultado] of Object.entries(raw)) {
+    if (!resultado || typeof resultado !== "object" || !("status" in resultado)) continue;
+    salida[fuente] = resultado.status === "ok" && !traeContenido(resultado) ? "ok_vacio" : String(resultado.status);
   }
   return salida;
 }
@@ -114,57 +80,114 @@ function traeContenido(resultado: unknown): boolean {
 }
 
 /**
- * Los ejes que la fuente contestó de verdad.
+ * Las fuentes que contestaron algo, con contenido o sin él.
  *
- * "faltante" NO cuenta como error: significa que la fuente respondió y
- * dijo que no hay nada para esa persona en ese bloque, que es un dato
- * legítimo. Solo "error" (y "deshabilitado", que es decisión nuestra)
- * quedan afuera.
+ * "faltante" NO entra: ahí la fuente no llegó a contestar. Sí entra
+ * `ok_vacio` --la fuente contestó "no hay nada para esta persona"--,
+ * porque eso es una respuesta y no un hueco: "no tiene deudas" es un
+ * hecho. Descartarla sería el mismo error del 2026-09-15 al revés,
+ * tratar una respuesta como si nadie hubiera contestado.
  */
-export function ejesConRespuesta(blockStatus: BlockStatusMap): string[] {
-  return Object.entries(blockStatus)
-    .filter(([, estado]) => estado === "ok")
-    .map(([eje]) => eje);
+export function fuentesQueContestaron(estado: Record<string, string>): string[] {
+  return Object.entries(estado)
+    .filter(([, e]) => e === "ok" || e === "ok_vacio")
+    .map(([fuente]) => fuente);
 }
 
-export function ejesConError(blockStatus: BlockStatusMap): string[] {
-  return Object.entries(blockStatus)
-    .filter(([, estado]) => estado === "error")
-    .map(([eje]) => eje);
+export function fuentesConError(estado: Record<string, string>): string[] {
+  return Object.entries(estado)
+    .filter(([, e]) => e === "error")
+    .map(([fuente]) => fuente);
 }
 
 /**
  * ¿Hay algo que guardar?
  *
- * Con cero ejes contestados no hay perfil: hay una consulta que no se
+ * Con cero fuentes contestadas no hay perfil: hay una consulta que no se
  * pudo hacer. Guardarla produce una ficha en blanco indistinguible de
  * la de alguien sin historial, y el sistema termina afirmando cosas
  * sobre una persona de la que no leyó un solo campo.
  */
-export function laConsultaSirve(blockStatus: BlockStatusMap): boolean {
-  return ejesConRespuesta(blockStatus).length > 0;
+export function laConsultaSirve(estado: Record<string, string>): boolean {
+  return fuentesQueContestaron(estado).length > 0;
 }
 
 /**
- * El mensaje para quien pidió la consulta. Nombra los ejes que fallaron
- * porque "falló la fuente" no le sirve a nadie para decidir si
+ * El mensaje para quien pidió la consulta. Nombra las fuentes que
+ * fallaron porque "falló la fuente" no le sirve a nadie para decidir si
  * reintentar ahora o en una hora.
+ *
+ * Se nombran hasta seis: con 52 fuentes, una caída total producía un
+ * mensaje de varias líneas que nadie termina de leer.
  */
-export function porQueNoSirve(blockStatus: BlockStatusMap): string {
-  const conError = ejesConError(blockStatus);
-  return conError.length > 0
-    ? `La fuente de datos no respondió: fallaron ${conError.length} de ${Object.keys(blockStatus).length} ejes (${conError.join(", ")}). No se guardó nada — volvé a intentar en unos minutos.`
-    : "La fuente de datos no devolvió ningún dato para esta persona. No se guardó nada.";
+export function porQueNoSirve(estado: Record<string, string>): string {
+  const conError = fuentesConError(estado);
+  if (conError.length === 0) {
+    return "La fuente de datos no devolvió ningún dato para esta persona. No se guardó nada.";
+  }
+  const muestra = conError.slice(0, 6).join(", ");
+  const resto = conError.length > 6 ? ` y ${conError.length - 6} más` : "";
+  return `La fuente de datos no respondió: fallaron ${conError.length} de ${Object.keys(estado).length} fuentes (${muestra}${resto}). No se guardó nada — volvé a intentar en unos minutos.`;
 }
 
 /**
  * ¿Se puede afirmar que esta persona NO aporta al IESS?
  *
- * Los aportes llegan adentro del bloque `bancos` (basesInternas.tiess).
- * Si ese bloque no contestó, la ausencia de aportes no dice nada de la
+ * Los aportes llegan en basesInternas (nova_bases_internas -> tiess). Si
+ * esa fuente no contestó, la ausencia de aportes no dice nada de la
  * persona: dice que no preguntamos bien. La diferencia entre "no aporta"
  * y "no sé si aporta" es la diferencia entre un segmento y otro.
+ *
+ * Hasta la 078 esto preguntaba por el bloque `bancos` entero, y ahí
+ * había un agujero: el bloque figuraba "ok" porque contestaba cualquiera
+ * de sus otras trece fuentes --retails, inversiones, listaNegra-- aunque
+ * basesInternas hubiera fallado. O sea que se afirmaba "no aporta"
+ * justo en el caso en que no se sabía. Ahora se pregunta por la fuente
+ * que trae el dato.
  */
-export function sePuedeAfirmarQueNoAporta(raw: RawNovadataResponse): boolean {
-  return raw.bancos?.status === "ok";
+export function sePuedeAfirmarQueNoAporta(raw: RespuestaNovadata): boolean {
+  return raw.basesInternas?.status === "ok";
+}
+
+/**
+ * ¿El perfil YA GUARDADO sirve? Contesta sobre las dos épocas.
+ *
+ * Los perfiles anteriores al 2026-09-17 no tienen `fuentes_ok`: se
+ * guardó sólo el agregado por bloque y el detalle por fuente no se puede
+ * reconstruir, porque se perdió al agregarlo (ver la 068). Son 2.681
+ * perfiles buenos cuya única prueba de calidad es `ejes_ok`.
+ *
+ * Leer una sola de las dos formas no da error: da un conteo silencioso
+ * de menos. Mirando sólo `fuentes_ok`, esos 2.681 parecerían consultas
+ * fallidas y el lote los volvería a consultar a todos.
+ */
+export function elPerfilSirve(perfil: { fuentes_ok?: number | null; ejes_ok?: number | null }): boolean {
+  if (perfil.fuentes_ok !== null && perfil.fuentes_ok !== undefined) return perfil.fuentes_ok > 0;
+  return (perfil.ejes_ok ?? 0) > 0;
+}
+
+/**
+ * Qué se pudo medir, leído del perfil guardado. Como `elPerfilSirve`,
+ * entiende las dos épocas: antes de estructura-v3 las claves eran
+ * ejesOk/ejesFaltantes/ejesConError y contaban bloques, no fuentes.
+ *
+ * La traducción de la época vieja no es exacta y no puede serlo: un eje
+ * "ok" podía tener trece de sus catorce fuentes caídas. Por eso viene
+ * `porBloques`, para que quien lo muestre pueda decir con qué regla se
+ * midió en vez de dar a entender que las dos cifras son comparables.
+ */
+export function metaDeLaConsulta(meta: Record<string, unknown> | null | undefined): {
+  conDatos: string[];
+  sinDatos: string[];
+  noMedidas: string[];
+  porBloques: boolean;
+} {
+  const lista = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+  const esViejo = Array.isArray(meta?.ejesOk);
+  return {
+    conDatos: lista(esViejo ? meta?.ejesOk : meta?.fuentesConDatos),
+    sinDatos: lista(esViejo ? meta?.ejesFaltantes : meta?.fuentesSinDatos),
+    noMedidas: lista(esViejo ? meta?.ejesConError : meta?.fuentesNoMedidas),
+    porBloques: esViejo,
+  };
 }

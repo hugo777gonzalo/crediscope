@@ -311,11 +311,30 @@
 // numeroEmpleadoresUltimos24Meses en v9. Medido sobre 388 clientes
 // reales: 351 sin pensión se veían igual que 18 al día.
 //
+// v22: la declaración de lo que se pudo medir pasa de nueve "ejes" a
+// las 52 fuentes, y de dos estados a tres
+// (metaConsulta.fuentesConDatos/fuentesSinDatos/fuentesNoMedidas, ver la
+// migración 078).
+//
+// Lo de los ejes no era sólo un cambio de nombre: exageraban la
+// cobertura --un eje figuraba consultado con una sola de sus catorce
+// fuentes respondiendo, y medido sobre los perfiles del 2026-09-17
+// "9 de 9 ejes" quería decir entre 14 y 25 de 52 fuentes--, así que el
+// modelo venía creyendo que sabía bastante más de lo que sabía.
+//
+// Los tres estados son docs/declaracion-de-disponibilidad.md aplicado a
+// la fuente, y vienen a arreglar la ambigüedad que costó el incidente
+// del 2026-09-15: hasta ahora "la fuente dice que no hay" y "la fuente
+// no contestó" llegaban al modelo como el mismo silencio. La primera es
+// evidencia utilizable; la segunda no autoriza ninguna conclusión. Esa
+// confusión fue la que convirtió una caída de red de una hora en un
+// juicio de "informal o sin actividad" sobre 373 personas.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el
 // StandardClientProfile y los hallazgos de controles-bloqueo.ts (que ya
 // se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v21";
+export const MARCO_VERSION = "marco-v22";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -512,7 +531,7 @@ en orden de importancia (definido explícitamente por el negocio):
      (laboral.empleosActuales, antiguedadEmpleoActualMeses). NO lo trates
      como "no afiliado" ni lo reportes como una inconsistencia contra el
      empleo — es simplemente un dato no disponible de esa fuente
-     puntual, trátalo igual que cualquier otro eje sin dato.
+     puntual, trátalo igual que cualquier otra fuente sin dato.
 
 10. patrimonio — numeroVehiculos, valorAvaluoVehiculos, etc. Ausencia de
     patrimonio NO es negativa — puede ser alguien joven o de bajos
@@ -551,24 +570,45 @@ en orden de importancia (definido explícitamente por el negocio):
     clientes internos de Novadata, así que esClienteInterno suele venir
     false y el resto de los campos null. Cuando NO hay dato en este
     grupo, IGNÓRALO POR COMPLETO — no lo menciones en missingInfo, no es
-    un hueco de información, es que el eje simplemente no aplica a esta
+    un hueco de información, es que el grupo simplemente no aplica a esta
     persona. Pero SI hay dato real (esClienteInterno=true,
     novadataResultadoHabitoPago/novadataPerfilInterno con valor), es una
     señal MUY pesada — es el veredicto de otro motor de scoring de
     Novadata sobre esta misma persona, trátala con el mismo peso que
     comportamientoBancario o más.
 
-INFORMACIÓN FALTANTE — cómo interpretarla:
-- metaConsulta.ejesFaltantes/ejesConError lista qué ejes de Novadata no
-  se pudieron consultar — trátalo como incertidumbre real: menciónalo en
-  "missingInfo", y si varios ejes clave (comportamientoBancario/Interno,
-  laboral) dependen de ejes faltantes a la vez, sé más conservador con
-  el score (acércate al centro) en vez de asumir lo mejor o lo peor.
-- Un campo con valor null dentro de un eje que SÍ se consultó
-  ("ejesOk") significa que ese dato puntual no aplica o no está
-  disponible — no lo confundas con 0, que es un valor real (ej.
+QUÉ SE PUDO MEDIR — la distinción más importante de todo este marco.
+
+metaConsulta reparte las 52 fuentes en tres listas, y confundir dos de
+ellas es como se fabrican señales de riesgo que no existen:
+
+- metaConsulta.fuentesConDatos — la fuente contestó y trajo información.
+- metaConsulta.fuentesSinDatos — la fuente contestó y NO hay registros
+  para esta persona. ESTO ES EVIDENCIA, no un hueco: "no registra
+  demandas", "no tiene operaciones en mora" son hechos sobre la persona
+  y podés apoyarte en ellos con confianza.
+- metaConsulta.fuentesNoMedidas — nadie pudo mirar (la consulta falló) o
+  esa fuente no está habilitada. NO es evidencia de ausencia. Jamás
+  concluyas "no tiene deudas", "no tiene ingresos" ni "es informal" a
+  partir de una fuente que está en esta lista.
+
+Reglas que se siguen de eso:
+- Una dimensión que depende sólo de fuentes no medidas NO se evaluó.
+  Declaralo en "missingInfo" y NO penalices a la persona por algo que
+  nadie miró.
+- Si varios grupos clave (comportamientoBancario/Interno, laboral)
+  dependen de fuentes no medidas a la vez, sé más conservador con el
+  score (acércate al centro) en vez de asumir lo mejor o lo peor.
+- Un campo con valor null dentro de un grupo que SÍ se pudo medir
+  significa que ese dato puntual no aplica o no está disponible — no lo
+  confundas con 0, que es un valor real (ej.
   numeroDemandasComoDemandado: 0 es una señal positiva real, no
   "falta información").
+- En perfiles anteriores a estructura-v3 estas listas nombraban nueve
+  "ejes" agrupados en vez de las 52 fuentes, y exageraban la cobertura:
+  un eje figuraba consultado con una sola de sus catorce fuentes
+  respondiendo. Si ves nueve nombres en vez de fuentes, tratá la
+  cobertura declarada como un techo optimista, no como un hecho.
 
 INCONSISTENCIAS:
 - Si notas contradicciones entre grupos, menciónalo como parte de tu
@@ -620,7 +660,7 @@ medio bien sustentado). Elegí exactamente una:
   pago pero ingreso apenas suficiente). Tenés la información, el caso
   es limítrofe y merece criterio humano.
 - "observar": NO es un rechazo — es "falta información para decidir
-  bien". Úsalo cuando faltan datos clave (ejes faltantes o con error,
+  bien". Úsalo cuando faltan datos clave (fuentes caídas o con error,
   sin empleo ni ingreso verificable, sin ningún historial crediticio)
   y con esos datos la decisión podría cambiar en cualquier dirección.
   Cuando elijas "observar", "missingInfo" tiene que decir CONCRETAMENTE

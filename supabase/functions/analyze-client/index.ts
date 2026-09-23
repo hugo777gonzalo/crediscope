@@ -20,11 +20,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
-import type { BlockStatusMap, ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
-import { fetchAllBlocks } from "../_shared/novadata-client.ts";
+import type { ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
+import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
+import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-de-la-consulta.ts";
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
@@ -120,11 +121,14 @@ Deno.serve(async (req) => {
     // de un client_profiles existente si viene profileId (ver nota de
     // cabecera), o calculados en fresco si no.
     let profile: StandardClientProfile;
-    let blockStatus: BlockStatusMap;
     let controlBloqueo: ResultadoControlBloqueo;
     // null si se reutiliza un client_profiles existente (no hay ingesta
     // en esta corrida, ver duracion_ingesta_ms en la migración).
     let duracionIngestaMs: number | null;
+    // Qué contestó cada fuente. Sólo existe cuando hubo ingesta: al
+    // reutilizar un perfil, la calidad de esa consulta ya está guardada
+    // en su propia fila.
+    let estadoDeCadaFuente: Record<string, string> = {};
     // Perfil al que queda atado este análisis. Siempre existe: si no se
     // reutiliza uno, se persiste el que se acaba de calcular (ver 032).
     let clientProfileId: string;
@@ -132,32 +136,31 @@ Deno.serve(async (req) => {
     if (profileId) {
       const { data: reused, error: reusedError } = await serviceClient
         .from("client_profiles")
-        .select("standard_profile, control_bloqueo, block_status")
+        .select("standard_profile, control_bloqueo")
         .eq("id", profileId)
         .eq("client_id", client.id)
         .maybeSingle();
       if (reusedError) throw reusedError;
       if (!reused) throw new Error("No se encontró el perfil a reutilizar (profileId) para esta cédula");
       profile = reused.standard_profile;
-      blockStatus = reused.block_status;
       controlBloqueo = reused.control_bloqueo;
       duracionIngestaMs = null;
       clientProfileId = profileId;
     } else {
-      // Ingesta Novadata (9 bloques en paralelo, ver _shared/novadata-client.ts)
-      // Recursos deshabilitados en novadata_resource_config se saltan
-      // (ver _shared/runtime-config.ts) — fuentes públicas/externas que
-      // pueden fallar o deshabilitarse.
+      // Ingesta Novadata (las 52 fuentes en paralelo, ver
+      // _shared/novadata-client.ts). Las fuentes deshabilitadas en
+      // novadata_resource_config se saltan (ver _shared/runtime-config.ts)
+      // — fuentes públicas/externas que pueden fallar o deshabilitarse.
       const disabledResources = await loadDisabledResources(serviceClient);
       const inicioIngesta = Date.now();
-      const raw = await fetchAllBlocks(cedula, undefined, disabledResources);
+      const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
 
-      // Estructura Estandarizada (ver _shared/process.ts) — reemplaza al
-      // ClientContext casi crudo de antes, mucho más liviana para el LLM.
+      // Estructura Estandarizada (ver _shared/process.ts): campos ya
+      // calculados, mucho más liviana para el LLM que el crudo.
       const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
       const built = buildStandardProfile(raw, cedula, corteIess);
       profile = built.profile;
-      blockStatus = built.blockStatus;
+      estadoDeCadaFuente = estadoPorFuente(raw);
 
       // Controles de bloqueo determinísticos (fallecido, listas de
       // control/PEP/OFAC, cédula inconsistente) — NO se delegan al LLM,
@@ -184,7 +187,13 @@ Deno.serve(async (req) => {
           fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
           duracion_fuentes_ms: built.duracionFuentesMs,
           control_bloqueo: controlBloqueo,
-          block_status: blockStatus,
+          // Sin esto el perfil quedaba con ejes_ok = 0 --el valor por
+          // defecto-- y la bandeja lo mostraba como "consulta fallida"
+          // aunque la consulta hubiera salido bien. Las otras dos
+          // puertas (structure-client y el lote) sí lo guardaban.
+          estado_por_fuente: estadoDeCadaFuente,
+          fuentes_ok: cuantasFuentesContestaron(estadoDeCadaFuente),
+          fuentes_totales: Object.keys(estadoDeCadaFuente).length,
           structure_version: PROCESS_VERSION,
           requested_by: actorId,
           duracion_ms: duracionIngestaMs,
@@ -280,7 +289,7 @@ Deno.serve(async (req) => {
         // cruzaba por cercanía de fecha, que es ambiguo en cuanto hay
         // dos consultas del mismo cliente el mismo día (ver 032).
         client_profile_id: clientProfileId,
-        block_status: blockStatus,
+
         positives: llmResult.positives,
         negatives: llmResult.negatives,
         missing_info: llmResult.missingInfo,
@@ -317,7 +326,7 @@ Deno.serve(async (req) => {
 
     await serviceClient
       .from("ingestion_runs")
-      .update({ status: "completado", block_status: blockStatus, completed_at: new Date().toISOString() })
+      .update({ status: "completado", completed_at: new Date().toISOString() })
       .eq("id", run.id);
 
     // 8. Auditoría

@@ -29,11 +29,13 @@ create table clients (
 );
 
 -- ---------- CORRIDAS DE INGESTA ----------
--- Una fila por cada vez que se dispara un análisis. block_status guarda,
--- por cada uno de los 9 bloques de Novadata, si la consulta fue 'ok',
--- 'faltante' (Novadata respondió pero sin datos) o 'error' (falla técnica).
--- Esa distinción es la que permite luego interpretar "información
--- faltante" como señal de negocio y no como fallo del sistema.
+-- Una fila por cada vez que se dispara un análisis.
+--
+-- Hasta la migración 078 había acá un block_status con el estado de los
+-- nueve bloques de Novadata. Se retiró: los bloques agregaban el estado
+-- de sus fuentes y lo que quedaba exageraba la cobertura. El detalle
+-- fuente por fuente vive en client_profiles.estado_por_fuente, que es
+-- donde hace falta -- una corrida de ingesta no necesita repetirlo.
 
 create type ingestion_status_t as enum ('en_progreso', 'completado', 'fallido');
 
@@ -41,7 +43,6 @@ create table ingestion_runs (
   id             uuid primary key default gen_random_uuid(),
   client_id      uuid not null references clients(id) on delete cascade,
   status         ingestion_status_t not null default 'en_progreso',
-  block_status   jsonb not null default '{}'::jsonb,
   requested_by   uuid, -- auth.users.id de quien disparó el análisis (o null si fue automático/API)
   created_at     timestamptz not null default now(),
   completed_at   timestamptz
@@ -75,7 +76,6 @@ create table analysis_results (
   client_id           uuid not null references clients(id) on delete cascade,
   crediscope_score    int not null check (crediscope_score >= 1 and crediscope_score <= 999),
   rules_version       text not null references scoring_rules_versions(version),
-  block_status        jsonb not null default '{}'::jsonb, -- copia denormalizada para lectura rápida en el reporte
   positives           jsonb not null default '[]'::jsonb,
   negatives           jsonb not null default '[]'::jsonb,
   missing_info        jsonb not null default '[]'::jsonb,

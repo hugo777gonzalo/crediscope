@@ -16,15 +16,21 @@
 //      "Sin datos" se señala con estado.codigo !== "OK" en un HTTP 200,
 //      no necesariamente con un 404 — hay que leer el body igual.
 //
-// Los 9 bloques del negocio (Información general, Sociodemográfica,
-// Trabajo, Aportes IESS, Vehículos, Función Judicial, Fiscalía, Bancos,
-// Cooperativas) son agrupaciones de MUCHOS recursos individuales de
-// Novadata — ver RECURSOS_POR_BLOQUE abajo. "general" es el único bloque
-// de un solo recurso (pn_inf_basica) con forma rica ya tipada en
-// types.ts; el resto se resuelve genéricamente con RawMultiRecurso.
+// Las 52 fuentes se consultan planas, sin agrupar. Hasta la migración
+// 078 pasaban por nueve "bloques" de negocio (Información general,
+// Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función Judicial,
+// Fiscalía, Bancos, Cooperativas) que eran un accidente de la primera
+// integración: los aportes al IESS llegaban adentro del bloque
+// `bancos`, así que "falló bancos" no decía "no sé si esta persona
+// aporta". Cuando una taxonomía necesita una nota al pie, la taxonomía
+// está mal. La relación real fuente -> grupo del perfil es muchos a
+// muchos y vive en la tabla `fuente_grupo` desde la 067.
 //
-// BIESS se descartó como bloque (no corresponde a ningún dato real de
-// Novadata, confirmado por el usuario).
+// "general" (pn_inf_basica) es la única con forma rica ya tipada en
+// types.ts; el resto comparte el sobre genérico NovadataEnvelope.
+//
+// BIESS se descartó (no corresponde a ningún dato real de Novadata,
+// confirmado por el usuario).
 //
 // pn_vehiculos SÍ se consulta directo por cédula
 // (`pn_vehiculos/general/{cedula}`) — la primera prueba asumió
@@ -38,11 +44,10 @@
 // `tcredQuirografarios`/`tcredHipotecarios` (créditos afiliados
 // IESS/BIESS) además de listas de control adicionales (tpeps, tofac,
 // tofac2, tconsepvinculados, tconsephomonimos, tprovidencias). Se pide
-// una sola vez dentro del grupo "bancos" pero normalize.ts y
-// controles-bloqueo.ts leen las partes que les corresponden de ahí — no hace
-// falta pedirlo de nuevo por eje.
+// una sola vez y process.ts y controles-bloqueo.ts leen de ahí las
+// partes que les corresponden — no hace falta pedirlo de nuevo.
 
-import type { BlockFetchStatus, BlockResult, NovadataEnvelope, RawGeneral, RawMultiRecurso, RawNovadataResponse } from "./types.ts";
+import type { NovadataEnvelope, RespuestaNovadata, ResultadoFuente } from "./types.ts";
 
 const NOVADATA_BASE_URL = Deno.env.get("NOVADATA_BASE_URL") ?? "https://novadata.novascoring.com";
 const NOVADATA_USERNAME = Deno.env.get("NOVADATA_USERNAME") ?? "";
@@ -131,11 +136,11 @@ function mensajeDelEstado(body: unknown): string | undefined {
 
 // La fuente responde HTTP 200 incluso cuando la persona no existe: lo
 // dice adentro del cuerpo, en estado.mensaje. Hasta ahora eso se
-// trataba igual que "esta persona no tiene datos en este bloque", y el
+// trataba igual que "esta persona no tiene datos en esta fuente", y el
 // resultado era un Perfil del Cliente completo y en blanco: nada
 // avisaba que esa cédula no corresponde a nadie.
 //
-// Se mira el bloque de identidad y no cualquiera: que alguien no tenga
+// Se mira la fuente de identidad y no cualquiera: que alguien no tenga
 // vehículos es normal; que no exista en el registro de personas no.
 export function personaNoExiste(general: { status: string; errorMessage?: string }): string | null {
   const m = general?.errorMessage ?? "";
@@ -148,7 +153,7 @@ async function fetchResource<T = NovadataEnvelope>(
   path: string,
   cedula: string,
   credentials?: NovadataCredentials
-): Promise<BlockResult<T>> {
+): Promise<ResultadoFuente<T>> {
   if (!credentials && (!NOVADATA_USERNAME || !NOVADATA_PASSWORD)) {
     return { status: "error", data: null, errorMessage: "Novadata no configurado (faltan NOVADATA_USERNAME / NOVADATA_PASSWORD)" };
   }
@@ -178,139 +183,90 @@ async function fetchResource<T = NovadataEnvelope>(
   }
 }
 
-// Recursos confirmados contra producción por bloque de negocio. La clave
-// corta es la que usa normalize.ts para leer cada resultado; el valor es
-// la ruta real bajo NOVADATA_BASE_URL (sin la cédula final).
-const RECURSOS_POR_BLOQUE: Record<string, Record<string, string>> = {
-  sociodemografica: {
-    direcciones: "data-services/novacredit/pn_direcciones",
-    telefonos: "data-services/novacredit/pn_telefonos",
-    correo: "data-services/novacredit/pn_direccion_correoe",
-    padres: "data-services/novacredit/pn_padres",
-    hijos: "data-services/novacredit/pn_hijos",
-    titulos: "data-services/novacredit/pn_titulos",
-    bienesInmueble: "data-services/novacredit/pn_bienes_inmueble",
-    vacunados: "api/consultas/novacredit/vacunados/get_inf_byIden",
-  },
-  trabajo: {
-    empleados: "data-services/novacredit/pn_empleados",
-    trabajoHistoricos: "data-services/novacredit/pn_trabajo_historicos",
-    trabajoHistoricosMecanizado: "data-services/novacredit/pn_trabajo_historicos/mecanizado",
-    cumplimientoPatronal: "data-services/novacredit/pn_cumplimiento_patronal",
-    administraciones: "data-services/novacredit/pn_administraciones",
-    contribuyente: "api/consultas/novacredit/contribuyente/get_contribuyente_inf",
-    sriImpuestoRenta: "data-services/novacredit/pn_sri_impuestos_renta",
-    establecimientoActEconomica: "api/consultas/novacredit/establecimiento_act_economica/get_establecimiento_inf",
-  },
-  iess: {
-    afiliacionIess: "data-services/novacredit/pn_afiliacion_iess",
-    afiliacionIsspol: "data-services/novacredit/pn_afiliacion_isspol",
-    afiliacionIssfacCertMedico: "data-services/novacredit/pn_afiliacion_issfac/cert_medico",
-    afiliacionIssfacFuerzaArmada: "data-services/novacredit/pn_afiliacion_issfac/fuerza_armada",
-    afiliacionSiisspol: "data-services/novacredit/pn_afiliacion_siisspol",
-    afiliacionSalud: "data-services/novacredit/pn_afiliacion_salud",
-    pensionista: "data-services/novacredit/pn_pensionista",
-    jubilados: "data-services/novacredit/pn_jubilados",
-  },
-  vehiculos: {
-    vehiculos: "data-services/novacredit/pn_vehiculos/general",
-    licenciaConducir: "data-services/novacredit/pn_licencia_conducir",
-    siniestros: "data-services/novacredit/pn_siniestros",
-    polizas: "data-services/novacredit/pn_polizas",
-  },
-  funcion_judicial: {
-    demandas: "data-services/novacredit/pn_demandas",
-    demandasOfendido: "data-services/novacredit/pn_demandas_ofendido",
-    impedimentoCargosPublicos: "data-services/novacredit/pn_impedimento_cargos_publicos",
-    pensionAlimenticia: "data-services/novacredit/pn_supa",
-    pensionAlimenticiaNovadata: "data-services/novacredit/pn_supa/novadata",
-  },
-  fiscalia: {
-    denuncias: "data-services/novacredit/pn_denuncias",
-    antecedentesPenales: "data-services/novacredit/pn_antecedentes_penales",
-    sercop: "data-services/novacredit/pn_sercop",
-  },
-  bancos: {
-    creditoHipotecario: "data-services/novacredit/pn_credito/hipotecario",
-    creditoQuirografario: "data-services/novacredit/pn_credito/quirografario",
-    deudasAnt: "data-services/novacredit/pn_deudas_ant",
-    deudasAmt: "data-services/novacredit/pn_deudas_amt",
-    deudasEmov: "data-services/novacredit/pn_deudas_emov",
-    deudasFirmes: "data-services/novacredit/pn_deudas_firmes",
-    deudores: "data-services/novacredit/pn_deudores",
-    buroCreditoDiners: "api/consultas/novacredit/central_riesgo/get_inf_diners",
-    buroCreditoSuper: "api/consultas/novacredit/central_riesgo/get_inf_super",
-    listasControl: "data-services/novacredit/pn_listas_control",
-    listaNegra: "data-services/novacredit/pn_lista_negra",
-    inversiones: "data-services/novacredit/pn_inversiones",
-    retails: "data-services/novacredit/pn_retails",
-    basesInternas: "data-services/novacredit/nova_bases_internas",
-  },
-  cooperativas: {
-    buroCreditoCoop: "api/consultas/novacredit/central_riesgo/get_inf_coop",
-  },
+// Las 52 fuentes, confirmadas contra producción. La clave corta es la
+// que usa process.ts para leer cada resultado y la misma que guarda
+// novadata_resource_config.recurso, así que apagar una fuente desde la
+// pantalla de configuración y leerla acá hablan del mismo nombre.
+//
+// El valor es la ruta real bajo NOVADATA_BASE_URL (sin la cédula
+// final); puede incluir sub-segmentos fijos, ej. "pn_credito/hipotecario".
+export const RUTAS_POR_FUENTE: Record<string, string> = {
+  general: "data-services/novacredit/pn_inf_basica",
+  direcciones: "data-services/novacredit/pn_direcciones",
+  telefonos: "data-services/novacredit/pn_telefonos",
+  correo: "data-services/novacredit/pn_direccion_correoe",
+  padres: "data-services/novacredit/pn_padres",
+  hijos: "data-services/novacredit/pn_hijos",
+  titulos: "data-services/novacredit/pn_titulos",
+  bienesInmueble: "data-services/novacredit/pn_bienes_inmueble",
+  vacunados: "api/consultas/novacredit/vacunados/get_inf_byIden",
+  empleados: "data-services/novacredit/pn_empleados",
+  trabajoHistoricos: "data-services/novacredit/pn_trabajo_historicos",
+  trabajoHistoricosMecanizado: "data-services/novacredit/pn_trabajo_historicos/mecanizado",
+  cumplimientoPatronal: "data-services/novacredit/pn_cumplimiento_patronal",
+  administraciones: "data-services/novacredit/pn_administraciones",
+  contribuyente: "api/consultas/novacredit/contribuyente/get_contribuyente_inf",
+  sriImpuestoRenta: "data-services/novacredit/pn_sri_impuestos_renta",
+  establecimientoActEconomica: "api/consultas/novacredit/establecimiento_act_economica/get_establecimiento_inf",
+  afiliacionIess: "data-services/novacredit/pn_afiliacion_iess",
+  afiliacionIsspol: "data-services/novacredit/pn_afiliacion_isspol",
+  afiliacionIssfacCertMedico: "data-services/novacredit/pn_afiliacion_issfac/cert_medico",
+  afiliacionIssfacFuerzaArmada: "data-services/novacredit/pn_afiliacion_issfac/fuerza_armada",
+  afiliacionSiisspol: "data-services/novacredit/pn_afiliacion_siisspol",
+  afiliacionSalud: "data-services/novacredit/pn_afiliacion_salud",
+  pensionista: "data-services/novacredit/pn_pensionista",
+  jubilados: "data-services/novacredit/pn_jubilados",
+  vehiculos: "data-services/novacredit/pn_vehiculos/general",
+  licenciaConducir: "data-services/novacredit/pn_licencia_conducir",
+  siniestros: "data-services/novacredit/pn_siniestros",
+  polizas: "data-services/novacredit/pn_polizas",
+  demandas: "data-services/novacredit/pn_demandas",
+  demandasOfendido: "data-services/novacredit/pn_demandas_ofendido",
+  impedimentoCargosPublicos: "data-services/novacredit/pn_impedimento_cargos_publicos",
+  pensionAlimenticia: "data-services/novacredit/pn_supa",
+  pensionAlimenticiaNovadata: "data-services/novacredit/pn_supa/novadata",
+  denuncias: "data-services/novacredit/pn_denuncias",
+  antecedentesPenales: "data-services/novacredit/pn_antecedentes_penales",
+  sercop: "data-services/novacredit/pn_sercop",
+  creditoHipotecario: "data-services/novacredit/pn_credito/hipotecario",
+  creditoQuirografario: "data-services/novacredit/pn_credito/quirografario",
+  deudasAnt: "data-services/novacredit/pn_deudas_ant",
+  deudasAmt: "data-services/novacredit/pn_deudas_amt",
+  deudasEmov: "data-services/novacredit/pn_deudas_emov",
+  deudasFirmes: "data-services/novacredit/pn_deudas_firmes",
+  deudores: "data-services/novacredit/pn_deudores",
+  buroCreditoDiners: "api/consultas/novacredit/central_riesgo/get_inf_diners",
+  buroCreditoSuper: "api/consultas/novacredit/central_riesgo/get_inf_super",
+  listasControl: "data-services/novacredit/pn_listas_control",
+  listaNegra: "data-services/novacredit/pn_lista_negra",
+  inversiones: "data-services/novacredit/pn_inversiones",
+  retails: "data-services/novacredit/pn_retails",
+  basesInternas: "data-services/novacredit/nova_bases_internas",
+  buroCreditoCoop: "api/consultas/novacredit/central_riesgo/get_inf_coop",
 };
 
-function aggregateStatus(results: BlockResult<unknown>[]): BlockFetchStatus {
-  if (results.length === 0) return "faltante";
-  if (results.some((r) => r.status === "ok")) return "ok";
-  if (results.every((r) => r.status === "deshabilitado")) return "deshabilitado";
-  if (results.every((r) => r.status === "faltante" || r.status === "deshabilitado")) return "faltante";
-  return "error";
-}
-
-async function fetchGroup(
-  recursos: Record<string, string>,
-  cedula: string,
-  disabledResources: Set<string>,
-  credentials?: NovadataCredentials
-): Promise<BlockResult<RawMultiRecurso>> {
-  const entries = Object.entries(recursos);
-  if (entries.length === 0) {
-    return { status: "faltante", data: null, errorMessage: "Sin recursos confirmados para este bloque todavía" };
-  }
-  const results = await Promise.all(
-    entries.map(([key, path]) =>
-      disabledResources.has(key)
-        ? Promise.resolve<BlockResult<NovadataEnvelope>>({ status: "deshabilitado", data: null })
-        : fetchResource(path, cedula, credentials)
-    )
-  );
-  const data: RawMultiRecurso = {};
-  entries.forEach(([key], i) => {
-    data[key] = results[i];
-  });
-  return { status: aggregateStatus(results), data };
-}
-
-export async function fetchAllBlocks(
+// Todas las fuentes se piden a la vez, como antes: los nueve bloques ya
+// eran un Promise.all de Promise.all, así que la concurrencia real
+// contra Novadata no cambia al aplanar -- siguen siendo 52 pedidos
+// simultáneos. Lo que se va es la agregación intermedia, que tiraba el
+// estado de cada fuente para dejar una sola palabra por bloque.
+export async function consultarTodasLasFuentes(
   cedula: string,
   credentials?: NovadataCredentials,
   disabledResources: Set<string> = new Set()
-): Promise<RawNovadataResponse> {
-  const [general, sociodemografica, trabajo, iess, vehiculos, funcionJudicial, fiscalia, bancos, cooperativas] = await Promise.all([
-    disabledResources.has("general")
-      ? Promise.resolve<BlockResult<RawGeneral>>({ status: "deshabilitado", data: null })
-      : fetchResource<RawGeneral>("data-services/novacredit/pn_inf_basica", cedula, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.sociodemografica, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.trabajo, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.iess, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.vehiculos, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.funcion_judicial, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.fiscalia, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.bancos, cedula, disabledResources, credentials),
-    fetchGroup(RECURSOS_POR_BLOQUE.cooperativas, cedula, disabledResources, credentials),
-  ]);
+): Promise<RespuestaNovadata> {
+  const fuentes = Object.entries(RUTAS_POR_FUENTE);
+  const resultados = await Promise.all(
+    fuentes.map(([fuente, ruta]) =>
+      disabledResources.has(fuente)
+        ? Promise.resolve<ResultadoFuente<NovadataEnvelope>>({ status: "deshabilitado", data: null })
+        : fetchResource<NovadataEnvelope>(ruta, cedula, credentials)
+    )
+  );
 
-  return {
-    general,
-    sociodemografica,
-    trabajo,
-    iess,
-    vehiculos,
-    funcion_judicial: funcionJudicial,
-    fiscalia,
-    bancos,
-    cooperativas,
-  };
+  const respuesta = {} as RespuestaNovadata;
+  fuentes.forEach(([fuente], i) => {
+    respuesta[fuente] = resultados[i];
+  });
+  return respuesta;
 }

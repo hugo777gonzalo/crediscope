@@ -22,7 +22,7 @@
 // El resto de la evaluación (laboral, judicial, financiero, patrimonio)
 // SÍ queda a criterio del LLM — ver llm-scoring.ts.
 
-import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RawNovadataResponse } from "./types.ts";
+import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaNovadata } from "./types.ts";
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -30,7 +30,7 @@ function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdic
   return Boolean((persona.informacionAdicional as string | undefined)?.toUpperCase().includes("FALLEC"));
 }
 
-export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedula: string): ResultadoControlBloqueo {
+export function evaluarControlesBloqueo(raw: RespuestaNovadata, requestedCedula: string): ResultadoControlBloqueo {
   const hallazgos: HallazgoControlBloqueo[] = [];
 
   const persona = raw.general.data?.personaNatural;
@@ -47,13 +47,12 @@ export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedul
   if (cedulaGeneral && requestedCedula && cedulaGeneral !== requestedCedula) {
     hallazgos.push({
       code: "cedula_inconsistente",
-      message: `La cédula del bloque "Información general" (${cedulaGeneral}) no coincide con la cédula consultada (${requestedCedula})`,
+      message: `La cédula de la fuente de identidad (${cedulaGeneral}) no coincide con la cédula consultada (${requestedCedula})`,
       bloqueante: false,
     });
   }
 
-  const bancos = raw.bancos.data;
-  const listasControl = bancos?.listasControl?.data as Record<string, unknown> | undefined;
+  const listasControl = raw.listasControl?.data as Record<string, unknown> | undefined;
   // personaPublicasOpr = PEP — se cuenta aparte, NO entra en este total
   // (ver nota de cabecera: PEP no es bloqueante).
   const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce((sum, campo) => {
@@ -68,12 +67,12 @@ export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedul
     });
   }
 
-  const listaNegra = bancos?.listaNegra?.data?.listaNegra;
+  const listaNegra = raw.listaNegra?.data?.listaNegra;
   if (listaNegra) {
     hallazgos.push({ code: "lista_negra", message: "Aparece en la lista negra interna de Novadata", bloqueante: true });
   }
 
-  const basesInternas = bancos?.basesInternas?.data as Record<string, unknown> | undefined;
+  const basesInternas = raw.basesInternas?.data as Record<string, unknown> | undefined;
   // homonimosOpr/tconsephomonimos excluidos a propósito de los totales
   // bloqueantes de arriba/abajo: Novadata reporta que EXISTE alguien más
   // con el mismo nombre en alguna lista — el registro trae una
@@ -141,9 +140,9 @@ export function evaluarControlesBloqueo(raw: RawNovadataResponse, requestedCedul
   // tráfico/tráfico de sustancias y trata de personas siguen siendo
   // terminología del COIP por conocimiento general — ajustar si aparece
   // un caso real que no se detecta.
-  const demandas = (raw.funcion_judicial.data?.demandas?.data as Record<string, unknown> | undefined)?.demandas as Record<string, unknown>[] | undefined;
-  const denuncias = (raw.fiscalia.data?.denuncias?.data as Record<string, unknown> | undefined)?.denuncias as Record<string, unknown>[] | undefined;
-  const antecedentesDescripcion = (raw.fiscalia.data?.antecedentesPenales?.data as Record<string, unknown> | undefined)?.antecedentes as
+  const demandas = (raw.demandas?.data as Record<string, unknown> | undefined)?.demandas as Record<string, unknown>[] | undefined;
+  const denuncias = (raw.denuncias?.data as Record<string, unknown> | undefined)?.denuncias as Record<string, unknown>[] | undefined;
+  const antecedentesDescripcion = (raw.antecedentesPenales?.data as Record<string, unknown> | undefined)?.antecedentes as
     | Record<string, unknown>
     | undefined;
   const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClave: string[]; excluir?: string[] }> = [

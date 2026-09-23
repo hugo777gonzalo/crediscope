@@ -1,7 +1,7 @@
-// Construye el StandardClientProfile: sucesor de normalize.ts/ClientContext
-// con campos YA calculados (conteos, sumas, booleanos) en vez de arrays
-// crudos, para que el scoring por LLM reciba mucho menos texto por
-// persona. Ver docs/estructura-estandarizada.md.
+// Construye el StandardClientProfile: campos YA calculados (conteos,
+// sumas, booleanos) en vez de arrays crudos, para que el scoring por
+// LLM reciba mucho menos texto por persona.
+// Ver docs/estructura-estandarizada.md.
 //
 // Esta lógica se validó primero en Node (scripts/reprocess-sample.mjs)
 // contra 25 clientes reales antes de portarla acá — cualquier cambio de
@@ -11,8 +11,9 @@
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).
 
-import type { BlockStatusMap, RawNovadataResponse, StandardClientProfile } from "./types.ts";
+import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
+import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -135,7 +136,7 @@ function arr(multi: AnyRecord | null | undefined, recurso: string, campo: string
   return Array.isArray(items) ? (items as AnyRecord[]) : [];
 }
 
-// Status del recurso puntual (BlockResult.status) — a diferencia de
+// Status de la fuente puntual (ResultadoFuente.status) — a diferencia de
 // arr()/obj(), que solo miran si HAY registros, esto distingue "el
 // recurso se consultó bien y no trajo nada" (status "ok", 0 registros
 // reales) de "el recurso falló/no trajo datos" (status "faltante"/
@@ -361,26 +362,25 @@ function textoDe(v: unknown): string | null {
   return t === "" ? null : t;
 }
 
-export const PROCESS_VERSION = "estructura-v2"; // ver docs/estructura-estandarizada.md
+// v3: metaConsulta pasa de contar nueve bloques a nombrar las 52
+// fuentes. Los campos del perfil no cambian; lo que cambia es qué tan
+// fino se declara lo que se pudo medir (ver la migración 078).
+export const PROCESS_VERSION = "estructura-v3"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
 // vez de estar fijo en el código: el proveedor no avisa cuándo publica
 // uno nuevo, pero el primer cliente que llega con datos más frescos lo
 // delata. Si no se pasa, se usa el último conocido.
-export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, corteIess?: string): { profile: StandardClientProfile; blockStatus: BlockStatusMap; duracionFuentesMs: number } {
+export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, corteIess?: string): { profile: StandardClientProfile; duracionFuentesMs: number } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;
-  const socio = raw.sociodemografica?.data as unknown as AnyRecord | null;
-  const trabajo = raw.trabajo?.data as unknown as AnyRecord | null;
-  const iess = raw.iess?.data as unknown as AnyRecord | null;
-  const vehiculosData = raw.vehiculos?.data as unknown as AnyRecord | null;
-  const judicial = raw.funcion_judicial?.data as unknown as AnyRecord | null;
-  const fiscalia = raw.fiscalia?.data as unknown as AnyRecord | null;
-  const bancos = raw.bancos?.data as unknown as AnyRecord | null;
-  const cooperativas = raw.cooperativas?.data as unknown as AnyRecord | null;
+  // Una sola tabla de fuentes, sin la capa de bloques que había en el
+  // medio: `obj`/`arr` ya recibían el nombre de la fuente, así que lo
+  // único que se va es el paso de averiguar en qué bloque vivía.
+  const fuentes = raw as unknown as AnyRecord;
 
-  const basesInternas = obj(bancos, "basesInternas", "__never__") ?? ((bancos?.basesInternas as AnyRecord | undefined)?.data as AnyRecord | undefined) ?? null;
+  const basesInternas = obj(fuentes, "basesInternas", "__never__") ?? ((fuentes?.basesInternas as AnyRecord | undefined)?.data as AnyRecord | undefined) ?? null;
   const biWrap = { x: { data: basesInternas } } as unknown as AnyRecord;
   const personasIncump = (arr(biWrap, "x", "personasIncumplimientos")[0] as AnyRecord | undefined) ?? null;
   const tiess = arr(biWrap, "x", "tiess");
@@ -427,7 +427,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
       // El título de mayor nivel manda. `nivelEducacion.nivel` es un
       // número ordenable que trae la propia fuente, así que no hace
       // falta interpretar el texto ("TERCER_NIVEL" contra "CUARTO").
-      const titulos = arr(socio, "titulos", "titulos");
+      const titulos = arr(fuentes, "titulos", "titulos");
       const conNivel = titulos
         .map((t) => {
           const titulo = (t.titulo as AnyRecord | undefined) ?? {};
@@ -451,9 +451,9 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- contacto ----
-  const direcciones = arr(socio, "direcciones", "direcciones");
-  const telefonos = arr(socio, "telefonos", "telefonos");
-  const correos = arr(socio, "correo", "correos");
+  const direcciones = arr(fuentes, "direcciones", "direcciones");
+  const telefonos = arr(fuentes, "telefonos", "telefonos");
+  const correos = arr(fuentes, "correo", "correos");
   const contacto: StandardClientProfile["contacto"] = {
     numeroDirecciones: direcciones.length,
     numeroTelefonos: telefonos.length,
@@ -464,8 +464,8 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- familia ----
-  const hijos = arr(socio, "hijos", "personasNatural");
-  const padres = arr(socio, "padres", "personasNatural");
+  const hijos = arr(fuentes, "hijos", "personasNatural");
+  const padres = arr(fuentes, "padres", "personasNatural");
   const hijosIdsUnicos = new Set(hijos.map((h) => h.identificacion).filter(Boolean));
   const familia: StandardClientProfile["familia"] = {
     numeroHijos: hijos.length,
@@ -478,9 +478,9 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- laboral ----
-  const empleados = arr(trabajo, "empleados", "empleados");
+  const empleados = arr(fuentes, "empleados", "empleados");
   const empleadosIdsUnicos = new Set(empleados.map((e) => e.ci).filter(Boolean));
-  const contribuyenteRegistros = arr(trabajo, "contribuyente", "datosContribuyente");
+  const contribuyenteRegistros = arr(fuentes, "contribuyente", "datosContribuyente");
   // establecimientoActEconomica: SÍ trae detalle por establecimiento
   // (num_establecimiento, estado_establecimiento ABIERTO/CERRADO) — una
   // persona puede tener el RUC activo con un establecimiento abierto y
@@ -488,7 +488,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // vienen en formato DD/MM/YYYY — "08/03/2016" con `new Date(...)` se
   // interpreta como MM/DD (ambiguo), NO se usan acá por eso, solo el
   // conteo por estado_establecimiento.
-  const establecimientos = arr(trabajo, "establecimientoActEconomica", "datosEstablecimientoActEco");
+  const establecimientos = arr(fuentes, "establecimientoActEconomica", "datosEstablecimientoActEco");
   const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // tieneEstablecimientoActivo: fuente correcta es contribuyente (RUC),
@@ -537,7 +537,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     antiguedadUltimaEtapaActivaMeses = inicioUltimaEtapa ? mesesEntreFechas(inicioUltimaEtapa, ceseActividad) : null;
     mesesInactivoActividadEconomica = mesesEntreFechas(ceseActividad, ahoraActividad);
   }
-  const cumplimientoAfiliaciones = arr(trabajo, "cumplimientoPatronal", "afiliaciones");
+  const cumplimientoAfiliaciones = arr(fuentes, "cumplimientoPatronal", "afiliaciones");
   const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
     const t = String(a.obligaciones ?? "").toUpperCase();
     if (!t) return false;
@@ -549,7 +549,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // descarta si el registro más reciente disponible tiene más de 3
   // meses (frecuencia máxima de actualización de estos datos).
   const baseDateTs = (r: AnyRecord): number => parseFecha(r.baseDate ? `${r.baseDate}-01` : null)?.getTime() ?? 0;
-  const mecanizado = arr(trabajo, "trabajoHistoricosMecanizado", "mecanizadoEmpleados");
+  const mecanizado = arr(fuentes, "trabajoHistoricosMecanizado", "mecanizadoEmpleados");
   const mecanizadoOrdenado = [...mecanizado].sort((a, b) => baseDateTs(b) - baseDateTs(a));
   const ultimoMecanizado = (mecanizadoOrdenado[0] as AnyRecord | undefined) ?? null;
   const empleoActualConfiable = Boolean(ultimoMecanizado) && dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
@@ -733,7 +733,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
         .map(([, total]) => total);
       return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
     })(),
-    esEmpleadorOAdministrador: empleados.length > 0 || arr(trabajo, "administraciones", "administraciones").length > 0,
+    esEmpleadorOAdministrador: empleados.length > 0 || arr(fuentes, "administraciones", "administraciones").length > 0,
     // tieneRucActivo antes leía .obligado ("obligado a llevar
     // contabilidad" — NO tiene relación con el estado del RUC, casi
     // siempre "NO" para personas naturales de régimen general, así que
@@ -757,7 +757,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
       // quien le paga. Un empleador constituido hace treinta años y
       // ACTIVA no es lo mismo que uno de situación INDEFINIDA, y hasta
       // hoy el análisis no veía ninguna de las dos cosas.
-      const historial = arr(trabajo, "trabajoHistoricos", "trabajosHistoricos");
+      const historial = arr(fuentes, "trabajoHistoricos", "trabajosHistoricos");
       const registros = historial.map((h) => {
         const t = (h.personaTrabajo as AnyRecord | undefined) ?? {};
         const patrono = (t.personaPatrono as AnyRecord | undefined) ?? {};
@@ -805,7 +805,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- tributario (SRI) ----
-  const sriDataRaw = arr(trabajo, "sriImpuestoRenta", "data");
+  const sriDataRaw = arr(fuentes, "sriImpuestoRenta", "data");
   const sriData = (sriDataRaw[0] as AnyRecord | undefined) ?? null;
   const impuestosISD = (sriData?.impuestosISD as AnyRecord[] | undefined) ?? [];
   const impuestosRenta = (sriData?.impuestosRenta as AnyRecord[] | undefined) ?? [];
@@ -851,15 +851,15 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // confirmado por otras fuentes. Ahora es null cuando el recurso mismo
   // no trajo datos (estadoRecursoAfilIess !== "ok"), reservando
   // false/true para cuando SÍ se consultó y el estado real es conocido.
-  const estadoRecursoAfilIess = estadoRecurso(iess, "afiliacionIess");
-  const afilIess = (arr(iess, "afiliacionIess", "afiliacionIess")[0] as AnyRecord | undefined) ?? null;
+  const estadoRecursoAfilIess = estadoRecurso(fuentes, "afiliacionIess");
+  const afilIess = (arr(fuentes, "afiliacionIess", "afiliacionIess")[0] as AnyRecord | undefined) ?? null;
   const seguridadSocial: StandardClientProfile["seguridadSocial"] = {
     afiliadoIessActivo:
       estadoRecursoAfilIess !== "ok" ? null : afilIess ? String(afilIess.estado ?? "").toUpperCase().startsWith("ACTIVO") : false,
     // esPensionista: hay que leer el campo .estado (booleano real) de
     // cada registro, no solo si el recurso trajo algún registro.
-    esPensionista: arr(iess, "pensionista", "pensionista").some((p) => p.estado === true),
-    esJubilado: arr(iess, "jubilados", "trabajos").length > 0,
+    esPensionista: arr(fuentes, "pensionista", "pensionista").some((p) => p.estado === true),
+    esJubilado: arr(fuentes, "jubilados", "trabajos").length > 0,
     estadoAfiliacionIess: (afilIess?.estado as string) ?? null,
     ...(() => {
       // pn_afiliacion_salud responde por las tres entidades a la vez y
@@ -867,9 +867,9 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
       // del empleo formal: "seguro general tiempo completo" no lo tiene
       // alguien sin relación de dependencia vigente, y no viene del
       // mismo recurso que ya se usa para el empleo.
-      const salud = arr(iess, "afiliacionSalud", "afiliacionSalud");
+      const salud = arr(fuentes, "afiliacionSalud", "afiliacionSalud");
       const conCobertura = salud.filter((a) => a.registraCobertura === true);
-      const estadoSalud = estadoRecurso(iess, "afiliacionSalud");
+      const estadoSalud = estadoRecurso(fuentes, "afiliacionSalud");
       return {
         // null y no false cuando el recurso no contestó: mismo criterio
         // que afiliadoIessActivo, por la misma razón.
@@ -880,19 +880,19 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
         // miran las dos: siisspol responde siempre con una frase que
         // descarta, isspol trae las afiliaciones cuando las hay.
         afiliadoSeguridadPolicial:
-          arr(iess, "afiliacionIsspol", "afiliaciones").length > 0 ||
-          arr(iess, "afiliacionSiisspol", "afiliacionSiisspol").some(
+          arr(fuentes, "afiliacionIsspol", "afiliaciones").length > 0 ||
+          arr(fuentes, "afiliacionSiisspol", "afiliacionSiisspol").some(
             (a) => Array.isArray(a.afiliaciones) && (a.afiliaciones as unknown[]).length > 0,
           ),
         afiliadoSeguridadMilitar:
-          arr(iess, "afiliacionIssfacCertMedico", "afiliaciones").length > 0 ||
-          arr(iess, "afiliacionIssfacFuerzaArmada", "afiliaciones").length > 0,
+          arr(fuentes, "afiliacionIssfacCertMedico", "afiliaciones").length > 0 ||
+          arr(fuentes, "afiliacionIssfacFuerzaArmada", "afiliaciones").length > 0,
       };
     })(),
   };
 
   // ---- patrimonio ----
-  const vehiculos = arr(vehiculosData, "vehiculos", "personaVehiculo");
+  const vehiculos = arr(fuentes, "vehiculos", "personaVehiculo");
   const sumVeh = (field: string) => vehiculos.reduce((s, v) => s + (num(v[field]) ?? 0), 0);
   // valorColateralVehiculos: para colaterales importa el valor más
   // aproximado a mercado ACTUAL, tomando por cada vehículo el máximo
@@ -911,8 +911,8 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   const patrimonio: StandardClientProfile["patrimonio"] = {
     numeroVehiculos: vehiculos.length,
     valorAvaluoVehiculos: sumVeh("valorAvaluo"),
-    numeroInmuebles: arr(socio, "bienesInmueble", "bienesInmueble").length,
-    numeroInversiones: arr(bancos, "inversiones", "inversiones").length,
+    numeroInmuebles: arr(fuentes, "bienesInmueble", "bienesInmueble").length,
+    numeroInversiones: arr(fuentes, "inversiones", "inversiones").length,
     tieneVehiculos: vehiculos.length > 0,
     numeroAutos: vehiculos.filter((v) => v.tipoComercial === "autos").length,
     numeroVehiculosPesados: vehiculos.filter((v) => v.tipoComercial === "pesados").length,
@@ -931,12 +931,12 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // lexicográfico funciona porque el orden alfabético de las
   // calificaciones (A1,A2,A3,B1,B2,C1,C2,D,E) coincide con el orden de
   // severidad real.
-  const buroCredito = [...arr(bancos, "buroCreditoSuper", "datosSuper"), ...arr(bancos, "buroCreditoDiners", "datosSuper")];
-  const retails = arr(bancos, "retails", "retails");
+  const buroCredito = [...arr(fuentes, "buroCreditoSuper", "datosSuper"), ...arr(fuentes, "buroCreditoDiners", "datosSuper")];
+  const retails = arr(fuentes, "retails", "retails");
   const creditosIess = [...tcredQ, ...tcredH];
   const calificacionesBuroCredito = buroCredito.map((r) => r.calificacion as string).filter(Boolean).sort();
   const comportamientoBancario: StandardClientProfile["comportamientoBancario"] = {
-    figuraEnRegistroDeudores: arr(bancos, "deudores", "deudores").length > 0,
+    figuraEnRegistroDeudores: arr(fuentes, "deudores", "deudores").length > 0,
     numeroOperacionesBuroCredito: buroCredito.length,
     peorCalificacionRiesgo: calificacionesBuroCredito.at(-1) ?? null,
     mejorCalificacionRiesgo: calificacionesBuroCredito[0] ?? null,
@@ -951,7 +951,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     // Sin caso real en la muestra actual con valor >0 para confirmar la
     // forma exacta (calificaciones vistas: A1-B2, ninguna con mora).
     saldoEnMoraBuroCredito: buroCredito.reduce((s, r) => s + (num(r.saldomora) ?? num(r.mora) ?? 0), 0),
-    numeroCreditosFormales: arr(bancos, "creditoHipotecario", "prestamos").length + arr(bancos, "creditoQuirografario", "prestamos").length,
+    numeroCreditosFormales: arr(fuentes, "creditoHipotecario", "prestamos").length + arr(fuentes, "creditoQuirografario", "prestamos").length,
     numeroDeudasRetail: retails.length,
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
     totalDeudaRetail: retails.reduce((s, r) => s + (num(r.totalDeuda) ?? 0), 0),
@@ -960,7 +960,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- comportamientoCooperativas ----
-  const coop = arr(cooperativas, "buroCreditoCoop", "datosSuper");
+  const coop = arr(fuentes, "buroCreditoCoop", "datosSuper");
   // val_venc_1..11: buckets de antigüedad de lo vencido (a diferencia de
   // val_saldo_total, que es el saldo total sin distinguir cuánto está
   // realmente atrasado) — confirmado con caso real (cédula 0401592829,
@@ -987,7 +987,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- transitoVehicular ----
-  const licencia = (arr(vehiculosData, "licenciaConducir", "licencia")[0] as AnyRecord | undefined) ?? null;
+  const licencia = (arr(fuentes, "licenciaConducir", "licencia")[0] as AnyRecord | undefined) ?? null;
   // deudasAnt/Amt/Emov son 3 fuentes de "deudas de tránsito" pero NO
   // comparten forma. deudasAnt (única confirmada con datos reales, 4/25
   // en la muestra de validación) es un array PLANO — cada elemento ES
@@ -1002,7 +1002,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // (0/25) — se trata con la misma detección automática por prudencia;
   // a validar con un caso real cuando aparezca.
   const esResumenConInfracciones = (r: AnyRecord): boolean => Array.isArray(r.infraccion);
-  const fuentesTransito = [arr(bancos, "deudasAnt", "deudaAnts"), arr(bancos, "deudasAmt", "deudaAmt"), arr(bancos, "deudasEmov", "deudaEmov")];
+  const fuentesTransito = [arr(fuentes, "deudasAnt", "deudaAnts"), arr(fuentes, "deudasAmt", "deudaAmt"), arr(fuentes, "deudasEmov", "deudaEmov")];
   const numeroMultas = fuentesTransito.reduce(
     (total, registros) => total + registros.reduce((s, r) => s + (esResumenConInfracciones(r) ? (r.infraccion as unknown[]).length : 1), 0),
     0
@@ -1015,8 +1015,8 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     // Solo el conteo: los dos recursos vinieron vacíos en las 16
     // personas con las que se inspeccionó la forma, así que no se
     // conoce la estructura de un registro. Ver fuentes_que_despertaron.
-    numeroSiniestros: arr(vehiculosData, "siniestros", "siniestros").length,
-    numeroPolizas: arr(vehiculosData, "polizas", "polizas").length,
+    numeroSiniestros: arr(fuentes, "siniestros", "siniestros").length,
+    numeroPolizas: arr(fuentes, "polizas", "polizas").length,
     tieneLicenciaVigente: Boolean(licencia),
     puntosLicencia: licencia ? num(licencia.puntos) : null,
     numeroMultas,
@@ -1029,9 +1029,9 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // pago, alto peso) con demandas civiles genéricas (laboral, familia,
   // tránsito, propiedad — contexto, bajo peso). demandaProblemaCrediticio
   // (booleano) se reemplaza por este split — ya no existe como campo.
-  const demandas = arr(judicial, "demandas", "demandas");
-  const demandasOfendido = arr(judicial, "demandasOfendido", "demandas");
-  const pensionAliment = [...arr(judicial, "pensionAlimenticia", "supas"), ...arr(judicial, "pensionAlimenticiaNovadata", "supas")];
+  const demandas = arr(fuentes, "demandas", "demandas");
+  const demandasOfendido = arr(fuentes, "demandasOfendido", "demandas");
+  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaNovadata", "supas")];
   // Solo cuenta como deuda/mora DEL CLIENTE la que le corresponde como
   // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
   // 0501578256 aparecía en mora por una deuda de otra persona).
@@ -1066,7 +1066,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   };
 
   // ---- riesgoPenal ----
-  const antecedentes = obj(fiscalia, "antecedentesPenales", "antecedentes");
+  const antecedentes = obj(fuentes, "antecedentesPenales", "antecedentes");
   // denuncias[].detalleDenuncia lista a TODAS las partes (denunciante,
   // víctima, perjudicado, sospechoso) — hay que mirar el rol del propio
   // cliente en cada denuncia, igual que se hizo con
@@ -1075,7 +1075,7 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // sospechoso sí. Si detalleDenuncia no trae la cédula del cliente (no
   // debería pasar, pero por si acaso), se trata como no-sospechoso por
   // default — no penalizar ante datos faltantes.
-  const denuncias = arr(fiscalia, "denuncias", "denuncias");
+  const denuncias = arr(fuentes, "denuncias", "denuncias");
   const esSospechosoEnDenuncia = (d: AnyRecord): boolean =>
     (Array.isArray(d.detalleDenuncia) ? (d.detalleDenuncia as AnyRecord[]) : []).some(
       (p) => p.cedula === cedula && String(p.estado ?? "").toUpperCase().includes("SOSPECHOSO")
@@ -1097,12 +1097,12 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
   // 1713210456/1714000419: la identificación del "homónimo" nunca
   // coincide con la del cliente consultado).
   const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce(
-    (s, c) => s + arr(bancos, "listasControl", c).length,
+    (s, c) => s + arr(fuentes, "listasControl", c).length,
     0
   );
-  const totalHomonimos = arr(bancos, "listasControl", "homonimosOpr").length + arr(biWrap, "x", "tconsephomonimos").length;
-  const totalPep = arr(bancos, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
-  const pepRegistros = [...arr(bancos, "listasControl", "personaPublicasOpr"), ...arr(biWrap, "x", "tpeps")];
+  const totalHomonimos = arr(fuentes, "listasControl", "homonimosOpr").length + arr(biWrap, "x", "tconsephomonimos").length;
+  const totalPep = arr(fuentes, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
+  const pepRegistros = [...arr(fuentes, "listasControl", "personaPublicasOpr"), ...arr(biWrap, "x", "tpeps")];
   const pepMasReciente = [...pepRegistros].sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")))[0] as AnyRecord | undefined;
   const detallePep = pepMasReciente
     ? {
@@ -1112,19 +1112,19 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
         fecha: (pepMasReciente.fecha as string) ?? null,
       }
     : null;
-  const sercopData = obj(fiscalia, "sercop", "data");
+  const sercopData = obj(fuentes, "sercop", "data");
   // impedimentoCargosPublicos.data es un ARRAY (no un objeto como el
   // resto de recursos "singleton") — obj() lo rechazaba por tipo y
   // devolvía null siempre, así que este campo daba false/null sin
   // importar la realidad (bug encontrado auditando cédula 0502937691,
   // que SÍ tiene registraImpedimento=true real). Se agrega sobre todos
   // los elementos del array por si acaso viniera más de uno.
-  const impedimentoRegistros = arr(judicial, "impedimentoCargosPublicos", "data");
+  const impedimentoRegistros = arr(fuentes, "impedimentoCargosPublicos", "data");
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
   const cumplimiento: StandardClientProfile["cumplimiento"] = {
     enListaControl: totalListasControl > 0,
     tieneHomonimoEnListaControl: totalHomonimos > 0,
-    enListaNegra: Boolean(((bancos?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
+    enListaNegra: Boolean(((fuentes?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),
     causalImpedimento: ((impedimentoActivo?.causales as AnyRecord[] | undefined)?.[0]?.causal as string) ?? null,
     registraSercopContraloria: Boolean(
@@ -1151,18 +1151,21 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     categoriasDelitoSeguridadCiudadana: [...categoriasSeguridad],
   };
 
-  const blockStatus: BlockStatusMap = {
-    general: raw.general.status,
-    sociodemografica: raw.sociodemografica.status,
-    trabajo: raw.trabajo.status,
-    iess: raw.iess.status,
-    vehiculos: raw.vehiculos.status,
-    funcion_judicial: raw.funcion_judicial.status,
-    fiscalia: raw.fiscalia.status,
-    bancos: raw.bancos.status,
-    cooperativas: raw.cooperativas.status,
-  };
-  const entries = Object.entries(blockStatus) as [string, string][];
+  // El detalle fuente por fuente, en los tres estados de
+  // docs/declaracion-de-disponibilidad.md. La distinción que importa no
+  // es "ok o no ok" sino si HUBO MEDICIÓN:
+  //
+  //   conDatos   la fuente contestó y hay información.
+  //   sinDatos   la fuente contestó y no hay nada. ES evidencia --
+  //              "no registra demandas" es un hecho sobre la persona.
+  //   noMedidas  nadie pudo mirar (error) o nadie la cubre
+  //              (deshabilitada). NO es evidencia de ausencia.
+  //
+  // `faltante` va con `ok_vacio` y no con los errores: las dos quieren
+  // decir que la fuente contestó y no había nada, sólo que una lo dice
+  // con un 404 y la otra con un sobre vacío. Meterlas entre los huecos
+  // fabricaría incertidumbre donde hay un dato.
+  const estado = Object.entries(estadoPorFuente(raw));
   const profile: StandardClientProfile = {
     cedula,
     consultadoEn: new Date().toISOString(),
@@ -1185,11 +1188,11 @@ export function buildStandardProfile(raw: RawNovadataResponse, cedula: string, c
     fuentesIngreso,
 
     metaConsulta: {
-      ejesOk: entries.filter(([, v]) => v === "ok").map(([k]) => k),
-      ejesFaltantes: entries.filter(([, v]) => v === "faltante").map(([k]) => k),
-      ejesConError: entries.filter(([, v]) => v === "error").map(([k]) => k),
+      fuentesConDatos: estado.filter(([, v]) => v === "ok").map(([k]) => k),
+      fuentesSinDatos: estado.filter(([, v]) => v === "ok_vacio" || v === "faltante").map(([k]) => k),
+      fuentesNoMedidas: estado.filter(([, v]) => v === "error" || v === "deshabilitado").map(([k]) => k),
     },
   };
 
-  return { profile, blockStatus, duracionFuentesMs };
+  return { profile, duracionFuentesMs };
 }

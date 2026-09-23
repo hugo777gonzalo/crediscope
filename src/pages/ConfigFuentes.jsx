@@ -16,7 +16,7 @@ import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
 //
 // Agrupado por los mismos grupos del Perfil del Cliente que usa
 // ConfigCampos (ETIQUETAS_GRUPO) -- no por los 9 bloques heredados de la
-// primera integración (ver migración 067). Una fuente puede alimentar
+// primera integración, retirados en la 078. Una fuente puede alimentar
 // más de un grupo (16 de 52 lo hacen), así que aparece en cada card que
 // le corresponde: es la representación fiel de un mapa muchos a muchos,
 // no un árbol.

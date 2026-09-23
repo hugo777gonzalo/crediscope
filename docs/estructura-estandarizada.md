@@ -417,13 +417,29 @@ interface StandardClientProfile {
     registraSercopContraloria: boolean;
   };
 
+  // Qué se pudo medir, fuente por fuente (las 52), en los tres estados
+  // de docs/declaracion-de-disponibilidad.md. Desde estructura-v3.
   metaConsulta: {
-    ejesOk: string[];
-    ejesFaltantes: string[];
-    ejesConError: string[];
+    fuentesConDatos: string[];   // contestó y hay información
+    fuentesSinDatos: string[];   // contestó y no hay nada. ES evidencia
+    fuentesNoMedidas: string[];  // falló o está apagada. NO es evidencia
   };
 }
 ```
+
+> **estructura-v3 (2026-09-23)** — `metaConsulta` pasó de contar nueve
+> "ejes" a nombrar las 52 fuentes, y de dos estados a tres. Los nueve
+> bloques agregaban: uno figuraba consultado con UNA de sus catorce
+> fuentes respondiendo, así que "9 de 9 ejes" quería decir entre 14 y 25
+> de 52 fuentes en los perfiles donde se pudo medir con las dos reglas.
+> El tercer estado separa "la fuente dijo que no hay" —un hecho sobre la
+> persona— de "la fuente no contestó" —un hueco—, que hasta ahora
+> llegaban al modelo como el mismo silencio.
+>
+> Los perfiles anteriores conservan `ejesOk`/`ejesFaltantes`/`ejesConError`
+> y no se pueden convertir: el detalle por fuente se perdió al agregarlo.
+> Hay que leer las dos formas — ver `metaDeLaConsulta()` en
+> `_shared/calidad-de-la-consulta.ts`.
 
 ## De dónde sale cada cálculo (trazabilidad)
 

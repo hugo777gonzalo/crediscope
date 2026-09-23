@@ -88,9 +88,18 @@ Cada una de estas salió de un error real. No revivirlas.
   marco-v20 traen `laboral.empleoActual` (objeto); los nuevos,
   `empleosActuales` (arreglo). Leer solo una forma cuenta de menos y no
   avisa.
-- **`ejes_ok` cuenta bloques (9), `fuentes_ok` cuenta fuentes (52).** El
-  primero exagera: un bloque figura "ok" si contestó UNA de sus catorce
-  fuentes.
+- **Los 9 bloques se retiraron en la 078; quedan 52 fuentes planas.** El
+  bloque exageraba: figuraba "ok" si contestaba UNA de sus catorce
+  fuentes, y medido con las dos reglas "9 de 9 ejes" era 14 a 25 de 52.
+  `ejes_ok` ya no se escribe pero **no se borró**: es la única prueba de
+  calidad de 2.681 perfiles buenos y no se puede reconstruir. Para
+  preguntar si un perfil sirve, `elPerfilSirve()` — mira `fuentes_ok` y
+  cae a `ejes_ok` sólo cuando es null.
+- **`metaConsulta` tiene tres estados, y la del medio es la que importa.**
+  `fuentesConDatos` / `fuentesSinDatos` / `fuentesNoMedidas`. "La fuente
+  dijo que no hay" ES evidencia; "la fuente no contestó" es un hueco.
+  Mezclarlas es lo que costó los 373 perfiles del 2026-09-15. Ver
+  `docs/declaracion-de-disponibilidad.md`.
 - **pg_net publica en el esquema `net`, no `extensions`.** Y una tarea
   programada se verifica contra `cron.job_run_details`, nunca contra
   `cron.job`: `cron.job` dice que está activa aunque lleve horas

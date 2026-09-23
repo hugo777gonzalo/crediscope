@@ -10,7 +10,7 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { StandardClientProfile } from "./types.ts";
 
-// Set de recursos DESHABILITADOS (recurso -> ignorar en fetchAllBlocks).
+// Set de fuentes DESHABILITADAS (fuente -> ignorar en consultarTodasLasFuentes).
 export async function loadDisabledResources(client: SupabaseClient): Promise<Set<string>> {
   const { data, error } = await client.from("novadata_resource_config").select("recurso").eq("enabled", false);
   if (error) throw error;

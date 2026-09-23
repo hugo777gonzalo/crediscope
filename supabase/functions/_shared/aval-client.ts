@@ -2,7 +2,7 @@
 // Aval Plus". Confirmado contra el ambiente de PRUEBA (2026-09) con ~510
 // consultas reales.
 //
-// A DIFERENCIA de Novadata (52 recursos en 9 bloques), Aval es UNA sola
+// A DIFERENCIA de Novadata (52 fuentes, una llamada cada una), Aval es UNA sola
 // llamada: POST con Basic Auth que devuelve un sobre JSON con `result`
 // adentro (34 segmentos para persona natural). Vive como módulo aparte.
 //
