@@ -19,6 +19,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import type { BlockStatusMap, ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
 import { fetchAllBlocks } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
@@ -78,17 +79,21 @@ Deno.serve(async (req) => {
   }
   cedula = ident.cedula as string;
 
-  // Identificar al actor (analista o sistema externo) a partir del JWT
-  // reenviado en Authorization, solo para fines de auditoría.
-  let actorId: string | null = null;
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader) {
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data } = await userClient.auth.getUser();
-    actorId = data.user?.id ?? null;
-  }
+  // Identificar al actor y EXIGIR rol antes de seguir. Antes esto era
+  // "solo para fines de auditoría" y la función continuaba aunque el
+  // JWT no resolviera a ningún usuario. Analizar dispara consultas
+  // pagas a los burós sobre una cédula concreta: no puede quedar
+  // disponible para cualquiera que traiga una sesión válida.
+  const actor = await identificarActor(
+    req.headers.get("Authorization"),
+    SUPABASE_URL,
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    serviceClient,
+    createClient,
+  );
+  const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
+  if (rechazo) return rechazo;
+  const actorId: string | null = actor!.id;
 
   try {
     // 1. Cliente: obtener o crear

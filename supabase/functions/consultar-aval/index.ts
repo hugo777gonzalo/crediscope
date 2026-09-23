@@ -23,6 +23,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { consultarAval, laConsultaAvalSirve, porQueNoSirveAval, type TipoIdentificacionAval } from "../_shared/aval-client.ts";
 import { construirPerfilAval, PERFIL_AVAL_VERSION } from "../_shared/aval-perfil.ts";
@@ -43,7 +44,6 @@ Deno.serve(async (req) => {
 
   let identificacion: string | undefined;
   let tipoIdentificacion: TipoIdentificacionAval = "C";
-  let actorDeclarado: string | undefined;
   let forzar = false; // salta la reutilización y consulta de nuevo (refresco manual)
   try {
     const body = await req.json();
@@ -51,7 +51,6 @@ Deno.serve(async (req) => {
     if (typeof body?.tipoIdentificacion === "string" && TIPOS_VALIDOS.includes(body.tipoIdentificacion)) {
       tipoIdentificacion = body.tipoIdentificacion;
     }
-    actorDeclarado = body?.actorId;
     forzar = body?.forzar === true;
   } catch {
     // body inválido, se maneja abajo
@@ -81,21 +80,22 @@ Deno.serve(async (req) => {
     identConsultar = ident.cedula as string;
   }
 
-  // Quién lo pidió. Si hay usuario en el encabezado, su id gana; el actor
-  // declarado solo llena el hueco cuando no hay sesión (mismo criterio que
-  // structure-client — ver su nota sobre los actores nulos).
-  let actorId: string | null = null;
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader) {
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data } = await userClient.auth.getUser();
-    actorId = data.user?.id ?? null;
-  }
-  if (!actorId && typeof actorDeclarado === "string" && actorDeclarado.length > 0) {
-    actorId = actorDeclarado;
-  }
+  // Quién lo pidió, y si tiene permiso. Consultar Aval CUESTA plata por
+  // cada consulta, así que la identidad no puede venir declarada en el
+  // cuerpo del pedido: sale de la sesión verificada y de ningún otro
+  // lado. El `actorId` del body se ignora a propósito — era un hueco por
+  // donde cualquiera podía firmar una consulta paga con el nombre de
+  // otro.
+  const actor = await identificarActor(
+    req.headers.get("Authorization"),
+    SUPABASE_URL,
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    serviceClient,
+    createClient,
+  );
+  const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
+  if (rechazo) return rechazo;
+  const actorId: string | null = actor!.id;
 
   try {
     // -1. ¿Aval está prendido como proveedor? A diferencia de Novadata, que
