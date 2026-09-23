@@ -48,6 +48,14 @@ Romper cualquiera de estas rompe algo real.
 7. **Windows + Git Bash.** Los heredocs mutilan el código con acentos y
    comillas: usar las herramientas de escritura y edición de archivos,
    no `cat <<EOF`.
+8. **Si una migración borra una columna que el código desplegado
+   escribe, desplegar PRIMERO y borrar después.** La base y las
+   funciones se actualizan por caminos separados, así que entre los dos
+   pasos hay una ventana con todo roto: el trabajador de lotes corre
+   cada minuto y una consulta desde la pantalla falla en el insert. El
+   2026-09-23 la 078 se aplicó antes de desplegar y dejó esa ventana
+   abierta. Al revés no hay ventana: código nuevo que ya no escribe la
+   columna convive sin problema con la columna todavía presente.
 
 ## Dónde está cada cosa
 
@@ -108,6 +116,15 @@ Cada una de estas salió de un error real. No revivirlas.
   Hay que pedir `.select()` y contar.
 - **Al reclamar trabajo en un proceso concurrente, trabajar sobre las
   filas que la actualización DEVOLVIÓ**, no sobre las que se leyeron.
+- **Lo que no pasa por `lint` ni `build` se rompe en silencio.**
+  `scripts/reprocess-sample.mjs` quedó leyendo una forma de crudo que ya
+  no existía y habría dado 389 perfiles vacíos sin lanzar una sola
+  excepción — un perfil vacío sale con todo en null y parece una persona
+  sin historial. Los scripts sueltos necesitan su propio aviso adentro
+  (ese ahora avisa si un perfil sale sin nombre).
+- **Un error de PostgREST no es un `Error`: es un objeto plano.**
+  `String(err)` lo aplasta a `"[object Object]"` y el motivo guardado no
+  sirve para nada. Hay que leer `message`/`details`/`hint`/`code`.
 - **Reencolar ítems de un lote `terminado` no lo reabre**: el trabajador
   solo mira los `en_proceso`.
 
