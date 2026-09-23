@@ -707,21 +707,68 @@ function buildStandardProfile(raw, cedula) {
   };
 }
 
+// ---------- La muestra está guardada en la forma vieja ----------
+//
+// Los 389 archivos de research/novadata-raw se capturaron cuando la
+// respuesta venía en nueve bloques: `general` suelta y las otras 51
+// fuentes adentro del `data` de su bloque. Desde la migración 078 el
+// código lee las 52 planas.
+//
+// Se aplanan al cargar en vez de recapturar la muestra: recapturarla
+// son 389 consultas y, sobre todo, dejaría de ser la MISMA muestra --
+// los datos de esas personas cambiaron desde entonces, y el valor de
+// este archivo es poder comparar un cambio de reglas contra un crudo
+// fijo. Aplanar no pierde nada: los bloques sólo agrupaban, y el nombre
+// corto de cada fuente ya era único entre las 52.
+//
+// Si el archivo ya viene plano (una captura nueva), se devuelve igual.
+function aplanarSiEsDeLaEpocaDeBloques(raw) {
+  const BLOQUES = [
+    "sociodemografica", "trabajo", "iess", "vehiculos",
+    "funcion_judicial", "fiscalia", "bancos", "cooperativas",
+  ];
+  if (!BLOQUES.some((b) => b in raw)) return raw;
+
+  const plano = { general: raw.general };
+  for (const bloque of BLOQUES) {
+    const porFuente = raw[bloque]?.data;
+    if (!porFuente || typeof porFuente !== "object") continue;
+    for (const [fuente, resultado] of Object.entries(porFuente)) {
+      plano[fuente] = resultado;
+    }
+  }
+  return plano;
+}
+
 // ---------- Main ----------
 
 const files = fs.readdirSync(RAW_DIR).filter((f) => f.endsWith(".json"));
 console.log(`Reprocesando ${files.length} personas...`);
 
 const profiles = [];
+let aplanados = 0;
 for (const f of files) {
   const cedula = f.replace(".json", "");
   const doc = JSON.parse(fs.readFileSync(path.join(RAW_DIR, f), "utf8"));
-  const profile = buildStandardProfile(doc.raw, cedula);
+  const raw = aplanarSiEsDeLaEpocaDeBloques(doc.raw);
+  if (raw !== doc.raw) aplanados++;
+  const profile = buildStandardProfile(raw, cedula);
   fs.writeFileSync(path.join(OUT_DIR, `${cedula}.json`), JSON.stringify(profile, null, 2));
   profiles.push(profile);
 }
 
 fs.writeFileSync(path.join(OUT_DIR, "_all.json"), JSON.stringify(profiles, null, 2));
 console.log(`Listo. ${profiles.length} perfiles en ${OUT_DIR}`);
+if (aplanados > 0) {
+  console.log(`(${aplanados} venían en la forma vieja de nueve bloques y se aplanaron al cargar.)`);
+}
+
+// Un perfil en blanco no lanza excepción: sale con todos los campos en
+// null y parece una persona sin historial. Si la forma del crudo vuelve
+// a cambiar y nadie aplana, esto es lo único que lo delata.
+const vacios = profiles.filter((p) => !p.identidad?.nombreCompleto).length;
+if (vacios > 0) {
+  console.error(`AVISO: ${vacios} de ${profiles.length} perfiles salieron sin nombre. Revisar la forma del crudo antes de usar esta corrida.`);
+}
 
 export { buildStandardProfile };
