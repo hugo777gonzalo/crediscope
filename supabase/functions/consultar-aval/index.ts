@@ -14,12 +14,21 @@
 // Body esperado: { "identificacion": "0102030405", "tipoIdentificacion": "C" }
 // (acepta "cedula" como alias; tipoIdentificacion por defecto "C").
 //
-// DOS BLOQUEOS CONOCIDOS PARA QUE ESTO CORRA EN PRODUCCIÓN (ver
-// aval-client.ts): api-test/api de Aval solo admite IPs de Ecuador y las
-// Edge Functions egresan global; y el ambiente de prueba usa un cert no
-// válido que Deno rechaza salvo Deno.createHttpClient. Mientras no se
-// resuelva el egreso, esta función se despliega pero la consulta real se
-// prueba desde una máquina con IP ecuatoriana.
+// EL BLOQUEO QUE QUEDA (uno, no dos -- ver aval-client.ts): el WAF de Aval
+// responde 403 "Access Denied" a la IP de salida de las Edge Functions, que
+// egresan global. La misma petición, con el mismo User-Agent, pasa desde una IP
+// ecuatoriana; referencia Akamai del rechazo para consultarle a Aval:
+// 18.4d0f3417.1790051995.aaf11bc.
+//
+// Acá se decía que había un segundo bloqueo, el certificado del ambiente de
+// prueba, y que hacía falta Deno.createHttpClient. Es falso y se midió el
+// 2026-09-22: el certificado valida bien (ssl_verify_result=0). La suposición
+// se había puesto "por las dudas" leyendo el PDF y se propagó como un hecho
+// durante horas de diagnóstico.
+//
+// Mientras Aval no habilite el egreso de Supabase, las consultas se hacen con
+// scripts/consultar-aval-local.mjs, que importa estos mismos módulos y escribe
+// las mismas filas desde una máquina con IP ecuatoriana.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -34,6 +43,14 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// De qué ambiente de Aval sale cada fila. No se declara a mano: se deriva del
+// host al que se apunta, así que no se puede etiquetar mal por descuido.
+// api-test devuelve el archivo financiero vacío y, para algunas cédulas, los
+// datos de OTRA persona -- por eso una fila 'prueba' no sirve para calificar.
+// El porqué completo, con lo medido, está en la migración 079.
+const HOST_AVAL = new URL(Deno.env.get("AVAL_BASE_URL") ?? "https://api-test.avalburo.com").host;
+const AMBIENTE_AVAL = HOST_AVAL.includes("api-test") ? "prueba" : "produccion";
 
 const TIPOS_VALIDOS: TipoIdentificacionAval[] = ["C", "R", "E", "P", "F"];
 
@@ -229,6 +246,7 @@ Deno.serve(async (req) => {
         nombre_sujeto: perfil.resumen.nombre,
         duracion_ms: respuesta.duracionMs,
         requested_by: actorId,
+        ambiente: AMBIENTE_AVAL,
       })
       .select("*")
       .single();

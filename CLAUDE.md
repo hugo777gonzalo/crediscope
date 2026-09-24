@@ -127,6 +127,22 @@ Cada una de estas salió de un error real. No revivirlas.
   sirve para nada. Hay que leer `message`/`details`/`hint`/`code`.
 - **Reencolar ítems de un lote `terminado` no lo reabre**: el trabajador
   solo mira los `en_proceso`.
+- **El ambiente de prueba de Aval contesta por otra persona.** Medido el
+  2026-09-23 con 200 consultas a `api-test`: 73 (37%) volvieron con el
+  nombre de alguien que no era la cédula pedida, y 143 con el archivo
+  financiero entero en cero. Son A200 legítimos con sus 34 segmentos, así
+  que `laConsultaAvalSirve` no los puede distinguir de una consulta buena
+  — el filtro mira si Aval contestó, no si contestó de quién. Por eso
+  existe `consultas_aval.ambiente` (079): se deriva del host de
+  `AVAL_BASE_URL`, no se declara a mano, y defaultea a `prueba` porque un
+  olvido que degrada el dato se nota y uno que lo asciende se descubre
+  cuando ya se aprobó un crédito. **Una fila con `ambiente = 'prueba'` no
+  sirve para calificar a nadie.**
+- **Aval es dos órdenes de magnitud más rápido que Novadata.** Una
+  consulta a Aval tarda 890 ms de mediana (p95 1,3 s) contra los 41 s de
+  Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por
+  minuto con concurrencia 6, sin un solo reintento. Las cuentas de
+  capacidad que se hicieron pensando en Novadata no aplican acá.
 
 ## Cómo se trabaja
 
