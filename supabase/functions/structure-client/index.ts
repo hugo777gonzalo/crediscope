@@ -27,14 +27,30 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // El rol que trae el JWT del encabezado ("service_role", "authenticated").
+  // La firma ya la verificó la plataforma (verify_jwt = true).
+  const rolDelToken = (encabezado: string | null): string | null => {
+    const partes = (encabezado ?? "").replace(/^Bearer\s+/i, "").split(".");
+    if (partes.length !== 3) return null;
+    try {
+      const b64 = partes[1].replace(/-/g, "+").replace(/_/g, "/");
+      return JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)))?.role ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   let cedula: string | undefined;
   // Quién dice el llamador que lo pidió. Solo se usa si no hay usuario
   // en el encabezado -- ver la nota más abajo.
   let actorDeclarado: string | undefined;
+  // Sólo se honra con la clave de servicio: ver al final.
+  let devolverCrudo = false;
   try {
     const body = await req.json();
     cedula = body?.cedula;
     actorDeclarado = body?.actorId;
+    devolverCrudo = body?.devolverCrudo === true;
   } catch {
     // body inválido, se maneja abajo
   }
@@ -217,7 +233,24 @@ Deno.serve(async (req) => {
       meta: { client_profile_id: saved.id },
     });
 
-    return new Response(JSON.stringify(saved), {
+    // El crudo de Novadata no se guarda en la base (ver CLAUDE.md). Pero sin
+    // crudo, una regla nueva no se puede aplicar a los perfiles guardados:
+    // el 2026-09-25 hubo que reconsultar la cartera para eso. Quien llama
+    // con la CLAVE DE SERVICIO (el guion de lotes en la máquina del
+    // negocio, nunca la pantalla) puede pedirlo en la respuesta y
+    // guardarlo en local. Con la clave de servicio ya se tiene acceso a
+    // todo; esto no abre nada que no estuviera abierto.
+    //
+    // Se mira el ROL del token, no se compara el texto de la clave: la
+    // primera versión comparaba contra SUPABASE_SERVICE_ROLE_KEY del
+    // entorno de la función, que no es la misma cadena que la clave local
+    // aunque las dos sean de servicio, y no devolvió ningún crudo. Leer el
+    // rol sin verificar la firma es seguro acá porque esta función corre
+    // con verify_jwt = true (config.toml): la plataforma ya validó la firma
+    // antes de llegar.
+    const conClaveDeServicio = rolDelToken(authHeader) === "service_role";
+    const respuesta = devolverCrudo && conClaveDeServicio ? { ...saved, crudo: raw } : saved;
+    return new Response(JSON.stringify(respuesta), {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   } catch (err) {

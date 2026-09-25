@@ -62,9 +62,22 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const ARCHIVO = process.argv[2] ?? "research/cedulas_lote_2026-09-15.txt";
-const RESPONSABLE = process.argv[3];
-const CONCURRENCIA = Number(process.argv[4] ?? 24);
+// Posicionales + una opción: --crudo=<carpeta> guarda la respuesta cruda
+// de Novadata de cada cédula en <carpeta>/<cedula>.json. El crudo no vive
+// en la base; sin él, una regla nueva no se puede aplicar a los perfiles
+// guardados (el 2026-09-25 hubo que reconsultar la cartera por eso). La
+// carpeta tiene que estar dentro de research/, que está fuera del repo:
+// son datos personales.
+const POSICIONALES = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const ARCHIVO = POSICIONALES[0] ?? "research/cedulas_lote_2026-09-15.txt";
+const RESPONSABLE = POSICIONALES[1];
+const CONCURRENCIA = Number(POSICIONALES[2] ?? 24);
+const CARPETA_CRUDO = process.argv.find((a) => a.startsWith("--crudo="))?.slice("--crudo=".length) ?? null;
+if (CARPETA_CRUDO && !path.resolve(CARPETA_CRUDO).startsWith(path.resolve("research") + path.sep)) {
+  console.error("--crudo tiene que apuntar a una carpeta dentro de research/ (fuera del repo: son datos personales).");
+  process.exit(1);
+}
+if (CARPETA_CRUDO) fs.mkdirSync(path.resolve(CARPETA_CRUDO), { recursive: true });
 
 // Sin responsable no arranca. No es una validación de forma: es lo que
 // separa una consulta auditable de miles de consultas anónimas a datos
@@ -147,13 +160,24 @@ async function consultarUna(cedula) {
         // actorId: quién se hace cargo. La función lo usa solo cuando no
         // hay usuario en el encabezado, que es el caso de la clave de
         // servicio -- no se puede suplantar a nadie con esto.
-        body: JSON.stringify({ cedula, actorId: RESPONSABLE }),
+        body: JSON.stringify({ cedula, actorId: RESPONSABLE, devolverCrudo: Boolean(CARPETA_CRUDO) }),
       });
       const segundos = Math.round((Date.now() - t0) / 1000);
 
       if (res.ok) {
         const data = await res.json();
         const f = data?.standard_profile?.fuentesIngreso ?? null;
+        // El crudo va a su archivo y no al registro de avance: son ~90 KB
+        // por persona. Misma forma que research/novadata-raw ({ raw }), así
+        // los guiones que leen aquella muestra leen también esta.
+        let crudoGuardado = false;
+        if (CARPETA_CRUDO && data?.crudo) {
+          fs.writeFileSync(
+            path.join(path.resolve(CARPETA_CRUDO), `${cedula}.json`),
+            JSON.stringify({ cedula, capturadoEl: new Date().toISOString(), perfilId: data.id ?? null, raw: data.crudo }),
+          );
+          crudoGuardado = true;
+        }
         return {
           cedula,
           // Cuándo terminó. Sin esto el ritmo real solo se puede
@@ -167,6 +191,9 @@ async function consultarUna(cedula) {
           segmento: f?.segmento ?? null,
           estado: f?.estadoSegmento ?? null,
           piso: f?.pisoIngresoMensualReportado ?? null,
+          // Si se pidió el crudo y no vino, la cédula queda sin respaldo:
+          // se dice acá para poder contarlas al final.
+          crudo: CARPETA_CRUDO ? crudoGuardado : undefined,
           segundos,
           intento,
         };
