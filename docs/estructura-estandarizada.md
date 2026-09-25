@@ -456,6 +456,12 @@ interface StandardClientProfile {
 >   empleo actual podía superar a la del empleo más largo, que lo incluye.
 >   Ahora las dos se miden hasta el último aporte. Los perfiles guardados no
 >   se recalculan (hace falta el crudo).
+
+> **estructura-v5 (2026-09-25)** — Con dos empleos vigentes a la vez,
+> `antiguedadEmpleoActualMeses` es la del más largo (decisión del negocio).
+> Antes era la del primero de un orden por mes, que entre dos empleos del
+> mismo mes es cualquiera: 0704804749 tenía 2 meses (un contrato nuevo)
+> con otro empleo vigente de 46.
 > Hay que leer las dos formas — ver `metaDeLaConsulta()` en
 > `_shared/calidad-de-la-consulta.ts`.
 

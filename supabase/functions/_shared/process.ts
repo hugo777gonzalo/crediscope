@@ -370,7 +370,9 @@ function textoDe(v: unknown): string | null {
 // estructura-v4 (2026-09-25): empleosActuales cae a los aportes vigentes
 // al corte cuando el mecanizado no trae nada, y antiguedadEmpleoActualMeses
 // se mide hasta el último aporte y no hasta hoy.
-export const PROCESS_VERSION = "estructura-v4"; // ver docs/estructura-estandarizada.md
+// estructura-v5 (2026-09-25): con dos empleos vigentes a la vez, la
+// antigüedad es la del más largo.
+export const PROCESS_VERSION = "estructura-v5"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -671,30 +673,46 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     const a0 = anioMesA0(t);
     return a0 !== null ? mesesEntreFechas(fechaDeAnioMesA0(a0), ahoraActividad) : null;
   };
-  const tiessActivos = tiess.filter((t) => !String(t.fecSal ?? "").trim());
-  const tiessActivoMasReciente = [...tiessActivos].sort((a, b) => (anioMesA0(b) ?? -Infinity) - (anioMesA0(a) ?? -Infinity))[0] as
-    | AnyRecord
-    | undefined;
-  const fecIngEmpleoActual = tiessActivoMasReciente ? parseFechaDDMMYYYY(tiessActivoMasReciente.fecIng) : null;
-  const snapshotsEmpleoActual = tiessActivoMasReciente
-    ? tiess.filter((t) => t.fecIng === tiessActivoMasReciente.fecIng && t.nomEmp === tiessActivoMasReciente.nomEmp).length
-    : 0;
-  // "Actual" además exige que el snapshot más reciente de ESE empleo
-  // sea confiable (mismo umbral de 3 meses que empleoActualConfiable
-  // arriba) — si el último dato que tenemos es de hace años, no se
-  // puede afirmar que sigue siendo el empleo ACTUAL de la persona.
-  const antiguedadEmpleoActualConfiable =
-    tiessActivoMasReciente !== undefined && (mesesDesdeUltimaEvidenciaActiva(tiessActivoMasReciente) ?? Infinity) <= 3;
-  // Hasta el último aporte registrado de ese empleo, no hasta hoy: la
-  // misma referencia que duracionEmpleoMasLargoMeses abajo. Medida contra
-  // hoy le sumaba los 2-3 meses de atraso del corte, y la antigüedad del
-  // empleo actual podía salir MAYOR que la del empleo más largo, que lo
-  // incluye (visto el 2026-09-24: 3 años 6 meses contra 3 años 4 meses).
-  const ultimoAporteEmpleoActual = tiessActivoMasReciente ? anioMesA0(tiessActivoMasReciente) : null;
-  const antiguedadEmpleoActualMeses =
-    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 && antiguedadEmpleoActualConfiable && ultimoAporteEmpleoActual !== null
-      ? mesesEntreFechas(fecIngEmpleoActual, fechaDeAnioMesA0(ultimoAporteEmpleoActual))
-      : null;
+  // Un empleo = un empleador con una fecha de ingreso. Sólo los que no
+  // registran salida.
+  const empleosSinSalida = new Map<string, { fecIng: unknown; ultimo: number; snapshots: number; ultimaFila: AnyRecord }>();
+  for (const t of tiess) {
+    if (String(t.fecSal ?? "").trim()) continue;
+    const a0 = anioMesA0(t);
+    if (a0 === null) continue;
+    const clave = `${t.nomEmp}|${t.fecIng}`;
+    const e = empleosSinSalida.get(clave);
+    if (!e) {
+      empleosSinSalida.set(clave, { fecIng: t.fecIng, ultimo: a0, snapshots: 1, ultimaFila: t });
+    } else {
+      e.snapshots++;
+      if (a0 > e.ultimo) {
+        e.ultimo = a0;
+        e.ultimaFila = t;
+      }
+    }
+  }
+  // Los vigentes son los que aportan en el mes más reciente. Con dos
+  // empleos a la vez, la antigüedad es la del MÁS LARGO (decisión del
+  // negocio, 2026-09-25). Antes se tomaba el primero de un orden por mes,
+  // que entre dos empleos del mismo mes es cualquiera: en 0704804749 salía
+  // 2 meses -- un contrato nuevo -- teniendo otro empleo vigente de 46.
+  //
+  // Cada candidato exige lo mismo que antes: 3 meses de aportes en ese
+  // empleo (uno que recién aparece puede no ser estable) y evidencia de
+  // los últimos 3 meses (si el último dato es de hace años, no se puede
+  // afirmar que siga). La antigüedad va hasta el último aporte, no hasta
+  // hoy: la misma referencia que duracionEmpleoMasLargoMeses abajo, así
+  // nunca sale mayor que el empleo más largo, que la incluye.
+  const ultimoMesConEmpleo = Math.max(-Infinity, ...[...empleosSinSalida.values()].map((e) => e.ultimo));
+  const antiguedadesVigentes = [...empleosSinSalida.values()]
+    .filter((e) => e.ultimo === ultimoMesConEmpleo && e.snapshots >= 3 && (mesesDesdeUltimaEvidenciaActiva(e.ultimaFila) ?? Infinity) <= 3)
+    .map((e) => {
+      const inicio = parseFechaDDMMYYYY(e.fecIng);
+      return inicio ? mesesEntreFechas(inicio, fechaDeAnioMesA0(e.ultimo)) : null;
+    })
+    .filter((m): m is number => m !== null);
+  const antiguedadEmpleoActualMeses = antiguedadesVigentes.length ? Math.max(...antiguedadesVigentes) : null;
   // Empleo más largo registrado (histórico, incluye el actual si es el
   // más largo) — señal de estabilidad aparte de la antigüedad actual:
   // alguien con un empleo corto hoy pero años de tenencias largas es
