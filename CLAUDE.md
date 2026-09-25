@@ -163,6 +163,14 @@ Cada una de estas salió de un error real. No revivirlas.
   perfiles tenían aporte vigente y "sin empleo actual". Ahora el empleo
   cae a los aportes cuando el mecanizado no trae nada, y los guardados
   se corrigieron con `scripts/corregir-empleo-actual.mjs`.
+- **El historial del IESS tiene meses que Novadata no publicó para
+  nadie**: 2018-02, 2019-09 a 2019-11, 2020-01 a 2020-03, 2020-05,
+  2020-06, 2020-08 y 2020-11 (0 de 315 historias los traen). No son
+  meses sin trabajo: contarlos cortaba la continuidad de casi todos en
+  2019-2020. Y el historial mensual empieza en 2018-2019; para saber
+  desde cuándo trabaja alguien, la fuente es la fecha de ingreso que
+  declara el IESS (`fecIng`), no el primer mes con aporte. Las dos cosas
+  las usa `continuidadLaboral` (fuentes-v5).
 - **`reprocess-sample.mjs` quedó atrás de `process.ts`** (sigue en la
   forma vieja de `empleoActual`). `process.ts` corre directo bajo Node:
   para validar un cambio del perfil, comparar la versión vieja contra la

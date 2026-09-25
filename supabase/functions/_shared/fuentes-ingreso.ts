@@ -69,7 +69,17 @@ import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 //    existen en consultas nuevas. NO van al modelo (ver
 //    `sinDetalleDeIngresos`): son para que el analista lea, y meterlos en
 //    el análisis con IA es otra decisión, con su versión de marco.
-export const FUENTES_INGRESO_VERSION = "fuentes-v4";
+//
+// v5 (2026-09-25): `detalle.continuidadLaboral` -- desde cuándo trabaja con
+// un empleador sin interrupciones de más de 2 meses, aunque haya cambiado de
+// empleo. Mide la estabilidad laboral total, que la antigüedad en el empleo
+// actual no ve: en 82 de 237 asalariados vigentes de la muestra la
+// continuidad supera a esa antigüedad en más de un año. Definida con el
+// negocio: tolerancia 2 meses, los aportes voluntarios y unipersonales no
+// cuentan, los meses que el proveedor no publicó no son huecos, y es sólo
+// para la pantalla (no va al modelo, como el resto del detalle). No cambia
+// ninguna clasificación.
+export const FUENTES_INGRESO_VERSION = "fuentes-v5";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -186,6 +196,18 @@ export interface VinculoIess {
   vigenteAlCorte: boolean;
 }
 
+// Continuidad laboral: desde cuándo trabaja con un empleador sin
+// interrupciones de más de 2 meses, aunque haya cambiado de empleo.
+export interface ContinuidadLaboral {
+  meses: number; // largo del tramo, en meses calendario (incluye los huecos tolerados)
+  desde: string; // yyyy-mm
+  hasta: string; // yyyy-mm, último mes con trabajo con empleador
+  vigente: boolean; // hasta === corte: hoy sigue trabajando
+  empleadores: number; // distintos dentro del tramo
+  mesesSinAporte: number; // huecos tolerados dentro del tramo (sin contar los del proveedor)
+  toleranciaMeses: number;
+}
+
 export interface DetalleIngresos {
   // Una entrada por mes con aporte, en orden, dentro de los 24 meses que
   // terminan en el corte. Un mes sin aporte NO aparece: el hueco es el dato.
@@ -198,6 +220,8 @@ export interface DetalleIngresos {
   // Total del mismo mes un año antes del corte: contra el reportado hoy dice
   // si el sueldo reportado creció o cayó. Null si ese mes no tuvo aporte.
   totalHace12Meses: number | null;
+  // Desde fuentes-v5. Null: nunca aportó con un empleador.
+  continuidadLaboral?: ContinuidadLaboral | null;
   actividadesEconomicas: { nombreComercial: string | null; actividad: string | null; abierto: boolean; inicio: string | null }[];
   impuestoRentaPorAnio: { anio: number; formulario: string | null; causado: number | null; enRelacionDeDependencia: number | null }[];
 }
@@ -307,6 +331,102 @@ function promedio(valores: number[]): number | null {
   return valores.length ? redondear2(valores.reduce((a, b) => a + b, 0) / valores.length) : null;
 }
 
+// Meses que el proveedor no tiene para NADIE: en las 315 historias con
+// aportes de research/novadata-raw, cero personas los traen, mientras los
+// meses vecinos los traen cientos (medido el 2026-09-25). No son meses sin
+// trabajo de la persona, son meses que Novadata no publicó. Contarlos como
+// desempleo cortaba la continuidad de casi todos en 2019-2020. Son
+// históricos y no deberían cambiar; si aparece uno nuevo, se mide igual:
+// un mes que nadie tiene y que sus vecinos sí.
+const MESES_SIN_DATO_DEL_PROVEEDOR = new Set([
+  "2018-02", "2019-09", "2019-10", "2019-11", "2020-01", "2020-02", "2020-03", "2020-05", "2020-06", "2020-08", "2020-11",
+]);
+
+// Qué cuenta como trabajo para la continuidad (decisión del negocio,
+// 2026-09-25): el trabajo con un empleador. El aporte voluntario y el
+// unipersonal no cuentan -- se paga aunque no se tenga un trabajo fijo --,
+// tampoco el trabajo no remunerado del hogar, ni un código de empleador
+// que no conocemos.
+const NATURALEZAS_CON_EMPLEADOR = new Set<Naturaleza>(["publico", "diplomatico", "privado", "domestico", "agricola"]);
+
+// Hasta 2 meses sin aporte entre un empleo y el siguiente no cortan la
+// continuidad (decisión del negocio). Medido sobre 442 cambios de empleo en
+// las historias locales: 43% sin ningún mes vacío, 23% con 1 y 7% con 2; con
+// 3 o más empieza a parecerse a un período sin trabajo.
+const TOLERANCIA_CONTINUIDAD_MESES = 2;
+
+// Se arma por EMPLEOS y no por meses sueltos. El historial mensual del
+// proveedor empieza en 2018-2019, pero el IESS declara la fecha de ingreso
+// de cada empleo: medida sólo con los meses, la continuidad de alguien que
+// entró en 2004 salía más corta que la antigüedad de su empleo actual (68
+// casos de 190 en la primera versión). Cada empleo va desde su fecha de
+// ingreso -- o su primer aporte, si es anterior -- hasta su último aporte,
+// y los huecos DENTRO de un mismo empleo no cortan: el IESS lo da por
+// continuo.
+function construirContinuidad(aportes: AnyRecord[], corte: string): ContinuidadLaboral | null {
+  const empleos = new Map<string, { empleador: string; inicio: string; fin: string }>();
+  for (const a of aportes) {
+    const mes = mesClave(a.anio, a.mes);
+    const naturaleza = (NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""] ?? "otro") as Naturaleza;
+    if (!mes || mes > corte || !NATURALEZAS_CON_EMPLEADOR.has(naturaleza)) continue;
+    const empleador = String(a.rucEmp ?? a.nomEmp ?? "");
+    const clave = `${empleador}|${a.fecIng ?? ""}`;
+    const ingreso = fechaIso(a.fecIng)?.slice(0, 7) ?? null;
+    const e = empleos.get(clave) ?? { empleador, inicio: mes, fin: mes };
+    if (mes < e.inicio) e.inicio = mes;
+    if (mes > e.fin) e.fin = mes;
+    // Una fecha de ingreso imposible (antes de 1950, o después del primer
+    // aporte) no se usa.
+    if (ingreso && ingreso >= "1950-01" && ingreso < e.inicio) e.inicio = ingreso;
+    empleos.set(clave, e);
+  }
+  if (empleos.size === 0) return null;
+
+  // Meses sin aporte entre el fin de un empleo y el inicio del siguiente,
+  // sin contar los que el proveedor no publicó.
+  const huecoEntre = (fin: string, inicio: string): number => {
+    let n = 0;
+    for (let m = mesMenos(inicio, 1); m > fin; m = mesMenos(m, 1)) if (!MESES_SIN_DATO_DEL_PROVEEDOR.has(m)) n++;
+    return n;
+  };
+
+  // Desde el empleo que termina último, se van sumando hacia atrás los
+  // empleos que terminan a 2 meses o menos del inicio del tramo (o que se
+  // solapan con él), hasta que no entra ninguno más.
+  const lista = [...empleos.values()];
+  const hasta = lista.reduce((m, e) => (e.fin > m ? e.fin : m), lista[0].fin);
+  let desde = lista.filter((e) => e.fin === hasta).reduce((m, e) => (e.inicio < m ? e.inicio : m), hasta);
+  const enTramo = new Set(lista.filter((e) => e.fin === hasta));
+  for (let cambio = true; cambio; ) {
+    cambio = false;
+    for (const e of lista) {
+      if (enTramo.has(e) || e.fin >= hasta) continue;
+      const hueco = e.fin >= desde ? 0 : huecoEntre(e.fin, desde);
+      if (hueco > TOLERANCIA_CONTINUIDAD_MESES) continue;
+      enTramo.add(e);
+      if (e.inicio < desde) desde = e.inicio;
+      cambio = true;
+    }
+  }
+  // Los huecos se cuentan al final, sobre el tramo armado: sumados al
+  // agregar cada empleo, un hueco que después tapaba otro empleo se contaba
+  // igual.
+  let mesesSinAporte = 0;
+  for (let m = desde; m <= hasta; m = mesMenos(m, -1)) {
+    if (MESES_SIN_DATO_DEL_PROVEEDOR.has(m)) continue;
+    if (![...enTramo].some((e) => e.inicio <= m && m <= e.fin)) mesesSinAporte++;
+  }
+  return {
+    meses: diferenciaEnMeses(desde, hasta) + 1,
+    desde,
+    hasta,
+    vigente: hasta === corte,
+    empleadores: new Set([...enTramo].map((e) => e.empleador)).size,
+    mesesSinAporte,
+    toleranciaMeses: TOLERANCIA_CONTINUIDAD_MESES,
+  };
+}
+
 // Lo que el analista necesita para leer la historia y que la clasificación
 // sola no dice: si aporta todos los meses o con huecos, si el sueldo
 // reportado sube o baja, de qué vive quien tiene RUC y cuánto impuesto a la
@@ -405,6 +525,7 @@ function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyR
     promedioUltimos6: promedio(ultimos(6)),
     promedioUltimos12: promedio(ultimos(12)),
     totalHace12Meses: hace12 && hace12.total > 0 ? redondear2(hace12.total) : null,
+    continuidadLaboral: construirContinuidad(aportes, corte),
     actividadesEconomicas,
     impuestoRentaPorAnio,
   };

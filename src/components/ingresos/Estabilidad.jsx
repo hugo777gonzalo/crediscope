@@ -67,15 +67,44 @@ function Variacion({ hoy, antes }) {
   );
 }
 
+// La continuidad laboral (fuentes-v5) es la cifra que abre la tarjeta: mide
+// la estabilidad total, que la antigüedad en el empleo actual no ve --
+// quien cambió de empleo sin dejar de trabajar aparece con una antigüedad
+// corta aunque lleve años trabajando. `undefined` = el perfil es anterior
+// a la v5; `null` = nunca trabajó con un empleador según el IESS.
+function textoContinuidad(co) {
+  if (co === undefined) return "—";
+  if (co === null) return "Sin trabajo con empleador";
+  if (!co.vigente) return "0";
+  return duracionLegible(co.meses);
+}
+
+function explicacionContinuidad(co) {
+  if (co === undefined) return "Existe desde la versión fuentes-v5 de las reglas: reconsultá para verla.";
+  if (co === null) return "El IESS no registra trabajo con un empleador. Los aportes voluntarios y unipersonales no cuentan.";
+  const empleadores = `${co.empleadores} ${co.empleadores === 1 ? "empleador" : "empleadores"}`;
+  const huecos = co.mesesSinAporte ? `, ${co.mesesSinAporte} ${co.mesesSinAporte === 1 ? "mes" : "meses"} sin aporte entre empleos` : ", sin meses vacíos";
+  const tramo = `de ${mesLegible(co.desde)} a ${mesLegible(co.hasta)}: ${duracionLegible(co.meses)} con ${empleadores}${huecos}`;
+  return co.vigente
+    ? `Trabaja con empleador sin interrupciones de más de ${co.toleranciaMeses} meses ${tramo}. No cuentan los aportes voluntarios ni unipersonales.`
+    : `Hoy no trabaja con un empleador. Su última continuidad fue ${tramo}.`;
+}
+
 export default function Estabilidad({ f, laboral }) {
   const d = f.detalle ?? null;
   const promedio6 = d?.promedioUltimos6 ?? laboral?.ingresoPromedioUltimos6Meses ?? null;
+  const continuidad = d ? d.continuidadLaboral : undefined;
 
   return (
     <div className="crediscope-card">
       <TituloTarjeta Icono={Activity}>Estabilidad y trayectoria</TituloTarjeta>
 
       <div className="crediscope-aval-cifras">
+        {d ? (
+          <Cifra etiqueta="Continuidad laboral" titulo={explicacionContinuidad(continuidad)}>
+            <span className={continuidad && !continuidad.vigente ? "crediscope-aval-malo" : undefined}>{textoContinuidad(continuidad)}</span>
+          </Cifra>
+        ) : null}
         <Cifra
           etiqueta="Antigüedad en el empleo actual"
           titulo="Según el IESS. Se informa sólo con 3 meses o más de evidencia en ese empleo."
@@ -102,6 +131,8 @@ export default function Estabilidad({ f, laboral }) {
           </Cifra>
         ) : null}
       </div>
+
+      {d ? <p className="crediscope-aval-nota" style={{ marginTop: -4, marginBottom: 12 }}>{explicacionContinuidad(continuidad)}</p> : null}
 
       {d && d.aportesPorMes.length > 0 ? (
         <section className="crediscope-aval-subseccion">

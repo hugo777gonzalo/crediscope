@@ -17,7 +17,7 @@ import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuente
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v4";
+const VERSION_DOCUMENTADA = "fuentes-v5";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -230,6 +230,36 @@ export default function FuentesReglas() {
           cambian el segmento y <strong>no entran al análisis con IA</strong> hasta que haya una versión del marco que los
           contemple. Salen del dato crudo de Novadata, que no se guarda: existen sólo en consultas hechas desde la v4.
         </p>
+      </Paso>
+
+      <Paso titulo="Continuidad laboral (desde la v5)">
+        <p>
+          Mide la estabilidad laboral total: desde cuándo la persona trabaja con un empleador sin haber dejado de trabajar,
+          aunque se haya cambiado de empleo. La antigüedad en el empleo actual no lo ve: quien cambió de trabajo sin parar
+          aparece con una antigüedad corta aunque lleve años trabajando. En la muestra, en 72 de 190 asalariados la continuidad
+          supera a esa antigüedad en más de un año.
+        </p>
+        <ul style={{ marginBottom: 0 }}>
+          <li>
+            Entre un empleo y el siguiente se toleran <strong>hasta 2 meses</strong> sin aporte. Con 3 o más, la continuidad se
+            corta.
+          </li>
+          <li>
+            Cuenta el trabajo con un empleador: público, privado, diplomático, doméstico y agrícola. <strong>No cuentan</strong>{" "}
+            los aportes voluntarios y unipersonales (se pagan aunque no se tenga un trabajo fijo) ni el trabajo no remunerado
+            del hogar.
+          </li>
+          <li>
+            Cada empleo va desde la fecha de ingreso que declara el IESS hasta su último aporte. El historial mensual del
+            proveedor empieza en 2018-2019: sin la fecha de ingreso, alguien que entró en 2004 aparecería con menos continuidad
+            de la que tiene.
+          </li>
+          <li>
+            Los meses que el proveedor no publicó para nadie (2018-02, 2019-09 a 2019-11, 2020-01 a 2020-03, 2020-05,
+            2020-06, 2020-08 y 2020-11) no cuentan como meses sin trabajo.
+          </li>
+          <li>Si hoy no trabaja con un empleador, la continuidad es 0 y se dice cuándo terminó la última.</li>
+        </ul>
       </Paso>
 
       <Paso titulo="Los segmentos y cómo falla cada uno">
