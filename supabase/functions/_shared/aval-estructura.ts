@@ -19,8 +19,10 @@
 //  2. TITULAR VS. CODEUDOR/GARANTE. `tipoDeudorDescripcion` (Titular/
 //     Codeudor/Garante) existe en operacionesVigentes{Banco,Cooperativa,
 //     Empresa} (NO en Servicio/Cobranza/Tarjeta — Aval no modela codeudor
-//     ahí). El 43.8% de las 240 personas de prueba (105/240) tiene al menos
-//     una operación como Codeudor. Se verificó que los agregados que Aval
+//     ahí). 18 de las 240 personas de prueba (7,5%) tienen al menos una
+//     operación como Codeudor/Garante. (La primera pasada dijo 43,8%: estaba
+//     inflada por la fila fantasma, cuyo rol "-" contaba como "no titular".)
+//     Se verificó que los agregados que Aval
 //     entrega (`resumenSaldosTipoDeuda`, `deudaVigenteTotal`,
 //     `gastoFinanciero.cuotaEstimadaTitular`) NO separan por rol: en 16/20
 //     casos con codeudor real, el agregado de Aval = suma de TODAS las
@@ -42,6 +44,29 @@
 //     Deuda{Servicios,Cobranza,Tarjetas} y `deudaTarjetas` NO tenían este
 //     problema (sin campo de rol) y se dejan como las entrega Aval.
 //
+// v4 (2026-09-24), al rediseñar la pantalla del analista:
+//
+//  3. LA FILA "TOTAL" TAMBIÉN ESTÁ EN deudaVigenteTotal (bug real). El
+//     segmento trae una fila por sistema crediticio MÁS una con
+//     `sistemaCrediticio: "TOTAL"`, y los cuatro agregados (por vencer,
+//     vencido, castigada, demanda) la sumaban junto con las demás: salían
+//     DUPLICADOS en 129 de 129 personas con deuda. Se filtra con
+//     `filasDeudaVigente`. Sin ella, el agregado de Aval = titular +
+//     codeudor/garante sumados desde las listas, exacto, en 129/129 para por
+//     vencer, vencido y demanda, y en 126/129 para castigada (en las otras 3
+//     Aval declara más castigada que la que aparece en las operaciones).
+//
+//  4. DEUDA POR ROL. Como el agregado se reparte exacto, se agregan los
+//     cuatro montos separados por rol (`*Titular` y `*ComoCodeudorGarante`),
+//     calculados desde las mismas listas que ve la tabla de operaciones: el
+//     analista lee "como titular" y "como codeudor/garante" sin que ningún
+//     rótulo tenga que repetir "propia" o "excluye codeudor".
+//
+//  5. `participacionAcreedorPrincipal` venía en 0–100 (Aval manda 22.62,
+//     no 0.2262) pero su tipo es "decimal", como `tasaMalos`, que sí es
+//     fracción. La pantalla lo multiplicaba por cien y mostraba "2.262 %".
+//     Ahora se guarda como fracción, igual que los otros dos.
+//
 // Además, `CAMPOS_NO_PARA_LLM` marca campos que se guardan (sirven para UI,
 // auditoría o el futuro reporte de buró) pero NO se mandan al prompt del
 // marco interpretativo: identidad (no aporta al análisis y no corresponde
@@ -55,7 +80,7 @@
 
 import { montoANumero } from "./aval-perfil.ts";
 
-export const AVAL_ESTRUCTURA_VERSION = "aval-estructura-v3";
+export const AVAL_ESTRUCTURA_VERSION = "aval-estructura-v4";
 
 const arr = (r: any, n: string): any[] => (Array.isArray(r?.[n]) ? r[n] : []);
 const s0 = (r: any, n: string): any => arr(r, n)[0] ?? {};
@@ -88,6 +113,8 @@ function esFilaResumen(o: any): boolean {
   return o.razonSocial === "-" || o.nombreCasaCobranza === "-" || o.fechaCorte === "TOTAL" || o.fechaCorteReporte === "TOTAL";
 }
 const filasReales = (r: any, seg: string): any[] => arr(r, seg).filter((o) => !esFilaResumen(o));
+// Lo mismo en deudaVigenteTotal, que marca su fila de totales distinto (ver nota 3).
+const filasDeudaVigente = (r: any): any[] => arr(r, "deudaVigenteTotal").filter((o) => o.sistemaCrediticio !== "TOTAL");
 
 export interface FactorScore {
   factor: string;
@@ -155,7 +182,8 @@ export function construirDeudasComoCodeudorGarante(r: any): DeudaPorEntidad[] {
   return todasLasDeudas(r).filter((d) => d.rol === "Codeudor" || d.rol === "Garante");
 }
 
-const sumaCampo = (lista: DeudaPorEntidad[], campo: "saldo" | "cuota", sector?: string): number =>
+type CampoMonto = "saldo" | "cuota" | "valorVigente" | "valorVencido" | "valorDemandado" | "valorCastigado";
+const sumaCampo = (lista: DeudaPorEntidad[], campo: CampoMonto, sector?: string): number =>
   round2(lista.filter((d) => !sector || d.sector === sector).reduce((a, d) => a + d[campo], 0)) ?? 0;
 
 // Métricas de valor desde tendenciaDeuda (36m, cronológica). Cache por si el
@@ -237,10 +265,14 @@ export const ESPEC: EntradaEspec[] = [
   ["Deuda actual","deudaComercial","dinero","operacionesVigentesEmpresa (solo Titular)","deuda actual","Deuda PROPIA comercial/retail (excluye codeudor/garante)",(r)=>sumaCampo(construirDeudasPorEntidad(r),"saldo","Retail/Comercial")],
   ["Deuda actual","deudaServicios","dinero","resumenSaldosTipoDeuda","deuda actual","Deuda en servicios (Aval no modela codeudor acá)",(r)=>saldoDe(r,"Deuda Servicios")],
   ["Deuda actual","deudaCobranza","dinero","resumenSaldosTipoDeuda","deuda actual","Deuda en cobranza (Aval no modela codeudor acá)",(r)=>saldoDe(r,"Deuda Cobranza")],
-  ["Deuda actual","valorPorVencerTotal","dinero","deudaVigenteTotal","deuda actual","Saldo por vencer total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(arr(r,"deudaVigenteTotal"),"valorPorVencer")],
-  ["Deuda actual","valorVencidoTotal","dinero","deudaVigenteTotal","deuda actual","Saldo vencido total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(arr(r,"deudaVigenteTotal"),"valorVencido")],
-  ["Deuda actual","carteraCastigadaTotal","dinero","deudaVigenteTotal","deuda actual","Cartera castigada total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(arr(r,"deudaVigenteTotal"),"carteraCastigada")],
-  ["Deuda actual","valorDemandaJudicialTotal","dinero","deudaVigenteTotal","deuda actual","Valor en demanda judicial total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(arr(r,"deudaVigenteTotal"),"valorDemandaJudicial")],
+  ["Deuda actual","valorPorVencerTotal","dinero","deudaVigenteTotal","deuda actual","Saldo por vencer total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(filasDeudaVigente(r),"valorPorVencer")],
+  ["Deuda actual","valorVencidoTotal","dinero","deudaVigenteTotal","deuda actual","Saldo vencido total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(filasDeudaVigente(r),"valorVencido")],
+  ["Deuda actual","carteraCastigadaTotal","dinero","deudaVigenteTotal","deuda actual","Cartera castigada total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(filasDeudaVigente(r),"carteraCastigada")],
+  ["Deuda actual","valorDemandaJudicialTotal","dinero","deudaVigenteTotal","deuda actual","Valor en demanda judicial total (agregado de Aval, incluye codeudor/garante)",(r)=>sumBy(filasDeudaVigente(r),"valorDemandaJudicial")],
+  ["Deuda actual","porVencerTitular","dinero","operacionesVigentes* (solo Titular)","deuda actual","Saldo por vencer PROPIO (suma de deudasPorEntidad)",(r)=>sumaCampo(construirDeudasPorEntidad(r),"valorVigente")],
+  ["Deuda actual","vencidoTitular","dinero","operacionesVigentes* (solo Titular)","deuda actual","Saldo vencido PROPIO (suma de deudasPorEntidad)",(r)=>sumaCampo(construirDeudasPorEntidad(r),"valorVencido")],
+  ["Deuda actual","demandaJudicialTitular","dinero","operacionesVigentes* (solo Titular)","deuda actual","Valor en demanda judicial PROPIO (suma de deudasPorEntidad)",(r)=>sumaCampo(construirDeudasPorEntidad(r),"valorDemandado")],
+  ["Deuda actual","castigadaTitular","dinero","operacionesVigentes* (solo Titular)","deuda actual","Cartera castigada PROPIA (suma de deudasPorEntidad)",(r)=>sumaCampo(construirDeudasPorEntidad(r),"valorCastigado")],
 
   // --- Carga financiera: mismo criterio que Deuda actual (v2) ---
   ["Carga financiera","cuotaMensualEstimada","dinero","(derivado, ver nota v2)","deuda actual","Cuota mensual PROPIA (bancos/coop/comercial solo Titular + cobranza de Aval)",(r)=>round2(sumaCampo(construirDeudasPorEntidad(r),"cuota","Banco")+sumaCampo(construirDeudasPorEntidad(r),"cuota","Cooperativa/Mutualista")+sumaCampo(construirDeudasPorEntidad(r),"cuota","Retail/Comercial")+mn(s0(r,"gastoFinanciero").cuotaCobranza))],
@@ -280,7 +312,7 @@ export const ESPEC: EntradaEspec[] = [
 
   ["Acreedores","nAcreedores","entero","rankingAcreedoresDeudaTotal","deuda actual","Nº de acreedores en el ranking",(r)=>arr(r,"rankingAcreedoresDeudaTotal").length],
   ["Acreedores","acreedorPrincipal","texto","rankingAcreedoresDeudaTotal","deuda actual","Acreedor con mayor saldo",(r)=>{const a=arr(r,"rankingAcreedoresDeudaTotal");if(!a.length)return null;return a.reduce((m,x)=>mn(x.valor)>mn(m.valor)?x:m).entidad??null;}],
-  ["Acreedores","participacionAcreedorPrincipal","decimal","rankingAcreedoresDeudaTotal","deuda actual","% que concentra el mayor acreedor",(r)=>{const a=arr(r,"rankingAcreedoresDeudaTotal");if(!a.length)return null;const p=a.reduce((m,x)=>mn(x.valor)>mn(m.valor)?x:m).participacionPorcentual;return typeof p==="number"?p:decimal(p);}],
+  ["Acreedores","participacionAcreedorPrincipal","decimal","rankingAcreedoresDeudaTotal","deuda actual","% que concentra el mayor acreedor",(r)=>{const a=arr(r,"rankingAcreedoresDeudaTotal");if(!a.length)return null;const p=decimal(a.reduce((m,x)=>mn(x.valor)>mn(m.valor)?x:m).participacionPorcentual);return p===null?null:p/100;}], // Aval manda 0–100; se guarda como fracción (nota 5)
 
   ["Tarjetas de crédito","cupoTotalTarjetas","dinero","operacionesVigentesTarjeta","deuda actual","Cupo total en tarjetas vigentes",(r)=>sumBy(filasReales(r,"operacionesVigentesTarjeta"),"cupoTarjeta")],
   ["Tarjetas de crédito","consumoTotalTarjetas","dinero","operacionesVigentesTarjeta","deuda actual","Consumo total en tarjetas",(r)=>sumBy(filasReales(r,"operacionesVigentesTarjeta"),"capitalConsumo")],
@@ -294,6 +326,10 @@ export const ESPEC: EntradaEspec[] = [
   ["Deuda contingente (codeudor/garante)","deudaComoCodeudorGaranteTotal","dinero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Saldo total que respalda como codeudor/garante (no es deuda propia)",(r)=>sumaCampo(construirDeudasComoCodeudorGarante(r),"saldo")],
   ["Deuda contingente (codeudor/garante)","cuotaComoCodeudorGaranteTotal","dinero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Cuota total que respalda como codeudor/garante (no afecta directamente su flujo salvo impago del titular)",(r)=>sumaCampo(construirDeudasComoCodeudorGarante(r),"cuota")],
   ["Deuda contingente (codeudor/garante)","maxDiasMoraComoCodeudorGarante","entero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Máximo de días de mora entre esas operaciones (mora del titular real, no de esta persona)",(r)=>{const d=construirDeudasComoCodeudorGarante(r).map((x)=>x.diasMora).filter((x): x is number=>typeof x==="number");return d.length?Math.max(...d):null;}],
+  ["Deuda contingente (codeudor/garante)","porVencerComoCodeudorGarante","dinero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Saldo por vencer que respalda como codeudor/garante",(r)=>sumaCampo(construirDeudasComoCodeudorGarante(r),"valorVigente")],
+  ["Deuda contingente (codeudor/garante)","vencidoComoCodeudorGarante","dinero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Saldo vencido que respalda como codeudor/garante (mora del titular real)",(r)=>sumaCampo(construirDeudasComoCodeudorGarante(r),"valorVencido")],
+  ["Deuda contingente (codeudor/garante)","demandaJudicialComoCodeudorGarante","dinero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Valor en demanda judicial de las deudas que respalda",(r)=>sumaCampo(construirDeudasComoCodeudorGarante(r),"valorDemandado")],
+  ["Deuda contingente (codeudor/garante)","castigadaComoCodeudorGarante","dinero","operacionesVigentes* (Codeudor/Garante)","deuda actual","Cartera castigada de las deudas que respalda",(r)=>sumaCampo(construirDeudasComoCodeudorGarante(r),"valorCastigado")],
 
   ["Garantías otorgadas a terceros","nOpComoGaranteCodeudor","entero","operacionesCodeudorGarante","deuda actual","Nº de identificaciones AJENAS a las que respalda (sin monto; ver Deuda contingente para el valor)",(r)=>arr(r,"operacionesCodeudorGarante").length],
 

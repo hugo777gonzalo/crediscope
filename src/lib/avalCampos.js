@@ -22,6 +22,8 @@ function formatearFechaCorte(v) {
 
 // clientesPeorScore, tasaMalos y participacionAcreedorPrincipal son
 // fracciones (0..1): se leen mejor como porcentaje que como "0.0147".
+// (participacion recién desde aval-estructura-v4: antes venía en 0-100 y
+// esto la mostraba como "2.262 %".)
 export function formatearValorAval(valor, tipo) {
   if (valor === null || valor === undefined || valor === "") return "—";
   switch (tipo) {
@@ -38,4 +40,25 @@ export function formatearValorAval(valor, tipo) {
     default:
       return String(valor);
   }
+}
+
+// Score 0 no es "el peor riesgo": es un archivo sin operaciones de crédito
+// (93 de las 240 del pool; tipoScore vacío y tasaMalos 0). Rotularlo
+// "Riesgo alto" -- o mostrar su tasaMalos como "0 % de probabilidad de
+// caer en vencido" -- diría lo contrario de lo que Aval sabe, que es nada.
+export function tieneScoreAval(score) {
+  return typeof score === "number" && score > 0;
+}
+
+// Los cortes son los mismos 400/700 con los que ScoreGauge ya pinta el
+// arco, así que el rótulo nombra lo que el color ya decía. Contra la
+// probabilidad que Aval publica calzan exacto (medido sobre las 240 del
+// pool, sin una sola inversión entre score y tasaMalos en 146 casos):
+// debajo de 400 la tasaMalos va de 37,6 % a 95,7 %; entre 400 y 699, de
+// 11,8 % a 37,6 %; desde 700, de 0,8 % a 11,8 %.
+export function bandaDeRiesgoAval(score) {
+  if (!tieneScoreAval(score)) return { etiqueta: "Sin historial crediticio", clase: "crediscope-tag-neutral" };
+  if (score < 400) return { etiqueta: "Riesgo alto", clase: "crediscope-tag-bad" };
+  if (score < 700) return { etiqueta: "Riesgo medio", clase: "crediscope-tag-warn" };
+  return { etiqueta: "Riesgo bajo", clase: "crediscope-tag-ok" };
 }

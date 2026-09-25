@@ -70,6 +70,7 @@ const TITULOS = [
   [/^\/$/, "Evaluación Crediticia"],
   [/^\/perfil/, "Evaluación Crediticia"],
   [/^\/analisis/, "Evaluación Crediticia"],
+  [/^\/aval/, "Evaluación Crediticia"],
   // El expediente pone el nombre de la persona en su propia cabecera:
   // repetirlo arriba gastaba la única línea que dice en qué módulo está
   // parado el analista.

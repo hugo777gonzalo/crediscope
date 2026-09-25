@@ -1,31 +1,45 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { getLatestAvalConsulta, consultarAval } from "../lib/api.js";
 import { estaVigenteAval, finVigenciaAval } from "../../supabase/functions/_shared/aval-vigencia.ts";
+import { construirEstructuraAval, AVAL_ESTRUCTURA_VERSION } from "../../supabase/functions/_shared/aval-estructura.ts";
 import { formatearFecha } from "../lib/fechas.js";
-import ClienteHeader from "../components/ClienteHeader.jsx";
-import ScoreGauge from "../components/ScoreGauge.jsx";
-import InfoTooltip from "../components/InfoTooltip.jsx";
-import FactoresAval from "../components/aval/FactoresAval.jsx";
-import SegmentosAval from "../components/aval/SegmentosAval.jsx";
-import { formatearValorAval } from "../lib/avalCampos.js";
+import EncabezadoAval from "../components/aval/EncabezadoAval.jsx";
+import ResumenScore from "../components/aval/ResumenScore.jsx";
+import DeudaActual from "../components/aval/DeudaActual.jsx";
+import DetalleOperaciones from "../components/aval/DetalleOperaciones.jsx";
+import ReporteTotal, { seccionesConDatos } from "../components/aval/ReporteTotal.jsx";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
 
 // "Aval" — tercera pestaña junto a Perfil del Cliente / Análisis con IA.
-// Puramente informativa como Perfil del Cliente (sin recomendación: eso
-// es trabajo del futuro marco interpretativo, que todavía no existe para
-// Aval). Se parece a Análisis con IA en la forma -- score + un panel de
-// factores +/- -- porque Aval YA calcula su propio score con sus propios
-// factores; no hay nada que un LLM tenga que decidir acá todavía.
+// Puramente informativa (sin recomendación: eso es trabajo del futuro marco
+// interpretativo, que todavía no existe para Aval).
+//
+// Arriba, siempre a la vista, lo que decide: quién es, score y riesgo, qué
+// lo mueve, cuánto debe (como titular y como codeudor/garante) y cada
+// operación. El resto va detrás de "Ver reporte total".
 //
 // BOTÓN DE CONSULTA: Aval cuesta, y ya existe una ventana de vigencia
 // (hasta el 17 de cada mes -- ver aval-vigencia.ts). Por eso el botón NO
-// se ofrece mientras haya una consulta vigente: se muestra la info de
-// vigencia en un tooltip, sin acción manual para forzar una nueva. Se
-// habilita "Reconsultar" solo cuando la última consulta VENCIÓ, y
-// "Reintentar" cuando un intento de esta misma sesión falló -- los dos
-// casos en que efectivamente hace falta volver a pagar.
+// se ofrece mientras haya una consulta vigente. Se habilita "Reconsultar"
+// solo cuando la última consulta VENCIÓ, y "Reintentar" cuando un intento
+// de esta misma sesión falló -- los dos casos en que efectivamente hace
+// falta volver a pagar.
+
+// La estructura guardada es la de la versión con que se consultó. Las
+// anteriores a v4 traen duplicados los totales por vencer/vencido/demanda/
+// castigada y no separan por rol, y la fila más vieja ni siquiera tiene
+// estructura. respuesta_cruda es la fuente de verdad y el constructor es el
+// mismo que usa la Edge Function (_shared/, una sola implementación), así
+// que se rearma acá en vez de depender de que alguien haya recalculado las
+// filas viejas.
+function estructuraAlDia(consulta) {
+  if (!consulta) return null;
+  if (consulta.estructura && consulta.estructura_version === AVAL_ESTRUCTURA_VERSION) return consulta.estructura;
+  if (consulta.respuesta_cruda?.result) return construirEstructuraAval(consulta.respuesta_cruda);
+  return consulta.estructura ?? null;
+}
 
 export default function PerfilAval() {
   const { cedula } = useParams();
@@ -34,6 +48,7 @@ export default function PerfilAval() {
   const [loading, setLoading] = useState(true);
   const [consultando, setConsultando] = useState(false);
   const [error, setError] = useState(null);
+  const [reporteAbierto, setReporteAbierto] = useState(false);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -70,7 +85,22 @@ export default function PerfilAval() {
 
   const vigente = consulta ? estaVigenteAval(consulta.created_at) : false;
   const fallo = !consultando && error;
-  const estructura = consulta?.estructura;
+  const estructura = useMemo(() => estructuraAlDia(consulta), [consulta]);
+  const ocultas = estructura ? seccionesConDatos(estructura).length : 0;
+
+  const acciones =
+    !loading && (!consulta || !vigente || fallo) ? (
+      <button className="crediscope-btn" onClick={handleConsultar} disabled={consultando}>
+        <RefreshCw size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
+        {consultando ? "Consultando..." : fallo ? "Reintentar" : consulta ? "Reconsultar a Aval" : "Consultar a Aval"}
+      </button>
+    ) : null;
+
+  const vigencia = consulta
+    ? vigente
+      ? { vigente: true, texto: `hasta el ${formatearFecha(finVigenciaAval())}` }
+      : { vigente: false, texto: "vencida (Aval actualiza el 18)" }
+    : null;
 
   return (
     <div>
@@ -90,26 +120,18 @@ export default function PerfilAval() {
         <span className="crediscope-tab crediscope-tab-active">Aval</span>
       </div>
 
-      <ClienteHeader
-        nombreCompleto={estructura?.nombre}
-        cedula={cedula}
-        score={estructura?.score ?? undefined}
-        acciones={
-          !loading && (!consulta || !vigente || fallo) ? (
-            <button className="crediscope-btn" onClick={handleConsultar} disabled={consultando}>
-              <RefreshCw size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-              {consultando ? "Consultando..." : fallo ? "Reintentar" : consulta ? "Reconsultar a Aval" : "Consultar a Aval"}
-            </button>
-          ) : null
-        }
-        infoTooltip={
-          consulta && vigente
-            ? <InfoTooltip texto={`Consultada el ${formatearFecha(consulta.created_at)} — vigente hasta el ${formatearFecha(finVigenciaAval())} (Aval actualiza su información el 18 de cada mes).`} />
-            : consulta && !vigente
-              ? <InfoTooltip texto={`La consulta del ${formatearFecha(consulta.created_at)} venció. Aval actualiza su información el 18 de cada mes -- hace falta reconsultar.`} />
-              : null
-        }
-      />
+      {loading ? (
+        <p className="crediscope-muted">Cargando...</p>
+      ) : (
+        <EncabezadoAval
+          cedula={cedula}
+          estructura={estructura}
+          ambiente={consulta?.ambiente}
+          consultadaEl={consulta ? formatearFecha(consulta.created_at) : null}
+          vigencia={vigencia}
+          acciones={acciones}
+        />
+      )}
 
       {error ? (
         <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
@@ -117,14 +139,11 @@ export default function PerfilAval() {
         </div>
       ) : null}
 
-      {loading ? <p className="crediscope-muted">Cargando...</p> : null}
-
       {/* La limitación se dice acá, no se descubre apretando el botón.
-          Aval solo acepta IPs de Ecuador y su ambiente de prueba usa un
-          certificado que Deno rechaza; las Edge Functions de Supabase
-          egresan desde fuera de Ecuador, así que consultar DESDE la app
-          desplegada todavía falla. Lo que se ve son consultas ya
-          guardadas (traídas desde una IP ecuatoriana). */}
+          El WAF de Aval rechaza la IP de salida de las Edge Functions de
+          Supabase (medido el 2026-09-22: no es el certificado, que valida
+          bien); desde una IP ecuatoriana la misma petición pasa. Lo que se
+          ve son consultas ya guardadas, traídas con el corredor local. */}
       {!loading && !consulta ? (
         <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
           <p style={{ margin: 0 }}>
@@ -140,31 +159,25 @@ export default function PerfilAval() {
 
       {estructura ? (
         <>
-          <div className="crediscope-analisis-grid">
-            <div className="crediscope-card">
-              <ScoreGauge score={estructura.score} />
-              {estructura.tipoScore || estructura.tasaMalos != null ? (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-                  {estructura.tipoScore ? (
-                    <p style={{ margin: "0 0 4px", fontSize: 13 }}>
-                      <span className="crediscope-muted">Tipo: </span>
-                      {estructura.tipoScore}
-                    </p>
-                  ) : null}
-                  {estructura.tasaMalos != null ? (
-                    <p style={{ margin: 0, fontSize: 13 }}>
-                      <span className="crediscope-muted">Prob. de caer en vencido (12m): </span>
-                      {formatearValorAval(estructura.tasaMalos, "decimal")}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            <FactoresAval factores={estructura.factoresScore} />
+          <div className="crediscope-aval-fila">
+            <ResumenScore factores={estructura.factoresScore} />
+            <DeudaActual estructura={estructura} />
           </div>
 
-          <SegmentosAval estructura={estructura} />
+          <DetalleOperaciones estructura={estructura} />
+
+          <button
+            type="button"
+            className="crediscope-aval-boton-reporte"
+            onClick={() => setReporteAbierto((v) => !v)}
+            aria-expanded={reporteAbierto}
+          >
+            {reporteAbierto ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+            {reporteAbierto ? "Ocultar reporte total" : "Ver reporte total"}
+            {!reporteAbierto ? <small>· {ocultas} secciones más</small> : null}
+          </button>
+
+          {reporteAbierto ? <ReporteTotal estructura={estructura} /> : null}
         </>
       ) : null}
     </div>

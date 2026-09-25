@@ -14,7 +14,10 @@ function colorScore(score) {
   return "var(--bad)";
 }
 
-export default function ScoreGauge({ score, size = 190 }) {
+// leyendaSinScore: en Análisis con IA la falta de score es "todavía no se
+// analizó"; en Aval es "no hay historial crediticio". Son dos huecos
+// distintos y la leyenda tiene que decir cuál.
+export default function ScoreGauge({ score, size = 190, leyendaSinScore = "sin analizar" }) {
   const tieneScore = score !== null && score !== undefined;
   const valor = tieneScore ? Math.max(1, Math.min(MAX_SCORE, score)) : 0;
 
@@ -68,8 +71,8 @@ export default function ScoreGauge({ score, size = 190 }) {
         <span style={{ fontSize: size * 0.27, fontWeight: 700, lineHeight: 1, color: tieneScore ? colorScore(valor) : "var(--text-muted)" }}>
           {tieneScore ? valor : "—"}
         </span>
-        <span className="crediscope-muted" style={{ fontSize: 14 }}>
-          {tieneScore ? `/ ${MAX_SCORE}` : "sin analizar"}
+        <span className="crediscope-muted" style={{ fontSize: size < 160 ? 12 : 14 }}>
+          {tieneScore ? `/ ${MAX_SCORE}` : leyendaSinScore}
         </span>
       </div>
     </div>

@@ -11,6 +11,7 @@
   --text-muted: #665f85;
   --brand: #4338ca;
   --brand-dark: #3730a3;
+  --brand-suave: #ebe9fb;
   --gold: #c9992b;
   --good: #15803d;
   --bad: #b91c1c;
@@ -1880,4 +1881,412 @@ a {
   .crediscope-exp-nav-cuenta {
     display: none;
   }
+}
+
+/* ============================================================
+   REPORTE DE AVAL
+   Arriba, siempre a la vista, lo que decide: quién es, el score y su
+   riesgo, qué lo mueve, cuánto debe y cada operación. El resto del
+   informe queda detrás de "Ver reporte total": se consulta, no se barre.
+   ============================================================ */
+
+.crediscope-aval-cabecera {
+  display: grid;
+  grid-template-columns: minmax(230px, 1.25fr) auto minmax(220px, 1.1fr) minmax(230px, 1fr);
+  align-items: center;
+}
+
+.crediscope-aval-cabecera-sin-datos {
+  grid-template-columns: 1fr auto;
+}
+
+.crediscope-aval-cabecera > * {
+  padding: 0 22px;
+  min-width: 0;
+}
+
+.crediscope-aval-cabecera > * + * {
+  border-left: 1px solid var(--border);
+}
+
+.crediscope-aval-cabecera > :first-child {
+  padding-left: 0;
+}
+
+.crediscope-aval-cabecera > :last-child {
+  padding-right: 0;
+}
+
+.crediscope-aval-persona {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.crediscope-aval-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--brand-suave);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.crediscope-aval-nombre {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.crediscope-aval-cedula {
+  color: var(--text-muted);
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+.crediscope-aval-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.crediscope-aval-etiquetas .crediscope-tag {
+  font-size: 12px;
+  padding: 3px 9px;
+  cursor: help;
+}
+
+.crediscope-aval-riesgo .crediscope-tag {
+  font-size: 14px;
+  padding: 6px 12px;
+}
+
+.crediscope-aval-riesgo p {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.crediscope-aval-datos {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 14px;
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.crediscope-aval-datos dt {
+  color: var(--text-muted);
+}
+
+.crediscope-aval-datos dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.crediscope-aval-acciones {
+  margin-top: 12px;
+}
+
+@media (max-width: 1150px) {
+  .crediscope-aval-cabecera {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 20px;
+  }
+
+  .crediscope-aval-cabecera > * {
+    padding: 0 !important;
+    border-left: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .crediscope-aval-cabecera {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Resumen del score (1/3) + Deuda actual (2/3). */
+.crediscope-aval-fila {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.crediscope-aval-fila > .crediscope-card {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1050px) {
+  .crediscope-aval-fila {
+    grid-template-columns: 1fr;
+  }
+}
+
+.crediscope-aval-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.crediscope-aval-titulo-icono {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--brand-suave);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* La sección interna: "Como titular" / "Como codeudor/garante" dentro de
+   una misma tarjeta, para que ningún rótulo tenga que repetir de quién es
+   la deuda. */
+.crediscope-aval-subseccion + .crediscope-aval-subseccion {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+
+.crediscope-aval-subtitulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.crediscope-aval-subtitulo small {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.crediscope-aval-filas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crediscope-aval-fila-campo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.crediscope-aval-fila-campo:first-child {
+  border-top: none;
+}
+
+.crediscope-aval-fila-campo > span {
+  color: var(--text-muted);
+}
+
+.crediscope-aval-fila-campo > strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.crediscope-aval-malo {
+  color: var(--bad);
+}
+
+.crediscope-aval-bueno {
+  color: var(--good);
+}
+
+.crediscope-aval-cero {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.crediscope-aval-cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.crediscope-aval-cifra {
+  background: var(--panel-muted);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+/* Hijo directo: el valor también es un <span> (el de Valor, con su color
+   de alerta) y un selector descendiente lo apagaba a gris de 12px. */
+.crediscope-aval-cifra > span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.crediscope-aval-cifra > strong {
+  display: block;
+  font-size: 19px;
+  font-weight: 700;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.crediscope-aval-cifras-chicas {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.crediscope-aval-cifras-chicas .crediscope-aval-cifra > strong {
+  font-size: 15px;
+}
+
+.crediscope-aval-dos {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .crediscope-aval-dos {
+    grid-template-columns: 1fr;
+  }
+}
+
+.crediscope-aval-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-aval-tabla th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.crediscope-aval-tabla td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.crediscope-aval-tabla th:first-child,
+.crediscope-aval-tabla td:first-child {
+  padding-left: 0;
+}
+
+.crediscope-aval-tabla th:last-child,
+.crediscope-aval-tabla td:last-child {
+  padding-right: 0;
+}
+
+.crediscope-aval-tabla tbody tr:hover td {
+  background: var(--panel-muted);
+}
+
+.crediscope-aval-tabla tfoot td {
+  font-weight: 700;
+  border-bottom: none;
+  border-top: 2px solid var(--border);
+}
+
+.crediscope-aval-tabla .crediscope-aval-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.crediscope-aval-sector {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--panel-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Solo en pantallas angostas: a ancho completo la tabla de operaciones
+   entra entera, que era el punto de sacarla de una columna. */
+.crediscope-aval-desplazable {
+  overflow-x: auto;
+}
+
+.crediscope-aval-nota {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.crediscope-aval-boton-reporte {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.crediscope-aval-boton-reporte:hover {
+  border-color: var(--brand);
+  background: var(--brand-suave);
+}
+
+.crediscope-aval-boton-reporte small {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Mampostería con columnas: las tarjetas del reporte total tienen alturas
+   muy distintas (3 filas contra 10), y una grilla por filas dejaba huecos
+   del alto de la más larga. */
+.crediscope-aval-reporte {
+  column-width: 320px;
+  column-gap: 16px;
+}
+
+.crediscope-aval-reporte > .crediscope-card {
+  break-inside: avoid;
+  display: inline-block;
+  width: 100%;
 }

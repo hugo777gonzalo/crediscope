@@ -138,6 +138,13 @@ Cada una de estas salió de un error real. No revivirlas.
   olvido que degrada el dato se nota y uno que lo asciende se descubre
   cuando ya se aprobó un crédito. **Una fila con `ambiente = 'prueba'` no
   sirve para calificar a nadie.**
+- **Aval mezcla filas de totales con los datos, y cada segmento las marca
+  distinto.** `operacionesVigentes*` traen una fila con identidad `"-"` o
+  fecha `"TOTAL"`; `deudaVigenteTotal` trae una con
+  `sistemaCrediticio: "TOTAL"`. Sumar el segmento entero duplica: eso
+  tuvo los cuatro totales de deuda de la estructura al doble en 129 de
+  129 personas hasta aval-estructura-v4 (2026-09-24). Antes de sumar un
+  segmento de Aval nuevo, buscarle la fila de totales.
 - **Aval es dos órdenes de magnitud más rápido que Novadata.** Una
   consulta a Aval tarda 890 ms de mediana (p95 1,3 s) contra los 41 s de
   Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por
