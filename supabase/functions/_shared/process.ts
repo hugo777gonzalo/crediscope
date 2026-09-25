@@ -14,6 +14,7 @@
 import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
+import { diaDeFecha, fechasDelRuc, rucActivo } from "./ruc.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -95,10 +96,16 @@ function dentroUltimos3Meses(fecha: unknown): boolean {
 // null cuando la persona nunca tuvo RUC — ver 1759544552).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
 // si fecha_reinicio_actividades es posterior a la más reciente de esas dos.
+// Cuál es el cese vigente lo decide ruc.ts (cancelación, suspensión
+// definitiva o solicitud de suspensión -- el cese temporal --, la más
+// reciente). Acá se parsea la fecha ORIGINAL de ese campo, igual que las
+// demás del SRI: "yyyy/mm/dd" y "yyyy-mm-dd" dan instantes distintos con
+// `new Date`, y la comparación de tipoUltimoCese es por igualdad exacta.
 function ceseMasReciente(c: AnyRecord): Date | null {
-  const cancelacion = parseFecha(c.fecha_cancelacion);
-  const suspension = parseFecha(c.fecha_suspension_definitiva);
-  return [cancelacion, suspension].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  const cese = fechasDelRuc(c).cese;
+  if (!cese) return null;
+  const original = [c.fecha_cancelacion, c.fecha_suspension_definitiva, c.fecha_solicitud_suspension].find((v) => diaDeFecha(v) === cese);
+  return parseFecha(original);
 }
 
 // Tipo del cese más reciente — SRI distingue "cancelación" (puede ser
@@ -109,19 +116,15 @@ function ceseMasReciente(c: AnyRecord): Date | null {
 // etiqueta "suspension_definitiva" cuando esa fecha coincide con el
 // cese resuelto (incluye el caso de empate). Informativo para
 // marco-interpretativo.ts, no cambia estadoActividadEconomica.
-function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" | null {
+function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" | "suspension_temporal" | null {
   const cese = ceseMasReciente(c);
   if (!cese) return null;
   const suspension = parseFecha(c.fecha_suspension_definitiva);
-  return suspension && suspension.getTime() === cese.getTime() ? "suspension_definitiva" : "cancelacion";
-}
-
-function rucRegistroActivo(c: AnyRecord): boolean {
-  if (!c.ruc || !c.fecha_inscripcion_ruc) return false;
-  const cese = ceseMasReciente(c);
-  if (!cese) return true;
-  const reinicio = parseFecha(c.fecha_reinicio_actividades);
-  return Boolean(reinicio && reinicio.getTime() > cese.getTime());
+  if (suspension && suspension.getTime() === cese.getTime()) return "suspension_definitiva";
+  const cancelacion = parseFecha(c.fecha_cancelacion);
+  // Si el cese vigente no es ni la suspensión definitiva ni la
+  // cancelación, es la solicitud de suspensión: un cese temporal.
+  return cancelacion && cancelacion.getTime() === cese.getTime() ? "cancelacion" : "suspension_temporal";
 }
 
 function num(v: unknown): number | null {
@@ -372,7 +375,11 @@ function textoDe(v: unknown): string | null {
 // se mide hasta el último aporte y no hasta hoy.
 // estructura-v5 (2026-09-25): con dos empleos vigentes a la vez, la
 // antigüedad es la del más largo.
-export const PROCESS_VERSION = "estructura-v5"; // ver docs/estructura-estandarizada.md
+// estructura-v6 (2026-09-25): "RUC activo" sale de ruc.ts, compartido con
+// fuentes-ingreso.ts; cuenta también el cese temporal (solicitud de
+// suspensión) y exige un establecimiento abierto. tipoUltimoCeseRuc puede
+// ser "suspension_temporal".
+export const PROCESS_VERSION = "estructura-v6"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -498,13 +505,16 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const establecimientos = arr(fuentes, "establecimientoActEconomica", "datosEstablecimientoActEco");
   const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
-  // tieneEstablecimientoActivo: fuente correcta es contribuyente (RUC),
-  // NO establecimientoActEconomica — ver rucRegistroActivo().
-  const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucRegistroActivo);
+  // tieneEstablecimientoActivo: la regla vive en ruc.ts y es la misma que
+  // usa fuentes-ingreso.ts -- las fechas del RUC (cese definitivo o
+  // temporal, reinicio) y, si hay establecimientos, al menos uno abierto.
+  // Hasta estructura-v6 había una copia acá y otra allá, y no coincidían.
+  const rucActivoHoy = (c: AnyRecord) => rucActivo(c, establecimientos);
+  const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucActivoHoy);
   // Registro RUC de referencia para las fechas expuestas: el activo si
   // hay uno, si no el primero disponible (persona natural normalmente
   // tiene un solo registro, pero Novadata devuelve un array).
-  const rucReferencia = (contribuyenteRegistros.find(rucRegistroActivo) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
+  const rucReferencia = (contribuyenteRegistros.find(rucActivoHoy) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
   // Estado y antigüedad de la actividad económica: Novadata/SRI solo
   // guardan la fecha del cese MÁS RECIENTE y la del reinicio MÁS
   // RECIENTE, no un historial completo de ciclos — por eso "16 años
@@ -794,7 +804,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     // contabilidad" — NO tiene relación con el estado del RUC, casi
     // siempre "NO" para personas naturales de régimen general, así que
     // este campo daba false casi siempre). Corregido para usar la misma
-    // fuente/lógica que tieneEstablecimientoActivo (rucRegistroActivo) —
+    // fuente/lógica que tieneEstablecimientoActivo (ruc.ts) —
     // validado contra SRI real, cédulas 0502937691 (activo) y
     // 0502937675 (suspendido).
     tieneRucActivo: tieneEstablecimientoActivo,
@@ -883,7 +893,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   }, null);
   // esAfiliadoUnipersonal: misma fuente que tieneEstablecimientoActivo
   // (contribuyente) — un registro "cascarón" sin .ruc (ver
-  // rucRegistroActivo) cuenta como "nunca tuvo RUC" => FALSE, no null.
+  // esRegistroDeRuc en ruc.ts) cuenta como "nunca tuvo RUC" => FALSE, no null.
   const rucConDatos = contribuyenteRegistros.filter((c) => c.ruc);
   const tributario: StandardClientProfile["tributario"] = {
     pagaISD: impuestosISD.length > 0,

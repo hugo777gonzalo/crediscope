@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, ShieldQuestion, Building2, FileWarning } from "lucide-react";
 import { getResumenCarteraIngresos } from "../lib/api.js";
+import { ETIQUETA_PERFIL_LABORAL } from "../../supabase/functions/_shared/perfil-laboral.ts";
 import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
@@ -162,6 +163,46 @@ export default function FuentesIngreso() {
               <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
                 Cuenta fuentes, no personas: alguien con dos empleos aporta dos.
               </p>
+            </div>
+          </div>
+
+          {/* El perfil laboral (migración 085) mira dos preguntas por
+              separado: ¿trabaja para un tercero? ¿tiene actividad propia?
+              Un cuarto de la cartera responde que sí a las dos, y el
+              segmento -- que sigue a la fuente con monto -- no lo muestra. */}
+          <div className="crediscope-reportes-grid">
+            <div className="crediscope-card">
+              <h3>Perfil laboral de la cartera</h3>
+              <p className="crediscope-muted" style={{ marginTop: 0 }}>
+                Dependiente: trabaja para un tercero. Actividad propia: RUC activo o paga nómina. Una persona puede ser las dos cosas.
+              </p>
+              {(d.perfilesLaborales ?? []).map((p) => (
+                <Barra
+                  key={p.clave}
+                  etiqueta={ETIQUETA_PERFIL_LABORAL[p.clave] ?? (p.clave === "sin_calcular" ? "Sin calcular" : p.clave)}
+                  n={p.n}
+                  pct={p.pct}
+                  color="var(--brand)"
+                />
+              ))}
+            </div>
+
+            <div className="crediscope-card">
+              <h3>Dependientes con actividad propia, por segmento</h3>
+              <p className="crediscope-muted" style={{ marginTop: 0 }}>
+                El segmento los muestra por su empleo, que es lo que trae monto. Acá se ve cuántos de cada segmento tienen además un
+                negocio o ejercen por su cuenta.
+              </p>
+              <table className="crediscope-table">
+                <tbody>
+                  {(d.dependientesConActividadPorSegmento ?? []).map((s) => (
+                    <tr key={s.clave}>
+                      <td>{ETIQUETA_SEGMENTO[s.clave] ?? s.clave}</td>
+                      <td style={{ textAlign: "right", fontWeight: 600 }}>{s.n.toLocaleString("es-EC")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

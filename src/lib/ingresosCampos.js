@@ -70,6 +70,57 @@ export function origenDeFuente(fuente) {
   return "otra";
 }
 
+// ---------- Perfil laboral (_shared/perfil-laboral.ts) ----------
+
+const NATURALEZA_EMPLEO = {
+  publico: "sector público",
+  privado: "sector privado",
+  domestico: "empleo doméstico",
+  diplomatico: "misión diplomática",
+  agricola: "agrícola",
+  otro: "tipo de empleador no reconocido",
+};
+
+const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+// Las frases que explican el perfil laboral, en el orden en que se leen:
+// de qué trabaja, qué más tiene, y qué significa la combinación.
+export function describirPerfilLaboral(p) {
+  if (!p) return [];
+  if (p.clave === "sin_datos") return ["La fuente de los aportes al IESS no respondió: no se sabe si trabaja para un tercero."];
+  const frases = [];
+  if (p.dependencia) {
+    const empleos = p.empleos
+      .slice(0, 3)
+      .map((e) => `${e.empleador ?? "empleador sin nombre"} (${NATURALEZA_EMPLEO[e.naturaleza] ?? e.naturaleza}${e.monto ? `, ${MONEDA.format(e.monto)}` : ""})`)
+      .join("; ");
+    frases.push(`Trabaja para un tercero: ${empleos}${p.empleos.length > 3 ? ` y ${p.empleos.length - 3} más` : ""}.`);
+  }
+  if (p.actividadPropia) {
+    const desde = p.rucActivoDesde ? ` desde ${mesLegible(String(p.rucActivoDesde).slice(0, 7))}` : "";
+    const actividad = p.actividades.length ? ` (${p.actividades[0].toLowerCase()})` : "";
+    const empleador = p.empleador ? `; es empleador${p.nomina ? `, paga una nómina de ${MONEDA.format(p.nomina)} mensuales` : ""}` : "";
+    frases.push(`Tiene actividad propia: RUC activo${desde}${actividad}${empleador}.`);
+  }
+  if (p.dependencia && p.actividadPropia) {
+    frases.push(
+      p.actividadPropiaPrincipal
+        ? "Paga una nómina mayor que lo que le reportan como dependiente: su actividad propia es, probablemente, la principal."
+        : "La actividad propia no trae monto en ninguna fuente pública: complementa al empleo, no se suma a su ingreso.",
+    );
+  }
+  if (p.aporteVoluntarioSinRuc) {
+    frases.push("Aporta al IESS por su cuenta sin RUC activo: puede ser sólo para no perder la seguridad social, y no prueba trabajo.");
+  }
+  if (p.vinculoConEmpleador === "empleador_con_su_apellido") frases.push("Su empleador comparte su apellido: puede ser un negocio familiar.");
+  if (p.vinculoConEmpleador === "es_su_propio_empleador") frases.push("El empleador que reporta el aporte es la propia persona.");
+  if (p.jubilacion) frases.push("Registra jubilación.");
+  if (p.clave === "sin_actividad_registrada") {
+    frases.push("El IESS no registra trabajo para un tercero ni el SRI una actividad propia activa.");
+  }
+  return frases;
+}
+
 export const ETIQUETA_ORIGEN = {
   iess: "Aporte al IESS",
   jubilacion: "Jubilación",

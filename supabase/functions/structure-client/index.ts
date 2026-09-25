@@ -12,6 +12,7 @@ import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-c
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
+import { clasificarPerfilLaboral } from "../_shared/perfil-laboral.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 import { estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
@@ -188,6 +189,8 @@ Deno.serve(async (req) => {
         fuente_version: profile.fuentesIngreso?.version ?? null,
         fuente_corte: profile.fuentesIngreso?.corteIessUsado ?? null,
         fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
+        // Para contar en el panorama; no va dentro del perfil (ver migración 085).
+        perfil_laboral: clasificarPerfilLaboral(profile as unknown as Record<string, unknown>)?.clave ?? null,
         duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
 

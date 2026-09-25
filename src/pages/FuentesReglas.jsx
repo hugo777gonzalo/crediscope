@@ -17,7 +17,7 @@ import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuente
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v6";
+const VERSION_DOCUMENTADA = "fuentes-v7";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -270,6 +270,43 @@ export default function FuentesReglas() {
             la última.
           </li>
         </ul>
+      </Paso>
+
+      <Paso titulo="Perfil laboral: dependiente, independiente o las dos cosas">
+        <p>
+          El segmento dice de qué fuente depende el ingreso que se puede <em>medir</em>, y sólo el trabajo para un tercero trae
+          monto. Pero una persona puede tener un empleo y además un negocio propio (por ejemplo, servicios profesionales). En la
+          cartera, el 26% es así: más de la mitad de los dependientes tiene además un RUC activo. El perfil laboral lo mira por
+          separado, con dos preguntas:
+        </p>
+        <ul>
+          <li>
+            <strong>¿Trabaja para un tercero?</strong> Un aporte al IESS de un empleador público, privado, doméstico,
+            diplomático o agrícola. Es <strong>dependiente</strong>.
+          </li>
+          <li>
+            <strong>¿Tiene actividad propia?</strong> RUC activo en el SRI, o paga una nómina (es empleador). No trae monto: se
+            sabe que existe, desde cuándo y de qué es, no cuánto deja.
+          </li>
+        </ul>
+        <p style={{ marginBottom: 0 }}>
+          De las dos respuestas sale el perfil: <strong>Dependiente</strong>, <strong>Dependiente con actividad propia</strong>,{" "}
+          <strong>Independiente</strong>, <strong>Independiente con empleados</strong>, <strong>Afiliado voluntario sin actividad
+          registrada</strong> (aporta por su cuenta sin RUC activo), <strong>Jubilado</strong> o{" "}
+          <strong>Sin actividad registrada</strong>. En el perfil mixto la actividad propia se lee como complementaria del empleo,
+          salvo que pague una nómina mayor que su sueldo: ahí es la principal. El perfil laboral acompaña al segmento, no lo
+          cambia, y todavía no entra al análisis con IA.
+        </p>
+      </Paso>
+
+      <Paso titulo="RUC activo: una sola regla">
+        <p style={{ marginBottom: 0 }}>
+          Un RUC está activo si no tiene cese, o si se reactivó después del último cese. Como cese cuentan la cancelación, la
+          suspensión definitiva y la solicitud de suspensión (el cese temporal). Además, si el SRI informa establecimientos, al
+          menos uno tiene que estar abierto. Hasta la v7 la clasificación de ingresos no miraba la reactivación: 77 personas con
+          el RUC reactivado figuraban como &ldquo;informal o sin actividad&rdquo;. Ahora el perfil y la clasificación usan la
+          misma regla.
+        </p>
       </Paso>
 
       <Paso titulo="Los segmentos y cómo falla cada uno">

@@ -28,7 +28,8 @@ fijo -- casi siempre aportan sobre él. La regla vive en
 `esIngresoMinimoSbu()` de `fuentes-ingreso.ts` y las pantallas la
 importan. Los nombres internos que dicen piso
 (`pisoIngresoMensualReportado`, `fuente_piso_ingreso`) quedaron: no se
-leen en pantalla.
+leen en pantalla. Y quien trabaja para un tercero es **"dependiente"**,
+no "asalariado".
 
 **Los comentarios explican el porqué, no el qué.** Cuando una decisión
 es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
@@ -179,6 +180,19 @@ Cada una de estas salió de un error real. No revivirlas.
   reciente, los mismos casos que `estadoActividadEconomica`); el RISE
   cuenta siempre por ser un régimen del SRI. En la muestra, 28 de 137
   personas aportan por su cuenta sin RUC activo en ninguno de esos meses.
+- **"RUC activo" es una sola regla: `_shared/ruc.ts`.** Había dos
+  (process.ts miraba el reinicio, fuentes-ingreso.ts no) y 77 personas
+  con el RUC reactivado quedaron "informal o sin actividad" mientras el
+  perfil las veía activas. Cuenta el cese temporal (solicitud de
+  suspensión) y exige un establecimiento abierto. Cualquier lectura
+  nueva del RUC tiene que importar esa, no escribir otra.
+- **Segmento y perfil laboral responden cosas distintas.** El segmento:
+  de qué fuente MEDIBLE depende el ingreso (sólo la dependencia trae
+  monto). El perfil laboral (`_shared/perfil-laboral.ts`): ¿trabaja para
+  un tercero? ¿tiene actividad propia? El 26% de la cartera es las dos
+  cosas. Se calcula desde el perfil guardado, vive en la columna
+  `client_profiles.perfil_laboral` (085) y NO está dentro de
+  `standard_profile`: el modelo no lo lee.
 - **`reprocess-sample.mjs` quedó atrás de `process.ts`** (sigue en la
   forma vieja de `empleoActual`). `process.ts` corre directo bajo Node:
   para validar un cambio del perfil, comparar la versión vieja contra la

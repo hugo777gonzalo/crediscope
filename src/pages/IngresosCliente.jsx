@@ -118,7 +118,7 @@ export default function IngresosCliente() {
       {f ? (
         <>
           <div className="crediscope-aval-fila">
-            <ClasificacionIngresos f={f} corteVigente={corteVigente} />
+            <ClasificacionIngresos f={f} perfil={perfil} corteVigente={corteVigente} />
             <FuentesVigentes f={f} />
           </div>
 

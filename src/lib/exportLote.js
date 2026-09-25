@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import { diaEcuador, fechaHoraOrdenable, formatearFechaHora } from "./fechas.js";
 import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO } from "./fuentesIngresoConsolidado.js";
 import { esIngresoMinimoSbu } from "./ingresosCampos.js";
+import { clasificarPerfilLaboral } from "../../supabase/functions/_shared/perfil-laboral.ts";
 
 // El resultado de un lote, en un solo archivo con varias hojas.
 //
@@ -84,6 +85,7 @@ function filaResumenIngresos(perfil) {
     segmento_clave: f.segmento ?? "",
     estado_clasificacion: ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento ?? "",
     como_puede_fallar: RIESGO_SEGMENTO[f.segmento] ?? "",
+    perfil_laboral: clasificarPerfilLaboral(sp)?.etiqueta ?? "",
     ingreso_reportado_iess: f.pisoIngresoMensualReportado ?? "",
     ingreso_minimo_sbu: f.pisoIngresoMensualReportado ? (esIngresoMinimoSbu(f.pisoIngresoMensualReportado, f.corteIessUsado) ? 1 : 0) : "",
     fuentes_totales: fuentes.length,

@@ -259,7 +259,7 @@ export interface StandardClientProfile {
     // suspensión definitiva = fecha de cancelación, con
     // observ_solicitud_suspension="CESE DE ACTIVIDADES"). Informativo,
     // no cambia estadoActividadEconomica ni el score por sí solo.
-    tipoUltimoCeseRuc: "cancelacion" | "suspension_definitiva" | null;
+    tipoUltimoCeseRuc: "cancelacion" | "suspension_definitiva" | "suspension_temporal" | null;
     // Antigüedad laboral — fuente tiess (fecIng/fecSal), independiente
     // de empleoActual (fuente trabajoHistoricosMecanizado, puede diferir
     // levemente en el nombre del empleador). Solo se reporta si hay al

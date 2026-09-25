@@ -35,6 +35,7 @@
 
 import type { RespuestaNovadata } from "./types.ts";
 import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
+import { diaDeFecha, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
 
 // v3: la guarda de "no sé si aporta" pasa a mirar basesInternas, la
 // fuente que realmente trae los aportes, en vez del bloque `bancos`
@@ -86,7 +87,12 @@ import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 // sin contar -- puede ser aportar para no perder la seguridad social.
 // Decisión del negocio sobre el caso 0704804749: un empleo público de 4
 // meses precedido por 24 de aporte unipersonal.
-export const FUENTES_INGRESO_VERSION = "fuentes-v6";
+//
+// v7 (2026-09-25): "RUC activo" mira el reinicio de actividades, como
+// process.ts. Antes, quien cerró el RUC y lo reabrió quedaba sin actividad:
+// 77 personas figuraban "informal o sin actividad" con el RUC activo. Salió
+// al cruzar el segmento con el perfil laboral (perfil-laboral.ts).
+export const FUENTES_INGRESO_VERSION = "fuentes-v7";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -366,13 +372,13 @@ const MESES_SIN_DATO_DEL_PROVEEDOR = new Set([
 // aportan por su cuenta sin RUC activo en ninguno de esos meses.
 const NATURALEZAS_CON_EMPLEADOR = new Set<Naturaleza>(["publico", "diplomatico", "privado", "domestico", "agricola"]);
 
-// "yyyy/mm/dd" (así manda el SRI las fechas del RUC) o "dd/mm/yyyy" -> "yyyy-mm".
-function mesDeFecha(v: unknown): string | null {
-  const s = String(v ?? "").trim();
-  const iso = /^(\d{4})[-/](\d{2})/.exec(s);
-  if (iso) return `${iso[1]}-${iso[2]}`;
-  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s);
-  return dmy ? `${dmy[3]}-${dmy[2]}` : null;
+function registrosDelRuc(consultadas: AnyRecord): AnyRecord[] {
+  return ((((consultadas.contribuyente as AnyRecord)?.data as AnyRecord)?.datosContribuyente as AnyRecord[]) ?? []).filter(esRegistroDeRuc);
+}
+
+function establecimientosDe(consultadas: AnyRecord): AnyRecord[] {
+  const data = ((consultadas.establecimientoActEconomica as AnyRecord)?.data ?? {}) as AnyRecord;
+  return Object.values(data).filter(Array.isArray).flat() as AnyRecord[];
 }
 
 // Los períodos con RUC activo. El SRI sólo guarda el inicio de
@@ -385,19 +391,29 @@ function mesDeFecha(v: unknown): string | null {
 // En el último caso, lo anterior al reinicio no se sabe cuándo cesó y no
 // se cuenta: no se inventa una actividad.
 function periodosConRucActivo(consultadas: AnyRecord): [string, string][] {
-  const registros = ((((consultadas.contribuyente as AnyRecord)?.data as AnyRecord)?.datosContribuyente as AnyRecord[]) ?? [])
-    .filter((c) => c.ruc && c.fecha_inscripcion_ruc);
+  const mes = (d: string) => d.slice(0, 7);
+  const establecimientos = establecimientosDe(consultadas);
+  // Si las fechas lo dan abierto pero hoy no tiene ningún establecimiento
+  // abierto (ruc.ts), el período abierto se cierra en el último cierre de
+  // establecimiento que se conozca; sin esa fecha no se da por abierto.
+  const ultimoCierre =
+    establecimientos
+      .map((e) => diaDeFecha(e.fech_cierre))
+      .filter((d): d is string => Boolean(d))
+      .sort()
+      .at(-1) ?? null;
   const periodos: [string, string][] = [];
-  for (const c of registros) {
-    const inicio = mesDeFecha(c.fecha_inicio_actividades);
+  for (const c of registrosDelRuc(consultadas)) {
+    const { inicio, cese, reinicio, activoPorFechas } = fechasDelRuc(c);
     if (!inicio) continue;
-    const cese = [mesDeFecha(c.fecha_cancelacion), mesDeFecha(c.fecha_suspension_definitiva)].filter((m): m is string => Boolean(m)).sort().at(-1) ?? null;
-    const reinicio = mesDeFecha(c.fecha_reinicio_actividades);
-    if (!cese) periodos.push([inicio, "9999-12"]);
-    else if (reinicio && reinicio > cese) {
-      periodos.push([inicio, cese]);
-      periodos.push([reinicio, "9999-12"]);
-    } else periodos.push([reinicio ?? inicio, cese]);
+    const abiertoHoy = rucActivoSegunSri(c, establecimientos);
+    const finAbierto = abiertoHoy ? "9999-12" : ultimoCierre ? mes(ultimoCierre) : null;
+    if (!cese) {
+      if (finAbierto) periodos.push([mes(inicio), finAbierto]);
+    } else if (activoPorFechas && reinicio) {
+      periodos.push([mes(inicio), mes(cese)]);
+      if (finAbierto) periodos.push([mes(reinicio), finAbierto]);
+    } else periodos.push([mes(reinicio ?? inicio), mes(cese)]);
   }
   return periodos;
 }
@@ -739,9 +755,15 @@ export function analizarFuentesIngreso(
     });
   }
 
-  const contribuyentes = ((((consultadas.contribuyente as AnyRecord)?.data as AnyRecord)?.datosContribuyente as AnyRecord[]) ?? [])
-    .filter((c) => c.ruc && c.fecha_inscripcion_ruc);
-  const rucActivo = contribuyentes.some((c) => !c.fecha_cancelacion && !c.fecha_suspension_definitiva);
+  const contribuyentes = registrosDelRuc(consultadas);
+  // Hasta fuentes-v6 era "nunca tuvo cese", sin mirar el reinicio: quien
+  // cerró el RUC y lo volvió a abrir figuraba sin actividad. Medido el
+  // 2026-09-25: 77 personas con el RUC reactivado estaban como "informal o
+  // sin actividad" mientras el perfil (process.ts) las veía activas. Ahora
+  // las dos usan ruc.ts, que además cuenta el cese temporal y exige un
+  // establecimiento abierto.
+  const establecimientosRuc = establecimientosDe(consultadas);
+  const rucActivo = contribuyentes.some((c) => rucActivoSegunSri(c, establecimientosRuc));
   if (contribuyentes.some((c) => String(c.obligado).toUpperCase() === "SI")) {
     senalesDeEscala.push({
       senal: "obligado a llevar contabilidad",

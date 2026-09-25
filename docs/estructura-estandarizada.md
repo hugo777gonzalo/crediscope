@@ -462,6 +462,18 @@ interface StandardClientProfile {
 > Antes era la del primero de un orden por mes, que entre dos empleos del
 > mismo mes es cualquiera: 0704804749 tenía 2 meses (un contrato nuevo)
 > con otro empleo vigente de 46.
+
+> **estructura-v6 (2026-09-25)** — "RUC activo" (`tieneRucActivo`,
+> `tieneEstablecimientoActivo`) sale de `_shared/ruc.ts`, la misma regla
+> que usa la clasificación de ingresos: cese = el más reciente entre
+> cancelación, suspensión definitiva y solicitud de suspensión (cese
+> temporal); activo si no hay cese o el reinicio es posterior, y con al
+> menos un establecimiento abierto si el SRI los informa.
+> `tipoUltimoCeseRuc` puede valer `"suspension_temporal"`. Sobre las 389
+> crudas ningún campo de `laboral` cambió (no hay ceses temporales ni RUC
+> con todo cerrado); la regla existe para cuando aparezcan. El cambio que
+> sí se vio fue en `fuentesIngreso` (fuentes-v7): 77 personas con el RUC
+> reactivado figuraban sin actividad.
 > Hay que leer las dos formas — ver `metaDeLaConsulta()` en
 > `_shared/calidad-de-la-consulta.ts`.
 
