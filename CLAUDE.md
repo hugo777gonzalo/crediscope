@@ -32,6 +32,9 @@ Romper cualquiera de estas rompe algo real.
    `npx --yes supabase@latest db query --linked --file <archivo>`. El
    historial de migraciones remoto está vacío a propósito.
 2. **El CLI no está en el PATH**: usar `npx --yes supabase@latest`.
+   Desde un worktree, `--linked` falla con "Cannot find project ref":
+   el enlace vive en `supabase/.temp`, que no está en git. Agregar
+   `--workdir` apuntando a la carpeta principal del repositorio.
 3. **Las migraciones que necesitan secretos llevan marcadores**
    (`<<PROYECTO_URL>>`, `<<VIGIA_CLAVE>>`) y se rellenan FUERA del
    repositorio, en un archivo temporal que se borra después.
@@ -74,6 +77,12 @@ Romper cualquiera de estas rompe algo real.
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
   Ecuador es UTC-5 sin horario de verano; a las 20:00 de Ecuador la
   fecha UTC ya es la de mañana.
+- `src/lib/paginar.js` → `traerTodas()` — la forma de leer más de 1.000
+  filas desde el navegador. PostgREST corta ahí sin avisar: Costos sumó
+  1.000 de 1.006 llamadas hasta el 2026-09-24. Pagina hasta el conteo de
+  la primera página, no hasta una página corta, y pide un orden total
+  (desempate por id) en el que lo insertado durante la lectura caiga al
+  final.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 

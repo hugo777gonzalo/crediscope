@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 import { inicioDelDia, finDelDia, diaEcuador, formatearFecha } from "./fechas.js";
+import { traerTodas } from "./paginar.js";
 
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
@@ -671,26 +672,51 @@ export async function getConteoSolicitudes({ desde, hasta } = {}) {
 // resultado real del crédito viene de feedback_creditos cuando ya se
 // cargó la cosecha correspondiente.
 //
-// El límite existe porque cada perfil son ~10 KB: sin tope, esta
-// consulta crece sin control a medida que se acumulan solicitudes.
-export async function getDatosAnaliticos({ desde, hasta, limite = 5000 } = {}) {
-  const { data, error } = await aplicarRango(
-    supabase
-      .from("analysis_results")
-      .select(
-        "id, created_at, crediscope_score, recomendacion, rules_version, client_profile_vinculo, " +
-          "clients(cedula), " +
-          "client_profiles(standard_profile, structure_version), " +
-          "criterio_versiones(numero), " +
-          "feedback_creditos(desembolsado, monto, producto, plazo_meses, fecha_desembolso, hubo_default, tipo_default, dias_mora_max)"
-      ),
+// El tope existe porque cada perfil son ~10 KB: sin él, esta consulta
+// crece sin control a medida que se acumulan solicitudes. Pero es un tope
+// que se dice: vuelve el total del rango junto con las filas, y la
+// pantalla muestra "N de M". Antes pedía `limit(5000)` y PostgREST
+// cortaba en 1.000 sin avisar -- el archivo habría salido con mil filas y
+// el mismo aspecto de completo.
+export const TOPE_DESCARGA_SOLICITUDES = 5000;
+
+export async function getDatosAnaliticos({ desde, hasta, tope = TOPE_DESCARGA_SOLICITUDES } = {}) {
+  // El orden va de la más nueva a la más vieja, para que el tope se quede
+  // con lo reciente. En ese orden, una solicitud que entra durante la
+  // descarga cae al principio y repite una fila en el borde de cada
+  // página. Fijar el techo antes de empezar la deja afuera.
+  const { data: ultima, error: errorUltima } = await aplicarRango(
+    supabase.from("analysis_results").select("created_at"),
     desde,
     hasta
   )
     .order("created_at", { ascending: false })
-    .limit(limite);
-  if (error) throw error;
-  return data || [];
+    .limit(1)
+    .maybeSingle();
+  if (errorUltima) throw errorUltima;
+  if (!ultima) return { filas: [], total: 0 };
+
+  return traerTodas(
+    (opciones) =>
+      aplicarRango(
+        supabase
+          .from("analysis_results")
+          .select(
+            "id, created_at, crediscope_score, recomendacion, rules_version, client_profile_vinculo, " +
+              "clients(cedula), " +
+              "client_profiles(standard_profile, structure_version), " +
+              "criterio_versiones(numero), " +
+              "feedback_creditos(desembolsado, monto, producto, plazo_meses, fecha_desembolso, hubo_default, tipo_default, dias_mora_max)",
+            opciones
+          ),
+        desde,
+        hasta
+      )
+        .lte("created_at", ultima.created_at)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false }),
+    { tope }
+  );
 }
 
 // ---------- Fuentes de ingreso ----------
@@ -765,19 +791,28 @@ export async function getPerfilesConFuentesIngreso({ segmento = null, estado = n
 }
 
 // ---------- Consumo del LLM ----------
-// El registro de llamadas es la única fuente del costo. Se lee entero
-// (son decenas, no millones) y se agrupa en el navegador: cada pantalla
-// de Costos necesita un corte distinto y traer uno por consulta sería
-// una ida al servidor por pestaña.
-export async function getConsumoLlm({ desde = null, hasta = null, limite = 5000 } = {}) {
-  let q = supabase.from("llm_costos").select("*");
-  // Con desfase explícito: un texto sin zona lo interpreta el servidor
-  // en la suya (UTC), y el rango quedaba corrido cinco horas.
-  if (desde) q = q.gte("created_at", inicioDelDia(desde));
-  if (hasta) q = q.lte("created_at", finDelDia(hasta));
-  const { data, error } = await q.order("created_at", { ascending: false }).limit(limite);
-  if (error) throw error;
-  return data || [];
+// El registro de llamadas es la única fuente del costo. Se lee entero y
+// se agrupa en el navegador: cada pantalla de Costos necesita un corte
+// distinto (por día, por corrida, rachas de fallas, la lista cruda) y
+// traer uno por consulta sería una ida al servidor por pestaña.
+//
+// Entero de verdad: con `limit(5000)` llegaban 1.000 de 1.006 (medido el
+// 2026-09-24) y Costos sumaba de menos sin decirlo. Hoy son ~420 bytes por
+// llamada y ~34 llamadas por día. Si llega a decenas de miles, lo que
+// corresponde es agregar en la base, como metricas_gerenciales() (070).
+export async function getConsumoLlm({ desde = null, hasta = null } = {}) {
+  const { filas } = await traerTodas((opciones) => {
+    let q = supabase.from("llm_costos").select("*", opciones);
+    // Con desfase explícito: un texto sin zona lo interpreta el servidor
+    // en la suya (UTC), y el rango quedaba corrido cinco horas.
+    if (desde) q = q.gte("created_at", inicioDelDia(desde));
+    if (hasta) q = q.lte("created_at", finDelDia(hasta));
+    // De la más vieja a la más nueva, para que una llamada que entra
+    // mientras se lee caiga al final y no corra las páginas.
+    return q.order("created_at").order("id");
+  });
+  // Las pantallas esperan lo más reciente primero.
+  return filas.reverse();
 }
 
 export async function getTarifasLlm() {
@@ -923,15 +958,21 @@ export async function cancelarLote(id) {
   return data ?? 0;
 }
 
-export async function getItemsLote(id, { estado = null, limite = 5000 } = {}) {
-  let q = supabase
-    .from("lote_items")
-    .select("id, ingresado, fila_archivo, cedula, tipo_identificacion, estado, motivo, duracion_ms, procesado_at")
-    .eq("lote_id", id);
-  if (estado) q = q.eq("estado", estado);
-  const { data, error } = await q.order("fila_archivo").limit(limite);
-  if (error) throw error;
-  return data || [];
+// Todos los ítems: la pantalla los cuenta por estado y el Excel arma con
+// ellos su hoja de resumen. Con `limit(5000)` llegaban a lo sumo 1.000:
+// un lote más grande se habría visto --y descargado-- con las primeras
+// mil cédulas y los conteos de esas mil. Hoy el más grande tiene 373
+// (2026-09-24), así que todavía no mordió.
+export async function getItemsLote(id, { estado = null } = {}) {
+  const { filas } = await traerTodas((opciones) => {
+    let q = supabase
+      .from("lote_items")
+      .select("id, ingresado, fila_archivo, cedula, tipo_identificacion, estado, motivo, duracion_ms, procesado_at", opciones)
+      .eq("lote_id", id);
+    if (estado) q = q.eq("estado", estado);
+    return q.order("fila_archivo").order("id");
+  });
+  return filas;
 }
 
 // Los perfiles de este lote, para las hojas del Excel.
@@ -1092,13 +1133,20 @@ export async function getBandejaConteos(filtros = {}) {
 // resultado, al elegir un segmento el desplegable se quedaría con esa
 // única opción y no habría forma de volver (mismo criterio que
 // FuentesClientes.jsx).
+//
+// De a páginas: es una fila por cliente, y en una sola consulta llegaban
+// 1.000 de 2.807 (2026-09-24). El desplegable salía sin "diplomatico",
+// que tiene una sola persona: un corte así se lleva primero a los
+// segmentos chicos.
 export async function getSegmentosDeLaCartera() {
-  const { data, error } = await supabase
-    .from("bandeja_solicitudes")
-    .select("fuente_segmento")
-    .not("fuente_segmento", "is", null);
-  if (error) throw error;
-  return [...new Set((data || []).map((f) => f.fuente_segmento))].sort();
+  const { filas } = await traerTodas((opciones) =>
+    supabase
+      .from("bandeja_solicitudes")
+      .select("fuente_segmento", opciones)
+      .not("fuente_segmento", "is", null)
+      .order("client_id")
+  );
+  return [...new Set(filas.map((f) => f.fuente_segmento))].sort();
 }
 
 // ---------- El expediente ----------
