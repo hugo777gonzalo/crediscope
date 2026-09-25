@@ -438,6 +438,24 @@ interface StandardClientProfile {
 >
 > Los perfiles anteriores conservan `ejesOk`/`ejesFaltantes`/`ejesConError`
 > y no se pueden convertir: el detalle por fuente se perdió al agregarlo.
+
+> **estructura-v4 (2026-09-25)** — Dos arreglos del grupo `laboral`:
+>
+> - `empleosActuales` salía sólo del mecanizado del IESS con una regla de
+>   "últimos 3 meses contra hoy", mientras la clasificación de ingresos lee
+>   los aportes (`tiess`) contra el corte. En 359 perfiles la clasificación
+>   veía un aporte vigente y el perfil decía que no había empleo actual.
+>   Ahora, si el mecanizado no trae un registro reciente, el empleo actual
+>   sale de los aportes vigentes al corte. Donde las dos fuentes traen dato,
+>   el sueldo coincide en 272 de 272. Los 374 perfiles guardados con el
+>   problema se corrigieron desde sus propios aportes con
+>   `scripts/corregir-empleo-actual.mjs` (marcados en
+>   `laboral.correccionEmpleoActual`).
+> - `antiguedadEmpleoActualMeses` se medía hasta hoy y
+>   `duracionEmpleoMasLargoMeses` hasta el último aporte: la antigüedad del
+>   empleo actual podía superar a la del empleo más largo, que lo incluye.
+>   Ahora las dos se miden hasta el último aporte. Los perfiles guardados no
+>   se recalculan (hace falta el crudo).
 > Hay que leer las dos formas — ver `metaDeLaConsulta()` en
 > `_shared/calidad-de-la-consulta.ts`.
 

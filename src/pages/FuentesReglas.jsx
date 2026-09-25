@@ -74,16 +74,22 @@ export default function FuentesReglas() {
         </div>
       ) : null}
 
-      <Paso titulo="El principio: todo lo que producimos son pisos, no cifras">
+      <Paso titulo="El principio: lo que se ve es lo reportado al IESS, no lo que la persona gana">
         <p>
           Ninguna fuente pública dice cuánto gana una persona en Ecuador. El empleador que reporta $500 sobre un sueldo de $900
-          para pagar menos aportes no deja rastro. Quien se autoafilia elige su propia base. Y con 3,8 millones de empleos
-          formales sobre 9 millones de población económicamente activa, la mayor parte de la actividad no queda declarada.
+          para pagar menos aportes no deja rastro. Y con 3,8 millones de empleos formales sobre 9 millones de población
+          económicamente activa, la mayor parte de la actividad no queda declarada.
+        </p>
+        <p>
+          Mucha gente gana el <strong>Salario Básico Unificado (SBU)</strong>, que sube cada año entre 8 y 25 dólares. Y hay
+          personas que aportan al IESS aunque no tengan un trabajo fijo: los afiliados voluntarios y los unipersonales, que
+          por lo general también aportan sobre el SBU. Cuando lo reportado es el SBU del año, o un valor muy cercano (±5%), la
+          pantalla lo dice así: <strong>Ingreso Mínimo SBU</strong>.
         </p>
         <p style={{ marginBottom: 0 }}>
           Por eso el módulo nunca afirma <em>&ldquo;ingreso: $500&rdquo;</em> sino{" "}
-          <strong>&ldquo;reportado al IESS: al menos $500&rdquo;</strong>. Estimar el ingreso real es un modelo aparte, que
-          necesita decenas de miles de casos y validación propia.
+          <strong>&ldquo;reportado al IESS: $500&rdquo;</strong>. Estimar el ingreso real es un modelo aparte, que necesita
+          decenas de miles de casos y validación propia.
         </p>
       </Paso>
 
@@ -101,9 +107,16 @@ export default function FuentesReglas() {
           mes: esa es la fecha de corte, no la fecha en que dejaron de trabajar. Si midiéramos la vigencia contra hoy, un retraso
           de la fuente marcaría a 243 personas como desempleadas de golpe.
         </p>
-        <p style={{ marginBottom: 0 }}>
+        <p>
           El reverso también informa: quien <strong>no</strong> aparece en el último corte pero sí en el anterior se desvinculó
           hace poco, y eso es una señal de riesgo distinta a llevar dos años sin aportar.
+        </p>
+        <p style={{ marginBottom: 0 }}>
+          Novadata actualiza el IESS más o menos cada dos meses. El corte vigente es el mes más reciente en el que aparecen al
+          menos <strong>20 clientes</strong> consultados en los últimos 90 días. Dos o tres aportes adelantados no lo mueven:
+          el 23 de septiembre dos aportes de agosto lo habían pasado a 2026-08 cuando el corte de Novadata era 2026-07, y todo
+          asalariado con su último aporte en julio habría quedado &ldquo;fuera del corte&rdquo;. Quien trae un mes más
+          reciente que el vigente se clasifica con el suyo.
         </p>
       </Paso>
 
@@ -185,7 +198,7 @@ export default function FuentesReglas() {
           <tbody>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.reportada_por_tercero}</td>
-              <td>Un empleador ajeno declara y paga sobre esa base. Sigue siendo un piso: puede estar subdeclarando.</td>
+              <td>Un empleador ajeno declara y paga sobre esa base. El sueldo real puede ser mayor: puede estar subdeclarando.</td>
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.autodeclarada_sobre_minimo}</td>
@@ -196,7 +209,7 @@ export default function FuentesReglas() {
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.autodeclarada_en_minimo}</td>
-              <td>Aporta sobre el salario básico del año. Es el piso de cobertura; no dice nada del ingreso.</td>
+              <td>Aporta sobre el SBU del año, lo mínimo para estar cubierto. No dice nada del ingreso.</td>
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.indirecta}</td>
@@ -205,7 +218,7 @@ export default function FuentesReglas() {
           </tbody>
         </table>
         <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-          Salario básico usado para distinguir el mínimo legal:{" "}
+          Salario Básico Unificado (SBU) de cada año:{" "}
           {SBU.map(([a, v]) => `${a}: $${v}`).join(" · ")}
         </p>
       </Paso>

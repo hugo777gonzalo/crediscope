@@ -9,6 +9,7 @@ import {
   BANDEJA_POR_PAGINA,
 } from "../lib/api.js";
 import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, formatMoneda } from "../lib/fuentesIngresoConsolidado.js";
+import { esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../lib/ingresosCampos.js";
 import { formatearFechaHora, hoyEcuador } from "../lib/fechas.js";
 import { nombreCorto } from "../lib/perfilClienteCampos.js";
 import {
@@ -295,7 +296,7 @@ export default function Solicitudes() {
                     <th>Última actividad</th>
                     <th>Persona</th>
                     <th>Fuente de ingreso</th>
-                    <th style={{ textAlign: "right" }}>Piso</th>
+                    <th style={{ textAlign: "right" }}>Ingreso IESS</th>
                     <th style={{ textAlign: "right" }}>Puntaje</th>
                     <th>Resultado</th>
                     <th>Consultas</th>
@@ -380,7 +381,18 @@ function FilaBandeja({ f }) {
       </td>
 
       <td style={{ textAlign: "right" }} className="crediscope-num">
-        {f.fuente_piso_ingreso ? formatMoneda(Number(f.fuente_piso_ingreso)) : <span className="crediscope-muted">—</span>}
+        {f.fuente_piso_ingreso ? (
+          <>
+            {formatMoneda(Number(f.fuente_piso_ingreso))}
+            {esIngresoMinimoSbu(Number(f.fuente_piso_ingreso), f.fuente_corte) ? (
+              <div className="crediscope-muted" style={{ fontSize: 11.5 }}>
+                {INGRESO_MINIMO_SBU}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <span className="crediscope-muted">—</span>
+        )}
       </td>
 
       <td style={{ textAlign: "right" }}>

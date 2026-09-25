@@ -217,7 +217,9 @@ function mismoNombre(a: unknown, b: unknown): boolean {
 //   - Los nombres vienen con la Ñ corrompida en algunos registros de la
 //     fuente ("PICHUCHO MU?OZ"), así que la comparación no puede exigir
 //     igualdad exacta de todas las palabras.
-function relacionConEmpleador(
+// Exportada para scripts/corregir-empleo-actual.mjs, que la aplica a
+// perfiles guardados: el mismo criterio que una consulta nueva.
+export function relacionConEmpleador(
   nombreEmpleador: unknown,
   nombreCliente: unknown
 ): { esElMismoCliente: boolean; comparteApellido: boolean } | null {
@@ -365,7 +367,10 @@ function textoDe(v: unknown): string | null {
 // v3: metaConsulta pasa de contar nueve bloques a nombrar las 52
 // fuentes. Los campos del perfil no cambian; lo que cambia es qué tan
 // fino se declara lo que se pudo medir (ver la migración 078).
-export const PROCESS_VERSION = "estructura-v3"; // ver docs/estructura-estandarizada.md
+// estructura-v4 (2026-09-25): empleosActuales cae a los aportes vigentes
+// al corte cuando el mecanizado no trae nada, y antiguedadEmpleoActualMeses
+// se mide hasta el último aporte y no hasta hoy.
+export const PROCESS_VERSION = "estructura-v4"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -577,21 +582,47 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     ? mecanizadoOrdenado.filter((r) => (r as AnyRecord).baseDate === corteMasReciente)
     : [];
 
-  const empleosActuales = registrosDelCorte.map((r) => ({
-    empleador: nombreEmpleador(r as AnyRecord),
-    cargo: (((r as AnyRecord).cargo as AnyRecord | undefined)?.nombre as string) ?? null,
-    salarioAprox: num(((r as AnyRecord).personaIngreso as AnyRecord | undefined)?.valor),
-  }));
+  // Cuando el mecanizado no trae un registro reciente, el empleo actual
+  // sale de los aportes vigentes al corte: los mismos (tiess, mismo
+  // corte) con que fuentes-ingreso.ts clasifica. Antes eran dos lecturas
+  // del IESS con reglas de vigencia distintas, y en 359 perfiles la
+  // clasificación veía un aporte vigente mientras el perfil decía "sin
+  // empleo actual" (medido el 2026-09-24). Donde las dos fuentes traen
+  // dato coinciden en el sueldo en 272 de 272 casos, así que la de los
+  // aportes es un reemplazo fiel.
+  const aportesDelCorte =
+    registrosDelCorte.length === 0
+      ? tiess.filter((t) => {
+          const anio = num(t.anio);
+          const mes = num(t.mes);
+          return anio !== null && mes !== null && `${anio}-${String(mes).padStart(2, "0")}` === fuentesIngreso.corteIessUsado;
+        })
+      : [];
+
+  const empleosActuales =
+    registrosDelCorte.length > 0
+      ? registrosDelCorte.map((r) => ({
+          empleador: nombreEmpleador(r as AnyRecord),
+          cargo: (((r as AnyRecord).cargo as AnyRecord | undefined)?.nombre as string) ?? null,
+          salarioAprox: num(((r as AnyRecord).personaIngreso as AnyRecord | undefined)?.valor),
+        }))
+      : aportesDelCorte.map((t) => {
+          const salario = num(t.salario);
+          return {
+            empleador: textoDe(t.nomEmp),
+            cargo: textoDe(t.ocupacion),
+            salarioAprox: salario !== null && salario > 0 ? salario : null,
+          };
+        });
+  const hayEmpleoActual = empleosActuales.length > 0;
 
   // Las señales de vínculo familiar miran a TODOS los empleadores
   // vigentes: alcanza con que UNO sea un familiar o el propio cliente
   // para que el caso merezca revisión. Antes solo se evaluaba el
   // primero, así que un segundo empleo con el suegro pasaba
   // desapercibido.
-  const relaciones = registrosDelCorte.map((r) =>
-    relacionConEmpleador(nombreEmpleador(r as AnyRecord), (persona?.nombre as string) ?? null)
-  );
-  const relacionEmpleador = empleoActualConfiable
+  const relaciones = empleosActuales.map((e) => relacionConEmpleador(e.empleador, (persona?.nombre as string) ?? null));
+  const relacionEmpleador = hayEmpleoActual
     ? {
         comparteApellido: relaciones.some((x) => x?.comparteApellido === true)
           ? true
@@ -654,9 +685,15 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // puede afirmar que sigue siendo el empleo ACTUAL de la persona.
   const antiguedadEmpleoActualConfiable =
     tiessActivoMasReciente !== undefined && (mesesDesdeUltimaEvidenciaActiva(tiessActivoMasReciente) ?? Infinity) <= 3;
+  // Hasta el último aporte registrado de ese empleo, no hasta hoy: la
+  // misma referencia que duracionEmpleoMasLargoMeses abajo. Medida contra
+  // hoy le sumaba los 2-3 meses de atraso del corte, y la antigüedad del
+  // empleo actual podía salir MAYOR que la del empleo más largo, que lo
+  // incluye (visto el 2026-09-24: 3 años 6 meses contra 3 años 4 meses).
+  const ultimoAporteEmpleoActual = tiessActivoMasReciente ? anioMesA0(tiessActivoMasReciente) : null;
   const antiguedadEmpleoActualMeses =
-    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 && antiguedadEmpleoActualConfiable
-      ? mesesEntreFechas(fecIngEmpleoActual, ahoraActividad)
+    fecIngEmpleoActual && snapshotsEmpleoActual >= 3 && antiguedadEmpleoActualConfiable && ultimoAporteEmpleoActual !== null
+      ? mesesEntreFechas(fecIngEmpleoActual, fechaDeAnioMesA0(ultimoAporteEmpleoActual))
       : null;
   // Empleo más largo registrado (histórico, incluye el actual si es el
   // más largo) — señal de estabilidad aparte de la antigüedad actual:
@@ -687,15 +724,16 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
   }, null);
   const laboral: StandardClientProfile["laboral"] = {
-    // Lista, no un solo empleo. Vacía cuando no hay registro confiable
-    // de los últimos 3 meses -- que no es lo mismo que no trabajar, es
-    // que el IESS todavía no publicó un corte reciente.
+    // Lista, no un solo empleo. Sale del mecanizado si trae un registro
+    // de los últimos 3 meses, y si no de los aportes vigentes al corte
+    // (estructura-v4). Vacía = ninguna de las dos fuentes del IESS ve un
+    // empleo vigente.
     empleosActuales: empleosActuales,
     // Solo tiene sentido si HAY empleo actual confiable: si no, se
     // estaría describiendo a un empleador que ya no existe (la primera
     // versión lo marcaba igual y daba 4 falsos positivos sobre 41).
-    empleadorConApellidoDelCliente: empleoActualConfiable ? (relacionEmpleador?.comparteApellido ?? null) : null,
-    clienteEsSuPropioEmpleador: empleoActualConfiable ? (relacionEmpleador?.esElMismoCliente ?? null) : null,
+    empleadorConApellidoDelCliente: hayEmpleoActual ? (relacionEmpleador?.comparteApellido ?? null) : null,
+    clienteEsSuPropioEmpleador: hayEmpleoActual ? (relacionEmpleador?.esElMismoCliente ?? null) : null,
     // Empleadores con evidencia de actividad en algún momento de los
     // últimos 24 meses — NO "empleadores que iniciaron en los últimos
     // 24 meses" (bug de semántica de una versión muy anterior: un

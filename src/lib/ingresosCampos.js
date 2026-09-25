@@ -1,5 +1,13 @@
 // Lecturas del perfil para la pestaña Fuentes de ingreso.
 
+import { esIngresoMinimoSbu, sbuDelAnio } from "../../supabase/functions/_shared/fuentes-ingreso.ts";
+
+// En Ecuador no se habla de "piso" (pedido del negocio, 2026-09-25): se
+// dice lo reportado al IESS y, cuando es el salario básico, "Ingreso
+// Mínimo SBU". La regla de qué cuenta como SBU vive en fuentes-ingreso.ts.
+export const INGRESO_MINIMO_SBU = "Ingreso Mínimo SBU";
+export { esIngresoMinimoSbu, sbuDelAnio };
+
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 // "2026-07" -> "jul 2026". Es un mes de corte del IESS, no un instante:

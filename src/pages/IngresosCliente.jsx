@@ -16,7 +16,7 @@ import DetalleIngresos from "../components/ingresos/DetalleIngresos.jsx";
 
 // "Fuentes de ingreso" — cuarta pestaña del cliente, con la misma gramática
 // que el reporte de Aval: arriba lo que decide (de qué vive, qué tan firme
-// es, el piso, qué tan sostenido y qué pedir), y el resto detrás de "Ver
+// es, cuánto se reporta, qué tan sostenido y qué pedir), y el resto detrás de "Ver
 // detalle completo".
 //
 // Lee el perfil guardado: el crudo de Novadata no se guarda, así que no hay

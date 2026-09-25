@@ -16,7 +16,7 @@ import { useSession } from "../lib/useSession.js";
 import { useProfile } from "../lib/useProfile.js";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import { nombreCorto } from "../lib/perfilClienteCampos.js";
-import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO, formatMoneda } from "../lib/fuentesIngresoConsolidado.js";
+import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO, formatMoneda, textoIngresoReportado } from "../lib/fuentesIngresoConsolidado.js";
 import { formatearFechaHora, haceCuanto } from "../lib/fechas.js";
 import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
 import { colorScore, colorRecomendacion, textoRecomendacion } from "../lib/bandeja.js";
@@ -181,7 +181,7 @@ export default function Expediente() {
             color={analisis?.recomendacion ? colorRecomendacion(analisis.recomendacion) : null}
           />
           <Sello etiqueta="Fuente de ingreso" valor={f?.segmento ? (ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento) : "Sin clasificar"} />
-          <Sello etiqueta="Piso de ingreso" valor={f?.pisoIngresoMensualReportado ? formatMoneda(f.pisoIngresoMensualReportado) : "—"} />
+          <Sello etiqueta="Ingreso reportado al IESS" valor={textoIngresoReportado(f?.pisoIngresoMensualReportado, f?.corteIessUsado)} />
           <Sello
             etiqueta="Listas de control"
             valor={hallazgos.length ? `${hallazgos.length} hallazgo${hallazgos.length > 1 ? "s" : ""}` : "Sin hallazgos"}
@@ -263,7 +263,7 @@ export default function Expediente() {
                 cuando exista la solicitud. */}
             <div className="crediscope-pendiente" style={{ marginTop: 12 }}>
               <p>
-                <strong>Falta la capacidad de pago.</strong> Es la cuota contra el piso de ingreso, y es donde se decide un
+                <strong>Falta la capacidad de pago.</strong> Es la cuota contra el ingreso reportado, y es donde se decide un
                 crédito. No se puede calcular todavía porque no hay monto ni plazo: eso llega con la solicitud como entidad.
               </p>
             </div>
@@ -430,7 +430,7 @@ function SeccionIngresos({ f, laboral }) {
       <div className="crediscope-pares" style={{ marginBottom: 14 }}>
         <Par etiqueta="Segmento" valor={ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento} />
         <Par etiqueta="Clasificación" valor={ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento} />
-        <Par etiqueta="Piso de ingreso reportado" valor={f.pisoIngresoMensualReportado ? formatMoneda(f.pisoIngresoMensualReportado) : "—"} />
+        <Par etiqueta="Ingreso reportado al IESS" valor={textoIngresoReportado(f.pisoIngresoMensualReportado, f.corteIessUsado)} />
         <Par etiqueta="Corte del IESS usado" valor={f.corteIessUsado ?? "—"} />
         <Par etiqueta="Aparece en el último corte" valor={f.apareceEnUltimoCorte === null ? "—" : f.apareceEnUltimoCorte ? "Sí" : "No"} />
         <Par etiqueta="Empleadores activos (24m)" valor={laboral?.numeroEmpleadoresUltimos24Meses ?? "—"} />
@@ -565,7 +565,7 @@ function construirLineaDeTiempo(datos) {
     quien: [
       c.structure_version,
       c.fuente_segmento ? `${ETIQUETA_SEGMENTO[c.fuente_segmento] ?? c.fuente_segmento}` : null,
-      c.fuente_piso_ingreso ? `piso ${formatMoneda(Number(c.fuente_piso_ingreso))}` : null,
+      c.fuente_piso_ingreso ? `ingreso IESS ${textoIngresoReportado(c.fuente_piso_ingreso, c.fuente_corte)}` : null,
       c.duracion_ms ? `${(c.duracion_ms / 1000).toFixed(1)} s` : null,
     ]
       .filter(Boolean)

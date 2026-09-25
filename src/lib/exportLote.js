@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { diaEcuador, fechaHoraOrdenable, formatearFechaHora } from "./fechas.js";
 import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO } from "./fuentesIngresoConsolidado.js";
+import { esIngresoMinimoSbu } from "./ingresosCampos.js";
 
 // El resultado de un lote, en un solo archivo con varias hojas.
 //
@@ -19,7 +20,7 @@ import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO
 //             contra el incumplimiento.
 //
 //   Detalle   una línea por fuente. Es la que responde "¿de dónde sale
-//             exactamente ese piso de ingreso?" cuando alguien discute
+//             exactamente ese ingreso reportado?" cuando alguien discute
 //             una clasificación.
 //
 // Se unen por la cédula, que está en las dos.
@@ -83,7 +84,8 @@ function filaResumenIngresos(perfil) {
     segmento_clave: f.segmento ?? "",
     estado_clasificacion: ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento ?? "",
     como_puede_fallar: RIESGO_SEGMENTO[f.segmento] ?? "",
-    piso_ingreso_reportado: f.pisoIngresoMensualReportado ?? "",
+    ingreso_reportado_iess: f.pisoIngresoMensualReportado ?? "",
+    ingreso_minimo_sbu: f.pisoIngresoMensualReportado ? (esIngresoMinimoSbu(f.pisoIngresoMensualReportado, f.corteIessUsado) ? 1 : 0) : "",
     fuentes_totales: fuentes.length,
     fuentes_vigentes: vigentes.length,
     aparece_en_ultimo_corte: f.apareceEnUltimoCorte === null || f.apareceEnUltimoCorte === undefined ? "" : f.apareceEnUltimoCorte ? 1 : 0,
@@ -141,14 +143,15 @@ const COMO_LEER = [
   ["Perfil del Cliente — una fila por persona con TODOS los campos de la Estructura"],
   ["  Estandarizada, en columnas \"grupo.campo\". Es la base para análisis estadístico."],
   ["Ingresos (resumen) — una fila por persona. Es la que se cruza contra la cartera."],
-  ["Ingresos (detalle) — una fila por fuente de ingreso. Responde de dónde sale el piso."],
+  ["Ingresos (detalle) — una fila por fuente de ingreso. Responde de dónde sale el ingreso reportado."],
   ["  Se une con el resumen por la columna cedula."],
   ["Cédulas con error — las que no se pudieron consultar, con el motivo."],
   [],
-  ["Sobre el piso de ingreso:"],
+  ["Sobre el ingreso reportado al IESS:"],
   ["· Es la SUMA DE LO REPORTADO al IESS por las fuentes vigentes, no el ingreso real."],
   ["· Los empleadores subdeclaran y quien se afilia por su cuenta elige su base."],
-  ["· Siempre es un piso: el ingreso real puede ser mayor, nunca menor."],
+  ["· El ingreso real puede ser mayor, nunca menor."],
+  ["· ingreso_minimo_sbu = 1 cuando lo reportado es el Salario Básico Unificado del año (±5%): lo aporta quien gana el básico y casi todo afiliado voluntario."],
   [],
   ["Sobre el estado de la clasificación:"],
   ["· Confirmada — un tercero declara y paga sobre esa base."],

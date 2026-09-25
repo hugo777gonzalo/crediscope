@@ -8,6 +8,7 @@ import {
   ETIQUETA_EVIDENCIA,
   RIESGO_SEGMENTO,
   formatMoneda,
+  textoIngresoReportado,
 } from "../lib/fuentesIngresoConsolidado.js";
 
 // El listado detrás de los números del panorama. Sin esto el módulo
@@ -145,7 +146,8 @@ export default function FuentesClientes() {
             </div>
             {f.pisoIngresoMensualReportado ? (
               <span className="crediscope-muted">
-                Piso reportado: <strong style={{ color: "var(--text)" }}>{formatMoneda(f.pisoIngresoMensualReportado)}</strong>
+                Ingreso reportado al IESS:{" "}
+                <strong style={{ color: "var(--text)" }}>{textoIngresoReportado(f.pisoIngresoMensualReportado, f.corteIessUsado)}</strong>
               </span>
             ) : (
               <span className="crediscope-muted">Sin monto reportado</span>

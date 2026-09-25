@@ -4,8 +4,9 @@ import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
   RIESGO_SEGMENTO,
-  formatMoneda,
+  textoIngresoReportado,
 } from "../lib/fuentesIngresoConsolidado.js";
+import { duracionLegible } from "../lib/ingresosCampos.js";
 
 // Lo que sigue estando disponible cuando el modelo no responde.
 //
@@ -61,13 +62,16 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
             ) : null}
             {f?.pisoIngresoMensualReportado ? (
               <Dato
-                etiqueta="Piso de ingreso reportado"
-                valor={formatMoneda(f.pisoIngresoMensualReportado)}
+                etiqueta="Ingreso reportado al IESS"
+                valor={textoIngresoReportado(f.pisoIngresoMensualReportado, f.corteIessUsado)}
                 detalle="Lo declarado al IESS; el ingreso real puede ser mayor"
               />
             ) : null}
-            {laboral.antiguedadLaboralMeses ? (
-              <Dato etiqueta="Antigüedad laboral" valor={`${laboral.antiguedadLaboralMeses} meses`} />
+            {/* Leía `antiguedadLaboralMeses`, un campo que el perfil nunca
+                tuvo: la antigüedad no aparecía nunca. El campo es
+                antiguedadEmpleoActualMeses. */}
+            {laboral.antiguedadEmpleoActualMeses ? (
+              <Dato etiqueta="Antigüedad en el empleo actual" valor={duracionLegible(laboral.antiguedadEmpleoActualMeses)} />
             ) : null}
             <Dato
               etiqueta="Listas de control"

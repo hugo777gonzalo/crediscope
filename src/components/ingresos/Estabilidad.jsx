@@ -5,8 +5,8 @@ import { duracionLegible, mesLegible, mesesHasta } from "../../lib/ingresosCampo
 
 // Qué tan sostenido es el ingreso: cuánto lleva en el empleo, si aporta
 // todos los meses o con huecos, y si el sueldo reportado sube o baja. Un
-// piso de $1.000 que viene de 24 meses seguidos no es el mismo dato que
-// uno que apareció el mes pasado.
+// ingreso reportado de $1.000 que viene de 24 meses seguidos no es el
+// mismo dato que uno que apareció el mes pasado.
 
 // Las 24 barras del historial. Una sola serie -- el total aportado por mes
 // -- así que un solo tono y sin leyenda. Los meses sin aporte se dibujan
@@ -93,7 +93,7 @@ export default function Estabilidad({ f, laboral }) {
             </span>
           </Cifra>
         ) : null}
-        <Cifra etiqueta="Promedio mensual, 6 meses" titulo="Promedio de los meses con aporte. Es un piso, igual que el del corte.">
+        <Cifra etiqueta="Promedio mensual, 6 meses" titulo="Promedio de los meses con aporte. Es lo reportado al IESS, igual que el del corte.">
           {promedio6 ? formatearValorAval(promedio6, "dinero") : "—"}
         </Cifra>
         {d ? (

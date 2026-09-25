@@ -4,17 +4,24 @@
 // cada vez que aparezca un caso raro, y no conviene que cada ajuste
 // obligue a revalidar los 125 campos del perfil. Tiene su propia versión.
 //
-// PRINCIPIO RECTOR — TODO LO QUE PRODUCE SON PISOS, NO CIFRAS.
+// PRINCIPIO RECTOR — LO QUE PRODUCE ES INGRESO REPORTADO, NO INGRESO.
 // Ninguna fuente pública dice cuánto gana alguien en Ecuador:
 //   - El empleador subdeclara el sueldo para pagar menos aportes (gana
 //     900, lo reportan con 500). Pasa y no lo vamos a detectar.
-//   - Quien se autoafilia elige su base de aporte.
+//   - Quien se autoafilia (afiliado voluntario o unipersonal, aunque no
+//     tenga un trabajo fijo) elige su base de aporte, y casi siempre elige
+//     el Salario Básico Unificado (SBU), que sube entre 8 y 25 dólares por
+//     año.
 //   - Con 3,8 millones de empleos formales sobre 9 millones de PEA, la
 //     mayoría de la actividad económica no deja rastro declarado.
-// Por eso nunca se escribe "ingreso: $500" sino "reportado al IESS: al
-// menos $500". Un analista lee cosas distintas en cada frase, y la
-// segunda es la verdadera. Estimar el ingreso real es un modelo aparte,
-// con decenas de miles de casos -- no se resuelve con reglas acá.
+// Por eso nunca se escribe "ingreso: $500" sino "reportado al IESS:
+// $500", y cuando el monto es el SBU se dice "Ingreso Mínimo SBU"
+// (esIngresoMinimoSbu). El negocio pidió el 2026-09-25 no hablar de
+// "piso": en Ecuador no se usa. Los nombres internos que lo llevan
+// (pisoIngresoMensualReportado, fuente_piso_ingreso) quedan como están:
+// renombrarlos obligaba a reescribir miles de perfiles sin cambiar nada
+// de lo que se lee. Estimar el ingreso real es un modelo aparte, con
+// decenas de miles de casos -- no se resuelve con reglas acá.
 //
 // SEGUNDA REGLA — LA VIGENCIA SE MIDE CONTRA EL CORTE, NO CONTRA HOY.
 // El mecanizado del IESS se actualiza cada 2-3 meses. Medido sobre 389
@@ -82,6 +89,22 @@ const SBU_POR_ANIO: Record<number, number> = {
 };
 const SBU_POR_DEFECTO = 482;
 
+export function sbuDelAnio(anio: number): number {
+  return SBU_POR_ANIO[anio] ?? SBU_POR_DEFECTO;
+}
+
+// "Ingreso Mínimo SBU": el monto es el Salario Básico Unificado del año o
+// está muy cerca (±5%, la misma holgura con que la clasificación separa
+// al que aporta en el mínimo del que aporta por encima). Un monto bastante
+// menor -- medio tiempo, un mes incompleto -- no es el SBU y no se rotula
+// así. `mes` es "yyyy-mm": el SBU que cuenta es el del año de ese aporte.
+export function esIngresoMinimoSbu(monto: number | null | undefined, mes: string | null | undefined): boolean {
+  if (typeof monto !== "number" || !(monto > 0)) return false;
+  const anio = Number(String(mes ?? "").slice(0, 4));
+  const sbu = sbuDelAnio(Number.isInteger(anio) ? anio : NaN);
+  return monto >= sbu * 0.95 && monto <= sbu * 1.05;
+}
+
 // Naturaleza del vínculo según el código de tipo de empleador del IESS.
 // Se lee SIEMPRE el número: las etiquetas vienen sucias, truncadas a
 // distinto largo y con la codificación rota ("ENTIDADES P+BLICAS").
@@ -100,7 +123,7 @@ export type Naturaleza =
   | "cuenta_propia" | "agricola" | "hogar" | "otro";
 
 export type CalidadEvidencia =
-  // Un tercero declara y paga sobre esa base. Sigue siendo un piso: el
+  // Un tercero declara y paga sobre esa base. Sigue siendo lo reportado: el
   // empleador puede estar subdeclarando.
   | "reportada_por_tercero"
   // La persona eligió su base de aporte. Por encima del mínimo legal
@@ -172,7 +195,7 @@ export interface DetalleIngresos {
   mesesConAporteUltimos24: number;
   promedioUltimos6: number | null;
   promedioUltimos12: number | null;
-  // Total del mismo mes un año antes del corte: contra el piso de hoy dice
+  // Total del mismo mes un año antes del corte: contra el reportado hoy dice
   // si el sueldo reportado creció o cayó. Null si ese mes no tuvo aporte.
   totalHace12Meses: number | null;
   actividadesEconomicas: { nombreComercial: string | null; actividad: string | null; abierto: boolean; inicio: string | null }[];
@@ -189,7 +212,7 @@ export interface AnalisisFuentesIngreso {
   apareceEnUltimoCorte: boolean | null;
   cortesDesdeLaDesvinculacion: number | null;
   fuentes: FuenteIngreso[];
-  // Suma de los montos reportados de las fuentes vigentes. Es un PISO
+  // Suma de los montos reportados de las fuentes vigentes. Es lo REPORTADO
   // del ingreso, nunca el ingreso.
   pisoIngresoMensualReportado: number | null;
   senalesDeEscala: SenalEscala[];
@@ -225,7 +248,7 @@ function mesClave(anio: unknown, mes: unknown): string | null {
 }
 
 // Un monto solo cuenta si es positivo. La fuente devuelve ceros y algún
-// negativo suelto, y un negativo arrastra el piso de ingreso hacia abajo
+// negativo suelto, y un negativo arrastra el ingreso reportado hacia abajo
 // sin que nadie lo note.
 function montoValido(v: unknown): number | null {
   const n = Number(v);
@@ -287,7 +310,7 @@ function promedio(valores: number[]): number | null {
 // Lo que el analista necesita para leer la historia y que la clasificación
 // sola no dice: si aporta todos los meses o con huecos, si el sueldo
 // reportado sube o baja, de qué vive quien tiene RUC y cuánto impuesto a la
-// renta causó cada año. Los montos siguen siendo pisos, igual que arriba.
+// renta causó cada año. Los montos siguen siendo lo reportado, igual que arriba.
 function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyRecord): DetalleIngresos {
   const desde = mesMenos(corte, 23);
   const enVentana = aportes
@@ -465,8 +488,8 @@ export function analizarFuentesIngreso(
       empleador: (a.nomEmp as string) ?? null,
       vigenteAlCorte: true,
       detalle: esAutoafiliado
-        ? `Aporte propio sobre una base de $${monto ?? "?"} (salario básico del año: $${sbu}). La base la elige el afiliado.`
-        : `Reportado por ${(a.nomEmp as string) ?? "el empleador"} en el corte ${corte}. Es un piso: el empleador puede declarar menos que el sueldo real.`,
+        ? `Aporte propio sobre una base de $${monto ?? "?"} (SBU del año: $${sbu}). La base la elige el afiliado.`
+        : `Reportado por ${(a.nomEmp as string) ?? "el empleador"} en el corte ${corte}. Es lo que declara el empleador: el sueldo real puede ser mayor.`,
     });
   }
 

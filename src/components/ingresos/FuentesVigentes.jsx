@@ -2,7 +2,7 @@ import { Landmark } from "lucide-react";
 import { TituloTarjeta, Cifra } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 import { ETIQUETA_EVIDENCIA } from "../../lib/fuentesIngresoConsolidado.js";
-import { origenDeFuente, ETIQUETA_ORIGEN, mesLegible } from "../../lib/ingresosCampos.js";
+import { origenDeFuente, ETIQUETA_ORIGEN, mesLegible, esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
 
 // Las fuentes separadas por de dónde salen: lo que declara un tercero o la
 // persona ante el IESS (con monto) y lo que se deduce de otras fuentes
@@ -20,20 +20,28 @@ function capitalizar(t) {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
-function Fuente({ fuente, conMonto }) {
+function Fuente({ fuente, conMonto, corte }) {
   const origen = origenDeFuente(fuente);
+  const enElSbu = conMonto && esIngresoMinimoSbu(fuente.montoMensualReportado, corte);
   return (
     <li className="crediscope-ing-fuente">
       <div style={{ minWidth: 0 }}>
         <strong>{capitalizar(origen === "iess" ? fuente.tipo : ETIQUETA_ORIGEN[origen])}</strong>
         {fuente.empleador ? <span className="crediscope-ing-fuente-sub">{fuente.empleador}</span> : null}
         {!conMonto ? <span className="crediscope-ing-fuente-sub">{fuente.detalle}</span> : null}
-        <span
-          className={`crediscope-tag ${CLASE_EVIDENCIA[fuente.evidencia] ?? "crediscope-tag-neutral"}`}
-          style={{ marginTop: 6, fontSize: 11.5, padding: "2px 8px" }}
-          title={conMonto ? fuente.detalle : undefined}
-        >
-          {ETIQUETA_EVIDENCIA[fuente.evidencia] ?? fuente.evidencia}
+        <span style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+          <span
+            className={`crediscope-tag ${CLASE_EVIDENCIA[fuente.evidencia] ?? "crediscope-tag-neutral"}`}
+            style={{ fontSize: 11.5, padding: "2px 8px" }}
+            title={conMonto ? fuente.detalle : undefined}
+          >
+            {ETIQUETA_EVIDENCIA[fuente.evidencia] ?? fuente.evidencia}
+          </span>
+          {enElSbu ? (
+            <span className="crediscope-tag crediscope-tag-neutral" style={{ fontSize: 11.5, padding: "2px 8px" }}>
+              {INGRESO_MINIMO_SBU}
+            </span>
+          ) : null}
         </span>
       </div>
       {conMonto ? (
@@ -70,7 +78,7 @@ export default function FuentesVigentes({ f }) {
         ) : (
           <ul className="crediscope-aval-filas">
             {delIess.map((x, i) => (
-              <Fuente key={i} fuente={x} conMonto />
+              <Fuente key={i} fuente={x} conMonto corte={f.corteIessUsado} />
             ))}
           </ul>
         )}

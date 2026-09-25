@@ -209,10 +209,10 @@ export default function DetalleIngresos({ perfil }) {
             <FilaCampo etiqueta="Paga ISD (salida de divisas)" valor={tributario.pagaISD} tipo="booleano" />
             <FilaCampo etiqueta="Mayor ISD pagado" valor={tributario.montoMaximoISD} tipo="dinero" />
           </ul>
-          <p className="crediscope-aval-nota">
-            El impuesto causado sube con la base gravable: un año con impuesto implica ingresos por encima de la fracción exenta
-            de ese año.
-          </p>
+          {/* Sin interpretación a propósito (decisión del negocio,
+              2026-09-25): el impuesto causado depende de deducciones,
+              retenciones y del formulario, y no alcanza para deducir un
+              ingreso. Se muestra como dato. */}
         </div>
 
         <div className="crediscope-card">

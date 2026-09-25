@@ -19,6 +19,17 @@ error, textos de pantalla, nombres de archivos de migración y mensajes
 de commit. Sin anglicismos salvo `score` y `colateral`, que el negocio
 usa así. Adaptado a Ecuador: cédula, IESS, SRI, RUC, voseo.
 
+**En ingresos no se dice "piso"**: en Ecuador no se usa. Se dice
+"ingreso reportado al IESS" y, cuando el monto es el Salario Básico
+Unificado del año o está a ±5%, **"Ingreso Mínimo SBU"**. Mucha gente
+gana el SBU (sube entre 8 y 25 dólares por año), y los afiliados
+voluntarios y unipersonales -- que aportan aunque no tengan un trabajo
+fijo -- casi siempre aportan sobre él. La regla vive en
+`esIngresoMinimoSbu()` de `fuentes-ingreso.ts` y las pantallas la
+importan. Los nombres internos que dicen piso
+(`pisoIngresoMensualReportado`, `fuente_piso_ingreso`) quedaron: no se
+leen en pantalla.
+
 **Los comentarios explican el porqué, no el qué.** Cuando una decisión
 es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
 real, un número medido, un error que costó caro. Un comentario que
@@ -126,7 +137,8 @@ Cada una de estas salió de un error real. No revivirlas.
   ~840 clientes de 2.807 hasta la 081 (decía 290 dependientes privados
   donde había 950). Lo que agrega sobre la cartera se cuenta en la base
   (una función `security invoker`, como `metricas_gerenciales()` o
-  `resumen_fuentes_ingreso()`); lo que lista, se pagina con `.range()`.
+  `resumen_fuentes_ingreso()`); lo que lista, se pagina con
+  `traerTodas()` (ver arriba).
 - **El crudo de Novadata no se guarda.** Se guarda el perfil
   estandarizado (`client_profiles.standard_profile`); la respuesta
   cruda existe sólo para 389 personas en `research/novadata-raw/`. Una
@@ -136,6 +148,26 @@ Cada una de estas salió de un error real. No revivirlas.
   historial de aportes, la actividad económica y la renta por año, para
   el analista. Todo camino que le mande un perfil al LLM pasa por
   `sinDetalleDeIngresos()`; uno nuevo también tiene que hacerlo.
+- **El corte del IESS lo deciden 20 clientes, no uno.** Novadata
+  actualiza el IESS más o menos cada dos meses (al 2026-09-25 el corte
+  es 2026-07; el de 2026-09 se espera en octubre). Algunos aportes llegan
+  antes: el 2026-09-23 dos de agosto movieron el corte a 2026-08 para
+  todos, y cualquier asalariado con su último aporte en julio habría
+  quedado "fuera del corte" -- la familia de error del 2026-09-15. Desde
+  la 083 el corte es `corte_iess_vigente()`: el mes más reciente con al
+  menos 20 clientes distintos consultados en 90 días. Quien trae un mes
+  posterior se clasifica con el suyo.
+- **Empleo actual e ingresos leen el mismo registro del IESS.** Hasta
+  estructura-v4, `laboral.empleosActuales` salía sólo del mecanizado
+  (contra hoy) y la clasificación de los aportes (contra el corte): 374
+  perfiles tenían aporte vigente y "sin empleo actual". Ahora el empleo
+  cae a los aportes cuando el mecanizado no trae nada, y los guardados
+  se corrigieron con `scripts/corregir-empleo-actual.mjs`.
+- **`reprocess-sample.mjs` quedó atrás de `process.ts`** (sigue en la
+  forma vieja de `empleoActual`). `process.ts` corre directo bajo Node:
+  para validar un cambio del perfil, comparar la versión vieja contra la
+  nueva de `process.ts` sobre `research/novadata-raw/` con el perfil
+  entero, no contra el espejo.
 - **Una actualización bloqueada por RLS devuelve 0 filas, no un error.**
   Hay que pedir `.select()` y contar.
 - **Al reclamar trabajo en un proceso concurrente, trabajar sobre las

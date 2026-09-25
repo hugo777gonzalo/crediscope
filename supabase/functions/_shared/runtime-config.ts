@@ -76,27 +76,22 @@ export function redactDisabledFields(profile: StandardClientProfile, disabledFie
 // El proveedor no avisa que publicó un corte nuevo, así que el valor se
 // quedaba viejo hasta que alguien lo notaba.
 //
-// Los datos sí lo saben. Cada perfil guarda el corte con el que se
-// clasificó, y cuando un cliente trae un mes más nuevo que el conocido,
-// el módulo usa el del cliente. Así que el mes más alto visto en los
-// perfiles recientes ES el corte vigente: el primero que llega con datos
-// nuevos lo mueve para todos.
+// Los datos sí lo saben: cuando Novadata publica un corte nuevo, todos
+// los asalariados aparecen en el mes nuevo a la vez. La regla vive en la
+// base (corte_iess_vigente, migración 083): el mes más reciente en el que
+// aparecen al menos 20 clientes distintos consultados en los últimos 90
+// días.
 //
-// Los 90 días acotan la ventana a propósito: un perfil viejo no puede
-// arrastrar el corte hacia atrás, y uno muy viejo no debería opinar.
+// Hasta la 083 bastaba UN perfil: el mes más alto visto movía el corte
+// para todos. El 2026-09-23 dos aportes adelantados de agosto lo pasaron a
+// 2026-08 cuando el corte real de Novadata era 2026-07, y desde ahí todo
+// asalariado con su último aporte en julio habría quedado "fuera del
+// último corte". Se corrigió antes de que pasara.
 export async function loadCorteIess(client: SupabaseClient, porDefecto: string): Promise<string> {
-  const desde = new Date(Date.now() - 90 * 86_400_000).toISOString();
-  const { data, error } = await client
-    .from("client_profiles")
-    .select("fuente_corte")
-    .not("fuente_corte", "is", null)
-    .gte("created_at", desde)
-    .order("fuente_corte", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data?.fuente_corte) return porDefecto;
+  const { data, error } = await client.rpc("corte_iess_vigente");
+  if (error || !data) return porDefecto;
 
-  const visto = String(data.fuente_corte);
+  const visto = String(data);
   if (!/^\d{4}-\d{2}$/.test(visto)) return porDefecto;
 
   // Un mes futuro no puede ser un corte: sería un dato corrupto de un

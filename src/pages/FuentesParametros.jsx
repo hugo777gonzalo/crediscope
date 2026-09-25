@@ -7,12 +7,12 @@ import { mesLegible } from "../lib/ingresosCampos.js";
 // Parámetros operativos del módulo.
 //
 // El corte del IESS ya no se edita: lo deducen los propios datos
-// (loadCorteIess en runtime-config.ts). El IESS no avisa cuando publica un
-// corte nuevo; el primer cliente que llega con un mes más reciente lo
-// mueve para todas las consultas siguientes. Esta pantalla decía que había
-// que cambiar una constante y desplegar, y ofrecía como pendiente
-// "poder actualizarlo desde acá": las dos cosas quedaron viejas cuando el
-// corte pasó a deducirse solo.
+// (corte_iess_vigente en la base, migración 083). Novadata no avisa
+// cuando actualiza el IESS (más o menos cada dos meses); el mes nuevo se
+// vuelve vigente cuando lo respaldan 20 clientes consultados. Esta
+// pantalla decía que había que cambiar una constante y desplegar, y
+// ofrecía como pendiente "poder actualizarlo desde acá": las dos cosas
+// quedaron viejas cuando el corte pasó a deducirse solo.
 //
 // Lo que sí sigue importando: cuántos clientes quedaron clasificados con
 // un corte anterior al vigente. Esa clasificación es una foto del momento;
@@ -54,9 +54,10 @@ export default function FuentesParametros() {
       <div className="crediscope-card">
         <h3>Corte del registro del IESS</h3>
         <p className="crediscope-muted" style={{ marginTop: 0 }}>
-          El IESS publica su registro cada dos o tres meses y no avisa cuando lo hace. Todas las reglas de vigencia se miden
-          contra ese corte, no contra la fecha de hoy. El corte se deduce solo: es el mes más reciente que trajo algún cliente
-          consultado en los últimos 90 días.
+          Novadata actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
+          vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce solo: es el mes más reciente en el
+          que aparecen al menos 20 clientes consultados en los últimos 90 días. Algunos aportes llegan antes que el resto: esos
+          clientes se clasifican con su propio mes, sin mover el corte de todos.
         </p>
 
         {!d ? (
@@ -84,6 +85,9 @@ export default function FuentesParametros() {
                     <td style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
                       {mesLegible(corte)}
                       {vigente && corte < vigente ? <span className="crediscope-muted" style={{ fontWeight: 400 }}> · anterior al vigente</span> : null}
+                      {vigente && corte > vigente ? (
+                        <span className="crediscope-muted" style={{ fontWeight: 400 }}> · aportes adelantados, todavía no es el corte</span>
+                      ) : null}
                     </td>
                     <td>{n.toLocaleString("es-EC")}</td>
                   </tr>

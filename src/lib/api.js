@@ -1061,8 +1061,8 @@ export const ORDENES_BANDEJA = {
   antiguo: { columna: "ultima_actividad", asc: true, texto: "Más antiguo" },
   score_alto: { columna: "score", asc: false, texto: "Puntaje más alto" },
   score_bajo: { columna: "score", asc: true, texto: "Puntaje más bajo" },
-  piso_alto: { columna: "fuente_piso_ingreso", asc: false, texto: "Mayor piso de ingreso" },
-  piso_bajo: { columna: "fuente_piso_ingreso", asc: true, texto: "Menor piso de ingreso" },
+  piso_alto: { columna: "fuente_piso_ingreso", asc: false, texto: "Mayor ingreso reportado al IESS" },
+  piso_bajo: { columna: "fuente_piso_ingreso", asc: true, texto: "Menor ingreso reportado al IESS" },
 };
 
 // `desde`/`hasta` llegan como día suelto (2026-09-15) y se expanden al
@@ -1105,7 +1105,7 @@ export async function getBandejaSolicitudes(filtros = {}) {
   }
 
   // nullsFirst: false deja abajo a los que todavía no tienen puntaje ni
-  // piso. Ordenar por "puntaje más alto" y encontrar arriba una fila
+  // ingreso reportado. Ordenar por "puntaje más alto" y encontrar arriba una fila
   // vacía es desconcertante.
   q = q.order(criterio.columna, { ascending: criterio.asc, nullsFirst: false });
   // Desempate estable: sin esto, dos filas con el mismo puntaje pueden

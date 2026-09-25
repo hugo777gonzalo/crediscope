@@ -103,9 +103,9 @@ export default function FuentesIngreso() {
             <Kpi Icono={Users} etiqueta="Clientes clasificados" valor={d.total} detalle={d.sinClasificar ? `${d.sinClasificar} perfiles previos al módulo, sin clasificar` : null} />
             <Kpi
               Icono={ShieldQuestion}
-              etiqueta="Con piso de ingreso"
+              etiqueta="Con ingreso reportado al IESS"
               valor={d.conPiso}
-              detalle={d.pisoPromedio ? `Piso promedio reportado: ${formatMoneda(d.pisoPromedio)}` : null}
+              detalle={d.pisoPromedio ? `Promedio reportado: ${formatMoneda(d.pisoPromedio)}` : null}
             />
             <Kpi
               Icono={Building2}

@@ -2,17 +2,21 @@ import { Wallet } from "lucide-react";
 import { nombreCorto } from "../../lib/perfilClienteCampos.js";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 import { ETIQUETA_SEGMENTO, RIESGO_SEGMENTO, ETIQUETA_ESTADO } from "../../lib/fuentesIngresoConsolidado.js";
-import { mesLegible } from "../../lib/ingresosCampos.js";
+import { mesLegible, esIngresoMinimoSbu, sbuDelAnio, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
 
 const CLASE_ESTADO = { confirmada: "crediscope-tag-ok", provisional: "crediscope-tag-warn", indeterminada: "crediscope-tag-neutral" };
 
-// De qué vive, qué tan firme es eso, y el piso. Lo que un analista tiene
-// que saber antes de mirar cualquier otro número de la pestaña.
+// De qué vive, qué tan firme es eso, y cuánto se reporta al IESS. Lo que un
+// analista tiene que saber antes de mirar cualquier otro número de la
+// pestaña.
 export default function EncabezadoIngresos({ cedula, perfil, corteVigente, consultadoEl, acciones }) {
   const f = perfil?.fuentesIngreso ?? null;
   const laboral = perfil?.laboral ?? {};
   const nombre = nombreCorto(perfil?.identidad?.nombreCompleto);
   const clasificadoConOtroCorte = f?.corteIessUsado && corteVigente && f.corteIessUsado < corteVigente;
+  const monto = f?.pisoIngresoMensualReportado ?? null;
+  const enElSbu = esIngresoMinimoSbu(monto, f?.corteIessUsado);
+  const anioCorte = Number(String(f?.corteIessUsado ?? "").slice(0, 4));
 
   return (
     <div className={`crediscope-card crediscope-aval-cabecera ${f ? "" : "crediscope-aval-cabecera-sin-datos"}`}>
@@ -63,16 +67,21 @@ export default function EncabezadoIngresos({ cedula, perfil, corteVigente, consu
           </div>
 
           <div className="crediscope-ing-bloque">
-            <span className="crediscope-ing-rotulo">Piso de ingreso mensual</span>
+            {/* En el SBU el rótulo lo dice con el nombre que se usa en
+                Ecuador: es lo que aportan la mayoría de los asalariados de
+                sueldo básico y los afiliados voluntarios. */}
+            <span className="crediscope-ing-rotulo">{enElSbu ? INGRESO_MINIMO_SBU : "Ingreso reportado al IESS"}</span>
             <strong className="crediscope-ing-principal">
-              {f.pisoIngresoMensualReportado ? formatearValorAval(f.pisoIngresoMensualReportado, "dinero") : "Sin monto reportado"}
+              {monto ? formatearValorAval(monto, "dinero") : "Sin monto reportado"}
             </strong>
             {/* El principio del módulo, dicho donde se lee el número: es lo
                 declarado, no lo que gana. */}
             <p>
-              {f.pisoIngresoMensualReportado
-                ? `Lo declarado al IESS en ${mesLegible(f.corteIessUsado)}. Es un piso: el ingreso real puede ser mayor.`
-                : "Ninguna fuente pública trae un monto para esta persona."}
+              {!monto
+                ? "Ninguna fuente pública trae un monto para esta persona."
+                : enElSbu
+                  ? `Aporta sobre el Salario Básico Unificado de ${anioCorte} (${formatearValorAval(sbuDelAnio(anioCorte), "dinero")}). No dice cuánto gana en realidad.`
+                  : `Lo declarado al IESS en ${mesLegible(f.corteIessUsado)}. El ingreso real puede ser mayor.`}
             </p>
           </div>
         </>

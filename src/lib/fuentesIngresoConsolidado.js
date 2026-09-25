@@ -4,6 +4,8 @@
 // (resumen_fuentes_ingreso, migración 081) -- antes se contaba acá, sobre
 // las 1.000 filas que PostgREST dejaba pasar.
 
+import { esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "./ingresosCampos.js";
+
 export const ETIQUETA_SEGMENTO = {
   dependiente_privado: "Dependiente privado",
   publico: "Sector público",
@@ -44,8 +46,8 @@ export const RIESGO_SEGMENTO = {
 
 export const ETIQUETA_EVIDENCIA = {
   reportada_por_tercero: "Reportada por un tercero",
-  autodeclarada_sobre_minimo: "Autodeclarada, sobre el mínimo",
-  autodeclarada_en_minimo: "Autodeclarada, en el mínimo legal",
+  autodeclarada_sobre_minimo: "Autodeclarada, sobre el SBU",
+  autodeclarada_en_minimo: "Autodeclarada, en el SBU",
   indirecta: "Indirecta (hay actividad, no hay monto)",
 };
 
@@ -57,3 +59,13 @@ export const ETIQUETA_ESTADO = {
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 export const formatMoneda = (n) => (n === null || n === undefined ? "—" : MONEDA.format(n));
+
+// El ingreso reportado al IESS, dicho como se dice en Ecuador: el monto, y
+// "Ingreso Mínimo SBU" cuando es el salario básico del año del corte. Nunca
+// "piso" (pedido del negocio, 2026-09-25). Una sola función para todas las
+// pantallas que lo muestran.
+export function textoIngresoReportado(monto, corte) {
+  if (monto === null || monto === undefined || monto === "" || !(Number(monto) > 0)) return "—";
+  const texto = formatMoneda(Number(monto));
+  return esIngresoMinimoSbu(Number(monto), corte) ? `${texto} · ${INGRESO_MINIMO_SBU}` : texto;
+}
