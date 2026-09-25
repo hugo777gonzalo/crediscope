@@ -140,18 +140,27 @@ Cada una de estas salió de un error real. No revivirlas.
   (una función `security invoker`, como `metricas_gerenciales()` o
   `resumen_fuentes_ingreso()`); lo que lista, se pagina con
   `traerTodas()` (ver arriba).
-- **El crudo de Novadata no se guarda.** Se guarda el perfil
-  estandarizado (`client_profiles.standard_profile`); la respuesta
-  cruda existe sólo para 389 personas en `research/novadata-raw/`. Una
-  regla nueva que necesite el crudo aplica a consultas nuevas: los
-  perfiles guardados no se pueden reclasificar.
+- **El crudo de Novadata no se guarda en la base, pero hay respaldo
+  local.** En la base va el perfil estandarizado. El crudo está en
+  `research/` (fuera del repo, datos personales):
+  `novadata-raw/` = 389 personas en la forma vieja de 9 bloques, la
+  muestra fija para comparar reglas (no se pisa);
+  `novadata-raw-2026-09-25/` = el resto de la cartera real (~2.200),
+  en la forma plana de 52 fuentes, `{ cedula, capturadoEl, perfilId,
+  raw }`. Para sumar: `node scripts/consultar-lote.mjs <archivo>
+  <uuid-responsable> 20 --crudo=research/<carpeta>` (la función
+  devuelve el crudo sólo a la clave de servicio). Reproducir un perfil
+  desde el crudo: `buildStandardProfile(raw, cedula, corte)` con el
+  corte VIGENTE de ese día, no con `fuente_corte`.
 - **`fuentesIngreso.detalle` no va al modelo.** Desde fuentes-v4 trae el
   historial de aportes, la actividad económica y la renta por año, para
   el analista. Todo camino que le mande un perfil al LLM pasa por
   `sinDetalleDeIngresos()`; uno nuevo también tiene que hacerlo.
 - **El corte del IESS lo deciden 20 clientes, no uno.** Novadata
-  actualiza el IESS más o menos cada dos meses (al 2026-09-25 el corte
-  es 2026-07; el de 2026-09 se espera en octubre). Algunos aportes llegan
+  actualiza el IESS más o menos cada dos meses y no avisa: el
+  2026-09-25 se esperaba que siguiera en 2026-07 y durante la
+  reconsulta de la cartera publicó 2026-08 (403 clientes con aporte de
+  agosto, 6 con su último aporte en julio). Algunos aportes llegan
   antes: el 2026-09-23 dos de agosto movieron el corte a 2026-08 para
   todos, y cualquier asalariado con su último aporte en julio habría
   quedado "fuera del corte" -- la familia de error del 2026-09-15. Desde
