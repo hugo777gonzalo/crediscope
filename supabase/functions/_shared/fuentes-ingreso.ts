@@ -35,7 +35,34 @@ import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 // otras trece fuentes, así que se afirmaba "no aporta" con los aportes
 // sin consultar. La clasificación no cambió; cambió cuándo se permite
 // emitirla.
-export const FUENTES_INGRESO_VERSION = "fuentes-v3";
+//
+// v4 (2026-09-24), de una auditoría contra el último perfil de los 2.807
+// clientes de la cartera:
+//  - La rama "vínculo vigente sin monto" se disparaba con CUALQUIER fuente
+//    con naturaleza, incluidas las que agrega este mismo módulo por RUC
+//    activo o por nómina. 455 personas sin un solo aporte al IESS tenían
+//    como motivo "Vínculo vigente al corte..., pero la fuente no trae el
+//    monto del aporte". El segmento salía bien (independiente); la
+//    explicación afirmaba un aporte que no existe. Ahora esa rama exige
+//    aportes vigentes, y RUC, renta y nómina van por la de independiente.
+//  - Jubilado con actividad propia (RUC activo o nómina) quedaba como
+//    "jubilado" confirmado: 97 personas. Pasa a "jubilado con ingreso
+//    adicional", provisional -- la jubilación es cierta, la actividad no
+//    tiene monto.
+//  - "Ingresos mixtos" era siempre confirmada, aunque una de las partes
+//    fuera un aporte que la persona eligió (18 casos). Ahora sigue la misma
+//    regla que una sola naturaleza: cuenta propia, agrícola o un código
+//    desconocido la vuelven provisional.
+//  - Códigos 17 (organización campesina), 24 (sindicatos y cooperativas de
+//    transporte) y 30 (autónomos sin relación de dependencia) caían en "no
+//    clasificado" (8 personas). Decisión del negocio: 17 es agrícola, 24 y
+//    30 son cuenta propia.
+//  - `detalle`: historial de aportes de 24 meses, actividad económica del
+//    RUC e impuesto a la renta por año. Salen del crudo, así que sólo
+//    existen en consultas nuevas. NO van al modelo (ver
+//    `sinDetalleDeIngresos`): son para que el analista lea, y meterlos en
+//    el análisis con IA es otra decisión, con su versión de marco.
+export const FUENTES_INGRESO_VERSION = "fuentes-v4";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -63,8 +90,8 @@ const NATURALEZA_POR_CODIGO: Record<string, Naturaleza> = {
   "29": "diplomatico",
   "1": "privado", "2": "privado", "6": "privado", "13": "privado", "26": "privado", "27": "privado", "28": "privado",
   "25": "domestico",
-  "3": "cuenta_propia", "8": "cuenta_propia", "31": "cuenta_propia", "32": "cuenta_propia", "34": "cuenta_propia",
-  "4": "agricola", "7": "agricola",
+  "3": "cuenta_propia", "8": "cuenta_propia", "24": "cuenta_propia", "30": "cuenta_propia", "31": "cuenta_propia", "32": "cuenta_propia", "34": "cuenta_propia",
+  "4": "agricola", "7": "agricola", "17": "agricola",
   "35": "hogar",
 };
 
@@ -123,6 +150,35 @@ export interface SenalEscala {
   detalle: string;
 }
 
+// Un empleador (o afiliación propia) visto en los últimos 24 meses.
+export interface VinculoIess {
+  empleador: string | null;
+  naturaleza: Naturaleza;
+  ocupacion: string | null;
+  desde: string | null; // fecha de ingreso que declara el IESS, yyyy-mm-dd
+  hasta: string | null; // fecha de salida; null = el IESS no registró salida
+  ultimoMes: string; // último mes con aporte, yyyy-mm
+  mesesConAporte: number; // de los 24 hasta el corte
+  ultimoSalario: number | null;
+  vigenteAlCorte: boolean;
+}
+
+export interface DetalleIngresos {
+  // Una entrada por mes con aporte, en orden, dentro de los 24 meses que
+  // terminan en el corte. Un mes sin aporte NO aparece: el hueco es el dato.
+  aportesPorMes: { mes: string; total: number; empleadores: number }[];
+  vinculos: VinculoIess[];
+  mesesConAporteUltimos12: number;
+  mesesConAporteUltimos24: number;
+  promedioUltimos6: number | null;
+  promedioUltimos12: number | null;
+  // Total del mismo mes un año antes del corte: contra el piso de hoy dice
+  // si el sueldo reportado creció o cayó. Null si ese mes no tuvo aporte.
+  totalHace12Meses: number | null;
+  actividadesEconomicas: { nombreComercial: string | null; actividad: string | null; abierto: boolean; inicio: string | null }[];
+  impuestoRentaPorAnio: { anio: number; formulario: string | null; causado: number | null; enRelacionDeDependencia: number | null }[];
+}
+
 export interface AnalisisFuentesIngreso {
   version: string;
   corteIessUsado: string;
@@ -138,9 +194,24 @@ export interface AnalisisFuentesIngreso {
   pisoIngresoMensualReportado: number | null;
   senalesDeEscala: SenalEscala[];
   paraConfirmar: string[];
+  // Desde fuentes-v4. No va al modelo: ver sinDetalleDeIngresos.
+  detalle?: DetalleIngresos;
 }
 
 type AnyRecord = Record<string, unknown>;
+
+// El detalle es para que lo lea el analista. Decisión del negocio del
+// 2026-09-24: no entra al análisis con IA hasta que haya una versión del
+// marco que lo contemple. Todo camino que le mande un perfil guardado al
+// modelo pasa por acá, así que un perfil viejo y uno nuevo le llegan con
+// la misma forma.
+export function sinDetalleDeIngresos<T extends Record<string, unknown>>(perfil: T): T {
+  const f = perfil?.fuentesIngreso as Record<string, unknown> | undefined;
+  if (!f || !("detalle" in f)) return perfil;
+  const resto = { ...f };
+  delete resto.detalle;
+  return { ...perfil, fuentesIngreso: resto };
+}
 
 // Valida el rango a propósito: un mes 99 en los datos construía
 // "2026-99", que por comparación de texto queda por encima del corte y
@@ -173,6 +244,147 @@ function mismoNombre(a: unknown, b: unknown): boolean {
   const norm = (s: unknown) => String(s ?? "").toUpperCase().trim().split(/\s+/).filter(Boolean).sort().join(" ");
   const na = norm(a);
   return na !== "" && na === norm(b);
+}
+
+// El IESS y el SRI mandan fechas "dd/mm/yyyy". Se reescriben a ISO sin
+// pasar por Date: son fechas de calendario, no instantes, y un Date las
+// corre un día en Ecuador (ver src/lib/fechas.js).
+function fechaIso(v: unknown): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(v ?? "").trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
+function textoONull(v: unknown): string | null {
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+function mesMenos(mes: string, n: number): string {
+  const total = Number(mes.slice(0, 4)) * 12 + (Number(mes.slice(5)) - 1) - n;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+}
+
+const redondear2 = (n: number): number => Math.round(n * 100) / 100;
+
+// Motivo de "independiente" cuando no hay aportes vigentes. Exportado
+// porque la corrección de los 455 motivos guardados (migración 081) usa
+// esta misma función: el texto corregido tiene que ser idéntico al que
+// escribe una consulta nueva.
+export function motivoSinAportes(rucActivo: boolean, declaraRenta: boolean, nomina: number | null): string {
+  const base = rucActivo
+    ? "Sin aportes vigentes, pero con RUC activo ante el SRI."
+    : nomina !== null
+      ? `Sin aportes vigentes ni RUC activo, pero paga una nómina de $${nomina} mensuales.`
+      : declaraRenta
+        ? "Sin aportes vigentes ni RUC activo; registra declaraciones al SRI."
+        : "Sin aportes vigentes.";
+  return rucActivo && nomina !== null ? `${base} Además paga una nómina de $${nomina} mensuales.` : base;
+}
+
+function promedio(valores: number[]): number | null {
+  return valores.length ? redondear2(valores.reduce((a, b) => a + b, 0) / valores.length) : null;
+}
+
+// Lo que el analista necesita para leer la historia y que la clasificación
+// sola no dice: si aporta todos los meses o con huecos, si el sueldo
+// reportado sube o baja, de qué vive quien tiene RUC y cuánto impuesto a la
+// renta causó cada año. Los montos siguen siendo pisos, igual que arriba.
+function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyRecord): DetalleIngresos {
+  const desde = mesMenos(corte, 23);
+  const enVentana = aportes
+    .map((a) => ({ a, mes: mesClave(a.anio, a.mes) }))
+    .filter((x): x is { a: AnyRecord; mes: string } => x.mes !== null && x.mes >= desde && x.mes <= corte);
+
+  const porMes = new Map<string, { total: number; empleadores: Set<string> }>();
+  for (const { a, mes } of enVentana) {
+    const fila = porMes.get(mes) ?? { total: 0, empleadores: new Set<string>() };
+    fila.total += montoValido(a.salario) ?? 0;
+    fila.empleadores.add(String(a.rucEmp ?? a.nomEmp ?? ""));
+    porMes.set(mes, fila);
+  }
+  const aportesPorMes = [...porMes.entries()]
+    .sort((x, y) => x[0].localeCompare(y[0]))
+    .map(([mes, f]) => ({ mes, total: redondear2(f.total), empleadores: f.empleadores.size }));
+
+  // Un vínculo = un empleador con una fecha de ingreso. El mismo empleador
+  // con dos ingresos distintos son dos vínculos: salió y volvió.
+  const vinculosPorClave = new Map<string, { filas: { a: AnyRecord; mes: string }[] }>();
+  for (const x of enVentana) {
+    const clave = `${x.a.rucEmp ?? x.a.nomEmp ?? ""}|${x.a.fecIng ?? ""}`;
+    const v = vinculosPorClave.get(clave) ?? { filas: [] };
+    v.filas.push(x);
+    vinculosPorClave.set(clave, v);
+  }
+  const vinculos: VinculoIess[] = [...vinculosPorClave.values()]
+    .map(({ filas }) => {
+      filas.sort((p, q) => q.mes.localeCompare(p.mes));
+      const ultima = filas[0].a;
+      const codigo = codigoTipoEmpleador(ultima.tipEmp);
+      return {
+        empleador: textoONull(ultima.nomEmp),
+        naturaleza: (codigo && NATURALEZA_POR_CODIGO[codigo]) ?? "otro",
+        ocupacion: textoONull(ultima.ocupacion),
+        desde: fechaIso(ultima.fecIng),
+        hasta: fechaIso(ultima.fecSal),
+        ultimoMes: filas[0].mes,
+        mesesConAporte: new Set(filas.map((f) => f.mes)).size,
+        ultimoSalario: montoValido(ultima.salario),
+        vigenteAlCorte: filas[0].mes === corte,
+      };
+    })
+    .sort((p, q) => q.ultimoMes.localeCompare(p.ultimoMes) || (q.ultimoSalario ?? 0) - (p.ultimoSalario ?? 0));
+
+  const desde12 = mesMenos(corte, 11);
+  const ultimos = (n: number) => aportesPorMes.filter((m) => m.mes >= mesMenos(corte, n - 1)).map((m) => m.total);
+  const hace12 = porMes.get(mesMenos(corte, 12));
+
+  const establecimientos = ((consultadas.establecimientoActEconomica as AnyRecord)?.data ?? {}) as AnyRecord;
+  const vistas = new Set<string>();
+  const actividadesEconomicas: DetalleIngresos["actividadesEconomicas"] = [];
+  for (const lista of Object.values(establecimientos)) {
+    if (!Array.isArray(lista)) continue;
+    for (const e of lista as AnyRecord[]) {
+      const actividad = textoONull(e.act_economica);
+      const nombreComercial = textoONull(e.nombre_comercial);
+      const clave = `${actividad}|${nombreComercial}`;
+      if (vistas.has(clave) || (!actividad && !nombreComercial)) continue;
+      vistas.add(clave);
+      actividadesEconomicas.push({
+        nombreComercial,
+        actividad,
+        abierto: String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO",
+        inicio: fechaIso(e.fech_inicio_actividades),
+      });
+    }
+  }
+  actividadesEconomicas.sort((p, q) => Number(q.abierto) - Number(p.abierto));
+
+  const renta = ((((consultadas.sriImpuestoRenta as AnyRecord)?.data as AnyRecord)?.data as AnyRecord[]) ?? [])
+    .flatMap((x) => (Array.isArray(x.impuestosRenta) ? (x.impuestosRenta as AnyRecord[]) : []));
+  const numeroONull = (v: unknown): number | null => {
+    const n = Number(v);
+    return v === null || v === undefined || v === "" || !Number.isFinite(n) ? null : n;
+  };
+  const impuestoRentaPorAnio = renta
+    .map((r) => ({
+      anio: Number(r.periodoFiscal),
+      formulario: textoONull(String(r.formulario ?? "")),
+      causado: numeroONull(r.rentaCausadoRetenido),
+      enRelacionDeDependencia: numeroONull(r.rentaCausadoRetenidoRelacionDependencia),
+    }))
+    .filter((r) => Number.isInteger(r.anio))
+    .sort((p, q) => q.anio - p.anio);
+
+  return {
+    aportesPorMes,
+    vinculos,
+    mesesConAporteUltimos12: aportesPorMes.filter((m) => m.mes >= desde12).length,
+    mesesConAporteUltimos24: aportesPorMes.length,
+    promedioUltimos6: promedio(ultimos(6)),
+    promedioUltimos12: promedio(ultimos(12)),
+    totalHace12Meses: hace12 && hace12.total > 0 ? redondear2(hace12.total) : null,
+    actividadesEconomicas,
+    impuestoRentaPorAnio,
+  };
 }
 
 const ETIQUETA_NATURALEZA: Record<Naturaleza, string> = {
@@ -382,32 +594,48 @@ export function analizarFuentesIngreso(
   let estadoSegmento: EstadoSegmento;
   let motivoSegmento: string;
 
-  if (esJubilado && ordenadas.length === 0) {
+  // Una actividad propia que este módulo dedujo (RUC activo o nómina), sin
+  // monto. No es un aporte: por eso se distingue de las fuentes del IESS.
+  const tieneActividadPropia = fuentes.some((f) => f.naturaleza === "cuenta_propia" && f.evidencia === "indirecta");
+  // Las naturalezas donde el monto lo elige la persona, o no sabemos qué
+  // es. Valen igual para una sola fuente que para una mezcla.
+  const esProvisional = (n: Naturaleza) => n === "cuenta_propia" || n === "agricola" || n === "otro";
+
+  if (esJubilado && ordenadas.length === 0 && !tieneActividadPropia) {
     segmento = "jubilado";
     estadoSegmento = "confirmada";
     motivoSegmento = "Registra jubilación en el IESS y no tiene aportes vigentes.";
-  } else if (esJubilado && ordenadas.length > 0) {
+  } else if (esJubilado) {
     segmento = "jubilado_con_ingreso_adicional";
     estadoSegmento = "provisional";
-    motivoSegmento = "Registra jubilación y además aportes vigentes al corte.";
+    motivoSegmento =
+      ordenadas.length > 0
+        ? "Registra jubilación y además aportes vigentes al corte."
+        : rucActivo
+          ? "Registra jubilación y además RUC activo ante el SRI: tiene una actividad propia cuyo ingreso no se conoce."
+          : `Registra jubilación y además paga una nómina de $${nomina} mensuales: tiene una actividad propia cuyo ingreso no se conoce.`;
   } else if (ordenadas.length > 1 && totalReportado > 0 && ordenadas[0][1] / totalReportado < 2 / 3) {
     // Dos naturalezas y ninguna domina: clasificar por la mayor sería
     // decidir por diferencias de pocos dólares, y además sería falso --
     // quien tiene ingresos de origen distinto está más diversificado.
     segmento = "ingresos_mixtos";
-    estadoSegmento = "confirmada";
-    motivoSegmento = `Ingresos de naturaleza distinta sin que ninguna supere dos tercios del total ($${Math.round(totalReportado)} en el corte ${corte}).`;
+    const algunaProvisional = ordenadas.some(([n]) => esProvisional(n));
+    estadoSegmento = algunaProvisional ? "provisional" : "confirmada";
+    motivoSegmento = `Ingresos de naturaleza distinta sin que ninguna supere dos tercios del total ($${Math.round(totalReportado)} en el corte ${corte}).${
+      algunaProvisional ? " Una parte no la reporta un tercero (aporte propio o de tipo desconocido), así que no está confirmada." : ""
+    }`;
   } else if (ordenadas.length > 0) {
     const [naturaleza, monto] = ordenadas[0];
     segmento = SEGMENTO_POR_NATURALEZA[naturaleza];
     // "otro" nunca se da por confirmado: es un código que no conocemos,
     // así que el caso tiene que llegar a una persona.
-    estadoSegmento =
-      naturaleza === "cuenta_propia" || naturaleza === "agricola" || naturaleza === "otro" ? "provisional" : "confirmada";
+    estadoSegmento = esProvisional(naturaleza) ? "provisional" : "confirmada";
+    // `||` y no `??`: 17 perfiles llegaron con el tipo de empleador en
+    // texto vacío y el motivo decía "no reconoce ()".
     motivoSegmento =
       naturaleza === "otro"
         ? `Aporta bajo un tipo de empleador que el módulo no reconoce (${String(
-            aportesVigentes.find((a) => !NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""])?.tipEmp ?? "sin etiqueta"
+            aportesVigentes.find((a) => !NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""])?.tipEmp || "sin etiqueta"
           ).slice(0, 60)}). Requiere revisión manual.`
         : `${Math.round((monto / totalReportado) * 100)}% del ingreso reportado en el corte ${corte} viene de ${ETIQUETA_NATURALEZA[naturaleza]}.`;
     // El aporte dice de dónde cotiza, no de dónde vive: si paga una
@@ -417,23 +645,23 @@ export function analizarFuentesIngreso(
       estadoSegmento = "provisional";
       motivoSegmento += ` Aun así paga una nómina de $${nomina} mensuales, muy superior a ese aporte: su ingreso principal probablemente venga de su actividad y no de ese vínculo.`;
     }
-  } else if (fuentes.some((f) => f.vigenteAlCorte && f.naturaleza)) {
-    // Hay vínculo vigente pero sin monto (el aporte llegó en cero o sin
-    // el campo). Antes esto caía en la rama de "sin aportes vigentes" y
-    // el motivo contradecía a las fuentes listadas abajo.
-    const conNaturaleza = fuentes.filter((f) => f.vigenteAlCorte && f.naturaleza);
+  } else if (aportesVigentes.length > 0) {
+    // Hay aporte vigente pero sin monto (llegó en cero o sin el campo).
+    // Sólo los APORTES: hasta v3 esta rama miraba cualquier fuente con
+    // naturaleza, así que el RUC activo o la nómina -- que no son aportes
+    // -- terminaban acá con un motivo que afirmaba un vínculo con el IESS
+    // inexistente (455 perfiles).
+    const conNaturaleza = fuentes.filter((f) => f.evidencia !== "indirecta" && f.naturaleza);
     const frecuencia = new Map<Naturaleza, number>();
     for (const f of conNaturaleza) frecuencia.set(f.naturaleza!, (frecuencia.get(f.naturaleza!) ?? 0) + 1);
     const principal = [...frecuencia.entries()].sort((a, b) => b[1] - a[1])[0][0];
     segmento = SEGMENTO_POR_NATURALEZA[principal];
     estadoSegmento = "provisional";
     motivoSegmento = `Vínculo vigente al corte ${corte} (${ETIQUETA_NATURALEZA[principal]}), pero la fuente no trae el monto del aporte.`;
-  } else if (rucActivo || declaraRenta) {
+  } else if (rucActivo || declaraRenta || nominaSuperaSuIngreso) {
     segmento = "independiente";
     estadoSegmento = "provisional";
-    motivoSegmento = rucActivo
-      ? "Sin aportes vigentes, pero con RUC activo ante el SRI."
-      : "Sin aportes vigentes ni RUC activo; registra declaraciones al SRI.";
+    motivoSegmento = motivoSinAportes(rucActivo, declaraRenta, nominaSuperaSuIngreso ? nomina : null);
   } else if (!sePuedeAfirmarQueNoAporta(raw)) {
     // No encontramos aportes, pero tampoco preguntamos bien: el bloque
     // que los trae no contestó. "No aporta" y "no sé si aporta" son
@@ -474,6 +702,7 @@ export function analizarFuentesIngreso(
   }
 
   const pisoIngresoMensualReportado = totalReportado > 0 ? Math.round(totalReportado * 100) / 100 : null;
+  const detalle = construirDetalle(aportes, corte, consultadas);
 
   return {
     version: FUENTES_INGRESO_VERSION,
@@ -488,5 +717,6 @@ export function analizarFuentesIngreso(
     pisoIngresoMensualReportado,
     senalesDeEscala,
     paraConfirmar,
+    detalle,
   };
 }

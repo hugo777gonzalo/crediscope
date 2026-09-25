@@ -6,6 +6,7 @@ import { Info } from "lucide-react";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
+import PestanasCliente from "../components/PestanasCliente.jsx";
 import { formatearFechaHora } from "../lib/fechas.js";
 
 // "Perfil del Cliente" — nombre comercial de la Estructura Estandarizada
@@ -72,15 +73,7 @@ export default function PerfilCliente() {
         </Link>
       </p>
 
-      <div className="crediscope-tabs">
-        <span className="crediscope-tab crediscope-tab-active">Perfil del Cliente</span>
-        <Link className="crediscope-tab" to={`/analisis/${cedula}`}>
-          Análisis con IA
-        </Link>
-        <Link className="crediscope-tab" to={`/aval/${cedula}`}>
-          Aval
-        </Link>
-      </div>
+      <PestanasCliente cedula={cedula} activa="perfil" />
 
       <ClienteHeader
         nombreCompleto={standardProfile?.identidad?.nombreCompleto}

@@ -1,5 +1,5 @@
 import { Landmark } from "lucide-react";
-import { TituloTarjeta, Cifra, Valor, FilaCampo } from "./Piezas.jsx";
+import { TituloTarjeta, Cifra, Valor, FilaCampo } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 
 // Deuda y carga financiera, en dos secciones internas: lo que la persona

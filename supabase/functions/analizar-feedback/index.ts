@@ -54,7 +54,12 @@ function extractoPerfil(perfil: AnyRecord | null): AnyRecord | null {
   return {
     edad: g("identidad", "edad"),
     nivelEducacion: g("identidad", "nivelEducacion"),
-    tieneEmpleoActual: Boolean(g("laboral", "empleoActual")),
+    // Las dos formas: antes de marco-v20 era `empleoActual` (objeto),
+    // después `empleosActuales` (arreglo). Leyendo sólo la vieja, a todo
+    // perfil nuevo se le decía al modelo que no tenía empleo.
+    tieneEmpleoActual:
+      Boolean(g("laboral", "empleoActual")) ||
+      (Array.isArray(g("laboral", "empleosActuales")) && (g("laboral", "empleosActuales") as unknown[]).length > 0),
     ingresoPromedio6m: g("laboral", "ingresoPromedioUltimos6Meses"),
     antiguedadEmpleoMeses: g("laboral", "antiguedadEmpleoActualMeses"),
     esIndependiente: g("laboral", "esIndependiente"),

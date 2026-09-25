@@ -11,6 +11,7 @@ import DeudaActual from "../components/aval/DeudaActual.jsx";
 import DetalleOperaciones from "../components/aval/DetalleOperaciones.jsx";
 import ReporteTotal, { seccionesConDatos } from "../components/aval/ReporteTotal.jsx";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
+import PestanasCliente from "../components/PestanasCliente.jsx";
 
 // "Aval" — tercera pestaña junto a Perfil del Cliente / Análisis con IA.
 // Puramente informativa (sin recomendación: eso es trabajo del futuro marco
@@ -110,15 +111,7 @@ export default function PerfilAval() {
         </Link>
       </p>
 
-      <div className="crediscope-tabs">
-        <Link className="crediscope-tab" to={`/perfil/${cedula}`}>
-          Perfil del Cliente
-        </Link>
-        <Link className="crediscope-tab" to={`/analisis/${cedula}`}>
-          Análisis con IA
-        </Link>
-        <span className="crediscope-tab crediscope-tab-active">Aval</span>
-      </div>
+      <PestanasCliente cedula={cedula} activa="aval" />
 
       {loading ? (
         <p className="crediscope-muted">Cargando...</p>

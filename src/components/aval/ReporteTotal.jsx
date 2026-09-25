@@ -1,5 +1,5 @@
 import { TrendingUp, Activity, ListChecks, Building2, CreditCard, Search, Ban, Users, MapPin, Database } from "lucide-react";
-import { TituloTarjeta, FilaCampo } from "./Piezas.jsx";
+import { TituloTarjeta, FilaCampo } from "../reporte/Piezas.jsx";
 
 // Lo que queda del informe de Aval después de lo que se ve siempre: se
 // consulta cuando hace falta, no se barre en cada cliente. Por eso va

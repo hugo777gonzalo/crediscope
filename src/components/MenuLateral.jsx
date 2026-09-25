@@ -88,7 +88,12 @@ function Grupo({ Icono, texto, activo, colapsado, expandirMenu, hijos }) {
 export default function MenuLateral({ profile }) {
   const { pathname } = useLocation();
   const [colapsado, setColapsado] = useState(leerColapsado);
-  const enEvaluacion = pathname === "/" || pathname.startsWith("/perfil") || pathname.startsWith("/analisis") || pathname.startsWith("/aval");
+  const enEvaluacion =
+    pathname === "/" ||
+    pathname.startsWith("/perfil") ||
+    pathname.startsWith("/analisis") ||
+    pathname.startsWith("/ingresos") ||
+    pathname.startsWith("/aval");
   const ultimaCedula = getUltimaCedula();
   const admin = esAdmin(profile);
 
@@ -135,6 +140,7 @@ export default function MenuLateral({ profile }) {
             { to: "/", texto: "Buscar Cliente", activo: pathname === "/" },
             { to: ultimaCedula ? `/perfil/${ultimaCedula}` : "/", texto: "Perfil del Cliente", activo: pathname.startsWith("/perfil") },
             { to: ultimaCedula ? `/analisis/${ultimaCedula}` : "/", texto: "Análisis con IA", activo: pathname.startsWith("/analisis") },
+            { to: ultimaCedula ? `/ingresos/${ultimaCedula}` : "/", texto: "Fuentes de ingreso", activo: pathname.startsWith("/ingresos") },
             { to: ultimaCedula ? `/aval/${ultimaCedula}` : "/", texto: "Aval", activo: pathname.startsWith("/aval") },
           ]}
         />

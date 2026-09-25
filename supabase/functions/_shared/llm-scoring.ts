@@ -34,6 +34,7 @@ import type {
 } from "./types.ts";
 import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
+import { sinDetalleDeIngresos } from "./fuentes-ingreso.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "observar", "negar"];
 const NIVELES_RIESGO: NivelRiesgo[] = ["muy bajo", "bajo", "moderado", "alto", "muy alto"];
@@ -307,7 +308,7 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
   }
 
   const userPayload = {
-    standardClientProfile: profile,
+    standardClientProfile: sinDetalleDeIngresos(profile),
     hallazgosControlBloqueo: controlBloqueo.hallazgos, // ya resueltos de forma determinística — no recalcular
   };
 

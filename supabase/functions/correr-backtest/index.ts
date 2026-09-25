@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_INTERPRETATIVO, MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
+import { sinDetalleDeIngresos } from "../_shared/fuentes-ingreso.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -82,7 +83,9 @@ async function evaluarCaso(
         {
           role: "user",
           content: JSON.stringify({
-            standardClientProfile: perfil,
+            // Igual que en el análisis: el detalle de ingresos no es parte
+            // de lo que el marco sabe leer (ver fuentes-ingreso.ts, v4).
+            standardClientProfile: sinDetalleDeIngresos(perfil),
             hallazgosControlBloqueo: (controlBloqueo?.hallazgos as unknown[]) ?? [],
           }),
         },

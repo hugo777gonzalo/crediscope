@@ -2290,3 +2290,152 @@ a {
   display: inline-block;
   width: 100%;
 }
+
+/* ============================================================
+   FUENTES DE INGRESO (pestaña del cliente)
+   Usa la misma gramática que el reporte de Aval -- las clases
+   crediscope-aval-* de arriba son la estructura común de los reportes
+   por cliente. Acá sólo lo propio: el bloque de cifra principal del
+   encabezado, las fuentes y el historial de aportes.
+   ============================================================ */
+
+.crediscope-ing-bloque p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.crediscope-ing-rotulo {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.crediscope-ing-principal {
+  display: block;
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-ing-pedidos {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.crediscope-ing-pedidos li + li {
+  margin-top: 6px;
+}
+
+.crediscope-ing-fuente {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.crediscope-ing-fuente:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.crediscope-ing-fuente > div > strong {
+  display: block;
+}
+
+.crediscope-ing-fuente-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.crediscope-ing-monto {
+  font-size: 16px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Historial de aportes: 24 columnas del mismo ancho, barras ancladas a la
+   base con la punta redondeada y 2px de aire entre una y otra. */
+.crediscope-ing-grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 130px;
+  border-bottom: 1px solid var(--border);
+}
+
+.crediscope-ing-columna {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  cursor: default;
+}
+
+.crediscope-ing-barra {
+  width: 100%;
+  background: var(--brand);
+  border-radius: 4px 4px 0 0;
+}
+
+.crediscope-ing-columna:hover .crediscope-ing-barra {
+  background: var(--brand-dark);
+}
+
+/* Un mes sin aporte: un trazo discontinuo en la base, para que el hueco
+   se vea como hueco y no como un mes que falta en el eje. */
+.crediscope-ing-hueco {
+  width: 100%;
+  height: 8px;
+  background: #fee2e2;
+  border: 1px dashed var(--bad);
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+}
+
+.crediscope-ing-globo {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 9px;
+  border-radius: 7px;
+  white-space: nowrap;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.crediscope-ing-columna:hover .crediscope-ing-globo {
+  visibility: visible;
+  opacity: 1;
+}
+
+.crediscope-ing-eje {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}

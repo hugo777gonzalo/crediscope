@@ -11,6 +11,7 @@ import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
 import PerfilCliente from "./pages/PerfilCliente.jsx";
 import PerfilAval from "./pages/PerfilAval.jsx";
+import IngresosCliente from "./pages/IngresosCliente.jsx";
 import Solicitudes from "./pages/Solicitudes.jsx";
 import Expediente from "./pages/Expediente.jsx";
 import Historial from "./pages/Historial.jsx";
@@ -71,6 +72,7 @@ const TITULOS = [
   [/^\/perfil/, "Evaluación Crediticia"],
   [/^\/analisis/, "Evaluación Crediticia"],
   [/^\/aval/, "Evaluación Crediticia"],
+  [/^\/ingresos/, "Evaluación Crediticia"],
   // El expediente pone el nombre de la persona en su propia cabecera:
   // repetirlo arriba gastaba la única línea que dice en qué módulo está
   // parado el analista.
@@ -200,6 +202,14 @@ export default function App() {
             element={
               <RequireSession>
                 <AnalisisIA />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/ingresos/:cedula"
+            element={
+              <RequireSession>
+                <IngresosCliente />
               </RequireSession>
             }
           />

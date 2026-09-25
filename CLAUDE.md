@@ -112,6 +112,21 @@ Cada una de estas salió de un error real. No revivirlas.
   programada se verifica contra `cron.job_run_details`, nunca contra
   `cron.job`: `cron.job` dice que está activa aunque lleve horas
   fallando.
+- **PostgREST corta en 1.000 filas y no avisa.** Un `.limit(5000)`
+  devuelve 1.000 sin error. El panorama de Fuentes de ingreso contó así
+  ~840 clientes de 2.807 hasta la 081 (decía 290 dependientes privados
+  donde había 950). Lo que agrega sobre la cartera se cuenta en la base
+  (una función `security invoker`, como `metricas_gerenciales()` o
+  `resumen_fuentes_ingreso()`); lo que lista, se pagina con `.range()`.
+- **El crudo de Novadata no se guarda.** Se guarda el perfil
+  estandarizado (`client_profiles.standard_profile`); la respuesta
+  cruda existe sólo para 389 personas en `research/novadata-raw/`. Una
+  regla nueva que necesite el crudo aplica a consultas nuevas: los
+  perfiles guardados no se pueden reclasificar.
+- **`fuentesIngreso.detalle` no va al modelo.** Desde fuentes-v4 trae el
+  historial de aportes, la actividad económica y la renta por año, para
+  el analista. Todo camino que le mande un perfil al LLM pasa por
+  `sinDetalleDeIngresos()`; uno nuevo también tiene que hacerlo.
 - **Una actualización bloqueada por RLS devuelve 0 filas, no un error.**
   Hay que pedir `.select()` y contar.
 - **Al reclamar trabajo en un proceso concurrente, trabajar sobre las

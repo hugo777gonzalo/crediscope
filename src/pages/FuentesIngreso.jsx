@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, ShieldQuestion, Building2, FileWarning } from "lucide-react";
-import { getResumenFuentesIngreso } from "../lib/api.js";
+import { getResumenCarteraIngresos } from "../lib/api.js";
 import {
-  consolidar,
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
   ETIQUETA_EVIDENCIA,
@@ -15,9 +14,10 @@ import {
 //
 // La clasificación NO se calcula acá: la produce fuentes-ingreso.ts al
 // generar cada Perfil del Cliente y viaja dentro del perfil. Esta
-// pantalla solo cuenta y agrupa — así lo que ve la jefatura es
-// exactamente lo que se guardó de cada cliente, no un recálculo que
-// podría diferir.
+// pantalla solo muestra lo que cuenta la base (resumen_fuentes_ingreso,
+// migración 081) — así lo que ve la jefatura es exactamente lo que se
+// guardó de cada cliente, no un recálculo que podría diferir. Hasta la
+// 081 contaba en el navegador sobre 1.000 perfiles de 3.303.
 
 const COLOR_ESTADO = { confirmada: "var(--good)", provisional: "var(--warn)", indeterminada: "var(--text-muted)" };
 
@@ -56,16 +56,14 @@ function Barra({ etiqueta, n, pct, color, ayuda, enlace }) {
 }
 
 export default function FuentesIngreso() {
-  const [perfiles, setPerfiles] = useState(null);
+  const [d, setD] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getResumenFuentesIngreso()
-      .then(setPerfiles)
+    getResumenCarteraIngresos()
+      .then(setD)
       .catch((err) => setError(err.message));
   }, []);
-
-  const d = useMemo(() => (perfiles ? consolidar(perfiles) : null), [perfiles]);
 
   if (error)
     return (
@@ -168,9 +166,20 @@ export default function FuentesIngreso() {
           </div>
 
           <div className="crediscope-card">
-            <h3>Clientes que necesitan respaldo ({d.requierenRespaldo.length})</h3>
+            <h3>Clientes que necesitan respaldo ({d.requierenRespaldoTotal.toLocaleString("es-EC")})</h3>
             <p className="crediscope-muted" style={{ marginTop: 0 }}>
               Su segmento no está confirmado. Acá está qué pedirles para confirmarlo.
+              {/* Antes el título decía el total y la tabla cortaba en 40
+                  sin avisar. Ahora se dice cuántos se ven y dónde están
+                  los demás. */}
+              {d.requierenRespaldoTotal > d.requierenRespaldo.length ? (
+                <>
+                  {" "}
+                  Se muestran los {d.requierenRespaldo.length} más recientes; el resto está en{" "}
+                  <Link to="/fuentes/clientes?estado=provisional">provisionales</Link> e{" "}
+                  <Link to="/fuentes/clientes?estado=indeterminada">indeterminados</Link>.
+                </>
+              ) : null}
             </p>
             {d.requierenRespaldo.length === 0 ? (
               <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ningún cliente pendiente de respaldo.</p>
@@ -185,10 +194,10 @@ export default function FuentesIngreso() {
                   </tr>
                 </thead>
                 <tbody>
-                  {d.requierenRespaldo.slice(0, 40).map((r) => (
+                  {d.requierenRespaldo.map((r) => (
                     <tr key={r.perfilId}>
                       <td style={{ fontVariantNumeric: "tabular-nums" }}>
-                        {r.cedula ? <Link to={`/perfil/${r.cedula}`}>{r.cedula}</Link> : "—"}
+                        {r.cedula ? <Link to={`/ingresos/${r.cedula}`}>{r.cedula}</Link> : "—"}
                       </td>
                       <td>
                         {ETIQUETA_SEGMENTO[r.segmento] ?? r.segmento}

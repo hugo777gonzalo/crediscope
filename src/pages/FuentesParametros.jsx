@@ -1,29 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { getResumenFuentesIngreso } from "../lib/api.js";
-import { consolidar } from "../lib/fuentesIngresoConsolidado.js";
+import { CheckCircle2, Info } from "lucide-react";
+import { getResumenCarteraIngresos } from "../lib/api.js";
+import { mesLegible } from "../lib/ingresosCampos.js";
 
-// Parámetros operativos del módulo. Hoy son de solo lectura: el valor
-// vive en el código (CORTE_IESS_CONOCIDO en fuentes-ingreso.ts) y
-// cambiarlo requiere desplegar.
+// Parámetros operativos del módulo.
 //
-// Esta pantalla existe igual, y no es adorno: muestra si el parámetro
-// quedó viejo. El módulo se autodetecta desactualizado cuando un cliente
-// trae un mes posterior al configurado, y sin esta vista ese aviso
-// quedaría enterrado dentro de cada perfil.
-
+// El corte del IESS ya no se edita: lo deducen los propios datos
+// (loadCorteIess en runtime-config.ts). El IESS no avisa cuando publica un
+// corte nuevo; el primer cliente que llega con un mes más reciente lo
+// mueve para todas las consultas siguientes. Esta pantalla decía que había
+// que cambiar una constante y desplegar, y ofrecía como pendiente
+// "poder actualizarlo desde acá": las dos cosas quedaron viejas cuando el
+// corte pasó a deducirse solo.
+//
+// Lo que sí sigue importando: cuántos clientes quedaron clasificados con
+// un corte anterior al vigente. Esa clasificación es una foto del momento;
+// reconsultar la pone al día.
 export default function FuentesParametros() {
-  const [perfiles, setPerfiles] = useState(null);
+  const [d, setD] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getResumenFuentesIngreso()
-      .then(setPerfiles)
+    getResumenCarteraIngresos()
+      .then(setD)
       .catch((err) => setError(err.message));
   }, []);
 
-  const d = useMemo(() => (perfiles ? consolidar(perfiles) : null), [perfiles]);
+  const vigente = d?.corteVigente ?? null;
+  const conCorteAnterior = d && vigente ? d.cortes.filter(([corte]) => corte < vigente).reduce((a, [, n]) => a + n, 0) : 0;
 
   return (
     <div>
@@ -49,63 +54,55 @@ export default function FuentesParametros() {
       <div className="crediscope-card">
         <h3>Corte del registro del IESS</h3>
         <p className="crediscope-muted" style={{ marginTop: 0 }}>
-          El IESS publica su registro cada dos o tres meses. Todas las reglas de vigencia se miden contra ese corte, no contra la
-          fecha de hoy.
+          El IESS publica su registro cada dos o tres meses y no avisa cuando lo hace. Todas las reglas de vigencia se miden
+          contra ese corte, no contra la fecha de hoy. El corte se deduce solo: es el mes más reciente que trajo algún cliente
+          consultado en los últimos 90 días.
         </p>
 
         {!d ? (
           <p className="crediscope-muted">Cargando...</p>
-        ) : d.cortes.length === 0 ? (
-          <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            Todavía no hay clientes clasificados con los que verificar el corte.
-          </p>
         ) : (
           <>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "4px 0 16px" }}>
+              <CheckCircle2 size={20} color="var(--good)" style={{ flexShrink: 0 }} />
+              <p style={{ margin: 0 }}>
+                Corte vigente: <strong>{vigente ? mesLegible(vigente) : "sin consultas recientes"}</strong>. Las consultas nuevas se
+                clasifican con ese mes.
+              </p>
+            </div>
+
             <table className="crediscope-table">
               <thead>
                 <tr>
-                  <th>Corte usado</th>
-                  <th>Clientes clasificados con ese corte</th>
+                  <th>Corte con que se clasificó</th>
+                  <th>Clientes (último perfil de cada uno)</th>
                 </tr>
               </thead>
               <tbody>
                 {d.cortes.map(([corte, n]) => (
                   <tr key={corte}>
-                    <td style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{corte}</td>
-                    <td>{n}</td>
+                    <td style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                      {mesLegible(corte)}
+                      {vigente && corte < vigente ? <span className="crediscope-muted" style={{ fontWeight: 400 }}> · anterior al vigente</span> : null}
+                    </td>
+                    <td>{n.toLocaleString("es-EC")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {d.corteDesactualizado > 0 ? (
+            {conCorteAnterior > 0 ? (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
-                <AlertTriangle size={20} color="var(--warn)" style={{ flexShrink: 0, marginTop: 2 }} />
+                <Info size={20} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
                 <p style={{ margin: 0 }}>
-                  <strong>El parámetro quedó viejo.</strong> {d.corteDesactualizado} cliente(s) trajeron un corte más reciente que
-                  el configurado, así que el IESS ya publicó uno nuevo. Hay que actualizar{" "}
-                  <code>CORTE_IESS_CONOCIDO</code> en <code>fuentes-ingreso.ts</code> y desplegar; mientras tanto el módulo usa
-                  el corte del propio cliente cuando es más nuevo.
+                  {conCorteAnterior.toLocaleString("es-EC")} cliente(s) tienen su clasificación hecha con un corte anterior. No
+                  está mal: es la foto de cuando se los consultó. Quien trabaje con uno de ellos lo ve en su pestaña Fuentes de
+                  ingreso, y reconsultarlo lo pone al día.
                 </p>
               </div>
-            ) : (
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14 }}>
-                <CheckCircle2 size={20} color="var(--good)" style={{ flexShrink: 0 }} />
-                <p className="crediscope-muted" style={{ margin: 0 }}>
-                  Ningún cliente trajo un corte más reciente que el configurado.
-                </p>
-              </div>
-            )}
+            ) : null}
           </>
         )}
-      </div>
-
-      <div className="crediscope-card">
-        <h3>Pendiente de esta sección</h3>
-        <p style={{ marginBottom: 0 }}>
-          El corte debería poder actualizarse desde acá, sin desplegar — es un dato operativo que cambia cada dos o tres meses y
-          no tendría que depender del equipo técnico. Hoy es de solo lectura.
-        </p>
       </div>
     </div>
   );

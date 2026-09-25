@@ -1,5 +1,5 @@
 import { Gauge, TrendingUp, TrendingDown } from "lucide-react";
-import { TituloTarjeta, Valor } from "./Piezas.jsx";
+import { TituloTarjeta, Valor } from "../reporte/Piezas.jsx";
 
 // Los 10 factores con que Aval arma su score (factoresScore), separados por
 // el efecto que Aval les asigna. El efecto es fijo por factor -- medido

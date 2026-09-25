@@ -113,6 +113,9 @@ export default function AnalisisIA() {
         <Link className="crediscope-tab" to={`/perfil/${cedula}`}>
           Ver Perfil del Cliente
         </Link>
+        <Link className="crediscope-tab" to={`/ingresos/${cedula}`}>
+          Ver Fuentes de ingreso
+        </Link>
         <Link className="crediscope-tab" to={`/aval/${cedula}`}>
           Ver Aval
         </Link>

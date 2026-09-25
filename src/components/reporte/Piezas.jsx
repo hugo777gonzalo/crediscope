@@ -1,6 +1,8 @@
 import { formatearValorAval } from "../../lib/avalCampos.js";
 
-// Piezas chicas que comparten las tarjetas del reporte de Aval.
+// Piezas chicas que comparten las tarjetas de los reportes por cliente
+// (Aval y Fuentes de ingreso). formatearValorAval sirve a los dos: su
+// vocabulario de tipos (dinero/entero/fecha/booleano...) no es de Aval.
 
 export function TituloTarjeta({ Icono, children }) {
   return (

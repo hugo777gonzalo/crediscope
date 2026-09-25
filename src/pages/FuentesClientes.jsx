@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getPerfilesConFuentesIngreso, getResumenFuentesIngreso, CLIENTES_POR_PAGINA } from "../lib/api.js";
-import { ultimoPorCliente } from "../lib/reporteGerencial.js";
+import { getPerfilesConFuentesIngreso, getResumenCarteraIngresos, CLIENTES_POR_PAGINA } from "../lib/api.js";
 import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
@@ -49,9 +48,12 @@ export default function FuentesClientes() {
       .filter((x) => x.f?.segmento);
   }, [datos]);
 
+  // Del resumen que cuenta la base: sacado de los perfiles bajados, el
+  // tope de 1.000 filas dejaba afuera segmentos chicos enteros (el
+  // diplomático y los jubilados con ingreso adicional no aparecían).
   useEffect(() => {
-    getResumenFuentesIngreso()
-      .then((todos) => setSegmentosPresentes([...new Set(ultimoPorCliente(todos).map((p) => p.fuente_segmento).filter(Boolean))]))
+    getResumenCarteraIngresos()
+      .then((r) => setSegmentosPresentes((r?.segmentos ?? []).map((s) => s.clave)))
       .catch(() => setSegmentosPresentes([]));
   }, []);
 
@@ -131,7 +133,7 @@ export default function FuentesClientes() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
             <div>
               <strong style={{ fontSize: 16 }}>
-                {fila.clients?.cedula ? <Link to={`/perfil/${fila.clients.cedula}`}>{fila.clients.cedula}</Link> : "—"}
+                {fila.clients?.cedula ? <Link to={`/ingresos/${fila.clients.cedula}`}>{fila.clients.cedula}</Link> : "—"}
               </strong>
               <span style={{ marginLeft: 10 }}>{ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento}</span>
               <span

@@ -1,5 +1,5 @@
 import { Receipt } from "lucide-react";
-import { TituloTarjeta, Valor } from "./Piezas.jsx";
+import { TituloTarjeta, Valor } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 
 // Una fila por operación vigente, a lo ancho de la página. En una columna
