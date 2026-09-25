@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download } from "lucide-react";
-import { getRangoFechasSolicitudes, getConteoSolicitudes, getDatosAnaliticos } from "../lib/api.js";
+import { getRangoFechasSolicitudes, getConteoSolicitudes, getDatosAnaliticos, TOPE_DESCARGA_SOLICITUDES } from "../lib/api.js";
 import { descargarTablaAnalitica } from "../lib/exportAnalitico.js";
+
+const NUM = new Intl.NumberFormat("es-EC");
 
 // Descargas: los reportes planos, separados de Inteligencia de Negocios
 // (el tablero en vivo). Son dos usos distintos -- el tablero se mira en
@@ -58,8 +60,8 @@ export default function Descargas() {
     setDescargado(null);
     setError(null);
     try {
-      const registros = await getDatosAnaliticos({ desde, hasta });
-      setDescargado(descargarTablaAnalitica(registros, { desde, hasta }));
+      const { filas, total: enElRango } = await getDatosAnaliticos({ desde, hasta });
+      setDescargado({ n: descargarTablaAnalitica(filas, { desde, hasta }), de: enElRango });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -69,6 +71,7 @@ export default function Descargas() {
 
   const rangoInvalido = desde && hasta && desde > hasta;
   const sinNada = total === 0;
+  const pasaElTope = total > TOPE_DESCARGA_SOLICITUDES;
 
   return (
     <div>
@@ -103,7 +106,13 @@ export default function Descargas() {
               "Contando..."
             ) : (
               <>
-                TOTAL: <strong>{total ?? 0}</strong> {total === 1 ? "solicitud" : "solicitudes"} a descargar
+                TOTAL: <strong>{NUM.format(total ?? 0)}</strong> {total === 1 ? "solicitud" : "solicitudes"}
+                {/* Se avisa antes de descargar, no después: quien baja el
+                    archivo para correlacionar tiene que saber que le falta
+                    la parte vieja del rango. */}
+                {pasaElTope
+                  ? ` — el archivo lleva las ${NUM.format(TOPE_DESCARGA_SOLICITUDES)} más recientes`
+                  : " a descargar"}
               </>
             )}
           </div>
@@ -118,8 +127,15 @@ export default function Descargas() {
           <p style={{ color: "var(--bad)", marginBottom: 0, fontSize: 14 }}>{error}</p>
         ) : descargado ? (
           <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 14 }}>
-            Se descargaron {descargado} solicitudes. El archivo trae una segunda hoja con lo que conviene tener en cuenta antes de
-            sacar conclusiones.
+            {descargado.n < descargado.de ? (
+              <>
+                Se descargaron <strong>{NUM.format(descargado.n)} de {NUM.format(descargado.de)}</strong> solicitudes: las más
+                recientes del rango. Para el resto, acotá las fechas y descargá de nuevo.
+              </>
+            ) : (
+              <>Se descargaron {NUM.format(descargado.n)} solicitudes.</>
+            )}{" "}
+            El archivo trae una segunda hoja con lo que conviene tener en cuenta antes de sacar conclusiones.
           </p>
         ) : sinNada && !contando ? (
           <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 14 }}>
