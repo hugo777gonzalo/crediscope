@@ -74,20 +74,30 @@ function Variacion({ hoy, antes }) {
 // a la v5; `null` = nunca trabajó con un empleador según el IESS.
 function textoContinuidad(co) {
   if (co === undefined) return "—";
-  if (co === null) return "Sin trabajo con empleador";
+  if (co === null) return "Sin trabajo registrado";
   if (!co.vigente) return "0";
   return duracionLegible(co.meses);
 }
 
+// Desde fuentes-v6 el aporte propio cuenta en los meses con RUC activo;
+// en un perfil v5 (sin mesesCuentaPropiaConRuc) no contaba nunca, y el
+// texto tiene que decir la regla con que se calculó ESE número.
 function explicacionContinuidad(co) {
   if (co === undefined) return "Existe desde la versión fuentes-v5 de las reglas: reconsultá para verla.";
-  if (co === null) return "El IESS no registra trabajo con un empleador. Los aportes voluntarios y unipersonales no cuentan.";
+  const regla =
+    co?.mesesCuentaPropiaConRuc === undefined
+      ? "No cuentan los aportes voluntarios ni unipersonales."
+      : "El aporte por cuenta propia cuenta sólo en los meses con RUC activo.";
+  if (co === null) return `El IESS no registra trabajo con un empleador ni actividad propia con RUC activo. ${regla}`;
   const empleadores = `${co.empleadores} ${co.empleadores === 1 ? "empleador" : "empleadores"}`;
   const huecos = co.mesesSinAporte ? `, ${co.mesesSinAporte} ${co.mesesSinAporte === 1 ? "mes" : "meses"} sin aporte entre empleos` : ", sin meses vacíos";
-  const tramo = `de ${mesLegible(co.desde)} a ${mesLegible(co.hasta)}: ${duracionLegible(co.meses)} con ${empleadores}${huecos}`;
+  const propios = co.mesesCuentaPropiaConRuc
+    ? ` (${duracionLegible(co.mesesCuentaPropiaConRuc)} por cuenta propia con RUC activo)`
+    : "";
+  const tramo = `de ${mesLegible(co.desde)} a ${mesLegible(co.hasta)}: ${duracionLegible(co.meses)}${propios} con ${empleadores}${huecos}`;
   return co.vigente
-    ? `Trabaja con empleador sin interrupciones de más de ${co.toleranciaMeses} meses ${tramo}. No cuentan los aportes voluntarios ni unipersonales.`
-    : `Hoy no trabaja con un empleador. Su última continuidad fue ${tramo}.`;
+    ? `Trabaja sin interrupciones de más de ${co.toleranciaMeses} meses ${tramo}. ${regla}`
+    : `Hoy no trabaja con un empleador ni por cuenta propia con RUC activo. Su última continuidad fue ${tramo}.`;
 }
 
 export default function Estabilidad({ f, laboral }) {

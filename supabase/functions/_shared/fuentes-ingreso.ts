@@ -79,7 +79,14 @@ import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 // cuentan, los meses que el proveedor no publicó no son huecos, y es sólo
 // para la pantalla (no va al modelo, como el resto del detalle). No cambia
 // ninguna clasificación.
-export const FUENTES_INGRESO_VERSION = "fuentes-v5";
+//
+// v6 (2026-09-25): el aporte propio (unipersonal, voluntario, artesanal,
+// RISE) cuenta para la continuidad en los meses en que la persona tenía un
+// RUC activo: hay una actividad independiente detrás. Sin RUC activo sigue
+// sin contar -- puede ser aportar para no perder la seguridad social.
+// Decisión del negocio sobre el caso 0704804749: un empleo público de 4
+// meses precedido por 24 de aporte unipersonal.
+export const FUENTES_INGRESO_VERSION = "fuentes-v6";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -205,6 +212,9 @@ export interface ContinuidadLaboral {
   vigente: boolean; // hasta === corte: hoy sigue trabajando
   empleadores: number; // distintos dentro del tramo
   mesesSinAporte: number; // huecos tolerados dentro del tramo (sin contar los del proveedor)
+  // Meses del tramo sostenidos sólo por aporte propio con RUC activo (sin
+  // un empleador al mismo tiempo). Desde fuentes-v6.
+  mesesCuentaPropiaConRuc?: number;
   toleranciaMeses: number;
 }
 
@@ -342,12 +352,55 @@ const MESES_SIN_DATO_DEL_PROVEEDOR = new Set([
   "2018-02", "2019-09", "2019-10", "2019-11", "2020-01", "2020-02", "2020-03", "2020-05", "2020-06", "2020-08", "2020-11",
 ]);
 
-// Qué cuenta como trabajo para la continuidad (decisión del negocio,
-// 2026-09-25): el trabajo con un empleador. El aporte voluntario y el
-// unipersonal no cuentan -- se paga aunque no se tenga un trabajo fijo --,
-// tampoco el trabajo no remunerado del hogar, ni un código de empleador
+// Qué cuenta como trabajo para la continuidad (decisiones del negocio,
+// 2026-09-25): el trabajo con un empleador siempre; el aporte propio
+// (unipersonal, voluntario, artesanal, RISE) sólo en los meses en que la
+// persona tenía un RUC activo -- ahí hay una actividad como independiente
+// detrás. Sin RUC activo, aportar por cuenta propia puede ser sólo no
+// perder los beneficios de la seguridad social, y no prueba trabajo. No
+// cuentan el trabajo no remunerado del hogar ni un código de empleador
 // que no conocemos.
+//
+// Medido en las historias locales: de 4.652 meses de aporte propio, 3.773
+// (81%) caen dentro de un período con RUC activo; 28 de 137 personas
+// aportan por su cuenta sin RUC activo en ninguno de esos meses.
 const NATURALEZAS_CON_EMPLEADOR = new Set<Naturaleza>(["publico", "diplomatico", "privado", "domestico", "agricola"]);
+
+// "yyyy/mm/dd" (así manda el SRI las fechas del RUC) o "dd/mm/yyyy" -> "yyyy-mm".
+function mesDeFecha(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  const iso = /^(\d{4})[-/](\d{2})/.exec(s);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s);
+  return dmy ? `${dmy[3]}-${dmy[2]}` : null;
+}
+
+// Los períodos con RUC activo. El SRI sólo guarda el inicio de
+// actividades, el cese MÁS RECIENTE (cancelación o suspensión definitiva)
+// y el reinicio MÁS RECIENTE, no el historial completo -- los mismos tres
+// datos y los mismos casos que estadoActividadEconomica en process.ts:
+//   sin cese                 -> activo desde el inicio
+//   cese y reinicio después  -> activo inicio..cese y desde el reinicio
+//   cese (y reinicio antes)  -> activo reinicio..cese, o inicio..cese
+// En el último caso, lo anterior al reinicio no se sabe cuándo cesó y no
+// se cuenta: no se inventa una actividad.
+function periodosConRucActivo(consultadas: AnyRecord): [string, string][] {
+  const registros = ((((consultadas.contribuyente as AnyRecord)?.data as AnyRecord)?.datosContribuyente as AnyRecord[]) ?? [])
+    .filter((c) => c.ruc && c.fecha_inscripcion_ruc);
+  const periodos: [string, string][] = [];
+  for (const c of registros) {
+    const inicio = mesDeFecha(c.fecha_inicio_actividades);
+    if (!inicio) continue;
+    const cese = [mesDeFecha(c.fecha_cancelacion), mesDeFecha(c.fecha_suspension_definitiva)].filter((m): m is string => Boolean(m)).sort().at(-1) ?? null;
+    const reinicio = mesDeFecha(c.fecha_reinicio_actividades);
+    if (!cese) periodos.push([inicio, "9999-12"]);
+    else if (reinicio && reinicio > cese) {
+      periodos.push([inicio, cese]);
+      periodos.push([reinicio, "9999-12"]);
+    } else periodos.push([reinicio ?? inicio, cese]);
+  }
+  return periodos;
+}
 
 // Hasta 2 meses sin aporte entre un empleo y el siguiente no cortan la
 // continuidad (decisión del negocio). Medido sobre 442 cambios de empleo en
@@ -363,21 +416,38 @@ const TOLERANCIA_CONTINUIDAD_MESES = 2;
 // ingreso -- o su primer aporte, si es anterior -- hasta su último aporte,
 // y los huecos DENTRO de un mismo empleo no cortan: el IESS lo da por
 // continuo.
-function construirContinuidad(aportes: AnyRecord[], corte: string): ContinuidadLaboral | null {
-  const empleos = new Map<string, { empleador: string; inicio: string; fin: string }>();
+function construirContinuidad(aportes: AnyRecord[], corte: string, consultadas: AnyRecord): ContinuidadLaboral | null {
+  const conRuc = periodosConRucActivo(consultadas);
+  const empleos = new Map<string, { empleador: string; inicio: string; fin: string; cuentaPropia: boolean }>();
   for (const a of aportes) {
     const mes = mesClave(a.anio, a.mes);
+    if (!mes || mes > corte) continue;
     const naturaleza = (NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""] ?? "otro") as Naturaleza;
-    if (!mes || mes > corte || !NATURALEZAS_CON_EMPLEADOR.has(naturaleza)) continue;
+    // El aporte propio cuenta sólo en un mes con RUC activo, y su empleo
+    // no puede empezar antes que ese período del RUC. El RISE (código 34)
+    // es un régimen del propio SRI: aportar como RISE ya prueba una
+    // actividad registrada, aunque la fecha del RUC sea posterior -- caso
+    // visto: RISE desde 2018 con un RUC que figura desde 2022, el año en
+    // que el RIMPE reemplazó al RISE.
+    const esRise = codigoTipoEmpleador(a.tipEmp) === "34";
+    const periodo =
+      naturaleza === "cuenta_propia"
+        ? (conRuc.find(([d, h]) => d <= mes && mes <= h) ?? (esRise ? (["1950-01", "9999-12"] as [string, string]) : null))
+        : null;
+    if (!NATURALEZAS_CON_EMPLEADOR.has(naturaleza) && !periodo) continue;
+    const pisoInicio = periodo ? periodo[0] : "1950-01";
     const empleador = String(a.rucEmp ?? a.nomEmp ?? "");
-    const clave = `${empleador}|${a.fecIng ?? ""}`;
+    const clave = `${empleador}|${a.fecIng ?? ""}|${pisoInicio}`;
     const ingreso = fechaIso(a.fecIng)?.slice(0, 7) ?? null;
-    const e = empleos.get(clave) ?? { empleador, inicio: mes, fin: mes };
+    const e = empleos.get(clave) ?? { empleador, inicio: mes, fin: mes, cuentaPropia: Boolean(periodo) };
     if (mes < e.inicio) e.inicio = mes;
     if (mes > e.fin) e.fin = mes;
-    // Una fecha de ingreso imposible (antes de 1950, o después del primer
-    // aporte) no se usa.
-    if (ingreso && ingreso >= "1950-01" && ingreso < e.inicio) e.inicio = ingreso;
+    // La fecha de ingreso sólo adelanta el inicio si es posible: no antes
+    // de 1950 ni, para el aporte propio, antes de que abriera el RUC.
+    if (ingreso && ingreso < e.inicio) {
+      const desdeIngreso = ingreso > pisoInicio ? ingreso : pisoInicio;
+      if (desdeIngreso < e.inicio) e.inicio = desdeIngreso;
+    }
     empleos.set(clave, e);
   }
   if (empleos.size === 0) return null;
@@ -412,9 +482,12 @@ function construirContinuidad(aportes: AnyRecord[], corte: string): ContinuidadL
   // agregar cada empleo, un hueco que después tapaba otro empleo se contaba
   // igual.
   let mesesSinAporte = 0;
+  let mesesCuentaPropiaConRuc = 0;
   for (let m = desde; m <= hasta; m = mesMenos(m, -1)) {
+    const cubren = [...enTramo].filter((e) => e.inicio <= m && m <= e.fin);
+    if (cubren.length > 0 && cubren.every((e) => e.cuentaPropia)) mesesCuentaPropiaConRuc++;
     if (MESES_SIN_DATO_DEL_PROVEEDOR.has(m)) continue;
-    if (![...enTramo].some((e) => e.inicio <= m && m <= e.fin)) mesesSinAporte++;
+    if (cubren.length === 0) mesesSinAporte++;
   }
   return {
     meses: diferenciaEnMeses(desde, hasta) + 1,
@@ -423,6 +496,7 @@ function construirContinuidad(aportes: AnyRecord[], corte: string): ContinuidadL
     vigente: hasta === corte,
     empleadores: new Set([...enTramo].map((e) => e.empleador)).size,
     mesesSinAporte,
+    mesesCuentaPropiaConRuc,
     toleranciaMeses: TOLERANCIA_CONTINUIDAD_MESES,
   };
 }
@@ -525,7 +599,7 @@ function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyR
     promedioUltimos6: promedio(ultimos(6)),
     promedioUltimos12: promedio(ultimos(12)),
     totalHace12Meses: hace12 && hace12.total > 0 ? redondear2(hace12.total) : null,
-    continuidadLaboral: construirContinuidad(aportes, corte),
+    continuidadLaboral: construirContinuidad(aportes, corte, consultadas),
     actividadesEconomicas,
     impuestoRentaPorAnio,
   };

@@ -171,6 +171,14 @@ Cada una de estas salió de un error real. No revivirlas.
   desde cuándo trabaja alguien, la fuente es la fecha de ingreso que
   declara el IESS (`fecIng`), no el primer mes con aporte. Las dos cosas
   las usa `continuidadLaboral` (fuentes-v5).
+- **Aportar por cuenta propia no prueba trabajo; aportar con RUC activo,
+  sí.** Un afiliado voluntario o unipersonal puede estar pagando sólo
+  para no perder la seguridad social. Para la continuidad laboral
+  (fuentes-v6) el aporte propio cuenta en los meses con RUC activo,
+  reconstruidos del SRI (inicio, cese más reciente, reinicio más
+  reciente, los mismos casos que `estadoActividadEconomica`); el RISE
+  cuenta siempre por ser un régimen del SRI. En la muestra, 28 de 137
+  personas aportan por su cuenta sin RUC activo en ninguno de esos meses.
 - **`reprocess-sample.mjs` quedó atrás de `process.ts`** (sigue en la
   forma vieja de `empleoActual`). `process.ts` corre directo bajo Node:
   para validar un cambio del perfil, comparar la versión vieja contra la

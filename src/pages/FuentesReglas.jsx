@@ -17,7 +17,7 @@ import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuente
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v5";
+const VERSION_DOCUMENTADA = "fuentes-v6";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -245,10 +245,17 @@ export default function FuentesReglas() {
             corta.
           </li>
           <li>
-            Cuenta el trabajo con un empleador: público, privado, diplomático, doméstico y agrícola. <strong>No cuentan</strong>{" "}
-            los aportes voluntarios y unipersonales (se pagan aunque no se tenga un trabajo fijo) ni el trabajo no remunerado
-            del hogar.
+            Cuenta siempre el trabajo con un empleador: público, privado, diplomático, doméstico y agrícola.
           </li>
+          <li>
+            El aporte <strong>por cuenta propia</strong> (unipersonal, voluntario, artesanal, RISE) cuenta{" "}
+            <strong>sólo en los meses en que la persona tenía un RUC activo</strong>: ahí hay una actividad como independiente
+            detrás. Sin RUC activo puede ser sólo no perder los beneficios de la seguridad social, y no prueba trabajo (desde la
+            v6). Los períodos del RUC salen del SRI: inicio de actividades, cese más reciente y reinicio más reciente. El RISE
+            cuenta siempre, porque es un régimen del propio SRI. En la muestra, el 81% de los meses de aporte propio caen en un
+            período con RUC activo; 28 de 137 personas aportan por su cuenta sin RUC activo en ninguno.
+          </li>
+          <li>No cuentan el trabajo no remunerado del hogar ni un código de empleador que no conocemos.</li>
           <li>
             Cada empleo va desde la fecha de ingreso que declara el IESS hasta su último aporte. El historial mensual del
             proveedor empieza en 2018-2019: sin la fecha de ingreso, alguien que entró en 2004 aparecería con menos continuidad
@@ -258,7 +265,10 @@ export default function FuentesReglas() {
             Los meses que el proveedor no publicó para nadie (2018-02, 2019-09 a 2019-11, 2020-01 a 2020-03, 2020-05,
             2020-06, 2020-08 y 2020-11) no cuentan como meses sin trabajo.
           </li>
-          <li>Si hoy no trabaja con un empleador, la continuidad es 0 y se dice cuándo terminó la última.</li>
+          <li>
+            Si hoy no trabaja con un empleador ni por cuenta propia con RUC activo, la continuidad es 0 y se dice cuándo terminó
+            la última.
+          </li>
         </ul>
       </Paso>
 
