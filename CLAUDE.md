@@ -145,9 +145,12 @@ Cada una de estas salió de un error real. No revivirlas.
   `research/` (fuera del repo, datos personales):
   `novadata-raw/` = 389 personas en la forma vieja de 9 bloques, la
   muestra fija para comparar reglas (no se pisa);
-  `novadata-raw-2026-09-25/` = el resto de la cartera real (~2.200),
-  en la forma plana de 52 fuentes, `{ cedula, capturadoEl, perfilId,
-  raw }`. Para sumar: `node scripts/consultar-lote.mjs <archivo>
+  `novadata-raw-2026-09-25/` = la cartera real completa (2.567 al
+  2026-09-26, incluidas las 389 de la muestra reconsultadas), en la forma
+  plana de 52 fuentes, `{ cedula, capturadoEl, perfilId, raw }`. Con el
+  crudo del último perfil de cada cliente, una regla nueva se aplica a
+  toda la cartera con `scripts/recalcular-fuentes-ingreso.mjs`, sin
+  reconsultar. Para sumar: `node scripts/consultar-lote.mjs <archivo>
   <uuid-responsable> 20 --crudo=research/<carpeta>` (la función
   devuelve el crudo sólo a la clave de servicio). Reproducir un perfil
   desde el crudo: `buildStandardProfile(raw, cedula, corte)` con el
