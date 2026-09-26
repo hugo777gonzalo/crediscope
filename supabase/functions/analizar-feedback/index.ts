@@ -26,6 +26,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_RETROALIMENTACION, MARCO_RETROALIMENTACION_VERSION } from "../_shared/marco-retroalimentacion.ts";
 import { MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
 import { metaDeLaConsulta } from "../_shared/calidad-de-la-consulta.ts";
+import { ingresosDelPerfilDelModelo } from "../_shared/perfil-del-modelo.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -70,6 +71,25 @@ function extractoPerfil(perfil: AnyRecord | null): AnyRecord | null {
     saldoEnMoraBuro: g("comportamientoBancario", "saldoEnMoraBuroCredito"),
     operacionesCooperativas: g("comportamientoCooperativas", "numeroOperaciones"),
     saldoEnMoraCooperativas: g("comportamientoCooperativas", "saldoEnMora"),
+    // Los ingresos con la misma lectura y los mismos nombres que recibe el
+    // análisis (perfil-del-modelo.ts). Antes el extracto no traía nada de
+    // la clasificación de ingresos.
+    ingresos: (() => {
+      const i = ingresosDelPerfilDelModelo(perfil);
+      if (!i) return null;
+      const pl = i.perfilLaboral as AnyRecord | null;
+      const est = i.estabilidad as AnyRecord | null;
+      return {
+        segmento: i.segmento,
+        estado: i.estado,
+        ingresoReportadoIess: i.ingresoReportadoIess,
+        esIngresoMinimoSbu: i.esIngresoMinimoSbu,
+        perfilLaboral: pl?.tipo ?? null,
+        indiciosIngresoMayor: i.indiciosIngresoMayor,
+        sinInformacionActualEnElIess: i.sinInformacionActualEnElIess,
+        continuidadLaboral: est?.continuidadLaboral ?? null,
+      };
+    })(),
     demandasCrediticias: g("riesgoJudicialCrediticio", "numeroDemandasComoDemandado"),
     demandasCiviles: g("riesgoJudicialCivil", "numeroDemandasComoDemandado"),
     pensionAlimenticiaEnMora: g("riesgoJudicialCivil", "pensionAlimenticiaEnMora"),

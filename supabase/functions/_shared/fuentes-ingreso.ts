@@ -68,9 +68,9 @@ import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 //    30 son cuenta propia.
 //  - `detalle`: historial de aportes de 24 meses, actividad económica del
 //    RUC e impuesto a la renta por año. Salen del crudo, así que sólo
-//    existen en consultas nuevas. NO van al modelo (ver
-//    `sinDetalleDeIngresos`): son para que el analista lea, y meterlos en
-//    el análisis con IA es otra decisión, con su versión de marco.
+//    existen en consultas nuevas. Son para que el analista lea; desde
+//    marco-v23 el modelo recibe sólo un resumen (perfil-del-modelo.ts), y
+//    nunca la renta.
 //
 // v5 (2026-09-25): `detalle.continuidadLaboral` -- desde cuándo trabaja con
 // un empleador sin interrupciones de más de 2 meses, aunque haya cambiado de
@@ -79,8 +79,8 @@ import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 // continuidad supera a esa antigüedad en más de un año. Definida con el
 // negocio: tolerancia 2 meses, los aportes voluntarios y unipersonales no
 // cuentan, los meses que el proveedor no publicó no son huecos, y es sólo
-// para la pantalla (no va al modelo, como el resto del detalle). No cambia
-// ninguna clasificación.
+// para la pantalla (al modelo llega resumida desde marco-v23, ver
+// perfil-del-modelo.ts). No cambia ninguna clasificación.
 //
 // v6 (2026-09-25): el aporte propio (unipersonal, voluntario, artesanal,
 // RISE) cuenta para la continuidad en los meses en que la persona tenía un
@@ -288,24 +288,13 @@ export interface AnalisisFuentesIngreso {
   pisoIngresoMensualReportado: number | null;
   senalesDeEscala: SenalEscala[];
   paraConfirmar: string[];
-  // Desde fuentes-v4. No va al modelo: ver sinDetalleDeIngresos.
+  // Desde fuentes-v4. Es para el analista: al modelo llega sólo un resumen
+  // (continuidad, meses con aporte, promedio, variación), armado por
+  // perfil-del-modelo.ts desde marco-v23.
   detalle?: DetalleIngresos;
 }
 
 type AnyRecord = Record<string, unknown>;
-
-// El detalle es para que lo lea el analista. Decisión del negocio del
-// 2026-09-24: no entra al análisis con IA hasta que haya una versión del
-// marco que lo contemple. Todo camino que le mande un perfil guardado al
-// modelo pasa por acá, así que un perfil viejo y uno nuevo le llegan con
-// la misma forma.
-export function sinDetalleDeIngresos<T extends Record<string, unknown>>(perfil: T): T {
-  const f = perfil?.fuentesIngreso as Record<string, unknown> | undefined;
-  if (!f || !("detalle" in f)) return perfil;
-  const resto = { ...f };
-  delete resto.detalle;
-  return { ...perfil, fuentesIngreso: resto };
-}
 
 // Valida el rango a propósito: un mes 99 en los datos construía
 // "2026-99", que por comparación de texto queda por encima del corte y
@@ -1049,8 +1038,8 @@ export function analizarFuentesIngreso(
 //     ventas, costos o capital.
 // El sueldo anterior más alto se descartó: dice lo que ganó, no lo que gana.
 //
-// Se calcula desde el análisis guardado (no se guarda ni va al modelo), así
-// que vale para cualquier perfil. La nómina sólo desde v8: antes contaba a
+// Se calcula desde el análisis guardado (no se guarda), así que vale para
+// cualquier perfil. La pantalla y el perfil del modelo lo toman de acá. La nómina sólo desde v8: antes contaba a
 // la propia persona y cualquier afiliado que se paga el SBU "pagaba más en
 // sueldos que lo que declara".
 export interface IndicioIngresoMayor {
@@ -1061,12 +1050,18 @@ export interface IndicioIngresoMayor {
 
 const DOLARES = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+// "fuentes-v8" -> 8. Las lecturas de abajo cambian de regla según la
+// versión con que se guardó el análisis.
+function numeroDeVersion(f: Record<string, unknown>): number {
+  return Number(String(f.version ?? "").replace(/\D/g, "")) || 0;
+}
+
 export function indiciosDeIngresoMayor(f: Record<string, unknown> | null | undefined): IndicioIngresoMayor[] {
   if (!f) return [];
   const indicios: IndicioIngresoMayor[] = [];
   const senales = (Array.isArray(f.senalesDeEscala) ? f.senalesDeEscala : []) as SenalEscala[];
   const declarado = typeof f.pisoIngresoMensualReportado === "number" ? f.pisoIngresoMensualReportado : 0;
-  const version = Number(String(f.version ?? "").replace(/\D/g, "")) || 0;
+  const version = numeroDeVersion(f);
 
   const nomina = senales.find((s) => s.senal === "nómina que paga");
   if (version >= 8 && nomina && typeof nomina.valor === "number" && nomina.valor > declarado) {
@@ -1090,4 +1085,53 @@ export function indiciosDeIngresoMayor(f: Record<string, unknown> | null | undef
     });
   }
   return indicios;
+}
+
+// ---- Tamaño del negocio ----
+//
+// Empleados, nómina, establecimientos activos y contabilidad, leídos del
+// perfil guardado. La pestaña Fuentes de ingreso y el perfil del modelo lo
+// toman de acá: si cada uno lo contara por su lado, el análisis con IA
+// podría decir "3 empleados" donde la pantalla dice 2.
+//
+// null: no tiene RUC activo, ni nómina, ni empleados. Serían cuatro ceros
+// y no dicen nada (la pantalla no muestra el bloque).
+export interface TamanoDelNegocio {
+  empleados: number | null; // null: no se sabe (la fuente no respondió)
+  empleadosSinContarALaPersona: boolean; // desde fuentes-v8; antes podía incluirla
+  nomina: number | null;
+  establecimientosActivos: number; // 0 si el RUC no está activo (pedido del negocio)
+  obligadoContabilidad: boolean;
+}
+
+export function tamanoDelNegocio(perfil: Record<string, unknown> | null | undefined): TamanoDelNegocio | null {
+  const f = perfil?.fuentesIngreso as Record<string, unknown> | undefined;
+  if (!f) return null;
+  const laboral = (perfil?.laboral ?? {}) as Record<string, unknown>;
+  const senales = (Array.isArray(f.senalesDeEscala) ? f.senalesDeEscala : []) as SenalEscala[];
+  const nomina = senales.find((s) => s.senal === "nómina que paga") ?? null;
+  const v8 = numeroDeVersion(f) >= 8;
+  // "La fuente dijo que no hay" y "no contestó" no son lo mismo: sin la
+  // lista de fuentes no medidas (perfiles viejos), una consulta que vino
+  // incompleta no permite afirmar 0 empleados.
+  const noMedidas = ((perfil?.metaConsulta ?? {}) as Record<string, unknown>).fuentesNoMedidas;
+  const empleadosNoMedidos = Array.isArray(noMedidas) ? noMedidas.includes("empleados") : f.segmento === "sin_datos";
+  const empleados = v8
+    ? nomina
+      ? (nomina.cantidad ?? null)
+      : empleadosNoMedidos
+        ? null
+        : 0
+    : typeof laboral.numeroEmpleadosRegistrados === "number"
+      ? laboral.numeroEmpleadosRegistrados
+      : null;
+  const rucActivo = laboral.tieneRucActivo === true;
+  if (!rucActivo && !nomina && !empleados) return null;
+  return {
+    empleados,
+    empleadosSinContarALaPersona: v8,
+    nomina: typeof nomina?.valor === "number" ? nomina.valor : null,
+    establecimientosActivos: rucActivo && typeof laboral.numeroEstablecimientosActivos === "number" ? laboral.numeroEstablecimientosActivos : 0,
+    obligadoContabilidad: senales.some((s) => s.senal === "obligado a llevar contabilidad"),
+  };
 }

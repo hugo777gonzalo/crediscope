@@ -267,8 +267,10 @@ export default function FuentesReglas() {
         <p style={{ marginBottom: 0 }}>
           El historial de aportes de los últimos 24 meses (continuidad y tendencia del sueldo declarado), la actividad económica
           registrada en el SRI y el impuesto a la renta de cada año. Se ven en la pestaña Fuentes de ingreso de cada cliente, no
-          cambian el segmento y <strong>no entran al análisis con IA</strong> hasta que haya una versión del marco que los
-          contemple. Salen del dato crudo de Novadata, que no se guarda: existen sólo en consultas hechas desde la v4.
+          cambian el segmento. Al análisis con IA (desde marco-v23) llega sólo un resumen: continuidad laboral, meses con aporte en
+          el último año, promedio y variación contra hace un año. Los aportes mes a mes, la actividad económica y la renta{" "}
+          <strong>no entran</strong>: de la renta no se deduce nada. Salen del dato crudo de Novadata: existen sólo en consultas
+          hechas desde la v4.
         </p>
       </Paso>
 
@@ -335,7 +337,7 @@ export default function FuentesReglas() {
           registrada</strong> (aporta por su cuenta sin RUC activo), <strong>Jubilado</strong> o{" "}
           <strong>Sin actividad registrada</strong>. En el perfil mixto la actividad propia se lee como complementaria del empleo,
           salvo que pague una nómina mayor que su sueldo: ahí es la principal. El perfil laboral acompaña al segmento, no lo
-          cambia, y todavía no entra al análisis con IA.
+          cambia. Desde marco-v23 entra al análisis con IA, calculado igual que en la pantalla.
         </p>
       </Paso>
 

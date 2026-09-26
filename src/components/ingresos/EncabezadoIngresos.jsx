@@ -28,8 +28,8 @@ export default function EncabezadoIngresos({ cedula, perfil, corteVigente, consu
   const clasificadoConOtroCorte = f?.corteIessUsado && corteVigente && f.corteIessUsado < corteVigente;
   const monto = f?.pisoIngresoMensualReportado ?? null;
   const enElSbu = esIngresoMinimoSbu(monto, f?.corteIessUsado);
-  // Se calcula acá desde el perfil guardado (no se guarda dentro del
-  // perfil: el modelo no lo lee). Ver _shared/perfil-laboral.ts.
+  // Se calcula desde el perfil guardado con la misma función que usa el
+  // perfil del modelo (perfil-del-modelo.ts). Ver _shared/perfil-laboral.ts.
   const perfilLaboral = clasificarPerfilLaboral(perfil);
   const indicios = indiciosDeIngresoMayor(f);
   // El segmento dice de qué fuente medible depende el ingreso; el perfil

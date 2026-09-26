@@ -20,7 +20,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_INTERPRETATIVO, MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
-import { sinDetalleDeIngresos } from "../_shared/fuentes-ingreso.ts";
+import { mensajeParaElModelo } from "../_shared/perfil-del-modelo.ts";
+import { loadCriterioVigente, loadDisabledFields } from "../_shared/runtime-config.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -39,7 +40,12 @@ const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 type AnyRecord = Record<string, unknown>;
 
-function construirMarcoCandidato(cambios: string[]): string {
+// El marco candidato es el de producción -- el base más los ajustes
+// vigentes -- más las propuestas a probar. Hasta marco-v22 se armaba sólo
+// con el base y las propuestas: con un ajuste vigente, el backtest habría
+// medido contra un criterio que ya no es el que rige.
+function construirMarcoCandidato(vigentes: string[], propuestas: string[]): string {
+  const cambios = [...vigentes, ...propuestas];
   if (cambios.length === 0) return MARCO_INTERPRETATIVO;
   // Los ajustes se SUMAN al marco base en vez de reescribirlo: el
   // criterio original sigue versionado en código, y cada ajuste es
@@ -59,6 +65,7 @@ async function evaluarCaso(
   perfil: AnyRecord,
   controlBloqueo: AnyRecord | null,
   marco: string,
+  camposDeshabilitados: Set<string>,
   registrar: (datos: { exito: boolean; error?: string | null; data?: AnyRecord | null; duracionMs: number }) => Promise<void>
 ) {
   const inicio = Date.now();
@@ -82,12 +89,11 @@ async function evaluarCaso(
       messages: [
         {
           role: "user",
-          content: JSON.stringify({
-            // Igual que en el análisis: el detalle de ingresos no es parte
-            // de lo que el marco sabe leer (ver fuentes-ingreso.ts, v4).
-            standardClientProfile: sinDetalleDeIngresos(perfil),
-            hallazgosControlBloqueo: (controlBloqueo?.hallazgos as unknown[]) ?? [],
-          }),
+          // El mismo perfil del modelo que en el análisis, con los mismos
+          // campos ocultos: si no, el backtest mide otra cosa.
+          content: JSON.stringify(
+            mensajeParaElModelo(perfil, (controlBloqueo?.hallazgos as unknown[]) ?? [], camposDeshabilitados),
+          ),
         },
       ],
     }),
@@ -210,7 +216,8 @@ Deno.serve(async (req) => {
       if (error) throw error;
       propuestas = (data ?? []).filter((p: AnyRecord) => p.tipo === "criterio_modelo" && p.cambio_sugerido);
     }
-    const marcoCandidato = construirMarcoCandidato(propuestas.map((p) => String(p.cambio_sugerido)));
+    const [criterio, camposDeshabilitados] = await Promise.all([loadCriterioVigente(serviceClient), loadDisabledFields(serviceClient)]);
+    const marcoCandidato = construirMarcoCandidato(criterio.ajustes, propuestas.map((p) => String(p.cambio_sugerido)));
 
     const { data: creditos, error: errCreditos } = await serviceClient
       .from("feedback_creditos")
@@ -239,6 +246,7 @@ Deno.serve(async (req) => {
               perfilRow.standard_profile as AnyRecord,
               (perfilRow.control_bloqueo as AnyRecord | null) ?? null,
               marcoCandidato,
+              camposDeshabilitados,
               ({ exito, error, data, duracionMs }) =>
                 registrarLlamadaLlm(serviceClient, {
                   razonamiento: "activo" as const,

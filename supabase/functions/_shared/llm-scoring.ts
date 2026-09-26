@@ -34,7 +34,7 @@ import type {
 } from "./types.ts";
 import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
-import { sinDetalleDeIngresos } from "./fuentes-ingreso.ts";
+import { mensajeParaElModelo } from "./perfil-del-modelo.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "observar", "negar"];
 const NIVELES_RIESGO: NivelRiesgo[] = ["muy bajo", "bajo", "moderado", "alto", "muy alto"];
@@ -263,10 +263,10 @@ async function pedirScoringConReintentos(
   return { resultado: ultimo!.resultado, llamadas };
 }
 
-// profile: normalmente un StandardClientProfile, pero puede llegar con
-// campos deshabilitados redactados a null (ver runtime-config.ts
-// redactDisabledFields) — por eso el tipo es laxo acá, ya no es el
-// StandardClientProfile completo garantizado.
+// profile: el StandardClientProfile guardado, tal cual. Lo que el modelo
+// lee de él lo arma perfil-del-modelo.ts (desde marco-v23): esta función
+// no recibe un perfil ya recortado, para que ningún camino pueda saltarse
+// esa puerta.
 export async function scoreWithLlm(
   profile: Record<string, unknown>,
   controlBloqueo: ResultadoControlBloqueo,
@@ -275,14 +275,17 @@ export async function scoreWithLlm(
   // suman al marco base en vez de reescribirlo: el criterio original
   // sigue versionado en código y cada ajuste es reversible por
   // separado.
-  ajustesVigentes: string[] = []
+  ajustesVigentes: string[] = [],
+  // "grupo.campo" deshabilitados en standard_profile_field_config.
+  camposDeshabilitados: Set<string> = new Set()
 ): Promise<LlmScoringResult> {
   if (!ANTHROPIC_API_KEY) {
     return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO_BASE);
   }
 
   // El marco va en un bloque aparte y CACHEADO, los ajustes en otro sin
-  // cachear. Son ~8.100 tokens idénticos en cada análisis: sin caché se
+  // cachear. Son ~10.000 tokens idénticos en cada análisis (marco-v23;
+  // eran ~8.100 en la v22, antes de explicar las fuentes de ingreso): sin caché se
   // pagan completos todas las veces. Una lectura de caché cuesta ~10% de
   // procesarlo de nuevo, así que un analista que revisa varios clientes
   // seguidos paga el marco una sola vez.
@@ -307,10 +310,7 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
     });
   }
 
-  const userPayload = {
-    standardClientProfile: sinDetalleDeIngresos(profile),
-    hallazgosControlBloqueo: controlBloqueo.hallazgos, // ya resueltos de forma determinística — no recalcular
-  };
+  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
 
   const base = await pedirScoringConReintentos(MODELO_BASE, bloquesSistema, userPayload);
   const llamadas: LlamadaRealizada[] = [...base.llamadas];

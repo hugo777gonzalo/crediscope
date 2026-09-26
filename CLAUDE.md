@@ -112,6 +112,9 @@ Romper cualquiera de estas rompe algo real.
 - `marco-interpretativo.ts` — el prompt del modelo. `MARCO_VERSION` al
   final. **Cada versión nueva necesita su fila en
   `scoring_rules_versions` o falla la clave foránea.**
+- `perfil-del-modelo.ts` — lo ÚNICO que lee el modelo (ver abajo).
+  `nombres-ingresos.ts` — los nombres de ingresos que comparten la
+  pantalla y el modelo.
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
   Ecuador es UTC-5 sin horario de verano; a las 20:00 de Ecuador la
   fecha UTC ya es la de mañana.
@@ -181,10 +184,20 @@ Cada una de estas salió de un error real. No revivirlas.
   devuelve el crudo sólo a la clave de servicio). Reproducir un perfil
   desde el crudo: `buildStandardProfile(raw, cedula, corte)` con el
   corte VIGENTE de ese día, no con `fuente_corte`.
-- **`fuentesIngreso.detalle` no va al modelo.** Desde fuentes-v4 trae el
+- **El modelo lee SOLO el perfil del modelo** (`_shared/perfil-del-modelo.ts`,
+  desde marco-v23). Los tres caminos al LLM (análisis, backtest, informe
+  de retroalimentación) pasan por `armarPerfilDelModelo()` /
+  `mensajeParaElModelo()`: ingresos con los nombres de la pantalla, perfil
+  laboral, indicios, estabilidad y tamaño del negocio; campos
+  deshabilitados en null; sin aportes mes a mes, sin textos del SRI, sin
+  renta. Un camino nuevo tiene que usar esa misma puerta, y cualquier
+  cambio en lo que arma es una versión nueva del marco (con su fila en
+  `scoring_rules_versions`).
+- **`fuentesIngreso.detalle` no va entero al modelo.** Desde fuentes-v4 trae el
   historial de aportes, la actividad económica y la renta por año, para
-  el analista. Todo camino que le mande un perfil al LLM pasa por
-  `sinDetalleDeIngresos()`; uno nuevo también tiene que hacerlo.
+  el analista. Al modelo llega sólo un resumen (continuidad, meses con
+  aporte, promedio, variación), armado por el perfil del modelo; la
+  renta nunca.
 - **El corte del IESS lo deciden 20 clientes, no uno.** Novadata
   actualiza el IESS más o menos cada dos meses y no avisa: el
   2026-09-25 se esperaba que siguiera en 2026-07 y durante la
@@ -253,7 +266,8 @@ Cada una de estas salió de un error real. No revivirlas.
   un tercero? ¿tiene actividad propia? El 26% de la cartera es las dos
   cosas. Se calcula desde el perfil guardado, vive en la columna
   `client_profiles.perfil_laboral` (085) y NO está dentro de
-  `standard_profile`: el modelo no lo lee.
+  `standard_profile`: al modelo le llega calculado igual que en la
+  pantalla, dentro del perfil del modelo (desde marco-v23).
 - **`reprocess-sample.mjs` quedó atrás de `process.ts`** (sigue en la
   forma vieja de `empleoActual`). `process.ts` corre directo bajo Node:
   para validar un cambio del perfil, comparar la versión vieja contra la

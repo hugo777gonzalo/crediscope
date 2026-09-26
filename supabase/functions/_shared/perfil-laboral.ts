@@ -22,11 +22,11 @@
 // El perfil laboral no reemplaza al segmento: lo acompaña.
 //
 // Se calcula desde el perfil estandarizado guardado, no desde el crudo, así
-// que vale igual para un perfil de hace un mes que para uno nuevo. NO va al
-// modelo: no se guarda dentro del perfil, sólo en la columna
-// client_profiles.perfil_laboral (para contar en el panorama) y se
-// recalcula en la pantalla. Meterlo al análisis con IA es otra decisión,
-// con su versión de marco.
+// que vale igual para un perfil de hace un mes que para uno nuevo. No se
+// guarda dentro del perfil, sólo en la columna client_profiles.perfil_laboral
+// (para contar en el panorama); la pantalla y el perfil del modelo
+// (perfil-del-modelo.ts, desde marco-v23) lo recalculan con esta misma
+// función, así el análisis con IA lee lo mismo que el analista.
 //
 // En el negocio se dice "dependiente", no "asalariado" (pedido del
 // 2026-09-25).

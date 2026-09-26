@@ -3,6 +3,7 @@ import { TituloTarjeta } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 import { quienDeclara } from "../../lib/fuentesIngresoConsolidado.js";
 import { origenDeFuente, ETIQUETA_ORIGEN, mesLegible, esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
+import { tamanoDelNegocio } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
 
 // Cuatro bloques, por de dónde sale cada cosa: los aportes al IESS (con
 // monto), el negocio propio registrado en el SRI, el tamaño de ese negocio
@@ -84,32 +85,15 @@ export default function FuentesVigentes({ f, perfil }) {
   // El RUC y la nómina ya están en "Negocio propio" y "Tamaño del negocio":
   // repetirlos como fuentes sin monto era leer lo mismo dos veces.
   const otras = fuentes.filter((x) => !["iess", "ruc", "nomina"].includes(origenDeFuente(x)));
-  const senales = f.senalesDeEscala ?? [];
-  const nomina = senales.find((s) => s.senal === "nómina que paga") ?? null;
-  const obligado = senales.some((s) => s.senal === "obligado a llevar contabilidad");
   const ruc = estadoDelRuc(laboral);
-  const versionV8 = (Number(String(f.version ?? "").replace(/\D/g, "")) || 0) >= 8;
+  // La misma lectura que recibe el análisis con IA (perfil del modelo).
+  const tamano = tamanoDelNegocio(perfil);
 
   // "La fuente dice que no hay" y "la fuente no contestó" no son lo mismo
   // (CLAUDE.md). Un perfil viejo no trae la lista de fuentes no medidas; si
   // además la consulta vino incompleta, tampoco se puede afirmar.
   const noMedidas = perfil?.metaConsulta?.fuentesNoMedidas;
   const noRespondio = (fuente) => (Array.isArray(noMedidas) ? noMedidas.includes(fuente) : f.segmento === "sin_datos");
-
-  // Desde fuentes-v8 la nómina no cuenta a la propia persona y guarda la
-  // cantidad; antes, el número registrado podía incluirla.
-  const empleados = versionV8
-    ? nomina
-      ? (nomina.cantidad ?? null)
-      : noRespondio("empleados")
-        ? null
-        : 0
-    : (laboral.numeroEmpleadosRegistrados ?? null);
-  // Con el RUC inactivo son 0 aunque el SRI muestre alguno abierto: es un
-  // registro sin actualizar (pedido del negocio, 2026-09-26).
-  const establecimientosActivos = laboral.tieneRucActivo === true ? (laboral.numeroEstablecimientosActivos ?? 0) : 0;
-  // Con el RUC cerrado y sin nómina serían cuatro ceros: no se muestra.
-  const mostrarTamano = Boolean(ruc?.activo || nomina || empleados);
 
   return (
     <div className="crediscope-card">
@@ -153,28 +137,28 @@ export default function FuentesVigentes({ f, perfil }) {
         )}
       </section>
 
-      {mostrarTamano ? (
+      {tamano ? (
         <section className="crediscope-aval-subseccion">
           <p className="crediscope-aval-subtitulo">Tamaño del negocio</p>
           <div className="crediscope-ing-indicadores crediscope-ing-indicadores-4">
             <Indicador
               etiqueta="Empleados"
-              pie={versionV8 ? "sin contar a la persona" : "puede incluir a la persona"}
+              pie={tamano.empleadosSinContarALaPersona ? "sin contar a la persona" : "puede incluir a la persona"}
               titulo="Afiliados al IESS en la nómina que paga, en el mes más reciente."
             >
-              {empleados ?? "—"}
+              {tamano.empleados ?? "—"}
             </Indicador>
-            <Indicador etiqueta="Nómina" pie={nomina ? "al mes" : null}>
-              {nomina ? formatearValorAval(nomina.valor, "dinero") : "—"}
+            <Indicador etiqueta="Nómina" pie={tamano.nomina ? "al mes" : null}>
+              {tamano.nomina ? formatearValorAval(tamano.nomina, "dinero") : "—"}
             </Indicador>
             <Indicador etiqueta="Establecimientos Activos (SRI)" titulo="Sólo los abiertos, y 0 si el RUC no está activo.">
-              {establecimientosActivos}
+              {tamano.establecimientosActivos}
             </Indicador>
             <Indicador
               etiqueta="Contabilidad"
               titulo="El SRI obliga a llevar contabilidad a quien supera ciertos montos de ventas, costos o capital."
             >
-              {obligado ? "Obligado" : "No obligado"}
+              {tamano.obligadoContabilidad ? "Obligado" : "No obligado"}
             </Indicador>
           </div>
         </section>
