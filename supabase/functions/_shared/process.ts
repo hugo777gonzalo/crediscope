@@ -15,6 +15,7 @@ import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, fechasDelRuc, rucActivo } from "./ruc.ts";
+import { esElPropioAfiliado, esSuPropioPatrono } from "./patrono.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -220,11 +221,19 @@ function mismoNombre(a: unknown, b: unknown): boolean {
 //   - Los nombres vienen con la Ñ corrompida en algunos registros de la
 //     fuente ("PICHUCHO MU?OZ"), así que la comparación no puede exigir
 //     igualdad exacta de todas las palabras.
+// Desde estructura-v7 "es el mismo cliente" sale de patrono.ts: el RUC del
+// patrono contra la cédula, y el nombre sólo si el registro no trae RUC. La
+// regla por nombre de acá (un apellido y todos los nombres de pila) marcaba
+// como su propio empleador a quien trabaja para su padre homónimo: 2 casos
+// en la cartera. Con un RUC ajeno, esa persona queda "comparte apellido",
+// que es lo que es.
 // Exportada para scripts/corregir-empleo-actual.mjs, que la aplica a
 // perfiles guardados: el mismo criterio que una consulta nueva.
 export function relacionConEmpleador(
   nombreEmpleador: unknown,
-  nombreCliente: unknown
+  nombreCliente: unknown,
+  rucEmpleador: unknown = null,
+  cedula: string | null = null
 ): { esElMismoCliente: boolean; comparteApellido: boolean } | null {
   const limpiar = (s: unknown) =>
     String(s ?? "")
@@ -235,20 +244,17 @@ export function relacionConEmpleador(
       .split(/\s+/)
       .filter(Boolean);
 
+  const esElMismoCliente = esSuPropioPatrono({ ruc: rucEmpleador, nombrePatrono: nombreEmpleador }, cedula, String(nombreCliente ?? ""));
+
   const empleador = limpiar(nombreEmpleador);
   const cliente = limpiar(nombreCliente);
-  if (empleador.length === 0 || cliente.length < 3) return null;
-
   // "Apellido1 Apellido2 Nombre1 Nombre2" (formato de pn_inf_basica).
-  const apellidos = cliente.slice(0, 2).filter((a) => a.length >= 4);
-  const nombres = cliente.slice(2).filter((n) => n.length >= 4);
-  if (apellidos.length === 0) return null;
+  const apellidos = cliente.length >= 3 ? cliente.slice(0, 2).filter((a) => a.length >= 4) : [];
+  // Sin nombres comparables no se sabe si es un pariente; si el RUC ya dijo
+  // que es la propia persona, eso sí se sabe.
+  if (!esElMismoCliente && (empleador.length === 0 || apellidos.length === 0)) return null;
 
   const comparteApellido = apellidos.some((apellido) => empleador.includes(apellido));
-  // Es la misma persona si además aparecen TODOS sus nombres de pila:
-  // un pariente comparte apellidos pero no se llama igual.
-  const esElMismoCliente = comparteApellido && nombres.length > 0 && nombres.every((n) => empleador.includes(n));
-
   return { esElMismoCliente, comparteApellido: comparteApellido && !esElMismoCliente };
 }
 
@@ -379,7 +385,12 @@ function textoDe(v: unknown): string | null {
 // fuentes-ingreso.ts; cuenta también el cese temporal (solicitud de
 // suspensión) y exige un establecimiento abierto. tipoUltimoCeseRuc puede
 // ser "suspension_temporal".
-export const PROCESS_VERSION = "estructura-v6"; // ver docs/estructura-estandarizada.md
+// estructura-v7 (2026-09-26): clienteEsSuPropioEmpleador sale del RUC del
+// patrono (patrono.ts), y numeroEmpleadosRegistrados y
+// esEmpleadorOAdministrador no cuentan a la propia persona, que se afilia en
+// su propia nómina: 166 personas figuraban con empleados sin tener ninguno.
+// numeroEstablecimientosActivos es 0 si el RUC no está activo (ruc.ts).
+export const PROCESS_VERSION = "estructura-v7"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -410,7 +421,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // dominada por la ingesta (~27s) y taparía cualquier degradación de
   // este módulo, que corre en milisegundos.
   const inicioFuentes = Date.now();
-  const fuentesIngreso = analizarFuentesIngreso(raw, (persona?.nombre as string) ?? null, corteIess);
+  const fuentesIngreso = analizarFuentesIngreso(raw, (persona?.nombre as string) ?? null, corteIess, cedula);
   const duracionFuentesMs = Date.now() - inicioFuentes;
 
   const identidad: StandardClientProfile["identidad"] = {
@@ -492,7 +503,10 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   };
 
   // ---- laboral ----
-  const empleados = arr(fuentes, "empleados", "empleados");
+  // La nómina que paga, sin la propia persona: el patrono persona natural se
+  // afilia en su propia nómina (ver patrono.ts).
+  const nominaCompleta = arr(fuentes, "empleados", "empleados");
+  const empleados = nominaCompleta.filter((e) => !esElPropioAfiliado(e, cedula, (persona?.nombre as string) ?? null));
   const empleadosIdsUnicos = new Set(empleados.map((e) => e.ci).filter(Boolean));
   const contribuyenteRegistros = arr(fuentes, "contribuyente", "datosContribuyente");
   // establecimientoActEconomica: SÍ trae detalle por establecimiento
@@ -503,14 +517,19 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // interpreta como MM/DD (ambiguo), NO se usan acá por eso, solo el
   // conteo por estado_establecimiento.
   const establecimientos = arr(fuentes, "establecimientoActEconomica", "datosEstablecimientoActEco");
-  const numeroEstablecimientosActivos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
-  const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // tieneEstablecimientoActivo: la regla vive en ruc.ts y es la misma que
   // usa fuentes-ingreso.ts -- las fechas del RUC (cese definitivo o
   // temporal, reinicio) y, si hay establecimientos, al menos uno abierto.
   // Hasta estructura-v6 había una copia acá y otra allá, y no coincidían.
   const rucActivoHoy = (c: AnyRecord) => rucActivo(c, establecimientos);
   const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucActivoHoy);
+  // Con el RUC suspendido o cancelado, los establecimientos activos son 0
+  // aunque el SRI siga mostrando alguno ABIERTO: es un registro que no se
+  // actualizó, y decir "RUC inactivo" y "2 establecimientos activos" a la vez
+  // no se puede leer (pedido del negocio, 2026-09-26, estructura-v7).
+  const abiertos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
+  const numeroEstablecimientosActivos = tieneEstablecimientoActivo ? abiertos : 0;
+  const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // Registro RUC de referencia para las fechas expuestas: el activo si
   // hay uno, si no el primero disponible (persona natural normalmente
   // tiene un solo registro, pero Novadata devuelve un array).
@@ -627,13 +646,22 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
           };
         });
   const hayEmpleoActual = empleosActuales.length > 0;
+  // El RUC del patrono de cada empleo actual, en el mismo orden. No entra
+  // en empleosActuales (el modelo no lo necesita): sólo decide si el
+  // patrono es la propia persona.
+  const rucesDelEmpleoActual =
+    registrosDelCorte.length > 0
+      ? registrosDelCorte.map((r) => (r as AnyRecord).rucEmpresa ?? ((r as AnyRecord).personaPatrono as AnyRecord | undefined)?.identificacion ?? null)
+      : aportesDelCorte.map((t) => t.rucEmp ?? null);
 
   // Las señales de vínculo familiar miran a TODOS los empleadores
   // vigentes: alcanza con que UNO sea un familiar o el propio cliente
   // para que el caso merezca revisión. Antes solo se evaluaba el
   // primero, así que un segundo empleo con el suegro pasaba
   // desapercibido.
-  const relaciones = empleosActuales.map((e) => relacionConEmpleador(e.empleador, (persona?.nombre as string) ?? null));
+  const relaciones = empleosActuales.map((e, i) =>
+    relacionConEmpleador(e.empleador, (persona?.nombre as string) ?? null, rucesDelEmpleoActual[i], cedula)
+  );
   const relacionEmpleador = hayEmpleoActual
     ? {
         comparteApellido: relaciones.some((x) => x?.comparteApellido === true)
@@ -811,7 +839,9 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     tieneEstablecimientoActivo,
     esIndependiente: tieneEstablecimientoActivo,
     numeroEmpleadosRegistrados: empleadosIdsUnicos.size,
-    tipoEmpleador: (empleados[0]?.tipEmp as string) ?? null,
+    // El sector con que está registrado como patrono, aunque el único
+    // afiliado sea él mismo.
+    tipoEmpleador: (nominaCompleta[0]?.tipEmp as string) ?? null,
     obligacionesPatronalesEnMora: cumplimientoAfiliaciones.length > 0 ? obligacionesEnMora : null,
     ...(() => {
       // pn_trabajo_historicos trae algo que el mecanizado del IESS no:

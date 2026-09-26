@@ -122,27 +122,34 @@ export default function Estabilidad({ f, laboral }) {
           {duracionLegible(laboral?.antiguedadEmpleoActualMeses)}
         </Cifra>
         <Cifra etiqueta="Empleo más largo registrado">{duracionLegible(laboral?.duracionEmpleoMasLargoMeses)}</Cifra>
-        <Cifra etiqueta="Empleadores en 24 meses">
+        <Cifra etiqueta="Empleadores en 2 años">
           {laboral?.numeroEmpleadoresUltimos24Meses ?? "—"}
         </Cifra>
         {d ? (
-          <Cifra etiqueta="Meses con aporte (últimos 12)">
-            <span className={d.mesesConAporteUltimos12 < 12 && d.mesesConAporteUltimos12 > 0 ? "crediscope-aval-malo" : undefined}>
+          <Cifra etiqueta="Meses con aporte, último año">
+            <span className={d.mesesConAporteUltimos12 < 12 && d.mesesConAporteUltimos12 > 0 ? "crediscope-aval-malo" : d.mesesConAporteUltimos12 === 12 ? "crediscope-aval-bueno" : undefined}>
               {d.mesesConAporteUltimos12} de 12
             </span>
           </Cifra>
         ) : null}
-        <Cifra etiqueta="Promedio mensual, 6 meses" titulo="Promedio de los meses con aporte. Es lo reportado al IESS, igual que el del corte.">
+        <Cifra etiqueta="Promedio declarado, 6 meses" titulo="Promedio de los meses con aporte. Es lo reportado al IESS, igual que el del corte.">
           {promedio6 ? formatearValorAval(promedio6, "dinero") : "—"}
         </Cifra>
         {d ? (
-          <Cifra etiqueta="Contra hace un año" titulo={d.totalHace12Meses ? `Hace 12 meses: ${formatearValorAval(d.totalHace12Meses, "dinero")}` : "Sin aporte hace 12 meses"}>
+          <Cifra etiqueta="Frente a hace un año" titulo={d.totalHace12Meses ? `Hace 12 meses: ${formatearValorAval(d.totalHace12Meses, "dinero")}` : "Sin aporte hace 12 meses"}>
             <Variacion hoy={f.pisoIngresoMensualReportado} antes={d.totalHace12Meses} />
           </Cifra>
         ) : null}
       </div>
 
-      {d ? <p className="crediscope-aval-nota" style={{ marginTop: -4, marginBottom: 12 }}>{explicacionContinuidad(continuidad)}</p> : null}
+      {/* La explicación de la continuidad es larga y cambia con cada caso:
+          plegada, para que la tarjeta se lea de un vistazo. */}
+      {d ? (
+        <details className="crediscope-ing-desplegable" style={{ marginTop: -4, marginBottom: 12 }}>
+          <summary>Cómo se midió la continuidad</summary>
+          <div className="crediscope-ing-desplegado">{explicacionContinuidad(continuidad)}</div>
+        </details>
+      ) : null}
 
       {d && d.aportesPorMes.length > 0 ? (
         <section className="crediscope-aval-subseccion">

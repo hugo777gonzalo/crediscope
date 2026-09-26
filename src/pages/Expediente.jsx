@@ -16,7 +16,16 @@ import { useSession } from "../lib/useSession.js";
 import { useProfile } from "../lib/useProfile.js";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import { nombreCorto } from "../lib/perfilClienteCampos.js";
-import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO, formatMoneda, textoIngresoReportado } from "../lib/fuentesIngresoConsolidado.js";
+import {
+  ETIQUETA_SEGMENTO,
+  ETIQUETA_ESTADO,
+  ETIQUETA_SENAL,
+  DOCUMENTOS_DE_CONFIRMACION,
+  quienDeclara,
+  formatMoneda,
+  textoIngresoReportado,
+} from "../lib/fuentesIngresoConsolidado.js";
+import { mesLegible } from "../lib/ingresosCampos.js";
 import { formatearFechaHora, haceCuanto } from "../lib/fechas.js";
 import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
 import { colorScore, colorRecomendacion, textoRecomendacion } from "../lib/bandeja.js";
@@ -224,7 +233,7 @@ export default function Expediente() {
               <Veredicto
                 rot="Evidencia del ingreso"
                 valor={f?.estadoSegmento ? (ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento) : "—"}
-                pie={f?.segmento ? RIESGO_SEGMENTO[f.segmento] : null}
+                pie={f?.segmento ? (ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento) : null}
                 color={f?.estadoSegmento === "confirmada" ? "var(--good)" : f?.estadoSegmento === "provisional" ? "var(--warn)" : null}
               />
               <Veredicto
@@ -431,8 +440,11 @@ function SeccionIngresos({ f, laboral }) {
         <Par etiqueta="Segmento" valor={ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento} />
         <Par etiqueta="Clasificación" valor={ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento} />
         <Par etiqueta="Ingreso reportado al IESS" valor={textoIngresoReportado(f.pisoIngresoMensualReportado, f.corteIessUsado)} />
-        <Par etiqueta="Corte del IESS usado" valor={f.corteIessUsado ?? "—"} />
-        <Par etiqueta="Aparece en el último corte" valor={f.apareceEnUltimoCorte === null ? "—" : f.apareceEnUltimoCorte ? "Sí" : "No"} />
+        <Par etiqueta="Información IESS" valor={mesLegible(f.corteIessUsado)} />
+        <Par
+          etiqueta="Información actual en el IESS"
+          valor={f.apareceEnUltimoCorte === null || f.apareceEnUltimoCorte === undefined ? "—" : f.apareceEnUltimoCorte ? "Sí" : "No"}
+        />
         <Par etiqueta="Empleadores activos (24m)" valor={laboral?.numeroEmpleadoresUltimos24Meses ?? "—"} />
       </div>
 
@@ -486,7 +498,7 @@ function SeccionIngresos({ f, laboral }) {
               <tr>
                 <th>Tipo</th>
                 <th>Origen</th>
-                <th>Evidencia</th>
+                <th>Declarado por</th>
                 <th style={{ textAlign: "right" }}>Monto reportado</th>
                 <th>Vigente</th>
               </tr>
@@ -499,7 +511,7 @@ function SeccionIngresos({ f, laboral }) {
                     {fu.detalle ? <span className="crediscope-celda-sub">{fu.detalle}</span> : null}
                   </td>
                   <td>{fu.empleador ?? "—"}</td>
-                  <td>{ETIQUETA_EVIDENCIA[fu.evidencia] ?? fu.evidencia ?? "—"}</td>
+                  <td>{quienDeclara(fu, { laboral })}</td>
                   <td style={{ textAlign: "right" }} className="crediscope-num">
                     {fu.montoMensualReportado ? formatMoneda(fu.montoMensualReportado) : "—"}
                   </td>
@@ -513,11 +525,11 @@ function SeccionIngresos({ f, laboral }) {
 
       {(f.senalesDeEscala ?? []).length > 0 ? (
         <>
-          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>Señales de escala</h4>
+          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>Tamaño del negocio</h4>
           <ul className="crediscope-list" style={{ fontSize: 13.5, marginBottom: 14 }}>
             {f.senalesDeEscala.map((s, i) => (
               <li key={i}>
-                <strong>{s.senal}</strong>
+                <strong>{ETIQUETA_SENAL[s.senal] ?? s.senal}</strong>
                 {s.valor !== null && s.valor !== undefined ? `: ${s.valor}` : ""} — {s.detalle}
               </li>
             ))}
@@ -527,7 +539,7 @@ function SeccionIngresos({ f, laboral }) {
 
       {(f.paraConfirmar ?? []).length > 0 ? (
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>Qué pedirle al cliente</h4>
+          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</h4>
           <ul className="crediscope-list" style={{ fontSize: 13.5, margin: 0 }}>
             {f.paraConfirmar.map((p, i) => (
               <li key={i}>{p}</li>

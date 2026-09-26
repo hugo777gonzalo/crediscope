@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
-import { ETIQUETA_SEGMENTO, RIESGO_SEGMENTO, ETIQUETA_EVIDENCIA } from "../lib/fuentesIngresoConsolidado.js";
+import { ETIQUETA_SEGMENTO, ETIQUETA_EVIDENCIA } from "../lib/fuentesIngresoConsolidado.js";
 import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuentes-ingreso.ts";
 
 // Las reglas de clasificación, escritas para que las lea el área de
@@ -17,7 +17,7 @@ import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuente
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v7";
+const VERSION_DOCUMENTADA = "fuentes-v8";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -86,10 +86,15 @@ export default function FuentesReglas() {
           por lo general también aportan sobre el SBU. Cuando lo reportado es el SBU del año, o un valor muy cercano (±5%), la
           pantalla lo dice así: <strong>Ingreso Mínimo SBU</strong>.
         </p>
-        <p style={{ marginBottom: 0 }}>
+        <p>
           Por eso el módulo nunca afirma <em>&ldquo;ingreso: $500&rdquo;</em> sino{" "}
           <strong>&ldquo;reportado al IESS: $500&rdquo;</strong>. Estimar el ingreso real es un modelo aparte, que necesita
           decenas de miles de casos y validación propia.
+        </p>
+        <p style={{ marginBottom: 0 }}>
+          Y tampoco se afirma lo contrario sin fundamento: decir de cada persona que &ldquo;el ingreso real puede ser
+          mayor&rdquo; es especular. Un dependiente que gana el SBU gana el SBU. Un ingreso mayor se señala sólo con un{" "}
+          <strong>indicio</strong> que lo sostenga (ver más abajo).
         </p>
       </Paso>
 
@@ -147,6 +152,22 @@ export default function FuentesReglas() {
         </table>
       </Paso>
 
+      <Paso titulo="Paso 2b: si el patrono es la propia persona, es cuenta propia (desde la v8)">
+        <p>
+          El RUC de una persona natural es su cédula seguida de 001 (002, 003 si abrió más de uno), y el IESS trae el RUC del
+          patrono en cada aporte. Si el patrono es la propia persona, se afilió a sí misma como dueña de su negocio: es{" "}
+          <strong>trabajo por cuenta propia</strong> y el monto lo eligió ella, aunque el código del aporte diga
+          &ldquo;construcción&rdquo; o &ldquo;empresa privada&rdquo;. Para el patrono persona natural ese código es el sector de
+          su negocio, no una relación de dependencia. Si el aporte no trae RUC, se compara el nombre del patrono con el de la
+          persona, sin tildes y tolerando la Ñ rota que manda la fuente.
+        </p>
+        <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
+          Hasta la v7 se leía sólo el código: 40 personas figuraban como dependientes de sí mismas, con su aporte &ldquo;declarado
+          por el empleador&rdquo;. El caso que lo mostró es el dueño de una constructora con dos empleados que se aporta el SBU.
+          El trabajo no remunerado del hogar (código 35) sigue siendo lo que es.
+        </p>
+      </Paso>
+
       <Paso titulo="Paso 3: cuál fuente manda">
         <p>
           Se suman los montos por naturaleza. Si una supera <strong>dos tercios del total</strong>, esa define el segmento. Si
@@ -173,10 +194,16 @@ export default function FuentesReglas() {
       </Paso>
 
       <Paso titulo="Paso 5: quien paga nómina no es un empleado más">
-        <p style={{ marginBottom: 0 }}>
+        <p>
           Si la nómina que paga supera su propio aporte reportado, el ingreso principal viene de su actividad y no de ese
           vínculo. Caso real: 154 empleados y $77.670 de nómina mensual, afiliado con $523,70. Clasificarlo por el aporte lo
           dejaba como dependiente privado, que describe mal de dónde vive.
+        </p>
+        <p style={{ marginBottom: 0 }}>
+          La nómina se cuenta <strong>sin la propia persona</strong> (desde la v8): el patrono persona natural se afilia en su
+          propia nómina. Contándolo, 166 personas que sólo se pagaban a sí mismas figuraban con empleados. Y los{" "}
+          <strong>establecimientos activos</strong> son sólo los abiertos, y 0 si el RUC no está activo aunque el SRI muestre
+          alguno abierto: es un registro sin actualizar.
         </p>
       </Paso>
 
@@ -193,12 +220,12 @@ export default function FuentesReglas() {
         </p>
       </Paso>
 
-      <Paso titulo="Paso 7: qué tan firme es la evidencia">
+      <Paso titulo="Paso 7: quién declara el monto">
         <table className="crediscope-table">
           <tbody>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.reportada_por_tercero}</td>
-              <td>Un empleador ajeno declara y paga sobre esa base. El sueldo real puede ser mayor: puede estar subdeclarando.</td>
+              <td>Un empleador ajeno declara y paga sobre esa base.</td>
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.autodeclarada_sobre_minimo}</td>
@@ -309,17 +336,21 @@ export default function FuentesReglas() {
         </p>
       </Paso>
 
-      <Paso titulo="Los segmentos y cómo falla cada uno">
-        <table className="crediscope-table">
-          <tbody>
-            {Object.entries(ETIQUETA_SEGMENTO).map(([clave, etiqueta]) => (
-              <tr key={clave}>
-                <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{etiqueta}</td>
-                <td style={{ fontSize: 13 }}>{RIESGO_SEGMENTO[clave]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Paso titulo="Indicios de ingreso mayor (desde la v8)">
+        <p>
+          Se muestran sólo cuando hay un dato que los sostiene. Sin indicios, la pantalla dice lo reportado y quién lo declara,
+          y nada más.
+        </p>
+        <ul style={{ marginBottom: 0 }}>
+          <li>
+            <strong>Paga una nómina mayor que lo que declara para sí.</strong> Aportar sobre el básico es legal y abarata el
+            aporte: un dueño que se aporta el SBU y paga $7.000 de nómina tiene ingresos que alcanzan, al menos, para esa nómina.
+          </li>
+          <li>
+            <strong>Obligado a llevar contabilidad.</strong> El SRI se lo exige a quien supera ciertos montos de ventas, costos o
+            capital.
+          </li>
+        </ul>
       </Paso>
     </div>
   );

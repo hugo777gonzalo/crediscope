@@ -1,8 +1,9 @@
 import * as XLSX from "xlsx";
 import { diaEcuador, fechaHoraOrdenable, formatearFechaHora } from "./fechas.js";
-import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, ETIQUETA_EVIDENCIA, RIESGO_SEGMENTO } from "./fuentesIngresoConsolidado.js";
+import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, quienDeclara } from "./fuentesIngresoConsolidado.js";
 import { esIngresoMinimoSbu } from "./ingresosCampos.js";
 import { clasificarPerfilLaboral } from "../../supabase/functions/_shared/perfil-laboral.ts";
+import { indiciosDeIngresoMayor } from "../../supabase/functions/_shared/fuentes-ingreso.ts";
 
 // El resultado de un lote, en un solo archivo con varias hojas.
 //
@@ -84,18 +85,18 @@ function filaResumenIngresos(perfil) {
     segmento: ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento ?? "",
     segmento_clave: f.segmento ?? "",
     estado_clasificacion: ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento ?? "",
-    como_puede_fallar: RIESGO_SEGMENTO[f.segmento] ?? "",
     perfil_laboral: clasificarPerfilLaboral(sp)?.etiqueta ?? "",
     ingreso_reportado_iess: f.pisoIngresoMensualReportado ?? "",
     ingreso_minimo_sbu: f.pisoIngresoMensualReportado ? (esIngresoMinimoSbu(f.pisoIngresoMensualReportado, f.corteIessUsado) ? 1 : 0) : "",
+    indicios_ingreso_mayor: indiciosDeIngresoMayor(f).map((i) => i.detalle).join(" | "),
     fuentes_totales: fuentes.length,
     fuentes_vigentes: vigentes.length,
     aparece_en_ultimo_corte: f.apareceEnUltimoCorte === null || f.apareceEnUltimoCorte === undefined ? "" : f.apareceEnUltimoCorte ? 1 : 0,
     cortes_desde_la_desvinculacion: f.cortesDesdeLaDesvinculacion ?? "",
     corte_iess_usado: f.corteIessUsado ?? "",
     motivo: f.motivoSegmento ?? "",
-    que_pedirle_al_cliente: (f.paraConfirmar ?? []).join(" | "),
-    senales_de_escala: (f.senalesDeEscala ?? []).map((s) => s.detalle).join(" | "),
+    documentos_de_confirmacion: (f.paraConfirmar ?? []).join(" | "),
+    tamano_del_negocio: (f.senalesDeEscala ?? []).map((s) => s.detalle).join(" | "),
     version_reglas: f.version ?? "",
     fecha_consulta: diaEcuador(perfil.created_at),
     hora_consulta: fechaHoraOrdenable(perfil.created_at).slice(11),
@@ -118,7 +119,7 @@ function filasDetalleIngresos(perfil) {
         tipo: "(sin fuentes detectadas)",
         naturaleza: "",
         monto_mensual_reportado: "",
-        evidencia: "",
+        declarado_por: "",
         empleador: "",
         vigente_al_corte: "",
         detalle: f.motivoSegmento ?? "",
@@ -131,7 +132,7 @@ function filasDetalleIngresos(perfil) {
     tipo: x.tipo ?? "",
     naturaleza: x.naturaleza ?? "",
     monto_mensual_reportado: x.montoMensualReportado ?? "",
-    evidencia: ETIQUETA_EVIDENCIA[x.evidencia] ?? x.evidencia ?? "",
+    declarado_por: quienDeclara(x, sp),
     empleador: x.empleador ?? "",
     vigente_al_corte: x.vigenteAlCorte ? 1 : 0,
     detalle: x.detalle ?? "",
@@ -151,14 +152,15 @@ const COMO_LEER = [
   [],
   ["Sobre el ingreso reportado al IESS:"],
   ["· Es la SUMA DE LO REPORTADO al IESS por las fuentes vigentes, no el ingreso real."],
-  ["· Los empleadores subdeclaran y quien se afilia por su cuenta elige su base."],
-  ["· El ingreso real puede ser mayor, nunca menor."],
+  ["· Quien se afilia por su cuenta, o como patrono de su propio negocio, elige su base."],
   ["· ingreso_minimo_sbu = 1 cuando lo reportado es el Salario Básico Unificado del año (±5%): lo aporta quien gana el básico y casi todo afiliado voluntario."],
+  ["· indicios_ingreso_mayor: sólo cuando hay un dato que lo sostiene -- paga una nómina mayor que lo que declara para sí, u"],
+  ["  el SRI lo obliga a llevar contabilidad. Sin indicios no se afirma que gane más de lo reportado."],
   [],
   ["Sobre el estado de la clasificación:"],
-  ["· Confirmada — un tercero declara y paga sobre esa base."],
-  ["· Provisional — el monto lo puso la propia persona, o no existe."],
-  ["· Indeterminada — no hay evidencia de ingreso en ninguna fuente."],
+  ["· Confirmado por un tercero — un empleador declara y paga sobre esa base."],
+  ["· Por confirmar — el monto lo puso la propia persona, o no existe."],
+  ["· Sin determinar — no hay evidencia de ingreso en ninguna fuente."],
   [],
   ["Los Sí/No vienen como 1 y 0. Una celda vacía es dato que no existe, no un cero."],
   ["Las fechas están en hora de Ecuador continental (UTC-5)."],

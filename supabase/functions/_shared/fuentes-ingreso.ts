@@ -36,6 +36,7 @@
 import type { RespuestaNovadata } from "./types.ts";
 import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
+import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 
 // v3: la guarda de "no sé si aporta" pasa a mirar basesInternas, la
 // fuente que realmente trae los aportes, en vez del bloque `bancos`
@@ -92,7 +93,23 @@ import { diaDeFecha, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunS
 // process.ts. Antes, quien cerró el RUC y lo reabrió quedaba sin actividad:
 // 77 personas figuraban "informal o sin actividad" con el RUC activo. Salió
 // al cruzar el segmento con el perfil laboral (perfil-laboral.ts).
-export const FUENTES_INGRESO_VERSION = "fuentes-v7";
+//
+// v8 (2026-09-26), del caso 0502937691 -- dueño de una constructora que se
+// aporta el SBU y figuraba "dependiente privado":
+//  - El aporte bajo su propio RUC (patrono.ts) es trabajo por cuenta
+//    propia, lo declara la persona y lo elige ella: nunca "reportado por un
+//    tercero". El código de tipo de empleador del patrono persona natural es
+//    el sector de su negocio, no una relación de dependencia. 40 personas
+//    estaban clasificadas como dependientes por eso. El trabajo no
+//    remunerado del hogar (código 35) sigue siendo lo que es.
+//  - La nómina que paga ya no cuenta a la propia persona: en 166 de 491
+//    nóminas era el único afiliado, y la señal decía que pagaba empleados.
+//  - "establecimientos registrados" pasa a "establecimientos activos": sólo
+//    los abiertos, y 0 si el RUC no está activo.
+//  - Sin especulación en los textos: "el sueldo real puede ser mayor" se
+//    decía de todos. Un ingreso mayor se afirma sólo con fundamento
+//    (indiciosDeIngresoMayor, pedido del negocio).
+export const FUENTES_INGRESO_VERSION = "fuentes-v8";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -194,6 +211,9 @@ export interface SenalEscala {
   senal: string;
   valor: number | null;
   detalle: string;
+  // Sólo en la nómina: cuántas personas le paga, sin contarse a sí mismo.
+  // Desde fuentes-v8.
+  cantidad?: number;
 }
 
 // Un empleador (o afiliación propia) visto en los últimos 24 meses.
@@ -240,6 +260,17 @@ export interface DetalleIngresos {
   continuidadLaboral?: ContinuidadLaboral | null;
   actividadesEconomicas: { nombreComercial: string | null; actividad: string | null; abierto: boolean; inicio: string | null }[];
   impuestoRentaPorAnio: { anio: number; formulario: string | null; causado: number | null; enRelacionDeDependencia: number | null }[];
+  // Sólo en perfiles reclasificados desde el crudo guardado
+  // (scripts/recalcular-fuentes-ingreso.mjs): con qué versión y en qué
+  // segmento estaban. Vive en el detalle porque es para el analista.
+  recalculo?: {
+    el: string;
+    desdeCrudo: boolean;
+    versionAnterior: string;
+    segmentoAnterior: Segmento;
+    estadoAnterior: EstadoSegmento;
+    laboralAnterior?: Record<string, unknown>;
+  };
 }
 
 export interface AnalisisFuentesIngreso {
@@ -301,6 +332,19 @@ function diferenciaEnMeses(desde: string, hasta: string): number {
 
 function codigoTipoEmpleador(tipEmp: unknown): string | null {
   return (String(tipEmp ?? "").match(/^\s*(\d+)\s*-/) ?? [])[1] ?? null;
+}
+
+// Si el patrono es la propia persona, es cuenta propia aunque el código diga
+// empresa privada o construcción: para el patrono persona natural el código
+// es el sector de su negocio (ver patrono.ts). La clasificación, el
+// historial y la continuidad leen el aporte con esta misma función.
+type EsPropio = (a: AnyRecord) => boolean;
+
+function naturalezaDelAporte(a: AnyRecord, esPropio: EsPropio): { naturaleza: Naturaleza; comoPatrono: boolean } {
+  const codigo = codigoTipoEmpleador(a.tipEmp);
+  const porCodigo: Naturaleza = (codigo && NATURALEZA_POR_CODIGO[codigo]) ?? "otro";
+  const comoPatrono = porCodigo !== "cuenta_propia" && porCodigo !== "hogar" && esPropio(a);
+  return { naturaleza: comoPatrono ? "cuenta_propia" : porCodigo, comoPatrono };
 }
 
 function mismoNombre(a: unknown, b: unknown): boolean {
@@ -432,13 +476,13 @@ const TOLERANCIA_CONTINUIDAD_MESES = 2;
 // ingreso -- o su primer aporte, si es anterior -- hasta su último aporte,
 // y los huecos DENTRO de un mismo empleo no cortan: el IESS lo da por
 // continuo.
-function construirContinuidad(aportes: AnyRecord[], corte: string, consultadas: AnyRecord): ContinuidadLaboral | null {
+function construirContinuidad(aportes: AnyRecord[], corte: string, consultadas: AnyRecord, esPropio: EsPropio): ContinuidadLaboral | null {
   const conRuc = periodosConRucActivo(consultadas);
   const empleos = new Map<string, { empleador: string; inicio: string; fin: string; cuentaPropia: boolean }>();
   for (const a of aportes) {
     const mes = mesClave(a.anio, a.mes);
     if (!mes || mes > corte) continue;
-    const naturaleza = (NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""] ?? "otro") as Naturaleza;
+    const { naturaleza } = naturalezaDelAporte(a, esPropio);
     // El aporte propio cuenta sólo en un mes con RUC activo, y su empleo
     // no puede empezar antes que ese período del RUC. El RISE (código 34)
     // es un régimen del propio SRI: aportar como RISE ya prueba una
@@ -521,7 +565,7 @@ function construirContinuidad(aportes: AnyRecord[], corte: string, consultadas: 
 // sola no dice: si aporta todos los meses o con huecos, si el sueldo
 // reportado sube o baja, de qué vive quien tiene RUC y cuánto impuesto a la
 // renta causó cada año. Los montos siguen siendo lo reportado, igual que arriba.
-function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyRecord): DetalleIngresos {
+function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyRecord, esPropio: EsPropio): DetalleIngresos {
   const desde = mesMenos(corte, 23);
   const enVentana = aportes
     .map((a) => ({ a, mes: mesClave(a.anio, a.mes) }))
@@ -551,10 +595,9 @@ function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyR
     .map(({ filas }) => {
       filas.sort((p, q) => q.mes.localeCompare(p.mes));
       const ultima = filas[0].a;
-      const codigo = codigoTipoEmpleador(ultima.tipEmp);
       return {
         empleador: textoONull(ultima.nomEmp),
-        naturaleza: (codigo && NATURALEZA_POR_CODIGO[codigo]) ?? "otro",
+        naturaleza: naturalezaDelAporte(ultima, esPropio).naturaleza,
         ocupacion: textoONull(ultima.ocupacion),
         desde: fechaIso(ultima.fecIng),
         hasta: fechaIso(ultima.fecSal),
@@ -615,7 +658,7 @@ function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyR
     promedioUltimos6: promedio(ultimos(6)),
     promedioUltimos12: promedio(ultimos(12)),
     totalHace12Meses: hace12 && hace12.total > 0 ? redondear2(hace12.total) : null,
-    continuidadLaboral: construirContinuidad(aportes, corte, consultadas),
+    continuidadLaboral: construirContinuidad(aportes, corte, consultadas, esPropio),
     actividadesEconomicas,
     impuestoRentaPorAnio,
   };
@@ -643,11 +686,15 @@ const SEGMENTO_POR_NATURALEZA: Record<Naturaleza, Segmento> = {
   otro: "no_clasificado",
 };
 
+// `cedula` desde fuentes-v8: sin ella no se puede reconocer el RUC propio
+// en los aportes y se cae al nombre (patrono.ts).
 export function analizarFuentesIngreso(
   raw: RespuestaNovadata,
   nombreCliente: string | null,
-  corteConocido: string = CORTE_IESS_CONOCIDO
+  corteConocido: string = CORTE_IESS_CONOCIDO,
+  cedula: string | null = null
 ): AnalisisFuentesIngreso {
+  const esPropio: EsPropio = (a) => aporteDeSuPropioPatrono(a, cedula, nombreCliente);
   // Las 52 fuentes consultadas, planas. Se llaman "consultadas" y no
   // "fuentes" porque en este archivo una fuente es de dónde sale la
   // plata de alguien, no un endpoint de Novadata.
@@ -682,8 +729,7 @@ export function analizarFuentesIngreso(
   const sbu = SBU_POR_ANIO[anioCorte] ?? SBU_POR_DEFECTO;
 
   for (const a of aportesVigentes) {
-    const codigo = codigoTipoEmpleador(a.tipEmp);
-    const naturaleza: Naturaleza = (codigo && NATURALEZA_POR_CODIGO[codigo]) ?? "otro";
+    const { naturaleza, comoPatrono } = naturalezaDelAporte(a, esPropio);
     const monto = montoValido(a.salario);
     const esAutoafiliado = naturaleza === "cuenta_propia";
     const evidencia: CalidadEvidencia = esAutoafiliado
@@ -691,16 +737,22 @@ export function analizarFuentesIngreso(
         ? "autodeclarada_sobre_minimo"
         : "autodeclarada_en_minimo"
       : "reportada_por_tercero";
+    // Hasta v7 este texto terminaba en "el sueldo real puede ser mayor", y
+    // se decía de todos. Es cierto que un empleador puede subdeclarar, pero
+    // afirmarlo sin un dato que lo sostenga es especular (pedido del
+    // negocio, 2026-09-26): el texto dice quién declara el monto y nada más.
     fuentes.push({
-      tipo: ETIQUETA_NATURALEZA[naturaleza],
+      tipo: comoPatrono ? "aporte como patrono de su propio negocio" : ETIQUETA_NATURALEZA[naturaleza],
       naturaleza,
       montoMensualReportado: monto,
       evidencia,
       empleador: (a.nomEmp as string) ?? null,
       vigenteAlCorte: true,
-      detalle: esAutoafiliado
-        ? `Aporte propio sobre una base de $${monto ?? "?"} (SBU del año: $${sbu}). La base la elige el afiliado.`
-        : `Reportado por ${(a.nomEmp as string) ?? "el empleador"} en el corte ${corte}. Es lo que declara el empleador: el sueldo real puede ser mayor.`,
+      detalle: comoPatrono
+        ? `Se afilia como patrono de su propio negocio, bajo su propio RUC, sobre una base de $${monto ?? "?"} (SBU del año: $${sbu}). La base la elige la propia persona.`
+        : esAutoafiliado
+          ? `Aporte propio sobre una base de $${monto ?? "?"} (SBU del año: $${sbu}). La base la elige el afiliado.`
+          : `Reportado por ${(a.nomEmp as string) ?? "el empleador"} en el corte ${corte}. Lo declara el empleador.`,
     });
   }
 
@@ -737,9 +789,15 @@ export function analizarFuentesIngreso(
     });
   }
 
-  // ---- Señales de escala (tamaño de la actividad, no ingreso) ----
+  // ---- Tamaño de la actividad (no es ingreso) ----
+  // En pantalla se llama "Tamaño del negocio"; el nombre interno
+  // senalesDeEscala queda porque está en miles de perfiles guardados.
   const senalesDeEscala: SenalEscala[] = [];
-  const empleados = ((((consultadas.empleados as AnyRecord)?.data as AnyRecord)?.empleados as AnyRecord[]) ?? []);
+  // La nómina sin la propia persona: el patrono persona natural se afilia
+  // en su propia nómina, y contarlo hacía "empleador" a quien sólo se paga
+  // a sí mismo (166 de 491 nóminas, ver patrono.ts).
+  const empleados = ((((consultadas.empleados as AnyRecord)?.data as AnyRecord)?.empleados as AnyRecord[]) ?? [])
+    .filter((e) => !esElPropioAfiliado(e, cedula, nombreCliente));
   if (empleados.length) {
     let mesNomina = "";
     for (const e of empleados) {
@@ -751,7 +809,8 @@ export function analizarFuentesIngreso(
     senalesDeEscala.push({
       senal: "nómina que paga",
       valor: Math.round(nomina),
-      detalle: `Paga ${delMes.length} empleado(s) por $${Math.round(nomina)} mensuales (corte ${mesNomina}). Su actividad genera al menos eso.`,
+      cantidad: delMes.length,
+      detalle: `Paga ${delMes.length} empleado(s), sin contar a la propia persona, por $${Math.round(nomina)} mensuales (corte ${mesNomina}). Su actividad genera al menos eso.`,
     });
   }
 
@@ -772,15 +831,20 @@ export function analizarFuentesIngreso(
     });
   }
 
-  const establecimientos = (consultadas.establecimientoActEconomica as AnyRecord)?.data as AnyRecord | undefined;
-  const numEstablecimientos = establecimientos
-    ? Object.values(establecimientos).filter(Array.isArray).reduce((acc, v) => acc + (v as unknown[]).length, 0)
-    : 0;
-  if (numEstablecimientos > 0) {
+  // Sólo los abiertos, y 0 si el RUC no está activo aunque el SRI muestre
+  // alguno abierto: un registro sin actualizar (pedido del negocio,
+  // 2026-09-26). Hasta v7 era "establecimientos registrados" y contaba
+  // también los cerrados.
+  const abiertos = establecimientosRuc.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
+  const establecimientosActivos = rucActivo ? abiertos : 0;
+  if (establecimientosRuc.length > 0) {
     senalesDeEscala.push({
-      senal: "establecimientos registrados",
-      valor: numEstablecimientos,
-      detalle: `Tiene ${numEstablecimientos} establecimiento(s) registrado(s) ante el SRI.`,
+      senal: "establecimientos activos",
+      valor: establecimientosActivos,
+      detalle:
+        establecimientosActivos > 0
+          ? `Tiene ${establecimientosActivos} establecimiento(s) activo(s) ante el SRI.`
+          : `Tiene ${establecimientosRuc.length} establecimiento(s) registrado(s) ante el SRI y ninguno activo${abiertos > 0 ? ": el RUC no está activo" : ""}.`,
     });
   }
 
@@ -817,7 +881,7 @@ export function analizarFuentesIngreso(
       evidencia: "indirecta",
       empleador: null,
       vigenteAlCorte: true,
-      detalle: `Paga una nómina de $${nomina} mensuales, muy por encima de su propio aporte reportado ($${Math.round(ingresoPropioReportado)}). El retiro que obtiene de esa actividad no está en ninguna fuente pública.`,
+      detalle: `Paga una nómina de $${nomina} mensuales, más que su propio aporte reportado ($${Math.round(ingresoPropioReportado)}). El retiro que obtiene de esa actividad no está en ninguna fuente pública.`,
     });
   }
 
@@ -877,13 +941,22 @@ export function analizarFuentesIngreso(
         ? `Aporta bajo un tipo de empleador que el módulo no reconoce (${String(
             aportesVigentes.find((a) => !NATURALEZA_POR_CODIGO[codigoTipoEmpleador(a.tipEmp) ?? ""])?.tipEmp || "sin etiqueta"
           ).slice(0, 60)}). Requiere revisión manual.`
-        : `${Math.round((monto / totalReportado) * 100)}% del ingreso reportado en el corte ${corte} viene de ${ETIQUETA_NATURALEZA[naturaleza]}.`;
+        : `${Math.round((monto / totalReportado) * 100)}% del ingreso reportado en el corte ${corte} viene de ${ETIQUETA_NATURALEZA[naturaleza]}.${
+            naturaleza === "cuenta_propia" && fuentes.some((f) => f.tipo === "aporte como patrono de su propio negocio")
+              ? " Se afilia como patrono de su propio negocio, bajo su propio RUC: el monto lo declara la propia persona."
+              : ""
+          }`;
     // El aporte dice de dónde cotiza, no de dónde vive: si paga una
     // nómina mayor que su propio aporte, el ingreso principal está en
     // su actividad y no en ese vínculo.
+    // Para quien ya es independiente no hay "vínculo" que descartar: se dice
+    // sólo que paga más de lo que declara para sí.
     if (nominaSuperaSuIngreso) {
       estadoSegmento = "provisional";
-      motivoSegmento += ` Aun así paga una nómina de $${nomina} mensuales, muy superior a ese aporte: su ingreso principal probablemente venga de su actividad y no de ese vínculo.`;
+      motivoSegmento +=
+        naturaleza === "cuenta_propia"
+          ? ` Además paga una nómina de $${nomina} mensuales, más que lo que declara para sí.`
+          : ` Aun así paga una nómina de $${nomina} mensuales, mayor que ese aporte: su ingreso principal probablemente venga de su actividad y no de ese vínculo.`;
     }
   } else if (aportesVigentes.length > 0) {
     // Hay aporte vigente pero sin monto (llegó en cero o sin el campo).
@@ -942,7 +1015,7 @@ export function analizarFuentesIngreso(
   }
 
   const pisoIngresoMensualReportado = totalReportado > 0 ? Math.round(totalReportado * 100) / 100 : null;
-  const detalle = construirDetalle(aportes, corte, consultadas);
+  const detalle = construirDetalle(aportes, corte, consultadas, esPropio);
 
   return {
     version: FUENTES_INGRESO_VERSION,
@@ -959,4 +1032,62 @@ export function analizarFuentesIngreso(
     paraConfirmar,
     detalle,
   };
+}
+
+// ---- Indicios de ingreso mayor ----
+//
+// Lo que se reporta al IESS no dice cuánto gana alguien, y hasta v7 la
+// pantalla lo repetía para todos ("no dice cuánto gana en realidad", "el
+// ingreso real puede ser mayor"). Decirlo de todos es especular: un
+// dependiente que gana el SBU gana el SBU. El negocio pidió el 2026-09-26
+// afirmar un ingreso mayor SÓLO con un dato que lo sostenga, y aceptó dos:
+//   - paga en sueldos más de lo que declara para sí -- el caso del gerente
+//     dueño que se aporta el básico y paga $7.000 de nómina: aportar sobre
+//     el mínimo es legal y abarata el aporte, y su negocio genera al menos
+//     lo que paga;
+//   - el SRI lo obliga a llevar contabilidad, que exige superar montos de
+//     ventas, costos o capital.
+// El sueldo anterior más alto se descartó: dice lo que ganó, no lo que gana.
+//
+// Se calcula desde el análisis guardado (no se guarda ni va al modelo), así
+// que vale para cualquier perfil. La nómina sólo desde v8: antes contaba a
+// la propia persona y cualquier afiliado que se paga el SBU "pagaba más en
+// sueldos que lo que declara".
+export interface IndicioIngresoMayor {
+  clave: "sueldos_a_terceros" | "obligado_a_contabilidad";
+  titulo: string;
+  detalle: string;
+}
+
+const DOLARES = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+export function indiciosDeIngresoMayor(f: Record<string, unknown> | null | undefined): IndicioIngresoMayor[] {
+  if (!f) return [];
+  const indicios: IndicioIngresoMayor[] = [];
+  const senales = (Array.isArray(f.senalesDeEscala) ? f.senalesDeEscala : []) as SenalEscala[];
+  const declarado = typeof f.pisoIngresoMensualReportado === "number" ? f.pisoIngresoMensualReportado : 0;
+  const version = Number(String(f.version ?? "").replace(/\D/g, "")) || 0;
+
+  const nomina = senales.find((s) => s.senal === "nómina que paga");
+  if (version >= 8 && nomina && typeof nomina.valor === "number" && nomina.valor > declarado) {
+    const quienes = nomina.cantidad ? ` a ${nomina.cantidad} ${nomina.cantidad === 1 ? "empleado" : "empleados"}` : "";
+    indicios.push({
+      clave: "sueldos_a_terceros",
+      titulo: declarado > 0 ? "Paga una nómina mayor que lo que declara para sí" : "Paga una nómina sin declarar un ingreso propio",
+      // "Sus ingresos alcanzan" y no "su negocio genera": quien paga
+      // nómina puede ser un empleador doméstico, sin negocio.
+      detalle:
+        declarado > 0
+          ? `Paga una nómina de ${DOLARES.format(nomina.valor)} al mes${quienes}; para sí declara ${DOLARES.format(declarado)} al IESS. Sus ingresos alcanzan, al menos, para esa nómina.`
+          : `Paga una nómina de ${DOLARES.format(nomina.valor)} al mes${quienes} y no declara un ingreso propio al IESS. Sus ingresos alcanzan, al menos, para esa nómina.`,
+    });
+  }
+  if (senales.some((s) => s.senal === "obligado a llevar contabilidad")) {
+    indicios.push({
+      clave: "obligado_a_contabilidad",
+      titulo: "Obligado a llevar contabilidad",
+      detalle: "El SRI se lo exige a quien supera ciertos montos de ventas, costos o capital: su actividad es mayor que la de un contribuyente común.",
+    });
+  }
+  return indicios;
 }

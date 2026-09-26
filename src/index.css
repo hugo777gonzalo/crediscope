@@ -2439,3 +2439,169 @@ a {
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* Clasificación y Fuentes, lado a lado y del mismo ancho. */
+.crediscope-ing-fila {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.crediscope-ing-fila > .crediscope-card {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1050px) {
+  .crediscope-ing-fila {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Lo largo (actividad económica, por qué se clasificó así, cómo se midió
+   la continuidad) va plegado: la primera vista tiene que alcanzar para
+   entender de qué vive la persona sin leer párrafos. <details> y no un
+   estado de React: se abre con teclado y no hay nada que sincronizar. */
+.crediscope-ing-desplegable > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.crediscope-ing-desplegable > summary::-webkit-details-marker {
+  display: none;
+}
+
+.crediscope-ing-desplegable > summary::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.12s;
+}
+
+.crediscope-ing-desplegable[open] > summary::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+
+.crediscope-ing-desplegado {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--panel-muted);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.crediscope-ing-desplegado ol,
+.crediscope-ing-desplegado ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.crediscope-ing-desplegado li + li {
+  margin-top: 6px;
+}
+
+/* Una pregunta de la clasificación y su respuesta: "¿Trabaja para un
+   tercero?  No". */
+.crediscope-ing-pregunta {
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.crediscope-ing-pregunta:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.crediscope-ing-pregunta-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.crediscope-ing-respuesta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--panel-muted);
+  color: var(--text-muted);
+}
+
+.crediscope-ing-respuesta-si {
+  background: #dcfce7;
+  color: var(--good);
+}
+
+/* Indicadores chicos lado a lado: RUC, locales abiertos, contabilidad. */
+.crediscope-ing-indicadores {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.crediscope-ing-indicadores-4 {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+
+.crediscope-ing-indicador {
+  background: var(--panel-muted);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.crediscope-ing-indicador > span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.crediscope-ing-indicador > strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.crediscope-ing-indicador > small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* Indicios de ingreso mayor: sólo aparece cuando hay un dato que lo
+   sostiene, así que se destaca. */
+.crediscope-ing-indicios {
+  margin-top: 10px;
+}
+
+.crediscope-ing-indicios > summary {
+  color: var(--warn);
+}
+
+.crediscope-ing-indicios .crediscope-ing-desplegado {
+  background: #fef9c3;
+}
+
+.crediscope-ing-indicios strong {
+  display: block;
+}

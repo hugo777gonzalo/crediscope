@@ -7,7 +7,6 @@ import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
   ETIQUETA_EVIDENCIA,
-  RIESGO_SEGMENTO,
   formatMoneda,
 } from "../lib/fuentesIngresoConsolidado.js";
 
@@ -80,8 +79,7 @@ export default function FuentesIngreso() {
         <div>
           <h2 style={{ marginBottom: 4 }}>Fuentes de Ingreso</h2>
           <p className="crediscope-muted" style={{ margin: 0 }}>
-            De qué vive cada cliente consultado y qué tan evidenciado está. Los segmentos no describen de dónde viene la plata,
-            sino cómo puede fallar esa fuente.
+            De qué vive cada cliente consultado y qué tan evidenciado está.
           </p>
         </div>
         <Link className="crediscope-btn crediscope-btn-ghost" to="/fuentes/reglas">
@@ -116,7 +114,7 @@ export default function FuentesIngreso() {
             />
             <Kpi
               Icono={FileWarning}
-              etiqueta="Fuera del último corte"
+              etiqueta="Sin información actual en el IESS"
               valor={d.desvinculados}
               detalle="No aparecen en el corte más reciente del IESS"
             />
@@ -124,8 +122,7 @@ export default function FuentesIngreso() {
 
           <div className="crediscope-reportes-grid">
             <div className="crediscope-card">
-              <h3>Cómo está agrupada la cartera</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>Pasá el mouse sobre cada fila para ver cómo falla esa fuente.</p>
+              <h3>De qué vive la cartera</h3>
               {d.segmentos.map((s) => (
                 <Barra
                   key={s.clave}
@@ -133,7 +130,6 @@ export default function FuentesIngreso() {
                   n={s.n}
                   pct={s.pct}
                   color="var(--brand)"
-                  ayuda={RIESGO_SEGMENTO[s.clave]}
                   enlace={`/fuentes/clientes?segmento=${s.clave}`}
                 />
               ))}
@@ -142,7 +138,7 @@ export default function FuentesIngreso() {
             <div className="crediscope-card">
               <h3>Qué tan firme es cada clasificación</h3>
               <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Confirmada es cuando un tercero declara y paga sobre esa base. Provisional, cuando el monto lo puso la propia
+                Confirmado por un tercero: un empleador declara y paga sobre esa base. Por confirmar: el monto lo puso la propia
                 persona o no existe.
               </p>
               {d.estados.map((e) => (

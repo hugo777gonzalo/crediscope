@@ -16,8 +16,8 @@ import DetalleIngresos from "../components/ingresos/DetalleIngresos.jsx";
 
 // "Fuentes de ingreso" — cuarta pestaña del cliente, con la misma gramática
 // que el reporte de Aval: arriba lo que decide (de qué vive, qué tan firme
-// es, cuánto se reporta, qué tan sostenido y qué pedir), y el resto detrás de "Ver
-// detalle completo".
+// es, cuánto se reporta, qué tan sostenido y qué pedir), y el resto detrás
+// de "Ver detalle completo". Lo largo se pliega en cada tarjeta.
 //
 // Lee el perfil guardado: el crudo de Novadata no se guarda, así que no hay
 // nada que recalcular acá. Un perfil anterior a fuentes-v4 no tiene el
@@ -117,12 +117,15 @@ export default function IngresosCliente() {
 
       {f ? (
         <>
-          <div className="crediscope-aval-fila">
-            <ClasificacionIngresos f={f} perfil={perfil} corteVigente={corteVigente} />
-            <FuentesVigentes f={f} />
-          </div>
-
+          {/* Orden pedido por el negocio (2026-09-26): de qué vive y cuánto
+              se reporta; qué tan sostenido es; y recién después el porqué y
+              el desglose de las fuentes. */}
           <Estabilidad f={f} laboral={perfil.laboral} />
+
+          <div className="crediscope-ing-fila">
+            <ClasificacionIngresos f={f} perfil={perfil} corteVigente={corteVigente} />
+            <FuentesVigentes f={f} perfil={perfil} />
+          </div>
 
           <button
             type="button"

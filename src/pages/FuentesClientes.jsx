@@ -5,8 +5,8 @@ import { getPerfilesConFuentesIngreso, getResumenCarteraIngresos, CLIENTES_POR_P
 import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
-  ETIQUETA_EVIDENCIA,
-  RIESGO_SEGMENTO,
+  DOCUMENTOS_DE_CONFIRMACION,
+  quienDeclara,
   formatMoneda,
   textoIngresoReportado,
 } from "../lib/fuentesIngresoConsolidado.js";
@@ -92,7 +92,6 @@ export default function FuentesClientes() {
               814" es la corrección. */}
           {datos ? `${datos.total.toLocaleString("es-EC")} cliente(s)` : "Cargando..."}
           {segmentoFiltro ? ` · ${ETIQUETA_SEGMENTO[segmentoFiltro] ?? segmentoFiltro}` : ""}
-          {segmentoFiltro && RIESGO_SEGMENTO[segmentoFiltro] ? ` — ${RIESGO_SEGMENTO[segmentoFiltro]}` : ""}
         </p>
       </div>
 
@@ -165,7 +164,7 @@ export default function FuentesClientes() {
                       {fu.tipo}
                       {fu.montoMensualReportado ? ` — ${formatMoneda(fu.montoMensualReportado)}` : ""}
                       <span className="crediscope-tag crediscope-tag-neutral" style={{ marginLeft: 8 }}>
-                        {ETIQUETA_EVIDENCIA[fu.evidencia] ?? fu.evidencia}
+                        {quienDeclara(fu, fila.standard_profile)}
                       </span>
                     </span>
                     <span className="crediscope-item-detalle">{fu.detalle}</span>
@@ -183,7 +182,7 @@ export default function FuentesClientes() {
 
           {(f.paraConfirmar ?? []).length > 0 ? (
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: 4 }}>
-              <p style={{ fontWeight: 600, fontSize: 13, margin: "0 0 6px" }}>Para confirmar</p>
+              <p style={{ fontWeight: 600, fontSize: 13, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</p>
               <ul className="crediscope-list" style={{ fontSize: 13.5, margin: 0 }}>
                 {f.paraConfirmar.map((p, i) => (
                   <li key={i}>{p}</li>

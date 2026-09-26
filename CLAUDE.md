@@ -189,6 +189,35 @@ Cada una de estas salió de un error real. No revivirlas.
   reciente, los mismos casos que `estadoActividadEconomica`); el RISE
   cuenta siempre por ser un régimen del SRI. En la muestra, 28 de 137
   personas aportan por su cuenta sin RUC activo en ninguno de esos meses.
+- **"Es su propio patrono" es una sola regla: `_shared/patrono.ts`.** El
+  RUC del patrono de cada aporte (`tiess.rucEmp`, `rucEmpresa` del
+  mecanizado) es la cédula + 001/002/003; el nombre sólo si no hay RUC.
+  Desde marco-v17 el negocio lo tenía decidido (propio patrono = cuenta
+  propia, nunca empleo), pero la clasificación leía el código de tipo de
+  empleador, que para el patrono persona natural es el SECTOR de su
+  negocio: 40 personas figuraban dependientes de sí mismas (fuentes-v8). Y
+  el dueño se afilia en su propia nómina: contarlo hacía "empleador" a 166
+  personas que sólo se pagan a sí mismas. Una regla nueva sobre aportes o
+  nómina tiene que pasar por ahí.
+- **No se especula sobre el ingreso.** "El ingreso real puede ser mayor"
+  se decía de todos y es falso para quien gana el SBU. Un ingreso mayor se
+  afirma sólo con un indicio que lo sostenga (`indiciosDeIngresoMayor()`
+  en `fuentes-ingreso.ts`: paga una nómina mayor que lo que declara, u
+  obligado a llevar contabilidad). Tampoco se muestra "cómo puede fallar"
+  un segmento: son generalidades, no hechos de la persona.
+- **Los nombres de pantalla los eligió el negocio (2026-09-26)**: Segmento,
+  Tamaño del negocio, Nómina, Establecimientos Activos (SRI) (0 si el RUC
+  no está activo), Empleador privado/público/diplomático/externo, Empresa
+  propia, Afiliación voluntaria, Negocio propio (SRI), Información IESS,
+  Sin información actual en el IESS, Condiciones de la Segmentación,
+  Documentos de Confirmación de Ingresos, Es su propio patrono. Viven en
+  `src/lib/fuentesIngresoConsolidado.js` (`quienDeclara()`,
+  `ETIQUETA_SENAL`); no inventar otros.
+- **Recalcular desde el crudo: `scripts/recalcular-fuentes-ingreso.mjs`.**
+  Sólo el último perfil y sólo si el crudo es de ese perfil (perfilId).
+  Arma con el reloj en la fecha de captura (process.ts mide contra hoy) y
+  compara con las claves ordenadas (jsonb las reordena): sin esas dos
+  cosas, 1.429 perfiles idénticos parecían distintos.
 - **"RUC activo" es una sola regla: `_shared/ruc.ts`.** Había dos
   (process.ts miraba el reinicio, fuentes-ingreso.ts no) y 77 personas
   con el RUC reactivado quedaron "informal o sin actividad" mientras el

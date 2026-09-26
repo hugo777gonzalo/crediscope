@@ -19,6 +19,14 @@ const NATURALEZA = {
   otro: "No reconocido",
 };
 
+const ESTADO_ACTIVIDAD = {
+  activa_sin_interrupciones: "Activa, sin cierres",
+  activa_reactivada: "Activa, reabierta después de un cierre",
+  inactiva_tras_reactivacion: "Inactiva (se había reabierto)",
+  inactiva_nunca_reactivada: "Inactiva",
+  sin_ruc: "Sin RUC",
+};
+
 // Un empleo por fila, a lo ancho: con siete columnas, en una tarjeta de un
 // tercio no entraba sin barra de desplazamiento (lo mismo que se corrigió
 // en el reporte de Aval).
@@ -150,7 +158,11 @@ export default function DetalleIngresos({ perfil }) {
             {/* El perfil guarda un código ("activa_sin_interrupciones"). */}
             <FilaCampo
               etiqueta="Estado de la actividad"
-              valor={laboral.estadoActividadEconomica ? String(laboral.estadoActividadEconomica).replaceAll("_", " ") : null}
+              valor={
+                laboral.estadoActividadEconomica
+                  ? (ESTADO_ACTIVIDAD[laboral.estadoActividadEconomica] ?? String(laboral.estadoActividadEconomica).replaceAll("_", " "))
+                  : null
+              }
               tipo="texto"
             />
             <FilaCampo
@@ -163,8 +175,8 @@ export default function DetalleIngresos({ perfil }) {
               valor={laboral.mesesInactivoActividadEconomica ? duracionLegible(laboral.mesesInactivoActividadEconomica) : null}
               tipo="texto"
             />
-            <FilaCampo etiqueta="Establecimientos abiertos" valor={laboral.numeroEstablecimientosActivos} tipo="entero" />
-            <FilaCampo etiqueta="Establecimientos cerrados" valor={laboral.numeroEstablecimientosInactivos} tipo="entero" />
+            <FilaCampo etiqueta="Establecimientos Activos (SRI)" valor={laboral.numeroEstablecimientosActivos} tipo="entero" />
+            <FilaCampo etiqueta="Establecimientos inactivos" valor={laboral.numeroEstablecimientosInactivos} tipo="entero" />
             <FilaCampo etiqueta="Empleados registrados" valor={laboral.numeroEmpleadosRegistrados} tipo="entero" />
             <FilaCampo etiqueta="Obligaciones patronales en mora" valor={laboral.obligacionesPatronalesEnMora} tipo="booleano" />
           </ul>
@@ -249,8 +261,8 @@ export default function DetalleIngresos({ perfil }) {
           </ul>
           <ul className="crediscope-aval-filas" style={{ marginTop: 10 }}>
             <FilaCampo etiqueta="Versión de las reglas" valor={f.version} tipo="texto" />
-            <FilaCampo etiqueta="Corte del IESS usado" valor={mesLegible(f.corteIessUsado)} tipo="texto" />
-            <FilaCampo etiqueta="Aparece en ese corte" valor={f.apareceEnUltimoCorte} tipo="booleano" />
+            <FilaCampo etiqueta="Información IESS" valor={mesLegible(f.corteIessUsado)} tipo="texto" />
+            <FilaCampo etiqueta="Información actual en el IESS" valor={f.apareceEnUltimoCorte} tipo="booleano" />
             <FilaCampo etiqueta="Motivo antes de la corrección" valor={f.correccion?.motivoAnterior} tipo="texto" />
           </ul>
         </div>

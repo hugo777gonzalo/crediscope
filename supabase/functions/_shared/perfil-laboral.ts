@@ -31,7 +31,15 @@
 // En el negocio se dice "dependiente", no "asalariado" (pedido del
 // 2026-09-25).
 
-export const PERFIL_LABORAL_VERSION = "perfil-laboral-v1";
+import { esLaMismaPersona } from "./patrono.ts";
+
+// v2 (2026-09-26): un aporte cuyo patrono es la propia persona no es
+// dependencia (patrono.ts). En v1 contaba como empleo porque la
+// clasificación lo leía así: 0502937691, dueño de una constructora, salía
+// "dependiente con actividad propia" trabajando para sí mismo. Desde
+// fuentes-v8 esos aportes ya llegan como cuenta propia; para los perfiles
+// guardados antes se reconoce acá por el nombre del patrono.
+export const PERFIL_LABORAL_VERSION = "perfil-laboral-v2";
 
 export type ClavePerfilLaboral =
   | "dependiente"
@@ -61,6 +69,9 @@ export interface PerfilLaboral {
   dependencia: boolean;
   actividadPropia: boolean;
   empleador: boolean; // paga nómina o tiene empleados registrados
+  // A cuántas personas les paga, sin contarse a sí mismo. Null si no se
+  // sabe (perfiles anteriores a fuentes-v8 no guardan la cantidad).
+  numeroEmpleados: number | null;
   jubilacion: boolean;
   // Aporta por su cuenta sin RUC activo: puede ser sólo para no perder la
   // seguridad social. No prueba trabajo (misma regla que la continuidad).
@@ -97,17 +108,23 @@ export function clasificarPerfilLaboral(perfil: AnyRecord | null | undefined): P
   // "otro" -- un código de empleador que no conocemos -- se cuenta como
   // dependencia: es un aporte hecho por un empleador, aunque no sepamos de
   // qué tipo. El segmento lo marca aparte para revisión manual.
-  const empleos = fuentes
-    .filter((x) => x.evidencia !== "indirecta" && NATURALEZAS_DEPENDENCIA.has(String(x.naturaleza)))
+  const nombre = ((perfil?.identidad ?? {}) as AnyRecord).nombreCompleto;
+  const aportes = fuentes.filter((x) => x.evidencia !== "indirecta");
+  const esDeSuPropioPatrono = (x: AnyRecord) => esLaMismaPersona(x.empleador, nombre);
+  const empleos = aportes
+    .filter((x) => NATURALEZAS_DEPENDENCIA.has(String(x.naturaleza)) && !esDeSuPropioPatrono(x))
     .map((x) => ({
       empleador: typeof x.empleador === "string" ? x.empleador : null,
       naturaleza: String(x.naturaleza),
       monto: typeof x.montoMensualReportado === "number" ? x.montoMensualReportado : null,
     }));
-  const aportePropio = fuentes.some((x) => x.evidencia !== "indirecta" && x.naturaleza === "cuenta_propia");
+  const aportePropio = aportes.some((x) => x.naturaleza === "cuenta_propia" || esDeSuPropioPatrono(x));
   const rucActivo = laboral.tieneRucActivo === true || fuentes.some((x) => x.tipo === "actividad económica propia");
-  const nominaSenal = senales.find((s) => s.senal === "nómina que paga")?.valor;
-  const nomina = typeof nominaSenal === "number" && nominaSenal > 0 ? nominaSenal : null;
+  const senalNomina = senales.find((s) => s.senal === "nómina que paga");
+  const valorNomina = senalNomina?.valor;
+  const cantidadNomina = senalNomina?.cantidad;
+  const nomina = typeof valorNomina === "number" && valorNomina > 0 ? valorNomina : null;
+  const numeroEmpleados = typeof cantidadNomina === "number" ? cantidadNomina : null;
   const empleador = nomina !== null || Number(laboral.numeroEmpleadosRegistrados ?? 0) > 0;
   const jubilacion = fuentes.some((x) => x.tipo === "jubilación") || social.esJubilado === true;
 
@@ -154,6 +171,7 @@ export function clasificarPerfilLaboral(perfil: AnyRecord | null | undefined): P
     dependencia,
     actividadPropia,
     empleador,
+    numeroEmpleados,
     jubilacion,
     aporteVoluntarioSinRuc: aportePropio && !rucActivo,
     vinculoConEmpleador,

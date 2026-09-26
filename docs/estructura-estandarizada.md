@@ -477,6 +477,22 @@ interface StandardClientProfile {
 > Hay que leer las dos formas — ver `metaDeLaConsulta()` en
 > `_shared/calidad-de-la-consulta.ts`.
 
+> **estructura-v7 (2026-09-26)** — `clienteEsSuPropioEmpleador` sale del
+> RUC del patrono (`_shared/patrono.ts`: RUC = cédula + 001/002/003; el
+> nombre, sin tildes y con la Ñ rota, sólo si el aporte no trae RUC). La
+> regla por nombre marcaba como su propio empleador a quien trabaja para su
+> padre homónimo (4 casos, ahora "comparte apellido") y no veía los
+> apellidos compuestos ("DE LA VEGA", 6 casos que el RUC sí prueba).
+> `numeroEmpleadosRegistrados` y `esEmpleadorOAdministrador` ya no cuentan
+> a la propia persona, que se afilia en su propia nómina: 150 perfiles
+> pasaron de 1 empleado a 0. `numeroEstablecimientosActivos` es 0 si el
+> RUC no está activo aunque el SRI muestre alguno ABIERTO (registro sin
+> actualizar, pedido del negocio). Junto con fuentes-v8 (el aporte bajo el propio
+> RUC es cuenta propia). Los 2.185 perfiles con crudo local se recalcularon
+> con `scripts/recalcular-fuentes-ingreso.mjs`, que sólo reemplaza
+> `fuentesIngreso` y estos cuatro campos, y deja lo anterior en
+> `fuentesIngreso.detalle.recalculo`.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

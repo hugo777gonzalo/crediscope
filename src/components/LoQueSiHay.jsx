@@ -1,11 +1,6 @@
 import { Link } from "react-router-dom";
 import { CheckCircle2, ArrowRight } from "lucide-react";
-import {
-  ETIQUETA_SEGMENTO,
-  ETIQUETA_ESTADO,
-  RIESGO_SEGMENTO,
-  textoIngresoReportado,
-} from "../lib/fuentesIngresoConsolidado.js";
+import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, DOCUMENTOS_DE_CONFIRMACION, textoIngresoReportado } from "../lib/fuentesIngresoConsolidado.js";
 import { duracionLegible } from "../lib/ingresosCampos.js";
 
 // Lo que sigue estando disponible cuando el modelo no responde.
@@ -57,14 +52,13 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
               <Dato
                 etiqueta="Fuente de ingreso"
                 valor={ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento}
-                detalle={`${ETIQUETA_ESTADO[f.estadoSegmento] ?? ""}${RIESGO_SEGMENTO[f.segmento] ? ` · ${RIESGO_SEGMENTO[f.segmento]}` : ""}`}
+                detalle={ETIQUETA_ESTADO[f.estadoSegmento] ?? null}
               />
             ) : null}
             {f?.pisoIngresoMensualReportado ? (
               <Dato
                 etiqueta="Ingreso reportado al IESS"
                 valor={textoIngresoReportado(f.pisoIngresoMensualReportado, f.corteIessUsado)}
-                detalle="Lo declarado al IESS; el ingreso real puede ser mayor"
               />
             ) : null}
             {/* Leía `antiguedadLaboralMeses`, un campo que el perfil nunca
@@ -82,7 +76,7 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
 
           {(f?.paraConfirmar ?? []).length > 0 ? (
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-              <p style={{ fontWeight: 600, fontSize: 13, margin: "0 0 6px" }}>Qué pedirle al cliente</p>
+              <p style={{ fontWeight: 600, fontSize: 13, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</p>
               <ul className="crediscope-list" style={{ fontSize: 13.5, margin: 0 }}>
                 {f.paraConfirmar.map((p, i) => (
                   <li key={i}>{p}</li>

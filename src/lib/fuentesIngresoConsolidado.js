@@ -22,39 +22,58 @@ export const ETIQUETA_SEGMENTO = {
   no_clasificado: "Tipo de aporte no reconocido",
 };
 
-// Por qué existe cada segmento: no es de dónde viene la plata, es cómo
-// puede fallar. Se muestra en la pantalla para que la separación se
-// entienda sin tener que leer el código.
-export const RIESGO_SEGMENTO = {
-  dependiente_privado: "Quiebra del empleador, despido, crisis del sector",
-  publico: "Decisión política: una ley, un ministerio que cierra",
-  diplomatico: "Ajeno a la política local; de los más estables",
-  independiente: "No se conoce el ingreso real",
-  empleo_domestico: "Vínculo precario, sin respaldo institucional",
-  agricola: "Estacional; clima y precios",
-  trabajo_hogar: "Sin ingreso propio",
-  jubilado: "Casi no falla: el pago es del Estado y es vitalicio",
-  jubilado_con_ingreso_adicional: "Pensión estable más una actividad a verificar",
-  ingresos_mixtos: "Diversificado: dos fuentes de naturaleza distinta",
-  informal_o_sin_actividad: "No se puede determinar si hay ingreso",
-  // No es un riesgo del cliente: es una consulta que hay que repetir.
-  // Mezclarlo con "informal" convertía una caída de la fuente en un
-  // juicio sobre la persona -- le pasó a 373 el 2026-09-15.
-  sin_datos: "No dice nada de la persona: hay que volver a consultarla",
-  no_clasificado: "Código de empleador fuera del catálogo: requiere revisión manual",
-};
+// Hasta el 2026-09-26 había acá un "cómo puede fallar" por segmento
+// ("quiebra del empleador, despido, crisis del sector"). Se sacó de todas
+// las pantallas y de la exportación a pedido del negocio: eran
+// generalidades del segmento, no hechos de la persona, y se leían como si
+// lo fueran.
 
+// Quién declara el monto, con los nombres que eligió el negocio el
+// 2026-09-26. Hasta ese día eran "Reportada por un tercero",
+// "Autodeclarada" e "Indirecta", que no se entendían sin haber estado en el
+// diseño. Esta tabla es la genérica (reglas, panorama); para una fuente
+// concreta se usa quienDeclara(), que nombra el tipo de empleador.
 export const ETIQUETA_EVIDENCIA = {
-  reportada_por_tercero: "Reportada por un tercero",
-  autodeclarada_sobre_minimo: "Autodeclarada, sobre el SBU",
-  autodeclarada_en_minimo: "Autodeclarada, en el SBU",
-  indirecta: "Indirecta (hay actividad, no hay monto)",
+  reportada_por_tercero: "Empleador privado, público, diplomático o externo",
+  autodeclarada_sobre_minimo: "Empresa propia o afiliación voluntaria, más que el SBU",
+  autodeclarada_en_minimo: "Empresa propia o afiliación voluntaria",
+  // RUC activo, nómina, jubilación o pensión: consta que existen, pero
+  // ninguna fuente pública trae cuánto dejan.
+  indirecta: "Sin monto: consta que existe",
 };
 
+const EMPLEADOR_POR_NATURALEZA = { privado: "Empleador privado", publico: "Empleador público", diplomatico: "Empleador diplomático" };
+
+// Quién declara el monto de UNA fuente. El aporte que la persona elige es
+// "Empresa propia" si tiene un negocio registrado (se afilia como patrono,
+// o tiene RUC activo) y "Afiliación voluntaria" si no: aportar por su
+// cuenta sin RUC puede ser sólo para no perder la seguridad social. Doméstico,
+// agrícola y un código no reconocido son "Empleador externo".
+export function quienDeclara(fuente, perfil) {
+  if (fuente.evidencia === "reportada_por_tercero") return EMPLEADOR_POR_NATURALEZA[fuente.naturaleza] ?? "Empleador externo";
+  if (fuente.evidencia === "indirecta") return ETIQUETA_EVIDENCIA.indirecta;
+  const conNegocio = fuente.tipo === "aporte como patrono de su propio negocio" || perfil?.laboral?.tieneRucActivo === true;
+  return conNegocio ? "Empresa propia" : "Afiliación voluntaria";
+}
+
+// Los nombres de lo que el perfil guarda como senalesDeEscala ("Tamaño del
+// negocio" en pantalla). "establecimientos registrados" es de perfiles
+// anteriores a fuentes-v8, que contaban también los cerrados.
+export const ETIQUETA_SENAL = {
+  "nómina que paga": "Nómina",
+  "establecimientos activos": "Establecimientos Activos (SRI)",
+  "establecimientos registrados": "Establecimientos registrados (SRI)",
+  "obligado a llevar contabilidad": "Obligado a llevar contabilidad",
+};
+
+export const DOCUMENTOS_DE_CONFIRMACION = "Documentos de Confirmación de Ingresos";
+
+// Los estados dicen qué falta, no una categoría interna. Antes:
+// Confirmada / Provisional / Indeterminada.
 export const ETIQUETA_ESTADO = {
-  confirmada: "Confirmada",
-  provisional: "Provisional",
-  indeterminada: "Indeterminada",
+  confirmada: "Confirmado por un tercero",
+  provisional: "Por confirmar",
+  indeterminada: "Sin determinar",
 };
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
