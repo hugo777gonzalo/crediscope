@@ -225,7 +225,13 @@ export default function FuentesReglas() {
           <tbody>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.reportada_por_tercero}</td>
-              <td>Un empleador ajeno declara y paga sobre esa base.</td>
+              <td>
+                Un empleador ajeno declara y paga sobre esa base. Cada aporte nombra el tipo: <strong>Empleador privado</strong>,{" "}
+                <strong>Empleador público</strong>, <strong>Empleador diplomático</strong> (embajada o consulado),{" "}
+                <strong>Empleador externo</strong> (sólo organismos internacionales) u <strong>Otros empleadores</strong>{" "}
+                (doméstico, agrícola o un código no reconocido). El código 29 del IESS junta embajadas y organismos
+                internacionales: se separan por el nombre del empleador.
+              </td>
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.autodeclarada_sobre_minimo}</td>
@@ -236,11 +242,18 @@ export default function FuentesReglas() {
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.autodeclarada_en_minimo}</td>
-              <td>Aporta sobre el SBU del año, lo mínimo para estar cubierto. No dice nada del ingreso.</td>
+              <td>
+                Aporta sobre el SBU del año, lo mínimo para estar cubierto. No dice nada del ingreso. En los dos casos de aporte
+                propio, cada aporte dice <strong>Empresa propia</strong> si la persona se afilia como patrono de su negocio o
+                tiene RUC activo, y <strong>Afiliación voluntaria</strong> si aporta por su cuenta sin negocio registrado.
+              </td>
             </tr>
             <tr>
               <td style={{ fontWeight: 600 }}>{ETIQUETA_EVIDENCIA.indirecta}</td>
-              <td>Hay actividad comprobable (RUC, establecimientos, empleados, jubilación) pero ninguna cifra asociada.</td>
+              <td>
+                Hay actividad comprobable (RUC activo, nómina, jubilación, pensión alimenticia) pero ninguna fuente pública
+                trae cuánto deja.
+              </td>
             </tr>
           </tbody>
         </table>

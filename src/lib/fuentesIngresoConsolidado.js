@@ -34,7 +34,7 @@ export const ETIQUETA_SEGMENTO = {
 // diseño. Esta tabla es la genérica (reglas, panorama); para una fuente
 // concreta se usa quienDeclara(), que nombra el tipo de empleador.
 export const ETIQUETA_EVIDENCIA = {
-  reportada_por_tercero: "Empleador privado, público, diplomático o externo",
+  reportada_por_tercero: "Empleador privado, público, diplomático, externo u otros",
   autodeclarada_sobre_minimo: "Empresa propia o afiliación voluntaria, más que el SBU",
   autodeclarada_en_minimo: "Empresa propia o afiliación voluntaria",
   // RUC activo, nómina, jubilación o pensión: consta que existen, pero
@@ -42,15 +42,31 @@ export const ETIQUETA_EVIDENCIA = {
   indirecta: "Sin monto: consta que existe",
 };
 
-const EMPLEADOR_POR_NATURALEZA = { privado: "Empleador privado", publico: "Empleador público", diplomatico: "Empleador diplomático" };
+const EMPLEADOR_POR_NATURALEZA = { privado: "Empleador privado", publico: "Empleador público" };
 
-// Quién declara el monto de UNA fuente. El aporte que la persona elige es
-// "Empresa propia" si tiene un negocio registrado (se afilia como patrono,
-// o tiene RUC activo) y "Afiliación voluntaria" si no: aportar por su
-// cuenta sin RUC puede ser sólo para no perder la seguridad social. Doméstico,
-// agrícola y un código no reconocido son "Empleador externo".
+// El código 29 del IESS junta embajadas y organismos internacionales
+// ("29-EMBAJADAS, MISIONES DIPL., CONSULARES, ORG. INTERNACIONALES") y no
+// hay otro campo que los separe: se distinguen por el nombre del empleador.
+// Al 2026-09-26 las 2 personas de la cartera con código 29 trabajan en
+// organismos internacionales (Universidad Andina Simón Bolívar, OIM).
+const ES_MISION_DIPLOMATICA = /EMBAJADA|CONSULADO|CONSULAR|MISI[OÓ]N DIPLOM/i;
+
+// Quién declara el monto de UNA fuente, con los nombres que decidió el
+// negocio el 2026-09-26:
+//   Empleador privado / público;
+//   Empleador diplomático (embajada, consulado) / Empleador externo (sólo
+//     organismos internacionales);
+//   Otros empleadores (doméstico, agrícola y código no reconocido);
+//   Empresa propia (se afilia como patrono o tiene RUC activo) /
+//     Afiliación voluntaria (aporta por su cuenta sin negocio registrado:
+//     puede ser sólo para no perder la seguridad social).
 export function quienDeclara(fuente, perfil) {
-  if (fuente.evidencia === "reportada_por_tercero") return EMPLEADOR_POR_NATURALEZA[fuente.naturaleza] ?? "Empleador externo";
+  if (fuente.evidencia === "reportada_por_tercero") {
+    if (fuente.naturaleza === "diplomatico") {
+      return ES_MISION_DIPLOMATICA.test(String(fuente.empleador ?? "")) ? "Empleador diplomático" : "Empleador externo";
+    }
+    return EMPLEADOR_POR_NATURALEZA[fuente.naturaleza] ?? "Otros empleadores";
+  }
   if (fuente.evidencia === "indirecta") return ETIQUETA_EVIDENCIA.indirecta;
   const conNegocio = fuente.tipo === "aporte como patrono de su propio negocio" || perfil?.laboral?.tieneRucActivo === true;
   return conNegocio ? "Empresa propia" : "Afiliación voluntaria";

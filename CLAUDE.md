@@ -31,6 +31,32 @@ importan. Los nombres internos que dicen piso
 leen en pantalla. Y quien trabaja para un tercero es **"dependiente"**,
 no "asalariado".
 
+**Nombres de pantalla de Fuentes de ingreso**, decididos por el negocio el
+2026-09-26 porque los anteriores no se entendían sin haber estado en el
+diseño. Viven en `src/lib/fuentesIngresoConsolidado.js` (`quienDeclara()`,
+`ETIQUETA_ESTADO`, `ETIQUETA_SENAL`, `DOCUMENTOS_DE_CONFIRMACION`):
+
+| Antes | Ahora |
+|---|---|
+| Segmento | Segmento (se queda) |
+| Confirmada / Provisional / Indeterminada | Confirmado por un tercero / Por confirmar / Sin determinar |
+| Reportada por un tercero | Empleador privado · Empleador público · Empleador diplomático (embajada, consulado) · Empleador externo (SOLO organismos internacionales) · Otros empleadores (doméstico, agrícola, código no reconocido) |
+| Autodeclarada | Empresa propia (patrono de su negocio o RUC activo) · Afiliación voluntaria (sin negocio registrado) |
+| Indirecta | Sin monto: consta que existe (RUC, nómina, jubilación, pensión) |
+| Señales de escala | Tamaño del negocio: Empleados, Nómina, Establecimientos Activos (SRI), Contabilidad |
+| Nómina que paga | Nómina (sin contar a la propia persona) |
+| Establecimientos registrados | Establecimientos Activos (SRI): sólo abiertos, 0 si el RUC no está activo |
+| Otras fuentes · sin monto | Negocio propio (SRI) |
+| Corte del IESS usado | Información IESS (meses con mayúscula: "Ago 2026") |
+| Fuera del último corte | Sin información actual en el IESS |
+| Por qué este segmento | Condiciones de la Segmentación |
+| Qué pedir para confirmar | Documentos de Confirmación de Ingresos |
+| Es su propio empleador | Es su propio patrono |
+| Cómo puede fallar | (se sacó de todas las pantallas y de la exportación) |
+
+El código 29 del IESS junta embajadas y organismos internacionales: se
+separan por el nombre del empleador (`ES_MISION_DIPLOMATICA`).
+
 **Los comentarios explican el porqué, no el qué.** Cuando una decisión
 es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
 real, un número medido, un error que costó caro. Un comentario que
@@ -208,14 +234,8 @@ Cada una de estas salió de un error real. No revivirlas.
   en `fuentes-ingreso.ts`: paga una nómina mayor que lo que declara, u
   obligado a llevar contabilidad). Tampoco se muestra "cómo puede fallar"
   un segmento: son generalidades, no hechos de la persona.
-- **Los nombres de pantalla los eligió el negocio (2026-09-26)**: Segmento,
-  Tamaño del negocio, Nómina, Establecimientos Activos (SRI) (0 si el RUC
-  no está activo), Empleador privado/público/diplomático/externo, Empresa
-  propia, Afiliación voluntaria, Negocio propio (SRI), Información IESS,
-  Sin información actual en el IESS, Condiciones de la Segmentación,
-  Documentos de Confirmación de Ingresos, Es su propio patrono. Viven en
-  `src/lib/fuentesIngresoConsolidado.js` (`quienDeclara()`,
-  `ETIQUETA_SENAL`); no inventar otros.
+- **Los nombres de Fuentes de ingreso los decidió el negocio** (ver
+  "Nombres de pantalla" arriba). No inventar otros.
 - **Recalcular desde el crudo: `scripts/recalcular-fuentes-ingreso.mjs`.**
   Sólo el último perfil y sólo si el crudo es de ese perfil (perfilId).
   Arma con el reloj en la fecha de captura (process.ts mide contra hoy) y
