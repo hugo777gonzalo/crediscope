@@ -195,16 +195,19 @@ const detalle = filas.map((f) => {
   };
 });
 
-// El nombre sale del perfil guardado (clients no lo tiene).
+// El nombre sale del perfil guardado (clients no lo tiene). El bloqueo
+// también: en producción un caso bloqueado sale con score 1 y "negar"
+// diga lo que diga el modelo, así que ahí la comparación no cambia nada.
 {
   const cedulas = [...new Set(detalle.map((d) => d.cedula))];
-  const nombres = new Map();
+  const datos = new Map();
   for (const d of detalle) {
-    if (nombres.has(d.cedula)) continue;
-    const { data } = await supabase.from("client_profiles").select("standard_profile->identidad->>nombreCompleto").eq("id", d.f.perfilId).maybeSingle();
-    nombres.set(d.cedula, data?.nombreCompleto ?? "");
+    if (datos.has(d.cedula)) continue;
+    const { data } = await supabase.from("client_profiles")
+      .select("nombre:standard_profile->identidad->>nombreCompleto, bloqueado:control_bloqueo->bloqueado").eq("id", d.f.perfilId).maybeSingle();
+    datos.set(d.cedula, { nombre: data?.nombre ?? "", bloqueado: data?.bloqueado === true });
   }
-  for (const d of detalle) d.nombre = nombres.get(d.cedula) ?? "";
+  for (const d of detalle) Object.assign(d, datos.get(d.cedula));
   detalle.sort((a, b) => cedulas.indexOf(a.cedula) - cedulas.indexOf(b.cedula) || orden.indexOf(a.clave) - orden.indexOf(b.clave));
 }
 
@@ -220,9 +223,11 @@ const prom = (xs) => { const v = xs.filter((x) => x != null); return v.length ? 
 const resumen = orden.filter((c) => detalle.some((d) => d.clave === c)).map((clave) => {
   const ds = detalle.filter((d) => d.clave === clave);
   const ok = ds.filter((d) => d.estado === "Completo");
-  const contraHoy = ok.map((d) => porCedula.get(d.cedula).hoy).filter((h) => h && h.estado === "Completo");
-  const iguales = ok.filter((d) => { const h = porCedula.get(d.cedula).hoy; return h?.estado === "Completo" && h.r.recomendacion === d.r.recomendacion; }).length;
-  const difScore = ok.map((d) => { const h = porCedula.get(d.cedula).hoy; return h?.estado === "Completo" ? Math.abs(d.r.score - h.r.score) : null; });
+  // La coincidencia con Hoy se mide sin los bloqueados: ahí el resultado
+  // lo fija la política, no el modelo.
+  const comparables = ok.filter((d) => !d.bloqueado && porCedula.get(d.cedula).hoy?.estado === "Completo");
+  const iguales = comparables.filter((d) => porCedula.get(d.cedula).hoy.r.recomendacion === d.r.recomendacion).length;
+  const difScore = comparables.map((d) => Math.abs(d.r.score - porCedula.get(d.cedula).hoy.r.score));
   return {
     "Configuración": CONFIGURACIONES[clave].etiqueta,
     "Casos": ds.length,
@@ -236,16 +241,19 @@ const resumen = orden.filter((c) => detalle.some((d) => d.clave === c)).map((cla
     "Tokens de salida (prom.)": Math.round(prom(ds.map((d) => d.u.output_tokens)) ?? 0),
     "  de ellos razonamiento (prom.)": Math.round(prom(ds.map((d) => d.razonamiento)) ?? 0),
     "  de ellos respuesta visible (prom.)": Math.round(prom(ds.map((d) => d.visible)) ?? 0),
-    "Score promedio (completos)": red(prom(ok.map((d) => d.r.score)), 0),
-    "Misma recomendación que Hoy": clave === "hoy" ? null : `${iguales} de ${contraHoy.length}`,
-    "Diferencia de score contra Hoy (prom., absoluta)": clave === "hoy" ? null : red(prom(difScore), 0),
+    // A ~90 tokens por segundo, más de 8.000 es rozar el límite de 10.000
+    // y los 150 s de Supabase.
+    "Análisis de más de 8.000 tokens": ds.filter((d) => (d.u.output_tokens ?? 0) > 8000).length,
+    "Score promedio (sin bloqueados)": red(prom(ok.filter((d) => !d.bloqueado).map((d) => d.r.score)), 0),
+    "Misma recomendación que Hoy (sin bloqueados)": clave === "hoy" ? null : `${iguales} de ${comparables.length}`,
+    "Diferencia de score contra Hoy (prom., absoluta, sin bloqueados)": clave === "hoy" ? null : red(prom(difScore), 0),
   };
 });
 
 // Por caso: una fila por cliente, las configuraciones lado a lado.
 const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio" };
 const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
-  const fila = { "Cédula": cedula, "Nombre": Object.values(cs)[0]?.nombre ?? "" };
+  const fila = { "Cédula": cedula, "Nombre": Object.values(cs)[0]?.nombre ?? "", "Bloqueado por política": Object.values(cs)[0]?.bloqueado ? "Sí" : "No" };
   for (const clave of orden) {
     const d = cs[clave];
     if (!d) continue;
@@ -274,6 +282,7 @@ const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
 const textos = detalle.map((d) => ({
   "Cédula": d.cedula,
   "Nombre": d.nombre,
+  "Bloqueado por política": d.bloqueado ? "Sí" : "No",
   "Configuración": d.configuracion,
   "Estado": d.estado,
   "Score": d.estado === "Completo" ? d.r.score : null,
@@ -353,9 +362,9 @@ const wb = XLSX.utils.book_new();
 const wsNotas = XLSX.utils.aoa_to_sheet(notas);
 wsNotas["!cols"] = [{ wch: 38 }, { wch: 110 }];
 XLSX.utils.book_append_sheet(wb, wsNotas, "Notas");
-XLSX.utils.book_append_sheet(wb, hoja(resumen, [34, 7, 10, 12, 14, 12, 10, 10, 12, 12, 14, 16, 12, 16, 18]), "Resumen");
-XLSX.utils.book_append_sheet(wb, hoja(porCaso, [12, 34, ...Array(40).fill(14)]), "Por caso");
-XLSX.utils.book_append_sheet(wb, hoja(textos, [12, 30, 22, 14, 7, 12, 80, 70, 70, 70, 70, 8, 8]), "Textos");
+XLSX.utils.book_append_sheet(wb, hoja(resumen, [34, 7, 10, 12, 14, 12, 10, 10, 12, 12, 14, 16, 14, 14, 18, 22]), "Resumen");
+XLSX.utils.book_append_sheet(wb, hoja(porCaso, [12, 34, 10, ...Array(40).fill(14)]), "Por caso");
+XLSX.utils.book_append_sheet(wb, hoja(textos, [12, 30, 10, 22, 14, 7, 12, 80, 70, 70, 70, 70, 8, 8]), "Textos");
 if (deliberacion.length) XLSX.utils.book_append_sheet(wb, hoja(deliberacion, [12, 22, 10, 120]), "Razonamiento interno");
 XLSX.utils.book_append_sheet(wb, hoja(tecnico, [12, 26, 16, 12, 10, 10, 10, 10, 10, 9, 10, 10, 12, 20, 32, 60, 80]), "Técnico");
 
