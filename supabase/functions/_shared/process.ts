@@ -134,6 +134,30 @@ function num(v: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+// Sumas de dinero a centavos: sumar decimales en coma flotante dejaba
+// saldos como 258798.83000000002, que el modelo copiaba tal cual.
+function redondear(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// La escala de calificaciones del buró, de mejor a peor. La
+// Superintendencia la define por días de atraso.
+const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
+const CALIFICACIONES_EN_ATRASO = new Set(["B1", "B2", "C1", "C2", "D", "E"]);
+
+// La peor o la mejor calificación de un conjunto de operaciones. Hasta
+// estructura-v7 se ordenaban alfabéticamente, y "AL" -- fuera de la
+// escala -- quedaba entre A3 y B1. Las 62 operaciones AL de la cartera
+// están al día (sólo saldo por vencer, cero en toda columna de atraso):
+// se leen como sin atraso y nunca son la peor. Si no hay ninguna
+// calificación de la escala, se nombra la que haya.
+function extremoDeCalificacion(operaciones: AnyRecord[], cual: "peor" | "mejor"): string | null {
+  const todas = operaciones.map((r) => String(r.calificacion ?? "").trim()).filter(Boolean);
+  const enEscala = todas.filter((c) => ESCALA_CALIFICACION.includes(c)).sort((a, b) => ESCALA_CALIFICACION.indexOf(a) - ESCALA_CALIFICACION.indexOf(b));
+  if (enEscala.length) return cual === "peor" ? enEscala.at(-1)! : enEscala[0];
+  return todas[0] ?? null;
+}
+
 function arr(multi: AnyRecord | null | undefined, recurso: string, campo: string): AnyRecord[] {
   const v = (multi?.[recurso] as AnyRecord | undefined)?.data as AnyRecord | undefined;
   const items = v?.[campo];
@@ -173,10 +197,39 @@ const PALABRAS_CLAVE_PROBLEMA_CREDITICIO = [
   "GARANTÍA", "FIANZA", "AVAL", "HIPOTECA", "PRENDA",
 ].map((s) => s.toUpperCase());
 
+// Sin tildes y en mayúsculas, para comparar palabras.
+function sinTildes(s: string): string {
+  return s.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// Hasta estructura-v7 se buscaban las palabras clave como SUBCADENAS, y
+// medido sobre la cartera el 2026-09-27 entraban como crediticias ~37
+// demandas que no lo son: "divorcio por mutuo consentimiento" (17, por
+// MUTUO), "daño moral" (11, MORAL contiene MORA), "ejecución por silencio
+// administrativo" (7, por EJECUCIÓN) y dos de pensión alimenticia (por
+// OBLIGACIÓN y ACTA DE MEDIACIÓN; una la citó el análisis de 1308725470
+// como "demanda crediticia"). Ahora se buscan palabras completas, y lo de
+// familia, daño moral y actos administrativos queda afuera aunque
+// contenga una palabra clave. "Incumplimiento de contrato" y "cobro de
+// honorarios" SÍ son crediticias (decisión del negocio).
+//
+// Con palabras completas los plurales dejaron de entrar ("FACTURAS",
+// "CHEQUES", "CONTRATOS PRENDARIOS": 16 demandas que sí son crediticias)
+// y se agregan explícitos -- no con una S opcional, que devolvía "PRENDAS
+// DE VESTIR". Sin tildes, "DEVOLUCIÓN DE GARANTÍA" empezaba a coincidir
+// con GARANTÍA; es devolver un depósito, no un crédito impago, y se
+// excluye.
+const NO_ES_CREDITICIA = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b/;
+const PLURALES_CREDITICIOS = ["FACTURAS", "CHEQUES", "PRENDARIO", "PRENDARIOS", "PAGARES", "LETRAS DE CAMBIO"];
+const PATRONES_PROBLEMA_CREDITICIO = [...new Set([...PALABRAS_CLAVE_PROBLEMA_CREDITICIO, ...PLURALES_CREDITICIOS].map(sinTildes))].map(
+  (kw) => new RegExp(`(^|[^A-Z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Z0-9]|$)`)
+);
+
 function esDemandaProblemaCrediticio(delito: unknown): boolean {
   if (!delito) return false;
-  const up = String(delito).toUpperCase();
-  return PALABRAS_CLAVE_PROBLEMA_CREDITICIO.some((kw) => up.includes(kw));
+  const texto = sinTildes(String(delito));
+  if (NO_ES_CREDITICIA.test(texto)) return false;
+  return PATRONES_PROBLEMA_CREDITICIO.some((p) => p.test(texto));
 }
 
 // pn_supa/pn_supa/novadata (pensión alimenticia): el nombre completo
@@ -390,7 +443,13 @@ function textoDe(v: unknown): string | null {
 // esEmpleadorOAdministrador no cuentan a la propia persona, que se afilia en
 // su propia nómina: 166 personas figuraban con empleados sin tener ninguno.
 // numeroEstablecimientosActivos es 0 si el RUC no está activo (ruc.ts).
-export const PROCESS_VERSION = "estructura-v7"; // ver docs/estructura-estandarizada.md
+// estructura-v8 (2026-09-27), de la revisión de los primeros análisis con
+// marco-v23: el buró separa lo propio de lo garantizado y lee la cartera
+// que no devenga intereses; retail informa lo vencido; cooperativas, la
+// cuota; las demandas crediticias se buscan por palabra completa; las
+// pensiones se cuentan por proceso y la deuda es la suma. Detalle en cada
+// grupo y en docs/propuesta-estructura-v8-marco-v24.md.
+export const PROCESS_VERSION = "estructura-v8"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1027,30 +1086,62 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // lexicográfico funciona porque el orden alfabético de las
   // calificaciones (A1,A2,A3,B1,B2,C1,C2,D,E) coincide con el orden de
   // severidad real.
+  //
+  // estructura-v8, de la revisión de los primeros análisis con marco-v23
+  // (medido sobre el crudo de 2.567 clientes):
+  //  - La columna `riesgo` dice el ROL: T titular, G garante, C codeudor.
+  //    Se sumaba todo como propio: 319 personas cargaban $73,8 M ajenos, y
+  //    en 125 la peor calificación era de una operación que garantizan (18
+  //    de ellas D o E). Ahora lo propio y lo garantizado van por separado,
+  //    como ya se decidió para Aval (migración 080).
+  //  - Una operación en atraso puede tener su monto en `noDevengaInteres`
+  //    (la cartera que el banco dejó de contar como productiva), que no se
+  //    leía: 56 personas con $626.743 figuraban con $0 en mora.
+  //  - `saldomora ?? mora` no caía a `mora` cuando saldomora venía en 0
+  //    (0 no es null).
+  //  - Los tramos saldo0_1..mas_36 NO se suman: en las filas en mora suman
+  //    exactamente 1,00 (parecen una marca, no un monto) y no coinciden
+  //    con el saldo en mora. No se sabe qué son.
+  //  - "AL" es una calificación fuera de la escala: 62 operaciones, todas
+  //    con saldo sólo por vencer y cero en cualquier columna de atraso. Se
+  //    lee como sin atraso: nunca es la peor; si es la única, se nombra.
   const buroCredito = [...arr(fuentes, "buroCreditoSuper", "datosSuper"), ...arr(fuentes, "buroCreditoDiners", "datosSuper")];
+  // Sin la columna, titular: es el caso de casi todas las filas y el
+  // registro no deja otra lectura.
+  const esGarantia = (r: AnyRecord) => r.riesgo === "G" || r.riesgo === "C";
+  const propias = buroCredito.filter((r) => !esGarantia(r));
+  const garantias = buroCredito.filter(esGarantia);
   const retails = arr(fuentes, "retails", "retails");
   const creditosIess = [...tcredQ, ...tcredH];
-  const calificacionesBuroCredito = buroCredito.map((r) => r.calificacion as string).filter(Boolean).sort();
+  const vencido = (r: AnyRecord) => {
+    const saldomora = num(r.saldomora) ?? 0;
+    return saldomora > 0 ? saldomora : num(r.mora) ?? 0;
+  };
+  const enAtraso = (r: AnyRecord) =>
+    vencido(r) + (num(r.noDevengaInteres) ?? 0) + (num(r.judicial) ?? 0) + (num(r.castigo) ?? 0);
+  const deudaDe = (r: AnyRecord) => (num(r.saldoVigente) ?? 0) + enAtraso(r);
   const comportamientoBancario: StandardClientProfile["comportamientoBancario"] = {
     figuraEnRegistroDeudores: arr(fuentes, "deudores", "deudores").length > 0,
-    numeroOperacionesBuroCredito: buroCredito.length,
-    peorCalificacionRiesgo: calificacionesBuroCredito.at(-1) ?? null,
-    mejorCalificacionRiesgo: calificacionesBuroCredito[0] ?? null,
-    tieneOperacionConDemanda: buroCredito.some((r) => (num(r.judicial) ?? 0) > 0),
-    tieneOperacionCastigada: buroCredito.some((r) => (num(r.castigo) ?? 0) > 0),
-    saldoTotalVigente: buroCredito.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0),
-    // saldoVigente NO incluye lo que está en mora (son campos separados
-    // en el recurso) — un cliente con una operación totalmente en
-    // default podría mostrar saldoTotalVigente=0 sin esto. Se prioriza
-    // saldomora (nombre coincide con el patrón monetario del resto del
-    // recurso: saldoVigente, saldo0_1, etc.) sobre mora como respaldo.
-    // Sin caso real en la muestra actual con valor >0 para confirmar la
-    // forma exacta (calificaciones vistas: A1-B2, ninguna con mora).
-    saldoEnMoraBuroCredito: buroCredito.reduce((s, r) => s + (num(r.saldomora) ?? num(r.mora) ?? 0), 0),
+    numeroOperacionesBuroCredito: propias.length,
+    peorCalificacionRiesgo: extremoDeCalificacion(propias, "peor"),
+    mejorCalificacionRiesgo: extremoDeCalificacion(propias, "mejor"),
+    tieneOperacionConDemanda: propias.some((r) => (num(r.judicial) ?? 0) > 0),
+    tieneOperacionCastigada: propias.some((r) => (num(r.castigo) ?? 0) > 0),
+    // saldoVigente es lo POR VENCER: lo que está en atraso va en
+    // saldoEnMoraBuroCredito y saldoNoDevengaIntereses.
+    saldoTotalVigente: redondear(propias.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0)),
+    saldoEnMoraBuroCredito: redondear(propias.reduce((s, r) => s + vencido(r), 0)),
+    saldoNoDevengaIntereses: redondear(propias.reduce((s, r) => s + (num(r.noDevengaInteres) ?? 0), 0)),
+    deudaEnAtraso: redondear(propias.reduce((s, r) => s + enAtraso(r), 0)),
+    operacionesEnAtrasoSinMonto: propias.filter((r) => CALIFICACIONES_EN_ATRASO.has(String(r.calificacion)) && deudaDe(r) === 0).length,
+    numeroOperacionesComoGaranteOCodeudor: garantias.length,
+    deudaComoGaranteOCodeudor: redondear(garantias.reduce((s, r) => s + deudaDe(r), 0)),
+    peorCalificacionComoGaranteOCodeudor: extremoDeCalificacion(garantias, "peor"),
     numeroCreditosFormales: arr(fuentes, "creditoHipotecario", "prestamos").length + arr(fuentes, "creditoQuirografario", "prestamos").length,
     numeroDeudasRetail: retails.length,
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
-    totalDeudaRetail: retails.reduce((s, r) => s + (num(r.totalDeuda) ?? 0), 0),
+    totalDeudaRetail: redondear(retails.reduce((s, r) => s + (num(r.totalDeuda) ?? 0), 0)),
+    valorVencidoRetail: redondear(retails.reduce((s, r) => s + (num(r.valorVencido) ?? 0), 0)),
     tieneCreditoIessBiess: creditosIess.length > 0,
     diasMoraCreditoIessBiess: creditosIess.length ? Math.max(...creditosIess.map((c) => num(c.diasMoraAfi) ?? 0)) : null,
   };
@@ -1066,10 +1157,14 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const comportamientoCooperativas: StandardClientProfile["comportamientoCooperativas"] = {
     numeroOperaciones: coop.length,
     diasMoraMaxima: coop.length ? Math.max(...coop.map((c) => num(c.num_dias_morosidad) ?? 0)) : null,
-    saldoTotal: coop.reduce((s, c) => s + (num(c.val_saldo_total) ?? 0), 0),
-    saldoEnMora: coop.reduce((s, c) => s + CAMPOS_VENCIDO_COOP.reduce((s2, campo) => s2 + (num(c[campo]) ?? 0), 0), 0),
+    saldoTotal: redondear(coop.reduce((s, c) => s + (num(c.val_saldo_total) ?? 0), 0)),
+    saldoEnMora: redondear(coop.reduce((s, c) => s + CAMPOS_VENCIDO_COOP.reduce((s2, campo) => s2 + (num(c[campo]) ?? 0), 0), 0)),
     tieneOperacionConDemanda: coop.some((c) => (num(c.val_dem_judicial) ?? 0) > 0),
     tieneOperacionCastigada: coop.some((c) => (num(c.val_cart_castigada) ?? 0) > 0),
+    // estructura-v8: 693 de 747 operaciones informan la cuota y no se
+    // leía. En 1715532469 son $2.294 al mes contra $1.000 declarados. Es
+    // la única cuota conocida: los bancos no la informan.
+    cuotaMensualTotal: redondear(coop.reduce((s, c) => s + (num(c.val_cuota_credito) ?? 0), 0)),
   };
 
   // ---- comportamientoInterno (grupo nuevo — scoring propio Novadata) ----
@@ -1132,6 +1227,19 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
   // 0501578256 aparecía en mora por una deuda de otra persona).
   const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
+  // Un proceso una sola vez: la fuente los repite (1715532469 tiene 3
+  // procesos en 12 registros). Sin número de proceso, cada registro vale
+  // por uno.
+  // Si el mismo proceso viene dos veces con deudas distintas, vale la
+  // mayor: no se sabe cuál es la última y la otra subestima.
+  const pensionesPorProceso = new Map<string, AnyRecord>();
+  pensionAlimentComoObligado.forEach((p, i) => {
+    const clave = String(p.numeroProceso ?? `sin-proceso-${i}`);
+    const previa = pensionesPorProceso.get(clave);
+    if (!previa || (num(p.totalDeuda) ?? 0) > (num(previa.totalDeuda) ?? 0)) pensionesPorProceso.set(clave, p);
+  });
+  const pensiones = [...pensionesPorProceso.values()];
+  const pensionesVigentes = pensiones.filter((p) => (num(p.valorMensual) ?? 0) > 0);
   // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el tipo
   // de caso real vive en demanda.delito.
   const delitoDe = (d: AnyRecord): string | undefined => (d.demanda as AnyRecord | undefined)?.delito as string | undefined;
@@ -1154,11 +1262,18 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     // decía "no se conoce el monto de la pensión comprometida, solo que
     // está al día". Mismo tipo de error que numeroEmpleadoresUltimos24Meses
     // en v9 — un valor que significa dos cosas opuestas.
-    tienePensionAlimenticia: pensionAlimentComoObligado.length > 0,
-    pensionAlimenticiaEnMora: pensionAlimentComoObligado.some((p) => (num(p.totalDeuda) ?? 0) > 0),
-    deudaPensionAlimenticia: pensionAlimentComoObligado.length
-      ? Math.max(...pensionAlimentComoObligado.map((p) => num(p.totalDeuda) ?? 0))
-      : null,
+    tienePensionAlimenticia: pensiones.length > 0,
+    pensionAlimenticiaEnMora: pensiones.some((p) => (num(p.totalDeuda) ?? 0) > 0),
+    // La suma, no el máximo (hasta estructura-v7): 13 personas con más de
+    // una pensión en mora quedaban con la deuda subestimada.
+    deudaPensionAlimenticia: pensiones.length ? redondear(pensiones.reduce((s, p) => s + (num(p.totalDeuda) ?? 0), 0)) : null,
+    // Cuántas y cuánto por mes. "Vigente" = con pago mensual: las al día
+    // con $0 mensual (85 personas tienen al menos una) ya no son un
+    // gasto (decisión del negocio, 2026-09-27).
+    numeroPensionesAlimenticias: pensiones.length,
+    numeroPensionesVigentes: pensionesVigentes.length,
+    valorMensualPensiones: redondear(pensionesVigentes.reduce((s, p) => s + (num(p.valorMensual) ?? 0), 0)),
+    numeroPensionesEnMora: pensiones.filter((p) => (num(p.totalDeuda) ?? 0) > 0).length,
   };
 
   // ---- riesgoPenal ----

@@ -306,6 +306,34 @@ Cada una de estas salió de un error real. No revivirlas.
   tuvo los cuatro totales de deuda de la estructura al doble en 129 de
   129 personas hasta aval-estructura-v4 (2026-09-24). Antes de sumar un
   segmento de Aval nuevo, buscarle la fila de totales.
+- **El buró de Novadata mezcla roles y esconde el atraso** (estructura-v8,
+  2026-09-27).
+  - **Roles:** la columna `riesgo` dice si la persona es titular (T),
+    garante (G) o codeudora (C). Sumado todo como propio, 319 personas
+    cargaban $73,8 M ajenos, y en 125 la peor calificación era de otra
+    persona. Lo propio y lo garantizado van separados, como en Aval
+    (080).
+  - **Atraso:** una operación en atraso puede tener su monto en
+    `noDevengaInteres`, que no se leía: 56 personas con $626.743
+    figuraban con $0 en mora.
+  - **Tramos:** `saldo0_1..mas_36` NO son montos confiables (en filas en
+    mora suman exactamente 1,00).
+  - **"AL":** es una calificación al día.
+  - **Días de mora y cuota:** el buró de bancos no trae días por
+    operación ni cuota; la calificación es el indicador de días, y la
+    cuota conocida es sólo la de cooperativas.
+- **Las palabras clave se buscan como palabras completas, no subcadenas.**
+  "Daño moral" entraba como crediticia porque MORAL contiene MORA, y
+  "abuso de confianza" porque CONFIANZA contiene FIANZA. Al pasar a
+  palabras completas hay que agregar los plurales a mano ("FACTURAS",
+  "CHEQUES"): una S opcional vuelve a traer "PRENDAS DE VESTIR".
+- **El análisis lo escribe Sonnet, sin cascada** (marco-v24). La cascada
+  con Haiku se validó por coincidencia de scores, no por el texto, y en
+  los casos claros el texto lo escribía Haiku: en inglés, con nombres de
+  campos y con los positivos que el marco prohíbe.
+- **Para recalcular grupos enteros desde el crudo:**
+  `scripts/recalcular-grupos.mjs --grupos=a,b`. Tiene las mismas
+  protecciones que el de fuentes de ingreso.
 - **Aval es dos órdenes de magnitud más rápido que Novadata.** Una
   consulta a Aval tarda 890 ms de mediana (p95 1,3 s) contra los 41 s de
   Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por

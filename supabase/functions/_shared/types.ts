@@ -345,6 +345,11 @@ export interface StandardClientProfile {
   // pesa fuerte aunque las demás operaciones estén bien) y
   // mejorCalificacionRiesgo (contexto: no es lo mismo "peor=E, única
   // operación" que "peor=E, mejor=A1, 5 operaciones").
+  //
+  // Desde estructura-v8 los campos de operaciones, calificaciones y saldos
+  // son sólo de lo PROPIO (riesgo "T", titular). Lo que la persona
+  // garantiza o codeuda va aparte: sumado, 319 personas cargaban $73,8 M
+  // ajenos, y en 125 la peor calificación era de otra persona.
   comportamientoBancario: {
     numeroOperacionesBuroCredito: number;
     peorCalificacionRiesgo: string | null;
@@ -364,10 +369,33 @@ export interface StandardClientProfile {
     // mora) — se extrae de forma proactiva para cerrar el hueco del
     // schema, a confirmar la forma exacta cuando aparezca un caso real.
     saldoEnMoraBuroCredito: number;
+    // Desde estructura-v8. La cartera que no devenga intereses: la parte
+    // de una operación en atraso que el banco dejó de contar como
+    // productiva. No se leía, y 56 personas con $626.743 así figuraban
+    // con $0 en mora (una E de Produbanco con $28.252 en 1308725470).
+    saldoNoDevengaIntereses?: number;
+    // Vencido + no devenga + demanda judicial + castigo: todo lo propio
+    // que está en atraso.
+    deudaEnAtraso?: number;
+    // Operaciones propias calificadas B1..E sin monto en vigente, mora,
+    // no devenga, demanda ni castigo (9 personas en la cartera: 2 sin
+    // ningún valor y las que sólo traen los tramos, que no son montos
+    // confiables). La calificación está, el monto no se informó.
+    operacionesEnAtrasoSinMonto?: number;
+    numeroOperacionesComoGaranteOCodeudor?: number;
+    deudaComoGaranteOCodeudor?: number;
+    peorCalificacionComoGaranteOCodeudor?: string | null;
+    // Préstamos quirografarios e hipotecarios del IESS/BIESS, no
+    // operaciones del buró (en el perfil del modelo se llama
+    // numeroPrestamosIessBiess).
     numeroCreditosFormales: number;
+    // Retail: casas comerciales, OTRA fuente que el buró.
     numeroDeudasRetail: number;
     diasMoraMaximaRetail: number | null;
     totalDeudaRetail: number;
+    // Desde estructura-v8: lo vencido de la deuda retail. 85 personas
+    // tienen retail vencido y el total solo se leía como "vigente".
+    valorVencidoRetail?: number;
     tieneCreditoIessBiess: boolean;
     diasMoraCreditoIessBiess: number | null;
   };
@@ -375,6 +403,9 @@ export interface StandardClientProfile {
   // "Comportamiento Cooperativas" (grupo 9)
   comportamientoCooperativas: {
     numeroOperaciones: number;
+    // El atraso A LA FECHA DEL CORTE de la operación más atrasada, no uno
+    // histórico: el modelo lo leyó como histórico ("actualmente sin
+    // mora") en un caso con 10 días de atraso vigente.
     diasMoraMaxima: number | null;
     saldoTotal: number;
     // Ver nota de saldoEnMoraBuroCredito en comportamientoBancario —
@@ -382,6 +413,9 @@ export interface StandardClientProfile {
     saldoEnMora: number;
     tieneOperacionConDemanda: boolean;
     tieneOperacionCastigada: boolean;
+    // Desde estructura-v8: la suma de las cuotas mensuales que informa
+    // cada operación (693 de 747 la traen). Los bancos no la informan.
+    cuotaMensualTotal?: number;
   };
 
   // "Comportamiento Interno" (grupo 14, NUEVO) — el scoring propio de
@@ -437,7 +471,17 @@ export interface StandardClientProfile {
     // "no tiene" y "tiene y está al día" (ver process.ts).
     tienePensionAlimenticia: boolean;
     pensionAlimenticiaEnMora: boolean;
+    // Desde estructura-v8 es la SUMA de las deudas de cada proceso (antes
+    // el máximo: 13 personas con más de una pensión en mora quedaban con
+    // la deuda subestimada).
     deudaPensionAlimenticia: number | null;
+    // Desde estructura-v8, contando cada proceso una vez (la fuente los
+    // repite). "Vigente" = con pago mensual: las al día con $0 mensual ya
+    // no son un gasto (decisión del negocio, 2026-09-27).
+    numeroPensionesAlimenticias?: number;
+    numeroPensionesVigentes?: number;
+    valorMensualPensiones?: number;
+    numeroPensionesEnMora?: number;
   };
 
   riesgoPenal: {

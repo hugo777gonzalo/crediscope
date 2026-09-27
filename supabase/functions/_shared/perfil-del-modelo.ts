@@ -24,6 +24,10 @@
 // renta (decisión del negocio del 2026-09-25: no se deduce nada de la
 // renta). Tampoco van las marcas de auditoría (correccion, recalculo).
 //
+// Desde marco-v24 suma el bloque `endeudamiento` (la deuda propia en todo
+// el sistema, lo que está en atraso, lo garantizado y la cuota conocida) y
+// le da a los préstamos del IESS/BIESS su nombre (numeroPrestamosIessBiess).
+//
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
 // scoring_rules_versions.
@@ -113,17 +117,75 @@ export function ingresosDelPerfilDelModelo(perfil: AnyRecord | null | undefined)
   };
 }
 
+const numero = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+const aCentavos = (n: number): number => Math.round(n * 100) / 100;
+
+// La deuda de la persona sumada en todo el sistema (desde marco-v24).
+// Hasta v23 el modelo recibía cada fuente por separado y presentó $258.798
+// de bancos y Diners como "la cartera vigente" de 1715532469, sin los
+// $84.778 de cooperativas. Lo garantizado va aparte: no es deuda propia.
+// La cuota conocida es sólo la de cooperativas: los bancos no la informan.
+// Se calcula DESPUÉS de ocultar los campos deshabilitados: un campo
+// apagado no puede volver a entrar sumado acá.
+export function endeudamientoDelPerfilDelModelo(perfil: AnyRecord): AnyRecord | null {
+  const b = (perfil.comportamientoBancario ?? null) as AnyRecord | null;
+  const c = (perfil.comportamientoCooperativas ?? null) as AnyRecord | null;
+  if (!b && !c) return null;
+  // Perfiles anteriores a estructura-v8 no traen deudaEnAtraso: lo único
+  // que había era el saldo en mora.
+  const atrasoBancos = typeof b?.deudaEnAtraso === "number" ? b.deudaEnAtraso : numero(b?.saldoEnMoraBuroCredito);
+  const bancos = numero(b?.saldoTotalVigente) + atrasoBancos;
+  const cooperativas = numero(c?.saldoTotal);
+  const retail = numero(b?.totalDeudaRetail);
+  return {
+    deudaPropiaTotal: aCentavos(bancos + cooperativas + retail),
+    deudaPropiaBancos: aCentavos(bancos),
+    deudaPropiaCooperativas: aCentavos(cooperativas),
+    deudaPropiaRetail: aCentavos(retail),
+    deudaEnAtrasoTotal: aCentavos(atrasoBancos + numero(c?.saldoEnMora) + numero(b?.valorVencidoRetail)),
+    deudaComoGaranteOCodeudor: typeof b?.deudaComoGaranteOCodeudor === "number" ? b.deudaComoGaranteOCodeudor : null,
+    cuotaMensualConocida: typeof c?.cuotaMensualTotal === "number" ? c.cuotaMensualTotal : null,
+    cuotaMensualConocidaIncluye: "sólo cooperativas: los bancos no informan la cuota",
+  };
+}
+
 // El perfil del modelo entero. `camposDeshabilitados` son "grupo.campo"
 // de standard_profile_field_config: se ponen en null, no se borran, para
 // que el modelo sepa que el campo existe y no se le dio.
 export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Set<string> = new Set()): AnyRecord {
   const copia = JSON.parse(JSON.stringify(perfil ?? {})) as Record<string, unknown>;
   copia.fuentesIngreso = ingresosDelPerfilDelModelo(perfil);
-  for (const clave of camposDeshabilitados) {
-    const [grupo, campo] = clave.split(".");
-    const g = copia[grupo] as AnyRecord | null | undefined;
-    if (g && typeof g === "object" && campo in g) g[campo] = null;
+  const ocultar = (destino: Record<string, unknown>) => {
+    for (const clave of camposDeshabilitados) {
+      const [grupo, campo] = clave.split(".");
+      const g = destino[grupo] as AnyRecord | null | undefined;
+      if (g && typeof g === "object" && campo in g) g[campo] = null;
+    }
+  };
+  ocultar(copia);
+  // Montos a centavos. Desde estructura-v8 se guardan redondeados, pero un
+  // perfil anterior puede traer 50394.899999999994 (sumas en coma
+  // flotante), y el modelo copia el número tal cual. En estos grupos todo
+  // número con decimales es dinero.
+  for (const grupo of ["comportamientoBancario", "comportamientoCooperativas", "riesgoJudicialCivil"]) {
+    const g = copia[grupo] as AnyRecord | undefined;
+    if (!g || typeof g !== "object") continue;
+    for (const [campo, valor] of Object.entries(g)) {
+      if (typeof valor === "number" && !Number.isInteger(valor)) g[campo] = aCentavos(valor);
+    }
   }
+  // numeroCreditosFormales son préstamos IESS/BIESS, no operaciones del
+  // buró: con el nombre viejo el modelo sumó 6 préstamos del BIESS a 6
+  // operaciones del buró ("6 operaciones formales", 1308725470). El
+  // nombre guardado queda, como pisoIngresoMensualReportado.
+  const bancario = copia.comportamientoBancario as AnyRecord | undefined;
+  if (bancario && "numeroCreditosFormales" in bancario) {
+    bancario.numeroPrestamosIessBiess = bancario.numeroCreditosFormales;
+    delete bancario.numeroCreditosFormales;
+  }
+  copia.endeudamiento = endeudamientoDelPerfilDelModelo(copia);
+  // El bloque nuevo también se puede apagar campo por campo.
+  ocultar(copia);
   return copia;
 }
 

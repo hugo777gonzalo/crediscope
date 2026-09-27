@@ -27,6 +27,10 @@ export const ETIQUETAS_GRUPO = {
   transitoVehicular: "Tránsito Vehicular",
   comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
   fuentesIngreso: "Fuentes de Ingreso",
+  // No existe en el perfil guardado: lo arma el perfil del modelo
+  // (perfil-del-modelo.ts) sumando la deuda de todas las fuentes. Se
+  // nombra acá porque sus campos se pueden apagar en Configuración.
+  endeudamiento: "Endeudamiento (perfil del modelo)",
   // No es información del cliente: es el registro de qué fuentes
   // trajeron datos, cuáles contestaron que no hay nada y cuáles no se
   // pudieron medir. Sirve para auditar la consulta, no para evaluar a

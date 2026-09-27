@@ -493,6 +493,31 @@ interface StandardClientProfile {
 > `fuentesIngreso` y estos cuatro campos, y deja lo anterior en
 > `fuentesIngreso.detalle.recalculo`.
 
+> **estructura-v8 (2026-09-27)** — De la revisión de los primeros análisis
+> con marco-v23. Detalle en `docs/propuesta-estructura-v8-marco-v24.md`.
+> - **`comportamientoBancario`:**
+>   - cuenta sólo lo PROPIO (`riesgo` T); lo garantizado o codeudado
+>     (G/C) va aparte, en `numeroOperacionesComoGaranteOCodeudor`,
+>     `deudaComoGaranteOCodeudor` y `peorCalificacionComoGaranteOCodeudor`;
+>   - se agregan `saldoNoDevengaIntereses`, `deudaEnAtraso`,
+>     `operacionesEnAtrasoSinMonto` y `valorVencidoRetail`;
+>   - el vencido cae a `mora` cuando `saldomora` es 0;
+>   - "AL" nunca es la peor calificación.
+> - **`comportamientoCooperativas`:** se agrega `cuotaMensualTotal`, y
+>   `diasMoraMaxima` es el atraso al corte.
+> - **`riesgoJudicialCrediticio`:** palabras clave completas, con
+>   exclusiones (divorcio, daño moral, alimentos y pensión, silencio
+>   administrativo, devolución de garantía).
+> - **`riesgoJudicialCivil`:** las pensiones se cuentan por proceso; la
+>   deuda es la suma; se agregan `numeroPensionesAlimenticias`,
+>   `numeroPensionesVigentes`, `valorMensualPensiones` y
+>   `numeroPensionesEnMora`.
+> - **Montos:** se guardan a centavos.
+>
+> Los 2.567 perfiles reales se recalcularon con
+> `scripts/recalcular-grupos.mjs`, que reemplaza esos cuatro grupos
+> enteros y marca `structure_version`.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

@@ -18,6 +18,9 @@
 //      propia", y esa persona no figura trabajando para un tercero salvo
 //      que tenga además un aporte de un empleador.
 //   6. Los campos deshabilitados llegan en null y el resto intacto.
+//   7. (marco-v24) Los préstamos IESS/BIESS llegan como
+//      numeroPrestamosIessBiess, y el bloque endeudamiento suma bien.
+//   8. (marco-v24) Ningún monto de deuda llega con más de dos decimales.
 //
 // Uso:  node scripts/validar-perfil-del-modelo.mjs
 import fs from "node:fs";
@@ -125,6 +128,20 @@ for (let i = 0; i < ids.length; i += 100) {
     if (vi.indiciosIngresoMayor.length) conIndicios++;
     if (vi.estabilidad) conEstabilidad++;
     if (vi.tamanoDelNegocio) conTamano++;
+
+    // 7. Desde marco-v24: los préstamos IESS/BIESS con su nombre, y el
+    // endeudamiento igual a la suma de sus partes.
+    const b = pm.comportamientoBancario;
+    if (b && ("numeroCreditosFormales" in b || !("numeroPrestamosIessBiess" in b))) fallar("7. los préstamos IESS/BIESS no llegan con su nombre", cedula);
+    const en = pm.endeudamiento;
+    if ((sp.comportamientoBancario || sp.comportamientoCooperativas) && !en) fallar("7. falta el bloque endeudamiento", cedula);
+    if (en) {
+      const suma = Math.round((en.deudaPropiaBancos + en.deudaPropiaCooperativas + en.deudaPropiaRetail) * 100) / 100;
+      if (Math.abs(suma - en.deudaPropiaTotal) > 0.01) fallar("7. la deuda propia total no es la suma de sus partes", cedula);
+      if (en.deudaEnAtrasoTotal > en.deudaPropiaTotal + 0.01) fallar("7. hay más deuda en atraso que deuda total", cedula);
+    }
+    // 8. Montos a centavos: 258798.83000000002 llegaba así al modelo.
+    if (/\d\.\d{3,}/.test(JSON.stringify({ b, c: pm.comportamientoCooperativas, en, p: pm.riesgoJudicialCivil }))) fallar("8. un monto llega con más de dos decimales", cedula);
   }
 }
 
@@ -146,7 +163,7 @@ console.log(`perfiles revisados: ${revisados} (${conIngresos} con clasificación
 console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano}`);
 console.log(`  mensaje al modelo (caracteres): antes mediana ${mediana(tamanos.antes)} p90 ${p90(tamanos.antes)} | ahora mediana ${mediana(tamanos.despues)} p90 ${p90(tamanos.despues)}`);
 if (fallas.size === 0) {
-  console.log("VALIDACIÓN OK: 0 fallas en las 6 reglas.");
+  console.log("VALIDACIÓN OK: 0 fallas en las 8 reglas.");
 } else {
   console.log("FALLAS:");
   for (const [regla, casos] of fallas) console.log(`  ${regla}: ${casos.length} (ej. ${casos.slice(0, 5).join(", ")})`);

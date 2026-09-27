@@ -6,7 +6,9 @@
 // sobre por qué el scoring vive acá y no en un motor de reglas, y
 // controles-bloqueo.ts para lo poco que SÍ se resuelve determinísticamente.
 //
-// CASCADA DE MODELOS (decidido con datos, no por intuición). Se valuó
+// CASCADA DE MODELOS — RETIRADA en marco-v24 (2026-09-27): desde entonces
+// todo lo resuelve Sonnet (ver MODELO). Queda la historia de por qué
+// existió. Se valuó
 // Haiku contra Sonnet sobre 36 clientes reales elegidos por contraste:
 //   - negar:    11 de 11 iguales  (Haiku nunca ablandó una negación)
 //   - aprobar:   5 de 5  iguales
@@ -17,6 +19,9 @@
 // esa zona gris, se reanaliza con Sonnet y vale ese resultado. Los casos
 // claros —que son la mitad— los resuelve Haiku igual de bien por una
 // fracción del costo.
+// Lo que esa validación no midió fue el TEXTO: en los casos claros el
+// análisis que leía el analista lo escribía Haiku, y con marco-v23 salió
+// en parte en inglés y con nombres de campos. Por eso se retiró.
 //
 // Cambiar la entrada de ClientContext a StandardClientProfile redujo el
 // payload de entrada considerablemente (booleanos/números en vez de
@@ -63,13 +68,14 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 // indicar en cuál actuar. Con una key de un solo workspace, dejar vacío.
 const ANTHROPIC_WORKSPACE_ID = Deno.env.get("ANTHROPIC_WORKSPACE_ID") ?? "";
 
-const MODELO_BASE = "claude-haiku-4-5-20251001";
-const MODELO_ESCALAMIENTO = "claude-sonnet-5";
-
-// Zona gris donde el modelo base y el de escalamiento discrepan (ver la
-// nota de cabecera). Fuera de esta banda los dos coinciden, así que
-// escalar sería pagar de más sin cambiar la decisión.
-const BANDA_GRIS = { desde: 500, hasta: 760 };
+// Un solo modelo desde marco-v24 (2026-09-27, decisión del negocio). La
+// cascada con Haiku se había validado sólo por coincidencia de SCORES, y
+// en los casos claros el texto final lo escribía Haiku: en los primeros
+// análisis con v23 respondió un punto en inglés, citó nombres de campos
+// ("enListaNegra=true con bloqueante=true") y escribió positivos que el
+// marco prohíbe. Sonnet cuesta el doble (~$0,04 contra ~$0,02 por
+// análisis, con el marco cacheado).
+const MODELO = "claude-sonnet-5";
 
 // Configuración que define el grueso del costo, exportada para que el
 // registro de consumo pueda explicarlo (ver llm-log.ts / 041).
@@ -280,7 +286,7 @@ export async function scoreWithLlm(
   camposDeshabilitados: Set<string> = new Set()
 ): Promise<LlmScoringResult> {
   if (!ANTHROPIC_API_KEY) {
-    return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO_BASE);
+    return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO);
   }
 
   // El marco va en un bloque aparte y CACHEADO, los ajustes en otro sin
@@ -312,40 +318,10 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
 
   const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
 
-  const base = await pedirScoringConReintentos(MODELO_BASE, bloquesSistema, userPayload);
-  const llamadas: LlamadaRealizada[] = [...base.llamadas];
-
-  // Escala a Sonnet en 2 casos: el resultado cayó en la zona gris, o el
-  // modelo base falló (ahí Sonnet actúa además de respaldo).
-  const enZonaGris =
-    !base.resultado.fallo && base.resultado.score >= BANDA_GRIS.desde && base.resultado.score <= BANDA_GRIS.hasta;
-
-  if (!enZonaGris && !base.resultado.fallo) {
-    return { ...base.resultado, llamadas };
-  }
-
-  // Hay fallas que no mejoran cambiando de modelo: el tope de consumo y
-  // la credencial son de la cuenta entera, no del modelo. Escalar ahí
-  // es una segunda llamada con fracaso garantizado -- se vio el
-  // 2026-09-15, donde Haiku falló por tope y Sonnet falló idéntico un
-  // segundo después.
-  if (base.resultado.fallo) {
-    const tipo = clasificarFallo(base.resultado.fallo).tipo;
-    if (tipo === "tope_de_gasto" || tipo === "credencial") {
-      return { ...base.resultado, llamadas };
-    }
-  }
-
-  const escalado = await pedirScoringConReintentos(MODELO_ESCALAMIENTO, bloquesSistema, userPayload);
-  for (const l of escalado.llamadas) llamadas.push({ ...l, escalamiento: true });
-
-  // Si el escalamiento también falla, vale lo que haya dado el base
-  // (aunque sea el resultado por defecto): nunca se pierde el análisis
-  // por un problema del segundo modelo.
-  if (escalado.resultado.fallo && !base.resultado.fallo) {
-    return { ...base.resultado, llamadas };
-  }
-  return { ...escalado.resultado, llamadas };
+  // Los reintentos de una falla pasajera ya los hace
+  // pedirScoringConReintentos; con un solo modelo no hay a quién escalar.
+  const { resultado, llamadas } = await pedirScoringConReintentos(MODELO, bloquesSistema, userPayload);
+  return { ...resultado, llamadas };
 }
 
-export { MARCO_VERSION, MODELO_BASE, MODELO_ESCALAMIENTO, BANDA_GRIS };
+export { MARCO_VERSION, MODELO };

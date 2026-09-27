@@ -205,20 +205,34 @@ export const GRUPOS_CONFIG = {
   },
   comportamientoBancario: {
     mensajeVacio: "Sin operaciones registradas en el buró de crédito.",
-    presencia: (p) => (p.comportamientoBancario?.numeroOperacionesBuroCredito ?? 0) > 0 || p.comportamientoBancario?.tieneCreditoIessBiess || (p.comportamientoBancario?.numeroDeudasRetail ?? 0) > 0,
+    presencia: (p) =>
+      (p.comportamientoBancario?.numeroOperacionesBuroCredito ?? 0) > 0 ||
+      (p.comportamientoBancario?.numeroOperacionesComoGaranteOCodeudor ?? 0) > 0 ||
+      p.comportamientoBancario?.tieneCreditoIessBiess ||
+      (p.comportamientoBancario?.numeroDeudasRetail ?? 0) > 0,
+    // Desde estructura-v8 lo propio y lo garantizado van por separado
+    // (antes se sumaba todo como deuda propia), y el atraso incluye la
+    // cartera que no devenga intereses.
     campos: [
-      ["numeroOperacionesBuroCredito", "Operaciones en buró de crédito", "numero"],
-      ["peorCalificacionRiesgo", "Peor calificación", "texto"],
-      ["mejorCalificacionRiesgo", "Mejor calificación", "texto"],
-      ["saldoTotalVigente", "Saldo total vigente", "moneda"],
-      ["saldoEnMoraBuroCredito", "Saldo en mora", "moneda"],
+      ["numeroOperacionesBuroCredito", "Operaciones propias en buró de crédito", "numero"],
+      ["peorCalificacionRiesgo", "Peor calificación (propia)", "texto"],
+      ["mejorCalificacionRiesgo", "Mejor calificación (propia)", "texto"],
+      ["saldoTotalVigente", "Saldo por vencer", "moneda"],
+      ["saldoEnMoraBuroCredito", "Saldo vencido", "moneda"],
+      ["saldoNoDevengaIntereses", "Saldo que no devenga intereses", "moneda"],
+      ["deudaEnAtraso", "Deuda en atraso", "moneda"],
+      ["operacionesEnAtrasoSinMonto", "Operaciones en atraso sin monto informado", "numero"],
       ["tieneOperacionConDemanda", "Con demanda", "booleano_si_true"],
       ["tieneOperacionCastigada", "Cartera castigada", "booleano_si_true"],
+      ["numeroOperacionesComoGaranteOCodeudor", "Operaciones como garante o codeudor", "numero"],
+      ["deudaComoGaranteOCodeudor", "Deuda como garante o codeudor", "moneda"],
+      ["peorCalificacionComoGaranteOCodeudor", "Peor calificación como garante o codeudor", "texto"],
       // De pn_deudores. Solo la presencia: el recurso vino vacío en las
       // 16 personas con las que se inspeccionó.
       ["figuraEnRegistroDeudores", "Figura en registro de deudores", "booleano_si_true"],
-      ["numeroDeudasRetail", "Deudas retail", "numero"],
+      ["numeroDeudasRetail", "Deudas retail (casas comerciales)", "numero"],
       ["totalDeudaRetail", "Total deuda retail", "moneda"],
+      ["valorVencidoRetail", "Deuda retail vencida", "moneda"],
       ["tieneCreditoIessBiess", "Crédito IESS/BIESS", "booleano_si_true"],
     ],
   },
@@ -229,6 +243,8 @@ export const GRUPOS_CONFIG = {
       ["numeroOperaciones", "Operaciones", "numero"],
       ["saldoTotal", "Saldo total", "moneda"],
       ["saldoEnMora", "Saldo en mora", "moneda"],
+      ["diasMoraMaxima", "Días de atraso al corte", "numero"],
+      ["cuotaMensualTotal", "Cuota mensual", "moneda"],
       ["tieneOperacionConDemanda", "Con demanda", "booleano_si_true"],
       ["tieneOperacionCastigada", "Cartera castigada", "booleano_si_true"],
     ],
@@ -246,12 +262,17 @@ export const GRUPOS_CONFIG = {
     presencia: (p) =>
       (p.riesgoJudicialCivil?.numeroDemandasComoDemandado ?? 0) > 0 ||
       (p.riesgoJudicialCivil?.numeroDemandasComoOfendido ?? 0) > 0 ||
+      (p.riesgoJudicialCivil?.numeroPensionesAlimenticias ?? 0) > 0 ||
       (p.riesgoJudicialCivil?.deudaPensionAlimenticia ?? 0) > 0,
     campos: [
       ["numeroDemandasComoDemandado", "Demandas como demandado", "numero"],
       ["tiposDemandasComoDemandado", "Tipos", "lista"],
       ["numeroDemandasComoOfendido", "Demandas como ofendido", "numero"],
+      ["numeroPensionesAlimenticias", "Pensiones alimenticias a su cargo", "numero"],
+      ["numeroPensionesVigentes", "Pensiones con pago mensual", "numero"],
+      ["valorMensualPensiones", "Pago mensual de pensiones", "moneda"],
       ["pensionAlimenticiaEnMora", "Pensión alimenticia en mora", "booleano_si_true"],
+      ["numeroPensionesEnMora", "Pensiones en mora", "numero"],
       ["deudaPensionAlimenticia", "Deuda pensión alimenticia", "moneda"],
     ],
   },
