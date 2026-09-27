@@ -90,7 +90,25 @@ const MODELO = "claude-sonnet-5";
 // línea de la respuesta. El techo lo pone el tiempo, no el costo (se paga
 // lo que se usa): Sonnet escribe ~85 tokens por segundo, 10.000 son ~2
 // minutos, y Supabase corta la respuesta de la función a los 150 s.
-export const CONFIG_LLM = { razonamiento: "activo" as const, maxTokens: 10_000 };
+// Con 10.000 también se cortó: 9.362 de razonamiento (ver
+// scripts/comparar-razonamiento.mjs, que mide las alternativas).
+export type ConfigRazonamiento = {
+  razonamiento: "activo" | "desactivado" | "adaptativo";
+  // Sólo con razonamiento adaptativo: cuánto delibera el modelo.
+  esfuerzo?: "low" | "medium" | "high";
+  maxTokens: number;
+};
+export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000 };
+
+// Lo que cada configuración le agrega al pedido. "activo" no manda nada:
+// es lo que el modelo hace por defecto.
+function opcionesDeRazonamiento(config: ConfigRazonamiento): Record<string, unknown> {
+  if (config.razonamiento === "desactivado") return { thinking: { type: "disabled" } };
+  if (config.razonamiento === "adaptativo") {
+    return { thinking: { type: "adaptive" }, output_config: { effort: config.esfuerzo ?? "medium" } };
+  }
+  return {};
+}
 
 function extraerJson(texto: string): unknown {
   const limpio = texto.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
@@ -121,7 +139,7 @@ function resultadoPorDefecto(mensaje: string, modelo: string, data?: Record<stri
   };
 }
 
-function interpretar(data: Record<string, unknown>, modelo: string): LlmScoringResult {
+export function interpretar(data: Record<string, unknown>, modelo: string): LlmScoringResult {
   // Con thinking extendido, el bloque de texto NO es necesariamente
   // content[0] (ese suele ser el bloque "thinking") — hay que buscarlo.
   const bloqueTexto = (data?.content as Array<{ type: string; text?: string }> | undefined)?.find(
@@ -168,10 +186,9 @@ function interpretar(data: Record<string, unknown>, modelo: string): LlmScoringR
 // Una llamada concreta al modelo. Devuelve el resultado ya interpretado
 // más la metadata de consumo, que el llamador registra (ver llm-log.ts).
 async function pedirScoring(
-  modelo: string,
-  bloquesSistema: Array<Record<string, unknown>>,
-  userPayload: Record<string, unknown>
+  cuerpo: Record<string, unknown>
 ): Promise<{ resultado: LlmScoringResult; llamada: LlamadaRealizada }> {
+  const modelo = cuerpo.model as string;
   const inicio = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -181,16 +198,7 @@ async function pedirScoring(
       "anthropic-version": "2023-06-01",
       ...(ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": ANTHROPIC_WORKSPACE_ID } : {}),
     },
-    body: JSON.stringify({
-      model: modelo,
-      // El modelo razona antes de responder y ese razonamiento sale del
-      // mismo presupuesto que el JSON. Con 4000 se cortaba a medias en
-      // clientes con historial rico y el análisis devolvía el resultado
-      // por defecto de score 500 en vez de uno real.
-      max_tokens: CONFIG_LLM.maxTokens,
-      system: bloquesSistema,
-      messages: [{ role: "user", content: JSON.stringify(userPayload) }],
-    }),
+    body: JSON.stringify(cuerpo),
   });
 
   const duracionMs = Date.now() - inicio;
@@ -198,7 +206,8 @@ async function pedirScoring(
   if (!res.ok) {
     const errText = await res.text();
     const requestId = res.headers.get("request-id") ?? res.headers.get("x-request-id") ?? "sin request-id";
-    const mensaje = `error del LLM (HTTP ${res.status} ${res.statusText}, request-id=${requestId}, payload=${JSON.stringify(userPayload).length} chars): ${errText}`;
+    const largo = JSON.stringify(cuerpo.messages).length;
+    const mensaje = `error del LLM (HTTP ${res.status} ${res.statusText}, request-id=${requestId}, payload=${largo} chars): ${errText}`;
     return {
       resultado: resultadoPorDefecto(mensaje, modelo),
       llamada: { modelo, exito: false, error: mensaje.slice(0, 400), duracionMs },
@@ -252,16 +261,14 @@ function esperaDelIntento(intento: number): number {
 }
 
 async function pedirScoringConReintentos(
-  modelo: string,
-  bloquesSistema: Array<Record<string, unknown>>,
-  userPayload: Record<string, unknown>
+  cuerpo: Record<string, unknown>
 ): Promise<{ resultado: LlmScoringResult; llamadas: LlamadaRealizada[] }> {
   const arranque = Date.now();
   const llamadas: LlamadaRealizada[] = [];
   let ultimo: { resultado: LlmScoringResult; llamada: LlamadaRealizada } | null = null;
 
   for (let intento = 1; intento <= REINTENTOS.intentosMaximos; intento++) {
-    ultimo = await pedirScoring(modelo, bloquesSistema, userPayload);
+    ultimo = await pedirScoring(cuerpo);
     llamadas.push({ ...ultimo.llamada, intento });
 
     if (!ultimo.resultado.fallo) return { resultado: ultimo.resultado, llamadas };
@@ -278,10 +285,54 @@ async function pedirScoringConReintentos(
   return { resultado: ultimo!.resultado, llamadas };
 }
 
+// El pedido entero al modelo, en un solo lugar: el análisis lo manda con
+// CONFIG_LLM y scripts/comparar-razonamiento.mjs con otras
+// configuraciones, sobre el mismo marco y el mismo perfil del modelo. Si
+// la comparación armara su propio pedido, mediría otra cosa.
+//
 // profile: el StandardClientProfile guardado, tal cual. Lo que el modelo
 // lee de él lo arma perfil-del-modelo.ts (desde marco-v23): esta función
 // no recibe un perfil ya recortado, para que ningún camino pueda saltarse
 // esa puerta.
+export function armarPedidoScoring(
+  profile: Record<string, unknown>,
+  controlBloqueo: ResultadoControlBloqueo,
+  ajustesVigentes: string[],
+  camposDeshabilitados: Set<string>,
+  config: ConfigRazonamiento = CONFIG_LLM
+): Record<string, unknown> {
+  // El marco va SIN caché desde el 2026-09-27. La caché dura 5 minutos y
+  // la mediana entre dos análisis es de 26: en 12 escrituras desde el
+  // 2026-09-15 no hubo UNA lectura. Escribirla cuesta 25% más que
+  // mandarlo normal (~$0,008 por análisis tirados). Vuelve a convenir si
+  // algún día se analiza en lote, varios clientes dentro de 5 minutos.
+  //
+  // Los ajustes van en un bloque aparte: cambian cuando el área los pone
+  // en vigencia, y se leen como un agregado al marco, no como parte de él.
+  const bloquesSistema: Array<Record<string, unknown>> = [{ type: "text", text: MARCO_INTERPRETATIVO }];
+  if (ajustesVigentes.length) {
+    bloquesSistema.push({
+      type: "text",
+      text: `AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
+Los siguientes criterios se incorporaron a partir del análisis de
+resultados reales. Tienen el mismo peso que el resto del marco:
+${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
+    });
+  }
+
+  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
+
+  return {
+    model: MODELO,
+    // El modelo razona antes de responder y ese razonamiento sale del
+    // mismo presupuesto que el JSON (ver CONFIG_LLM).
+    max_tokens: config.maxTokens,
+    ...opcionesDeRazonamiento(config),
+    system: bloquesSistema,
+    messages: [{ role: "user", content: JSON.stringify(userPayload) }],
+  };
+}
+
 export async function scoreWithLlm(
   profile: Record<string, unknown>,
   controlBloqueo: ResultadoControlBloqueo,
@@ -298,38 +349,11 @@ export async function scoreWithLlm(
     return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO);
   }
 
-  // El marco va en un bloque aparte y CACHEADO, los ajustes en otro sin
-  // cachear. Son ~10.000 tokens idénticos en cada análisis (marco-v23;
-  // eran ~8.100 en la v22, antes de explicar las fuentes de ingreso): sin caché se
-  // pagan completos todas las veces. Una lectura de caché cuesta ~10% de
-  // procesarlo de nuevo, así que un analista que revisa varios clientes
-  // seguidos paga el marco una sola vez.
-  //
-  // Los ajustes quedan FUERA del bloque cacheado a propósito: cambian
-  // cuando el área los pone en vigencia, y si estuvieran adentro cada
-  // cambio invalidaría el caché del marco entero.
-  const bloquesSistema: Array<Record<string, unknown>> = [
-    {
-      type: "text",
-      text: MARCO_INTERPRETATIVO,
-      cache_control: { type: "ephemeral" },
-    },
-  ];
-  if (ajustesVigentes.length) {
-    bloquesSistema.push({
-      type: "text",
-      text: `AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
-Los siguientes criterios se incorporaron a partir del análisis de
-resultados reales. Tienen el mismo peso que el resto del marco:
-${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
-    });
-  }
-
-  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
+  const cuerpo = armarPedidoScoring(profile, controlBloqueo, ajustesVigentes, camposDeshabilitados);
 
   // Los reintentos de una falla pasajera ya los hace
   // pedirScoringConReintentos; con un solo modelo no hay a quién escalar.
-  const { resultado, llamadas } = await pedirScoringConReintentos(MODELO, bloquesSistema, userPayload);
+  const { resultado, llamadas } = await pedirScoringConReintentos(cuerpo);
   return { ...resultado, llamadas };
 }
 
