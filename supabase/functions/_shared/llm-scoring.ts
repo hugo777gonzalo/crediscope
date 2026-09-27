@@ -81,7 +81,16 @@ const MODELO = "claude-sonnet-5";
 // registro de consumo pueda explicarlo (ver llm-log.ts / 041).
 // razonamiento "activo" = el modelo razona por defecto y no se le envía
 // nada; ese razonamiento interno es ~70% de los tokens de salida.
-export const CONFIG_LLM = { razonamiento: "activo" as const, maxTokens: 6000 };
+//
+// maxTokens 10.000 desde el 2026-09-27. Los 6.000 se habían medido con
+// la cascada, donde casi todo lo respondía Haiku (mediana 1.256). Sonnet
+// usa mucho más: sus respuestas completas en 60 días tuvieron mediana
+// 5.075 y máximo 5.903, al borde. Con Sonnet único, el primer análisis
+// de 1715532469 gastó los 6.000 razonando y no llegó a escribir ni una
+// línea de la respuesta. El techo lo pone el tiempo, no el costo (se paga
+// lo que se usa): Sonnet escribe ~85 tokens por segundo, 10.000 son ~2
+// minutos, y Supabase corta la respuesta de la función a los 150 s.
+export const CONFIG_LLM = { razonamiento: "activo" as const, maxTokens: 10_000 };
 
 function extraerJson(texto: string): unknown {
   const limpio = texto.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();

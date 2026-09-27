@@ -331,7 +331,7 @@ type EsPropio = (a: AnyRecord) => boolean;
 
 function naturalezaDelAporte(a: AnyRecord, esPropio: EsPropio): { naturaleza: Naturaleza; comoPatrono: boolean } {
   const codigo = codigoTipoEmpleador(a.tipEmp);
-  const porCodigo: Naturaleza = (codigo && NATURALEZA_POR_CODIGO[codigo]) ?? "otro";
+  const porCodigo: Naturaleza = (codigo ? NATURALEZA_POR_CODIGO[codigo] : undefined) ?? "otro";
   const comoPatrono = porCodigo !== "cuenta_propia" && porCodigo !== "hogar" && esPropio(a);
   return { naturaleza: comoPatrono ? "cuenta_propia" : porCodigo, comoPatrono };
 }

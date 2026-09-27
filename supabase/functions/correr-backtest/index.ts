@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { MARCO_INTERPRETATIVO, MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
+import { CONFIG_LLM } from "../_shared/llm-scoring.ts";
 import { mensajeParaElModelo } from "../_shared/perfil-del-modelo.ts";
 import { loadCriterioVigente, loadDisabledFields } from "../_shared/runtime-config.ts";
 
@@ -82,9 +83,10 @@ async function evaluarCaso(
       // Se deja el formato de salida completo (con positivos/negativos)
       // aunque acá solo se usen score y recomendación: el backtest
       // tiene que correr en las mismas condiciones que producción, o
-      // deja de ser representativo. Por eso el presupuesto es holgado:
-      // con 4000 algunos casos devolvían el JSON cortado.
-      max_tokens: 6000,
+      // deja de ser representativo. Por eso usa el mismo presupuesto que
+      // el análisis, importado y no copiado: con 6.000 acá y 10.000 allá,
+      // un caso que en producción se analiza saldría cortado en la prueba.
+      max_tokens: CONFIG_LLM.maxTokens,
       system: marco,
       messages: [
         {
@@ -249,8 +251,8 @@ Deno.serve(async (req) => {
               camposDeshabilitados,
               ({ exito, error, data, duracionMs }) =>
                 registrarLlamadaLlm(serviceClient, {
-                  razonamiento: "activo" as const,
-                  maxTokens: 6000,
+                  razonamiento: CONFIG_LLM.razonamiento,
+                  maxTokens: CONFIG_LLM.maxTokens,
                   funcion: "correr-backtest",
                   modelo: (data?.model as string) ?? MODEL,
                   exito,
