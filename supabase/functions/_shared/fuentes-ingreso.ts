@@ -37,6 +37,7 @@ import type { RespuestaNovadata } from "./types.ts";
 import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
 import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
+import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 // v3: la guarda de "no sé si aporta" pasa a mirar basesInternas, la
 // fuente que realmente trae los aportes, en vez del bloque `bancos`
@@ -109,7 +110,22 @@ import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 //  - Sin especulación en los textos: "el sueldo real puede ser mayor" se
 //    decía de todos. Un ingreso mayor se afirma sólo con fundamento
 //    (indiciosDeIngresoMayor, pedido del negocio).
-export const FUENTES_INGRESO_VERSION = "fuentes-v8";
+//
+// v9 (2026-09-28), de la comparación de razonamiento de marco-v24:
+//  - Militares y policías (fuerzas-armadas-policia.ts). No aportan al IESS,
+//    y quedaban "Informal o sin actividad": el servicio activo es un empleo
+//    del Estado sin monto conocido ("Sector público", por confirmar) y el
+//    servicio pasivo o el montepío, una pensión ("Jubilado").
+//  - Un jubilado que dejó de aportar no "perdió su ingreso formal": ahora
+//    cobra la pensión. No se le pide el certificado de afiliación del IESS,
+//    y la pantalla y el modelo no lo marcan sin información actual
+//    (dejoDeAparecerEnElIess). Las tres respuestas de la comparación lo
+//    leyeron como un negativo en 0500836663.
+//  - El impuesto a la renta pagado es un indicio de ingreso mayor cuando no
+//    se explica con lo que declara al IESS (decisión del negocio del
+//    2026-09-28; cambia la del 2026-09-25, "no se deduce nada de la renta":
+//    se deduce sólo esto, y el detalle por año sigue sin ir al modelo).
+export const FUENTES_INGRESO_VERSION = "fuentes-v9";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -675,6 +691,37 @@ const SEGMENTO_POR_NATURALEZA: Record<Naturaleza, Segmento> = {
   otro: "no_clasificado",
 };
 
+// Militares y policías (desde v9): el tipo de la fuente, que es lo que ven
+// la pantalla y el modelo en "otras fuentes".
+const TIPO_SERVICIO_ACTIVO: Record<"ISSFAC" | "ISSPOL", string> = {
+  ISSFAC: "servicio activo en las Fuerzas Armadas",
+  ISSPOL: "servicio activo en la Policía Nacional",
+};
+const TIPO_PENSION_REGIMEN_ESPECIAL: Record<string, string> = {
+  "ISSFAC:pasivo": "pensión de retiro militar (ISSFAC)",
+  "ISSFAC:montepio": "montepío militar (ISSFAC)",
+  "ISSPOL:pasivo": "pensión de retiro policial (ISSPOL)",
+  "ISSPOL:montepio": "montepío policial (ISSPOL)",
+};
+
+// Las fuentes que son una pensión: la jubilación del IESS y el retiro o el
+// montepío de militares y policías. Las lee el perfil laboral.
+export const TIPOS_DE_PENSION = new Set(["jubilación", ...Object.values(TIPO_PENSION_REGIMEN_ESPECIAL)]);
+// Un empleo en servicio activo que no pasa por el IESS.
+export const TIPOS_DE_SERVICIO_ACTIVO = new Set(Object.values(TIPO_SERVICIO_ACTIVO));
+
+// ¿Aportaba al IESS y dejó de aparecer, sin que una jubilación lo explique?
+// Es lo que la pantalla muestra como "Sin información actual en el IESS" y
+// el modelo lee como una pérdida reciente de ingreso formal. Un jubilado
+// deja de aportar porque se jubiló: marcarlo así lo contaba como negativo
+// (0500836663, en las tres respuestas de la comparación). Se lee del
+// análisis guardado, así que vale para cualquier versión.
+export function dejoDeAparecerEnElIess(f: Record<string, unknown> | null | undefined): boolean {
+  if (!f || f.apareceEnUltimoCorte !== false) return false;
+  const fuentes = (Array.isArray(f.fuentes) ? f.fuentes : []) as AnyRecord[];
+  return !fuentes.some((x) => TIPOS_DE_PENSION.has(String(x.tipo)));
+}
+
 // `cedula` desde fuentes-v8: sin ella no se puede reconocer el RUC propio
 // en los aportes y se cae al nombre (patrono.ts).
 export function analizarFuentesIngreso(
@@ -747,8 +794,8 @@ export function analizarFuentesIngreso(
 
   // Jubilación
   const jubilados = ((consultadas.jubilados as AnyRecord)?.data as AnyRecord)?.trabajos;
-  const esJubilado = Array.isArray(jubilados) && jubilados.length > 0;
-  if (esJubilado) {
+  const jubiladoIess = Array.isArray(jubilados) && jubilados.length > 0;
+  if (jubiladoIess) {
     fuentes.push({
       tipo: "jubilación",
       naturaleza: null,
@@ -759,6 +806,47 @@ export function analizarFuentesIngreso(
       detalle: "Registra jubilación en el IESS. La fuente no expone el monto de la pensión.",
     });
   }
+
+  // Militares y policías (desde v9): tienen su propio seguro social y no
+  // aportan al IESS, así que sin esto quedaban "Informal o sin actividad".
+  // El servicio activo es un empleo del Estado sin monto conocido; el
+  // pasivo y el montepío, una pensión.
+  const servicio = servicioMilitarOPolicial(consultadas, cedula);
+  const seguro = servicio?.institucion ?? "";
+  const servicioActivo = servicio?.situacion === "activo";
+  const pensionRegimenEspecial = servicio !== null && servicio.situacion !== "activo";
+  if (servicio && servicioActivo) {
+    fuentes.push({
+      tipo: TIPO_SERVICIO_ACTIVO[servicio.institucion],
+      naturaleza: "publico",
+      montoMensualReportado: null,
+      evidencia: "indirecta",
+      empleador: servicio.institucion === "ISSFAC" ? "Fuerzas Armadas del Ecuador" : "Policía Nacional del Ecuador",
+      vigenteAlCorte: true,
+      detalle: `En servicio activo según el ${seguro}. No aporta al IESS: el sueldo lo paga el Estado y ninguna fuente pública expone el monto.`,
+    });
+  } else if (servicio) {
+    fuentes.push({
+      tipo: TIPO_PENSION_REGIMEN_ESPECIAL[`${servicio.institucion}:${servicio.situacion}`],
+      naturaleza: null,
+      montoMensualReportado: null,
+      evidencia: "indirecta",
+      empleador: null,
+      vigenteAlCorte: true,
+      detalle:
+        servicio.situacion === "montepio"
+          ? `Beneficiario de montepío según el ${seguro}: cobra esa pensión. La fuente no expone el monto.`
+          : `En servicio pasivo según el ${seguro}: cobra la pensión de retiro. La fuente no expone el monto.`,
+    });
+  }
+  const esJubilado = jubiladoIess || pensionRegimenEspecial;
+  // Cómo empiezan los motivos del segmento de jubilado. Para el IESS, el
+  // texto de siempre.
+  const quePension = jubiladoIess
+    ? "Registra jubilación"
+    : servicio?.situacion === "montepio"
+      ? `Cobra montepío del ${seguro}`
+      : `Retirado de ${servicio?.institucion === "ISSFAC" ? "las Fuerzas Armadas" : "la Policía Nacional"}, con pensión del ${seguro},`;
 
   // Pensión alimenticia que PERCIBE (como representante legal). No es la
   // que paga -- esa es un egreso y vive en riesgoJudicialCivil.
@@ -897,16 +985,18 @@ export function analizarFuentesIngreso(
   if (esJubilado && ordenadas.length === 0 && !tieneActividadPropia) {
     segmento = "jubilado";
     estadoSegmento = "confirmada";
-    motivoSegmento = "Registra jubilación en el IESS y no tiene aportes vigentes.";
+    motivoSegmento = jubiladoIess
+      ? "Registra jubilación en el IESS y no tiene aportes vigentes."
+      : `${quePension} y no tiene aportes vigentes al IESS.`;
   } else if (esJubilado) {
     segmento = "jubilado_con_ingreso_adicional";
     estadoSegmento = "provisional";
     motivoSegmento =
       ordenadas.length > 0
-        ? "Registra jubilación y además aportes vigentes al corte."
+        ? `${quePension} y además tiene aportes vigentes al corte.`
         : rucActivo
-          ? "Registra jubilación y además RUC activo ante el SRI: tiene una actividad propia cuyo ingreso no se conoce."
-          : `Registra jubilación y además paga una nómina de $${nomina} mensuales: tiene una actividad propia cuyo ingreso no se conoce.`;
+          ? `${quePension} y además tiene RUC activo ante el SRI: una actividad propia cuyo ingreso no se conoce.`
+          : `${quePension} y además paga una nómina de $${nomina} mensuales: tiene una actividad propia cuyo ingreso no se conoce.`;
   } else if (ordenadas.length > 1 && totalReportado > 0 && ordenadas[0][1] / totalReportado < 2 / 3) {
     // Dos naturalezas y ninguna domina: clasificar por la mayor sería
     // decidir por diferencias de pocos dólares, y además sería falso --
@@ -960,6 +1050,14 @@ export function analizarFuentesIngreso(
     segmento = SEGMENTO_POR_NATURALEZA[principal];
     estadoSegmento = "provisional";
     motivoSegmento = `Vínculo vigente al corte ${corte} (${ETIQUETA_NATURALEZA[principal]}), pero la fuente no trae el monto del aporte.`;
+  } else if (servicioActivo) {
+    // Un empleo del Estado que no pasa por el IESS: confirmado por el
+    // ISSFAC o el ISSPOL, pero sin monto, así que por confirmar.
+    segmento = "publico";
+    estadoSegmento = "provisional";
+    motivoSegmento = `${seguro === "ISSFAC" ? "Militar" : "Policía"} en servicio activo según el ${seguro}: el sueldo lo paga el Estado, pero ninguna fuente pública expone el monto.${
+      rucActivo ? " Además tiene RUC activo ante el SRI." : ""
+    }`;
   } else if (rucActivo || declaraRenta || nominaSuperaSuIngreso) {
     segmento = "independiente";
     estadoSegmento = "provisional";
@@ -975,7 +1073,10 @@ export function analizarFuentesIngreso(
     // de alguien. Ver _shared/calidad-de-la-consulta.ts.
     segmento = "sin_datos";
     estadoSegmento = "indeterminada";
-    motivoSegmento = `La fuente que trae los aportes al IESS (basesInternas) no respondió (estado: ${raw.basesInternas?.status ?? "desconocido"}). No se puede afirmar que esta persona no aporte: no se pudo consultar.`;
+    // Sin el nombre de la fuente ni su estado técnico (desde v9): este texto
+    // lo leen el analista y el modelo, y "basesInternas (estado: error)" no
+    // le dice nada a ninguno de los dos.
+    motivoSegmento = "La fuente que trae los aportes al IESS no respondió. No se puede afirmar que esta persona no aporte: no se pudo consultar.";
   } else {
     segmento = "informal_o_sin_actividad";
     estadoSegmento = "indeterminada";
@@ -996,11 +1097,24 @@ export function analizarFuentesIngreso(
   if (segmento === "informal_o_sin_actividad") {
     paraConfirmar.push("Preguntar directamente de qué vive: con datos públicos no se distingue el trabajo informal de la ausencia de ingresos.");
   }
-  if (apareceEnUltimoCorte === false) {
+  // A un jubilado no se le pide el certificado de afiliación: dejó de
+  // aportar porque se jubiló (desde v9; a 0500836663, jubilada, se le
+  // pedía).
+  if (apareceEnUltimoCorte === false && !esJubilado) {
     paraConfirmar.push(`Certificado de afiliación actualizado del IESS: no aparece en el corte ${corte} y el último registro es de ${ultimoMesCliente}.`);
   }
-  if (esJubilado) {
+  if (jubiladoIess) {
     paraConfirmar.push("Comprobante de pensión: la fuente confirma la jubilación pero no expone el monto.");
+  }
+  if (servicio && pensionRegimenEspecial) {
+    paraConfirmar.push(
+      `Comprobante de la pensión del ${seguro}: la fuente confirma ${servicio.situacion === "montepio" ? "el montepío" : "el retiro"} pero no expone el monto.`
+    );
+  }
+  if (servicioActivo) {
+    paraConfirmar.push(
+      `Rol de pagos de ${seguro === "ISSFAC" ? "las Fuerzas Armadas" : "la Policía Nacional"}: el ${seguro} confirma el servicio activo pero no expone el sueldo.`
+    );
   }
 
   const pisoIngresoMensualReportado = totalReportado > 0 ? Math.round(totalReportado * 100) / 100 : null;
@@ -1037,16 +1151,36 @@ export function analizarFuentesIngreso(
 //   - el SRI lo obliga a llevar contabilidad, que exige superar montos de
 //     ventas, costos o capital.
 // El sueldo anterior más alto se descartó: dice lo que ganó, no lo que gana.
+// El 2026-09-28 sumó un tercero (desde v9): el impuesto a la renta de los
+// dos últimos años fiscales, cuando lo que declara al IESS no alcanza para
+// generarlo. 1715532469 declara $1.000 al mes y su impuesto de 2025 fue de
+// $3.246; ninguna de las tres respuestas de la comparación lo pudo usar.
 //
 // Se calcula desde el análisis guardado (no se guarda), así que vale para
 // cualquier perfil. La pantalla y el perfil del modelo lo toman de acá. La nómina sólo desde v8: antes contaba a
 // la propia persona y cualquier afiliado que se paga el SBU "pagaba más en
 // sueldos que lo que declara".
 export interface IndicioIngresoMayor {
-  clave: "sueldos_a_terceros" | "obligado_a_contabilidad";
+  clave: "sueldos_a_terceros" | "obligado_a_contabilidad" | "impuesto_a_la_renta";
   titulo: string;
   detalle: string;
 }
+
+// Fracción básica exenta del impuesto a la renta de personas naturales, por
+// año fiscal: hasta ese monto de ingreso gravado del año el impuesto es cero.
+// Valores del SRI, verificados el 2026-09-28 (boletín NAC-COM-25-011 para
+// 2025 y tablas publicadas para los demás). Un año que no está acá no da
+// indicio: se agrega cuando el SRI publique la tabla.
+const FRACCION_BASICA_RENTA: Record<number, number> = {
+  2022: 11310, 2023: 11722, 2024: 11902, 2025: 12081, 2026: 12208,
+};
+// La tarifa más alta de la tabla (37% desde 2023). Con ella se acota el
+// impuesto que puede generar un ingreso: nunca más que el 37% de lo que pasa
+// de la fracción básica.
+const TARIFA_MAXIMA_RENTA = 0.37;
+// Debajo de esto no se lee: el régimen de negocios populares (RIMPE) paga
+// una cuota fija de $60 al año sin importar el ingreso.
+const IMPUESTO_MINIMO_PARA_INDICIO = 100;
 
 const DOLARES = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
@@ -1084,7 +1218,53 @@ export function indiciosDeIngresoMayor(f: Record<string, unknown> | null | undef
       detalle: "El SRI se lo exige a quien supera ciertos montos de ventas, costos o capital: su actividad es mayor que la de un contribuyente común.",
     });
   }
+  // No depende de la versión: la renta por año está en detalle desde v4,
+  // con la misma forma, y lo declarado se mide igual. Así vale también para
+  // un perfil que no se pudo recalcular.
+  const renta = indicioPorImpuestoALaRenta(f, declarado);
+  if (renta) indicios.push(renta);
   return indicios;
+}
+
+// El impuesto del año más reciente con impuesto, dentro de los dos últimos
+// años fiscales antes del corte del IESS: una renta de hace cinco años no
+// dice nada de hoy. Si ese impuesto es mayor que el que puede generar lo
+// que declara al IESS (a la tarifa más alta, sobre lo que pasa de la
+// fracción básica), sus ingresos de ese año fueron mayores que lo declarado.
+// La regla es conservadora a propósito: un indicio que no se dispara se
+// pierde; uno que se dispara mal es una especulación con formato de hecho.
+function indicioPorImpuestoALaRenta(f: Record<string, unknown>, declaradoMensual: number): IndicioIngresoMayor | null {
+  const detalle = (f.detalle ?? null) as AnyRecord | null;
+  const filas = (Array.isArray(detalle?.impuestoRentaPorAnio) ? detalle!.impuestoRentaPorAnio : []) as AnyRecord[];
+  const anioCorte = Number(String(f.corteIessUsado ?? "").slice(0, 4));
+  if (!filas.length || !Number.isFinite(anioCorte)) return null;
+  // Un año puede traer varios formularios (la declaración propia, el 107
+  // del empleador): se toma el mayor, no la suma, porque pueden repetir la
+  // misma renta.
+  const porAnio = new Map<number, number>();
+  for (const r of filas) {
+    const anio = Number(r.anio);
+    const valor = Math.max(Number(r.causado) || 0, Number(r.enRelacionDeDependencia) || 0);
+    if (Number.isInteger(anio) && valor > (porAnio.get(anio) ?? 0)) porAnio.set(anio, valor);
+  }
+  const [anio, impuesto] = [...porAnio.entries()]
+    .filter(([a, v]) => v > 0 && a >= anioCorte - 2)
+    .sort((p, q) => q[0] - p[0])[0] ?? [];
+  if (!anio || !impuesto || impuesto <= IMPUESTO_MINIMO_PARA_INDICIO) return null;
+  const fraccionBasica = FRACCION_BASICA_RENTA[anio];
+  if (fraccionBasica === undefined) return null;
+  const declaradoAnual = declaradoMensual * 12;
+  const maximoConLoDeclarado = Math.max(0, declaradoAnual - fraccionBasica) * TARIFA_MAXIMA_RENTA;
+  if (impuesto <= maximoConLoDeclarado) return null;
+
+  const suImpuesto = `Su impuesto a la renta de ${anio} fue de ${DOLARES.format(impuesto)}`;
+  const detalleTexto =
+    declaradoMensual <= 0
+      ? `${suImpuesto} y no declara un ingreso propio al IESS. Ese impuesto sólo se genera sobre los ingresos del año que pasan de ${DOLARES.format(fraccionBasica)}: sus ingresos de ${anio} superaron ese monto.`
+      : declaradoAnual <= fraccionBasica
+        ? `${suImpuesto}. Ese impuesto sólo se genera sobre los ingresos del año que pasan de ${DOLARES.format(fraccionBasica)}, y para sí declara ${DOLARES.format(declaradoMensual)} al mes al IESS (${DOLARES.format(declaradoAnual)} al año): sus ingresos de ${anio} fueron mayores que lo que declara.`
+        : `${suImpuesto}, más de lo que genera un ingreso de ${DOLARES.format(declaradoMensual)} al mes, que es lo que declara al IESS: sus ingresos de ${anio} fueron mayores que lo que declara.`;
+  return { clave: "impuesto_a_la_renta", titulo: "Su impuesto a la renta supera lo que declara", detalle: detalleTexto };
 }
 
 // ---- Tamaño del negocio ----

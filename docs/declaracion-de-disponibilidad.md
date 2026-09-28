@@ -1,6 +1,26 @@
 # Declaración de disponibilidad
 
-Documento de diseño para revisar. Todavía no está implementado.
+Documento de diseño. **Implementado en parte desde marco-v25
+(2026-09-28)**:
+
+- **Lo que está:** el perfil del modelo trae `disponibilidad`, con los
+  temas de la consulta en palabras del negocio (`temasConsultados` /
+  `temasNoConsultados`), antes que los datos y sin un solo nombre de fuente
+  (`disponibilidadPorTema` en `_shared/perfil-del-modelo.ts`). La causa —qué
+  fuente contestó, cuál falló— sigue en `metaConsulta`, para el expediente
+  y la pantalla.
+- **Lo que no está:** `cobertura` y `suficienteParaPuntaje` (la regla 4:
+  no emitir puntaje bajo el mínimo evaluable).
+- **Una diferencia con lo diseñado abajo:** son dos estados por tema, no
+  tres. "Con datos" dice que la fuente respondió algo, no que la persona
+  tenga registros: el certificado de antecedentes penales responde "NO" y
+  figura con datos, igual que SERCOP con sus listas vacías. Para el modelo
+  lo que importa es si el tema se consultó; si se consultó, lo que dice el
+  perfil —también un cero o un "no tiene"— es un hecho.
+- **Por qué se hizo:** en la comparación de razonamiento de marco-v24, 26
+  de 42 respuestas dijeron que no se había consultado algo que sí se
+  consultó ("no hay datos de inmuebles ni cooperativas, esas fuentes no
+  respondieron").
 
 ## Qué problema resuelve
 

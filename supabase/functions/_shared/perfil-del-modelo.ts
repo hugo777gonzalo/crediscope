@@ -21,22 +21,114 @@
 //
 // Lo que se deja afuera a propósito: los aportes mes a mes, los empleos de
 // 24 meses, los textos de actividad económica del SRI y el impuesto a la
-// renta (decisión del negocio del 2026-09-25: no se deduce nada de la
-// renta). Tampoco van las marcas de auditoría (correccion, recalculo).
+// renta por año (decisión del negocio del 2026-09-25). Desde fuentes-v9 la
+// renta llega sólo como indicio de ingreso mayor, ya interpretado (decisión
+// del 2026-09-28). Tampoco van las marcas de auditoría (correccion,
+// recalculo).
 //
 // Desde marco-v24 suma el bloque `endeudamiento` (la deuda propia en todo
 // el sistema, lo que está en atraso, lo garantizado y la cuota conocida) y
 // le da a los préstamos del IESS/BIESS su nombre (numeroPrestamosIessBiess).
+//
+// Desde marco-v25, `disponibilidad` reemplaza a `metaConsulta`: qué temas se
+// consultaron, en palabras del negocio, sin nombres de fuentes (ver
+// disponibilidadPorTema y docs/declaracion-de-disponibilidad.md).
 //
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
 // scoring_rules_versions.
 
 import { clasificarPerfilLaboral } from "./perfil-laboral.ts";
-import { esIngresoMinimoSbu, indiciosDeIngresoMayor, tamanoDelNegocio } from "./fuentes-ingreso.ts";
+import { dejoDeAparecerEnElIess, esIngresoMinimoSbu, indiciosDeIngresoMayor, tamanoDelNegocio } from "./fuentes-ingreso.ts";
 import { ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, quienDeclara } from "./nombres-ingresos.ts";
 
 type AnyRecord = Record<string, unknown>;
+
+// ---- Disponibilidad por tema (desde marco-v25) ----
+//
+// Hasta marco-v24 el modelo recibía metaConsulta: tres listas con los
+// nombres técnicos de las 52 fuentes. En la comparación de razonamiento del
+// 2026-09-28, 26 de 42 respuestas dijeron que no se habían consultado
+// fuentes que sí respondieron ("no hay datos de inmuebles ni cooperativas,
+// esas fuentes no respondieron"): tenían que deducir que "bienesInmueble"
+// en "fuentesSinDatos" quiere decir "no tiene inmuebles", y sin razonar
+// mucho no lo lograban. Con menos razonamiento, 12 de 14.
+//
+// Ahora recibe temas en palabras del negocio y DOS estados, no tres:
+//   - consultado: lo que el perfil dice de ese tema es un hecho, también un
+//     cero, un false o una lista vacía;
+//   - no consultado: alguna de sus fuentes no respondió o está apagada;
+//     no autoriza ninguna conclusión.
+// El diseño original tenía tres (con datos / sin datos / no medido). Se
+// dejó en dos porque "con datos" dice que la fuente respondió algo, no que
+// la persona tenga registros: el certificado de antecedentes penales
+// responde "NO" y figura con datos, igual que SERCOP con sus listas vacías.
+// Decirle al modelo "antecedentes penales: con registros" sería un error
+// peor que el que se corrige.
+//
+// Un tema cuenta como consultado sólo si respondieron TODAS sus fuentes.
+// basesInternas trae dos cosas (los aportes al IESS y el historial de pago
+// con Novadata) y está en los dos temas. "vacunados" no está en ninguno: no
+// es parte del análisis de crédito.
+const TEMAS_DE_CONSULTA: Array<[tema: string, fuentes: string[]]> = [
+  ["buró de crédito de bancos", ["buroCreditoSuper"]],
+  ["tarjetas Diners", ["buroCreditoDiners"]],
+  ["cooperativas", ["buroCreditoCoop"]],
+  ["casas comerciales", ["retails"]],
+  ["préstamos del IESS/BIESS", ["creditoHipotecario", "creditoQuirografario"]],
+  ["historial de pago con Novadata", ["basesInternas"]],
+  ["registro de deudores", ["deudores"]],
+  ["deudas con sentencia firme", ["deudasFirmes"]],
+  ["demandas en su contra", ["demandas"]],
+  ["demandas que presentó", ["demandasOfendido"]],
+  ["pensiones alimenticias", ["pensionAlimenticia", "pensionAlimenticiaNovadata"]],
+  ["denuncias en la Fiscalía", ["denuncias"]],
+  ["antecedentes penales", ["antecedentesPenales"]],
+  ["listas de control y sanciones", ["listasControl"]],
+  ["lista negra", ["listaNegra"]],
+  ["impedimento para cargos públicos", ["impedimentoCargosPublicos"]],
+  ["SERCOP y Contraloría", ["sercop"]],
+  ["aportes al IESS", ["basesInternas"]],
+  ["empleos registrados en el IESS", ["trabajoHistoricos"]],
+  ["historial mensual de aportes al IESS", ["trabajoHistoricosMecanizado"]],
+  ["afiliación al IESS", ["afiliacionIess"]],
+  ["empleados a su cargo", ["empleados", "cumplimientoPatronal"]],
+  ["jubilación y pensión del IESS", ["jubilados", "pensionista"]],
+  ["seguro social militar (ISSFAC)", ["afiliacionIssfacCertMedico", "afiliacionIssfacFuerzaArmada"]],
+  ["seguro social policial (ISSPOL)", ["afiliacionIsspol", "afiliacionSiisspol"]],
+  ["seguro de salud", ["afiliacionSalud"]],
+  ["RUC y actividad económica", ["contribuyente", "establecimientoActEconomica"]],
+  ["impuesto a la renta", ["sriImpuestoRenta"]],
+  ["empresas que administra", ["administraciones"]],
+  ["vehículos", ["vehiculos"]],
+  ["inmuebles", ["bienesInmueble"]],
+  ["inversiones", ["inversiones"]],
+  ["seguros y siniestros", ["polizas", "siniestros"]],
+  ["multas de tránsito", ["deudasAnt", "deudasAmt", "deudasEmov"]],
+  ["licencia de conducir", ["licenciaConducir"]],
+  ["identidad", ["general"]],
+  ["familia", ["padres", "hijos"]],
+  ["títulos académicos", ["titulos"]],
+  ["datos de contacto", ["direcciones", "telefonos", "correo"]],
+];
+
+// null si el perfil no trae metaConsulta o no nombra ninguna fuente
+// conocida (los anteriores a estructura-v3 nombraban nueve "ejes"): mejor
+// no decir nada que declarar todo como no consultado.
+export function disponibilidadPorTema(perfil: AnyRecord | null | undefined): AnyRecord | null {
+  const meta = perfil?.metaConsulta as AnyRecord | undefined;
+  if (!meta) return null;
+  const lista = (clave: string) => new Set((Array.isArray(meta[clave]) ? meta[clave] : []) as string[]);
+  const respondieron = new Set([...lista("fuentesConDatos"), ...lista("fuentesSinDatos")]);
+  const conocidas = new Set(TEMAS_DE_CONSULTA.flatMap(([, fuentes]) => fuentes));
+  if (![...respondieron].some((f) => conocidas.has(f))) return null;
+  const temasConsultados: string[] = [];
+  const temasNoConsultados: string[] = [];
+  for (const [tema, fuentes] of TEMAS_DE_CONSULTA) {
+    (fuentes.every((f) => respondieron.has(f)) ? temasConsultados : temasNoConsultados).push(tema);
+  }
+  return { temasConsultados, temasNoConsultados };
+}
 
 // Las fuentes sin monto que ya se dicen en otro lado del perfil del modelo:
 // el RUC activo en perfilLaboral y la nómina en tamanoDelNegocio.
@@ -57,10 +149,19 @@ export function ingresosDelPerfilDelModelo(perfil: AnyRecord | null | undefined)
   return {
     segmento: ETIQUETA_SEGMENTO[String(f.segmento)] ?? f.segmento ?? null,
     estado: ETIQUETA_ESTADO[String(f.estadoSegmento)] ?? f.estadoSegmento ?? null,
-    condicionesDeLaSegmentacion: f.motivoSegmento ?? null,
+    // Hasta fuentes-v8 el motivo de "Sin datos" nombraba la fuente y su
+    // estado técnico ("(basesInternas) no respondió (estado: error)"). Los
+    // perfiles que no se pueden recalcular -- las 240 cédulas de prueba de
+    // Aval no tienen crudo -- lo siguen trayendo: se limpia acá.
+    condicionesDeLaSegmentacion:
+      typeof f.motivoSegmento === "string"
+        ? f.motivoSegmento.replace(" (basesInternas)", "").replace(/ \(estado: [^)]*\)/, "")
+        : null,
     informacionIess: f.corteIessUsado ?? null,
-    sinInformacionActualEnElIess: f.apareceEnUltimoCorte === false,
-    mesesSinAportar: f.cortesDesdeLaDesvinculacion ?? null,
+    // Un jubilado que dejó de aportar no está "sin información actual":
+    // se jubiló (fuentes-v9, dejoDeAparecerEnElIess).
+    sinInformacionActualEnElIess: dejoDeAparecerEnElIess(f),
+    mesesSinAportar: dejoDeAparecerEnElIess(f) ? f.cortesDesdeLaDesvinculacion ?? null : null,
     ingresoReportadoIess: monto,
     esIngresoMinimoSbu: esIngresoMinimoSbu(monto, f.corteIessUsado as string | null),
     aportes: fuentes
@@ -186,7 +287,10 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
   copia.endeudamiento = endeudamientoDelPerfilDelModelo(copia);
   // El bloque nuevo también se puede apagar campo por campo.
   ocultar(copia);
-  return copia;
+  // La disponibilidad va PRIMERO (el modelo tiene que leerla antes que los
+  // datos) y reemplaza a metaConsulta, que nombraba fuentes.
+  delete copia.metaConsulta;
+  return { disponibilidad: disponibilidadPorTema(perfil), ...copia };
 }
 
 // El mensaje completo que recibe el modelo. Lo usan el análisis

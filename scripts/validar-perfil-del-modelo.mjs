@@ -21,6 +21,10 @@
 //   7. (marco-v24) Los préstamos IESS/BIESS llegan como
 //      numeroPrestamosIessBiess, y el bloque endeudamiento suma bien.
 //   8. (marco-v24) Ningún monto de deuda llega con más de dos decimales.
+//   9. (marco-v25) La disponibilidad llega primera, cada tema en una sola
+//      lista, y ningún nombre técnico de fuente llega al modelo.
+//  10. (marco-v25) Un jubilado no llega "sin información actual en el IESS"
+//      ni con meses sin aportar.
 //
 // Uso:  node scripts/validar-perfil-del-modelo.mjs
 import fs from "node:fs";
@@ -72,6 +76,9 @@ const CAMPOS_VISTA = [
   "perfilLaboral", "tamanoDelNegocio", "indiciosIngresoMayor", "estabilidad", "documentosDeConfirmacion",
 ].sort().join(",");
 const CLAVES_QUE_NO_LLEGAN = /"(detalle|correccion|recalculo|pisoIngresoMensualReportado|senalesDeEscala|evidencia|paraConfirmar|motivoSegmento)"\s*:/;
+// Nombres de fuentes de Novadata que no son también nombres de campos del
+// perfil (impedimentoCargosPublicos, por ejemplo, es las dos cosas).
+const NOMBRES_DE_FUENTES = /buroCredito(Super|Diners|Coop)|trabajoHistoricosMecanizado|bienesInmueble|pensionAlimenticiaNovadata|afiliacionIssfac|afiliacionSiisspol|sriImpuestoRenta|basesInternas|establecimientoActEconomica|deudas(Ant|Amt|Emov|Firmes)\b|listasControl|fuentes(ConDatos|SinDatos|NoMedidas)|metaConsulta/;
 const PALABRAS_RETIRADAS = /\bpiso\b|autodeclarad|reportada_por_tercero|reportada por un tercero|se[nñ]ales de escala/i;
 
 const fallas = new Map();
@@ -80,7 +87,7 @@ const fallar = (regla, cedula) => {
   fallas.get(regla).push(cedula);
 };
 const tamanos = { antes: [], despues: [] };
-let revisados = 0, conIngresos = 0, propios = 0, conIndicios = 0, conEstabilidad = 0, conTamano = 0;
+let revisados = 0, conIngresos = 0, propios = 0, conIndicios = 0, conEstabilidad = 0, conTamano = 0, conTemasSinConsultar = 0;
 
 for (let i = 0; i < ids.length; i += 100) {
   const { cuerpo: filas } = await pedir(
@@ -142,6 +149,22 @@ for (let i = 0; i < ids.length; i += 100) {
     }
     // 8. Montos a centavos: 258798.83000000002 llegaba así al modelo.
     if (/\d\.\d{3,}/.test(JSON.stringify({ b, c: pm.comportamientoCooperativas, en, p: pm.riesgoJudicialCivil }))) fallar("8. un monto llega con más de dos decimales", cedula);
+
+    // 9. Desde marco-v25: la disponibilidad por tema, primera, sin fuentes.
+    const di = pm.disponibilidad;
+    if (Object.keys(pm)[0] !== "disponibilidad") fallar("9. la disponibilidad no llega primera", cedula);
+    if (sp.metaConsulta && !di) fallar("9. hay metaConsulta y no llega la disponibilidad", cedula);
+    if (di) {
+      const temas = [...di.temasConsultados, ...di.temasNoConsultados];
+      if (new Set(temas).size !== temas.length) fallar("9. un tema está en las dos listas", cedula);
+      if (di.temasNoConsultados.length) conTemasSinConsultar++;
+    }
+    if (NOMBRES_DE_FUENTES.test(JSON.stringify(pm))) fallar("9. llega un nombre técnico de fuente", cedula);
+
+    // 10. Desde marco-v25: un jubilado dejó de aportar porque se jubiló.
+    if (vi.perfilLaboral?.registraJubilacion && (vi.sinInformacionActualEnElIess || vi.mesesSinAportar !== null)) {
+      fallar("10. un jubilado llega sin información actual en el IESS", cedula);
+    }
   }
 }
 
@@ -160,10 +183,10 @@ for (let i = 0; i < ids.length; i += 100) {
 const mediana = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)];
 const p90 = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length * 0.9)];
 console.log(`perfiles revisados: ${revisados} (${conIngresos} con clasificación de ingresos)`);
-console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano}`);
+console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano} | con algún tema sin consultar: ${conTemasSinConsultar}`);
 console.log(`  mensaje al modelo (caracteres): antes mediana ${mediana(tamanos.antes)} p90 ${p90(tamanos.antes)} | ahora mediana ${mediana(tamanos.despues)} p90 ${p90(tamanos.despues)}`);
 if (fallas.size === 0) {
-  console.log("VALIDACIÓN OK: 0 fallas en las 8 reglas.");
+  console.log("VALIDACIÓN OK: 0 fallas en las 10 reglas.");
 } else {
   console.log("FALLAS:");
   for (const [regla, casos] of fallas) console.log(`  ${regla}: ${casos.length} (ej. ${casos.slice(0, 5).join(", ")})`);

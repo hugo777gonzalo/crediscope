@@ -4,7 +4,7 @@ import { formatearValorAval } from "../../lib/avalCampos.js";
 import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, quienDeclara } from "../../lib/fuentesIngresoConsolidado.js";
 import { mesLegible, esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
 import { clasificarPerfilLaboral } from "../../../supabase/functions/_shared/perfil-laboral.ts";
-import { indiciosDeIngresoMayor } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
+import { dejoDeAparecerEnElIess, indiciosDeIngresoMayor } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
 
 const CLASE_ESTADO = { confirmada: "crediscope-tag-ok", provisional: "crediscope-tag-warn", indeterminada: "crediscope-tag-neutral" };
 
@@ -57,7 +57,9 @@ export default function EncabezadoIngresos({ cedula, perfil, corteVigente, consu
               >
                 {ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento}
               </span>
-              {f.apareceEnUltimoCorte === false ? (
+              {/* Un jubilado que dejó de aportar no se marca: se jubiló
+                  (fuentes-v9, la misma regla que lee el modelo). */}
+              {dejoDeAparecerEnElIess(f) ? (
                 <span className="crediscope-tag crediscope-tag-bad" title={`Aportaba y no aparece en la información del IESS de ${mesLegible(f.corteIessUsado)}.`}>
                   Sin información actual en el IESS
                 </span>

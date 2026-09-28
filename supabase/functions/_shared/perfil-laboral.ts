@@ -32,6 +32,7 @@
 // 2026-09-25).
 
 import { esLaMismaPersona } from "./patrono.ts";
+import { TIPOS_DE_PENSION, TIPOS_DE_SERVICIO_ACTIVO } from "./fuentes-ingreso.ts";
 
 // v2 (2026-09-26): un aporte cuyo patrono es la propia persona no es
 // dependencia (patrono.ts). En v1 contaba como empleo porque la
@@ -39,7 +40,11 @@ import { esLaMismaPersona } from "./patrono.ts";
 // "dependiente con actividad propia" trabajando para sí mismo. Desde
 // fuentes-v8 esos aportes ya llegan como cuenta propia; para los perfiles
 // guardados antes se reconoce acá por el nombre del patrono.
-export const PERFIL_LABORAL_VERSION = "perfil-laboral-v2";
+//
+// v3 (2026-09-28): militares y policías (fuentes-v9). El servicio activo es
+// trabajar para un tercero -- el Estado -- aunque no haya aporte al IESS, y
+// el retiro o el montepío son una jubilación.
+export const PERFIL_LABORAL_VERSION = "perfil-laboral-v3";
 
 export type ClavePerfilLaboral =
   | "dependiente"
@@ -126,9 +131,12 @@ export function clasificarPerfilLaboral(perfil: AnyRecord | null | undefined): P
   const nomina = typeof valorNomina === "number" && valorNomina > 0 ? valorNomina : null;
   const numeroEmpleados = typeof cantidadNomina === "number" ? cantidadNomina : null;
   const empleador = nomina !== null || Number(laboral.numeroEmpleadosRegistrados ?? 0) > 0;
-  const jubilacion = fuentes.some((x) => x.tipo === "jubilación") || social.esJubilado === true;
+  const jubilacion = fuentes.some((x) => TIPOS_DE_PENSION.has(String(x.tipo))) || social.esJubilado === true;
+  // Militar o policía en servicio activo: un empleo sin aporte al IESS, y
+  // por eso sin monto (no entra en `empleos`, que son aportes).
+  const servicioActivo = fuentes.some((x) => TIPOS_DE_SERVICIO_ACTIVO.has(String(x.tipo)));
 
-  const dependencia = empleos.length > 0;
+  const dependencia = empleos.length > 0 || servicioActivo;
   const actividadPropia = rucActivo || empleador;
   const ingresoDependencia = empleos.reduce((a, e) => a + (e.monto ?? 0), 0) || null;
 

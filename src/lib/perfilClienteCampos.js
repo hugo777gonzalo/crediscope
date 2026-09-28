@@ -191,6 +191,9 @@ export const GRUPOS_CONFIG = {
       ["tipoSeguroSalud", "Tipo de seguro", "texto"],
       ["afiliadoSeguridadPolicial", "Régimen policial (ISSPOL)", "booleano_si_true"],
       ["afiliadoSeguridadMilitar", "Régimen militar (ISSFA)", "booleano_si_true"],
+      // Desde estructura-v9: el titular, en servicio activo o pasivo, o
+      // beneficiario de montepío. Los familiares cubiertos no cuentan.
+      ["servicioMilitarOPolicial", "Servicio militar o policial", "texto"],
     ],
   },
   patrimonio: {
@@ -282,8 +285,10 @@ export const GRUPOS_CONFIG = {
     campos: [
       ["tieneAntecedentesPenales", "Antecedentes penales", "booleano_si_true"],
       ["descripcionAntecedentes", "Descripción", "texto"],
-      ["numeroDenunciasComoSospechoso", "Denuncias como sospechoso", "numero"],
-      ["numeroDenunciasComoVictima", "Denuncias como víctima", "numero"],
+      // Sólo las denuncias en las que figura con su cédula (estructura-v9,
+      // _shared/denuncias.ts).
+      ["numeroDenunciasComoSospechoso", "Denuncias como sospechoso o procesado", "numero"],
+      ["numeroDenunciasComoVictima", "Denuncias como denunciante, víctima o testigo", "numero"],
     ],
   },
   cumplimiento: {

@@ -363,11 +363,30 @@
 // modelo pasa a ser Sonnet para todo (llm-scoring.ts): las dos respuestas
 // con esos problemas eran de Haiku.
 //
+// v25 (2026-09-28): de la comparación de razonamiento de v24 (14 casos, 3
+// configuraciones, 42 respuestas leídas contra el perfil que recibió cada
+// una).
+//  - Disponibilidad por tema: el perfil del modelo trae `disponibilidad`
+//    (temas consultados / no consultados, en palabras del negocio) en lugar
+//    de metaConsulta con 52 nombres de fuentes. 26 de 42 respuestas dijeron
+//    que no se había consultado algo que sí se consultó.
+//  - Impedimento para cargos públicos: por deuda con el Estado (149 de 152
+//    en la cartera) es "revisar y verificar la deuda", no un motivo de
+//    negar por sí solo (decisión del negocio). Hoy negaba a 0502937691 y
+//    1400488134, con el buró en A1. Por jubilación o por haber cobrado una
+//    indemnización no es un riesgo.
+//  - Jubilados y militares o policías: dejar de aportar al IESS por
+//    jubilarse no es perder el ingreso (fuentes-v9); el servicio militar o
+//    policial es un ingreso aunque no pase por el IESS.
+//  - El papel en las denuncias: numeroDenunciasComoSospechoso cuenta a la
+//    persona sospechosa o procesada, y el bloqueo por seguridad ciudadana
+//    ya no alcanza a víctimas ni denunciantes (estructura-v9).
+//
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v24";
+export const MARCO_VERSION = "marco-v25";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -422,12 +441,23 @@ CÓMO PENSAR EL SCORE (guía, no fórmula rígida) — por grupo del profile,
 en orden de importancia (definido explícitamente por el negocio):
 
 1. cumplimiento — enListaControl y enListaNegra SÍ ya son controles de
-   bloqueo resueltos aparte (fuerzan el score si true). impedimentoCargosPublicos
-   y registraSercopContraloria NO son controles de bloqueo duros — SÍ te
-   toca juzgarlos, y deben penalizar fuerte (inhabilidad legal para
-   contratar con el Estado / ejercer cargos públicos — señal grave de
-   riesgo legal/reputacional, no un dato menor). esPersonaExpuestaPoliticamente
-   NO penaliza — ver nota arriba sobre PEP.
+   bloqueo resueltos aparte (fuerzan el score si true).
+   registraSercopContraloria NO es un control de bloqueo duro — SÍ te toca
+   juzgarlo, y penaliza fuerte (inhabilidad para contratar con el Estado:
+   señal grave de riesgo legal/reputacional, no un dato menor).
+   esPersonaExpuestaPoliticamente NO penaliza — ver nota arriba sobre PEP.
+   impedimentoCargosPublicos: mirá SIEMPRE causalImpedimento, que dice por
+   qué está impedida.
+   · Por deuda o mora con el Estado ("DEUDORES A ENTIDADES DEL SECTOR
+     PUBLICO", "MORA CON EL SECTOR PUBLICO"): le debe algo a una entidad
+     pública y no se sabe cuánto. Es un negativo, pero por sí solo NO
+     justifica negar: la recomendación es "revisar", con una acción para
+     verificar la deuda (con qué entidad, cuánto y si ya la pagó). Sólo
+     pesa para negar cuando viene junto con problemas de pago (mora,
+     cartera castigada, demandas de cobro).
+   · Por otras causas, como estar jubilado o haber cobrado una
+     indemnización del Estado: no dice nada sobre cómo paga. No es un
+     negativo.
 
 2. riesgoSeguridadCiudadana — tieneDelitoSeguridadCiudadana SÍ ya es un
    control de bloqueo resuelto aparte (fuerza el score si true) — mismo
@@ -531,10 +561,11 @@ en orden de importancia (definido explícitamente por el negocio):
    la descripción — no es lo mismo un delito patrimonial/económico (muy
    relevante para crédito) que uno sin relación con honestidad
    financiera. numeroDenunciasComoSospechoso > 0 SÍ penaliza (la persona
-   aparece como sospechosa en una denuncia penal). numeroDenunciasComoVictima
-   es SOLO CONTEXTO — ser denunciante/víctima/perjudicado de un delito no
-   dice nada sobre comportamiento de pago, no lo penalices (mismo
-   criterio que numeroDemandasComoOfendido arriba).
+   figura, con su cédula, como sospechosa o procesada en una denuncia
+   penal). numeroDenunciasComoVictima cuenta las denuncias en las que
+   figura con otro papel (denunciante, víctima, perjudicada, testigo): es
+   SOLO CONTEXTO — no dice nada sobre comportamiento de pago, no lo
+   penalices (mismo criterio que numeroDemandasComoOfendido arriba).
 
 8. fuentesIngreso, laboral y tributario (MISMO peso) — dan CONTEXTO DE
    CAPACIDAD de pago, no de comportamiento.
@@ -548,10 +579,24 @@ en orden de importancia (definido explícitamente por el negocio):
    - NO SUPONGAS UN INGRESO MAYOR. Aportar sobre el SBU es lo que hacen
      quienes ganan el básico y muchos afiliados por cuenta propia. Sólo
      podés decir que la capacidad probablemente supera lo reportado si
-     indiciosIngresoMayor trae algo, y citando ese indicio. Sin indicios,
+     indiciosIngresoMayor trae algo (una nómina mayor que lo que declara,
+     la obligación de llevar contabilidad, o un impuesto a la renta que no
+     se explica con lo que declara), y citando ese indicio. Sin indicios,
      lo reportado es la mejor evidencia de capacidad que existe: no
      escribas "puede ganar más", "el ingreso real puede ser mayor" ni
      nada parecido.
+   - Jubilados: si perfilLaboral.registraJubilacion es true, que no aporte
+     al IESS es lo esperable: cobra una pensión, de monto desconocido. No
+     es una pérdida de ingreso ni un hueco de estabilidad, y la
+     continuidadLaboral mide los años de aportes, que terminan con la
+     jubilación.
+   - Militares y policías no aportan al IESS: tienen su propio seguro
+     social (ISSFAC, ISSPOL). En otrasFuentesSinMonto, "servicio activo en
+     las Fuerzas Armadas" o "en la Policía Nacional" es un empleo del
+     Estado sin monto conocido; "pensión de retiro militar/policial" o
+     "montepío" es una pensión. Tratalos como un dependiente del sector
+     público o un jubilado cuyo monto no se conoce, nunca como alguien sin
+     ingreso.
    - estado: "Confirmado por un tercero" = un empleador declara y paga
      sobre ese monto (verificable). "Por confirmar" = el monto lo eligió
      la propia persona o no existe: la capacidad no está evidenciada,
@@ -677,7 +722,9 @@ en orden de importancia (definido explícitamente por el negocio):
 
 9. seguridadSocial — afiliadoIessActivo/esPensionista/esJubilado: señal
    adicional de estabilidad/capacidad, algo más débil que laboral y
-   tributario.
+   tributario. servicioMilitarOPolicial dice si la persona es militar o
+   policía en servicio activo, retirada, o beneficiaria de montepío (es el
+   titular: los familiares cubiertos por el seguro no cuentan).
    - afiliadoIessActivo=null (distinto de false): el recurso de
      afiliación IESS de Novadata no trajo datos para esta persona — un
      hueco de esa fuente puntual que aparece en la mayoría de los
@@ -731,38 +778,41 @@ en orden de importancia (definido explícitamente por el negocio):
     Novadata sobre esta misma persona, trátala con el mismo peso que
     comportamientoBancario o más.
 
-QUÉ SE PUDO MEDIR — la distinción más importante de todo este marco.
+QUÉ SE PUDO CONSULTAR — la distinción más importante de todo este marco.
 
-metaConsulta reparte las 52 fuentes en tres listas, y confundir dos de
-ellas es como se fabrican señales de riesgo que no existen:
+disponibilidad, al principio del perfil, reparte los temas de la consulta
+en dos listas, y confundirlas es como se fabrican señales de riesgo que no
+existen:
 
-- metaConsulta.fuentesConDatos — la fuente contestó y trajo información.
-- metaConsulta.fuentesSinDatos — la fuente contestó y NO hay registros
-  para esta persona. ESTO ES EVIDENCIA, no un hueco: "no registra
-  demandas", "no tiene operaciones en mora" son hechos sobre la persona
-  y podés apoyarte en ellos con confianza.
-- metaConsulta.fuentesNoMedidas — nadie pudo mirar (la consulta falló) o
-  esa fuente no está habilitada. NO es evidencia de ausencia. Jamás
-  concluyas "no tiene deudas", "no tiene ingresos" ni "es informal" a
-  partir de una fuente que está en esta lista.
+- disponibilidad.temasConsultados — se consultaron. Lo que el perfil dice
+  de esos temas es un HECHO, también cuando es un cero, un false o una
+  lista vacía: si "inmuebles" está acá y el perfil no trae inmuebles, la
+  persona no tiene inmuebles registrados; si "cooperativas" está acá y no
+  hay operaciones, no le debe nada a una cooperativa. Afirmalo con
+  confianza.
+- disponibilidad.temasNoConsultados — alguna de sus fuentes no respondió o
+  no está habilitada. NO es evidencia de ausencia. Jamás concluyas "no
+  tiene deudas", "no tiene ingresos" ni "es informal" a partir de un tema
+  que está en esta lista.
 
 Reglas que se siguen de eso:
-- Una dimensión que depende sólo de fuentes no medidas NO se evaluó.
-  Declaralo en "missingInfo" y NO penalices a la persona por algo que
-  nadie miró.
-- Si varios grupos clave (comportamientoBancario/Interno, laboral)
-  dependen de fuentes no medidas a la vez, sé más conservador con el
-  score (acércate al centro) en vez de asumir lo mejor o lo peor.
-- Un campo con valor null dentro de un grupo que SÍ se pudo medir
-  significa que ese dato puntual no aplica o no está disponible — no lo
-  confundas con 0, que es un valor real (ej.
-  numeroDemandasComoDemandado: 0 es una señal positiva real, no
-  "falta información").
-- En perfiles anteriores a estructura-v3 estas listas nombraban nueve
-  "ejes" agrupados en vez de las 52 fuentes, y exageraban la cobertura:
-  un eje figuraba consultado con una sola de sus catorce fuentes
-  respondiendo. Si ves nueve nombres en vez de fuentes, tratá la
-  cobertura declarada como un techo optimista, no como un hecho.
+- Un tema de temasConsultados NUNCA va a missingInfo ni se describe como
+  "no se pudo verificar", "no respondió", "no se consultó" o "no fue
+  medido". En missingInfo van los temas de temasNoConsultados que
+  importan para la decisión, o un dato puntual que falta dentro de un tema
+  consultado (el monto de una pensión, el detalle de una demanda).
+- Un tema no consultado no se evaluó: NO penalices a la persona por algo
+  que nadie miró.
+- Si varios temas clave (buró de crédito de bancos, cooperativas,
+  historial de pago con Novadata, aportes al IESS) están sin consultar a
+  la vez, sé más conservador con el score (acercate al centro) en vez de
+  asumir lo mejor o lo peor.
+- Un campo con valor null dentro de un tema consultado significa que ese
+  dato puntual no aplica o no está disponible — no lo confundas con 0,
+  que es un valor real (ej. numeroDemandasComoDemandado: 0 es una señal
+  positiva real, no "falta información").
+- Si disponibilidad es null (un perfil viejo), guiate por cada campo:
+  null es desconocido; 0 y false son hechos.
 
 INCONSISTENCIAS:
 - Si notas contradicciones entre grupos, menciónalo como parte de tu
@@ -839,7 +889,9 @@ medio bien sustentado). Elegí exactamente una:
   qué habría que pedirle o verificarle al cliente, no solo qué falta.
 - "negar": señales graves y confirmadas de mal comportamiento de pago
   (mora significativa vigente, cartera castigada, demandas de cobro
-  reiteradas) o riesgo legal/reputacional grave.
+  reiteradas) o riesgo legal/reputacional grave. Un impedimento para
+  cargos públicos por deuda con el Estado, sin problemas de pago, NO
+  alcanza para negar: es "revisar" y verificar la deuda (ver grupo 1).
 Si hay un hallazgo con bloqueante=true, respondé "negar" y explicá el
 resto del perfil normalmente; la razón se dice en términos de política
 de crédito (ver arriba), no de cómo la aplica el sistema.

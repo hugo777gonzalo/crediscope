@@ -23,6 +23,7 @@
 // SÍ queda a criterio del LLM — ver llm-scoring.ts.
 
 import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaNovadata } from "./types.ts";
+import { rolEnDenuncia } from "./denuncias.ts";
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -173,9 +174,17 @@ export function evaluarControlesBloqueo(raw: RespuestaNovadata, requestedCedula:
       (c) => c.palabrasClave.some((kw) => up.includes(kw)) && !(c.excluir ?? []).some((kw) => up.includes(kw))
     ).map((c) => c.categoria);
   };
+  // Las denuncias cuentan sólo si la persona es la ACUSADA (sospechosa,
+  // procesada o aprehendida, con su cédula): ver denuncias.ts. Hasta
+  // estructura-v8 entraban todas, y 42 de las 59 personas bloqueadas por
+  // este control eran quienes habían denunciado o sufrido el delito (31
+  // extorsiones), testigos, un policía y un abogado defensor. Las demandas
+  // son las de la fuente de demandas CONTRA la persona.
   const categoriasEncontradas = new Set([
     ...(demandas ?? []).flatMap((d) => categoriasEnTexto((d.demanda as Record<string, unknown> | undefined)?.delito)),
-    ...(denuncias ?? []).flatMap((d) => categoriasEnTexto(d.delito)),
+    ...(denuncias ?? [])
+      .filter((d) => rolEnDenuncia(d, requestedCedula) === "acusada")
+      .flatMap((d) => categoriasEnTexto(d.delito)),
     ...categoriasEnTexto(antecedentesDescripcion?.descripcion),
   ]);
   if (categoriasEncontradas.size > 0) {

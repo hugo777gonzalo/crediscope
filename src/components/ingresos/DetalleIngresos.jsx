@@ -238,13 +238,14 @@ export default function DetalleIngresos({ perfil }) {
             <FilaCampo etiqueta="Tipo de seguro de salud" valor={social.tipoSeguroSalud} tipo="texto" />
             <FilaCampo etiqueta="Seguridad social policial (ISSPOL)" valor={social.afiliadoSeguridadPolicial || null} tipo="booleano" />
             <FilaCampo etiqueta="Seguridad social militar (ISSFA)" valor={social.afiliadoSeguridadMilitar || null} tipo="booleano" />
+            <FilaCampo etiqueta="Servicio militar o policial" valor={social.servicioMilitarOPolicial ?? null} tipo="texto" />
           </ul>
-          {/* Policías y militares no aportan al IESS: su ingreso no aparece
-              en los aportes de arriba aunque sea estable. Se avisa si
-              aparece uno (0 en la cartera al 2026-09-24). */}
-          {social.afiliadoSeguridadPolicial || social.afiliadoSeguridadMilitar ? (
+          {/* Policías y militares no aportan al IESS. Desde fuentes-v9 la
+              clasificación los cuenta (34 militares y 9 policías en la
+              cartera al 2026-09-28), pero sin monto. */}
+          {social.servicioMilitarOPolicial ? (
             <p className="crediscope-aval-nota">
-              Aporta a un régimen especial, no al IESS: la clasificación no ve ese ingreso.
+              Aporta a un régimen especial, no al IESS: el sueldo o la pensión no se conocen.
             </p>
           ) : null}
         </div>

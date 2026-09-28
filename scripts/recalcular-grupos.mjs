@@ -14,18 +14,35 @@
 // Del perfil guardado sólo se reemplazan los grupos pedidos; el resto
 // queda byte a byte. structure_version pasa a la versión actual.
 //
-// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--seco] [--carpeta=research/novadata-raw-2026-09-25]
+// --ignorar=grupo: sus diferencias se toleran pero no se escriben, porque
+// lo recalcula otro script. Nació con estructura-v9 y fuentes-v9, que
+// cambiaron juntas: cada script exige que el resto del perfil coincida, y
+// sin esto se bloqueaban entre sí. Se corre éste primero (con
+// --ignorar=fuentesIngreso) y después recalcular-fuentes-ingreso.mjs.
+//
+// --bloqueo: recalcula también client_profiles.control_bloqueo (estructura-v9
+// cambió quién queda bloqueado por delitos de seguridad ciudadana). Todo
+// hallazgo que no sea ese tiene que salir idéntico al guardado; si no, la
+// fila entera no se toca.
+//
+// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
+const BLOQUEO = process.argv.includes("--bloqueo");
 const GRUPOS = (process.argv.find((a) => a.startsWith("--grupos="))?.slice(9) ?? "").split(",").filter(Boolean);
+const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10) ?? "").split(",").filter(Boolean);
 const CARPETA = path.join(RAIZ, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
 if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
+const { evaluarControlesBloqueo } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/controles-bloqueo.ts")).href);
+// El hallazgo que estructura-v9 puede cambiar. Cualquier otro tiene que
+// reproducirse igual.
+const HALLAZGO_QUE_CAMBIA = "delito_seguridad_ciudadana";
 
 // Los secretos se leen del archivo y no se imprimen.
 const env = Object.fromEntries(
@@ -91,9 +108,12 @@ function rutasDistintas(a, b, ruta = "", salida = []) {
 // las calcula en UTC) y las marcas de recálculos y correcciones anteriores.
 const ESPERADAS = [
   ...GRUPOS.map((g) => `.${g}`),
+  ...IGNORAR.map((g) => `.${g}`),
   ".consultadoEn", ".identidad.edad", ".identidad.edadConyuge", ".identidad.añosCasado",
   ".fuentesIngreso.detalle.recalculo", ".fuentesIngreso.correccion", ".laboral.correccionEmpleoActual",
 ];
+const sinElQueCambia = (b) => canonico((b?.hallazgos ?? []).filter((h) => h.code !== HALLAZGO_QUE_CAMBIA));
+const cambiosDeBloqueo = { desbloqueados: [], bloqueados: [], otroMotivo: 0, sinBloqueoGuardado: 0 };
 const mesMenos = (m) => { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(5)) - 2; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`; };
 
 const escrituras = [];
@@ -102,7 +122,7 @@ let yaEnVersion = 0;
 for (let i = 0; i < candidatos.length; i += 50) {
   const lote = candidatos.slice(i, i + 50);
   const { cuerpo: filas } = await pedir(
-    `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${lote.map((c) => c.perfilId).join(",")})&select=id,structure_version,standard_profile`,
+    `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${lote.map((c) => c.perfilId).join(",")})&select=id,structure_version,standard_profile,control_bloqueo`,
   );
   const porId = new Map(filas.map((f) => [f.id, f]));
   for (const { archivo, perfilId } of lote) {
@@ -118,11 +138,34 @@ for (let i = 0; i < candidatos.length; i += 50) {
     if (otras.length) { noReproducen.push(`${cedula}: ${otras.slice(0, 3).join(", ")}`); continue; }
     const perfil = { ...guardado };
     for (const g of GRUPOS) perfil[g] = nuevo[g];
-    escrituras.push({ id: perfilId, standard_profile: perfil });
+    const escritura = { id: perfilId, standard_profile: perfil };
+    if (BLOQUEO) {
+      const anterior = fila.control_bloqueo;
+      const bloqueo = evaluarControlesBloqueo(raw, cedula);
+      if (!anterior) cambiosDeBloqueo.sinBloqueoGuardado++;
+      else if (sinElQueCambia(anterior) !== sinElQueCambia(bloqueo)) {
+        cambiosDeBloqueo.otroMotivo++;
+        noReproducen.push(`${cedula}: control_bloqueo difiere en otro hallazgo`);
+        continue;
+      }
+      if (anterior?.bloqueado && !bloqueo.bloqueado) cambiosDeBloqueo.desbloqueados.push(cedula);
+      if (anterior && !anterior.bloqueado && bloqueo.bloqueado) cambiosDeBloqueo.bloqueados.push(cedula);
+      escritura.control_bloqueo = bloqueo;
+    }
+    escrituras.push(escritura);
   }
 }
 console.log(`candidatos: ${candidatos.length} | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
 if (noReproducen.length) console.log("no reproducen (no se tocan):", noReproducen.slice(0, 10));
+if (BLOQUEO) {
+  console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);
+  // Las cédulas quedan en un archivo local (research/ está fuera del
+  // repositorio): son las personas cuyos análisis guardados salieron con
+  // un bloqueo que ya no aplica.
+  const salida = path.join(RAIZ, "research", `cambios-de-bloqueo-${PROCESS_VERSION}.json`);
+  fs.writeFileSync(salida, JSON.stringify(cambiosDeBloqueo, null, 1));
+  console.log(`detalle en ${path.relative(RAIZ, salida)}`);
+}
 if (SECO) process.exit(0);
 
 // 0 filas devueltas no es un error para PostgREST: se cuenta.
@@ -135,7 +178,11 @@ async function trabajador() {
       const { cuerpo } = await pedir(`${env.SUPABASE_URL}/rest/v1/client_profiles?id=eq.${e.id}&select=id`, {
         method: "PATCH",
         headers: { Prefer: "return=representation" },
-        body: JSON.stringify({ standard_profile: e.standard_profile, structure_version: PROCESS_VERSION }),
+        body: JSON.stringify({
+          standard_profile: e.standard_profile,
+          structure_version: PROCESS_VERSION,
+          ...(e.control_bloqueo ? { control_bloqueo: e.control_bloqueo } : {}),
+        }),
       });
       escritas += cuerpo.length;
     } catch (err) {

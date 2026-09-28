@@ -312,9 +312,15 @@ export interface StandardClientProfile {
     entidadesSaludConCobertura: string[];
     tipoSeguroSalud: string | null;
     // Regímenes especiales. No son mejores ni peores: son OTRA fuente de
-    // ingreso, con su propia estabilidad y sus propios plazos.
+    // ingreso, con su propia estabilidad y sus propios plazos. Desde
+    // estructura-v9, sólo el titular (militar o policía en servicio activo
+    // o pasivo): los familiares cubiertos no cuentan.
     afiliadoSeguridadPolicial: boolean;
     afiliadoSeguridadMilitar: boolean;
+    // "militar en servicio activo", "militar en servicio pasivo
+    // (retirado)", "beneficiario de montepío militar", o lo mismo de la
+    // policía. null si no es ninguna. Desde estructura-v9.
+    servicioMilitarOPolicial?: string | null;
   };
 
   patrimonio: {
@@ -491,7 +497,11 @@ export interface StandardClientProfile {
     // por igual, sin mirar el rol del cliente) — mismo criterio que
     // numeroDemandasComoDemandado/ComoOfendido en riesgoJudicialCivil.
     numeroDenunciasComoSospechoso: number; // penaliza
-    numeroDenunciasComoVictima: number; // denunciante/víctima/perjudicado — SOLO CONTEXTO, no penaliza
+    // Denuncias en las que figura, con su cédula, con otro papel que el de
+    // acusada: denunciante, víctima, perjudicado, testigo — SOLO CONTEXTO,
+    // no penaliza. Desde estructura-v9 no cuenta las denuncias en las que su
+    // cédula no figura (ver denuncias.ts).
+    numeroDenunciasComoVictima: number;
   };
 
   cumplimiento: {

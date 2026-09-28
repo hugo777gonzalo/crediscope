@@ -190,7 +190,9 @@ Cada una de estas salió de un error real. No revivirlas.
   `mensajeParaElModelo()`: ingresos con los nombres de la pantalla, perfil
   laboral, indicios, estabilidad y tamaño del negocio; campos
   deshabilitados en null; sin aportes mes a mes, sin textos del SRI, sin
-  renta. Un camino nuevo tiene que usar esa misma puerta, y cualquier
+  renta por año; y desde marco-v25, qué temas se consultaron
+  (`disponibilidad`) en lugar de los nombres de las 52 fuentes. Un camino
+  nuevo tiene que usar esa misma puerta, y cualquier
   cambio en lo que arma es una versión nueva del marco (con su fila en
   `scoring_rules_versions`).
 - **`fuentesIngreso.detalle` no va entero al modelo.** Desde fuentes-v4 trae el
@@ -244,8 +246,10 @@ Cada una de estas salió de un error real. No revivirlas.
 - **No se especula sobre el ingreso.** "El ingreso real puede ser mayor"
   se decía de todos y es falso para quien gana el SBU. Un ingreso mayor se
   afirma sólo con un indicio que lo sostenga (`indiciosDeIngresoMayor()`
-  en `fuentes-ingreso.ts`: paga una nómina mayor que lo que declara, u
-  obligado a llevar contabilidad). Tampoco se muestra "cómo puede fallar"
+  en `fuentes-ingreso.ts`: paga una nómina mayor que lo que declara,
+  obligado a llevar contabilidad, o, desde fuentes-v9, un impuesto a la
+  renta de los dos últimos años que lo declarado al IESS no alcanza a
+  generar). Tampoco se muestra "cómo puede fallar"
   un segmento: son generalidades, no hechos de la persona.
 - **Los nombres de Fuentes de ingreso los decidió el negocio** (ver
   "Nombres de pantalla" arriba). No inventar otros.
@@ -333,7 +337,31 @@ Cada una de estas salió de un error real. No revivirlas.
   campos y con los positivos que el marco prohíbe.
 - **Para recalcular grupos enteros desde el crudo:**
   `scripts/recalcular-grupos.mjs --grupos=a,b`. Tiene las mismas
-  protecciones que el de fuentes de ingreso.
+  protecciones que el de fuentes de ingreso. Si cambian a la vez la
+  estructura y fuentes de ingreso, cada script ve al otro como "el crudo no
+  reproduce el perfil": primero `recalcular-grupos.mjs ... --ignorar=fuentesIngreso`
+  (con `--bloqueo` si cambió el control de bloqueo) y después
+  `recalcular-fuentes-ingreso.mjs`.
+- **En una denuncia, el papel de la persona es lo que decide**
+  (`_shared/denuncias.ts`, estructura-v9). La Fiscalía lista a todas las
+  partes con su cédula. Hasta v8 el bloqueo por delitos de seguridad
+  ciudadana no miraba el papel: 42 de 59 bloqueados eran quienes habían
+  denunciado o sufrido una extorsión, testigos, un policía, un abogado.
+  Y una denuncia sin la cédula de la persona no es suya: Novadata asocia
+  por nombre, y en una el homónimo era el fallecido. Toda lectura nueva de
+  denuncias usa esa regla.
+- **ISSFAC e ISSPOL listan también a los familiares** ("Esposa de Militar
+  en Servicio Activo"). Militar o policía es sólo el titular
+  (`_shared/fuerzas-armadas-policia.ts`). No aportan al IESS: sin leerlos,
+  un militar retirado con pensión quedaba "Informal o sin actividad".
+- **"La fuente trajo datos" no es "la persona tiene registros".** El
+  certificado de antecedentes penales responde "NO" y figura con datos,
+  igual que SERCOP vacío. Por eso la disponibilidad que lee el modelo
+  (marco-v25) dice sólo consultado / no consultado, por tema.
+- **Parámetros que cambian cada año:** el SBU (`SBU_POR_ANIO`) y la
+  fracción básica exenta del impuesto a la renta (`FRACCION_BASICA_RENTA`),
+  los dos en `fuentes-ingreso.ts`. Un año que falta en la tabla de renta
+  no da indicio; hay que agregarlo cuando el SRI la publique.
 - **Aval es dos órdenes de magnitud más rápido que Novadata.** Una
   consulta a Aval tarda 890 ms de mediana (p95 1,3 s) contra los 41 s de
   Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por

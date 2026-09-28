@@ -518,6 +518,39 @@ interface StandardClientProfile {
 > `scripts/recalcular-grupos.mjs`, que reemplaza esos cuatro grupos
 > enteros y marca `structure_version`.
 
+> **estructura-v9 (2026-09-28)** — De la comparación de razonamiento de
+> marco-v24, con decisiones del negocio.
+> - **Denuncias por el papel de la persona** (`_shared/denuncias.ts`, la
+>   misma regla en el perfil y en el control de bloqueo):
+>   - acusada = figura con su cédula como sospechosa, procesada o
+>     aprehendida;
+>   - una denuncia sin su cédula entre las partes no es suya y no cuenta:
+>     232 de 1.780;
+>   - `numeroDenunciasComoSospechoso` suma a las procesadas (antes contaban
+>     como víctimas);
+>   - `numeroDenunciasComoVictima` cuenta sólo las denuncias en que figura
+>     con otro papel.
+> - **`riesgoSeguridadCiudadana` y el bloqueo:** sólo las denuncias en que
+>   la persona es la acusada. 42 de las 59 personas bloqueadas lo estaban
+>   por haber denunciado o sufrido el delito, o ser testigos. Se
+>   desbloquearon 41; quedó bloqueada la procesada.
+> - **`seguridadSocial`:**
+>   - `afiliadoSeguridadMilitar` y `afiliadoSeguridadPolicial` cuentan sólo
+>     al titular (antes, también a esposas e hijos);
+>   - se agrega `servicioMilitarOPolicial` (servicio activo, pasivo o
+>     montepío), de `_shared/fuerzas-armadas-policia.ts`.
+> - **`riesgoJudicialCrediticio`:** "EJECUTIVO" es juicio de cobro (17
+>   personas); "decreto ejecutivo" no.
+>
+> Recalculados los 2.565 perfiles reales con crudo del último perfil,
+> junto con fuentes-v9, en dos pasos que se tienen que correr en este
+> orden, porque cada script exige que el resto del perfil coincida:
+> 1. `recalcular-grupos.mjs --grupos=... --ignorar=fuentesIngreso --bloqueo`;
+> 2. `recalcular-fuentes-ingreso.mjs`.
+>
+> 1715532469 y 1308725470 quedan en v8: se reconsultaron el 2026-09-27 y
+> su crudo no está en local.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

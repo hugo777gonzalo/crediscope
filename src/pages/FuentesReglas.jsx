@@ -17,7 +17,7 @@ import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuente
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v8";
+const VERSION_DOCUMENTADA = "fuentes-v9";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -185,11 +185,26 @@ export default function FuentesReglas() {
       </Paso>
 
       <Paso titulo="Paso 4: jubilación">
-        <p style={{ marginBottom: 0 }}>
+        <p>
           Quien registra jubilación y no tiene ninguna otra fuente es <strong>jubilado</strong>, confirmado: la pensión la paga
           el Estado. Si además aporta al IESS, tiene RUC activo o paga una nómina, es{" "}
           <strong>jubilado con ingreso adicional</strong>, provisional: la jubilación es cierta y la actividad no tiene monto.
           Hasta la v3 el RUC y la nómina no contaban, y 97 jubilados con actividad propia figuraban como jubilados a secas.
+        </p>
+        <p style={{ marginBottom: 0 }}>
+          Un jubilado que dejó de aportar <strong>no</strong> se marca &ldquo;Sin información actual en el IESS&rdquo; ni se le
+          pide el certificado de afiliación: dejó de aportar porque se jubiló, y cobra una pensión (desde la v9).
+        </p>
+      </Paso>
+
+      <Paso titulo="Paso 4b: militares y policías (desde la v9)">
+        <p style={{ marginBottom: 0 }}>
+          No aportan al IESS: tienen su propio seguro social, el ISSFAC y el ISSPOL. Hasta la v8 quedaban{" "}
+          <strong>informal o sin actividad</strong>. Ahora el <strong>servicio activo</strong> es un empleo del Estado sin monto
+          conocido, <strong>sector público</strong> por confirmar, y el <strong>servicio pasivo</strong> (retiro) o el{" "}
+          <strong>montepío</strong> son una pensión, <strong>jubilado</strong>. Cuenta sólo el titular: el seguro también lista a
+          los familiares que cubre (&ldquo;Esposa de Militar en Servicio Activo&rdquo;), y esos no son militares. En la cartera,
+          al 28/09/2026: 34 militares (10 activos, 24 retirados), 2 con montepío y 9 policías.
         </p>
       </Paso>
 
@@ -268,9 +283,9 @@ export default function FuentesReglas() {
           El historial de aportes de los últimos 24 meses (continuidad y tendencia del sueldo declarado), la actividad económica
           registrada en el SRI y el impuesto a la renta de cada año. Se ven en la pestaña Fuentes de ingreso de cada cliente, no
           cambian el segmento. Al análisis con IA (desde marco-v23) llega sólo un resumen: continuidad laboral, meses con aporte en
-          el último año, promedio y variación contra hace un año. Los aportes mes a mes, la actividad económica y la renta{" "}
-          <strong>no entran</strong>: de la renta no se deduce nada. Salen del dato crudo de Novadata: existen sólo en consultas
-          hechas desde la v4.
+          el último año, promedio y variación contra hace un año. Los aportes mes a mes, la actividad económica y la renta de
+          cada año <strong>no entran</strong>; de la renta se deduce sólo el indicio de ingreso mayor (desde la v9, ver más
+          abajo). Salen del dato crudo de Novadata: existen sólo en consultas hechas desde la v4.
         </p>
       </Paso>
 
@@ -324,7 +339,8 @@ export default function FuentesReglas() {
         <ul>
           <li>
             <strong>¿Trabaja para un tercero?</strong> Un aporte al IESS de un empleador público, privado, doméstico,
-            diplomático o agrícola. Es <strong>dependiente</strong>.
+            diplomático o agrícola, o el servicio activo en las Fuerzas Armadas o la Policía (desde la v9). Es{" "}
+            <strong>dependiente</strong>.
           </li>
           <li>
             <strong>¿Tiene actividad propia?</strong> RUC activo en el SRI, o paga una nómina (es empleador). No trae monto: se
@@ -364,6 +380,12 @@ export default function FuentesReglas() {
           <li>
             <strong>Obligado a llevar contabilidad.</strong> El SRI se lo exige a quien supera ciertos montos de ventas, costos o
             capital.
+          </li>
+          <li>
+            <strong>Su impuesto a la renta supera lo que declara (desde la v9).</strong> El impuesto a la renta sólo se paga sobre
+            lo que el ingreso del año pasa de la fracción básica exenta ($12.081 en 2025). Si el impuesto de uno de los dos
+            últimos años es mayor que el que puede generar lo que declara al IESS, sus ingresos de ese año fueron mayores. Por
+            debajo de $100 no se lee: el régimen de negocios populares paga una cuota fija de $60.
           </li>
         </ul>
       </Paso>

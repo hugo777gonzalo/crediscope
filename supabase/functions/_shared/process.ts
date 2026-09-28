@@ -16,6 +16,8 @@ import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, fechasDelRuc, rucActivo } from "./ruc.ts";
 import { esElPropioAfiliado, esSuPropioPatrono } from "./patrono.ts";
+import { rolEnDenuncia } from "./denuncias.ts";
+import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -164,6 +166,17 @@ function arr(multi: AnyRecord | null | undefined, recurso: string, campo: string
   return Array.isArray(items) ? (items as AnyRecord[]) : [];
 }
 
+// seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
+// modelo tal cual.
+const DESCRIPCION_SERVICIO: Record<string, string> = {
+  "ISSFAC:activo": "militar en servicio activo",
+  "ISSFAC:pasivo": "militar en servicio pasivo (retirado)",
+  "ISSFAC:montepio": "beneficiario de montepío militar",
+  "ISSPOL:activo": "policía en servicio activo",
+  "ISSPOL:pasivo": "policía en servicio pasivo (retirado)",
+  "ISSPOL:montepio": "beneficiario de montepío policial",
+};
+
 // Status de la fuente puntual (ResultadoFuente.status) — a diferencia de
 // arr()/obj(), que solo miran si HAY registros, esto distingue "el
 // recurso se consultó bien y no trajo nada" (status "ok", 0 registros
@@ -189,6 +202,12 @@ const PALABRAS_CLAVE_PROBLEMA_CREDITICIO = [
   "COBRO DE FACTURAS", "CONCURSO DE ACREEDORES", "ACREEDOR", "EJECUCIÓN DE ACTA DE MEDIACIÓN",
   "EJECUCIÓN DE ACTA DE TRANSACCIÓN", "TRANSACCIÓN", "ACTA DE MEDIACIÓN", "TÍTULO EJECUTIVO",
   "EJECUCIÓN", "COBRO", "JUICIO EJECUTIVO", "PROCESO EJECUTIVO", "VÍA EJECUTIVA",
+  // "EJECUTIVO" a secas es como la Función Judicial rotula el juicio
+  // ejecutivo -- el cobro de un título: pagaré, letra, cheque -- ("EJECUTIVO",
+  // "EJECUTIVO ART. 413 C.P.C."). Hasta estructura-v8 sólo entraban las
+  // formas largas y 17 personas con juicio ejecutivo figuraban con demandas
+  // civiles, no de cobro (1715532469 entre ellas).
+  "EJECUTIVO",
   "PROCEDIMIENTO EJECUTIVO", "MANDAMIENTO DE EJECUCIÓN", "LIQUIDACIÓN", "APREMIO",
   "INCUMPLIMIENTO", "MORA", "MOROSIDAD", "DEUDA", "OBLIGACIÓN VENCIDA", "OBLIGACIÓN EXIGIBLE",
   "COBRO JUDICIAL", "RECUPERACIÓN DE CARTERA", "CARTERA VENCIDA", "TÍTULO VALOR", "FACTURA",
@@ -219,7 +238,9 @@ function sinTildes(s: string): string {
 // DE VESTIR". Sin tildes, "DEVOLUCIÓN DE GARANTÍA" empezaba a coincidir
 // con GARANTÍA; es devolver un depósito, no un crédito impago, y se
 // excluye.
-const NO_ES_CREDITICIA = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b/;
+// "DECRETO EJECUTIVO" es un acto del Presidente, no un cobro: con EJECUTIVO
+// como palabra clave entraría si alguna vez se impugna uno.
+const NO_ES_CREDITICIA = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b|\bDECRETO EJECUTIVO\b/;
 const PLURALES_CREDITICIOS = ["FACTURAS", "CHEQUES", "PRENDARIO", "PRENDARIOS", "PAGARES", "LETRAS DE CAMBIO"];
 const PATRONES_PROBLEMA_CREDITICIO = [...new Set([...PALABRAS_CLAVE_PROBLEMA_CREDITICIO, ...PLURALES_CREDITICIOS].map(sinTildes))].map(
   (kw) => new RegExp(`(^|[^A-Z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Z0-9]|$)`)
@@ -449,7 +470,12 @@ function textoDe(v: unknown): string | null {
 // cuota; las demandas crediticias se buscan por palabra completa; las
 // pensiones se cuentan por proceso y la deuda es la suma. Detalle en cada
 // grupo y en docs/propuesta-estructura-v8-marco-v24.md.
-export const PROCESS_VERSION = "estructura-v8"; // ver docs/estructura-estandarizada.md
+// estructura-v9 (2026-09-28), de la comparación de razonamiento de v24:
+// las denuncias cuentan según el papel de la persona (denuncias.ts), y una
+// denuncia sin su cédula no es suya; la seguridad social militar y policial
+// cuenta sólo a los titulares y dice su situación
+// (fuerzas-armadas-policia.ts); "EJECUTIVO" es juicio de cobro.
+export const PROCESS_VERSION = "estructura-v9"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1031,17 +1057,19 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
         tieneCoberturaSalud: estadoSalud !== "ok" ? null : conCobertura.length > 0,
         entidadesSaludConCobertura: conCobertura.map((a) => textoDe(a.entidad)).filter((x): x is string => Boolean(x)),
         tipoSeguroSalud: textoDe(conCobertura[0]?.tipoSeguro),
-        // Los regímenes especiales tienen dos puertas cada uno. Se
-        // miran las dos: siisspol responde siempre con una frase que
-        // descarta, isspol trae las afiliaciones cuando las hay.
-        afiliadoSeguridadPolicial:
-          arr(fuentes, "afiliacionIsspol", "afiliaciones").length > 0 ||
-          arr(fuentes, "afiliacionSiisspol", "afiliacionSiisspol").some(
-            (a) => Array.isArray(a.afiliaciones) && (a.afiliaciones as unknown[]).length > 0,
-          ),
-        afiliadoSeguridadMilitar:
-          arr(fuentes, "afiliacionIssfacCertMedico", "afiliaciones").length > 0 ||
-          arr(fuentes, "afiliacionIssfacFuerzaArmada", "afiliaciones").length > 0,
+        // Sólo el titular: militar o policía en servicio activo o pasivo.
+        // Hasta estructura-v8 contaba cualquier registro, y las fuentes
+        // listan también a los familiares cubiertos ("Esposa de Militar en
+        // Servicio Activo"): ver fuerzas-armadas-policia.ts.
+        ...(() => {
+          const servicio = servicioMilitarOPolicial(fuentes, cedula);
+          const titular = servicio !== null && servicio.situacion !== "montepio";
+          return {
+            afiliadoSeguridadPolicial: titular && servicio?.institucion === "ISSPOL",
+            afiliadoSeguridadMilitar: titular && servicio?.institucion === "ISSFAC",
+            servicioMilitarOPolicial: servicio ? DESCRIPCION_SERVICIO[`${servicio.institucion}:${servicio.situacion}`] ?? null : null,
+          };
+        })(),
       };
     })(),
   };
@@ -1278,25 +1306,22 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
 
   // ---- riesgoPenal ----
   const antecedentes = obj(fuentes, "antecedentesPenales", "antecedentes");
-  // denuncias[].detalleDenuncia lista a TODAS las partes (denunciante,
-  // víctima, perjudicado, sospechoso) — hay que mirar el rol del propio
-  // cliente en cada denuncia, igual que se hizo con
-  // numeroDemandasComoDemandado/ComoOfendido en riesgoJudicialCivil. Ser
-  // denunciante/víctima/perjudicado es SOLO CONTEXTO (no penaliza); ser
-  // sospechoso sí. Si detalleDenuncia no trae la cédula del cliente (no
-  // debería pasar, pero por si acaso), se trata como no-sospechoso por
-  // default — no penalizar ante datos faltantes.
+  // El papel de la persona en cada denuncia sale de denuncias.ts, la misma
+  // regla que usa el control de bloqueo. Ser denunciante, víctima o testigo
+  // es SOLO CONTEXTO (no penaliza); ser sospechosa o procesada sí. Una
+  // denuncia sin su cédula entre las partes no es suya y no cuenta
+  // (decisión del negocio, 2026-09-28): hasta estructura-v8 contaba como
+  // "víctima" -- 232 de 1.780 denuncias.
   const denuncias = arr(fuentes, "denuncias", "denuncias");
-  const esSospechosoEnDenuncia = (d: AnyRecord): boolean =>
-    (Array.isArray(d.detalleDenuncia) ? (d.detalleDenuncia as AnyRecord[]) : []).some(
-      (p) => p.cedula === cedula && String(p.estado ?? "").toUpperCase().includes("SOSPECHOSO")
-    );
-  const numeroDenunciasComoSospechoso = denuncias.filter(esSospechosoEnDenuncia).length;
+  const rolesEnDenuncias = denuncias.map((d) => rolEnDenuncia(d, cedula));
   const riesgoPenal: StandardClientProfile["riesgoPenal"] = {
     tieneAntecedentesPenales: antecedentes ? antecedentes.descripcion !== "NO" : null,
     descripcionAntecedentes: antecedentes && antecedentes.descripcion !== "NO" ? (antecedentes.descripcion as string) : null,
-    numeroDenunciasComoSospechoso,
-    numeroDenunciasComoVictima: denuncias.length - numeroDenunciasComoSospechoso,
+    numeroDenunciasComoSospechoso: rolesEnDenuncias.filter((r) => r === "acusada").length,
+    // El nombre quedó de cuando sólo se distinguía sospechoso de víctima:
+    // cuenta toda denuncia en la que figura con otro papel (denunciante,
+    // víctima, testigo, perjudicado).
+    numeroDenunciasComoVictima: rolesEnDenuncias.filter((r) => r === "otro_papel").length,
   };
 
   // ---- cumplimiento (control de bloqueo, informativo) ----
@@ -1352,9 +1377,15 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // además fuerza el score a 1 (control de bloqueo duro, mismo trato
   // que listas de sanciones). Ver nota "SIN VALIDAR CONTRA CASOS
   // REALES" arriba.
+  // Las denuncias, sólo aquellas en las que la persona es la acusada
+  // (denuncias.ts): hasta estructura-v8 entraban todas, y 42 de 59
+  // personas figuraban con un delito de seguridad ciudadana por haberlo
+  // denunciado o sufrido. Las demandas no necesitan el filtro: la fuente es
+  // la de demandas contra la persona, y en las 35 de delitos graves figura
+  // su nombre completo entre los demandados (medido el 2026-09-28).
   const categoriasSeguridad = new Set([
     ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
-    ...denuncias.flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
+    ...denuncias.filter((_, i) => rolesEnDenuncias[i] === "acusada").flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
     ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
   ]);
   const riesgoSeguridadCiudadana: StandardClientProfile["riesgoSeguridadCiudadana"] = {
