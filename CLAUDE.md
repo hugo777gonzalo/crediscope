@@ -115,6 +115,11 @@ Romper cualquiera de estas rompe algo real.
 - `perfil-del-modelo.ts` — lo ÚNICO que lee el modelo (ver abajo).
   `nombres-ingresos.ts` — los nombres de ingresos que comparten la
   pantalla y el modelo.
+- `llm-scoring.ts` → `armarPedidoScoring()` arma el pedido al modelo y
+  `CONFIG_LLM` decide el razonamiento y el tope de salida. El backtest
+  todavía arma el suyo (ver `docs/pendientes.md`).
+- `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
+  `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
   Ecuador es UTC-5 sin horario de verano; a las 20:00 de Ecuador la
   fecha UTC ya es la de mañana.
@@ -126,6 +131,9 @@ Romper cualquiera de estas rompe algo real.
   final.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
+- `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
+  y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
+  que se cierre.
 
 ## Lo que costó caro aprender
 
@@ -335,6 +343,21 @@ Cada una de estas salió de un error real. No revivirlas.
   con Haiku se validó por coincidencia de scores, no por el texto, y en
   los casos claros el texto lo escribía Haiku: en inglés, con nombres de
   campos y con los positivos que el marco prohíbe.
+- **Lo que encarece el análisis es el razonamiento del modelo**, no el
+  marco ni la respuesta. Medido el 2026-09-27:
+  - la respuesta visible se mantuvo entre 950 y 1.700 tokens desde
+    framework-v0;
+  - el razonamiento pasó de ~900 tokens a 5.000 de promedio, y a 9.300
+    en un caso, y se factura como salida.
+  - **`max_tokens` es también un techo de tiempo.** Supabase corta la
+    función a los 150 s y Sonnet escribe ~85-90 tokens por segundo: con
+    6.000 el análisis de 1715532469 salió sin texto, y con 10.000 se
+    cortó el JSON a los 110 s.
+  - **La caché del marco no se leyó nunca**: 12 escrituras y 0 lecturas.
+    Dura 5 minutos y entre dos análisis pasan 26 de mediana, así que se
+    retiró.
+  - Para comparar configuraciones: `scripts/comparar-razonamiento.mjs`,
+    que arma un Excel.
 - **Para recalcular grupos enteros desde el crudo:**
   `scripts/recalcular-grupos.mjs --grupos=a,b`. Tiene las mismas
   protecciones que el de fuentes de ingreso. Si cambian a la vez la

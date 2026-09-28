@@ -2,7 +2,7 @@
 
 Análisis crediticio asistido por IA. Consulta la información de una
 persona en Novadata (52 fuentes), la procesa a una
-**Estructura Estandarizada** de 16 grupos, y un LLM (Claude) la evalúa
+**Estructura Estandarizada** de 17 grupos, y un LLM (Claude) la evalúa
 guiado por un **marco interpretativo** en lenguaje natural para producir
 un **score aproximado** (1-999), una **recomendación de acción**
 (aprobar / revisar / observar / negar), indicadores de riesgo e
@@ -19,10 +19,14 @@ La ingesta de Novadata está cableada contra producción (confirmada con
 HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
 El frontend se despliega solo a GitHub Pages en cada push a `main`.
 
-- **Marco interpretativo:** `marco-v17` (`MARCO_VERSION` en
+- **Marco interpretativo:** `marco-v26` (`MARCO_VERSION` en
   `supabase/functions/_shared/marco-interpretativo.ts`). Cada versión
   tiene su fila en `scoring_rules_versions` — subir la constante sin
   crear la fila rompe la FK al guardar un análisis.
+- **Estructura Estandarizada:** `estructura-v11` (`PROCESS_VERSION` en
+  `process.ts`); clasificación de ingresos `fuentes-v9`
+  (`FUENTES_INGRESO_VERSION` en `fuentes-ingreso.ts`). Qué cambió en
+  cada versión y por qué: `docs/estructura-estandarizada.md`.
 - **Criterio vigente:** marco base + ajustes aprobados por el área,
   versionado en `criterio_versiones`. Cada análisis guarda con qué
   versión se hizo (`analysis_results.criterio_version_id`).
@@ -32,7 +36,8 @@ Lo que **sigue pendiente de validación del negocio**: los criterios
 considera grave). El *orden de importancia* de los grupos sí lo definió
 el usuario. El marco es texto plano: se ajusta sin tocar lógica.
 
-Otros pendientes abiertos están al final de este archivo.
+Los pendientes abiertos, con sus números y cómo se verifican, están en
+`docs/pendientes.md`.
 
 ## Arquitectura
 
@@ -53,11 +58,15 @@ Edge Functions (Deno, en Supabase)
 Supabase Postgres (ver "Base de datos")
 ```
 
-El marco se envía con **caché de prompt** (`cache_control` en llm-scoring.ts):
-son ~5.600 tokens idénticos en cada análisis y, sin caché, se pagaban
-completos todas las veces. Los ajustes vigentes van en un bloque aparte
-sin cachear, para que ponerlos en vigencia no invalide el caché del
-marco entero.
+El pedido al modelo se arma en un solo lugar, `armarPedidoScoring()`
+(`llm-scoring.ts`), para el análisis y para la comparación de
+razonamiento (el backtest todavía arma el suyo). El marco va
+**sin caché de prompt**: la caché dura 5 minutos y entre dos análisis
+pasan 26 de mediana, así que se escribió 12 veces y no se leyó nunca
+(medido el 2026-09-27); se pagaba el recargo sin cobrar el descuento. Lo
+que más pesa en el costo es el razonamiento del modelo, no el marco ni
+la respuesta: `scripts/comparar-razonamiento.mjs` compara
+configuraciones sobre casos reales y arma un Excel.
 
 Las credenciales de Novadata, la API key de Anthropic y la
 `service_role key` viven **solo** en las secrets de las Edge Functions —
@@ -78,10 +87,10 @@ limitada por RLS.
    respondiendo. La relación real entre fuentes y grupos del perfil es
    muchos a muchos y vive en la tabla `fuente_grupo`.
 2. **Estructura Estandarizada** — `process.ts` (`buildStandardProfile`).
-   Convierte el crudo en 16 grupos de campos normalizados (booleanos,
+   Convierte el crudo en 17 grupos de campos normalizados (booleanos,
    conteos, montos) en vez de arrays completos. La fuente de verdad del
    contrato es `StandardClientProfile` en `types.ts`.
-3. **Perfil del Cliente** — lo que ve el analista: esos mismos 16 grupos
+3. **Perfil del Cliente** — lo que ve el analista: esos mismos 17 grupos
    en tarjetas, con los campos que tienen dato real
    (`perfilClienteCampos.js` + `SegmentosPerfil.jsx`, y qué segmentos se
    muestran lo decide `standard_profile_segment_config`). Es
@@ -89,12 +98,18 @@ limitada por RLS.
    a favor y qué en contra lo determina el Análisis con IA (paso 5).
 4. **Controles de bloqueo** — `controles-bloqueo.ts`. Determinísticos, a
    propósito fuera del criterio del LLM: persona fallecida, listas de
-   sanciones/lista negra, y delitos graves de seguridad ciudadana. Si se
+   sanciones/lista negra, y delitos graves de seguridad ciudadana en los
+   que la persona figura con su cédula como sospechosa, procesada o
+   aprehendida (`_shared/denuncias.ts`: quien denunció o fue víctima no
+   queda bloqueado). Si se
    activa uno, el score se fuerza a 1 y la recomendación a "negar", sin
    importar lo que devuelva el LLM. **PEP no es bloqueante** — es un
    dato de cumplimiento (PLA-FT, debida diligencia reforzada), no una
    señal de mal comportamiento de pago.
-5. **Scoring** — `llm-scoring.ts` + `marco-interpretativo.ts`. Todo lo
+5. **Scoring** — `llm-scoring.ts` + `marco-interpretativo.ts`. El
+   modelo no lee el perfil entero: lee el **perfil del modelo**
+   (`perfil-del-modelo.ts`), con los nombres de la pantalla y sin los
+   datos que no le corresponden (aportes mes a mes, renta por año). Todo lo
    demás (laboral, judicial, financiero, patrimonio) queda a criterio
    del LLM, que devuelve score, recomendación de acción con 2-4 pasos
    concretos de qué validar o pedirle al cliente, dos indicadores de
@@ -160,7 +175,7 @@ para mirarse en pantalla con una jefatura. **Descargas**
 ### Descargas › Información de Solicitudes
 
 El exportable (`src/lib/exportAnalitico.js`) trae
-una fila por solicitud en el rango de fechas que se elija: los ~125
+una fila por solicitud en el rango de fechas que se elija: los ~145
 campos de la Estructura Estandarizada con los que se evaluó a esa
 persona, el score, la recomendación, la versión del criterio y — cuando
 ya se cargó la cosecha — si el crédito incumplió. Los Sí/No salen como
@@ -284,7 +299,7 @@ Para probar antes de desplegar (requiere Docker corriendo):
 supabase functions serve analyze-client --env-file .env.functions
 ```
 
-Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD`, cada bloque devuelve
+Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD`, cada fuente devuelve
 `status: "error"` sin romper el pipeline — sirve para probar el flujo
 completo de punta a punta.
 
@@ -327,16 +342,5 @@ así. El destino es que todo eso viva en una pantalla de administración.
 
 ## Pendientes
 
-- **Validar el marco interpretativo con el negocio** — lo más importante
-  a afinar; ver arriba.
-- **Confirmar campos internos** en `process.ts`/`normalize.ts` para los
-  recursos que todavía no se vieron poblados en ningún caso real.
-- **SMTP propio (ej. Resend)** para volver al código de 6 dígitos en
-  Crear Cuenta. Hoy la verificación es por enlace: Supabase no deja
-  editar el contenido de sus plantillas (para mostrar `{{ .Token }}`)
-  salvo con SMTP propio. Ver la nota en `src/pages/Signup.jsx`.
-- **Conector de buró de crédito (Equifax)** — a la espera de
-  credenciales de API. Se descartó automatizar el portal web: es una
-  fuente regulada y frágil. Cuando llegue la documentación de campos,
-  armar `buro-equifax.ts` como conector tipado más la propuesta de mapeo
-  a la Estructura Estandarizada.
+La lista está en `docs/pendientes.md`: qué quedó abierto, por qué
+importa y cómo se verifica, ordenado por urgencia.
