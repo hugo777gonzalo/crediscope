@@ -92,3 +92,14 @@ export const ETIQUETA_SENAL: Record<string, string> = {
 };
 
 export const DOCUMENTOS_DE_CONFIRMACION = "Documentos de Confirmación de Ingresos";
+
+// Los indicios de ingreso mayor, por su clave (indiciosDeIngresoMayor en
+// fuentes-ingreso.ts; la columna client_profiles.indicios_ingreso, 089). El
+// Panorama y la lista de clientes los nombran así; en la ficha de cada
+// cliente el título se ajusta a su caso ("...sin declarar un ingreso
+// propio").
+export const ETIQUETA_INDICIO: Record<string, string> = {
+  sueldos_a_terceros: "Paga una nómina mayor que lo que declara",
+  obligado_a_contabilidad: "Obligado a llevar contabilidad",
+  impuesto_a_la_renta: "Su impuesto a la renta supera lo que declara",
+};

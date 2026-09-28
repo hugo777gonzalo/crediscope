@@ -25,6 +25,10 @@
 //      lista, y ningún nombre técnico de fuente llega al modelo.
 //  10. (marco-v25) Un jubilado no llega "sin información actual en el IESS"
 //      ni con meses sin aportar.
+//  11. (marco-v26) Las demandas civiles llegan por categoría y suman lo
+//      mismo que el total; ya no llega la lista de textos.
+//  12. (marco-v26) Ningún tipo de demanda llega con artículos, numerales o
+//      tildes rotas.
 //
 // Uso:  node scripts/validar-perfil-del-modelo.mjs
 import fs from "node:fs";
@@ -87,7 +91,7 @@ const fallar = (regla, cedula) => {
   fallas.get(regla).push(cedula);
 };
 const tamanos = { antes: [], despues: [] };
-let revisados = 0, conIngresos = 0, propios = 0, conIndicios = 0, conEstabilidad = 0, conTamano = 0, conTemasSinConsultar = 0;
+let revisados = 0, conIngresos = 0, propios = 0, conIndicios = 0, conEstabilidad = 0, conTamano = 0, conTemasSinConsultar = 0, conCategorias = 0;
 
 for (let i = 0; i < ids.length; i += 100) {
   const { cuerpo: filas } = await pedir(
@@ -165,6 +169,18 @@ for (let i = 0; i < ids.length; i += 100) {
     if (vi.perfilLaboral?.registraJubilacion && (vi.sinInformacionActualEnElIess || vi.mesesSinAportar !== null)) {
       fallar("10. un jubilado llega sin información actual en el IESS", cedula);
     }
+
+    // 11. Desde marco-v26: las civiles por categoría, sumando el total.
+    const civil = pm.riesgoJudicialCivil;
+    if (civil && Array.isArray(sp.riesgoJudicialCivil?.demandasPorCategoria)) {
+      conCategorias++;
+      const suma = Object.values(civil.demandasPorCategoria ?? {}).reduce((a, n) => a + n, 0);
+      if (suma !== civil.numeroDemandasComoDemandado) fallar("11. las categorías no suman el total de demandas civiles", cedula);
+      if ("tiposDemandasComoDemandado" in civil) fallar("11. llega la lista de textos de demandas civiles", cedula);
+    }
+    // 12. Tipos legibles: ni "ART. 413", ni "NUM. 1", ni "298 ...", ni "��".
+    const tipos = [...(pm.riesgoJudicialCrediticio?.tiposDemandasComoDemandado ?? []), ...(civil?.tiposDemandasComoDemandado ?? [])];
+    if (tipos.some((t) => /\bART\.?\s*\d|\bNUM\.?\s*\d|\bINC\.?\s*\d|^\d+\s|�/i.test(String(t)))) fallar("12. un tipo de demanda llega con artículos o tildes rotas", cedula);
   }
 }
 
@@ -183,10 +199,10 @@ for (let i = 0; i < ids.length; i += 100) {
 const mediana = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)];
 const p90 = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length * 0.9)];
 console.log(`perfiles revisados: ${revisados} (${conIngresos} con clasificación de ingresos)`);
-console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano} | con algún tema sin consultar: ${conTemasSinConsultar}`);
+console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano} | con algún tema sin consultar: ${conTemasSinConsultar} | con demandas por categoría: ${conCategorias}`);
 console.log(`  mensaje al modelo (caracteres): antes mediana ${mediana(tamanos.antes)} p90 ${p90(tamanos.antes)} | ahora mediana ${mediana(tamanos.despues)} p90 ${p90(tamanos.despues)}`);
 if (fallas.size === 0) {
-  console.log("VALIDACIÓN OK: 0 fallas en las 10 reglas.");
+  console.log("VALIDACIÓN OK: 0 fallas en las 12 reglas.");
 } else {
   console.log("FALLAS:");
   for (const [regla, casos] of fallas) console.log(`  ${regla}: ${casos.length} (ej. ${casos.slice(0, 5).join(", ")})`);

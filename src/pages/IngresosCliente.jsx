@@ -13,6 +13,7 @@ import ClasificacionIngresos from "../components/ingresos/ClasificacionIngresos.
 import FuentesVigentes from "../components/ingresos/FuentesVigentes.jsx";
 import Estabilidad from "../components/ingresos/Estabilidad.jsx";
 import DetalleIngresos from "../components/ingresos/DetalleIngresos.jsx";
+import IndiciosIngreso from "../components/ingresos/IndiciosIngreso.jsx";
 
 // "Fuentes de ingreso" — cuarta pestaña del cliente, con la misma gramática
 // que el reporte de Aval: arriba lo que decide (de qué vive, qué tan firme
@@ -119,7 +120,9 @@ export default function IngresosCliente() {
         <>
           {/* Orden pedido por el negocio (2026-09-26): de qué vive y cuánto
               se reporta; qué tan sostenido es; y recién después el porqué y
-              el desglose de las fuentes. */}
+              el desglose de las fuentes. Los indicios de ingreso mayor van
+              pegados al monto que matizan (2026-09-28). */}
+          <IndiciosIngreso f={f} />
           <Estabilidad f={f} laboral={perfil.laboral} />
 
           <div className="crediscope-ing-fila">

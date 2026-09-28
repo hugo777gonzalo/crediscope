@@ -7,6 +7,7 @@ import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
   ETIQUETA_EVIDENCIA,
+  ETIQUETA_INDICIO,
   formatMoneda,
 } from "../lib/fuentesIngresoConsolidado.js";
 
@@ -116,7 +117,7 @@ export default function FuentesIngreso() {
               Icono={FileWarning}
               etiqueta="Sin información actual en el IESS"
               valor={d.desvinculados}
-              detalle="No aparecen en el corte más reciente del IESS"
+              detalle="Aportaban y no aparecen en el corte más reciente del IESS (sin contar jubilados)"
             />
           </div>
 
@@ -201,6 +202,41 @@ export default function FuentesIngreso() {
               </table>
             </div>
           </div>
+
+          {/* Indicios de ingreso mayor (089, aprobado por el negocio el
+              2026-09-28): cuántos clientes tienen un dato que sostiene que
+              ganan más de lo que reportan, y cada barra abre quiénes son.
+              Los cuenta la base, sobre la columna indicios_ingreso. */}
+          {d.indicios ? (
+            <div className="crediscope-card">
+              <h3>Indicios de ingreso mayor</h3>
+              <p className="crediscope-muted" style={{ marginTop: 0 }}>
+                Clientes con un dato que muestra que sus ingresos superan lo que reportan al IESS. Sin un indicio así, lo reportado
+                es la mejor evidencia que hay.
+              </p>
+              <Barra
+                etiqueta="Con algún indicio"
+                n={d.indicios.conAlguno}
+                pct={d.total ? Math.round((100 * d.indicios.conAlguno) / d.total) : 0}
+                color="var(--warn)"
+                enlace="/fuentes/clientes?indicio=cualquiera"
+              />
+              {(d.indicios.porClave ?? []).map((i) => (
+                <Barra
+                  key={i.clave}
+                  etiqueta={ETIQUETA_INDICIO[i.clave] ?? i.clave}
+                  n={i.n}
+                  pct={i.pct}
+                  color="var(--brand)"
+                  enlace={`/fuentes/clientes?indicio=${i.clave}`}
+                />
+              ))}
+              <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
+                {d.indicios.soloRenta.toLocaleString("es-EC")} lo tienen sólo por el impuesto a la renta.
+                {d.indicios.sinCalcular ? ` ${d.indicios.sinCalcular.toLocaleString("es-EC")} perfiles todavía sin calcular.` : ""}
+              </p>
+            </div>
+          ) : null}
 
           <div className="crediscope-card">
             <h3>Clientes que necesitan respaldo ({d.requierenRespaldoTotal.toLocaleString("es-EC")})</h3>

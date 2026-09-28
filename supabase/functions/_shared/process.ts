@@ -17,6 +17,8 @@ import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, fechasDelRuc, rucActivo } from "./ruc.ts";
 import { esElPropioAfiliado, esSuPropioPatrono } from "./patrono.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
+import { demandasPorCategoria, esDemandaDeCobro, tipoDeDemandaLegible } from "./demandas.ts";
+import { categoriasDelitoGraveSeguridad } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 type AnyRecord = Record<string, unknown>;
@@ -193,72 +195,8 @@ function obj(multi: AnyRecord | null | undefined, recurso: string, campo: string
   return val && typeof val === "object" && !Array.isArray(val) ? (val as AnyRecord) : null;
 }
 
-// Unión deduplicada de las 3 listas de palabras clave del pedido de negocio.
-const PALABRAS_CLAVE_PROBLEMA_CREDITICIO = [
-  "COBRO DE PAGARÉ A LA ORDEN", "PAGARÉ", "PAGARE", "COBRO DE DINERO", "PAGO DE DINERO",
-  "COBRO DE CHEQUE", "CHEQUE", "CHEQUE PRESENTADO AL COBRO FUERA DE PLAZO",
-  "COBRO DE LETRA DE CAMBIO", "LETRA DE CAMBIO", "CONTRATO DE MUTUO", "PRÉSTAMO", "PRESTAMO",
-  "OBLIGACIONES", "OBLIGACIÓN", "OBLIGACIONES MONETARIAS", "FACTURAS O DOCUMENTOS", "DOCUMENTOS",
-  "COBRO DE FACTURAS", "CONCURSO DE ACREEDORES", "ACREEDOR", "EJECUCIÓN DE ACTA DE MEDIACIÓN",
-  "EJECUCIÓN DE ACTA DE TRANSACCIÓN", "TRANSACCIÓN", "ACTA DE MEDIACIÓN", "TÍTULO EJECUTIVO",
-  "EJECUCIÓN", "COBRO", "JUICIO EJECUTIVO", "PROCESO EJECUTIVO", "VÍA EJECUTIVA",
-  // "EJECUTIVO" a secas es como la Función Judicial rotula el juicio
-  // ejecutivo -- el cobro de un título: pagaré, letra, cheque -- ("EJECUTIVO",
-  // "EJECUTIVO ART. 413 C.P.C."). Hasta estructura-v8 sólo entraban las
-  // formas largas y 17 personas con juicio ejecutivo figuraban con demandas
-  // civiles, no de cobro (1715532469 entre ellas).
-  "EJECUTIVO",
-  // Decisión del negocio del 2026-09-28 (estructura-v10): también son
-  // cobro "DINERO" a secas (51 personas), la insolvencia (11) y la venta con
-  // reserva de dominio (8, y sus variantes de embargo, remate o aprehensión
-  // del bien).
-  "DINERO", "INSOLVENCIA", "RESERVA DE DOMINIO",
-  "PROCEDIMIENTO EJECUTIVO", "MANDAMIENTO DE EJECUCIÓN", "LIQUIDACIÓN", "APREMIO",
-  "INCUMPLIMIENTO", "MORA", "MOROSIDAD", "DEUDA", "OBLIGACIÓN VENCIDA", "OBLIGACIÓN EXIGIBLE",
-  "COBRO JUDICIAL", "RECUPERACIÓN DE CARTERA", "CARTERA VENCIDA", "TÍTULO VALOR", "FACTURA",
-  "FACTURA COMERCIAL", "FACTURA NEGOCIABLE", "MUTUO", "CONTRATO DE PRÉSTAMO",
-  "RECONOCIMIENTO DE DEUDA", "CONVENIO DE PAGO", "DOCUMENTO PRIVADO", "DOCUMENTO RECONOCIDO",
-  "GARANTÍA", "FIANZA", "AVAL", "HIPOTECA", "PRENDA",
-].map((s) => s.toUpperCase());
-
-// Sin tildes y en mayúsculas, para comparar palabras.
-function sinTildes(s: string): string {
-  return s.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-}
-
-// Hasta estructura-v7 se buscaban las palabras clave como SUBCADENAS, y
-// medido sobre la cartera el 2026-09-27 entraban como crediticias ~37
-// demandas que no lo son: "divorcio por mutuo consentimiento" (17, por
-// MUTUO), "daño moral" (11, MORAL contiene MORA), "ejecución por silencio
-// administrativo" (7, por EJECUCIÓN) y dos de pensión alimenticia (por
-// OBLIGACIÓN y ACTA DE MEDIACIÓN; una la citó el análisis de 1308725470
-// como "demanda crediticia"). Ahora se buscan palabras completas, y lo de
-// familia, daño moral y actos administrativos queda afuera aunque
-// contenga una palabra clave. "Incumplimiento de contrato" y "cobro de
-// honorarios" SÍ son crediticias (decisión del negocio).
-//
-// Con palabras completas los plurales dejaron de entrar ("FACTURAS",
-// "CHEQUES", "CONTRATOS PRENDARIOS": 16 demandas que sí son crediticias)
-// y se agregan explícitos -- no con una S opcional, que devolvía "PRENDAS
-// DE VESTIR". Sin tildes, "DEVOLUCIÓN DE GARANTÍA" empezaba a coincidir
-// con GARANTÍA; es devolver un depósito, no un crédito impago, y se
-// excluye.
-// "DECRETO EJECUTIVO" es un acto del Presidente, no un cobro: con EJECUTIVO
-// como palabra clave entraría si alguna vez se impugna uno. La confesión
-// judicial no es cobro aunque prepare uno (decisión del negocio del
-// 2026-09-28): se excluye explícita por si una variante trae "DINERO".
-const NO_ES_CREDITICIA = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b|\bDECRETO EJECUTIVO\b|\bCONFESION\b/;
-const PLURALES_CREDITICIOS = ["FACTURAS", "CHEQUES", "PRENDARIO", "PRENDARIOS", "PAGARES", "LETRAS DE CAMBIO"];
-const PATRONES_PROBLEMA_CREDITICIO = [...new Set([...PALABRAS_CLAVE_PROBLEMA_CREDITICIO, ...PLURALES_CREDITICIOS].map(sinTildes))].map(
-  (kw) => new RegExp(`(^|[^A-Z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Z0-9]|$)`)
-);
-
-function esDemandaProblemaCrediticio(delito: unknown): boolean {
-  if (!delito) return false;
-  const texto = sinTildes(String(delito));
-  if (NO_ES_CREDITICIA.test(texto)) return false;
-  return PATRONES_PROBLEMA_CREDITICIO.some((p) => p.test(texto));
-}
+// La regla de cobro vive en demandas.ts desde estructura-v11, junto con
+// las categorías de las demás demandas.
 
 // pn_supa/pn_supa/novadata (pensión alimenticia): el nombre completo
 // viene en 2 órdenes de palabras distintos según la fuente
@@ -363,53 +301,9 @@ function esClienteObligadoSupa(p: AnyRecord, nombreCliente: string | null): bool
   return false;
 }
 
-// Delitos de seguridad ciudadana (lavado de activos, narcotráfico/
-// tráfico de sustancias, trata de personas, tenencia/porte de armas,
-// extorsión, delincuencia organizada, asociación ilícita, asesinato/
-// homicidio intencional) — mismo tratamiento que las listas de
-// sanciones: control de bloqueo duro (ver controles-bloqueo.ts), no un
-// juicio del LLM, a pedido explícito del usuario (son "los principales
-// problemas de seguridad del Ecuador" hoy). Se revisan demandas
-// (funcion_judicial), denuncias y descripción de antecedentes penales
-// (fiscalía). Expuesto también como grupo propio del profile — ver
-// riesgoSeguridadCiudadana más abajo.
-//
-// *** SIN VALIDAR CONTRA CASOS REALES *** salvo lavado de activos,
-// extorsión, tenencia de armas, delincuencia organizada, asociación
-// ilícita y asesinato/homicidio — confirmados con casos reales
-// (cédulas 0704385103, 1204212029, 1309022935, 0927016063). Narco-
-// tráfico/tráfico de sustancias y trata de personas siguen siendo
-// terminología del COIP por conocimiento general — ajustar si aparece
-// un caso real que no se detecta.
-const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClave: string[]; excluir?: string[] }> = [
-  { categoria: "Lavado de activos", palabrasClave: ["LAVADO"] },
-  {
-    categoria: "Narcotráfico / tráfico de sustancias",
-    palabrasClave: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
-  },
-  { categoria: "Trata de personas", palabrasClave: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
-  { categoria: "Tenencia/porte de armas", palabrasClave: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
-  { categoria: "Extorsión", palabrasClave: ["EXTORSIÓN", "EXTORSION"] },
-  { categoria: "Delincuencia organizada", palabrasClave: ["DELINCUENCIA ORGANIZADA"] },
-  { categoria: "Asociación ilícita", palabrasClave: ["ASOCIACIÓN ILÍCITA", "ASOCIACION ILICITA"] },
-  // HOMICIDIO a secas también matchea "homicidio culposo"/"preterin-
-  // tencional" (COIP Art. 145-147: negligente, ej. accidente de
-  // tránsito con muerte) — severidad y perfil de riesgo muy distintos
-  // a un homicidio intencional. Se excluyen explícitamente.
-  {
-    categoria: "Asesinato / homicidio intencional",
-    palabrasClave: ["ASESINATO", "HOMICIDIO"],
-    excluir: ["CULPOSO", "PRETERINTENCIONAL"],
-  },
-].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()), excluir: c.excluir?.map((k) => k.toUpperCase()) }));
-
-function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
-  if (!texto) return [];
-  const up = String(texto).toUpperCase();
-  return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter(
-    (c) => c.palabrasClave.some((kw) => up.includes(kw)) && !(c.excluir ?? []).some((kw) => up.includes(kw))
-  ).map((c) => c.categoria);
-}
+// Los delitos de seguridad ciudadana (control de bloqueo duro) viven en
+// delitos-seguridad.ts, la misma lista que usa controles-bloqueo.ts. Hasta
+// estructura-v10 había una copia acá y otra allá.
 
 // Versión de esta capa de procesamiento — se guarda en
 // client_profiles.structure_version para saber con qué lógica se armó
@@ -484,7 +378,13 @@ function textoDe(v: unknown): string | null {
 // (fuerzas-armadas-policia.ts); "EJECUTIVO" es juicio de cobro.
 // estructura-v10 (2026-09-28): también son cobro "DINERO", la insolvencia y
 // la reserva de dominio; la confesión judicial no (decisión del negocio).
-export const PROCESS_VERSION = "estructura-v10"; // ver docs/estructura-estandarizada.md
+// estructura-v11 (2026-09-28): las demandas civiles por categoría
+// (riesgoJudicialCivil.demandasPorCategoria) y los tipos legibles, sin
+// artículos ni tildes rotas (demandas.ts, aprobado por el negocio). Y
+// "ESTUPEFACIENTES" a secas es narcotráfico para el bloqueo por seguridad
+// ciudadana (decisión del negocio), con la lista de delitos unificada en
+// delitos-seguridad.ts.
+export const PROCESS_VERSION = "estructura-v11"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1280,9 +1180,12 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el tipo
   // de caso real vive en demanda.delito.
   const delitoDe = (d: AnyRecord): string | undefined => (d.demanda as AnyRecord | undefined)?.delito as string | undefined;
-  const demandasCrediticias = demandas.filter((d) => esDemandaProblemaCrediticio(delitoDe(d)));
-  const demandasCivilesResto = demandas.filter((d) => !esDemandaProblemaCrediticio(delitoDe(d)));
-  const tiposUnicos = (ds: AnyRecord[]) => [...new Set(ds.map(delitoDe).filter((x): x is string => Boolean(x)))];
+  const demandasCrediticias = demandas.filter((d) => esDemandaDeCobro(delitoDe(d)));
+  const demandasCivilesResto = demandas.filter((d) => !esDemandaDeCobro(delitoDe(d)));
+  // Los tipos, legibles (demandas.ts, desde estructura-v11): sin el número
+  // de artículo ni las tildes rotas que manda la fuente.
+  const tiposUnicos = (ds: AnyRecord[]) =>
+    [...new Set(ds.map((d) => tipoDeDemandaLegible(delitoDe(d))).filter((x): x is string => Boolean(x)))];
   const riesgoJudicialCrediticio: StandardClientProfile["riesgoJudicialCrediticio"] = {
     numeroDemandasComoDemandado: demandasCrediticias.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias),
@@ -1290,6 +1193,10 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const riesgoJudicialCivil: StandardClientProfile["riesgoJudicialCivil"] = {
     numeroDemandasComoDemandado: demandasCivilesResto.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
+    // Desde estructura-v11: cuántas hay de cada categoría (demandas.ts). Es
+    // lo que distingue un juicio de una investigación penal archivada o de
+    // un trámite, que hasta v10 contaban igual como "demanda civil".
+    demandasPorCategoria: demandasPorCategoria(demandasCivilesResto, delitoDe),
     numeroDemandasComoOfendido: demandasOfendido.length,
     // Distingue "no tiene pensión alimenticia" de "tiene y está al
     // día": con solo pensionAlimenticiaEnMora=false los dos casos se

@@ -25,7 +25,7 @@
 // hallazgo que no sea ese tiene que salir idéntico al guardado; si no, la
 // fila entera no se toca.
 //
-// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
+// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -33,6 +33,10 @@ import { pathToFileURL } from "node:url";
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
 const BLOQUEO = process.argv.includes("--bloqueo");
+// --forzar: rearma también los que ya están en la versión actual. Para una
+// corrección dentro de la misma versión (estructura-v11: la limpieza de los
+// tipos de demanda no veía un artículo entre paréntesis).
+const FORZAR = process.argv.includes("--forzar");
 const GRUPOS = (process.argv.find((a) => a.startsWith("--grupos="))?.slice(9) ?? "").split(",").filter(Boolean);
 const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10) ?? "").split(",").filter(Boolean);
 const CARPETA = path.join(RAIZ, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
@@ -129,7 +133,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
     const fila = porId.get(perfilId);
     const guardado = fila?.standard_profile;
     if (!guardado) continue;
-    if (fila.structure_version === PROCESS_VERSION) { yaEnVersion++; continue; }
+    if (fila.structure_version === PROCESS_VERSION && !FORZAR) { yaEnVersion++; continue; }
     const { cedula, capturadoEl, raw } = JSON.parse(fs.readFileSync(archivo, "utf8"));
     const f = guardado.fuentesIngreso;
     const corte = f?.corteIessUsado ? (f.corteDesactualizado ? mesMenos(f.corteIessUsado) : f.corteIessUsado) : undefined;

@@ -14,6 +14,7 @@ export {
   ETIQUETA_ESTADO,
   ETIQUETA_EVIDENCIA,
   ETIQUETA_SENAL,
+  ETIQUETA_INDICIO,
   DOCUMENTOS_DE_CONFIRMACION,
   quienDeclara,
 } from "../../supabase/functions/_shared/nombres-ingresos.ts";

@@ -453,9 +453,10 @@ export interface StandardClientProfile {
   // Demandas de cobro/pagarés/letras de cambio/ejecuciones — señal
   // fuerte de comportamiento de pago (separado de riesgoJudicialCivil a
   // pedido del usuario; antes era el booleano demandaProblemaCrediticio
-  // dentro de ese grupo). Ver PALABRAS_CLAVE_PROBLEMA_CREDITICIO en process.ts.
+  // dentro de ese grupo). La regla vive en demandas.ts (esDemandaDeCobro).
   riesgoJudicialCrediticio: {
     numeroDemandasComoDemandado: number;
+    // Legibles desde estructura-v11: sin número de artículo ni tildes rotas.
     tiposDemandasComoDemandado: string[];
   };
 
@@ -464,6 +465,10 @@ export interface StandardClientProfile {
   riesgoJudicialCivil: {
     numeroDemandasComoDemandado: number;
     tiposDemandasComoDemandado: string[]; // demanda.delito, NO tipoDemanda.descripcion (ver nota en process.ts)
+    // Desde estructura-v11: cuántas hay de cada categoría del catálogo de
+    // demandas.ts, con sus tipos legibles. Distingue un juicio de una
+    // investigación penal archivada, de un trámite o de tránsito.
+    demandasPorCategoria?: Array<{ categoria: string; cantidad: number; tipos: string[] }>;
     numeroDemandasComoOfendido: number;
     // Solo cuenta la deuda/mora del registro pn_supa donde el CLIENTE es
     // el obligado a pagar (ver esClienteObligadoSupa en process.ts) — un

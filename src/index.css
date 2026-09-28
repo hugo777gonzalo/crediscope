@@ -2588,20 +2588,34 @@ a {
   color: var(--text-muted);
 }
 
-/* Indicios de ingreso mayor: sólo aparece cuando hay un dato que lo
-   sostiene, así que se destaca. */
-.crediscope-ing-indicios {
-  margin-top: 10px;
-}
-
-.crediscope-ing-indicios > summary {
+/* Indicios de ingreso mayor. Desde el 2026-09-28 tienen su propia tarjeta
+   (IndiciosIngreso.jsx); en el encabezado queda sólo el aviso, junto al
+   monto que matizan. Aparecen sólo cuando hay un dato que los sostiene, así
+   que se destacan. */
+.crediscope-ing-aviso-indicios {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 10px 0 0;
   color: var(--warn);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.crediscope-ing-indicios .crediscope-ing-desplegado {
-  background: #fef9c3;
+.crediscope-ing-indicio + .crediscope-ing-indicio {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
-.crediscope-ing-indicios strong {
-  display: block;
+.crediscope-ing-indicio-titulo {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.crediscope-ing-indicio-conclusion {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }

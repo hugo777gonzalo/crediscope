@@ -1163,7 +1163,14 @@ export function analizarFuentesIngreso(
 export interface IndicioIngresoMayor {
   clave: "sueldos_a_terceros" | "obligado_a_contabilidad" | "impuesto_a_la_renta";
   titulo: string;
+  // La frase que lee el modelo, tal cual (perfil-del-modelo.ts). La
+  // pantalla la muestra en "Así lo lee el análisis con IA".
   detalle: string;
+  // Para la tarjeta de la pestaña Fuentes de ingreso (desde 2026-09-28,
+  // aprobado por el negocio): los datos en que se apoya y la conclusión en
+  // una línea. El modelo no los recibe: ya están en `detalle`.
+  datos: Array<{ etiqueta: string; valor: string }>;
+  conclusion: string;
 }
 
 // Fracción básica exenta del impuesto a la renta de personas naturales, por
@@ -1209,6 +1216,12 @@ export function indiciosDeIngresoMayor(f: Record<string, unknown> | null | undef
         declarado > 0
           ? `Paga una nómina de ${DOLARES.format(nomina.valor)} al mes${quienes}; para sí declara ${DOLARES.format(declarado)} al IESS. Sus ingresos alcanzan, al menos, para esa nómina.`
           : `Paga una nómina de ${DOLARES.format(nomina.valor)} al mes${quienes} y no declara un ingreso propio al IESS. Sus ingresos alcanzan, al menos, para esa nómina.`,
+      datos: [
+        { etiqueta: "Nómina mensual", valor: DOLARES.format(nomina.valor) },
+        ...(nomina.cantidad ? [{ etiqueta: "Empleados", valor: String(nomina.cantidad) }] : []),
+        { etiqueta: "Declara para sí al IESS", valor: declarado > 0 ? `${DOLARES.format(declarado)} al mes` : "Nada" },
+      ],
+      conclusion: "Sus ingresos alcanzan, al menos, para pagar esa nómina.",
     });
   }
   if (senales.some((s) => s.senal === "obligado a llevar contabilidad")) {
@@ -1216,6 +1229,8 @@ export function indiciosDeIngresoMayor(f: Record<string, unknown> | null | undef
       clave: "obligado_a_contabilidad",
       titulo: "Obligado a llevar contabilidad",
       detalle: "El SRI se lo exige a quien supera ciertos montos de ventas, costos o capital: su actividad es mayor que la de un contribuyente común.",
+      datos: [{ etiqueta: "Contabilidad", valor: "Obligatoria según el SRI" }],
+      conclusion: "Su actividad supera los montos de ventas, costos o capital de un contribuyente común.",
     });
   }
   // No depende de la versión: la renta por año está en detalle desde v4,
@@ -1264,7 +1279,20 @@ function indicioPorImpuestoALaRenta(f: Record<string, unknown>, declaradoMensual
       : declaradoAnual <= fraccionBasica
         ? `${suImpuesto}. Ese impuesto sólo se genera sobre los ingresos del año que pasan de ${DOLARES.format(fraccionBasica)}, y para sí declara ${DOLARES.format(declaradoMensual)} al mes al IESS (${DOLARES.format(declaradoAnual)} al año): sus ingresos de ${anio} fueron mayores que lo que declara.`
         : `${suImpuesto}, más de lo que genera un ingreso de ${DOLARES.format(declaradoMensual)} al mes, que es lo que declara al IESS: sus ingresos de ${anio} fueron mayores que lo que declara.`;
-  return { clave: "impuesto_a_la_renta", titulo: "Su impuesto a la renta supera lo que declara", detalle: detalleTexto };
+  return {
+    clave: "impuesto_a_la_renta",
+    titulo: "Su impuesto a la renta supera lo que declara",
+    detalle: detalleTexto,
+    datos: [
+      { etiqueta: `Impuesto a la renta ${anio}`, valor: DOLARES.format(impuesto) },
+      { etiqueta: `Exento hasta (${anio})`, valor: `${DOLARES.format(fraccionBasica)} al año` },
+      { etiqueta: "Declara al IESS", valor: declaradoMensual > 0 ? `${DOLARES.format(declaradoAnual)} al año` : "Nada" },
+    ],
+    conclusion:
+      declaradoMensual > 0
+        ? `Con lo que declara no llegaría a ese impuesto: sus ingresos de ${anio} fueron mayores.`
+        : `Sus ingresos de ${anio} pasaron de ${DOLARES.format(fraccionBasica)}, el monto exento de ese año.`,
+  };
 }
 
 // ---- Tamaño del negocio ----

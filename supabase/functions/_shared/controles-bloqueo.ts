@@ -24,6 +24,7 @@
 
 import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaNovadata } from "./types.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
+import { categoriasDelitoGraveSeguridad } from "./delitos-seguridad.ts";
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -125,55 +126,16 @@ export function evaluarControlesBloqueo(raw: RespuestaNovadata, requestedCedula:
     });
   }
 
-  // Delitos de seguridad ciudadana (lavado de activos, narcotráfico/
-  // tráfico de sustancias, trata de personas, tenencia/porte de armas,
-  // extorsión, delincuencia organizada, asociación ilícita, asesinato/
-  // homicidio intencional) — mismo trato que las listas de sanciones,
-  // decisión explícita del usuario: control de bloqueo duro. Se revisan
-  // demandas (funcion_judicial), denuncias y descripción de antecedentes
-  // penales (fiscalía). Expuesto también como grupo propio del profile
-  // — ver riesgoSeguridadCiudadana en process.ts.
-  //
-  // *** SIN VALIDAR CONTRA CASOS REALES *** salvo lavado de activos,
-  // extorsión, tenencia de armas, delincuencia organizada, asociación
-  // ilícita y asesinato/homicidio — confirmados con casos reales
-  // (cédulas 0704385103, 1204212029, 1309022935, 0927016063). Narco-
-  // tráfico/tráfico de sustancias y trata de personas siguen siendo
-  // terminología del COIP por conocimiento general — ajustar si aparece
-  // un caso real que no se detecta.
+  // Delitos de seguridad ciudadana: control de bloqueo duro, decisión
+  // explícita del usuario. La lista de delitos vive en
+  // delitos-seguridad.ts, la misma que usa el perfil (estructura-v11: hasta
+  // v10 había una copia acá y otra en process.ts).
   const demandas = (raw.demandas?.data as Record<string, unknown> | undefined)?.demandas as Record<string, unknown>[] | undefined;
   const denuncias = (raw.denuncias?.data as Record<string, unknown> | undefined)?.denuncias as Record<string, unknown>[] | undefined;
   const antecedentesDescripcion = (raw.antecedentesPenales?.data as Record<string, unknown> | undefined)?.antecedentes as
     | Record<string, unknown>
     | undefined;
-  const CATEGORIAS_DELITO_GRAVE_SEGURIDAD: Array<{ categoria: string; palabrasClave: string[]; excluir?: string[] }> = [
-    { categoria: "Lavado de activos", palabrasClave: ["LAVADO"] },
-    {
-      categoria: "Narcotráfico / tráfico de sustancias",
-      palabrasClave: ["TRÁFICO ILÍCITO", "TRAFICO ILICITO", "SUSTANCIAS ESTUPEFACIENTES", "SUSTANCIAS CATALOGADAS", "NARCOTRÁFICO", "NARCOTRAFICO", "MICROTRÁFICO", "MICROTRAFICO", "MICRO TRÁFICO", "MICRO TRAFICO"],
-    },
-    { categoria: "Trata de personas", palabrasClave: ["TRATA DE PERSONAS", "TRATA DE BLANCAS"] },
-    { categoria: "Tenencia/porte de armas", palabrasClave: ["TENENCIA Y PORTE DE ARMAS", "TENENCIA DE ARMAS", "PORTE DE ARMAS", "TRÁFICO DE ARMAS", "TRAFICO DE ARMAS"] },
-    { categoria: "Extorsión", palabrasClave: ["EXTORSIÓN", "EXTORSION"] },
-    { categoria: "Delincuencia organizada", palabrasClave: ["DELINCUENCIA ORGANIZADA"] },
-    { categoria: "Asociación ilícita", palabrasClave: ["ASOCIACIÓN ILÍCITA", "ASOCIACION ILICITA"] },
-    // HOMICIDIO a secas también matchea "homicidio culposo"/"preterin-
-    // tencional" (COIP Art. 145-147: negligente, ej. accidente de
-    // tránsito con muerte) — severidad y perfil de riesgo muy distintos
-    // a un homicidio intencional. Se excluyen explícitamente.
-    {
-      categoria: "Asesinato / homicidio intencional",
-      palabrasClave: ["ASESINATO", "HOMICIDIO"],
-      excluir: ["CULPOSO", "PRETERINTENCIONAL"],
-    },
-  ].map((c) => ({ categoria: c.categoria, palabrasClave: c.palabrasClave.map((k) => k.toUpperCase()), excluir: c.excluir?.map((k) => k.toUpperCase()) }));
-  const categoriasEnTexto = (texto: unknown): string[] => {
-    if (!texto) return [];
-    const up = String(texto).toUpperCase();
-    return CATEGORIAS_DELITO_GRAVE_SEGURIDAD.filter(
-      (c) => c.palabrasClave.some((kw) => up.includes(kw)) && !(c.excluir ?? []).some((kw) => up.includes(kw))
-    ).map((c) => c.categoria);
-  };
+  const categoriasEnTexto = categoriasDelitoGraveSeguridad;
   // Las denuncias cuentan sólo si la persona es la ACUSADA (sospechosa,
   // procesada o aprehendida, con su cédula): ver denuncias.ts. Hasta
   // estructura-v8 entraban todas, y 42 de las 59 personas bloqueadas por

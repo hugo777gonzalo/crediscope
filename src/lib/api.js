@@ -759,13 +759,18 @@ export const CLIENTES_POR_PAGINA = 50;
 // último perfil de cada cliente. Acá solo se traen los perfiles
 // completos de la página que se está mirando -- cincuenta, no
 // trescientos.
-export async function getPerfilesConFuentesIngreso({ segmento = null, estado = null, pagina = 0, porPagina = CLIENTES_POR_PAGINA } = {}) {
+// `indicio` (089): una clave de indicio de ingreso mayor, o "cualquiera"
+// para los que tienen al menos uno. Se filtra en la base, sobre la columna
+// indicios_ingreso de la bandeja.
+export async function getPerfilesConFuentesIngreso({ segmento = null, estado = null, indicio = null, pagina = 0, porPagina = CLIENTES_POR_PAGINA } = {}) {
   let q = supabase
     .from("bandeja_solicitudes")
     .select("perfil_id, client_id, cedula, perfil_at", { count: "exact" })
     .not("fuente_segmento", "is", null);
   if (segmento) q = q.eq("fuente_segmento", segmento);
   if (estado) q = q.eq("fuente_estado", estado);
+  if (indicio === "cualquiera") q = q.not("indicios_ingreso", "is", null).neq("indicios_ingreso", "{}");
+  else if (indicio) q = q.contains("indicios_ingreso", [indicio]);
 
   const desde = pagina * porPagina;
   const { data: cabeceras, error, count } = await q

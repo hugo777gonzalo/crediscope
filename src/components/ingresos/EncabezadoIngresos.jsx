@@ -102,23 +102,15 @@ export default function EncabezadoIngresos({ cedula, perfil, corteVigente, consu
               {monto ? formatearValorAval(monto, "dinero") : "Sin monto reportado"}
             </strong>
             <p>{monto ? declaradoPor(perfil) : "Ninguna fuente pública trae un monto para esta persona."}</p>
+            {/* El detalle de cada indicio vive en su propia tarjeta, debajo
+                (IndiciosIngreso.jsx). Acá sólo se avisa, al lado del monto,
+                que lo reportado no es todo. */}
             {indicios.length > 0 ? (
-              <details className="crediscope-ing-desplegable crediscope-ing-indicios">
-                <summary>
-                  <TrendingUp size={15} aria-hidden="true" />
-                  {indicios.length === 1 ? "Indicio de ingreso mayor" : `Indicios de ingreso mayor (${indicios.length})`}
-                </summary>
-                <div className="crediscope-ing-desplegado">
-                  <ul>
-                    {indicios.map((i) => (
-                      <li key={i.clave}>
-                        <strong>{i.titulo}</strong>
-                        {i.detalle}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </details>
+              <p className="crediscope-ing-aviso-indicios">
+                <TrendingUp size={15} aria-hidden="true" />
+                {indicios.length === 1 ? "Hay un indicio de ingreso mayor" : `Hay ${indicios.length} indicios de ingreso mayor`}: ver
+                abajo.
+              </p>
             ) : null}
           </div>
         </>

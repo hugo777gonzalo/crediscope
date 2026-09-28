@@ -34,6 +34,10 @@
 // consultaron, en palabras del negocio, sin nombres de fuentes (ver
 // disponibilidadPorTema y docs/declaracion-de-disponibilidad.md).
 //
+// Desde marco-v26, las demandas civiles llegan contadas por categoría
+// (demandas.ts) y los tipos de cobro, legibles: ni artículos del COIP ni
+// tildes rotas.
+//
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
 // scoring_rules_versions.
@@ -41,6 +45,7 @@
 import { clasificarPerfilLaboral } from "./perfil-laboral.ts";
 import { dejoDeAparecerEnElIess, esIngresoMinimoSbu, indiciosDeIngresoMayor, tamanoDelNegocio } from "./fuentes-ingreso.ts";
 import { ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, quienDeclara } from "./nombres-ingresos.ts";
+import { tipoDeDemandaLegible } from "./demandas.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -219,6 +224,10 @@ export function ingresosDelPerfilDelModelo(perfil: AnyRecord | null | undefined)
 }
 
 const numero = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+// Idempotente: un tipo que ya viene legible (estructura-v11) queda igual.
+const tiposLegibles = (tipos: unknown[]): string[] =>
+  [...new Set(tipos.map((t) => tipoDeDemandaLegible(t)).filter((t): t is string => Boolean(t)))];
 const aCentavos = (n: number): number => Math.round(n * 100) / 100;
 
 // La deuda de la persona sumada en todo el sistema (desde marco-v24).
@@ -285,7 +294,28 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
     delete bancario.numeroCreditosFormales;
   }
   copia.endeudamiento = endeudamientoDelPerfilDelModelo(copia);
-  // El bloque nuevo también se puede apagar campo por campo.
+  // Las demandas (desde marco-v26): de las civiles, cuántas hay de cada
+  // categoría (demandas.ts) en lugar de 615 textos libres con artículos del
+  // COIP, que el modelo repetía tal cual y contaba todos como "demandas
+  // civiles" -- también las investigaciones archivadas y los trámites. Los
+  // tipos de cobro siguen, legibles. Un perfil anterior a estructura-v11 no
+  // trae categorías: se le limpian los tipos.
+  const civil = copia.riesgoJudicialCivil as AnyRecord | null | undefined;
+  if (civil && typeof civil === "object") {
+    if (Array.isArray(civil.demandasPorCategoria)) {
+      civil.demandasPorCategoria = Object.fromEntries(
+        (civil.demandasPorCategoria as AnyRecord[]).map((g) => [String(g.categoria), g.cantidad]),
+      );
+      delete civil.tiposDemandasComoDemandado;
+    } else if (Array.isArray(civil.tiposDemandasComoDemandado)) {
+      civil.tiposDemandasComoDemandado = tiposLegibles(civil.tiposDemandasComoDemandado);
+    }
+  }
+  const cobro = copia.riesgoJudicialCrediticio as AnyRecord | null | undefined;
+  if (cobro && typeof cobro === "object" && Array.isArray(cobro.tiposDemandasComoDemandado)) {
+    cobro.tiposDemandasComoDemandado = tiposLegibles(cobro.tiposDemandasComoDemandado);
+  }
+  // Los bloques nuevos también se pueden apagar campo por campo.
   ocultar(copia);
   // La disponibilidad va PRIMERO (el modelo tiene que leerla antes que los
   // datos) y reemplaza a metaConsulta, que nombraba fuentes.

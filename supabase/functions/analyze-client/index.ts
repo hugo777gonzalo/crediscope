@@ -23,7 +23,7 @@ import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import type { ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
 import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
-import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
+import { CORTE_IESS_CONOCIDO, indiciosDeIngresoMayor } from "../_shared/fuentes-ingreso.ts";
 import { clasificarPerfilLaboral } from "../_shared/perfil-laboral.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-de-la-consulta.ts";
@@ -188,6 +188,9 @@ Deno.serve(async (req) => {
           fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
           // Para contar en el panorama; no va dentro del perfil (ver migración 085).
           perfil_laboral: clasificarPerfilLaboral(profile as unknown as Record<string, unknown>)?.clave ?? null,
+          // Los indicios de ingreso mayor, con la misma función que la pantalla y
+          // el modelo (089): el Panorama los cuenta y la lista los filtra.
+          indicios_ingreso: indiciosDeIngresoMayor(profile.fuentesIngreso as unknown as Record<string, unknown>).map((i) => i.clave),
           duracion_fuentes_ms: built.duracionFuentesMs,
           control_bloqueo: controlBloqueo,
           // Sin esto el perfil quedaba con ejes_ok = 0 --el valor por

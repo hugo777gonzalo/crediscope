@@ -5,6 +5,7 @@ import { getPerfilesConFuentesIngreso, getResumenCarteraIngresos, CLIENTES_POR_P
 import {
   ETIQUETA_SEGMENTO,
   ETIQUETA_ESTADO,
+  ETIQUETA_INDICIO,
   DOCUMENTOS_DE_CONFIRMACION,
   quienDeclara,
   formatMoneda,
@@ -31,16 +32,19 @@ export default function FuentesClientes() {
 
   const segmentoFiltro = params.get("segmento") ?? "";
   const estadoFiltro = params.get("estado") ?? "";
+  // El Panorama enlaza acá con ?indicio= (089): quiénes tienen cada indicio
+  // de ingreso mayor, o "cualquiera" para los que tienen al menos uno.
+  const indicioFiltro = params.get("indicio") ?? "";
   const pagina = Number(params.get("pagina") ?? 0);
 
   useEffect(() => {
     // El filtrado, la deduplicación por cliente y el conteo los hace la
     // base. Acá llega la página que se está mirando y el total real --
     // no un recorte silencioso de 300 filas, que es lo que había.
-    getPerfilesConFuentesIngreso({ segmento: segmentoFiltro || null, estado: estadoFiltro || null, pagina })
+    getPerfilesConFuentesIngreso({ segmento: segmentoFiltro || null, estado: estadoFiltro || null, indicio: indicioFiltro || null, pagina })
       .then(setDatos)
       .catch((err) => setError(err.message));
-  }, [segmentoFiltro, estadoFiltro, pagina]);
+  }, [segmentoFiltro, estadoFiltro, indicioFiltro, pagina]);
 
   const filas = useMemo(() => {
     if (!datos) return [];
@@ -92,6 +96,9 @@ export default function FuentesClientes() {
               814" es la corrección. */}
           {datos ? `${datos.total.toLocaleString("es-EC")} cliente(s)` : "Cargando..."}
           {segmentoFiltro ? ` · ${ETIQUETA_SEGMENTO[segmentoFiltro] ?? segmentoFiltro}` : ""}
+          {indicioFiltro
+            ? ` · ${indicioFiltro === "cualquiera" ? "con algún indicio de ingreso mayor" : (ETIQUETA_INDICIO[indicioFiltro] ?? indicioFiltro)}`
+            : ""}
         </p>
       </div>
 
@@ -113,6 +120,18 @@ export default function FuentesClientes() {
             <select id="f-estado" className="crediscope-input" value={estadoFiltro} onChange={(e) => cambiar("estado", e.target.value)}>
               <option value="">Todos</option>
               {Object.entries(ETIQUETA_ESTADO).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="crediscope-descarga-campo" style={{ minWidth: 260 }}>
+            <label htmlFor="f-indicio">Indicio de ingreso mayor</label>
+            <select id="f-indicio" className="crediscope-input" value={indicioFiltro} onChange={(e) => cambiar("indicio", e.target.value)}>
+              <option value="">Todos</option>
+              <option value="cualquiera">Con algún indicio</option>
+              {Object.entries(ETIQUETA_INDICIO).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v}
                 </option>

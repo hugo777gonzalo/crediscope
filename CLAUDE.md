@@ -361,7 +361,24 @@ Cada una de estas salió de un error real. No revivirlas.
 - **Parámetros que cambian cada año:** el SBU (`SBU_POR_ANIO`) y la
   fracción básica exenta del impuesto a la renta (`FRACCION_BASICA_RENTA`),
   los dos en `fuentes-ingreso.ts`. Un año que falta en la tabla de renta
-  no da indicio; hay que agregarlo cuando el SRI la publique.
+  no da indicio; hay que agregarlo cuando el SRI la publique, y después
+  correr `scripts/calcular-indicios-ingreso.mjs`.
+- **Los indicios de ingreso mayor viven también en una columna**
+  (`client_profiles.indicios_ingreso`, 089), calculada con
+  `indiciosDeIngresoMayor()` al guardar el perfil, como `perfil_laboral`.
+  Existe para que el Panorama los cuente en la base y la lista los filtre.
+  Si cambia la regla de un indicio, hay que correr
+  `scripts/calcular-indicios-ingreso.mjs` o la columna queda vieja.
+- **Las demandas se leen por categoría** (`_shared/demandas.ts`,
+  estructura-v11). El texto de la Función Judicial es libre: 615 variantes
+  en 4.602 demandas, con artículos del COIP, tildes rotas ("TR��NSITO") y a
+  veces espacios dobles. Toda comparación normaliza las tres cosas antes
+  de buscar palabras. Una investigación archivada o un trámite no es una
+  demanda: tienen su categoría y no penalizan.
+- **La lista de delitos de seguridad ciudadana es una sola**
+  (`_shared/delitos-seguridad.ts`). Hasta estructura-v10 estaba copiada en
+  el perfil y en el bloqueo; agregar una palabra en una sola habría dejado
+  al perfil diciendo una cosa y al bloqueo otra.
 - **Aval es dos órdenes de magnitud más rápido que Novadata.** Una
   consulta a Aval tarda 890 ms de mediana (p95 1,3 s) contra los 41 s de
   Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por

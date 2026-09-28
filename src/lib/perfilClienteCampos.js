@@ -58,6 +58,13 @@ export function formatValor(valor, tipo) {
       return humanizarTexto(String(valor));
     case "meses":
       return formatMeses(valor);
+    // Las demandas por categoría (estructura-v11, _shared/demandas.ts):
+    // "Familia: 2 (Alimentos, Divorcio por causal); Tránsito: 1 (...)". Los
+    // tipos ya vienen legibles, sin artículos ni tildes rotas.
+    case "categorias":
+      return valor
+        .map((g) => `${g.categoria}: ${g.cantidad}${g.tipos?.length ? ` (${g.tipos.join(", ")})` : ""}`)
+        .join("; ");
     case "estado_actividad":
       return ETIQUETAS_ESTADO_ACTIVIDAD[valor] ?? valor;
     case "tipo_cese_ruc":
@@ -84,7 +91,7 @@ export function valorVisible(profile, campo, tipo) {
   const valor = get(profile, campo);
   if (valor === null || valor === undefined) return null;
   if (tipo === "booleano_si_true") return valor === true ? true : null;
-  if (tipo === "lista" || tipo === "empleos") return Array.isArray(valor) && valor.length > 0 ? valor : null;
+  if (tipo === "lista" || tipo === "empleos" || tipo === "categorias") return Array.isArray(valor) && valor.length > 0 ? valor : null;
   if ((tipo === "numero" || tipo === "moneda" || tipo === "meses") && valor === 0) return null;
   if (tipo === "texto" && valor === "") return null;
   return valor;
@@ -269,7 +276,9 @@ export const GRUPOS_CONFIG = {
       (p.riesgoJudicialCivil?.deudaPensionAlimenticia ?? 0) > 0,
     campos: [
       ["numeroDemandasComoDemandado", "Demandas como demandado", "numero"],
-      ["tiposDemandasComoDemandado", "Tipos", "lista"],
+      // Desde estructura-v11 los tipos van dentro de su categoría: una
+      // investigación archivada o un trámite no se leen como un juicio.
+      ["demandasPorCategoria", "Por categoría", "categorias"],
       ["numeroDemandasComoOfendido", "Demandas como ofendido", "numero"],
       ["numeroPensionesAlimenticias", "Pensiones alimenticias a su cargo", "numero"],
       ["numeroPensionesVigentes", "Pensiones con pago mensual", "numero"],

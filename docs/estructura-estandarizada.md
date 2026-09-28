@@ -563,6 +563,36 @@ interface StandardClientProfile {
 > Recalculados los 2.565 perfiles reales (`recalcular-grupos.mjs
 > --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil`).
 
+> **estructura-v11 (2026-09-28)** — Aprobado por el negocio.
+> - **`riesgoJudicialCivil.demandasPorCategoria`:** cada demanda civil cae
+>   en una categoría de un catálogo cerrado (`_shared/demandas.ts`):
+>   familia, laboral, tránsito, investigación penal cerrada sin cargos,
+>   trámite (no es una demanda), delito contra el patrimonio, otro delito o
+>   contravención, propiedad e inmuebles, constitucional o administrativa,
+>   daños y perjuicios, y otras. Cada una trae su cantidad y sus tipos.
+> - **Por qué:** el texto libre tiene 615 variantes en 4.602 demandas, y
+>   el conteo de "demandas civiles" mezclaba juicios con 300
+>   investigaciones archivadas y 251 trámites.
+> - **Tipos legibles** (los dos grupos judiciales):
+>   - sin el número de artículo del COIP ni "ART.", "INC.", "NUM."
+>     (también entre paréntesis);
+>   - con las tildes rotas reparadas (Novadata manda "TR��NSITO");
+>   - sin los espacios dobles que a veces trae la fuente, que impedían
+>     coincidir.
+> - **La regla de cobro** se mudó a `demandas.ts` (`esDemandaDeCobro`).
+> - **"ESTUPEFACIENTES" es narcotráfico** para el bloqueo (decisión del
+>   negocio). La lista de delitos de seguridad ciudadana queda en
+>   `_shared/delitos-seguridad.ts`: estaba copiada en `process.ts` y en
+>   `controles-bloqueo.ts`. Se compara sin tildes.
+> - **Efecto:** 4 personas pasan a quedar bloqueadas por estupefacientes
+>   (74 en total) y nadie se desbloqueó. "Otras" queda en 298 de 3.562
+>   demandas civiles.
+>
+> Recalculados los 2.565 perfiles reales con
+> `recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`.
+> Dos correcciones de la limpieza, dentro de la misma versión, se
+> reescribieron con `--forzar`.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

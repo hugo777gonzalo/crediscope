@@ -29,7 +29,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { estadoPorFuente, cuantasFuentesContestaron, elPerfilSirve, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
-import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
+import { CORTE_IESS_CONOCIDO, indiciosDeIngresoMayor } from "../_shared/fuentes-ingreso.ts";
 import { clasificarPerfilLaboral } from "../_shared/perfil-laboral.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
@@ -189,6 +189,9 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
         fuente_piso_ingreso: profile.fuentesIngreso?.pisoIngresoMensualReportado ?? null,
         // Para contar en el panorama; no va dentro del perfil (ver migración 085).
         perfil_laboral: clasificarPerfilLaboral(profile as unknown as Record<string, unknown>)?.clave ?? null,
+        // Los indicios de ingreso mayor, con la misma función que la pantalla y
+        // el modelo (089): el Panorama los cuenta y la lista los filtra.
+        indicios_ingreso: indiciosDeIngresoMayor(profile.fuentesIngreso as unknown as Record<string, unknown>).map((i) => i.clave),
         duracion_fuentes_ms: duracionFuentesMs,
         control_bloqueo: controlBloqueo,
 
