@@ -208,6 +208,11 @@ const PALABRAS_CLAVE_PROBLEMA_CREDITICIO = [
   // formas largas y 17 personas con juicio ejecutivo figuraban con demandas
   // civiles, no de cobro (1715532469 entre ellas).
   "EJECUTIVO",
+  // Decisión del negocio del 2026-09-28 (estructura-v10): también son
+  // cobro "DINERO" a secas (51 personas), la insolvencia (11) y la venta con
+  // reserva de dominio (8, y sus variantes de embargo, remate o aprehensión
+  // del bien).
+  "DINERO", "INSOLVENCIA", "RESERVA DE DOMINIO",
   "PROCEDIMIENTO EJECUTIVO", "MANDAMIENTO DE EJECUCIÓN", "LIQUIDACIÓN", "APREMIO",
   "INCUMPLIMIENTO", "MORA", "MOROSIDAD", "DEUDA", "OBLIGACIÓN VENCIDA", "OBLIGACIÓN EXIGIBLE",
   "COBRO JUDICIAL", "RECUPERACIÓN DE CARTERA", "CARTERA VENCIDA", "TÍTULO VALOR", "FACTURA",
@@ -239,8 +244,10 @@ function sinTildes(s: string): string {
 // con GARANTÍA; es devolver un depósito, no un crédito impago, y se
 // excluye.
 // "DECRETO EJECUTIVO" es un acto del Presidente, no un cobro: con EJECUTIVO
-// como palabra clave entraría si alguna vez se impugna uno.
-const NO_ES_CREDITICIA = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b|\bDECRETO EJECUTIVO\b/;
+// como palabra clave entraría si alguna vez se impugna uno. La confesión
+// judicial no es cobro aunque prepare uno (decisión del negocio del
+// 2026-09-28): se excluye explícita por si una variante trae "DINERO".
+const NO_ES_CREDITICIA = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b|\bDECRETO EJECUTIVO\b|\bCONFESION\b/;
 const PLURALES_CREDITICIOS = ["FACTURAS", "CHEQUES", "PRENDARIO", "PRENDARIOS", "PAGARES", "LETRAS DE CAMBIO"];
 const PATRONES_PROBLEMA_CREDITICIO = [...new Set([...PALABRAS_CLAVE_PROBLEMA_CREDITICIO, ...PLURALES_CREDITICIOS].map(sinTildes))].map(
   (kw) => new RegExp(`(^|[^A-Z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Z0-9]|$)`)
@@ -475,7 +482,9 @@ function textoDe(v: unknown): string | null {
 // denuncia sin su cédula no es suya; la seguridad social militar y policial
 // cuenta sólo a los titulares y dice su situación
 // (fuerzas-armadas-policia.ts); "EJECUTIVO" es juicio de cobro.
-export const PROCESS_VERSION = "estructura-v9"; // ver docs/estructura-estandarizada.md
+// estructura-v10 (2026-09-28): también son cobro "DINERO", la insolvencia y
+// la reserva de dominio; la confesión judicial no (decisión del negocio).
+export const PROCESS_VERSION = "estructura-v10"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en

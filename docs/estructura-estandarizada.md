@@ -551,6 +551,18 @@ interface StandardClientProfile {
 > 1715532469 y 1308725470 quedan en v8: se reconsultaron el 2026-09-27 y
 > su crudo no está en local.
 
+> **estructura-v10 (2026-09-28)** — Decisión del negocio sobre los tipos de
+> demanda que quedaban como civiles.
+> - **Son de cobro:** "DINERO" a secas, la insolvencia y la venta con
+>   reserva de dominio (y sus variantes de embargo, remate o aprehensión).
+> - **No es de cobro:** la confesión judicial. Se excluye explícitamente,
+>   aunque alguna variante nombre dinero.
+> - **Efecto:** las personas con demandas de cobro pasan de 408 a 442, y
+>   las demandas de 922 a 1.033.
+>
+> Recalculados los 2.565 perfiles reales (`recalcular-grupos.mjs
+> --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil`).
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |
