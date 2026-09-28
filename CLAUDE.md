@@ -362,13 +362,19 @@ Cada una de estas salió de un error real. No revivirlas.
   fracción básica exenta del impuesto a la renta (`FRACCION_BASICA_RENTA`),
   los dos en `fuentes-ingreso.ts`. Un año que falta en la tabla de renta
   no da indicio; hay que agregarlo cuando el SRI la publique, y después
-  correr `scripts/calcular-indicios-ingreso.mjs`.
-- **Los indicios de ingreso mayor viven también en una columna**
-  (`client_profiles.indicios_ingreso`, 089), calculada con
-  `indiciosDeIngresoMayor()` al guardar el perfil, como `perfil_laboral`.
-  Existe para que el Panorama los cuente en la base y la lista los filtre.
-  Si cambia la regla de un indicio, hay que correr
-  `scripts/calcular-indicios-ingreso.mjs` o la columna queda vieja.
+  correr `scripts/calcular-columnas-del-perfil.mjs`.
+- **Las columnas copiadas del perfil se escriben en un solo lugar:**
+  `columnasDelPerfil()` (`_shared/columnas-del-perfil.ts`) arma
+  `fuente_segmento`, `fuente_estado`, `fuente_version`, `fuente_corte`,
+  `fuente_piso_ingreso`, `perfil_laboral` e `indicios_ingreso`, que existen
+  para que la base cuente y filtre (Panorama, Bandeja, lista de clientes).
+  Todo lo que escribe `standard_profile` las escribe con esa función. Hasta
+  el 2026-09-28 `recalcular-fuentes-ingreso.mjs` reescribía el perfil sin
+  tocarlas, y el Panorama contó a 65 personas en el segmento anterior (12
+  militares y policías retirados como "informal o sin actividad") mientras
+  la ficha mostraba el nuevo. Si cambia la regla de una columna sin cambiar
+  el perfil (un indicio, la tabla de renta, el perfil laboral), correr
+  `scripts/calcular-columnas-del-perfil.mjs` (con `--seco` primero).
 - **Las demandas se leen por categoría** (`_shared/demandas.ts`,
   estructura-v11). El texto de la Función Judicial es libre: 615 variantes
   en 4.602 demandas, con artículos del COIP, tildes rotas ("TR��NSITO") y a

@@ -12,8 +12,12 @@
 // perfil (research/novadata-raw-2026-09-25 guarda el perfilId): un crudo de
 // otro día reescribiría el perfil con datos viejos. Del perfil reemplaza
 // fuentesIngreso y los cuatro campos de laboral que cambiaron en
-// estructura-v7; todo lo demás queda byte a byte como estaba. La columna
-// perfil_laboral se recalcula con la misma función que las Edge Functions.
+// estructura-v7; todo lo demás queda byte a byte como estaba. Las columnas
+// copiadas del perfil (segmento, estado, versión, corte, perfil laboral,
+// indicios) se escriben con columnasDelPerfil(), la misma función que las
+// Edge Functions. Hasta el 2026-09-28 este script escribía sólo
+// perfil_laboral: después de fuentes-v8 y v9 el Panorama contaba a 65
+// personas en el segmento anterior.
 //
 // Antes de escribir, arma el perfil entero con el código actual y lo compara
 // contra el guardado: si difiere en algo más que lo esperado, el crudo no
@@ -39,7 +43,7 @@ const HOY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).
 
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
 const { buildStandardProfile } = await compartido("process.ts");
-const { clasificarPerfilLaboral } = await compartido("perfil-laboral.ts");
+const { columnasDelPerfil } = await compartido("columnas-del-perfil.ts");
 const { FUENTES_INGRESO_VERSION } = await compartido("fuentes-ingreso.ts");
 
 // Los campos de laboral que cambiaron en estructura-v7. Si una versión
@@ -207,12 +211,12 @@ for (let i = 0; i < candidatos.length; i += 50) {
     };
     const perfil = { ...guardado, fuentesIngreso: fNuevo, laboral: { ...guardado.laboral } };
     for (const c of CAMPOS_LABORAL) perfil.laboral[c] = nuevo.laboral[c];
-    const clave = clasificarPerfilLaboral(perfil)?.clave ?? null;
+    const columnas = columnasDelPerfil(perfil);
 
     if (fAnterior.segmento !== fNuevo.segmento) sumar(`segmento ${fAnterior.segmento} -> ${fNuevo.segmento}`);
     if (fAnterior.estadoSegmento !== fNuevo.estadoSegmento) sumar(`estado ${fAnterior.estadoSegmento} -> ${fNuevo.estadoSegmento}`);
-    if (fila.perfil_laboral !== clave) sumar(`perfil laboral ${fila.perfil_laboral} -> ${clave}`);
-    escrituras.push({ id: perfilId, standard_profile: perfil, perfil_laboral: clave });
+    if (fila.perfil_laboral !== columnas.perfil_laboral) sumar(`perfil laboral ${fila.perfil_laboral} -> ${columnas.perfil_laboral}`);
+    escrituras.push({ id: perfilId, fila: { standard_profile: perfil, ...columnas } });
   }
 }
 
@@ -233,7 +237,7 @@ async function trabajador() {
       const { cuerpo } = await pedir(`${env.SUPABASE_URL}/rest/v1/client_profiles?id=eq.${e.id}&select=id`, {
         method: "PATCH",
         headers: { Prefer: "return=representation" },
-        body: JSON.stringify({ standard_profile: e.standard_profile, perfil_laboral: e.perfil_laboral }),
+        body: JSON.stringify(e.fila),
       });
       escritas += cuerpo.length;
     } catch (err) {

@@ -12,7 +12,9 @@
 //     (salvo las edades, por la zona horaria, y las marcas de recálculos
 //     anteriores), el crudo no reproduce ese perfil y la fila NO se toca.
 // Del perfil guardado sólo se reemplazan los grupos pedidos; el resto
-// queda byte a byte. structure_version pasa a la versión actual.
+// queda byte a byte. structure_version pasa a la versión actual, y las
+// columnas copiadas del perfil se reescriben con columnasDelPerfil(): un
+// grupo nuevo puede cambiar el perfil laboral o un indicio.
 //
 // --ignorar=grupo: sus diferencias se toleran pero no se escriben, porque
 // lo recalcula otro script. Nació con estructura-v9 y fuentes-v9, que
@@ -44,6 +46,7 @@ if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
 const { evaluarControlesBloqueo } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/controles-bloqueo.ts")).href);
+const { columnasDelPerfil } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/columnas-del-perfil.ts")).href);
 // El hallazgo que estructura-v9 puede cambiar. Cualquier otro tiene que
 // reproducirse igual.
 const HALLAZGO_QUE_CAMBIA = "delito_seguridad_ciudadana";
@@ -184,6 +187,7 @@ async function trabajador() {
         headers: { Prefer: "return=representation" },
         body: JSON.stringify({
           standard_profile: e.standard_profile,
+          ...columnasDelPerfil(e.standard_profile),
           structure_version: PROCESS_VERSION,
           ...(e.control_bloqueo ? { control_bloqueo: e.control_bloqueo } : {}),
         }),
