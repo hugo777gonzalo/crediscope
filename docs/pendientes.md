@@ -67,18 +67,17 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    - El backtest ya arma su pedido con `armarPedidoScoring()`
      (2026-09-29): si cambia `CONFIG_LLM`, lo sigue.
 
-5. **Ver logueado lo que se probó sólo con un arnés temporal:**
-   - la tarjeta "Indicios de ingreso mayor" de la ficha de ingresos;
-   - el bloque de indicios del Panorama (497 con alguno el 2026-09-29) y
-     su enlace a la lista (`/fuentes/clientes?indicio=…`);
-   - las categorías de demandas en el Perfil del Cliente, y desde
-     estructura-v12 los tipos de cobro "(demanda de una institución
-     financiera)";
-   - el KPI "Sin información actual en el IESS" (309 el 2026-09-29, sin
-     jubilados);
-   - los segmentos del Panorama después del realineamiento del
-     2026-09-28: 65 personas cambiaron de segmento en la cuenta (ver
-     d81591b).
+5. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
+   "Clientes que necesitan respaldo".** El análisis y la propuesta están en
+   `docs/propuesta-panorama-respaldo-y-evidencia.md` (2026-09-29).
+   - Falta que el negocio conteste las 8 preguntas de su sección 3; no se
+     implementa antes.
+   - Hay dos arreglos de la regla que no dependen del diseño:
+     - sacar a las 18 sintéticas de la lista;
+     - los 13 sin confirmar que no tienen ningún documento sugerido.
+   - "Declaraciones de IVA de los últimos 6 meses" no existe para los
+     negocios populares del RIMPE y es semestral para los emprendedores
+     (SRI). Se lo pide hoy a 956 personas.
 
 ## 2. Riesgos técnicos conocidos
 
@@ -124,7 +123,8 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
 ## 3. Propuestas sin decidir
 
-- **La antigüedad de las demandas no llega al perfil.** El grupo de
+- **La antigüedad de las demandas no llega al perfil** (mejora posterior,
+  decidido por el negocio el 2026-09-29: no es urgente). El grupo de
   cobro dice cuántas y de qué tipo, no de cuándo. Las 8 personas que
   estructura-v12 pasó a "con demandas de cobro" lo son por demandas de
   1997 a 2010, y el modelo las lee igual que una de este año. La fecha
