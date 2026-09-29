@@ -116,8 +116,9 @@ Romper cualquiera de estas rompe algo real.
   `nombres-ingresos.ts` — los nombres de ingresos que comparten la
   pantalla y el modelo.
 - `llm-scoring.ts` → `armarPedidoScoring()` arma el pedido al modelo y
-  `CONFIG_LLM` decide el razonamiento y el tope de salida. El backtest
-  todavía arma el suyo (ver `docs/pendientes.md`).
+  `CONFIG_LLM` decide el razonamiento y el tope de salida. Lo usan el
+  análisis, el backtest (con los ajustes del criterio candidato) y
+  `scripts/comparar-razonamiento.mjs`: un camino nuevo al modelo también.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
@@ -403,7 +404,11 @@ Cada una de estas salió de un error real. No revivirlas.
   en 4.602 demandas, con artículos del COIP, tildes rotas ("TR��NSITO") y a
   veces espacios dobles. Toda comparación normaliza las tres cosas antes
   de buscar palabras. Una investigación archivada o un trámite no es una
-  demanda: tienen su categoría y no penalizan.
+  demanda: tienen su categoría y no penalizan. Desde estructura-v12 también
+  decide quién demanda, pero sólo cuando el tipo no dice el tema ("OTROS",
+  "ESPECIAL"): si es un banco, una cooperativa de ahorro y crédito, una
+  financiera o una emisora de tarjetas, es cobro. Quien demanda es
+  `demanda.ofendido` (texto libre, con los abogados adentro).
 - **La lista de delitos de seguridad ciudadana es una sola**
   (`_shared/delitos-seguridad.ts`). Hasta estructura-v10 estaba copiada en
   el perfil y en el bloqueo; agregar una palabra en una sola habría dejado

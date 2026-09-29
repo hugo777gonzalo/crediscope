@@ -1,7 +1,7 @@
 # Pendientes
 
-Lo que quedó abierto al 2026-09-28 (noche). Las versiones vigentes son
-marco-v26, estructura-v11, fuentes-v9 y perfil-laboral-v3. Cada punto
+Lo que quedó abierto al 2026-09-29. Las versiones vigentes son
+marco-v26, estructura-v12, fuentes-v9 y perfil-laboral-v3. Cada punto
 dice qué falta, por qué importa y cómo se verifica.
 
 Los números son de la base o del crudo local, medidos ese día. Antes de
@@ -11,7 +11,16 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
 ## 1. Para retomar primero
 
-1. **marco-v25 y marco-v26 nunca corrieron.** `analysis_results` no
+1. **El modelo no contesta hasta el 2026-10-01 a las 00:00 UTC** (19:00
+   del 30 en Ecuador). Se alcanzó el límite de uso configurado en la
+   consola de Anthropic: "You have reached your specified API usage
+   limits". El vigía lo marca como `tope_de_gasto` desde el 2026-09-28 a
+   las 18:45; la última llamada que funcionó fue a las 18:31. Mientras
+   tanto no hay análisis con IA, tampoco desde la pantalla. Para volver
+   antes hay que subir el límite en la consola. Ver el presupuesto en el
+   punto 4.
+
+2. **marco-v25 y marco-v26 nunca corrieron.** `analysis_results` no
    tiene ningún análisis con esas versiones; el último es marco-v24, del
    2026-09-27. Cambiaron cómo el modelo lee:
    - la disponibilidad (por tema, dos estados);
@@ -23,17 +32,20 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    Hay que correr un análisis y leer la salida antes de darlas por
    buenas. **El modelo se corre sólo con autorización del usuario**,
    porque cuesta. El candidato natural es 1715532469: el caso que se
-   cortó a medias, ya reconsultado en estructura-v11 (2026-09-28 17:05).
+   cortó a medias, ya en estructura-v12 y con su crudo en el respaldo.
 
-2. **1308725470 quedó en estructura-v9.** Se reconsultó a las 12:03 del
-   2026-09-28, antes de v10 y v11, así que no tiene las demandas por
-   categoría. Ni esta ni 1715532469 tienen crudo local: los recálculos
-   desde el crudo no las alcanzan. Reconsultarlas con
-   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/novadata-raw-2026-09-25`
-   las pone al día y las suma al respaldo.
+3. **0501418826 y 0918563750 quedaron en estructura-v11.** Se
+   consultaron desde la pantalla el 2026-09-28 (17:51 y 18:40), después de
+   armado el respaldo local: su crudo es de un perfil anterior y los
+   recálculos no las alcanzan. v12 no les cambia las demandas (medido sobre
+   el crudo). Reconsultarlas con
+   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 2 --crudo=research/novadata-raw-2026-09-25`
+   las pone al día. Pasa cada vez que alguien consulta desde la pantalla:
+   el respaldo sólo se actualiza desde el guion (así quedó también
+   1308725470, reconsultada dos veces el 2026-09-28 y 29).
 
-3. **Repetir la comparación de razonamiento (paso 4)** y decidir la
-   configuración de producción.
+4. **Repetir la comparación de razonamiento (paso 4)** y decidir la
+   configuración de producción. No antes del 1 de octubre (punto 1).
    - Hoy `CONFIG_LLM` en `llm-scoring.ts`: razonamiento activo, 10.000
      tokens de salida, sin caché del marco.
    - Comando: `node scripts/comparar-razonamiento.mjs`. Cuesta ~$3 (42
@@ -52,37 +64,21 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    - Hubo una sola corrida por configuración, así que el ruido entre
      corridas no se midió. Correr "hoy" dos veces lo mide, y sin eso no
      se sabe si 7 de 10 es poco o mucho.
-   - **Antes de cambiar `CONFIG_LLM`,** pasar `correr-backtest` a
-     `armarPedidoScoring()`.
-     - Hoy arma su propio pedido: toma `CONFIG_LLM.maxTokens` pero no las
-       opciones de razonamiento.
-     - Ahora da lo mismo, porque "activo" no manda nada.
-     - Con otra configuración, el backtest probaría el criterio en
-       condiciones distintas de las de producción.
-     - El backtest usa los ajustes del criterio candidato, no los
-       vigentes: `armarPedidoScoring()` ya los recibe como parámetro.
+   - El backtest ya arma su pedido con `armarPedidoScoring()`
+     (2026-09-29): si cambia `CONFIG_LLM`, lo sigue.
 
-4. **Ver logueado lo que se probó sólo con un arnés temporal:**
+5. **Ver logueado lo que se probó sólo con un arnés temporal:**
    - la tarjeta "Indicios de ingreso mayor" de la ficha de ingresos;
-   - el bloque de indicios del Panorama y su enlace a la lista
-     (`/fuentes/clientes?indicio=…`);
-   - las categorías de demandas en el Perfil del Cliente;
-   - el KPI "Sin información actual en el IESS" (313, sin jubilados);
+   - el bloque de indicios del Panorama (497 con alguno el 2026-09-29) y
+     su enlace a la lista (`/fuentes/clientes?indicio=…`);
+   - las categorías de demandas en el Perfil del Cliente, y desde
+     estructura-v12 los tipos de cobro "(demanda de una institución
+     financiera)";
+   - el KPI "Sin información actual en el IESS" (309 el 2026-09-29, sin
+     jubilados);
    - los segmentos del Panorama después del realineamiento del
      2026-09-28: 65 personas cambiaron de segmento en la cuenta (ver
      d81591b).
-
-5. **Decisión del negocio: tipos de demanda que quedaron en "Otras" y
-   podrían ser de cobro.**
-   - Candidatos a cobro: Solicitud de embargo (4), Cumplimiento de
-     contrato (5), Resolución de contrato (4), Rescisión por lesión
-     enorme (2) y "Aprehensión" (5, ambigua).
-   - "Medidas de protección" ¿va en Familia?
-
-   Se cambia en `_shared/demandas.ts` (`PALABRAS_CLAVE_DE_COBRO`,
-   `CATEGORIAS`). Eso sube la estructura a v12 y hay que correr
-   `recalcular-grupos.mjs --grupos=riesgoJudicialCivil`: las demandas
-   viven en ese grupo.
 
 ## 2. Riesgos técnicos conocidos
 
@@ -114,7 +110,9 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   - Tuercen todo total sobre la cartera (porcentajes, segmentos,
     "sin datos").
   - Decisión pendiente: marcarlas o borrarlas.
-  - La lista está en `research/aval-pool-240.txt` y `pruebas/aval/`.
+  - La lista está en `research/aval-pool-240.txt` y `pruebas/aval/`. Son
+    exactamente las 240 cuyo último perfil está en estructura-v3
+    (medido el 2026-09-29): se separan sin la lista.
 - **Demandas que pueden ser de un homónimo.** Novadata asocia las
   demandas por nombre, y hay dos grupos sin resolver:
   - 31 de 4.602 (0,7%) no tienen el nombre de la persona entre los
@@ -126,6 +124,15 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
 ## 3. Propuestas sin decidir
 
+- **La antigüedad de las demandas no llega al perfil.** El grupo de
+  cobro dice cuántas y de qué tipo, no de cuándo. Las 8 personas que
+  estructura-v12 pasó a "con demandas de cobro" lo son por demandas de
+  1997 a 2010, y el modelo las lee igual que una de este año. La fecha
+  está en el crudo (`demanda.fecha`).
+- **Tipos que quedaron en "Otras" y parecen deuda, sin decidir:**
+  expensas fijadas por la asamblea de copropietarios (2), pago de rubros
+  (2) y pago de remuneraciones atrasadas (1, ¿laboral?). Se cambian en
+  `_shared/demandas.ts`.
 - **Adelgazar el marco.**
   - Crece con cada versión: 16.400 caracteres en v14, 35.000 en v24
     (15.100 tokens) y 39.100 en v26.
@@ -158,7 +165,11 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   - los avisos saltan al 70, 85 y 100%;
   - un análisis cuesta ~$0,10 y una comparación de 14 casos ~$3.
 
-  Confirmar que el monto es el que el negocio quiere.
+  Confirmar que el monto es el que el negocio quiere. **El límite de la
+  consola de Anthropic es otro, y en septiembre saltó primero:** cortó el
+  2026-09-28 con USD 6,00 medidos por nosotros (y 31 llamadas sin medir),
+  antes de nuestro aviso del 70%. Nuestro presupuesto tiene que ser el de
+  la consola, o menor: si no, el primer aviso es la caída.
 
 ## 5. Decisiones de fondo e insumos de terceros
 
