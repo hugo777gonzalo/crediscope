@@ -285,10 +285,11 @@ async function pedirScoringConReintentos(
   return { resultado: ultimo!.resultado, llamadas };
 }
 
-// El pedido entero al modelo, en un solo lugar: el análisis lo manda con
-// CONFIG_LLM y scripts/comparar-razonamiento.mjs con otras
+// El pedido entero al modelo, en un solo lugar: el análisis y el backtest
+// (correr-backtest, con los ajustes del criterio candidato) lo mandan con
+// CONFIG_LLM, y scripts/comparar-razonamiento.mjs con otras
 // configuraciones, sobre el mismo marco y el mismo perfil del modelo. Si
-// la comparación armara su propio pedido, mediría otra cosa.
+// la comparación o el backtest armaran su propio pedido, medirían otra cosa.
 //
 // profile: el StandardClientProfile guardado, tal cual. Lo que el modelo
 // lee de él lo arma perfil-del-modelo.ts (desde marco-v23): esta función

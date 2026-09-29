@@ -18,21 +18,21 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { MARCO_INTERPRETATIVO, MARCO_VERSION } from "../_shared/marco-interpretativo.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
-import { CONFIG_LLM } from "../_shared/llm-scoring.ts";
-import { mensajeParaElModelo } from "../_shared/perfil-del-modelo.ts";
+import { armarPedidoScoring, CONFIG_LLM, MARCO_VERSION, MODELO } from "../_shared/llm-scoring.ts";
 import { loadCriterioVigente, loadDisabledFields } from "../_shared/runtime-config.ts";
+import type { ResultadoControlBloqueo } from "../_shared/types.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_WORKSPACE_ID = Deno.env.get("ANTHROPIC_WORKSPACE_ID") ?? "";
-const MODEL = "claude-sonnet-5";
 
-// Cada caso es una llamada al LLM (~25s). Los topes están puestos para
-// no pasarse del tiempo máximo de la función: 10 + 10 casos en lotes de
-// 10 corren en ~2 tandas.
+// Cada caso es una llamada al LLM: de 40 a 110 s con el razonamiento
+// activo (medido el 2026-09-27; cuando se pusieron estos topes eran ~25).
+// En lotes de 10, cada tanda dura lo que su caso más lento, y dos tandas
+// lentas pueden pasar los 150 s de la función: medirlo con un paquete real
+// antes de usarlo (docs/pendientes.md).
 const MAX_INCUMPLIDOS = 10;
 const MAX_BUENOS = 10;
 const TAMANIO_LOTE = 10;
@@ -41,34 +41,33 @@ const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 type AnyRecord = Record<string, unknown>;
 
-// El marco candidato es el de producción -- el base más los ajustes
-// vigentes -- más las propuestas a probar. Hasta marco-v22 se armaba sólo
-// con el base y las propuestas: con un ajuste vigente, el backtest habría
-// medido contra un criterio que ya no es el que rige.
-function construirMarcoCandidato(vigentes: string[], propuestas: string[]): string {
-  const cambios = [...vigentes, ...propuestas];
-  if (cambios.length === 0) return MARCO_INTERPRETATIVO;
-  // Los ajustes se SUMAN al marco base en vez de reescribirlo: el
-  // criterio original sigue versionado en código, y cada ajuste es
-  // trazable y reversible por separado.
-  return `${MARCO_INTERPRETATIVO}
-
-AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
-Los siguientes criterios se incorporaron a partir del análisis de
-resultados reales. Tienen el mismo peso que el resto del marco:
-${cambios.map((c, i) => `${i + 1}. ${c}`).join("\n")}`;
-}
-
 // registrar: cada caso es una llamada aparte al modelo, y una corrida
 // completa son hasta 20. Sin registrarlas una por una, el mayor
 // consumidor del sistema queda invisible en la contabilidad.
+//
+// ajustes: el criterio CANDIDATO -- los ajustes vigentes más las propuestas
+// a probar. Hasta marco-v22 iban sólo las propuestas: con un ajuste
+// vigente, el backtest habría medido contra un criterio que ya no rige.
 async function evaluarCaso(
   perfil: AnyRecord,
   controlBloqueo: AnyRecord | null,
-  marco: string,
+  ajustes: string[],
   camposDeshabilitados: Set<string>,
   registrar: (datos: { exito: boolean; error?: string | null; data?: AnyRecord | null; duracionMs: number }) => Promise<void>
 ) {
+  // El pedido lo arma armarPedidoScoring(), el mismo del análisis: marco,
+  // perfil del modelo con los mismos campos ocultos, tope de salida y
+  // razonamiento de CONFIG_LLM. Hasta el 2026-09-29 el backtest armaba el
+  // suyo, sin las opciones de razonamiento: con cualquier configuración
+  // distinta de "activo" habría probado el criterio en condiciones
+  // distintas de las de producción. Se pide el formato de salida completo
+  // aunque acá sólo se usen score y recomendación, por lo mismo.
+  const cuerpo = armarPedidoScoring(
+    perfil,
+    (controlBloqueo ?? { bloqueado: false, hallazgos: [] }) as unknown as ResultadoControlBloqueo,
+    ajustes,
+    camposDeshabilitados,
+  );
   const inicio = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -78,27 +77,7 @@ async function evaluarCaso(
       "anthropic-version": "2023-06-01",
       ...(ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": ANTHROPIC_WORKSPACE_ID } : {}),
     },
-    body: JSON.stringify({
-      model: MODEL,
-      // Se deja el formato de salida completo (con positivos/negativos)
-      // aunque acá solo se usen score y recomendación: el backtest
-      // tiene que correr en las mismas condiciones que producción, o
-      // deja de ser representativo. Por eso usa el mismo presupuesto que
-      // el análisis, importado y no copiado: con 6.000 acá y 10.000 allá,
-      // un caso que en producción se analiza saldría cortado en la prueba.
-      max_tokens: CONFIG_LLM.maxTokens,
-      system: marco,
-      messages: [
-        {
-          role: "user",
-          // El mismo perfil del modelo que en el análisis, con los mismos
-          // campos ocultos: si no, el backtest mide otra cosa.
-          content: JSON.stringify(
-            mensajeParaElModelo(perfil, (controlBloqueo?.hallazgos as unknown[]) ?? [], camposDeshabilitados),
-          ),
-        },
-      ],
-    }),
+    body: JSON.stringify(cuerpo),
   });
   if (!res.ok) {
     const errText = (await res.text()).slice(0, 200);
@@ -114,7 +93,7 @@ async function evaluarCaso(
   });
   const bloque = (data?.content as Array<{ type: string; text?: string }> | undefined)?.find((b) => b.type === "text");
   if (!bloque?.text) throw new Error(`sin bloque de texto (stop_reason: ${data?.stop_reason})`);
-  const limpio = bloque.text.trim().replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();
+  const limpio = bloque.text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   const parsed = JSON.parse(limpio);
   const bloqueado = Boolean(controlBloqueo?.bloqueado);
   return {
@@ -219,7 +198,7 @@ Deno.serve(async (req) => {
       propuestas = (data ?? []).filter((p: AnyRecord) => p.tipo === "criterio_modelo" && p.cambio_sugerido);
     }
     const [criterio, camposDeshabilitados] = await Promise.all([loadCriterioVigente(serviceClient), loadDisabledFields(serviceClient)]);
-    const marcoCandidato = construirMarcoCandidato(criterio.ajustes, propuestas.map((p) => String(p.cambio_sugerido)));
+    const ajustesCandidatos = [...criterio.ajustes, ...propuestas.map((p) => String(p.cambio_sugerido))];
 
     const { data: creditos, error: errCreditos } = await serviceClient
       .from("feedback_creditos")
@@ -247,14 +226,14 @@ Deno.serve(async (req) => {
             const despues = await evaluarCaso(
               perfilRow.standard_profile as AnyRecord,
               (perfilRow.control_bloqueo as AnyRecord | null) ?? null,
-              marcoCandidato,
+              ajustesCandidatos,
               camposDeshabilitados,
               ({ exito, error, data, duracionMs }) =>
                 registrarLlamadaLlm(serviceClient, {
                   razonamiento: CONFIG_LLM.razonamiento,
                   maxTokens: CONFIG_LLM.maxTokens,
                   funcion: "correr-backtest",
-                  modelo: (data?.model as string) ?? MODEL,
+                  modelo: (data?.model as string) ?? MODELO,
                   exito,
                   error: error ?? null,
                   stopReason: (data?.stop_reason as string) ?? null,
