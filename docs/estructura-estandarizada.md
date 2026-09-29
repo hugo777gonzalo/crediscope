@@ -590,6 +590,36 @@ interface StandardClientProfile {
 >
 > Recalculados los 2.565 perfiles reales con
 > `recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`.
+
+> **estructura-v12 (2026-09-29)** — Decisión del negocio, vistos los casos
+> de la cartera que quedaban en "Otras".
+> - **De cobro por el tipo:** el embargo (5, tres de bancos o
+>   financieras), la aprehensión del bien (6, cuatro de quienes venden o
+>   financian autos) y los vales de tarjeta de crédito (2).
+> - **De cobro por quién demanda:** cuando el tipo no dice el tema
+>   ("Otros", "Especial", "Comerciales", "Ínfima cuantía", sin tipo…) y
+>   quien demanda (`demanda.ofendido`) es un banco, una cooperativa de
+>   ahorro y crédito, una mutualista, una financiera o una emisora de
+>   tarjetas: 18 demandas. Su tipo se lee "Otros (demanda de una
+>   institución financiera)". Con un tipo que sí dice el tema decide el
+>   tipo, aunque demande un banco.
+> - **Cambian de categoría:** la rescisión por lesión enorme va a
+>   Propiedad e inmuebles (2) y la aprehensión de un auto que circula sin
+>   matrícula, a Tránsito (2).
+> - **Siguen en "Otras":** cumplimiento, resolución y rescisión de
+>   contrato: casi todas entre personas, sin señal de deuda. Las medidas
+>   de protección no aparecen como demandado: las 6 que hay son de personas
+>   que pidieron protección, y ésas no se clasifican.
+> - **Efecto** (crudo de las 2.567 personas reales): las personas con
+>   demandas de cobro pasan de 442 a 450, las demandas de cobro de 1.033 a
+>   1.064, y "Otras" de 299 a 264. Fuera de los dos grupos judiciales, 0
+>   diferencias en el perfil entero.
+>
+> Recalculados 2.564 perfiles con
+> `recalcular-grupos.mjs --grupos=riesgoJudicialCivil,riesgoJudicialCrediticio`;
+> 1308725470 se reconsultó. 0501418826 y 0918563750 quedaron en v11: se
+> consultaron desde la pantalla después del respaldo y su crudo local es de
+> un perfil anterior.
 > Dos correcciones de la limpieza, dentro de la misma versión, se
 > reescribieron con `--forzar`.
 

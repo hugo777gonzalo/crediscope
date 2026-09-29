@@ -17,7 +17,7 @@ import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, fechasDelRuc, rucActivo } from "./ruc.ts";
 import { esElPropioAfiliado, esSuPropioPatrono } from "./patrono.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
-import { demandasPorCategoria, esDemandaDeCobro, tipoDeDemandaLegible } from "./demandas.ts";
+import { demandasPorCategoria, esDemandaDeCobro, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
 import { categoriasDelitoGraveSeguridad } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
@@ -384,7 +384,13 @@ function textoDe(v: unknown): string | null {
 // "ESTUPEFACIENTES" a secas es narcotráfico para el bloqueo por seguridad
 // ciudadana (decisión del negocio), con la lista de delitos unificada en
 // delitos-seguridad.ts.
-export const PROCESS_VERSION = "estructura-v11"; // ver docs/estructura-estandarizada.md
+// estructura-v12 (2026-09-29, decisión del negocio viendo los casos): son
+// cobro el embargo, la aprehensión del bien y los vales de tarjeta, y la
+// demanda de un banco, cooperativa, financiera o emisora de tarjetas cuyo
+// tipo no dice el tema ("OTROS", "ESPECIAL"); la lesión enorme es de
+// propiedad y la aprehensión de un auto sin matrícula, de tránsito
+// (demandas.ts).
+export const PROCESS_VERSION = "estructura-v12"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1180,23 +1186,27 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el tipo
   // de caso real vive en demanda.delito.
   const delitoDe = (d: AnyRecord): string | undefined => (d.demanda as AnyRecord | undefined)?.delito as string | undefined;
-  const demandasCrediticias = demandas.filter((d) => esDemandaDeCobro(delitoDe(d)));
-  const demandasCivilesResto = demandas.filter((d) => !esDemandaDeCobro(delitoDe(d)));
+  // En las demandas CONTRA la persona, "ofendido" es quien la presentó.
+  // Desde estructura-v12 decide cuando el tipo no dice el tema (demandas.ts).
+  const demandanteDe = (d: AnyRecord): unknown => (d.demanda as AnyRecord | undefined)?.ofendido;
+  const esCobro = (d: AnyRecord) => esDemandaDeCobro(delitoDe(d), demandanteDe(d));
+  const demandasCrediticias = demandas.filter(esCobro);
+  const demandasCivilesResto = demandas.filter((d) => !esCobro(d));
   // Los tipos, legibles (demandas.ts, desde estructura-v11): sin el número
   // de artículo ni las tildes rotas que manda la fuente.
-  const tiposUnicos = (ds: AnyRecord[]) =>
-    [...new Set(ds.map((d) => tipoDeDemandaLegible(delitoDe(d))).filter((x): x is string => Boolean(x)))];
+  const tiposUnicos = (ds: AnyRecord[], legible: (d: AnyRecord) => string | null) =>
+    [...new Set(ds.map(legible).filter((x): x is string => Boolean(x)))];
   const riesgoJudicialCrediticio: StandardClientProfile["riesgoJudicialCrediticio"] = {
     numeroDemandasComoDemandado: demandasCrediticias.length,
-    tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias),
+    tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias, (d) => tipoDeCobroLegible(delitoDe(d), demandanteDe(d))),
   };
   const riesgoJudicialCivil: StandardClientProfile["riesgoJudicialCivil"] = {
     numeroDemandasComoDemandado: demandasCivilesResto.length,
-    tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto),
+    tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto, (d) => tipoDeDemandaLegible(delitoDe(d))),
     // Desde estructura-v11: cuántas hay de cada categoría (demandas.ts). Es
     // lo que distingue un juicio de una investigación penal archivada o de
     // un trámite, que hasta v10 contaban igual como "demanda civil".
-    demandasPorCategoria: demandasPorCategoria(demandasCivilesResto, delitoDe),
+    demandasPorCategoria: demandasPorCategoria(demandasCivilesResto, delitoDe, demandanteDe),
     numeroDemandasComoOfendido: demandasOfendido.length,
     // Distingue "no tiene pensión alimenticia" de "tiene y está al
     // día": con solo pensionAlimenticiaEnMora=false los dos casos se

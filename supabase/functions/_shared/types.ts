@@ -457,6 +457,8 @@ export interface StandardClientProfile {
   riesgoJudicialCrediticio: {
     numeroDemandasComoDemandado: number;
     // Legibles desde estructura-v11: sin número de artículo ni tildes rotas.
+    // Desde v12, la que es de cobro sólo por quién la presentó lo dice:
+    // "Otros (demanda de una institución financiera)".
     tiposDemandasComoDemandado: string[];
   };
 

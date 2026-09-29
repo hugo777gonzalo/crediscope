@@ -95,6 +95,13 @@ const PALABRAS_CLAVE_DE_COBRO = [
   // reserva de dominio (8, y sus variantes de embargo, remate o aprehensión
   // del bien).
   "DINERO", "INSOLVENCIA", "RESERVA DE DOMINIO",
+  // Decisión del negocio del 2026-09-29 (estructura-v12), viendo los casos
+  // de la cartera que quedaban en "Otras": el embargo (5, tres de bancos o
+  // financieras), la aprehensión del bien (6, cuatro de quienes venden o
+  // financian autos: la recuperación de lo vendido a plazos) y los vales de
+  // tarjeta de crédito (2, de emisoras de tarjeta). La aprehensión de un
+  // auto que circula sin matrícula es de tránsito: se excluye abajo.
+  "EMBARGO", "APREHENSIÓN", "VALES", "TARJETA DE CRÉDITO",
   "PROCEDIMIENTO EJECUTIVO", "MANDAMIENTO DE EJECUCIÓN", "LIQUIDACIÓN", "APREMIO",
   "INCUMPLIMIENTO", "MORA", "MOROSIDAD", "DEUDA", "OBLIGACIÓN VENCIDA", "OBLIGACIÓN EXIGIBLE",
   "COBRO JUDICIAL", "RECUPERACIÓN DE CARTERA", "CARTERA VENCIDA", "TÍTULO VALOR", "FACTURA",
@@ -124,20 +131,70 @@ const PALABRAS_CLAVE_DE_COBRO = [
 // como palabra clave entraría si alguna vez se impugna uno. La confesión
 // judicial no es cobro aunque prepare uno (decisión del negocio del
 // 2026-09-28): se excluye explícita por si una variante trae "DINERO".
-const NO_ES_COBRO = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b|\bDECRETO EJECUTIVO\b|\bCONFESION\b/;
-const PLURALES_DE_COBRO = ["FACTURAS", "CHEQUES", "PRENDARIO", "PRENDARIOS", "PAGARES", "LETRAS DE CAMBIO"];
+// "APREHENSIÓN DEL AUTOMOTOR POR ... CIRCULAR ... SIN POSEER LA MATRÍCULA
+// VIGENTE" (2 en la cartera, de 2025) es una sanción de tránsito, no la
+// recuperación de un bien impago (estructura-v12).
+const NO_ES_COBRO = /\bDIVORCIO\b|\bDANO MORAL\b|\bALIMENT|\bPENSION\b|\bSILENCIO ADMINISTRATIVO\b|\bDEVOLUCION DE GARANTIA\b|\bDECRETO EJECUTIVO\b|\bCONFESION\b|\bMATRICULA\b/;
+const PLURALES_DE_COBRO = ["FACTURAS", "CHEQUES", "PRENDARIO", "PRENDARIOS", "PAGARES", "LETRAS DE CAMBIO", "EMBARGOS", "TARJETAS DE CRÉDITO"];
 const PATRONES_DE_COBRO = [...new Set([...PALABRAS_CLAVE_DE_COBRO, ...PLURALES_DE_COBRO].map(sinTildes))].map(
   (kw) => new RegExp(`(^|[^A-Z0-9])${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Z0-9]|$)`)
 );
 
+// ---- Quién demanda ----
+//
+// Decisión del negocio del 2026-09-29 (estructura-v12): cuando el tipo no
+// dice el tema -- es el nombre del procedimiento ("OTROS", "ESPECIAL",
+// "VERBAL SUMARIO") o no hay tipo -- y demanda un banco, una cooperativa de
+// ahorro y crédito, una mutualista, una financiera o una emisora de
+// tarjetas, es cobro. De las 299 demandas de la cartera que quedaban en
+// "Otras", 29 las había presentado una institución financiera. Con un tipo
+// que sí dice el tema ("PROMESA DE VENTA", "NULIDAD DE LAUDO ARBITRAL")
+// decide el tipo, aunque demande un banco.
+const TIPOS_SIN_TEMA = new Set([
+  "", "OTROS", "OTRO", "VARIOS", "GENERAL", "SOLICITUD", "ESPECIAL", "ORDINARIO", "VERBAL SUMARIO", "SUMARIO",
+  "ORAL", "LAS ORDENADAS POR LEY", "COMERCIALES", "ASUNTOS DE COMERCIO QUE NO TIENEN TRAMITE ESPECIAL", "INFIMA CUANTIA",
+]);
+// Quién demanda es texto libre: el nombre de la institución junto con el de
+// sus abogados ("... PROCURADORES JUDICIALES DEL BANCO DEL PICHINCHA C.A.").
+// La cooperativa se reconoce por "ahorro" o "crédito" en el nombre, con las
+// erratas de la fuente ("COOPERATIVA D AHORRO", "DE HORRO Y CREDITO"). Las
+// de transporte o de producción no son financieras, y las que no dicen
+// "ahorro y crédito" en el nombre (ILALÓ, SANTA ROSA) no se reconocen.
+const INSTITUCION_FINANCIERA = new RegExp(
+  [
+    "\\bBANCO\\b", "\\bCOOPERATIVA\\b[^,;]{0,12}\\b(AHORRO|HORRO|CREDITO)\\b", "\\bCOAC\\b", "\\bMUTUALISTA\\b",
+    "\\bFINANCIERA\\b", "\\bCAJA DE AHORRO", "\\bCMAC\\b", "\\bGMAC\\b", "\\bACCEPTANCE\\b", "\\bCFN\\b", "\\bBIESS\\b",
+    "\\bDINERS\\b", "\\bINTERDIN\\b", "\\bPACIFICARD\\b", "\\bAMERICAN EXPRESS\\b", "\\bTARJETAS? DE CREDITO\\b",
+  ].join("|"),
+);
+
+function esTipoSinTema(delito: unknown): boolean {
+  return TIPOS_SIN_TEMA.has(normalizado(tipoDeDemandaLegible(delito) ?? ""));
+}
+
+// De cobro sólo por quién la presentó: el tipo no lo dice.
+export function esCobroPorQuienDemanda(delito: unknown, demandante: unknown): boolean {
+  return esTipoSinTema(delito) && INSTITUCION_FINANCIERA.test(normalizado(demandante));
+}
+
 // Hasta estructura-v10 se llamaba esDemandaProblemaCrediticio y vivía en
 // process.ts. Desde v11 las tildes rotas se reparan antes de comparar:
-// "PAGAR��" no coincidía con PAGARÉ.
-export function esDemandaDeCobro(delito: unknown): boolean {
-  if (!delito) return false;
+// "PAGAR��" no coincidía con PAGARÉ. Desde v12 también cuenta quién demanda
+// (arriba); sin demandante decide sólo el tipo.
+export function esDemandaDeCobro(delito: unknown, demandante?: unknown): boolean {
   const texto = normalizado(delito);
-  if (NO_ES_COBRO.test(texto)) return false;
-  return PATRONES_DE_COBRO.some((p) => p.test(texto));
+  if (texto && !NO_ES_COBRO.test(texto) && PATRONES_DE_COBRO.some((p) => p.test(texto))) return true;
+  return esCobroPorQuienDemanda(delito, demandante);
+}
+
+// El tipo de una demanda de cobro como se lee. Bajo "Demandas de cobro",
+// "Otros" a secas no dice nada: si es de cobro por quién la presentó, se
+// aclara.
+export function tipoDeCobroLegible(delito: unknown, demandante?: unknown): string | null {
+  if (esCobroPorQuienDemanda(delito, demandante)) {
+    return `${tipoDeDemandaLegible(delito) ?? "Sin tipo"} (demanda de una institución financiera)`;
+  }
+  return tipoDeDemandaLegible(delito);
 }
 
 // ---- Categorías ----
@@ -158,20 +215,21 @@ export const CATEGORIA_OTRAS = "Otras";
 // "impugnación del acta de finiquito").
 const CATEGORIAS: Array<[nombre: string, patron: RegExp]> = [
   ["Investigación penal cerrada sin cargos", /\bARCHIVO\b|DESESTIMACION|PRINCIPIO DE OPORTUNIDAD|SOBRESEIMIENTO|EXTINCION DE LA ACCION/],
-  ["Tránsito", /\bTRANSITO\b|\bCHOQUE|ACCIDENTE|EMBRIAGUEZ|SIN LICENCIA|DANOS MATERIALES|ATROPELL|\bVEHICULO|BOLETA/],
+  ["Tránsito", /\bTRANSITO\b|\bCHOQUE|ACCIDENTE|EMBRIAGUEZ|SIN LICENCIA|DANOS MATERIALES|ATROPELL|\bVEHICULO|BOLETA|\bMATRICULA\b/],
   ["Constitucional o administrativa", /ACCION (EXTRAORDINARIA )?DE PROTECCION|HABEAS|ACCESO A LA INFORMACION/],
   ["Trámite (no es una demanda)", /DEPRECATORIO|REQUERIMIENTO|NOTIFICACION|CONFESION|DILIGENCIA|EXHIBICION|RECONOCIMIENTO DE FIRMA|EXHORTO|APERTURA DE|PROTOCOLIZACION|RECUSACION|MEDIDAS? CAUTELAR|INSPECCION|AUTORIZACION|\bOFICIO\b|CONFLICTO DE COMPETENCIA/],
   ["Delito contra el patrimonio", /ESTAFA|\bROBO\b|\bHURTO\b|ABUSO DE CONFIANZA|DEFRAUDACION|FALSIFICACION|DOCUMENTO FALSO|APROPIACION|RECEPTACION|\bUSURA\b|\bLAVADO\b|PECULADO|COHECHO|ENRIQUECIMIENTO|ALZAMIENTO|USURPACION|DESPOJO|ENGANO AL COMPRADOR/],
   ["Otro delito o contravención", /LESIONES|CALUMNIA|INTIMIDACION|VIOLENCIA|AGRESION|INJURI|AMENAZA|HOMICIDIO|ASESINATO|MUERTE CULPOSA|CONTRA LA VIDA|\bMUERTE\b(?! PRESUNTA)|VIOLACION|ABUSO SEXUAL|ACOSO|SECUESTRO|EXTORSION|TRAFICO|ESTUPEFACIENTES|\bARMAS\b|DELINCUENCIA ORGANIZADA|ASOCIACION ILICITA|ARTICULOS PROHIBIDOS|RESISTENCIA|RECISTENCIA|MALTRA|DANO A BIEN|INCUMPLIMIENTO DE DECISIONES|CONTRAVENCION|ESCANDALO|\bRINA\b/],
   ["Familia", /ALIMENT|DIVORCIO|VISITAS|TENENCIA|PATERNIDAD|UNION DE HECHO|SOCIEDAD CONYUGAL|INVENTARIO|PARTICION|PATRIA POTESTAD|MUJER EMBARAZADA|CUSTODIA|CURADURIA|INTERDICCION|MATRIMONIO/],
   ["Laboral", /HABERES|LABORAL|DESPIDO|VISTO BUENO|FINIQUITO|JUBILACION/],
-  ["Propiedad e inmuebles", /PRESCRIPCION|DOMINIO|POSESORIO|REIVINDICACION|REINVINDICACION|INSCRIPCION|ARRENDAMIENTO|ARRENDADOR|DESAHUCIO|EXPROPIACION|SERVIDUMBRE|LINDEROS|NULIDAD DE (INSTRUMENTO|CONTRATO|ESCRITURA)|TERMINACION DE CONTRATO|DIVISION|DEMARCACION|PROPIEDAD|INVASION/],
+  // La lesión enorme sólo se alega en la venta de un inmueble (estructura-v12).
+  ["Propiedad e inmuebles", /PRESCRIPCION|DOMINIO|POSESORIO|REIVINDICACION|REINVINDICACION|INSCRIPCION|ARRENDAMIENTO|ARRENDADOR|DESAHUCIO|EXPROPIACION|SERVIDUMBRE|LINDEROS|NULIDAD DE (INSTRUMENTO|CONTRATO|ESCRITURA)|TERMINACION DE CONTRATO|DIVISION|DEMARCACION|PROPIEDAD|INVASION|LESION ENORME/],
   ["Constitucional o administrativa", /CONTENCIOSO|SUBJETIVO|OBJETIVO|NULIDAD DE SENTENCIA|IMPUGNACION|SILENCIO ADMINISTRATIVO|CONTRA RESOLUCIONES/],
   ["Daños y perjuicios", /DANOS Y PERJUICIOS|DANO MORAL|INDEMNIZACION/],
 ];
 
-export function categoriaDeDemanda(delito: unknown): string {
-  if (esDemandaDeCobro(delito)) return CATEGORIA_COBRO;
+export function categoriaDeDemanda(delito: unknown, demandante?: unknown): string {
+  if (esDemandaDeCobro(delito, demandante)) return CATEGORIA_COBRO;
   const texto = normalizado(delito);
   return CATEGORIAS.find(([, patron]) => patron.test(texto))?.[0] ?? CATEGORIA_OTRAS;
 }
@@ -184,12 +242,16 @@ export interface DemandasDeUnaCategoria {
 
 // Las demandas agrupadas por categoría, de la que más tiene a la que menos,
 // con los tipos legibles de cada una (sin repetir). `delitoDe` saca el texto
-// de cada registro de la fuente.
-export function demandasPorCategoria(demandas: AnyRecord[], delitoDe: (d: AnyRecord) => unknown): DemandasDeUnaCategoria[] {
+// de cada registro de la fuente, y `demandanteDe`, quién la presentó.
+export function demandasPorCategoria(
+  demandas: AnyRecord[],
+  delitoDe: (d: AnyRecord) => unknown,
+  demandanteDe: (d: AnyRecord) => unknown = () => undefined,
+): DemandasDeUnaCategoria[] {
   const grupos = new Map<string, { cantidad: number; tipos: Set<string> }>();
   for (const d of demandas) {
     const delito = delitoDe(d);
-    const categoria = categoriaDeDemanda(delito);
+    const categoria = categoriaDeDemanda(delito, demandanteDe(d));
     const grupo = grupos.get(categoria) ?? { cantidad: 0, tipos: new Set<string>() };
     grupo.cantidad++;
     const tipo = tipoDeDemandaLegible(delito);
