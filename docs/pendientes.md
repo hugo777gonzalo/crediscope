@@ -216,17 +216,22 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   marco** (qué campo pesa cuánto). El orden de los grupos sí lo definió
   el usuario.
 - **Retroalimentación se reemplaza por el Laboratorio de Inteligencia de
-  Negocio › Riesgo de Crédito** (decidido el 2026-10-03). Diseño,
-  decisiones y fases en `docs/laboratorio-de-riesgo.md`. La fase 0 (crudo
+  Negocio › Riesgo de Crédito** (decidido el 2026-10-03). Diseño v2 en
+  `docs/laboratorio-de-riesgo.md`: diagnóstico de Retroalimentación (11
+  errores y los acoplamientos con el motor), modelo de datos `lab_*`,
+  cálculos en SQL, cartera sintética con señal plantada, pantallas,
+  seguridad, orden de retiro y criterios de aceptación por fase. Las fases
+  1 a 5 no gastan en el modelo. La fase 0 (crudo
   de Novadata y mensaje al modelo guardados) está hecha; sigue la fase 1,
   sobre una cartera sintética. Hallazgos del módulo viejo que el nuevo no
   tiene que repetir:
   - la plantilla bajaba todos los análisis;
   - el nombre del cliente salía vacío;
   - guardar un paquete no es transaccional.
-- **Lote de análisis para el Laboratorio** (~300 análisis, ~USD 25 sin optimizar,
-  detalle en `docs/laboratorio-de-riesgo.md`). Antes hay que subir el
-  límite de la consola de Anthropic.
+- **Lote de análisis reales: postergado** (2026-10-03: no hay presupuesto, y
+  no hace falta para desarrollar el Laboratorio, que usa puntajes
+  sintéticos). Listo para correr cuando se autorice: 280 pedidos, ~USD 4-6
+  con Sonnet 5.5, por lotes y con caché.
 - **La fábrica de crédito está en pausa** por decisión del negocio. Ver
   `docs/arquitectura-fabrica-de-credito.md`.
 - **Descarga masiva:** Reportes › Descargas la ve cualquier analista.

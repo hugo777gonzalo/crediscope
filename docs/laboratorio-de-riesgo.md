@@ -1,424 +1,497 @@
 # Laboratorio de Inteligencia de Negocio › Riesgo de Crédito
 
-Reemplaza al módulo de Retroalimentación. Diseño del 2026-10-03, con las
-decisiones del negocio del mismo día (ver "Decisiones"). Estado: **la fase
-0 está hecha** (migración 090); el resto, sin implementar.
+Diseño del módulo que **reemplaza por completo a Retroalimentación**.
+Versión 2 (2026-10-03), con las decisiones del negocio del mismo día.
+Estado: fase 0 hecha (090); el resto, diseñado y sin implementar.
 
-## Qué es
+Todo lo de las fases 1 a 5 se construye y se prueba **sin gastar en el
+modelo de lenguaje**. Lo único que cuesta está aislado en la fase 6 y se
+corre sólo con autorización del negocio.
 
-El lugar donde nuestra empresa mide si el motor de riesgo acertó, busca qué
-datos del cliente anticipaban el impago y arma una propuesta de ajuste
-respaldada por números. Lo opera nuestro equipo, no la institución
-financiera (IFI). La IFI recibe el resultado: un **Informe de Desempeño del
-Modelo** y una **Propuesta de Ajustes**.
+---
 
-**Nombre** (decidido por el negocio): **Laboratorio de Inteligencia de
-Negocio**, y adentro, **Riesgo de Crédito** como su primera área. Deja
-lugar a otras áreas sin cambiar el nombre. Sin nombres en inglés: en
-pantalla, *backtesting* es **prueba retrospectiva**.
+## 1. Qué es y qué no es
 
-## Decisiones del negocio (2026-10-03)
+**Es** el lugar donde nuestro equipo mide si el motor de riesgo acertó,
+busca qué datos del cliente anticipaban el impago y arma una propuesta de
+ajuste respaldada por números. Lo que recibe la institución financiera
+(IFI) es el resultado: un **Informe de Desempeño del Modelo** y una
+**Propuesta de Ajustes**.
+
+**No es** una pantalla para la IFI, ni un tablero, ni algo que cambie el
+motor solo. El Laboratorio produce propuestas; una persona las aprueba, y
+lo aprobado entra al motor por los caminos que ya existen (una versión
+nueva del marco o del criterio vigente).
+
+**Nombre** (decidido por el negocio): Laboratorio de Inteligencia de
+Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
+*backtesting* es **prueba retrospectiva**.
+
+## 2. Decisiones del negocio
 
 | Punto | Decisión |
 |---|---|
-| Crudo de Novadata | **Se guarda**, como ya se guarda el de Aval. Hecho en la 090, en Storage (ver punto 1). |
-| Lo que leyó el modelo | **Se guarda.** Hecho en la 090. |
-| Archivo de la IFI | El de la tabla del punto 3. |
-| Ventana de 24 meses | Es la prueba **más exigente**: deja ver los impagos tardíos, así que la tasa de default observada es mayor. |
-| Negados | Se reconsultan en el buró a 12 y 24 meses. Novadata y Aval son la única fuente externa, y alcanzan para proponer default por días de mora y por **calificación de riesgo por operación** (A1, A2 … E). |
-| Definición de default | **90 días de mora o más, o una calificación peor que B2** (C1, C2, D, E). Se mide en bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Días por operación: cooperativas en Novadata, y todas las operaciones en Aval y Equifax (confirmado por el negocio); en bancos de Novadata, la calificación. Falta definir qué es "retail grande". |
-| Decisión de la IFI | No hay IFI real todavía. Supuesto: **todo crédito que la IFI devuelve en el archivo se desembolsó**, sea cual sea la recomendación. Para el modelo: aprobar y revisar = aprobado por el modelo; negar = negado. |
-| "Observar" | Eliminada en marco-v27 (091, 2026-10-03): toda la zona gris es revisar. Queda un análisis viejo con "observar" (de marco-v14). |
-| Sin datos reales | No se espera un año: se construye el proceso ahora sobre una **cartera sintética** (ver "Cómo se desarrolla sin IFI") y se prueba con datos reales cuando existan. |
-| Más análisis | Se corre un lote de análisis para tener puntajes y medir el ruido del modelo (ver "Lote de análisis"). |
+| Crudo de Novadata | Se guarda (090, Storage `crudo-novadata`), como el de Aval. |
+| Lo que leyó el modelo | Se guarda (090, `analysis_results.mensaje_al_modelo`). |
+| Archivo de la IFI | El de la sección 6.3. |
+| Ventana | 12 y 24 meses; 24 es la prueba más exigente (deja ver los impagos tardíos). |
+| Definición de default | 90 días de mora o más, o una calificación peor que B2 (C1, C2, D, E). En bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Falta definir "retail grande". |
+| Días de mora por operación | Cooperativas (Novadata), Aval y Equifax sí; bancos de Novadata no: ahí manda la calificación. |
+| Negados | Se juzgan reconsultando el buró a 12 y 24 meses (fase 6, con costo de consulta). |
+| Decisión de la IFI | Sin IFI real, supuesto: todo crédito del archivo se desembolsó. Para el modelo: aprobar y revisar = aprobado; negar = negado. |
+| "Observar" | Retirada en marco-v27. Un análisis viejo la tiene: se lee como revisar. |
+| Sin datos reales | Se desarrolla con una **cartera sintética** (sección 8). |
+| Lote de análisis reales | Postergado: no hay presupuesto, y no hace falta para desarrollar (sección 8). |
+| Pruebas con el modelo | Cualquier prueba masiva, sólo con autorización del negocio. |
 
-**Regla que no se negocia:** el Laboratorio nunca cambia el motor por su
-cuenta. Lo que produce es una propuesta; si se aprueba, se convierte en una
-versión nueva del marco con su fila en `scoring_rules_versions`, como hoy.
+## 3. Lo que hay hoy: diagnóstico de Retroalimentación
 
-## Lo que se midió antes de escribir esto (2026-10-03)
+Revisado el 2026-10-03, contra el código y la base.
 
-| Dato | Valor |
-|---|---|
-| Clientes consultados | 2.807 |
-| Perfiles estandarizados guardados | 6.018 (desde 2026-09-04) |
-| Análisis del modelo sin fallo | **62, de 33 clientes** (desde 2026-09-03) |
-| Recomendación de esos 62 | 48 sin recomendación (versiones viejas del marco), 6 revisar, 5 negar, 2 aprobar, 1 "observar" |
-| Créditos cargados en Retroalimentación | 0 |
+### 3.1 Qué es
 
-Dos consecuencias que ordenan todo lo demás:
+Un ciclo de cinco etapas para una jefatura de crédito: descargar una
+plantilla, cargar el resultado de los créditos (`feedback_paquetes`,
+`feedback_creditos`), generar un informe con el modelo de lenguaje
+(`analizar-feedback`, `feedback_informes`), pedirle propuestas al modelo
+(`proponer-ajustes`, `feedback_propuestas`), aprobarlas y probarlas
+re-analizando hasta 20 casos (`correr-backtest`, `feedback_backtests`).
+Pantallas: Retroalimentación, Informe, Versiones del criterio y el
+componente de propuestas.
 
-1. **El puntaje del modelo existe para 33 personas.** Validar el motor (¿el
-   puntaje separa a los que pagan de los que no?) recién va a ser posible
-   cuando haya cientos de análisis con su crédito desembolsado y madurado.
-2. **El perfil estandarizado existe para 2.807.** Buscar qué variables
-   anticipan el impago no necesita el puntaje: necesita perfiles y
-   resultados. Ese es el activo grande, y conviene separarlo del anterior.
+**Nunca se usó con datos reales:** las cinco tablas `feedback_*` tienen 0
+filas. Hubo 16 llamadas al modelo de prueba.
 
-## Lo que está bien en la idea
+### 3.2 Lo que se conserva (las ideas eran buenas)
 
-- Separar el análisis (código, estadística reproducible) del modelo de
-  lenguaje. Una matriz de confusión o un AUC no se le piden a un LLM: se
-  calculan, y dan lo mismo cada vez.
-- Seguir la información por toda la cadena, del crudo a la respuesta, para
-  encontrar dónde se perdió la señal.
-- Mirar a 12 y 24 meses.
-- Que lo opere nuestro equipo y la IFI reciba conclusiones, no datos crudos.
-- Terminar en una propuesta, no en un tablero.
+- Las estadísticas se calculan con código, no con el modelo.
+- Se evalúa con el perfil **congelado** del día del análisis; nunca se
+  reconsulta (el perfil de hoy ya muestra la mora y el modelo "acertaría").
+- Una propuesta nunca entra sola: aprobar y poner en vigencia son dos pasos.
+- La prueba retrospectiva mira impagos **y** buenos pagadores: si sólo
+  mira a los que cayeron, endurecer siempre parece mejorar.
+- El criterio vigente está versionado (`criterio_versiones`, con huella y
+  reversión), y cada análisis dice con qué versión se hizo (15 lo hacen).
+- Cada llamada al modelo queda registrada con su costo.
 
-## Lo que hay que corregir
+### 3.3 Errores de diseño
 
-### 1. El crudo de las fuentes no se guardaba en la base — resuelto (090)
-
-Hasta el 2026-10-03 en la base iba sólo el **perfil estandarizado**; el
-crudo de Novadata existía como respaldo local en `research/`. Desde la 090
-cada consulta (pantalla, análisis y lote) lo guarda comprimido en el
-depósito privado `crudo-novadata` de Storage, y `client_profiles.crudo_ruta`
-dice dónde (`_shared/crudo-novadata.ts`). Pesa ~150 KB por persona contra
-~4 KB del de Aval: en una columna habría duplicado la base (96 MB) con una
-sola carga de cartera; con gzip queda en ~8 KB (2.567 crudos = 20 MB). Sólo lo lee un admin. Los
-2.567 crudos del respaldo local se subieron con
-`scripts/subir-crudo-guardado.mjs`. Falta definir cuánto tiempo se
-conserva (LOPDP).
-
-### 2. Lo que leyó el modelo no se guardaba — resuelto (090)
-
-`analysis_results` guardaba el puntaje, la recomendación, positivos,
-negativos y el texto, pero no el **perfil del modelo** de ese momento:
-reconstruirlo exigía el código de esa versión. Desde la 090,
-`analysis_results.mensaje_al_modelo` guarda lo que salió en el pedido, tal
-cual. Es lo que permite decir "el modelo vio X y aun así aprobó". Los 62
-análisis anteriores no lo tienen.
-
-### 3. Una marca de default no alcanza: hacen falta fechas
-
-Para saber si alguien cayó *dentro de los 12 meses* hay que saber cuándo
-recibió el crédito y cuándo cayó. El archivo mínimo de la IFI:
-
-| Columna | Obligatoria | Para qué |
+| # | Error | Consecuencia |
 |---|---|---|
-| Cédula | sí | vincular con la consulta |
-| Número de operación | sí | una persona puede tener varios créditos |
-| Fecha de desembolso | sí | define desde cuándo se mide |
-| Monto, plazo, producto | sí | segmentar; un default en 2.000 no es uno en 20.000 |
-| Fecha de corte del archivo | sí | hasta dónde se observó |
-| Máximos días de mora a 12 y a 24 meses | sí | aplicar la definición de default |
-| Fecha del primer default | si la tienen | tiempo hasta el impago |
-| Estado (vigente, cancelado, castigado, reestructurado) | sí | un reestructurado por deterioro cuenta como malo |
-| Observaciones de la IFI | no | lectura cualitativa |
+| 1 | El resultado del crédito es una marca (`hubo_default`) sin fechas de default ni días de mora por ventana. | No hay ventanas de 12/24 meses ni madurez: un crédito de 3 meses sin mora cuenta como "pagó". |
+| 2 | No hay fecha de corte del archivo ni definición de default. | El mismo archivo no se puede reinterpretar con otra definición; nada es reproducible. |
+| 3 | La matriz cuenta sólo "negamos y cayó / negamos y pagó / aprobamos y cayó". | Se ignoran revisar, el puntaje (sin AUC, KS ni tramos) y los análisis fallidos, que se leen como score 500. |
+| 4 | El informe lo escribe el modelo de lenguaje, que además "separa los impagos previsibles de los que no". | Juicio retrospectivo ("sabiendo que cayó, era obvio"), no reproducible y con costo. |
+| 5 | Las propuestas las redacta el modelo y entran al motor como **texto libre** sumado al marco ("ajustes aprobados"). | Se mezclan puntaje y política (lo que `docs/arquitectura-fabrica-de-credito.md` pide separar), y el efecto de un texto sobre el modelo no se puede medir antes de ponerlo. |
+| 6 | La prueba retrospectiva re-analiza hasta 20 casos dentro de una función de Supabase. | 20 casos no distinguen nada con un ruido de ±40 puntos (medido el 2026-10-03), y dos tandas lentas pasan los 150 s de la función. |
+| 7 | El vínculo crédito → análisis se calcula en el navegador con `.in()` sobre listas enteras. | Se rompe pasadas ~350 cédulas y se corta en 1.000 filas (ya medido). |
+| 8 | Guardar un paquete son dos inserts sin transacción. | Un paquete puede quedar con totales y sin créditos. |
+| 9 | Todas las tablas se leen con cualquier sesión autenticada. | Cualquier analista ve el resultado de pago de toda la cartera. |
+| 10 | La pantalla está pensada para que la use la IFI. | Choca con el modelo de operación decidido: lo usa nuestro equipo. |
+| 11 | No distingue datos sintéticos. | Ya pasó con las 240 cédulas sintéticas de Aval, que tuercen todo conteo. |
 
-Con días de mora en vez de una marca, la definición de default la
-decidimos nosotros y se puede cambiar sin pedir otro archivo.
+### 3.4 Acoplamientos que el reemplazo tiene que cuidar
 
-### 4. Ventana y definición de default se configuran por separado
+- **El motor en producción lee el criterio desde `feedback_propuestas`**:
+  `ajustes_vigentes_actuales()` arma los ajustes del criterio con las
+  propuestas aprobadas y en vigencia, `registrar_version_criterio()` las
+  versiona por disparador y `revertir_criterio()` las toca. Hoy no hay
+  ningún ajuste vigente y existe una sola versión del criterio (sin
+  ajustes), pero esas tres funciones tienen que pasar a la tabla nueva
+  **antes** de borrar la vieja.
+- `src/lib/exportAnalitico.js` (Reportes › Descargas) toma el resultado
+  real del crédito de `feedback_creditos`.
+- `correr-backtest` lee `feedback_creditos` y `feedback_propuestas`.
+- Rutas `/retroalimentacion/*` y la entrada del menú.
 
-La ventana de 24 meses es la prueba más exigente (decisión del negocio):
-captura los impagos tardíos, y en créditos largos la tasa de default sube
-con el tiempo. La **definición** de default (por ejemplo, 90 días de mora,
-castigo o reestructuración por deterioro, a acordar con la IFI y según su
-norma) es otra perilla. Cada análisis guarda con qué definición y qué
-ventana se hizo.
+## 4. Principios que no se negocian
 
-Y una operación que todavía no cumplió 12 meses **no es buena**: es
-inmadura y se excluye. Contarla como "no default" infla el acierto.
+1. **Ninguna conclusión sale de un perfil tomado después del desembolso.**
+   Es fuga de información: el buró de hoy ya muestra la mora de ese
+   crédito. El vínculo marca esos casos y quedan fuera de todo lo
+   predictivo.
+2. **Una operación inmadura no es buena.** Sin 12 (o 24) meses observados,
+   queda fuera de esa ventana.
+3. **Cada resultado dice su tamaño**: operaciones, malos, y una advertencia
+   cuando la muestra no alcanza (sección 7.5).
+4. **Lo calculado es reproducible**: un corte se congela, y el mismo corte
+   da el mismo número dentro de un año.
+5. **Lo sintético se ve sintético**: marca en la base, franja en cada
+   pantalla, y nunca entra a un informe para una IFI.
+6. **El modelo de lenguaje no calcula ni redacta conclusiones.** Sólo
+   aparece en la fase 6, para simular un marco candidato, y con
+   autorización.
+7. **Puntaje y política van separados.** Una propuesta dice si cambia cómo
+   el modelo mide el riesgo o qué hace la IFI con ese riesgo.
+8. **Asociación no es causa**, y con cien variables alguna sale fuerte por
+   azar: toda variable fuerte se valida en un corte posterior antes de
+   proponerla.
 
-### 5. A los negados no se los puede juzgar con la cartera de la IFI
-
-Sólo cae quien recibió un crédito. Un cliente que el modelo negó y la IFI
-no financió nunca tendrá marca de default, así que la matriz de confusión
-de la idea queda con una fila vacía: no se puede saber cuántos "buenos" se
-negaron. Tres salidas, de más a menos fuerte:
-
-1. **Reconsultar a los negados a los 12 y 24 meses** con nuestras propias
-   fuentes (buró de Novadata y Aval): si cayeron en otra institución, el
-   modelo acertó. Es una ventaja que pocos tienen, y la que eligió el
-   negocio. Requiere confirmar la base legal de la reconsulta y tiene un
-   costo por consulta. Un límite a tener en cuenta: el buró de bancos de
-   Novadata **no trae días de mora por operación**; la calificación (A1 …
-   E) es el indicador de días, y lo propio va separado de lo garantizado
-   (estructura-v8, `riesgo` T/G/C). La definición de default "desde el
-   buró" se arma con la calificación propia; qué agrega Aval por operación
-   hay que confirmarlo.
-2. **Los que la IFI aprobó contra la recomendación** (excepciones): son el
-   único dato directo sobre los negados.
-3. Técnicas estadísticas de inferencia de rechazados: débiles con poco
-   volumen; sólo como último recurso.
-
-### 6. La recomendación del modelo no es la decisión de la IFI
-
-Hay tres cosas distintas: lo que recomendó el modelo, lo que decidió la IFI
-y lo que se desembolsó (con qué monto y plazo). Hoy sólo se guarda la
-primera. Es el mismo hueco que señala `docs/arquitectura-fabrica-de-credito.md`
-(falta la solicitud y el registro de la decisión).
-
-Mientras no haya una IFI real, el supuesto del negocio: lo que llega en el
-archivo de la IFI **se desembolsó**. Las operaciones con recomendación
-"negar" son entonces las excepciones del punto anterior, y valen oro: es lo
-único que se observa directamente sobre los negados. Cuando exista la
-solicitud con su decisión, el supuesto se reemplaza por el dato.
-
-### 7. Hay tres recomendaciones y un puntaje
-
-En la base aparece "observar" además de aprobar, revisar y negar: el
-negocio la eliminó y desde marco-v27 no se produce, pero queda un análisis
-de marco-v14 con ella. Para el
-Laboratorio, aprobar y revisar cuentan como "aprobado por el modelo" y
-negar como "negado", pero la tabla mantiene revisar aparte: es lo que dice
-si la zona gris tiene más impagos que la de aprobados. Y, más importante,
-el modelo da un **puntaje de 1 a 999**. Las medidas que
-proponés (AUC, Gini, KS) se calculan sobre el puntaje, no sobre la
-recomendación; la recomendación se evalúa con una tabla de recomendación
-× resultado y la tasa de default de cada una. Conviene nombrar los errores
-por lo que cuestan y no como "tipo 1 / tipo 2", que cada área usa al revés:
-
-- **Aprobado que cayó**: pérdida de capital.
-- **Negado que habría pagado**: negocio perdido (sólo medible con el punto 5).
-- **A revisión que cayó / que pagó**: mide si la revisión manual agrega
-  valor.
-
-### 8. La cartera actual no sirve para predecir, sólo para describir
-
-Las 2.807 personas consultadas en septiembre son, en su mayoría, la cartera
-**ya vigente** de la IFI. Su perfil se tomó *después* de que recibieron el
-crédito: el buró de hoy ya muestra la mora de ese mismo crédito. Si se
-cruza ese perfil con la marca de default, la variable "mora en el buró"
-predice perfecto porque **es** el default. Eso es fuga de información
-(*leakage*), y es el error más fácil de cometer con estos datos.
-
-Regla: para estudiar qué predice el impago sólo vale un perfil tomado
-**antes** del desembolso. Con la cartera vigente se puede describir
-(¿cómo se ven hoy los que están en mora?), no predecir. Algunas variables
-sí se pueden reconstruir a la fecha del desembolso (aportes al IESS mes a
-mes, fechas del RUC); el buró no.
-
-### 9. El modelo de lenguaje no da siempre la misma respuesta
-
-El mismo perfil analizado dos veces puede dar puntajes distintos. Antes de
-atribuir una diferencia a un cambio del marco hay que medir ese ruido:
-analizar una muestra de perfiles varias veces con el mismo marco. Una mejora
-de 15 puntos no significa nada si el ruido es de 30.
-
-### 10. "Sin LLM" vale para el análisis, no para la simulación
-
-Las métricas, el exploratorio y la propuesta se calculan con código. Pero
-para saber qué habría pasado con un marco nuevo hay que volver a correr el
-motor, y el motor **es** el modelo de lenguaje: esa simulación necesita la
-API y tiene costo (es lo que hace hoy `correr-backtest`). Lo que sí se
-simula sin modelo, y gratis, es una **regla de política** ("negar si la
-deuda vencida propia supera X"): se aplica en SQL sobre los perfiles
-guardados.
-
-### 11. Las técnicas, en su lugar
-
-- **Information Value / WoE por variable**: lo más útil para el área de
-  riesgos; dice qué variables separan buenos de malos y es explicable.
-- **Regresión logística**: el modelo de referencia de la industria y el que
-  un regulador entiende; sirve como "retador" del motor.
-- **Random forest**: bueno para ordenar la importancia de las variables y
-  como techo de lo que los datos permiten; difícil de explicar como modelo
-  de decisión.
-- **K-means**: segmenta, no predice. Útil para describir la cartera, débil
-  como base de una propuesta.
-- Ninguna asociación prueba causa. Y con cientos de variables, alguna va a
-  salir significativa por azar: hay que corregir por comparaciones
-  múltiples y validar en una cohorte posterior.
-- **Volumen mínimo**: con menos de unos 100 defaults por cohorte, IV,
-  random forest y AUC por segmento son ruido. Cada resultado muestra su
-  tamaño de muestra.
-
-### 12. Dónde corre el cálculo
-
-No hay Python en el proyecto y las funciones de Supabase se cortan a los
-150 s. Con el volumen previsto (miles de operaciones, no millones):
-
-- Matriz, tasas, AUC, KS, Gini, IV, PSI: **funciones SQL** (`security
-  invoker`, como `metricas_gerenciales()`), que además respetan RLS y no
-  chocan con el corte de 1.000 filas de PostgREST.
-- Exploración interactiva: en el navegador, sobre un corte ya armado.
-- Regresión logística y random forest: más adelante, en un proceso aparte
-  (script local o un trabajador), con resultados guardados en la base. No
-  hace falta para las primeras fases.
-
-### 13. Hoy no existe la separación por institución
-
-No hay entidad "institución" y las tablas de Retroalimentación se leen con
-cualquier sesión autenticada (`auth.role() = 'authenticated'`). Mientras el
-Laboratorio sea sólo para nuestro equipo, alcanza con restringirlo a admin.
-Antes de que un usuario de una IFI vea un informe dentro de la aplicación
-hay que resolver cómo se separan las instituciones (una base por IFI, o
-una columna de institución con RLS en todas las tablas). Hasta entonces, el
-informe a la IFI sale como documento exportado.
-
-## El proceso
+## 5. El recorrido de un dato
 
 ```
-Consulta → perfil estandarizado → perfil del modelo → respuesta (puntaje, recomendación)
-                                                     ↓
-                     decisión de la IFI → desembolso → comportamiento a 12 / 24 meses
-                                                     ↓
-                    carga y vínculo → corte → desempeño → descubrimiento → simulación → propuesta
+ Consulta ──► crudo (Storage) ──► perfil estandarizado ──► perfil del modelo ──► respuesta
+                                         │                          │               │
+                                         └──────────── congelado en el análisis ────┘
+                                                              │
+ Archivo de la IFI ──► carga ──► vínculo ──► conciliación ──► corte (congelado)
+                                                              │
+                         ┌───────────────┬───────────────────┼───────────────────┐
+                    desempeño       variables          simulación           casos
+                    del modelo      (qué anticipa)     de política          (trazabilidad)
+                         └───────────────┴─────────┬─────────┴───────────────────┘
+                                                   ▼
+                                            propuesta de ajuste ──► aprobación ──► motor
+                                                   ▼
+                                    Informe de Desempeño del Modelo (exportado)
 ```
 
-**0. Guardar lo que falta (desde ya).** El perfil del modelo de cada
-análisis; la decisión de la IFI y las condiciones del crédito. Decidir si se
-guarda el crudo.
+## 6. Modelo de datos
 
-**1. Carga y vínculo.** La IFI entrega el archivo de la tabla del punto 3.
-Cada operación se vincula al análisis y al perfil **anteriores** al
-desembolso (el más reciente, con un máximo de antigüedad a acordar). La
-carga termina en una conciliación visible: cuántas operaciones se
-vincularon, cuántas no tenían consulta, cuántas consultas no tienen
-crédito, cuántas son inmaduras. Una operación sin vincular no se descarta
-en silencio.
+Todas las tablas nuevas empiezan con `lab_`, son sólo de admin (sección
+10) y se crean sin tocar las `feedback_*`, que se retiran al final
+(sección 11).
 
-**2. Corte.** Se define la población (cohorte de desembolsos, producto,
-ventana, definición de default) y se congela: el corte guarda qué
-operaciones entraron y con qué parámetros, para que el mismo análisis dé el
-mismo resultado dentro de seis meses.
+### 6.1 `lab_definiciones_default` — versionada e inmutable
 
-**3. Desempeño del modelo.** Sobre el corte:
-- tabla recomendación × resultado y tasa de default por recomendación;
-- AUC, Gini y KS del puntaje;
-- tasa de default por tramo de puntaje (debería bajar a medida que sube el
-  puntaje; si no baja, el puntaje no ordena);
-- estabilidad del puntaje entre cohortes (PSI): si la población cambió,
-  el modelo puede estar midiendo otra cosa;
-- todo por versión del marco: comparar marcos distintos dentro de un
-  mismo corte mezcla manzanas con peras.
-
-**4. Descubrimiento.** Por cada variable del perfil estandarizado: cobertura
-(¿cuántos la tienen?), tasa de default por tramo, IV. Después, el cruce que
-justifica todo el Laboratorio:
-- variables con IV alto que el modelo **no vio** (no están en el perfil del
-  modelo o están deshabilitadas);
-- variables que vio pero no citó en los negativos de quienes cayeron;
-- aprobados que cayeron contra aprobados que pagaron: ¿qué los distinguía?
-
-**5. Simulación.** Dos tipos, siempre contra el motor vigente sobre el mismo
-corte:
-- **regla de política**, sin modelo de lenguaje: cuántos aprobados pasarían
-  a negados, cuántos defaults se habrían evitado, cuántos buenos se habrían
-  perdido;
-- **marco candidato**, con modelo de lenguaje y costo: sobre una muestra,
-  midiendo primero el ruido (punto 9).
-
-**6. Propuesta.** Un documento con: hallazgo, evidencia (números y tamaño de
-muestra), cambio propuesto, separado en **puntaje** o **política** (el
-hallazgo estructural de la fábrica de crédito), impacto estimado,
-limitaciones y cómo se validaría después de aplicarlo. Estados: borrador,
-revisada, presentada a la IFI, aprobada, aplicada como versión del marco.
-
-**7. Informe a la IFI.** Exportado (PDF o Excel) mientras no exista la
-separación por institución.
-
-## Cómo se desarrolla sin IFI: la cartera sintética
-
-No hay una IFI real ni créditos madurados, y el negocio decidió no esperar.
-El proceso se construye y se prueba con una **cartera sintética con señal
-plantada**:
-
-1. Se toman clientes reales con perfil guardado (y con análisis, cuando lo
-   haya).
-2. A cada uno se le inventa una operación: desembolso repartido en el
-   pasado para que esté madura a 12 y 24 meses, monto, plazo y producto
-   plausibles.
-3. El default **no se sortea al azar**: se calcula con una regla conocida
-   sobre tres o cuatro variables del perfil (por ejemplo, calificación
-   propia en el buró, deuda vencida propia, continuidad laboral, demandas de
-   cobro), más ruido, calibrada a una tasa de default realista. Los días de
-   mora a 12 y 24 meses salen coherentes con eso.
-4. La regla plantada queda guardada con la carga.
-
-Así se prueba el Laboratorio y no sólo las pantallas: el descubrimiento
-tiene que encontrar las variables plantadas arriba de todo y no "descubrir"
-otras con fuerza. Si falla con una señal que conocemos, va a fallar con la
-real.
-
-Dos reglas, porque ya pasó con las 240 personas sintéticas de Aval que
-todavía están en la cartera:
-
-- **Toda carga sintética lleva la marca `es_sintetica`** y ninguna pantalla
-  ni informe para una IFI la muestra sin esa marca a la vista.
-- **Un resultado sobre la cartera sintética no es desempeño del modelo.** El
-  AUC que salga mide cuánto se parece el puntaje a la regla que inventamos,
-  no si predice impagos.
-
-## Lote de análisis
-
-Hay 62 análisis. Para construir y probar la parte de desempeño hacen falta
-cientos de puntajes, y para el punto 9, repeticiones del mismo perfil. El
-lote reutiliza perfiles ya guardados (`analyze-client` con `profileId`): no
-reconsulta Novadata, sólo paga el modelo.
-
-| Qué | Cantidad |
+| Columna | Ejemplo / regla |
 |---|---|
-| Un análisis por cliente, muestra por segmento | ~200 |
-| Ruido: los mismos perfiles, cinco veces | 20 × 5 = 100 |
+| `id`, `nombre` | "Negocio 2026-10: 90 días o peor que B2" |
+| `dias_mora_minimo` | 90 |
+| `calificacion_peor_que` | `B2` (cuenta C1, C2, D, E) |
+| `cuenta_castigo`, `cuenta_reestructuracion`, `cuenta_demanda` | true |
+| `sistemas` | `{bancos, cooperativas, mutualistas, retail_grande}` |
+| `creada_por`, `created_at` | — |
 
-**Costo por análisis, medido por versión del marco** (sólo Sonnet, sólo
-exitosos): marco-v24, USD 0,075 de promedio en 43 llamadas; marco-v26, USD
-0,084 en la única que hay (20.779 tokens de entrada, 4.280 de salida, 48 s).
-Una primera estimación de este documento usó USD 0,042, que era el promedio
-de 30 días con las llamadas de Haiku de la cascada adentro: estaba mal. A
-USD 0,085, los 300 análisis cuestan **~USD 25 sin optimizar**; cuánto baja
-con caché y lotes está en `docs/pendientes.md` ("Antes del lote"). Antes de
-correrlo:
+Sin política de `update`: una definición nueva es una fila nueva. Así un
+corte viejo sigue diciendo con qué definición se hizo.
 
-- **Subir el límite de la consola de Anthropic.** En septiembre cortó con
-  USD 6 y el presupuesto propio está en 10: este lote los supera.
-- **Va a ser la primera corrida de marco-v25 y v26**, que nunca corrieron
-  (ver `docs/pendientes.md`, punto 1): revisar los primeros resultados
-  antes de dejar correr el resto.
-- Los análisis son reales: quedan en el expediente de cada cliente como su
-  último análisis.
+### 6.2 `lab_cargas` — cada archivo
 
-## Datos
-
-Se reemplazan las tablas `feedback_*` (vacías) en lugar de parchearlas. Lo
-mínimo:
-
-| Tabla | Qué guarda |
+| Columna | Para qué |
 |---|---|
-| `analysis_results.mensaje_al_modelo` (090, hecho) | lo que leyó el modelo, tal cual |
-| `client_profiles.crudo_ruta` + depósito `crudo-novadata` (090, hecho) | el crudo de Novadata de cada consulta |
-| decisión de la IFI | por ahora el supuesto de "Decisiones"; después, la entidad solicitud de la fábrica de crédito |
-| `cartera_cargas` | cada archivo de la IFI: quién, cuándo, fecha de corte, conciliación, `es_sintetica` y la regla plantada si lo es |
-| `cartera_operaciones` | una fila por operación, con sus fechas y días de mora, y el análisis y perfil vinculados |
-| `definiciones_de_default` | versionadas: días de mora, estados que cuentan como malos |
-| `cortes` | población congelada y parámetros |
-| `resultados` | métricas por corte, con metodología y tamaño de muestra |
-| `propuestas_de_ajuste` | hallazgos, evidencia, estado, versión del marco resultante |
+| `id`, `etiqueta`, `institucion` | "Cooperativa X, desembolsos 2025-T1". `institucion` es texto hasta que exista la entidad (sección 13). |
+| `origen` | `ifi`, `sintetica`, `reconsulta_buro` |
+| `es_sintetica` | marca que viaja a todo lo que se calcule con ella |
+| `regla_plantada` | jsonb, sólo en sintéticas (sección 8) |
+| `archivo_ruta` | el archivo original, en un depósito privado de Storage |
+| `fecha_corte` | hasta cuándo se observó el comportamiento |
+| `estado` | `cargando` → `lista` (vinculada y conciliada) · o `con_errores` / `anulada` |
+| `conciliacion` | jsonb con los conteos de la sección 6.4 |
+| `cargada_por`, `created_at` | — |
 
-Se retiran `analizar-feedback` y `proponer-ajustes` (hacen con el modelo de
-lenguaje lo que debe hacer el código). `correr-backtest` se conserva como
-la simulación de marcos candidatos.
+**La carga es atómica por estado**, no por un insert gigante: se crea en
+`cargando`, las operaciones se insertan en tandas de 500, y una función
+la cierra (vincula y concilia) y la pasa a `lista`. Una carga que
+quedó a medias se ve como `cargando` y nada la usa. Así se corrige el error
+8 sin depender del tamaño de un pedido.
 
-## Fases
+### 6.3 `lab_operaciones` — una fila por crédito
 
-| Fase | Qué | Estado | Se prueba con |
+| Columna | Obligatoria | Nota |
+|---|---|---|
+| `carga_id`, `cedula`, `numero_operacion` | sí | único por (`carga_id`, `numero_operacion`) |
+| `producto`, `monto`, `plazo_meses` | sí | segmentan |
+| `fecha_desembolso` | sí | desde cuándo se mide |
+| `estado_operacion` | sí | vigente, cancelada, castigada, reestructurada, vencida |
+| `dias_mora_max_12m`, `dias_mora_max_24m` | sí | null = no observado (inmadura) |
+| `fecha_primer_default` | no | tiempo hasta el impago |
+| `observaciones` | no | lectura cualitativa de la IFI |
+| `sintetico` | — | jsonb con puntaje y recomendación inventados, sólo en cargas sintéticas |
+| `client_id`, `analysis_result_id`, `client_profile_id` | — | los pone el vínculo |
+| `vinculo` | — | ver 6.4 |
+| `dias_consulta_desembolso` | — | antigüedad de la consulta respecto del desembolso |
+
+### 6.4 El vínculo y la conciliación
+
+Lo hace una función SQL (`lab_vincular_carga`), en la base: sin listas en
+la URL y sin el corte de 1.000 filas (errores 7). Para cada operación:
+
+1. Cliente por cédula. Si no existe → `sin_consulta`.
+2. El análisis más reciente **sin fallo** hecho hasta el fin del día del
+   desembolso en hora de Ecuador, y no más de 90 días antes (parámetro).
+   Su perfil es el que dice el análisis (`client_profile_id`) si el vínculo
+   es confiable (`exacto` o `inferido_anterior`, ver 034/035).
+3. Sin análisis, el perfil más reciente en la misma ventana →
+   `solo_perfil` (sirve para variables, no para desempeño del modelo).
+4. Si sólo hay consultas **posteriores** al desembolso →
+   `consulta_posterior`: queda afuera de todo lo predictivo (principio 1).
+5. Si hay varias operaciones de la misma persona en el corte, se marcan:
+   para variables cuenta la primera de la cohorte (una persona no pesa
+   doble).
+
+La conciliación queda en la carga y en pantalla, nunca en silencio:
+
+| Conteo | Qué dice |
+|---|---|
+| operaciones | total del archivo |
+| `exacto` / `solo_perfil` | utilizables (para desempeño / para variables) |
+| `sin_consulta` | nunca pasaron por CrediScope |
+| `consulta_posterior` | consultadas después del desembolso: fuga |
+| análisis fallidos | el más cercano falló (era un score 500 neutro) |
+| bloqueados | negados por control de bloqueo: se cuentan aparte |
+| inmaduras a 12 / a 24 meses | sin ventana completa |
+| filas rechazadas | con el motivo de cada una |
+
+### 6.5 `lab_cortes` y `lab_corte_operaciones` — la población congelada
+
+`lab_cortes`: `nombre`, `carga_ids`, `definicion_default_id`,
+`ventana_meses` (12 o 24), `filtros` (productos, fechas, versiones del
+marco), `es_sintetico` (heredado de sus cargas: no se mezclan reales con
+sintéticas), `congelado_en`, `creado_por`.
+
+`lab_corte_operaciones` es la foto al congelar, una fila por operación:
+`incluida`, `motivo_exclusion`, `malo` (aplicando la definición y la
+ventana), `puntaje`, `recomendacion` (observar → revisar),
+`marco_version`, `structure_version`, `veredicto_origen`. Se copian a
+propósito: si mañana se recalcula un perfil o se corrige un análisis, el
+corte sigue diciendo lo que dijo (principio 4).
+
+De dónde sale el puntaje de cada operación: del análisis vinculado si el
+vínculo es `exacto`; en un corte sintético, de `lab_operaciones.sintetico`
+cuando no hay análisis. Una operación sin ninguno de los dos queda fuera
+del desempeño (pero sirve para variables).
+
+### 6.6 `lab_resultados`
+
+`corte_id`, `tipo` (`desempeno`, `variables`, `simulacion_politica`,
+`simulacion_marco`), `metodologia` (versión del cálculo y parámetros),
+`resultado` (jsonb), `n`, `n_malos`, `created_at`. Un resultado nunca se
+pisa: recalcular agrega una fila.
+
+### 6.7 `lab_propuestas` — reemplaza a `feedback_propuestas`
+
+| Columna | Nota |
+|---|---|
+| `titulo`, `hallazgo` | qué se vio, en palabras del negocio |
+| `tipo` | `ajuste_criterio` · `cambio_marco` · `regla_politica` · `dato_nuevo` |
+| `evidencia` | jsonb: ids de resultados, números y tamaños de muestra |
+| `cambio_propuesto` | el texto del ajuste, el cambio de marco o la regla |
+| `impacto_estimado` | jsonb: malos evitados, buenos perdidos, aprobados que cambian |
+| `limitaciones`, `validacion_posterior` | qué no prueba y cómo se va a medir después |
+| `estado` | `borrador` → `revisada` → `presentada` → `aprobada` → `aplicada`; o `rechazada` / `retirada` |
+| `vigente_desde` | sólo `ajuste_criterio`: entra al criterio vigente |
+| `aplicada_en` | versión del marco o del criterio que la llevó |
+| `es_sintetica` | una propuesta sobre datos sintéticos no se puede presentar |
+
+Los cuatro tipos y por dónde entran al motor:
+
+| Tipo | Ejemplo | Entra por |
+|---|---|---|
+| `ajuste_criterio` | "Una pensión en mora pesa como dos demandas de cobro." | `criterio_versiones` (dato, reversible), como hoy |
+| `cambio_marco` | Reescribir cómo se lee la continuidad laboral. | Versión nueva del marco (código y `scoring_rules_versions`) |
+| `regla_politica` | "Negar si la deuda vencida propia supera USD 2.000." | Hoy, recomendación a la IFI; mañana, la capa de política de la fábrica de crédito |
+| `dato_nuevo` | Una variable que el modelo no recibe y anticipa el impago. | Versión nueva de la estructura y del perfil del modelo |
+
+## 7. Cálculos
+
+Todos en funciones SQL `security invoker` (respetan la seguridad de la
+sección 10 y no chocan con el corte de 1.000 filas), como
+`metricas_gerenciales()`. Ninguno llama al modelo.
+
+### 7.1 Desempeño del modelo (`lab_desempeno`)
+
+- **Recomendación × resultado**: aprobar / revisar / negar contra bueno /
+  malo, con la tasa de malos de cada recomendación y su intervalo de
+  confianza (Wilson). Los bloqueados van en su propia fila: su puntaje está
+  forzado a 1 por política y no dice nada del modelo, así que tampoco
+  entran al AUC ni a los tramos. Los errores se nombran por lo que cuestan:
+  **aprobado que cayó** (capital perdido) y **negado que habría pagado**
+  (negocio perdido, medible sólo con reconsultas).
+- **Poder de orden del puntaje**: AUC (probabilidad de que un bueno tenga
+  mejor puntaje que un malo, calculada por rangos), Gini (2·AUC − 1) y KS
+  (la mayor separación entre las distribuciones de buenos y malos), con
+  intervalo para el AUC (Hanley–McNeil).
+- **Tasa de malos por tramo de puntaje** (de a 100 puntos): tiene que bajar
+  cuando sube el puntaje. Si no baja, el puntaje no ordena, aunque el AUC
+  diga otra cosa.
+- **Por versión del marco**: nunca se mezclan versiones en un número;
+  cada versión es una fila.
+- **Estabilidad (PSI)** entre dos cortes: si la población cambió, el
+  modelo puede estar midiendo otra cosa.
+- **El ruido del modelo como piso**: una diferencia de puntaje menor que
+  ~40 o un cambio de 1 en 13 recomendaciones no se atribuye a nada (medido
+  el 2026-10-03).
+
+### 7.2 Variables: qué anticipa el impago (`lab_variables`)
+
+Sobre el perfil congelado de cada operación (no el de hoy):
+
+- Un **catálogo de variables** (`lab_catalogo_variables`): ruta en el
+  perfil estandarizado, nombre de negocio, tipo, y si el modelo la recibe
+  (está en el perfil del modelo y no está deshabilitada).
+- Por variable: cobertura (cuántos la tienen), tasa de malos por tramo
+  (cuantiles con un mínimo de casos por tramo), **valor de información
+  (IV)** y peso de la evidencia (WoE) con suavizado.
+- Lectura del IV: menos de 0,02 nada · 0,02–0,1 débil · 0,1–0,3 media ·
+  más de 0,3 fuerte · **más de 0,5, sospecha de fuga** (una variable no
+  puede anticipar tan bien salvo que contenga el resultado).
+- El cruce que justifica el Laboratorio: **variables fuertes que el modelo
+  no recibe**, y variables que recibe pero que no aparecen en los negativos
+  de los aprobados que cayeron.
+
+### 7.3 Simulación de política (`lab_simular_politica`)
+
+Una regla como dato (`{"si": [{"variable": "comportamientoBancario.deudaEnAtraso", "op": ">", "valor": 2000}], "entonces": "negar"}`)
+aplicada al corte, contra el motor vigente: cuántos aprobados pasan a
+negados, cuántos malos se habrían evitado, cuántos buenos se habrían
+perdido, y la nueva tasa de malos de los aprobados. Gratis y reproducible:
+no llama al modelo.
+
+### 7.4 Casos y trazabilidad
+
+Para cada operación del corte, el recorrido completo: crudo (Storage) →
+perfil estandarizado → perfil del modelo (`mensaje_al_modelo`) → marco
+(versión) → respuesta (positivos, negativos, recomendación) → resultado.
+Con dos filtros que importan: **aprobados que cayeron** y **negados que
+pagaron**. Es la lectura cualitativa que antes hacía el modelo de lenguaje,
+ahora hecha por una persona con todo a la vista.
+
+### 7.5 Tamaño de muestra
+
+Cada resultado lleva `n` y `n_malos`, y la pantalla advierte: con menos de
+30 malos, el AUC y las tasas por recomendación son orientativos; con menos
+de 100, el IV por variable es ruido. Las advertencias no se pueden ocultar.
+
+## 8. Cartera sintética
+
+Sirve para desarrollar y **probar que los cálculos encuentran lo que
+tienen que encontrar**. Se genera con un script (`scripts/generar-cartera-sintetica.mjs`),
+reproducible por semilla, sobre los 2.567 perfiles reales (sin las 240
+cédulas sintéticas de Aval):
+
+1. A cada perfil se le inventa una operación: desembolso unos días después
+   del perfil (para que sea anterior por construcción), monto, plazo y
+   producto plausibles. La fecha de corte es ficticia, 25 meses después:
+   sólo una carga sintética puede tener fecha de corte futura.
+2. **El default sale de una regla plantada**, no al azar: una función
+   logística de cuatro variables reales del perfil (calificación propia en
+   el buró, deuda en atraso propia, continuidad laboral y demandas de cobro)
+   más ruido, calibrada a ~10% de malos. Los días de mora a 12 y 24 meses
+   salen coherentes con eso.
+3. **Un puntaje sintético** para las operaciones sin análisis real: la misma
+   regla, con ruido de ±40 puntos (el ruido medido del modelo), y la
+   recomendación por umbrales. Va en `lab_operaciones.sintetico`, nunca en
+   `analysis_results`.
+4. La regla y la semilla quedan en `lab_cargas.regla_plantada`.
+
+Con eso cada cálculo tiene una respuesta conocida: las cuatro variables
+plantadas tienen que salir arriba en el IV; el AUC tiene que dar lo que da
+la regla con ese ruido; una simulación que niega por la variable plantada
+tiene que evitar malos. Si un cálculo no encuentra una señal que nosotros
+pusimos, está mal.
+
+**Lo que no prueba:** la cartera sintética no dice nada del motor real. El
+AUC sintético mide cuánto se parece el puntaje inventado a la regla
+inventada.
+
+**Por qué no hace falta el lote de análisis reales para desarrollar:**
+carga, vínculo, conciliación, cortes y variables no necesitan puntajes; el
+desempeño se desarrolla con los puntajes sintéticos. El lote real
+(`scripts/analizar-en-lote.mjs`, listo) sólo hace falta para validar con
+datos verdaderos.
+
+## 9. Pantallas
+
+Todo bajo **Laboratorio** en el menú, sólo para admin; la entrada
+"Retroalimentación" desaparece.
+
+| Ruta | Qué muestra |
+|---|---|
+| `/laboratorio` | Cargas y cortes, con su estado. Franja visible en todo lo sintético. |
+| `/laboratorio/cargas/nueva` | Descargar la plantilla, subir el archivo, ver los errores fila por fila antes de aceptar. |
+| `/laboratorio/cargas/:id` | La conciliación de la sección 6.4, con descarga de las operaciones excluidas y su motivo. |
+| `/laboratorio/cortes/nuevo` | Elegir cargas, definición de default, ventana y filtros; congelar. |
+| `/laboratorio/cortes/:id` | Pestañas **Desempeño · Variables · Simulación · Casos**, cada número con su `n` y sus advertencias. |
+| `/laboratorio/propuestas` | Propuestas por estado; el detalle muestra la evidencia enlazada. |
+| `/laboratorio/criterio` | El criterio vigente y su historial, con reversión (hoy `/retroalimentacion/versiones`). |
+
+El **Informe de Desempeño del Modelo** se exporta desde un corte real con
+sus propuestas presentadas: no existe para cortes sintéticos.
+
+Diseño de pantalla (memoria del proyecto: pantallas concretas): primero el
+número que importa y su tamaño de muestra; el detalle, plegado; sin jerga;
+sin conclusiones que el número no sostenga.
+
+## 10. Seguridad
+
+- Todas las tablas `lab_*`: lectura y escritura sólo de admin
+  (`profiles.rol = 'admin'`), igual que hoy la escritura de
+  `feedback_*`, pero también la lectura (corrige el error 9).
+- Las funciones de cálculo son `security invoker`: un analista que las
+  llame no ve nada.
+- Los archivos de la IFI van a un depósito privado de Storage, sólo admin.
+- `lab_definiciones_default` sin `update`: inmutable.
+- Una IFI no entra al Laboratorio. Recibe un documento exportado hasta que
+  exista la separación por institución (sección 13).
+
+## 11. Retiro de Retroalimentación
+
+En este orden, por la regla 8 de `CLAUDE.md` (desplegar antes de borrar):
+
+1. **Migración**: tablas y funciones `lab_*`, sin tocar nada viejo.
+2. **Migración**: `ajustes_vigentes_actuales()`, el disparador de
+   `criterio_versiones` y `revertir_criterio()` pasan a leer y escribir
+   `lab_propuestas`. Las dos tablas están vacías, así que el criterio
+   vigente no cambia (se verifica: misma huella antes y después).
+3. **Código y despliegue**: pantallas del Laboratorio; se van las de
+   Retroalimentación y sus rutas; `exportAnalitico.js` toma el resultado
+   real de `lab_operaciones`; `correr-backtest` se retira (su sucesor es la
+   simulación de marco de la fase 6, por lotes y fuera de los 150 s).
+4. **Se dan de baja** `analizar-feedback` y `proponer-ajustes` en Supabase,
+   y se borran su código y `marco-retroalimentacion.ts`.
+5. **Recién entonces**, migración que borra `feedback_*`. El historial de
+   `llm_llamadas` de esas funciones queda.
+
+## 12. Fases y criterios de aceptación
+
+| Fase | Qué | Costo de modelo | Se da por hecha cuando |
 |---|---|---|---|
-| 0 | Guardar el crudo de Novadata y lo que leyó el modelo | **hecha (090)** | — |
-| 1 | Tablas, carga del archivo, vínculo, conciliación y generador de cartera sintética | siguiente | cartera sintética |
-| 2 | Desempeño del modelo | después de la 1 y del lote de análisis | cartera sintética + lote |
-| 3 | Descubrimiento sobre el perfil | con la 1 | cartera sintética: tiene que encontrar la señal plantada |
-| 4 | Simulación de reglas de política | con la 3 | cartera sintética |
-| 5 | Propuestas e informe | con la 2 o la 3 | — |
+| 0 | Crudo y mensaje al modelo guardados | — | **Hecha (090)** |
+| 1 | Tablas `lab_*`, plantilla, carga, vínculo, conciliación, generador sintético | 0 | Una carga sintética de 2.567 operaciones se vincula entera; una carga con errores se rechaza con el motivo de cada fila; nada se pierde pasadas las 1.000 filas. |
+| 2 | Cortes y desempeño | 0 | Un corte congelado da el mismo resultado al recalcularlo; el AUC y el KS en SQL coinciden con un cálculo independiente en el script; la tasa por tramo baja como la regla plantada. |
+| 3 | Variables | 0 | Las cuatro variables plantadas están entre las primeras por IV, y toda variable que las supere está correlacionada con alguna plantada (documentado); las no relacionadas quedan bajo 0,1; la bandera de fuga se prende con una variable que contiene el resultado. |
+| 4 | Simulación de política y casos | 0 | Una regla sobre la variable plantada evita malos y muestra los buenos que pierde; el recorrido de un caso se abre completo. |
+| 5 | Propuestas, criterio y retiro de Retroalimentación | 0 | Las tres funciones del criterio leen `lab_propuestas` con la misma huella; Retroalimentación ya no existe; Descargas sigue funcionando. |
+| 6 | Simulación de marco candidato y reconsulta de negados | **sí, con autorización** | Lotes por `analizar-en-lote.mjs`; reconsultas con costo de Novadata. |
 
-Con datos reales, la fase 2 no da resultados antes de que maduren los
-primeros créditos (12 meses desde el desembolso); la 3 puede adelantarse si
-una IFI entrega cartera histórica con datos tomados antes del desembolso.
+Las fases 2 y 3 pueden ir en paralelo después de la 1.
 
-## Preguntas abiertas
+## 13. Riesgos y preguntas abiertas
 
-Resueltas el 2026-10-03: guardar el crudo (sí), el archivo de la IFI (el
-propuesto), reconsultar a los negados (sí, por el buró).
+| Tema | Estado |
+|---|---|
+| ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos; mientras tanto, `institucion` es texto y sólo admin ve todo. |
+| ¿Qué es "retail grande"? | Abierta. Hace falta para la definición de default. |
+| Base legal y costo de reconsultar a un negado | Abierta (fase 6). |
+| ¿Cuánto tiempo se conserva el crudo? | Abierta (LOPDP). |
+| La decisión de la IFI no se registra | Supuesto del negocio hasta que exista la solicitud (fábrica de crédito). |
+| Cartera vigente de la IFI con perfiles posteriores al desembolso | Riesgo de fuga: el vínculo la marca `consulta_posterior` y la excluye. |
+| Muestras chicas con datos reales | Las advertencias de la sección 7.5 no se pueden ocultar. |
+| Uso de lo sintético fuera de lugar | Marca en la base, franja en pantalla, informe bloqueado. |
 
-1. ¿Cuánto tiempo se conserva el crudo de Novadata?
-2. ¿Cuál es la definición de default por defecto (días de mora,
-   calificación, castigo, reestructuración)? Con la cartera sintética se
-   puede dejar configurable y decidir después.
-3. ¿Con qué base legal se reconsulta a un negado, y quién paga la consulta?
-4. ¿Una instalación para varias IFI o una por IFI? Define cómo se separan
-   los datos (punto 13).
-5. Cuando haya una IFI: ¿tiene cartera histórica con datos tomados *antes*
-   del desembolso?
+---
+
+## Anexo: correcciones metodológicas a la idea original
+
+Lo que se discutió el 2026-10-03 y quedó incorporado arriba.
+
+- **Una marca de default no alcanza**: hacen falta fechas y días de mora
+  por ventana (6.3).
+- **Ventana y definición son dos perillas** (6.1, 6.5).
+- **A los negados no se los juzga con la cartera de la IFI**: sólo cae
+  quien recibió el crédito. Reconsulta del buró (fase 6), excepciones de la
+  IFI, y como último recurso inferencia estadística.
+- **La recomendación no es la decisión de la IFI** (supuesto, sección 2).
+- **AUC, Gini y KS van sobre el puntaje**; la recomendación se mide con su
+  tasa de malos (7.1).
+- **La cartera vigente sólo describe, no predice** (principio 1).
+- **El modelo no responde siempre igual**: ±40 puntos de ruido (7.1).
+- **"Sin modelo de lenguaje" vale para analizar, no para simular un marco**
+  (fase 6).
+- **Técnicas**: IV y WoE primero (explicables); regresión logística como
+  retador; random forest para ordenar importancia; K-means describe, no
+  predice. Correr regresión o random forest es para después, en un proceso
+  aparte: no hace falta para las fases 1 a 5.
+- **Dónde corre**: SQL para todo lo de las fases 1 a 5; no hay Python en el
+  proyecto y las funciones de Supabase se cortan a los 150 s.
