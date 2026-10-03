@@ -23,9 +23,13 @@ import FuentesClientes from "./pages/FuentesClientes.jsx";
 import FuentesReglas from "./pages/FuentesReglas.jsx";
 import FuentesParametros from "./pages/FuentesParametros.jsx";
 import Descargas from "./pages/Descargas.jsx";
-import Retroalimentacion from "./pages/Retroalimentacion.jsx";
-import InformeFeedback from "./pages/InformeFeedback.jsx";
-import VersionesCriterio from "./pages/VersionesCriterio.jsx";
+import Laboratorio from "./pages/Laboratorio.jsx";
+import LaboratorioCargaNueva from "./pages/LaboratorioCargaNueva.jsx";
+import LaboratorioCarga from "./pages/LaboratorioCarga.jsx";
+import LaboratorioCorteNuevo from "./pages/LaboratorioCorteNuevo.jsx";
+import LaboratorioCorte from "./pages/LaboratorioCorte.jsx";
+import LaboratorioPropuestas from "./pages/LaboratorioPropuestas.jsx";
+import LaboratorioCriterio from "./pages/LaboratorioCriterio.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import ConfigFuentes from "./pages/ConfigFuentes.jsx";
 import ConfigFuentesAval from "./pages/ConfigFuentesAval.jsx";
@@ -404,30 +408,18 @@ export default function App() {
               </RequireAdmin>
             }
           />
-          <Route
-            path="/retroalimentacion"
-            element={
-              <RequireAdmin>
-                <Retroalimentacion />
-              </RequireAdmin>
-            }
-          />
-          <Route
-            path="/retroalimentacion/versiones"
-            element={
-              <RequireAdmin>
-                <VersionesCriterio />
-              </RequireAdmin>
-            }
-          />
-          <Route
-            path="/retroalimentacion/informe/:id"
-            element={
-              <RequireAdmin>
-                <InformeFeedback />
-              </RequireAdmin>
-            }
-          />
+          {/* El Laboratorio reemplaza a Retroalimentación (2026-10-03); las
+              direcciones viejas llevan a las nuevas. */}
+          <Route path="/retroalimentacion" element={<Navigate to="/laboratorio" replace />} />
+          <Route path="/retroalimentacion/versiones" element={<Navigate to="/laboratorio/criterio" replace />} />
+          <Route path="/retroalimentacion/*" element={<Navigate to="/laboratorio" replace />} />
+          <Route path="/laboratorio" element={<RequireAdmin><Laboratorio /></RequireAdmin>} />
+          <Route path="/laboratorio/cargas/nueva" element={<RequireAdmin><LaboratorioCargaNueva /></RequireAdmin>} />
+          <Route path="/laboratorio/cargas/:id" element={<RequireAdmin><LaboratorioCarga /></RequireAdmin>} />
+          <Route path="/laboratorio/cortes/nuevo" element={<RequireAdmin><LaboratorioCorteNuevo /></RequireAdmin>} />
+          <Route path="/laboratorio/cortes/:id" element={<RequireAdmin><LaboratorioCorte /></RequireAdmin>} />
+          <Route path="/laboratorio/propuestas" element={<RequireAdmin><LaboratorioPropuestas /></RequireAdmin>} />
+          <Route path="/laboratorio/criterio" element={<RequireAdmin><LaboratorioCriterio /></RequireAdmin>} />
           <Route path="/admin/fuentes" element={<Navigate to="/admin/fuentes/novadata" replace />} />
           <Route
             path="/admin/fuentes/novadata"

@@ -51,19 +51,16 @@ Edge Functions (Deno, en Supabase)
    |-- analyze-client      (lo anterior, o un perfil ya guardado) -> controles de bloqueo -> LLM -> analysis_results
    |                       (si consulta en fresco, guarda también el perfil: ningún análisis queda sin su data)
    |-- explore-novadata    inspección cruda de la ingesta (solo admin)
-   |-- analizar-feedback   informe "Esto encontramos" sobre un paquete de resultados reales
-   |-- proponer-ajustes    propuestas de ajuste al criterio, para aprobación humana
-   |-- correr-backtest     re-corre casos reales con el criterio candidato y compara
    v
 Supabase Postgres (ver "Base de datos")
 ```
 
 El pedido al modelo se arma en un solo lugar, `armarPedidoScoring()`
-(`llm-scoring.ts`), para el análisis y para la comparación de
-razonamiento (el backtest todavía arma el suyo). El marco va
-**sin caché de prompt**: la caché dura 5 minutos y entre dos análisis
-pasan 26 de mediana, así que se escribió 12 veces y no se leyó nunca
-(medido el 2026-09-27); se pagaba el recargo sin cobrar el descuento. Lo
+(`llm-scoring.ts`), para el análisis, el lote
+(`scripts/analizar-en-lote.mjs`) y la comparación de razonamiento. En un
+análisis suelto el marco va **sin caché de prompt**: la caché dura 5
+minutos y entre dos análisis pasan 26 de mediana, así que se escribió 12
+veces y no se leyó nunca (medido el 2026-09-27). En lote sí va cacheado. Lo
 que más pesa en el costo es el razonamiento del modelo, no el marco ni
 la respuesta: `scripts/comparar-razonamiento.mjs` compara
 configuraciones sobre casos reales y arma un Excel.
@@ -136,32 +133,31 @@ respecto del primer andamiaje, que sí calculaba con pesos fijos. Hay
 demasiada señal cualitativa (tipo de demanda, severidad de una mora,
 patrón de estabilidad laboral) para reducir a un scorecard numérico.
 
-## Ciclo de calibración (Retroalimentación)
+## Laboratorio de Inteligencia de Negocio › Riesgo de Crédito
 
-El modelo mejora con resultados reales de crédito, en 5 etapas, con
-aprobación humana en el medio. Pensado para que lo opere el área de
-Crédito/Riesgos, no un perfil técnico.
+Reemplazó a Retroalimentación el 2026-10-03. Mide si el motor acertó contra
+lo que realmente pasó con los créditos, busca qué datos anticipaban el
+impago y lo convierte en una propuesta de ajuste con evidencia. Lo opera
+nuestro equipo (sólo admin); la institución recibe un informe exportado.
+Diseño completo, decisiones y criterios de aceptación en
+`docs/laboratorio-de-riesgo.md`.
 
-1. **Cargar resultados reales** — plantilla de Excel (identificación,
-   fecha, si incumplió, tipo, observaciones del área). `feedback_paquetes`
-   / `feedback_creditos`.
-2. **Cruce con lo que el modelo dijo** — se resuelve por fecha contra el
-   análisis de entonces. Los casos "recomendamos negar pero se
-   desembolsó" salen del propio dato, sin campos manuales extra.
-3. **Informe "Esto encontramos"** — `analizar-feedback`. Las
-   estadísticas se calculan en código (tienen que ser exactas y
-   reproducibles); el LLM aporta solo lo cualitativo: sobre todo separar
-   los incumplimientos que **eran previsibles** con la información
-   disponible de los que fueron por causas externas.
-4. **Propuestas de ajuste** — `proponer-ajustes`. Nacen en estado
-   pendiente; una persona del área las aprueba, rechaza o pide cambios.
-   Aprobar y poner en vigencia son dos pasos distintos.
-5. **Prueba contra casos reales** — `correr-backtest`. Re-corre casos con
-   el criterio candidato. Dos reglas sostienen su validez: usa el
-   **perfil congelado** de la fecha original (nunca reconsulta la fuente,
-   que hoy ya tiene registrada la mora que entonces no existía), y evalúa
-   incumplimientos **y** créditos que pagaron bien, para que endurecer el
-   criterio siempre muestre su costo.
+1. **Carga** del archivo de la institución, con fechas y días de mora a 12
+   y 24 meses, y **vínculo** de cada operación con el análisis y el perfil
+   anteriores al desembolso, en la base (`lab_cerrar_carga`). Lo
+   consultado después del desembolso es fuga y queda afuera.
+2. **Corte**: la población congelada (cargas, definición de impago,
+   ventana), que copia puntajes y valores para dar siempre el mismo número.
+3. **Desempeño, variables y simulación de política**, calculados en la
+   base sin llamar al modelo: AUC, KS, tasa por recomendación y por tramo,
+   valor de información por variable, y qué pasaría con una regla.
+4. **Propuestas** con su evidencia. Un ajuste del criterio aprobado entra
+   al criterio vigente (versionado y reversible); un cambio de marco, de
+   dato o de política se aplica con una versión nueva.
+
+Sin una institución real todavía, se desarrolla y se prueba con una
+**cartera sintética con señal plantada** (`scripts/generar-cartera-sintetica.mjs`),
+marcada como tal en toda pantalla y excluida de todo informe.
 
 ## Reportes: Inteligencia de Negocios y Descargas
 
@@ -178,7 +174,8 @@ El exportable (`src/lib/exportAnalitico.js`) trae
 una fila por solicitud en el rango de fechas que se elija: los ~145
 campos de la Estructura Estandarizada con los que se evaluó a esa
 persona, el score, la recomendación, la versión del criterio y — cuando
-ya se cargó la cosecha — si el crédito incumplió. Los Sí/No salen como
+hay una carga real en el Laboratorio — el resultado del crédito (estado y
+días de mora por ventana; nunca el de una carga sintética). Los Sí/No salen como
 1/0 porque es una tabla para calcular. El total se cuenta en el servidor
 antes de descargar: cada perfil son ~10 KB.
 
@@ -206,7 +203,7 @@ qué se aplicó aunque después se edite o borre la propuesta). Solo se
 registra si el criterio *efectivo* cambió — aprobar algo sin ponerlo en
 vigencia no ensucia el historial.
 
-Desde `/retroalimentacion/versiones` se puede volver a una versión
+Desde `/laboratorio/criterio` (sólo admin) se puede volver a una versión
 anterior (`revertir_criterio`) o desactivar todos los ajustes de golpe
 (`desactivar_todos_los_ajustes`), para el caso de un error no
 identificado donde no se sabe cuál ajuste falló. Ninguna de las dos
@@ -226,7 +223,7 @@ no solo ocultando enlaces del menú.
 | Fuentes de Ingreso (Panorama, Clientes por segmento, Reglas) | `/fuentes` | analista |
 | Fuentes de Ingreso › Parámetros | `/fuentes/parametros` | admin |
 | Costos (Panorama, Costo por consulta, Corridas masivas, Detalle de llamadas, Fallas e incidentes, Tarifas) | `/costos` | admin |
-| Retroalimentación | `/retroalimentacion` | admin |
+| Laboratorio › Riesgo de Crédito | `/laboratorio` | admin |
 | Explorador de Fuentes | `/explorar` | admin |
 | Configuración | `/admin/configuracion` | admin |
 
@@ -259,12 +256,13 @@ Tablas principales:
 - `novadata_resource_config`, `standard_profile_field_config`,
   `standard_profile_segment_config` — qué recursos/campos están activos,
   configurables desde la app sin desplegar.
-- `feedback_paquetes`, `feedback_creditos`, `feedback_informes`,
-  `feedback_propuestas`, `feedback_backtests`, `criterio_versiones` — el
-  ciclo de calibración.
+- `lab_*` (cargas, operaciones, cortes, resultados, propuestas, catálogo
+  de variables, definiciones de impago) y `criterio_versiones` — el
+  Laboratorio y el criterio vigente.
 
-Se guardan **solo los resultados**, nunca el crudo de Novadata: se
-consulta en vivo y se descarta tras procesarlo. Toda consulta queda
+El crudo de Novadata se guarda comprimido en el depósito privado
+`crudo-novadata` de Storage (desde la 090), y lo que leyó el modelo en
+`analysis_results.mensaje_al_modelo`. Toda consulta queda
 auditada en `audit_log`, y solo las Edge Functions (con `service_role
 key`) escriben resultados — el navegador nunca escribe directo.
 

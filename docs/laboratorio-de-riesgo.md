@@ -2,7 +2,11 @@
 
 Diseño del módulo que **reemplaza por completo a Retroalimentación**.
 Versión 2 (2026-10-03), con las decisiones del negocio del mismo día.
-Estado: fase 0 hecha (090); el resto, diseñado y sin implementar.
+Estado: **fases 0 a 5 implementadas el 2026-10-03** (migraciones 090 y 094
+a 097, pantallas en `/laboratorio`). Retroalimentación ya no existe. Las
+consultas de cada pantalla se probaron contra la base; **falta verlas en
+el navegador con una sesión de admin**. La fase 6 (con costo) espera
+autorización.
 
 Todo lo de las fases 1 a 5 se construye y se prueba **sin gastar en el
 modelo de lenguaje**. Lo único que cuesta está aislado en la fase 6 y se
@@ -450,11 +454,11 @@ En este orden, por la regla 8 de `CLAUDE.md` (desplegar antes de borrar):
 | Fase | Qué | Costo de modelo | Se da por hecha cuando |
 |---|---|---|---|
 | 0 | Crudo y mensaje al modelo guardados | — | **Hecha (090)** |
-| 1 | Tablas `lab_*`, plantilla, carga, vínculo, conciliación, generador sintético | 0 | Una carga sintética de 2.567 operaciones se vincula entera; una carga con errores se rechaza con el motivo de cada fila; nada se pierde pasadas las 1.000 filas. |
-| 2 | Cortes y desempeño | 0 | Un corte congelado da el mismo resultado al recalcularlo; el AUC y el KS en SQL coinciden con un cálculo independiente en el script; la tasa por tramo baja como la regla plantada. |
-| 3 | Variables | 0 | Las cuatro variables plantadas están entre las primeras por IV, y toda variable que las supere está correlacionada con alguna plantada (documentado); las no relacionadas quedan bajo 0,1; la bandera de fuga se prende con una variable que contiene el resultado. |
-| 4 | Simulación de política y casos | 0 | Una regla sobre la variable plantada evita malos y muestra los buenos que pierde; el recorrido de un caso se abre completo. |
-| 5 | Propuestas, criterio y retiro de Retroalimentación | 0 | Las tres funciones del criterio leen `lab_propuestas` con la misma huella; Retroalimentación ya no existe; Descargas sigue funcionando. |
+| 1 | Tablas `lab_*`, plantilla, carga, vínculo, conciliación, generador sintético | 0 | **Hecha (094).** Una carga sintética de 2.567 operaciones se vincula entera; una carga con errores se rechaza con el motivo de cada fila; nada se pierde pasadas las 1.000 filas. |
+| 2 | Cortes y desempeño | 0 | **Hecha (095): AUC 0,7407 en la base = 0,7407 del script.** Un corte congelado da el mismo resultado al recalcularlo; el AUC y el KS en SQL coinciden con un cálculo independiente en el script; la tasa por tramo baja como la regla plantada. |
+| 3 | Variables | 0 | **Hecha (095): plantadas 1ª, 2ª, 5ª y 8ª; no relacionadas bajo 0,1.** Las cuatro variables plantadas están entre las primeras por IV, y toda variable que las supere está correlacionada con alguna plantada (documentado); las no relacionadas quedan bajo 0,1; la bandera de fuga se prende con una variable que contiene el resultado. |
+| 4 | Simulación de política y casos | 0 | **Hecha (095).** Una regla sobre la variable plantada evita malos y muestra los buenos que pierde; el recorrido de un caso se abre completo. |
+| 5 | Propuestas, criterio y retiro de Retroalimentación | 0 | **Hecha (096, 097): misma huella del criterio; tablas `feedback_*` borradas.** Las tres funciones del criterio leen `lab_propuestas` con la misma huella; Retroalimentación ya no existe; Descargas sigue funcionando. |
 | 6 | Simulación de marco candidato y reconsulta de negados | **sí, con autorización** | Lotes por `analizar-en-lote.mjs`; reconsultas con costo de Novadata. |
 
 Las fases 2 y 3 pueden ir en paralelo después de la 1.

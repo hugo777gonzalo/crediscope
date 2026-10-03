@@ -33,18 +33,15 @@ function aplanar(obj, prefijo, salida) {
   }
 }
 
-function siNoANumero(v) {
-  if (v === true) return 1;
-  if (v === false) return 0;
-  return "";
-}
-
 export function construirTablaAnalitica(registros) {
   return (registros ?? []).map((a) => {
     const perfil = a.client_profiles?.standard_profile ?? null;
-    // Un análisis puede aparecer en más de un paquete de
-    // retroalimentación si se cargó dos veces; se toma el primero.
-    const credito = (a.feedback_creditos ?? [])[0] ?? null;
+    // El resultado real del crédito, del Laboratorio. NUNCA de una carga
+    // sintética: su resultado es inventado por una regla plantada, y hay
+    // análisis reales vinculados a la cartera sintética. Tampoco de una
+    // carga anulada. Si el análisis está en más de una carga, la primera.
+    const credito =
+      (a.lab_operaciones ?? []).find((o) => o.lab_cargas && !o.lab_cargas.es_sintetica && o.lab_cargas.estado === "lista") ?? null;
 
     const fila = {
       cedula: a.clients?.cedula ?? "",
@@ -58,10 +55,10 @@ export function construirTablaAnalitica(registros) {
       recomendacion: a.recomendacion ?? "",
       // Resultado real del crédito (vacío mientras no se cargue el
       // paquete de retroalimentación de esa cosecha).
-      desembolsado: siNoANumero(credito?.desembolsado),
-      hubo_incumplimiento: siNoANumero(credito?.hubo_default),
-      dias_mora_max: credito?.dias_mora_max ?? "",
-      tipo_incumplimiento: credito?.tipo_default ?? "",
+      operacion: credito?.numero_operacion ?? "",
+      estado_al_corte: credito?.estado_operacion ?? "",
+      dias_mora_max_12m: credito?.dias_mora_max_12m ?? "",
+      dias_mora_max_24m: credito?.dias_mora_max_24m ?? "",
       monto: credito?.monto ?? "",
       producto: credito?.producto ?? "",
       plazo_meses: credito?.plazo_meses ?? "",
@@ -92,7 +89,9 @@ const COMO_LEER = [
   ["· Los Sí/No vienen como 1 y 0, para poder calcular directamente."],
   ["· Una celda vacía es dato que no existe, no un cero."],
   ["· Las listas (ej. profesiones) vienen separadas por \" | \"."],
-  ["· hubo_incumplimiento vacío = ese crédito todavía no tiene resultado cargado."],
+  ["· operacion vacía = ese análisis no tiene un crédito cargado en el Laboratorio (o no sos admin)."],
+  ["· dias_mora_max_12m / _24m vacío = la operación no cumplió esa ventana al corte del archivo."],
+  ["· El impago no viene calculado: depende de la definición (Laboratorio › definición de impago)."],
   ["· fecha_analisis y hora_analisis están en hora de Ecuador continental (UTC-5)."],
   [],
   ["La columna perfil_vinculo dice de dónde salió la información de esa fila:"],

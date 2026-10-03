@@ -117,8 +117,12 @@ Romper cualquiera de estas rompe algo real.
   pantalla y el modelo.
 - `llm-scoring.ts` → `armarPedidoScoring()` arma el pedido al modelo y
   `CONFIG_LLM` decide el razonamiento y el tope de salida. Lo usan el
-  análisis, el backtest (con los ajustes del criterio candidato) y
+  análisis, el lote (`scripts/analizar-en-lote.mjs`) y
   `scripts/comparar-razonamiento.mjs`: un camino nuevo al modelo también.
+- `src/lib/laboratorio.js` y las funciones SQL `lab_*` — el Laboratorio
+  de Inteligencia de Negocio, que reemplazó a Retroalimentación
+  (`docs/laboratorio-de-riesgo.md`). El criterio vigente del motor
+  (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.

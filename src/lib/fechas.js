@@ -86,6 +86,14 @@ export function formatearFecha(v) {
   return d ? FMT_FECHA.format(d) : "—";
 }
 
+/** "16/11/2028" para una fecha SIN hora ("2028-11-16", una columna date).
+ *  formatearFecha() la leería como medianoche UTC y en Ecuador mostraría
+ *  el día anterior; esta no la convierte. */
+export function formatearDia(v) {
+  const m = String(v ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "—";
+}
+
 /** "15/09/2026 17:26" */
 export function formatearFechaHora(v) {
   const d = aFecha(v);

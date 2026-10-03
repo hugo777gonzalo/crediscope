@@ -105,29 +105,6 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
 ## 2. Riesgos técnicos conocidos
 
-- **El backtest puede pasarse de los 150 s.**
-  - `correr-backtest` corre hasta 20 casos (10 incumplidos y 10 que
-    pagaron) en 2 tandas de 10 en paralelo.
-  - Cada tanda dura lo que su caso más lento, y un análisis con
-    razonamiento activo tarda de 40 a 110 s.
-  - Supabase corta la función a los 150 s: dos tandas lentas no
-    entran.
-  - Medirlo con un paquete real antes de usarlo. Si corta: tandas más
-    chicas, una invocación por caso o la API de lotes (que además cuesta
-    la mitad).
-- **Tres lecturas de `src/lib/api.js` se cortan con volumen:**
-  - `getClientesParaPlantilla` y `getUsoPorVersion` pasan las 1.000
-    filas;
-  - `vincularFilasConAnalisis` pasa el largo de la dirección con más de
-    ~350 ids.
-
-  Hoy no se cortan (hay 70 análisis). El arreglo existe: es el commit
-  720f31b de la rama `claude/cool-jemison-2a674d`, sin mergear. Mergea
-  sin conflictos contra `main` (probado el 2026-09-28), y la función 082
-  que usa ya está en la base. Si Retroalimentación se rehace antes (ver
-  abajo), no hace falta.
-- **`analizar-feedback` no pasa `deno check`.** Son errores de tipos
-  previos (`hubo_default`, líneas ~216-217). Despliega igual.
 - **La cartera tiene 240 personas que no existen.** Son las cédulas
   sintéticas de prueba de Aval: 2.807 clientes = 2.567 reales + 240.
   - Tuercen todo total sobre la cartera (porcentajes, segmentos,
@@ -215,19 +192,14 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 - **Validar con el negocio los criterios dentro de cada grupo del
   marco** (qué campo pesa cuánto). El orden de los grupos sí lo definió
   el usuario.
-- **Retroalimentación se reemplaza por el Laboratorio de Inteligencia de
-  Negocio › Riesgo de Crédito** (decidido el 2026-10-03). Diseño v2 en
-  `docs/laboratorio-de-riesgo.md`: diagnóstico de Retroalimentación (11
-  errores y los acoplamientos con el motor), modelo de datos `lab_*`,
-  cálculos en SQL, cartera sintética con señal plantada, pantallas,
-  seguridad, orden de retiro y criterios de aceptación por fase. Las fases
-  1 a 5 no gastan en el modelo. La fase 0 (crudo
-  de Novadata y mensaje al modelo guardados) está hecha; sigue la fase 1,
-  sobre una cartera sintética. Hallazgos del módulo viejo que el nuevo no
-  tiene que repetir:
-  - la plantilla bajaba todos los análisis;
-  - el nombre del cliente salía vacío;
-  - guardar un paquete no es transaccional.
+- **Laboratorio de Inteligencia de Negocio: fases 1 a 5 hechas, falta
+  verlo con sesión** (2026-10-03, `docs/laboratorio-de-riesgo.md`). Las
+  consultas de las pantallas se probaron contra la base
+  (`research/probar-consultas-laboratorio.mjs`), pero ninguna pantalla se
+  vio en el navegador: la sesión de admin de QA había caducado. Para
+  verlo: iniciar sesión en `localhost:5184` y recorrer `/laboratorio` ›
+  la carga sintética › el corte "Sintética a 24 meses" (Desempeño,
+  Variables, Simulación, Casos) › Propuestas › Criterio vigente.
 - **Lote de análisis reales: postergado** (2026-10-03: no hay presupuesto, y
   no hace falta para desarrollar el Laboratorio, que usa puntajes
   sintéticos). Listo para correr cuando se autorice: 280 pedidos, ~USD 4-6

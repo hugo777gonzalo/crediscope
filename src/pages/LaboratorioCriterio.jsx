@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { History, Undo2, ShieldAlert } from "lucide-react";
-import { getVersionesCriterio, getUsoPorVersion, revertirCriterio, desactivarTodosLosAjustes } from "../lib/api.js";
+import { getVersionesCriterio, getUsoPorVersion, revertirCriterio, desactivarTodosLosAjustes } from "../lib/laboratorio.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 
-// Historial del criterio con el que el modelo evalúa. Cada vez que se
+// Historial del criterio con el que el modelo evalúa (antes en
+// Retroalimentación; desde 2026-10-03, los ajustes salen de las propuestas
+// del Laboratorio, lab_propuestas). Cada vez que se
 // pone o quita un ajuste de vigencia queda congelada una versión con el
 // texto exacto de lo que regía, y cada análisis guarda cuál se le
 // aplicó. Eso permite dos cosas que antes no se podían: auditar por qué
 // un análisis salió como salió, y volver atrás sin tener que
 // reconstruir a mano qué estaba activo.
 
-export default function VersionesCriterio() {
+export default function LaboratorioCriterio() {
   const [versiones, setVersiones] = useState([]);
   const [uso, setUso] = useState({});
   const [loading, setLoading] = useState(true);
@@ -72,8 +74,8 @@ export default function VersionesCriterio() {
   return (
     <div>
       <p>
-        <Link to="/retroalimentacion" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Volver a Retroalimentación
+        <Link to="/laboratorio" className="crediscope-muted" style={{ textDecoration: "none" }}>
+          Volver al Laboratorio
         </Link>
       </p>
 

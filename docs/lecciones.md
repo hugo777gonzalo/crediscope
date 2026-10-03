@@ -67,8 +67,9 @@ está el porqué. Una lección nueva va en los dos lugares.
   que necesita seguir un dato desde la fuente hasta la respuesta del
   modelo. Por lo mismo se guarda `analysis_results.mensaje_al_modelo`.
 - **El modelo lee SOLO el perfil del modelo** (`_shared/perfil-del-modelo.ts`,
-  desde marco-v23). Los tres caminos al LLM (análisis, backtest, informe
-  de retroalimentación) pasan por `armarPerfilDelModelo()` /
+  desde marco-v23). Todos los caminos al LLM (hoy: análisis, lote y
+  comparación de razonamiento; hasta el 2026-10-03 también el backtest y el
+  informe de retroalimentación) pasan por `armarPerfilDelModelo()` /
   `mensajeParaElModelo()`: ingresos con los nombres de la pantalla, perfil
   laboral, indicios, estabilidad y tamaño del negocio; campos
   deshabilitados en null; sin aportes mes a mes, sin textos del SRI, sin

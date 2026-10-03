@@ -5,7 +5,7 @@ import {
   ClipboardCheck,
   FileStack,
   BarChart3,
-  MessageSquareReply,
+  FlaskConical,
   Settings,
   Wallet,
   Receipt,
@@ -218,10 +218,10 @@ export default function MenuLateral({ profile }) {
               ]}
             />
             <Item
-              to="/retroalimentacion"
-              Icono={MessageSquareReply}
-              texto="Retroalimentación"
-              activo={pathname.startsWith("/retroalimentacion")}
+              to="/laboratorio"
+              Icono={FlaskConical}
+              texto="Laboratorio"
+              activo={pathname.startsWith("/laboratorio")}
               colapsado={colapsado}
             />
             {/* Tres pantallas y no una: los tres interruptores se
