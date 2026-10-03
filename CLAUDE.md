@@ -254,7 +254,12 @@ antes de tocar esa área.
   que arma es versión nueva del marco con su fila en
   `scoring_rules_versions`. De `fuentesIngreso.detalle` va sólo un
   resumen; la renta nunca.
-- Escribe Sonnet, sin cascada con Haiku (marco-v24).
+- Escribe Sonnet 5.5 desde marco-v28 (sin cascada con Haiku desde v24).
+  El mismo perfil analizado dos veces mueve el score ~40 puntos y cambia 1
+  de cada 13 recomendaciones: una diferencia menor que eso no se atribuye
+  a un cambio. La respuesta la garantiza un esquema JSON.
+- Para analizar muchos clientes: `scripts/analizar-en-lote.mjs` (API de
+  lotes, mitad de precio, marco cacheado, `llm_llamadas.tarifa = lote`).
 - Lo caro es el razonamiento, no el marco. `max_tokens` es también techo
   de tiempo: Supabase corta a 150 s y Sonnet escribe ~85-90 tokens/s.
   Sin caché del marco (nunca se leyó). Comparar configuraciones:

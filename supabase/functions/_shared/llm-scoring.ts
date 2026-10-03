@@ -79,7 +79,21 @@ const ANTHROPIC_WORKSPACE_ID = Deno.env.get("ANTHROPIC_WORKSPACE_ID") ?? "";
 // ("enListaNegra=true con bloqueante=true") y escribió positivos que el
 // marco prohíbe. Sonnet cuesta el doble (~$0,04 contra ~$0,02 por
 // análisis, con el marco cacheado).
-const MODELO = "claude-sonnet-5";
+//
+// Sonnet 5.5 desde marco-v28 (2026-10-03, decisión del negocio). Medido en
+// los 14 casos de validación contra Sonnet 5: misma recomendación 12 de 13,
+// dentro del ruido (Sonnet 5 contra sí mismo, también 12 de 13), a USD
+// 0,067 contra 0,101 y 22 s contra 55, porque razona ~1.400 tokens contra
+// ~4.500. Sonnet 5 se cortó en 1715532469 dos de cuatro veces (10.000
+// tokens razonando); Sonnet 5.5 nunca.
+const MODELO = "claude-sonnet-5-5";
+
+// Si un filtro de seguridad de Sonnet 5.5 rechaza el pedido, la API lo
+// reintenta sola en otro modelo. Sólo cubre los rechazos "cyber" y
+// "frontier_llm"; uno "general_harms" (el perfil trae delitos y denuncias)
+// vuelve como rechazo y queda guardado con su categoría (interpretar()).
+// La API de lotes no lo admite: va en la llamada en vivo, no en el pedido.
+const MODELOS_CON_RESPALDO = new Set(["claude-sonnet-5-5"]);
 
 // Configuración que define el grueso del costo, exportada para que el
 // registro de consumo pueda explicarlo (ver llm-log.ts / 041).
@@ -96,6 +110,8 @@ const MODELO = "claude-sonnet-5";
 // minutos, y Supabase corta la respuesta de la función a los 150 s.
 // Con 10.000 también se cortó: 9.362 de razonamiento (ver
 // scripts/comparar-razonamiento.mjs, que mide las alternativas).
+// "desactivado" lo rechaza Sonnet 5.5 (HTTP 400): sólo sirve para comparar
+// contra Sonnet 5.
 export type ConfigRazonamiento = {
   razonamiento: "activo" | "desactivado" | "adaptativo";
   // Sólo con razonamiento adaptativo: cuánto delibera el modelo.
@@ -237,6 +253,7 @@ async function pedirScoring(
   cuerpo: Record<string, unknown>
 ): Promise<{ resultado: LlmScoringResult; llamada: LlamadaRealizada }> {
   const modelo = cuerpo.model as string;
+  const respaldo = MODELOS_CON_RESPALDO.has(modelo);
   const inicio = Date.now();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -245,8 +262,9 @@ async function pedirScoring(
       "x-api-key": ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01",
       ...(ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": ANTHROPIC_WORKSPACE_ID } : {}),
+      ...(respaldo ? { "anthropic-beta": "server-side-fallback-2026-07-01" } : {}),
     },
-    body: JSON.stringify(cuerpo),
+    body: JSON.stringify(respaldo ? { ...cuerpo, fallbacks: "default" } : cuerpo),
   });
 
   const duracionMs = Date.now() - inicio;

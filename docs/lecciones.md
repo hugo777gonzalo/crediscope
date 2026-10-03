@@ -213,6 +213,17 @@ está el porqué. Una lección nueva va en los dos lugares.
   "abuso de confianza" porque CONFIANZA contiene FIANZA. Al pasar a
   palabras completas hay que agregar los plurales a mano ("FACTURAS",
   "CHEQUES"): una S opcional vuelve a traer "PRENDAS DE VESTIR".
+- **Sonnet 5.5 desde marco-v28, y el ruido del modelo medido** (2026-10-03).
+  En los 14 casos de validación, la configuración de producción corrida dos
+  veces dio la misma recomendación 12 de 13 y movió el score 39 puntos en
+  promedio: ese es el piso para decir que un cambio cambió algo. Sonnet 5.5
+  con marco-v28 quedó dentro del ruido (12 de 13, ±42), a USD 0,067 contra
+  0,101 y 22 s contra 55, razonando ~1.400 tokens contra ~4.500. Sonnet 5 se
+  cortó en 1715532469 dos de cuatro veces, gastando los 10.000 tokens en
+  razonar. El único cambio que no fue ruido: 0502937675 (ingreso "Por
+  confirmar") pasó de aprobar a revisar con v28 en los dos modelos, y el
+  negocio confirmó que revisar es lo correcto. Excel en
+  `research/comparacion-marco-v28-2026-10-03/`.
 - **El análisis lo escribe Sonnet, sin cascada** (marco-v24). La cascada
   con Haiku se validó por coincidencia de scores, no por el texto, y en
   los casos claros el texto lo escribía Haiku: en inglés, con nombres de

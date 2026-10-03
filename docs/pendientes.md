@@ -53,8 +53,15 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
      cuatro veces (10.000 tokens razonando). El único cambio que no es
      ruido: 0502937675 pasa de aprobar a revisar con v28 en los dos
      modelos, porque su ingreso está "Por confirmar" y el marco pide
-     capacidad evidenciada para aprobar; v27 lo aprobaba igual. Falta que
-     el negocio confirme el cambio, adoptar Sonnet 5.5 y v28, y el lote.
+     capacidad evidenciada para aprobar; v27 lo aprobaba igual.
+     **Adoptado el 2026-10-03:** v28 y Sonnet 5.5 en producción (el
+     negocio confirmó que 0502937675 va a revisar). Verificado con una
+     llamada real del código desplegado (1715532469: completa, USD 0,10).
+     **Falta el lote:** subir el límite de la consola de Anthropic y
+     `config_operativa.presupuesto_llm_mensual_usd` (en octubre van USD
+     5,4 de 10), y después
+     `node scripts/analizar-en-lote.mjs enviar --carpeta=research/lote-analisis-2026-10-03 --responsable=<uuid>`
+     y `recoger` (la muestra ya está elegida: 200 clientes, 280 pedidos).
 
 1. **marco-v25 a v27 casi no corrieron.** Medido el 2026-10-03: v25
    ninguna vez; v26 una sola vez con éxito (2026-09-28, negar) y dos
@@ -84,30 +91,7 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    el respaldo sólo se actualiza desde el guion (así quedó también
    1308725470, reconsultada dos veces el 2026-09-28 y 29).
 
-3. **Repetir la comparación de razonamiento (paso 4)** y decidir la
-   configuración de producción. No antes del 1 de octubre (punto 1).
-   - Hoy `CONFIG_LLM` en `llm-scoring.ts`: razonamiento activo, 10.000
-     tokens de salida, sin caché del marco.
-   - Comando: `node scripts/comparar-razonamiento.mjs`. Cuesta ~$3 (42
-     llamadas). Usa las 14 cédulas de
-     `research/cedulas_validacion_marco_v23.txt` y deja el Excel en
-     `research/comparacion-razonamiento-<fecha>/`.
-   - La corrida anterior (2026-09-27) fue con marco-v24, antes de los
-     arreglos de datos, y dio:
-
-     | Configuración | Costo | Tiempo | Misma recomendación que "hoy" |
-     |---|---|---|---|
-     | Hoy (activo) | $0,104 | 71 s | — |
-     | Sin razonamiento | $0,054 | 19 s | 5 de 10 no bloqueados |
-     | Esfuerzo medio | $0,067 | 33 s | 7 de 10 |
-
-   - Hubo una sola corrida por configuración, así que el ruido entre
-     corridas no se midió. Correr "hoy" dos veces lo mide, y sin eso no
-     se sabe si 7 de 10 es poco o mucho.
-   - El backtest ya arma su pedido con `armarPedidoScoring()`
-     (2026-09-29): si cambia `CONFIG_LLM`, lo sigue.
-
-4. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
+3. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
    "Clientes que necesitan respaldo".** El análisis y la propuesta están en
    `docs/propuesta-panorama-respaldo-y-evidencia.md` (2026-09-29).
    - Falta que el negocio conteste las 8 preguntas de su sección 3; no se
