@@ -315,6 +315,12 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
   if (cobro && typeof cobro === "object" && Array.isArray(cobro.tiposDemandasComoDemandado)) {
     cobro.tiposDemandasComoDemandado = tiposLegibles(cobro.tiposDemandasComoDemandado);
   }
+  // Desde marco-v28: el grupo sólo llega si la persona es cliente interno.
+  // Casi nadie lo es, y el marco gastaba un párrafo en decir que, vacío, se
+  // ignore. Si la fuente no contestó, lo dice la disponibilidad.
+  if ((copia.comportamientoInterno as AnyRecord | undefined)?.esClienteInterno === false) {
+    delete copia.comportamientoInterno;
+  }
   // Los bloques nuevos también se pueden apagar campo por campo.
   ocultar(copia);
   // La disponibilidad va PRIMERO (el modelo tiene que leerla antes que los

@@ -38,6 +38,11 @@ export interface LlamadaLlm {
   // razonamiento interno es ~70% de los tokens de salida).
   razonamiento?: "activo" | "desactivado" | "adaptativo";
   maxTokens?: number;
+  // "lote" = API de lotes de Anthropic, que cobra la mitad (093). Sin esto
+  // llm_costos la valuaría a precio de lista y el presupuesto avisaría de
+  // más. Se manda sólo cuando no es la estándar: así las funciones que no
+  // lo conocen siguen escribiendo igual.
+  tarifa?: "estandar" | "lote";
 }
 
 export async function registrarLlamadaLlm(client: SupabaseClient, llamada: LlamadaLlm): Promise<void> {
@@ -68,6 +73,7 @@ export async function registrarLlamadaLlm(client: SupabaseClient, llamada: Llama
       es_prueba: llamada.esPrueba ?? false,
       razonamiento: llamada.razonamiento ?? null,
       max_tokens: llamada.maxTokens ?? null,
+      ...(llamada.tarifa === "lote" ? { tarifa: "lote" } : {}),
       actor: llamada.actor ?? null,
     });
     if (error) console.error("No se pudo registrar la llamada al LLM:", error.message);

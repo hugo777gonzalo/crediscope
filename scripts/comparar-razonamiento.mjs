@@ -57,17 +57,32 @@ const CONFIGURACIONES = {
   hoy: { etiqueta: "Hoy (razonamiento activo)", config: CONFIG_LLM },
   sin: { etiqueta: "Sin razonamiento", config: { razonamiento: "desactivado", maxTokens: CONFIG_LLM.maxTokens } },
   medio: { etiqueta: "Razonamiento con esfuerzo medio", config: { razonamiento: "adaptativo", esfuerzo: "medium", maxTokens: CONFIG_LLM.maxTokens } },
+  // Lo mismo que "hoy", otra vez: sin esto no se sabe cuánto cambia el
+  // modelo de una corrida a otra, y una diferencia contra "hoy" no se
+  // puede atribuir a nada (marco v28, 2026-10-03).
+  hoy2: { etiqueta: "Hoy, segunda corrida (ruido)", config: CONFIG_LLM },
+  // "nuevo" y "s55" se corren con el marco nuevo en el código: el marco de
+  // cada llamada queda guardado en su archivo.
+  nuevo: { etiqueta: "Marco nuevo, mismo modelo", config: CONFIG_LLM },
+  s55: { etiqueta: "Marco nuevo, Sonnet 5.5", config: { ...CONFIG_LLM, modelo: "claude-sonnet-5-5" } },
 };
 const CLAVES = arg("configs", "hoy,sin,medio").split(",").filter((c) => CONFIGURACIONES[c]);
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-const { data: precio, error: errPrecio } = await supabase
-  .from("llm_precios").select("*").eq("modelo", MODELO).order("vigente_desde", { ascending: false }).limit(1).maybeSingle();
-if (errPrecio || !precio) throw new Error(`Sin precio para ${MODELO}: ${errPrecio?.message ?? "no hay fila en llm_precios"}`);
-const costoDe = (u = {}) =>
-  ((u.input_tokens ?? 0) * precio.usd_entrada + (u.output_tokens ?? 0) * precio.usd_salida
+const modeloDe = (clave) => CONFIGURACIONES[clave].config.modelo ?? MODELO;
+const precios = new Map();
+for (const modelo of new Set(CLAVES.map(modeloDe))) {
+  const { data: precio, error: errPrecio } = await supabase
+    .from("llm_precios").select("*").eq("modelo", modelo).order("vigente_desde", { ascending: false }).limit(1).maybeSingle();
+  if (errPrecio || !precio) throw new Error(`Sin precio para ${modelo}: ${errPrecio?.message ?? "no hay fila en llm_precios"}`);
+  precios.set(modelo, precio);
+}
+const costoDe = (u = {}, modelo) => {
+  const precio = precios.get(modelo);
+  return ((u.input_tokens ?? 0) * precio.usd_entrada + (u.output_tokens ?? 0) * precio.usd_salida
     + (u.cache_creation_input_tokens ?? 0) * precio.usd_cache_escritura + (u.cache_read_input_tokens ?? 0) * precio.usd_cache_lectura) / 1e6;
+};
 
 const archivoDe = (cedula, clave) => path.join(CARPETA_CRUDO, `${cedula}__${clave}.json`);
 
@@ -124,9 +139,10 @@ if (!SOLO_EXCEL) {
         errorHttp = String(err);
       }
       const duracionMs = Date.now() - inicio;
-      const resultado = data ? interpretar(data, MODELO) : null;
+      const modelo = modeloDe(clave);
+      const resultado = data ? interpretar(data, modelo) : null;
       const fallo = errorHttp ? `HTTP ${httpStatus}: ${errorHttp}` : resultado?.fallo ?? null;
-      const costo = costoDe(data?.usage);
+      const costo = costoDe(data?.usage, modelo);
       costoTotal += costo;
 
       // Un error de la API (pedido mal formado, límite) no se guarda: así
@@ -140,7 +156,7 @@ if (!SOLO_EXCEL) {
       }
       await registrarLlamadaLlm(supabase, {
         funcion: "comparacion-razonamiento",
-        modelo: data?.model ?? MODELO,
+        modelo: data?.model ?? modelo,
         exito: !fallo,
         error: fallo,
         stopReason: data?.stop_reason ?? null,
@@ -251,7 +267,7 @@ const resumen = orden.filter((c) => detalle.some((d) => d.clave === c)).map((cla
 });
 
 // Por caso: una fila por cliente, las configuraciones lado a lado.
-const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio" };
+const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", s55: "Sonnet 5.5" };
 const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
   const fila = { "Cédula": cedula, "Nombre": Object.values(cs)[0]?.nombre ?? "", "Bloqueado por política": Object.values(cs)[0]?.bloqueado ? "Sí" : "No" };
   for (const clave of orden) {
@@ -267,7 +283,7 @@ const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
     fila[`${n} · Segundos`] = red(d.f.duracionMs / 1000, 1);
     fila[`${n} · Tokens razonamiento`] = d.razonamiento;
   }
-  for (const clave of ["sin", "medio"]) {
+  for (const clave of ["sin", "medio", "hoy2", "nuevo", "s55"]) {
     const d = cs[clave], h = cs.hoy;
     if (!d || !h) continue;
     const ambos = d.estado === "Completo" && h.estado === "Completo";
@@ -329,9 +345,9 @@ const notas = [
   ["Comparación de razonamiento del modelo"],
   [""],
   ["Generado", new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC"],
-  ["Modelo", MODELO],
-  ["Marco", MARCO_VERSION],
-  ["Precios (USD por millón de tokens)", `entrada ${precio.usd_entrada} · salida ${precio.usd_salida}`],
+  ["Modelos", [...new Set(filas.map((f) => f.config?.modelo ?? MODELO))].join(", ")],
+  ["Marcos", [...new Set(filas.map((f) => f.marco))].join(", ")],
+  ...[...precios].map(([m, p]) => [`Precios ${m} (USD por millón de tokens)`, `entrada ${p.usd_entrada} · salida ${p.usd_salida}`]),
   [""],
   ["Configuraciones"],
   [CONFIGURACIONES.hoy.etiqueta, "La de producción: el modelo decide cuánto razona, sin tope propio. Límite total 10.000 tokens."],

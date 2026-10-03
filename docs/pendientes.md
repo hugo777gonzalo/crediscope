@@ -36,9 +36,25 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    - **"Observar" ya salió en marco-v27** (otra sesión, el mismo día). La
      optimización del marco, sólo de forma y sin cambiar criterios, es la
      v28.
-   - Orden decidido: marco v28 → comparación de los 14 casos (modelo y
-     esfuerzo, con la configuración de hoy dos veces para medir el ruido)
-     → decidir `CONFIG_LLM` → lote.
+   - Orden decidido: marco v28 → comparación de los 14 casos → decidir
+     `CONFIG_LLM` → lote.
+   - **Comparación hecha** (2026-10-03, 56 llamadas, USD 5,32; Excel en
+     `research/comparacion-marco-v28-2026-10-03/`):
+
+     | Corrida | USD | Seg. | Razonamiento | Misma recomendación que "hoy" |
+     |---|---|---|---|---|
+     | Hoy (v27, Sonnet 5) | 0,101 | 55 | 4.475 | — (1 cortada) |
+     | Hoy otra vez (ruido) | 0,105 | 60 | 4.864 | 12 de 13, score ±39 |
+     | v28, Sonnet 5 | 0,107 | 66 | 5.679 | 12 de 13, ±50 (1 cortada) |
+     | v28, Sonnet 5.5 | 0,067 | 22 | 1.358 | 12 de 13, ±42 |
+
+     Sonnet 5.5 queda dentro del ruido, cuesta un tercio menos, tarda la
+     mitad y no se cortó nunca; Sonnet 5 se cortó en 1715532469 dos de
+     cuatro veces (10.000 tokens razonando). El único cambio que no es
+     ruido: 0502937675 pasa de aprobar a revisar con v28 en los dos
+     modelos, porque su ingreso está "Por confirmar" y el marco pide
+     capacidad evidenciada para aprobar; v27 lo aprobaba igual. Falta que
+     el negocio confirme el cambio, adoptar Sonnet 5.5 y v28, y el lote.
 
 1. **marco-v25 a v27 casi no corrieron.** Medido el 2026-10-03: v25
    ninguna vez; v26 una sola vez con éxito (2026-09-28, negar) y dos

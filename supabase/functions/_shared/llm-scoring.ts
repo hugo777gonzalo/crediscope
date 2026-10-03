@@ -101,6 +101,12 @@ export type ConfigRazonamiento = {
   // Sólo con razonamiento adaptativo: cuánto delibera el modelo.
   esfuerzo?: "low" | "medium" | "high";
   maxTokens: number;
+  // Otro modelo que MODELO, para compararlos con el mismo pedido.
+  modelo?: string;
+  // Sólo en lote (scripts/analizar-en-lote.mjs): ahí los pedidos salen
+  // juntos y el marco cacheado se lee a una décima parte del precio. En
+  // análisis sueltos no conviene (ver la nota en armarPedidoScoring).
+  cachearMarco?: boolean;
 };
 export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000 };
 
@@ -113,6 +119,32 @@ function opcionesDeRazonamiento(config: ConfigRazonamiento): Record<string, unkn
   }
   return {};
 }
+
+// La forma de la respuesta, garantizada por la API (marco-v28). Antes la
+// pedía el marco en texto, y una respuesta podía salir con JSON roto
+// (1715532469, cortado en el carácter 1.579) o con una recomendación fuera
+// de la lista. El orden de los campos es el de siempre: el modelo los
+// escribe en ese orden. El rango del score (1-999) no se puede expresar en
+// el esquema; lo dice el marco y lo acota interpretar().
+const ESQUEMA_RESPUESTA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "score", "recomendacion", "accionesSugeridas", "indicadorRiesgo", "indicadorHistorial",
+    "positives", "negatives", "missingInfo", "reasoning",
+  ],
+  properties: {
+    score: { type: "integer" },
+    recomendacion: { type: "string", enum: ["aprobar", "revisar", "negar"] },
+    accionesSugeridas: { type: "array", items: { type: "string" } },
+    indicadorRiesgo: { type: "string", enum: NIVELES_RIESGO },
+    indicadorHistorial: { type: "string", enum: NIVELES_HISTORIAL },
+    positives: { type: "array", items: { type: "string" } },
+    negatives: { type: "array", items: { type: "string" } },
+    missingInfo: { type: "array", items: { type: "string" } },
+    reasoning: { type: "string" },
+  },
+};
 
 function extraerJson(texto: string): unknown {
   const limpio = texto.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
@@ -144,6 +176,18 @@ function resultadoPorDefecto(mensaje: string, modelo: string, data?: Record<stri
 }
 
 export function interpretar(data: Record<string, unknown>, modelo: string): LlmScoringResult {
+  // Los modelos 5.5 traen filtros de seguridad que pueden negarse a
+  // contestar (stop_reason "refusal", con la categoría en stop_details). El
+  // perfil trae delitos, denuncias y extorsiones: si un filtro se equivoca,
+  // tiene que quedar dicho así, no como "respuesta inesperada".
+  if (data?.stop_reason === "refusal") {
+    const detalle = data?.stop_details as { category?: string | null } | undefined;
+    return resultadoPorDefecto(
+      `el modelo se negó a responder (filtro de seguridad: ${detalle?.category ?? "sin categoría"})`,
+      modelo,
+      data
+    );
+  }
   // Con thinking extendido, el bloque de texto NO es necesariamente
   // content[0] (ese suele ser el bloque "thinking") — hay que buscarlo.
   const bloqueTexto = (data?.content as Array<{ type: string; text?: string }> | undefined)?.find(
@@ -309,12 +353,14 @@ export function armarPedidoScoring(
   // El marco va SIN caché desde el 2026-09-27. La caché dura 5 minutos y
   // la mediana entre dos análisis es de 26: en 12 escrituras desde el
   // 2026-09-15 no hubo UNA lectura. Escribirla cuesta 25% más que
-  // mandarlo normal (~$0,008 por análisis tirados). Vuelve a convenir si
-  // algún día se analiza en lote, varios clientes dentro de 5 minutos.
+  // mandarlo normal (~$0,008 por análisis tirados). En lote sí conviene
+  // (config.cachearMarco, desde el 2026-10-03): los pedidos salen juntos.
   //
   // Los ajustes van en un bloque aparte: cambian cuando el área los pone
   // en vigencia, y se leen como un agregado al marco, no como parte de él.
-  const bloquesSistema: Array<Record<string, unknown>> = [{ type: "text", text: MARCO_INTERPRETATIVO }];
+  const bloqueMarco: Record<string, unknown> = { type: "text", text: MARCO_INTERPRETATIVO };
+  if (config.cachearMarco) bloqueMarco.cache_control = { type: "ephemeral" };
+  const bloquesSistema: Array<Record<string, unknown>> = [bloqueMarco];
   if (ajustesVigentes.length) {
     bloquesSistema.push({
       type: "text",
@@ -326,13 +372,18 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
   }
 
   const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
+  const razonamiento = opcionesDeRazonamiento(config);
 
   return {
-    model: MODELO,
+    model: config.modelo ?? MODELO,
     // El modelo razona antes de responder y ese razonamiento sale del
     // mismo presupuesto que el JSON (ver CONFIG_LLM).
     max_tokens: config.maxTokens,
-    ...opcionesDeRazonamiento(config),
+    ...razonamiento,
+    output_config: {
+      ...(razonamiento.output_config as Record<string, unknown> | undefined),
+      format: { type: "json_schema", schema: ESQUEMA_RESPUESTA },
+    },
     system: bloquesSistema,
     messages: [{ role: "user", content: JSON.stringify(userPayload) }],
   };

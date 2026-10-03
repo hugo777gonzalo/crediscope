@@ -29,7 +29,7 @@ import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-de-la-consulta.ts";
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
-import { clasificarFallo } from "../_shared/fallos-llm.ts";
+import { filaDelAnalisis } from "../_shared/fila-del-analisis.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
@@ -216,10 +216,19 @@ Deno.serve(async (req) => {
     const inicioLlm = Date.now();
     const llmResult = await scoreWithLlm(profile as unknown as Record<string, unknown>, controlBloqueo, criterio.ajustes, disabledFields);
     const duracionLlmMs = Date.now() - inicioLlm;
-    const finalScore = controlBloqueo.bloqueado ? 1 : llmResult.score;
-    // Mismo criterio que el score: un control de bloqueo bloqueante no
-    // se delega al criterio del LLM (ver marco-interpretativo.ts v14).
-    const finalRecomendacion = controlBloqueo.bloqueado ? "negar" : llmResult.recomendacion;
+    const fila = filaDelAnalisis({
+      runId: run.id,
+      clientId: client.id,
+      clientProfileId,
+      marcoVersion: MARCO_VERSION,
+      criterioVersionId: criterio.versionId,
+      llmResult,
+      controlBloqueo,
+      duracionIngestaMs,
+      duracionLlmMs,
+    });
+    const finalScore = fila.crediscope_score;
+    const finalRecomendacion = fila.recomendacion;
 
     // Registro de consumo del LLM. Se hace pase lo que pase con la
     // inserción del análisis: la llamada ya se pagó, y si el insert
@@ -262,60 +271,7 @@ Deno.serve(async (req) => {
     // 7. Persistir resultado
     const { data: analysis, error: analysisError } = await serviceClient
       .from("analysis_results")
-      .insert({
-        ingestion_run_id: run.id,
-        client_id: client.id,
-        crediscope_score: finalScore,
-        recomendacion: finalRecomendacion,
-        // Etiquetas de lectura rápida (marco-v15). Se guardan tal cual
-        // las dio el modelo: un control de bloqueo fuerza el score y la
-        // recomendación, pero no el diagnóstico -- si el historial de
-        // pago era excelente, sigue siéndolo aunque el caso se niegue
-        // por una lista de control.
-        indicador_riesgo: llmResult.indicadorRiesgo,
-        indicador_historial: llmResult.indicadorHistorial,
-        // Las acciones se guardan tal cual las dio el modelo incluso si
-        // hay control de bloqueo: aunque el caso se niegue, saber qué
-        // habría que verificar sigue sirviendo (un homónimo en listas,
-        // por ejemplo, se despeja verificando identidad).
-        acciones_sugeridas: llmResult.accionesSugeridas,
-        rules_version: MARCO_VERSION,
-        // Qué criterio efectivo (marco base + ajustes vigentes) produjo
-        // este análisis. Sin esto, un resultado raro no se puede
-        // auditar después.
-        criterio_version_id: criterio.versionId,
-        // Con qué data estructurada exactamente se evaluó. Antes se
-        // cruzaba por cercanía de fecha, que es ambiguo en cuanto hay
-        // dos consultas del mismo cliente el mismo día (ver 032).
-        client_profile_id: clientProfileId,
-
-        positives: llmResult.positives,
-        negatives: llmResult.negatives,
-        missing_info: llmResult.missingInfo,
-        inconsistencies: controlBloqueo.hallazgos.map((h) => h.message),
-        // Si el análisis falló, el resumen queda vacío: lo que había
-        // ahí era el texto crudo del error de la API, y en pantalla se
-        // leía como si fuera el criterio sobre el cliente.
-        narrative_summary: llmResult.fallo ? null : llmResult.reasoning,
-        fallo: llmResult.fallo ?? null,
-        fallo_tipo: llmResult.fallo ? clasificarFallo(llmResult.fallo, llmResult.llmStopReason).tipo : null,
-        // Quién decidió. Un control de bloqueo niega por una regla
-        // nuestra y eso sigue valiendo aunque el proveedor del modelo
-        // esté caído: ahí hay veredicto, y esconderlo detrás de "no se
-        // pudo analizar" sería perder una respuesta correcta.
-        veredicto_origen: controlBloqueo.bloqueado
-          ? "control_bloqueo"
-          : llmResult.fallo
-            ? "sin_veredicto"
-            : "modelo",
-        llm_model: llmResult.llmModel,
-        llm_stop_reason: llmResult.llmStopReason,
-        llm_usage: llmResult.llmUsage,
-        llm_request_id: llmResult.llmRequestId,
-        mensaje_al_modelo: llmResult.mensajeAlModelo ?? null,
-        duracion_ingesta_ms: duracionIngestaMs,
-        duracion_llm_ms: duracionLlmMs,
-      })
+      .insert(fila)
       .select("*")
       .single();
     if (analysisError) {
