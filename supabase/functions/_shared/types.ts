@@ -643,4 +643,8 @@ export interface LlmScoringResult {
   // Sin esto no se puede distinguir "el modelo respondió score 500" de
   // "falló y devolvimos 500" al registrar el consumo (ver llm-log.ts).
   fallo?: string;
+  // Lo que leyó el modelo, tal cual (perfil del modelo + hallazgos del
+  // control de bloqueo). Se guarda con el análisis (090): reconstruirlo
+  // después exige el código de esa versión, y el código cambia.
+  mensajeAlModelo?: Record<string, unknown>;
 }

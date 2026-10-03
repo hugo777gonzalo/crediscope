@@ -174,10 +174,15 @@ antes de tocar esa área.
   sueltos llevan su propio aviso adentro.
 
 **Crudo y recálculo**
-- El crudo de Novadata no está en la base; está en `research/` (fuera del
-  repo, datos personales): `novadata-raw/` = muestra fija de 389, no se
-  pisa; `novadata-raw-2026-09-25/` = cartera completa en forma plana
-  `{ cedula, capturadoEl, perfilId, raw }`. Sumar:
+- El crudo de Novadata se guarda desde la 090 en el depósito privado
+  `crudo-novadata` de Storage (gzip, ~8 KB), con la ruta en
+  `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
+  `_shared/crudo-novadata.ts`, desde las tres puertas que guardan perfiles.
+  Lo que leyó el modelo queda en `analysis_results.mensaje_al_modelo`.
+- Respaldo local en `research/` (fuera del repo, datos personales):
+  `novadata-raw/` = muestra fija de 389, no se pisa;
+  `novadata-raw-2026-09-25/` = cartera completa (ya subida a Storage) en
+  forma plana `{ cedula, capturadoEl, perfilId, raw }`. Sumar:
   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta>`.
 - Reproducir un perfil: `buildStandardProfile(raw, cedula, corte)` con el
   corte VIGENTE de ese día, no `fuente_corte`.

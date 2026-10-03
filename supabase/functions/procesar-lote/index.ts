@@ -31,6 +31,7 @@ import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { estadoPorFuente, cuantasFuentesContestaron, elPerfilSirve, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
+import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 
@@ -207,6 +208,7 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
       .select("id")
       .single();
     if (errorPerfil) throw errorPerfil;
+    await guardarCrudoNovadata(serviceClient, client.id, guardado.id, item.cedula, raw);
 
     // La misma huella que deja una consulta individual. Consultar
     // Función Judicial, Fiscalía y deudas de miles de personas sin

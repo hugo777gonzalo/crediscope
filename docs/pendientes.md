@@ -11,16 +11,7 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
 ## 1. Para retomar primero
 
-1. **El modelo no contesta hasta el 2026-10-01 a las 00:00 UTC** (19:00
-   del 30 en Ecuador). Se alcanzó el límite de uso configurado en la
-   consola de Anthropic: "You have reached your specified API usage
-   limits". El vigía lo marca como `tope_de_gasto` desde el 2026-09-28 a
-   las 18:45; la última llamada que funcionó fue a las 18:31. Mientras
-   tanto no hay análisis con IA, tampoco desde la pantalla. Para volver
-   antes hay que subir el límite en la consola. Ver el presupuesto en el
-   punto 4.
-
-2. **marco-v25 y marco-v26 nunca corrieron.** `analysis_results` no
+1. **marco-v25 y marco-v26 nunca corrieron.** `analysis_results` no
    tiene ningún análisis con esas versiones; el último es marco-v24, del
    2026-09-27. Cambiaron cómo el modelo lee:
    - la disponibilidad (por tema, dos estados);
@@ -34,7 +25,7 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    porque cuesta. El candidato natural es 1715532469: el caso que se
    cortó a medias, ya en estructura-v12 y con su crudo en el respaldo.
 
-3. **0501418826 y 0918563750 quedaron en estructura-v11.** Se
+2. **0501418826 y 0918563750 quedaron en estructura-v11.** Se
    consultaron desde la pantalla el 2026-09-28 (17:51 y 18:40), después de
    armado el respaldo local: su crudo es de un perfil anterior y los
    recálculos no las alcanzan. v12 no les cambia las demandas (medido sobre
@@ -44,7 +35,7 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    el respaldo sólo se actualiza desde el guion (así quedó también
    1308725470, reconsultada dos veces el 2026-09-28 y 29).
 
-4. **Repetir la comparación de razonamiento (paso 4)** y decidir la
+3. **Repetir la comparación de razonamiento (paso 4)** y decidir la
    configuración de producción. No antes del 1 de octubre (punto 1).
    - Hoy `CONFIG_LLM` en `llm-scoring.ts`: razonamiento activo, 10.000
      tokens de salida, sin caché del marco.
@@ -67,7 +58,7 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
    - El backtest ya arma su pedido con `armarPedidoScoring()`
      (2026-09-29): si cambia `CONFIG_LLM`, lo sigue.
 
-5. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
+4. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
    "Clientes que necesitan respaldo".** El análisis y la propuesta están en
    `docs/propuesta-panorama-respaldo-y-evidencia.md` (2026-09-29).
    - Falta que el negocio conteste las 8 preguntas de su sección 3; no se
@@ -147,6 +138,16 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   tarifa máxima (37%) sobre lo que excede la fracción básica, así que
   sólo ve los casos claros. Con la tabla progresiva completa del SRI
   vería más.
+- **Sacar la recomendación "observar"** (decidido por el negocio el
+  2026-10-03): toda la zona gris pasa a "revisar". Está en el marco
+  (`marco-interpretativo.ts`, desde v14), en `RecomendacionAccion`
+  (`types.ts`), en `RECOMENDACIONES_VALIDAS` (`llm-scoring.ts`), en
+  `correr-backtest` y en las pantallas que la pintan (RecomendacionBadge,
+  RecomendacionCard, ResultadoBacktest, Expediente, Reportes,
+  Solicitudes). Es una versión nueva del marco con su fila en
+  `scoring_rules_versions`. Hay 1 análisis guardado con "observar": las
+  pantallas lo tienen que seguir mostrando. Va en otra sesión o rama, no
+  junto con el Laboratorio.
 - **Las cinco columnas `fuente_*` de `client_profiles` podrían ser
   columnas generadas por la base**
   (`generated always as (standard_profile->…) stored`). Así no podrían
@@ -176,13 +177,18 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 - **Validar con el negocio los criterios dentro de cada grupo del
   marco** (qué campo pesa cuánto). El orden de los grupos sí lo definió
   el usuario.
-- **Cargar resultados reales de crédito.** `feedback_creditos` tiene 0
-  filas: sin cosecha no hay forma de medir si el puntaje predice nada.
-- **Retroalimentación se rehace completa** (decidido el 2026-09-24).
-  Hallazgos que el rediseño tiene que cubrir:
+- **Retroalimentación se reemplaza por el Laboratorio de Inteligencia de
+  Negocio › Riesgo de Crédito** (decidido el 2026-10-03). Diseño,
+  decisiones y fases en `docs/laboratorio-de-riesgo.md`. La fase 0 (crudo
+  de Novadata y mensaje al modelo guardados) está hecha; sigue la fase 1,
+  sobre una cartera sintética. Hallazgos del módulo viejo que el nuevo no
+  tiene que repetir:
   - la plantilla bajaba todos los análisis;
   - el nombre del cliente salía vacío;
   - guardar un paquete no es transaccional.
+- **Lote de análisis para el Laboratorio** (~400 análisis, ~USD 17–20,
+  detalle en `docs/laboratorio-de-riesgo.md`). Antes hay que subir el
+  límite de la consola de Anthropic.
 - **La fábrica de crédito está en pausa** por decisión del negocio. Ver
   `docs/arquitectura-fabrica-de-credito.md`.
 - **Descarga masiva:** Reportes › Descargas la ve cualquier analista.

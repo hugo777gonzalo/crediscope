@@ -57,6 +57,15 @@ está el porqué. Una lección nueva va en los dos lugares.
   devuelve el crudo sólo a la clave de servicio). Reproducir un perfil
   desde el crudo: `buildStandardProfile(raw, cedula, corte)` con el
   corte VIGENTE de ese día, no con `fuente_corte`.
+
+  **Desde el 2026-10-03 (090) el crudo SÍ se guarda**, en Storage y no en
+  la base: pesa ~150 KB por persona contra ~4 KB del perfil y del crudo de
+  Aval, y la base entera pesaba 96 MB. Comprimido queda en ~8 KB; los
+  2.567 del respaldo local se subieron con
+  `scripts/subir-crudo-guardado.mjs` (20 MB). Lo decidió el negocio para
+  el Laboratorio de Inteligencia de Negocio (`docs/laboratorio-de-riesgo.md`),
+  que necesita seguir un dato desde la fuente hasta la respuesta del
+  modelo. Por lo mismo se guarda `analysis_results.mensaje_al_modelo`.
 - **El modelo lee SOLO el perfil del modelo** (`_shared/perfil-del-modelo.ts`,
   desde marco-v23). Los tres caminos al LLM (análisis, backtest, informe
   de retroalimentación) pasan por `armarPerfilDelModelo()` /

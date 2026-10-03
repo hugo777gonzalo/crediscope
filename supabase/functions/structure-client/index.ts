@@ -13,6 +13,7 @@ import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
+import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 import { estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
@@ -218,6 +219,7 @@ Deno.serve(async (req) => {
       .select("*")
       .single();
     if (saveError) throw saveError;
+    saved.crudo_ruta = await guardarCrudoNovadata(serviceClient, client.id, saved.id, cedula, raw);
 
     // 8. Auditoría (mismo patrón que analyze-client)
     await serviceClient.from("audit_log").insert({
@@ -227,9 +229,11 @@ Deno.serve(async (req) => {
       meta: { client_profile_id: saved.id },
     });
 
-    // El crudo de Novadata no se guarda en la base (ver CLAUDE.md). Pero sin
-    // crudo, una regla nueva no se puede aplicar a los perfiles guardados:
-    // el 2026-09-25 hubo que reconsultar la cartera para eso. Quien llama
+    // Desde la 090 el crudo queda en Storage (crudo-novadata.ts). Antes se
+    // descartaba, y sin crudo una regla nueva no se puede aplicar a los
+    // perfiles guardados: el 2026-09-25 hubo que reconsultar la cartera para
+    // eso. Devolverlo en la respuesta sigue sirviendo al guion de lotes, que
+    // arma el respaldo local de research/. Quien llama
     // con la CLAVE DE SERVICIO (el guion de lotes en la máquina del
     // negocio, nunca la pantalla) puede pedirlo en la respuesta y
     // guardarlo en local. Con la clave de servicio ya se tiene acceso a

@@ -355,7 +355,10 @@ export async function scoreWithLlm(
   // Los reintentos de una falla pasajera ya los hace
   // pedirScoringConReintentos; con un solo modelo no hay a quién escalar.
   const { resultado, llamadas } = await pedirScoringConReintentos(cuerpo);
-  return { ...resultado, llamadas };
+  // Se devuelve lo que salió en el pedido, no un segundo armado: es la única
+  // forma de que lo guardado sea exactamente lo que leyó el modelo.
+  const mensajeAlModelo = JSON.parse((cuerpo.messages as Array<{ content: string }>)[0].content);
+  return { ...resultado, llamadas, mensajeAlModelo };
 }
 
 export { MARCO_VERSION, MODELO };

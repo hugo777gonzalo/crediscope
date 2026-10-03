@@ -25,6 +25,7 @@ import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
+import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-de-la-consulta.ts";
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
@@ -199,6 +200,7 @@ Deno.serve(async (req) => {
         .single();
       if (perfilError) throw perfilError;
       clientProfileId = guardado.id;
+      await guardarCrudoNovadata(serviceClient, client.id, guardado.id, cedula, raw);
     }
 
     // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
@@ -310,6 +312,7 @@ Deno.serve(async (req) => {
         llm_stop_reason: llmResult.llmStopReason,
         llm_usage: llmResult.llmUsage,
         llm_request_id: llmResult.llmRequestId,
+        mensaje_al_modelo: llmResult.mensajeAlModelo ?? null,
         duracion_ingesta_ms: duracionIngestaMs,
         duracion_llm_ms: duracionLlmMs,
       })
