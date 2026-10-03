@@ -247,10 +247,12 @@ ventana), `puntaje`, `recomendacion` (observar → revisar),
 propósito: si mañana se recalcula un perfil o se corrige un análisis, el
 corte sigue diciendo lo que dijo (principio 4).
 
-De dónde sale el puntaje de cada operación: del análisis vinculado si el
-vínculo es `exacto`; en un corte sintético, de `lab_operaciones.sintetico`
-cuando no hay análisis. Una operación sin ninguno de los dos queda fuera
-del desempeño (pero sirve para variables).
+De dónde sale el puntaje de cada operación: del análisis vinculado (sin
+fallo); en una carga sintética, **siempre** de `lab_operaciones.sintetico`.
+El resultado de una carga sintética lo inventa la regla plantada, y medir
+un puntaje real contra un resultado inventado no mide nada (corregido al
+implementarlo). Una operación sin puntaje queda fuera del desempeño, pero
+sirve para variables.
 
 ### 6.6 `lab_resultados`
 
