@@ -35,7 +35,7 @@
 
 import type { RespuestaNovadata } from "./types.ts";
 import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
+import { diaDeFecha, establecimientoAbierto, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
 import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
@@ -125,7 +125,12 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 //    se explica con lo que declara al IESS (decisión del negocio del
 //    2026-09-28; cambia la del 2026-09-25, "no se deduce nada de la renta":
 //    se deduce sólo esto, y el detalle por año sigue sin ir al modelo).
-export const FUENTES_INGRESO_VERSION = "fuentes-v9";
+//
+// v10 (2026-10-03): el estado abreviado de los establecimientos ("ABI") que
+// Novadata manda desde octubre cuenta como abierto (ruc.ts). Sin eso, el RUC
+// activo, los establecimientos activos y la actividad abierta salían en
+// falso para quien tenía su establecimiento así.
+export const FUENTES_INGRESO_VERSION = "fuentes-v10";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
@@ -632,7 +637,7 @@ function construirDetalle(aportes: AnyRecord[], corte: string, consultadas: AnyR
       actividadesEconomicas.push({
         nombreComercial,
         actividad,
-        abierto: String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO",
+        abierto: establecimientoAbierto(e),
         inicio: fechaIso(e.fech_inicio_actividades),
       });
     }
@@ -912,7 +917,7 @@ export function analizarFuentesIngreso(
   // alguno abierto: un registro sin actualizar (pedido del negocio,
   // 2026-09-26). Hasta v7 era "establecimientos registrados" y contaba
   // también los cerrados.
-  const abiertos = establecimientosRuc.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
+  const abiertos = establecimientosRuc.filter(establecimientoAbierto).length;
   const establecimientosActivos = rucActivo ? abiertos : 0;
   if (establecimientosRuc.length > 0) {
     senalesDeEscala.push({

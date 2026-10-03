@@ -64,8 +64,17 @@ export function esRegistroDeRuc(c: AnyRecord): boolean {
   return Boolean(c.ruc && c.fecha_inscripcion_ruc);
 }
 
+// Novadata empezó a mandar el estado abreviado en algunos registros: en la
+// reconsulta de la cartera del 2026-10-03 conviven "ABIERTO" y "CERRADO" con
+// "ABI" y "CER" (27 y 22 de ~700 registros en las primeras 500 personas; en
+// la del 2026-09-25, ninguno). Leyendo sólo "ABIERTO", quien tenía su
+// establecimiento en "ABI" quedaba sin RUC activo y con 0 establecimientos
+// activos (estructura-v13). La comparación vivía copiada en process.ts y dos
+// veces en fuentes-ingreso.ts: ahora todas llaman a ésta.
+const ESTADOS_ABIERTO = new Set(["ABIERTO", "ABI"]);
+
 export function establecimientoAbierto(e: AnyRecord): boolean {
-  return String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO";
+  return ESTADOS_ABIERTO.has(String(e.estado_establecimiento ?? "").trim().toUpperCase());
 }
 
 export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boolean {

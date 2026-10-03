@@ -14,7 +14,7 @@
 import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, fechasDelRuc, rucActivo } from "./ruc.ts";
+import { diaDeFecha, establecimientoAbierto, fechasDelRuc, rucActivo } from "./ruc.ts";
 import { esElPropioAfiliado, esSuPropioPatrono } from "./patrono.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
 import { demandasPorCategoria, esDemandaDeCobro, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
@@ -390,7 +390,10 @@ function textoDe(v: unknown): string | null {
 // tipo no dice el tema ("OTROS", "ESPECIAL"); la lesión enorme es de
 // propiedad y la aprehensión de un auto sin matrícula, de tránsito
 // (demandas.ts).
-export const PROCESS_VERSION = "estructura-v12"; // ver docs/estructura-estandarizada.md
+// estructura-v13 (2026-10-03): Novadata manda el estado de algunos
+// establecimientos abreviado ("ABI", "CER"); quien tenía el suyo en "ABI"
+// quedaba sin RUC activo. Una sola comparación, en ruc.ts.
+export const PROCESS_VERSION = "estructura-v13"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -527,7 +530,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // aunque el SRI siga mostrando alguno ABIERTO: es un registro que no se
   // actualizó, y decir "RUC inactivo" y "2 establecimientos activos" a la vez
   // no se puede leer (pedido del negocio, 2026-09-26, estructura-v7).
-  const abiertos = establecimientos.filter((e) => String(e.estado_establecimiento ?? "").toUpperCase() === "ABIERTO").length;
+  const abiertos = establecimientos.filter(establecimientoAbierto).length;
   const numeroEstablecimientosActivos = tieneEstablecimientoActivo ? abiertos : 0;
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // Registro RUC de referencia para las fechas expuestas: el activo si

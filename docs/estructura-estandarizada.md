@@ -623,6 +623,25 @@ interface StandardClientProfile {
 > Dos correcciones de la limpieza, dentro de la misma versión, se
 > reescribieron con `--forzar`.
 
+> **estructura-v13 y fuentes-v10 (2026-10-03)** — Novadata cambió el formato.
+> - **Qué pasó:** en la reconsulta de la cartera del 2026-10-03 el estado de
+>   algunos establecimientos del SRI llega abreviado ("ABI", "CER") y convive
+>   con el de siempre ("ABIERTO", "CERRADO"). En el crudo del 2026-09-25 no
+>   había ninguno.
+> - **Qué rompía:** la regla buscaba exactamente "ABIERTO". Quien tenía su
+>   establecimiento en "ABI" quedaba sin RUC activo y con 0 establecimientos
+>   activos, y eso arrastraba el segmento, la continuidad por cuenta propia,
+>   el perfil laboral y lo que lee el modelo.
+> - **Arreglo:** `establecimientoAbierto()` de `ruc.ts` acepta las dos formas,
+>   y `process.ts` y `fuentes-ingreso.ts` la llaman (la comparación estaba
+>   copiada en tres lugares).
+> - **Efecto** (código viejo contra nuevo, perfil entero): en el crudo del
+>   2026-09-25, 0 diferencias en 2.567 personas; en las primeras 506 de la
+>   reconsulta, 21 personas cambian, todas en `laboral` y `fuentesIngreso`
+>   (RUC activo de 340 a 358, segmento en 2).
+> - Desplegado a las 22:36 UTC con la reconsulta en curso: los perfiles
+>   anteriores de ese día quedaron en v12 y se recalculan desde su crudo.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |
