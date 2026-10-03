@@ -119,10 +119,19 @@ Romper cualquiera de estas rompe algo real.
   `CONFIG_LLM` decide el razonamiento y el tope de salida. Lo usan el
   análisis, el lote (`scripts/analizar-en-lote.mjs`) y
   `scripts/comparar-razonamiento.mjs`: un camino nuevo al modelo también.
+  Modelo: `claude-sonnet-5-5` desde marco-v28.
+- `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
+  de temas que el perfil no trae (v29). Corta el marco vigente por marcas,
+  sin copiarlo; está APAGADO (`CONFIG_LLM.marcoPorCliente`) hasta validarlo.
+- `fila-del-analisis.ts` → `filaDelAnalisis()` — la fila de
+  `analysis_results`, la única para `analyze-client` y el lote.
 - `src/lib/laboratorio.js` y las funciones SQL `lab_*` — el Laboratorio
   de Inteligencia de Negocio, que reemplazó a Retroalimentación
   (`docs/laboratorio-de-riesgo.md`). El criterio vigente del motor
-  (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`.
+  (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`. La cartera
+  sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
+  plantada: un cálculo nuevo se valida contra ella). Cada métrica vive en
+  una función SQL `lab_*` (094-096).
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
@@ -277,6 +286,10 @@ antes de tocar esa área.
   capturas: se cuentan o se enmascaran.
 - **Pedir confirmación antes de borrar datos, columnas o tablas, o de
   forzar un push**, aunque parezca obvio (ver regla 8).
+- **Pruebas masivas con el modelo, sólo con autorización explícita** del
+  negocio y con el costo estimado (comparaciones, lotes, recálculos con
+  LLM): elegir opciones de un diseño no es autorizar el gasto. Una llamada
+  suelta para comprobar un despliegue está aceptada.
 - **Al terminar, decir** qué cambió, qué se decidió y por qué, qué se
   verificó (y qué no) y qué quedó pendiente.
 - **Verificar contra la base, no suponer.** Un número afirmado sin

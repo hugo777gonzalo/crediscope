@@ -1,44 +1,41 @@
 # Pendientes
 
-Lo que quedó abierto al 2026-09-29. Las versiones vigentes son
-marco-v27 (desde el 2026-10-03), estructura-v12, fuentes-v9 y
-perfil-laboral-v3. Cada punto
-dice qué falta, por qué importa y cómo se verifica.
+Lo que quedó abierto al 2026-10-03. Las versiones vigentes son
+marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v12,
+fuentes-v9 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
+y cómo se verifica.
 
 Los números son de la base o del crudo local, medidos ese día. Antes de
 actuar sobre uno, volver a medirlo: este archivo envejece.
 
 Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
+**Regla del negocio (2026-10-03):** toda prueba masiva con el modelo
+(comparaciones, lotes) se corre sólo con su autorización explícita, con el
+costo estimado. Una llamada suelta para comprobar un despliegue está
+aceptada.
+
 ## 1. Para retomar primero
 
-0. **Antes del lote: marco, modelo y costo** (revisado el 2026-10-03, con
-   el negocio). El lote del Laboratorio es la primera corrida grande y
-   junta los puntos 1 y 3 de esta lista. Medido: marco-v26 son 39.100
-   caracteres (~16.000 tokens) de los 20.779 de entrada de un análisis;
-   cuesta USD 0,084 y la salida (4.280 tokens) es más de la mitad.
-   - **Caché del marco, sólo en lote.** Se retiró porque entre dos análisis
-     sueltos pasan 26 min de mediana; en un lote salen cada pocos segundos
-     y la de 5 minutos se mantiene sola. Ahorra ~USD 0,029 por análisis
-     (~35%). Los análisis sueltos siguen sin caché.
-   - **API de lotes de Anthropic (Message Batches):** 50% menos en todo,
-     respuesta en menos de 24 h, y sin el corte de 150 s de Supabase (que
-     ya cortó análisis a medias). Pero corre fuera de `analyze-client`: hay
-     que sacar a una función compartida el armado de la fila de
-     `analysis_results`, para no tener dos.
-   - **Modelo:** hoy `claude-sonnet-5`. `claude-sonnet-5-5` cuesta lo mismo
-     ($2/$10 por millón) pero rechaza `thinking: disabled` (rompe la
-     configuración "sin" de `comparar-razonamiento.mjs`), recalibra el
-     esfuerzo y suma clasificadores de seguridad que pueden devolver
-     `stop_reason: refusal`, que hoy no se maneja (quedaría como fallo).
-     `claude-opus-5-5` cuesta el doble. Cambiar de modelo necesita su fila
-     en `llm_precios`.
-   - **"Observar" ya salió en marco-v27** (otra sesión, el mismo día). La
-     optimización del marco, sólo de forma y sin cambiar criterios, es la
-     v28.
-   - Orden decidido: marco v28 → comparación de los 14 casos → decidir
-     `CONFIG_LLM` → lote.
-   - **Comparación hecha** (2026-10-03, 56 llamadas, USD 5,32; Excel en
+0. **Ver las pantallas del Laboratorio con sesión de admin.** Las fases 1 a
+   5 están hechas (094-097, `docs/laboratorio-de-riesgo.md`), pero ninguna
+   pantalla se vio en el navegador: la sesión de QA había caducado. Las
+   consultas de cada pantalla se probaron contra la base
+   (`research/probar-consultas-laboratorio.mjs`). Recorrido: iniciar sesión
+   en `localhost:5184` (el usuario; nunca escribir contraseñas) y abrir
+   Laboratorio › la carga sintética (conciliación) › el corte "Sintética a
+   24 meses" (Desempeño, Variables, Simulación, Casos; calcular cada uno) ›
+   Propuestas (crear una desde el corte: no tiene que poder presentarse por
+   ser sintética) › Criterio vigente. Probar también subir la plantilla con
+   un archivo chico de prueba y anular esa carga después.
+
+1. **Marco y modelo: dónde quedó** (2026-10-03).
+   - **En producción: marco-v28 con Sonnet 5.5**, con el respaldo
+     automático de Anthropic ante rechazos (`fallbacks: "default"`; sólo
+     cubre "cyber" y "frontier_llm", un "general_harms" vuelve como fallo
+     con su categoría). Verificado con una llamada real del código
+     desplegado (1715532469: completa, USD 0,10).
+   - **Comparación que lo decidió** (56 llamadas, USD 5,32; Excel en
      `research/comparacion-marco-v28-2026-10-03/`):
 
      | Corrida | USD | Seg. | Razonamiento | Misma recomendación que "hoy" |
@@ -48,38 +45,21 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
      | v28, Sonnet 5 | 0,107 | 66 | 5.679 | 12 de 13, ±50 (1 cortada) |
      | v28, Sonnet 5.5 | 0,067 | 22 | 1.358 | 12 de 13, ±42 |
 
-     Sonnet 5.5 queda dentro del ruido, cuesta un tercio menos, tarda la
-     mitad y no se cortó nunca; Sonnet 5 se cortó en 1715532469 dos de
-     cuatro veces (10.000 tokens razonando). El único cambio que no es
-     ruido: 0502937675 pasa de aprobar a revisar con v28 en los dos
-     modelos, porque su ingreso está "Por confirmar" y el marco pide
-     capacidad evidenciada para aprobar; v27 lo aprobaba igual.
-     **Adoptado el 2026-10-03:** v28 y Sonnet 5.5 en producción (el
-     negocio confirmó que 0502937675 va a revisar). Verificado con una
-     llamada real del código desplegado (1715532469: completa, USD 0,10).
-     **Falta el lote:** subir el límite de la consola de Anthropic y
-     `config_operativa.presupuesto_llm_mensual_usd` (en octubre van USD
-     5,4 de 10), y después
+     **El ruido es el piso:** el mismo perfil dos veces mueve el score ~40
+     y cambia 1 de 13 recomendaciones. 0502937675 (ingreso "Por
+     confirmar") pasó de aprobar a revisar con v28: el negocio confirmó
+     que es lo correcto.
+   - **Marco por cliente (v29), hecho y apagado**: ver la sección 3.
+     Encenderlo necesita la comparación `--configs=hoy,porCliente` (~USD 2,
+     con autorización).
+   - **Lote de análisis reales: postergado** (no hay presupuesto, y el
+     Laboratorio no lo necesita para desarrollar). Listo:
      `node scripts/analizar-en-lote.mjs enviar --carpeta=research/lote-analisis-2026-10-03 --responsable=<uuid>`
-     y `recoger` (la muestra ya está elegida: 200 clientes, 280 pedidos).
-
-1. **marco-v25 a v27 casi no corrieron.** Medido el 2026-10-03: v25
-   ninguna vez; v26 una sola vez con éxito (2026-09-28, negar) y dos
-   cortadas por el tope de gasto; v27 ninguna. Cambiaron cómo el modelo
-   lee:
-   - la disponibilidad (por tema, dos estados);
-   - las demandas (por categoría);
-   - los indicios de ingreso;
-   - el impedimento por deuda pública;
-   - militares, policías y jubilados;
-   - la zona gris (v27): ya no existe "observar"; cuando falta
-     información tiene que salir "revisar", con lo que falta en
-     Observaciones y qué pedir en las acciones.
-
-   Hay que correr un análisis y leer la salida antes de darlas por
-   buenas. **El modelo se corre sólo con autorización del usuario**,
-   porque cuesta. El candidato natural es 1715532469: el caso que se
-   cortó a medias, ya en estructura-v12 y con su crudo en el respaldo.
+     y después `recoger` (200 clientes, 280 pedidos, ~USD 4-6 por la API
+     de lotes con caché). Antes: subir el límite de la consola de
+     Anthropic (cortó cerca de USD 6 en septiembre) y
+     `config_operativa.presupuesto_llm_mensual_usd` (USD 10; en octubre
+     van ~5,4).
 
 2. **0501418826 y 0918563750 quedaron en estructura-v11.** Se
    consultaron desde la pantalla el 2026-09-28 (17:51 y 18:40), después de
@@ -134,12 +114,13 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   expensas fijadas por la asamblea de copropietarios (2), pago de rubros
   (2) y pago de remuneraciones atrasadas (1, ¿laboral?). Se cambian en
   `_shared/demandas.ts`.
-- **Adelgazar el marco.**
-  - Crece con cada versión: 16.400 caracteres en v14, 35.000 en v24
-    (15.100 tokens) y 39.100 en v26.
-  - Si se apaga el razonamiento, el marco pasa a ser el grueso del
-    costo: en v24 eran 15.100 de 19.200 tokens de entrada.
-  - Cada versión nueva necesita su fila en `scoring_rules_versions`.
+- **Adelgazar el marco: hecho en parte.** v28 lo bajó de 39.195 a 33.380
+  caracteres sólo con forma; el siguiente paso es el marco por cliente
+  (abajo). Con Sonnet 5.5 el razonamiento bajó a ~1.400 tokens y el marco
+  (~12.000) es ~36% del costo de cada análisis. Recortar redacción de las
+  secciones que van siempre (cómo escribir, recomendación, acciones:
+  ~3.300 tokens) cambia lo que el modelo lee en todos los casos: necesita
+  comparación y autorización.
 - **Marco por cliente (v29), hecho y apagado** (2026-10-03,
   `_shared/marco-por-cliente.ts`). Omite las secciones de temas que el
   perfil del modelo no trae (PEP, pensión, demandas civiles, garantías,
@@ -159,6 +140,14 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   ya existen (marco-v25). Falta `cobertura` y `suficienteParaPuntaje`,
   que significa no emitir un puntaje cuando la consulta no alcanza el
   mínimo evaluable. El diseño está en `docs/declaracion-de-disponibilidad.md`.
+  Medido el 2026-10-03 sobre 2.567 perfiles reales: bancos y cooperativas
+  se consultaron siempre; con un mínimo de seis temas (identidad, buró de
+  bancos, cooperativas, aportes al IESS, demandas en su contra, listas de
+  control) quedan 40 (1,6%) por debajo. Propuesto: aplicarlo en el código
+  antes de llamar al modelo (no cambia lo que lee: sin versión nueva del
+  marco). Esperan respuesta del negocio: ¿esos seis temas?, y ¿un caso no
+  evaluable sólo se avisa, o se guarda como análisis sin puntaje (exige
+  puntaje nulo en la base y en las pantallas)?
 - **El indicio por impuesto a la renta es conservador.** Supone la
   tarifa máxima (37%) sobre lo que excede la fracción básica, así que
   sólo ve los casos claros. Con la tabla progresiva completa del SRI
@@ -179,7 +168,9 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 - **Presupuesto mensual del modelo:**
   - `config_operativa.presupuesto_llm_mensual_usd` está en 10;
   - los avisos saltan al 70, 85 y 100%;
-  - un análisis cuesta ~$0,10 y una comparación de 14 casos ~$3.
+  - un análisis cuesta ~USD 0,067 con Sonnet 5.5 (~0,10 con Sonnet 5); una
+    configuración de la comparación de 14 casos, ~USD 1; un análisis por la
+    API de lotes, la mitad.
 
   Confirmar que el monto es el que el negocio quiere. **El límite de la
   consola de Anthropic es otro, y en septiembre saltó primero:** cortó el
@@ -192,18 +183,11 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 - **Validar con el negocio los criterios dentro de cada grupo del
   marco** (qué campo pesa cuánto). El orden de los grupos sí lo definió
   el usuario.
-- **Laboratorio de Inteligencia de Negocio: fases 1 a 5 hechas, falta
-  verlo con sesión** (2026-10-03, `docs/laboratorio-de-riesgo.md`). Las
-  consultas de las pantallas se probaron contra la base
-  (`research/probar-consultas-laboratorio.mjs`), pero ninguna pantalla se
-  vio en el navegador: la sesión de admin de QA había caducado. Para
-  verlo: iniciar sesión en `localhost:5184` y recorrer `/laboratorio` ›
-  la carga sintética › el corte "Sintética a 24 meses" (Desempeño,
-  Variables, Simulación, Casos) › Propuestas › Criterio vigente.
-- **Lote de análisis reales: postergado** (2026-10-03: no hay presupuesto, y
-  no hace falta para desarrollar el Laboratorio, que usa puntajes
-  sintéticos). Listo para correr cuando se autorice: 280 pedidos, ~USD 4-6
-  con Sonnet 5.5, por lotes y con caché.
+- **Preguntas abiertas del Laboratorio** (`docs/laboratorio-de-riesgo.md`,
+  sección 13): ¿una instalación para varias IFI o una por IFI? (define cómo
+  se separan los datos; hoy `institucion` es texto y sólo admin ve todo);
+  ¿cuánto tiempo se conserva el crudo de Novadata (LOPDP)?; ¿con qué base
+  legal y a qué costo se reconsulta a un negado (fase 6)?
 - **La fábrica de crédito está en pausa** por decisión del negocio. Ver
   `docs/arquitectura-fabrica-de-credito.md`.
 - **Descarga masiva:** Reportes › Descargas la ve cualquier analista.
@@ -231,8 +215,14 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 - `scripts/reprocess-sample.mjs` quedó atrás de `process.ts`: lee la
   forma vieja de `empleoActual`. Hay que ponerlo al día o borrarlo; hoy
   se valida con `process.ts` directo bajo Node.
-- Ramas locales ya contenidas en `main`: `aval-corredor-local-y-ambiente`
-  y `claude/xenodochial-albattani-950de3`. Se pueden borrar.
+- Ramas locales ya contenidas en `main` o superadas:
+  `aval-corredor-local-y-ambiente`, `claude/xenodochial-albattani-950de3`,
+  `claude/fervent-swirles-6ceaac` (marco-v27, integrada) y
+  `claude/cool-jemison-2a674d` (el parche 720f31b de Retroalimentación, que
+  ya no existe; su 082 está en `main`). Se pueden borrar.
+- La cartera sintética del Laboratorio (carga "Cartera sintética (semilla
+  1)") se queda: es la que prueba los cálculos. Si se regenera, anular la
+  anterior desde la pantalla.
 - En la base quedan 5 lotes de prueba terminados: 3 del 2026-09-15
   ("Prueba de…") y 2 del 2026-09-23 ("prueba 078…"). Se pueden borrar
   los lotes. Antes, mirar si los perfiles que dejaron son de personas de
