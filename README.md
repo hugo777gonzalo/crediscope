@@ -5,7 +5,7 @@ persona en Novadata (52 fuentes), la procesa a una
 **Estructura Estandarizada** de 17 grupos, y un LLM (Claude) la evalúa
 guiado por un **marco interpretativo** en lenguaje natural para producir
 un **score aproximado** (1-999), una **recomendación de acción**
-(aprobar / revisar / observar / negar), indicadores de riesgo e
+(aprobar / revisar / negar), indicadores de riesgo e
 historial de pago, puntos a favor y en contra, y qué quedó sin
 confirmar.
 

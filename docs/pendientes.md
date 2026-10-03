@@ -1,7 +1,8 @@
 # Pendientes
 
 Lo que quedó abierto al 2026-09-29. Las versiones vigentes son
-marco-v26, estructura-v12, fuentes-v9 y perfil-laboral-v3. Cada punto
+marco-v27 (desde el 2026-10-03), estructura-v12, fuentes-v9 y
+perfil-laboral-v3. Cada punto
 dice qué falta, por qué importa y cómo se verifica.
 
 Los números son de la base o del crudo local, medidos ese día. Antes de
@@ -32,21 +33,25 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
      `stop_reason: refusal`, que hoy no se maneja (quedaría como fallo).
      `claude-opus-5-5` cuesta el doble. Cambiar de modelo necesita su fila
      en `llm_precios`.
-   - **Adelgazar el marco** (sección 3) y **sacar "observar"** (sección 3)
-     son una versión nueva del marco: conviene que sea una sola, antes del
-     lote.
-   - Orden propuesto: marco v27 → comparación de los 14 casos (modelo y
+   - **"Observar" ya salió en marco-v27** (otra sesión, el mismo día). La
+     optimización del marco, sólo de forma y sin cambiar criterios, es la
+     v28.
+   - Orden decidido: marco v28 → comparación de los 14 casos (modelo y
      esfuerzo, con la configuración de hoy dos veces para medir el ruido)
      → decidir `CONFIG_LLM` → lote.
 
-1. **marco-v25 y marco-v26 nunca corrieron.** `analysis_results` no
-   tiene ningún análisis con esas versiones; el último es marco-v24, del
-   2026-09-27. Cambiaron cómo el modelo lee:
+1. **marco-v25 a v27 casi no corrieron.** Medido el 2026-10-03: v25
+   ninguna vez; v26 una sola vez con éxito (2026-09-28, negar) y dos
+   cortadas por el tope de gasto; v27 ninguna. Cambiaron cómo el modelo
+   lee:
    - la disponibilidad (por tema, dos estados);
    - las demandas (por categoría);
    - los indicios de ingreso;
    - el impedimento por deuda pública;
-   - militares, policías y jubilados.
+   - militares, policías y jubilados;
+   - la zona gris (v27): ya no existe "observar"; cuando falta
+     información tiene que salir "revisar", con lo que falta en
+     Observaciones y qué pedir en las acciones.
 
    Hay que correr un análisis y leer la salida antes de darlas por
    buenas. **El modelo se corre sólo con autorización del usuario**,
@@ -166,16 +171,6 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   tarifa máxima (37%) sobre lo que excede la fracción básica, así que
   sólo ve los casos claros. Con la tabla progresiva completa del SRI
   vería más.
-- **Sacar la recomendación "observar"** (decidido por el negocio el
-  2026-10-03): toda la zona gris pasa a "revisar". Está en el marco
-  (`marco-interpretativo.ts`, desde v14), en `RecomendacionAccion`
-  (`types.ts`), en `RECOMENDACIONES_VALIDAS` (`llm-scoring.ts`), en
-  `correr-backtest` y en las pantallas que la pintan (RecomendacionBadge,
-  RecomendacionCard, ResultadoBacktest, Expediente, Reportes,
-  Solicitudes). Es una versión nueva del marco con su fila en
-  `scoring_rules_versions`. Hay 1 análisis guardado con "observar": las
-  pantallas lo tienen que seguir mostrando. Va en otra sesión o rama, no
-  junto con el Laboratorio.
 - **Las cinco columnas `fuente_*` de `client_profiles` podrían ser
   columnas generadas por la base**
   (`generated always as (standard_profile->…) stored`). Así no podrían

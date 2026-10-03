@@ -11,6 +11,8 @@ import { formatearFecha } from "../lib/fechas.js";
 const ETIQUETA_RECOMENDACION = {
   aprobar: "Aprobar",
   revisar: "Revisar",
+  // El "antes" de un análisis de marco-v14 a v26; el criterio candidato
+  // ya no la produce (v27).
   observar: "Observar",
   negar: "Negar",
 };

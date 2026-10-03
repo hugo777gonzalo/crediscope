@@ -1,12 +1,15 @@
 // Acción sugerida al analista, junto al score (ver marco-v14). El score
 // dice cuánto riesgo hay; esto dice qué hacer con el caso -- y no
-// siempre se deducen uno del otro: un score medio con información
-// incompleta ("observar") es operativamente distinto de un score medio
-// bien sustentado ("revisar").
+// siempre se deducen uno del otro.
+//
+// "observar" ya no se produce desde marco-v27: el negocio decidió que
+// toda la zona gris es "revisar", y si falta información lo dice la
+// sección Observaciones del análisis. Queda acá porque hay análisis
+// guardados con ella (uno al retirarla) y tienen que seguir viéndose.
 const ETIQUETAS = {
   aprobar: { texto: "Aprobar", color: "var(--good)", detalle: "Sin señales negativas relevantes; capacidad y comportamiento evidenciados." },
-  revisar: { texto: "Revisar", color: "var(--warn)", detalle: "Caso limítrofe: hay señales negativas no concluyentes que ameritan criterio del analista." },
-  observar: { texto: "Observar", color: "var(--brand)", detalle: "Falta información clave para decidir — ver qué recabar en \"Información faltante\"." },
+  revisar: { texto: "Revisar", color: "var(--warn)", detalle: "Caso limítrofe o con información faltante: amerita criterio del analista." },
+  observar: { texto: "Observar", color: "var(--brand)", detalle: "Falta información clave para decidir — ver qué recabar en \"Observaciones\"." },
   negar: { texto: "Negar", color: "var(--bad)", detalle: "Señales graves y confirmadas de riesgo de incumplimiento." },
 };
 

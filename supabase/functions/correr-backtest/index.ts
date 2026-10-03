@@ -19,7 +19,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
-import { armarPedidoScoring, CONFIG_LLM, MARCO_VERSION, MODELO } from "../_shared/llm-scoring.ts";
+import { armarPedidoScoring, CONFIG_LLM, MARCO_VERSION, MODELO, normalizarRecomendacion } from "../_shared/llm-scoring.ts";
 import { loadCriterioVigente, loadDisabledFields } from "../_shared/runtime-config.ts";
 import type { ResultadoControlBloqueo } from "../_shared/types.ts";
 
@@ -98,7 +98,7 @@ async function evaluarCaso(
   const bloqueado = Boolean(controlBloqueo?.bloqueado);
   return {
     score: bloqueado ? 1 : Math.max(1, Math.min(999, Math.round(Number(parsed.score) || 500))),
-    recomendacion: bloqueado ? "negar" : String(parsed.recomendacion ?? "revisar"),
+    recomendacion: bloqueado ? "negar" : normalizarRecomendacion(parsed.recomendacion),
   };
 }
 
@@ -116,6 +116,9 @@ function compararResultados(todos: AnyRecord[]) {
 
   const incumplidos = resultados.filter((r) => r.huboDefault === true);
   const buenos = resultados.filter((r) => r.huboDefault === false);
+  // "observar" sólo puede venir del lado de antes: el criterio candidato ya
+  // no la produce (marco-v27), pero un análisis guardado entre v14 y v26
+  // puede tenerla, y también frenaba el crédito.
   const frena = (rec: unknown) => rec === "negar" || rec === "revisar" || rec === "observar";
 
   const detectadosAntes = incumplidos.filter((r) => frena((r.antes as AnyRecord)?.recomendacion)).length;

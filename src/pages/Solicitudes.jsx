@@ -44,7 +44,10 @@ const TARJETAS = [
   { clave: "total", etiqueta: "En la búsqueda", color: "var(--text)", filtro: null },
   { clave: "aprobar", etiqueta: "Aprobar", color: "var(--good)", filtro: ["recomendacion", "aprobar"] },
   { clave: "revisar", etiqueta: "Revisar", color: "var(--warn)", filtro: ["recomendacion", "revisar"] },
-  { clave: "observar", etiqueta: "Observar", color: "var(--brand)", filtro: ["recomendacion", "observar"] },
+  // Retirada en marco-v27: la tarjeta aparece sólo si la búsqueda
+  // encuentra análisis viejos con ella, o si su filtro está puesto y hay
+  // que poder sacarlo.
+  { clave: "observar", etiqueta: "Observar", color: "var(--brand)", filtro: ["recomendacion", "observar"], retirada: true },
   { clave: "negar", etiqueta: "Negar", color: "var(--bad)", filtro: ["recomendacion", "negar"] },
   { clave: "sin_analisis", etiqueta: "Sin analizar", color: "var(--text-muted)", filtro: ["estado", "sin_analisis"] },
   // Las que hay que volver a consultar. Tienen su propia tarjeta
@@ -258,6 +261,7 @@ export default function Solicitudes() {
         {TARJETAS.map((t) => {
           const valor = conteos?.[t.clave];
           const activa = t.filtro ? filtros[t.filtro[0]] === t.filtro[1] : false;
+          if (t.retirada && !activa && !(valor > 0)) return null;
           return (
             <button
               key={t.clave}
