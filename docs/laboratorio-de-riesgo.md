@@ -26,6 +26,7 @@ pantalla, *backtesting* es **prueba retrospectiva**.
 | Archivo de la IFI | El de la tabla del punto 3. |
 | Ventana de 24 meses | Es la prueba **más exigente**: deja ver los impagos tardíos, así que la tasa de default observada es mayor. |
 | Negados | Se reconsultan en el buró a 12 y 24 meses. Novadata y Aval son la única fuente externa, y alcanzan para proponer default por días de mora y por **calificación de riesgo por operación** (A1, A2 … E). |
+| Definición de default | **90 días de mora o más, o una calificación peor que B2** (C1, C2, D, E). Se mide en bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Días por operación: cooperativas en Novadata, y todas las operaciones en Aval y Equifax (confirmado por el negocio); en bancos de Novadata, la calificación. Falta definir qué es "retail grande". |
 | Decisión de la IFI | No hay IFI real todavía. Supuesto: **todo crédito que la IFI devuelve en el archivo se desembolsó**, sea cual sea la recomendación. Para el modelo: aprobar y revisar = aprobado por el modelo; negar = negado. |
 | "Observar" | Se elimina: toda la zona gris pasa a revisar. **Pendiente aparte** (`docs/pendientes.md`), no entra en este trabajo. |
 | Sin datos reales | No se espera un año: se construye el proceso ahora sobre una **cartera sintética** (ver "Cómo se desarrolla sin IFI") y se prueba con datos reales cuando existan. |
@@ -348,15 +349,18 @@ cientos de puntajes, y para el punto 9, repeticiones del mismo perfil. El
 lote reutiliza perfiles ya guardados (`analyze-client` con `profileId`): no
 reconsulta Novadata, sólo paga el modelo.
 
-| Qué | Cantidad | Costo estimado |
-|---|---|---|
-| Un análisis por cliente, muestra por segmento | 300 | ~USD 13–15 |
-| Ruido: los mismos perfiles, cinco veces | 20 × 5 = 100 | ~USD 4–5 |
-| Total | 400 | **~USD 17–20**, ~40 min con 4 a la vez |
+| Qué | Cantidad |
+|---|---|
+| Un análisis por cliente, muestra por segmento | ~200 |
+| Ruido: los mismos perfiles, cinco veces | 20 × 5 = 100 |
 
-El costo es el medido: USD 0,042 de promedio y 0,093 de máximo por
-análisis exitoso en los últimos 30 días (66 análisis). marco-v26 es más
-largo que las versiones medidas, así que puede salir algo más caro. Antes de
+**Costo por análisis, medido por versión del marco** (sólo Sonnet, sólo
+exitosos): marco-v24, USD 0,075 de promedio en 43 llamadas; marco-v26, USD
+0,084 en la única que hay (20.779 tokens de entrada, 4.280 de salida, 48 s).
+Una primera estimación de este documento usó USD 0,042, que era el promedio
+de 30 días con las llamadas de Haiku de la cascada adentro: estaba mal. A
+USD 0,085, los 300 análisis cuestan **~USD 25 sin optimizar**; cuánto baja
+con caché y lotes está en `docs/pendientes.md` ("Antes del lote"). Antes de
 correrlo:
 
 - **Subir el límite de la consola de Anthropic.** En septiembre cortó con

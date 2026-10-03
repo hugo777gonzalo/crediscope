@@ -11,6 +11,34 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
 
 ## 1. Para retomar primero
 
+0. **Antes del lote: marco, modelo y costo** (revisado el 2026-10-03, con
+   el negocio). El lote del Laboratorio es la primera corrida grande y
+   junta los puntos 1 y 3 de esta lista. Medido: marco-v26 son 39.100
+   caracteres (~16.000 tokens) de los 20.779 de entrada de un análisis;
+   cuesta USD 0,084 y la salida (4.280 tokens) es más de la mitad.
+   - **Caché del marco, sólo en lote.** Se retiró porque entre dos análisis
+     sueltos pasan 26 min de mediana; en un lote salen cada pocos segundos
+     y la de 5 minutos se mantiene sola. Ahorra ~USD 0,029 por análisis
+     (~35%). Los análisis sueltos siguen sin caché.
+   - **API de lotes de Anthropic (Message Batches):** 50% menos en todo,
+     respuesta en menos de 24 h, y sin el corte de 150 s de Supabase (que
+     ya cortó análisis a medias). Pero corre fuera de `analyze-client`: hay
+     que sacar a una función compartida el armado de la fila de
+     `analysis_results`, para no tener dos.
+   - **Modelo:** hoy `claude-sonnet-5`. `claude-sonnet-5-5` cuesta lo mismo
+     ($2/$10 por millón) pero rechaza `thinking: disabled` (rompe la
+     configuración "sin" de `comparar-razonamiento.mjs`), recalibra el
+     esfuerzo y suma clasificadores de seguridad que pueden devolver
+     `stop_reason: refusal`, que hoy no se maneja (quedaría como fallo).
+     `claude-opus-5-5` cuesta el doble. Cambiar de modelo necesita su fila
+     en `llm_precios`.
+   - **Adelgazar el marco** (sección 3) y **sacar "observar"** (sección 3)
+     son una versión nueva del marco: conviene que sea una sola, antes del
+     lote.
+   - Orden propuesto: marco v27 → comparación de los 14 casos (modelo y
+     esfuerzo, con la configuración de hoy dos veces para medir el ruido)
+     → decidir `CONFIG_LLM` → lote.
+
 1. **marco-v25 y marco-v26 nunca corrieron.** `analysis_results` no
    tiene ningún análisis con esas versiones; el último es marco-v24, del
    2026-09-27. Cambiaron cómo el modelo lee:
@@ -186,7 +214,7 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   - la plantilla bajaba todos los análisis;
   - el nombre del cliente salía vacío;
   - guardar un paquete no es transaccional.
-- **Lote de análisis para el Laboratorio** (~400 análisis, ~USD 17–20,
+- **Lote de análisis para el Laboratorio** (~300 análisis, ~USD 25 sin optimizar,
   detalle en `docs/laboratorio-de-riesgo.md`). Antes hay que subir el
   límite de la consola de Anthropic.
 - **La fábrica de crédito está en pausa** por decisión del negocio. Ver
