@@ -40,6 +40,7 @@ import type {
 import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
 import { mensajeParaElModelo } from "./perfil-del-modelo.ts";
+import { componerMarco } from "./marco-por-cliente.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "negar"];
 const NIVELES_RIESGO: NivelRiesgo[] = ["muy bajo", "bajo", "moderado", "alto", "muy alto"];
@@ -123,6 +124,11 @@ export type ConfigRazonamiento = {
   // juntos y el marco cacheado se lee a una décima parte del precio. En
   // análisis sueltos no conviene (ver la nota en armarPedidoScoring).
   cachearMarco?: boolean;
+  // El marco armado según el cliente (marco-por-cliente.ts): sin las
+  // secciones de temas que el perfil no trae. Apagado hasta validarlo
+  // contra el marco entero; no se combina con cachearMarco (en lote el marco
+  // entero cacheado cuesta menos que uno recortado sin caché).
+  marcoPorCliente?: boolean;
 };
 export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000 };
 
@@ -376,7 +382,11 @@ export function armarPedidoScoring(
   //
   // Los ajustes van en un bloque aparte: cambian cuando el área los pone
   // en vigencia, y se leen como un agregado al marco, no como parte de él.
-  const bloqueMarco: Record<string, unknown> = { type: "text", text: MARCO_INTERPRETATIVO };
+  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
+  const textoMarco = config.marcoPorCliente
+    ? componerMarco(userPayload.perfilDelModelo, userPayload.hallazgosControlBloqueo as Array<{ code?: string }>).texto
+    : MARCO_INTERPRETATIVO;
+  const bloqueMarco: Record<string, unknown> = { type: "text", text: textoMarco };
   if (config.cachearMarco) bloqueMarco.cache_control = { type: "ephemeral" };
   const bloquesSistema: Array<Record<string, unknown>> = [bloqueMarco];
   if (ajustesVigentes.length) {
@@ -389,7 +399,6 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
     });
   }
 
-  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
   const razonamiento = opcionesDeRazonamiento(config);
 
   return {

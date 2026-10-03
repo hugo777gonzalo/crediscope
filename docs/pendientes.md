@@ -163,6 +163,21 @@ Al cerrar un punto, se borra de acá y queda en el commit que lo cerró.
   - Si se apaga el razonamiento, el marco pasa a ser el grueso del
     costo: en v24 eran 15.100 de 19.200 tokens de entrada.
   - Cada versión nueva necesita su fila en `scoring_rules_versions`.
+- **Marco por cliente (v29), hecho y apagado** (2026-10-03,
+  `_shared/marco-por-cliente.ts`). Omite las secciones de temas que el
+  perfil del modelo no trae (PEP, pensión, demandas civiles, garantías,
+  jubilados, etc.); con todo aplicable da el marco vigente byte a byte.
+  Sobre los 2.567 perfiles reales el marco promedio baja de ~12.050 a
+  ~9.100 tokens (25%, ~USD 0,006 por análisis). Se enciende con
+  `marcoPorCliente` en `CONFIG_LLM`. Antes de encenderlo:
+  - **validar** con `node scripts/comparar-razonamiento.mjs --configs=hoy,porCliente`
+    (14 casos, ~USD 2, **sólo con autorización**): tiene que quedar dentro
+    del ruido (±40 de score, 1 de 13 recomendaciones);
+  - fila de marco-v29 en `scoring_rules_versions` y `MARCO_VERSION`;
+  - guardar qué secciones se omitieron en cada análisis (columna nueva);
+  - falta la segunda mitad: no mandar los grupos vacíos del perfil del
+    modelo cuando el tema se consultó (~3-4% más), con una línea en el
+    marco que diga que un tema consultado sin grupo es "no tiene nada".
 - **Declaración de disponibilidad completa.** Los dos estados por tema
   ya existen (marco-v25). Falta `cobertura` y `suficienteParaPuntaje`,
   que significa no emitir un puntaje cuando la consulta no alcanza el

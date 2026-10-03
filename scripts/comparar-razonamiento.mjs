@@ -65,6 +65,9 @@ const CONFIGURACIONES = {
   // cada llamada queda guardado en su archivo.
   nuevo: { etiqueta: "Marco nuevo, mismo modelo", config: CONFIG_LLM },
   s55: { etiqueta: "Marco nuevo, Sonnet 5.5", config: { ...CONFIG_LLM, modelo: "claude-sonnet-5-5" } },
+  // El marco armado según el cliente (marco-por-cliente.ts), contra "hoy"
+  // con el marco entero: si coincide dentro del ruido, se puede adoptar.
+  porCliente: { etiqueta: "Marco por cliente", config: { ...CONFIG_LLM, marcoPorCliente: true } },
 };
 const CLAVES = arg("configs", "hoy,sin,medio").split(",").filter((c) => CONFIGURACIONES[c]);
 
@@ -267,7 +270,7 @@ const resumen = orden.filter((c) => detalle.some((d) => d.clave === c)).map((cla
 });
 
 // Por caso: una fila por cliente, las configuraciones lado a lado.
-const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", s55: "Sonnet 5.5" };
+const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", s55: "Sonnet 5.5", porCliente: "Por cliente" };
 const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
   const fila = { "Cédula": cedula, "Nombre": Object.values(cs)[0]?.nombre ?? "", "Bloqueado por política": Object.values(cs)[0]?.bloqueado ? "Sí" : "No" };
   for (const clave of orden) {
@@ -283,7 +286,7 @@ const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
     fila[`${n} · Segundos`] = red(d.f.duracionMs / 1000, 1);
     fila[`${n} · Tokens razonamiento`] = d.razonamiento;
   }
-  for (const clave of ["sin", "medio", "hoy2", "nuevo", "s55"]) {
+  for (const clave of ["sin", "medio", "hoy2", "nuevo", "s55", "porCliente"]) {
     const d = cs[clave], h = cs.hoy;
     if (!d || !h) continue;
     const ambos = d.estado === "Completo" && h.estado === "Completo";
