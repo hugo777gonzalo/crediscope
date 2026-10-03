@@ -18,6 +18,7 @@ import { ETIQUETAS_RECOMENDACION } from "./RecomendacionBadge.jsx";
 const PRESENTACION = {
   aprobar: { titulo: "Aprobación", Icono: CheckCircle2, fondo: "#f0fdf4" },
   revisar: { titulo: "Revisión", Icono: AlertTriangle, fondo: "#fffbeb" },
+  // Sólo análisis de marco-v14 a v26: desde v27 no se produce.
   observar: { titulo: "Observación", Icono: Eye, fondo: "#f5f4fb" },
   negar: { titulo: "Negación", Icono: XCircle, fondo: "#fef2f2" },
 };

@@ -27,7 +27,7 @@ pantalla, *backtesting* es **prueba retrospectiva**.
 | Ventana de 24 meses | Es la prueba **más exigente**: deja ver los impagos tardíos, así que la tasa de default observada es mayor. |
 | Negados | Se reconsultan en el buró a 12 y 24 meses. Novadata y Aval son la única fuente externa, y alcanzan para proponer default por días de mora y por **calificación de riesgo por operación** (A1, A2 … E). |
 | Decisión de la IFI | No hay IFI real todavía. Supuesto: **todo crédito que la IFI devuelve en el archivo se desembolsó**, sea cual sea la recomendación. Para el modelo: aprobar y revisar = aprobado por el modelo; negar = negado. |
-| "Observar" | Se elimina: toda la zona gris pasa a revisar. **Pendiente aparte** (`docs/pendientes.md`), no entra en este trabajo. |
+| "Observar" | Eliminada en marco-v27 (091, 2026-10-03): toda la zona gris es revisar. Queda un análisis viejo con "observar" (de marco-v14). |
 | Sin datos reales | No se espera un año: se construye el proceso ahora sobre una **cartera sintética** (ver "Cómo se desarrolla sin IFI") y se prueba con datos reales cuando existan. |
 | Más análisis | Se corre un lote de análisis para tener puntajes y medir el ruido del modelo (ver "Lote de análisis"). |
 
@@ -156,10 +156,11 @@ archivo de la IFI **se desembolsó**. Las operaciones con recomendación
 único que se observa directamente sobre los negados. Cuando exista la
 solicitud con su decisión, el supuesto se reemplaza por el dato.
 
-### 7. Hay cuatro recomendaciones, no tres, y hay un puntaje
+### 7. Hay tres recomendaciones y un puntaje
 
-En la base aparece "observar" además de aprobar, revisar y negar (el
-negocio decidió eliminarlo; queda como pendiente aparte). Para el
+En la base aparece "observar" además de aprobar, revisar y negar: el
+negocio la eliminó y desde marco-v27 no se produce, pero queda un análisis
+de marco-v14 con ella. Para el
 Laboratorio, aprobar y revisar cuentan como "aprobado por el modelo" y
 negar como "negado", pero la tabla mantiene revisar aparte: es lo que dice
 si la zona gris tiene más impagos que la de aprobados. Y, más importante,

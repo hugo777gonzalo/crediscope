@@ -240,7 +240,8 @@
 // dice qué hacer con el caso. Distinción importante entre "revisar"
 // (tengo la info, el caso es limítrofe) y "observar" (falta info, hay
 // que pedirle datos al cliente antes de decidir) -- son situaciones
-// operativamente muy distintas aunque el score sea parecido.
+// operativamente muy distintas aunque el score sea parecido. "Observar"
+// se retiró en v27.
 //
 // Es además la pieza base del ciclo de retroalimentación/calibración
 // que viene después: comparar "recomendamos negar y cayó en default"
@@ -391,11 +392,19 @@
 // las cerradas y los trámites no penalizan, y cómo leer cada indicio de
 // ingreso mayor sin convertirlo en un monto.
 //
+// v27 (2026-10-03, decisión del negocio): se retira la recomendación
+// "observar"; toda la zona gris es "revisar". La distinción de v14 entre
+// caso limítrofe y falta de información no se pierde: cuando falta
+// información la dicen missingInfo (qué falta y por qué cambia la
+// decisión) y accionesSugeridas (qué pedir), que en v14 no existían.
+// Medido al retirarla: de 14 análisis con recomendación (desde el
+// 2026-09-13), uno solo fue "observar".
+//
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v26";
+export const MARCO_VERSION = "marco-v27";
 
 export const MARCO_INTERPRETATIVO = `
 Eres un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -912,21 +921,25 @@ aprende a saltear, y le quita peso al día en que sí haya un hallazgo.
 
 RECOMENDACIÓN DE ACCIÓN — además del score, tenés que decir qué hacer
 con el caso. El score es una medida de riesgo; la recomendación es la
-acción sugerida al analista, y no siempre se deducen una de la otra
-(un score medio con información incompleta NO es lo mismo que un score
-medio bien sustentado). Elegí exactamente una:
+acción sugerida al analista, y no siempre se deducen una de la otra.
+Elegí exactamente una de estas tres:
 - "aprobar": no hay señales negativas relevantes y la capacidad/
   comportamiento de pago están suficientemente evidenciados.
-- "revisar": hay señales negativas presentes pero no concluyentes, o
-  tensión entre capacidad y comportamiento (ej. buen comportamiento de
-  pago pero ingreso apenas suficiente). Tenés la información, el caso
-  es limítrofe y merece criterio humano.
-- "observar": NO es un rechazo — es "falta información para decidir
-  bien". Úsalo cuando faltan datos clave (fuentes caídas o con error,
-  sin empleo ni ingreso verificable, sin ningún historial crediticio)
-  y con esos datos la decisión podría cambiar en cualquier dirección.
-  Cuando elijas "observar", "missingInfo" tiene que decir CONCRETAMENTE
-  qué habría que pedirle o verificarle al cliente, no solo qué falta.
+- "revisar": toda la zona gris, que merece criterio humano. Son dos
+  situaciones, y el analista tiene que poder distinguirlas leyendo tu
+  respuesta:
+  · El caso es limítrofe con la información a la vista: hay señales
+    negativas presentes pero no concluyentes, o tensión entre capacidad
+    y comportamiento (ej. buen comportamiento de pago pero ingreso
+    apenas suficiente).
+  · Falta información para decidir bien: faltan datos clave (temas no
+    consultados, sin empleo ni ingreso verificable, sin ningún historial
+    crediticio) y con ellos la decisión podría cambiar en cualquier
+    dirección. No es un rechazo: no niegues por lo que no se sabe ni
+    apruebes por lo que nadie miró. En este caso "missingInfo" dice
+    CONCRETAMENTE qué dato falta y por qué cambia la decisión, y
+    "accionesSugeridas" qué pedirle o verificarle al cliente para
+    conseguirlo.
 - "negar": señales graves y confirmadas de mal comportamiento de pago
   (mora significativa vigente, cartera castigada, demandas de cobro
   reiteradas) o riesgo legal/reputacional grave. Un impedimento para
@@ -1035,7 +1048,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto fuera del JSON, con esta
 forma exacta:
 {
   "score": <entero 1-999>,
-  "recomendacion": "aprobar" | "revisar" | "observar" | "negar",
+  "recomendacion": "aprobar" | "revisar" | "negar",
   "accionesSugeridas": ["<2 a 4 pasos concretos, cada uno empezando con un verbo>"],
   "indicadorRiesgo": "muy bajo" | "bajo" | "moderado" | "alto" | "muy alto",
   "indicadorHistorial": "excelente" | "bueno" | "regular" | "malo" | "sin historial",

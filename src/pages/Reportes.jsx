@@ -11,10 +11,14 @@ import { ORDEN_GRUPOS, ETIQUETAS_GRUPO, formatValor } from "../lib/perfilCliente
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+// El cuarto valor marca una recomendación que ya no se produce
+// ("observar", retirada en marco-v27): su barra aparece sólo mientras
+// quede algún análisis guardado con ella, para que no sume un renglón
+// en cero para siempre ni desaparezca un caso que existe.
 const RECOMENDACIONES_ORDEN = [
   ["aprobar", "Aprobar", "var(--good)"],
   ["revisar", "Revisar", "var(--warn)"],
-  ["observar", "Observar", "var(--brand)"],
+  ["observar", "Observar", "var(--brand)", true],
   ["negar", "Negar", "var(--bad)"],
 ];
 
@@ -282,7 +286,9 @@ export default function Reportes() {
             <p className="crediscope-muted">Todavía no hay análisis con recomendación de acción (se registra desde marco-v14).</p>
           ) : (
             <>
-              {RECOMENDACIONES_ORDEN.map(([clave, etiqueta, color]) => (
+              {RECOMENDACIONES_ORDEN.filter(
+                ([clave, , , retirada]) => !retirada || metricas.distribucionRecomendacion[clave] > 0
+              ).map(([clave, etiqueta, color]) => (
                 <BarraPorcentaje
                   key={clave}
                   etiqueta={etiqueta}

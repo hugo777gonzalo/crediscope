@@ -52,7 +52,7 @@ técnico: es criterio de riesgo de la institución.
 |---|---|---|---|
 | 2.1 | **Qué hallazgos niegan automáticamente** y cuáles solo se informan | Ver tabla abajo | Código (`controles-bloqueo.ts`) |
 | 2.2 | Rango del puntaje | 1 a 999 | Código |
-| 2.3 | Qué significa cada recomendación: aprobar, observar, revisar, negar | Lo define el marco interpretativo en prosa, no un umbral numérico | Código (`marco-interpretativo.ts`) |
+| 2.3 | Qué significa cada recomendación: aprobar, revisar, negar | Lo define el marco interpretativo en prosa, no un umbral numérico | Código (`marco-interpretativo.ts`) |
 | 2.4 | Ajustes al criterio surgidos de la retroalimentación | Versión 1, sin ajustes | Pantalla (Retroalimentación › Versiones) |
 | 2.5 | Qué bloques de información se consultan de la fuente | Todos habilitados | Pantalla (Configuración › Parámetros) |
 | 2.6 | Qué campos del perfil entran al análisis | Todos habilitados | Pantalla |

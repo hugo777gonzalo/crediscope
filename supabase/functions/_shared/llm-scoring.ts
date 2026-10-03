@@ -13,7 +13,7 @@
 //   - negar:    11 de 11 iguales  (Haiku nunca ablandó una negación)
 //   - aprobar:   5 de 5  iguales
 //   - revisar:  10 de 18 iguales  (7 pasaron a "aprobar")
-//   - observar:  0 de 2           (Haiku no usa esa etiqueta)
+//   - observar:  0 de 2           (Haiku no usa esa etiqueta; retirada en marco-v27)
 // Los 10 desacuerdos van TODOS hacia menos estricto, y TODOS caen con
 // score de Haiku entre 520 y 745. De ahí la banda: si el caso queda en
 // esa zona gris, se reanaliza con Sonnet y vale ese resultado. Los casos
@@ -41,7 +41,7 @@ import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
 import { mensajeParaElModelo } from "./perfil-del-modelo.ts";
 
-const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "observar", "negar"];
+const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "negar"];
 const NIVELES_RIESGO: NivelRiesgo[] = ["muy bajo", "bajo", "moderado", "alto", "muy alto"];
 const NIVELES_HISTORIAL: NivelHistorial[] = ["excelente", "bueno", "regular", "malo", "sin historial"];
 
@@ -56,8 +56,12 @@ function normalizarNivel<T extends string>(valor: unknown, validos: T[]): T | nu
 
 // Si el LLM devuelve algo fuera de la lista (o nada), se cae a
 // "revisar" — el valor más conservador: no aprueba ni rechaza solo,
-// deja el caso en manos del analista.
-function normalizarRecomendacion(valor: unknown): RecomendacionAccion {
+// deja el caso en manos del analista. Eso incluye "observar": se retiró
+// en marco-v27 porque el negocio decidió que toda la zona gris es
+// revisar, así que si el modelo igual la devuelve, revisar es justo lo
+// que significa. Exportada para que el backtest no guarde una etiqueta
+// que el análisis no guardaría.
+export function normalizarRecomendacion(valor: unknown): RecomendacionAccion {
   const limpio = String(valor ?? "").trim().toLowerCase();
   return (RECOMENDACIONES_VALIDAS as string[]).includes(limpio) ? (limpio as RecomendacionAccion) : "revisar";
 }

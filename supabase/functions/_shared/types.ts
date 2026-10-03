@@ -584,11 +584,12 @@ export interface StandardClientProfile {
 
 // ---------- Resultado del scoring por LLM ----------
 
-// Acción sugerida al analista, además del score. "revisar" y "observar"
-// NO son lo mismo: revisar = tengo la información y el caso es
-// limítrofe; observar = falta información y con ella la decisión podría
-// cambiar en cualquier dirección (ver marco-interpretativo.ts, v14).
-export type RecomendacionAccion = "aprobar" | "revisar" | "observar" | "negar";
+// Acción sugerida al analista, además del score. Desde marco-v27 toda la
+// zona gris es "revisar": que el caso sea limítrofe o que falte
+// información lo dicen missingInfo y accionesSugeridas, no la etiqueta.
+// "observar" (v14 a v26) ya no se produce, pero queda en
+// analysis_results: las pantallas la siguen mostrando.
+export type RecomendacionAccion = "aprobar" | "revisar" | "negar";
 
 // Indicadores de lectura rápida (marco-v15). Son etiquetas para mostrar
 // como estado junto al score, no prosa. null cuando el modelo no
