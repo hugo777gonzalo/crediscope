@@ -717,7 +717,11 @@ const regla = {
   capas: {
     visible: { coeficientes: COEF_VISIBLE, peso_calificacion: PESO_CALIFICACION },
     dato_no_recibido: { variable: "fuentesIngreso.detalle.mesesConAporteUltimos24 (catálogo: meses_con_aporte_24)", coeficiente: COEF_OCULTA, termino: "fracción de meses sin aporte entre hace 13 y 24 meses, sólo si aporta hoy" },
-    dato_solo_crudo: { campo: "licenciaConducir.licencia.validezHasta anterior al día del análisis", coeficiente: COEF_CRUDO },
+    // ruta y derivaciones como las escribe explorar-crudo.mjs: la calificación las busca ahí.
+    dato_solo_crudo: {
+      campo: "licenciaConducir.licencia.validezHasta anterior al día del análisis", coeficiente: COEF_CRUDO,
+      ruta: "licenciaConducir.data.licencia[].validezHasta", derivaciones: ["fecha_anterior", "alguna_fecha_anterior"],
+    },
   },
   eventos: { efectos: EFECTO, sobreendeudamiento: EFECTO_SOBREENDEUDAMIENTO, probabilidades: PROBABILIDAD },
   capacidad: { cuota_no_cabia: EFECTO_CUOTA_NO_CABIA, capacidad_no_medible: EFECTO_CAPACIDAD_NO_MEDIBLE },

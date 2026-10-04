@@ -20,6 +20,8 @@ export default function PestanaCalificacion({ resultado }) {
   const auc = r.auc_contra_lo_plantado ?? {};
   const coh = r.coherencia_del_credito_de_la_institucion ?? {};
   const mot = r.motivo_principal_plantado_detectado ?? {};
+  // Desde la 104; una calificación anterior no lo trae.
+  const crudo = r.dato_solo_crudo ?? null;
 
   return (
     <div>
@@ -119,10 +121,50 @@ export default function PestanaCalificacion({ resultado }) {
         ) : (
           <p className="crediscope-muted">Falta calcular Variables en este corte.</p>
         )}
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
-          El dato que sólo está en el crudo (licencia vencida al día del análisis) no está en el catálogo de variables: lo tiene que encontrar el explorador
-          del crudo (fase E).
-        </p>
+      </div>
+
+      <div className="crediscope-card">
+        <h3 style={{ marginTop: 0 }}>El campo que sólo está en el crudo, ¿lo encontró el explorador?</h3>
+        {!crudo?.calculado ? (
+          <p className="crediscope-muted" style={{ marginBottom: 0 }}>
+            Falta correr el explorador del crudo en este corte (pestaña "Explorador del crudo") y volver a calcular esta calificación.
+          </p>
+        ) : (
+          <>
+            <p style={{ marginTop: 0 }}>
+              Plantado: <strong>{crudo.campo}</strong>.{" "}
+              {crudo.encontrado ? (
+                <>
+                  Lo encontró: {num(crudo.con)} personas con {pct(crudo.tasa_con)} de malos contra {pct(crudo.tasa_sin)}, significativo después de la corrección.
+                </>
+              ) : (
+                <span style={{ color: "var(--bad)", fontWeight: 700 }}>No lo encontró entre lo significativo.</span>
+              )}
+            </p>
+            <table className="crediscope-table">
+              <tbody>
+                <tr>
+                  <td>Puesto entre lo que el modelo no vio (asociado, el modelo no lo tenía, la estructura no lo lee)</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }}>
+                    {crudo.puesto_entre_no_vistos ? `${num(crudo.puesto_entre_no_vistos)} de ${num(crudo.no_vistos)}` : "—"}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Puesto entre todos los hallazgos</td>
+                  <td style={{ textAlign: "right" }}>{crudo.puesto ? `${num(crudo.puesto)} de ${num(crudo.hallazgos)}` : "—"}</td>
+                </tr>
+                <tr>
+                  <td>Parte del efecto que no explica la recomendación del modelo</td>
+                  <td style={{ textAlign: "right" }}>{pct(crudo.parte_no_explicada, 0)}</td>
+                </tr>
+                <tr>
+                  <td>¿Lo lee la estructura?</td>
+                  <td style={{ textAlign: "right" }}>{crudo.nombrado === null || crudo.nombrado === undefined ? "—" : crudo.nombrado ? "Sí" : "No"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+        )}
       </div>
     </div>
   );

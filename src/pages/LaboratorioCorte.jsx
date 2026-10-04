@@ -13,6 +13,7 @@ import PestanaMatriz from "../components/laboratorio/PestanaMatriz.jsx";
 import PestanaCuadrantes from "../components/laboratorio/PestanaCuadrantes.jsx";
 import PestanaMotivos from "../components/laboratorio/PestanaMotivos.jsx";
 import PestanaCalificacion from "../components/laboratorio/PestanaCalificacion.jsx";
+import PestanaCrudo from "../components/laboratorio/PestanaCrudo.jsx";
 
 // Un corte congelado y lo que se calcula sobre él. Cada cálculo agrega un
 // resultado nuevo (nunca pisa el anterior); se muestra el último.
@@ -20,6 +21,7 @@ import PestanaCalificacion from "../components/laboratorio/PestanaCalificacion.j
 // Un corte con solicitudes (el ciclo de un año, sección 14 del diseño) suma
 // las pestañas de quienes no recibieron el crédito y de los motivos del
 // impago; si además es sintético, la calificación contra la verdad plantada.
+// El explorador del crudo no se calcula desde acá: lo guarda un guion.
 
 function pestanasDe(corte) {
   const conSolicitudes = Boolean(corte.resumen?.solicitudes);
@@ -28,6 +30,7 @@ function pestanasDe(corte) {
     ["matriz", "Matriz de confusión"],
     ...(conSolicitudes ? [["cuadrantes", "Con y sin crédito"], ["motivos", "Motivos del impago"]] : []),
     ["variables", "Variables"],
+    ["crudo", "Explorador del crudo"],
     ["simulacion", "Simulación de política"],
     ["casos", "Casos"],
     ...(conSolicitudes && corte.es_sintetico ? [["calificacion_simulacion", "Calificación de la simulación"]] : []),
@@ -182,6 +185,7 @@ export default function LaboratorioCorte() {
       {pestana === "motivos" ? <PestanaMotivos resultado={actual} /> : null}
       {pestana === "calificacion_simulacion" ? <PestanaCalificacion resultado={actual} /> : null}
       {pestana === "variables" ? <PestanaVariables resultado={actual} /> : null}
+      {pestana === "crudo" ? <PestanaCrudo resultado={ultimo("crudo")} corteId={id} /> : null}
       {pestana === "simulacion" ? (
         <PestanaSimulacion corteId={id} catalogo={catalogo} simulaciones={resultados.filter((x) => x.tipo === "simulacion_politica")} alSimular={recargar} />
       ) : null}
