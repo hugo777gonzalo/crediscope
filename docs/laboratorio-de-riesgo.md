@@ -1,16 +1,18 @@
 # Laboratorio de Inteligencia de Negocio › Riesgo de Crédito
 
 Diseño del módulo que **reemplaza por completo a Retroalimentación**.
-Versión 2 (2026-10-03), con las decisiones del negocio del mismo día.
+Versión 3 (2026-10-03): la 2 más el **ciclo simulado de un año** (sección
+14), decidido por el negocio el mismo día.
 Estado: **fases 0 a 5 implementadas el 2026-10-03** (migraciones 090 y 094
 a 097, pantallas en `/laboratorio`). Retroalimentación ya no existe. Las
 consultas de cada pantalla se probaron contra la base; **falta verlas en
-el navegador con una sesión de admin**. La fase 6 (con costo) espera
-autorización.
+el navegador con una sesión de admin**. La fase 6 (el ciclo simulado) está
+en construcción; la 7 (marco candidato, con costo) espera autorización.
 
-Todo lo de las fases 1 a 5 se construye y se prueba **sin gastar en el
-modelo de lenguaje**. Lo único que cuesta está aislado en la fase 6 y se
-corre sólo con autorización del negocio.
+Todo lo de las fases 1 a 6 se construye y se prueba **sin gastar en el
+modelo de lenguaje** (consultar Novadata no le cuesta al negocio por ahora).
+Lo único que cuesta está aislado en la fase 7 y se corre sólo con
+autorización del negocio.
 
 ---
 
@@ -41,7 +43,11 @@ Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
 | Ventana | 12 y 24 meses; 24 es la prueba más exigente (deja ver los impagos tardíos). |
 | Definición de default | 90 días de mora o más, o una calificación peor que B2 (C1, C2, D, E). En bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Falta definir "retail grande". |
 | Días de mora por operación | Cooperativas (Novadata), Aval y Equifax sí; bancos de Novadata no: ahí manda la calificación. |
-| Negados | Se juzgan reconsultando el buró a 12 y 24 meses (fase 6, con costo de consulta). |
+| Negados | Se juzgan reconsultando el buró a 12 y 24 meses (fase 6). Novadata no le cobra al negocio por ahora. |
+| Ciclo simulado | Se arma hoy el ciclo completo de la primera prueba retrospectiva, con el mismo código que la real (sección 14). |
+| Quién recibe crédito en la simulación | Según la recomendación: aprobar mucho más que revisar, negar casi nunca; ~300 en total. |
+| La foto "un año después" | La reconsulta real de toda la cartera, con doce meses de eventos sintéticos plantados encima. |
+| Informe de una simulación | Se exporta, con la franja "SIMULACIÓN — no presentar" en cada hoja. |
 | Decisión de la IFI | Sin IFI real, supuesto: todo crédito del archivo se desembolsó. Para el modelo: aprobar y revisar = aprobado; negar = negado. |
 | "Observar" | Retirada en marco-v27. Un análisis viejo la tiene: se lee como revisar. |
 | Sin datos reales | Se desarrolla con una **cartera sintética** (sección 8). |
@@ -413,7 +419,9 @@ Todo bajo **Laboratorio** en el menú, sólo para admin; la entrada
 | `/laboratorio/criterio` | El criterio vigente y su historial, con reversión (hoy `/retroalimentacion/versiones`). |
 
 El **Informe de Desempeño del Modelo** se exporta desde un corte real con
-sus propuestas presentadas: no existe para cortes sintéticos.
+sus propuestas presentadas. Desde un corte sintético se exporta igual, para
+probar la salida, con la franja "SIMULACIÓN — no presentar" en cada hoja
+(decisión del 2026-10-03).
 
 Diseño de pantalla (memoria del proyecto: pantallas concretas): primero el
 número que importa y su tamaño de muestra; el detalle, plegado; sin jerga;
@@ -459,7 +467,8 @@ En este orden, por la regla 8 de `CLAUDE.md` (desplegar antes de borrar):
 | 3 | Variables | 0 | **Hecha (095): plantadas 1ª, 2ª, 5ª y 8ª; no relacionadas bajo 0,1.** Las cuatro variables plantadas están entre las primeras por IV, y toda variable que las supere está correlacionada con alguna plantada (documentado); las no relacionadas quedan bajo 0,1; la bandera de fuga se prende con una variable que contiene el resultado. |
 | 4 | Simulación de política y casos | 0 | **Hecha (095).** Una regla sobre la variable plantada evita malos y muestra los buenos que pierde; el recorrido de un caso se abre completo. |
 | 5 | Propuestas, criterio y retiro de Retroalimentación | 0 | **Hecha (096, 097): misma huella del criterio; tablas `feedback_*` borradas.** Las tres funciones del criterio leen `lab_propuestas` con la misma huella; Retroalimentación ya no existe; Descargas sigue funcionando. |
-| 6 | Simulación de marco candidato y reconsulta de negados | **sí, con autorización** | Lotes por `analizar-en-lote.mjs`; reconsultas con costo de Novadata. |
+| 6 | Ciclo simulado de un año: solicitudes y desembolsos, reconsulta, eventos, resultado de los no desembolsados, motivos del impago, exploración del crudo (sección 14) | 0 | Cada paso recupera lo plantado (14.7) sin leer la bitácora. |
+| 7 | Simulación de marco candidato | **sí, con autorización** | Lotes por `analizar-en-lote.mjs` sobre los perfiles congelados; ~USD 6-10 por marco sobre 300 análisis (estimado). |
 
 Las fases 2 y 3 pueden ir en paralelo después de la 1.
 
@@ -469,12 +478,199 @@ Las fases 2 y 3 pueden ir en paralelo después de la 1.
 |---|---|
 | ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos; mientras tanto, `institucion` es texto y sólo admin ve todo. |
 | ¿Qué es "retail grande"? | Abierta. Hace falta para la definición de default. |
-| Base legal y costo de reconsultar a un negado | Abierta (fase 6). |
+| Base legal para reconsultar a un negado | Abierta. El costo no: Novadata no cobra por ahora. |
 | ¿Cuánto tiempo se conserva el crudo? | Abierta (LOPDP). |
 | La decisión de la IFI no se registra | Supuesto del negocio hasta que exista la solicitud (fábrica de crédito). |
 | Cartera vigente de la IFI con perfiles posteriores al desembolso | Riesgo de fuga: el vínculo la marca `consulta_posterior` y la excluye. |
 | Muestras chicas con datos reales | Las advertencias de la sección 7.5 no se pueden ocultar. |
-| Uso de lo sintético fuera de lugar | Marca en la base, franja en pantalla, informe bloqueado. |
+| Uso de lo sintético fuera de lugar | Marca en la base, franja en pantalla, informe con franja "SIMULACIÓN". |
+
+## 14. Ciclo simulado de un año (fase 6)
+
+Decidido por el negocio el 2026-10-03. No se puede esperar un año para
+tener la primera prueba retrospectiva real, así que el ciclo se arma y se
+prueba hoy, entero, para que con la primera institución real sea correrlo
+y no construirlo. **Es el mismo código que la corrida real**; sólo cambian
+dos entradas: el archivo de la institución (hoy inventado) y la foto "un
+año después" (hoy, reconsulta real más eventos plantados).
+
+### 14.1 La línea de tiempo
+
+| Momento | En la simulación | En la corrida real |
+|---|---|---|
+| t0, día del análisis ("hace un año") | La consulta guardada de cada persona de la cartera (crudo en Storage, septiembre de 2026) | La consulta del día de la solicitud |
+| Desembolso | Entre t0 y la reconsulta, para que el vínculo nunca tome la reconsulta como perfil del análisis | El del archivo |
+| t1, "un año después" | La reconsulta real del 2026-10-03 (2.567 personas, crudo en Storage y en `research/novadata-raw-2026-10-03/`) **con doce meses de eventos sintéticos encima**, fechados entre t0 y t0 + 12 meses | La reconsulta del día de la prueba |
+| Fecha de corte del archivo | t0 + 12 meses (futura: sólo una carga sintética puede tenerla) | La del archivo |
+
+Primero a 12 meses; la de 24 es la misma máquina con otro horizonte. Los
+cambios reales de la semana entre t0 y la reconsulta quedan como ruido
+real: son pocos, y el detector (14.5) tiene que tolerarlos.
+
+### 14.2 Solicitudes y desembolsos
+
+Las 2.567 personas son las **solicitudes del año**. Cada una lleva su
+recomendación: la del modelo si se analizó; si no, una sintética (la regla
+plantada con el ruido medido, como en la sección 8). La institución
+simulada desembolsa según la recomendación, aprobar mucho más que revisar
+y negar casi nunca (esos pocos son los "la institución prestó igual"),
+hasta ~300 créditos. El resto son **solicitudes no desembolsadas**: no están
+en el archivo, y su resultado sólo se conoce por la reconsulta.
+
+En la corrida real, las solicitudes son los análisis del período (mientras
+no exista la entidad institución, todos) y las no desembolsadas, las que
+no aparecen en el archivo.
+
+### 14.3 La verdad plantada
+
+Para cada persona, y guardada aparte en una **bitácora** que el análisis
+nunca lee (sólo sirve para calificar, 14.7):
+
+1. **Riesgo de base**, de su perfil en t0, en tres capas: datos que el
+   modelo lee (calificación, deuda en atraso, demandas de cobro,
+   continuidad), **un dato del perfil que el modelo no recibe** y **un
+   campo que sólo está en el crudo**. Las dos últimas son la pregunta del
+   Laboratorio: qué no pudo ver el modelo.
+2. **Eventos del año** (14.4), con probabilidades que dependen en parte de
+   la fragilidad visible en t0: quien tiene empleo discontinuo pierde el
+   trabajo más seguido. Así existe algo que encontrar en "¿se podía ver?".
+3. **El impago**, de la suma del riesgo de base, los eventos y, si recibió
+   crédito, el peso de la cuota sobre su ingreso. Cada malo lleva su motivo
+   plantado.
+4. **Lo que el buró esconde**: una parte de los que cayeron se pone al día
+   antes de t1, para medir cuánto se le escapa a una foto.
+
+### 14.4 Catálogo de eventos (lo que se modifica en el crudo de t1)
+
+| Evento | Dónde, en el crudo | Qué es |
+|---|---|---|
+| Nuestro crédito | Operación nueva de la institución simulada en el buró, con la calificación que corresponde a los días de mora del archivo | Coherencia: el archivo y el buró dicen lo mismo |
+| Crédito nuevo en otra institución | Operación nueva en bancos, Diners, cooperativas o retail | Causa interna posterior: otra institución lo sobreendeudó |
+| Un crédito que ya tenía cae en mora | La misma operación, con peor calificación y saldo vencido (días de mora en cooperativas) | Consecuencia, o señal temprana si empezó antes que la nuestra |
+| Demanda de cobro | Función Judicial, demandas en su contra | Consecuencia |
+| Demanda civil que no es de cobro | Función Judicial, demandas en su contra | Causa externa |
+| Pensión alimenticia nueva | SUPA | Causa externa |
+| Proceso en Fiscalía como procesado | Denuncias, con su cédula | Causa externa |
+| Pérdida del trabajo | Aportes del IESS que se cortan en un mes | Causa externa |
+| Cierre del negocio | SRI: RUC suspendido, establecimientos cerrados | Causa externa |
+| Trabajo nuevo o mejor ingreso | Aportes del IESS con un empleador nuevo | Protege |
+
+El crudo de t1 sintético va a Storage bajo `simulacion/`; **nunca es un
+`client_profiles`** ni toca la ficha de nadie. Se arma con el código real
+(`buildStandardProfile`, fuentes de ingreso) como cualquier consulta.
+
+### 14.5 Lo que hace el Laboratorio (igual en la simulación y en la real)
+
+1. **Rearmar t0** desde su crudo guardado, con la versión vigente de la
+   estructura y de las fuentes de ingreso. Gratis y sin fuga: es la
+   información del día del análisis, en la versión de hoy. **Las variables
+   salen de acá**, nunca de t1.
+2. **Armar t1** con el mismo código.
+3. **Detectar los eventos** comparando t0 con t1, con su fecha cuando la
+   fuente la trae. Sin leer la bitácora.
+4. **Resultado**: con crédito, el archivo; sin crédito, el buró de t1. Cayó
+   si una operación nueva (de una entidad que ya reportaba) o una que ya
+   tenía y en t0 no estaba en default cumple la definición de default. Sólo
+   se puede observar a quien tuvo crédito con alguien: el resto queda fuera,
+   ni bueno ni malo. Los hechos se guardan crudos (calificación, días,
+   castigo, juicio) y la definición la aplica el corte.
+5. **Motivo del impago**, de cada malo, con todos los que apliquen y
+   ordenados por fecha:
+   - *interno, visible en t0*: la cuota no cabía en el ingreso; el ingreso
+     estaba por confirmar o sin determinar (capacidad no medible); deuda
+     previa alta;
+   - *interno, posterior*: otra institución le prestó antes de la caída;
+   - *externo*: pérdida del trabajo, cierre del negocio, pensión
+     alimenticia, demanda civil, Fiscalía, fechados antes de la caída;
+   - *consecuencias, no causas*: mora en otros créditos, demandas de cobro,
+     castigo. Si la mora en otro crédito empezó antes que la nuestra, el
+     problema empezó afuera;
+   - *sin causa visible*.
+6. **¿Se podía ver en t0?** Anticipable (estaba en el perfil: es lo que
+   el modelo tiene que corregir) · vulnerabilidad visible (el golpe no se
+   podía prever, pero el perfil era frágil: es materia de política, no de
+   puntaje) · no anticipable. La prueba: entre quienes sufrieron el mismo
+   golpe, qué tenían en t0 los que cayeron y no los que siguieron pagando.
+7. Desempeño con los **cuatro cuadrantes** (recomendación × desembolso),
+   variables, **exploración del crudo** (campos que no llegan al perfil y
+   separan buenos de malos, con la misma vara del IV), simulación de
+   reglas, casos (ahora con t0, t1, eventos y motivo), propuestas e
+   informe.
+
+### 14.6 Lo que pide a la plantilla
+
+Una columna opcional, `cuota_mensual`. Sin ella, "la cuota no cabía" queda
+como **no medible**: no se estima con una tasa supuesta.
+
+### 14.7 Cómo se califica la simulación
+
+| Paso | Tiene que dar |
+|---|---|
+| Detector de eventos | Cuántos plantados encontró y cuántos inventó, por tipo |
+| Resultado de los no desembolsados | Caídas inferidas contra plantadas, y cuántas escaparon por ponerse al día antes de t1 |
+| Motivo del impago | Motivo atribuido contra plantado |
+| Variables y crudo | El dato que el modelo no recibe y el campo que sólo está en el crudo, arriba |
+| Sesgo | AUC sólo con desembolsados contra AUC con todos (posible sólo porque conocemos la verdad) |
+
+**Lo que no prueba**: nada sobre el motor real ni sobre la frecuencia real
+de los eventos; las proporciones son inventadas y quedan en la bitácora.
+
+### 14.8 Dónde vive y cómo se corre
+
+| Paso | Qué | Dónde |
+|---|---|---|
+| Tablas | Solicitudes, reconsultas, eventos, verdad | 098 |
+| Cálculos | Solicitudes en el corte, cuadrantes, motivos, calificación, variables por población | 099 |
+| Simular el año | `node scripts/simular-un-anio.mjs [--seco]` | sólo simulación |
+| Procesar | `node scripts/procesar-reconsultas.mjs --carga=<id> [--seco]` | simulación y real |
+| Detector | `_shared/eventos-entre-consultas.ts` | Deno y Node |
+| Corte | `lab_congelar_corte` congela también las solicitudes | pantalla |
+
+Para la corrida real faltan dos piezas: armar las solicitudes desde los
+análisis del período, y reconsultar en Novadata enlazando cada consulta a su
+solicitud (`origen = 'novadata'`).
+
+### 14.9 Lo que enseñó armarlo (2026-10-03)
+
+- **El buró cambia de corte entre dos consultas.** La de septiembre traía
+  el de julio y la reconsulta, el de agosto: en una semana el detector vio
+  104 "créditos nuevos" en 300 personas reales.
+- **Una entidad que empieza a reportar parece un aluvión de créditos
+  nuevos.** Una cooperativa apareció de golpe para muchas personas que en
+  t0 no tenían nada con ella. El procesamiento mira la carga entera y marca
+  esas entidades: en t0 no tenían a nadie, en t1 a cinco o más. Sus
+  operaciones no cuentan como crédito sacado en el año.
+- **Bancos y retail vienen agrupados por entidad.** Un crédito nuevo en un
+  banco donde ya tenía otro no se distingue: se ve, si acaso, como un
+  deterioro.
+- **Una compra de cartera parece un crédito nuevo.** En ese mes un solo
+  banco sumó 45 personas de 718 (de 423 a 468); no se sabe si fue una compra
+  de cartera, una campaña o un cambio en cómo reporta. En un año crecer es
+  normal, así que no se filtra: queda como limitación.
+- **La simulación también se equivoca.** La primera corrida eligió al azar
+  la entidad de cada crédito nuevo inventado, entre todas las que aparecen en
+  el buró. Juntó varios en entidades que en t0 no tenía nadie (una, un banco
+  en liquidación), y el procesamiento las tomó por entidades que empezaban a
+  reportar y descontó 288 créditos plantados. Ahora la entidad sale con peso
+  según cuántas personas la tenían en t0. La carga quedó anulada.
+- **El IESS completa el último mes después.** 81 personas tenían en la
+  reconsulta un empleador en agosto de 2026 que la consulta de septiembre no
+  traía para ese mismo mes. El detector los leía como "trabajo nuevo"; ahora,
+  si t1 muestra al empleador en el mes del corte de t0 o antes, ya trabajaba
+  ahí.
+- **"El modelo lo vio" vale también sin nuestro crédito.** Un negado que
+  cayó con otra institución es el acierto del modelo; contarlo sólo con
+  crédito dejaba 132 de 211 malos "sin causa visible" (102).
+- **El SRI corrige su registro.** En esa semana aparecieron ceses de RUC con
+  fecha de 2010 a 2024 que en septiembre no estaban. Un cese anterior a t0
+  no es un cierre en el año y el detector no lo cuenta.
+- **El buró es una foto.** Quien cayó y se puso al día antes de la
+  reconsulta no se ve. La simulación lo planta a propósito para medirlo.
+- **Novadata cambió un formato sin avisar.** El estado de los
+  establecimientos llega a veces abreviado ("ABI"); el detector lo encontró
+  como 19 negocios "cerrados" en una semana (estructura-v13, ver
+  `docs/estructura-estandarizada.md`). Comparar dos consultas de la misma
+  persona es también un control de calidad de la fuente.
 
 ---
 

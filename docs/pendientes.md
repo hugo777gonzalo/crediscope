@@ -1,8 +1,8 @@
 # Pendientes
 
 Lo que quedó abierto al 2026-10-03. Las versiones vigentes son
-marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v12,
-fuentes-v9 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
+marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
+fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
 
 Los números son de la base o del crudo local, medidos ese día. Antes de
@@ -28,6 +28,27 @@ aceptada.
    Propuestas (crear una desde el corte: no tiene que poder presentarse por
    ser sintética) › Criterio vigente. Probar también subir la plantilla con
    un archivo chico de prueba y anular esa carga después.
+   **Sumar al recorrido (fase 6 y fase A, 2026-10-03):** el corte "Ciclo
+   simulado de un año a 12 meses" (`4e18ca83-…`) con sus pestañas Matriz de
+   confusión, Con y sin crédito, Motivos del impago, Variables con las dos
+   poblaciones y Calificación de la simulación (los resultados ya están
+   calculados); la plantilla nueva (cuota, canal, fecha del primer impago
+   obligatoria si cayó, hoja "Solicitudes no desembolsadas"); el informe
+   sintético con su franja. **Las pantallas de la fase A no se subieron
+   (push) hasta verlas.**
+
+0b. **Laboratorio: lo que sigue** (`docs/laboratorio-pantallas.md`).
+   - Fases B a F, en ese orden (decidido el 2026-10-03).
+   - Para correr el ciclo con una institución real faltan dos piezas:
+     armar las solicitudes desde los análisis del período (con la decisión
+     de la institución de `lab_decisiones_institucion`) y la reconsulta real
+     enlazada a cada solicitud (`origen = 'novadata'`).
+   - El campo que sólo está en el crudo (licencia vencida en t0) lo tiene
+     que encontrar el explorador del crudo (fase E): es la prueba pendiente
+     de "qué no pudo ver el modelo" en el crudo.
+   - La carga del primer ciclo simulado (`5e362de7-…`) quedó anulada por un
+     error del simulador; sigue en la base con sus 2.565 reconsultas
+     (~26 MB de perfiles). Borrarla, con confirmación del negocio.
 
 1. **Marco y modelo: dónde quedó** (2026-10-03).
    - **En producción: marco-v28 con Sonnet 5.5**, con el respaldo
@@ -61,15 +82,11 @@ aceptada.
      `config_operativa.presupuesto_llm_mensual_usd` (USD 10; en octubre
      van ~5,4).
 
-2. **0501418826 y 0918563750 quedaron en estructura-v11.** Se
-   consultaron desde la pantalla el 2026-09-28 (17:51 y 18:40), después de
-   armado el respaldo local: su crudo es de un perfil anterior y los
-   recálculos no las alcanzan. v12 no les cambia las demandas (medido sobre
-   el crudo). Reconsultarlas con
-   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 2 --crudo=research/novadata-raw-2026-09-25`
-   las pone al día. Pasa cada vez que alguien consulta desde la pantalla:
-   el respaldo sólo se actualiza desde el guion (así quedó también
-   1308725470, reconsultada dos veces el 2026-09-28 y 29).
+2. **Respaldo local del crudo.** La cartera entera se reconsultó el
+   2026-10-03 (2.567, 0 fallas) y el respaldo vigente es
+   `research/novadata-raw-2026-10-03/`: los recálculos van con
+   `--carpeta=research/novadata-raw-2026-10-03`. Una consulta desde la
+   pantalla deja el respaldo local atrás (el crudo igual queda en Storage).
 
 3. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
    "Clientes que necesitan respaldo".** El análisis y la propuesta están en

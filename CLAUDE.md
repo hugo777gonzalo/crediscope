@@ -195,7 +195,10 @@ antes de tocar esa área.
 - Respaldo local en `research/` (fuera del repo, datos personales):
   `novadata-raw/` = muestra fija de 389, no se pisa;
   `novadata-raw-2026-09-25/` = cartera completa (ya subida a Storage) en
-  forma plana `{ cedula, capturadoEl, perfilId, raw }`. Sumar:
+  forma plana `{ cedula, capturadoEl, perfilId, raw }`;
+  `novadata-raw-2026-10-03/` = la reconsulta entera de ese día, el respaldo
+  vigente (los recálculos, con `--carpeta=`). La del 25/09 es el t0 del
+  ciclo simulado del Laboratorio: no se pisa. Sumar:
   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta>`.
 - Reproducir un perfil: `buildStandardProfile(raw, cedula, corte)` con el
   corte VIGENTE de ese día, no `fuente_corte`.
@@ -227,7 +230,8 @@ antes de tocar esa área.
   001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
   lo hace empleador.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
-  establecimiento abierto).
+  establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
+  `establecimientoAbierto()` es la única comparación (estructura-v13).
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con
