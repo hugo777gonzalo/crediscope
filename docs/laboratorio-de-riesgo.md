@@ -4,10 +4,14 @@ Diseño del módulo que **reemplaza por completo a Retroalimentación**.
 Versión 3 (2026-10-03): la 2 más el **ciclo simulado de un año** (sección
 14), decidido por el negocio el mismo día.
 Estado: **fases 0 a 5 implementadas el 2026-10-03** (migraciones 090 y 094
-a 097, pantallas en `/laboratorio`). Retroalimentación ya no existe. Las
-consultas de cada pantalla se probaron contra la base; **falta verlas en
-el navegador con una sesión de admin**. La fase 6 (el ciclo simulado) está
-en construcción; la 7 (marco candidato, con costo) espera autorización.
+a 097, pantallas en `/laboratorio`). Retroalimentación ya no existe. **La
+fase 6 (el ciclo simulado) está hecha y corrida** (098-103; resultados en
+14.10). La 7 (marco candidato, con costo) espera autorización. Las
+pantallas que pidió el negocio están mapeadas en
+`docs/laboratorio-pantallas.md`; la fase A de esas pantallas está
+construida. Las consultas de cada pantalla se probaron contra la base;
+**falta verlas en el navegador con una sesión de admin**, y hasta entonces
+no se suben.
 
 Todo lo de las fases 1 a 6 se construye y se prueba **sin gastar en el
 modelo de lenguaje** (consultar Novadata no le cuesta al negocio por ahora).
@@ -53,6 +57,7 @@ Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
 | Sin datos reales | Se desarrolla con una **cartera sintética** (sección 8). |
 | Lote de análisis reales | Postergado: no hay presupuesto, y no hace falta para desarrollar (sección 8). |
 | Pruebas con el modelo | Cualquier prueba masiva, sólo con autorización del negocio. |
+| Pantallas, estadística, instituciones, calibración, archivo | Las cinco decisiones del 2026-10-03, en `docs/laboratorio-pantallas.md`: fases A a F en orden; lo interactivo en el navegador y lo pesado con guiones de Python locales; instituciones y proyectos como entidades del Laboratorio; calibración con la función puntaje → probabilidad estimada en una cohorte y probada en la siguiente; el archivo pide fecha del primer impago si cayó, canal y la decisión de la institución en lo no desembolsado. |
 
 ## 3. Lo que hay hoy: diagnóstico de Retroalimentación
 
@@ -207,6 +212,14 @@ quedó a medias se ve como `cargando` y nada la usa. Así se corrige el error
 | `dias_mora_max_12m`, `dias_mora_max_24m` | sí | null = no observado (inmadura) |
 | `fecha_primer_default` | no | tiempo hasta el impago |
 | `observaciones` | no | lectura cualitativa de la IFI |
+| `cuota_mensual` | no | sin ella, "la cuota no cabía" queda como no medible (098) |
+| `canal` | no | para el desempeño por segmento (101) |
+
+La fecha del primer impago es obligatoria si la operación llegó a 90 días o
+más, o está castigada o en demanda (101: la validación de la carga la exige
+fila por fila y la base también). La hoja opcional "Solicitudes no
+desembolsadas" va a `lab_decisiones_institucion` (cédula, fecha, negada /
+desistió / en trámite).
 | `sintetico` | — | jsonb con puntaje y recomendación inventados, sólo en cargas sintéticas |
 | `client_id`, `analysis_result_id`, `client_profile_id` | — | los pone el vínculo |
 | `vinculo` | — | ver 6.4 |
@@ -414,7 +427,7 @@ Todo bajo **Laboratorio** en el menú, sólo para admin; la entrada
 | `/laboratorio/cargas/nueva` | Descargar la plantilla, subir el archivo, ver los errores fila por fila antes de aceptar. |
 | `/laboratorio/cargas/:id` | La conciliación de la sección 6.4, con descarga de las operaciones excluidas y su motivo. |
 | `/laboratorio/cortes/nuevo` | Elegir cargas, definición de default, ventana y filtros; congelar. |
-| `/laboratorio/cortes/:id` | Pestañas **Desempeño · Variables · Simulación · Casos**, cada número con su `n` y sus advertencias. |
+| `/laboratorio/cortes/:id` | Pestañas **Desempeño · Matriz de confusión · Variables · Simulación · Casos**, cada número con su `n` y sus advertencias. Un corte con solicitudes suma **Con y sin crédito** y **Motivos del impago**; si es sintético, **Calificación de la simulación**. Variables elige la población: con el crédito de la institución o todas las solicitudes observadas. |
 | `/laboratorio/propuestas` | Propuestas por estado; el detalle muestra la evidencia enlazada. |
 | `/laboratorio/criterio` | El criterio vigente y su historial, con reversión (hoy `/retroalimentacion/versiones`). |
 
@@ -467,7 +480,7 @@ En este orden, por la regla 8 de `CLAUDE.md` (desplegar antes de borrar):
 | 3 | Variables | 0 | **Hecha (095): plantadas 1ª, 2ª, 5ª y 8ª; no relacionadas bajo 0,1.** Las cuatro variables plantadas están entre las primeras por IV, y toda variable que las supere está correlacionada con alguna plantada (documentado); las no relacionadas quedan bajo 0,1; la bandera de fuga se prende con una variable que contiene el resultado. |
 | 4 | Simulación de política y casos | 0 | **Hecha (095).** Una regla sobre la variable plantada evita malos y muestra los buenos que pierde; el recorrido de un caso se abre completo. |
 | 5 | Propuestas, criterio y retiro de Retroalimentación | 0 | **Hecha (096, 097): misma huella del criterio; tablas `feedback_*` borradas.** Las tres funciones del criterio leen `lab_propuestas` con la misma huella; Retroalimentación ya no existe; Descargas sigue funcionando. |
-| 6 | Ciclo simulado de un año: solicitudes y desembolsos, reconsulta, eventos, resultado de los no desembolsados, motivos del impago, exploración del crudo (sección 14) | 0 | Cada paso recupera lo plantado (14.7) sin leer la bitácora. |
+| 6 | Ciclo simulado de un año: solicitudes y desembolsos, reconsulta, eventos, resultado de los no desembolsados, motivos del impago (sección 14) | 0 | **Hecha (098-103), resultados en 14.10.** Falta la exploración del crudo (fase E de las pantallas) y las dos piezas de la corrida real (14.8). |
 | 7 | Simulación de marco candidato | **sí, con autorización** | Lotes por `analizar-en-lote.mjs` sobre los perfiles congelados; ~USD 6-10 por marco sobre 300 análisis (estimado). |
 
 Las fases 2 y 3 pueden ir en paralelo después de la 1.
@@ -476,7 +489,8 @@ Las fases 2 y 3 pueden ir en paralelo después de la 1.
 
 | Tema | Estado |
 |---|---|
-| ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos; mientras tanto, `institucion` es texto y sólo admin ve todo. |
+| ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos. Decidido el 2026-10-03: instituciones y proyectos como entidades del Laboratorio, sólo admin, sin esperar esta respuesta (todavía no construidas). |
+| Calibración | Decidida el 2026-10-03: el motor da puntaje, no probabilidad; se estima puntaje → probabilidad en una cohorte y se prueba en la siguiente. |
 | ¿Qué es "retail grande"? | Abierta. Hace falta para la definición de default. |
 | Base legal para reconsultar a un negado | Abierta. El costo no: Novadata no cobra por ahora. |
 | ¿Cuánto tiempo se conserva el crudo? | Abierta (LOPDP). |
@@ -671,6 +685,37 @@ solicitud (`origen = 'novadata'`).
   como 19 negocios "cerrados" en una semana (estructura-v13, ver
   `docs/estructura-estandarizada.md`). Comparar dos consultas de la misma
   persona es también un control de calidad de la fuente.
+
+### 14.10 La primera corrida (2026-10-03/04)
+
+Carga `1196978e-f9e4-4458-859b-890773af95c7` ("Ciclo simulado de un año
+(semilla 1)"), corte `4e18ca83-11ae-4e91-b9c5-8623931e9560` a 12 meses con
+la definición del negocio. Todo calculado y guardado en `lab_resultados`.
+La carga `5e362de7-…` es el primer intento, anulado por el error del
+simulador de 14.9: sigue en la base (borrarla, con confirmación).
+
+| Qué | Resultado |
+|---|---|
+| Solicitudes | 2.565 (2 sin crudo en t0 quedaron afuera); recomendación sintética aprobar 1.108 · revisar 886 · negar 501 · bloqueado 70 |
+| Desembolsados | 296 (236 aprobar, 57 revisar, 3 negar); 20 malos |
+| Observadas | 2.528 (tuvieron crédito con alguien); 211 malos |
+| Desempeño con los desembolsados | AUC 0,63 (0,51 a 0,75), KS 0,26: con 20 malos es ruido |
+| Matriz (desembolsados) | "negar" marca malo: sensibilidad 10%, exactitud 94%; "negar o revisar": sensibilidad 40%, precisión 13% |
+| Tasa por cuadrante | con crédito: aprobar 5,1% · revisar 10,5%; sin crédito: aprobar 3,5% · revisar 6,1% · negar 17,5% · bloqueado 37% |
+| Negados sin crédito | 498: 261 con crédito de otro; 86 cayeron (con otro o en lo que tenían); 199 pagaron con otro; 7 sin observar |
+| ¿Se podía ver? (211 malos) | el modelo lo vio 169 · se podía ver y no lo vio 7 · golpe sobre perfil frágil 6 · sobre perfil sólido 12 · ningún evento lo explica 17 |
+| El mismo golpe | perdieron el trabajo 131, cayó el 17% (8% en general); los que cayeron tenían 70 meses de continuidad contra 103 y 9% con deuda en atraso contra 1% |
+| Variables, todas las observadas | peor calificación 1.ª, deuda en atraso 2.ª, demandas de cobro 4.ª, continuidad 9.ª; **meses con aporte en 24, que el modelo no recibe, 6.ª y marcada** |
+| Variables, sólo desembolsados | arriba teléfonos, empleos registrados, días de mora en retail: ninguna plantada (ruido, como avisa la advertencia) |
+| Detector contra lo plantado | créditos de otros 1.041/1.079 · pérdidas de trabajo 132/132 · cierres 154/154 · trabajos nuevos 197/197 · demandas 132/132 · Fiscalía 34/34 · pensiones 80/84 · mora en lo que tenía 118/159 (muchas, de gente que se puso al día); inventados 2 en total; cambios reales de la semana, aparte |
+| Malos sin crédito | 178 de 311 se vieron; 47 escaparon por ponerse al día; 3 sin observar |
+| Sesgo | AUC contra lo plantado 0,63 con los desembolsados y 0,70 con todos |
+| Motivo principal plantado | el evento está detectado en 76 de 79 |
+| Pendiente | el campo sólo del crudo (licencia vencida en t0) no lo busca nadie todavía: explorador del crudo, fase E |
+
+**La conclusión para la corrida real:** con ~300 créditos la prueba sólo
+con lo desembolsado no distingue nada; lo que le da poder es reconsultar a
+todas las solicitudes del período.
 
 ---
 

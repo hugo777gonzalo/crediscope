@@ -303,3 +303,37 @@ está el porqué. Una lección nueva va en los dos lugares.
   Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por
   minuto con concurrencia 6, sin un solo reintento. Las cuentas de
   capacidad que se hicieron pensando en Novadata no aplican acá.
+- **Novadata cambia formatos sin avisar** (2026-10-03, estructura-v13). En
+  la reconsulta de la cartera el estado de algunos establecimientos del SRI
+  llegó abreviado ("ABI", "CER") y mezclado con el de siempre. La regla
+  buscaba "ABIERTO" exacto: 67 de 2.567 personas tenían mal el perfil, con
+  la regla vieja el RUC activo daba 1.715 en vez de 1.774, y 9 tenían mal el
+  segmento. Nadie lo
+  vio en las pantallas: lo encontró el detector de eventos del Laboratorio
+  como "19 negocios cerrados en una semana". Comparar dos consultas de la
+  misma persona es un control de calidad de la fuente; una comparación de
+  texto con un valor de Novadata va en una sola función
+  (`establecimientoAbierto()` en `ruc.ts`).
+- **Dos consultas de la misma persona difieren aunque no le haya pasado
+  nada** (2026-09-25 contra 2026-10-03, 707 personas reales). El buró pasó
+  del corte de julio al de agosto (104 "créditos nuevos" en 300 personas);
+  cuatro cooperativas aparecieron de golpe para personas que antes no
+  tenían nada con ellas (empezaron a reportar); un banco sumó 45 personas en
+  un mes; el SRI agregó ceses de RUC con fecha de 2010 a 2024; y el IESS
+  completó agosto después de la primera consulta (81 empleadores que
+  "aparecían"). Todo lo que compare dos fotos tiene que separar esto de lo
+  que pasó de verdad: `_shared/eventos-entre-consultas.ts` lo hace, y el
+  procesamiento marca las entidades que empiezan a reportar mirando la carga
+  entera.
+- **Reconsultar la cartera entera tarda más que una tarea en segundo
+  plano** (2026-10-03). 2.567 personas con concurrencia 20 son ~2 h 10 min
+  (~19 por minuto) y el tope de una tarea en segundo plano es 2 h: se cortó
+  con 2.353 hechas. `consultar-lote.mjs` retoma donde quedó; las que estaban
+  en vuelo al corte se consultan dos veces (20 perfiles de más, sin daño).
+- **Una simulación puede fabricar su propio problema** (2026-10-03). La
+  primera corrida del ciclo simulado eligió al azar la entidad de cada
+  crédito inventado: juntó créditos en entidades que nadie tenía (una, un
+  banco en liquidación) y el procesamiento, con razón, las descontó como
+  entidades que empezaban a reportar (288 créditos plantados perdidos).
+  Antes de culpar al cálculo, mirar si lo plantado es realista; la carga
+  quedó anulada, no borrada.

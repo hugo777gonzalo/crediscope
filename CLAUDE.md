@@ -131,7 +131,17 @@ Romper cualquiera de estas rompe algo real.
   (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`. La cartera
   sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
   plantada: un cálculo nuevo se valida contra ella). Cada métrica vive en
-  una función SQL `lab_*` (094-096).
+  una función SQL `lab_*` (094-103).
+  - El **ciclo de un año** (sección 14 del diseño, 098-103): solicitudes,
+    reconsultas y eventos; la verdad plantada vive aparte
+    (`lab_simulacion_verdad`) y sólo la lee `lab_calificar_simulacion()`.
+    Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
+    (simulación y real): `scripts/procesar-reconsultas.mjs --carga=<id>`.
+    El detector de eventos es `_shared/eventos-entre-consultas.ts`.
+  - Las **pantallas pedidas por el negocio** (inicio, datos y cartera,
+    prueba retrospectiva, descubrimiento estadístico y de variables) están
+    mapeadas contra lo existente en `docs/laboratorio-pantallas.md`, con
+    las fases A-F y las cinco decisiones del 2026-10-03.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
@@ -282,6 +292,22 @@ antes de tocar esa área.
   Sin caché del marco (nunca se leyó). Comparar configuraciones:
   `scripts/comparar-razonamiento.mjs`.
 
+**Laboratorio**
+- Las variables salen siempre del perfil del día del análisis (t0,
+  rearmado desde su crudo), nunca de la reconsulta: el buró de hoy ya trae
+  la mora y cualquier variable "acierta".
+- Dos consultas de la misma persona difieren aunque no le haya pasado nada:
+  el buró cambia de corte, hay entidades que empiezan a reportar, el IESS
+  completa el último mes después y el SRI corrige ceses viejos. Comparar dos
+  fotos va por `eventos-entre-consultas.ts`, que lo separa.
+- Con ~300 créditos hay ~20 malos: la prueba sólo con lo desembolsado es
+  ruido (AUC 0,63 con intervalo 0,51-0,75 en la simulación). Lo que da
+  poder es reconsultar a todas las solicitudes (211 malos).
+- Una simulación puede fabricar su propio problema: antes de culpar al
+  cálculo, mirar si lo plantado es realista.
+- Reconsultar la cartera entera tarda ~2 h 10 min (concurrencia 20) y una
+  tarea en segundo plano se corta a las 2 h: `consultar-lote.mjs` retoma.
+
 ## Cómo se trabaja
 
 - **La clave de servicio nunca llega a `src/`.** El navegador usa sólo la
@@ -293,7 +319,8 @@ antes de tocar esa área.
 - **Pruebas masivas con el modelo, sólo con autorización explícita** del
   negocio y con el costo estimado (comparaciones, lotes, recálculos con
   LLM): elegir opciones de un diseño no es autorizar el gasto. Una llamada
-  suelta para comprobar un despliegue está aceptada.
+  suelta para comprobar un despliegue está aceptada. Consultar Novadata no
+  le cuesta al negocio por ahora (2026-10-03): reconsultar es sólo tiempo.
 - **Al terminar, decir** qué cambió, qué se decidió y por qué, qué se
   verificó (y qué no) y qué quedó pendiente.
 - **Verificar contra la base, no suponer.** Un número afirmado sin

@@ -636,11 +636,16 @@ interface StandardClientProfile {
 >   y `process.ts` y `fuentes-ingreso.ts` la llaman (la comparación estaba
 >   copiada en tres lugares).
 > - **Efecto** (código viejo contra nuevo, perfil entero): en el crudo del
->   2026-09-25, 0 diferencias en 2.567 personas; en las primeras 506 de la
->   reconsulta, 21 personas cambian, todas en `laboral` y `fuentesIngreso`
->   (RUC activo de 340 a 358, segmento en 2).
-> - Desplegado a las 22:36 UTC con la reconsulta en curso: los perfiles
->   anteriores de ese día quedaron en v12 y se recalculan desde su crudo.
+>   2026-09-25, 0 diferencias en 2.567 personas; en la reconsulta entera del
+>   2026-10-03, 67 de 2.567 cambian, todas en `laboral` y `fuentesIngreso`
+>   (RUC activo de 1.715 a 1.774, segmento y estado en 9).
+> - Desplegado a las 22:36 UTC con la reconsulta en curso. Los 530 perfiles
+>   de ese día anteriores al despliegue se recalcularon desde su crudo con
+>   `recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso` y
+>   `recalcular-fuentes-ingreso.mjs`, ambos con
+>   `--carpeta=research/novadata-raw-2026-10-03` (530 de 530, 0 que el crudo no
+>   reproduzca); `calcular-columnas-del-perfil.mjs --seco` da 0 por corregir
+>   en 8.482 perfiles. Los 2.587 perfiles de ese día quedaron en v13.
 
 ## De dónde sale cada cálculo (trazabilidad)
 

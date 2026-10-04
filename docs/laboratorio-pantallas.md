@@ -1,7 +1,7 @@
 # Laboratorio de Inteligencia de Negocio — mapa de pantallas
 
 La especificación del negocio (2026-10-03), módulo por módulo, contra lo que
-existe. Complementa `docs/laboratorio-de-riesgo.md`, que tiene el modelo de
+existe. Estado al 2026-10-04: fase A construida, sin ver en el navegador. Complementa `docs/laboratorio-de-riesgo.md`, que tiene el modelo de
 datos y la metodología. Estado al 2026-10-03.
 
 **Estados**
@@ -68,19 +68,19 @@ proyectos, ver la decisión 3.
 |---|---|---|
 | Configurar, correr, guardar y comparar evaluaciones | A medias | Un corte se congela y se calcula; falta comparar dos corridas lado a lado |
 | Resumen: AUC con intervalo, Gini, KS, tasa de default, operaciones, defaults, exclusiones | Hecho | Pestaña Desempeño |
-| Resumen: exactitud, precisión, sensibilidad, especificidad, F1 | Se puede ya | Necesitan una predicción de sí o no: se toma "negar" como predicho malo (y otra vista con negar + revisar). Con ~10% de malos la exactitud engaña: va, pero después del AUC |
+| Resumen: exactitud, precisión, sensibilidad, especificidad, F1 | Hecho (fase A) | En la pestaña Matriz de confusión (100). Necesitan una predicción de sí o no: se toma "negar" como predicho malo (y otra vista con negar + revisar). Con ~10% de malos la exactitud engaña: va, pero después del AUC |
 | Resumen: AUC de precisión-sensibilidad (PR-AUC) | Se puede ya | Sobre el puntaje |
 | Resumen: Brier | Falta decidir | Necesita una probabilidad, y el motor da un puntaje de 1 a 999 (decisión 4) |
-| Matriz de confusión | Se puede ya | No es de 2 × 2: es resultado (pagó / cayó) × recomendación (aprobar / revisar / negar), más la columna de negados sin crédito, que no se puede observar con el archivo |
+| Matriz de confusión | Hecho (fase A) | Pestaña propia (100). No es de 2 × 2: es resultado (pagó / cayó) × recomendación (aprobar / revisar / negar), más la columna de negados sin crédito, que no se puede observar con el archivo |
 | Aprobados que cayeron, negados que habrían pagado, errores de tipo I y II, casos | A medias | Pestaña Casos filtra los dos errores; falta el detalle completo de cada caso (ver 6.7) |
 | Umbrales: ROC, precisión-sensibilidad, sensibilidad y especificidad por umbral, tasa de aprobación y de default simuladas, volumen a revisión | Se puede ya | Sobre el puntaje. Ojo: el motor no decide por un umbral de puntaje; esto simula una política ("aprobar desde X"), no el motor |
 | Desempeño por decisión: aprobar | Hecho | Por recomendación, con intervalo |
-| Desempeño por decisión: revisar, lo que decidió la institución después | Falta un dato | La institución no informa qué hizo con cada revisión; el archivo sólo trae lo desembolsado |
-| Desempeño por decisión: negar | A medias | Con el archivo, sólo los negados a los que la institución prestó igual. La evidencia externa es la reconsulta del buró (fase 6), siempre separada y con su advertencia; coincide con lo pedido: ninguna tasa para los negados sin evidencia externa |
-| Cosechas: mensual, trimestral, acumulado a 12 y 24, comparación entre generaciones, curvas de supervivencia | Se puede ya | `fecha_desembolso` + `fecha_primer_default`. Hay que pedir la fecha del primer default como obligatoria para toda operación en default (hoy es opcional) |
+| Desempeño por decisión: revisar, lo que decidió la institución después | A medias | La plantilla ya lo pide (hoja "Solicitudes no desembolsadas", 101, `lab_decisiones_institucion`); falta usarlo al armar las solicitudes de una corrida real |
+| Desempeño por decisión: negar | Hecho (fase A) | Pestañas Matriz de confusión y Con y sin crédito. Con el archivo, sólo los negados a los que la institución prestó igual. La evidencia externa es la reconsulta del buró (fase 6), siempre separada y con su advertencia; coincide con lo pedido: ninguna tasa para los negados sin evidencia externa |
+| Cosechas: mensual, trimestral, acumulado a 12 y 24, comparación entre generaciones, curvas de supervivencia | Se puede ya | `fecha_desembolso` + `fecha_primer_default`. La fecha del primer impago ya es obligatoria si cayó (101) |
 | Desempeño por segmento: producto, versión del motor, perfil crediticio, nivel de ingreso | Se puede ya | Con un mínimo de casos por segmento |
 | Desempeño por provincia o ciudad | Falta un dato | El perfil trae la provincia de nacimiento, no la de residencia (está en el crudo, en direcciones) |
-| Desempeño por canal | Falta un dato | El archivo de la institución no trae canal |
+| Desempeño por canal | Se puede ya | La plantilla pide el canal (opcional, 101) |
 | Discriminación: ROC, KS, distribución del puntaje por clase, comparación entre modelos | A medias | Los números existen; faltan las curvas. Comparar modelos necesita dos puntajes del mismo corte (fase 7, marco candidato) |
 | Calibración: probabilidad contra default observado, curva, Brier, error de calibración, por decil | Falta decidir | Decisión 4. Lo que sí se puede ya: default observado por decil de puntaje (tiene que bajar) |
 | Estabilidad: PSI del puntaje y de variables, evolución del AUC, KS y default, alertas | A medias | PSI en la base sin pantalla; la evolución necesita varios cortes |
@@ -112,7 +112,7 @@ proyectos, ver la decisión 3.
 | Explorador del crudo: por fuente, diccionario, distribuciones, calidad, campos no usados, relación con el default | Se puede ya | Con un guion que recorre los 2.567 crudos y guarda el resumen (bajar el crudo desde el navegador es pesado). Los valores de una persona, sólo para admin |
 | Explorador de la estructura: campos derivados, agregados, descartados, diferencias entre versiones, cobertura por cohorte | A medias | Las versiones existen y se comparan con guiones (`viejo contra nuevo`); falta la pantalla |
 | Auditoría de la entrada al modelo: incluidas, excluidas, versión del marco, modelo, comparación de entradas | Se puede ya | `analysis_results.mensaje_al_modelo` y `rules_version`, sin llamar al modelo |
-| Variables de los que cayeron: aprobados que cayeron, revisados que cayeron, diferencias, ausentes, combinaciones, no lineales | A medias | Variables y motivos del impago (fase 6); combinaciones y no lineales, fuera de SQL |
+| Variables de los que cayeron: aprobados que cayeron, revisados que cayeron, diferencias, ausentes, combinaciones, no lineales | A medias | Variables con las dos poblaciones y Motivos del impago ("¿se podía ver?" en cinco categorías, 103); combinaciones y no lineales, fuera de SQL |
 | Investigación de aprobados que cayeron | A medias | Casos + motivos (fase 6): perfil, crudo, entrada al modelo, respuesta, puntaje, comparación con buenos parecidos, hipótesis |
 | Investigación de negados que habrían pagado | A medias | Con el archivo, sólo los que la institución financió igual; el resto con la reconsulta |
 | Importancia: bosque aleatorio, permutación, SHAP, por segmento | Fuera de SQL | Con un guion de Python que guarde el resultado (decisión 2) |
@@ -125,7 +125,7 @@ proyectos, ver la decisión 3.
 
 | Fase | Qué | Por qué en ese orden |
 |---|---|---|
-| A | Terminar el ciclo simulado y ver sus resultados: cuadrantes, motivos, calificación; matriz de confusión y desempeño por decisión | Ya está corriendo; sin pantalla no se ve si funciona |
+| A | Terminar el ciclo simulado y ver sus resultados: cuadrantes, motivos, calificación; matriz de confusión y desempeño por decisión | **Hecha el 2026-10-03/04** (100-103 y pestañas); falta verla con sesión de admin y subirla |
 | B | Reordenar el menú del Laboratorio en estos módulos, con lo que ya existe en su lugar | Da el esqueleto; no cambia cálculos |
 | C | Prueba retrospectiva completa: curvas (ROC, KS, precisión-sensibilidad), cosechas y supervivencia, umbrales, segmentos, estabilidad con pantalla | Responde "¿el motor ordena bien y se sostiene?" |
 | D | Descubrimiento estadístico: descriptivas, distribuciones, faltantes, correlaciones, inferencia, laboratorio de IV y WoE con tramos manuales, explorador de significancia | Responde "¿qué anticipa el impago?" |

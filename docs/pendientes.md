@@ -1,6 +1,6 @@
 # Pendientes
 
-Lo que quedó abierto al 2026-10-03. Las versiones vigentes son
+Lo que quedó abierto al 2026-10-04. Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -35,7 +35,9 @@ aceptada.
    calculados); la plantilla nueva (cuota, canal, fecha del primer impago
    obligatoria si cayó, hoja "Solicitudes no desembolsadas"); el informe
    sintético con su franja. **Las pantallas de la fase A no se subieron
-   (push) hasta verlas.**
+   (push) hasta verlas.** Hay 3 commits locales sin subir: 85fc70a (el
+   arreglo del RUC, ya desplegado en Supabase), dc047ab (fase 6) y 740ee9d
+   (fase A y archivo de la institución).
 
 0b. **Laboratorio: lo que sigue** (`docs/laboratorio-pantallas.md`).
    - Fases B a F, en ese orden (decidido el 2026-10-03).
@@ -48,7 +50,16 @@ aceptada.
      de "qué no pudo ver el modelo" en el crudo.
    - La carga del primer ciclo simulado (`5e362de7-…`) quedó anulada por un
      error del simulador; sigue en la base con sus 2.565 reconsultas
-     (~26 MB de perfiles). Borrarla, con confirmación del negocio.
+     (~26 MB de perfiles) y sus crudos sintéticos en Storage
+     (`lab-archivos/simulacion/7c72d745-…/`). Borrarla, **sólo con
+     confirmación del negocio** (pedido explícito del 2026-10-04: no borrar
+     nada antes de estar seguros).
+   - Resultados de la corrida buena: `docs/laboratorio-de-riesgo.md`, 14.10
+     (carga `1196978e-…`, corte `4e18ca83-…`).
+   - 2 personas quedaron afuera del ciclo porque su perfil de t0 no tiene
+     crudo guardado (consultadas desde la pantalla antes de la 090).
+   - Fase B (lo siguiente): reordenar el menú del Laboratorio en los módulos
+     del negocio, con lo que ya existe en su lugar.
 
 1. **Marco y modelo: dónde quedó** (2026-10-03).
    - **En producción: marco-v28 con Sonnet 5.5**, con el respaldo
@@ -202,9 +213,10 @@ aceptada.
   el usuario.
 - **Preguntas abiertas del Laboratorio** (`docs/laboratorio-de-riesgo.md`,
   sección 13): ¿una instalación para varias IFI o una por IFI? (define cómo
-  se separan los datos; hoy `institucion` es texto y sólo admin ve todo);
-  ¿cuánto tiempo se conserva el crudo de Novadata (LOPDP)?; ¿con qué base
-  legal y a qué costo se reconsulta a un negado (fase 6)?
+  se separan los datos; decidido mientras tanto: instituciones y proyectos
+  como entidades del Laboratorio, sin construir todavía); ¿cuánto tiempo se
+  conserva el crudo de Novadata (LOPDP)?; ¿con qué base legal se reconsulta
+  a un negado? El costo ya no es pregunta: Novadata no cobra por ahora.
 - **La fábrica de crédito está en pausa** por decisión del negocio. Ver
   `docs/arquitectura-fabrica-de-credito.md`.
 - **Descarga masiva:** Reportes › Descargas la ve cualquier analista.
@@ -240,6 +252,11 @@ aceptada.
 - La cartera sintética del Laboratorio (carga "Cartera sintética (semilla
   1)") se queda: es la que prueba los cálculos. Si se regenera, anular la
   anterior desde la pantalla.
+- La reconsulta del 2026-10-03 consultó dos veces a ~20 personas (las que
+  estaban en vuelo cuando la tarea se cortó a las 2 h): tienen un perfil de
+  más ese día, sin daño. El registro de la corrida está en
+  `research/lote-cedulas_ciclo_simulado_2026-10-03.jsonl` y
+  `research/reconsulta-ciclo-simulado-2026-10-03.log`.
 - En la base quedan 5 lotes de prueba terminados: 3 del 2026-09-15
   ("Prueba de…") y 2 del 2026-09-23 ("prueba 078…"). Se pueden borrar
   los lotes. Antes, mirar si los perfiles que dejaron son de personas de
