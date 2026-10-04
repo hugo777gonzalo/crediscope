@@ -39,9 +39,14 @@ export async function guardarCrudoNovadata(
   try {
     const ruta = rutaDelCrudo(clientId, perfilId);
     const json = JSON.stringify({ cedula, capturadoEl: new Date().toISOString(), perfilId, raw });
-    const comprimido = await new Response(
+    // Bytes y no un Blob: con un Blob, supabase-js arma un formulario,
+    // ignora contentType y el archivo llega como application/octet-stream,
+    // que el depósito (sólo application/gzip) rechaza. Así se perdió el
+    // crudo de todas las consultas desde la 090 hasta el 2026-10-04: 0 de
+    // los 2.567 perfiles de la reconsulta del 03/10 lo tenían.
+    const comprimido = new Uint8Array(await new Response(
       new Blob([json]).stream().pipeThrough(new CompressionStream("gzip")),
-    ).blob();
+    ).arrayBuffer());
 
     const { error: errorSubida } = await client.storage
       .from(BUCKET_CRUDO_NOVADATA)
