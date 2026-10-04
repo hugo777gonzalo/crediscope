@@ -217,12 +217,24 @@ export default function MenuLateral({ profile }) {
                 { to: "/costos/tarifas", texto: "Tarifas", activo: pathname.startsWith("/costos/tarifas") },
               ]}
             />
-            <Item
-              to="/laboratorio"
+            {/* Los módulos que pidió el negocio (docs/laboratorio-pantallas.md):
+                los tres de análisis trabajan sobre un corte congelado y
+                recuerdan el último que se eligió. */}
+            <Grupo
               Icono={FlaskConical}
               texto="Laboratorio"
               activo={pathname.startsWith("/laboratorio")}
               colapsado={colapsado}
+              expandirMenu={() => setColapsado(false)}
+              hijos={[
+                { to: "/laboratorio", texto: "Inicio", activo: pathname === "/laboratorio" },
+                { to: "/laboratorio/datos", texto: "Datos y cartera", activo: ["/laboratorio/datos", "/laboratorio/cargas", "/laboratorio/cortes"].some((r) => pathname.startsWith(r)) },
+                { to: "/laboratorio/desempeno", texto: "Prueba retrospectiva", activo: pathname.startsWith("/laboratorio/desempeno") },
+                { to: "/laboratorio/estadistica", texto: "Descubrimiento estadístico", activo: pathname.startsWith("/laboratorio/estadistica") },
+                { to: "/laboratorio/profundo", texto: "Descubrimiento profundo", activo: pathname.startsWith("/laboratorio/profundo") || pathname.startsWith("/laboratorio/caso") },
+                { to: "/laboratorio/propuestas", texto: "Propuestas", activo: pathname.startsWith("/laboratorio/propuestas") },
+                { to: "/laboratorio/criterio", texto: "Criterio vigente", activo: pathname.startsWith("/laboratorio/criterio") },
+              ]}
             />
             {/* Tres pantallas y no una: los tres interruptores se
                 parecen y tienen consecuencias distintas. Apagar una

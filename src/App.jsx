@@ -30,6 +30,10 @@ import LaboratorioCorteNuevo from "./pages/LaboratorioCorteNuevo.jsx";
 import LaboratorioCorte from "./pages/LaboratorioCorte.jsx";
 import LaboratorioPropuestas from "./pages/LaboratorioPropuestas.jsx";
 import LaboratorioCriterio from "./pages/LaboratorioCriterio.jsx";
+import LaboratorioDatos from "./pages/LaboratorioDatos.jsx";
+import LaboratorioDesempeno from "./pages/LaboratorioDesempeno.jsx";
+import LaboratorioEstadistica from "./pages/LaboratorioEstadistica.jsx";
+import LaboratorioProfundo from "./pages/LaboratorioProfundo.jsx";
 import NovadataExplorer from "./pages/NovadataExplorer.jsx";
 import ConfigFuentes from "./pages/ConfigFuentes.jsx";
 import ConfigFuentesAval from "./pages/ConfigFuentesAval.jsx";
@@ -420,6 +424,10 @@ export default function App() {
           <Route path="/laboratorio/cortes/:id" element={<RequireAdmin><LaboratorioCorte /></RequireAdmin>} />
           <Route path="/laboratorio/propuestas" element={<RequireAdmin><LaboratorioPropuestas /></RequireAdmin>} />
           <Route path="/laboratorio/criterio" element={<RequireAdmin><LaboratorioCriterio /></RequireAdmin>} />
+          <Route path="/laboratorio/datos" element={<RequireAdmin><LaboratorioDatos /></RequireAdmin>} />
+          <Route path="/laboratorio/desempeno" element={<RequireAdmin><LaboratorioDesempeno /></RequireAdmin>} />
+          <Route path="/laboratorio/estadistica" element={<RequireAdmin><LaboratorioEstadistica /></RequireAdmin>} />
+          <Route path="/laboratorio/profundo" element={<RequireAdmin><LaboratorioProfundo /></RequireAdmin>} />
           <Route path="/admin/fuentes" element={<Navigate to="/admin/fuentes/novadata" replace />} />
           <Route
             path="/admin/fuentes/novadata"
