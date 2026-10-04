@@ -27,7 +27,7 @@ export function normalizarSolicitud(f) {
     desembolsada: f.desembolsada, decisionInstitucion: s.decision_institucion ?? null, origenResultado: f.origen_resultado,
     donde: f.donde ?? [], recibioCreditoDeOtro: f.recibio_credito_de_otro, cuota: f.cuota_mensual, fuentePuntaje: f.fuente_puntaje,
     perfilId: s.client_profile_id ?? null, analisisId: s.analysis_result_id ?? null, operacionId: s.operacion_id ?? null,
-    producto: null, canal: null, monto: null, marco: null, variables: f.variables ?? {},
+    producto: null, canal: null, monto: null, marco: null, variables: f.variables ?? {}, conVariables: f.variables !== null && f.variables !== undefined,
   };
 }
 
@@ -41,15 +41,17 @@ export function normalizarOperacion(f) {
     desembolsada: true, decisionInstitucion: "desembolsada", producto: f.producto, canal: op.canal ?? null, monto: f.monto, plazo: op.plazo_meses,
     estadoOperacion: op.estado_operacion, cuota: op.cuota_mensual, institucion: op.lab_cargas?.institucion ?? null,
     marco: f.marco_version, estructura: f.structure_version, fuentePuntaje: f.fuente_puntaje,
-    perfilId: f.client_profile_id, analisisId: f.analysis_result_id, variables: f.variables ?? {},
+    perfilId: f.client_profile_id, analisisId: f.analysis_result_id, variables: f.variables ?? {}, conVariables: f.variables !== null && f.variables !== undefined,
   };
 }
 
-// Las filas que sirven para medir: incluidas y con resultado conocido. Una
-// persona con varias operaciones cuenta una vez para las variables (la
-// primera), igual que lab_calcular_variables.
+// Las filas que sirven para medir: incluidas y con resultado conocido. Con
+// unaPorPersona (las variables), una persona con varias operaciones cuenta
+// una vez (la primera, primera_de_la_persona = true) y sólo si tiene perfil,
+// igual que lab_calcular_variables. Una solicitud ya es una por persona.
 export function filasObservadas(filas, { unaPorPersona = false } = {}) {
-  return filas.filter((f) => f.incluida && typeof f.malo === "boolean" && (!unaPorPersona || f.primera !== false));
+  return filas.filter((f) => f.incluida && typeof f.malo === "boolean"
+    && (!unaPorPersona || ((f.primera === undefined || f.primera === true) && f.conVariables)));
 }
 
 // Para todo lo que mide el puntaje: sin los bloqueados, que no tienen

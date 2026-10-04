@@ -275,11 +275,14 @@ export function invertir(matriz) {
 export function vif(columnas) {
   const completas = [];
   for (let i = 0; i < (columnas[0]?.length ?? 0); i++) if (columnas.every((c) => esNumero(c[i]))) completas.push(i);
-  const sub = columnas.map((c) => completas.map((i) => c[i]));
-  const r = matrizDeCorrelacion(sub);
-  if (r.some((fila) => fila.some((v) => v === null))) return { vif: columnas.map(() => null), filas: completas.length };
-  const inv = invertir(r);
-  return { vif: inv ? inv.map((fila, i) => fila[i]) : columnas.map(() => Infinity), filas: completas.length };
+  // Una columna constante en las filas completas no tiene VIF (y rompería la
+  // matriz): queda en null y se calcula con las demás.
+  const variables = columnas.map((c, j) => [completas.map((i) => c[i]), j]).filter(([v]) => (varianza(v) ?? 0) > 0);
+  const salida = columnas.map(() => null);
+  if (variables.length < 2) return { vif: salida, filas: completas.length };
+  const inv = invertir(matrizDeCorrelacion(variables.map(([v]) => v)));
+  variables.forEach(([, j], k) => { salida[j] = inv ? inv[k][k] : Infinity; });
+  return { vif: salida, filas: completas.length };
 }
 
 // ------------------------------------------------------------- pruebas
@@ -689,13 +692,50 @@ export function tramosDeCortes(cortes) {
   return [...c.map((h, i) => ({ tipo: "intervalo", desde: i ? c[i - 1] : null, hasta: h })), { tipo: "intervalo", desde: c.length ? c[c.length - 1] : null, hasta: null }];
 }
 
-// Cortes en los cuantiles de los valores (los empates quedan juntos: un
-// tramo puede tener más gente que otro).
+// Cortes para k tramos parejos que nunca parten un empate. La misma regla
+// que lab_calcular_variables desde la 106, para que el IV del navegador y el
+// de la base sean el mismo número:
+//  1. Un valor con n/k personas o más es una "masa" y va en su propio tramo.
+//  2. Los valores entre masas forman segmentos; los tramos que quedan
+//     (k menos las masas, al menos uno por segmento) se reparten entre los
+//     segmentos según cuánta gente tiene cada uno.
+//  3. Dentro de un segmento, un valor va al tramo
+//     piso(personas antes de él en el segmento × tramos / personas del segmento).
+// Antes la base cortaba por posición (ntile) y partía los empates al azar:
+// las 1.384 personas con 24 meses de aporte quedaban en tres tramos "24"
+// con 11,7%, 1,7% y 1,7% de malos, y el IV subía a 0,459 sin señal real.
 export function cortesPorCuantiles(lista, k = 4) {
   const o = ordenar(numeros(lista));
   if (!o.length) return [];
-  const cortes = [...new Set(Array.from({ length: k - 1 }, (_, i) => cuantil(o, (i + 1) / k)))];
-  return cortes.filter((c) => c < o[o.length - 1]);
+  const d = [];
+  for (const x of o) {
+    if (d.length && d[d.length - 1].valor === x) d[d.length - 1].n++;
+    else d.push({ valor: x, n: 1 });
+  }
+  const n = o.length;
+  let isla = 0;
+  for (const v of d) {
+    v.masa = v.n >= n / k;
+    if (v.masa) isla++;
+    v.isla = isla;
+  }
+  const segmentos = new Map();
+  for (const v of d.filter((x) => !x.masa)) segmentos.set(v.isla, (segmentos.get(v.isla) ?? 0) + v.n);
+  const nMasas = d.filter((x) => x.masa).length;
+  const nSeg = [...segmentos.values()].reduce((s, x) => s + x, 0);
+  const libres = Math.max(segmentos.size, k - nMasas);
+  const antes = new Map();
+  for (const v of d) {
+    if (v.masa) { v.tramo = `m${v.valor}`; continue; }
+    const sn = segmentos.get(v.isla);
+    const b = Math.max(1, Math.round((libres * sn) / nSeg));
+    const previo = antes.get(v.isla) ?? 0;
+    v.tramo = `s${v.isla}_${Math.min(b - 1, Math.floor((previo * b) / sn))}`;
+    antes.set(v.isla, previo + v.n);
+  }
+  const cortes = [];
+  for (let i = 0; i < d.length - 1; i++) if (d[i].tramo !== d[i + 1].tramo) cortes.push(d[i].valor);
+  return cortes;
 }
 
 // Los tramos por defecto de una variable: categorías si es texto, sí/no o
@@ -707,9 +747,20 @@ export function tramosPorDefecto(valores, k = 4) {
   const originales = new Map(presentes.map((v) => [String(v), v]));
   const distintos = [...originales.keys()];
   const numerica = presentes.length && presentes.every(esNumero);
-  const tramos = !numerica || distintos.length <= 6
-    ? distintos.sort((a, b) => (numerica ? Number(a) - Number(b) : a.localeCompare(b))).map((v) => ({ tipo: "valor", valor: originales.get(v) }))
-    : tramosDeCortes(cortesPorCuantiles(presentes, k));
+  let tramos;
+  if (!numerica || distintos.length <= 6) {
+    tramos = distintos.sort((a, b) => (numerica ? Number(a) - Number(b) : a.localeCompare(b))).map((v) => ({ tipo: "valor", valor: originales.get(v) }));
+  } else {
+    // Como lab_calcular_variables: si el cero es el 10% o más, va en su
+    // propio tramo y los cuantiles se cortan sobre el resto (con deuda en
+    // atraso, el 80% en cero se comía los cuartiles y el IV difería en
+    // 0,17 del de la base). El tramo del cero va primero: un cero no cae en
+    // el intervalo que también lo contiene.
+    const ceros = presentes.filter((x) => x === 0).length;
+    tramos = ceros >= 0.1 * presentes.length
+      ? [{ tipo: "valor", valor: 0 }, ...tramosDeCortes(cortesPorCuantiles(presentes.filter((x) => x !== 0), k))]
+      : tramosDeCortes(cortesPorCuantiles(presentes, k));
+  }
   if (presentes.length < valores.length) tramos.push({ tipo: "sin_dato" });
   return tramos;
 }

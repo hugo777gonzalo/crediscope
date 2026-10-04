@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { getFilasDelCorte } from "./datosDelCorte.js";
+import { useEffect, useMemo, useState } from "react";
+import { getFilasDelCorte, getCatalogoUnaVez } from "./datosDelCorte.js";
+import { columnasDelCorte } from "./analisisEstadistico.js";
 
 // Las filas de un corte para una pestaña que calcula en el navegador. La
 // primera pestaña que las pide las baja; las demás las toman de la memoria.
@@ -17,4 +18,17 @@ export function useFilasDelCorte(corteId, poblacion) {
     };
   }, [corteId, poblacion, clave]);
   return estado.clave === clave ? estado : { filas: null, error: null };
+}
+
+// Las variables del corte como columnas (una persona una vez), para las
+// pestañas del Descubrimiento estadístico.
+export function useColumnasDelCorte(corteId, poblacion) {
+  const { filas, error } = useFilasDelCorte(corteId, poblacion);
+  const [catalogo, setCatalogo] = useState(null);
+  const [errorCatalogo, setErrorCatalogo] = useState(null);
+  useEffect(() => {
+    getCatalogoUnaVez().then(setCatalogo).catch((e) => setErrorCatalogo(e.message ?? String(e)));
+  }, []);
+  const datos = useMemo(() => (filas && catalogo ? columnasDelCorte(filas, catalogo) : null), [filas, catalogo]);
+  return { datos, error: error ?? errorCatalogo };
 }

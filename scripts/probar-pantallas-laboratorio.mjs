@@ -16,6 +16,7 @@ const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 const importar = (archivo) => import(pathToFileURL(path.join(RAIZ, "src/lib", archivo)).href);
 const F = await importar("filasDelCorte.js");
 const R = await importar("analisisRetrospectivo.js");
+const D = await importar("analisisEstadistico.js");
 
 const env = Object.fromEntries(fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
@@ -103,6 +104,37 @@ for (const corte of cortes) {
       if (s.n !== obs || s.segmentos.reduce((t, x) => t + x.n, 0) !== obs) control(`segmentos por ${dim} suman las observadas`, false);
     }
     control("los segmentos de todas las dimensiones suman las observadas", true);
+
+    // Descubrimiento estadístico (fase D).
+    const datos = D.columnasDelCorte(filas, catalogo);
+    const nObs = datos.filas.length;
+    control("columnas alineadas con las filas", datos.columnas.every((c) => c.valores.length === nObs), `${datos.columnas.length} variables con datos, ${datos.sinDatos.length} sin datos (${datos.sinDatos.join(", ")})`);
+    const num = D.descriptivasNumericas(datos), cat = D.descriptivasCategoricas(datos);
+    control("descriptivas: n + faltantes = observadas", num.every((d) => d.n + d.faltantes === nObs) && cat.every((d) => d.n + d.faltantes === nObs), `${num.length} numéricas, ${cat.length} categóricas o sí/no`);
+    const dist = D.distribucion(datos.columnas.find((c) => c.id === "deuda_en_atraso") ?? datos.columnas[0], datos.malos);
+    control("el histograma cuenta a todos los que tienen el dato", dist.tramos.reduce((s, t) => s + t.n, 0) + dist.fuera === dist.todos.n, `${dist.tramos.length} tramos`);
+    const falt = D.faltantes(datos);
+    control("faltantes: una fila por variable", falt.porVariable.length === datos.columnas.length, `la que más falta: ${falt.porVariable[0]?.id} ${p(falt.porVariable[0]?.parte)}; anticipan el impago (q < 0,05): ${falt.porVariable.filter((v) => (v.q ?? 1) < 0.05).map((v) => v.id).join(", ") || "ninguna"}`);
+    const cor = D.correlaciones(datos, "spearman");
+    control("matriz de correlación simétrica con 1 en la diagonal", cor.matriz.every((fila, i) => fila[i] === 1 && fila.every((v, j) => v === null || Math.abs(v - cor.matriz[j][i]) < 1e-12)), `${cor.variables.length} variables, ${cor.pares.length} pares con |r| ≥ 0,7, VIF máximo ${cor.vif[0]?.vif?.toFixed(1)} (${cor.vif[0]?.id}) sobre ${cor.filasCompletas} filas completas`);
+    const sig = D.explorarSignificancia(datos);
+    const res = D.resumenDeVariables(datos, sig);
+    control("explorador de significancia", sig.length === datos.columnas.length, `IV ≥ 0,1: ${res.ivRelevante}; significativas: ${res.significativas}; candidatas: ${res.candidatas.map((c) => c.id).join(", ") || "ninguna"}; arriba: ${sig.slice(0, 3).map((s) => `${s.id} ${s.iv.toFixed(3)}`).join(", ")}`);
+    // La variable plantada que el modelo no recibe (ciclo simulado): tiene que verse.
+    const oculta = sig.find((s) => s.id === "meses_con_aporte_24");
+    if (oculta) console.log(`     meses_con_aporte_24: IV ${oculta.iv.toFixed(3)} (mitades ${oculta.ivPrimera.toFixed(3)} y ${oculta.ivSegunda.toFixed(3)}), q ${oculta.q?.toExponential(2)}, cobertura ${p(oculta.cobertura)}, candidata ${oculta.candidata}, puesto ${sig.indexOf(oculta) + 1}`);
+    const numerica = datos.columnas.find((c) => c.tipo === "numero");
+    const inf = D.inferencia(numerica, datos.malos, datos.filas);
+    control("inferencia de una numérica", inf.mannWhitney !== null && inf.welch !== null, `${numerica.id}: Welch p ${inf.welch?.p?.toExponential(2)}, Mann-Whitney p ${inf.mannWhitney?.p?.toExponential(2)}`);
+    // El IV del navegador con los tramos de la base tiene que ser el de lab_calcular_variables.
+    const [vars] = await rest(`lab_resultados?select=resultado,metodologia&corte_id=eq.${corte.id}&tipo=eq.variables&order=created_at.desc&limit=5`).then((rs) => rs.filter((r) => (r.metodologia?.poblacion ?? "operaciones") === poblacion));
+    if (vars) {
+      const sql = new Map(vars.resultado.variables.map((v) => [v.variable, v.iv]));
+      const comparables = sig.filter((s) => sql.has(s.id));
+      const diferencias = comparables.map((s) => Math.abs(s.iv - sql.get(s.id)));
+      // Desde la 106 la base y el navegador usan la misma regla de tramos.
+      control("IV del navegador = IV de lab_calcular_variables", Math.max(...diferencias) < 1e-3, `${comparables.length} variables, la mayor diferencia ${Math.max(...diferencias).toFixed(4)}`);
+    }
 
     // Lo que decidió la institución.
     if (poblacion === "solicitudes") {
