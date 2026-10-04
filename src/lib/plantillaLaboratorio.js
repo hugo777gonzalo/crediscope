@@ -34,8 +34,26 @@ export const COLUMNAS = [
   { clave: "dias_mora_max_12m", titulo: "Máximo de días de mora en los primeros 12 meses", ancho: 20 },
   { clave: "dias_mora_max_24m", titulo: "Máximo de días de mora en los primeros 24 meses", ancho: 20 },
   { clave: "fecha_primer_default", titulo: "Fecha del primer impago", ancho: 18 },
+  { clave: "cuota_mensual", titulo: "Cuota mensual", ancho: 14 },
+  { clave: "canal", titulo: "Canal de venta", ancho: 16 },
   { clave: "observaciones", titulo: "Observaciones", ancho: 40 },
 ];
+
+// Segunda hoja, opcional: lo que la institución decidió con cada solicitud
+// que NO desembolsó (decisión del negocio del 2026-10-03). Sin ella, un
+// "revisar" que el área de crédito negó y uno que desistió se ven igual.
+export const COLUMNAS_DECISIONES = [
+  { clave: "cedula", titulo: "Cédula", ancho: 14 },
+  { clave: "fecha_solicitud", titulo: "Fecha de la solicitud", ancho: 18 },
+  { clave: "decision", titulo: "Decisión de la institución", ancho: 24 },
+  { clave: "observaciones", titulo: "Observaciones", ancho: 40 },
+];
+const DECISIONES = { negada: "negada", "desistió": "desistio", desistio: "desistio", "en trámite": "en_tramite", "en tramite": "en_tramite" };
+const HOJA_DECISIONES = "Solicitudes no desembolsadas";
+
+// Cayó por la definición del negocio (90 días, castigo o demanda): entonces la
+// fecha del primer impago es obligatoria (sin ella no hay cosechas).
+const CAYO_DIAS = 90;
 
 const INSTRUCCIONES = [
   ["Planilla de resultados de crédito para el Laboratorio de Riesgo"],
@@ -50,8 +68,13 @@ const INSTRUCCIONES = [
   ["Si la operación todavía no cumplió 12 (o 24) meses a la fecha de corte del archivo, dejen esa celda VACÍA: no es un cero."],
   ["Un cero dice que se observó la ventana completa y nunca se atrasó."],
   [],
-  ["Fecha del primer impago: opcional; si la tienen, permite medir cuánto tardó en caer."],
+  [`Fecha del primer impago: OBLIGATORIA si la operación llegó a ${CAYO_DIAS} días de mora o más, o está castigada o en demanda judicial. Es el día en que llegó a ${CAYO_DIAS} días (o se castigó).`],
+  ["Cuota mensual: opcional; sin ella no se puede medir si la cuota cabía en el ingreso."],
+  ["Canal de venta: opcional (agencia, digital, corresponsal, fuerza de ventas...)."],
   ["Observaciones: opcional; lo que el área de crédito sepa del caso."],
+  [],
+  [`Hoja "${HOJA_DECISIONES}" (opcional): una fila por cada solicitud evaluada que NO se desembolsó.`],
+  ["Decisión de la institución: Negada, Desistió (el cliente no siguió) o En trámite."],
 ];
 
 export function descargarPlantilla() {
@@ -62,6 +85,9 @@ export function descargarPlantilla() {
   const hoja = XLSX.utils.aoa_to_sheet([COLUMNAS.map((c) => c.titulo)]);
   hoja["!cols"] = COLUMNAS.map((c) => ({ wch: c.ancho }));
   XLSX.utils.book_append_sheet(libro, hoja, "Operaciones");
+  const decisiones = XLSX.utils.aoa_to_sheet([COLUMNAS_DECISIONES.map((c) => c.titulo)]);
+  decisiones["!cols"] = COLUMNAS_DECISIONES.map((c) => ({ wch: c.ancho }));
+  XLSX.utils.book_append_sheet(libro, decisiones, HOJA_DECISIONES);
   XLSX.writeFile(libro, "plantilla-laboratorio-riesgo.xlsx");
 }
 
@@ -147,6 +173,11 @@ export async function leerPlanilla(archivo, fechaCorte) {
     if (d12 !== null && d24 !== null && d24 < d12) return mal("El máximo a 24 meses no puede ser menor que el de 12 meses");
     const primerImpago = aFechaISO(fila.fecha_primer_default);
     if (primerImpago === "invalida") return mal("Fecha del primer impago ilegible");
+    const cayo = (d12 ?? 0) >= CAYO_DIAS || (d24 ?? 0) >= CAYO_DIAS || ["castigada", "judicial"].includes(estado);
+    if (cayo && !primerImpago) return mal(`Cayó (${CAYO_DIAS} días o más, castigo o demanda) y falta la fecha del primer impago`);
+    if (primerImpago && (primerImpago < desembolso || (fechaCorte && primerImpago > fechaCorte))) return mal("La fecha del primer impago tiene que estar entre el desembolso y el corte");
+    const cuota = aNumero(fila.cuota_mensual);
+    if (Number.isNaN(cuota) || (cuota !== null && cuota <= 0)) return mal("La cuota mensual tiene que ser un número mayor que cero");
 
     vistas.add(op);
     operaciones.push({
@@ -160,8 +191,43 @@ export async function leerPlanilla(archivo, fechaCorte) {
       dias_mora_max_12m: d12,
       dias_mora_max_24m: d24,
       fecha_primer_default: primerImpago,
+      cuota_mensual: cuota,
+      canal: texto(fila.canal).toLowerCase() || null,
       observaciones: texto(fila.observaciones) || null,
     });
   });
-  return { operaciones, errores, leidas: crudas.length };
+  const { decisiones, erroresDecisiones } = leerDecisiones(libro, fechaCorte);
+  return { operaciones, decisiones, errores: [...errores, ...erroresDecisiones], leidas: crudas.length };
+}
+
+// La hoja opcional de solicitudes no desembolsadas. Sus errores van a la
+// misma lista, marcados como "Solicitud", y tampoco se adivina nada.
+function leerDecisiones(libro, fechaCorte) {
+  if (!libro.SheetNames.includes(HOJA_DECISIONES)) return { decisiones: [], erroresDecisiones: [] };
+  const crudas = XLSX.utils.sheet_to_json(libro.Sheets[HOJA_DECISIONES], { defval: "" });
+  const porTitulo = Object.fromEntries(COLUMNAS_DECISIONES.map((c) => [c.titulo.toLowerCase(), c.clave]));
+  const decisiones = [];
+  const erroresDecisiones = [];
+  const vistas = new Set();
+  crudas.forEach((cruda, i) => {
+    const fila = {};
+    for (const [t, v] of Object.entries(cruda)) {
+      const clave = porTitulo[t.trim().toLowerCase()];
+      if (clave) fila[clave] = v;
+    }
+    if (COLUMNAS_DECISIONES.every((c) => texto(fila[c.clave]) === "")) return;
+    const mal = (motivo) => erroresDecisiones.push({ fila: i + 2, operacion: `Solicitud (${HOJA_DECISIONES})`, motivo });
+    const ident = clasificarIdentificacion(texto(fila.cedula));
+    if (!ident.consultable || !ident.cedula) return mal(`Cédula inválida (${ident.mensaje ?? texto(fila.cedula)})`);
+    const fecha = aFechaISO(fila.fecha_solicitud);
+    if (!fecha || fecha === "invalida") return mal("Fecha de la solicitud ausente o ilegible");
+    if (fechaCorte && fecha > fechaCorte) return mal("La solicitud es posterior a la fecha de corte");
+    const decision = DECISIONES[texto(fila.decision).toLowerCase()];
+    if (!decision) return mal(`Decisión no reconocida: "${texto(fila.decision)}" (Negada, Desistió o En trámite)`);
+    const clave = `${ident.cedula}|${fecha}`;
+    if (vistas.has(clave)) return mal("Solicitud repetida (misma cédula y fecha)");
+    vistas.add(clave);
+    decisiones.push({ cedula: ident.cedula, fecha_solicitud: fecha, decision, observaciones: texto(fila.observaciones) || null });
+  });
+  return { decisiones, erroresDecisiones };
 }

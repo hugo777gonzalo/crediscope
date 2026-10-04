@@ -9,16 +9,35 @@ import PestanaDesempeno from "../components/laboratorio/PestanaDesempeno.jsx";
 import PestanaVariables from "../components/laboratorio/PestanaVariables.jsx";
 import PestanaSimulacion from "../components/laboratorio/PestanaSimulacion.jsx";
 import PestanaCasos from "../components/laboratorio/PestanaCasos.jsx";
+import PestanaMatriz from "../components/laboratorio/PestanaMatriz.jsx";
+import PestanaCuadrantes from "../components/laboratorio/PestanaCuadrantes.jsx";
+import PestanaMotivos from "../components/laboratorio/PestanaMotivos.jsx";
+import PestanaCalificacion from "../components/laboratorio/PestanaCalificacion.jsx";
 
 // Un corte congelado y lo que se calcula sobre él. Cada cálculo agrega un
 // resultado nuevo (nunca pisa el anterior); se muestra el último.
+//
+// Un corte con solicitudes (el ciclo de un año, sección 14 del diseño) suma
+// las pestañas de quienes no recibieron el crédito y de los motivos del
+// impago; si además es sintético, la calificación contra la verdad plantada.
 
-const PESTANAS = [
-  ["desempeno", "Desempeño"],
-  ["variables", "Variables"],
-  ["simulacion", "Simulación de política"],
-  ["casos", "Casos"],
-];
+function pestanasDe(corte) {
+  const conSolicitudes = Boolean(corte.resumen?.solicitudes);
+  return [
+    ["desempeno", "Desempeño"],
+    ["matriz", "Matriz de confusión"],
+    ...(conSolicitudes ? [["cuadrantes", "Con y sin crédito"], ["motivos", "Motivos del impago"]] : []),
+    ["variables", "Variables"],
+    ["simulacion", "Simulación de política"],
+    ["casos", "Casos"],
+    ...(conSolicitudes && corte.es_sintetico ? [["calificacion_simulacion", "Calificación de la simulación"]] : []),
+  ];
+}
+const CALCULABLES = ["desempeno", "matriz", "cuadrantes", "motivos", "variables", "calificacion_simulacion"];
+const ETIQUETA_POBLACION = {
+  operaciones: "Con el crédito de la institución",
+  solicitudes: "Todas las solicitudes observadas",
+};
 
 export default function LaboratorioCorte() {
   const { id } = useParams();
@@ -26,6 +45,7 @@ export default function LaboratorioCorte() {
   const [resultados, setResultados] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
   const [pestana, setPestana] = useState("desempeno");
+  const [poblacion, setPoblacion] = useState("operaciones");
   const [error, setError] = useState(null);
   const [calculando, setCalculando] = useState(null);
 
@@ -43,13 +63,16 @@ export default function LaboratorioCorte() {
       .catch((e) => setError(e.message));
   }, [id]);
 
-  const ultimo = (tipo) => resultados.find((r) => r.tipo === tipo) ?? null;
+  // Variables se calcula por población; antes de la 099 no la guardaba y era
+  // siempre la de las operaciones.
+  const ultimo = (tipo) =>
+    resultados.find((r) => r.tipo === tipo && (tipo !== "variables" || (r.metodologia?.poblacion ?? "operaciones") === poblacion)) ?? null;
 
   async function correr(tipo) {
     setError(null);
     setCalculando(tipo);
     try {
-      await calcular(id, tipo);
+      await calcular(id, tipo, tipo === "variables" ? { p_poblacion: poblacion } : {});
       await recargar();
     } catch (e) {
       setError(e.message);
@@ -71,7 +94,9 @@ export default function LaboratorioCorte() {
   if (error && !corte) return <MensajeError mensaje={error} />;
   if (!corte) return <p className="crediscope-muted">Cargando...</p>;
   const r = corte.resumen ?? {};
-  const actual = ["desempeno", "variables"].includes(pestana) ? ultimo(pestana) : null;
+  const s = r.solicitudes ?? null;
+  const pestanas = pestanasDe(corte);
+  const actual = CALCULABLES.includes(pestana) ? ultimo(pestana) : null;
 
   return (
     <div>
@@ -91,11 +116,10 @@ export default function LaboratorioCorte() {
           <button
             className="crediscope-btn crediscope-btn-ghost"
             onClick={informe}
-            disabled={corte.es_sintetico}
-            title={corte.es_sintetico ? "Un corte sintético no genera informe para una institución" : undefined}
+            title={corte.es_sintetico ? "Sale con la franja SIMULACIÓN — no presentar en cada hoja" : undefined}
           >
             <FileDown size={15} style={{ marginRight: 7, verticalAlign: "-2px" }} />
-            Exportar Informe de Desempeño
+            {corte.es_sintetico ? "Exportar Informe (simulación)" : "Exportar Informe de Desempeño"}
           </button>
         </div>
       </div>
@@ -111,10 +135,17 @@ export default function LaboratorioCorte() {
           valor={num((r.operaciones ?? 0) - (r.incluidas ?? 0))}
           detalle={Object.entries(r.excluidas ?? {}).map(([m, n]) => `${m}: ${n}`).join(" · ") || "Ninguna"}
         />
+        {s ? (
+          <Kpi
+            etiqueta="Solicitudes del período"
+            valor={num(s.solicitudes)}
+            detalle={`${num(s.desembolsadas)} con crédito · ${num(s.incluidas)} observadas · ${num(s.malos)} malos`}
+          />
+        ) : null}
       </div>
 
       <div className="crediscope-tabs">
-        {PESTANAS.map(([clave, texto]) => (
+        {pestanas.map(([clave, texto]) => (
           <button
             key={clave}
             className={`crediscope-tab ${pestana === clave ? "crediscope-tab-active" : ""}`}
@@ -128,8 +159,15 @@ export default function LaboratorioCorte() {
 
       <MensajeError mensaje={error} />
 
-      {["desempeno", "variables"].includes(pestana) ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0" }}>
+      {CALCULABLES.includes(pestana) ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0", flexWrap: "wrap" }}>
+          {pestana === "variables" && s ? (
+            <select value={poblacion} onChange={(e) => setPoblacion(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>
+              {Object.entries(ETIQUETA_POBLACION).map(([clave, texto]) => (
+                <option key={clave} value={clave}>{texto}</option>
+              ))}
+            </select>
+          ) : null}
           <button className="crediscope-btn" onClick={() => correr(pestana)} disabled={calculando !== null}>
             <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
             {calculando === pestana ? "Calculando..." : actual ? "Recalcular" : "Calcular"}
@@ -139,6 +177,10 @@ export default function LaboratorioCorte() {
       ) : null}
 
       {pestana === "desempeno" ? <PestanaDesempeno resultado={actual} /> : null}
+      {pestana === "matriz" ? <PestanaMatriz resultado={actual} /> : null}
+      {pestana === "cuadrantes" ? <PestanaCuadrantes resultado={actual} /> : null}
+      {pestana === "motivos" ? <PestanaMotivos resultado={actual} /> : null}
+      {pestana === "calificacion_simulacion" ? <PestanaCalificacion resultado={actual} /> : null}
       {pestana === "variables" ? <PestanaVariables resultado={actual} /> : null}
       {pestana === "simulacion" ? (
         <PestanaSimulacion corteId={id} catalogo={catalogo} simulaciones={resultados.filter((x) => x.tipo === "simulacion_politica")} alSimular={recargar} />

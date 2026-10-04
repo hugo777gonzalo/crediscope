@@ -37,7 +37,7 @@ export default function LaboratorioCargaNueva() {
     setAvance({ hechas: 0, total: lectura.operaciones.length });
     try {
       const id = await subirCarga(
-        { etiqueta: etiqueta.trim(), institucion: institucion.trim(), fechaCorte, archivo, operaciones: lectura.operaciones },
+        { etiqueta: etiqueta.trim(), institucion: institucion.trim(), fechaCorte, archivo, operaciones: lectura.operaciones, decisiones: lectura.decisiones },
         (hechas, total) => setAvance({ hechas, total }),
       );
       navigate(`/laboratorio/cargas/${id}`);
@@ -108,6 +108,7 @@ export default function LaboratorioCargaNueva() {
         <div className="crediscope-card">
           <p style={{ marginTop: 0 }}>
             <strong>{num(lectura.operaciones.length)}</strong> operaciones válidas de {num(lectura.leidas)} filas leídas.
+            {lectura.decisiones?.length ? ` Más ${num(lectura.decisiones.length)} solicitudes no desembolsadas con la decisión de la institución.` : ""}
             {lectura.errores.length ? (
               <span style={{ color: "var(--bad)" }}> {num(lectura.errores.length)} filas rechazadas: no se cargan.</span>
             ) : null}

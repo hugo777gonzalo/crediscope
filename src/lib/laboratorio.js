@@ -39,7 +39,7 @@ export async function getDefiniciones() {
 // vincula, la concilia y la pasa a "lista". Si algo falla a mitad de
 // camino queda en "cargando" y nada la usa (en Retroalimentación, un
 // paquete podía quedar con totales y sin créditos).
-export async function subirCarga({ etiqueta, institucion, fechaCorte, archivo, operaciones }, alAvanzar = () => {}) {
+export async function subirCarga({ etiqueta, institucion, fechaCorte, archivo, operaciones, decisiones = [] }, alAvanzar = () => {}) {
   const { data: sesion } = await supabase.auth.getUser();
   const { data: carga, error } = await supabase
     .from("lab_cargas")
@@ -61,6 +61,11 @@ export async function subirCarga({ etiqueta, institucion, fechaCorte, archivo, o
     const { error: errOps } = await supabase.from("lab_operaciones").insert(tanda);
     if (errOps) fallar(errOps);
     alAvanzar(Math.min(i + 500, operaciones.length), operaciones.length);
+  }
+  // Lo que decidió la institución con lo que no desembolsó (hoja opcional).
+  for (let i = 0; i < decisiones.length; i += 500) {
+    const { error: errDec } = await supabase.from("lab_decisiones_institucion").insert(decisiones.slice(i, i + 500).map((d) => ({ ...d, carga_id: carga.id })));
+    if (errDec) fallar(errDec);
   }
   const { error: errCierre } = await supabase.rpc("lab_cerrar_carga", { p_carga: carga.id });
   if (errCierre) fallar(errCierre);
@@ -122,9 +127,17 @@ export async function getResultados(corteId) {
   return data ?? [];
 }
 
-const FUNCION = { desempeno: "lab_calcular_desempeno", variables: "lab_calcular_variables" };
-export async function calcular(corteId, tipo) {
-  const { data, error } = await supabase.rpc(FUNCION[tipo], { p_corte: corteId });
+const FUNCION = {
+  desempeno: "lab_calcular_desempeno",
+  variables: "lab_calcular_variables",
+  matriz: "lab_calcular_matriz",
+  cuadrantes: "lab_calcular_cuadrantes",
+  motivos: "lab_calcular_motivos",
+  calificacion_simulacion: "lab_calificar_simulacion",
+};
+// `extra`: parámetros propios de un cálculo (la población de Variables).
+export async function calcular(corteId, tipo, extra = {}) {
+  const { data, error } = await supabase.rpc(FUNCION[tipo], { p_corte: corteId, ...extra });
   if (error) fallar(error);
   return data;
 }

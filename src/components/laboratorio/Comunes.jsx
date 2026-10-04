@@ -36,6 +36,49 @@ export const ETIQUETA_ESTADO_PROPUESTA = {
   retirada: "Retirada",
 };
 
+export const ETIQUETA_RECOMENDACION = {
+  aprobar: "Aprobar",
+  revisar: "Revisar",
+  negar: "Negar",
+  bloqueado: "Negado por bloqueo",
+  "sin recomendación": "Sin recomendación",
+};
+
+// Los motivos del impago (lab_calcular_motivos) y los eventos entre dos
+// consultas (eventos-entre-consultas.ts), en palabras del negocio. Los tres
+// últimos sólo existen en la verdad plantada de una simulación.
+export const ETIQUETA_MOTIVO = {
+  cuota_no_cabia: "La cuota no cabía en su ingreso",
+  capacidad_no_medible: "Ingreso por confirmar o sin determinar",
+  el_modelo_lo_vio: "El modelo dijo negar",
+  el_modelo_advirtio: "El modelo dijo revisar",
+  credito_otra_institucion: "Otra institución le prestó",
+  credito_institucion: "El crédito de la institución",
+  perdida_trabajo: "Perdió el trabajo",
+  cierre_negocio: "Cerró su negocio",
+  pension_alimenticia: "Pensión alimenticia nueva",
+  demanda_civil: "Demanda civil",
+  proceso_fiscalia: "Proceso en Fiscalía",
+  mora_credito_previo: "Mora en un crédito que ya tenía",
+  demanda_cobro: "Demanda de cobro",
+  trabajo_nuevo: "Trabajo nuevo",
+  sin_causa_visible: "Ningún evento lo explica: buscar en Variables",
+  riesgo_visible: "Riesgo que el modelo ve",
+  dato_no_recibido: "Dato que el modelo no recibe",
+  dato_solo_crudo: "Dato que sólo está en el crudo",
+};
+
+// lab_calcular_motivos desde la 103. "anticipable" queda para la verdad
+// plantada de una simulación, que se clasificó con la regla anterior.
+export const ETIQUETA_SE_PODIA_VER = {
+  el_modelo_lo_vio: "El modelo lo vio (dijo negar o revisar)",
+  anticipable_no_visto: "Se podía ver y el modelo no lo vio",
+  vulnerabilidad_visible: "Golpe imprevisible sobre un perfil frágil",
+  no_anticipable: "Golpe imprevisible sobre un perfil sólido",
+  sin_causa_visible: "Ningún evento lo explica: buscar en Variables",
+  anticipable: "Anticipable: estaba en el perfil",
+};
+
 export const pct = (x, decimales = 1) => (x === null || x === undefined ? "—" : `${(Number(x) * 100).toFixed(decimales).replace(".", ",")}%`);
 export const num = (x, decimales = 0) =>
   x === null || x === undefined ? "—" : Number(x).toLocaleString("es-EC", { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
