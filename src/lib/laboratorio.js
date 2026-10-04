@@ -142,6 +142,26 @@ export async function calcular(corteId, tipo, extra = {}) {
   return data;
 }
 
+// Un resultado que calcula la pantalla (la calibración) y se guarda como
+// los de la base: nunca pisa el anterior.
+export async function guardarResultado(corteId, tipo, metodologia, resultado, n = null, nMalos = null) {
+  const { data: sesion } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("lab_resultados")
+    .insert({ corte_id: corteId, tipo, metodologia, resultado, n, n_malos: nMalos, calculado_por: sesion?.user?.id ?? null })
+    .select("id");
+  if (error) fallar(error);
+  if (!data?.length) throw new Error("No se guardó el resultado (¿sesión de admin?).");
+  return data[0].id;
+}
+
+// PSI del puntaje entre dos cortes (lab_estabilidad la guarda en el nuevo).
+export async function calcularEstabilidad(baseId, nuevoId) {
+  const { data, error } = await supabase.rpc("lab_estabilidad", { p_base: baseId, p_nuevo: nuevoId });
+  if (error) fallar(error);
+  return data;
+}
+
 export async function simularPolitica(corteId, regla) {
   const { data, error } = await supabase.rpc("lab_simular_politica", { p_corte: corteId, p_regla: regla });
   if (error) fallar(error);

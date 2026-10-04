@@ -55,7 +55,7 @@ export function cuantil(ordenados, p) {
 // las pruebas de rangos necesitan para corregir la varianza.
 export function rangos(xs) {
   const orden = xs.map((x, i) => [x, i]).sort((a, b) => a[0] - b[0]);
-  const r = new Array(xs.length);
+  const r = Array.from({ length: xs.length });
   const empates = [];
   for (let a = 0; a < orden.length;) {
     let b = a;
@@ -240,7 +240,7 @@ export function kendall(x, y) {
 export function matrizDeCorrelacion(columnas, metodo = "pearson") {
   const f = metodo === "spearman" ? spearman : pearson;
   const k = columnas.length;
-  const m = Array.from({ length: k }, () => new Array(k).fill(null));
+  const m = Array.from({ length: k }, () => Array.from({ length: k }, () => null));
   for (let i = 0; i < k; i++) {
     m[i][i] = 1;
     for (let j = i + 1; j < k; j++) m[i][j] = m[j][i] = f(columnas[i], columnas[j]).r;
@@ -561,11 +561,11 @@ export function regresionLogistica(X, y, { lambda = 1e-6, iteraciones = 100 } = 
   const medias = Array.from({ length: k }, (_, j) => media(X.map((f) => f[j])));
   const desvios = Array.from({ length: k }, (_, j) => desvio(X.map((f) => f[j])) || 1);
   const Z = X.map((f) => [1, ...f.map((v, j) => (v - medias[j]) / desvios[j])]);
-  let beta = new Array(k + 1).fill(0);
+  let beta = Array.from({ length: k + 1 }, () => 0);
   let convergio = false, hessiano = null;
   for (let it = 0; it < iteraciones; it++) {
-    const g = new Array(k + 1).fill(0);
-    const H = Array.from({ length: k + 1 }, () => new Array(k + 1).fill(0));
+    const g = Array.from({ length: k + 1 }, () => 0);
+    const H = Array.from({ length: k + 1 }, () => Array.from({ length: k + 1 }, () => 0));
     for (let i = 0; i < n; i++) {
       const p = sigmoide(Z[i].reduce((s, z, j) => s + z * beta[j], 0));
       const w = p * (1 - p);
@@ -649,10 +649,10 @@ export function logRank(grupos) {
   const K = grupos.length;
   if (K < 2) return null;
   const tiempos = [...new Set(todos.filter((s) => s.evento).map((s) => s.tiempo))].sort((a, b) => a - b);
-  const oMenosE = new Array(K).fill(0);
-  const V = Array.from({ length: K }, () => new Array(K).fill(0));
+  const oMenosE = Array.from({ length: K }, () => 0);
+  const V = Array.from({ length: K }, () => Array.from({ length: K }, () => 0));
   for (const t of tiempos) {
-    const nk = new Array(K).fill(0), dk = new Array(K).fill(0);
+    const nk = Array.from({ length: K }, () => 0), dk = Array.from({ length: K }, () => 0);
     for (const s of todos) {
       if (s.tiempo >= t) nk[s.k]++;
       if (s.tiempo === t && s.evento) dk[s.k]++;

@@ -123,6 +123,10 @@ export function Advertencias({ lista }) {
   );
 }
 
+export function Cargando({ que = "las filas del corte" }) {
+  return <p className="crediscope-muted">Cargando {que}...</p>;
+}
+
 export function MensajeError({ mensaje }) {
   if (!mensaje) return null;
   return (

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { getCortes, getCorte, getResultados, calcular } from "../../lib/laboratorio.js";
-import { getFilasDelCorte } from "../../lib/datosDelCorte.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { MensajeError, FranjaSintetica } from "./Comunes.jsx";
 
@@ -37,22 +36,6 @@ function recordarCorte(id) {
   } catch {
     // sin localStorage (modo privado): se elige de nuevo la próxima vez
   }
-}
-
-// Las filas del corte para una pestaña que calcula en el navegador.
-export function useFilas(corteId, poblacion) {
-  const [estado, setEstado] = useState({ filas: null, error: null, clave: null });
-  const clave = `${corteId}|${poblacion}`;
-  useEffect(() => {
-    let vigente = true;
-    getFilasDelCorte(corteId, poblacion)
-      .then((filas) => vigente && setEstado({ filas, error: null, clave }))
-      .catch((e) => vigente && setEstado({ filas: null, error: e.message ?? String(e), clave }));
-    return () => {
-      vigente = false;
-    };
-  }, [corteId, poblacion, clave]);
-  return estado.clave === clave ? estado : { filas: null, error: null };
 }
 
 export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacionPorDefecto = "operaciones" }) {
