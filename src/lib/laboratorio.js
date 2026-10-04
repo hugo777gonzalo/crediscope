@@ -16,7 +16,7 @@ function fallar(error) {
 export async function getCargas() {
   const { data, error } = await supabase
     .from("lab_cargas")
-    .select("id, etiqueta, institucion, origen, es_sintetica, fecha_corte, estado, conciliacion, errores, created_at, cerrada_en")
+    .select("id, etiqueta, institucion, institucion_id, proyecto_id, origen, es_sintetica, fecha_corte, estado, conciliacion, errores, created_at, cerrada_en")
     .order("created_at", { ascending: false });
   if (error) fallar(error);
   return data ?? [];
@@ -39,11 +39,11 @@ export async function getDefiniciones() {
 // vincula, la concilia y la pasa a "lista". Si algo falla a mitad de
 // camino queda en "cargando" y nada la usa (en Retroalimentación, un
 // paquete podía quedar con totales y sin créditos).
-export async function subirCarga({ etiqueta, institucion, fechaCorte, archivo, operaciones, decisiones = [] }, alAvanzar = () => {}) {
+export async function subirCarga({ etiqueta, institucion, institucionId = null, proyectoId = null, fechaCorte, archivo, operaciones, decisiones = [] }, alAvanzar = () => {}) {
   const { data: sesion } = await supabase.auth.getUser();
   const { data: carga, error } = await supabase
     .from("lab_cargas")
-    .insert({ etiqueta, institucion: institucion || null, origen: "ifi", es_sintetica: false, fecha_corte: fechaCorte, archivo_nombre: archivo?.name ?? null, cargada_por: sesion?.user?.id ?? null })
+    .insert({ etiqueta, institucion: institucion || null, institucion_id: institucionId, proyecto_id: proyectoId, origen: "ifi", es_sintetica: false, fecha_corte: fechaCorte, archivo_nombre: archivo?.name ?? null, cargada_por: sesion?.user?.id ?? null })
     .select("id")
     .single();
   if (error) fallar(error);
@@ -340,4 +340,61 @@ export async function actualizarCandidata(id, cambios) {
   if (error) fallar(error);
   // Una actualización bloqueada por RLS no da error: devuelve 0 filas.
   if (!data?.length) throw new Error("No se actualizó la candidata (¿sesión de admin?).");
+}
+
+// ------------------------------------------- instituciones y proyectos (109)
+export async function getInstituciones() {
+  const { data, error } = await supabase.from("lab_instituciones").select("*, lab_proyectos(*)").order("nombre");
+  if (error) fallar(error);
+  return data ?? [];
+}
+
+async function guardarFila(tabla, fila, campoAutor) {
+  const { data: sesion } = await supabase.auth.getUser();
+  const { id, ...resto } = fila;
+  const consulta = id
+    ? supabase.from(tabla).update(resto).eq("id", id)
+    : supabase.from(tabla).insert({ ...resto, [campoAutor]: sesion?.user?.id ?? null });
+  const { data, error } = await consulta.select("id");
+  if (error) fallar(error);
+  // Una actualización bloqueada por RLS no da error: devuelve 0 filas.
+  if (!data?.length) throw new Error("No se guardó (¿sesión de admin?).");
+  return data[0].id;
+}
+
+export const guardarInstitucion = (fila) => guardarFila("lab_instituciones", fila, "creada_por");
+export const guardarProyecto = (fila) => guardarFila("lab_proyectos", fila, "creado_por");
+
+// La carga que se sube con su institución y proyecto (109).
+export async function asignarCarga(cargaId, institucionId, proyectoId) {
+  const { data, error } = await supabase.from("lab_cargas").update({ institucion_id: institucionId, proyecto_id: proyectoId }).eq("id", cargaId).select("id");
+  if (error) fallar(error);
+  if (!data?.length) throw new Error("No se asignó la carga (¿sesión de admin?).");
+}
+
+// ------------------------------------------------------- datos y cartera
+export async function getCentroDeDatos(dias = 120) {
+  const { data, error } = await supabase.rpc("lab_centro_de_datos", { p_dias: dias });
+  if (error) fallar(error);
+  return data;
+}
+
+export async function getVolumenDeAnalisis() {
+  const { data, error } = await supabase.rpc("lab_volumen_de_analisis");
+  if (error) fallar(error);
+  return data ?? [];
+}
+
+export async function getCalidadDeLaCarga(cargaId) {
+  const { data, error } = await supabase.rpc("lab_calidad_de_la_carga", { p_carga: cargaId });
+  if (error) fallar(error);
+  return data;
+}
+
+// Reconsultas del ciclo de un año que todavía no se procesaron
+// (procesar-reconsultas.mjs): un trabajo que quedó a medias.
+export async function contarReconsultasSinProcesar() {
+  const { count, error } = await supabase.from("lab_reconsultas").select("id", { count: "exact", head: true }).is("procesada_en", null);
+  if (error) fallar(error);
+  return count ?? 0;
 }

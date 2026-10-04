@@ -228,6 +228,7 @@ export default function MenuLateral({ profile }) {
               expandirMenu={() => setColapsado(false)}
               hijos={[
                 { to: "/laboratorio", texto: "Inicio", activo: pathname === "/laboratorio" },
+                { to: "/laboratorio/instituciones", texto: "Instituciones y proyectos", activo: pathname.startsWith("/laboratorio/instituciones") },
                 { to: "/laboratorio/datos", texto: "Datos y cartera", activo: ["/laboratorio/datos", "/laboratorio/cargas", "/laboratorio/cortes"].some((r) => pathname.startsWith(r)) },
                 { to: "/laboratorio/desempeno", texto: "Prueba retrospectiva", activo: pathname.startsWith("/laboratorio/desempeno") },
                 { to: "/laboratorio/estadistica", texto: "Descubrimiento estadístico", activo: pathname.startsWith("/laboratorio/estadistica") },

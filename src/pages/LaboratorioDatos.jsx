@@ -4,6 +4,7 @@ import { Upload, Scissors } from "lucide-react";
 import { getCargas, getCortes } from "../lib/laboratorio.js";
 import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
 import { MensajeError, Etiqueta, ETIQUETA_ESTADO_CARGA, num, pct } from "../components/laboratorio/Comunes.jsx";
+import { CentroDeDatos, CalidadDeCarga, Conciliacion, ExploradorDeCartera, Diccionario } from "../components/laboratorio/PestanasDatos.jsx";
 
 // Módulo 3 del negocio: Datos y cartera. Lo que entra al Laboratorio (las
 // cargas de la institución), cómo se concilia con lo que analizamos y las
@@ -94,6 +95,11 @@ function Cortes({ cortes }) {
 export const PESTANAS_DATOS = [
   { clave: "cargas", texto: "Cargas de cartera", Componente: ({ cargas }) => <div className="crediscope-card"><Cargas cargas={cargas} /></div> },
   { clave: "cortes", texto: "Cortes (cohortes congeladas)", Componente: ({ cortes }) => <div className="crediscope-card"><Cortes cortes={cortes} /></div> },
+  { clave: "centro", texto: "Centro de datos", Componente: CentroDeDatos },
+  { clave: "calidad", texto: "Calidad de la carga", Componente: CalidadDeCarga },
+  { clave: "conciliacion", texto: "Conciliación", Componente: Conciliacion },
+  { clave: "cartera", texto: "Explorador de cartera", Componente: ExploradorDeCartera },
+  { clave: "diccionario", texto: "Diccionario de datos", Componente: Diccionario },
 ];
 
 export default function LaboratorioDatos() {

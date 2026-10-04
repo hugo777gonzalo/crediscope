@@ -192,6 +192,28 @@ if (analisis) {
 const cobertura = await rest("rpc/lab_cobertura_de_la_estructura", { method: "POST", body: JSON.stringify({ p_corte: cortes.at(-1).id }) });
 control("cobertura de la estructura", cobertura.campos.length > 0 && cobertura.campos.every((c) => c.con_valor <= cobertura.perfiles), `${cobertura.perfiles} perfiles, ${cobertura.campos.length} campos, ${cobertura.campos.filter((c) => c.con_valor === 0).length} siempre vacíos, ${cobertura.sin_configurar.length} fuera de la configuración`);
 
+// Mapeo de columnas de la carga: un archivo con los títulos de otra
+// institución. La primera lectura tiene que sugerir el mapeo; con él, leer.
+const XLSX = await import("xlsx");
+const { leerPlanilla } = await import(pathToFileURL(path.join(RAIZ, "src/lib/plantillaLaboratorio.js")).href);
+const cedulaDePrueba = (() => {
+  const base = "171234567".split("").map(Number);
+  const suma = base.reduce((s, d, i) => { const p = d * (i % 2 === 0 ? 2 : 1); return s + (p >= 10 ? p - 9 : p); }, 0);
+  return `${base.join("")}${(10 - (suma % 10)) % 10}`;
+})();
+const libroPrueba = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(libroPrueba, XLSX.utils.aoa_to_sheet([
+  ["Identificación", "Nro. operación", "Tipo de crédito", "Valor desembolsado", "Plazo", "Fecha concesión", "Situación", "Cuota"],
+  [cedulaDePrueba, "OP-1", "Consumo", 1500, 12, "2025-01-15", "Vigente", 140],
+]), "Hoja1");
+const bytes = XLSX.write(libroPrueba, { type: "array", bookType: "xlsx" });
+const archivoPrueba = { arrayBuffer: async () => bytes, name: "prueba.xlsx" };
+const primera = await leerPlanilla(archivoPrueba, "2026-01-31");
+const sugerencia = primera.mapeo?.sugerencia ?? {};
+control("mapeo: sugiere las 7 obligatorias", ["cedula", "numero_operacion", "producto", "monto", "plazo_meses", "fecha_desembolso", "estado_operacion"].every((c) => sugerencia[c]), Object.entries(sugerencia).map(([c, t]) => `${c} ← ${t}`).join(" · "));
+const segunda = await leerPlanilla(archivoPrueba, "2026-01-31", sugerencia);
+control("mapeo: con la sugerencia, la operación se lee", segunda.operaciones.length === 1 && segunda.errores.length === 0 && segunda.operaciones[0].cuota_mensual === 140, `${segunda.operaciones.length} operación, ${segunda.errores.length} errores`);
+
 // El intérprete de fórmulas del taller, con valores conocidos y con errores.
 const ids = new Set(["a", "b", "c"]);
 const casosFormula = [

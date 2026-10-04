@@ -122,17 +122,71 @@ const sumarMeses = (iso, meses) => {
   return f.toISOString().slice(0, 10);
 };
 
+// El mapeo de columnas (módulo 3 del negocio): una institución manda su
+// propio archivo, con sus títulos. Si no están los de la plantilla, se le
+// sugiere a cada columna el título del archivo que más se le parece, y se
+// confirma a mano antes de leer: nunca se adivina en silencio.
+const SINONIMOS = {
+  cedula: ["cedula", "identificacion", "ci", "cedula de identidad", "documento", "numero de identificacion"],
+  numero_operacion: ["numero de operacion", "operacion", "nro operacion", "num operacion", "numero de credito", "credito", "id operacion", "codigo operacion"],
+  producto: ["producto", "tipo de credito", "linea de credito", "tipo de producto", "linea"],
+  monto: ["monto desembolsado", "monto", "valor desembolsado", "monto otorgado", "capital", "valor"],
+  plazo_meses: ["plazo en meses", "plazo", "plazo meses", "numero de cuotas", "cuotas"],
+  fecha_desembolso: ["fecha de desembolso", "fecha desembolso", "fecha de concesion", "fecha concesion", "fecha otorgamiento", "fecha de otorgamiento"],
+  estado_operacion: ["estado al corte", "estado", "situacion", "estado de la operacion", "estado del credito"],
+  dias_mora_max_12m: ["maximo de dias de mora en los primeros 12 meses", "dias mora 12", "mora 12 meses", "mora 12"],
+  dias_mora_max_24m: ["maximo de dias de mora en los primeros 24 meses", "dias mora 24", "mora 24 meses", "mora 24"],
+  fecha_primer_default: ["fecha del primer impago", "fecha primer impago", "fecha de impago", "fecha default", "fecha de castigo"],
+  cuota_mensual: ["cuota mensual", "cuota", "valor de la cuota", "valor cuota"],
+  canal: ["canal de venta", "canal", "agencia"],
+  observaciones: ["observaciones", "comentarios", "comentario", "notas"],
+};
+const normalizar = (t) => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+function sugerirMapeo(titulos) {
+  const puntaje = (titulo, clave) => {
+    const t = normalizar(titulo);
+    return Math.max(...SINONIMOS[clave].map((s) => {
+      if (s === t) return 3;
+      if (t.includes(s) || s.includes(t)) return 2;
+      const palabras = new Set(s.split(" "));
+      const comunes = t.split(" ").filter((p) => palabras.has(p)).length;
+      return comunes >= Math.ceil(palabras.size / 2) ? 1 : 0;
+    }));
+  };
+  const pares = [];
+  for (const titulo of titulos) for (const c of COLUMNAS) { const p = puntaje(titulo, c.clave); if (p > 0) pares.push([p, titulo, c.clave]); }
+  pares.sort((a, b) => b[0] - a[0]);
+  const sugerencia = {}, usados = new Set();
+  for (const [, titulo, clave] of pares) {
+    if (sugerencia[clave] || usados.has(titulo)) continue;
+    sugerencia[clave] = titulo;
+    usados.add(titulo);
+  }
+  return sugerencia;
+}
+
 // fechaCorte: la del archivo (AAAA-MM-DD). Hace falta para saber qué
-// ventanas tiene que traer cada operación.
-export async function leerPlanilla(archivo, fechaCorte) {
+// ventanas tiene que traer cada operación. mapeo: { clave: título del
+// archivo } confirmado en la pantalla, si el archivo no usa la plantilla.
+export async function leerPlanilla(archivo, fechaCorte, mapeo = {}) {
   const libro = XLSX.read(await archivo.arrayBuffer(), { cellDates: true });
   const nombre = libro.SheetNames.includes("Operaciones") ? "Operaciones" : libro.SheetNames.find((n) => n !== "Instrucciones") ?? libro.SheetNames[0];
   const crudas = XLSX.utils.sheet_to_json(libro.Sheets[nombre], { defval: "" });
   const porTitulo = Object.fromEntries(COLUMNAS.map((c) => [c.titulo.toLowerCase(), c.clave]));
+  for (const [clave, titulo] of Object.entries(mapeo)) if (titulo) porTitulo[titulo.trim().toLowerCase()] = clave;
 
-  const titulos = Object.keys(crudas[0] ?? {}).map((t) => t.trim().toLowerCase());
-  const faltan = COLUMNAS.filter((c) => c.obligatoria && !titulos.includes(c.titulo.toLowerCase())).map((c) => c.titulo);
-  if (faltan.length) return { operaciones: [], errores: [{ fila: 1, operacion: "", motivo: `Faltan columnas: ${faltan.join(", ")}` }], leidas: crudas.length };
+  const originales = Object.keys(crudas[0] ?? {});
+  const titulos = originales.map((t) => t.trim().toLowerCase());
+  const presente = (c) => titulos.includes(c.titulo.toLowerCase()) || Boolean(mapeo[c.clave] && titulos.includes(mapeo[c.clave].trim().toLowerCase()));
+  const faltan = COLUMNAS.filter((c) => c.obligatoria && !presente(c));
+  if (faltan.length) {
+    return {
+      operaciones: [], decisiones: [], leidas: crudas.length,
+      errores: [{ fila: 1, operacion: "", motivo: `Faltan columnas: ${faltan.map((c) => c.titulo).join(", ")}` }],
+      mapeo: { titulos: originales, faltan: faltan.map((c) => c.clave), sugerencia: { ...sugerirMapeo(originales), ...mapeo } },
+    };
+  }
 
   const operaciones = [];
   const errores = [];

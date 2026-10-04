@@ -117,6 +117,7 @@ export function cosechas(filas, agrupar = "mes") {
 export const MIN_PERSONAS_SEGMENTO = 50, MIN_MALOS_SEGMENTO = 10;
 
 export const DIMENSIONES = {
+  mes: { texto: "Mes (de desembolso o de la solicitud)", porNombre: true, valor: (f) => mesDe(f.fecha) },
   producto: { texto: "Producto", valor: (f) => f.producto },
   canal: { texto: "Canal", valor: (f) => f.canal },
   recomendacion: { texto: "Recomendación del motor", valor: (f) => f.recomendacion },
@@ -150,8 +151,12 @@ export function segmentar(filas, clave) {
   const segmentos = [...grupos.entries()].map(([nombre, fs]) => {
     const malos = fs.filter((f) => f.malo).length;
     const auc = aucPuntaje(fs.filter((f) => !f.bloqueado && esNumero(f.puntaje)));
-    return { nombre, n: fs.length, malos, tasa: malos / fs.length, ic: wilson(malos, fs.length), auc, chico: fs.length < MIN_PERSONAS_SEGMENTO || malos < MIN_MALOS_SEGMENTO };
-  }).sort((a, b) => b.n - a.n);
+    const conPuntaje = fs.filter((f) => esNumero(f.puntaje));
+    return {
+      nombre, n: fs.length, malos, tasa: malos / fs.length, ic: wilson(malos, fs.length), auc, chico: fs.length < MIN_PERSONAS_SEGMENTO || malos < MIN_MALOS_SEGMENTO,
+      puntajeMedio: conPuntaje.length ? conPuntaje.reduce((s, f) => s + f.puntaje, 0) / conPuntaje.length : null,
+    };
+  }).sort((a, b) => (d.porNombre ? a.nombre.localeCompare(b.nombre) : b.n - a.n));
   const malosTotal = base.filter((f) => f.malo).length;
   return {
     segmentos, prueba: segmentos.length > 1 ? chiCuadrado(segmentos.map((s) => [s.malos, s.n - s.malos])) : null,
