@@ -1,7 +1,34 @@
 import { useMemo, useState } from "react";
 import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { explorarSignificancia } from "../../lib/analisisEstadistico.js";
+import { crearCandidata } from "../../lib/laboratorio.js";
 import { MensajeError, Cargando, Etiqueta, pct, dec } from "./Comunes.jsx";
+
+// Una variable del perfil que el modelo no recibe pasa al Registro de
+// candidatas (108) con su evidencia.
+function RegistrarCandidata({ s, corte, poblacion }) {
+  const [estado, setEstado] = useState(null);
+  async function registrar() {
+    setEstado("guardando");
+    try {
+      await crearCandidata({
+        nombre: s.nombre, definicion: `${s.nombre} (${s.grupo}): está en el perfil y el modelo no la recibe`, origen: "catalogo", variable_catalogo: s.id,
+        fuente: "perfil estandarizado", corte_id: corte.id,
+        evidencia: { iv: s.iv, q: s.q, efecto: s.efecto, medida_efecto: s.medidaEfecto, iv_primera_mitad: s.ivPrimera, iv_segunda_mitad: s.ivSegunda, cobertura: s.cobertura, poblacion, corte: corte.nombre, sintetico: corte.es_sintetico },
+      });
+      setEstado("listo");
+    } catch (e) {
+      setEstado(e.message);
+    }
+  }
+  if (estado === "listo") return <div className="crediscope-muted" style={{ fontSize: 12 }}>Registrada.</div>;
+  return (
+    <div>
+      <button className="crediscope-btn crediscope-btn-ghost" style={{ fontSize: 12, padding: "2px 8px" }} onClick={registrar} disabled={estado === "guardando"}>Registrar como candidata</button>
+      {estado && estado !== "guardando" ? <span style={{ color: "var(--bad)", fontSize: 12 }}> {estado}</span> : null}
+    </div>
+  );
+}
 
 // Explorador de significancia: por variable, todo junto. Asociación (IV),
 // valor p corregido (q), tamaño del efecto, cobertura, estabilidad entre las
@@ -20,7 +47,7 @@ const FILTROS = {
 const ORDENES = { iv: ["IV", (a, b) => b.iv - a.iv], q: ["q", (a, b) => (a.q ?? 1) - (b.q ?? 1)], efecto: ["Efecto", (a, b) => Math.abs(b.efecto ?? 0) - Math.abs(a.efecto ?? 0)] };
 const COLOR_FUERZA = { fuerte: "var(--bad)", media: "var(--warn)", "débil": "var(--brand)", nada: "var(--text-muted)" };
 
-export default function PestanaSignificancia({ corteId, poblacion }) {
+export default function PestanaSignificancia({ corte, corteId, poblacion }) {
   const { datos, error } = useColumnasDelCorte(corteId, poblacion);
   const [filtro, setFiltro] = useState("todas");
   const [orden, setOrden] = useState("iv");
@@ -59,6 +86,7 @@ export default function PestanaSignificancia({ corteId, poblacion }) {
                 <td>
                   <strong>{s.nombre}</strong> {s.candidata ? <Etiqueta texto="candidata" color="var(--bad)" /> : null}
                   <div className="crediscope-muted" style={{ fontSize: 12 }}>{s.grupo}</div>
+                  {s.candidata ? <RegistrarCandidata s={s} corte={corte} poblacion={poblacion} /> : null}
                 </td>
                 <td style={{ textAlign: "right" }}>{dec(s.iv, 3)} <Etiqueta texto={s.fuerza} color={COLOR_FUERZA[s.fuerza]} /></td>
                 <td style={{ textAlign: "right" }}>{s.q === null ? "—" : s.q < 0.0001 ? "< 0,0001" : dec(s.q, 4)}</td>

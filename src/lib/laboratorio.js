@@ -250,3 +250,94 @@ export async function desactivarTodosLosAjustes() {
   const { error } = await supabase.rpc("desactivar_todos_los_ajustes");
   if (error) fallar(error);
 }
+
+// ------------------------------------------------- descubrimiento profundo
+// Los motivos de cada malo (107): la misma regla que el agregado de Motivos.
+export async function getMotivosDeCadaMalo(corteId) {
+  const { data, error } = await supabase.rpc("lab_motivos_de_cada_malo", { p_corte: corteId });
+  if (error) fallar(error);
+  return data ?? [];
+}
+
+export async function getCoberturaDeLaEstructura(corteId) {
+  const { data, error } = await supabase.rpc("lab_cobertura_de_la_estructura", { p_corte: corteId });
+  if (error) fallar(error);
+  return data;
+}
+
+export async function getPerfil(perfilId) {
+  const { data, error } = await supabase
+    .from("client_profiles")
+    .select("id, client_id, created_at, structure_version, standard_profile, crudo_ruta, clients(cedula)")
+    .eq("id", perfilId)
+    .single();
+  if (error) fallar(error);
+  return data;
+}
+
+const COLUMNAS_ANALISIS = "id, client_id, client_profile_id, created_at, crediscope_score, recomendacion, rules_version, llm_model, narrative_summary, positives, negatives, missing_info, veredicto_origen, fallo, mensaje_al_modelo, clients(cedula)";
+
+export async function getAnalisis(id) {
+  const { data, error } = await supabase.from("analysis_results").select(COLUMNAS_ANALISIS).eq("id", id).single();
+  if (error) fallar(error);
+  return data;
+}
+
+export async function getAnalisisRecientes(limite = 60) {
+  const { data, error } = await supabase
+    .from("analysis_results")
+    .select("id, client_profile_id, created_at, crediscope_score, recomendacion, rules_version, llm_model, fallo, mensaje_al_modelo, clients(cedula)")
+    .not("client_profile_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) fallar(error);
+  return data ?? [];
+}
+
+// Los campos apagados en Configuración › Campos del análisis: el modelo los
+// recibe en null (armarPerfilDelModelo).
+export async function getCamposDeshabilitados() {
+  const { data, error } = await supabase.from("standard_profile_field_config").select("grupo, campo").eq("enabled", false);
+  if (error) fallar(error);
+  return new Set((data ?? []).map((f) => `${f.grupo}.${f.campo}`));
+}
+
+// El crudo de Novadata de un perfil (090), sólo para admin: el depósito lo
+// guarda en gzip y el navegador lo descomprime.
+export async function getCrudo(ruta) {
+  const { data, error } = await supabase.storage.from("crudo-novadata").download(ruta);
+  if (error) fallar(error);
+  const texto = await new Response(data.stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  return JSON.parse(texto);
+}
+
+export async function getEventosDeSolicitud(solicitudId) {
+  const { data, error } = await supabase
+    .from("lab_reconsultas")
+    .select("id, fecha, origen, corte_iess, lab_eventos(tipo, clase, fecha, detalle)")
+    .eq("solicitud_id", solicitudId);
+  if (error) fallar(error);
+  return data?.[0] ?? null;
+}
+
+// --------------------------------------------------------- candidatas
+export async function getCandidatas() {
+  const { data, error } = await supabase.from("lab_variables_candidatas").select("*, lab_cortes(nombre, es_sintetico)").order("created_at", { ascending: false });
+  if (error) fallar(error);
+  return data ?? [];
+}
+
+export async function crearCandidata(candidata) {
+  const { data: sesion } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from("lab_variables_candidatas").insert({ ...candidata, creada_por: sesion?.user?.id ?? null }).select("id");
+  if (error) fallar(error);
+  if (!data?.length) throw new Error("No se guardó la candidata (¿sesión de admin?).");
+  return data[0].id;
+}
+
+export async function actualizarCandidata(id, cambios) {
+  const { data, error } = await supabase.from("lab_variables_candidatas").update(cambios).eq("id", id).select("id");
+  if (error) fallar(error);
+  // Una actualización bloqueada por RLS no da error: devuelve 0 filas.
+  if (!data?.length) throw new Error("No se actualizó la candidata (¿sesión de admin?).");
+}

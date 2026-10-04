@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { formatearFechaHora } from "../../lib/fechas.js";
+import { crearCandidata } from "../../lib/laboratorio.js";
 import { Advertencias, Etiqueta, Kpi, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
 
 // El explorador del crudo (fase E, docs/laboratorio-pantallas.md): qué trae
@@ -127,7 +128,34 @@ function Detalle({ h }) {
   );
 }
 
-function FilaHallazgo({ h, columnas }) {
+// Un hallazgo del crudo pasa al Registro de candidatas (108) con su evidencia.
+function RegistrarCandidata({ h, corte }) {
+  const [estado, setEstado] = useState(null);
+  async function registrar() {
+    setEstado("guardando");
+    try {
+      await crearCandidata({
+        nombre: `${rutaLegible(h.ruta, h.fuente)} · ${condicion(h)}`,
+        definicion: `${condicion(h)} en ${h.fuente} › ${rutaLegible(h.ruta, h.fuente)} (crudo de Novadata del día del análisis)`,
+        origen: "crudo", ruta_crudo: h.ruta, derivacion: h.derivacion === "categoria" ? `categoria: ${h.categoria}` : h.derivacion,
+        fuente: `Novadata: ${h.fuente}`, corte_id: corte.id,
+        evidencia: { iv: h.iv, q: h.q, tasa_con: h.tasa_con, tasa_sin: h.tasa_sin, con: h.con, parte_no_explicada: h.parte_no_explicada, el_modelo: h.el_modelo, corte: corte.nombre, sintetico: corte.es_sintetico },
+      });
+      setEstado("listo");
+    } catch (e) {
+      setEstado(e.message);
+    }
+  }
+  if (estado === "listo") return <span className="crediscope-muted" style={{ fontSize: 13 }}>Registrada (Registro de candidatas).</span>;
+  return (
+    <span>
+      <button className="crediscope-btn crediscope-btn-ghost" onClick={registrar} disabled={estado === "guardando"}>Registrar como candidata</button>
+      {estado && estado !== "guardando" ? <span style={{ color: "var(--bad)", fontSize: 13 }}> {estado}</span> : null}
+    </span>
+  );
+}
+
+function FilaHallazgo({ h, columnas, corte }) {
   const [abierta, setAbierta] = useState(false);
   const [texto, color] = EL_MODELO[h.el_modelo] ?? [null, null];
   return (
@@ -154,6 +182,7 @@ function FilaHallazgo({ h, columnas }) {
         <tr>
           <td colSpan={columnas === "todo" ? 7 : 5} style={{ background: "var(--panel-muted)" }}>
             <Detalle h={h} />
+            {corte && columnas === "corto" ? <div style={{ marginTop: 8 }}><RegistrarCandidata h={h} corte={corte} /></div> : null}
           </td>
         </tr>
       ) : null}
@@ -161,7 +190,7 @@ function FilaHallazgo({ h, columnas }) {
   );
 }
 
-function TablaHallazgos({ lista, columnas }) {
+function TablaHallazgos({ lista, columnas, corte }) {
   return (
     <div style={{ overflowX: "auto" }}>
       <table className="crediscope-table">
@@ -181,7 +210,7 @@ function TablaHallazgos({ lista, columnas }) {
           </tr>
         </thead>
         <tbody>
-          {lista.map((h) => <FilaHallazgo key={`${h.ruta}|${h.derivacion}|${h.categoria ?? ""}`} h={h} columnas={columnas} />)}
+          {lista.map((h) => <FilaHallazgo key={`${h.ruta}|${h.derivacion}|${h.categoria ?? ""}`} h={h} columnas={columnas} corte={corte} />)}
         </tbody>
       </table>
     </div>
@@ -267,7 +296,7 @@ function FilaFuente({ f, diccionario }) {
   );
 }
 
-export default function PestanaCrudo({ resultado, corteId }) {
+export default function PestanaCrudo({ resultado, corteId, corte = null }) {
   const [filtro, setFiltro] = useState("significativas");
   const comando = `node scripts/explorar-crudo.mjs --corte=${corteId}`;
   if (!resultado) {
@@ -311,7 +340,7 @@ export default function PestanaCrudo({ resultado, corteId }) {
           Campos del crudo que se asocian al impago, que siguen separando a buenos de malos dentro de cada recomendación del modelo (la mitad del efecto o
           más) y que la estructura no lee. Son candidatos a dato nuevo: se validan en un corte posterior antes de proponerlos.
         </p>
-        {noVistos.length ? <TablaHallazgos lista={noVistos} columnas="corto" /> : <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ninguno en este corte.</p>}
+        {noVistos.length ? <TablaHallazgos lista={noVistos} columnas="corto" corte={corte} /> : <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ninguno en este corte.</p>}
       </div>
 
       <Plegable titulo="Todo lo asociado al impago" resumen={`${num(r.significativas)} condiciones`}>
