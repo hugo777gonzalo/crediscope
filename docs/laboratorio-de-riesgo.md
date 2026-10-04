@@ -7,11 +7,10 @@ Estado: **fases 0 a 5 implementadas el 2026-10-03** (migraciones 090 y 094
 a 097, pantallas en `/laboratorio`). Retroalimentación ya no existe. **La
 fase 6 (el ciclo simulado) está hecha y corrida** (098-104; resultados en
 14.10 y, el explorador del crudo, 14.11). La 7 (marco candidato, con costo) espera autorización. Las
-pantallas que pidió el negocio están mapeadas en
-`docs/laboratorio-pantallas.md`; la fase A de esas pantallas está
-construida. Las consultas de cada pantalla se probaron contra la base;
-**falta verlas en el navegador con una sesión de admin**, y hasta entonces
-no se suben.
+pantallas que pidió el negocio (`docs/laboratorio-pantallas.md`) están
+construidas, fases A a F y módulos 1 a 3 (100 a 109, sección 15). Los
+cálculos de cada pantalla se probaron en Node contra los cortes reales;
+**falta verlas en el navegador con una sesión de admin**.
 
 Todo lo de las fases 1 a 6 se construye y se prueba **sin gastar en el
 modelo de lenguaje** (consultar Novadata no le cuesta al negocio por ahora).
@@ -761,8 +760,90 @@ La calificación de la simulación (104) lo dice sola: el campo plantado,
 significativo y 3.º de 3. Los otros dos son de la data real y nadie los
 plantó: candidatos a mirar, no a usar (se validan en un corte posterior).
 
-Falta: el ajuste para un valor numérico (hoy sólo sí/no), ver los valores
-de una persona (sólo admin) y la trazabilidad crudo → estructura → modelo.
+Falta: el ajuste para un valor numérico (hoy sólo sí/no). Los valores de
+una persona y la trazabilidad crudo → estructura → modelo están desde la
+sección 15 (la página del caso).
+
+---
+
+## 15. Las pantallas del negocio (fases B a F, 2026-10-04)
+
+El mapa, pantalla por pantalla, está en `docs/laboratorio-pantallas.md`.
+Acá, lo que cambió de método y lo que se midió.
+
+### 15.1 Dónde corre cada cosa
+
+- **En la base** (funciones `lab_*`), lo que se guarda y se cita en un
+  informe: desempeño, matriz, variables (IV y WoE), motivos, calificación,
+  estabilidad del puntaje, más la cobertura de la estructura, el centro de
+  datos, el volumen de análisis y la calidad de una carga (107, 109).
+- **En el navegador**, sobre el corte congelado, la estadística
+  interactiva (decisión 2): `src/lib/estadistica.js` (las distribuciones
+  de los valores p son de jStat) y `src/lib/analisis{Retrospectivo,
+  Estadistico,Profundo}.js`, sin React, para poder probarlos en Node.
+- **En guiones locales**, lo pesado: `scripts/explorar-crudo.mjs` y
+  `scripts/analisis-pesado.mjs` (bosque aleatorio con SHAP, K-medias,
+  PCA). La decisión decía Python; en la máquina del negocio no hay, y va
+  con Node con el mismo patrón (guardan en `lab_resultados` y la pantalla
+  sólo muestra).
+
+### 15.2 Cómo se prueba
+
+- `scripts/probar-estadistica.mjs`: valores publicados (Excel, Fisher,
+  scipy, la t de Welch contra la densidad integrada), identidades entre
+  pruebas, SHAP (base + suma = predicción, error 2·10⁻¹⁶), K-medias y PCA
+  con respuesta conocida, y la base (AUC, KS e IV iguales).
+- `scripts/probar-pantallas-laboratorio.mjs`: el cálculo de cada pestaña
+  sobre los cortes reales, con las mismas filas que baja el navegador:
+  conteos que suman, AUC igual a `lab_auc`, IV igual a
+  `lab_calcular_variables`, los motivos de cada malo, la entrada al modelo
+  de un análisis real, el mapeo de columnas con un archivo armado en
+  memoria y el intérprete de fórmulas.
+
+### 15.3 Lo que se corrigió en el camino
+
+- **Los tramos de Variables partían los empates (106).** Con cuartiles por
+  posición, las 1.384 personas con 24 meses de aporte quedaban en tres
+  tramos "24"; con las 296 operaciones del ciclo daban 11,7%, 1,7% y 1,7%
+  de malos y el IV subía a 0,459 sin señal. La regla nueva (un valor con
+  un cuarto o más de la gente va en su tramo; el resto de los tramos se
+  reparte en los segmentos entre esos valores) es la misma en la base y en
+  el navegador: el IV coincide con diferencia 0,0000. Recalculado, "meses
+  con aporte en 24" sigue 6.ª (IV 0,168), ahora por la gradación real (de
+  1 a 19 meses, 17% de malos; 24 meses, 6%).
+- **Una curva de cosechas sin la fecha del impago miente.** En las
+  solicitudes, 191 de 211 malos no tienen fecha (el buró no la da); sin
+  ellos y con todos los buenos, la caída acumulada daba 0,9% en vez de
+  ~8%. Con más del 10% de los malos sin fecha la pestaña no dibuja.
+- **"El modelo ya lo tenía"** se decide por el efecto que sobrevive dentro
+  de cada recomendación, no por una segunda significancia (14.11).
+- **"El riesgo da la vuelta"** pide que sean significativas la subida y la
+  bajada; con "las tasas difieren", toda variable monótona con ruido
+  salía marcada.
+
+### 15.4 Lo que dicen los cortes (sintéticos)
+
+| Qué | Resultado |
+|---|---|
+| Calibración (sintética, mitades por fecha) | probabilidad = 1 / (1 + e^-(3,676 − 0,00727 × puntaje)); Brier 0,0794 contra 0,0930 de la tasa promedio; ECE 1,8%; Hosmer-Lemeshow p 0,31 |
+| Explorador de significancia (ciclo, solicitudes) | 22 variables significativas; la única candidata a dato nuevo es "meses con aporte en 24" (la plantada que el modelo no recibe) |
+| Bosque aleatorio (ciclo, solicitudes) | AUC 0,698 en la mitad de prueba contra 0,669 del motor; "meses con aporte en 24" entre las 10 de más SHAP |
+| Bosque aleatorio (sintética) | 0,715 contra 0,741 del motor (el puntaje sintético sale de la regla plantada) |
+| K-medias (ciclo) | silueta 0,13: la cartera no se parte en grupos; aun así aparecen 26 personas con el buró muy malo (50% de malos) y los jubilados (4,5%) |
+| Taller (ciclo) | "aportó en parte de los 24 meses" reconstruye la señal plantada (IV 0,105) |
+
+### 15.5 Lo que falta
+
+- Ver todo con sesión de admin.
+- La definición de "hallazgo crítico" (propuesta en el Inicio) y la de
+  "comentarios institucionales": decisiones del negocio.
+- El ajuste por la recomendación para un valor numérico en el explorador
+  del crudo; el origen de cada campo de la estructura como dato; "no
+  consultado" contra "no tiene" en Faltantes (el corte no congela la
+  disponibilidad por tema); registrar los informes exportados y la
+  revisión manual de la conciliación.
+- La provincia de residencia (está en el crudo, no en el perfil) y la
+  comparación entre modelos (fase 7, con costo).
 
 ---
 

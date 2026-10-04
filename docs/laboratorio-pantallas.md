@@ -1,19 +1,23 @@
 # Laboratorio de Inteligencia de Negocio — mapa de pantallas
 
 La especificación del negocio (2026-10-03), módulo por módulo, contra lo que
-existe. Estado al 2026-10-04: fase A construida, sin ver en el navegador. Complementa `docs/laboratorio-de-riesgo.md`, que tiene el modelo de
-datos y la metodología. Estado al 2026-10-03.
+existe. Complementa `docs/laboratorio-de-riesgo.md`, que tiene el modelo de
+datos y la metodología.
+
+**Estado al 2026-10-04:** las fases A a F y los módulos 1 a 3 están
+construidos (migraciones 100 a 109). **Ninguna pantalla se vio con sesión de
+admin**: los cálculos de cada pestaña se probaron en Node contra los cortes
+reales (`scripts/probar-pantallas-laboratorio.mjs`) y la estadística contra
+valores publicados y la base (`scripts/probar-estadistica.mjs`).
 
 **Estados**
 
 | Estado | Qué quiere decir |
 |---|---|
-| Hecho | Existe y se probó contra la base (falta verlo con sesión de admin) |
+| Hecho | Existe y sus cálculos se probaron contra la base (falta verlo con sesión de admin) |
 | A medias | Existe una parte |
-| Se puede ya | Los datos existen; falta construir la pantalla o el cálculo |
 | Falta un dato | Hace falta información que hoy no entra al sistema |
 | Falta decidir | Hace falta una decisión del negocio antes de construir |
-| Fuera de SQL | Necesita estadística que la base no trae (ver la decisión 2) |
 
 **Nombres en castellano** (regla del proyecto: sin anglicismos salvo score y
 colateral). Quedan las siglas de uso técnico: AUC, KS, ROC, PSI, IV, WoE,
@@ -23,115 +27,122 @@ Umbrales · *False Negative* → Aprobados que cayeron · *False Positive* →
 Negados que habrían pagado · *Feature* → Variable · *Precision / Recall* →
 Precisión / Sensibilidad.
 
-**El módulo 2** no vino en lo pegado (va del 1 al 3). Si era Instituciones y
-proyectos, ver la decisión 3.
+**Dónde está cada módulo:** Laboratorio en el menú lateral, con Inicio,
+Instituciones y proyectos, Datos y cartera, Prueba retrospectiva,
+Descubrimiento estadístico, Descubrimiento profundo, Propuestas y Criterio
+vigente. Los tres de análisis (4, 5 y 6) trabajan sobre un corte congelado
+(`ModuloDelCorte`: el corte y la pestaña van en la dirección, el último
+corte se recuerda) y, si el corte tiene solicitudes, eligen la población
+(lo desembolsado o todas las solicitudes observadas).
 
 ---
 
-## 1. Inicio
+## 1. Inicio (`/laboratorio`)
 
 | Pantalla | Estado | De dónde sale / qué falta |
 |---|---|---|
-| Indicadores: créditos conciliados, cobertura, cohortes maduras a 12 y 24, análisis completados, propuestas pendientes | Se puede ya | Cargas, cortes, resultados y propuestas |
-| Indicadores: instituciones activas, proyectos analíticos | Falta decidir | No existen como entidad (decisión 3) |
-| Hallazgos críticos | Falta decidir | Hace falta definir qué es crítico: una propuesta con evidencia fuerte, una alerta de fuente, una caída del AUC |
-| Evolución del default por mes de desembolso | Se puede ya | `fecha_desembolso` y el resultado del corte |
-| Desempeño del motor por institución | Falta decidir | Decisión 3 |
-| Mezcla aprobar / revisar / negar y volumen de análisis | Se puede ya | `analysis_results` |
-| Actividad reciente: cargas, cálculos, propuestas, informes | A medias | Cargas, resultados y propuestas tienen fecha y autor; los informes exportados no se registran |
-| Trabajos fallidos | Se puede ya | Cargas con errores, reconsultas sin procesar |
+| Indicadores: créditos conciliados, cortes a 12 y 24, análisis, propuestas pendientes, candidatas, instituciones y proyectos | Hecho | Cargas, cortes, propuestas, candidatas, instituciones, `lab_volumen_de_analisis` |
+| Hallazgos críticos | Hecho, **definición propuesta** | Fuente que dejó de contestar, dato que anticipa y el modelo no tiene (crudo, bosque), AUC menor a 0,65, PSI mayor a 0,25. Falta que el negocio confirme la definición |
+| Evolución del default por mes | Hecho | El corte más reciente, por mes de desembolso |
+| Desempeño del motor por institución | Hecho | El último desempeño de los cortes de las cargas de cada institución |
+| Mezcla aprobar / revisar / negar y volumen de análisis | Hecho | `lab_volumen_de_analisis` (contado en la base) |
+| Actividad reciente | A medias | Cargas, cortes, cálculos, propuestas y candidatas; los informes exportados no se registran |
+| Trabajos a medias | Hecho | Cargas incompletas o con errores, reconsultas sin procesar, análisis fallidos |
 | Comentarios institucionales | Falta decidir | Hoy la institución no entra al Laboratorio (sección 10 del diseño) |
-| Alertas: cohortes inmaduras, problemas de conciliación | Se puede ya | Conciliación de cada carga |
-| Alertas: caída de cobertura de la fuente | Se puede ya | La disponibilidad por tema de cada consulta. Caso real del 2026-10-03: Novadata cambió el formato del estado de los establecimientos y nadie lo vio hasta comparar dos consultas |
-| Alertas: cambios en la distribución de variables (PSI), deterioro de indicadores | A medias | PSI calculado en la base (`lab_estabilidad`), sin pantalla |
+| Alertas: cohortes, conciliación, cobertura de la fuente, PSI | Hecho | Fuga en la conciliación, Centro de datos, estabilidad guardada |
 
-## 3. Datos y cartera
+## 2. Instituciones y proyectos (`/laboratorio/instituciones`)
 
 | Pantalla | Estado | De dónde sale / qué falta |
 |---|---|---|
-| Centro de datos: las 52 fuentes, cobertura por fuente, estado de actualización | Se puede ya | `estado_por_fuente` de cada perfil; corte del IESS y del buró |
-| Diccionario de datos | A medias | Está en `docs/novadata-fields-catalog.md` y en el Excel del catálogo; falta llevarlo a la base |
+| Instituciones: alta, edición, inactivar | Hecho | `lab_instituciones` (109). Nada se borra |
+| Proyectos por institución | Hecho | `lab_proyectos` (109) |
+| Cargas sin institución | Hecho | Las cargas viejas tienen la institución como texto; se listan para asignarlas |
+| Una instalación para varias instituciones o una por institución | Falta decidir | Pregunta de fondo abierta (sección 13 del diseño) |
+
+## 3. Datos y cartera (`/laboratorio/datos`)
+
+| Pantalla | Estado | De dónde sale / qué falta |
+|---|---|---|
+| Centro de datos: las 52 fuentes, si contestan, por semana, corte del IESS | Hecho | `lab_centro_de_datos` (109), sobre `estado_por_fuente` de cada perfil |
+| Diccionario de datos | Hecho | Crudo (del último explorador del crudo), estructura (cobertura en el último corte) y catálogo, con buscador |
 | Carga de cartera: plantilla, validación fila por fila, conciliación | Hecho | `/laboratorio/cargas/nueva` y `/laboratorio/cargas/:id` |
-| Elegir institución y proyecto al cargar | Falta decidir | Hoy la institución es texto (decisión 3) |
-| Mapeo de columnas del archivo de la institución | Se puede ya | Hoy la plantilla es fija: hay que pasar los datos a sus columnas |
-| Historial de cargas: archivo, fecha, responsable, recibidos, válidos, rechazados, estado | Hecho | `lab_cargas` |
-| Informe de calidad: nulos, duplicados, fechas inconsistentes, marcas inválidas, sin conciliar | A medias | Se rechazan filas con motivo; faltan duplicados de cédula, conflictos entre cargas y cobertura de variables |
-| Explorador de conciliación: personas con varias operaciones o consultas, sin correspondencia, revisión manual | A medias | El vínculo marca todo eso; falta la pantalla que lo recorre |
-| Definición de default, horizontes de 12 y 24 meses, maduración, exclusiones | Hecho | `lab_definiciones_default` y el corte |
-| Censura (seguimiento incompleto) | Se puede ya | Hoy una operación inmadura se excluye; la censura bien tratada va en Cosechas (curvas de supervivencia) |
-| Explorador de cartera: por mes, producto, decisión, segmento, buenos y malos | Se puede ya | Operaciones y solicitudes del corte |
-| Constructor de cohortes: filtrar, versión del motor, horizonte, fecha de corte, congelar, historial | Hecho | Es el corte (`/laboratorio/cortes/nuevo`) |
+| Elegir institución y proyecto al cargar | Hecho | 109 |
+| Mapeo de columnas del archivo de la institución | Hecho | Si faltan columnas, sugiere el mapeo por sinónimos y se confirma a mano |
+| Historial de cargas | Hecho | Pestaña Cargas |
+| Informe de calidad: duplicados, cruces con otras cargas, fechas, marcas | Hecho | `lab_calidad_de_la_carga` (109) |
+| Explorador de conciliación | A medias | Operaciones por vínculo y personas con varias; falta guardar una revisión manual |
+| Definición de default, horizontes, maduración, exclusiones | Hecho | `lab_definiciones_default` y el corte |
+| Censura (seguimiento incompleto) | Hecho | Kaplan-Meier en Cosechas |
+| Explorador de cartera | Hecho | Por mes, producto, canal, recomendación, segmento, calificación y decisión |
+| Constructor de cohortes | Hecho | El corte (`/laboratorio/cortes/nuevo`) y su ficha |
 
-## 4. Prueba retrospectiva y desempeño
+## 4. Prueba retrospectiva y desempeño (`/laboratorio/desempeno`)
 
 | Pantalla | Estado | De dónde sale / qué falta |
 |---|---|---|
-| Configurar, correr, guardar y comparar evaluaciones | A medias | Un corte se congela y se calcula; falta comparar dos corridas lado a lado |
-| Resumen: AUC con intervalo, Gini, KS, tasa de default, operaciones, defaults, exclusiones | Hecho | Pestaña Desempeño |
-| Resumen: exactitud, precisión, sensibilidad, especificidad, F1 | Hecho (fase A) | En la pestaña Matriz de confusión (100). Necesitan una predicción de sí o no: se toma "negar" como predicho malo (y otra vista con negar + revisar). Con ~10% de malos la exactitud engaña: va, pero después del AUC |
-| Resumen: AUC de precisión-sensibilidad (PR-AUC) | Se puede ya | Sobre el puntaje |
-| Resumen: Brier | Falta decidir | Necesita una probabilidad, y el motor da un puntaje de 1 a 999 (decisión 4) |
-| Matriz de confusión | Hecho (fase A) | Pestaña propia (100). No es de 2 × 2: es resultado (pagó / cayó) × recomendación (aprobar / revisar / negar), más la columna de negados sin crédito, que no se puede observar con el archivo |
-| Aprobados que cayeron, negados que habrían pagado, errores de tipo I y II, casos | A medias | Pestaña Casos filtra los dos errores; falta el detalle completo de cada caso (ver 6.7) |
-| Umbrales: ROC, precisión-sensibilidad, sensibilidad y especificidad por umbral, tasa de aprobación y de default simuladas, volumen a revisión | Se puede ya | Sobre el puntaje. Ojo: el motor no decide por un umbral de puntaje; esto simula una política ("aprobar desde X"), no el motor |
-| Desempeño por decisión: aprobar | Hecho | Por recomendación, con intervalo |
-| Desempeño por decisión: revisar, lo que decidió la institución después | A medias | La plantilla ya lo pide (hoja "Solicitudes no desembolsadas", 101, `lab_decisiones_institucion`); falta usarlo al armar las solicitudes de una corrida real |
-| Desempeño por decisión: negar | Hecho (fase A) | Pestañas Matriz de confusión y Con y sin crédito. Con el archivo, sólo los negados a los que la institución prestó igual. La evidencia externa es la reconsulta del buró (fase 6), siempre separada y con su advertencia; coincide con lo pedido: ninguna tasa para los negados sin evidencia externa |
-| Cosechas: mensual, trimestral, acumulado a 12 y 24, comparación entre generaciones, curvas de supervivencia | Se puede ya | `fecha_desembolso` + `fecha_primer_default`. La fecha del primer impago ya es obligatoria si cayó (101) |
-| Desempeño por segmento: producto, versión del motor, perfil crediticio, nivel de ingreso | Se puede ya | Con un mínimo de casos por segmento |
+| Resumen: AUC con intervalo, Gini, KS, tasa, exclusiones | Hecho | Pestaña Resumen (`lab_calcular_desempeno`) |
+| Exactitud, precisión, sensibilidad, especificidad, F1 | Hecho | Matriz de confusión (100) |
+| Precisión media (PR-AUC) | Hecho | Discriminación |
+| Brier | Hecho | Calibración (decisión 4) |
+| Matriz de confusión | Hecho | Resultado × recomendación, más los negados sin crédito |
+| Aprobados que cayeron, negados que habrían pagado | Hecho | Casos, e Investigación de casos en el módulo 6 |
+| Umbrales | Hecho | "Aprobar desde A, revisar desde B" contra lo que hizo el motor; simula una regla, no al motor |
+| Desempeño por decisión: aprobar, revisar, negar | Hecho | Matriz, Con y sin crédito, Lo que decidió la institución (101) |
+| Cosechas y supervivencia | Hecho | Kaplan-Meier por mes o trimestre, acumulado a 6, 12 y 24, log-rank. Sin fecha del impago de más del 10% de los malos no dibuja (las solicitudes: el buró no la da) |
+| Segmentos: producto, versión, perfil crediticio, ingreso, canal | Hecho | Con "pocos casos" marcado; las protegidas, para vigilar |
 | Desempeño por provincia o ciudad | Falta un dato | El perfil trae la provincia de nacimiento, no la de residencia (está en el crudo, en direcciones) |
-| Desempeño por canal | Se puede ya | La plantilla pide el canal (opcional, 101) |
-| Discriminación: ROC, KS, distribución del puntaje por clase, comparación entre modelos | A medias | Los números existen; faltan las curvas. Comparar modelos necesita dos puntajes del mismo corte (fase 7, marco candidato) |
-| Calibración: probabilidad contra default observado, curva, Brier, error de calibración, por decil | Falta decidir | Decisión 4. Lo que sí se puede ya: default observado por decil de puntaje (tiene que bajar) |
-| Estabilidad: PSI del puntaje y de variables, evolución del AUC, KS y default, alertas | A medias | PSI en la base sin pantalla; la evolución necesita varios cortes |
+| Discriminación: ROC, KS, distribución por clase, deciles | Hecho | Discriminación |
+| Comparación entre modelos | Falta un dato | Necesita dos puntajes del mismo corte (fase 7, marco candidato, con costo). Comparar cortes sí está |
+| Calibración | Hecho | Logística puntaje → probabilidad en una cohorte, probada en otra; Brier, ECE, Hosmer-Lemeshow; se guarda |
+| Estabilidad: PSI del puntaje y de variables, evolución | Hecho | `lab_estabilidad` y el PSI de cada variable; la evolución necesita varios cortes |
+| Configurar, guardar y comparar evaluaciones | Hecho | Cada cálculo se guarda; Comparar cortes los pone lado a lado |
 
-## 5. Descubrimiento estadístico
-
-| Pantalla | Estado | De dónde sale / qué falta |
-|---|---|---|
-| Resumen: variables analizadas, numéricas, categóricas, con faltantes, con IV relevante, redundantes, candidatas | Se puede ya | Catálogo de variables y resultado de Variables |
-| Descriptivas numéricas: media, mediana, desvío, percentiles, asimetría, curtosis, coeficiente de variación, atípicos | Se puede ya | En la base o en el navegador sobre el corte congelado (unas 2.500 filas) |
-| Descriptivas categóricas: frecuencias, cardinalidad, dominante, default por categoría | Se puede ya | Ídem |
-| Distribuciones: histogramas, cajas, violín, densidad, por clase, por decisión, entre períodos | Se puede ya | Gráficos en el navegador |
-| Datos faltantes: por variable, por default, por fuente, por período, matriz | Se puede ya | La disponibilidad por tema distingue "no consultado" de "no tiene": es justo lo que pide la pantalla (¿la ausencia anticipa o es un problema de captura?) |
-| Correlaciones: Pearson, Spearman, Kendall, con el resultado, matriz, VIF | Fuera de SQL | Pearson está en la base; el resto conviene en el navegador. Para categóricas, asociación (V de Cramér) |
-| Inferencia: normalidad, chi-cuadrado, Fisher, t, Mann-Whitney, ANOVA, Kruskal-Wallis, intervalos, tamaño de efecto, corrección por comparaciones múltiples | Fuera de SQL | La base no trae las distribuciones para los valores p. Se muestran n, efecto e intervalo, como pide la especificación |
-| IV y WoE: ranking, tabla WoE, buenos y malos por tramo | Hecho | Pestaña Variables |
-| IV y WoE: tramos manuales, tramos monótonos, estabilidad del IV, comparación entre cohortes | Se puede ya | Hoy los tramos son cuartiles fijos |
-| Default por categoría, rango, decil, endeudamiento, antigüedad, acreedores, buró | Se puede ya | Los tramos de cada variable |
-| Explorador de significancia: asociación, valor p, efecto, cobertura, estabilidad, relevancia | Se puede ya | Junta lo anterior; la estabilidad necesita dos cortes |
-| Segmentos (K-means, silueta, perfiles, default por grupo) | Fuera de SQL | Describe, no predice (anexo del diseño) |
-| PCA | Fuera de SQL | Herramienta de investigación, no etapa del modelo |
-
-## 6. Descubrimiento profundo de variables
+## 5. Descubrimiento estadístico (`/laboratorio/estadistica`)
 
 | Pantalla | Estado | De dónde sale / qué falta |
 |---|---|---|
-| Resumen: variables del crudo, estandarizadas, enviadas al modelo, no usadas, con faltantes, asociadas al default | Se puede ya | Crudo en Storage, catálogo, `perfil-del-modelo.ts` |
-| Trazabilidad: crudo → estructura → entrada al modelo → marco → respuesta → decisión → resultado | A medias | Casos enlaza el perfil y el análisis; falta mostrar el crudo y `mensaje_al_modelo` (guardado desde la 090) en el mismo recorrido, y el origen de cada campo como dato (hoy está en `docs/estructura-estandarizada.md`) |
-| Explorador del crudo: por fuente, diccionario, distribuciones, calidad, campos no usados, relación con el default | **Hecho el 2026-10-04** (adelantado a pedido del negocio) | `scripts/explorar-crudo.mjs` lo calcula y la pestaña "Explorador del crudo" del corte lo muestra (104, diseño 14.11): diccionario, calidad, condiciones contra el impago con corrección, si el modelo ya lo tenía y si la estructura lo lee. Falta ver los valores de una persona (sólo admin) y el ajuste de un valor numérico |
-| Explorador de la estructura: campos derivados, agregados, descartados, diferencias entre versiones, cobertura por cohorte | A medias | Las versiones existen y se comparan con guiones (`viejo contra nuevo`); falta la pantalla |
-| Auditoría de la entrada al modelo: incluidas, excluidas, versión del marco, modelo, comparación de entradas | Se puede ya | `analysis_results.mensaje_al_modelo` y `rules_version`, sin llamar al modelo |
-| Variables de los que cayeron: aprobados que cayeron, revisados que cayeron, diferencias, ausentes, combinaciones, no lineales | A medias | Variables con las dos poblaciones y Motivos del impago ("¿se podía ver?" en cinco categorías, 103); combinaciones y no lineales, fuera de SQL |
-| Investigación de aprobados que cayeron | A medias | Casos + motivos (fase 6): perfil, crudo, entrada al modelo, respuesta, puntaje, comparación con buenos parecidos, hipótesis |
-| Investigación de negados que habrían pagado | A medias | Con el archivo, sólo los que la institución financió igual; el resto con la reconsulta |
-| Importancia: bosque aleatorio, permutación, SHAP, por segmento | Fuera de SQL | Con un guion de Python que guarde el resultado (decisión 2) |
-| Taller de variables: razones, conteos, indicadores, interacciones, con definición, fórmula, fuente, fecha de disponibilidad | Se puede ya | Extiende el catálogo: hoy una variable es una ruta del perfil; falta la variable derivada con su fórmula |
-| Registro de candidatas: descubierta → en revisión → experimental → aceptada / rechazada | Se puede ya | Se engancha con las propuestas de tipo "dato nuevo" |
+| Resumen: variables, tipos, faltantes, IV relevante, redundantes, candidatas | Hecho | Resumen |
+| Descriptivas numéricas y categóricas | Hecho | Asimetría y curtosis de Excel (G1, G2), atípicos de Tukey |
+| Distribuciones | Hecho | Histograma con la tasa por tramo, cajas por clase, por recomendación y por mitad |
+| Datos faltantes | A medias | Por variable (¿la ausencia anticipa?), conjuntos y por mes; falta "no consultado" contra "no tiene", que está en el perfil y el corte no congela |
+| Correlaciones y VIF | Hecho | Pearson, Spearman, Kendall del par, con el resultado, V de Cramér |
+| Inferencia | Hecho | Welch, Mann-Whitney, normalidad, ANOVA, Kruskal-Wallis, chi², Fisher; efecto e intervalo; corrección BH |
+| IV y WoE | Hecho | `lab_calcular_variables`, con tramos que no parten empates (106) |
+| Tramos manuales, monótonos, estabilidad del IV | Hecho | Laboratorio de tramos |
+| Explorador de significancia | Hecho | Asociación, q, efecto, cobertura, estabilidad entre mitades, relevancia; registra candidatas |
+| Segmentos (K-medias, silueta) | Hecho | `scripts/analisis-pesado.mjs` |
+| PCA | Hecho | `scripts/analisis-pesado.mjs` |
+
+## 6. Descubrimiento profundo de variables (`/laboratorio/profundo`)
+
+| Pantalla | Estado | De dónde sale / qué falta |
+|---|---|---|
+| Resumen: crudo → estructura → modelo | Hecho | Resumen |
+| Trazabilidad | Hecho | `/laboratorio/caso`: resultado y motivo, decisión, análisis, entrada al modelo, estructura, crudo a pedido (sólo admin), parecidos |
+| Explorador del crudo | Hecho | `scripts/explorar-crudo.mjs` (104); falta el ajuste para un valor numérico |
+| Explorador de la estructura | A medias | Cobertura por campo y versión, apagados, fuera de la configuración (107); falta el origen de cada campo como dato |
+| Auditoría de la entrada al modelo | Hecho | Rearmada con `armarPerfilDelModelo` y comparada con `mensaje_al_modelo` (desde la 090) |
+| Variables de los que cayeron | Hecho | Diferencias, faltantes, combinaciones y no lineales |
+| Investigación de aprobados que cayeron | Hecho | Con su motivo (107) y sus parecidos que pagaron |
+| Investigación de negados que habrían pagado | Hecho | Sólo con evidencia: la institución les prestó igual o pagaron un crédito de otra |
+| Importancia: bosque, permutación, SHAP, por segmento | Hecho | `scripts/analisis-pesado.mjs` (TreeSHAP exacto) |
+| Taller de variables | Hecho | Fórmulas interpretadas, con el mismo IV que el catálogo |
+| Registro de candidatas | Hecho | 108: descubierta → en revisión → experimental → aceptada o rechazada; la aceptada pasa a propuesta de dato nuevo |
 
 ---
 
-## Fases propuestas
+## Fases
 
-| Fase | Qué | Por qué en ese orden |
+| Fase | Qué | Estado |
 |---|---|---|
-| A | Terminar el ciclo simulado y ver sus resultados: cuadrantes, motivos, calificación; matriz de confusión y desempeño por decisión | **Hecha el 2026-10-03/04** (100-103 y pestañas) y subida el 2026-10-04; falta verla con sesión de admin |
-| B | Reordenar el menú del Laboratorio en estos módulos, con lo que ya existe en su lugar | Da el esqueleto; no cambia cálculos |
-| C | Prueba retrospectiva completa: curvas (ROC, KS, precisión-sensibilidad), cosechas y supervivencia, umbrales, segmentos, estabilidad con pantalla | Responde "¿el motor ordena bien y se sostiene?" |
-| D | Descubrimiento estadístico: descriptivas, distribuciones, faltantes, correlaciones, inferencia, laboratorio de IV y WoE con tramos manuales, explorador de significancia | Responde "¿qué anticipa el impago?" |
-| E | Descubrimiento profundo: explorador del crudo, auditoría de la entrada al modelo, investigación de los dos errores, taller y registro de variables | Responde "¿qué no vio el modelo?". El explorador del crudo ya está (2026-10-04) |
-| F | Bosque aleatorio, SHAP, K-means, PCA | Después de la decisión 2 |
-| — | Inicio con instituciones y proyectos; calibración | Después de las decisiones 3 y 4 |
+| A | Terminar el ciclo simulado y ver sus resultados | Hecha (100-103) |
+| B | El menú del Laboratorio en los módulos del negocio | Hecha (2026-10-04) |
+| C | Prueba retrospectiva completa | Hecha (105) |
+| D | Descubrimiento estadístico | Hecha (106) |
+| E | Descubrimiento profundo | Hecha (104, 107, 108) |
+| F | Bosque aleatorio, SHAP, K-medias, PCA | Hecha, con Node: en la máquina del negocio no hay Python |
+| — | Inicio, instituciones y proyectos, calibración, datos y cartera | Hecho (105, 109) |
 
 ## Decisiones del negocio
 
@@ -147,6 +158,10 @@ se propusieron.
    Python locales que guardan el resultado en la base, como hoy los guiones
    de Node. La alternativa es un servicio de Python propio: más
    infraestructura, conviene sólo si se vuelve rutina.
+   **Cómo quedó (2026-10-04):** la librería es jStat (las distribuciones de
+   los valores p); las fórmulas, en `src/lib/estadistica.js`. Lo pesado va
+   con guiones de Node (`scripts/analisis-pesado.mjs`) porque en la máquina
+   del negocio no hay Python; el patrón es el mismo.
 3. **Instituciones y proyectos.** Propuesto: crearlos como entidades del
    Laboratorio (sólo admin), sin esperar la fábrica de crédito. Sigue abierta
    la pregunta de fondo: una instalación para varias instituciones o una por

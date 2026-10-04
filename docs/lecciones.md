@@ -364,3 +364,22 @@ está el porqué. Una lección nueva va en los dos lugares.
   código y el build estaban bien. Ante un 404 general, mirar primero el paso
   `deploy` del flujo (`gh run view <id> --log-failed`) y la visibilidad del
   repositorio.
+- **Unos tramos por posición parten los empates y fabrican señal**
+  (2026-10-04). `lab_calcular_variables` cortaba los cuartiles con `ntile`,
+  que reparte las filas por posición: las 1.384 personas con 24 meses de
+  aporte (el mismo valor) quedaban en tres tramos "24" según el orden en
+  que salían las filas. Con las 296 operaciones del ciclo esos tres tramos
+  daban 11,7%, 1,7% y 1,7% de malos y el IV de la variable subía a 0,459
+  sin ninguna señal real. Se vio al comparar el IV del navegador con el de
+  la base. Un valor nunca va en dos tramos (106), y la base y el navegador
+  usan la misma regla: el IV tiene que coincidir, y un guion lo controla.
+- **Una curva de supervivencia sin las fechas de una parte de los eventos
+  miente** (2026-10-04). En las solicitudes del ciclo, 191 de 211 malos no
+  tienen fecha del impago (el buró no la da). Sacarlos y dejar a todos los
+  buenos daba una caída acumulada de 0,9% en vez de ~8%. Con más del 10%
+  de los malos sin fecha, la pantalla de cosechas no dibuja y dice por qué.
+- **Cruzar una configuración con miles de perfiles en JSON se corta por
+  tiempo** (2026-10-04). La cobertura de la estructura cruzaba los 180
+  campos con 2.567 perfiles y abría el perfil entero 460 mil veces: la base
+  cortó la consulta. Recorrer cada perfil una vez (`jsonb_each`) y juntar
+  después tarda segundos.

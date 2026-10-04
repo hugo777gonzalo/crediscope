@@ -131,7 +131,7 @@ Romper cualquiera de estas rompe algo real.
   (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`. La cartera
   sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
   plantada: un cálculo nuevo se valida contra ella). Cada métrica vive en
-  una función SQL `lab_*` (094-104).
+  una función SQL `lab_*` (094-109) o, lo interactivo, en `src/lib/` (abajo).
   - El **explorador del crudo** (14.11 del diseño) es un guion, no una
     función: `scripts/explorar-crudo.mjs --corte=<id>` (`--seco` primero,
     `--buscar=` para el puesto de un campo). Guarda en `lab_resultados`
@@ -142,10 +142,21 @@ Romper cualquiera de estas rompe algo real.
     Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
     (simulación y real): `scripts/procesar-reconsultas.mjs --carga=<id>`.
     El detector de eventos es `_shared/eventos-entre-consultas.ts`.
-  - Las **pantallas pedidas por el negocio** (inicio, datos y cartera,
-    prueba retrospectiva, descubrimiento estadístico y de variables) están
-    mapeadas contra lo existente en `docs/laboratorio-pantallas.md`, con
-    las fases A-F y las cinco decisiones del 2026-10-03.
+  - Las **pantallas pedidas por el negocio** están todas construidas
+    (fases A-F y módulos 1-3, 100-109; mapa y estados en
+    `docs/laboratorio-pantallas.md`, método en la sección 15 del diseño).
+    Los módulos de análisis usan `ModuloDelCorte` (corte y pestaña en la
+    dirección). La estadística del navegador es `src/lib/estadistica.js`
+    (jStat sólo para las distribuciones) y los cálculos de cada pestaña,
+    `src/lib/analisis{Retrospectivo,Estadistico,Profundo}.js`, sin React:
+    **se prueban en Node** con `scripts/probar-estadistica.mjs` y
+    `scripts/probar-pantallas-laboratorio.mjs` (correrlos después de tocar
+    cualquiera). Lo pesado, `scripts/analisis-pesado.mjs` (bosque con
+    SHAP, K-medias, PCA; Node porque no hay Python).
+  - La forma de una fila del corte vive en `src/lib/filasDelCorte.js` (sin
+    el cliente de Supabase, para que la importen los guiones); el IV del
+    navegador y el de `lab_calcular_variables` usan la misma regla de
+    tramos (`cortesPorCuantiles`) y tienen que coincidir.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
@@ -317,6 +328,10 @@ antes de tocar esa área.
 - "¿El modelo ya lo tenía?" se decide por cuánto efecto sobrevive dentro de
   cada recomendación, no por una segunda prueba de significancia: esa
   segunda prueba, sin casos suficientes, borraba la señal plantada.
+- Unos tramos por posición (ntile) parten los empates y fabrican IV: un
+  valor nunca va en dos tramos (106).
+- Una curva de cosechas sin la fecha del impago de una parte de los malos
+  dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.
 
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`.

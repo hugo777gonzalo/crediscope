@@ -33,31 +33,44 @@ aceptada.
      las URL de redirección de Supabase Auth.
    - Después de habilitarlo: volver a correr el flujo
      (`gh workflow run deploy.yml`) y abrir el sitio.
-   - Los commits ya están subidos (hasta el del explorador del crudo, el
-     2026-10-04).
+   - Los commits están subidos (el push dispara el despliegue, que falla
+     hasta que Pages vuelva).
 
-0. **Ver las pantallas del Laboratorio con sesión de admin.** Las fases 1 a
-   5 están hechas (094-097, `docs/laboratorio-de-riesgo.md`), pero ninguna
-   pantalla se vio en el navegador: la sesión de QA había caducado. Las
-   consultas de cada pantalla se probaron contra la base
-   (`research/probar-consultas-laboratorio.mjs`). Recorrido: iniciar sesión
-   en `localhost:5184` (el usuario; nunca escribir contraseñas) y abrir
-   Laboratorio › la carga sintética (conciliación) › el corte "Sintética a
-   24 meses" (Desempeño, Variables, Simulación, Casos; calcular cada uno) ›
-   Propuestas (crear una desde el corte: no tiene que poder presentarse por
-   ser sintética) › Criterio vigente. Probar también subir la plantilla con
-   un archivo chico de prueba y anular esa carga después.
-   **Sumar al recorrido (fase 6 y fase A, 2026-10-03):** el corte "Ciclo
-   simulado de un año a 12 meses" (`4e18ca83-…`) con sus pestañas Matriz de
-   confusión, Con y sin crédito, Motivos del impago, Variables con las dos
-   poblaciones y Calificación de la simulación (los resultados ya están
-   calculados); la plantilla nueva (cuota, canal, fecha del primer impago
-   obligatoria si cayó, hoja "Solicitudes no desembolsadas"); el informe
-   sintético con su franja. **Y el explorador del crudo (2026-10-04)**: la
-   pestaña "Explorador del crudo" del mismo corte (ya calculada) y la
-   sección nueva de la Calificación ("El campo que sólo está en el crudo").
-   Ninguna de estas pantallas se vio con sesión: el negocio pidió subirlas
-   igual el 2026-10-04, y están subidas.
+0. **Ver las pantallas del Laboratorio con sesión de admin.** Todas las
+   pantallas que pidió el negocio están construidas (fases A a F y módulos
+   1 a 3, migraciones 100 a 109; mapa en `docs/laboratorio-pantallas.md`),
+   y **ninguna se vio en el navegador**: Claude no puede iniciar sesión (no
+   escribe contraseñas). Los cálculos de cada pestaña se probaron en Node
+   contra los cortes reales (`node scripts/probar-pantallas-laboratorio.mjs`
+   y `node scripts/probar-estadistica.mjs`: todo cuadra) y todos los
+   módulos cargan en el navegador sin errores. Recorrido, con el usuario
+   logueado en `localhost:5184`:
+   - Laboratorio › Inicio (hallazgos críticos, default por mes, análisis por
+     mes, trabajos a medias, actividad).
+   - Instituciones y proyectos: registrar una institución de prueba y un
+     proyecto; asignarle una carga.
+   - Datos y cartera: Cargas, Cortes, Centro de datos (abrir una fuente),
+     Calidad de la carga, Conciliación, Explorador de cartera, Diccionario.
+     Cargar un archivo chico con títulos que no son los de la plantilla
+     (tiene que aparecer el mapeo) y anular esa carga después.
+   - Prueba retrospectiva, con los dos cortes y las dos poblaciones: Resumen
+     (calcular), Discriminación, Matriz, Umbrales (mover los dos
+     deslizadores), Con y sin crédito, Lo que decidió la institución,
+     Cosechas (con solicitudes tiene que decir que no hay fechas),
+     Segmentos, Calibración (guardar una), Estabilidad (calcular el PSI),
+     Comparar cortes, Simulación de política, Casos, Calificación.
+   - Descubrimiento estadístico: Resumen, Descriptivas, Distribuciones
+     (variables numéricas, sí/no y categóricas), Faltantes, Correlaciones
+     (tocar una celda), Inferencia, IV y WoE (calcular), Laboratorio de
+     tramos (cuantiles, monótonos, cortes a mano), Explorador de
+     significancia (registrar la candidata), K-medias, PCA.
+   - Descubrimiento profundo: Resumen, Explorador del crudo (registrar un
+     hallazgo), Estructura, Entrada al modelo (comparar dos análisis), Los
+     que cayeron, Investigación de casos → abrir un caso (ver el crudo),
+     Motivos, Importancia, Taller (registrar la derivada), Registro de
+     candidatas (pasar una a aceptada y crear su propuesta: tiene que salir
+     en borrador por ser sintética).
+   - Propuestas y Criterio vigente.
    - **Verificar el crudo de una consulta nueva.** Hasta el 2026-10-04
      ninguna consulta guardaba su crudo en Storage (el depósito rechazaba el
      archivo: lecciones.md). Arreglado y desplegado ese día, y los 2.567 de
@@ -67,27 +80,31 @@ aceptada.
      `select count(*) filter (where crudo_ruta is null), count(*) from client_profiles where created_at > '2026-10-04 03:40+00'`
      tiene que dar 0 sin crudo.
 
-0b. **Laboratorio: lo que sigue** (`docs/laboratorio-pantallas.md`).
-   - Fases B a F, en ese orden (decidido el 2026-10-03).
+0b. **Laboratorio: lo que sigue** (`docs/laboratorio-de-riesgo.md`, 15.5).
+   - Decisiones del negocio: confirmar la definición de "hallazgo crítico"
+     propuesta en el Inicio (fuente que dejó de contestar, dato que anticipa
+     y el modelo no tiene, AUC menor a 0,65, PSI mayor a 0,25) y qué son los
+     "comentarios institucionales" (hoy la institución no entra al
+     Laboratorio).
    - Para correr el ciclo con una institución real faltan dos piezas:
      armar las solicitudes desde los análisis del período (con la decisión
      de la institución de `lab_decisiones_institucion`) y la reconsulta real
      enlazada a cada solicitud (`origen = 'novadata'`).
-   - El explorador del crudo (fase E, 2026-10-04, `scripts/explorar-crudo.mjs`)
-     encontró la licencia vencida plantada: significativa, 3.ª de 3 en "lo
-     que el modelo no vio" (diseño, 14.11). Le falta: el ajuste por la
-     recomendación del modelo para un valor numérico (hoy sólo sí/no), ver
-     los valores de una persona (sólo admin) y la trazabilidad crudo →
-     estructura → modelo en el mismo recorrido.
-   - Resultados de la corrida buena: `docs/laboratorio-de-riesgo.md`, 14.10
-     y 14.11 (carga `1196978e-…`, corte `4e18ca83-…`). La carga anulada del
-     primer intento (`5e362de7-…`) y sus 2.565 crudos sintéticos se
-     borraron el 2026-10-04 con la confirmación del negocio (ningún corte la
-     usaba y la carga buena tiene su propia carpeta).
+   - Mejoras chicas: el ajuste por la recomendación para un valor numérico
+     en el explorador del crudo; el origen de cada campo de la estructura
+     como dato; "no consultado" contra "no tiene" en Faltantes (congelar la
+     disponibilidad por tema con el corte); registrar los informes
+     exportados y la revisión manual de la conciliación.
+   - Falta un dato: la provincia de residencia (en el crudo, en
+     direcciones); la comparación entre modelos necesita un marco candidato
+     (fase 7, con costo).
+   - Lo pesado (bosque, SHAP, K-medias, PCA) se recalcula con
+     `node scripts/analisis-pesado.mjs --corte=<id>` cuando cambia un corte;
+     el explorador del crudo, con `node scripts/explorar-crudo.mjs`.
+   - Resultados de la corrida del ciclo: `docs/laboratorio-de-riesgo.md`,
+     14.10, 14.11 y 15.4 (carga `1196978e-…`, corte `4e18ca83-…`).
    - 2 personas quedaron afuera del ciclo porque su perfil de t0 no tiene
      crudo guardado (consultadas desde la pantalla antes de la 090).
-   - Fase B (lo siguiente): reordenar el menú del Laboratorio en los módulos
-     del negocio, con lo que ya existe en su lugar.
 
 1. **Marco y modelo: dónde quedó** (2026-10-03).
    - **En producción: marco-v28 con Sonnet 5.5**, con el respaldo
