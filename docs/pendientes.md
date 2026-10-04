@@ -1,6 +1,6 @@
 # Pendientes
 
-Lo que quedó abierto al 2026-10-04. Las versiones vigentes son
+Lo que quedó abierto al 2026-10-04 (noche). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -16,6 +16,25 @@ costo estimado. Una llamada suelta para comprobar un despliegue está
 aceptada.
 
 ## 1. Para retomar primero
+
+00. **La aplicación publicada da 404 en todas las páginas: GitHub Pages está
+   apagado.** El último despliegue que funcionó fue el 2026-09-29; desde el
+   2026-10-03 el paso `deploy` falla con "Ensure GitHub Pages has been
+   enabled" y la API de Pages del repositorio contesta 404. El repositorio
+   figura como **privado**, y GitHub Pages en un repositorio privado sólo
+   existe con un plan pago (Pro, Team o Enterprise); en el gratuito, pasar a
+   privado apaga el sitio. No es el código: el build pasa.
+   - Lo decide el negocio (Claude no pudo cambiar la configuración, y no
+     debe): (a) pagar GitHub Pro y volver a habilitar Pages en
+     Settings › Pages › Source: "GitHub Actions"; (b) volver el repositorio
+     a público, **no recomendado**: `docs/` y el historial tienen cédulas
+     reales de la cartera; (c) publicar en otro servicio (Cloudflare Pages,
+     Netlify), que cambia la ruta base `/crediscope/` de `vite.config.js` y
+     las URL de redirección de Supabase Auth.
+   - Después de habilitarlo: volver a correr el flujo
+     (`gh workflow run deploy.yml`) y abrir el sitio.
+   - Los commits ya están subidos (hasta el del explorador del crudo, el
+     2026-10-04).
 
 0. **Ver las pantallas del Laboratorio con sesión de admin.** Las fases 1 a
    5 están hechas (094-097, `docs/laboratorio-de-riesgo.md`), pero ninguna
@@ -34,10 +53,19 @@ aceptada.
    poblaciones y Calificación de la simulación (los resultados ya están
    calculados); la plantilla nueva (cuota, canal, fecha del primer impago
    obligatoria si cayó, hoja "Solicitudes no desembolsadas"); el informe
-   sintético con su franja. **Las pantallas de la fase A no se subieron
-   (push) hasta verlas.** Nada posterior a 880e842 (el último commit
-   subido) está en origin: el arreglo del RUC (85fc70a, ya desplegado en
-   Supabase), la fase 6, la fase A y la documentación.
+   sintético con su franja. **Y el explorador del crudo (2026-10-04)**: la
+   pestaña "Explorador del crudo" del mismo corte (ya calculada) y la
+   sección nueva de la Calificación ("El campo que sólo está en el crudo").
+   Ninguna de estas pantallas se vio con sesión: el negocio pidió subirlas
+   igual el 2026-10-04, y están subidas.
+   - **Verificar el crudo de una consulta nueva.** Hasta el 2026-10-04
+     ninguna consulta guardaba su crudo en Storage (el depósito rechazaba el
+     archivo: lecciones.md). Arreglado y desplegado ese día, y los 2.567 de
+     la reconsulta del 03/10 se subieron desde `research/`: 0 perfiles sin
+     crudo desde la 090. Falta ver una consulta nueva de punta a punta:
+     después de consultar a alguien desde la pantalla,
+     `select count(*) filter (where crudo_ruta is null), count(*) from client_profiles where created_at > '2026-10-04 03:40+00'`
+     tiene que dar 0 sin crudo.
 
 0b. **Laboratorio: lo que sigue** (`docs/laboratorio-pantallas.md`).
    - Fases B a F, en ese orden (decidido el 2026-10-03).
@@ -45,17 +73,17 @@ aceptada.
      armar las solicitudes desde los análisis del período (con la decisión
      de la institución de `lab_decisiones_institucion`) y la reconsulta real
      enlazada a cada solicitud (`origen = 'novadata'`).
-   - El campo que sólo está en el crudo (licencia vencida en t0) lo tiene
-     que encontrar el explorador del crudo (fase E): es la prueba pendiente
-     de "qué no pudo ver el modelo" en el crudo.
-   - La carga del primer ciclo simulado (`5e362de7-…`) quedó anulada por un
-     error del simulador; sigue en la base con sus 2.565 reconsultas
-     (~26 MB de perfiles) y sus crudos sintéticos en Storage
-     (`lab-archivos/simulacion/7c72d745-…/`). Borrarla, **sólo con
-     confirmación del negocio** (pedido explícito del 2026-10-04: no borrar
-     nada antes de estar seguros).
+   - El explorador del crudo (fase E, 2026-10-04, `scripts/explorar-crudo.mjs`)
+     encontró la licencia vencida plantada: significativa, 3.ª de 3 en "lo
+     que el modelo no vio" (diseño, 14.11). Le falta: el ajuste por la
+     recomendación del modelo para un valor numérico (hoy sólo sí/no), ver
+     los valores de una persona (sólo admin) y la trazabilidad crudo →
+     estructura → modelo en el mismo recorrido.
    - Resultados de la corrida buena: `docs/laboratorio-de-riesgo.md`, 14.10
-     (carga `1196978e-…`, corte `4e18ca83-…`).
+     y 14.11 (carga `1196978e-…`, corte `4e18ca83-…`). La carga anulada del
+     primer intento (`5e362de7-…`) y sus 2.565 crudos sintéticos se
+     borraron el 2026-10-04 con la confirmación del negocio (ningún corte la
+     usaba y la carga buena tiene su propia carpeta).
    - 2 personas quedaron afuera del ciclo porque su perfil de t0 no tiene
      crudo guardado (consultadas desde la pantalla antes de la 090).
    - Fase B (lo siguiente): reordenar el menú del Laboratorio en los módulos
@@ -97,7 +125,8 @@ aceptada.
    2026-10-03 (2.567, 0 fallas) y el respaldo vigente es
    `research/novadata-raw-2026-10-03/`: los recálculos van con
    `--carpeta=research/novadata-raw-2026-10-03`. Una consulta desde la
-   pantalla deja el respaldo local atrás (el crudo igual queda en Storage).
+   pantalla deja el respaldo local atrás; su crudo queda en Storage desde
+   el arreglo del 2026-10-04 (antes no quedaba en ningún lado: punto 0).
 
 3. **Panorama de Fuentes de ingreso: "Calidad de la evidencia" y
    "Clientes que necesitan respaldo".** El análisis y la propuesta están en
@@ -252,11 +281,6 @@ aceptada.
 - La cartera sintética del Laboratorio (carga "Cartera sintética (semilla
   1)") se queda: es la que prueba los cálculos. Si se regenera, anular la
   anterior desde la pantalla.
-- La reconsulta del 2026-10-03 consultó dos veces a ~20 personas (las que
-  estaban en vuelo cuando la tarea se cortó a las 2 h): tienen un perfil de
-  más ese día, sin daño. El registro de la corrida está en
-  `research/lote-cedulas_ciclo_simulado_2026-10-03.jsonl` y
-  `research/reconsulta-ciclo-simulado-2026-10-03.log`.
 - En la base quedan 5 lotes de prueba terminados: 3 del 2026-09-15
   ("Prueba de…") y 2 del 2026-09-23 ("prueba 078…"). Se pueden borrar
   los lotes. Antes, mirar si los perfiles que dejaron son de personas de

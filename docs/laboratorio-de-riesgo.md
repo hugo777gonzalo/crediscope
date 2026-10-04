@@ -5,8 +5,8 @@ Versión 3 (2026-10-03): la 2 más el **ciclo simulado de un año** (sección
 14), decidido por el negocio el mismo día.
 Estado: **fases 0 a 5 implementadas el 2026-10-03** (migraciones 090 y 094
 a 097, pantallas en `/laboratorio`). Retroalimentación ya no existe. **La
-fase 6 (el ciclo simulado) está hecha y corrida** (098-103; resultados en
-14.10). La 7 (marco candidato, con costo) espera autorización. Las
+fase 6 (el ciclo simulado) está hecha y corrida** (098-104; resultados en
+14.10 y, el explorador del crudo, 14.11). La 7 (marco candidato, con costo) espera autorización. Las
 pantallas que pidió el negocio están mapeadas en
 `docs/laboratorio-pantallas.md`; la fase A de esas pantallas está
 construida. Las consultas de cada pantalla se probaron contra la base;
@@ -480,7 +480,7 @@ En este orden, por la regla 8 de `CLAUDE.md` (desplegar antes de borrar):
 | 3 | Variables | 0 | **Hecha (095): plantadas 1ª, 2ª, 5ª y 8ª; no relacionadas bajo 0,1.** Las cuatro variables plantadas están entre las primeras por IV, y toda variable que las supere está correlacionada con alguna plantada (documentado); las no relacionadas quedan bajo 0,1; la bandera de fuga se prende con una variable que contiene el resultado. |
 | 4 | Simulación de política y casos | 0 | **Hecha (095).** Una regla sobre la variable plantada evita malos y muestra los buenos que pierde; el recorrido de un caso se abre completo. |
 | 5 | Propuestas, criterio y retiro de Retroalimentación | 0 | **Hecha (096, 097): misma huella del criterio; tablas `feedback_*` borradas.** Las tres funciones del criterio leen `lab_propuestas` con la misma huella; Retroalimentación ya no existe; Descargas sigue funcionando. |
-| 6 | Ciclo simulado de un año: solicitudes y desembolsos, reconsulta, eventos, resultado de los no desembolsados, motivos del impago (sección 14) | 0 | **Hecha (098-103), resultados en 14.10.** Falta la exploración del crudo (fase E de las pantallas) y las dos piezas de la corrida real (14.8). |
+| 6 | Ciclo simulado de un año: solicitudes y desembolsos, reconsulta, eventos, resultado de los no desembolsados, motivos del impago (sección 14) | 0 | **Hecha (098-104), resultados en 14.10; el explorador del crudo en 14.11.** Faltan las dos piezas de la corrida real (14.8). |
 | 7 | Simulación de marco candidato | **sí, con autorización** | Lotes por `analizar-en-lote.mjs` sobre los perfiles congelados; ~USD 6-10 por marco sobre 300 análisis (estimado). |
 
 Las fases 2 y 3 pueden ir en paralelo después de la 1.
@@ -691,8 +691,8 @@ solicitud (`origen = 'novadata'`).
 Carga `1196978e-f9e4-4458-859b-890773af95c7` ("Ciclo simulado de un año
 (semilla 1)"), corte `4e18ca83-11ae-4e91-b9c5-8623931e9560` a 12 meses con
 la definición del negocio. Todo calculado y guardado en `lab_resultados`.
-La carga `5e362de7-…` es el primer intento, anulado por el error del
-simulador de 14.9: sigue en la base (borrarla, con confirmación).
+La carga `5e362de7-…` fue el primer intento, anulado por el error del
+simulador de 14.9; se borró el 2026-10-04 con la confirmación del negocio.
 
 | Qué | Resultado |
 |---|---|
@@ -711,11 +711,58 @@ simulador de 14.9: sigue en la base (borrarla, con confirmación).
 | Malos sin crédito | 178 de 311 se vieron; 47 escaparon por ponerse al día; 3 sin observar |
 | Sesgo | AUC contra lo plantado 0,63 con los desembolsados y 0,70 con todos |
 | Motivo principal plantado | el evento está detectado en 76 de 79 |
-| Pendiente | el campo sólo del crudo (licencia vencida en t0) no lo busca nadie todavía: explorador del crudo, fase E |
+| Campo sólo del crudo | lo encontró el explorador del crudo (14.11): significativo, 3.º de 3 en "lo que el modelo no vio" |
 
 **La conclusión para la corrida real:** con ~300 créditos la prueba sólo
 con lo desembolsado no distingue nada; lo que le da poder es reconsultar a
 todas las solicitudes del período.
+
+### 14.11 El explorador del crudo (fase E, 2026-10-04)
+
+La tercera capa plantada (un campo que sólo está en el crudo) no la puede
+encontrar Variables, que mira el catálogo. `scripts/explorar-crudo.mjs
+--corte=<id>` recorre el crudo del día del análisis de cada persona (nunca
+la reconsulta) y guarda en `lab_resultados` (tipo `crudo`):
+
+- **El diccionario**: 52 fuentes, 1.905 campos con su tipo, cobertura,
+  vacíos y valores frecuentes. Un valor se muestra si el campo tiene pocos
+  distintos y lo comparten 10 personas o más. Los que identifican a alguien
+  (nombres, cédulas, direcciones, partes de una demanda) nunca.
+- **Las condiciones**: cada campo da varias: lo tiene, cuántos, su valor,
+  una fecha anterior al análisis, días hasta el análisis y cada categoría.
+  Se miden contra el impago con valor de información y chi cuadrado, y se
+  corrige por comparaciones múltiples (Benjamini-Hochberg): con 853
+  condiciones distintas, al 5% saldrían ~43 por azar. Las que separan
+  exactamente a las mismas personas se cuentan una vez.
+- **El universo de cada campo** son las personas cuya fuente contestó
+  (`estadoPorFuente`: ok u ok vacío). A quien no se midió no se lo cuenta
+  como "no lo tiene".
+- **¿El modelo ya lo tenía?** La misma comparación dentro de cada
+  recomendación del modelo (Mantel-Haenszel). Si queda la mitad o más del
+  efecto (logaritmo de la razón de momios) con p < 0,05, el modelo no lo
+  tenía; si queda menos de la mitad, ya lo tenía. Se mide el efecto y no
+  una segunda significancia: con otra corrección sobre las 853, la licencia
+  plantada (razón 1,80 cruda y 1,68 ajustada, casi intacta) salía como "el
+  modelo la tenía" sólo por falta de casos. Sólo para condiciones sí o no.
+- **¿Lo lee la estructura?** El nombre del campo aparece en
+  `supabase/functions/_shared/` (sin el marco ni el pedido al modelo). "Sí"
+  es aproximado; "no" es seguro: nadie lo lee.
+
+Resultado sobre el corte `4e18ca83-…` (2.528 personas, 211 malos):
+
+| Qué | Resultado |
+|---|---|
+| Condiciones | 2.378 probadas, 853 distintas, 84 significativas |
+| Arriba de todo | calificación E del buró, perfil interno "MALO", saldo en mora: lo que el modelo ya lee |
+| El modelo ya lo tenía | lista negra (queda el 26% del efecto), "mal pagador" en bases internas (32%) |
+| **Lo que el modelo no vio** (significativo, no lo tenía, la estructura no lo lee) | 3: fax del empleador en el IESS (protege: 5,1% contra 9,4%), operaciones "CDC" en cooperativas (11,9% contra 7,4%) y **la licencia vencida plantada** (243 personas, 13,2% contra 7,8%; queda el 86% del efecto) |
+
+La calificación de la simulación (104) lo dice sola: el campo plantado,
+significativo y 3.º de 3. Los otros dos son de la data real y nadie los
+plantó: candidatos a mirar, no a usar (se validan en un corte posterior).
+
+Falta: el ajuste para un valor numérico (hoy sólo sí/no), ver los valores
+de una persona (sólo admin) y la trazabilidad crudo → estructura → modelo.
 
 ---
 

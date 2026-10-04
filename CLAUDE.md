@@ -131,8 +131,12 @@ Romper cualquiera de estas rompe algo real.
   (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`. La cartera
   sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
   plantada: un cálculo nuevo se valida contra ella). Cada métrica vive en
-  una función SQL `lab_*` (094-103).
-  - El **ciclo de un año** (sección 14 del diseño, 098-103): solicitudes,
+  una función SQL `lab_*` (094-104).
+  - El **explorador del crudo** (14.11 del diseño) es un guion, no una
+    función: `scripts/explorar-crudo.mjs --corte=<id>` (`--seco` primero,
+    `--buscar=` para el puesto de un campo). Guarda en `lab_resultados`
+    (tipo `crudo`) y la pestaña del corte sólo lo muestra.
+  - El **ciclo de un año** (sección 14 del diseño, 098-104): solicitudes,
     reconsultas y eventos; la verdad plantada vive aparte
     (`lab_simulacion_verdad`) y sólo la lee `lab_calificar_simulacion()`.
     Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
@@ -201,6 +205,9 @@ antes de tocar esa área.
   `crudo-novadata` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
   `_shared/crudo-novadata.ts`, desde las tres puertas que guardan perfiles.
+  A Storage con supabase-js se suben bytes, no un `Blob`: con un `Blob`
+  ignora `contentType` y el depósito lo rechaza (así no se guardó ningún
+  crudo hasta el 2026-10-04).
   Lo que leyó el modelo queda en `analysis_results.mensaje_al_modelo`.
 - Respaldo local en `research/` (fuera del repo, datos personales):
   `novadata-raw/` = muestra fija de 389, no se pisa;
@@ -307,6 +314,15 @@ antes de tocar esa área.
   cálculo, mirar si lo plantado es realista.
 - Reconsultar la cartera entera tarda ~2 h 10 min (concurrencia 20) y una
   tarea en segundo plano se corta a las 2 h: `consultar-lote.mjs` retoma.
+- "¿El modelo ya lo tenía?" se decide por cuánto efecto sobrevive dentro de
+  cada recomendación, no por una segunda prueba de significancia: esa
+  segunda prueba, sin casos suficientes, borraba la señal plantada.
+
+**Publicación**
+- La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`.
+  Si todo da 404, mirar el paso `deploy` del flujo: con el repositorio
+  privado y sin plan pago, Pages se apaga (2026-10-03). El repositorio tiene
+  cédulas reales en `docs/` y en el historial: volverlo público las expone.
 
 ## Cómo se trabaja
 

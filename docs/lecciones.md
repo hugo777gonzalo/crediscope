@@ -66,6 +66,18 @@ está el porqué. Una lección nueva va en los dos lugares.
   el Laboratorio de Inteligencia de Negocio (`docs/laboratorio-de-riesgo.md`),
   que necesita seguir un dato desde la fuente hasta la respuesta del
   modelo. Por lo mismo se guarda `analysis_results.mensaje_al_modelo`.
+
+  **Pero hasta el 2026-10-04 ninguna consulta lo guardó.** Con un `Blob`,
+  supabase-js arma un formulario, ignora `contentType` y el archivo llega
+  como `application/octet-stream`; el depósito sólo acepta
+  `application/gzip` y lo rechazaba. La función no corta la consulta si el
+  crudo falla (a propósito), así que el error quedó en los registros: 0 de
+  los 2.567 perfiles de la reconsulta del 03/10 tenían crudo, y nadie lo vio
+  porque los 2.567 de septiembre sí estaban (los había subido el guion, con
+  bytes). Se encontró al ir a borrar duplicados. Se sube como bytes
+  (`Uint8Array`) y los del 03/10 se subieron desde `research/`. **Una
+  función que no lanza a propósito se verifica mirando el efecto en la base
+  después de desplegar**, no la respuesta.
 - **El modelo lee SOLO el perfil del modelo** (`_shared/perfil-del-modelo.ts`,
   desde marco-v23). Todos los caminos al LLM (hoy: análisis, lote y
   comparación de razonamiento; hasta el 2026-10-03 también el backtest y el
@@ -337,3 +349,18 @@ está el porqué. Una lección nueva va en los dos lugares.
   entidades que empezaban a reportar (288 créditos plantados perdidos).
   Antes de culpar al cálculo, mirar si lo plantado es realista; la carga
   quedó anulada, no borrada.
+- **Que la segunda prueba no salga significativa no quiere decir que el
+  efecto desaparezca** (2026-10-04). El explorador del crudo pregunta si el
+  modelo ya tenía un campo comparando dentro de cada recomendación. Con una
+  segunda corrección por comparaciones múltiples sobre 853 condiciones, la
+  licencia vencida plantada (razón de momios 1,80 cruda y 1,68 dentro de
+  cada recomendación: casi intacta) salía como "el modelo la tenía", y lo
+  mismo todo menos la calificación E. Lo que decide es cuánto del efecto
+  sobrevive (la mitad o más: el modelo no lo tenía), no si una segunda prueba
+  alcanza con los casos que hay.
+- **GitHub Pages se apaga si el repositorio pasa a privado sin plan pago**
+  (2026-10-04). Desde el 2026-10-03 el despliegue fallaba con "Ensure GitHub
+  Pages has been enabled" y la aplicación daba 404 en todas las páginas; el
+  código y el build estaban bien. Ante un 404 general, mirar primero el paso
+  `deploy` del flujo (`gh run view <id> --log-failed`) y la visibilidad del
+  repositorio.

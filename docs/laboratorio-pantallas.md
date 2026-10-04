@@ -109,7 +109,7 @@ proyectos, ver la decisión 3.
 |---|---|---|
 | Resumen: variables del crudo, estandarizadas, enviadas al modelo, no usadas, con faltantes, asociadas al default | Se puede ya | Crudo en Storage, catálogo, `perfil-del-modelo.ts` |
 | Trazabilidad: crudo → estructura → entrada al modelo → marco → respuesta → decisión → resultado | A medias | Casos enlaza el perfil y el análisis; falta mostrar el crudo y `mensaje_al_modelo` (guardado desde la 090) en el mismo recorrido, y el origen de cada campo como dato (hoy está en `docs/estructura-estandarizada.md`) |
-| Explorador del crudo: por fuente, diccionario, distribuciones, calidad, campos no usados, relación con el default | Se puede ya | Con un guion que recorre los 2.567 crudos y guarda el resumen (bajar el crudo desde el navegador es pesado). Los valores de una persona, sólo para admin |
+| Explorador del crudo: por fuente, diccionario, distribuciones, calidad, campos no usados, relación con el default | **Hecho el 2026-10-04** (adelantado a pedido del negocio) | `scripts/explorar-crudo.mjs` lo calcula y la pestaña "Explorador del crudo" del corte lo muestra (104, diseño 14.11): diccionario, calidad, condiciones contra el impago con corrección, si el modelo ya lo tenía y si la estructura lo lee. Falta ver los valores de una persona (sólo admin) y el ajuste de un valor numérico |
 | Explorador de la estructura: campos derivados, agregados, descartados, diferencias entre versiones, cobertura por cohorte | A medias | Las versiones existen y se comparan con guiones (`viejo contra nuevo`); falta la pantalla |
 | Auditoría de la entrada al modelo: incluidas, excluidas, versión del marco, modelo, comparación de entradas | Se puede ya | `analysis_results.mensaje_al_modelo` y `rules_version`, sin llamar al modelo |
 | Variables de los que cayeron: aprobados que cayeron, revisados que cayeron, diferencias, ausentes, combinaciones, no lineales | A medias | Variables con las dos poblaciones y Motivos del impago ("¿se podía ver?" en cinco categorías, 103); combinaciones y no lineales, fuera de SQL |
@@ -125,11 +125,11 @@ proyectos, ver la decisión 3.
 
 | Fase | Qué | Por qué en ese orden |
 |---|---|---|
-| A | Terminar el ciclo simulado y ver sus resultados: cuadrantes, motivos, calificación; matriz de confusión y desempeño por decisión | **Hecha el 2026-10-03/04** (100-103 y pestañas); falta verla con sesión de admin y subirla |
+| A | Terminar el ciclo simulado y ver sus resultados: cuadrantes, motivos, calificación; matriz de confusión y desempeño por decisión | **Hecha el 2026-10-03/04** (100-103 y pestañas) y subida el 2026-10-04; falta verla con sesión de admin |
 | B | Reordenar el menú del Laboratorio en estos módulos, con lo que ya existe en su lugar | Da el esqueleto; no cambia cálculos |
 | C | Prueba retrospectiva completa: curvas (ROC, KS, precisión-sensibilidad), cosechas y supervivencia, umbrales, segmentos, estabilidad con pantalla | Responde "¿el motor ordena bien y se sostiene?" |
 | D | Descubrimiento estadístico: descriptivas, distribuciones, faltantes, correlaciones, inferencia, laboratorio de IV y WoE con tramos manuales, explorador de significancia | Responde "¿qué anticipa el impago?" |
-| E | Descubrimiento profundo: explorador del crudo, auditoría de la entrada al modelo, investigación de los dos errores, taller y registro de variables | Responde "¿qué no vio el modelo?" |
+| E | Descubrimiento profundo: explorador del crudo, auditoría de la entrada al modelo, investigación de los dos errores, taller y registro de variables | Responde "¿qué no vio el modelo?". El explorador del crudo ya está (2026-10-04) |
 | F | Bosque aleatorio, SHAP, K-means, PCA | Después de la decisión 2 |
 | — | Inicio con instituciones y proyectos; calibración | Después de las decisiones 3 y 4 |
 
