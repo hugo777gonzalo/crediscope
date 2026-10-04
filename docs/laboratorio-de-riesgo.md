@@ -835,8 +835,11 @@ Acá, lo que cambió de método y lo que se midió.
 ### 15.5 Lo que falta
 
 - Ver todo con sesión de admin.
-- La definición de "hallazgo crítico" (propuesta en el Inicio) y la de
-  "comentarios institucionales": decisiones del negocio.
+- Los hallazgos críticos en el informe. El negocio decidió el 2026-10-04
+  que crítico es todo resultado relevante y significativo de los análisis,
+  y que va en el Informe de Desempeño del Modelo; falta juntarlo de todas
+  las pestañas (docs/pendientes.md, 0a). "Comentarios institucionales"
+  sigue sin decidir.
 - El ajuste por la recomendación para un valor numérico en el explorador
   del crudo; el origen de cada campo de la estructura como dato; "no
   consultado" contra "no tiene" en Faltantes (el corte no congela la

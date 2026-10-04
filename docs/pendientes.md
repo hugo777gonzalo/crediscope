@@ -1,6 +1,6 @@
 # Pendientes
 
-Lo que quedó abierto al 2026-10-04 (noche). Las versiones vigentes son
+Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -17,26 +17,8 @@ aceptada.
 
 ## 1. Para retomar primero
 
-00. **La aplicación publicada da 404 en todas las páginas: GitHub Pages está
-   apagado.** El último despliegue que funcionó fue el 2026-09-29; desde el
-   2026-10-03 el paso `deploy` falla con "Ensure GitHub Pages has been
-   enabled" y la API de Pages del repositorio contesta 404. El repositorio
-   figura como **privado**, y GitHub Pages en un repositorio privado sólo
-   existe con un plan pago (Pro, Team o Enterprise); en el gratuito, pasar a
-   privado apaga el sitio. No es el código: el build pasa.
-   - Lo decide el negocio (Claude no pudo cambiar la configuración, y no
-     debe): (a) pagar GitHub Pro y volver a habilitar Pages en
-     Settings › Pages › Source: "GitHub Actions"; (b) volver el repositorio
-     a público, **no recomendado**: `docs/` y el historial tienen cédulas
-     reales de la cartera; (c) publicar en otro servicio (Cloudflare Pages,
-     Netlify), que cambia la ruta base `/crediscope/` de `vite.config.js` y
-     las URL de redirección de Supabase Auth.
-   - Después de habilitarlo: volver a correr el flujo
-     (`gh workflow run deploy.yml`) y abrir el sitio.
-   - Los commits están subidos (el push dispara el despliegue, que falla
-     hasta que Pages vuelva).
-
-0. **Ver las pantallas del Laboratorio con sesión de admin.** Todas las
+0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
+   haciendo el negocio** (2026-10-04) y va a comentar el resultado. Todas las
    pantallas que pidió el negocio están construidas (fases A a F y módulos
    1 a 3, migraciones 100 a 109; mapa en `docs/laboratorio-pantallas.md`),
    y **ninguna se vio en el navegador**: Claude no puede iniciar sesión (no
@@ -80,12 +62,29 @@ aceptada.
      `select count(*) filter (where crudo_ruta is null), count(*) from client_profiles where created_at > '2026-10-04 03:40+00'`
      tiene que dar 0 sin crudo.
 
+0a. **Los hallazgos críticos, al informe** (decisión del negocio del
+   2026-10-04). "Crítico" es **todo resultado relevante y significativo de
+   los análisis exploratorios, descriptivos y estadísticos**, y todo eso va
+   en el Informe de Desempeño del Modelo que se le entrega a la institución
+   (`src/lib/informeLaboratorio.js`, hoy con las hojas Resumen, Variables y
+   Propuestas). Falta:
+   - Una función pura (en `src/lib/`, probada en
+     `scripts/probar-pantallas-laboratorio.mjs`) que junte, de un corte, lo
+     significativo de cada pestaña: AUC e intervalo y deciles que no bajan;
+     calibración guardada; PSI mayor a 0,25; segmentos con tasas distintas
+     (chi², q); variables con q < 0,05 e IV de 0,1 o más (explorador de
+     significancia), las candidatas y las que el modelo no recibe;
+     faltantes que anticipan; diferencias de los que cayeron y
+     combinaciones con refuerzo mayor a 1,5; lo que el modelo no vio en el
+     crudo; las de más SHAP sin llegar al modelo; los motivos del impago.
+     Cada hallazgo con su número, su prueba y su tamaño de muestra.
+   - Una hoja "Hallazgos críticos" en el informe (con la franja de
+     simulación si el corte es sintético) y la misma lista en el Inicio,
+     que hoy sólo junta lo guardado (fuentes, crudo, bosque, AUC y PSI).
+
 0b. **Laboratorio: lo que sigue** (`docs/laboratorio-de-riesgo.md`, 15.5).
-   - Decisiones del negocio: confirmar la definición de "hallazgo crítico"
-     propuesta en el Inicio (fuente que dejó de contestar, dato que anticipa
-     y el modelo no tiene, AUC menor a 0,65, PSI mayor a 0,25) y qué son los
-     "comentarios institucionales" (hoy la institución no entra al
-     Laboratorio).
+   - Decisión del negocio pendiente: qué son los "comentarios
+     institucionales" (hoy la institución no entra al Laboratorio).
    - Para correr el ciclo con una institución real faltan dos piezas:
      armar las solicitudes desde los análisis del período (con la decisión
      de la institución de `lab_decisiones_institucion`) y la reconsulta real
@@ -158,6 +157,17 @@ aceptada.
      (SRI). Se lo pide hoy a 956 personas.
 
 ## 2. Riesgos técnicos conocidos
+
+- **El repositorio es público desde el 2026-10-04** (decisión del negocio,
+  para que GitHub Pages vuelva a publicar la aplicación sin plan pago).
+  `docs/` y el historial de commits tienen cédulas reales de la cartera
+  (en `docs/estructura-estandarizada.md`, `docs/lecciones.md`,
+  `docs/pendientes.md` y dos propuestas, ~33 menciones) y quedan a la
+  vista. Desde ahora no se escriben cédulas, montos ni datos de personas
+  en el repositorio (documentos, commits, código ni pruebas). Si el negocio
+  quiere, se pueden reemplazar en `docs/` por referencias enmascaradas; el
+  historial sólo se limpia reescribiéndolo (force push, con su
+  confirmación).
 
 - **La cartera tiene 240 personas que no existen.** Son las cédulas
   sintéticas de prueba de Aval: 2.807 clientes = 2.567 reales + 240.

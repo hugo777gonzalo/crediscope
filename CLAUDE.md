@@ -153,6 +153,11 @@ Romper cualquiera de estas rompe algo real.
     `scripts/probar-pantallas-laboratorio.mjs` (correrlos después de tocar
     cualquiera). Lo pesado, `scripts/analisis-pesado.mjs` (bosque con
     SHAP, K-medias, PCA; Node porque no hay Python).
+  - **"Hallazgo crítico"** (decisión del negocio del 2026-10-04): todo
+    resultado relevante y significativo de los análisis exploratorios,
+    descriptivos y estadísticos, y va en el Informe de Desempeño del Modelo
+    a la institución (`informeLaboratorio.js`). Juntarlo es lo siguiente
+    (`docs/pendientes.md`, 0a).
   - La forma de una fila del corte vive en `src/lib/filasDelCorte.js` (sin
     el cliente de Supabase, para que la importen los guiones); el IV del
     navegador y el de `lab_calcular_variables` usan la misma regla de
@@ -334,17 +339,22 @@ antes de tocar esa área.
   dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.
 
 **Publicación**
-- La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`.
+- La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`
+  en cada push a `main` (https://hugo777gonzalo.github.io/crediscope/).
   Si todo da 404, mirar el paso `deploy` del flujo: con el repositorio
-  privado y sin plan pago, Pages se apaga (2026-10-03). El repositorio tiene
-  cédulas reales en `docs/` y en el historial: volverlo público las expone.
+  privado y sin plan pago, Pages se apaga (2026-10-03); al volverlo público
+  hubo que habilitar Pages otra vez (Source: GitHub Actions).
+- **El repositorio es público desde el 2026-10-04** (decisión del negocio).
+  `docs/` y el historial ya tienen cédulas reales; no se suman más
+  (ver "Cómo se trabaja").
 
 ## Cómo se trabaja
 
 - **La clave de servicio nunca llega a `src/`.** El navegador usa sólo la
   clave anónima; lo que necesita más permisos va por una Edge Function.
 - **Buró, cédulas y montos no se imprimen** en logs, commits, chat ni
-  capturas: se cuentan o se enmascaran.
+  capturas: se cuentan o se enmascaran. Tampoco se escriben en `docs/`,
+  en el código ni en las pruebas: el repositorio es público.
 - **Pedir confirmación antes de borrar datos, columnas o tablas, o de
   forzar un push**, aunque parezca obvio (ver regla 8).
 - **Pruebas masivas con el modelo, sólo con autorización explícita** del

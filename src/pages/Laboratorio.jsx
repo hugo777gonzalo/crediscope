@@ -17,11 +17,13 @@ import { Kpi, MensajeError, Cargando, Etiqueta, ETIQUETA_RECOMENDACION, num, pct
 // la IFI recibe un informe exportado. Diseño: docs/laboratorio-de-riesgo.md
 // y docs/laboratorio-pantallas.md.
 //
-// "Crítico" estaba sin definir (pantallas, módulo 1). Definición propuesta,
-// a confirmar por el negocio: una fuente que dejó de contestar, un campo del
-// crudo o una variable que anticipa el impago y el modelo no tiene, un corte
-// donde el motor no ordena (AUC menor a 0,65) y una población que cambió
-// (PSI mayor a 0,25).
+// "Crítico", decidido por el negocio el 2026-10-04: todo resultado relevante
+// y significativo de los análisis exploratorios, descriptivos y estadísticos,
+// y todo eso va en el Informe de Desempeño del Modelo que se le entrega a la
+// institución. Esta lista todavía junta sólo lo que está guardado (fuentes
+// que dejaron de contestar, lo que el modelo no vio en el crudo y en el
+// bosque, AUC menor a 0,65, PSI mayor a 0,25); juntar todo lo significativo
+// de las pestañas y llevarlo al informe es lo siguiente (docs/pendientes.md).
 
 const MODULOS = [
   ["/laboratorio/instituciones", Building2, "Instituciones y proyectos", "Con quién trabajamos y en qué."],
@@ -136,8 +138,8 @@ export default function Laboratorio() {
           </ul>
         ) : <p className="crediscope-muted" style={{ margin: 0 }}>Ninguno.</p>}
         <p className="crediscope-muted" style={{ fontSize: 12, marginBottom: 0 }}>
-          Definición propuesta, a confirmar por el negocio: una fuente que dejó de contestar, un dato que anticipa el impago y el modelo no tiene, un corte
-          con AUC menor a 0,65 y una población que cambió (PSI mayor a 0,25).
+          Crítico es todo resultado relevante y significativo de los análisis, y va en el informe a la institución (decisión del negocio). Esta lista
+          muestra por ahora lo que está guardado: fuentes que dejaron de contestar, lo que el modelo no vio, AUC menor a 0,65 y PSI mayor a 0,25.
         </p>
       </div>
 

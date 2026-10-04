@@ -42,7 +42,7 @@ corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 | Pantalla | Estado | De dónde sale / qué falta |
 |---|---|---|
 | Indicadores: créditos conciliados, cortes a 12 y 24, análisis, propuestas pendientes, candidatas, instituciones y proyectos | Hecho | Cargas, cortes, propuestas, candidatas, instituciones, `lab_volumen_de_analisis` |
-| Hallazgos críticos | Hecho, **definición propuesta** | Fuente que dejó de contestar, dato que anticipa y el modelo no tiene (crudo, bosque), AUC menor a 0,65, PSI mayor a 0,25. Falta que el negocio confirme la definición |
+| Hallazgos críticos | A medias | **Definición del negocio (2026-10-04): todo resultado relevante y significativo de los análisis exploratorios, descriptivos y estadísticos, y va en el informe a la institución.** Hoy el Inicio junta sólo lo guardado (fuentes, crudo, bosque, AUC, PSI); falta juntar lo de todas las pestañas y llevarlo al informe (docs/pendientes.md, 0a) |
 | Evolución del default por mes | Hecho | El corte más reciente, por mes de desembolso |
 | Desempeño del motor por institución | Hecho | El último desempeño de los cortes de las cargas de cada institución |
 | Mezcla aprobar / revisar / negar y volumen de análisis | Hecho | `lab_volumen_de_analisis` (contado en la base) |

@@ -363,7 +363,10 @@ está el porqué. Una lección nueva va en los dos lugares.
   Pages has been enabled" y la aplicación daba 404 en todas las páginas; el
   código y el build estaban bien. Ante un 404 general, mirar primero el paso
   `deploy` del flujo (`gh run view <id> --log-failed`) y la visibilidad del
-  repositorio.
+  repositorio. El negocio lo volvió público el 2026-10-04, y eso solo no
+  alcanzó: Pages seguía apagado (la API contestaba 404) y hubo que
+  habilitarlo otra vez con el origen "GitHub Actions" y volver a correr el
+  flujo.
 - **Unos tramos por posición parten los empates y fabrican señal**
   (2026-10-04). `lab_calcular_variables` cortaba los cuartiles con `ntile`,
   que reparte las filas por posición: las 1.384 personas con 24 meses de
