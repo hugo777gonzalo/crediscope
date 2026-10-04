@@ -135,6 +135,43 @@ igual("normalidad de una exponencial (p ~ 0)", E.normalidad(Array.from({ length:
 const pNormalDeNormal = E.normalidad(Array.from({ length: 2000 }, () => normal())).p;
 igual("normalidad de una normal (p > 0,01)", pNormalDeNormal > 0.01 ? 1 : 0, 1, 0);
 
+// ------------------------------------------------- fase F: bosque y SHAP
+const B = await import(pathToFileURL(path.join(RAIZ, "src/lib/bosque.js")).href);
+const S = await import(pathToFileURL(path.join(RAIZ, "src/lib/segmentacion.js")).href);
+// Datos con una regla conocida: cae si x0 es alto y x1 bajo; x2 es ruido.
+const Xb = Array.from({ length: 1500 }, () => [r() * 10, r() * 10, r() * 10, r() < 0.3 ? 1 : 0]);
+const yb = Xb.map((x) => (r() < E.sigmoide(-4 + 0.6 * x[0] - 0.4 * x[1]) ? 1 : 0));
+const bosque = B.entrenarBosque(Xb, yb, { arboles: 40, profundidadMaxima: 5, minHoja: 15, semilla: 3 });
+const baseBosque = B.valorBase(bosque);
+let peorPrecision = 0;
+const absShap = [0, 0, 0, 0];
+for (const x of Xb.slice(0, 200)) {
+  const phi = B.shapBosque(bosque, x);
+  peorPrecision = Math.max(peorPrecision, Math.abs(baseBosque + phi.reduce((s, v) => s + v, 0) - B.predecirBosque(bosque, x)));
+  phi.forEach((v, j) => { absShap[j] += Math.abs(v); });
+}
+igual("SHAP: base + suma = predicción del bosque (mayor error en 200 personas)", peorPrecision, 0, 1e-9);
+igual("SHAP: x0 pesa más que el ruido", absShap[0] > 3 * absShap[2] ? 1 : 0, 1, 0);
+igual("SHAP: x1 pesa más que el ruido", absShap[1] > 2 * absShap[2] ? 1 : 0, 1, 0);
+// SHAP de un árbol a mano: un solo corte en x0 con 40 y 60 filas.
+const arbolChico = { n: 100, valor: 0.3, var: 0, umbral: 5, izq: { hoja: true, n: 40, valor: 0.6 }, der: { hoja: true, n: 60, valor: 0.1 } };
+igual("SHAP de un corte: 0,6 − 0,3 = 0,3", B.shapArbol(arbolChico, [2, 0], 2)[0], 0.3, 1e-12);
+const perm = B.importanciaPorPermutacion(bosque, Xb.slice(0, 600), yb.slice(0, 600), [{ nombre: "x0", columnas: [0] }, { nombre: "x2", columnas: [2] }]);
+igual("permutación: desordenar x0 baja el AUC más que el ruido", perm.grupos[0].caida > perm.grupos[1].caida + 0.02 ? 1 : 0, 1, 0);
+
+// K-medias: tres nubes separadas se recuperan, con silueta alta.
+const nubes = [[0, 0], [8, 8], [0, 8]].flatMap(([cx, cy]) => Array.from({ length: 80 }, () => [cx + normal() * 0.7, cy + normal() * 0.7]));
+const km3 = S.kMedias(nubes, 3, { semilla: 5 });
+const puros = [0, 80, 160].every((ini) => new Set(km3.grupos.slice(ini, ini + 80)).size === 1);
+igual("K-medias recupera tres nubes separadas", puros ? 1 : 0, 1, 0);
+igual("silueta de nubes separadas (> 0,7)", S.silueta(nubes, km3.grupos) > 0.7 ? 1 : 0, 1, 0);
+// Componentes principales: dos columnas casi iguales y una independiente.
+const u = Array.from({ length: 1000 }, () => normal());
+const Xp = u.map((v) => [v, v + 0.1 * normal(), normal()]);
+const pca = S.componentesPrincipales(S.estandarizarColumnas(Xp).Z);
+igual("PCA: la primera componente explica ~2/3", pca.explicada[0], 0.66, 0.03);
+igual("PCA: la varianza explicada suma 1", pca.explicada.reduce((s, v) => s + v, 0), 1, 1e-9);
+
 // ------------------------------------------------------- contra la base
 const env = Object.fromEntries(fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));

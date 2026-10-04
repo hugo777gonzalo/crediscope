@@ -8,6 +8,7 @@ import PestanaLosQueCayeron from "../components/laboratorio/PestanaLosQueCayeron
 import PestanaInvestigacion from "../components/laboratorio/PestanaInvestigacion.jsx";
 import PestanaTaller from "../components/laboratorio/PestanaTaller.jsx";
 import PestanaCandidatas from "../components/laboratorio/PestanaCandidatas.jsx";
+import { PestanaImportancia } from "../components/laboratorio/PestanasPesadas.jsx";
 
 // Módulo 6 del negocio: Descubrimiento profundo de variables. ¿Qué no vio el
 // modelo? Del crudo de Novadata a la estructura, a lo que leyó el modelo y a
@@ -24,6 +25,7 @@ export const PESTANAS_PROFUNDO = [
   { clave: "cayeron", texto: "Los que cayeron", usaPoblacion: true, Componente: PestanaLosQueCayeron },
   { clave: "investigacion", texto: "Investigación de casos", usaPoblacion: true, Componente: PestanaInvestigacion },
   { clave: "motivos", texto: "Motivos del impago", calculo: "motivos", requiere: conSolicitudes, Componente: ({ ultimo }) => <PestanaMotivos resultado={ultimo("motivos")} /> },
+  { clave: "importancia", texto: "Importancia (bosque y SHAP)", Componente: ({ ultimo, corteId }) => <PestanaImportancia resultado={ultimo("importancia")} corteId={corteId} /> },
   { clave: "taller", texto: "Taller de variables", usaPoblacion: true, Componente: PestanaTaller },
   { clave: "candidatas", texto: "Registro de candidatas", Componente: PestanaCandidatas },
 ];

@@ -8,6 +8,7 @@ import PestanaCorrelaciones from "../components/laboratorio/PestanaCorrelaciones
 import PestanaInferencia from "../components/laboratorio/PestanaInferencia.jsx";
 import PestanaTramos from "../components/laboratorio/PestanaTramos.jsx";
 import PestanaSignificancia from "../components/laboratorio/PestanaSignificancia.jsx";
+import { PestanaKMedias, PestanaPca } from "../components/laboratorio/PestanasPesadas.jsx";
 
 // Módulo 5 del negocio: Descubrimiento estadístico. ¿Qué anticipa el
 // impago? Por defecto mira todas las solicitudes observadas cuando el corte
@@ -23,6 +24,8 @@ export const PESTANAS_ESTADISTICA = [
   { clave: "variables", texto: "IV y WoE", calculo: "variables", usaPoblacion: true, Componente: ({ ultimo }) => <PestanaVariables resultado={ultimo("variables")} /> },
   { clave: "tramos", texto: "Laboratorio de tramos", usaPoblacion: true, Componente: PestanaTramos },
   { clave: "significancia", texto: "Explorador de significancia", usaPoblacion: true, Componente: PestanaSignificancia },
+  { clave: "kmedias", texto: "Segmentos (K-medias)", Componente: ({ ultimo, corteId }) => <PestanaKMedias resultado={ultimo("segmentos_kmedias")} corteId={corteId} /> },
+  { clave: "pca", texto: "Componentes principales", Componente: ({ ultimo, corteId }) => <PestanaPca resultado={ultimo("pca")} corteId={corteId} /> },
 ];
 
 export default function LaboratorioEstadistica() {
