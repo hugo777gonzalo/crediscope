@@ -35,9 +35,9 @@ aceptada.
    calculados); la plantilla nueva (cuota, canal, fecha del primer impago
    obligatoria si cayó, hoja "Solicitudes no desembolsadas"); el informe
    sintético con su franja. **Las pantallas de la fase A no se subieron
-   (push) hasta verlas.** Hay 3 commits locales sin subir: 85fc70a (el
-   arreglo del RUC, ya desplegado en Supabase), dc047ab (fase 6) y 740ee9d
-   (fase A y archivo de la institución).
+   (push) hasta verlas.** Nada posterior a 880e842 (el último commit
+   subido) está en origin: el arreglo del RUC (85fc70a, ya desplegado en
+   Supabase), la fase 6, la fase A y la documentación.
 
 0b. **Laboratorio: lo que sigue** (`docs/laboratorio-pantallas.md`).
    - Fases B a F, en ese orden (decidido el 2026-10-03).
