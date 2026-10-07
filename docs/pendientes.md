@@ -112,7 +112,9 @@ aceptada.
    - Lo siguiente: fase 3 (operación única por institución y reporte
      mensual, reconsultas por aniversario a los 3, 6, 9 y 12 meses, cortes a
      esos horizontes, solicitudes por institución), antes de la reconsulta
-     de fines de diciembre.
+     de fines de diciembre. **Propuesta en la sección 15 de la revisión;
+     espera las cinco decisiones de 15.7** (entre ellas, si se analiza el t0
+     de la cartera: sólo 33 de 2.565 tienen análisis del modelo).
    - Decisión del negocio pendiente: qué son los "comentarios
      institucionales" (hoy la institución no entra al Laboratorio).
    - Mejoras chicas que el plan no toca: el ajuste por la recomendación

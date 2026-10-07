@@ -1018,3 +1018,112 @@ tres cortes y la estadística, `scripts/probar-estadistica.mjs`.
 un análisis real con el `analyze-client` nuevo (ninguno desde el
 despliegue; la columna `criterio_version_id` acepta el vacío y no tiene
 valor por defecto, así que el guardado no debería fallar).
+
+**Después (2026-10-07):** el negocio corrió un análisis real con el
+`analyze-client` nuevo: marco-v28, sin versión del criterio, la llamada al
+modelo bien. Lo que guardan las pantallas sigue sin verse con sesión.
+
+---
+
+## 15. Fase 3: el seguimiento real (propuesta del 2026-10-07)
+
+### 15.1 Dónde estamos
+
+- Todo el ciclo corre hoy sobre datos sintéticos: las tres cargas son
+  sintéticas y las solicitudes y reconsultas sólo las crea el simulador.
+  Faltan las dos piezas que anotaba el diseño (14.8): armar las solicitudes
+  reales y reconsultar en Novadata atando cada consulta a su solicitud.
+- La cartera de septiembre: 2.565 personas con su consulta del 25 al 29 de
+  septiembre (casi todas el 25 y el 26), que es su t0. **Sólo 33 tienen un
+  análisis del modelo.**
+- Su primera ronda, a los 3 meses, cae desde el 25 de diciembre de 2026.
+
+### 15.2 La cohorte: las solicitudes reales
+
+- Una cohorte es un grupo de solicitudes de un período ("Cartera 2026-09",
+  "Cooperativa X, solicitudes de enero de 2027"). Se guarda como una carga
+  de tipo cohorte: así le sirven sin cambios las solicitudes, reconsultas,
+  eventos y cortes que ya existen, y un corte puede juntar varias.
+- Se arma con lo que ya guarda CrediScope: las consultas y los análisis
+  que hicieron los usuarios de la institución en el período (para eso cada
+  usuario queda atado a su institución). Una solicitud por persona. Su t0
+  es el perfil del último análisis del período o, si no se analizó, el de
+  la consulta. La recomendación y el puntaje salen del análisis; sin
+  análisis quedan vacíos, y la solicitud sirve para medir impago y
+  variables, no para probar el modelo.
+- La cartera de septiembre se arma una vez, con las 2.565 personas del t0
+  del ciclo simulado.
+- Una persona consultada por otro motivo (prueba, garante, muestra) se
+  saca de la cohorte con su motivo: la autorización cubre sólo a quien
+  presentó una solicitud (10.1).
+
+### 15.3 Reconsultas por aniversario
+
+- Cada solicitud se reconsulta a los 3, 6, 9 y 12 meses de su fecha (y a
+  los 24). La reconsulta queda atada a su solicitud y a su ronda; las del
+  ciclo simulado pasan a ser la ronda de 12.
+- Cada mes, nuestro equipo corre
+  `scripts/reconsultar-aniversarios.mjs --mes=AAAA-MM`:
+  1. con `--seco`, cuántas solicitudes cumplen cada ronda ese mes, y la
+     lista para consultar;
+  2. la consulta, con `consultar-lote.mjs` como hasta ahora (la cartera
+     entera tarda ~2 h 10 min);
+  3. con `--registrar`, ata cada consulta nueva a su solicitud y su ronda y
+     corre el detector.
+- Para la cartera: 3 meses desde el 25/12/2026, 6 en marzo, 9 en junio y
+  12 en septiembre de 2027.
+- Cada ronda deja un perfil nuevo por persona: la ficha muestra la
+  situación al día, que es lo buscado (10.1).
+
+### 15.4 Cortes a 3, 6, 9, 12 y 24 meses
+
+- Nuevo corte ofrece los cinco horizontes y toma la reconsulta de esa
+  ronda. Una solicitud sin la reconsulta de ese horizonte queda fuera como
+  "no medida" y se cuenta en el resumen.
+- A los 3 meses se mide impago y lista de observación (12.4).
+- Un archivo "foto" de la institución trae días a 12 y 24 meses: a 3, 6 y 9
+  sólo hay datos del crédito con el reporte mensual.
+
+### 15.5 El reporte mensual de la institución
+
+- El crédito es único por institución y número de operación, con lo que no
+  cambia: cédula, producto, monto, plazo, fecha de desembolso, cuota y
+  canal. Cada reporte suma una fila por crédito y cierre de mes: días de
+  mora al cierre, saldo y estado.
+- Lo demás lo calculamos: el máximo de días a 3, 6, 9, 12 y 24 meses, la
+  fecha del impago (el día en que pasó de 90 días, que sale del cierre y sus
+  días), si se curó, y "sin reporte" para un crédito que deja de aparecer
+  sin estar cancelado ni castigado (no medido, no bueno).
+- La planilla mensual: la hoja de créditos al cierre del mes (las columnas
+  de hoy, sin los máximos por ventana ni la fecha del impago, más "Fecha de
+  cierre", "Días de mora al cierre" y "Saldo al cierre") y la hoja de
+  solicitudes no desembolsadas que ya existe.
+- Va después de 15.2 a 15.4: todavía no hay institución, diciembre no lo
+  necesita y se prueba con el simulador, que pasa a generar reportes
+  mensuales.
+
+### 15.6 Qué cambia en pantalla (ninguna pantalla nueva)
+
+| Pantalla | Cambio |
+|---|---|
+| Instituciones y proyectos | La lista de usuarios de cada institución, para atarlos. |
+| Datos y cartera › Cargas | Las cohortes aparecen como "Cohorte de solicitudes", con su período y cuántas solicitudes tienen reconsulta en cada ronda; un botón "Armar cohorte" (institución y período). |
+| Datos y cartera › Cortes › Nuevo corte | Horizonte de 3, 6, 9, 12 o 24 meses (hoy 12 o 24). |
+| Nueva carga (con 15.5) | Elegir "Reporte mensual" o "Foto completa". |
+
+### 15.7 Para decidir
+
+1. El orden: cohorte, reconsultas y cortes por horizonte primero (lo que
+   necesita diciembre); el reporte mensual después.
+2. La cartera de septiembre como cohorte: ¿son todas solicitudes de crédito,
+   cubiertas por la autorización? ¿De qué institución, o "cartera propia"
+   sin institución?
+3. Una solicitud por persona e institución cada 90 días: si se la vuelve a
+   consultar o analizar dentro de esos 90 días, es la misma solicitud y
+   cuenta el último análisis.
+4. Para probar el modelo con la cartera hay que analizar el t0 de las 2.532
+   personas sin análisis: unos USD 83 por la API de lotes (USD 0,0655 por
+   análisis, medido desde marco-v28, a mitad de precio). El análisis lee
+   sólo el perfil de septiembre, así que no hay fuga aunque se haga después.
+   Sin eso, diciembre mide impago y variables, no el modelo.
+5. Los cambios de pantalla de 15.6, con esos nombres.
