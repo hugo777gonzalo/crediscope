@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 import { inicioDelDia, finDelDia, diaEcuador } from "./fechas.js";
 import { traerTodas } from "./paginar.js";
+import { errorDeFuncion } from "./errorDeFuncion.js";
 
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
@@ -25,7 +26,7 @@ export async function analyzeClient(cedula, { profileId } = {}) {
   const { data, error } = await supabase.functions.invoke("analyze-client", {
     body: { cedula, profileId },
   });
-  if (error) throw error;
+  if (error) throw await errorDeFuncion(error);
   return data;
 }
 
@@ -41,7 +42,7 @@ export async function structureClient(cedula) {
   const { data, error } = await supabase.functions.invoke("structure-client", {
     body: { cedula },
   });
-  if (error) throw error;
+  if (error) throw await errorDeFuncion(error);
   return data;
 }
 
@@ -256,7 +257,7 @@ export async function consultarAval(cedula) {
   const { data, error } = await supabase.functions.invoke("consultar-aval", {
     body: { identificacion: cedula, tipoIdentificacion: "C" },
   });
-  if (error) throw error;
+  if (error) throw await errorDeFuncion(error);
   return data;
 }
 

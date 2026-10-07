@@ -319,8 +319,8 @@ pisa: recalcular agrega una fila.
 | `impacto_estimado` | jsonb: malos evitados, buenos perdidos, aprobados que cambian |
 | `limitaciones`, `validacion_posterior` | qué no prueba y cómo se va a medir después |
 | `estado` | `borrador` → `revisada` → `presentada` → `aprobada` → `aplicada`; o `rechazada` / `retirada` |
-| `vigente_desde` | sólo `ajuste_criterio`: entra al criterio vigente |
-| `aplicada_en` | versión del marco o del criterio que la llevó |
+| `vigente_desde` | era sólo de `ajuste_criterio`: desde la 112, siempre vacía |
+| `aplicada_en` | la versión que la llevó al motor |
 | `es_sintetica` | una propuesta sobre datos sintéticos no se puede presentar |
 
 Los tipos y por dónde entran al motor:
