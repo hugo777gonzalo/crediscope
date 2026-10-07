@@ -21,8 +21,8 @@ Nombres propuestos el 2026-10-07, a confirmar por el negocio.
 
 | Grupo | Qué es | Cómo se sigue | Al 2026-10-07 |
 |---|---|---|---|
-| **Universo** | Toda solicitud registrada: una persona en una fecha. Si la misma persona vuelve a pedir, es otra solicitud (sus condiciones pueden haber cambiado). | Su consulta del día de la solicitud es el punto de partida (t0). | 2.570: 2.567 de la cartera de septiembre y 3 nuevas de octubre |
-| **Universo analizado** | Las solicitudes del Universo con análisis IA (recomendación y puntaje). Sólo con ellas se prueba el modelo. | — | 14, y sólo 3 con el marco vigente (marco-v28) |
+| **Universo** | Toda solicitud registrada: una persona en una fecha. Si la misma persona vuelve a pedir, es otra solicitud (sus condiciones pueden haber cambiado). | Su consulta del día de la solicitud es el punto de partida (t0). | 2.572: 2.567 de la cartera de septiembre y 5 nuevas de octubre |
+| **Universo analizado** | Las solicitudes del Universo con análisis IA (recomendación y puntaje). Sólo con ellas se prueba el modelo. | — | 205 personas con el marco vigente (marco-v28), 200 de ellas del lote del 2026-10-07; 215 con cualquier marco |
 | **Con crédito** | Solicitudes que la institución desembolsó. | **Reporte mensual de la institución**: días de mora, saldo y estado de cada crédito al cierre de cada mes. | 0: no hay institución todavía; el negocio va a simular los reportes |
 | **Sin crédito** | Solicitudes que no se desembolsaron (negadas, desistieron, en trámite). | **Reconsulta en Novadata cada 3 meses**: el impago en todo el sistema financiero. | 0 reconsultas reales; la primera ronda, desde el 25/12/2026 |
 
@@ -62,9 +62,21 @@ La definición vigente desde el 2026-10-06, que se cambia en Datos y cartera
   publicados), la definición de impago como parámetro, el detector de
   eventos entre dos consultas (sin inventar), y que lo calculado en las
   pantallas se guarda (verificado con sesión de admin el 2026-10-07).
-- El Universo analizado es chico y de versiones viejas del marco: probar el
-  modelo de verdad necesita analizar más solicitudes con el marco vigente
-  (ver el plan).
+- **El lote del 2026-10-07** analizó a los 200 candidatos de
+  `research/lote-analisis-2026-10-03/` con marco-v28, por la API de lotes y
+  con la caché del marco: USD 3,55 (estimado antes de enviar: 3,29 con caché,
+  5,78 sin ella), 200 de 200 bien, la caché leída en casi todos los pedidos.
+  Validado antes de gastar: se analizó el último perfil de cada persona (la
+  consulta del 03/10, estructura-v13), no el de septiembre que tenía la
+  selección (estructura-v12, con errores ya corregidos), y sin las 80
+  repeticiones de ruido. Carpeta: `research/lote-analisis-2026-10-07/`.
+- Lo que dijo el lote: revisar 143, aprobar 47, negar 10; puntaje mediano
+  662. **Siete de cada diez a revisar es para mirar al calibrar**, antes de
+  sacar conclusiones del Laboratorio con estos puntajes.
+- **Para el paso 1:** el análisis de esas 200 se hizo sobre la consulta del
+  03/10, no sobre la de septiembre. Hay que decidir cuál es su punto de
+  partida (t0) y su fecha de solicitud: la del análisis es la coherente
+  (lo que leyó el modelo), y corre las rondas a principios de enero.
 
 ## El plan
 
@@ -73,13 +85,14 @@ verificar, y con esta guía al día.
 
 | Paso | Qué | Cómo se verifica | Estado |
 |---|---|---|---|
-| 0 | Esta guía y el Excel para simular a la institución (`research/laboratorio/simulacion-institucion-2026-10.xlsx`, fuera de git: tiene cédulas) | El negocio confirma los nombres y llena el Excel | Hecho el 2026-10-07 |
+| 0 | Esta guía y el Excel para simular a la institución (`research/laboratorio/simulacion-institucion-2026-10-v2.xlsx`, fuera de git: tiene cédulas; trae las 215 analizadas arriba, y la primera versión, sin "-v2", quedó superada) | El negocio confirma los nombres y llena el Excel | Hecho el 2026-10-07 |
 | 1 | Registrar el Universo como solicitudes reales (cartera propia, sin institución) | Conteos por origen y por análisis, iguales a los de esta guía | — |
 | 2 | Reporte mensual: el crédito único y una fila por cierre de mes; leer el Excel de la simulación con la carga que ya existe | Cargar la simulación del negocio; impago, observación y "sin reporte" revisados a mano en tres créditos | — |
 | 3 | Reconsulta cada 3 meses atada a cada solicitud y su ronda; cortes a 3, 6, 9 y 12 meses | Una ronda de prueba con 20 personas | — |
 | 4 | Revisar juntos los resultados del Laboratorio con la simulación | — | — |
 | Antes del 25/12/2026 | Primera ronda real de la cartera (3 meses) | Conteos de la ronda | — |
-| Otro hilo | Ampliar el Universo analizado: los 200 candidatos ya elegidos (`research/lote-analisis-2026-10-03/`, ~USD 4-6 por lotes con caché), hasta ~300 | Cuando el análisis esté calibrado, con autorización del gasto | — |
+| Aparte | Ampliar el Universo analizado con los 200 candidatos ya elegidos | 200 de 200 guardados, USD 3,55 | Hecho el 2026-10-07 (autorizado por el negocio) |
+| Aparte | Llegar a ~300 analizados | Cuando el análisis esté calibrado, con autorización del gasto | — |
 
 ## Reglas de trabajo
 
@@ -98,8 +111,9 @@ verificar, y con esta guía al día.
 1. Mientras dure el desarrollo, todo es **cartera propia**: sin institución.
 2. Una solicitud nueva de una persona **es otra solicitud**, no una
    actualización de la anterior.
-3. No se analiza la cartera entera (~USD 83): unos 300 casos con caché, más
-   adelante y en otro hilo.
+3. No se analiza la cartera entera (~USD 83): unos 300 casos con caché. Ese
+   mismo día autorizó analizar los 200 candidatos ya elegidos (hecho,
+   USD 3,55).
 4. Sin pantallas nuevas hasta organizarse.
 
 ## Dónde está el detalle

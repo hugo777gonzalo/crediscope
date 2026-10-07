@@ -82,7 +82,7 @@ aceptada.
    15): los grupos (Universo, Universo analizado, Con crédito, Sin crédito),
    cómo se sigue cada uno, el plan por pasos y las reglas. **Sin pantallas
    nuevas hasta terminar el paso 4.** El negocio va a simular los reportes de
-   la institución con `research/laboratorio/simulacion-institucion-2026-10.xlsx`.
+   la institución con `research/laboratorio/simulacion-institucion-2026-10-v2.xlsx`.
    **La fecha que manda es la primera ronda de reconsulta de la cartera,
    desde el 25 de diciembre de 2026.** Lo hecho antes de la guía:
    - **Fase 1 hecha el 2026-10-06** (110, `docs/propuesta-revision-del-laboratorio.md`
@@ -105,10 +105,9 @@ aceptada.
      pantallas, verificado con sesión (ver 0).
    - La carga del primer ciclo (`1196978e…`) está anulada (confirmado por el
      negocio); la vigente es la del segundo (`746e5271…`).
-   - **El Universo analizado es chico**: 14 solicitudes con análisis válido
-     (no 33: las demás tenían análisis fallidos o anteriores a la
-     recomendación) y sólo 3 con el marco vigente. Ampliarlo es el último
-     paso de la guía, en otro hilo.
+   - **El Universo analizado**: eran 14 solicitudes con análisis válido (no
+     33) y 3 con el marco vigente; con el lote del 2026-10-07 son 205
+     personas con marco-v28.
    - Decisión del negocio pendiente: qué son los "comentarios
      institucionales" (hoy la institución no entra al Laboratorio).
    - Mejoras chicas que el plan no toca: el ajuste por la recomendación
@@ -150,10 +149,11 @@ aceptada.
    - **Marco por cliente (v29), hecho y apagado**: ver la sección 3.
      Encenderlo necesita la comparación `--configs=hoy,porCliente` (~USD 2,
      con autorización).
-   - **Lote de análisis reales: postergado** (no hay presupuesto, y el
-     Laboratorio no lo necesita para desarrollar). Decisión del negocio del
-     2026-10-07: hasta ~300 casos con caché, en otro hilo, cuando el análisis
-     esté calibrado (es el último paso de `docs/laboratorio-guia.md`). Listo:
+   - **Lote de análisis reales: hecho el 2026-10-07** con los 200 candidatos
+     (`research/lote-analisis-2026-10-07/`): USD 3,55 con caché, 200 de 200
+     guardados en marco-v28; revisar 143, aprobar 47, negar 10 (siete de cada
+     diez a revisar: mirarlo al calibrar). Detalle en
+     `docs/laboratorio-guia.md`. Lo que sigue es histórico (cómo se preparó):
      `node scripts/analizar-en-lote.mjs enviar --carpeta=research/lote-analisis-2026-10-03 --responsable=<uuid>`
      y después `recoger` (200 clientes, 280 pedidos, ~USD 4-6 por la API
      de lotes con caché). Antes: subir el límite de la consola de
