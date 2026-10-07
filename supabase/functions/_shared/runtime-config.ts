@@ -16,33 +16,11 @@ export async function loadDisabledResources(client: SupabaseClient): Promise<Set
   return new Set((data ?? []).map((r) => r.recurso as string));
 }
 
-// Ajustes al criterio del modelo que el área de Crédito/Riesgos aprobó
-// Y puso en vigencia, a partir del análisis de resultados reales (ver
-// migración 029). Se suman al marco interpretativo en cada análisis
-// nuevo, así el ciclo de calibración cierra sin necesidad de un
-// despliegue: el marco base sigue versionado en código y cada ajuste
-// vigente queda registrado en la base con quién lo aprobó y cuándo.
-// Devuelve el criterio efectivo vigente: los textos de los ajustes y la
-// versión a la que corresponden. El análisis guarda ese id (ver
-// analysis_results.criterio_version_id) para que después se pueda
-// reconstruir con qué criterio exacto se produjo -- sin eso, un
-// análisis que salga raro es imposible de auditar.
-export async function loadCriterioVigente(
-  client: SupabaseClient
-): Promise<{ ajustes: string[]; versionId: string | null; numeroVersion: number | null }> {
-  const { data, error } = await client
-    .from("criterio_versiones")
-    .select("id, numero, ajustes")
-    .order("numero", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return { ajustes: [], versionId: null, numeroVersion: null };
-  const ajustes = Array.isArray(data.ajustes)
-    ? (data.ajustes as Array<{ texto?: string }>).map((a) => a?.texto ?? "").filter(Boolean)
-    : [];
-  return { ajustes, versionId: data.id as string, numeroVersion: data.numero as number };
-}
+// Hasta el 2026-10-06 acá se leían los "ajustes del criterio": textos que
+// se sumaban al marco en cada análisis sin versión nueva del marco, sin
+// comparación y sin quedar en mensaje_al_modelo (que guarda el perfil, no las
+// instrucciones). El negocio los retiró: todo cambio a lo que lee el modelo
+// es una versión nueva del marco.
 
 // Set de campos DESHABILITADOS, como "grupo.campo" (ej. "cumplimiento.enListaControl").
 export async function loadDisabledFields(client: SupabaseClient): Promise<Set<string>> {

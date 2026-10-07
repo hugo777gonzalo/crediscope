@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { discriminacion } from "../../lib/analisisRetrospectivo.js";
 import { GraficoLineas, GraficoBarras } from "./Graficos.jsx";
-import { Kpi, MensajeError, Cargando, num, pct, dec } from "./Comunes.jsx";
+import { Kpi, MensajeError, Cargando, SinGuardar, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // ¿El puntaje separa a buenos de malos? Las curvas de la decisión 2 (ROC,
 // KS, precisión y sensibilidad), la distribución del puntaje en cada clase
@@ -16,6 +17,7 @@ const adelgazar = (puntos, maximo = 400) => (puntos.length <= maximo ? puntos : 
 export default function PestanaDiscriminacion({ corteId, poblacion }) {
   const { filas, error } = useFilasDelCorte(corteId, poblacion);
   const c = useMemo(() => (filas ? discriminacion(filas) : null), [filas]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "discriminacion", poblacion, resultado: c?.auc.auc === null ? null : c });
 
   if (error) return <MensajeError mensaje={error} />;
   if (!c) return <Cargando />;
@@ -24,6 +26,7 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-kpi-grid">
         <Kpi etiqueta="AUC" valor={dec(auc.auc, 3)} detalle={`entre ${dec(auc.ic[0], 3)} y ${dec(auc.ic[1], 3)} · ${num(auc.malos)} malos, ${num(auc.buenos)} buenos`} />
         <Kpi etiqueta="Gini" valor={dec(auc.gini, 3)} detalle="2 × AUC − 1" />

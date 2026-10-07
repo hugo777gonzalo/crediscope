@@ -31,7 +31,7 @@ import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-d
 import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
 import { filaDelAnalisis } from "../_shared/fila-del-analisis.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
-import { loadCriterioVigente, loadDisabledFields, loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
+import { loadDisabledFields, loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -209,19 +209,17 @@ Deno.serve(async (req) => {
     // Campos deshabilitados en standard_profile_field_config no se le
     // mandan al LLM (dato considerado poco confiable). Los oculta el
     // perfil del modelo (perfil-del-modelo.ts), la única puerta al LLM.
-    const [disabledFields, criterio] = await Promise.all([
-      loadDisabledFields(serviceClient),
-      loadCriterioVigente(serviceClient),
-    ]);
+    // Desde el 2026-10-06 no hay "ajustes del criterio": todo cambio a lo que
+    // lee el modelo es una versión nueva del marco (decisión del negocio).
+    const disabledFields = await loadDisabledFields(serviceClient);
     const inicioLlm = Date.now();
-    const llmResult = await scoreWithLlm(profile as unknown as Record<string, unknown>, controlBloqueo, criterio.ajustes, disabledFields);
+    const llmResult = await scoreWithLlm(profile as unknown as Record<string, unknown>, controlBloqueo, disabledFields);
     const duracionLlmMs = Date.now() - inicioLlm;
     const fila = filaDelAnalisis({
       runId: run.id,
       clientId: client.id,
       clientProfileId,
       marcoVersion: MARCO_VERSION,
-      criterioVersionId: criterio.versionId,
       llmResult,
       controlBloqueo,
       duracionIngestaMs,

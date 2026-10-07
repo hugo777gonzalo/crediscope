@@ -3,7 +3,7 @@ import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { getFilasDelCorte } from "../../lib/datosDelCorte.js";
 import { compararCortes } from "../../lib/analisisRetrospectivo.js";
 import { GraficoLineas } from "./Graficos.jsx";
-import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, GuardarEsteResultado, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
 
 // Dos cortes lado a lado: las mismas medidas, la diferencia y si es más que
 // azar. La diferencia de tasas, con chi cuadrado; la de AUC, con una z sobre
@@ -11,6 +11,8 @@ import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct, dec } from ".
 // (si comparten personas, la prueba es conservadora).
 
 const adelgazar = (puntos, maximo = 300) => (puntos.length <= maximo ? puntos : puntos.filter((_, i) => i % Math.ceil(puntos.length / maximo) === 0 || i === puntos.length - 1));
+// Lo que se guarda de cada corte: las medidas, sin las curvas punto por punto.
+const sinCurvas = ({ roc: _roc, ...medidas }) => medidas;
 
 export default function PestanaComparar({ corte, corteId, cortes, poblacion }) {
   const { filas, error } = useFilasDelCorte(corteId, poblacion);
@@ -46,6 +48,13 @@ export default function PestanaComparar({ corte, corteId, cortes, poblacion }) {
             {otros.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
           </select>
         </label>
+        {c ? (
+          <GuardarEsteResultado
+            corteId={corteId} tipo="comparacion" poblacion={poblacion} parametros={{ otro: otroId }}
+            resultado={{ otro: otroId, a: sinCurvas(c.a), b: sinCurvas(c.b), pruebaTasa: c.pruebaTasa, pruebaAuc: c.pruebaAuc }}
+            texto="Guardar esta comparación"
+          />
+        ) : null}
       </div>
       <MensajeError mensaje={mensaje} />
       {!c ? (

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { filasConPuntaje, getFilasDelCorte } from "../../lib/datosDelCorte.js";
 import { calibrar, dividirPorFecha } from "../../lib/analisisRetrospectivo.js";
-import { guardarResultado } from "../../lib/laboratorio.js";
+import { guardarCalculo } from "../../lib/calculosDelCorte.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { GraficoLineas } from "./Graficos.jsx";
 import { Kpi, MensajeError, Cargando, num, pct, dec } from "./Comunes.jsx";
@@ -61,12 +61,12 @@ export default function PestanaCalibracion({ corte, corteId, cortes, poblacion, 
     setMensaje(null);
     try {
       const [a, b] = c.modelo.coeficientes;
-      await guardarResultado(
-        corteId, "calibracion",
-        { version: 1, modelo: "logística: probabilidad de impago = 1 / (1 + e^-(a + b × puntaje))", poblacion, estimacion: { cohorte: c.descripcion.estimacion, corte_id: estimarEn === MITAD ? corteId : estimarEn, n: c.estimacion.length, malos: c.malosE }, prueba: { cohorte: c.descripcion.prueba, n: c.prueba.length, malos: c.malosP } },
-        { intercepto: a, pendiente: b, error_pendiente: c.modelo.errores?.[1] ?? null, convergio: c.modelo.convergio, brier: c.cal.brier, brier_referencia: c.brierReferencia, habilidad: c.habilidad, ece: c.cal.ece, hosmer_lemeshow: c.cal.hosmerLemeshow, tabla: c.cal.tabla },
-        c.prueba.length, c.malosP,
-      );
+      await guardarCalculo({
+        corteId, tipo: "calibracion", poblacion, parametros: { estimarEn },
+        metodologia: { modelo: "logística: probabilidad de impago = 1 / (1 + e^-(a + b × puntaje))", estimacion: { cohorte: c.descripcion.estimacion, corte_id: estimarEn === MITAD ? corteId : estimarEn, n: c.estimacion.length, malos: c.malosE }, prueba: { cohorte: c.descripcion.prueba, n: c.prueba.length, malos: c.malosP } },
+        resultado: { intercepto: a, pendiente: b, error_pendiente: c.modelo.errores?.[1] ?? null, convergio: c.modelo.convergio, brier: c.cal.brier, brier_referencia: c.brierReferencia, habilidad: c.habilidad, ece: c.cal.ece, hosmer_lemeshow: c.cal.hosmerLemeshow, tabla: c.cal.tabla },
+        n: c.prueba.length, nMalos: c.malosP,
+      });
       await recargar();
       setMensaje("Calibración guardada.");
     } catch (e) {

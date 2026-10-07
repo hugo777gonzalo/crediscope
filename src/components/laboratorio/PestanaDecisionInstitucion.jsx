@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { decisionesDeLaInstitucion, DECISIONES } from "../../lib/analisisRetrospectivo.js";
-import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.jsx";
+import { MensajeError, Cargando, SinGuardar, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Lo que decidió la institución con cada recomendación del motor (101: la
 // hoja "Solicitudes no desembolsadas" del archivo). Responde a "¿qué pasa
@@ -14,6 +15,8 @@ import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct } from "./Comu
 export default function PestanaDecisionInstitucion({ corteId }) {
   const { filas, error } = useFilasDelCorte(corteId, "solicitudes");
   const tabla = useMemo(() => (filas ? decisionesDeLaInstitucion(filas) : null), [filas]);
+  const paraGuardar = useMemo(() => (tabla ? { tabla } : null), [tabla]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "decisiones_institucion", poblacion: "solicitudes", resultado: paraGuardar });
 
   if (error) return <MensajeError mensaje={error} />;
   if (!tabla) return <Cargando />;
@@ -21,6 +24,7 @@ export default function PestanaDecisionInstitucion({ corteId }) {
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card" style={{ overflowX: "auto" }}>
         <h3 style={{ marginTop: 0 }}>Recomendación del motor × decisión de la institución</h3>
         <table className="crediscope-table">

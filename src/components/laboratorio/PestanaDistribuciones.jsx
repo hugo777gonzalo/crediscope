@@ -4,7 +4,7 @@ import { distribucion, comoNumero } from "../../lib/analisisEstadistico.js";
 import { descriptivas } from "../../lib/estadistica.js";
 import { GraficoBarras, GraficoCajas } from "./Graficos.jsx";
 import SelectorDeVariable from "./SelectorDeVariable.jsx";
-import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, GuardarEsteResultado, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
 
 // La distribución de una variable: el histograma con la parte de malos y de
 // buenos en cada tramo (formas comparables aunque haya diez buenos por malo)
@@ -64,6 +64,7 @@ export default function PestanaDistribuciones({ corteId, poblacion }) {
           </label>
         ) : null}
         {dist.fuera ? <span className="crediscope-muted" style={{ fontSize: 13 }}>{num(dist.fuera)} quedan afuera del gráfico</span> : null}
+        <GuardarEsteResultado corteId={corteId} tipo="distribucion" poblacion={poblacion} parametros={{ variable: columna.id, recortar }} resultado={{ variable: columna.id, nombre: columna.nombre, ...c }} texto="Guardar esta distribución" />
       </div>
 
       <div className="crediscope-card">

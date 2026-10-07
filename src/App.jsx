@@ -29,7 +29,6 @@ import LaboratorioCarga from "./pages/LaboratorioCarga.jsx";
 import LaboratorioCorteNuevo from "./pages/LaboratorioCorteNuevo.jsx";
 import LaboratorioCorte from "./pages/LaboratorioCorte.jsx";
 import LaboratorioPropuestas from "./pages/LaboratorioPropuestas.jsx";
-import LaboratorioCriterio from "./pages/LaboratorioCriterio.jsx";
 import LaboratorioDatos from "./pages/LaboratorioDatos.jsx";
 import LaboratorioDesempeno from "./pages/LaboratorioDesempeno.jsx";
 import LaboratorioEstadistica from "./pages/LaboratorioEstadistica.jsx";
@@ -417,7 +416,7 @@ export default function App() {
           {/* El Laboratorio reemplaza a Retroalimentación (2026-10-03); las
               direcciones viejas llevan a las nuevas. */}
           <Route path="/retroalimentacion" element={<Navigate to="/laboratorio" replace />} />
-          <Route path="/retroalimentacion/versiones" element={<Navigate to="/laboratorio/criterio" replace />} />
+          <Route path="/retroalimentacion/versiones" element={<Navigate to="/laboratorio/propuestas" replace />} />
           <Route path="/retroalimentacion/*" element={<Navigate to="/laboratorio" replace />} />
           <Route path="/laboratorio" element={<RequireAdmin><Laboratorio /></RequireAdmin>} />
           <Route path="/laboratorio/cargas/nueva" element={<RequireAdmin><LaboratorioCargaNueva /></RequireAdmin>} />
@@ -425,7 +424,8 @@ export default function App() {
           <Route path="/laboratorio/cortes/nuevo" element={<RequireAdmin><LaboratorioCorteNuevo /></RequireAdmin>} />
           <Route path="/laboratorio/cortes/:id" element={<RequireAdmin><LaboratorioCorte /></RequireAdmin>} />
           <Route path="/laboratorio/propuestas" element={<RequireAdmin><LaboratorioPropuestas /></RequireAdmin>} />
-          <Route path="/laboratorio/criterio" element={<RequireAdmin><LaboratorioCriterio /></RequireAdmin>} />
+          {/* El criterio vigente (ajustes sumados al marco) se retiró el 2026-10-06. */}
+          <Route path="/laboratorio/criterio" element={<Navigate to="/laboratorio/propuestas" replace />} />
           <Route path="/laboratorio/datos" element={<RequireAdmin><LaboratorioDatos /></RequireAdmin>} />
           <Route path="/laboratorio/desempeno" element={<RequireAdmin><LaboratorioDesempeno /></RequireAdmin>} />
           <Route path="/laboratorio/estadistica" element={<RequireAdmin><LaboratorioEstadistica /></RequireAdmin>} />

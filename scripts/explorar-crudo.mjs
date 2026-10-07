@@ -54,6 +54,7 @@ const MAX_HALLAZGOS = 200;
 const DIA = 86_400_000;
 
 const { estadoPorFuente } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/calidad-de-la-consulta.ts")).href);
+const E = await import(pathToFileURL(path.join(RAIZ, "src/lib/estadistica.js")).href);
 
 const env = Object.fromEntries(fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
@@ -238,58 +239,27 @@ await enParalelo(filas, 16, async (f, i) => {
 console.log(`personas: ${N}; crudo local ${origen.local}, del depósito ${origen.deposito}, sin crudo ${origen.sinCrudo}, sin perfil ${origen.sinPerfil}; campos: ${campos.size}; fuentes: ${contesto.size}`);
 
 // ------------------------------------------------------------ estadística
+// La de src/lib/estadistica.js, la misma de las pantallas (fase 2 de la
+// revisión, 2026-10-06). Hasta entonces este guion tenía su propia copia del
+// intervalo de Wilson, la chi cuadrado, el IV y el AUC: dos copias que
+// coinciden prueban que coinciden, no que estén bien.
 const r4 = (x) => (x === null || !Number.isFinite(x) ? null : Math.round(x * 1e4) / 1e4);
-function wilson(m, n) {
-  if (!n) return null;
-  const z = 1.96, p = m / n, d = 1 + (z * z) / n;
-  const c = (p + (z * z) / (2 * n)) / d, h = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d;
-  return [r4(c - h), r4(c + h)];
-}
-function lnGamma(x) {
-  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
-  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
-  x -= 1;
-  let a = c[0];
-  const t = x + 7.5;
-  for (let k = 1; k < 9; k++) a += c[k] / (x + k);
-  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
-}
-// Gamma incompleta regularizada superior: la cola de la chi cuadrado.
-function gammaQ(a, x) {
-  if (x <= 0) return 1;
-  if (x < a + 1) {
-    let suma = 1 / a, del = suma, ap = a;
-    for (let n = 0; n < 1000 && Math.abs(del) > Math.abs(suma) * 1e-14; n++) { ap++; del *= x / ap; suma += del; }
-    return Math.max(0, 1 - suma * Math.exp(-x + a * Math.log(x) - lnGamma(a)));
-  }
-  let b = x + 1 - a, c = 1e300, d = 1 / b, h = d;
-  for (let k = 1; k < 1000; k++) {
-    const an = -k * (k - a);
-    b += 2;
-    d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
-    c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
-    d = 1 / d;
-    const del = d * c;
-    h *= del;
-    if (Math.abs(del - 1) < 1e-14) break;
-  }
-  return Math.exp(-x + a * Math.log(x) - lnGamma(a)) * h;
-}
-// Igual que lab_calcular_variables: WoE con suavizado 0,5 por tramo.
-function ivYChi(tramos, buenos, malos) {
-  const k = tramos.length;
-  let iv = 0, chi = 0;
-  const n = buenos + malos;
+const wilson = (m, n) => {
+  const ic = E.wilson(m, n);
+  return ic ? [r4(ic[0]), r4(ic[1])] : null;
+};
+// IV y WoE (suavizado 0,5 por tramo, como Variables) y la chi cuadrado de
+// los tramos contra el resultado.
+function ivYChi(tramos) {
+  const { iv } = E.ivDeConteos(tramos);
   for (const t of tramos) {
-    const pb = (t.n - t.malos + 0.5) / (buenos + 0.5 * k), pm = (t.malos + 0.5) / (malos + 0.5 * k);
-    t.woe = r4(Math.log(pb / pm));
-    t.tasa = r4(t.malos / t.n);
-    iv += (pb - pm) * Math.log(pb / pm);
-    const em = (t.n * malos) / n, eb = (t.n * buenos) / n;
-    if (em > 0) chi += (t.malos - em) ** 2 / em;
-    if (eb > 0) chi += (t.n - t.malos - eb) ** 2 / eb;
+    t.woe = r4(t.woe);
+    t.tasa = r4(t.tasa);
+    delete t.aporte;
+    delete t.ic;
   }
-  return { iv, p: k > 1 ? gammaQ((k - 1) / 2, chi / 2) : 1 };
+  const chi = E.chiCuadrado(tramos.map((t) => [t.malos, t.n - t.malos]));
+  return { iv, p: chi?.p ?? 1 };
 }
 const fuerza = (iv) => (iv < 0.02 ? "nada" : iv < 0.1 ? "débil" : iv < 0.3 ? "media" : "fuerte");
 
@@ -312,7 +282,7 @@ function binaria(universo, condicion) {
   }
   if (n1 < MIN_GRUPO || n0 < MIN_GRUPO) return null;
   const tramos = [{ tramo: "sí", n: n1, malos: m1 }, { tramo: "no", n: n0, malos: m0 }];
-  const { iv, p } = ivYChi(tramos, n1 + n0 - m1 - m0, m1 + m0);
+  const { iv, p } = ivYChi(tramos);
   let suma = 0, varianza = 0, numOr = 0, denOr = 0;
   for (const [a, b, c, d] of tabla) {
     const n = a + b + c + d;
@@ -322,7 +292,8 @@ function binaria(universo, condicion) {
     numOr += (a * d) / n;
     denOr += (b * c) / n;
   }
-  const pAjustada = varianza > 0 ? gammaQ(0.5, Math.max(0, Math.abs(suma) - 0.5) ** 2 / varianza / 2) : null;
+  // Mantel-Haenszel con la corrección de continuidad: una chi cuadrado de 1 grado.
+  const pAjustada = varianza > 0 ? E.pChiCuadrado(Math.max(0, Math.abs(suma) - 0.5) ** 2 / varianza, 1) : null;
   return {
     universo: n1 + n0, con: n1, malos_con: m1, tasa_con: r4(m1 / n1), ic_con: wilson(m1, n1), sin: n0, malos_sin: m0, tasa_sin: r4(m0 / n0), ic_sin: wilson(m0, n0),
     iv: r4(iv), p, firma: `${n1}:${m1}:${firma >>> 0}`,
@@ -369,22 +340,11 @@ function numerica(universo, valor, etiqueta) {
   // "Sin dato" con menos de MIN_GRUPO personas no es un tramo: quedan fuera.
   if (sin.n >= MIN_GRUPO) llenos.push({ tramo: "sin dato", n: sin.n, malos: sin.malos });
   if (llenos.length < 2) return null;
-  const total = llenos.reduce((s, t) => s + t.n, 0), malosTotal = llenos.reduce((s, t) => s + t.malos, 0);
-  const { iv, p } = ivYChi(llenos, total - malosTotal, malosTotal);
-  // AUC = P(el valor de un malo > el de un bueno), con rangos promedio.
-  let auc = null;
-  const mc = con.reduce((s, x) => s + x[1], 0), bc = con.length - mc;
-  if (mc >= 10 && bc >= 10) {
-    let sumaRangos = 0;
-    for (let a = 0; a < con.length;) {
-      let b = a;
-      while (b + 1 < con.length && con[b + 1][0] === con[a][0]) b++;
-      const rango = (a + b) / 2 + 1;
-      for (let k = a; k <= b; k++) if (con[k][1]) sumaRangos += rango;
-      a = b + 1;
-    }
-    auc = (sumaRangos - (mc * (mc + 1)) / 2) / (mc * bc);
-  }
+  const total = llenos.reduce((s, t) => s + t.n, 0);
+  const { iv, p } = ivYChi(llenos);
+  // AUC = P(el valor de un malo > el de un bueno), empates a la mitad.
+  const deMalos = con.filter((x) => x[1]).map((x) => x[0]), deBuenos = con.filter((x) => !x[1]).map((x) => x[0]);
+  const auc = deMalos.length >= 10 && deBuenos.length >= 10 ? E.mannWhitney(deMalos, deBuenos).auc : null;
   // "Cuántos" de cada campo del mismo registro da tramos idénticos: la firma
   // los junta como equivalentes.
   return { universo: total, con: con.length, sin: sin.n, iv: r4(iv), p, auc: r4(auc), tramos: llenos, firma: `num:${JSON.stringify(llenos)}` };
@@ -505,15 +465,7 @@ for (const p of medidas.sort((a, b) => a.ruta.length - b.ruta.length)) {
 const unicas = medidas.filter((p) => !p.repetida);
 // Benjamini-Hochberg: controla la proporción de falsos hallazgos entre los
 // que se declaran significativos.
-function corregir(lista, campoP, campoQ) {
-  const orden = lista.filter((p) => Number.isFinite(p[campoP])).sort((a, b) => a[campoP] - b[campoP]);
-  let minimo = 1;
-  for (let j = orden.length - 1; j >= 0; j--) {
-    minimo = Math.min(minimo, (orden[j][campoP] * orden.length) / (j + 1));
-    orden[j][campoQ] = minimo;
-  }
-}
-corregir(unicas, "p", "q");
+E.benjaminiHochberg(unicas.map((p) => p.p)).forEach((q, i) => { unicas[i].q = q; });
 const significativas = unicas.filter((p) => p.q < 0.05);
 
 // ¿El modelo ya lo tenía? Cuánto del efecto sobrevive dentro de cada

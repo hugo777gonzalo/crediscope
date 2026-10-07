@@ -18,6 +18,7 @@ const F = await importar("filasDelCorte.js");
 const R = await importar("analisisRetrospectivo.js");
 const D = await importar("analisisEstadistico.js");
 const P = await importar("analisisProfundo.js");
+const G = await importar("resultadosDelCorte.js");
 
 const env = Object.fromEntries(fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
@@ -55,7 +56,7 @@ function control(nombre, ok, detalle = "") {
 }
 const p = (x) => (x === null || x === undefined ? "—" : `${(x * 100).toFixed(1)}%`);
 
-const cortes = await rest("lab_cortes?select=id,nombre,resumen&order=congelado_en.asc");
+const cortes = await rest("lab_cortes?select=id,nombre,resumen,es_sintetico&order=congelado_en.asc");
 const catalogo = await rest("lab_catalogo_variables?select=id,nombre,grupo,tipo,uso,en_perfil_del_modelo&activa=is.true&order=grupo.asc,nombre.asc");
 const porCorte = {};
 
@@ -68,9 +69,14 @@ for (const corte of cortes) {
 
     // Discriminación.
     const d = R.discriminacion(filas);
+    // Desde la 111 el desempeño lo arma el navegador (resultadosDelCorte.js):
+    // tiene que dar lo que daba la base, que quedó guardado con origen "base".
     if (poblacion === "operaciones") {
-      const [aucBase] = await rest("rpc/lab_auc", { method: "POST", body: JSON.stringify({ p_corte: corte.id }) });
-      control("AUC = lab_auc", d.auc.auc === null ? aucBase.auc === null : Math.abs(d.auc.auc - Number(aucBase.auc)) < 5e-5, `${d.auc.auc?.toFixed(4)} contra ${aucBase.auc}`);
+      const [guardado] = await rest(`lab_resultados?select=resultado&corte_id=eq.${corte.id}&tipo=eq.desempeno&origen=eq.base&order=created_at.desc&limit=1`);
+      const des = G.desempenoDelCorte(filas, { esSintetico: corte.es_sintetico });
+      const r = guardado?.resultado;
+      control("desempeño del navegador = el que guardó la base", r && des.n === r.n && des.n_malos === r.n_malos && Math.abs(des.auc - r.auc) < 1e-4 && Math.abs(des.ks - r.ks) < 1e-4 && Math.abs(d.auc.auc - r.auc) < 5e-5,
+        `AUC ${des.auc} contra ${r?.auc}, KS ${des.ks} contra ${r?.ks}`);
     }
     if (d.auc.auc !== null) {
       control("deciles suman la base", d.deciles.reduce((s, x) => s + x.n, 0) === d.base.length, `${d.base.length} con puntaje, ${d.rompen} deciles suben`);
@@ -134,13 +140,13 @@ for (const corte of cortes) {
     const inf = D.inferencia(numerica, datos.malos, datos.filas);
     control("inferencia de una numérica", inf.mannWhitney !== null && inf.welch !== null, `${numerica.id}: Welch p ${inf.welch?.p?.toExponential(2)}, Mann-Whitney p ${inf.mannWhitney?.p?.toExponential(2)}`);
     // El IV del navegador con los tramos de la base tiene que ser el de lab_calcular_variables.
-    const [vars] = await rest(`lab_resultados?select=resultado,metodologia&corte_id=eq.${corte.id}&tipo=eq.variables&order=created_at.desc&limit=5`).then((rs) => rs.filter((r) => (r.metodologia?.poblacion ?? "operaciones") === poblacion));
+    const [vars] = await rest(`lab_resultados?select=resultado,metodologia&corte_id=eq.${corte.id}&tipo=eq.variables&origen=eq.base&order=created_at.desc&limit=5`).then((rs) => rs.filter((r) => (r.metodologia?.poblacion ?? "operaciones") === poblacion));
     if (vars) {
       const sql = new Map(vars.resultado.variables.map((v) => [v.variable, v.iv]));
       const comparables = sig.filter((s) => sql.has(s.id));
       const diferencias = comparables.map((s) => Math.abs(s.iv - sql.get(s.id)));
       // Desde la 106 la base y el navegador usan la misma regla de tramos.
-      control("IV del navegador = IV de lab_calcular_variables", Math.max(...diferencias) < 1e-3, `${comparables.length} variables, la mayor diferencia ${Math.max(...diferencias).toFixed(4)}`);
+      control("IV del navegador = IV que guardó la base", Math.max(...diferencias) < 1e-3, `${comparables.length} variables, la mayor diferencia ${Math.max(...diferencias).toFixed(4)}`);
     }
 
     // Descubrimiento profundo (fase E).
@@ -168,6 +174,19 @@ for (const corte of cortes) {
       const derivada = P.probarFormula(filas, catalogo, "meses_con_aporte_24 > 0 y meses_con_aporte_24 < 24");
       control("taller: la derivada de la señal plantada anticipa", derivada.tipo === "booleano" && derivada.iv.iv > 0.05, `IV ${derivada.iv.iv.toFixed(3)} (mitades ${derivada.iv.primera.iv.toFixed(3)} y ${derivada.iv.segunda.iv.toFixed(3)}), usa ${derivada.usadas.join(", ")}`);
     }
+
+    // Lo que se guarda de cada pestaña (desde la 111): sin filas ni cédulas,
+    // y la misma huella para el mismo cálculo.
+    const cedulas = new Set(filas.map((f) => f.cedula).filter(Boolean));
+    const guardables = { discriminacion: R.discriminacion(filas), cosechas: R.cosechas(filas, "mes"), los_que_cayeron: P.losQueCayeron(filas, catalogo) };
+    const llevaCedula = (x) => [...JSON.stringify(x).matchAll(/\d{10}/g)].some((m) => cedulas.has(m[0]));
+    const conCedula = Object.entries(guardables).filter(([tipo, x]) => llevaCedula(G.resumir(tipo, x))).map(([tipo]) => tipo);
+    // El control tiene que poder fallar: sin resumir, la discriminación lleva las filas.
+    control("lo que se guarda no lleva cédulas", conCedula.length === 0 && (!filas.length || llevaCedula(guardables.discriminacion)), conCedula.join(", ") || `${Object.keys(guardables).length} resúmenes revisados; sin resumir sí aparecen`);
+    const h1 = await G.huellaDe({ corteId: corte.id, tipo: "segmentos", poblacion, parametros: { dimension: "producto" } });
+    const h2 = await G.huellaDe({ corteId: corte.id, poblacion, tipo: "segmentos", parametros: { dimension: "producto" } });
+    const h3 = await G.huellaDe({ corteId: corte.id, tipo: "segmentos", poblacion, parametros: { dimension: "canal" } });
+    control("huella: la misma para el mismo cálculo, otra si cambia un parámetro", h1 === h2 && h1 !== h3);
 
     // Lo que decidió la institución.
     if (poblacion === "solicitudes") {

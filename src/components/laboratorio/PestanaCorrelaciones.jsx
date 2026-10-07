@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { correlaciones, parDeVariables } from "../../lib/analisisEstadistico.js";
 import { MapaDeCalor } from "./Graficos.jsx";
-import { MensajeError, Cargando, Etiqueta, num, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, SinGuardar, Etiqueta, num, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Correlaciones entre las variables numéricas y sí/no del corte (Pearson o
 // Spearman), su correlación con el resultado, los pares casi iguales y el
@@ -18,6 +19,7 @@ export default function PestanaCorrelaciones({ corteId, poblacion }) {
   const [metodo, setMetodo] = useState("spearman");
   const [par, setPar] = useState(null);
   const c = useMemo(() => (datos ? correlaciones(datos, metodo) : null), [datos, metodo]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "correlaciones", poblacion, parametros: { metodo }, resultado: c });
   const detalle = useMemo(() => {
     if (!par || !datos || !c) return null;
     const a = datos.columnas.find((x) => x.id === c.variables[par[0]].id), b = datos.columnas.find((x) => x.id === c.variables[par[1]].id);
@@ -29,6 +31,7 @@ export default function PestanaCorrelaciones({ corteId, poblacion }) {
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <span className="crediscope-muted" style={{ fontSize: 13 }}>Coeficiente</span>
         <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>

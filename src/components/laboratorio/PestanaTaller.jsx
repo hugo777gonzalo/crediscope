@@ -4,7 +4,7 @@ import { getCatalogoUnaVez } from "../../lib/datosDelCorte.js";
 import { probarFormula } from "../../lib/analisisProfundo.js";
 import { crearCandidata } from "../../lib/laboratorio.js";
 import { GraficoBarras } from "./Graficos.jsx";
-import { MensajeError, Cargando, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, GuardarEsteResultado, Etiqueta, num, pct, dec } from "./Comunes.jsx";
 
 // Taller de variables (módulo 6 del negocio): una variable nueva hecha con
 // las del perfil (razones, conteos, indicadores, interacciones), probada en
@@ -93,6 +93,14 @@ export default function PestanaTaller({ corte, corteId, poblacion }) {
             mitades {dec(r.iv.primera.iv, 3)} y {dec(r.iv.segunda.iv, 3)}
             {(r.iv.primera.iv >= 0.02) !== (r.iv.segunda.iv >= 0.02) ? <strong style={{ color: "var(--warn)" }}> · inestable</strong> : null}
           </p>
+          <GuardarEsteResultado
+            corteId={corteId} tipo="taller" poblacion={poblacion} parametros={{ formula }}
+            resultado={{
+              nombre, formula, usadas: r.usadas, tipo: r.tipo, cobertura: r.cobertura, n: r.n, n_malos: r.iv.malos, iv: r.iv.iv, primera: r.iv.primera.iv, segunda: r.iv.segunda.iv,
+              tramos: r.iv.tramos.map((t, i) => ({ tramo: r.iv.etiquetas[i], n: t.n, malos: t.malos, tasa: t.tasa, woe: t.woe })),
+            }}
+            texto="Guardar esta variable derivada"
+          />
           <GraficoBarras
             categorias={r.iv.etiquetas}
             series={[{ nombre: "Tasa de malos", color: "var(--brand)", valores: r.iv.tramos.map((t) => t.tasa), formato: (v) => pct(v) }]}

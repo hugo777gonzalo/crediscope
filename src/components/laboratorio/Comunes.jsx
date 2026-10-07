@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FlaskConical, AlertTriangle, ArrowLeft } from "lucide-react";
+import { guardarCalculo } from "../../lib/calculosDelCorte.js";
 
 // Piezas que comparten las pantallas del Laboratorio.
 
@@ -20,7 +22,6 @@ export const ETIQUETA_ESTADO_CARGA = {
 };
 
 export const ETIQUETA_TIPO_PROPUESTA = {
-  ajuste_criterio: "Ajuste del criterio",
   cambio_marco: "Cambio del marco",
   regla_politica: "Regla de política",
   dato_nuevo: "Dato nuevo",
@@ -134,6 +135,38 @@ export function MensajeError({ mensaje }) {
   return (
     <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
       <p style={{ color: "var(--bad)", margin: 0 }}>{mensaje}</p>
+    </div>
+  );
+}
+
+// Lo que se calcula en una pestaña se guarda solo (useGuardarResultado): si
+// no se pudo, se dice.
+export function SinGuardar({ error }) {
+  if (!error) return null;
+  return <p style={{ color: "var(--bad)", fontSize: 12.5 }}>No se guardó este resultado: {error}</p>;
+}
+
+// Para lo que se mueve a mano (umbrales, tramos, una fórmula, una variable):
+// se guarda cuando la persona decide que es evidencia.
+export function GuardarEsteResultado({ corteId, tipo, poblacion = null, parametros = {}, resultado, texto = "Guardar este resultado" }) {
+  const [estado, setEstado] = useState(null);
+  const clave = JSON.stringify(parametros);
+  useEffect(() => setEstado(null), [clave]);
+  async function guardar() {
+    setEstado("guardando");
+    try {
+      await guardarCalculo({ corteId, tipo, poblacion, parametros, resultado });
+      setEstado("guardado");
+    } catch (e) {
+      setEstado(e.message ?? String(e));
+    }
+  }
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0" }}>
+      <button className="crediscope-btn crediscope-btn-ghost" onClick={guardar} disabled={!resultado || estado === "guardando" || estado === "guardado"}>
+        {estado === "guardado" ? "Guardado" : estado === "guardando" ? "Guardando..." : texto}
+      </button>
+      {estado && !["guardando", "guardado"].includes(estado) ? <span style={{ color: "var(--bad)", fontSize: 12.5 }}>{estado}</span> : null}
     </div>
   );
 }

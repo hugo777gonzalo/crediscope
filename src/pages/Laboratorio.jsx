@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Database, LineChart, Sigma, Microscope, FileText, History, Building2, AlertTriangle } from "lucide-react";
+import { Database, LineChart, Sigma, Microscope, FileText, Building2, AlertTriangle } from "lucide-react";
 import {
   getCargas, getCortes, getPropuestas, getResultados, getCandidatas, getInstituciones, getVolumenDeAnalisis, getCentroDeDatos, contarReconsultasSinProcesar,
 } from "../lib/laboratorio.js";
@@ -32,12 +32,16 @@ const MODULOS = [
   ["/laboratorio/estadistica", Sigma, "Descubrimiento estadístico", "¿Qué anticipa el impago?"],
   ["/laboratorio/profundo", Microscope, "Descubrimiento profundo", "¿Qué no vio el modelo?"],
   ["/laboratorio/propuestas", FileText, "Propuestas", "Ajustes con evidencia, para revisar y presentar."],
-  ["/laboratorio/criterio", History, "Criterio vigente", "Qué ajustes están en vigencia y su historia."],
 ];
 const TIPO_RESULTADO = {
   desempeno: "Desempeño", matriz: "Matriz de confusión", variables: "Variables", crudo: "Explorador del crudo", motivos: "Motivos del impago",
   cuadrantes: "Con y sin crédito", calificacion_simulacion: "Calificación de la simulación", estabilidad: "Estabilidad", calibracion: "Calibración",
   importancia: "Importancia (bosque)", segmentos_kmedias: "Segmentos (K-medias)", pca: "Componentes principales", simulacion_politica: "Simulación de política",
+  // Desde la 111, lo que calcula el navegador también se guarda.
+  discriminacion: "Discriminación", segmentos: "Segmentos", cosechas: "Cosechas", descriptivas: "Descriptivas", faltantes: "Datos faltantes",
+  correlaciones: "Correlaciones", significancia: "Explorador de significancia", los_que_cayeron: "Los que cayeron", decisiones_institucion: "Lo que decidió la institución",
+  umbrales: "Umbrales", tramos: "Laboratorio de tramos", taller: "Taller de variables", inferencia: "Inferencia", distribucion: "Distribución",
+  estabilidad_variables: "Estabilidad de las variables", comparacion: "Comparar cortes",
 };
 
 async function cargarInicio() {

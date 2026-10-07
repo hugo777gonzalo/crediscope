@@ -1,6 +1,7 @@
 // Controla src/lib/estadistica.js: valores publicados, identidades entre
-// pruebas que tienen que coincidir, y los números que ya calcula la base
-// (AUC, KS e IV de un corte). Si algo no coincide, sale con error.
+// pruebas que tienen que coincidir, y los números que calculó la base antes de
+// la 111 (AUC, KS e IV de un corte, guardados con origen "base"): desde la 111
+// la estadística vive sólo acá. Si algo no coincide, sale con error.
 //
 // Lo que no pasa por lint ni build se rompe en silencio: esto es lo que le
 // da a la estadística del navegador una prueba antes de mostrarla.
@@ -192,15 +193,19 @@ for (let desde = 0; ; desde += 1000) {
   if (pagina.length < 1000) break;
 }
 const base = filas.filter((f) => f.incluida && f.veredicto_origen !== "control_bloqueo");
-const [aucBase] = await rest("rpc/lab_auc", { method: "POST", body: JSON.stringify({ p_corte: corte.id }) });
+// Contra lo que calculó la base antes de la 111 (origen "base"): desde
+// entonces la estadística es sólo ésta, y esos resultados guardados son la
+// referencia de que el número no cambió al mudarse.
 const auc = E.aucPuntaje(base);
-igual(`AUC contra lab_auc (${corte.nombre})`, Number(auc.auc.toFixed(4)), Number(aucBase.auc), 0);
 igual("AUC de la curva ROC = AUC de Mann-Whitney", E.curvaRoc(base).auc, auc.auc, 1e-12);
-const [desempeno] = await rest(`lab_resultados?select=resultado&corte_id=eq.${corte.id}&tipo=eq.desempeno&order=created_at.desc&limit=1`);
-if (desempeno) igual("KS contra lab_calcular_desempeno", Number(E.ks(base).ks.toFixed(4)), Number(desempeno.resultado.ks), 0);
+const [desempeno] = await rest(`lab_resultados?select=resultado&corte_id=eq.${corte.id}&tipo=eq.desempeno&origen=eq.base&order=created_at.desc&limit=1`);
+if (desempeno) {
+  igual(`AUC contra el que guardó la base (${corte.nombre})`, Number(auc.auc.toFixed(4)), Number(desempeno.resultado.auc), 0);
+  igual("KS contra el que guardó la base", Number(E.ks(base).ks.toFixed(4)), Number(desempeno.resultado.ks), 0);
+}
 
 // IV: el mismo cálculo sobre los tramos que guardó la base.
-const [variables] = await rest(`lab_resultados?select=resultado&corte_id=eq.${corte.id}&tipo=eq.variables&order=created_at.desc&limit=1`);
+const [variables] = await rest(`lab_resultados?select=resultado&corte_id=eq.${corte.id}&tipo=eq.variables&origen=eq.base&order=created_at.desc&limit=1`);
 if (variables) {
   let peor = 0;
   for (const v of variables.resultado.variables) {

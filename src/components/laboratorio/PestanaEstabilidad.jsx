@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { getFilasDelCorte, getCatalogoUnaVez } from "../../lib/datosDelCorte.js";
 import { psiDeVariables } from "../../lib/analisisRetrospectivo.js";
-import { calcularEstabilidad, getResultados } from "../../lib/laboratorio.js";
+import { getResultados } from "../../lib/laboratorio.js";
+import { calcularEstabilidad } from "../../lib/calculosDelCorte.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { GraficoBarras, GraficoLineas } from "./Graficos.jsx";
-import { MensajeError, Cargando, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, Etiqueta, GuardarEsteResultado, num, pct, dec } from "./Comunes.jsx";
 
 // Estabilidad: ¿la población de este corte se parece a la de otro? PSI del
-// puntaje (lo calcula y lo guarda la base: lab_estabilidad) y de cada
-// variable (en el navegador, con los tramos del corte base). Menos de 0,1,
+// puntaje (se calcula en el navegador y se guarda en este corte, desde la
+// 111; antes lo hacía la base) y de cada variable (con los tramos del corte
+// base; se guarda con un botón). Menos de 0,1,
 // estable; hasta 0,25, mirar; más, la población cambió y los números del
 // otro corte no se trasladan a este. Y la evolución de AUC, KS y tasa de
 // malos entre todos los cortes.
@@ -122,6 +124,10 @@ export default function PestanaEstabilidad({ corte, corteId, cortes, poblacion, 
               <Cargando que="el corte base" />
             ) : (
               <div style={{ overflowX: "auto" }}>
+                <GuardarEsteResultado
+                  corteId={corteId} tipo="estabilidad_variables" poblacion={poblacion} parametros={{ base: baseId }}
+                  resultado={{ base: baseId, variables }} texto="Guardar el PSI de las variables"
+                />
                 <table className="crediscope-table">
                   <thead>
                     <tr>

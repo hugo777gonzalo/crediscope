@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { getCatalogoUnaVez } from "../../lib/datosDelCorte.js";
 import { losQueCayeron } from "../../lib/analisisProfundo.js";
-import { MensajeError, Cargando, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
+import { MensajeError, Cargando, SinGuardar, Etiqueta, num, pct, dec } from "./Comunes.jsx";
 
 // Variables de los que cayeron (módulo 6 del negocio): dentro de una misma
 // recomendación, en qué se diferencian los que cayeron de los que pagaron.
@@ -23,12 +24,16 @@ export default function PestanaLosQueCayeron({ corteId, poblacion }) {
     getCatalogoUnaVez().then(setCatalogo).catch(() => setCatalogo([]));
   }, []);
   const r = useMemo(() => (filas && catalogo ? losQueCayeron(filas, catalogo, recomendacion) : null), [filas, catalogo, recomendacion]);
+  // Es la evidencia sobre los que el modelo dio por buenos y cayeron (decisión
+  // del negocio del 2026-10-06): va al informe.
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "los_que_cayeron", poblacion, parametros: { recomendacion }, resultado: r && !r.insuficiente ? r : null });
 
   if (error) return <MensajeError mensaje={error} />;
   if (!r) return <Cargando />;
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <span className="crediscope-muted" style={{ fontSize: 13 }}>Entre los que el motor dijo</span>
         <select value={recomendacion} onChange={(e) => setRecomendacion(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>

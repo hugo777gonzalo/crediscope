@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
-import { explorarSignificancia } from "../../lib/analisisEstadistico.js";
+import { explorarSignificancia, resumenDeVariables } from "../../lib/analisisEstadistico.js";
 import { crearCandidata } from "../../lib/laboratorio.js";
-import { MensajeError, Cargando, Etiqueta, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
+import { MensajeError, Cargando, SinGuardar, Etiqueta, pct, dec } from "./Comunes.jsx";
 
 // Una variable del perfil que el modelo no recibe pasa al Registro de
 // candidatas (108) con su evidencia.
@@ -52,12 +53,17 @@ export default function PestanaSignificancia({ corte, corteId, poblacion }) {
   const [filtro, setFiltro] = useState("todas");
   const [orden, setOrden] = useState("iv");
   const todas = useMemo(() => (datos ? explorarSignificancia(datos) : null), [datos]);
+  const paraGuardar = useMemo(() => (datos && todas ? {
+    variables: todas, resumen: resumenDeVariables(datos, todas), n: datos.filas.length, n_malos: datos.malos.filter(Boolean).length,
+  } : null), [datos, todas]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "significancia", poblacion, resultado: paraGuardar });
   if (error) return <MensajeError mensaje={error} />;
   if (!todas) return <Cargando que="las variables del corte" />;
   const lista = todas.filter(FILTROS[filtro][1]).sort(ORDENES[orden][1]);
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>
           {Object.entries(FILTROS).map(([clave, [texto]]) => <option key={clave} value={clave}>{texto} ({todas.filter(FILTROS[clave][1]).length})</option>)}

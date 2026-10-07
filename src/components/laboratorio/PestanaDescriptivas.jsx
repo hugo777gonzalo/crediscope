@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { descriptivasNumericas, descriptivasCategoricas } from "../../lib/analisisEstadistico.js";
-import { MensajeError, Cargando, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, SinGuardar, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Descriptivas de cada variable del corte: las numéricas con su forma
 // (asimetría, curtosis, atípicos) y la diferencia entre malos y buenos; las
@@ -62,11 +63,13 @@ export default function PestanaDescriptivas({ corteId, poblacion }) {
   const { datos, error } = useColumnasDelCorte(corteId, poblacion);
   const [porClase, setPorClase] = useState(false);
   const c = useMemo(() => (datos ? { numericas: descriptivasNumericas(datos), categoricas: descriptivasCategoricas(datos) } : null), [datos]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "descriptivas", poblacion, resultado: c });
   if (error) return <MensajeError mensaje={error} />;
   if (!c) return <Cargando que="las variables del corte" />;
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <h3 style={{ margin: 0 }}>Numéricas ({c.numericas.length})</h3>

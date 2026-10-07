@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { inferencia, pruebasDeTodas } from "../../lib/analisisEstadistico.js";
 import SelectorDeVariable from "./SelectorDeVariable.jsx";
-import { MensajeError, Cargando, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, SinGuardar, GuardarEsteResultado, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Inferencia: para una variable, las pruebas que corresponden a su tipo
 // contra el resultado (y, las numéricas, entre las recomendaciones del
@@ -111,14 +112,19 @@ export default function PestanaInferencia({ corteId, poblacion }) {
   const columna = datos?.columnas.find((c) => c.id === id) ?? datos?.columnas[0] ?? null;
   const r = useMemo(() => (datos && columna ? inferencia(columna, datos.malos, datos.filas) : null), [datos, columna]);
   const todas = useMemo(() => (datos ? pruebasDeTodas(datos) : null), [datos]);
+  // La prueba de todas las variables mira el corte entero: se guarda sola.
+  const paraGuardar = useMemo(() => (datos && todas ? { todas, n: datos.filas.length, n_malos: datos.malos.filter(Boolean).length } : null), [datos, todas]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "inferencia", poblacion, parametros: { variable: "todas" }, resultado: paraGuardar });
   if (error) return <MensajeError mensaje={error} />;
   if (!datos || !r) return <Cargando que="las variables del corte" />;
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card">
         <div style={{ marginBottom: 10 }}><SelectorDeVariable columnas={datos.columnas} valor={columna.id} alCambiar={setId} /></div>
         {r.tipo === "numero" ? <Numerica r={r} /> : <Categorica r={r} />}
+        <GuardarEsteResultado corteId={corteId} tipo="inferencia" poblacion={poblacion} parametros={{ variable: columna.id }} resultado={{ variable: columna.id, nombre: columna.nombre, ...r }} />
       </div>
 
       <div className="crediscope-card">

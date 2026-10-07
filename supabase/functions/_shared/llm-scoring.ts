@@ -357,20 +357,23 @@ async function pedirScoringConReintentos(
   return { resultado: ultimo!.resultado, llamadas };
 }
 
-// El pedido entero al modelo, en un solo lugar: el análisis y el backtest
-// (correr-backtest, con los ajustes del criterio candidato) lo mandan con
-// CONFIG_LLM, y scripts/comparar-razonamiento.mjs con otras
-// configuraciones, sobre el mismo marco y el mismo perfil del modelo. Si
-// la comparación o el backtest armaran su propio pedido, medirían otra cosa.
+// El pedido entero al modelo, en un solo lugar: el análisis y el lote lo
+// mandan con CONFIG_LLM, y scripts/comparar-razonamiento.mjs con otras
+// configuraciones, sobre el mismo marco y el mismo perfil del modelo. Si la
+// comparación armara su propio pedido, mediría otra cosa.
 //
 // profile: el StandardClientProfile guardado, tal cual. Lo que el modelo
 // lee de él lo arma perfil-del-modelo.ts (desde marco-v23): esta función
 // no recibe un perfil ya recortado, para que ningún camino pueda saltarse
 // esa puerta.
+//
+// Hasta el 2026-10-06 había un segundo bloque con los "ajustes del criterio"
+// en vigencia (texto libre sumado al marco). Se retiró: todo cambio a lo que
+// lee el modelo es una versión nueva del marco. No había ninguno en vigencia,
+// así que el pedido no cambió.
 export function armarPedidoScoring(
   profile: Record<string, unknown>,
   controlBloqueo: ResultadoControlBloqueo,
-  ajustesVigentes: string[],
   camposDeshabilitados: Set<string>,
   config: ConfigRazonamiento = CONFIG_LLM
 ): Record<string, unknown> {
@@ -379,9 +382,6 @@ export function armarPedidoScoring(
   // 2026-09-15 no hubo UNA lectura. Escribirla cuesta 25% más que
   // mandarlo normal (~$0,008 por análisis tirados). En lote sí conviene
   // (config.cachearMarco, desde el 2026-10-03): los pedidos salen juntos.
-  //
-  // Los ajustes van en un bloque aparte: cambian cuando el área los pone
-  // en vigencia, y se leen como un agregado al marco, no como parte de él.
   const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
   const textoMarco = config.marcoPorCliente
     ? componerMarco(userPayload.perfilDelModelo, userPayload.hallazgosControlBloqueo as Array<{ code?: string }>).texto
@@ -389,15 +389,6 @@ export function armarPedidoScoring(
   const bloqueMarco: Record<string, unknown> = { type: "text", text: textoMarco };
   if (config.cachearMarco) bloqueMarco.cache_control = { type: "ephemeral" };
   const bloquesSistema: Array<Record<string, unknown>> = [bloqueMarco];
-  if (ajustesVigentes.length) {
-    bloquesSistema.push({
-      type: "text",
-      text: `AJUSTES APROBADOS POR EL ÁREA DE CRÉDITO/RIESGOS
-Los siguientes criterios se incorporaron a partir del análisis de
-resultados reales. Tienen el mismo peso que el resto del marco:
-${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
-    });
-  }
 
   const razonamiento = opcionesDeRazonamiento(config);
 
@@ -419,12 +410,6 @@ ${ajustesVigentes.map((c, i) => `${i + 1}. ${c}`).join("\n")}`,
 export async function scoreWithLlm(
   profile: Record<string, unknown>,
   controlBloqueo: ResultadoControlBloqueo,
-  // Ajustes al criterio aprobados y puestos en vigencia por el área de
-  // Crédito/Riesgos (ver runtime-config.ts loadAjustesVigentes). Se
-  // suman al marco base en vez de reescribirlo: el criterio original
-  // sigue versionado en código y cada ajuste es reversible por
-  // separado.
-  ajustesVigentes: string[] = [],
   // "grupo.campo" deshabilitados en standard_profile_field_config.
   camposDeshabilitados: Set<string> = new Set()
 ): Promise<LlmScoringResult> {
@@ -432,7 +417,7 @@ export async function scoreWithLlm(
     return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO);
   }
 
-  const cuerpo = armarPedidoScoring(profile, controlBloqueo, ajustesVigentes, camposDeshabilitados);
+  const cuerpo = armarPedidoScoring(profile, controlBloqueo, camposDeshabilitados);
 
   // Los reintentos de una falla pasajera ya los hace
   // pedirScoringConReintentos; con un solo modelo no hay a quién escalar.

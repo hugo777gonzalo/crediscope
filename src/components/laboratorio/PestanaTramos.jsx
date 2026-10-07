@@ -3,7 +3,7 @@ import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { ivDeLaVariable, tramosIniciales, tramosDesdeTexto, tramosMonotonos } from "../../lib/analisisEstadistico.js";
 import { GraficoBarras } from "./Graficos.jsx";
 import SelectorDeVariable from "./SelectorDeVariable.jsx";
-import { MensajeError, Cargando, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, GuardarEsteResultado, Etiqueta, num, pct, dec } from "./Comunes.jsx";
 
 // Laboratorio de tramos (IV y WoE a mano): los cortes de una variable
 // numérica se pueden escribir, pedir por cuantiles o volver monótonos (la
@@ -45,6 +45,11 @@ export default function PestanaTramos({ corteId, poblacion }) {
 
   return (
     <div>
+      <GuardarEsteResultado
+        corteId={corteId} tipo="tramos" poblacion={poblacion} parametros={{ variable: columna.id, cortes: texto }}
+        resultado={{ variable: columna.id, nombre: columna.nombre, cortes: texto, iv: iv.iv, primera: iv.primera.iv, segunda: iv.segunda.iv, tramos: iv.tramos.map((t, i) => ({ tramo: iv.etiquetas[i], n: t.n, malos: t.malos, tasa: t.tasa, woe: t.woe })), n: iv.n, n_malos: iv.malos }}
+        texto="Guardar estos tramos"
+      />
       <div className="crediscope-card">
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
           <SelectorDeVariable columnas={numericas} valor={columna.id} alCambiar={elegir} />

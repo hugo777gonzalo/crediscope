@@ -127,11 +127,18 @@ Romper cualquiera de estas rompe algo real.
   `analysis_results`, la única para `analyze-client` y el lote.
 - `src/lib/laboratorio.js` y las funciones SQL `lab_*` — el Laboratorio
   de Inteligencia de Negocio, que reemplazó a Retroalimentación
-  (`docs/laboratorio-de-riesgo.md`). El criterio vigente del motor
-  (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`. La cartera
+  (`docs/laboratorio-de-riesgo.md`). Los "ajustes del criterio" (texto
+  sumado al marco sin versión nueva) se retiraron el 2026-10-07 (112): todo
+  cambio a lo que lee el modelo es una versión nueva del marco. La cartera
   sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
-  plantada: un cálculo nuevo se valida contra ella). Cada métrica vive en
-  una función SQL `lab_*` (094-110) o, lo interactivo, en `src/lib/` (abajo).
+  plantada: un cálculo nuevo se valida contra ella). **La estadística vive
+  sólo en `src/lib/estadistica.js`** (111): la base congela, vincula y cuenta
+  (`lab_contar_*`); `resultadosDelCorte.js` arma con ella el desempeño, las
+  variables, la estabilidad y los intervalos, y `calculosDelCorte.js` guarda.
+  Todo lo calculado queda en `lab_resultados` con su huella (corte, tipo,
+  población, parámetros y versión del cálculo: `VERSION_DEL_CALCULO`, que se
+  sube al cambiar un cálculo); las pestañas guardan solas
+  (`useGuardarResultado`) y sin filas ni cédulas (`RESUMEN`).
   - El **explorador del crudo** (14.11 del diseño) es un guion, no una
     función: `scripts/explorar-crudo.mjs --corte=<id>` (`--seco` primero,
     `--buscar=` para el puesto de un campo). Guarda en `lab_resultados`

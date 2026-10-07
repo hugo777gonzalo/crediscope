@@ -234,7 +234,6 @@ export default function MenuLateral({ profile }) {
                 { to: "/laboratorio/estadistica", texto: "Descubrimiento estadístico", activo: pathname.startsWith("/laboratorio/estadistica") },
                 { to: "/laboratorio/profundo", texto: "Descubrimiento profundo", activo: pathname.startsWith("/laboratorio/profundo") || pathname.startsWith("/laboratorio/caso") },
                 { to: "/laboratorio/propuestas", texto: "Propuestas", activo: pathname.startsWith("/laboratorio/propuestas") },
-                { to: "/laboratorio/criterio", texto: "Criterio vigente", activo: pathname.startsWith("/laboratorio/criterio") },
               ]}
             />
             {/* Tres pantallas y no una: los tres interruptores se

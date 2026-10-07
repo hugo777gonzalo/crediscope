@@ -839,10 +839,23 @@ Acá, lo que cambió de método y lo que se midió.
 
 ### 15.1 Dónde corre cada cosa
 
-- **En la base** (funciones `lab_*`), lo que se guarda y se cita en un
-  informe: desempeño, matriz, variables (IV y WoE), motivos, calificación,
-  estabilidad del puntaje, más la cobertura de la estructura, el centro de
-  datos, el volumen de análisis y la calidad de una carga (107, 109).
+- **Desde la 111 (fase 2 de la revisión, 2026-10-07) la estadística vive
+  sólo en `src/lib/estadistica.js`.** El AUC llegó a estar escrito cuatro
+  veces (`lab_auc`, la calificación, el navegador y el explorador del
+  crudo) y el IV, el KS, Wilson y el PSI, dos o tres. La base congela,
+  vincula y cuenta (`lab_contar_matriz`, `_cuadrantes`, `_motivos`,
+  `_calificacion`), y `src/lib/resultadosDelCorte.js` arma con la
+  estadística lo que antes calculaba la base (desempeño, variables,
+  estabilidad, los intervalos y el AUC de la calificación), con la misma
+  forma. Antes de borrar las funciones viejas (112) se comparó en los tres
+  cortes: todo igual.
+- **Todo lo calculado se guarda** en `lab_resultados` con su huella
+  (corte, tipo, población, parámetros y versión del cálculo); la misma
+  huella no se guarda dos veces. Las pestañas que miran el corte entero
+  guardan solas al calcularse; las que se mueven a mano (umbrales, tramos,
+  taller, una variable, comparar cortes), con un botón. Lo guardado no lleva
+  filas de personas ni cédulas (`RESUMEN`; `probar-pantallas-laboratorio.mjs`
+  lo controla).
 - **En el navegador**, sobre el corte congelado, la estadística
   interactiva (decisión 2): `src/lib/estadistica.js` (las distribuciones
   de los valores p son de jStat) y `src/lib/analisis{Retrospectivo,

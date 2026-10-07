@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { segmentar, DIMENSIONES, MIN_PERSONAS_SEGMENTO, MIN_MALOS_SEGMENTO } from "../../lib/analisisRetrospectivo.js";
 import { GraficoBarras } from "./Graficos.jsx";
-import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, SinGuardar, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Desempeño por segmento: ¿el motor funciona igual para todos? Un segmento
 // con menos de 50 personas o menos de 10 malos se muestra, pero su tasa y su
@@ -20,6 +21,7 @@ export default function PestanaSegmentos({ corteId, poblacion }) {
   const d = DIMENSIONES[dimension];
 
   const c = useMemo(() => (filas ? segmentar(filas, dimension) : null), [filas, dimension]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "segmentos", poblacion, parametros: { dimension }, resultado: c });
 
   if (error) return <MensajeError mensaje={error} />;
   if (!c) return <Cargando />;
@@ -27,6 +29,7 @@ export default function PestanaSegmentos({ corteId, poblacion }) {
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
         <span className="crediscope-muted" style={{ fontSize: 13 }}>Segmentar por</span>
         <select value={dimension} onChange={(e) => setDimension(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>

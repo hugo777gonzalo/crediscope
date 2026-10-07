@@ -48,7 +48,7 @@ globalThis.Deno = { env: { get: (k) => env[k] } };
 
 const compartido = (archivo) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", archivo)).href);
 const { armarPedidoScoring, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
-const { loadCriterioVigente, loadDisabledFields } = await compartido("runtime-config.ts");
+const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 
 // "hoy" es exactamente la configuración de producción (CONFIG_LLM), para
@@ -95,7 +95,7 @@ if (!SOLO_EXCEL) {
   const cedulas = fs.readFileSync(path.resolve(RAIZ, arg("cedulas", "research/cedulas_validacion_marco_v23.txt")), "utf8")
     .split(/\s+/).filter((c) => /^\d{10}$/.test(c)).slice(0, Number(arg("solo", "1000")));
 
-  const [camposDeshabilitados, criterio] = await Promise.all([loadDisabledFields(supabase), loadCriterioVigente(supabase)]);
+  const camposDeshabilitados = await loadDisabledFields(supabase);
 
   // El último perfil de cada cédula: el que usa "Analizar" en la pantalla.
   const perfiles = new Map();
@@ -121,7 +121,7 @@ if (!SOLO_EXCEL) {
       const { cedula, clave } = t;
       const p = perfiles.get(cedula);
       const { config } = CONFIGURACIONES[clave];
-      const cuerpo = armarPedidoScoring(p.standard_profile, p.control_bloqueo ?? { hallazgos: [] }, criterio.ajustes, camposDeshabilitados, config);
+      const cuerpo = armarPedidoScoring(p.standard_profile, p.control_bloqueo ?? { hallazgos: [] }, camposDeshabilitados, config);
       const inicio = Date.now();
       let data = null, httpStatus = null, errorHttp = null;
       try {

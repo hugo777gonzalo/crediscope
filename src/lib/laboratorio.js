@@ -1,6 +1,8 @@
 // Datos del Laboratorio de Inteligencia de Negocio › Riesgo de Crédito.
-// Diseño: docs/laboratorio-de-riesgo.md. Todo es sólo de admin (RLS) y
-// los cálculos los hace la base (funciones lab_*): acá sólo se piden.
+// Diseño: docs/laboratorio-de-riesgo.md. Todo es sólo de admin (RLS). La
+// base congela, vincula y cuenta (funciones lab_*); la estadística vive en
+// estadistica.js y los cálculos de un corte se arman y se guardan en
+// calculosDelCorte.js (111).
 
 import { supabase } from "./supabaseClient.js";
 import { traerTodas } from "./paginar.js";
@@ -167,39 +169,18 @@ export async function getResultados(corteId) {
   return data ?? [];
 }
 
-const FUNCION = {
-  desempeno: "lab_calcular_desempeno",
-  variables: "lab_calcular_variables",
-  matriz: "lab_calcular_matriz",
-  cuadrantes: "lab_calcular_cuadrantes",
-  motivos: "lab_calcular_motivos",
-  calificacion_simulacion: "lab_calificar_simulacion",
-};
-// `extra`: parámetros propios de un cálculo (la población de Variables).
-export async function calcular(corteId, tipo, extra = {}) {
-  const { data, error } = await supabase.rpc(FUNCION[tipo], { p_corte: corteId, ...extra });
-  if (error) fallar(error);
-  return data;
-}
-
-// Un resultado que calcula la pantalla (la calibración) y se guarda como
-// los de la base: nunca pisa el anterior.
-export async function guardarResultado(corteId, tipo, metodologia, resultado, n = null, nMalos = null) {
+// Guarda un resultado con su huella (calculosDelCorte.js la arma). Nunca pisa
+// el anterior; si la huella ya está, no hace nada: el corte está congelado y
+// el número sería el mismo.
+export async function guardarResultado({ corteId, tipo, metodologia, resultado, n = null, nMalos = null, huella, origen = "navegador" }) {
   const { data: sesion } = await supabase.auth.getUser();
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("lab_resultados")
-    .insert({ corte_id: corteId, tipo, metodologia, resultado, n, n_malos: nMalos, calculado_por: sesion?.user?.id ?? null })
-    .select("id");
+    .upsert(
+      { corte_id: corteId, tipo, metodologia, resultado, n, n_malos: nMalos, huella, origen, calculado_por: sesion?.user?.id ?? null },
+      { onConflict: "corte_id,huella", ignoreDuplicates: true },
+    );
   if (error) fallar(error);
-  if (!data?.length) throw new Error("No se guardó el resultado (¿sesión de admin?).");
-  return data[0].id;
-}
-
-// PSI del puntaje entre dos cortes (lab_estabilidad la guarda en el nuevo).
-export async function calcularEstabilidad(baseId, nuevoId) {
-  const { data, error } = await supabase.rpc("lab_estabilidad", { p_base: baseId, p_nuevo: nuevoId });
-  if (error) fallar(error);
-  return data;
 }
 
 export async function simularPolitica(corteId, regla) {
@@ -259,36 +240,6 @@ export async function cambiarEstadoPropuesta(id, estado, comentario) {
   const { data, error } = await supabase.from("lab_propuestas").update(cambios).eq("id", id).select("id");
   if (error) fallar(error);
   if (!data?.length) throw new Error("No se cambió el estado (¿sesión de admin?).");
-}
-
-export async function ponerEnVigencia(id, vigente) {
-  const { error } = await supabase.rpc("lab_poner_en_vigencia", { p_propuesta: id, p_vigente: vigente });
-  if (error) fallar(error);
-}
-
-// ------------------------------------------------------------ criterio
-export async function getVersionesCriterio() {
-  const { data, error } = await supabase.from("criterio_versiones").select("*").order("numero", { ascending: false });
-  if (error) fallar(error);
-  return data ?? [];
-}
-
-// Cuántos análisis corrieron con cada versión, contado en la base (082):
-// bajarlos todos para contarlos en el navegador se cortaba en 1.000.
-export async function getUsoPorVersion() {
-  const { data, error } = await supabase.rpc("analisis_por_version_del_criterio");
-  if (error) fallar(error);
-  return Object.fromEntries(Object.entries(data ?? {}).map(([id, n]) => [id, Number(n)]));
-}
-
-export async function revertirCriterio(versionId) {
-  const { error } = await supabase.rpc("revertir_criterio", { p_version_id: versionId });
-  if (error) fallar(error);
-}
-
-export async function desactivarTodosLosAjustes() {
-  const { error } = await supabase.rpc("desactivar_todos_los_ajustes");
-  if (error) fallar(error);
 }
 
 // ------------------------------------------------- descubrimiento profundo

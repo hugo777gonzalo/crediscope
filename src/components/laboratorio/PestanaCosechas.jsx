@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { cosechas, acumuladaA, HORIZONTES } from "../../lib/analisisRetrospectivo.js";
 import { GraficoLineas, PALETA } from "./Graficos.jsx";
-import { Kpi, MensajeError, Cargando, num, pct, dec } from "./Comunes.jsx";
+import { Kpi, MensajeError, Cargando, SinGuardar, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Cosechas: cada generación (mes o trimestre de desembolso) y cómo se le
 // acumula la mora con los meses. Kaplan-Meier en vez de "tasa de malos":
@@ -18,6 +19,7 @@ export default function PestanaCosechas({ corteId, poblacion }) {
   const [agrupar, setAgrupar] = useState("mes");
 
   const c = useMemo(() => (filas ? cosechas(filas, agrupar) : null), [filas, agrupar]);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "cosechas", poblacion, parametros: { agrupar }, resultado: c?.sujetos.length ? c : null });
 
   if (error) return <MensajeError mensaje={error} />;
   if (!c) return <Cargando />;
@@ -44,6 +46,7 @@ export default function PestanaCosechas({ corteId, poblacion }) {
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
         <span className="crediscope-muted" style={{ fontSize: 13 }}>Cosechas por</span>
         <select value={agrupar} onChange={(e) => setAgrupar(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>

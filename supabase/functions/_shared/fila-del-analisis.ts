@@ -13,11 +13,11 @@ export interface DatosDelAnalisis {
   runId: string;
   clientId: string;
   clientProfileId: string;
-  // El marco base va en rules_version; el criterio efectivo (marco +
-  // ajustes vigentes) en criterio_version_id. Sin los dos, un resultado
-  // raro no se puede auditar después.
+  // La versión del marco va en rules_version: sin ella, un resultado raro no
+  // se puede auditar después. criterio_version_id quedó de cuando había
+  // ajustes del criterio (retirados el 2026-10-06): los análisis nuevos lo
+  // dejan vacío.
   marcoVersion: string;
-  criterioVersionId: string | null;
   llmResult: LlmScoringResult;
   controlBloqueo: ResultadoControlBloqueo;
   // null si se reutilizó un perfil guardado (no hubo ingesta).
@@ -47,7 +47,6 @@ export function filaDelAnalisis(d: DatosDelAnalisis) {
     // despeja verificando identidad).
     acciones_sugeridas: llmResult.accionesSugeridas,
     rules_version: d.marcoVersion,
-    criterio_version_id: d.criterioVersionId,
     // Con qué data estructurada exactamente se evaluó. Antes se cruzaba por
     // cercanía de fecha, que es ambiguo con dos consultas el mismo día (032).
     client_profile_id: d.clientProfileId,

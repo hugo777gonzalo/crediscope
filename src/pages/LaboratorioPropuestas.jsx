@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus, Save } from "lucide-react";
-import { getPropuestas, guardarPropuesta, cambiarEstadoPropuesta, ponerEnVigencia, getCorte, getResultados } from "../lib/laboratorio.js";
+import { getPropuestas, guardarPropuesta, cambiarEstadoPropuesta, getCorte, getResultados } from "../lib/laboratorio.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 import {
   Volver, MensajeError, Etiqueta, FranjaSintetica, ETIQUETA_TIPO_PROPUESTA, ETIQUETA_ESTADO_PROPUESTA, dec, pct,
 } from "../components/laboratorio/Comunes.jsx";
 
 // Propuestas de ajuste (diseño, 6.7). Ninguna entra sola al motor:
-// aprobar y aplicar son pasos distintos, y cada tipo entra por su camino.
-// Sólo un ajuste del criterio se pone en vigencia desde acá (lo versiona
-// criterio_versiones y se puede revertir); un cambio de marco, de dato o
-// de política se aplica con una versión nueva, y acá se anota cuál.
+// aprobar y aplicar son pasos distintos. Un cambio de marco, de dato o de
+// política se aplica con una versión nueva, y acá se anota cuál. Hasta el
+// 2026-10-06 había "ajustes del criterio" que se ponían en vigencia desde acá
+// como texto sumado al marco; el negocio los retiró: todo cambio a lo que lee
+// el modelo es una versión nueva del marco.
 
-const VACIA = { titulo: "", tipo: "ajuste_criterio", hallazgo: "", cambio_propuesto: "", limitaciones: "", validacion_posterior: "", impacto: "" };
+const VACIA = { titulo: "", tipo: "cambio_marco", hallazgo: "", cambio_propuesto: "", limitaciones: "", validacion_posterior: "", impacto: "" };
 
 const AYUDA_TIPO = {
-  ajuste_criterio: "Un texto que se suma al marco como ajuste aprobado. Entra al criterio vigente y se puede revertir.",
   cambio_marco: "Cambia cómo el modelo lee algo. Se aplica con una versión nueva del marco (código).",
   regla_politica: "Qué hace la IFI con el riesgo (negar si...). Hoy es una recomendación a la IFI; mañana, la capa de política.",
   dato_nuevo: "Una variable que el modelo no recibe y anticipa el impago. Se aplica con una versión nueva de la estructura.",
@@ -114,9 +114,7 @@ function Acciones({ p, alCambiar, alEditar }) {
           {btn("Rechazar", estado("rechazada"), true)}
         </>
       ) : null}
-      {p.estado === "aprobada" && p.tipo === "ajuste_criterio" ? btn("Poner en vigencia", () => alCambiar(() => ponerEnVigencia(p.id, true))) : null}
-      {p.estado === "aplicada" && p.tipo === "ajuste_criterio" ? btn("Quitar de vigencia", () => alCambiar(() => ponerEnVigencia(p.id, false)), true) : null}
-      {p.estado === "aprobada" && p.tipo !== "ajuste_criterio" ? (
+      {p.estado === "aprobada" ? (
         <>
           <input className="crediscope-input" style={{ maxWidth: 220 }} placeholder="Versión que lo aplicó (marco-v29...)" value={aplicadaEn} onChange={(e) => setAplicadaEn(e.target.value)} />
           <button

@@ -47,7 +47,7 @@ globalThis.Deno = { env: { get: (k) => env[k] } };
 
 const compartido = (a) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", a)).href);
 const { armarPedidoScoring, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
-const { loadCriterioVigente, loadDisabledFields } = await compartido("runtime-config.ts");
+const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 const { elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
 const { filaDelAnalisis } = await compartido("fila-del-analisis.ts");
@@ -161,7 +161,7 @@ async function enviar() {
   const responsable = arg("responsable", null);
   if (!/^[0-9a-f-]{36}$/.test(responsable ?? "")) throw new Error("Falta --responsable=<uuid>: quién ordena el lote (auditoría)");
   const seleccion = leer("seleccion.json");
-  const [camposDeshabilitados, criterio] = await Promise.all([loadDisabledFields(supabase), loadCriterioVigente(supabase)]);
+  const camposDeshabilitados = await loadDisabledFields(supabase);
 
   const datos = new Map();
   for (let i = 0; i < seleccion.length; i += 100) {
@@ -177,7 +177,7 @@ async function enviar() {
     const d = datos.get(s.perfilId);
     if (!d) { console.log(`${s.cedula}: el perfil ya no existe, se salta`); continue; }
     const control = d.control_bloqueo ?? { bloqueado: false, hallazgos: [] };
-    const params = armarPedidoScoring(d.standard_profile, control, criterio.ajustes, camposDeshabilitados, CONFIG_LOTE);
+    const params = armarPedidoScoring(d.standard_profile, control, camposDeshabilitados, CONFIG_LOTE);
     for (let rep = 1; rep <= s.repeticiones; rep++) {
       const customId = `${s.perfilId}_${rep}`;
       requests.push({ custom_id: customId, params });
@@ -198,7 +198,7 @@ async function enviar() {
   escribir("estado.json", {
     batchId: lote.id, enviadoEl: new Date().toISOString(), pedidos: requests.length,
     marco: MARCO_VERSION, modelo: CONFIG_LOTE.modelo ?? MODELO, config: CONFIG_LOTE,
-    criterioVersionId: criterio.versionId, responsable,
+    responsable,
   });
   console.log(`Lote ${lote.id} enviado: ${requests.length} pedidos (${MARCO_VERSION}, ${CONFIG_LOTE.modelo ?? MODELO}). Estado: ${lote.processing_status}`);
 }
@@ -250,7 +250,7 @@ async function recoger() {
         if (e1) throw new Error(motivo(e1));
         const fila = filaDelAnalisis({
           runId: run.id, clientId: m.clientId, clientProfileId: m.perfilId, marcoVersion: estado.marco,
-          criterioVersionId: estado.criterioVersionId, llmResult: resultado, controlBloqueo,
+          llmResult: resultado, controlBloqueo,
           duracionIngestaMs: null, duracionLlmMs: null,
         });
         const { data: guardado, error: e2 } = await supabase.from("analysis_results").insert(fila).select("id").single();

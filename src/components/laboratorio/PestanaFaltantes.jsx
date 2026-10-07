@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useColumnasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { faltantes } from "../../lib/analisisEstadistico.js";
 import { GraficoLineas, MapaDeCalor } from "./Graficos.jsx";
-import { MensajeError, Cargando, num, pct, dec } from "./Comunes.jsx";
+import { MensajeError, Cargando, SinGuardar, num, pct, dec } from "./Comunes.jsx";
+import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
 
 // Datos faltantes: ¿la ausencia anticipa el impago, o es un problema de
 // captura? Por variable, la tasa de malos con y sin el dato (y si la
@@ -18,6 +19,7 @@ export default function PestanaFaltantes({ corteId, poblacion }) {
   const { datos, error } = useColumnasDelCorte(corteId, poblacion);
   const c = useMemo(() => (datos ? faltantes(datos) : null), [datos]);
   const [elegida, setElegida] = useState(null);
+  const sinGuardar = useGuardarResultado({ corteId, tipo: "faltantes", poblacion, resultado: c });
   if (error) return <MensajeError mensaje={error} />;
   if (!c) return <Cargando que="las variables del corte" />;
   const conFaltas = c.porVariable.filter((v) => v.faltan > 0);
@@ -25,6 +27,7 @@ export default function PestanaFaltantes({ corteId, poblacion }) {
 
   return (
     <div>
+      <SinGuardar error={sinGuardar} />
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Variables con faltantes ({conFaltas.length} de {c.porVariable.length})</h3>
         {conFaltas.length ? (

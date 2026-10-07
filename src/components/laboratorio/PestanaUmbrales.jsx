@@ -4,7 +4,7 @@ import { filasConPuntaje } from "../../lib/datosDelCorte.js";
 import { umbral, cuantil } from "../../lib/estadistica.js";
 import { curvaDeUmbrales, politica, motorPorRecomendacion } from "../../lib/analisisRetrospectivo.js";
 import { GraficoLineas } from "./Graficos.jsx";
-import { Kpi, MensajeError, Cargando, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.jsx";
+import { Kpi, MensajeError, Cargando, GuardarEsteResultado, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.jsx";
 
 // Umbrales: qué pasaría con una política "aprobar desde el puntaje A" (y,
 // si se quiere, "revisar entre B y A"). Simula una regla, NO al motor: el
@@ -57,6 +57,11 @@ export default function PestanaUmbrales({ corteId, poblacion }) {
         <Kpi etiqueta="Malos detectados" valor={pct(r.sensibilidad)} detalle="de todos los malos quedan afuera" />
         <Kpi etiqueta="Buenos rechazados" valor={num(r.buenosRechazados)} detalle={`${pct(1 - r.especificidad)} de los buenos`} />
       </div>
+      <GuardarEsteResultado
+        corteId={corteId} tipo="umbrales" poblacion={poblacion} parametros={{ aprobarDesde: a, revisarDesde: b }}
+        resultado={{ aprobarDesde: a, revisarDesde: b, medidas: r, zonas, motor, n: base.length, n_malos: acumulados.totalMalos }}
+        texto="Guardar estos umbrales"
+      />
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <div className="crediscope-card" style={{ margin: 0 }}>

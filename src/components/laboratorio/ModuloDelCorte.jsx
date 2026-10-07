@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
-import { getCortes, getCorte, getResultados, calcular } from "../../lib/laboratorio.js";
+import { getCortes, getCorte, getResultados } from "../../lib/laboratorio.js";
+import { calcular } from "../../lib/calculosDelCorte.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { MensajeError, FranjaSintetica } from "./Comunes.jsx";
 
@@ -13,8 +14,8 @@ import { MensajeError, FranjaSintetica } from "./Comunes.jsx";
 // corte usado se recuerda en este navegador.
 //
 // Cada pestaña es { clave, texto, Componente, calculo?, usaPoblacion?,
-// requiere?(corte) }. `calculo` es el tipo de lab_resultados que calcula
-// una función lab_* de la base (src/lib/laboratorio.js, FUNCION).
+// requiere?(corte) }. `calculo` es el tipo de lab_resultados que arma y
+// guarda el botón Calcular (src/lib/calculosDelCorte.js).
 
 const CLAVE_CORTE = "crediscope.laboratorio.corte";
 const ETIQUETA_POBLACION = {
@@ -104,7 +105,7 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
     setError(null);
     setCalculando(tipo);
     try {
-      await calcular(corteId, tipo, tipo === "variables" ? { p_poblacion: poblacion } : {});
+      await calcular(corte, tipo, { poblacion });
       await recargar();
     } catch (e) {
       setError(e.message);
