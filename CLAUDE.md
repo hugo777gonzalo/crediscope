@@ -126,8 +126,13 @@ Romper cualquiera de estas rompe algo real.
 - `fila-del-analisis.ts` → `filaDelAnalisis()` — la fila de
   `analysis_results`, la única para `analyze-client` y el lote.
 - `src/lib/laboratorio.js` y las funciones SQL `lab_*` — el Laboratorio
-  de Inteligencia de Negocio, que reemplazó a Retroalimentación
-  (`docs/laboratorio-de-riesgo.md`). Los "ajustes del criterio" (texto
+  de Inteligencia de Negocio, que reemplazó a Retroalimentación.
+  **Empezar por `docs/laboratorio-guia.md`**: los grupos (Universo, Universo
+  analizado, Con crédito, Sin crédito), el plan por pasos y las reglas; se
+  pone al día al terminar cada sesión. **Sin pantallas nuevas del
+  Laboratorio hasta el paso 4 de la guía** (decisión del negocio del
+  2026-10-07: se venía construyendo sin guía clara). El diseño completo, en
+  `docs/laboratorio-de-riesgo.md`. Los "ajustes del criterio" (texto
   sumado al marco sin versión nueva) se retiraron el 2026-10-07 (112): todo
   cambio a lo que lee el modelo es una versión nueva del marco. La cartera
   sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal

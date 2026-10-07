@@ -20,9 +20,10 @@ aceptada.
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
    haciendo el negocio** (2026-10-04) y va a comentar el resultado. Todas las
    pantallas que pidió el negocio están construidas (fases A a F y módulos
-   1 a 3, migraciones 100 a 109; mapa en `docs/laboratorio-pantallas.md`),
-   y **ninguna se vio en el navegador**: Claude no puede iniciar sesión (no
-   escribe contraseñas). Los cálculos de cada pestaña se probaron en Node
+   1 a 3, migraciones 100 a 109; mapa en `docs/laboratorio-pantallas.md`).
+   Claude no inicia sesión (no escribe contraseñas): las ve con la sesión
+   que el negocio abra en el navegador integrado, como el 2026-10-07 (Resumen,
+   Discriminación y Segmentos del ciclo simulado). Los cálculos de cada pestaña se probaron en Node
    contra los cortes reales (`node scripts/probar-pantallas-laboratorio.mjs`
    y `node scripts/probar-estadistica.mjs`: todo cuadra) y todos los
    módulos cargan en el navegador sin errores. Recorrido, con el usuario
@@ -54,19 +55,14 @@ aceptada.
      en borrador por ser sintética).
    - Propuestas (Criterio vigente se retiró el 2026-10-07: la dirección
      vieja lleva a Propuestas).
-   - **Que lo calculado se guarde** (111): después de recorrer las pestañas
-     de un corte, `select origen, tipo, count(*) from lab_resultados group by 1, 2`
-     tiene que traer filas con origen `navegador` (al 2026-10-07 había sólo
-     las 40 de origen `base`), y volver a abrir la misma pestaña no tiene que
-     sumar otra fila (misma huella).
-   - **Verificar el crudo de una consulta nueva.** Hasta el 2026-10-04
-     ninguna consulta guardaba su crudo en Storage (el depósito rechazaba el
-     archivo: lecciones.md). Arreglado y desplegado ese día, y los 2.567 de
-     la reconsulta del 03/10 se subieron desde `research/`: 0 perfiles sin
-     crudo desde la 090. Falta ver una consulta nueva de punta a punta:
-     después de consultar a alguien desde la pantalla,
-     `select count(*) filter (where crudo_ruta is null), count(*) from client_profiles where created_at > '2026-10-04 03:40+00'`
-     tiene que dar 0 sin crudo.
+   - **Lo calculado se guarda: verificado el 2026-10-07** con la sesión del
+     negocio. Discriminación y Segmentos guardaron solos (origen
+     `navegador`, con el usuario y sin cédulas: los números de 10 dígitos
+     del resultado son todos decimales), y volver a abrir Discriminación
+     después de recargar no sumó otra fila. **Falta:** `n_malos` queda
+     vacío cuando el resultado no trae un número de malos arriba
+     (`tamanoDe()` en `resultadosDelCorte.js`; en Discriminación `malos` es la
+     distribución): pasarlo explícito desde cada pestaña que guarda sola.
 
 0a. **La evidencia sobre los que el modelo dio por buenos y cayeron, al
    informe** (decisión del negocio del 2026-10-06, que reemplaza a la de
@@ -76,19 +72,19 @@ aceptada.
    revisar) y cayeron; sin registro de textos por crédito. Salen de los
    resultados guardados (fase 2 del plan de 0b) y van al Informe de
    Desempeño del Modelo (`src/lib/informeLaboratorio.js`). La lista de
-   análisis está en `docs/propuesta-revision-del-laboratorio.md`, 10.3.
+   análisis está en `docs/propuesta-revision-del-laboratorio.md`, 10.3. Va
+   después del paso 4 de `docs/laboratorio-guia.md`: sin datos reales no
+   hay evidencia que juntar.
 
-0b. **Laboratorio: el plan del 2026-10-06**
-   (`docs/propuesta-revision-del-laboratorio.md`, secciones 10 a 12). Cuatro
-   fases sin modelo de lenguaje ni pantallas nuevas: 1 lógica (disponibilidad
-   de las fuentes en el detector, definición de impago nueva, "revisar" = no
-   impago en todos lados), 2 orden (guardar resultados, una sola
-   implementación de la estadística, retirar el ajuste de criterio), 3
-   seguimiento (reporte mensual de la institución, reconsultas a los 3, 6, 9
-   y 12 meses, cortes a esos horizontes) y 4 análisis (cosechas mes a mes,
-   evidencia al informe, candidatas por horizonte). **La fecha que manda es
-   la primera ronda de reconsulta de la cartera, a fines de diciembre de
-   2026**: la fase 1 y las reconsultas tienen que estar antes.
+0b. **Laboratorio: seguir `docs/laboratorio-guia.md`** (desde el
+   2026-10-07; paso actual: 1, registrar el Universo). La guía reemplaza al
+   plan de la revisión (sección 11) y a la propuesta de la fase 3 (sección
+   15): los grupos (Universo, Universo analizado, Con crédito, Sin crédito),
+   cómo se sigue cada uno, el plan por pasos y las reglas. **Sin pantallas
+   nuevas hasta terminar el paso 4.** El negocio va a simular los reportes de
+   la institución con `research/laboratorio/simulacion-institucion-2026-10.xlsx`.
+   **La fecha que manda es la primera ronda de reconsulta de la cartera,
+   desde el 25 de diciembre de 2026.** Lo hecho antes de la guía:
    - **Fase 1 hecha el 2026-10-06** (110, `docs/propuesta-revision-del-laboratorio.md`
      sección 13): detector con disponibilidad de las fuentes
      (`scripts/probar-detector.mjs`), impago parametrizable (más de 90 días,
@@ -105,16 +101,14 @@ aceptada.
      las funciones que calculaban se borraron después de comparar en los
      tres cortes: todo igual), todo lo calculado se guarda con su huella y
      el ajuste de criterio se retiró (`analyze-client` desplegado sin él; el
-     pedido al modelo quedó igual byte a byte). **Lo que se guarda desde las
-     pantallas no se vio con sesión de admin** (ver 0).
+     pedido al modelo quedó igual byte a byte). Lo que se guarda desde las
+     pantallas, verificado con sesión (ver 0).
    - La carga del primer ciclo (`1196978e…`) está anulada (confirmado por el
      negocio); la vigente es la del segundo (`746e5271…`).
-   - Lo siguiente: fase 3 (operación única por institución y reporte
-     mensual, reconsultas por aniversario a los 3, 6, 9 y 12 meses, cortes a
-     esos horizontes, solicitudes por institución), antes de la reconsulta
-     de fines de diciembre. **Propuesta en la sección 15 de la revisión;
-     espera las cinco decisiones de 15.7** (entre ellas, si se analiza el t0
-     de la cartera: sólo 33 de 2.565 tienen análisis del modelo).
+   - **El Universo analizado es chico**: 14 solicitudes con análisis válido
+     (no 33: las demás tenían análisis fallidos o anteriores a la
+     recomendación) y sólo 3 con el marco vigente. Ampliarlo es el último
+     paso de la guía, en otro hilo.
    - Decisión del negocio pendiente: qué son los "comentarios
      institucionales" (hoy la institución no entra al Laboratorio).
    - Mejoras chicas que el plan no toca: el ajuste por la recomendación
@@ -157,7 +151,9 @@ aceptada.
      Encenderlo necesita la comparación `--configs=hoy,porCliente` (~USD 2,
      con autorización).
    - **Lote de análisis reales: postergado** (no hay presupuesto, y el
-     Laboratorio no lo necesita para desarrollar). Listo:
+     Laboratorio no lo necesita para desarrollar). Decisión del negocio del
+     2026-10-07: hasta ~300 casos con caché, en otro hilo, cuando el análisis
+     esté calibrado (es el último paso de `docs/laboratorio-guia.md`). Listo:
      `node scripts/analizar-en-lote.mjs enviar --carpeta=research/lote-analisis-2026-10-03 --responsable=<uuid>`
      y después `recoger` (200 clientes, 280 pedidos, ~USD 4-6 por la API
      de lotes con caché). Antes: subir el límite de la consola de

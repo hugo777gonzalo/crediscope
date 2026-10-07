@@ -842,6 +842,9 @@ se decide al año de maduración, si se repite.
 
 ## 11. Plan
 
+> Hechas las fases 1 y 2 (secciones 13 y 14); desde el 2026-10-07 el plan
+> vivo es `docs/laboratorio-guia.md`.
+
 Fecha que manda: la primera ronda de reconsulta de la cartera, a fines de
 diciembre de 2026. La fase 1 y las reconsultas de la fase 3 tienen que estar
 antes.
@@ -1026,6 +1029,17 @@ modelo bien. Lo que guardan las pantallas sigue sin verse con sesión.
 ---
 
 ## 15. Fase 3: el seguimiento real (propuesta del 2026-10-07)
+
+> **Reemplazada por `docs/laboratorio-guia.md` el mismo día.** El negocio
+> contestó 15.7 alineando los conceptos: el Universo (toda solicitud), el
+> Universo analizado, los con crédito (reporte mensual de la institución) y
+> los sin crédito (Novadata cada 3 meses); todo es cartera propia mientras
+> dure el desarrollo; una solicitud nueva de una persona es otra solicitud
+> (no se juntan cada 90 días, como proponía el punto 3); no se analiza la
+> cartera entera, sino unos 300 casos con caché más adelante; y no se arman
+> más pantallas hasta organizarse. Al contar de nuevo, el Universo analizado
+> son 14 solicitudes con análisis válido (no 33) y 3 con el marco vigente. Lo
+> que sigue queda como registro de la propuesta.
 
 ### 15.1 Dónde estamos
 
