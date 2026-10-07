@@ -147,7 +147,7 @@ export function variablesDelCorte(filas, catalogo, apagados = new Set(), { pobla
 
 // ----------------------------------------------------------- estabilidad
 // PSI del puntaje entre dos cortes, en tramos de a 100 puntos, sobre las
-// operaciones observadas con puntaje (con los bloqueados, como
+// operaciones observadas con puntaje (con los bloqueados, como hacía
 // lab_estabilidad). Menos de 0,1 estable; hasta 0,25 mirar; más, cambió.
 export function estabilidadDelPuntaje(filasBase, filasNuevo) {
   const desdes = Array.from({ length: 10 }, (_, i) => i * 100);

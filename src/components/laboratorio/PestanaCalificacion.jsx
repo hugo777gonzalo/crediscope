@@ -1,8 +1,8 @@
 import { Advertencias, Kpi, ETIQUETA_MOTIVO, num, pct, dec } from "./Comunes.jsx";
 
 // ¿Encontró el Laboratorio lo que plantamos? (docs/laboratorio-de-riesgo.md,
-// 14.7). Sólo en un corte sintético del ciclo de un año: lo calcula
-// lab_calificar_simulacion(), la única función que lee la verdad plantada.
+// 14.7). Sólo en un corte sintético del ciclo de un año: lo cuenta
+// lab_contar_calificacion(), la única función que lee la verdad plantada.
 // Califica al Laboratorio, no al motor.
 
 const VARIABLES_PLANTADAS = [

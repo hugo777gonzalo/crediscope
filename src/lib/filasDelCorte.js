@@ -58,15 +58,15 @@ export function normalizarOperacion(f) {
 
 // Las filas que sirven para medir: incluidas y con resultado conocido. Con
 // unaPorPersona (las variables), una persona con varias operaciones cuenta
-// una vez (la primera, primera_de_la_persona = true) y sólo si tiene perfil,
-// igual que lab_calcular_variables. Una solicitud ya es una por persona.
+// una vez (la primera, primera_de_la_persona = true) y sólo si tiene perfil.
+// Una solicitud ya es una por persona.
 export function filasObservadas(filas, { unaPorPersona = false } = {}) {
   return filas.filter((f) => f.incluida && typeof f.malo === "boolean"
     && (!unaPorPersona || ((f.primera === undefined || f.primera === true) && f.conVariables)));
 }
 
 // Para todo lo que mide el puntaje: sin los bloqueados, que no tienen
-// puntaje del motor (lab_auc los saca igual).
+// puntaje del motor: lo fuerza la política.
 export const filasConPuntaje = (filas) => filasObservadas(filas).filter((f) => !f.bloqueado && Number.isFinite(f.puntaje));
 
 // Meses entre dos fechas (con decimales: 30,44 días por mes).

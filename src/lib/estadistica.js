@@ -10,8 +10,7 @@
 //  - Un valor que no es un número finito es un faltante y se descarta (las
 //    funciones dicen cuántos usaron).
 //  - El puntaje del motor va de 1 a 999 y más alto es MEJOR: el AUC es la
-//    probabilidad de que un bueno tenga más puntaje que un malo, igual que
-//    lab_auc() en la base.
+//    probabilidad de que un bueno tenga más puntaje que un malo.
 //  - Los valores p son a dos colas.
 
 import jStatPaquete from "jstat";
@@ -454,12 +453,12 @@ export function normalidad(lista) {
 
 // ------------------------------------------- discriminación del puntaje
 // `filas`: [{ puntaje, malo }]. Los bloqueados no llevan puntaje del motor
-// y se sacan antes (lab_auc hace lo mismo).
+// y se sacan antes (filasConPuntaje, en filasDelCorte.js).
 function conPuntaje(filas) {
   return filas.filter((f) => esNumero(f.puntaje) && typeof f.malo === "boolean");
 }
 
-// AUC con el intervalo de Hanley-McNeil (el mismo de lab_calcular_desempeno).
+// AUC con el intervalo de Hanley-McNeil.
 export function aucPuntaje(filas) {
   const base = conPuntaje(filas);
   const buenos = base.filter((f) => !f.malo).map((f) => f.puntaje), malos = base.filter((f) => f.malo).map((f) => f.puntaje);
@@ -692,9 +691,8 @@ export function tramosDeCortes(cortes) {
   return [...c.map((h, i) => ({ tipo: "intervalo", desde: i ? c[i - 1] : null, hasta: h })), { tipo: "intervalo", desde: c.length ? c[c.length - 1] : null, hasta: null }];
 }
 
-// Cortes para k tramos parejos que nunca parten un empate. La misma regla
-// que lab_calcular_variables desde la 106, para que el IV del navegador y el
-// de la base sean el mismo número:
+// Cortes para k tramos parejos que nunca parten un empate (106: unos tramos
+// por posición partían los empates y fabricaban IV):
 //  1. Un valor con n/k personas o más es una "masa" y va en su propio tramo.
 //  2. Los valores entre masas forman segmentos; los tramos que quedan
 //     (k menos las masas, al menos uno por segmento) se reparten entre los
@@ -751,11 +749,10 @@ export function tramosPorDefecto(valores, k = 4) {
   if (!numerica || distintos.length <= 6) {
     tramos = distintos.sort((a, b) => (numerica ? Number(a) - Number(b) : a.localeCompare(b))).map((v) => ({ tipo: "valor", valor: originales.get(v) }));
   } else {
-    // Como lab_calcular_variables: si el cero es el 10% o más, va en su
-    // propio tramo y los cuantiles se cortan sobre el resto (con deuda en
-    // atraso, el 80% en cero se comía los cuartiles y el IV difería en
-    // 0,17 del de la base). El tramo del cero va primero: un cero no cae en
-    // el intervalo que también lo contiene.
+    // Si el cero es el 10% o más, va en su propio tramo y los cuantiles se
+    // cortan sobre el resto (con deuda en atraso, el 80% en cero se comía
+    // los cuartiles y el IV difería en 0,17 del de la base). El tramo del
+    // cero va primero: un cero no cae en el intervalo que también lo contiene.
     const ceros = presentes.filter((x) => x === 0).length;
     tramos = ceros >= 0.1 * presentes.length
       ? [{ tipo: "valor", valor: 0 }, ...tramosDeCortes(cortesPorCuantiles(presentes.filter((x) => x !== 0), k))]
@@ -774,8 +771,8 @@ export function etiquetaDeTramo(t, formato = (x) => String(x)) {
   return `más de ${formato(t.desde)} a ${formato(t.hasta)}`;
 }
 
-// WoE e IV con el mismo suavizado de lab_calcular_variables (0,5 por tramo),
-// para que el número del navegador y el de la base digan lo mismo.
+// WoE e IV con un suavizado de 0,5 por tramo: un tramo sin malos o sin
+// buenos daría un WoE infinito.
 export function ivWoe(valores, malos, tramos) {
   const conteo = tramos.map((t) => ({ ...t, n: 0, malos: 0 }));
   let sinTramo = 0;
@@ -825,9 +822,9 @@ export function tramosMonotonos(valores, malos, tramos) {
   return [...actual, ...otros];
 }
 
-// PSI entre dos distribuciones de conteos por tramo, con el suavizado de
-// lab_estabilidad (0,5 por tramo). Menos de 0,1 estable; hasta 0,25 mirar;
-// más, cambió.
+// PSI entre dos distribuciones de conteos por tramo, con un suavizado de 0,5
+// por tramo (un tramo vacío daría infinito). Menos de 0,1 estable; hasta
+// 0,25 mirar; más, cambió.
 export function psi(conteosBase, conteosNuevo) {
   const k = conteosBase.length;
   const tb = suma(conteosBase), tn = suma(conteosNuevo);

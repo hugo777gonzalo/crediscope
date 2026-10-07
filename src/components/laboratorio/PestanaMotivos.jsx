@@ -2,7 +2,7 @@ import { Advertencias, Barra, ETIQUETA_MOTIVO, ETIQUETA_SE_PODIA_VER, num, pct }
 
 // Por qué cayó cada malo (docs/laboratorio-de-riesgo.md, 14.5): con lo que
 // se veía el día del análisis y con los eventos detectados entre las dos
-// consultas. Lo calcula lab_calcular_motivos(), que nunca lee la verdad
+// consultas. Lo cuenta lab_contar_motivos(), que nunca lee la verdad
 // plantada de una simulación.
 //
 // Primero lo que importa para mejorar el modelo: ¿se podía ver? Lo que se

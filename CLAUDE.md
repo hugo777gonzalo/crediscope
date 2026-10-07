@@ -145,7 +145,7 @@ Romper cualquiera de estas rompe algo real.
     (tipo `crudo`) y la pestaña del corte sólo lo muestra.
   - El **ciclo de un año** (sección 14 del diseño, 098-104): solicitudes,
     reconsultas y eventos; la verdad plantada vive aparte
-    (`lab_simulacion_verdad`) y sólo la lee `lab_calificar_simulacion()`.
+    (`lab_simulacion_verdad`) y sólo la lee `lab_contar_calificacion()`.
     Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
     (simulación y real): `scripts/procesar-reconsultas.mjs --carga=<id>`.
     El detector de eventos es `_shared/eventos-entre-consultas.ts`: una
@@ -178,9 +178,10 @@ Romper cualquiera de estas rompe algo real.
     (`informeLaboratorio.js`). Las decisiones del 2026-10-06 y el plan en
     cuatro fases: `docs/propuesta-revision-del-laboratorio.md`, 10 a 12.
   - La forma de una fila del corte vive en `src/lib/filasDelCorte.js` (sin
-    el cliente de Supabase, para que la importen los guiones); el IV del
-    navegador y el de `lab_calcular_variables` usan la misma regla de
-    tramos (`cortesPorCuantiles`) y tienen que coincidir.
+    el cliente de Supabase, para que la importen los guiones). Las funciones
+    de la base que calculaban estadística (`lab_auc`, `lab_calcular_*`,
+    `lab_estabilidad`, `lab_calificar_simulacion`) se borraron en la 112: lo
+    que guardaron (origen `base`) es la referencia de las pruebas.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.

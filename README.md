@@ -27,9 +27,9 @@ El frontend se despliega solo a GitHub Pages en cada push a `main`.
   `process.ts`); clasificación de ingresos `fuentes-v9`
   (`FUENTES_INGRESO_VERSION` en `fuentes-ingreso.ts`). Qué cambió en
   cada versión y por qué: `docs/estructura-estandarizada.md`.
-- **Criterio vigente:** marco base + ajustes aprobados por el área,
-  versionado en `criterio_versiones`. Cada análisis guarda con qué
-  versión se hizo (`analysis_results.criterio_version_id`).
+- **Sin ajustes del criterio** desde el 2026-10-07 (112): todo cambio a lo
+  que lee el modelo es una versión nueva del marco. `criterio_versiones` y
+  `analysis_results.criterio_version_id` quedan como historia.
 
 Lo que **sigue pendiente de validación del negocio**: los criterios
 *dentro* de cada grupo del marco (qué campo pesa cuánto, qué se
@@ -113,9 +113,7 @@ limitada por RLS.
    lectura rápida (riesgo e historial de pago), la evidencia a favor y
    en contra, y lo que no se pudo confirmar. Cada campo contesta una
    pregunta distinta: el resumen el porqué, las acciones el qué hago,
-   las observaciones lo que no se pudo confirmar. Al marco base se le
-   suman en tiempo de ejecución los ajustes vigentes (ver abajo), sin
-   reescribirlo.
+   las observaciones lo que no se pudo confirmar.
 
    El modelo tiene prohibido proponer **condiciones comerciales**
    (montos, plazos, cuotas, tasas, garantías): eso lo resuelve el
@@ -148,12 +146,14 @@ Diseño completo, decisiones y criterios de aceptación en
    consultado después del desembolso es fuga y queda afuera.
 2. **Corte**: la población congelada (cargas, definición de impago,
    ventana), que copia puntajes y valores para dar siempre el mismo número.
-3. **Desempeño, variables y simulación de política**, calculados en la
-   base sin llamar al modelo: AUC, KS, tasa por recomendación y por tramo,
-   valor de información por variable, y qué pasaría con una regla.
-4. **Propuestas** con su evidencia. Un ajuste del criterio aprobado entra
-   al criterio vigente (versionado y reversible); un cambio de marco, de
-   dato o de política se aplica con una versión nueva.
+3. **Desempeño, variables y simulación de política**, sin llamar al
+   modelo: AUC, KS, tasa por recomendación y por tramo, valor de
+   información por variable, y qué pasaría con una regla. La base cuenta y
+   la estadística vive sólo en `src/lib/estadistica.js` (111); todo lo
+   calculado se guarda en `lab_resultados` con su huella.
+4. **Propuestas** con su evidencia. Un cambio de marco, de dato o de
+   política se aplica con una versión nueva (el ajuste del criterio, texto
+   sumado al marco sin versión, se retiró el 2026-10-07).
 
 Sin una institución real todavía, se desarrolla y se prueba con una
 **cartera sintética con señal plantada** (`scripts/generar-cartera-sintetica.mjs`),
@@ -173,7 +173,8 @@ para mirarse en pantalla con una jefatura. **Descargas**
 El exportable (`src/lib/exportAnalitico.js`) trae
 una fila por solicitud en el rango de fechas que se elija: los ~145
 campos de la Estructura Estandarizada con los que se evaluó a esa
-persona, el score, la recomendación, la versión del criterio y — cuando
+persona, el score, la recomendación, la versión del criterio (vacía desde
+el 2026-10-07) y — cuando
 hay una carga real en el Laboratorio — el resultado del crédito (estado y
 días de mora por ventana; nunca el de una carga sintética). Los Sí/No salen como
 1/0 porque es una tabla para calcular. El total se cuenta en el servidor
@@ -194,20 +195,15 @@ que excluirlo** de cualquier análisis sobre qué se podía saber de
 antemano: el perfil es posterior a la solicitud y puede traer
 información que entonces no existía.
 
-### Versionado y reversión del criterio
+### El criterio, retirado
 
-Cada vez que cambia el conjunto de ajustes vigentes, un trigger congela
-una versión en `criterio_versiones` con el **texto completo** de lo que
-regía (no referencias: una versión histórica tiene que seguir diciendo
-qué se aplicó aunque después se edite o borre la propuesta). Solo se
-registra si el criterio *efectivo* cambió — aprobar algo sin ponerlo en
-vigencia no ensucia el historial.
-
-Desde `/laboratorio/criterio` (sólo admin) se puede volver a una versión
-anterior (`revertir_criterio`) o desactivar todos los ajustes de golpe
-(`desactivar_todos_los_ajustes`), para el caso de un error no
-identificado donde no se sabe cuál ajuste falló. Ninguna de las dos
-borra historia: revertir crea una versión nueva.
+Hasta el 2026-10-07 el área podía sumar "ajustes del criterio" al marco:
+texto libre que entraba en lo que lee el modelo sin versión nueva, con su
+historial en `criterio_versiones` y reversión. Se retiró (decisión del
+negocio del 2026-10-06, migración 112) porque su efecto no se podía medir
+antes de ponerlo. Nunca hubo uno en vigencia: la única versión no tiene
+ajustes. La tabla y `analysis_results.criterio_version_id` quedan como
+historia.
 
 ## Secciones de la app y acceso por rol
 
@@ -257,8 +253,8 @@ Tablas principales:
   `standard_profile_segment_config` — qué recursos/campos están activos,
   configurables desde la app sin desplegar.
 - `lab_*` (cargas, operaciones, cortes, resultados, propuestas, catálogo
-  de variables, definiciones de impago) y `criterio_versiones` — el
-  Laboratorio y el criterio vigente.
+  de variables, definiciones de impago) — el Laboratorio.
+  `criterio_versiones` queda como historia del criterio retirado.
 
 El crudo de Novadata se guarda comprimido en el depósito privado
 `crudo-novadata` de Storage (desde la 090), y lo que leyó el modelo en

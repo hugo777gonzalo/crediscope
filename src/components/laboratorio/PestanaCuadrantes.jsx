@@ -3,7 +3,7 @@ import { Advertencias, Kpi, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.j
 // Las cuatro poblaciones del ciclo de un año (docs/laboratorio-de-riesgo.md,
 // sección 14): recomendación × si la institución desembolsó. Con crédito, el
 // resultado lo dice el archivo; sin crédito, la reconsulta del buró, y sólo
-// de quien tuvo crédito con alguien. Lo calcula lab_calcular_cuadrantes().
+// de quien tuvo crédito con alguien. Lo cuenta lab_contar_cuadrantes().
 
 const ORDEN = ["aprobar", "revisar", "negar", "bloqueado", "sin recomendación"];
 

@@ -30,7 +30,8 @@ ajuste respaldada por números. Lo que recibe la institución financiera
 **No es** una pantalla para la IFI, ni un tablero, ni algo que cambie el
 motor solo. El Laboratorio produce propuestas; una persona las aprueba, y
 lo aprobado entra al motor por los caminos que ya existen (una versión
-nueva del marco o del criterio vigente).
+nueva del marco, de la estructura o de la política; el "criterio vigente",
+texto sumado al marco sin versión, se retiró el 2026-10-07).
 
 **Nombre** (decidido por el negocio): Laboratorio de Inteligencia de
 Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
@@ -312,7 +313,7 @@ pisa: recalcular agrega una fila.
 | Columna | Nota |
 |---|---|
 | `titulo`, `hallazgo` | qué se vio, en palabras del negocio |
-| `tipo` | `ajuste_criterio` · `cambio_marco` · `regla_politica` · `dato_nuevo` |
+| `tipo` | `cambio_marco` · `regla_politica` · `dato_nuevo` (`ajuste_criterio` se retiró en la 112) |
 | `evidencia` | jsonb: ids de resultados, números y tamaños de muestra |
 | `cambio_propuesto` | el texto del ajuste, el cambio de marco o la regla |
 | `impacto_estimado` | jsonb: malos evitados, buenos perdidos, aprobados que cambian |
@@ -322,11 +323,11 @@ pisa: recalcular agrega una fila.
 | `aplicada_en` | versión del marco o del criterio que la llevó |
 | `es_sintetica` | una propuesta sobre datos sintéticos no se puede presentar |
 
-Los cuatro tipos y por dónde entran al motor:
+Los tipos y por dónde entran al motor:
 
 | Tipo | Ejemplo | Entra por |
 |---|---|---|
-| `ajuste_criterio` | "Una pensión en mora pesa como dos demandas de cobro." | `criterio_versiones` (dato, reversible), como hoy |
+| `ajuste_criterio` | "Una pensión en mora pesa como dos demandas de cobro." | **Retirado el 2026-10-07** (112): un texto sumado al marco sin versión nueva no se puede medir antes de ponerlo. Va como `cambio_marco`. |
 | `cambio_marco` | Reescribir cómo se lee la continuidad laboral. | Versión nueva del marco (código y `scoring_rules_versions`) |
 | `regla_politica` | "Negar si la deuda vencida propia supera USD 2.000." | Hoy, recomendación a la IFI; mañana, la capa de política de la fábrica de crédito |
 | `dato_nuevo` | Una variable que el modelo no recibe y anticipa el impago. | Versión nueva de la estructura y del perfil del modelo |
@@ -452,7 +453,7 @@ Todo bajo **Laboratorio** en el menú, sólo para admin; la entrada
 | `/laboratorio/cortes/nuevo` | Elegir cargas, definición de default, ventana y filtros; congelar. |
 | `/laboratorio/cortes/:id` | Pestañas **Desempeño · Matriz de confusión · Variables · Simulación · Casos**, cada número con su `n` y sus advertencias. Un corte con solicitudes suma **Con y sin crédito** y **Motivos del impago**; si es sintético, **Calificación de la simulación**. Variables elige la población: con el crédito de la institución o todas las solicitudes observadas. |
 | `/laboratorio/propuestas` | Propuestas por estado; el detalle muestra la evidencia enlazada. |
-| `/laboratorio/criterio` | El criterio vigente y su historial, con reversión (hoy `/retroalimentacion/versiones`). |
+| `/laboratorio/criterio` | Retirada el 2026-10-07 (112): lleva a Propuestas. |
 
 El **Informe de Desempeño del Modelo** se exporta desde un corte real con
 sus propuestas presentadas. Desde un corte sintético se exporta igual, para
@@ -483,7 +484,8 @@ En este orden, por la regla 8 de `CLAUDE.md` (desplegar antes de borrar):
 2. **Migración**: `ajustes_vigentes_actuales()`, el disparador de
    `criterio_versiones` y `revertir_criterio()` pasan a leer y escribir
    `lab_propuestas`. Las dos tablas están vacías, así que el criterio
-   vigente no cambia (se verifica: misma huella antes y después).
+   vigente no cambia (se verifica: misma huella antes y después). Las tres
+   se borraron en la 112, al retirar el ajuste de criterio.
 3. **Código y despliegue**: pantallas del Laboratorio; se van las de
    Retroalimentación y sus rutas; `exportAnalitico.js` toma el resultado
    real de `lab_operaciones`; `correr-backtest` se retira (su sucesor es la
@@ -847,8 +849,8 @@ Acá, lo que cambió de método y lo que se midió.
   `_calificacion`), y `src/lib/resultadosDelCorte.js` arma con la
   estadística lo que antes calculaba la base (desempeño, variables,
   estabilidad, los intervalos y el AUC de la calificación), con la misma
-  forma. Antes de borrar las funciones viejas (112) se comparó en los tres
-  cortes: todo igual.
+  forma. Antes de borrar las funciones viejas se comparó en los tres
+  cortes: todo igual. La 112 las borró.
 - **Todo lo calculado se guarda** en `lab_resultados` con su huella
   (corte, tipo, población, parámetros y versión del cálculo); la misma
   huella no se guarda dos veces. Las pestañas que miran el corte entero
@@ -871,13 +873,15 @@ Acá, lo que cambió de método y lo que se midió.
 - `scripts/probar-estadistica.mjs`: valores publicados (Excel, Fisher,
   scipy, la t de Welch contra la densidad integrada), identidades entre
   pruebas, SHAP (base + suma = predicción, error 2·10⁻¹⁶), K-medias y PCA
-  con respuesta conocida, y la base (AUC, KS e IV iguales).
+  con respuesta conocida, y lo que guardó la base antes de la 112 (AUC, KS
+  e IV iguales a los resultados de origen `base`).
 - `scripts/probar-pantallas-laboratorio.mjs`: el cálculo de cada pestaña
   sobre los cortes reales, con las mismas filas que baja el navegador:
-  conteos que suman, AUC igual a `lab_auc`, IV igual a
-  `lab_calcular_variables`, los motivos de cada malo, la entrada al modelo
-  de un análisis real, el mapeo de columnas con un archivo armado en
-  memoria y el intérprete de fórmulas.
+  conteos que suman, el desempeño y el IV iguales a lo que guardó la base
+  antes de la 112, lo guardado sin cédulas (y que el control detecta una),
+  la huella, los motivos de cada malo, la entrada al modelo de un análisis
+  real, el mapeo de columnas con un archivo armado en memoria y el
+  intérprete de fórmulas.
 
 ### 15.3 Lo que se corrigió en el camino
 

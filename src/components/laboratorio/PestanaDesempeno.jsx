@@ -1,8 +1,8 @@
 import { Kpi, Advertencias, Barra, num, pct, dec } from "./Comunes.jsx";
 
 // Desempeño del modelo sobre un corte (diseño, 7.1). Los números los
-// calcula lab_calcular_desempeno() en la base; acá sólo se muestran, cada
-// uno con su tamaño de muestra.
+// calcula desempenoDelCorte() (resultadosDelCorte.js); acá sólo se
+// muestran, cada uno con su tamaño de muestra.
 
 const ETIQUETA_REC = {
   aprobar: "Aprobar",

@@ -139,7 +139,7 @@ for (const corte of cortes) {
     const numerica = datos.columnas.find((c) => c.tipo === "numero");
     const inf = D.inferencia(numerica, datos.malos, datos.filas);
     control("inferencia de una numérica", inf.mannWhitney !== null && inf.welch !== null, `${numerica.id}: Welch p ${inf.welch?.p?.toExponential(2)}, Mann-Whitney p ${inf.mannWhitney?.p?.toExponential(2)}`);
-    // El IV del navegador con los tramos de la base tiene que ser el de lab_calcular_variables.
+    // El IV del navegador tiene que ser el que calculó la base antes de la 112 (origen base).
     const [vars] = await rest(`lab_resultados?select=resultado,metodologia&corte_id=eq.${corte.id}&tipo=eq.variables&origen=eq.base&order=created_at.desc&limit=5`).then((rs) => rs.filter((r) => (r.metodologia?.poblacion ?? "operaciones") === poblacion));
     if (vars) {
       const sql = new Map(vars.resultado.variables.map((v) => [v.variable, v.iv]));

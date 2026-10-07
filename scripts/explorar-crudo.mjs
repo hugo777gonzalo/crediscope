@@ -23,7 +23,7 @@
 // primero los respaldos de research/ (si el archivo es de ese perfil) y si
 // no, el depósito crudo-novadata.
 //
-// No lee la verdad plantada de una simulación: lab_calificar_simulacion()
+// No lee la verdad plantada de una simulación: lab_contar_calificacion()
 // compara después lo que encontró.
 //
 // Lo que no pasa por lint ni build se rompe en silencio: correr primero con

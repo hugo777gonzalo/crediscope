@@ -45,7 +45,7 @@ export const ETIQUETA_RECOMENDACION = {
   "sin recomendación": "Sin recomendación",
 };
 
-// Los motivos del impago (lab_calcular_motivos) y los eventos entre dos
+// Los motivos del impago (lab_contar_motivos) y los eventos entre dos
 // consultas (eventos-entre-consultas.ts), en palabras del negocio. Los tres
 // últimos sólo existen en la verdad plantada de una simulación.
 export const ETIQUETA_MOTIVO = {
@@ -69,7 +69,7 @@ export const ETIQUETA_MOTIVO = {
   dato_solo_crudo: "Dato que sólo está en el crudo",
 };
 
-// lab_calcular_motivos desde la 103. "anticipable" queda para la verdad
+// lab_contar_motivos (la regla es de la 103). "anticipable" queda para la verdad
 // plantada de una simulación, que se clasificó con la regla anterior. Desde
 // la 110 "lo vio" es sólo negar: revisar es "no impago" (decisión del
 // negocio del 2026-10-06); un resultado guardado antes lo contaba.

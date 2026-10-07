@@ -52,7 +52,13 @@ aceptada.
      Motivos, Importancia, Taller (registrar la derivada), Registro de
      candidatas (pasar una a aceptada y crear su propuesta: tiene que salir
      en borrador por ser sintética).
-   - Propuestas y Criterio vigente.
+   - Propuestas (Criterio vigente se retiró el 2026-10-07: la dirección
+     vieja lleva a Propuestas).
+   - **Que lo calculado se guarde** (111): después de recorrer las pestañas
+     de un corte, `select origen, tipo, count(*) from lab_resultados group by 1, 2`
+     tiene que traer filas con origen `navegador` (al 2026-10-07 había sólo
+     las 40 de origen `base`), y volver a abrir la misma pestaña no tiene que
+     sumar otra fila (misma huella).
    - **Verificar el crudo de una consulta nueva.** Hasta el 2026-10-04
      ninguna consulta guardaba su crudo en Storage (el depósito rechazaba el
      archivo: lecciones.md). Arreglado y desplegado ese día, y los 2.567 de
@@ -94,10 +100,19 @@ aceptada.
      pantallas tocadas no se vieron con sesión de admin**: Configuración,
      Matriz (columna de observación), Investigación de casos (lista de
      observación), Los que cayeron (aprobar o revisar) y Nuevo corte.
-   - La carga del primer ciclo (`1196978e…`) y su corte siguen listos, con la
-     definición y el detector viejos: anularla cuando el negocio lo confirme.
-   - Lo siguiente: fase 2 (guardar los resultados del navegador, una sola
-     implementación de la estadística, retirar el ajuste de criterio).
+   - **Fase 2 hecha el 2026-10-07** (111 y 112, sección 14 de la revisión):
+     la estadística vive sólo en `src/lib/estadistica.js` (la base cuenta;
+     las funciones que calculaban se borraron después de comparar en los
+     tres cortes: todo igual), todo lo calculado se guarda con su huella y
+     el ajuste de criterio se retiró (`analyze-client` desplegado sin él; el
+     pedido al modelo quedó igual byte a byte). **Lo que se guarda desde las
+     pantallas no se vio con sesión de admin** (ver 0).
+   - La carga del primer ciclo (`1196978e…`) está anulada (confirmado por el
+     negocio); la vigente es la del segundo (`746e5271…`).
+   - Lo siguiente: fase 3 (operación única por institución y reporte
+     mensual, reconsultas por aniversario a los 3, 6, 9 y 12 meses, cortes a
+     esos horizontes, solicitudes por institución), antes de la reconsulta
+     de fines de diciembre.
    - Decisión del negocio pendiente: qué son los "comentarios
      institucionales" (hoy la institución no entra al Laboratorio).
    - Mejoras chicas que el plan no toca: el ajuste por la recomendación

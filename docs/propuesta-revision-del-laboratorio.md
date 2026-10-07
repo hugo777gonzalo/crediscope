@@ -944,3 +944,77 @@ Detalle en `docs/laboratorio-de-riesgo.md`, 14.12.
 Matriz, Investigación de casos, Los que cayeron, Nuevo corte). Los cálculos
 de todas las pestañas pasan `scripts/probar-pantallas-laboratorio.mjs` en los
 tres cortes y la estadística, `scripts/probar-estadistica.mjs`.
+
+---
+
+## 14. Fase 2, hecha el 2026-10-07
+
+### 14.1 Qué cambió
+
+- **Una sola implementación de la estadística** (10.6). Vive sólo en
+  `src/lib/estadistica.js`, que usan el navegador y los guiones. La base
+  congela, vincula y cuenta: la 111 suma `lab_contar_matriz`,
+  `lab_contar_cuadrantes`, `lab_contar_motivos` y `lab_contar_calificacion`,
+  que devuelven conteos. `src/lib/resultadosDelCorte.js` arma con la
+  estadística lo que antes calculaba la base (desempeño, variables,
+  estabilidad del puntaje, los intervalos de Wilson y el AUC de la
+  calificación) con la misma forma, así que las pestañas no cambiaron.
+  `scripts/explorar-crudo.mjs` dejó sus copias (Wilson, IV, chi cuadrado,
+  AUC, Benjamini-Hochberg) y usa también `estadistica.js`. La 112 borró las
+  nueve funciones que calculaban (`lab_auc`, `lab_wilson`,
+  `lab_calcular_desempeno`, `lab_calcular_variables`, `lab_estabilidad`,
+  `lab_calcular_matriz`, `lab_calcular_cuadrantes`, `lab_calcular_motivos`,
+  `lab_calificar_simulacion`).
+- **Todo lo calculado se guarda** (10.5). `lab_resultados` suma la huella
+  (SHA-256 del corte, el tipo, la población, los parámetros y la versión
+  del cálculo, `VERSION_DEL_CALCULO`) y el origen (`base`, `navegador` o
+  `guion`); una huella que ya está no se guarda otra vez. Guardan solas al
+  calcularse Discriminación, Segmentos, Cosechas, Descriptivas, Faltantes,
+  Correlaciones, Significancia, Los que cayeron, Lo que decidió la
+  institución e Inferencia (todas las variables); con un botón, Umbrales,
+  Tramos, Distribuciones, Comparar cortes, Taller, Inferencia de una
+  variable, Estabilidad (el PSI del puntaje y el de las variables) y
+  Calibración. Lo guardado no lleva filas de personas ni cédulas: se resume
+  antes (`RESUMEN`).
+- **El ajuste de criterio se retiró** (10.4). `analyze-client` ya no lo
+  lee (desplegada el 2026-10-07), ni el lote ni la comparación de
+  razonamiento; Propuestas no ofrece el tipo y "Criterio vigente" salió del
+  menú (la dirección vieja lleva a Propuestas). La 112 borró el disparador y
+  las siete funciones del criterio, y una propuesta ya no puede ser de ese
+  tipo. `criterio_versiones` (una versión, sin ajustes) y
+  `analysis_results.criterio_version_id` (17 análisis) quedan como
+  historia.
+
+### 14.2 Qué se midió
+
+- **Lo nuevo da lo mismo que la base**, en los tres cortes y antes de
+  borrar nada: desempeño (n, malos, AUC con su intervalo, Gini, KS, tasa
+  por recomendación con Wilson, por tramo y por versión), variables en las
+  dos poblaciones (IV, cobertura y "llega al modelo"; la mayor diferencia de
+  IV, menor a 0,001), matriz, cuadrantes y motivos (el mismo JSON),
+  calificación de la simulación (AUC contra lo plantado y el resto igual) y
+  el PSI del puntaje entre los dos primeros cortes (0,3094 en los dos).
+- **El explorador del crudo** da la misma salida con la estadística común.
+- **El pedido al modelo quedó igual byte a byte** sin el bloque de ajustes:
+  50 de 50 pedidos armados con perfiles reales, comparados con la versión
+  anterior. Por eso no hizo falta versión nueva del marco. No se llamó al
+  modelo.
+- **Después de la 112** no queda ninguna de las 16 funciones borradas.
+  `scripts/probar-estadistica.mjs` da "Todo coincide" contra lo que guardó
+  la base (AUC 0,7407, KS 0,3755 y el IV de 59 variables, con una
+  diferencia máxima de 0,00005) y `scripts/probar-pantallas-laboratorio.mjs`,
+  "Todo cuadra" en los tres cortes, con dos controles nuevos: lo guardado no
+  lleva cédulas (y el control encuentra una si no se resume) y la misma
+  huella sale igual dos veces. `analyze-client` arranca: a un pedido sin
+  cédula contesta con su propio error, sin llegar al modelo.
+- La comparación llamó a las funciones viejas, que guardaban lo que
+  calculaban: las 18 filas que dejó en `lab_resultados` se borraron (sólo
+  esas: sin usuario, de origen `base`, creadas durante la prueba). Las 40
+  de origen `base` que quedan son las de antes y son la referencia de las
+  pruebas.
+
+**No se verificó:** que las pantallas guarden de verdad con sesión de admin
+(al cerrar, `lab_resultados` tiene sólo las 40 filas de origen `base`), ni
+un análisis real con el `analyze-client` nuevo (ninguno desde el
+despliegue; la columna `criterio_version_id` acepta el vacío y no tiene
+valor por defecto, así que el guardado no debería fallar).

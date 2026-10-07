@@ -82,7 +82,7 @@ corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 
 | Pantalla | Estado | De dónde sale / qué falta |
 |---|---|---|
-| Resumen: AUC con intervalo, Gini, KS, tasa, exclusiones | Hecho | Pestaña Resumen (`lab_calcular_desempeno`) |
+| Resumen: AUC con intervalo, Gini, KS, tasa, exclusiones | Hecho | Pestaña Resumen (`desempenoDelCorte`, desde la 111) |
 | Exactitud, precisión, sensibilidad, especificidad, F1 | Hecho | Matriz de confusión (100) |
 | Precisión media (PR-AUC) | Hecho | Discriminación |
 | Brier | Hecho | Calibración (decisión 4) |
@@ -96,7 +96,7 @@ corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 | Discriminación: ROC, KS, distribución por clase, deciles | Hecho | Discriminación |
 | Comparación entre modelos | Falta un dato | Necesita dos puntajes del mismo corte (fase 7, marco candidato, con costo). Comparar cortes sí está |
 | Calibración | Hecho | Logística puntaje → probabilidad en una cohorte, probada en otra; Brier, ECE, Hosmer-Lemeshow; se guarda |
-| Estabilidad: PSI del puntaje y de variables, evolución | Hecho | `lab_estabilidad` y el PSI de cada variable; la evolución necesita varios cortes |
+| Estabilidad: PSI del puntaje y de variables, evolución | Hecho | `estabilidadDelPuntaje` y el PSI de cada variable; la evolución necesita varios cortes |
 | Configurar, guardar y comparar evaluaciones | Hecho | Cada cálculo se guarda; Comparar cortes los pone lado a lado |
 
 ## 5. Descubrimiento estadístico (`/laboratorio/estadistica`)
@@ -109,7 +109,7 @@ corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 | Datos faltantes | A medias | Por variable (¿la ausencia anticipa?), conjuntos y por mes; falta "no consultado" contra "no tiene", que está en el perfil y el corte no congela |
 | Correlaciones y VIF | Hecho | Pearson, Spearman, Kendall del par, con el resultado, V de Cramér |
 | Inferencia | Hecho | Welch, Mann-Whitney, normalidad, ANOVA, Kruskal-Wallis, chi², Fisher; efecto e intervalo; corrección BH |
-| IV y WoE | Hecho | `lab_calcular_variables`, con tramos que no parten empates (106) |
+| IV y WoE | Hecho | `variablesDelCorte`, con tramos que no parten empates (106) |
 | Tramos manuales, monótonos, estabilidad del IV | Hecho | Laboratorio de tramos |
 | Explorador de significancia | Hecho | Asociación, q, efecto, cobertura, estabilidad entre mitades, relevancia; registra candidatas |
 | Segmentos (K-medias, silueta) | Hecho | `scripts/analisis-pesado.mjs` |

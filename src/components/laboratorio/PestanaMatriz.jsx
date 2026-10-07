@@ -2,7 +2,8 @@ import { Advertencias, Kpi, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.j
 import { NO_IMPAGO } from "../../lib/analisisProfundo.js";
 
 // Matriz de confusión y desempeño por decisión (docs/laboratorio-pantallas.md,
-// 4.3 y 4.5). Lo calcula lab_calcular_matriz() en la base.
+// 4.3 y 4.5). Lo cuenta lab_contar_matriz() y los intervalos los pone
+// resultadosDelCorte.js.
 //
 // No es una matriz de 2 × 2: el motor recomienda aprobar, revisar o negar.
 // Las medidas de clasificación se leen como decidió el negocio el 2026-10-06:
