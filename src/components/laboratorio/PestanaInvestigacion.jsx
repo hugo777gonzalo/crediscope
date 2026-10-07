@@ -6,10 +6,18 @@ import { getMotivosDeCadaMalo } from "../../lib/laboratorio.js";
 import { MensajeError, Cargando, ETIQUETA_RECOMENDACION, ETIQUETA_MOTIVO, ETIQUETA_SE_PODIA_VER, num } from "./Comunes.jsx";
 
 // Investigación de los dos errores (módulo 6 del negocio): los aprobados
-// que cayeron y los negados que habrían pagado. A un negado sólo se lo
-// juzga con evidencia: la institución le prestó igual o tuvo crédito con
-// otra y pagó. Cada caso abre su trazabilidad completa, con los parecidos
-// que tuvieron el otro resultado.
+// que cayeron (aprobar o revisar: "no impago") y los negados que habrían
+// pagado. A un negado sólo se lo juzga con evidencia: la institución le
+// prestó igual o tuvo crédito con otra y pagó. Más la lista de observación:
+// los que llegaron a 15 días de atraso en el primer año sin caer, aunque se
+// pusieran al día (decisión del negocio del 2026-10-06). Cada caso abre su
+// trazabilidad completa, con los parecidos que tuvieron el otro resultado.
+
+const LISTAS = {
+  aprobados: { clave: "aprobadosQueCayeron", texto: "Aprobados que cayeron" },
+  negados: { clave: "negadosQuePagaron", texto: "Negados que habrían pagado" },
+  observacion: { clave: "enObservacion", texto: "En observación" },
+};
 
 export default function PestanaInvestigacion({ corteId, poblacion }) {
   const { filas, error } = useFilasDelCorte(corteId, poblacion);
@@ -30,24 +38,26 @@ export default function PestanaInvestigacion({ corteId, poblacion }) {
   const casos = useMemo(() => (filas ? casosDeError(filas) : null), [filas]);
   if (error) return <MensajeError mensaje={error} />;
   if (!casos) return <Cargando />;
-  const elegidos = (lista === "aprobados" ? casos.aprobadosQueCayeron : casos.negadosQuePagaron).slice().sort((a, b) => (lista === "aprobados" ? b.puntaje - a.puntaje : a.puntaje - b.puntaje));
+  // Los que el motor creía más seguros, arriba; en los negados, al revés.
+  const elegidos = casos[LISTAS[lista].clave].slice().sort((a, b) => (lista === "negados" ? a.puntaje - b.puntaje : b.puntaje - a.puntaje));
 
   return (
     <div>
       <div className="crediscope-tabs" style={{ flexWrap: "wrap" }}>
-        <button className={`crediscope-tab ${lista === "aprobados" ? "crediscope-tab-active" : ""}`} onClick={() => setLista("aprobados")} style={{ border: "none", background: "none", cursor: "pointer" }}>
-          Aprobados que cayeron ({num(casos.aprobadosQueCayeron.length)})
-        </button>
-        <button className={`crediscope-tab ${lista === "negados" ? "crediscope-tab-active" : ""}`} onClick={() => setLista("negados")} style={{ border: "none", background: "none", cursor: "pointer" }}>
-          Negados que habrían pagado ({num(casos.negadosQuePagaron.length)})
-        </button>
+        {Object.entries(LISTAS).map(([clave, l]) => (
+          <button key={clave} className={`crediscope-tab ${lista === clave ? "crediscope-tab-active" : ""}`} onClick={() => setLista(clave)} style={{ border: "none", background: "none", cursor: "pointer" }}>
+            {l.texto} ({num(casos[l.clave].length)})
+          </button>
+        ))}
       </div>
       <p className="crediscope-muted" style={{ fontSize: 13, marginTop: 0 }}>
         {lista === "aprobados"
-          ? "Ordenados del puntaje más alto al más bajo: arriba, los que el motor creía más seguros."
-          : poblacion === "solicitudes"
-            ? "Negados con evidencia de que pagaron: tuvieron crédito con otra institución (o la institución les prestó igual) y no cayeron."
-            : "Negados a los que la institución les prestó igual y pagaron."}
+          ? "Aprobar o revisar (no impago) y cayeron. Ordenados del puntaje más alto al más bajo: arriba, los que el motor creía más seguros."
+          : lista === "observacion"
+            ? "Llegaron a 15 días de atraso o más en el primer año sin caer en impago, aunque después se pusieran al día. El buró es una foto: entre dos reconsultas, un atraso que se pagó no se ve; el archivo de la institución sí lo trae."
+            : poblacion === "solicitudes"
+              ? "Negados con evidencia de que pagaron: tuvieron crédito con otra institución (o la institución les prestó igual) y no cayeron."
+              : "Negados a los que la institución les prestó igual y pagaron."}
       </p>
       {elegidos.length ? (
         <div className="crediscope-card" style={{ overflowX: "auto" }}>

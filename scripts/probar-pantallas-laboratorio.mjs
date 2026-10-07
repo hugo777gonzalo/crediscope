@@ -28,6 +28,12 @@ async function rest(ruta, opciones = {}) {
   if (!res.ok) throw new Error(`${ruta.split("?")[0]}: HTTP ${res.status} ${texto.slice(0, 300)}`);
   return texto ? JSON.parse(texto) : null;
 }
+// Cuenta en la base: una lectura de filas se cortaría en 1.000.
+async function cuantos(ruta) {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${ruta}&limit=1`, { headers: { ...auth, Prefer: "count=exact" } });
+  if (!res.ok) throw new Error(`${ruta.split("?")[0]}: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
+  return Number(res.headers.get("content-range")?.split("/")[1]);
+}
 async function filasDe(corteId, poblacion) {
   const solicitudes = poblacion === "solicitudes";
   const tabla = solicitudes ? "lab_corte_solicitudes" : "lab_corte_operaciones";
@@ -138,19 +144,25 @@ for (const corte of cortes) {
     }
 
     // Descubrimiento profundo (fase E).
-    const cayeron = P.losQueCayeron(filas, catalogo, "aprobar");
-    if (cayeron.insuficiente) console.log(`     los que cayeron (aprobar): ${cayeron.malos} malos, insuficiente`);
-    else control("los que cayeron entre los aprobados", cayeron.diferencias.length > 0, `${cayeron.malos} malos contra ${cayeron.buenos}; más diferentes: ${cayeron.diferencias.slice(0, 3).map((x) => `${x.id} ${x.efecto?.toFixed(2)}`).join(", ")}; ${cayeron.combinaciones.length} combinaciones, la mejor refuerza ${cayeron.combinaciones[0]?.refuerzo?.toFixed(2) ?? "—"}; no lineales: ${cayeron.noLineales.map((x) => x.id).join(", ") || "ninguna"}`);
+    // "No impago" = aprobar o revisar (decisión del negocio del 2026-10-06).
+    const cayeron = P.losQueCayeron(filas, catalogo);
+    if (cayeron.insuficiente) console.log(`     los que cayeron (aprobar o revisar): ${cayeron.malos} malos, insuficiente`);
+    else control("los que cayeron entre aprobar y revisar", cayeron.diferencias.length > 0 && cayeron.base.every((f) => P.NO_IMPAGO.includes(f.recomendacion)), `${cayeron.malos} malos contra ${cayeron.buenos}; más diferentes: ${cayeron.diferencias.slice(0, 3).map((x) => `${x.id} ${x.efecto?.toFixed(2)}`).join(", ")}; ${cayeron.combinaciones.length} combinaciones, la mejor refuerza ${cayeron.combinaciones[0]?.refuerzo?.toFixed(2) ?? "—"}; no lineales: ${cayeron.noLineales.map((x) => x.id).join(", ") || "ninguna"}`);
     const errores = P.casosDeError(filas);
-    control("casos de error", errores.aprobadosQueCayeron.every((f) => f.malo && f.recomendacion === "aprobar") && errores.negadosQuePagaron.every((f) => !f.malo), `${errores.aprobadosQueCayeron.length} aprobados que cayeron, ${errores.negadosQuePagaron.length} negados que pagaron`);
+    control("casos de error", errores.aprobadosQueCayeron.every((f) => f.malo && P.NO_IMPAGO.includes(f.recomendacion)) && errores.negadosQuePagaron.every((f) => !f.malo), `${errores.aprobadosQueCayeron.length} aprobados (o revisar) que cayeron, ${errores.negadosQuePagaron.length} negados que pagaron`);
+    control("lista de observación: no cayeron y se atrasaron", errores.enObservacion.every((f) => !f.malo && f.observacion === true), `${errores.enObservacion.length} en observación`);
     if (errores.aprobadosQueCayeron.length) {
       const caso = errores.aprobadosQueCayeron[0];
       const par = P.parecidos(caso, filas, catalogo, 5);
       control("parecidos: del otro resultado y con la misma recomendación", par.vecinos.every((v) => v.fila.malo !== caso.malo && v.fila.recomendacion === caso.recomendacion), `${par.vecinos.length} vecinos, distancia ${par.vecinos[0]?.distancia.toFixed(2)}; hipótesis: ${par.hipotesis.slice(0, 3).map((h) => h.id).join(", ")}`);
     }
     if (poblacion === "solicitudes") {
+      // Los motivos siguen la regla por grupo (archivo para lo desembolsado,
+      // buró para el resto): se cuentan contra ese `malo`, en la base. Las
+      // filas del navegador, desde la 110, traen el del buró para todos.
       const motivos = await rest("rpc/lab_motivos_de_cada_malo", { method: "POST", body: JSON.stringify({ p_corte: corte.id }) });
-      control("motivos de cada malo = malos observados", motivos.length === F.filasObservadas(filas).filter((f) => f.malo).length, `${motivos.length} malos con su motivo`);
+      const malosPorGrupo = await cuantos(`lab_corte_solicitudes?select=solicitud_id&corte_id=eq.${corte.id}&incluida=is.true&malo=is.true`);
+      control("motivos de cada malo = malos por grupo", motivos.length === malosPorGrupo, `${motivos.length} malos con su motivo de ${malosPorGrupo}`);
       // Una variable derivada que reconstruye la señal plantada: aportó en
       // parte de los últimos 24 meses (ni nunca ni siempre).
       const derivada = P.probarFormula(filas, catalogo, "meses_con_aporte_24 > 0 y meses_con_aporte_24 < 24");

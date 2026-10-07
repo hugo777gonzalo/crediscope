@@ -10,13 +10,16 @@ import { comoNumero, ivDeLaVariable, tramosIniciales } from "./analisisEstadisti
 const faltante = (v) => v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v));
 
 // ---------------------------------------------------- los que cayeron
-// Dentro de una recomendación (los aprobados, los revisados o todos), en qué
-// se diferencian los que cayeron de los que pagaron: el efecto de cada
-// variable, los faltantes, las combinaciones de dos condiciones que juntas
-// pesan más que cada una, y las variables que no se leen en una sola
-// dirección (el riesgo sube y después baja).
-export function losQueCayeron(filas, catalogo, recomendacion = "aprobar") {
-  const base = filasObservadas(filas, { unaPorPersona: true }).filter((f) => recomendacion === "todos" || f.recomendacion === recomendacion);
+// Dentro de una recomendación, en qué se diferencian los que cayeron de los
+// que pagaron: el efecto de cada variable, los faltantes, las combinaciones de
+// dos condiciones que juntas pesan más que cada una, y las variables que no se
+// leen en una sola dirección (el riesgo sube y después baja). Por defecto,
+// "no impago": aprobar y revisar juntos (decisión del negocio del 2026-10-06),
+// que es donde están los errores del modelo.
+export const NO_IMPAGO = ["aprobar", "revisar"];
+export function losQueCayeron(filas, catalogo, recomendacion = "no_impago") {
+  const dentro = (f) => recomendacion === "todos" || (recomendacion === "no_impago" ? NO_IMPAGO.includes(f.recomendacion) : f.recomendacion === recomendacion);
+  const base = filasObservadas(filas, { unaPorPersona: true }).filter(dentro);
   const malos = base.filter((f) => f.malo), buenos = base.filter((f) => !f.malo);
   if (malos.length < 5 || buenos.length < 5) return { base, malos: malos.length, buenos: buenos.length, insuficiente: true };
   const variables = catalogo.filter((v) => base.some((f) => !faltante(f.variables[v.id])));
@@ -114,15 +117,20 @@ function noLineales(base, variables) {
 }
 
 // ------------------------------------------------------ casos de error
-// Aprobados que cayeron y negados que habrían pagado. A un negado sólo se lo
-// juzga con evidencia: la institución le prestó igual (operaciones) o tuvo
+// Aprobados que cayeron (aprobar o revisar: "no impago", decisión del
+// negocio del 2026-10-06) y negados que habrían pagado. A un negado sólo se
+// lo juzga con evidencia: la institución le prestó igual (operaciones) o tuvo
 // crédito con otra y pagó (solicitudes observadas). Sin evidencia no hay
 // caso (lo pidió el negocio: ninguna tasa para los negados sin ella).
+// La lista de observación: llegaron a 15 días de atraso o más en el primer año
+// sin caer en impago, aunque después se pusieran al día. Para el negocio ya
+// es grave (2026-10-06).
 export function casosDeError(filas) {
   const obs = filasObservadas(filas);
   return {
-    aprobadosQueCayeron: obs.filter((f) => f.recomendacion === "aprobar" && f.malo),
+    aprobadosQueCayeron: obs.filter((f) => NO_IMPAGO.includes(f.recomendacion) && f.malo),
     negadosQuePagaron: obs.filter((f) => (f.recomendacion === "negar" || f.recomendacion === "bloqueado") && !f.malo),
+    enObservacion: obs.filter((f) => !f.malo && f.observacion === true),
   };
 }
 

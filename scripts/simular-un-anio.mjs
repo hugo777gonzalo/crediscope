@@ -218,6 +218,15 @@ for (const cedula of cedulas.filter((c) => conT1.has(c))) {
 console.log(`${personas.length} personas con t0 y reconsulta${sinT0.length ? `; ${sinT0.length} sin perfil o sin crudo en t0 (quedan afuera)` : ""}`);
 
 const disponible = (raw, fuente) => raw?.[fuente]?.status === "ok" && raw[fuente].data && typeof raw[fuente].data === "object";
+// Fuentes que se caen en t1, con lo que se midió en la consulta de septiembre
+// de la misma cartera (research/novadata-raw-2026-09-25: error o faltante en
+// el 5 a 6% del IESS, las demandas, las denuncias, el retail y las pensiones).
+// El buró y el SRI no fallaron ese día; se tiran al 1% para que el camino
+// "buró sin contestar" también se pruebe.
+const CAIDA_EN_T1 = {
+  basesInternas: 0.053, demandas: 0.06, denuncias: 0.063, retails: 0.057, pensionAlimenticia: 0.055, pensionAlimenticiaNovadata: 0.055,
+  contribuyente: 0.01, buroCreditoSuper: 0.01, buroCreditoCoop: 0.01,
+};
 const datosDe = (raw, fuente) => (fuente === "basesInternas" ? raw.basesInternas?.data?.data ?? raw.basesInternas?.data : raw[fuente]?.data) ?? {};
 const lista = (raw, fuente, campo) => { const d = datosDe(raw, fuente); if (!Array.isArray(d[campo])) d[campo] = []; return d[campo]; };
 
@@ -280,10 +289,15 @@ for (const p of personas) {
   p.licenciaVencida = Boolean(licencia && Number.isFinite(Number(licencia.validezHasta)) && Number(licencia.validezHasta) < instante(p.t0Fecha));
   contarEntidades(rawT0);
   const raw = leerT1(p);
+  // Las fuentes que se caen en t1 (CAIDA_EN_T1). Se planta sólo donde la
+  // fuente contestó en las dos consultas: un evento en una fuente caída no se
+  // puede ver, y el detector no tiene que inventar ninguno ahí.
+  p.caidas = Object.keys(CAIDA_EN_T1).filter((f) => azar() < CAIDA_EN_T1[f]);
+  const enLasDos = (...fuentes) => fuentes.every((f) => disponible(rawT0, f) && disponible(raw, f) && !p.caidas.includes(f));
   p.puede = {
-    iess: disponible(raw, "basesInternas"), sri: disponible(raw, "contribuyente"), supa: disponible(raw, "pensionAlimenticiaNovadata"),
-    demandas: disponible(raw, "demandas"), fiscalia: disponible(raw, "denuncias"),
-    buro: disponible(raw, "buroCreditoSuper") && disponible(raw, "buroCreditoCoop") && disponible(raw, "retails"),
+    iess: enLasDos("basesInternas"), sri: enLasDos("contribuyente", "establecimientoActEconomica"),
+    supa: enLasDos("pensionAlimenticia", "pensionAlimenticiaNovadata"), demandas: enLasDos("demandas"), fiscalia: enLasDos("denuncias"),
+    buro: enLasDos("buroCreditoSuper", "buroCreditoCoop"), retail: enLasDos("retails"),
   };
   agregarAlPool(raw);
 }
@@ -400,7 +414,7 @@ for (const p of personas) {
   if (puede.fiscalia && azar() < 0.012) ev.push({ tipo: "proceso_fiscalia", fecha: fechaEvento(p) });
   if (puede.buro && azar() < (p.otorgado ? 0.15 : 0.35) * (p.operaciones >= 3 ? 1.4 : 1)) {
     const montoOtro = Math.round(Math.min(40000, Math.max(300, Math.exp(7.8 + 0.8 * normal()))));
-    ev.push({ tipo: "credito_otra_institucion", fecha: fechaEvento(p), canal: elegir({ bancos: 0.5, cooperativas: 0.3, retail: 0.2 }), monto: montoOtro,
+    ev.push({ tipo: "credito_otra_institucion", fecha: fechaEvento(p), canal: elegir(puede.retail ? { bancos: 0.5, cooperativas: 0.3, retail: 0.2 } : { bancos: 0.5, cooperativas: 0.3 }), monto: montoOtro,
       sobreendeudamiento: Boolean(p.ingreso && montoOtro > 6 * p.ingreso) });
   }
   p.eventos = ev.sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -466,7 +480,8 @@ let n = 0;
 const leve = () => (azar() < 0.75 ? 0 : entre(1, 60));
 for (const p of personas.filter((x) => x.otorgado).sort((a, b) => a.cedula.localeCompare(b.cedula))) {
   p.numeroOperacion = `SIM-${String(++n).padStart(5, "0")}`;
-  p.diasMora12 = p.malo ? entre(90, 330) : leve();
+  // Impago es MÁS de 90 días (Basilea, decisión del negocio del 2026-10-06).
+  p.diasMora12 = p.malo ? entre(91, 330) : leve();
   p.estadoOperacion = p.malo
     ? p.sePusoAlDia ? elegir({ vigente: 0.7, cancelada: 0.3 }) : elegir({ vencida: 0.45, castigada: 0.25, judicial: 0.15, reestructurada: 0.15 })
     : elegir({ vigente: 0.7, cancelada: 0.3 });
@@ -476,13 +491,18 @@ for (const p of personas.filter((x) => x.otorgado).sort((a, b) => a.cedula.local
 let secuencia = 0;
 const sim = (prefijo) => `SIM-${prefijo}-${String(++secuencia).padStart(6, "0")}`;
 const esPropia = (r) => r.riesgo !== "G" && r.riesgo !== "C";
-const CALIFICACION_MALA = ["C1", "C2", "D", "E"];
+// La calificación de un banco por sus días de mora: la tabla de la
+// Superintendencia para consumo (versión 1 de lab_tablas_calificacion). Más
+// de 90 días es D o E; hasta el 2026-10-06 se plantaba C1 a E al azar, y con
+// la definición nueva la mitad de esos malos no lo eran.
+const calificacionBanco = (dias) =>
+  dias <= 0 ? "A1" : dias <= 8 ? "A2" : dias <= 15 ? "A3" : dias <= 30 ? "B1" : dias <= 45 ? "B2" : dias <= 70 ? "C1" : dias <= 90 ? "C2" : dias <= 120 ? "D" : "E";
 
-function filaBanco(p, entidad, saldo, mala) {
-  const enMora = mala ? saldo * uniforme(0.3, 0.7) : 0;
+function filaBanco(p, entidad, saldo, dias) {
+  const enMora = dias > 0 ? saldo * uniforme(0.3, 0.7) : 0;
   return {
     tipo: entidad.tipo, cedulaRuc: p.cedula, fecha: conBarras(T1_BURO), nombre: p.t0.nombre, codEntidad: entidad.codEntidad,
-    entnombre: entidad.entnombre, enttipo: entidad.enttipo, riesgo: "T", calificacion: mala ? unoDe(CALIFICACION_MALA) : "A1",
+    entnombre: entidad.entnombre, enttipo: entidad.enttipo, riesgo: "T", calificacion: calificacionBanco(dias),
     saldoVigente: dinero(saldo - enMora), noDevengaInteres: "0.0", saldo0_1: "0.0", saldo1_2: "0.0", saldo2_3: "0.0", saldo3_6: "0.0",
     saldo6_9: "0.0", saldo9_12: "0.0", saldo24_3: "0.0", mas_36: "0.0", judicial: "0.0", castigo: "0.0", mora: dinero(enMora), saldomora: dinero(enMora),
   };
@@ -554,7 +574,7 @@ function armarT1(p, raw) {
       } else if (bancos.length) {
         const r = unoDe(bancos);
         const enMora = numero(r.saldoVigente) * uniforme(0.3, 0.7);
-        r.calificacion = dias >= 90 ? unoDe(CALIFICACION_MALA) : "B2";
+        r.calificacion = calificacionBanco(dias);
         r.saldoVigente = dinero(numero(r.saldoVigente) - enMora);
         r.mora = dinero(enMora); r.saldomora = dinero(enMora);
         e.donde = "bancos";
@@ -566,13 +586,13 @@ function armarT1(p, raw) {
     for (const e of ev("credito_otra_institucion")) {
       const saldo = e.monto * uniforme(0.6, 0.95);
       e.cae_aca = moraVisible && e.fecha < p.fechaDefault && (!p.otorgado || azar() < 0.5);
-      const dias = e.cae_aca ? Math.max(90, diasEntre(p.fechaDefault, T1_BURO)) : 0;
+      const dias = e.cae_aca ? Math.max(91, diasEntre(p.fechaDefault, T1_BURO)) : 0;
       // En una entidad donde no tenía nada: el buró de bancos y el de retail
       // vienen agrupados por entidad, y un crédito nuevo donde ya tenía otro
       // no se distingue (limitación anotada en la sección 14).
       const yaTiene = new Set([...lista(raw, "buroCreditoSuper", "datosSuper").map((r) => r.codEntidad), ...lista(raw, "retails", "retails").map((r) => r.institucion)]);
       const nuevaEntidad = (opciones, clave) => { const libres = opciones.filter((o) => !yaTiene.has(clave(o))); return ponderado(libres.length ? libres : opciones); };
-      if (e.canal === "bancos") lista(raw, "buroCreditoSuper", "datosSuper").push(filaBanco(p, nuevaEntidad(POOL.bancos, (o) => o.codEntidad), saldo, e.cae_aca));
+      if (e.canal === "bancos") lista(raw, "buroCreditoSuper", "datosSuper").push(filaBanco(p, nuevaEntidad(POOL.bancos, (o) => o.codEntidad), saldo, dias));
       else if (e.canal === "cooperativas") lista(raw, "buroCreditoCoop", "datosSuper").push(filaCooperativa(p, ponderado(POOL.cooperativas), sim("OP"), saldo, dias, e.monto / 24));
       else {
         const vencido = e.cae_aca ? saldo * uniforme(0.3, 0.8) : 0;
@@ -587,7 +607,7 @@ function armarT1(p, raw) {
     // Nuestro crédito, con lo que dice el archivo de la institución.
     if (p.otorgado && p.estadoOperacion !== "cancelada") {
       const saldo = p.monto * Math.max(0.05, 1 - 11 / p.plazo);
-      const dias = moraVisible ? Math.max(90, Math.min(p.diasMora12, diasEntre(p.fechaDefault, T1_BURO))) : 0;
+      const dias = moraVisible ? Math.max(91, Math.min(p.diasMora12, diasEntre(p.fechaDefault, T1_BURO))) : 0;
       lista(raw, "buroCreditoCoop", "datosSuper").push(filaCooperativa(p, { ...COOP_SIMULADA, cod_tipo_operacion: p.producto === "microcredito" ? "MIC" : "CON" },
         p.numeroOperacion, saldo, dias, p.cuota, moraVisible && p.estadoOperacion === "castigada"));
     }
@@ -664,6 +684,8 @@ function armarT1(p, raw) {
       detalleDenuncia: [{ cedula: p.cedula, nombres: p.t0.nombre, estado: "PROCESADO" }, { cedula: "", nombres: "PARTE SIMULADA", estado: "DENUNCIANTE" }],
     });
   }
+  // Las fuentes caídas en t1 llegan como llega una caída de verdad.
+  for (const f of p.caidas) raw[f] = { status: "error", data: null, errorMessage: "caída simulada por el Laboratorio" };
   return raw;
 }
 
@@ -703,6 +725,8 @@ const resumen = {
   anticipable: contar(personas.filter((p) => p.malo), (p) => p.anticipable),
   cuota_no_cabia: otorgados.filter((p) => p.cuotaNoCabia).length,
   capacidad_no_medible_otorgados: otorgados.filter((p) => p.capacidadNoMedible).length,
+  fuentes_caidas_en_t1: contar(personas.flatMap((p) => p.caidas), (f) => f),
+  en_observacion_otorgados: otorgados.filter((p) => !p.malo && p.diasMora12 >= 15).length,
 };
 console.log(JSON.stringify(resumen, null, 1));
 if (SECO) process.exit(0);
@@ -725,14 +749,15 @@ const regla = {
   },
   eventos: { efectos: EFECTO, sobreendeudamiento: EFECTO_SOBREENDEUDAMIENTO, probabilidades: PROBABILIDAD },
   capacidad: { cuota_no_cabia: EFECTO_CUOTA_NO_CABIA, capacidad_no_medible: EFECTO_CAPACIDAD_NO_MEDIBLE },
-  impago: { constante: r4(B0), se_pone_al_dia: 0.15 },
+  impago: { constante: r4(B0), se_pone_al_dia: 0.15, dias: "más de 90; en bancos, la calificación por días de la tabla de la Superintendencia (D o E)" },
+  fuentes_caidas_en_t1: CAIDA_EN_T1,
   crudos_t1: `lab-archivos/simulacion/${SIMULACION_ID}/`,
   referencia: resumen,
   que_no_prueba: "nada sobre el motor real ni sobre la frecuencia real de los eventos",
 };
 const { datos: [carga] } = await rest("lab_cargas", {
   method: "POST", headers: { Prefer: "return=representation" },
-  body: JSON.stringify({ etiqueta: `Ciclo simulado de un año (semilla ${SEMILLA})`, origen: "sintetica", es_sintetica: true, regla_plantada: regla, fecha_corte: T1, institucion: COOP_SIMULADA.razon_social,
+  body: JSON.stringify({ etiqueta: `Ciclo simulado de un año (semilla ${SEMILLA}, ${fechaEc(Date.now())})`, origen: "sintetica", es_sintetica: true, regla_plantada: regla, fecha_corte: T1, institucion: COOP_SIMULADA.razon_social,
     institucion_en_buro: { cooperativa_ruc: COOP_SIMULADA.codRuc } }),
 });
 console.log(`carga ${carga.id}`);
@@ -774,7 +799,7 @@ for (const lote of lotes(personas, (p) => ({
 }))) await rest("lab_reconsultas", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(lote) });
 for (const lote of lotes(personas, (p) => ({
   solicitud_id: idSolicitud.get(p.cedula), carga_id: carga.id, probabilidad: r4(p.probabilidad), malo: p.malo, fecha_default: p.malo ? p.fechaDefault : null,
-  eventos: p.eventos, motivos: p.motivos ?? [], anticipable: p.malo ? p.anticipable : null, se_puso_al_dia: p.sePusoAlDia,
+  eventos: p.eventos, motivos: p.motivos ?? [], anticipable: p.malo ? p.anticipable : null, se_puso_al_dia: p.sePusoAlDia, fuentes_caidas: p.caidas,
 }))) await rest("lab_simulacion_verdad", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(lote) });
 
 // Se cuenta en la base: una lectura de filas se cortaría en 1.000.

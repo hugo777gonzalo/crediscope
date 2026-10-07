@@ -44,7 +44,7 @@ Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
 | Lo que leyó el modelo | Se guarda (090, `analysis_results.mensaje_al_modelo`). |
 | Archivo de la IFI | El de la sección 6.3. |
 | Ventana | 12 y 24 meses; 24 es la prueba más exigente (deja ver los impagos tardíos). |
-| Definición de default | 90 días de mora o más, o una calificación peor que B2 (C1, C2, D, E). En bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Falta definir "retail grande". |
+| Definición de default | 90 días de mora o más, o una calificación peor que B2 (C1, C2, D, E). En bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Falta definir "retail grande". **Reemplazada el 2026-10-06** (fila "Impago", abajo). |
 | Días de mora por operación | Cooperativas (Novadata), Aval y Equifax sí; bancos de Novadata no: ahí manda la calificación. |
 | Negados | Se juzgan reconsultando el buró a 12 y 24 meses (fase 6). Novadata no le cobra al negocio por ahora. |
 | Ciclo simulado | Se arma hoy el ciclo completo de la primera prueba retrospectiva, con el mismo código que la real (sección 14). |
@@ -57,6 +57,15 @@ Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
 | Lote de análisis reales | Postergado: no hay presupuesto, y no hace falta para desarrollar (sección 8). |
 | Pruebas con el modelo | Cualquier prueba masiva, sólo con autorización del negocio. |
 | Pantallas, estadística, instituciones, calibración, archivo | Las cinco decisiones del 2026-10-03, en `docs/laboratorio-pantallas.md`: fases A a F en orden; lo interactivo en el navegador y lo pesado con guiones de Python locales; instituciones y proyectos como entidades del Laboratorio; calibración con la función puntaje → probabilidad estimada en una cohorte y probada en la siguiente; el archivo pide fecha del primer impago si cayó, canal y la decisión de la institución en lo no desembolsado. |
+| Impago (2026-10-06) | Con crédito de la institución: Basilea, más de 90 días con sus días de mora. Sin crédito: el buró, más de 90 días en cooperativas y retail; en bancos, D o E (lo equivalente a más de 90 días en consumo según la tabla de la Superintendencia); retail grande = deuda con la casa comercial de más de USD 500. Castigo, reestructuración y demanda judicial cuentan aunque no lleguen a 90 días. Es un parámetro (110): `lab_definiciones_default` y la tabla de calificación versionada `lab_tablas_calificacion`, en Datos y cartera › Configuración. Validación: `docs/propuesta-revision-del-laboratorio.md`, 10.2. |
+| Lista de observación (2026-10-06) | Quien llegó a 15 días de atraso o más dentro del primer año es grave aunque no caiga en impago, y queda en la lista aunque se haya puesto al día. En t3 se mide también el impago (puede pasar: 31 + 31 + 30 = 92 días). |
+| Cohortes (2026-10-06) | Las solicitudes se reconsultan en Novadata a los 3, 6, 9 y 12 meses para medir el resultado y actualizar la situación del cliente. Base legal: la autorización del cliente al presentar la solicitud. |
+| Reporte de la institución (2026-10-06) | Mensual: confirma qué solicitudes recibieron crédito y trae el estado de cada crédito al cierre del mes. La prueba del modelo: aprobar y revisar = no impago; negar = impago. |
+| Hallazgos (2026-10-06) | Son los resultados de los análisis estadísticos, descriptivos, inferenciales y exploratorios sobre los que el modelo dio por buenos y cayeron; van al informe. Sin registro de textos por crédito. |
+| Candidatas (2026-10-06) | Se miden en t3, t6, t9 y t12 y se deciden al año si se repiten. |
+| Ajuste de criterio (2026-10-06) | Se retira: todo cambio a lo que lee el modelo es una versión nueva del marco. |
+| Cálculos del navegador (2026-10-06) | Se guardan, y cada cálculo tiene una sola implementación. |
+| Modelo y pantallas (2026-10-06) | Sin muestra con el modelo de lenguaje hasta depurar estructura y marco; sin pantallas nuevas hasta tener datos reales. Cosechas mes a mes reemplaza el cálculo de la pestaña que ya existe. |
 
 ## 3. Lo que hay hoy: diagnóstico de Retroalimentación
 
@@ -179,6 +188,21 @@ Todas las tablas nuevas empiezan con `lab_`, son sólo de admin (sección
 
 Sin política de `update`: una definición nueva es una fila nueva. Así un
 corte viejo sigue diciendo con qué definición se hizo.
+
+**Desde la 110 (2026-10-06)** la definición se lee de otras columnas:
+`dias_mora_mas_de` (impago: MÁS de N días; Basilea es más de 90),
+`calificaciones_impago` (las categorías de los bancos que cuentan),
+`retail_deuda_mas_de` (retail grande: deuda con la casa comercial de más
+de X), `dias_observacion` y `calificaciones_observacion` (la lista de
+observación) y `tabla_calificacion_version`. Las categorías salen de la
+tabla de calificación versionada (`lab_tablas_calificacion`, la versión 1
+es la de la Superintendencia para consumo) al crear la definición con
+`lab_crear_definicion()`, y quedan escritas: si la tabla cambia, la
+definición vieja no. Las dos se administran en Datos y cartera ›
+Configuración. Las columnas de la 094 (`dias_mora_minimo`,
+`calificacion_peor_que`, `retail_monto_minimo`) quedaron y ya no se leen; la
+definición del 2026-10-03 se completó con sus equivalentes (más de 89 días,
+C1 a E, más de 1.999,99) y su resultado no cambió.
 
 ### 6.2 `lab_cargas` — cada archivo
 
@@ -488,10 +512,10 @@ Las fases 2 y 3 pueden ir en paralelo después de la 1.
 
 | Tema | Estado |
 |---|---|
-| ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos. Decidido el 2026-10-03: instituciones y proyectos como entidades del Laboratorio, sólo admin, sin esperar esta respuesta (todavía no construidas). |
+| ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos. Decidido el 2026-10-03: instituciones y proyectos como entidades del Laboratorio, sólo admin, sin esperar esta respuesta (construidas en la 109). |
 | Calibración | Decidida el 2026-10-03: el motor da puntaje, no probabilidad; se estima puntaje → probabilidad en una cohorte y se prueba en la siguiente. |
-| ¿Qué es "retail grande"? | Abierta. Hace falta para la definición de default. |
-| Base legal para reconsultar a un negado | Abierta. El costo no: Novadata no cobra por ahora. |
+| ¿Qué es "retail grande"? | Resuelta el 2026-10-06: deuda con la casa comercial de más de USD 2.000 (Novadata no trae el monto del crédito). |
+| Base legal para reconsultar a un negado | Resuelta el 2026-10-06: la autorización que el cliente firma al presentar la solicitud cubre fuentes internas y externas desde ese momento. Novadata no cobra por ahora. |
 | ¿Cuánto tiempo se conserva el crudo? | Abierta (LOPDP). |
 | La decisión de la IFI no se registra | Supuesto del negocio hasta que exista la solicitud (fábrica de crédito). |
 | Cartera vigente de la IFI con perfiles posteriores al desembolso | Riesgo de fuga: el vínculo la marca `consulta_posterior` y la excluye. |
@@ -763,6 +787,48 @@ plantó: candidatos a mirar, no a usar (se validan en un corte posterior).
 Falta: el ajuste para un valor numérico (hoy sólo sí/no). Los valores de
 una persona y la trazabilidad crudo → estructura → modelo están desde la
 sección 15 (la página del caso).
+
+### 14.12 La segunda corrida (2026-10-06/07)
+
+Con las decisiones del 2026-10-06 (110, `docs/propuesta-revision-del-laboratorio.md`
+secciones 10 a 13): la definición nueva (más de 90 días, bancos D o E,
+retail con deuda de más de USD 500, observación desde 15 días), el detector
+que mira si cada fuente contestó, "revisar" = no impago y el buró para todos
+en la población de solicitudes. El simulador planta el impago de bancos
+como D o E según los días y tira fuentes en t1 con las tasas de septiembre
+(5 a 6% del IESS, demandas, denuncias, retail y pensiones; 1% del buró y del
+SRI). Carga `746e5271-…`, corte `0c708daa-…`. La primera corrida
+(`1196978e-…`, `4e18ca83-…`) quedó como estaba.
+
+| Qué | Resultado |
+|---|---|
+| Solicitudes | 2.565; recomendación sintética aprobar 1.118 · revisar 874 · negar 503 · bloqueado 70 |
+| Desembolsados | 307 (250 aprobar, 55 revisar, 2 negar); 33 impagos: aprobar 8,0%, revisar 21,8%; AUC 0,695 (0,61 a 0,78), KS 0,37 |
+| Lista de observación | 46 créditos que llegaron a 15 días o más en el primer año sin caer (41 aprobar, 5 revisar) |
+| Matriz (una lectura) | "negar" marca impago: sensibilidad 3% (1 de 33): la institución casi no desembolsa negados; impago de lo aprobado 10,5% |
+| Solicitudes, por grupo | 2.493 observadas, 178 impagos; fuera: 38 con el buró sin contestar, 34 sin crédito con nadie. Sin crédito: aprobar 3,0% · revisar 4,7% · negar 13,4% · bloqueado 26,5% |
+| Solicitudes, buró para todos | 2.489 observables, 174 impagos, 76 en observación |
+| ¿Se podía ver? (178) | el modelo lo vio (negar o bloqueo) 84 · se podía ver y no lo vio 24 · golpe sobre perfil frágil 8 · sobre perfil sólido 16 · ningún evento lo explica 46 |
+| Detector contra lo plantado | **0 inventados en todos los tipos**, con fuentes caídas en t0 y en t1; créditos de otros 998/1.033 · pérdidas de trabajo 150/150 · trabajos nuevos 150/150 · cierres 135/135 · pensiones 69/69 · demandas civiles 67/67 y de cobro 37/37 · Fiscalía 23/23 · mora en lo que tenía 94/147 |
+| Artefactos de disponibilidad | Primera corrida: 44 créditos nuevos en retail de 32 personas cuyo retail no contestó en t0. Segunda: 0. Pérdidas de trabajo con el IESS caído y cierres con el SRI caído: 0 |
+| Variables (todas, buró para todos) | peor calificación 1.ª, deuda en atraso 2.ª, demandas de cobro 3.ª, continuidad 10.ª; **meses con aporte en 24, que el modelo no recibe, 5.ª y candidata** |
+| Los que cayeron entre aprobar y revisar | 91 contra 1.844: lo que más los separa es la continuidad laboral y los meses con aporte en 24 (la plantada que el modelo no ve) |
+| Campo sólo del crudo | la licencia vencida plantada: significativa, el modelo no la tenía (queda el 86% del efecto), 4.ª de 6 en "lo que el modelo no vio" |
+| Malos plantados sin crédito (265) | 141 se ven; 32 se pusieron al día antes de t1; 28 con mora de 90 días o menos en t1 (con Basilea no es impago); 57 sin ninguna marca en el buró; 6 sin observar |
+| Sesgo | AUC contra lo plantado 0,695 con los desembolsados y 0,695 con todos |
+
+**Lo que dice para la corrida real:** con Basilea y una sola foto, casi la
+mitad de los impagos de quien no recibió el crédito no se ve en t1 (se
+curaron, todavía no pasan de 90 días o no dejan marca). Las reconsultas a
+los 3, 6, 9 y 12 meses de la sección 10.1 de la revisión son las que lo
+achican.
+
+Los otros cinco de "lo que el modelo no vio" en el crudo (administrador de
+una empresa, infracciones de deudas anteriores) no pueden ser señal real:
+el impago es sintético. Son sustitutos de lo plantado (ser administrador
+anda con tener RUC, y el RUC con el cierre plantado) que pasan el ajuste
+por recomendación; el arreglo es ajustar por el puntaje (revisión, 5.4,
+arreglo 5; fase 2 o posterior).
 
 ---
 

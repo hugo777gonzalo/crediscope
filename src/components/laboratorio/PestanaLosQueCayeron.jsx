@@ -6,10 +6,11 @@ import { MensajeError, Cargando, Etiqueta, num, pct, dec } from "./Comunes.jsx";
 
 // Variables de los que cayeron (módulo 6 del negocio): dentro de una misma
 // recomendación, en qué se diferencian los que cayeron de los que pagaron.
-// Entre los aprobados, es la pregunta de fondo: con el mismo "aprobar", ¿qué
-// tenían distinto los que no pagaron? Más las combinaciones de dos
-// condiciones que juntas pesan más que cada una y las variables cuyo riesgo
-// da la vuelta (sube y después baja).
+// Entre los que el modelo dio por buenos (aprobar o revisar: "no impago",
+// decisión del negocio del 2026-10-06) es la pregunta de fondo: ¿qué tenían
+// distinto los que no pagaron? Más las combinaciones de dos condiciones que
+// juntas pesan más que cada una y las variables cuyo riesgo da la vuelta
+// (sube y después baja).
 
 const pTexto = (p) => (p === null || p === undefined ? "—" : p < 0.0001 ? "< 0,0001" : dec(p, 4));
 const valor = (x) => (x === null || x === undefined ? "—" : Math.abs(x) >= 1000 ? num(x) : dec(x, 2));
@@ -17,7 +18,7 @@ const valor = (x) => (x === null || x === undefined ? "—" : Math.abs(x) >= 100
 export default function PestanaLosQueCayeron({ corteId, poblacion }) {
   const { filas, error } = useFilasDelCorte(corteId, poblacion);
   const [catalogo, setCatalogo] = useState(null);
-  const [recomendacion, setRecomendacion] = useState("aprobar");
+  const [recomendacion, setRecomendacion] = useState("no_impago");
   useEffect(() => {
     getCatalogoUnaVez().then(setCatalogo).catch(() => setCatalogo([]));
   }, []);
@@ -31,6 +32,7 @@ export default function PestanaLosQueCayeron({ corteId, poblacion }) {
       <div className="crediscope-card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <span className="crediscope-muted" style={{ fontSize: 13 }}>Entre los que el motor dijo</span>
         <select value={recomendacion} onChange={(e) => setRecomendacion(e.target.value)} className="crediscope-input" style={{ width: "auto" }}>
+          <option value="no_impago">aprobar o revisar (no impago)</option>
           <option value="aprobar">aprobar</option>
           <option value="revisar">revisar</option>
           <option value="todos">cualquier cosa</option>

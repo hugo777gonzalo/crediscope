@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Scissors } from "lucide-react";
-import { getCargas, getDefiniciones, congelarCorte } from "../lib/laboratorio.js";
+import { getCargas, getDefiniciones, congelarCorte, describirDefinicion } from "../lib/laboratorio.js";
 import { formatearDia } from "../lib/fechas.js";
 import { Volver, MensajeError, Etiqueta, num } from "../components/laboratorio/Comunes.jsx";
 
@@ -29,7 +29,8 @@ export default function LaboratorioCorteNuevo() {
       .then(([cs, ds]) => {
         setCargas(cs.filter((c) => c.estado === "lista"));
         setDefiniciones(ds);
-        setDefinicion(ds[0]?.id ?? "");
+        // La más reciente: es la vigente del negocio (vienen por fecha).
+        setDefinicion(ds.at(-1)?.id ?? "");
       })
       .catch((e) => setError(e.message));
   }, []);
@@ -101,14 +102,7 @@ export default function LaboratorioCorteNuevo() {
               <option key={d.id} value={d.id}>{d.nombre}</option>
             ))}
           </select>
-          {def ? (
-            <div className="crediscope-muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-              {def.dias_mora_minimo} días de mora o más{def.calificacion_peor_que ? `, o una calificación peor que ${def.calificacion_peor_que}` : ""}
-              {def.cuenta_castigo ? "; castigo" : ""}
-              {def.cuenta_reestructuracion ? ", reestructuración" : ""}
-              {def.cuenta_judicial ? " y demanda judicial" : ""} cuentan como impago dentro de la ventana.
-            </div>
-          ) : null}
+          {def ? <div className="crediscope-muted" style={{ fontSize: 12.5, marginTop: 4 }}>{describirDefinicion(def)}</div> : null}
         </label>
         <label>
           <div className="crediscope-muted" style={{ fontSize: 13 }}>Ventana</div>

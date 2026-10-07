@@ -381,6 +381,19 @@ está el porqué. Una lección nueva va en los dos lugares.
   tienen fecha del impago (el buró no la da). Sacarlos y dejar a todos los
   buenos daba una caída acumulada de 0,9% en vez de ~8%. Con más del 10%
   de los malos sin fecha, la pantalla de cosechas no dibuja y dice por qué.
+- **Comparar dos consultas sin mirar si la fuente contestó inventa eventos**
+  (2026-10-06, revisión del Laboratorio). El detector de eventos comparaba
+  t0 con t1 sin leer el estado de cada fuente. En el primer ciclo simulado,
+  147 personas tenían el retail en error o faltante en t0 y de ellas salieron
+  44 de los 239 "créditos nuevos en retail" (30 por cada 100, contra 8 en el
+  resto): eran deudas que ya tenían. Con el IESS caído en t1, todo el que
+  aportaba "perdía el trabajo" (y pasaba a ser el motivo principal del
+  impago, por ser la primera causa con fecha); con el SRI caído, todo RUC
+  activo "cerraba". En septiembre el IESS falló en ~9% de las consultas. Y
+  la calificación de la simulación lo escondía: el artefacto aparecía igual
+  al comparar t0 con la reconsulta real, y se contaba como "cambio real de
+  la semana". Desde entonces una fuente cuenta sólo si contestó en las dos
+  consultas, y `scripts/probar-detector.mjs` lo prueba con fuentes caídas.
 - **Cruzar una configuración con miles de perfiles en JSON se corta por
   tiempo** (2026-10-04). La cobertura de la estructura cruzaba los 180
   campos con 2.567 perfiles y abría el perfil entero 460 mil veces: la base

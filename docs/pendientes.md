@@ -62,38 +62,49 @@ aceptada.
      `select count(*) filter (where crudo_ruta is null), count(*) from client_profiles where created_at > '2026-10-04 03:40+00'`
      tiene que dar 0 sin crudo.
 
-0a. **Los hallazgos críticos, al informe** (decisión del negocio del
-   2026-10-04). "Crítico" es **todo resultado relevante y significativo de
-   los análisis exploratorios, descriptivos y estadísticos**, y todo eso va
-   en el Informe de Desempeño del Modelo que se le entrega a la institución
-   (`src/lib/informeLaboratorio.js`, hoy con las hojas Resumen, Variables y
-   Propuestas). Falta:
-   - Una función pura (en `src/lib/`, probada en
-     `scripts/probar-pantallas-laboratorio.mjs`) que junte, de un corte, lo
-     significativo de cada pestaña: AUC e intervalo y deciles que no bajan;
-     calibración guardada; PSI mayor a 0,25; segmentos con tasas distintas
-     (chi², q); variables con q < 0,05 e IV de 0,1 o más (explorador de
-     significancia), las candidatas y las que el modelo no recibe;
-     faltantes que anticipan; diferencias de los que cayeron y
-     combinaciones con refuerzo mayor a 1,5; lo que el modelo no vio en el
-     crudo; las de más SHAP sin llegar al modelo; los motivos del impago.
-     Cada hallazgo con su número, su prueba y su tamaño de muestra.
-   - Una hoja "Hallazgos críticos" en el informe (con la franja de
-     simulación si el corte es sintético) y la misma lista en el Inicio,
-     que hoy sólo junta lo guardado (fuentes, crudo, bosque, AUC y PSI).
+0a. **La evidencia sobre los que el modelo dio por buenos y cayeron, al
+   informe** (decisión del negocio del 2026-10-06, que reemplaza a la de
+   "hallazgos críticos" del 04/10). Los hallazgos son los resultados de los
+   análisis estadísticos, descriptivos, inferenciales y exploratorios que
+   ayuden a identificar a quienes el modelo dijo "no impago" (aprobar o
+   revisar) y cayeron; sin registro de textos por crédito. Salen de los
+   resultados guardados (fase 2 del plan de 0b) y van al Informe de
+   Desempeño del Modelo (`src/lib/informeLaboratorio.js`). La lista de
+   análisis está en `docs/propuesta-revision-del-laboratorio.md`, 10.3.
 
-0b. **Laboratorio: lo que sigue** (`docs/laboratorio-de-riesgo.md`, 15.5).
+0b. **Laboratorio: el plan del 2026-10-06**
+   (`docs/propuesta-revision-del-laboratorio.md`, secciones 10 a 12). Cuatro
+   fases sin modelo de lenguaje ni pantallas nuevas: 1 lógica (disponibilidad
+   de las fuentes en el detector, definición de impago nueva, "revisar" = no
+   impago en todos lados), 2 orden (guardar resultados, una sola
+   implementación de la estadística, retirar el ajuste de criterio), 3
+   seguimiento (reporte mensual de la institución, reconsultas a los 3, 6, 9
+   y 12 meses, cortes a esos horizontes) y 4 análisis (cosechas mes a mes,
+   evidencia al informe, candidatas por horizonte). **La fecha que manda es
+   la primera ronda de reconsulta de la cartera, a fines de diciembre de
+   2026**: la fase 1 y las reconsultas tienen que estar antes.
+   - **Fase 1 hecha el 2026-10-06** (110, `docs/propuesta-revision-del-laboratorio.md`
+     sección 13): detector con disponibilidad de las fuentes
+     (`scripts/probar-detector.mjs`), impago parametrizable (más de 90 días,
+     bancos D o E, retail con deuda de más de USD 500, observación desde 15
+     días; tabla de calificación versionada en Datos y cartera ›
+     Configuración), "revisar" = no impago en la Matriz, los motivos y la
+     investigación, el resultado del buró para todos en la población de
+     solicitudes, y el ciclo simulado otra vez (carga `746e5271…`). **Las
+     pantallas tocadas no se vieron con sesión de admin**: Configuración,
+     Matriz (columna de observación), Investigación de casos (lista de
+     observación), Los que cayeron (aprobar o revisar) y Nuevo corte.
+   - La carga del primer ciclo (`1196978e…`) y su corte siguen listos, con la
+     definición y el detector viejos: anularla cuando el negocio lo confirme.
+   - Lo siguiente: fase 2 (guardar los resultados del navegador, una sola
+     implementación de la estadística, retirar el ajuste de criterio).
    - Decisión del negocio pendiente: qué son los "comentarios
      institucionales" (hoy la institución no entra al Laboratorio).
-   - Para correr el ciclo con una institución real faltan dos piezas:
-     armar las solicitudes desde los análisis del período (con la decisión
-     de la institución de `lab_decisiones_institucion`) y la reconsulta real
-     enlazada a cada solicitud (`origen = 'novadata'`).
-   - Mejoras chicas: el ajuste por la recomendación para un valor numérico
-     en el explorador del crudo; el origen de cada campo de la estructura
-     como dato; "no consultado" contra "no tiene" en Faltantes (congelar la
-     disponibilidad por tema con el corte); registrar los informes
-     exportados y la revisión manual de la conciliación.
+   - Mejoras chicas que el plan no toca: el ajuste por la recomendación
+     para un valor numérico en el explorador del crudo; el origen de cada
+     campo de la estructura como dato; "no consultado" contra "no tiene" en
+     Faltantes (congelar la disponibilidad por tema con el corte); registrar
+     los informes exportados y la revisión manual de la conciliación.
    - Falta un dato: la provincia de residencia (en el crudo, en
      direcciones); la comparación entre modelos necesita un marco candidato
      (fase 7, con costo).
@@ -270,9 +281,21 @@ aceptada.
 - **Preguntas abiertas del Laboratorio** (`docs/laboratorio-de-riesgo.md`,
   sección 13): ¿una instalación para varias IFI o una por IFI? (define cómo
   se separan los datos; decidido mientras tanto: instituciones y proyectos
-  como entidades del Laboratorio, sin construir todavía); ¿cuánto tiempo se
-  conserva el crudo de Novadata (LOPDP)?; ¿con qué base legal se reconsulta
-  a un negado? El costo ya no es pregunta: Novadata no cobra por ahora.
+  como entidades del Laboratorio, construidas en la 109); ¿cuánto tiempo se
+  conserva el crudo de Novadata (LOPDP)? La base legal para reconsultar se
+  resolvió el 2026-10-06: la autorización que el cliente firma al presentar
+  la solicitud.
+- **Medir una propuesta después de aplicada** (pedido del negocio del
+  2026-10-06, para profundizar). Hoy nada vuelve a medir un cambio aplicado.
+  Caminos a evaluar:
+  - volver a puntuar con la versión nueva a una cohorte que ya tiene
+    resultado y compararla con la vieja sobre las mismas personas (lo más
+    limpio; cuesta modelo de lenguaje);
+  - comparar las cosechas tempranas de las cohortes de antes y de después
+    del cambio (barato, pero se mezcla con lo que cambie en la institución o
+    en la economía);
+  - fijar, al aprobar la propuesta, qué número tiene que moverse y cuándo se
+    mira.
 - **La fábrica de crédito está en pausa** por decisión del negocio. Ver
   `docs/arquitectura-fabrica-de-credito.md`.
 - **Descarga masiva:** Reportes › Descargas la ve cualquier analista.

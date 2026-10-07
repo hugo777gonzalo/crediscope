@@ -1,12 +1,15 @@
 import { Advertencias, Kpi, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.jsx";
+import { NO_IMPAGO } from "../../lib/analisisProfundo.js";
 
 // Matriz de confusión y desempeño por decisión (docs/laboratorio-pantallas.md,
 // 4.3 y 4.5). Lo calcula lab_calcular_matriz() en la base.
 //
 // No es una matriz de 2 × 2: el motor recomienda aprobar, revisar o negar.
-// Las medidas de clasificación se leen de dos formas (qué cuenta como "el
-// motor lo marcó malo"), y la exactitud va al final de la lista: con pocos
-// malos, decir que todos pagan acierta casi siempre.
+// Las medidas de clasificación se leen como decidió el negocio el 2026-10-06:
+// negar (y el bloqueo) es "impago"; aprobar y revisar, "no impago". Hasta la
+// 110 había una segunda lectura (negar o revisar) que contradecía esa
+// decisión. La exactitud va al final de la lista: con pocos malos, decir que
+// todos pagan acierta casi siempre.
 
 const MEDIDAS = [
   ["sensibilidad", "Sensibilidad", "De los que cayeron, cuántos marcó"],
@@ -48,7 +51,7 @@ export default function PestanaMatriz({ resultado }) {
               <tr>
                 <td><strong>Cayó</strong></td>
                 {columnas.map((c) => (
-                  <td key={c.recomendacion} style={{ textAlign: "right", color: c.recomendacion === "aprobar" ? "var(--bad)" : undefined, fontWeight: c.recomendacion === "aprobar" ? 700 : undefined }}>
+                  <td key={c.recomendacion} style={{ textAlign: "right", color: NO_IMPAGO.includes(c.recomendacion) ? "var(--bad)" : undefined, fontWeight: NO_IMPAGO.includes(c.recomendacion) ? 700 : undefined }}>
                     {num(c.cayeron)}
                   </td>
                 ))}
@@ -67,8 +70,8 @@ export default function PestanaMatriz({ resultado }) {
           </table>
         </div>
         <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
-          En rojo, los aprobados que cayeron (capital perdido). En amarillo, los negados que la institución financió igual y pagaron (negocio que el
-          motor habría perdido).
+          En rojo, los aprobados que cayeron (capital perdido); revisar también es "no impago" y cuenta igual. En amarillo, los negados que la
+          institución financió igual y pagaron (negocio que el motor habría perdido).
         </p>
       </div>
 
@@ -97,6 +100,7 @@ export default function PestanaMatriz({ resultado }) {
               <th style={{ textAlign: "right" }}>Malos</th>
               <th style={{ textAlign: "right" }}>Tasa</th>
               <th style={{ textAlign: "right" }}>Intervalo 95%</th>
+              <th style={{ textAlign: "right" }} title="Llegaron a 15 días de atraso o más en el primer año sin caer, aunque se pusieran al día">En observación</th>
               <th style={{ textAlign: "right" }}>Puntaje mediano malos / buenos</th>
               <th style={{ textAlign: "right" }}>Con ingreso sin confirmar (malos)</th>
             </tr>
@@ -109,6 +113,7 @@ export default function PestanaMatriz({ resultado }) {
                 <td style={{ textAlign: "right" }}>{num(d.malos)}</td>
                 <td style={{ textAlign: "right", fontWeight: 700 }}>{pct(d.tasa)}</td>
                 <td style={{ textAlign: "right" }} className="crediscope-muted">{pct(d.intervalo?.[0])} a {pct(d.intervalo?.[1])}</td>
+                <td style={{ textAlign: "right" }}>{d.en_observacion === undefined ? "—" : num(d.en_observacion)}</td>
                 <td style={{ textAlign: "right" }}>{num(d.puntaje_mediano_malos)} / {num(d.puntaje_mediano_buenos)}</td>
                 <td style={{ textAlign: "right" }}>{num(d.ingreso_sin_confirmar)} ({num(d.malos_ingreso_sin_confirmar)})</td>
               </tr>

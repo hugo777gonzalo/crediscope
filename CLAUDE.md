@@ -131,7 +131,7 @@ Romper cualquiera de estas rompe algo real.
   (`ajustes_vigentes_actuales()`) sale de `lab_propuestas`. La cartera
   sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
   plantada: un cálculo nuevo se valida contra ella). Cada métrica vive en
-  una función SQL `lab_*` (094-109) o, lo interactivo, en `src/lib/` (abajo).
+  una función SQL `lab_*` (094-110) o, lo interactivo, en `src/lib/` (abajo).
   - El **explorador del crudo** (14.11 del diseño) es un guion, no una
     función: `scripts/explorar-crudo.mjs --corte=<id>` (`--seco` primero,
     `--buscar=` para el puesto de un campo). Guarda en `lab_resultados`
@@ -141,7 +141,18 @@ Romper cualquiera de estas rompe algo real.
     (`lab_simulacion_verdad`) y sólo la lee `lab_calificar_simulacion()`.
     Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
     (simulación y real): `scripts/procesar-reconsultas.mjs --carga=<id>`.
-    El detector de eventos es `_shared/eventos-entre-consultas.ts`.
+    El detector de eventos es `_shared/eventos-entre-consultas.ts`: una
+    fuente cuenta sólo si contestó en t0 y en t1 (antes inventaba eventos);
+    se prueba con `scripts/probar-detector.mjs`.
+  - **El impago es un parámetro** (110), no código: la definición (más de N
+    días, categorías de bancos, retail con deuda de más de USD X, lista de
+    observación desde N días) y la tabla de calificación (categoría → días,
+    versionada) se cambian en Datos y cartera › Configuración. Vigente desde
+    el 2026-10-06: más de 90 días (Basilea), bancos D o E, retail con deuda de
+    más de USD 500, observación desde 15 días; revisar = no impago. Una
+    solicitud tiene dos resultados: `malo` (archivo para lo desembolsado,
+    buró para el resto: cuadrantes y motivos) y `malo_buro` (el buró para
+    todos: lo usa todo cálculo que junta las dos poblaciones).
   - Las **pantallas pedidas por el negocio** están todas construidas
     (fases A-F y módulos 1-3, 100-109; mapa y estados en
     `docs/laboratorio-pantallas.md`, método en la sección 15 del diseño).
@@ -153,11 +164,12 @@ Romper cualquiera de estas rompe algo real.
     `scripts/probar-pantallas-laboratorio.mjs` (correrlos después de tocar
     cualquiera). Lo pesado, `scripts/analisis-pesado.mjs` (bosque con
     SHAP, K-medias, PCA; Node porque no hay Python).
-  - **"Hallazgo crítico"** (decisión del negocio del 2026-10-04): todo
-    resultado relevante y significativo de los análisis exploratorios,
-    descriptivos y estadísticos, y va en el Informe de Desempeño del Modelo
-    a la institución (`informeLaboratorio.js`). Juntarlo es lo siguiente
-    (`docs/pendientes.md`, 0a).
+  - **Hallazgos** (decisión del negocio del 2026-10-06, reemplaza a la del
+    04/10): los resultados de los análisis estadísticos, descriptivos,
+    inferenciales y exploratorios sobre los que el modelo dio por buenos
+    (aprobar o revisar) y cayeron; van al Informe de Desempeño del Modelo
+    (`informeLaboratorio.js`). Las decisiones del 2026-10-06 y el plan en
+    cuatro fases: `docs/propuesta-revision-del-laboratorio.md`, 10 a 12.
   - La forma de una fila del corte vive en `src/lib/filasDelCorte.js` (sin
     el cliente de Supabase, para que la importen los guiones); el IV del
     navegador y el de `lab_calcular_variables` usan la misma regla de

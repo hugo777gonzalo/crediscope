@@ -94,9 +94,15 @@ const { datos: [corte] } = await rest(`lab_cortes?select=id,nombre,es_sintetico&
 if (!corte) throw new Error("No existe el corte");
 
 // Con solicitudes (ciclo de un año) se mira a todas las observadas: con sólo
-// los desembolsados hay ~20 malos y cualquier asociación es ruido.
+// los desembolsados hay ~20 malos y cualquier asociación es ruido. Desde la
+// 110 con el resultado del buró para todos (malo_buro), como las pantallas:
+// mezclar el archivo para lo desembolsado con el buró para el resto hacía que
+// "recibió nuestro crédito" pareciera anticipar el impago. En un corte
+// anterior a la 110 (observable_buro nulo) vale `malo`, como entonces.
 let poblacion = "solicitudes";
-let filas = (await traerTodas(`lab_corte_solicitudes?select=solicitud_id,cedula,malo,recomendacion&corte_id=eq.${CORTE}&incluida=is.true&malo=not.is.null&order=solicitud_id.asc`));
+let filas = (await traerTodas(`lab_corte_solicitudes?select=solicitud_id,cedula,malo,incluida,observable_buro,malo_buro,recomendacion&corte_id=eq.${CORTE}&order=solicitud_id.asc`))
+  .filter((f) => (f.observable_buro === null ? f.incluida && f.malo !== null : f.observable_buro && f.malo_buro !== null))
+  .map((f) => ({ ...f, malo: f.observable_buro === null ? f.malo : f.malo_buro }));
 if (filas.length) {
   const perfilDe = new Map();
   for (const trozo of enTrozos(filas.map((f) => f.solicitud_id), 100)) {

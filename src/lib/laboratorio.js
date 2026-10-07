@@ -34,6 +34,46 @@ export async function getDefiniciones() {
   return data ?? [];
 }
 
+// La definición en palabras del negocio (Nuevo corte y Configuración).
+export function describirDefinicion(d) {
+  const reglas = [`más de ${d.dias_mora_mas_de} días de mora`];
+  if (d.calificaciones_impago?.length) reglas.push(`en bancos, una calificación ${d.calificaciones_impago.join(", ")}`);
+  const estados = [d.cuenta_castigo && "castigo", d.cuenta_reestructuracion && "reestructuración", d.cuenta_judicial && "demanda judicial"].filter(Boolean);
+  if (estados.length) reglas.push(estados.join(", "));
+  const retail = `retail sólo con deuda de más de USD ${Number(d.retail_deuda_mas_de).toLocaleString("es-EC")}`;
+  const observacion = d.dias_observacion
+    ? `Lista de observación: ${d.dias_observacion} días de atraso o más en el primer año${d.calificaciones_observacion?.length ? ` (en bancos, ${d.calificaciones_observacion.join(", ")})` : ""}.`
+    : "Sin lista de observación.";
+  const tabla = d.tabla_calificacion_version ? ` Tabla de calificación, versión ${d.tabla_calificacion_version}.` : "";
+  return `Impago: ${reglas.join("; ")}; ${retail}. ${observacion}${tabla}`;
+}
+
+// Una definición no se edita: se crea otra (los cortes congelados siguen
+// diciendo con cuál se hicieron). Las categorías de los bancos las deriva la
+// base de la tabla de calificación (lab_crear_definicion, 110).
+export async function crearDefinicion({ nombre, diasMasDe, retailMasDe, diasObservacion, tablaVersion, cuentaCastigo, cuentaReestructuracion, cuentaJudicial }) {
+  const { data, error } = await supabase.rpc("lab_crear_definicion", {
+    p_nombre: nombre, p_dias_mas_de: diasMasDe, p_retail_mas_de: retailMasDe, p_dias_observacion: diasObservacion,
+    p_tabla_version: tablaVersion, p_cuenta_castigo: cuentaCastigo, p_cuenta_reestructuracion: cuentaReestructuracion, p_cuenta_judicial: cuentaJudicial,
+  });
+  if (error) fallar(error);
+  return data;
+}
+
+// La tabla de calificación (categoría → días de mora), versionada: una tabla
+// nueva es una versión nueva, nunca se pisa.
+export async function getTablasCalificacion() {
+  const { data, error } = await supabase.from("lab_tablas_calificacion").select("*").order("version").order("sistema").order("dias_desde");
+  if (error) fallar(error);
+  return data ?? [];
+}
+
+export async function guardarTablaCalificacion(filas, fuente) {
+  const { data, error } = await supabase.rpc("lab_guardar_tabla_calificacion", { p_filas: filas, p_fuente: fuente });
+  if (error) fallar(error);
+  return data;
+}
+
 // La carga es atómica por estado, no por un insert gigante: nace en
 // "cargando", las operaciones entran de a 500, y lab_cerrar_carga() la
 // vincula, la concilia y la pasa a "lista". Si algo falla a mitad de

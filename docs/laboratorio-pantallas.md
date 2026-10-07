@@ -73,6 +73,7 @@ corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 | Informe de calidad: duplicados, cruces con otras cargas, fechas, marcas | Hecho | `lab_calidad_de_la_carga` (109) |
 | Explorador de conciliación | A medias | Operaciones por vínculo y personas con varias; falta guardar una revisión manual |
 | Definición de default, horizontes, maduración, exclusiones | Hecho | `lab_definiciones_default` y el corte |
+| Configuración: tabla de calificación y definiciones de impago | Hecho (110, 2026-10-06) | Pestaña Configuración: la tabla categoría → días por sistema, versionada, y las definiciones (más de N días, bancos, retail, observación). Falta verla con sesión de admin |
 | Censura (seguimiento incompleto) | Hecho | Kaplan-Meier en Cosechas |
 | Explorador de cartera | Hecho | Por mes, producto, canal, recomendación, segmento, calificación y decisión |
 | Constructor de cohortes | Hecho | El corte (`/laboratorio/cortes/nuevo`) y su ficha |

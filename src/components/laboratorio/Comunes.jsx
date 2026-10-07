@@ -69,9 +69,11 @@ export const ETIQUETA_MOTIVO = {
 };
 
 // lab_calcular_motivos desde la 103. "anticipable" queda para la verdad
-// plantada de una simulación, que se clasificó con la regla anterior.
+// plantada de una simulación, que se clasificó con la regla anterior. Desde
+// la 110 "lo vio" es sólo negar: revisar es "no impago" (decisión del
+// negocio del 2026-10-06); un resultado guardado antes lo contaba.
 export const ETIQUETA_SE_PODIA_VER = {
-  el_modelo_lo_vio: "El modelo lo vio (dijo negar o revisar)",
+  el_modelo_lo_vio: "El modelo lo vio (dijo negar)",
   anticipable_no_visto: "Se podía ver y el modelo no lo vio",
   vulnerabilidad_visible: "Golpe imprevisible sobre un perfil frágil",
   no_anticipable: "Golpe imprevisible sobre un perfil sólido",

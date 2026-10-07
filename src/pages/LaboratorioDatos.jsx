@@ -5,6 +5,7 @@ import { getCargas, getCortes } from "../lib/laboratorio.js";
 import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
 import { MensajeError, Etiqueta, ETIQUETA_ESTADO_CARGA, num, pct } from "../components/laboratorio/Comunes.jsx";
 import { CentroDeDatos, CalidadDeCarga, Conciliacion, ExploradorDeCartera, Diccionario } from "../components/laboratorio/PestanasDatos.jsx";
+import PestanaConfiguracion from "../components/laboratorio/PestanaConfiguracion.jsx";
 
 // Módulo 3 del negocio: Datos y cartera. Lo que entra al Laboratorio (las
 // cargas de la institución), cómo se concilia con lo que analizamos y las
@@ -100,6 +101,7 @@ export const PESTANAS_DATOS = [
   { clave: "conciliacion", texto: "Conciliación", Componente: Conciliacion },
   { clave: "cartera", texto: "Explorador de cartera", Componente: ExploradorDeCartera },
   { clave: "diccionario", texto: "Diccionario de datos", Componente: Diccionario },
+  { clave: "configuracion", texto: "Configuración", Componente: PestanaConfiguracion },
 ];
 
 export default function LaboratorioDatos() {

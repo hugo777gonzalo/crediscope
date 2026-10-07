@@ -49,7 +49,7 @@ if (!/^[0-9a-f-]{36}$/i.test(CARGA ?? "")) throw new Error("Falta --carga=<uuid>
 const importar = (archivo) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", archivo)).href);
 const { buildStandardProfile, PROCESS_VERSION } = await importar("process.ts");
 const { FUENTES_INGRESO_VERSION } = await importar("fuentes-ingreso.ts");
-const { eventosEntreConsultas, entidadesDelBuro } = await importar("eventos-entre-consultas.ts");
+const { eventosEntreConsultas } = await importar("eventos-entre-consultas.ts");
 
 const env = Object.fromEntries(fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
@@ -142,7 +142,7 @@ await enParalelo(pendientes, 6, async (rec) => {
 
     const crudoT1 = await bajarObjeto(rec.origen === "simulada" ? "lab-archivos" : "crudo-novadata", rec.crudo_ruta);
     const t1 = { raw: crudoT1.raw, fecha: rec.fecha, perfil: armarEnFecha(crudoT1.capturadoEl, () => buildStandardProfile(crudoT1.raw, cedula, rec.corte_iess ?? undefined).profile) };
-    const { eventos, buro } = eventosEntreConsultas(t0, t1, { cedula, esDeLaInstitucion });
+    const { eventos, buro, disponibilidad, entidades } = eventosEntreConsultas(t0, t1, { cedula, esDeLaInstitucion });
 
     let eventosBase = null;
     const archivoBase = path.join(CARPETA_BASE, `${cedula}.json`);
@@ -151,10 +151,9 @@ await enParalelo(pendientes, 6, async (rec) => {
       const perfilBase = armarEnFecha(base.capturadoEl, () => buildStandardProfile(base.raw, cedula, corteT0).profile);
       eventosBase = eventosEntreConsultas(t0, { raw: base.raw, fecha: base.capturadoEl.slice(0, 10), perfil: perfilBase }, { cedula, esDeLaInstitucion }).eventos;
     }
-    resultados.push({
-      rec, eventos, buro, eventosBase, perfilT0: t0.perfil, perfilT1: t1.perfil,
-      entidadesT0: [...entidadesDelBuro(t0.raw, esDeLaInstitucion)], entidadesT1: [...entidadesDelBuro(t1.raw, esDeLaInstitucion)],
-    });
+    // Las entidades, sólo de las fuentes que contestaron en las dos consultas:
+    // una fuente caída en t0 hacía que todas sus entidades parecieran nuevas.
+    resultados.push({ rec, eventos, buro, disponibilidad, eventosBase, perfilT0: t0.perfil, perfilT1: t1.perfil, entidadesT0: entidades.t0, entidadesT1: entidades.t1 });
   } catch (err) {
     fallas.push(`${rec.id}: ${err.message}`);
   }
@@ -171,6 +170,7 @@ const marcar = (canal, entidad) => recienReportadas.has(`${canal}|${entidad}`);
 for (const r of resultados) {
   for (const e of r.eventos) if (e.tipo === "credito_otra_institucion" && marcar(e.detalle.canal, e.detalle.entidad)) e.detalle.entidad_recien_reportada = true;
   for (const c of r.buro.creditosNuevos) if (marcar(c.canal, c.entidad)) c.entidadRecienReportada = true;
+  for (const o of r.buro.operaciones) if (o.nueva && !o.deLaInstitucion && marcar(o.canal, o.entidad)) o.entidadRecienReportada = true;
   for (const e of r.eventosBase ?? []) if (e.tipo === "credito_otra_institucion" && marcar(e.detalle.canal, e.detalle.entidad)) e.detalle.entidad_recien_reportada = true;
 }
 
@@ -181,6 +181,9 @@ console.log(JSON.stringify({
   entidades_recien_reportadas: [...recienReportadas].map((e) => `${e} (${personasPorEntidad.t1.get(e)} personas)`),
   eventos: contar(resultados.flatMap((r) => r.eventos), (e) => e.tipo + (e.detalle.entidad_recien_reportada ? " (entidad recién reportada)" : "")),
   eventos_de_la_reconsulta_real: contar(resultados.flatMap((r) => r.eventosBase ?? []), (e) => e.tipo + (e.detalle.entidad_recien_reportada ? " (entidad recién reportada)" : "")),
+  // Una fuente que no contestó no da eventos: acá se ve cuánto se dejó de medir.
+  fuentes_que_no_contestaron: contar(resultados.flatMap((r) => r.disponibilidad.noContestaron), (x) => x),
+  buro_sin_medir: resultados.filter((r) => !r.disponibilidad.buroMedido).length,
 }, null, 1));
 if (fallas.length) console.log("fallas:", fallas.slice(0, 10));
 if (SECO) process.exit(0);
@@ -213,6 +216,7 @@ for (let i = 0; i < resultados.length; i += 100) {
           perfil_t0: r.perfilT0, perfil_t1: r.perfilT1, structure_version: PROCESS_VERSION, fuentes_version: FUENTES_INGRESO_VERSION,
           resultado: {
             buro: r.buro,
+            disponibilidad: r.disponibilidad,
             recibio_credito_de_otro: r.buro.creditosNuevos.some((c) => !c.entidadRecienReportada),
             entidades_t0: r.entidadesT0, entidades_t1: r.entidadesT1,
           },
