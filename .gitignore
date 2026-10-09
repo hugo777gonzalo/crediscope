@@ -10,3 +10,7 @@ supabase/.temp
 research/
 research/lote-*.log
 research/lote-*.jsonl
+
+# Informes de auditoría de seguridad: describen vulnerabilidades, a veces
+# todavía abiertas, y el repositorio es público.
+auditoria/

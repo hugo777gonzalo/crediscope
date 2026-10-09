@@ -1,4 +1,4 @@
-import { copyFileSync } from "node:fs";
+import { copyFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -26,7 +26,29 @@ function paginaDeRespaldoParaRutas() {
   };
 }
 
-export default defineConfig(({ command }) => ({
-  plugins: [react(), paginaDeRespaldoParaRutas()],
-  base: command === "build" ? "/crediscope/" : "/",
+// Cloudflare Pages (la publicación nueva desde el 2026-10-09, con el
+// repositorio privado) marca su compilación con CF_PAGES=1. Ahí la app
+// vive en la raíz del dominio, no en /crediscope/, y el 404.html sobra:
+// sin él, Cloudflare ya trata al sitio como una aplicación de una sola
+// página y devuelve el index para cualquier ruta.
+const enCloudflare = Boolean(process.env.CF_PAGES);
+
+// Las cabeceras de public/_headers también en `vite preview`, para probar
+// la política de contenido en local antes de publicarla: una CSP que
+// bloquea algo no da error de compilación, deja la pantalla en blanco.
+function cabecerasDePublicacion() {
+  const lineas = readFileSync(resolve(process.cwd(), "public/_headers"), "utf8").split(/\r?\n/);
+  return Object.fromEntries(
+    lineas
+      .filter((l) => /^\s+[A-Za-z-]+:\s/.test(l))
+      .map((l) => [l.trim().slice(0, l.trim().indexOf(":")), l.trim().slice(l.trim().indexOf(":") + 1).trim()])
+  );
+}
+
+// `vite preview` sirve lo compilado: necesita la misma base que la
+// compilación, o el HTML pide /crediscope/assets/... y recibe 404.
+export default defineConfig(({ command, isPreview }) => ({
+  plugins: [react(), ...(enCloudflare ? [] : [paginaDeRespaldoParaRutas()])],
+  base: (command === "build" || isPreview) && !enCloudflare ? "/crediscope/" : "/",
+  preview: { headers: cabecerasDePublicacion() },
 }));

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download } from "lucide-react";
-import { getRangoFechasSolicitudes, getConteoSolicitudes, getDatosAnaliticos, TOPE_DESCARGA_SOLICITUDES } from "../lib/api.js";
+import {
+  getRangoFechasSolicitudes,
+  getConteoSolicitudes,
+  getDatosAnaliticos,
+  registrarEvento,
+  TOPE_DESCARGA_SOLICITUDES,
+} from "../lib/api.js";
 import { descargarTablaAnalitica } from "../lib/exportAnalitico.js";
 
 const NUM = new Intl.NumberFormat("es-EC");
@@ -61,7 +67,9 @@ export default function Descargas() {
     setError(null);
     try {
       const { filas, total: enElRango } = await getDatosAnaliticos({ desde, hasta });
-      setDescargado({ n: descargarTablaAnalitica(filas, { desde, hasta }), de: enElRango });
+      const n = descargarTablaAnalitica(filas, { desde, hasta });
+      registrarEvento("exportacion.solicitudes", null, { desde, hasta, filas: n });
+      setDescargado({ n, de: enElRango });
     } catch (err) {
       setError(err.message);
     } finally {

@@ -18,7 +18,7 @@
 // atado a la data estructurada que lo produjo (ver 032).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import type { ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
 import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
@@ -44,9 +44,27 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 Deno.serve(async (req) => {
+  const corsHeaders = cabecerasCors(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // Identificar al actor y EXIGIR rol antes de seguir, y antes de mirar
+  // el cuerpo: quien no tiene permiso no recibe ni la validación de la
+  // cédula. Antes esto era "solo para fines de auditoría" y la función
+  // continuaba aunque el JWT no resolviera a ningún usuario. Analizar
+  // dispara consultas pagas a los burós sobre una cédula concreta: no
+  // puede quedar disponible para cualquiera que traiga una sesión válida.
+  const actor = await identificarActor(
+    req.headers.get("Authorization"),
+    SUPABASE_URL,
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    serviceClient,
+    createClient,
+  );
+  const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
+  if (rechazo) return rechazo;
+  const actorId: string | null = actor!.id;
 
   let cedula: string | undefined;
   let profileId: string | undefined;
@@ -81,22 +99,6 @@ Deno.serve(async (req) => {
     });
   }
   cedula = ident.cedula as string;
-
-  // Identificar al actor y EXIGIR rol antes de seguir. Antes esto era
-  // "solo para fines de auditoría" y la función continuaba aunque el
-  // JWT no resolviera a ningún usuario. Analizar dispara consultas
-  // pagas a los burós sobre una cédula concreta: no puede quedar
-  // disponible para cualquiera que traiga una sesión válida.
-  const actor = await identificarActor(
-    req.headers.get("Authorization"),
-    SUPABASE_URL,
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    serviceClient,
-    createClient,
-  );
-  const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
-  if (rechazo) return rechazo;
-  const actorId: string | null = actor!.id;
 
   try {
     // 1. Cliente: obtener o crear

@@ -83,9 +83,14 @@ Romper cualquiera de estas rompe algo real.
    medio**: renombra la que estaba en esa posición y falla. Las columnas
    nuevas van al final, aunque quede feo.
 6. **Las funciones se despliegan sin `--no-verify-jwt`.** La
-   configuración por función vive en `supabase/config.toml`; solo el
-   vigía, el trabajador de lotes y el explorador van sin JWT, y cada uno
-   con su motivo escrito ahí.
+   configuración por función vive en `supabase/config.toml`; sólo el
+   vigía y el trabajador de lotes van sin JWT (clave propia, comparada
+   con `clavesIguales()`). **Toda función que atiende a la pantalla
+   llama a `exigirRol()` antes de leer el cuerpo**: el portón de Supabase
+   deja pasar la clave pública, que va en la página. Así estuvo abierta
+   `structure-client` hasta el 2026-10-09: cualquiera en internet
+   consultaba el buró de cualquier cédula. Con la clave de servicio,
+   `structure-client` exige `actorId` y `baseLegal`.
 7. **Windows + Git Bash.** Los heredocs mutilan el código con acentos y
    comillas: usar las herramientas de escritura y edición de archivos,
    no `cat <<EOF`.
@@ -97,6 +102,13 @@ Romper cualquiera de estas rompe algo real.
    2026-09-23 la 078 se aplicó antes de desplegar y dejó esa ventana
    abierta. Al revés no hay ventana: código nuevo que ya no escribe la
    columna convive sin problema con la columna todavía presente.
+9. **El rol anónimo no tiene permisos en `public`** (113), y los
+   privilegios por defecto lo mantienen así para lo nuevo. Una tabla
+   nueva lleva RLS y políticas por rol igual. `audit_log` no se modifica
+   ni se borra (disparador): la pantalla registra con
+   `registrar_evento()`. El registro público de cuentas está cerrado
+   (2026-10-09): las da de alta el admin. La auditoría de ese día y su
+   procedimiento están en `auditoria/` (fuera de git: describe fallas).
 
 ## Dónde está cada cosa
 
@@ -261,7 +273,7 @@ antes de tocar esa área.
   `novadata-raw-2026-10-03/` = la reconsulta entera de ese día, el respaldo
   vigente (los recálculos, con `--carpeta=`). La del 25/09 es el t0 del
   ciclo simulado del Laboratorio: no se pisa. Sumar:
-  `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta>`.
+  `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta> --base-legal="<contrato>"`.
 - Reproducir un perfil: `buildStandardProfile(raw, cedula, corte)` con el
   corte VIGENTE de ese día, no `fuente_corte`.
 - `scripts/recalcular-fuentes-ingreso.mjs`: sólo el último perfil, sólo
@@ -373,9 +385,17 @@ antes de tocar esa área.
   Si todo da 404, mirar el paso `deploy` del flujo: con el repositorio
   privado y sin plan pago, Pages se apaga (2026-10-03); al volverlo público
   hubo que habilitar Pages otra vez (Source: GitHub Actions).
-- **El repositorio es público desde el 2026-10-04** (decisión del negocio).
-  `docs/` y el historial ya tienen cédulas reales; no se suman más
-  (ver "Cómo se trabaja").
+- **Mudanza a Cloudflare Pages con repositorio privado** (decisión del
+  negocio del 2026-10-09, por la auditoría): Cloudflare compila con
+  `CF_PAGES=1`, que en `vite.config.js` pone la base en `/` y saca el
+  404.html; las cabeceras de seguridad (CSP) viven en `public/_headers` y
+  `npm run preview` las sirve igual para probarlas. Un servicio externo
+  nuevo hay que sumarlo a la CSP o el navegador lo bloquea en silencio.
+  Al cambiar de dominio, sumarlo a la secret `ORIGENES_PERMITIDOS` de las
+  funciones (`_shared/cors.ts`) y a las URL de Auth de Supabase.
+- **El repositorio es público desde el 2026-10-04** (decisión del negocio),
+  hasta que termine la mudanza. `docs/` y el historial ya tienen cédulas
+  reales; no se suman más (ver "Cómo se trabaja").
 
 ## Cómo se trabaja
 

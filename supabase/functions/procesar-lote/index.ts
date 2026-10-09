@@ -25,7 +25,8 @@
 // adentro de la función.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { cabecerasCors } from "../_shared/cors.ts";
+import { clavesIguales } from "../_shared/autorizacion.ts";
 import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { estadoPorFuente, cuantasFuentesContestaron, elPerfilSirve, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
@@ -276,10 +277,11 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = cabecerasCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const clave = req.headers.get("x-vigia-clave") ?? "";
-  if (!LOTE_CLAVE || clave !== LOTE_CLAVE) {
+  if (!LOTE_CLAVE || !clavesIguales(clave, LOTE_CLAVE)) {
     return new Response(JSON.stringify({ error: "no autorizado" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

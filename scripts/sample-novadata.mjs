@@ -1,10 +1,14 @@
+// RETIRADO el 2026-10-09: explore-novadata exige ahora la sesión de un
+// admin, y este guion no la tiene. La muestra fija de research/novadata-raw/
+// no se pisa; para sumar cédulas con su crudo, consultar-lote.mjs --crudo.
+//
 // Consulta explore-novadata para una lista de cédulas y CACHEA cada
 // respuesta en research/novadata-raw/<cedula>.json — para poder ir
 // enriqueciendo la muestra de diseño (estructura estandarizada) sin
 // re-consultar Novadata cada vez que se agregan cédulas nuevas.
 //
 // Uso:
-//   NOVADATA_USERNAME=hpichucho NOVADATA_PASSWORD=... \
+//   NOVADATA_USERNAME=<usuario> NOVADATA_PASSWORD=<contraseña> \
 //     node scripts/sample-novadata.mjs research/cedulas.txt
 //
 // research/cedulas.txt: una cédula por línea. Las que ya tengan un JSON

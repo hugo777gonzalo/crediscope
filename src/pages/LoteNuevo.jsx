@@ -40,6 +40,11 @@ function Cifra({ Icono, color, valor, etiqueta, detalle }) {
 export default function LoteNuevo() {
   const navigate = useNavigate();
   const [nombre, setNombre] = useState("");
+  // La IFI garantiza por contrato la autorización de cada titular; el lote
+  // dice bajo qué contrato se consulta (decisión del negocio del
+  // 2026-10-09). Sin ella la base no crea el lote (113).
+  const [baseLegal, setBaseLegal] = useState("");
+  const baseLegalSuficiente = baseLegal.trim().length >= 10;
   const [archivo, setArchivo] = useState(null);
   const [lectura, setLectura] = useState(null);
   const [leyendo, setLeyendo] = useState(false);
@@ -78,6 +83,7 @@ export default function LoteNuevo() {
         archivo: archivo?.name ?? null,
         items: lectura.items,
         totales: lectura.totales,
+        baseLegal: baseLegal.trim(),
       });
       if (arrancar) await arrancarLote(id);
       navigate(`/lotes/${id}`);
@@ -125,7 +131,21 @@ export default function LoteNuevo() {
             />
           </div>
         </div>
-        {leyendo ? <p className="crediscope-muted" style={{ marginBottom: 0 }}>Revisando el archivo...</p> : null}
+        <div className="crediscope-descarga-campo" style={{ marginTop: 14 }}>
+          <label htmlFor="base-legal">Base legal de la consulta</label>
+          <input
+            id="base-legal"
+            className="crediscope-input"
+            value={baseLegal}
+            onChange={(e) => setBaseLegal(e.target.value)}
+            placeholder="Contrato con NovaCredit N.º 2026-001: la IFI tiene la autorización de cada titular"
+          />
+          <p className="crediscope-muted" style={{ margin: "6px 0 0", fontSize: 13, maxWidth: "70ch" }}>
+            Bajo qué contrato se consulta a estas personas. Queda guardada con el lote y es lo primero que se pregunta en una
+            auditoría de protección de datos.
+          </p>
+        </div>
+        {leyendo ?<p className="crediscope-muted" style={{ marginBottom: 0 }}>Revisando el archivo...</p> : null}
       </div>
 
       {error ? (
@@ -209,13 +229,26 @@ export default function LoteNuevo() {
 
           <div className="crediscope-card">
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="crediscope-btn" onClick={() => crearYArrancar(true)} disabled={guardando || t.validas === 0}>
+              <button
+                className="crediscope-btn"
+                onClick={() => crearYArrancar(true)}
+                disabled={guardando || t.validas === 0 || !baseLegalSuficiente}
+              >
                 {guardando ? "Guardando..." : `Cargar y arrancar (${t.validas})`}
               </button>
-              <button className="crediscope-btn crediscope-btn-ghost" onClick={() => crearYArrancar(false)} disabled={guardando}>
+              <button
+                className="crediscope-btn crediscope-btn-ghost"
+                onClick={() => crearYArrancar(false)}
+                disabled={guardando || !baseLegalSuficiente}
+              >
                 Solo cargar, arranco después
               </button>
             </div>
+            {!baseLegalSuficiente ? (
+              <p className="crediscope-muted" style={{ marginBottom: 0, marginTop: 12 }}>
+                Falta la base legal de la consulta (arriba).
+              </p>
+            ) : null}
             {t.validas === 0 ? (
               <p style={{ color: "var(--bad)", marginBottom: 0, marginTop: 12 }}>
                 No hay ninguna cédula consultable en este archivo.

@@ -17,19 +17,40 @@
 //
 // IMPORTANTE: esta función recibe la contraseña de Novadata del usuario
 // en cada request. Nunca se loguea ni se persiste — se usa una sola vez
-// para pedir el token y se descarta. Debe desplegarse con verify_jwt
-// desactivado para este endpoint específico (ver supabase/config.toml)
-// ya que el explorador no pasa por Supabase Auth.
+// para pedir el token y se descarta. Exige sesión de admin (ver abajo y
+// supabase/config.toml).
 
-import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { cabecerasCors } from "../_shared/cors.ts";
+import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
 import { estadoPorFuente } from "../_shared/calidad-de-la-consulta.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 
 Deno.serve(async (req) => {
+  const corsHeaders = cabecerasCors(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // Sólo admin, con sesión. Hasta el 2026-10-09 corría sin JWT: cualquiera
+  // en internet podía usarla para probar usuarios y contraseñas de Novadata
+  // por fuerza bruta, y quien tuviera unas válidas consultaba personas sin
+  // dejar rastro en audit_log (auditoría de seguridad de ese día). La
+  // pantalla ya era sólo de admin; ahora también lo es la función.
+  const serviceClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+  const actor = await identificarActor(
+    req.headers.get("Authorization"),
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    serviceClient,
+    createClient,
+  );
+  const rechazo = exigirRol(actor, ["admin"], corsHeaders);
+  if (rechazo) return rechazo;
 
   let body: { username?: string; password?: string; cedula?: string } = {};
   try {

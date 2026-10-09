@@ -54,7 +54,7 @@
 // en cada pedido y queda grabado.
 //
 // Uso:
-//   node scripts/consultar-lote.mjs <archivo-de-cedulas> <uuid-responsable> [concurrencia]
+//   node scripts/consultar-lote.mjs <archivo-de-cedulas> <uuid-responsable> [concurrencia] --base-legal="..."
 //
 // El uuid sale de la tabla profiles: es la persona que se hace cargo de
 // esta corrida.
@@ -94,6 +94,24 @@ if (!/^[0-9a-f-]{36}$/i.test(RESPONSABLE ?? "")) {
       "",
       "Para trabajo normal usá Consultas por lote en la aplicación: hace lo",
       "mismo y ya registra quién lo pidió.",
+    ].join("\n")
+  );
+  process.exit(1);
+}
+
+// Bajo qué contrato o base legal se consulta a estas personas: la IFI
+// garantiza por contrato la autorización de cada titular y el lote lo
+// declara una vez (decisión del negocio del 2026-10-09). structure-client
+// la exige con la clave de servicio y la graba en la auditoría.
+const BASE_LEGAL = process.argv.find((a) => a.startsWith("--base-legal="))?.slice("--base-legal=".length).trim() ?? "";
+if (BASE_LEGAL.length < 10) {
+  console.error(
+    [
+      "Falta la base legal de esta corrida (al menos 10 caracteres).",
+      "",
+      '  --base-legal="Contrato NovaCredit 2026-001: cartera con crédito vigente"',
+      "",
+      "Queda grabada en el registro de auditoría de cada persona consultada.",
     ].join("\n")
   );
   process.exit(1);
@@ -160,7 +178,7 @@ async function consultarUna(cedula) {
         // actorId: quién se hace cargo. La función lo usa solo cuando no
         // hay usuario en el encabezado, que es el caso de la clave de
         // servicio -- no se puede suplantar a nadie con esto.
-        body: JSON.stringify({ cedula, actorId: RESPONSABLE, devolverCrudo: Boolean(CARPETA_CRUDO) }),
+        body: JSON.stringify({ cedula, actorId: RESPONSABLE, baseLegal: BASE_LEGAL, devolverCrudo: Boolean(CARPETA_CRUDO) }),
       });
       const segundos = Math.round((Date.now() - t0) / 1000);
 

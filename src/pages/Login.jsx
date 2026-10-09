@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient.js";
 import LogoMark from "../components/LogoMark.jsx";
 import { iniciarSesionVigilada } from "../lib/caducidadSesion.js";
@@ -84,7 +84,7 @@ export default function Login({ avisoCaducidad = null }) {
         </form>
 
         <p className="crediscope-auth-footer">
-          ¿No tenés cuenta? <Link to="/crear-cuenta">Creá una</Link>
+          ¿No tenés cuenta? Pedísela a quien administra CrediScope en tu entidad.
         </p>
       </div>
     </div>

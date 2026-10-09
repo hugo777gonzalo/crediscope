@@ -1,0 +1,21 @@
+# Cabeceras de seguridad para Cloudflare Pages (este archivo lo lee
+# Cloudflare al publicar; GitHub Pages no permite cabeceras y lo ignora).
+#
+# Salen de la auditoría de seguridad del 2026-10-09: el sitio no mandaba
+# ninguna, y la sesión de Supabase vive en localStorage, así que un script
+# inyectado podría llevársela. La política sólo deja cargar código propio
+# y hablar con el proyecto de Supabase. La aplicación no usa nada externo
+# (medido ese día: ni fuentes, ni CDN, ni iframes).
+#
+# style-src lleva 'unsafe-inline' porque React pone estilos en el atributo
+# style de cada elemento; los scripts NO lo llevan.
+#
+# Si se suma un servicio externo, agregarlo acá o la pantalla se rompe
+# en silencio: el navegador lo bloquea y sólo avisa en la consola.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://ibrptvrjyclpmqbjdxyq.supabase.co wss://ibrptvrjyclpmqbjdxyq.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

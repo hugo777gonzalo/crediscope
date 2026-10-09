@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { Download, Ban } from "lucide-react";
 import { getCarga, getOperacionesDeCarga, anularCarga } from "../lib/laboratorio.js";
+import { registrarEvento } from "../lib/api.js";
 import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
 import {
   Volver, MensajeError, FranjaSintetica, Kpi, Etiqueta, ETIQUETA_ESTADO_CARGA, ETIQUETA_VINCULO, num, pct,
@@ -45,6 +46,7 @@ export default function LaboratorioCarga() {
       const libro = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filas), "Operaciones");
       XLSX.writeFile(libro, `conciliacion-${carga.etiqueta.replace(/[^\w-]+/g, "-")}.xlsx`);
+      registrarEvento("exportacion.conciliacion", null, { carga_id: id, filas: filas.length });
     } catch (e) {
       setError(e.message);
     } finally {

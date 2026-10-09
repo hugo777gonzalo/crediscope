@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Play, Download, Ban, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
-import { getLote, getItemsLote, perfilesDeLotePorTanda, contarPerfilesDeLote, arrancarLote, cancelarLote } from "../lib/api.js";
+import {
+  getLote,
+  getItemsLote,
+  perfilesDeLotePorTanda,
+  contarPerfilesDeLote,
+  arrancarLote,
+  cancelarLote,
+  registrarEvento,
+} from "../lib/api.js";
 import { descargarExcelLote } from "../lib/exportLote.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 
@@ -87,6 +95,7 @@ export default function LoteDetalle() {
         tandasDePerfiles: perfilesDeLotePorTanda(id),
         avisarAvance: setAvance,
       });
+      registrarEvento("exportacion.lote", null, { lote_id: id, perfiles: total });
     } catch (e) {
       setError(e.message);
     } finally {

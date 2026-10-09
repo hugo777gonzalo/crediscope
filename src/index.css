@@ -588,9 +588,9 @@ a {
   margin: 22px 0 0;
 }
 
-/* Sin uso mientras el signup verifique por link (ver nota en Signup.jsx)
-   -- se queda para cuando se configure SMTP propio y vuelva el campo
-   de código de 6 dígitos. */
+/* Sin uso desde que se cerró el registro público (2026-10-09). Se queda
+   para el código de 6 dígitos del doble factor, que está pendiente de
+   decidir (docs/pendientes.md). */
 .crediscope-otp-row {
   display: flex;
   justify-content: center;

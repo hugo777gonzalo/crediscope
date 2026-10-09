@@ -37,7 +37,8 @@
 // aparecer en Costos junto al resto.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { cabecerasCors } from "../_shared/cors.ts";
+import { clavesIguales } from "../_shared/autorizacion.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { probarFuenteDeDatos } from "../_shared/novadata-client.ts";
@@ -349,6 +350,7 @@ async function registrarEstado(c: Chequeo, incidenteId: string | null) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = cabecerasCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   // Clave propia, no la llave de servicio. El vigía lo llama el
@@ -357,7 +359,7 @@ Deno.serve(async (req) => {
   // algo que solo necesita permiso de escribir dos tablas, es regalar
   // superficie de ataque. Esta clave se rota sola sin tocar nada más.
   const clave = req.headers.get("x-vigia-clave") ?? "";
-  if (!VIGIA_CLAVE || clave !== VIGIA_CLAVE) {
+  if (!VIGIA_CLAVE || !clavesIguales(clave, VIGIA_CLAVE)) {
     return new Response(JSON.stringify({ error: "no autorizado" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

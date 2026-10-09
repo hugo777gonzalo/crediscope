@@ -56,6 +56,19 @@ export async function identificarActor(
   return { id, rol: perfil.rol as Rol };
 }
 
+// Compara la clave del programador de tareas sin cortar en el primer
+// carácter distinto: con `!==` el tiempo de respuesta le dice a quien
+// prueba cuántos caracteres acertó (auditoría del 2026-10-09).
+export function clavesIguales(recibida: string, esperada: string): boolean {
+  const a = new TextEncoder().encode(recibida);
+  const b = new TextEncoder().encode(esperada);
+  let diferencia = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    diferencia |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  }
+  return diferencia === 0;
+}
+
 // Devuelve una respuesta de rechazo si el actor no alcanza, o null si
 // puede seguir. Se usa como guarda al principio de cada función.
 export function exigirRol(

@@ -7,7 +7,8 @@
 // Body esperado: { "cedula": "0102030405" }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { cabecerasCors } from "../_shared/cors.ts";
+import { type Actor, exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
@@ -24,6 +25,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 Deno.serve(async (req) => {
+  const corsHeaders = cabecerasCors(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -41,19 +43,72 @@ Deno.serve(async (req) => {
     }
   };
 
+  // Quién llama, ANTES de mirar el cuerpo. Hasta el 2026-10-09 esta
+  // función sólo anotaba al usuario "para la auditoría" y seguía: el
+  // portón de Supabase deja pasar la clave pública (va en el JavaScript
+  // de la página), así que cualquiera en internet podía consultar el
+  // buró, la Función Judicial y el IESS de cualquier cédula, recibir el
+  // perfil entero y anotarlo a nombre de otro usuario con `actorId`.
+  // Lo encontró la auditoría de seguridad de ese día, probando desde
+  // afuera con la clave pública.
+  const authHeader = req.headers.get("Authorization");
+  const conClaveDeServicio = rolDelToken(authHeader) === "service_role";
+  let actor: Actor | null = null;
+  if (!conClaveDeServicio) {
+    actor = await identificarActor(
+      authHeader,
+      SUPABASE_URL,
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      serviceClient,
+      createClient,
+    );
+    const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
+    if (rechazo) return rechazo;
+  }
+
   let cedula: string | undefined;
-  // Quién dice el llamador que lo pidió. Solo se usa si no hay usuario
-  // en el encabezado -- ver la nota más abajo.
+  // Quién se hace cargo, cuando llama el guion de lotes con la clave de
+  // servicio. Con una sesión de usuario se ignora: manda la sesión.
   let actorDeclarado: string | undefined;
   // Sólo se honra con la clave de servicio: ver al final.
   let devolverCrudo = false;
+  // Por qué se puede consultar a estas personas, declarado una vez por
+  // lote (decisión del negocio del 2026-10-09): la IFI garantiza por
+  // contrato la autorización de cada titular, y el lote dice bajo qué
+  // contrato o base legal se consulta. Desde la pantalla no hace falta:
+  // la consulta queda a nombre del usuario y de su entidad.
+  let baseLegal: string | undefined;
   try {
     const body = await req.json();
     cedula = body?.cedula;
     actorDeclarado = body?.actorId;
     devolverCrudo = body?.devolverCrudo === true;
+    baseLegal = typeof body?.baseLegal === "string" ? body.baseLegal.trim() : undefined;
   } catch {
     // body inválido, se maneja abajo
+  }
+
+  // Con la clave de servicio el responsable es obligatorio y tiene que
+  // ser un usuario real: una consulta que nadie ordenó no se puede
+  // explicar al titular ni a un auditor (el 2026-10-07 quedó una así).
+  // La base legal también: es lo primero que pregunta un auditor de
+  // protección de datos sobre una consulta masiva.
+  if (conClaveDeServicio) {
+    const { data: responsable } = typeof actorDeclarado === "string" && actorDeclarado.length > 0
+      ? await serviceClient.from("profiles").select("id").eq("id", actorDeclarado).maybeSingle()
+      : { data: null };
+    if (!responsable) {
+      return new Response(
+        JSON.stringify({ error: "Con la clave de servicio hay que mandar 'actorId': el id de un usuario existente que se hace cargo de la consulta." }),
+        { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } },
+      );
+    }
+    if (!baseLegal || baseLegal.length < 10) {
+      return new Response(
+        JSON.stringify({ error: "Con la clave de servicio hay que mandar 'baseLegal': bajo qué contrato o base legal se consulta a estas personas (al menos 10 caracteres)." }),
+        { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } },
+      );
+    }
   }
   if (!cedula || typeof cedula !== "string") {
     return new Response(JSON.stringify({ error: "Falta 'cedula' en el body" }), {
@@ -77,34 +132,11 @@ Deno.serve(async (req) => {
   const ingresado = ident.ingresado;
   cedula = ident.cedula as string;
 
-  let actorId: string | null = null;
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader) {
-    const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data } = await userClient.auth.getUser();
-    actorId = data.user?.id ?? null;
-  }
-
-  // Quién lo pidió, cuando no hay una sesión de usuario detrás.
-  //
-  // La auditoría del 2026-09-16 encontró 2.637 consultas con actor nulo:
-  // las corrió un guion que se autentica con la clave de servicio, y
-  // `getUser()` no devuelve a nadie para una clave de servicio. El
-  // resultado es que se consultó Función Judicial, Fiscalía y
-  // comportamiento bancario de 2.500 personas reales y el sistema no
-  // puede responder quién lo ordenó -- que es exactamente para lo que
-  // existe el registro.
-  //
-  // No se puede suplantar a nadie: si HAY usuario en el encabezado, su
-  // id gana siempre. Esto solo llena el hueco cuando no hay ninguno, y
-  // para llegar ahí hay que tener la clave de servicio, que ya es
-  // confianza total. Mismo criterio que el trabajador de lotes, que
-  // graba lote.creado_por.
-  if (!actorId && typeof actorDeclarado === "string" && actorDeclarado.length > 0) {
-    actorId = actorDeclarado;
-  }
+  // Quién lo pidió, cuando lo pide el guion de lotes con la clave de
+  // servicio: `getUser()` no devuelve a nadie para esa clave, y la
+  // auditoría del 2026-09-16 encontró 2.637 consultas sin responsable.
+  // Ya se comprobó arriba que el responsable declarado existe.
+  const actorId: string = actor ? actor.id : (actorDeclarado as string);
 
   try {
     // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
@@ -226,7 +258,9 @@ Deno.serve(async (req) => {
       actor: actorId,
       action: "client.structure",
       client_id: client.id,
-      meta: { client_profile_id: saved.id },
+      meta: conClaveDeServicio
+        ? { client_profile_id: saved.id, origen: "clave_de_servicio", base_legal: baseLegal }
+        : { client_profile_id: saved.id },
     });
 
     // Desde la 090 el crudo queda en Storage (crudo-novadata.ts). Antes se
@@ -246,7 +280,6 @@ Deno.serve(async (req) => {
     // rol sin verificar la firma es seguro acá porque esta función corre
     // con verify_jwt = true (config.toml): la plataforma ya validó la firma
     // antes de llegar.
-    const conClaveDeServicio = rolDelToken(authHeader) === "service_role";
     const respuesta = devolverCrudo && conClaveDeServicio ? { ...saved, crudo: raw } : saved;
     return new Response(JSON.stringify(respuesta), {
       headers: { ...corsHeaders, "content-type": "application/json" },

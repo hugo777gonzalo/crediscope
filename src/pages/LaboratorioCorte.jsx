@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { FilePlus, FileDown, LineChart, Sigma, Microscope } from "lucide-react";
 import { getCorte, getResultados, getPropuestas } from "../lib/laboratorio.js";
 import { exportarInforme } from "../lib/informeLaboratorio.js";
+import { registrarEvento } from "../lib/api.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 import { Volver, MensajeError, FranjaSintetica, Kpi, num, pct } from "../components/laboratorio/Comunes.jsx";
 
@@ -47,6 +48,7 @@ export default function LaboratorioCorte() {
       const propuestas = (await getPropuestas()).filter((p) => p.corte_id === id);
       const variables = resultados.find((r) => r.tipo === "variables" && (r.metodologia?.poblacion ?? "operaciones") === "operaciones") ?? null;
       exportarInforme({ corte, desempeno: ultimo("desempeno"), variables, propuestas });
+      registrarEvento("exportacion.informe_laboratorio", null, { corte_id: id });
     } catch (e) {
       setError(e.message);
     }

@@ -31,7 +31,7 @@
 // las mismas filas desde una máquina con IP ecuatoriana.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { consultarAval, laConsultaAvalSirve, porQueNoSirveAval, type TipoIdentificacionAval } from "../_shared/aval-client.ts";
@@ -55,6 +55,7 @@ const AMBIENTE_AVAL = HOST_AVAL.includes("api-test") ? "prueba" : "produccion";
 const TIPOS_VALIDOS: TipoIdentificacionAval[] = ["C", "R", "E", "P", "F"];
 
 Deno.serve(async (req) => {
+  const corsHeaders = cabecerasCors(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

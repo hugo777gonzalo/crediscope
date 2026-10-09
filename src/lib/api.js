@@ -300,12 +300,20 @@ export async function updateSegmentConfig(grupo, { modo, motivo }) {
 
 // Llama a la Edge Function `explore-novadata` con credenciales de
 // Novadata que el usuario ingresa en el momento (no las secrets de
-// servicio). No pasa por Supabase Auth ni persiste nada — solo para
-// inspeccionar la ingesta. Ver supabase/functions/explore-novadata/index.ts.
+// servicio). No persiste nada — solo para inspeccionar la ingesta. Desde
+// el 2026-10-09 exige la sesión de un admin: sin ella la función quedaba
+// abierta a cualquiera. Ver supabase/functions/explore-novadata/index.ts.
 export async function exploreNovadata({ username, password, cedula }) {
+  const { data: sesion } = await supabase.auth.getSession();
+  const token = sesion?.session?.access_token;
+  if (!token) throw new Error("La sesión venció: volvé a ingresar.");
   const res = await fetch(`${FUNCTIONS_URL}/explore-novadata`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
     body: JSON.stringify({ username, password, cedula }),
   });
   const data = await res.json();
@@ -613,7 +621,7 @@ export async function getLote(id) {
 
 // Crea el lote y sus ítems. Se insertan en tandas porque una sola
 // sentencia con miles de filas la rechaza el servidor por tamaño.
-export async function crearLote({ nombre, archivo, items, totales }) {
+export async function crearLote({ nombre, archivo, items, totales, baseLegal }) {
   // Una sola llamada, una sola transacción (ver 073). Antes esto
   // insertaba el lote y después los ítems de a 500 desde acá: si una
   // tanda fallaba quedaba un lote con la mitad de sus cédulas y con los
@@ -635,6 +643,7 @@ export async function crearLote({ nombre, archivo, items, totales }) {
       estado: it.estado,
       motivo: it.motivo ?? "",
     })),
+    p_base_legal: baseLegal,
   });
   if (error) throw error;
   return data;
@@ -855,6 +864,24 @@ export async function getSegmentosDeLaCartera() {
   return [...new Set(filas.map((f) => f.fuente_segmento))].sort();
 }
 
+// ---------- Registro de lo que se ve y se exporta ----------
+// Hasta el 2026-10-09 audit_log sólo anotaba las consultas: quién abrió
+// el expediente de una persona o se llevó una planilla con miles de filas
+// no quedaba en ningún lado (auditoría de seguridad de ese día). La
+// función de la base firma con el usuario de la sesión (113).
+//
+// No frena a la pantalla: si el registro falla, se avisa en la consola y
+// se sigue. Un expediente que no abre porque falló el registro sería un
+// problema peor que una vista sin anotar.
+export function registrarEvento(accion, clientId = null, meta = {}) {
+  if (!isSupabaseConfigured) return;
+  supabase
+    .rpc("registrar_evento", { p_accion: accion, p_client_id: clientId, p_meta: meta })
+    .then(({ error }) => {
+      if (error) console.warn(`No se registró "${accion}":`, error.message);
+    });
+}
+
 // ---------- El expediente ----------
 // Todo lo que se sabe de una persona, en una sola llamada. Las cinco
 // consultas van en paralelo: encadenarlas sumaría cinco viajes de ida y
@@ -867,6 +894,7 @@ export async function getExpediente(cedula) {
     .maybeSingle();
   if (errorClient) throw errorClient;
   if (!client) return null;
+  registrarEvento("expediente.vista", client.id);
 
   const [perfiles, analisis, auditoria, cabecera, perfilCompleto, analisisCompleto] = await Promise.all([
     supabase

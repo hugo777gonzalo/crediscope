@@ -6,7 +6,6 @@ import { supabase } from "./lib/supabaseClient.js";
 import Login from "./pages/Login.jsx";
 import { useCaducidadSesion } from "./lib/useCaducidadSesion.js";
 import { MENSAJE_CADUCIDAD, limpiarVigilancia } from "./lib/caducidadSesion.js";
-import Signup from "./pages/Signup.jsx";
 import ClientSearch from "./pages/ClientSearch.jsx";
 import AnalisisIA from "./pages/AnalisisIA.jsx";
 import PerfilCliente from "./pages/PerfilCliente.jsx";
@@ -149,7 +148,10 @@ export default function App() {
       <main className="crediscope-main crediscope-main-suelto">
           <Routes>
             <Route path="/login" element={<Login avisoCaducidad={motivo ? MENSAJE_CADUCIDAD[motivo] : null} />} />
-            <Route path="/crear-cuenta" element={<Signup />} />
+            {/* Sin "Crear cuenta" desde el 2026-10-09: con el registro
+                abierto, cualquiera con un correo entraba como analista y
+                leía la cartera entera (auditoría de seguridad). Las cuentas
+                las da de alta el admin por invitación. */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
       </main>
@@ -181,7 +183,6 @@ export default function App() {
               valía, o peor, que se puede ver el sistema sin entrar.
               Quien ya entró y llega a /login va a donde iba. */}
           <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/crear-cuenta" element={<Navigate to="/" replace />} />
           <Route
             path="/explorar"
             element={
