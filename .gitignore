@@ -14,3 +14,7 @@ research/lote-*.jsonl
 # Informes de auditoría de seguridad: describen vulnerabilidades, a veces
 # todavía abiertas, y el repositorio es público.
 auditoria/
+# Documentos del SGSI, LOPDP e ISO 9001: el análisis de riesgos dice qué
+# sigue abierto. Sacar esta línea y commitearlos cuando el repositorio
+# sea privado (mudanza a Cloudflare, 2026-10-09).
+docs/cumplimiento/

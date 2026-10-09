@@ -182,8 +182,32 @@ aceptada.
 
 ## 2. Riesgos técnicos conocidos
 
+- **Seguridad y cumplimiento (auditoría del 2026-10-09).** Lo técnico se
+  cerró ese día (113-115, `scripts/auditar-seguridad.mjs`: 39 controles en
+  OK). El estado de cada hallazgo, en
+  `auditoria/2026-10-09-auditoria-seguridad-y-cumplimiento.md` (fuera de
+  git), y los documentos del SGSI, LOPDP e ISO 9001 en `docs/cumplimiento/`
+  (fuera de git hasta que el repo sea privado). Queda, por orden:
+  1. **Mudanza a Cloudflare Pages + repositorio privado** (decisión del
+     negocio): los pasos están en el informe. Después, sacar
+     `docs/cumplimiento/` de `.gitignore`, sumar el dominio nuevo a la
+     secret `ORIGENES_PERMITIDOS` y correr el control con
+     `--sitio=<url nueva>` (las cabeceras tienen que dar OK).
+  2. **Doble factor (MFA): pendiente de decidir** a quién se le exige
+     (decisión del negocio del 2026-10-09: "de momento ninguno"). Si se
+     exige, la cuenta de QA deja de servir a Claude para probar pantallas.
+  3. Una consulta del 2026-09-04 quedó anotada a un id que no es de ningún
+     usuario: confirmar que era una cuenta de prueba borrada.
+  4. Aceptar los DPA de Supabase y Anthropic; prueba de restauración;
+     cifrado de disco de la máquina con `research/`; validación legal;
+     prueba de intrusión independiente; plazos de retención.
+  5. Probar con sesión real: una consulta, abrir un expediente, crear un
+     lote (campo de base legal) y el Explorador de Fuentes (admin). Claude
+     no inicia sesión; sin probar al 2026-10-09.
+
 - **El repositorio es público desde el 2026-10-04** (decisión del negocio,
-  para que GitHub Pages vuelva a publicar la aplicación sin plan pago).
+  para que GitHub Pages vuelva a publicar la aplicación sin plan pago;
+  el 2026-10-09 se decidió volverlo privado con Cloudflare Pages).
   `docs/` y el historial de commits tienen cédulas reales de la cartera
   (en `docs/estructura-estandarizada.md`, `docs/lecciones.md`,
   `docs/pendientes.md` y dos propuestas, ~33 menciones) y quedan a la

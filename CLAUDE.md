@@ -219,6 +219,17 @@ Romper cualquiera de estas rompe algo real.
 - `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
   y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
   que se cierre.
+- **Seguridad y cumplimiento** (auditoría del 2026-10-09):
+  `scripts/auditar-seguridad.mjs` es el control (39 puntos, correrlo
+  después de tocar permisos, políticas, funciones o la publicación);
+  `scripts/derechos-del-titular.mjs` atiende acceso, portabilidad y
+  supresión de una persona (`suprimir_titular()`, 115: borra el contenido
+  y conserva la constancia de las consultas). Una tabla nueva con datos de
+  la persona se suma a los dos. Los documentos del SGSI, LOPDP e ISO 9001
+  viven en `docs/cumplimiento/` (fuera de git mientras el repo sea
+  público). La IFI es la responsable del tratamiento y CrediScope su
+  encargado: la autorización de cada titular la garantiza la IFI por
+  contrato, y un lote declara su base legal.
 
 ## Lo que costó caro aprender
 
