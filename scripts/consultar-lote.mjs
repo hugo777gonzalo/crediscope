@@ -61,6 +61,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 // Posicionales + una opción: --crudo=<carpeta> guarda la respuesta cruda
 // de Novadata de cada cédula en <carpeta>/<cedula>.json. El crudo no vive
@@ -134,6 +135,13 @@ const env = Object.fromEntries(
       return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
     })
 );
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+// Sin la clave de guiones structure-client contesta 401 a cada cédula.
+if (!env.GUIONES_CLAVE) {
+  console.error("Falta GUIONES_CLAVE en .env.functions (la clave con la que structure-client reconoce a los guiones).");
+  process.exit(1);
+}
+const ejecucion = await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "consultar-lote", seco: false });
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -171,13 +179,17 @@ async function consultarUna(cedula) {
       const res = await fetch(`${env.SUPABASE_URL}/functions/v1/structure-client`, {
         method: "POST",
         headers: {
+          // La clave de servicio pasa el portón de Supabase (verify_jwt);
+          // lo que identifica al guion ante la función es x-guiones-clave
+          // (auditoría externa del 2026-10-09, E4).
           Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
           apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          "x-guiones-clave": env.GUIONES_CLAVE,
           "Content-Type": "application/json",
         },
-        // actorId: quién se hace cargo. La función lo usa solo cuando no
-        // hay usuario en el encabezado, que es el caso de la clave de
-        // servicio -- no se puede suplantar a nadie con esto.
+        // actorId: quién se hace cargo. La función lo usa solo cuando
+        // llega con la clave de guiones -- no se puede suplantar a nadie
+        // con esto.
         body: JSON.stringify({ cedula, actorId: RESPONSABLE, baseLegal: BASE_LEGAL, devolverCrudo: Boolean(CARPETA_CRUDO) }),
       });
       const segundos = Math.round((Date.now() - t0) / 1000);
@@ -196,6 +208,7 @@ async function consultarUna(cedula) {
           );
           crudoGuardado = true;
         }
+        ejecucion.sumarFilas(1);
         return {
           cedula,
           // Cuándo terminó. Sin esto el ritmo real solo se puede

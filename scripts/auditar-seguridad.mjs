@@ -22,7 +22,7 @@
 // control mide otra cosa sin avisar.
 
 import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -37,6 +37,9 @@ const leerEnv = (archivo) =>
 const front = leerEnv(".env");
 const URL_SUPABASE = front.VITE_SUPABASE_URL;
 const CLAVE_PUBLICA = front.VITE_SUPABASE_ANON_KEY;
+// Para las pruebas del camino de los guiones (E4). Sin el archivo, esas
+// pruebas se informan como no hechas.
+const SERVICIO = existsSync(".env.functions") ? leerEnv(".env.functions") : {};
 const SITIO = process.argv.find((a) => a.startsWith("--sitio="))?.slice("--sitio=".length) ?? "https://hugo777gonzalo.github.io/crediscope/";
 
 const resultados = [];
@@ -91,6 +94,17 @@ union all
 select 'usuario_sin_ingreso_90d', count(*)::text from auth.users where coalesce(last_sign_in_at, created_at) < now() - interval '90 days'
 union all
 select 'version_esquema', max(version)::text from esquema_version
+union all
+-- Corridas de guiones que no se cerraron (ejecuciones_operativas, 117): un
+-- guion que se cortó a la mitad sin que nadie lo explique.
+select 'ejecucion_sin_cerrar', count(*)::text from ejecuciones_operativas
+  where estado = 'en_curso' and iniciada_en < now() - interval '1 day'
+union all
+select 'ejecucion_sin_commit_30d', count(*)::text from ejecuciones_operativas
+  where not arbol_limpio and iniciada_en > now() - interval '30 days'
+union all
+select 'ultimo_despliegue', coalesce((select commit_git || ' el ' || to_char(desplegado_en at time zone 'America/Guayaquil', 'YYYY-MM-DD HH24:MI')
+  from despliegues order by desplegado_en desc limit 1), 'ninguno anotado')
 `;
 
 let filas = [];
@@ -141,6 +155,9 @@ if (filas.length > 0 || resultados.length === 0) {
   );
   const enLaBase = Number(de("version_esquema")[0] ?? 0);
   anotar("Base", "La base está en la última migración del repositorio", enLaBase === ultima, `base ${enLaBase || "sin control"}, repositorio ${ultima}`);
+  anotar("Operación", "Corridas de guiones sin cerrar hace más de un día (se cortaron)", true, de("ejecucion_sin_cerrar")[0] ?? "-", true);
+  anotar("Operación", "Corridas de guiones con cambios sin commit (30 días)", true, de("ejecucion_sin_commit_30d")[0] ?? "-", true);
+  anotar("Operación", "Último despliegue anotado", true, de("ultimo_despliegue")[0] ?? "-", true);
 }
 
 // ---------------------------------------------------------------
@@ -254,6 +271,95 @@ for (const fn of ["vigia", "procesar-lote"]) {
     body: "{}",
   });
   anotar("Afuera", `${fn} rechaza una clave equivocada`, r.status === 401, `HTTP ${r.status}`);
+}
+
+// El camino de los guiones de structure-client (auditoría externa, E4).
+// Hasta el 2026-10-09 se reconocía por el rol "service_role" leído del token
+// sin verificar la firma: con verify_jwt apagado, un token armado a mano lo
+// abría. Ahora exige x-guiones-clave. Estas pruebas tienen que dar lo mismo
+// con verify_jwt prendido o apagado. Ninguna llega a la fuente: "abc" no es
+// una cédula, y sin responsable el guion se rechaza antes.
+{
+  const b64url = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const fabricado = `${b64url({ alg: "none", typ: "JWT" })}.${b64url({ role: "service_role", iss: "supabase", exp: Math.floor(Date.now() / 1000) + 3600 })}.`;
+  const sc = (cabeceras) =>
+    pedir(`${URL_SUPABASE}/functions/v1/structure-client`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...cabeceras },
+      body: JSON.stringify({ cedula: "abc" }),
+    });
+  const r1 = await sc({ apikey: CLAVE_PUBLICA, Authorization: `Bearer ${fabricado}` });
+  anotar("Afuera", "structure-client rechaza un token fabricado que dice service_role", r1.status === 401, `HTTP ${r1.status}`);
+  const r2 = await sc({ apikey: CLAVE_PUBLICA, Authorization: `Bearer ${fabricado}`, "x-guiones-clave": "no-es-la-clave" });
+  anotar("Afuera", "structure-client rechaza una clave de guiones equivocada", r2.status === 401, `HTTP ${r2.status}`);
+  if (SERVICIO.SUPABASE_SERVICE_ROLE_KEY) {
+    const conServicio = { apikey: SERVICIO.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICIO.SUPABASE_SERVICE_ROLE_KEY}` };
+    const r3 = await sc(conServicio);
+    anotar("Afuera", "structure-client no acepta la clave de servicio sola (sin la de guiones)", r3.status === 401, `HTTP ${r3.status}`);
+    if (SERVICIO.GUIONES_CLAVE) {
+      const r4 = await sc({ ...conServicio, "x-guiones-clave": SERVICIO.GUIONES_CLAVE });
+      // 400 por falta de responsable: la clave entró y el guion se rechaza
+      // antes de mirar la cédula.
+      anotar("Afuera", "structure-client acepta la clave de guiones y exige responsable", r4.status === 400 && /actorId/.test(r4.texto ?? ""), `HTTP ${r4.status}`);
+    } else {
+      anotar("Afuera", "structure-client acepta la clave de guiones", true, "no se probó: falta GUIONES_CLAVE en .env.functions", true);
+    }
+  }
+}
+
+// verify_jwt desplegado contra config.toml: el 2026-09-16 cuatro funciones
+// se desplegaron con --no-verify-jwt "de una" y dos quedaron abiertas. Lo
+// escrito en config.toml es lo que se revisa; lo desplegado tiene que
+// coincidir.
+try {
+  // Línea por línea y sin comentarios: un comentario que mencione
+  // verify_jwt no puede pasar por la configuración.
+  const esperado = {};
+  let seccion = null;
+  for (const linea of readFileSync("supabase/config.toml", "utf8").split(/\r?\n/)) {
+    const s = linea.match(/^\s*\[functions\.([a-z0-9-]+)\]\s*$/);
+    if (s) seccion = s[1];
+    else if (/^\s*\[/.test(linea)) seccion = null;
+    const v = linea.match(/^\s*verify_jwt\s*=\s*(true|false)\s*(#.*)?$/);
+    if (v && seccion) esperado[seccion] = v[1] === "true";
+  }
+  const salida = execSync("npx --yes supabase@latest functions list -o json", { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const desplegadas = JSON.parse(salida.slice(salida.indexOf("["), salida.lastIndexOf("]") + 1));
+  const distintas = desplegadas
+    .filter((f) => f.verify_jwt !== (esperado[f.slug] ?? true))
+    .map((f) => `${f.slug}=${f.verify_jwt}`);
+  anotar("Afuera", "verify_jwt de cada función desplegada coincide con config.toml", distintas.length === 0, distintas.join(", ") || `${desplegadas.length} funciones`);
+} catch (e) {
+  anotar("Afuera", "verify_jwt de cada función desplegada coincide con config.toml", false, `no se pudo leer: ${String(e.message).split("\n")[0]}`);
+}
+
+// Qué commit está desplegado (x-crediscope-version, auditoría externa E2).
+// "sin-sello" = desplegada a mano, por fuera del corredor.
+{
+  const head = execSync("git rev-parse --short=12 HEAD", { encoding: "utf8" }).trim();
+  const versiones = {};
+  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "explore-novadata", "vigia", "procesar-lote"]) {
+    const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, { method: "OPTIONS" });
+    versiones[fn] = r.headers?.get("x-crediscope-version") ?? "sin dato";
+  }
+  const distintas = [...new Set(Object.values(versiones))];
+  const enLaHistoria = (v) => {
+    try {
+      execSync(`git merge-base --is-ancestor ${v} HEAD`, { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const detalle = Object.entries(versiones).map(([f, v]) => `${f}=${v}`).join(", ");
+  if (distintas.some((v) => v === "sin dato" || v === "sin-sello" || !/^[0-9a-f]{7,40}$/.test(v))) {
+    anotar("Afuera", "Las funciones desplegadas salen del corredor (con su commit)", false, detalle);
+  } else if (distintas.some((v) => !enLaHistoria(v))) {
+    anotar("Afuera", "Lo desplegado está en la historia del repositorio", false, detalle);
+  } else {
+    const alDia = distintas.length === 1 && distintas[0] === head;
+    anotar("Afuera", "Versión desplegada de las funciones", true, alDia ? `${head} (la del repositorio)` : `${detalle}; el repositorio va por ${head}`, !alDia);
+  }
 }
 
 const cors = await pedir(`${URL_SUPABASE}/functions/v1/structure-client`, {

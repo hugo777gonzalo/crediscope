@@ -15,7 +15,11 @@
 //   node scripts/migrar-clientes.mjs --funciones [--cliente=<clave>]
 //       Despliega las Edge Functions en cada base (después de migrar: el
 //       código nuevo puede necesitar el esquema nuevo, ver
-//       _shared/version-esquema.ts).
+//       _shared/version-esquema.ts). Sólo despliega un commit sin cambios
+//       pendientes que ya esté en origin/main, sella ese commit en las
+//       funciones (encabezado x-crediscope-version) y lo anota en la tabla
+//       despliegues (117). Hasta el 2026-10-09 nada decía qué código corría
+//       en cada función (auditoría externa, E2).
 //   node scripts/migrar-clientes.mjs --iniciar --cliente=<clave>
 //       Sólo para una base que ya tiene aplicadas a mano las 001 a 115 (la
 //       plantilla): aplica la 116, que crea el control de versión.
@@ -146,6 +150,39 @@ if (modo === "iniciar") {
   process.exit(r.ok ? 0 : 1);
 }
 
+// El sello del despliegue: el commit, escrito en version-despliegue.ts sólo
+// mientras dura el despliegue. Al salir, pase lo que pase, el archivo
+// vuelve a decir "sin-sello" (process.on("exit") corre también si algo
+// revienta a la mitad).
+let sello = null;
+if (modo === "funciones") {
+  const git = (args) => execSync(`git ${args}`, { cwd: RAIZ, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  if (git("status --porcelain --untracked-files=no") !== "") {
+    console.error("Hay cambios sin guardar en git: sólo se despliega código commiteado.");
+    process.exit(1);
+  }
+  git("fetch origin main --quiet");
+  try {
+    git("merge-base --is-ancestor HEAD origin/main");
+  } catch {
+    console.error("Este commit no está en origin/main: primero se integra (PR a main) y después se despliega.");
+    process.exit(1);
+  }
+  sello = git("rev-parse --short=12 HEAD");
+  const archivoVersion = path.join(RAIZ, "supabase", "functions", "_shared", "version-despliegue.ts");
+  const original = fs.readFileSync(archivoVersion, "utf8");
+  if (!original.includes('"sin-sello"')) {
+    console.error(`${archivoVersion} no dice "sin-sello": quedó sellado de un despliegue anterior. Restaurarlo con git antes de seguir.`);
+    process.exit(1);
+  }
+  fs.writeFileSync(archivoVersion, original.replace('"sin-sello"', `"${sello}"`));
+  process.on("exit", () => fs.writeFileSync(archivoVersion, original));
+}
+const FUNCIONES = fs
+  .readdirSync(path.join(RAIZ, "supabase", "functions"), { withFileTypes: true })
+  .filter((d) => d.isDirectory() && !d.name.startsWith("_"))
+  .map((d) => d.name);
+
 console.log(`Última migración del repositorio: ${ULTIMA}\n`);
 for (const cliente of clientes) {
   const actual = versionDe(cliente);
@@ -190,7 +227,18 @@ for (const cliente of clientes) {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       });
-      console.log("               funciones desplegadas");
+      console.log(`               funciones desplegadas (${sello})`);
+      const texto = (s) => `'${String(s).replaceAll("'", "''")}'`;
+      const anotado = correrSql(
+        cliente.proyecto,
+        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${FUNCIONES.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`
+      );
+      if (anotado.ok) {
+        console.log("               anotado en despliegues");
+      } else {
+        console.log(`               desplegado pero NO anotado en despliegues: ${anotado.error}`);
+        fallas++;
+      }
     } catch (e) {
       console.log(`               FALLÓ el despliegue: ${String(e.stderr || e.message).split("\n").filter(Boolean).slice(-2).join(" | ")}`);
       fallas++;

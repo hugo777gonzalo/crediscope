@@ -27,6 +27,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const arg = (nombre, porDefecto) => process.argv.find((a) => a.startsWith(`--${nombre}=`))?.slice(nombre.length + 3) ?? porDefecto;
@@ -46,13 +47,15 @@ const env = Object.fromEntries(
 globalThis.Deno = { env: { get: (k) => env[k] } };
 
 const compartido = (a) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", a)).href);
-const { armarPedidoScoring, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
+const { armarPedidoScoring, huellaDelPedido, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 const { elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
 const { filaDelAnalisis } = await compartido("fila-del-analisis.ts");
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "analizar-en-lote", seco: !["enviar", "recoger"].includes(PASO) });
 const ANTHROPIC = {
   "content-type": "application/json",
   "x-api-key": env.ANTHROPIC_API_KEY,
@@ -173,11 +176,21 @@ async function enviar() {
 
   const requests = [];
   const meta = {};
+  let yaAnalizados = 0;
   for (const s of seleccion) {
     const d = datos.get(s.perfilId);
     if (!d) { console.log(`${s.cedula}: el perfil ya no existe, se salta`); continue; }
     const control = d.control_bloqueo ?? { bloqueado: false, hallazgos: [] };
     const params = armarPedidoScoring(d.standard_profile, control, camposDeshabilitados, CONFIG_LOTE);
+    // El mismo pedido que un análisis que ya existe da el mismo resultado
+    // (huellaDelPedido, auditoría externa E1): no se paga dos veces. Salvo
+    // que el perfil esté para medir el ruido, que es repetir a propósito.
+    const huellaPedido = await huellaDelPedido(params);
+    if (s.repeticiones === 1) {
+      const { data: igual } = await supabase.from("analysis_results").select("id")
+        .eq("client_id", s.clientId).eq("huella_pedido", huellaPedido).is("fallo", null).limit(1).maybeSingle();
+      if (igual) { yaAnalizados++; continue; }
+    }
     for (let rep = 1; rep <= s.repeticiones; rep++) {
       const customId = `${s.perfilId}_${rep}`;
       requests.push({ custom_id: customId, params });
@@ -185,7 +198,12 @@ async function enviar() {
     }
     // Lo que leyó el modelo y el control de bloqueo, una vez por perfil:
     // los necesita filaDelAnalisis al recoger.
-    meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control };
+    meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control, huellaPedido };
+  }
+  if (yaAnalizados) console.log(`${yaAnalizados} ya tenían un análisis con este mismo pedido: no se mandan.`);
+  if (requests.length === 0) {
+    console.log("No queda nada que mandar.");
+    return;
   }
 
   const res = await fetch("https://api.anthropic.com/v1/messages/batches", {
@@ -229,10 +247,12 @@ async function recoger() {
     const customId = linea.custom_id;
     if (hechos.has(customId)) { cuenta.yaHechos++; continue; }
     const m = meta[customId];
-    const { mensajeAlModelo, controlBloqueo } = meta[m.perfilId];
+    // huellaPedido falta en los lotes enviados antes del 2026-10-09: esos
+    // análisis quedan sin huella, como todos los anteriores.
+    const { mensajeAlModelo, controlBloqueo, huellaPedido } = meta[m.perfilId];
     const data = linea.result?.type === "succeeded" ? linea.result.message : null;
     const modelo = data?.model ?? estado.modelo;
-    const resultado = data ? { ...interpretar(data, modelo), mensajeAlModelo } : null;
+    const resultado = data ? { ...interpretar(data, modelo), mensajeAlModelo, huellaPedido } : null;
     const fallo = data ? resultado.fallo ?? null : `lote: ${linea.result?.type} ${JSON.stringify(linea.result?.error ?? {}).slice(0, 300)}`;
     fs.writeFileSync(archivo(`respuestas/${customId}.json`), JSON.stringify({ ...m, respuesta: data, resultado, fallo }, null, 1));
 

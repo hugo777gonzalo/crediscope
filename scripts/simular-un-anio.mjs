@@ -45,6 +45,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { pathToFileURL } from "node:url";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const arg = (n, d) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3) ?? d;
@@ -82,6 +83,8 @@ const env = Object.fromEntries(fs.readFileSync(path.join(RAIZ, ".env.functions")
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
 if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("Falta SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en .env.functions");
 const auth = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "simular-un-anio", seco: SECO });
 // Un error de PostgREST es un objeto plano: se lee el cuerpo entero.
 async function rest(ruta, opciones = {}) {
   const r = await fetch(`${env.SUPABASE_URL}/rest/v1/${ruta}`, { ...opciones, headers: { ...auth, "content-type": "application/json", ...(opciones.headers ?? {}) } });

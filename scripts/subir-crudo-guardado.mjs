@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { pathToFileURL } from "node:url";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const { BUCKET_CRUDO_NOVADATA, rutaDelCrudo } = await import(
@@ -33,6 +34,8 @@ const auth = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${e
 const carpeta = process.argv[2];
 if (!carpeta) throw new Error("Falta la carpeta del crudo (ej. research/novadata-raw-2026-09-25)");
 const seco = process.argv.includes("--seco");
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "subir-crudo-guardado", seco: seco });
 const limite = Number(process.argv.find((a) => a.startsWith("--limite="))?.split("=")[1] ?? Infinity);
 
 const archivos = fs.readdirSync(carpeta).filter((f) => f.endsWith(".json"));

@@ -26,6 +26,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 XLSX.set_fs(fs);
 
@@ -72,6 +73,8 @@ const CONFIGURACIONES = {
 const CLAVES = arg("configs", "hoy,sin,medio").split(",").filter((c) => CONFIGURACIONES[c]);
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "comparar-razonamiento", seco: false });
 
 const modeloDe = (clave) => CONFIGURACIONES[clave].config.modelo ?? MODELO;
 const precios = new Map();

@@ -30,6 +30,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
@@ -43,6 +44,8 @@ const env = Object.fromEntries(
 );
 if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("Falta SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en .env.functions");
 const cabeceras = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json" };
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "corregir-empleo-actual", seco: SECO });
 
 // Un error de PostgREST es un objeto plano: se lee el cuerpo entero.
 async function pedir(url, opciones = {}) {

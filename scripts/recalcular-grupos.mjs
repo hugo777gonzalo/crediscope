@@ -31,6 +31,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
@@ -58,6 +59,8 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }),
 );
 const cabeceras = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json" };
+// Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
+const ejecucion = await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "recalcular-grupos", seco: SECO });
 // Un error de PostgREST es un objeto plano: se lee el cuerpo entero.
 async function pedir(url, opciones = {}) {
   const r = await fetch(url, { ...opciones, headers: { ...cabeceras, ...opciones.headers } });
@@ -199,5 +202,7 @@ async function trabajador() {
   }
 }
 await Promise.all(Array.from({ length: 6 }, trabajador));
+ejecucion.sumarFilas(escritas);
+ejecucion.anotar({ previstas: escrituras.length, fallas: fallas.length });
 console.log(`escritas: ${escritas} de ${escrituras.length}${escritas === escrituras.length ? "" : "  <-- NO COINCIDE"}`);
 if (fallas.length) console.log("fallas:", fallas.slice(0, 10));
