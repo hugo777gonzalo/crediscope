@@ -1,6 +1,6 @@
 -- marco-v13 (ver supabase/functions/_shared/marco-interpretativo.ts):
 -- ronda de auditoría sobre pruebas reales del usuario (cédulas
--- 0502932429 y 0501578256). Resumen (detalle completo en el
+-- c-ba4c16f0 y c-18fa16ee). Resumen (detalle completo en el
 -- changelog de marco-interpretativo.ts):
 --   - BUG grave corregido: pensionAlimenticiaEnMora/deudaPensionAlimenticia
 --     no distinguían representanteLegal (a quien LE DEBEN) de

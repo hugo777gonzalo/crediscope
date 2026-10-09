@@ -232,7 +232,7 @@ const aCentavos = (n: number): number => Math.round(n * 100) / 100;
 
 // La deuda de la persona sumada en todo el sistema (desde marco-v24).
 // Hasta v23 el modelo recibía cada fuente por separado y presentó $258.798
-// de bancos y Diners como "la cartera vigente" de 1715532469, sin los
+// de bancos y Diners como "la cartera vigente" de c-2a50c228, sin los
 // $84.778 de cooperativas. Lo garantizado va aparte: no es deuda propia.
 // La cuota conocida es sólo la de cooperativas: los bancos no la informan.
 // Se calcula DESPUÉS de ocultar los campos deshabilitados: un campo
@@ -286,7 +286,7 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
   }
   // numeroCreditosFormales son préstamos IESS/BIESS, no operaciones del
   // buró: con el nombre viejo el modelo sumó 6 préstamos del BIESS a 6
-  // operaciones del buró ("6 operaciones formales", 1308725470). El
+  // operaciones del buró ("6 operaciones formales", c-3293f7eb). El
   // nombre guardado queda, como pisoIngresoMensualReportado.
   const bancario = copia.comportamientoBancario as AnyRecord | undefined;
   if (bancario && "numeroCreditosFormales" in bancario) {

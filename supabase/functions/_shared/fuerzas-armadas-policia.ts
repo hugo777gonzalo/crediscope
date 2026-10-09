@@ -1,6 +1,6 @@
 // Militares y policías no aportan al IESS: tienen su propio seguro social,
 // el ISSFAC y el ISSPOL. Sin leerlos, un militar en servicio activo o
-// retirado quedaba "Informal o sin actividad": 1703892735 (Militar en
+// retirado quedaba "Informal o sin actividad": c-cc538abe (Militar en
 // Servicio Pasivo, 70 años, con pensión de retiro) salió así en la
 // validación de marco-v24. Medido el 2026-09-28 en la cartera real: 34
 // militares (10 en servicio activo, 24 en servicio pasivo), 2 con montepío

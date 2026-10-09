@@ -11,7 +11,7 @@
 // los repetía tal cual. Y el conteo de "demandas civiles" mezclaba juicios
 // con investigaciones penales que se cerraron sin cargos (300), trámites que
 // no son demandas (187) y tránsito (277): de las 8 "demandas civiles" de
-// 1715532469, dos eran archivos de investigación y una un principio de
+// c-2a50c228, dos eran archivos de investigación y una un principio de
 // oportunidad, y se leían como negativos.
 //
 // Ahora cada demanda cae en una categoría de un catálogo cerrado. El modelo
@@ -88,7 +88,7 @@ const PALABRAS_CLAVE_DE_COBRO = [
   // ejecutivo -- el cobro de un título: pagaré, letra, cheque -- ("EJECUTIVO",
   // "EJECUTIVO ART. 413 C.P.C."). Hasta estructura-v8 sólo entraban las
   // formas largas y 17 personas con juicio ejecutivo figuraban con demandas
-  // civiles, no de cobro (1715532469 entre ellas).
+  // civiles, no de cobro (c-2a50c228 entre ellas).
   "EJECUTIVO",
   // Decisión del negocio del 2026-09-28 (estructura-v10): también son
   // cobro "DINERO" a secas (51 personas), la insolvencia (11) y la venta con
@@ -115,7 +115,7 @@ const PALABRAS_CLAVE_DE_COBRO = [
 // demandas que no lo son: "divorcio por mutuo consentimiento" (17, por
 // MUTUO), "daño moral" (11, MORAL contiene MORA), "ejecución por silencio
 // administrativo" (7, por EJECUCIÓN) y dos de pensión alimenticia (por
-// OBLIGACIÓN y ACTA DE MEDIACIÓN; una la citó el análisis de 1308725470
+// OBLIGACIÓN y ACTA DE MEDIACIÓN; una la citó el análisis de c-3293f7eb
 // como "demanda crediticia"). Ahora se buscan palabras completas, y lo de
 // familia, daño moral y actos administrativos queda afuera aunque
 // contenga una palabra clave. "Incumplimiento de contrato" y "cobro de

@@ -49,7 +49,7 @@ function edadDesde(fecha: unknown): number | null {
 // terminó). Resta 1 si el día del mes de d2 todavía no alcanza al de
 // d1 (mismo criterio que edadDesde) — sin este ajuste, año*12+mes solo
 // compara año/mes e ignora el día, redondeando SIEMPRE hacia arriba en
-// promedio (bug real: cédula 0501578256, cese 2021-09-30, hoy
+// promedio (bug real: cédula c-18fa16ee, cese 2021-09-30, hoy
 // 2026-09-12 -> daba 60 meses/"5 años" exactos en vez de 59/"4 años 11
 // meses" -- confirmado contra una herramienta externa que mostraba "4
 // años" para la misma fecha).
@@ -98,7 +98,7 @@ function dentroUltimos3Meses(fecha: unknown): boolean {
 // contribuyente/get_contribuyente_inf: un registro cuenta como "tuvo RUC"
 // solo si trae .ruc Y .fecha_inscripcion_ruc (Novadata a veces devuelve
 // un registro "cascarón" con estado.codigo=OK pero todos los campos
-// null cuando la persona nunca tuvo RUC — ver 1759544552).
+// null cuando la persona nunca tuvo RUC — ver c-636cb156).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
 // si fecha_reinicio_actividades es posterior a la más reciente de esas dos.
 // Cuál es el cese vigente lo decide ruc.ts (cancelación, suspensión
@@ -115,7 +115,7 @@ function ceseMasReciente(c: AnyRecord): Date | null {
 
 // Tipo del cese más reciente — SRI distingue "cancelación" (puede ser
 // un trámite ordinario, ej. cambio de régimen) de "suspensión
-// definitiva" (case real: cédula 0501578256, fecha_cancelacion Y
+// definitiva" (case real: cédula c-18fa16ee, fecha_cancelacion Y
 // fecha_suspension_definitiva coinciden en 2021/09/30 con
 // observ_solicitud_suspension="CESE DE ACTIVIDADES") — se prioriza la
 // etiqueta "suspension_definitiva" cuando esa fecha coincide con el
@@ -280,7 +280,7 @@ export function relacionConEmpleador(
 // pn_supa/novadata trae representanteLegal (representa a quien RECIBE
 // la pensión) y obligadoPrincipal (quien DEBE pagarla) como 2 personas
 // DISTINTAS. BUG real encontrado auditando el reporte del usuario
-// (cédula 0501578256): el código anterior marcaba pensionAlimenticiaEnMora
+// (cédula c-18fa16ee): el código anterior marcaba pensionAlimenticiaEnMora
 // para CUALQUIER registro de pn_supa donde apareciera el cliente, sin
 // mirar su rol — ahí representanteLegal="MONICA JANETH PICHUCHO PEREZ"
 // (la cliente) y obligadoPrincipal="ENRIQUE XAVIER CORNEJO ALBAN" (otra
@@ -541,7 +541,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // guardan la fecha del cese MÁS RECIENTE y la del reinicio MÁS
   // RECIENTE, no un historial completo de ciclos — por eso "16 años
   // desde el inicio" puede ser engañoso si la persona reinició y volvió
-  // a cesar (caso real: cédula 0502932429, inicio 2009, reinicio 2014,
+  // a cesar (caso real: cédula c-ba4c16f0, inicio 2009, reinicio 2014,
   // cese 2018 — el reinicio es ANTERIOR al cese más reciente, o sea
   // hoy está INACTIVA hace ~8 años, no "activa hace 16"). 5 casos:
   //   1. Sin RUC -> "sin_ruc".
@@ -693,7 +693,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Novadata
   // nunca vio una salida registrada", NO "sigue activo hoy" (mismo
   // hueco de dato que afiliacionIess/estadoAfiliacionIess más abajo).
-  // BUG real corregido acá (cédula 0501578256, validado contra el
+  // BUG real corregido acá (cédula c-18fa16ee, validado contra el
   // mecanizado del IESS): el único empleo de esta persona tiene su
   // último snapshot en 2021-11 (~4 años atrás) con fecSal vacío --
   // numeroEmpleadoresUltimos24Meses/antiguedadEmpleoActualMeses/
@@ -736,7 +736,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // Los vigentes son los que aportan en el mes más reciente. Con dos
   // empleos a la vez, la antigüedad es la del MÁS LARGO (decisión del
   // negocio, 2026-09-25). Antes se tomaba el primero de un orden por mes,
-  // que entre dos empleos del mismo mes es cualquiera: en 0704804749 salía
+  // que entre dos empleos del mismo mes es cualquiera: en c-fd1139cb salía
   // 2 meses -- un contrato nuevo -- teniendo otro empleo vigente de 46.
   //
   // Cada candidato exige lo mismo que antes: 3 meses de aportes en ese
@@ -799,7 +799,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     // empleo estable de años daba 0, igual que un cliente sin empleo
     // hace 2 años). fecSal vacío YA NO se trata como "sigue activo
     // hoy" sin más (bug real corregido junto con antiguedadEmpleoActualMeses
-    // arriba, mismo caso 0501578256) — se usa mesesDesdeUltimaEvidenciaActiva,
+    // arriba, mismo caso c-18fa16ee) — se usa mesesDesdeUltimaEvidenciaActiva,
     // que para fecSal vacío mira el (anio,mes) real del snapshot.
     numeroEmpleadoresUltimos24Meses: new Set(
       tiess
@@ -815,7 +815,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     // así que esos 6 registros eran 3 meses y el promedio daba la MITAD
     // de su ingreso real. Bug confirmado sobre la muestra: 4 personas
     // afectadas, 2 de ellas con el ingreso reportado exactamente a la
-    // mitad (cédulas 0105712012 y 0922854674).
+    // mitad (cédulas c-fd502ae7 y c-7db248d4).
     ingresoPromedioUltimos6Meses: (() => {
       const porMes = new Map<string, number>();
       for (const t of mecanizadoOrdenado) {
@@ -836,8 +836,8 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     // siempre "NO" para personas naturales de régimen general, así que
     // este campo daba false casi siempre). Corregido para usar la misma
     // fuente/lógica que tieneEstablecimientoActivo (ruc.ts) —
-    // validado contra SRI real, cédulas 0502937691 (activo) y
-    // 0502937675 (suspendido).
+    // validado contra SRI real, cédulas c-f059ebe9 (activo) y
+    // c-64955685 (suspendido).
     tieneRucActivo: tieneEstablecimientoActivo,
     tieneEstablecimientoActivo,
     esIndependiente: tieneEstablecimientoActivo,
@@ -939,8 +939,8 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   };
 
   // ---- seguridadSocial ----
-  // BUG real (auditoría pedida por el usuario, cédulas 0502932429 y
-  // 0501578256): pn_afiliacion_iess viene "faltante" (Novadata no pudo
+  // BUG real (auditoría pedida por el usuario, cédulas c-ba4c16f0 y
+  // c-18fa16ee): pn_afiliacion_iess viene "faltante" (Novadata no pudo
   // traer datos de ESE recurso puntual) en 32 de los 40 clientes de la
   // muestra -- incluyendo personas con historial laboral extenso y real
   // en tiess/mecanizado. afiliadoIessActivo devolvía `false` en todos
@@ -1096,7 +1096,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const coop = arr(fuentes, "buroCreditoCoop", "datosSuper");
   // val_venc_1..11: buckets de antigüedad de lo vencido (a diferencia de
   // val_saldo_total, que es el saldo total sin distinguir cuánto está
-  // realmente atrasado) — confirmado con caso real (cédula 0401592829,
+  // realmente atrasado) — confirmado con caso real (cédula c-c861d3f1,
   // 2 operaciones en cooperativas distintas con $928.39+$1353.12 en
   // buckets vencidos de un saldo total de $14,732.18).
   const CAMPOS_VENCIDO_COOP = Array.from({ length: 11 }, (_, i) => `val_venc_${i + 1}`);
@@ -1108,7 +1108,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     tieneOperacionConDemanda: coop.some((c) => (num(c.val_dem_judicial) ?? 0) > 0),
     tieneOperacionCastigada: coop.some((c) => (num(c.val_cart_castigada) ?? 0) > 0),
     // estructura-v8: 693 de 747 operaciones informan la cuota y no se
-    // leía. En 1715532469 son $2.294 al mes contra $1.000 declarados. Es
+    // leía. En c-2a50c228 son $2.294 al mes contra $1.000 declarados. Es
     // la única cuota conocida: los bancos no la informan.
     cuotaMensualTotal: redondear(coop.reduce((s, c) => s + (num(c.val_cuota_credito) ?? 0), 0)),
   };
@@ -1171,9 +1171,9 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaNovadata", "supas")];
   // Solo cuenta como deuda/mora DEL CLIENTE la que le corresponde como
   // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
-  // 0501578256 aparecía en mora por una deuda de otra persona).
+  // c-18fa16ee aparecía en mora por una deuda de otra persona).
   const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
-  // Un proceso una sola vez: la fuente los repite (1715532469 tiene 3
+  // Un proceso una sola vez: la fuente los repite (c-2a50c228 tiene 3
   // procesos en 12 registros). Sin número de proceso, cada registro vale
   // por uno.
   // Si el mismo proceso viene dos veces con deudas distintas, vale la
@@ -1215,7 +1215,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     // día": con solo pensionAlimenticiaEnMora=false los dos casos se
     // ven idénticos, y el modelo leyó el segundo donde había el
     // primero. Caso real reportado por el usuario sobre su propia
-    // cédula (0502937675, sin un solo registro en pn_supa): el análisis
+    // cédula (c-64955685, sin un solo registro en pn_supa): el análisis
     // decía "no se conoce el monto de la pensión comprometida, solo que
     // está al día". Mismo tipo de error que numeroEmpleadoresUltimos24Meses
     // en v9 — un valor que significa dos cosas opuestas.
@@ -1259,7 +1259,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // homonimosOpr/tconsephomonimos EXCLUIDOS a propósito: son otra persona
   // con el mismo nombre, cédula distinta — ver controles-bloqueo.ts,
   // código homonimo_en_lista_control (bug encontrado auditando cédulas
-  // 1713210456/1714000419: la identificación del "homónimo" nunca
+  // c-10a696c9/c-7c7071e4: la identificación del "homónimo" nunca
   // coincide con la del cliente consultado).
   const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce(
     (s, c) => s + arr(fuentes, "listasControl", c).length,
@@ -1281,7 +1281,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // impedimentoCargosPublicos.data es un ARRAY (no un objeto como el
   // resto de recursos "singleton") — obj() lo rechazaba por tipo y
   // devolvía null siempre, así que este campo daba false/null sin
-  // importar la realidad (bug encontrado auditando cédula 0502937691,
+  // importar la realidad (bug encontrado auditando cédula c-f059ebe9,
   // que SÍ tiene registraImpedimento=true real). Se agrega sobre todos
   // los elementos del array por si acaso viniera más de uno.
   const impedimentoRegistros = arr(fuentes, "impedimentoCargosPublicos", "data");

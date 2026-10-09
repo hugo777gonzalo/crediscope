@@ -39,7 +39,7 @@ mecanizado) y `pisoIngresoMensualReportado` (lo reportado en el corte).
 
 **Instrucciones del marco que quedaron desalineadas con fuentes-v8:**
 - "empleosActuales es la mejor fuente de estabilidad/capacidad": el
-  propio patrono aparece ahí como un empleo (0502937691 figura empleado
+  propio patrono aparece ahí como un empleo (c-f059ebe9 figura empleado
   de sí mismo, con cargo "ADMINISTRADOR"). `clienteEsSuPropioEmpleador`
   lo corrige a medias. Hay 31 personas en ese caso en la cartera.
 - No hay regla contra suponer un ingreso mayor sin fundamento, ni contra
@@ -348,7 +348,7 @@ internos de cada fuente.
   - informal con historial.
 - Las 3 cédulas Pichucho Muñoz que el negocio puede validar de primera
   mano.
-- 0500836663.
+- c-d7182582.
 
 Qué mirar en cada salida (los controles de la sección 4):
 - que no diga "piso";

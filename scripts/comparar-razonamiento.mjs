@@ -2,7 +2,7 @@
 // clientes y deja todo guardado para analizar: la respuesta cruda de cada
 // llamada (con su razonamiento interno) y un Excel para leerlo a mano.
 //
-// Nació el 2026-09-27: el primer análisis de 1715532469 con marco-v24
+// Nació el 2026-09-27: el primer análisis de c-2a50c228 con marco-v24
 // costó $0,147 y se cortó dos veces (6.000 y 10.000 tokens, 9.362 de
 // ellos de razonamiento). La respuesta visible se mantuvo en 950-1.700
 // tokens en todas las versiones del marco; lo que creció fue la

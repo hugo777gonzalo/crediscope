@@ -130,7 +130,7 @@
 // cumplimiento (tieneDelitoGraveSeguridad/categoriasDelitoGraveSeguridad,
 // ahora tieneDelitoSeguridadCiudadana/categoriasDelitoSeguridadCiudadana).
 // Validado con 4 cédulas reales aportadas por el usuario específicamente
-// para esto (0910521939, 1309022935, 1204212029, 0927016063) — confirmó
+// para esto (c-8e0922fb, c-57faa96e, c-7b1a4b5d, c-13e359f8) — confirmó
 // funcionando extorsión, tenencia de armas y lavado de activos, y
 // encontró un hueco real: "DELINCUENCIA ORGANIZADA" (COIP Art. 369)
 // aparecía 4 veces en 2 de los 4 clientes y no estaba en ninguna palabra
@@ -169,7 +169,7 @@
 //
 // v12: agrega 5 campos nuevos de estabilidad laboral y de actividad
 // económica (laboral), a pedido del usuario, validados con caso real
-// (cédula 0502932429, "Cristina Bearrazueta"):
+// (cédula c-ba4c16f0):
 // - estadoActividadEconomica/antiguedadUltimaEtapaActivaMeses/
 //   mesesInactivoActividadEconomica: Novadata/SRI solo guardan la fecha
 //   del cese y del reinicio MÁS RECIENTES, no un historial completo de
@@ -196,13 +196,13 @@
 // dedicado — ver process.ts.
 //
 // v13: ronda de auditoría sobre pruebas reales del usuario (cédulas
-// 0502932429 y 0501578256), 4 hallazgos de datos + 1 de redacción:
+// c-ba4c16f0 y c-18fa16ee), 4 hallazgos de datos + 1 de redacción:
 // - BUG grave: pensionAlimenticiaEnMora/deudaPensionAlimenticia (grupo
 //   riesgoJudicialCivil) no distinguían el ROL del cliente en el
 //   registro de pn_supa (representanteLegal, a quien LE DEBEN, vs.
 //   obligadoPrincipal, quien DEBE) — 6 de 12 clientes de la muestra con
 //   pensionAlimenticiaEnMora=true eran en realidad este error (caso
-//   confirmado: cédula 0501578256, la deuda real era de un tercero).
+//   confirmado: cédula c-18fa16ee, la deuda real era de un tercero).
 //   Se corrige en process.ts (esClienteObligadoSupa) — no requiere
 //   cambio de prompt, el dato que llega ahora ya viene correcto.
 // - seguridadSocial.afiliadoIessActivo ahora puede ser null (antes
@@ -216,12 +216,12 @@
 //   duracionEmpleoMasLargoMeses: corrige un bug donde un empleo con
 //   fecSal vacío en tiess se trataba como "sigue activo HOY" sin más,
 //   aunque el último dato real fuera de hace años (caso confirmado:
-//   cédula 0501578256, único empleo con último registro en 2021-11,
+//   cédula c-18fa16ee, único empleo con último registro en 2021-11,
 //   ~4 años atrás, daba "6 años 5 meses de antigüedad actual"). Ahora
 //   se exige que el último dato confirmado sea reciente — ver process.ts.
 // - laboral.tipoUltimoCeseRuc (nuevo): distingue si el cese más
 //   reciente del RUC fue una "cancelación" o una "suspensión
-//   definitiva" (caso real: cédula 0501578256) — ver guía nueva abajo.
+//   definitiva" (caso real: cédula c-18fa16ee) — ver guía nueva abajo.
 // - Corrección de redondeo: mesesEntreFechas (base de todos los campos
 //   "meses" del profile) ignoraba el día del mes, redondeando siempre
 //   hacia arriba en promedio (ej. cese 2021-09-30 daba "5 años" en vez
@@ -350,7 +350,7 @@
 // mismo lugar del orden.
 //
 // v24 (2026-09-27): de la revisión de los primeros análisis con v23
-// (1715532469, 1308725470). La mayoría de los errores de contenido eran de
+// (c-2a50c228, c-3293f7eb). La mayoría de los errores de contenido eran de
 // la estructura, que pasa a estructura-v8: el buró separa lo propio de lo
 // garantizado y lee la cartera que no devenga intereses, el retail informa
 // lo vencido, cooperativas la cuota, las pensiones se cuentan y suman por
@@ -373,8 +373,8 @@
 //    que no se había consultado algo que sí se consultó.
 //  - Impedimento para cargos públicos: por deuda con el Estado (149 de 152
 //    en la cartera) es "revisar y verificar la deuda", no un motivo de
-//    negar por sí solo (decisión del negocio). Hoy negaba a 0502937691 y
-//    1400488134, con el buró en A1. Por jubilación o por haber cobrado una
+//    negar por sí solo (decisión del negocio). Hoy negaba a c-f059ebe9 y
+//    c-bf14713c, con el buró en A1. Por jubilación o por haber cobrado una
 //    indemnización no es un riesgo.
 //  - Jubilados y militares o policías: dejar de aportar al IESS por
 //    jubilarse no es perder el ingreso (fuentes-v9); el servicio militar o
@@ -387,7 +387,7 @@
 // por categoría (demandasPorCategoria, estructura-v11, demandas.ts) en lugar
 // de 615 textos libres con artículos del COIP. Hasta v25 el modelo contaba
 // todo como "demandas civiles" -- también las investigaciones archivadas y
-// los trámites: de las 8 de 1715532469, dos eran archivos de investigación
+// los trámites: de las 8 de c-2a50c228, dos eran archivos de investigación
 // y una un principio de oportunidad. Acá: cuánto pesa cada categoría, que
 // las cerradas y los trámites no penalizan, y cómo leer cada indicio de
 // ingreso mayor sin convertirlo en un monto.

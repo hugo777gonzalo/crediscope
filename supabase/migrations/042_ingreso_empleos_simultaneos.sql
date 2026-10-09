@@ -7,9 +7,9 @@
 --
 -- Medido sobre 389 clientes reales, 8 quedaron mal calculados y 3 de
 -- forma grave:
---   0105712012   $825   -> $1.650   (+100%)
---   0922854674   $1.425 -> $2.850   (+100%)
---   0301955464   $646   -> $1.176   (+82%)
+--   c-fd502ae7   $825   -> $1.650   (+100%)
+--   c-7db248d4   $1.425 -> $2.850   (+100%)
+--   c-21025862   $646   -> $1.176   (+82%)
 --
 -- Ahora se suma POR MES y recién después se promedian los meses.
 --

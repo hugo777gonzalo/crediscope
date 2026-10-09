@@ -131,7 +131,7 @@ aceptada.
      automático de Anthropic ante rechazos (`fallbacks: "default"`; sólo
      cubre "cyber" y "frontier_llm", un "general_harms" vuelve como fallo
      con su categoría). Verificado con una llamada real del código
-     desplegado (1715532469: completa, USD 0,10).
+     desplegado (c-2a50c228: completa, USD 0,10).
    - **Comparación que lo decidió** (56 llamadas, USD 5,32; Excel en
      `research/comparacion-marco-v28-2026-10-03/`):
 
@@ -143,7 +143,7 @@ aceptada.
      | v28, Sonnet 5.5 | 0,067 | 22 | 1.358 | 12 de 13, ±42 |
 
      **El ruido es el piso:** el mismo perfil dos veces mueve el score ~40
-     y cambia 1 de 13 recomendaciones. 0502937675 (ingreso "Por
+     y cambia 1 de 13 recomendaciones. c-64955685 (ingreso "Por
      confirmar") pasó de aprobar a revisar con v28: el negocio confirmó
      que es lo correcto.
    - **Marco por cliente (v29), hecho y apagado**: ver la sección 3.

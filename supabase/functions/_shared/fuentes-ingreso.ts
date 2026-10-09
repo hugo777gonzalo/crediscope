@@ -87,7 +87,7 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 // RISE) cuenta para la continuidad en los meses en que la persona tenía un
 // RUC activo: hay una actividad independiente detrás. Sin RUC activo sigue
 // sin contar -- puede ser aportar para no perder la seguridad social.
-// Decisión del negocio sobre el caso 0704804749: un empleo público de 4
+// Decisión del negocio sobre el caso c-fd1139cb: un empleo público de 4
 // meses precedido por 24 de aporte unipersonal.
 //
 // v7 (2026-09-25): "RUC activo" mira el reinicio de actividades, como
@@ -95,7 +95,7 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 // 77 personas figuraban "informal o sin actividad" con el RUC activo. Salió
 // al cruzar el segmento con el perfil laboral (perfil-laboral.ts).
 //
-// v8 (2026-09-26), del caso 0502937691 -- dueño de una constructora que se
+// v8 (2026-09-26), del caso c-f059ebe9 -- dueño de una constructora que se
 // aporta el SBU y figuraba "dependiente privado":
 //  - El aporte bajo su propio RUC (patrono.ts) es trabajo por cuenta
 //    propia, lo declara la persona y lo elige ella: nunca "reportado por un
@@ -120,7 +120,7 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 //    cobra la pensión. No se le pide el certificado de afiliación del IESS,
 //    y la pantalla y el modelo no lo marcan sin información actual
 //    (dejoDeAparecerEnElIess). Las tres respuestas de la comparación lo
-//    leyeron como un negativo en 0500836663.
+//    leyeron como un negativo en c-d7182582.
 //  - El impuesto a la renta pagado es un indicio de ingreso mayor cuando no
 //    se explica con lo que declara al IESS (decisión del negocio del
 //    2026-09-28; cambia la del 2026-09-25, "no se deduce nada de la renta":
@@ -719,7 +719,7 @@ export const TIPOS_DE_SERVICIO_ACTIVO = new Set(Object.values(TIPO_SERVICIO_ACTI
 // Es lo que la pantalla muestra como "Sin información actual en el IESS" y
 // el modelo lee como una pérdida reciente de ingreso formal. Un jubilado
 // deja de aportar porque se jubiló: marcarlo así lo contaba como negativo
-// (0500836663, en las tres respuestas de la comparación). Se lee del
+// (c-d7182582, en las tres respuestas de la comparación). Se lee del
 // análisis guardado, así que vale para cualquier versión.
 export function dejoDeAparecerEnElIess(f: Record<string, unknown> | null | undefined): boolean {
   if (!f || f.apareceEnUltimoCorte !== false) return false;
@@ -1103,7 +1103,7 @@ export function analizarFuentesIngreso(
     paraConfirmar.push("Preguntar directamente de qué vive: con datos públicos no se distingue el trabajo informal de la ausencia de ingresos.");
   }
   // A un jubilado no se le pide el certificado de afiliación: dejó de
-  // aportar porque se jubiló (desde v9; a 0500836663, jubilada, se le
+  // aportar porque se jubiló (desde v9; a c-d7182582, jubilada, se le
   // pedía).
   if (apareceEnUltimoCorte === false && !esJubilado) {
     paraConfirmar.push(`Certificado de afiliación actualizado del IESS: no aparece en el corte ${corte} y el último registro es de ${ultimoMesCliente}.`);
@@ -1158,7 +1158,7 @@ export function analizarFuentesIngreso(
 // El sueldo anterior más alto se descartó: dice lo que ganó, no lo que gana.
 // El 2026-09-28 sumó un tercero (desde v9): el impuesto a la renta de los
 // dos últimos años fiscales, cuando lo que declara al IESS no alcanza para
-// generarlo. 1715532469 declara $1.000 al mes y su impuesto de 2025 fue de
+// generarlo. c-2a50c228 declara $1.000 al mes y su impuesto de 2025 fue de
 // $3.246; ninguna de las tres respuestas de la comparación lo pudo usar.
 //
 // Se calcula desde el análisis guardado (no se guarda), así que vale para

@@ -163,7 +163,7 @@ export default function Solicitudes() {
                 id="b-q"
                 value={textoBusqueda}
                 onChange={(e) => setTextoBusqueda(e.target.value)}
-                placeholder="0502937675 o CHAVEZ"
+                placeholder="Cédula o apellido"
                 style={{ flex: 1 }}
               />
               <button className="crediscope-btn" type="submit" style={{ padding: "7px 12px" }} title="Buscar">

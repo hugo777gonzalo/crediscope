@@ -1,6 +1,6 @@
 -- marco-v12 (ver supabase/functions/_shared/marco-interpretativo.ts):
 -- 5 campos nuevos de estabilidad laboral/actividad económica (grupo
--- laboral), validados con caso real (cédula 0502932429):
+-- laboral), validados con caso real (cédula c-ba4c16f0):
 --   - estadoActividadEconomica, antiguedadUltimaEtapaActivaMeses,
 --     mesesInactivoActividadEconomica: estado real de la actividad
 --     económica (RUC) más allá de solo "activo/inactivo" -- 5 casos

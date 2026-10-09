@@ -1,7 +1,7 @@
 -- marco-v18: distingue "no tiene pensión alimenticia" de "tiene y está
 -- al día".
 --
--- Bug reportado por el usuario sobre su propia cédula (0502937675): el
+-- Bug reportado por el usuario sobre su propia cédula (c-64955685): el
 -- análisis decía "no se cuenta con el monto de la pensión alimenticia
 -- comprometida (solo se sabe que está al día)". No tiene ninguna.
 --

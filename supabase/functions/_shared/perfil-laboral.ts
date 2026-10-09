@@ -36,7 +36,7 @@ import { TIPOS_DE_PENSION, TIPOS_DE_SERVICIO_ACTIVO } from "./fuentes-ingreso.ts
 
 // v2 (2026-09-26): un aporte cuyo patrono es la propia persona no es
 // dependencia (patrono.ts). En v1 contaba como empleo porque la
-// clasificación lo leía así: 0502937691, dueño de una constructora, salía
+// clasificación lo leía así: c-f059ebe9, dueño de una constructora, salía
 // "dependiente con actividad propia" trabajando para sí mismo. Desde
 // fuentes-v8 esos aportes ya llegan como cuenta propia; para los perfiles
 // guardados antes se reconoce acá por el nombre del patrono.

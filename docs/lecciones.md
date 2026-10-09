@@ -232,8 +232,8 @@ está el porqué. Una lección nueva va en los dos lugares.
   promedio: ese es el piso para decir que un cambio cambió algo. Sonnet 5.5
   con marco-v28 quedó dentro del ruido (12 de 13, ±42), a USD 0,067 contra
   0,101 y 22 s contra 55, razonando ~1.400 tokens contra ~4.500. Sonnet 5 se
-  cortó en 1715532469 dos de cuatro veces, gastando los 10.000 tokens en
-  razonar. El único cambio que no fue ruido: 0502937675 (ingreso "Por
+  cortó en c-2a50c228 dos de cuatro veces, gastando los 10.000 tokens en
+  razonar. El único cambio que no fue ruido: c-64955685 (ingreso "Por
   confirmar") pasó de aprobar a revisar con v28 en los dos modelos, y el
   negocio confirmó que revisar es lo correcto. Excel en
   `research/comparacion-marco-v28-2026-10-03/`.
@@ -249,7 +249,7 @@ está el porqué. Una lección nueva va en los dos lugares.
     en un caso, y se factura como salida.
   - **`max_tokens` es también un techo de tiempo.** Supabase corta la
     función a los 150 s y Sonnet escribe ~85-90 tokens por segundo: con
-    6.000 el análisis de 1715532469 salió sin texto, y con 10.000 se
+    6.000 el análisis de c-2a50c228 salió sin texto, y con 10.000 se
     cortó el JSON a los 110 s.
   - **La caché del marco no se leyó nunca**: 12 escrituras y 0 lecturas.
     Dura 5 minutos y entre dos análisis pasan 26 de mediana, así que se

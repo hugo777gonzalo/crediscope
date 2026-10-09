@@ -5,7 +5,7 @@ funciones, 2.567 perfiles recalculados). Resultado en la sección 7.
 
 ## 1. De dónde sale
 
-El negocio corrió marco-v23 sobre 1715532469, 1308725470 y 0502937675. La
+El negocio corrió marco-v23 sobre c-2a50c228, c-3293f7eb y c-64955685. La
 tercera salió bien (la respondió Sonnet). Las otras dos las respondió
 Haiku, el modelo base de la cascada, y trajeron:
 
@@ -31,7 +31,7 @@ antigüedad), la cartera que no devenga intereses (`noDevengaInteres`), la
 demanda judicial y el castigo. El perfil sólo suma por vencer y mora.
 - 71 operaciones en atraso tienen su monto en "no devenga": **56 personas
   con $626.743 figuran con $0 en mora**.
-- Caso: Produbanco E en 1308725470, $28.252 que no devengan. El modelo
+- Caso: Produbanco E en c-3293f7eb, $28.252 que no devengan. El modelo
   vio "E con $0 en mora" y lo marcó como contradicción, con razón.
 
 **Error de código:** `saldomora ?? mora` no cae a `mora` cuando
@@ -76,7 +76,7 @@ días de atraso (la Superintendencia la define por días de atraso).
 
 Es otra fuente, no el buró, y el perfil no separa lo vencido
 (`valorVencido`) del total. **85 personas tienen deuda retail vencida.**
-En 1308725470 los $763,84 están vencidos hace 960 días, y el modelo los
+En c-3293f7eb los $763,84 están vencidos hace 960 días, y el modelo los
 llamó "vigentes".
 
 **Propuesta:** se agrega `valorVencidoRetail`, y el marco explica que el
@@ -86,10 +86,10 @@ retail es una fuente aparte del buró.
 
 - `diasMoraMaxima` es el atraso **a la fecha del corte**, no uno
   histórico. El modelo lo leyó como histórico ("actualmente sin mora") en
-  1715532469, que tiene 10 días de atraso vigente en una operación de
+  c-2a50c228, que tiene 10 días de atraso vigente en una operación de
   $69.437.
 - **693 de 747 operaciones informan la cuota mensual** (`val_cuota_credito`)
-  y el perfil no la lee. En 1715532469 son $2.294 al mes, contra un
+  y el perfil no la lee. En c-2a50c228 son $2.294 al mes, contra un
   ingreso declarado de $1.000.
 
 **Propuesta:** se agrega `cuotaMensualTotal`, y el marco dice que los días
@@ -105,7 +105,7 @@ palabras completas:
 | "Divorcio por mutuo consentimiento" | 17 | MUTUO |
 | "Daño moral" | 11 | MORA |
 | "Ejecución por silencio administrativo" | 7 | EJECUCIÓN |
-| Pensión y alimentos (incluido el caso de 1308725470) | 2 | ACTA DE MEDIACIÓN, OBLIGACIÓN |
+| Pensión y alimentos (incluido el caso de c-3293f7eb) | 2 | ACTA DE MEDIACIÓN, OBLIGACIÓN |
 
 Son unos 37 de 941.
 
@@ -116,7 +116,7 @@ del negocio siguen siendo crediticias "Incumplimiento de contrato" y
 
 ### 2.5 Pensión alimenticia
 
-La fuente repite cada proceso (1715532469 tiene 3 procesos en 12
+La fuente repite cada proceso (c-2a50c228 tiene 3 procesos en 12
 registros). El perfil:
 - toma la deuda **mayor, no la suma**: 13 personas con la deuda
   subestimada;
@@ -135,7 +135,7 @@ son un gasto.
 ### 2.6 Préstamos IESS/BIESS
 
 `numeroCreditosFormales` cuenta los préstamos quirografarios e
-hipotecarios del IESS/BIESS. En 1308725470 son 6, como las 6 operaciones
+hipotecarios del IESS/BIESS. En c-3293f7eb son 6, como las 6 operaciones
 del buró, y el modelo las mezcló ("6 operaciones formales").
 
 **Propuesta:** en el perfil del modelo se llama `numeroPrestamosIessBiess`.
@@ -144,7 +144,7 @@ El nombre guardado queda, como `pisoIngresoMensualReportado`.
 ### 2.7 Deuda total
 
 No hay una deuda total del sistema. El modelo presentó $258.798 (bancos y
-Diners) como "la cartera vigente" de 1715532469, sin los $84.778 de
+Diners) como "la cartera vigente" de c-2a50c228, sin los $84.778 de
 cooperativas.
 
 **Propuesta:** el perfil del modelo agrega un bloque `endeudamiento`:
@@ -270,9 +270,9 @@ La métrica gerencial de mora cuenta 88 personas. Tres personas cuya única
 calificación es "AL" la muestran con su nombre.
 
 **Casos de la revisión:**
-- 1308725470 muestra $28.252,63 en atraso (la E de Produbanco), el
+- c-3293f7eb muestra $28.252,63 en atraso (la E de Produbanco), el
   retail de $763,84 vencido, 6 préstamos IESS/BIESS con su nombre, 0
   demandas crediticias (el incidente de pensión pasó a civil) y 2
   pensiones vigentes por $717,16 al mes.
-- 1715532469 muestra $343.577 de deuda propia total y $2.294 de cuota
+- c-2a50c228 muestra $343.577 de deuda propia total y $2.294 de cuota
   conocida.

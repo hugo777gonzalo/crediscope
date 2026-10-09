@@ -85,7 +85,7 @@ const ANTHROPIC_WORKSPACE_ID = Deno.env.get("ANTHROPIC_WORKSPACE_ID") ?? "";
 // los 14 casos de validación contra Sonnet 5: misma recomendación 12 de 13,
 // dentro del ruido (Sonnet 5 contra sí mismo, también 12 de 13), a USD
 // 0,067 contra 0,101 y 22 s contra 55, porque razona ~1.400 tokens contra
-// ~4.500. Sonnet 5 se cortó en 1715532469 dos de cuatro veces (10.000
+// ~4.500. Sonnet 5 se cortó en c-2a50c228 dos de cuatro veces (10.000
 // tokens razonando); Sonnet 5.5 nunca.
 const MODELO = "claude-sonnet-5-5";
 
@@ -105,7 +105,7 @@ const MODELOS_CON_RESPALDO = new Set(["claude-sonnet-5-5"]);
 // la cascada, donde casi todo lo respondía Haiku (mediana 1.256). Sonnet
 // usa mucho más: sus respuestas completas en 60 días tuvieron mediana
 // 5.075 y máximo 5.903, al borde. Con Sonnet único, el primer análisis
-// de 1715532469 gastó los 6.000 razonando y no llegó a escribir ni una
+// de c-2a50c228 gastó los 6.000 razonando y no llegó a escribir ni una
 // línea de la respuesta. El techo lo pone el tiempo, no el costo (se paga
 // lo que se usa): Sonnet escribe ~85 tokens por segundo, 10.000 son ~2
 // minutos, y Supabase corta la respuesta de la función a los 150 s.
@@ -144,7 +144,7 @@ function opcionesDeRazonamiento(config: ConfigRazonamiento): Record<string, unkn
 
 // La forma de la respuesta, garantizada por la API (marco-v28). Antes la
 // pedía el marco en texto, y una respuesta podía salir con JSON roto
-// (1715532469, cortado en el carácter 1.579) o con una recomendación fuera
+// (c-2a50c228, cortado en el carácter 1.579) o con una recomendación fuera
 // de la lista. El orden de los campos es el de siempre: el modelo los
 // escribe en ese orden. El rango del score (1-999) no se puede expresar en
 // el esquema; lo dice el marco y lo acota interpretar().

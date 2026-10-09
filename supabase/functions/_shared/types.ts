@@ -241,7 +241,7 @@ export interface StandardClientProfile {
     // guardan la fecha del cese y del reinicio MÁS RECIENTES, no un
     // historial completo de ciclos, así que "años desde el inicio" solo
     // alcanza cuando nunca hubo cese. Ver los 5 casos documentados en
-    // process.ts (caso real confirmado: cédula 0502932429 — reinicio
+    // process.ts (caso real confirmado: cédula c-ba4c16f0 — reinicio
     // 2014 anterior al cese 2018, o sea inactiva hace ~8 años pese a
     // que el inicio fue en 2009).
     estadoActividadEconomica:
@@ -255,7 +255,7 @@ export interface StandardClientProfile {
     mesesInactivoActividadEconomica: number | null; // null si está activa
     // Tipo del cese más reciente del RUC (null si nunca hubo cese) —
     // SRI distingue "cancelación" (puede ser un trámite ordinario) de
-    // "suspensión definitiva" (case real: cédula 0501578256, fecha de
+    // "suspensión definitiva" (case real: cédula c-18fa16ee, fecha de
     // suspensión definitiva = fecha de cancelación, con
     // observ_solicitud_suspension="CESE DE ACTIVIDADES"). Informativo,
     // no cambia estadoActividadEconomica ni el score por sí solo.
@@ -266,7 +266,7 @@ export interface StandardClientProfile {
     // menos 3 snapshots mensuales confirmados para ese empleo Y el
     // último snapshot es reciente (≤3 meses) — fecSal vacío en tiess
     // NO significa "sigue activo hoy", solo "Novadata nunca registró
-    // una salida" (caso real: cédula 0501578256, único empleo con
+    // una salida" (caso real: cédula c-18fa16ee, único empleo con
     // último snapshot en 2021-11 y fecSal vacío — sin este chequeo daba
     // "6 años 5 meses de antigüedad actual" para un empleo sin
     // evidencia real desde hace ~4 años).
@@ -378,7 +378,7 @@ export interface StandardClientProfile {
     // Desde estructura-v8. La cartera que no devenga intereses: la parte
     // de una operación en atraso que el banco dejó de contar como
     // productiva. No se leía, y 56 personas con $626.743 así figuraban
-    // con $0 en mora (una E de Produbanco con $28.252 en 1308725470).
+    // con $0 en mora (una E de Produbanco con $28.252 en c-3293f7eb).
     saldoNoDevengaIntereses?: number;
     // Vencido + no devenga + demanda judicial + castigo: todo lo propio
     // que está en atraso.
@@ -478,7 +478,7 @@ export interface StandardClientProfile {
     // él/ella LE DEBEN, no al revés. BUG real corregido: 6 de 12
     // clientes de la muestra de auditoría con pensionAlimenticiaEnMora=true
     // eran en realidad este error de rol (caso confirmado: cédula
-    // 0501578256).
+    // c-18fa16ee).
     // false => no tiene ninguna pensión alimenticia a su cargo. Sin
     // este campo, pensionAlimenticiaEnMora=false significaba a la vez
     // "no tiene" y "tiene y está al día" (ver process.ts).

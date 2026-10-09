@@ -16,7 +16,7 @@
 //
 // Confirmados con casos reales: lavado de activos, extorsión, tenencia de
 // armas, delincuencia organizada, asociación ilícita y asesinato/homicidio
-// (cédulas 0704385103, 1204212029, 1309022935, 0927016063). Trata de
+// (cédulas c-4e0fe648, c-7b1a4b5d, c-57faa96e, c-13e359f8). Trata de
 // personas sigue siendo terminología del COIP por conocimiento general —
 // ajustar si aparece un caso real que no se detecta.
 //

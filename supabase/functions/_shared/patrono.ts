@@ -10,7 +10,7 @@
 //
 // La regla anterior miraba sólo el nombre: el empleador tenía que llevar un
 // apellido y todos los nombres de pila del cliente. Daba falsos positivos
-// con el padre homónimo -- 0912774072 y 0920873858 figuraban como su propio
+// con el padre homónimo -- c-23e932a9 y c-03d97cee figuraban como su propio
 // empleador trabajando para alguien con sus mismos nombres y otro segundo
 // apellido, con un RUC que no es el suyo. Medido el 2026-09-26 sobre el
 // crudo de 2.567 clientes: 483 aportan bajo su propio RUC.
@@ -23,7 +23,7 @@
 // empleador, que para el patrono persona natural es el SECTOR de su negocio
 // ("6-CONSTRUCCION", "2-EMPRESA PRIVADA"). 40 personas quedaron como
 // dependientes, con su propio aporte "reportado por un tercero" y
-// confirmado -- el caso que lo destapó, 0502937691, es dueño de una
+// confirmado -- el caso que lo destapó, c-f059ebe9, es dueño de una
 // constructora con dos empleados y se aporta el SBU.
 //
 // El nombre queda de respaldo para los aportes que llegan sin RUC, y exige

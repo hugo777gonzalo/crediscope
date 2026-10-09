@@ -14,7 +14,7 @@
 > - `tributario.esAfiliadoUnipersonal`: misma fuente (`contribuyente`);
 >   un registro "cascarón" con `estado.codigo=OK` pero todos los campos
 >   `null` (Novadata lo hace cuando la persona nunca tuvo RUC — ver
->   cédula 1759544552) ahora da `false`, no `null`.
+>   cédula c-636cb156) ahora da `false`, no `null`.
 > - `laboral.empleoActual` (empleador/cargo/salarioAprox): la fuente
 >   correcta es `trabajoHistoricosMecanizado` (trae `baseDate`
 >   `"YYYY-MM"`, la fecha real de actualización mensual de IESS), no
@@ -40,8 +40,8 @@
 > cortes de respuesta a medias por `max_tokens` (`SyntaxError` al
 > parsear el JSON de salida) en clientes con mucho historial judicial.
 >
-> **v4 — auditoría contra el SRI real (cédulas 0502937691 y
-> 0502937675), corrigió `laboral.tieneRucActivo`:** leía `.obligado`
+> **v4 — auditoría contra el SRI real (cédulas c-f059ebe9 y
+> c-64955685), corrigió `laboral.tieneRucActivo`:** leía `.obligado`
 > ("obligado a llevar contabilidad" — casi siempre "NO" para personas
 > naturales de régimen general, sin relación con el estado del RUC), lo
 > que hacía que el campo diera `false` casi siempre sin importar el
@@ -58,7 +58,7 @@
 > El usuario señaló que el estado del RUC (a nivel de contribuyente) es
 > DISTINTO del estado de cada establecimiento — una persona puede tener
 > el RUC activo con un establecimiento abierto y otro cerrado.
-> Confirmado con datos reales: la cédula 0502937675 tiene 2
+> Confirmado con datos reales: la cédula c-64955685 tiene 2
 > establecimientos (el SRI solo mostraba la matriz). El recurso
 > `establecimientoActEconomica` (dejado de usar para
 > `tieneEstablecimientoActivo` en v2 por ser la fuente equivocada para
@@ -92,7 +92,7 @@
 > fiscalía/judicial) — el helper `obj()` rechaza arrays por tipo y
 > devolvía `null` siempre, así que este campo daba `false`/`null` **para
 > absolutamente todos los clientes, sin importar la realidad**.
-> Encontrado auditando cédula 0502937691 (la misma del caso RUC): SÍ
+> Encontrado auditando cédula c-f059ebe9 (la misma del caso RUC): SÍ
 > tiene `registraImpedimento: true` real, con causal "DEUDORES A
 > ENTIDADES DEL SECTOR PUBLICO" — se estaba mostrando como "sin
 > impedimento" (clasificado "positivo") cuando en realidad tiene un
@@ -113,7 +113,7 @@
 > trae el rol de cada parte por cédula — se reemplaza por
 > `numeroDenunciasComoSospechoso` (penaliza) y
 > `numeroDenunciasComoVictima` (solo contexto). Confirmado con datos
-> reales: cédula 0961413416 aparece como SOSPECHOSO en una denuncia por
+> reales: cédula c-ba2f93c3 aparece como SOSPECHOSO en una denuncia por
 > ABUSO DE CONFIANZA — antes se contaba igual que las denuncias donde
 > otros clientes son solo denunciantes/víctimas. `framework-v5`.
 >
@@ -157,7 +157,7 @@
 > trata de personas, tenencia/porte de armas y extorsión. Se revisan
 > demandas, denuncias y descripción de antecedentes penales. **Ojo:**
 > de estas categorías, solo lavado de activos tiene un caso real
-> confirmado en la muestra (cédula 0704385103, demanda "317 LAVADO DE
+> confirmado en la muestra (cédula c-4e0fe648, demanda "317 LAVADO DE
 > ACTIVOS...") — el resto de palabras clave son terminología del COIP
 > por conocimiento general, sin validar contra casos reales; ajustar si
 > aparece un caso real que no se detecta. `framework-v7`.
@@ -204,19 +204,19 @@
 >   registros NUNCA traen la cédula del cliente consultado, son OTRA
 >   persona con el mismo nombre. Confirmado con 4 casos reales
 >   (identificación del "homónimo" nunca coincide con la del cliente:
->   cédulas 1713210456, 1714000419, y 2 casos en 0912771995). Ahora es
+>   cédulas c-10a696c9, c-7c7071e4, y 2 casos en c-33f99fb0). Ahora es
 >   informativo, no bloqueante —
 >   `cumplimiento.tieneHomonimoEnListaControl`, hallazgo
 >   `homonimo_en_lista_control` con `bloqueante: false`.
 > - `cumplimiento.detallePep` (nuevo) — antes PEP se colapsaba a un
 >   booleano; ahora expone `cargo`/`empresa`/`sueldo`/`fecha` del
 >   registro PEP más reciente (confirmado poblado en 5/35 clientes
->   reales, ej. cédula 0916036452: "Director Administrativo, GAD
+>   reales, ej. cédula c-66c4bfb5: "Director Administrativo, GAD
 >   Samborondón, $2,368, 2024-11-25").
 > - `comportamientoBancario.saldoEnMoraBuroCredito` /
 >   `comportamientoCooperativas.saldoEnMora` (nuevos) — `saldoVigente`/
 >   `saldoTotal` NO incluyen lo que está en mora (campos separados en
->   Novadata). Caso real (cédula 0401592829): 4 operaciones bancarias
+>   Novadata). Caso real (cédula c-c861d3f1): 4 operaciones bancarias
 >   calificación E, `saldoVigente = 0` en las 4, pero **$11,812.67**
 >   reales en mora (`saldomora`) — `saldoTotalVigente` solo hubiera
 >   mostrado $0, ocultando un default severo.
@@ -226,7 +226,7 @@
 >   2 años (mismo valor, casos opuestos — bug de semántica, no de
 >   cálculo). Ahora cuenta empleadores ACTIVOS en algún momento de los
 >   últimos 24 meses, usando `fecSal` (fecha de salida, vacía si el
->   empleo sigue activo hoy) — caso real cédula 1717947368 (empleo
+>   empleo sigue activo hoy) — caso real cédula c-5515c4b7 (empleo
 >   estable desde 2018): pasó de 0 a 1.
 > - Se refrescó la caché local de los 25 clientes originales
 >   (`research/novadata-raw/`, gitignored) con `--force`, porque
@@ -243,7 +243,7 @@
 > `cumplimiento` (`tieneDelitoGraveSeguridad`/`categoriasDelitoGraveSeguridad`,
 > ahora `tieneDelitoSeguridadCiudadana`/`categoriasDelitoSeguridadCiudadana`).
 > Validado con 4 cédulas reales aportadas específicamente para esto
-> (0910521939, 1309022935, 1204212029, 0927016063):
+> (c-8e0922fb, c-57faa96e, c-7b1a4b5d, c-13e359f8):
 > - Confirmó funcionando **extorsión**, **tenencia de armas** y **lavado
 >   de activos** (2 casos reales más, sumados al original).
 > - Encontró un hueco real: **"DELINCUENCIA ORGANIZADA"** (COIP Art.
@@ -460,7 +460,7 @@ interface StandardClientProfile {
 > **estructura-v5 (2026-09-25)** — Con dos empleos vigentes a la vez,
 > `antiguedadEmpleoActualMeses` es la del más largo (decisión del negocio).
 > Antes era la del primero de un orden por mes, que entre dos empleos del
-> mismo mes es cualquiera: 0704804749 tenía 2 meses (un contrato nuevo)
+> mismo mes es cualquiera: c-fd1139cb tenía 2 meses (un contrato nuevo)
 > con otro empleo vigente de 46.
 
 > **estructura-v6 (2026-09-25)** — "RUC activo" (`tieneRucActivo`,
@@ -548,7 +548,7 @@ interface StandardClientProfile {
 > 1. `recalcular-grupos.mjs --grupos=... --ignorar=fuentesIngreso --bloqueo`;
 > 2. `recalcular-fuentes-ingreso.mjs`.
 >
-> 1715532469 y 1308725470 quedan en v8: se reconsultaron el 2026-09-27 y
+> c-2a50c228 y c-3293f7eb quedan en v8: se reconsultaron el 2026-09-27 y
 > su crudo no está en local.
 
 > **estructura-v10 (2026-09-28)** — Decisión del negocio sobre los tipos de
@@ -617,7 +617,7 @@ interface StandardClientProfile {
 >
 > Recalculados 2.564 perfiles con
 > `recalcular-grupos.mjs --grupos=riesgoJudicialCivil,riesgoJudicialCrediticio`;
-> 1308725470 se reconsultó. 0501418826 y 0918563750 quedaron en v11: se
+> c-3293f7eb se reconsultó. c-03646286 y c-a09d9e5d quedaron en v11: se
 > consultaron desde la pantalla después del respaldo y su crudo local es de
 > un perfil anterior.
 > Dos correcciones de la limpieza, dentro de la misma versión, se

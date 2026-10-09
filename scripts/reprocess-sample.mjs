@@ -87,7 +87,7 @@ function num(v) {
 // contribuyente/get_contribuyente_inf: un registro cuenta como "tuvo RUC"
 // solo si trae .ruc Y .fecha_inscripcion_ruc (Novadata a veces devuelve
 // un registro "cascarón" con estado.codigo=OK pero todos los campos
-// null cuando la persona nunca tuvo RUC — ver 1759544552).
+// null cuando la persona nunca tuvo RUC — ver c-636cb156).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
 // si fecha_reinicio_actividades es posterior a la más reciente de esas dos.
 function ceseMasReciente(c) {
@@ -354,7 +354,7 @@ function buildStandardProfile(raw, cedula) {
   // Antigüedad laboral -- fuente tiess (fecIng/fecSal), independiente
   // de empleoActual -- ver nota completa en process.ts (incluye el bug
   // de "fecSal vacío = sigue activo hoy" corregido con
-  // mesesDesdeUltimaEvidenciaActiva, caso real 0501578256).
+  // mesesDesdeUltimaEvidenciaActiva, caso real c-18fa16ee).
   const anioMesA0 = (t) => {
     const anio = num(t.anio);
     const mes = num(t.mes);
@@ -594,7 +594,7 @@ function buildStandardProfile(raw, cedula) {
   const demandasOfendido = arr(fuentes, "demandasOfendido", "demandas");
   const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaNovadata", "supas")];
   // Solo cuenta como deuda/mora del cliente la que le corresponde como
-  // obligado -- ver nota completa en process.ts (bug real: 0501578256).
+  // obligado -- ver nota completa en process.ts (bug real: c-18fa16ee).
   const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
   const delitoDe = (d) => d.demanda?.delito;
   const demandasCrediticias = demandas.filter((d) => esDemandaProblemaCrediticio(delitoDe(d)));
