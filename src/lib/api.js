@@ -472,10 +472,12 @@ export const CLIENTES_POR_PAGINA = 50;
 // para los que tienen al menos uno. Se filtra en la base, sobre la columna
 // indicios_ingreso de la bandeja.
 export async function getPerfilesConFuentesIngreso({ segmento = null, estado = null, indicio = null, pagina = 0, porPagina = CLIENTES_POR_PAGINA } = {}) {
+  // Sin las personas sintéticas de Aval (118): no existen y torcían la lista.
   let q = supabase
     .from("bandeja_solicitudes")
     .select("perfil_id, client_id, cedula, perfil_at", { count: "exact" })
-    .not("fuente_segmento", "is", null);
+    .not("fuente_segmento", "is", null)
+    .eq("es_sintetico", false);
   if (segmento) q = q.eq("fuente_segmento", segmento);
   if (estado) q = q.eq("fuente_estado", estado);
   if (indicio === "cualquiera") q = q.not("indicios_ingreso", "is", null).neq("indicios_ingreso", "{}");
@@ -800,7 +802,9 @@ export async function getBandejaSolicitudes(filtros = {}) {
   const f = filtrosBandeja(filtros);
   const criterio = ORDENES_BANDEJA[orden] ?? ORDENES_BANDEJA.reciente;
 
-  let q = supabase.from("bandeja_solicitudes").select("*", { count: "exact" });
+  // Sin las personas sintéticas de Aval (118); se siguen abriendo por su
+  // cédula desde el expediente.
+  let q = supabase.from("bandeja_solicitudes").select("*", { count: "exact" }).eq("es_sintetico", false);
 
   if (f.p_desde) q = q.gte("ultima_actividad", f.p_desde);
   if (f.p_hasta) q = q.lte("ultima_actividad", f.p_hasta);
@@ -859,6 +863,7 @@ export async function getSegmentosDeLaCartera() {
       .from("bandeja_solicitudes")
       .select("fuente_segmento", opciones)
       .not("fuente_segmento", "is", null)
+      .eq("es_sintetico", false)
       .order("client_id")
   );
   return [...new Set(filas.map((f) => f.fuente_segmento))].sort();
