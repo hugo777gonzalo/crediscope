@@ -1,0 +1,29 @@
+# Actualizaciones de dependencias (auditoría externa del 2026-10-09, E2).
+# Cada una llega como un PR que pasa por los controles; se fusiona a mano.
+#
+# No cubre: xlsx (viene del CDN de SheetJS, con su huella en
+# package-lock.json) ni las importaciones de las Edge Functions
+# (https://esm.sh/@supabase/supabase-js@2, sin fijar: E12, pendiente).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: America/Guayaquil
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "dependencias"
+    groups:
+      menores:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+      timezone: America/Guayaquil
+    commit-message:
+      prefix: "dependencias"

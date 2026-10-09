@@ -1,0 +1,86 @@
+name: Controles
+
+# Corre en cada pedido de fusión (PR) a main y en cada push a main
+# (auditoría externa del 2026-10-09, E2). Hasta ese día la integración
+# continua sólo compilaba y publicaba: un error llegaba a producción sin que
+# nada lo frenara. Con main protegida, un PR no se fusiona si un control
+# está en rojo.
+#
+# Los nombres de los trabajos (name:) son los que exige la protección de la
+# rama: si se cambia uno, cambiarlo también en la regla de main o el PR
+# queda esperando un control que ya no existe.
+#
+# Las acciones van fijadas por huella (SHA) y no por etiqueta: una etiqueta
+# se puede mover y meter código ajeno en esta corrida. Dependabot las
+# actualiza (.github/dependabot.yml).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: controles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pantalla:
+    name: pantalla
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # Sin las variables de Supabase compila igual: la pantalla se
+      # construye y avisa en el navegador que no está configurada.
+      - run: npm run build
+
+  funciones:
+    name: funciones
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          # La misma que se usa en la máquina (npx deno@2.9.6).
+          deno-version: v2.9.6
+      # El TypeScript de las funciones no lo verifica el despliegue: hasta
+      # el 2026-10-09 nunca se había chequeado (dio cero errores).
+      - run: deno check --no-lock supabase/functions/*/index.ts
+      - run: deno test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/
+
+  guiones:
+    name: guiones
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+      # Los guiones no pasan por lint ni build: al menos que compilen.
+      - run: for f in scripts/*.mjs scripts/_comun/*.mjs; do node --check "$f"; done
+      # El detector de eventos se prueba sin base, sin red y sin datos de
+      # personas; las otras pruebas de scripts/ necesitan la base viva.
+      - run: node scripts/probar-detector.mjs
+
+  secretos:
+    name: secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      # Con el repositorio privado y el plan gratuito, GitHub deja de buscar
+      # secretos en cada push: esto lo reemplaza.
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
