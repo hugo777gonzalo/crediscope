@@ -9,8 +9,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
-import { type Actor, exigirRol, identificarActor } from "../_shared/autorizacion.ts";
-import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
+import { type Actor, clavesIguales, exigirRol, identificarActor } from "../_shared/autorizacion.ts";
+import { consultarTodasLasFuentes, duracionesPorFuente, personaNoExiste } from "../_shared/novadata-client.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
@@ -22,6 +22,7 @@ import { estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSi
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const GUIONES_CLAVE = Deno.env.get("GUIONES_CLAVE") ?? "";
 
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -31,19 +32,6 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // El rol que trae el JWT del encabezado ("service_role", "authenticated").
-  // La firma ya la verificó la plataforma (verify_jwt = true).
-  const rolDelToken = (encabezado: string | null): string | null => {
-    const partes = (encabezado ?? "").replace(/^Bearer\s+/i, "").split(".");
-    if (partes.length !== 3) return null;
-    try {
-      const b64 = partes[1].replace(/-/g, "+").replace(/_/g, "/");
-      return JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)))?.role ?? null;
-    } catch {
-      return null;
-    }
-  };
-
   // Quién llama, ANTES de mirar el cuerpo. Hasta el 2026-10-09 esta
   // función sólo anotaba al usuario "para la auditoría" y seguía: el
   // portón de Supabase deja pasar la clave pública (va en el JavaScript
@@ -52,10 +40,26 @@ Deno.serve(async (req) => {
   // perfil entero y anotarlo a nombre de otro usuario con `actorId`.
   // Lo encontró la auditoría de seguridad de ese día, probando desde
   // afuera con la clave pública.
+  //
+  // Los guiones (consultar-lote.mjs) entran con una clave propia,
+  // GUIONES_CLAVE, en el encabezado x-guiones-clave. Hasta la tarde del
+  // mismo día se reconocían por el rol "service_role" leído del token SIN
+  // verificar su firma, confiando en que lo hacía el portón
+  // (verify_jwt = true). Con verify_jwt apagado -- pasó el 2026-09-16 --,
+  // un token armado a mano que dijera service_role saltaba exigirRol()
+  // (auditoría externa, E4). La clave se compara acá, en tiempo constante,
+  // y no depende de ninguna configuración de la plataforma.
   const authHeader = req.headers.get("Authorization");
-  const conClaveDeServicio = rolDelToken(authHeader) === "service_role";
+  const claveDeGuiones = req.headers.get("x-guiones-clave");
+  const desdeUnGuion = claveDeGuiones !== null;
+  if (desdeUnGuion && (!GUIONES_CLAVE || !clavesIguales(claveDeGuiones, GUIONES_CLAVE))) {
+    return new Response(JSON.stringify({ error: "no autorizado" }), {
+      status: 401,
+      headers: { ...corsHeaders, "content-type": "application/json" },
+    });
+  }
   let actor: Actor | null = null;
-  if (!conClaveDeServicio) {
+  if (!desdeUnGuion) {
     actor = await identificarActor(
       authHeader,
       SUPABASE_URL,
@@ -66,15 +70,15 @@ Deno.serve(async (req) => {
     const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
     if (rechazo) return rechazo;
   }
-  // La base tiene que estar al día con lo que este código necesita (116).
+  // La base tiene que estar al día con lo que este código necesita (ESQUEMA_MINIMO en _shared/version-esquema.ts).
   const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
   if (sinEsquema) return sinEsquema;
 
   let cedula: string | undefined;
-  // Quién se hace cargo, cuando llama el guion de lotes con la clave de
-  // servicio. Con una sesión de usuario se ignora: manda la sesión.
+  // Quién se hace cargo, cuando llama un guion con la clave de guiones.
+  // Con una sesión de usuario se ignora: manda la sesión.
   let actorDeclarado: string | undefined;
-  // Sólo se honra con la clave de servicio: ver al final.
+  // Sólo se honra con la clave de guiones: ver al final.
   let devolverCrudo = false;
   // Por qué se puede consultar a estas personas, declarado una vez por
   // lote (decisión del negocio del 2026-10-09): la IFI garantiza por
@@ -92,24 +96,24 @@ Deno.serve(async (req) => {
     // body inválido, se maneja abajo
   }
 
-  // Con la clave de servicio el responsable es obligatorio y tiene que
-  // ser un usuario real: una consulta que nadie ordenó no se puede
-  // explicar al titular ni a un auditor (el 2026-10-07 quedó una así).
-  // La base legal también: es lo primero que pregunta un auditor de
-  // protección de datos sobre una consulta masiva.
-  if (conClaveDeServicio) {
+  // Desde un guion el responsable es obligatorio y tiene que ser un
+  // usuario real: una consulta que nadie ordenó no se puede explicar al
+  // titular ni a un auditor (el 2026-10-07 quedó una así). La base legal
+  // también: es lo primero que pregunta un auditor de protección de datos
+  // sobre una consulta masiva.
+  if (desdeUnGuion) {
     const { data: responsable } = typeof actorDeclarado === "string" && actorDeclarado.length > 0
       ? await serviceClient.from("profiles").select("id").eq("id", actorDeclarado).maybeSingle()
       : { data: null };
     if (!responsable) {
       return new Response(
-        JSON.stringify({ error: "Con la clave de servicio hay que mandar 'actorId': el id de un usuario existente que se hace cargo de la consulta." }),
+        JSON.stringify({ error: "Desde un guion hay que mandar 'actorId': el id de un usuario existente que se hace cargo de la consulta." }),
         { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } },
       );
     }
     if (!baseLegal || baseLegal.length < 10) {
       return new Response(
-        JSON.stringify({ error: "Con la clave de servicio hay que mandar 'baseLegal': bajo qué contrato o base legal se consulta a estas personas (al menos 10 caracteres)." }),
+        JSON.stringify({ error: "Desde un guion hay que mandar 'baseLegal': bajo qué contrato o base legal se consulta a estas personas (al menos 10 caracteres)." }),
         { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } },
       );
     }
@@ -251,6 +255,7 @@ Deno.serve(async (req) => {
         structure_version: PROCESS_VERSION,
         requested_by: actorId,
         duracion_ms: duracionMs,
+        duracion_por_fuente_ms: duracionesPorFuente(raw),
       })
       .select("*")
       .single();
@@ -262,8 +267,10 @@ Deno.serve(async (req) => {
       actor: actorId,
       action: "client.structure",
       client_id: client.id,
-      meta: conClaveDeServicio
-        ? { client_profile_id: saved.id, origen: "clave_de_servicio", base_legal: baseLegal }
+      // "guion" desde el 2026-10-09 (E4); las anteriores de ese día dicen
+      // "clave_de_servicio" y son lo mismo.
+      meta: desdeUnGuion
+        ? { client_profile_id: saved.id, origen: "guion", base_legal: baseLegal }
         : { client_profile_id: saved.id },
     });
 
@@ -271,20 +278,11 @@ Deno.serve(async (req) => {
     // descartaba, y sin crudo una regla nueva no se puede aplicar a los
     // perfiles guardados: el 2026-09-25 hubo que reconsultar la cartera para
     // eso. Devolverlo en la respuesta sigue sirviendo al guion de lotes, que
-    // arma el respaldo local de research/. Quien llama
-    // con la CLAVE DE SERVICIO (el guion de lotes en la máquina del
-    // negocio, nunca la pantalla) puede pedirlo en la respuesta y
-    // guardarlo en local. Con la clave de servicio ya se tiene acceso a
-    // todo; esto no abre nada que no estuviera abierto.
-    //
-    // Se mira el ROL del token, no se compara el texto de la clave: la
-    // primera versión comparaba contra SUPABASE_SERVICE_ROLE_KEY del
-    // entorno de la función, que no es la misma cadena que la clave local
-    // aunque las dos sean de servicio, y no devolvió ningún crudo. Leer el
-    // rol sin verificar la firma es seguro acá porque esta función corre
-    // con verify_jwt = true (config.toml): la plataforma ya validó la firma
-    // antes de llegar.
-    const respuesta = devolverCrudo && conClaveDeServicio ? { ...saved, crudo: raw } : saved;
+    // arma el respaldo local de research/. Sólo lo pide un guion con la
+    // clave de guiones (la máquina del negocio, nunca la pantalla), que ya
+    // tiene la clave de servicio y con ella acceso a todo: esto no abre
+    // nada que no estuviera abierto.
+    const respuesta = devolverCrudo && desdeUnGuion ? { ...saved, crudo: raw } : saved;
     return new Response(JSON.stringify(respuesta), {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });

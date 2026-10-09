@@ -59,6 +59,17 @@ export interface NovadataCredentials {
   password: string;
 }
 
+// Cuánto se espera a cada fuente. Medido el 2026-10-09: en el uso normal
+// desde la pantalla una consulta entera (las 52 a la vez) tardó como mucho
+// 57 s; la cola larga aparece sólo en las reconsultas masivas, cuando
+// Novadata se pone lenta (el 2026-09-15, 525 de 1.915 pasaron de 100 s).
+// Sin tope, una fuente colgada arrastraba la consulta al corte de 150 s de
+// Supabase y se perdía todo, incluido lo que sí había contestado. Con
+// 120 s queda margen para el token, armar el perfil y guardarlo, y lo que
+// hoy termina sigue terminando: sólo se corta lo que igual iba a morir.
+export const PLAZO_POR_FUENTE_MS = 120_000;
+const PLAZO_TOKEN_MS = 20_000;
+
 // Cache en memoria SOLO para las credenciales de servicio (env vars) —
 // usadas por analyze-client en cada corrida automática. Credenciales
 // explícitas (ver explore-novadata, donde el usuario tipea las suyas en
@@ -66,11 +77,16 @@ export interface NovadataCredentials {
 // personas distintas que usen el explorador.
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
-async function getAccessToken(credentials?: NovadataCredentials): Promise<string> {
-  const useCache = !credentials;
-  if (useCache && cachedToken && cachedToken.expiresAt > Date.now() + 5_000) {
-    return cachedToken.value;
-  }
+// El pedido de token en curso, compartido. Hasta el 2026-10-09 cada una
+// de las 52 fuentes pedía su propio token: con la instancia recién
+// levantada o el token vencido eran 52 inicios de sesión simultáneos con
+// usuario y contraseña, que el proveedor puede leer como un ataque y
+// responder bloqueando la cuenta (auditoría externa, E5). Ahora la
+// consulta pide uno solo, y las consultas que llegan mientras tanto
+// esperan ese mismo pedido.
+let tokenEnCurso: Promise<string> | null = null;
+
+async function pedirToken(credentials?: NovadataCredentials): Promise<{ value: string; expiresAt: number }> {
   const username = credentials?.username || NOVADATA_USERNAME;
   const password = credentials?.password || NOVADATA_PASSWORD;
   const res = await fetch(`${NOVADATA_BASE_URL}/auth/realms/novacredit/protocol/openid-connect/token`, {
@@ -82,14 +98,31 @@ async function getAccessToken(credentials?: NovadataCredentials): Promise<string
       client_id: NOVADATA_CLIENT_ID,
       grant_type: "password",
     }),
+    signal: AbortSignal.timeout(PLAZO_TOKEN_MS),
   });
   if (!res.ok) {
     throw new Error(`No se pudo autenticar con Novadata (HTTP ${res.status})`);
   }
   const data = await res.json();
-  const token = { value: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
-  if (useCache) cachedToken = token;
-  return token.value;
+  return { value: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
+}
+
+async function getAccessToken(credentials?: NovadataCredentials): Promise<string> {
+  if (credentials) return (await pedirToken(credentials)).value;
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 5_000) {
+    return cachedToken.value;
+  }
+  if (!tokenEnCurso) {
+    tokenEnCurso = pedirToken()
+      .then((token) => {
+        cachedToken = token;
+        return token.value;
+      })
+      .finally(() => {
+        tokenEnCurso = null;
+      });
+  }
+  return await tokenEnCurso;
 }
 
 // Prueba de vida de la fuente de datos, para el vigía.
@@ -111,6 +144,9 @@ export async function probarFuenteDeDatos(): Promise<{ ok: boolean; error?: stri
         client_id: NOVADATA_CLIENT_ID,
         grant_type: "password",
       }),
+      // Sin tope, un proveedor colgado dejaba al vigía esperando hasta el
+      // corte de la plataforma, y la caída no se registraba.
+      signal: AbortSignal.timeout(PLAZO_TOKEN_MS),
     });
     const duracionMs = Date.now() - inicio;
     if (!res.ok) {
@@ -152,34 +188,50 @@ export function personaNoExiste(general: { status: string; errorMessage?: string
 async function fetchResource<T = NovadataEnvelope>(
   path: string,
   cedula: string,
-  credentials?: NovadataCredentials
+  token: string,
+  plazoMs: number
 ): Promise<ResultadoFuente<T>> {
-  if (!credentials && (!NOVADATA_USERNAME || !NOVADATA_PASSWORD)) {
-    return { status: "error", data: null, errorMessage: "Novadata no configurado (faltan NOVADATA_USERNAME / NOVADATA_PASSWORD)" };
-  }
+  const inicio = Date.now();
+  // Cuánto tardó cada fuente, que hasta el 2026-10-09 no se medía: sólo
+  // había el total de la consulta, y sin el detalle no se sabe qué fuente
+  // arrastra a las demás.
+  const medido = (r: ResultadoFuente<T>): ResultadoFuente<T> => ({ ...r, duracionMs: Date.now() - inicio });
   try {
-    const token = await getAccessToken(credentials);
     const res = await fetch(`${NOVADATA_BASE_URL}/${path}/${encodeURIComponent(cedula)}`, {
       headers: { Authorization: `Bearer ${token}` },
+      // Cubre también la lectura del cuerpo: una respuesta que empieza y se
+      // queda a medias corta igual.
+      signal: AbortSignal.timeout(plazoMs),
     });
     if (res.status === 404) {
-      return { status: "faltante", data: null };
+      return medido({ status: "faltante", data: null });
     }
     if (res.status === 204) {
-      return { status: "faltante", data: null };
+      return medido({ status: "faltante", data: null });
     }
     if (!res.ok) {
-      return { status: "error", data: null, errorMessage: `Novadata respondió HTTP ${res.status}` };
+      return medido({ status: "error", data: null, errorMessage: `Novadata respondió HTTP ${res.status}` });
     }
     const body = await res.json();
     if (!isEstadoOk(body)) {
       // El motivo viaja aunque el bloque quede como faltante: es lo que
       // permite distinguir después "sin datos" de "no existe".
-      return { status: "faltante", data: null, errorMessage: mensajeDelEstado(body) };
+      return medido({ status: "faltante", data: null, errorMessage: mensajeDelEstado(body) });
     }
-    return { status: "ok", data: body as T };
+    return medido({ status: "ok", data: body as T });
   } catch (err) {
-    return { status: "error", data: null, errorMessage: String(err) };
+    // "error" y no "faltante": la fuente no contestó, no dijo que no hay
+    // (calidad-de-la-consulta.ts). Se marca aparte para que quien llama
+    // sepa que fue el plazo y no una falla del proveedor.
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      return medido({
+        status: "error",
+        data: null,
+        errorMessage: `no contestó en ${Math.round(plazoMs / 1000)} s`,
+        tiempoAgotado: true,
+      });
+    }
+    return medido({ status: "error", data: null, errorMessage: String(err) });
   }
 }
 
@@ -250,17 +302,45 @@ export const RUTAS_POR_FUENTE: Record<string, string> = {
 // contra Novadata no cambia al aplanar -- siguen siendo 52 pedidos
 // simultáneos. Lo que se va es la agregación intermedia, que tiraba el
 // estado de cada fuente para dejar una sola palabra por bloque.
+//
+// No se limita la concurrencia de una consulta (la auditoría externa lo
+// proponía): medido el 2026-10-09, una consulta suelta termina en menos de
+// un minuto, y ponerlas en fila la haría más lenta. Lo que satura a
+// Novadata son las reconsultas masivas, y eso se regula con la
+// concurrencia del lote, no acá.
+//
+// plazoMs: cuánto se espera a cada fuente (PLAZO_POR_FUENTE_MS si no se
+// dice). El trabajador de lotes pasa uno menor cuando le queda poco tiempo.
 export async function consultarTodasLasFuentes(
   cedula: string,
   credentials?: NovadataCredentials,
-  disabledResources: Set<string> = new Set()
+  disabledResources: Set<string> = new Set(),
+  plazoMs: number = PLAZO_POR_FUENTE_MS
 ): Promise<RespuestaNovadata> {
   const fuentes = Object.entries(RUTAS_POR_FUENTE);
+
+  // Un token para toda la consulta. Si no se puede obtener, cada fuente
+  // queda en error con ese motivo, igual que cuando lo pedía cada una: así
+  // la consulta entera se reconoce como "no contestó" (503) y se reintenta.
+  let token: string | null = null;
+  let sinToken: string | null = null;
+  if (!credentials && (!NOVADATA_USERNAME || !NOVADATA_PASSWORD)) {
+    sinToken = "Novadata no configurado (faltan NOVADATA_USERNAME / NOVADATA_PASSWORD)";
+  } else {
+    try {
+      token = await getAccessToken(credentials);
+    } catch (err) {
+      sinToken = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   const resultados = await Promise.all(
     fuentes.map(([fuente, ruta]) =>
       disabledResources.has(fuente)
         ? Promise.resolve<ResultadoFuente<NovadataEnvelope>>({ status: "deshabilitado", data: null })
-        : fetchResource<NovadataEnvelope>(ruta, cedula, credentials)
+        : token === null
+          ? Promise.resolve<ResultadoFuente<NovadataEnvelope>>({ status: "error", data: null, errorMessage: sinToken ?? "sin token" })
+          : fetchResource<NovadataEnvelope>(ruta, cedula, token, plazoMs)
     )
   );
 
@@ -269,4 +349,23 @@ export async function consultarTodasLasFuentes(
     respuesta[fuente] = resultados[i];
   });
   return respuesta;
+}
+
+// Cuánto tardó cada fuente, en milisegundos, para guardar con el perfil
+// (client_profiles.duracion_por_fuente_ms, 119). Las apagadas no aparecen.
+export function duracionesPorFuente(raw: RespuestaNovadata): Record<string, number> {
+  const salida: Record<string, number> = {};
+  for (const [fuente, resultado] of Object.entries(raw)) {
+    if (typeof resultado?.duracionMs === "number") salida[fuente] = resultado.duracionMs;
+  }
+  return salida;
+}
+
+// Las fuentes que se cortaron por el plazo y no por una falla del
+// proveedor. El trabajador de lotes las usa para reintentar en vez de
+// guardar un perfil incompleto por culpa de su propio reloj.
+export function fuentesQueAgotaronElPlazo(raw: RespuestaNovadata): string[] {
+  return Object.entries(raw)
+    .filter(([, resultado]) => resultado?.tiempoAgotado === true)
+    .map(([fuente]) => fuente);
 }

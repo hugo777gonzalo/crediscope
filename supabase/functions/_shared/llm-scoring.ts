@@ -407,17 +407,52 @@ export function armarPedidoScoring(
   };
 }
 
-export async function scoreWithLlm(
-  profile: Record<string, unknown>,
-  controlBloqueo: ResultadoControlBloqueo,
-  // "grupo.campo" deshabilitados en standard_profile_field_config.
-  camposDeshabilitados: Set<string> = new Set()
-): Promise<LlmScoringResult> {
-  if (!ANTHROPIC_API_KEY) {
-    return resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO);
-  }
+// La huella de un pedido: el mismo pedido da la misma huella, y cualquier
+// cosa que cambie lo que el modelo lee o cómo lo lee (perfil, hallazgos,
+// marco, modelo, razonamiento, esquema) da otra.
+//
+// Para qué: el mismo perfil analizado dos veces movía el score ~40 puntos y
+// cambiaba 1 de cada 13 recomendaciones (medido el 2026-10-03). Dos
+// analistas podían recibir "aprobar" y "revisar" para la misma persona el
+// mismo día. Desde el 2026-10-09 (auditoría externa, E1), un pedido idéntico
+// devuelve el análisis que ya existe en vez de volver a preguntar.
+//
+// Se dejan afuera dos cosas que no cambian lo que el modelo lee, para que el
+// mismo pedido no tenga dos huellas según quién lo mande:
+// - cache_control: decide si el proveedor guarda el marco unos minutos (el
+//   lote lo usa, la pantalla no);
+// - max_tokens: el tope sólo corta la respuesta (el lote usa 16.000, la
+//   pantalla 10.000), y un análisis cortado sale con fallo y no se
+//   reutiliza nunca.
+export async function huellaDelPedido(cuerpo: Record<string, unknown>): Promise<string> {
+  const normal = (valor: unknown): unknown => {
+    if (Array.isArray(valor)) return valor.map(normal);
+    if (valor && typeof valor === "object") {
+      return Object.fromEntries(
+        Object.keys(valor as Record<string, unknown>)
+          .filter((clave) => clave !== "cache_control")
+          // Claves ordenadas: la huella no puede depender del orden en que
+          // el código arma el objeto.
+          .sort()
+          .map((clave) => [clave, normal((valor as Record<string, unknown>)[clave])]),
+      );
+    }
+    return valor;
+  };
+  const { max_tokens: _tope, ...sinTope } = cuerpo;
+  const bytes = new TextEncoder().encode(JSON.stringify(normal(sinTope)));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
-  const cuerpo = armarPedidoScoring(profile, controlBloqueo, camposDeshabilitados);
+// Llama al modelo con un pedido ya armado (armarPedidoScoring). Separado de
+// scoreWithLlm para que analyze-client pueda calcular la huella y buscar un
+// análisis igual ANTES de gastar la llamada.
+export async function puntuarPedido(cuerpo: Record<string, unknown>): Promise<LlmScoringResult> {
+  const huellaPedido = await huellaDelPedido(cuerpo);
+  if (!ANTHROPIC_API_KEY) {
+    return { ...resultadoPorDefecto("falta ANTHROPIC_API_KEY en las secrets de la Edge Function", MODELO), huellaPedido };
+  }
 
   // Los reintentos de una falla pasajera ya los hace
   // pedirScoringConReintentos; con un solo modelo no hay a quién escalar.
@@ -425,7 +460,16 @@ export async function scoreWithLlm(
   // Se devuelve lo que salió en el pedido, no un segundo armado: es la única
   // forma de que lo guardado sea exactamente lo que leyó el modelo.
   const mensajeAlModelo = JSON.parse((cuerpo.messages as Array<{ content: string }>)[0].content);
-  return { ...resultado, llamadas, mensajeAlModelo };
+  return { ...resultado, llamadas, mensajeAlModelo, huellaPedido };
+}
+
+export async function scoreWithLlm(
+  profile: Record<string, unknown>,
+  controlBloqueo: ResultadoControlBloqueo,
+  // "grupo.campo" deshabilitados en standard_profile_field_config.
+  camposDeshabilitados: Set<string> = new Set()
+): Promise<LlmScoringResult> {
+  return await puntuarPedido(armarPedidoScoring(profile, controlBloqueo, camposDeshabilitados));
 }
 
 export { MARCO_VERSION, MODELO };

@@ -31,6 +31,10 @@ export interface ResultadoFuente<T> {
   status: EstadoFuente;
   data: T | null;
   errorMessage?: string;
+  // Cuánto tardó la fuente (desde el 2026-10-09; los crudos anteriores no
+  // lo traen) y si se cortó por el plazo en vez de contestar.
+  duracionMs?: number;
+  tiempoAgotado?: boolean;
 }
 
 // El estado de cada fuente consultada, una entrada por fuente.
@@ -648,4 +652,8 @@ export interface LlmScoringResult {
   // control de bloqueo). Se guarda con el análisis (090): reconstruirlo
   // después exige el código de esa versión, y el código cambia.
   mensajeAlModelo?: Record<string, unknown>;
+  // La huella del pedido entero (huellaDelPedido en llm-scoring.ts, 119):
+  // con ella un pedido idéntico reutiliza el análisis en vez de volver a
+  // preguntar.
+  huellaPedido?: string;
 }

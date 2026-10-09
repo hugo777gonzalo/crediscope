@@ -16,7 +16,7 @@
 //
 // SUBIRLO cuando una función empiece a usar una tabla, columna o función
 // de una migración nueva: primero se migra, después se despliega.
-export const ESQUEMA_MINIMO = 116;
+export const ESQUEMA_MINIMO = 119;
 
 let verificada: number | null = null;
 

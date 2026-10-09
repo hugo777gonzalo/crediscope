@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
   const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
   if (rechazo) return rechazo;
   const actorId: string | null = actor!.id;
-  // La base tiene que estar al día con lo que este código necesita (116).
+  // La base tiene que estar al día con lo que este código necesita (ESQUEMA_MINIMO en _shared/version-esquema.ts).
   const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
   if (sinEsquema) return sinEsquema;
 

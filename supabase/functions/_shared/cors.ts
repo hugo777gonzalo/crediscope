@@ -1,3 +1,5 @@
+import { VERSION_DESPLIEGUE } from "./version-despliegue.ts";
+
 // Qué páginas pueden llamar a las funciones desde un navegador.
 //
 // Hasta el 2026-10-09 era "*". Con la sesión en localStorage eso no
@@ -35,11 +37,17 @@ function estaPermitido(origen: string): boolean {
 // Un origen que no está en la lista recibe el primero permitido: el
 // navegador ve que no coincide y bloquea la respuesta. Los guiones y el
 // programador de tareas no mandan Origin y no les afecta.
+//
+// Todas las respuestas pasan por acá, así que también llevan qué cambio de
+// git está desplegado (version-despliegue.ts): el control de seguridad lo
+// compara contra el repositorio.
 export function cabecerasCors(req: Request): Record<string, string> {
   const origen = req.headers.get("Origin") ?? "";
   return {
     "Access-Control-Allow-Origin": estaPermitido(origen) ? origen : PERMITIDOS[0],
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Expose-Headers": "x-crediscope-version",
+    "x-crediscope-version": VERSION_DESPLIEGUE,
     "Vary": "Origin",
   };
 }

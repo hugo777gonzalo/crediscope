@@ -366,7 +366,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  // La base tiene que estar al día con lo que este código necesita (116).
+  // La base tiene que estar al día con lo que este código necesita (ESQUEMA_MINIMO en _shared/version-esquema.ts).
   const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
   if (sinEsquema) return sinEsquema;
 

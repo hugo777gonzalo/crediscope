@@ -22,7 +22,12 @@ export interface DatosDelAnalisis {
   controlBloqueo: ResultadoControlBloqueo;
   // null si se reutilizó un perfil guardado (no hubo ingesta).
   duracionIngestaMs: number | null;
+  // null si se reutilizó un análisis (no hubo llamada al modelo).
   duracionLlmMs: number | null;
+  // El análisis cuyo resultado se copió porque el pedido al modelo era
+  // idéntico (E1 de la auditoría externa, 119). Siempre el original: un
+  // análisis reutilizado nunca es el origen de otro.
+  reutilizaAnalisisId?: string | null;
 }
 
 export function filaDelAnalisis(d: DatosDelAnalisis) {
@@ -72,5 +77,37 @@ export function filaDelAnalisis(d: DatosDelAnalisis) {
     mensaje_al_modelo: llmResult.mensajeAlModelo ?? null,
     duracion_ingesta_ms: d.duracionIngestaMs,
     duracion_llm_ms: d.duracionLlmMs,
+    huella_pedido: llmResult.huellaPedido ?? null,
+    reutiliza_analisis_id: d.reutilizaAnalisisId ?? null,
+  };
+}
+
+// Lo que se lee de un análisis guardado para reutilizarlo.
+export const COLUMNAS_PARA_REUTILIZAR =
+  "id, reutiliza_analisis_id, crediscope_score, recomendacion, acciones_sugeridas, indicador_riesgo, indicador_historial, positives, negatives, missing_info, narrative_summary, llm_model, llm_stop_reason, mensaje_al_modelo, huella_pedido, veredicto_origen";
+
+// El resultado del modelo, rearmado desde un análisis guardado con la misma
+// huella, para pasarlo por filaDelAnalisis igual que uno nuevo. El score y
+// la recomendación guardados son los del modelo salvo con un bloqueo, que
+// los fuerza; como el bloqueo sale de los hallazgos y los hallazgos van en
+// el pedido, la misma huella trae el mismo bloqueo y el forzado da igual.
+// Sin uso ni id de pedido: no hubo llamada que registrar.
+// deno-lint-ignore no-explicit-any
+export function resultadoReutilizado(previo: any): LlmScoringResult {
+  return {
+    score: previo.crediscope_score,
+    recomendacion: previo.recomendacion,
+    accionesSugeridas: previo.acciones_sugeridas ?? [],
+    indicadorRiesgo: previo.indicador_riesgo,
+    indicadorHistorial: previo.indicador_historial,
+    positives: previo.positives ?? [],
+    negatives: previo.negatives ?? [],
+    missingInfo: previo.missing_info ?? [],
+    reasoning: previo.narrative_summary ?? "",
+    llmModel: previo.llm_model,
+    llmStopReason: previo.llm_stop_reason ?? undefined,
+    llamadas: [],
+    mensajeAlModelo: previo.mensaje_al_modelo ?? undefined,
+    huellaPedido: previo.huella_pedido,
   };
 }

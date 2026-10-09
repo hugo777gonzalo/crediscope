@@ -28,7 +28,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { clavesIguales } from "../_shared/autorizacion.ts";
-import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
+import {
+  consultarTodasLasFuentes,
+  duracionesPorFuente,
+  fuentesQueAgotaronElPlazo,
+  PLAZO_POR_FUENTE_MS,
+  personaNoExiste,
+} from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { estadoPorFuente, cuantasFuentesContestaron, elPerfilSirve, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
@@ -42,10 +48,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const LOTE_CLAVE = Deno.env.get("VIGIA_CLAVE") ?? "";
 
 const CONCURRENCIA = 8;
-// Cuánto trabaja cada invocación antes de devolver el control. Deja
-// margen contra el tiempo máximo de la función: lo último que tiene que
-// pasar es que el corte llegue con consultas a medio guardar.
-const PRESUPUESTO_MS = 100_000;
+// Cuánto trabaja cada invocación antes de devolver el control. Lo último
+// que tiene que pasar es que el corte de la plataforma (150 s) llegue con
+// consultas a medio guardar.
+//
+// Hasta el 2026-10-09 una ronda podía empezar a los 99 s y tardar lo que
+// tardaran sus fuentes: si pasaba de los 150 s, la plataforma la mataba y
+// sus ítems quedaban "en curso" hasta que liberar_items_abandonados los
+// devolvía, diez minutos después (auditoría externa, E5). Ahora cada ronda
+// les da a sus fuentes sólo el tiempo que le queda a la invocación, menos
+// el margen para guardar, y no empieza si eso es menos de un minuto.
+const CORTE_DE_LA_FUNCION_MS = 150_000;
+const MARGEN_PARA_GUARDAR_MS = 15_000;
+const PLAZO_MINIMO_DE_UNA_RONDA_MS = 60_000;
 
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -106,7 +121,14 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   return { id: data.id, client_id: data.client_id };
 }
 
-async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>, dias: number, corteIess: string): Promise<void> {
+async function consultarItem(
+  item: Item,
+  lote: Lote,
+  deshabilitados: Set<string>,
+  dias: number,
+  corteIess: string,
+  plazoMs: number,
+): Promise<void> {
   const inicio = Date.now();
   try {
     const vigente = await perfilVigente(item.cedula, dias);
@@ -137,7 +159,15 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
       return;
     }
 
-    const raw = await consultarTodasLasFuentes(item.cedula, undefined, deshabilitados);
+    const raw = await consultarTodasLasFuentes(item.cedula, undefined, deshabilitados, plazoMs);
+
+    // Una fuente cortada por el reloj de ESTA invocación (no por el plazo
+    // normal de una fuente) no dice nada de la fuente: vuelve a la cola en
+    // vez de guardar un perfil incompleto. "HTTP 503" la hace pasajera.
+    const cortadas = fuentesQueAgotaronElPlazo(raw);
+    if (cortadas.length > 0 && plazoMs < PLAZO_POR_FUENTE_MS) {
+      throw new Error(`HTTP 503 se acabó el tiempo de la invocación con ${cortadas.length} fuente(s) sin contestar`);
+    }
 
     // Si la fuente no contestó ni una, esta cédula no se consultó: se
     // intentó. Se lanza para caer en el manejo de fallas de abajo, que
@@ -198,6 +228,7 @@ async function consultarItem(item: Item, lote: Lote, deshabilitados: Set<string>
         fuentes_totales: Object.keys(estadoDeCadaFuente).length,
         structure_version: PROCESS_VERSION,
         duracion_ms: Date.now() - inicio,
+        duracion_por_fuente_ms: duracionesPorFuente(raw),
         // De dónde salió. El dato es el mismo que el de una consulta
         // individual y sirve igual para el flujo normal; esto solo dice
         // por qué puerta entró.
@@ -288,7 +319,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  // La base tiene que estar al día con lo que este código necesita (116).
+  // La base tiene que estar al día con lo que este código necesita (ESQUEMA_MINIMO en _shared/version-esquema.ts).
   const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
   if (sinEsquema) return sinEsquema;
 
@@ -320,7 +351,11 @@ Deno.serve(async (req) => {
   const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
   let procesados = 0;
 
-  while (Date.now() - arranque < PRESUPUESTO_MS) {
+  // Lo que les queda a las fuentes de la ronda que empieza ahora.
+  const plazoDeLaRonda = () =>
+    Math.min(PLAZO_POR_FUENTE_MS, CORTE_DE_LA_FUNCION_MS - MARGEN_PARA_GUARDAR_MS - (Date.now() - arranque));
+
+  while (plazoDeLaRonda() >= PLAZO_MINIMO_DE_UNA_RONDA_MS) {
     const { data: pendientes } = await serviceClient
       .from("lote_items")
       .select("id, cedula, ingresado, intentos, lote_id")
@@ -332,7 +367,7 @@ Deno.serve(async (req) => {
 
     // Se marcan en curso antes de trabajarlas: si dos invocaciones se
     // superponen -- el programador dispara cada minuto y una corrida
-    // dura hasta cien segundos, así que se superponen seguido -- no
+    // dura hasta dos minutos, así que se superponen seguido -- no
     // pueden tomar las mismas cédulas.
     //
     // Y se trabaja SOLO sobre lo que la marca devolvió. Antes se
@@ -355,7 +390,8 @@ Deno.serve(async (req) => {
     // la base hasta agotar el presupuesto.
     if (!tomadas || tomadas.length === 0) break;
 
-    await Promise.all(tomadas.map((p) => consultarItem(p as Item, lote as Lote, deshabilitados, dias, corteIess)));
+    const plazo = plazoDeLaRonda();
+    await Promise.all(tomadas.map((p) => consultarItem(p as Item, lote as Lote, deshabilitados, dias, corteIess, plazo)));
     procesados += tomadas.length;
   }
 

@@ -22,15 +22,15 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import type { ResultadoControlBloqueo, StandardClientProfile } from "../_shared/types.ts";
-import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
+import { consultarTodasLasFuentes, duracionesPorFuente } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
 import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-de-la-consulta.ts";
-import { scoreWithLlm, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
-import { filaDelAnalisis } from "../_shared/fila-del-analisis.ts";
+import { armarPedidoScoring, huellaDelPedido, puntuarPedido, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
+import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado } from "../_shared/fila-del-analisis.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { loadDisabledFields, loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
   if (rechazo) return rechazo;
   const actorId: string | null = actor!.id;
-  // La base tiene que estar al día con lo que este código necesita (116).
+  // La base tiene que estar al día con lo que este código necesita (ESQUEMA_MINIMO en _shared/version-esquema.ts).
   const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
   if (sinEsquema) return sinEsquema;
 
@@ -201,6 +201,7 @@ Deno.serve(async (req) => {
           structure_version: PROCESS_VERSION,
           requested_by: actorId,
           duracion_ms: duracionIngestaMs,
+          duracion_por_fuente_ms: duracionesPorFuente(raw),
         })
         .select("id")
         .single();
@@ -218,9 +219,34 @@ Deno.serve(async (req) => {
     // Desde el 2026-10-06 no hay "ajustes del criterio": todo cambio a lo que
     // lee el modelo es una versión nueva del marco (decisión del negocio).
     const disabledFields = await loadDisabledFields(serviceClient);
+    const pedido = armarPedidoScoring(profile as unknown as Record<string, unknown>, controlBloqueo, disabledFields);
+
+    // ¿Ya se le hizo a esta persona exactamente este pedido? Entonces el
+    // resultado es el de entonces (auditoría externa, E1): el mismo perfil
+    // analizado dos veces movía el score ~40 puntos y cambiaba 1 de cada 13
+    // recomendaciones. Sólo para la misma persona y sólo de un análisis que
+    // terminó bien; uno fallido se vuelve a pedir. Una llamada de prueba
+    // (esPrueba) siempre va al modelo: existe para ejercitar la llamada.
+    const huella = await huellaDelPedido(pedido);
+    const { data: previo } = esPrueba
+      ? { data: null }
+      : await serviceClient
+        .from("analysis_results")
+        .select(COLUMNAS_PARA_REUTILIZAR)
+        .eq("client_id", client.id)
+        .eq("huella_pedido", huella)
+        .is("fallo", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+    // Defensa: con la misma huella el bloqueo tiene que coincidir. Si no
+    // coincide, algo cambió fuera del pedido y no se reutiliza.
+    const reutilizable = previo && (previo.veredicto_origen === "control_bloqueo") === controlBloqueo.bloqueado;
+
     const inicioLlm = Date.now();
-    const llmResult = await scoreWithLlm(profile as unknown as Record<string, unknown>, controlBloqueo, disabledFields);
-    const duracionLlmMs = Date.now() - inicioLlm;
+    const llmResult = reutilizable ? resultadoReutilizado(previo) : await puntuarPedido(pedido);
+    const duracionLlmMs = reutilizable ? null : Date.now() - inicioLlm;
+    const reutilizaAnalisisId = reutilizable ? (previo.reutiliza_analisis_id ?? previo.id) : null;
     const fila = filaDelAnalisis({
       runId: run.id,
       clientId: client.id,
@@ -230,6 +256,7 @@ Deno.serve(async (req) => {
       controlBloqueo,
       duracionIngestaMs,
       duracionLlmMs,
+      reutilizaAnalisisId,
     });
     const finalScore = fila.crediscope_score;
     const finalRecomendacion = fila.recomendacion;
@@ -299,6 +326,7 @@ Deno.serve(async (req) => {
         crediscope_score: finalScore,
         recomendacion: finalRecomendacion,
         control_bloqueado: controlBloqueo.bloqueado,
+        ...(reutilizaAnalisisId ? { reutiliza_analisis_id: reutilizaAnalisisId } : {}),
       },
     });
 
