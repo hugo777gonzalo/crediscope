@@ -1,6 +1,9 @@
 # Pendientes
 
-Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas). Las versiones vigentes son
+Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
+con el bloque de seguridad puesto al día el 2026-10-09 (sección 2, primer
+punto; la última migración es la **116** y desde ella se aplican con el
+corredor). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -182,40 +185,59 @@ aceptada.
 
 ## 2. Riesgos técnicos conocidos
 
-- **Seguridad y cumplimiento (auditoría del 2026-10-09).** Lo técnico se
-  cerró ese día (113-115, `scripts/auditar-seguridad.mjs`: 39 controles en
-  OK). El estado de cada hallazgo, en
-  `auditoria/2026-10-09-auditoria-seguridad-y-cumplimiento.md` (fuera de
-  git), y los documentos del SGSI, LOPDP e ISO 9001 en `docs/cumplimiento/`
-  (fuera de git hasta que el repo sea privado). Queda, por orden:
+- **Seguridad, cumplimiento y cliente nuevo (2026-10-09). Para retomar,
+  empezar acá.** Hecho ese día: auditoría con correcciones (113-116),
+  corredor de migraciones y versión del esquema (base por cliente), las
+  cédulas reales fuera del árbol del repositorio, y la ficha para clientes
+  publicada como página privada (https://claude.ai/artifact/VPGD2bGsN6UVk5ofAr7XdV;
+  fuente en `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`).
+  `node scripts/auditar-seguridad.mjs`: 41 controles en OK. Estado de cada
+  hallazgo en `auditoria/2026-10-09-auditoria-seguridad-y-cumplimiento.md`
+  (sección 0) y documentos del SGSI, LOPDP e ISO 9001 en
+  `docs/cumplimiento/` (las dos carpetas fuera de git). Queda, por orden:
   1. **Mudanza a Cloudflare Pages + repositorio privado** (decisión del
-     negocio): los pasos están en el informe. Después, sacar
-     `docs/cumplimiento/` de `.gitignore`, sumar el dominio nuevo a la
-     secret `ORIGENES_PERMITIDOS` y correr el control con
-     `--sitio=<url nueva>` (las cabeceras tienen que dar OK).
-  2. **Doble factor (MFA): pendiente de decidir** a quién se le exige
-     (decisión del negocio del 2026-10-09: "de momento ninguno"). Si se
-     exige, la cuenta de QA deja de servir a Claude para probar pantallas.
-  3. Una consulta del 2026-09-04 quedó anotada a un id que no es de ningún
+     negocio). Lo hace el negocio: crear el proyecto en Cloudflare
+     (`npm run build`, salida `dist`, variables `VITE_SUPABASE_URL`,
+     `VITE_SUPABASE_ANON_KEY`, `NODE_VERSION=24`) y pasar la URL; poner esa
+     URL en Supabase › Authentication › URL Configuration. Después Claude:
+     sumar el dominio a la secret `ORIGENES_PERMITIDOS` (con los de
+     `localhost` y, mientras exista, el de github.io), correr el control
+     con `--sitio=<url nueva>` (las cabeceras tienen que dar OK), y con
+     confirmación volver el repo privado (`gh repo edit --visibility
+     private`), retirar `.github/workflows/deploy.yml`, sacar
+     `docs/cumplimiento/` de `.gitignore` y commitearlo, y actualizar
+     `sitio` en `clientes/directorio.json`.
+  2. **Probar con sesión real** (Claude no inicia sesión; sin probar al
+     2026-10-09): una consulta, abrir un expediente, crear un lote (campo
+     de base legal) y el Explorador de Fuentes (admin). Después,
+     `select action, count(*) from audit_log where created_at > now() -
+     interval '1 day' group by 1` tiene que mostrar `expediente.vista`.
+  3. **Cambiar la contraseña de Novadata** (el usuario estuvo en el
+     repositorio público) y cargarla con
+     `npx --yes supabase@latest secrets set --env-file <temporal>`.
+  4. **Antes del primer cliente externo**: armar su base desde cero (falta
+     una línea base del esquema; ver `docs/plan-segundo-cliente.md`, "Lo
+     construido"), parametrizar el control de seguridad por base, DPA de
+     Supabase y Anthropic, prueba de restauración, cifrado de disco de la
+     máquina con `research/`, validación legal, prueba de intrusión
+     independiente.
+  5. **Decisiones del negocio**: doble factor (MFA, "de momento ninguno";
+     si se exige, la cuenta de QA deja de servirle a Claude) y plazos de
+     retención (propuestos en `docs/cumplimiento/lopdp.md`).
+  6. Una consulta del 2026-09-04 quedó anotada a un id que no es de ningún
      usuario: confirmar que era una cuenta de prueba borrada.
-  4. Aceptar los DPA de Supabase y Anthropic; prueba de restauración;
-     cifrado de disco de la máquina con `research/`; validación legal;
-     prueba de intrusión independiente; plazos de retención.
-  5. Probar con sesión real: una consulta, abrir un expediente, crear un
-     lote (campo de base legal) y el Explorador de Fuentes (admin). Claude
-     no inicia sesión; sin probar al 2026-10-09.
+  7. El camino del 503 de `exigirEsquema()` no se probó (haría falta una
+     base atrasada): probarlo con la primera base de prueba.
 
 - **El repositorio es público desde el 2026-10-04** (decisión del negocio,
   para que GitHub Pages vuelva a publicar la aplicación sin plan pago;
-  el 2026-10-09 se decidió volverlo privado con Cloudflare Pages).
-  `docs/` y el historial de commits tienen cédulas reales de la cartera
-  (en `docs/estructura-estandarizada.md`, `docs/lecciones.md`,
-  `docs/pendientes.md` y dos propuestas, ~33 menciones) y quedan a la
-  vista. Desde ahora no se escriben cédulas, montos ni datos de personas
-  en el repositorio (documentos, commits, código ni pruebas). Si el negocio
-  quiere, se pueden reemplazar en `docs/` por referencias enmascaradas; el
-  historial sólo se limpia reescribiéndolo (force push, con su
-  confirmación).
+  el 2026-10-09 se decidió volverlo privado con Cloudflare Pages). El
+  2026-10-09 se sacaron del árbol las 31 cédulas reales (121 menciones,
+  docs y comentarios del código): se citan como `c-xxxxxxxx` y el control
+  mensual las busca. **El historial de commits las sigue teniendo**: se
+  cierra volviendo el repositorio privado; limpiarlo del todo exige
+  reescribirlo (force push, con confirmación, y `git filter-repo` necesita
+  Python, que no está).
 
 - **La cartera tiene 240 personas que no existen.** Son las cédulas
   sintéticas de prueba de Aval: 2.807 clientes = 2.567 reales + 240.

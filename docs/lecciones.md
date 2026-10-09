@@ -399,3 +399,37 @@ está el porqué. Una lección nueva va en los dos lugares.
   campos con 2.567 perfiles y abría el perfil entero 460 mil veces: la base
   cortó la consulta. Recorrer cada perfil una vez (`jsonb_each`) y juntar
   después tarda segundos.
+
+**Seguridad (auditoría del 2026-10-09)**
+
+- **El portón de Supabase deja pasar la clave pública.** Con
+  `verify_jwt = true`, una función recibe igual el pedido de quien manda
+  la clave publicable, que va en el JavaScript de la página: el portón
+  verifica que el token sea válido, no que haya un usuario. Así,
+  `structure-client` (que sólo anotaba al usuario "para la auditoría")
+  atendía a cualquiera en internet: consultaba el buró, la Función
+  Judicial y el IESS de cualquier cédula y devolvía el perfil entero. Se
+  probó desde afuera con la clave pública (400 de la validación propia de
+  la función: había pasado el portón). Toda función que atiende a la
+  pantalla llama a `exigirRol()` antes de leer el cuerpo.
+- **Un registro de cuentas abierto más políticas "cualquier autenticado"
+  es una puerta.** `disable_signup` estaba en false y todo registrado
+  entraba como analista, que leía 8.590 perfiles. Se cerró en el panel.
+- **Revocar un privilegio por defecto en un esquema no alcanza.**
+  Postgres suma los privilegios por defecto de un esquema a los globales,
+  no los resta, y el EXECUTE para PUBLIC es global. La 113 lo revocó por
+  esquema y la función que creó en la misma migración quedó ejecutable
+  por el anónimo; lo encontró el control. La 114 lo revocó de forma
+  global.
+- **"sb_secret_" en el JavaScript publicado no es una fuga.** supabase-js
+  trae ese texto para avisar si alguien pone una clave secreta en el
+  navegador. El control busca la clave con su cuerpo.
+- **Las cédulas se colaban por los comentarios.** Con la regla "no
+  escribir cédulas en docs/" igual había 31 reales en 121 menciones, 78 de
+  ellas en comentarios del código y de migraciones ("caso real: cédula
+  ..."). Se citan como `c-xxxxxxxx` y el control mensual cruza los números
+  de 10 dígitos del repositorio con `clients`.
+- **Una subconsulta a una tabla que no existe falla aunque el `case` no la
+  alcance**: Postgres la analiza antes de evaluar. El corredor lee la
+  versión con `query_to_xml`, que sólo corre si se llega a evaluar. Y el
+  CLI pide `--linked` junto con `--project-ref`.

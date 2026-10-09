@@ -88,6 +88,42 @@ en la migración 71 y nadie se entere hasta que algo rompe.
 La base de hoy pasa a ser la **plantilla**: el esquema de referencia
 contra el que se validan las demás.
 
+### Lo construido (2026-10-09, por la auditoría de seguridad)
+
+Se adelantó porque apareció un cliente potencial:
+
+1. **Corredor de migraciones**: `scripts/migrar-clientes.mjs`. Estado,
+   `--seco`, `--aplicar`, `--funciones` (despliega en cada base) e
+   `--iniciar`. Cada migración va en una transacción junto con su fila
+   en `esquema_version`; se probó que una que falla no deja la fila. Los
+   marcadores se rellenan desde el archivo de secretos de cada base.
+2. **Versión de esquema en cada base** (116): `esquema_version` y
+   `version_del_esquema()`. Las funciones se niegan con 503 si la base
+   está por debajo de `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`).
+   Se eligió "mínimo que el código necesita" y no "igual a la última":
+   con "igual", desplegar antes de migrar (regla 8 de `CLAUDE.md`)
+   cortaría el servicio. La deriva entre bases la muestra el corredor.
+3. **Directorio**: `clientes/directorio.json`, por ahora un archivo en el
+   repositorio (referencia del proyecto y URL de cada base, sin datos ni
+   secretos). La plantilla es la única entrada.
+
+**Falta** antes del primer cliente externo:
+
+- **Armar una base nueva desde cero.** Las 001-115 se aplicaron a mano
+  en la plantilla, algunas con datos y arreglos de esta base (la 022
+  inserta perfiles de usuarios que sólo existen acá): no se probó
+  reproducirlas en una base vacía. El camino es un volcado del esquema de
+  la plantilla (`supabase db dump`, que en este CLI necesita Docker) como
+  línea base, más las migraciones desde la 116 con el corredor. Probarlo
+  en un proyecto de prueba antes del cliente.
+- El control de seguridad (`scripts/auditar-seguridad.mjs`) mide sólo la
+  base enlazada: hay que pasarle la base a medir.
+- La publicación por cliente: un sitio (o una variable de compilación)
+  por base, con su dominio en `ORIGENES_PERMITIDOS`.
+
+Pasos de alta en `docs/cumplimiento/alta-de-un-cliente-nuevo.md` (fuera de
+git hasta que el repositorio sea privado).
+
 ## Lo único que hay que cuidar desde ahora
 
 Que nada asuma que existe una sola base: la URL y las credenciales
@@ -124,7 +160,9 @@ el producto, y hay tres cosas sin resolver:
   desplegar el producto entero por cada ajuste de criterio de cualquier
   cliente. Lo que se pierde —el control del despliegue— se repone con
   versionado inmutable y aprobación explícita.
-- **No se guarda el crudo de Novadata.** Se evaluó y se descartó el
-  2026-09-23: la consulta es gratis, el `standard_profile` es lo que el
-  modelo efectivamente vio, y no se van a reconstruir perfiles
-  históricos — lo que se guardó es con lo que se calificó.
+- **~~No se guarda el crudo de Novadata.~~ Revertido**: se descartó el
+  2026-09-23, pero desde la 090 el crudo se guarda en Storage
+  (`crudo-novadata`), porque sin él una regla nueva no se puede aplicar a
+  los perfiles guardados (el 2026-09-25 hubo que reconsultar la cartera
+  entera por eso). En una base por cliente, el crudo vive en el depósito
+  de la base de ese cliente.

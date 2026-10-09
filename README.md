@@ -226,17 +226,22 @@ no solo ocultando enlaces del menú.
 Costos es admin en la ruta **y** en la política de la base: no es un dato
 operativo, es el margen del negocio.
 
-Autenticación por correo y contraseña (Supabase Auth). Cualquiera puede
-crear su cuenta desde `/crear-cuenta`; el rol se fuerza a `analista` en
-el trigger — el auto-registro nunca puede crear un admin.
+Autenticación por correo y contraseña (Supabase Auth). **Sin registro
+público desde el 2026-10-09**: las cuentas las da de alta el admin por
+invitación, porque con el registro abierto cualquiera con un correo
+entraba como analista y leía la cartera entera. La seguridad y su control
+mensual: `scripts/auditar-seguridad.mjs` (ver `CLAUDE.md`).
 
 ## Base de datos
 
 `supabase/schema.sql` es el esquema **inicial**; todo lo posterior está
-en `supabase/migrations/`, numeradas y en orden. Se aplican a mano (SQL
-editor del dashboard, o `supabase db query --linked --file <archivo>`) —
-el historial de migraciones del proyecto remoto está vacío a propósito,
-así que **`supabase db push` volvería a aplicar todas desde la 001**.
+en `supabase/migrations/`, numeradas y en orden. Las 001 a 115 se
+aplicaron a mano; **desde la 116 se aplican con el corredor**
+(`node scripts/migrar-clientes.mjs --aplicar`), que las lleva a todas las
+bases de `clientes/directorio.json` (una por cliente) y registra cada una
+en `esquema_version`. El historial de migraciones del proyecto remoto
+está vacío a propósito, así que **`supabase db push` volvería a aplicar
+todas desde la 001**.
 
 Tablas principales:
 

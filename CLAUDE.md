@@ -66,16 +66,28 @@ repite lo que el código ya dice es ruido.
 
 Romper cualquiera de estas rompe algo real.
 
-1. **Nunca `supabase db push`.** Siempre
-   `npx --yes supabase@latest db query --linked --file <archivo>`. El
-   historial de migraciones remoto está vacío a propósito.
+1. **Nunca `supabase db push`.** El historial de migraciones remoto está
+   vacío a propósito. **Desde la 116, una migración se aplica con el
+   corredor**: `node scripts/migrar-clientes.mjs --seco` y después
+   `--aplicar`. Va a todas las bases de `clientes/directorio.json`, cada
+   una en una transacción con su fila en `esquema_version`, y rellena los
+   marcadores desde el archivo de secretos de cada base. Aplicarla a mano
+   deja la base sin su versión y el control lo marca. Una migración nueva
+   no abre su propia transacción. Si una función empieza a depender de
+   ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
+   migra, después se despliega (`--funciones`), o la función contesta
+   503. Para consultas sueltas sigue
+   `npx --yes supabase@latest db query --linked --file <archivo>`.
 2. **El CLI no está en el PATH**: usar `npx --yes supabase@latest`.
    Desde un worktree, `--linked` falla con "Cannot find project ref":
    el enlace vive en `supabase/.temp`, que no está en git. Agregar
    `--workdir` apuntando a la carpeta principal del repositorio.
 3. **Las migraciones que necesitan secretos llevan marcadores**
    (`<<PROYECTO_URL>>`, `<<VIGIA_CLAVE>>`) y se rellenan FUERA del
-   repositorio, en un archivo temporal que se borra después.
+   repositorio, en un archivo temporal que se borra después. El corredor
+   lo hace solo: `PROYECTO_URL` sale del directorio y el resto del archivo
+   de `secretos` de cada base (`.env.functions` para la plantilla,
+   `clientes/<clave>.env` para las demás, fuera de git).
 4. **Los secretos viven en `.env.functions`** (excluido del repo) y en
    las secrets de Supabase. Se leen del archivo, nunca se imprimen ni se
    pegan en el chat.
@@ -219,9 +231,17 @@ Romper cualquiera de estas rompe algo real.
 - `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
   y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
   que se cierre.
+- **Una base por cliente** (`docs/plan-segundo-cliente.md`, construido el
+  2026-10-09): `clientes/directorio.json` dice qué bases existen (sólo
+  referencia de proyecto y URL, nunca datos ni secretos),
+  `scripts/migrar-clientes.mjs` las mantiene al día y
+  `_shared/version-esquema.ts` hace que una función se niegue a atender
+  una base atrasada. Falta armar desde cero la base de un cliente nuevo
+  (ver `docs/pendientes.md`).
 - **Seguridad y cumplimiento** (auditoría del 2026-10-09):
-  `scripts/auditar-seguridad.mjs` es el control (39 puntos, correrlo
-  después de tocar permisos, políticas, funciones o la publicación);
+  `scripts/auditar-seguridad.mjs` es el control (41 puntos, correrlo
+  después de tocar permisos, políticas, funciones, migraciones o la
+  publicación; hoy mide sólo la base enlazada);
   `scripts/derechos-del-titular.mjs` atiende acceso, portabilidad y
   supresión de una persona (`suprimir_titular()`, 115: borra el contenido
   y conserva la constancia de las consultas). Una tabla nueva con datos de
@@ -229,7 +249,9 @@ Romper cualquiera de estas rompe algo real.
   viven en `docs/cumplimiento/` (fuera de git mientras el repo sea
   público). La IFI es la responsable del tratamiento y CrediScope su
   encargado: la autorización de cada titular la garantiza la IFI por
-  contrato, y un lote declara su base legal.
+  contrato, y un lote declara su base legal. Lo que se le muestra a un
+  cliente es `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`
+  (publicada como página privada), nunca el informe de `auditoria/`.
 
 ## Lo que costó caro aprender
 
@@ -414,7 +436,11 @@ antes de tocar esa área.
   clave anónima; lo que necesita más permisos va por una Edge Function.
 - **Buró, cédulas y montos no se imprimen** en logs, commits, chat ni
   capturas: se cuentan o se enmascaran. Tampoco se escriben en `docs/`,
-  en el código ni en las pruebas: el repositorio es público.
+  en el código ni en las pruebas: el repositorio es público. **Un caso
+  real se cita como `c-xxxxxxxx`**: los 8 primeros caracteres de
+  `clients.id` (`select cedula from clients where id::text like
+  'xxxxxxxx%'`). El 2026-10-09 había 31 cédulas reales en 121 menciones,
+  la mayoría en comentarios del código; el control mensual las busca.
 - **Pedir confirmación antes de borrar datos, columnas o tablas, o de
   forzar un push**, aunque parezca obvio (ver regla 8).
 - **Pruebas masivas con el modelo, sólo con autorización explícita** del
