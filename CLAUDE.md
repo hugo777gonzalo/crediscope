@@ -305,7 +305,8 @@ antes de tocar esa área.
   forma plana `{ cedula, capturadoEl, perfilId, raw }`;
   `novadata-raw-2026-10-03/` = la reconsulta entera de ese día, el respaldo
   vigente (los recálculos, con `--carpeta=`). La del 25/09 es el t0 del
-  ciclo simulado del Laboratorio: no se pisa. Sumar:
+  ciclo simulado del Laboratorio: no se pisa. `casos-reales/` = el
+  registro de los casos que cita el código (ver "Cómo se trabaja"). Sumar:
   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta> --base-legal="<contrato>"`.
 - Reproducir un perfil: `buildStandardProfile(raw, cedula, corte)` con el
   corte VIGENTE de ese día, no `fuente_corte`.
@@ -441,6 +442,12 @@ antes de tocar esa área.
   `clients.id` (`select cedula from clients where id::text like
   'xxxxxxxx%'`). El 2026-10-09 había 31 cédulas reales en 121 menciones,
   la mayoría en comentarios del código; el control mensual las busca.
+  **Los casos no se pierden**: `research/casos-reales/registro-de-casos.md`
+  (fuera de git) dice qué cédula es cada referencia, dónde se cita y con
+  qué texto, con sus perfiles y análisis. Lo arma y valida
+  `node scripts/registrar-casos-reales.mjs` (correrlo después de citar un
+  caso nuevo; sale con 1 si una referencia no resuelve). Las notas a mano
+  van en `research/casos-reales/notas.md`.
 - **Pedir confirmación antes de borrar datos, columnas o tablas, o de
   forzar un push**, aunque parezca obvio (ver regla 8).
 - **Pruebas masivas con el modelo, sólo con autorización explícita** del

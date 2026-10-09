@@ -91,6 +91,22 @@ console.log(`\nInventario de ${ENMASCARADA}`);
 for (const [tabla] of [["clients"], ...TABLAS]) console.log(`  ${tabla.padEnd(28)} ${datos[tabla].length}`);
 console.log(`  ${"crudo en Storage".padEnd(28)} ${crudos.length}`);
 
+// Si la persona es un caso de desarrollo, el código la cita como
+// c-xxxxxxxx y el registro local guarda su cédula y el texto de la cita
+// (research/casos-reales/). La cita no la identifica sin la base, pero
+// decidir si se mantiene es de la IFI.
+const registroCasos = path.join(RAIZ, "research", "casos-reales", "registro-de-casos.json");
+if (fs.existsSync(registroCasos)) {
+  const caso = JSON.parse(fs.readFileSync(registroCasos, "utf8")).casos.find((c) => c.cliente?.cedula === CEDULA);
+  if (caso) {
+    console.log(
+      `\nEs un caso de desarrollo: el repositorio lo cita como ${caso.ref} en ${caso.citas.length} lugares` +
+        ` (${caso.archivos.join(", ")}). Decidir con la IFI si las citas se mantienen; después rearmar el registro` +
+        " con node scripts/registrar-casos-reales.mjs y anotarlo en research/casos-reales/notas.md."
+    );
+  }
+}
+
 const localesEnResearch = () => {
   const encontrados = [];
   const recorrer = (dir) => {

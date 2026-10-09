@@ -428,7 +428,12 @@ está el porqué. Una lección nueva va en los dos lugares.
   escribir cédulas en docs/" igual había 31 reales en 121 menciones, 78 de
   ellas en comentarios del código y de migraciones ("caso real: cédula
   ..."). Se citan como `c-xxxxxxxx` y el control mensual cruza los números
-  de 10 dígitos del repositorio con `clients`.
+  de 10 dígitos del repositorio con `clients`. Los casos son el
+  desarrollo mismo y no se pierden: `scripts/registrar-casos-reales.mjs`
+  arma en `research/casos-reales/` (fuera de git) qué cédula es cada
+  referencia y dónde se cita. Validado ese día: las 31 cédulas resuelven a
+  su referencia, y 120 de las 121 menciones originales están en el
+  registro (la que falta es el ejemplo del buscador, que se eliminó).
 - **Una subconsulta a una tabla que no existe falla aunque el `case` no la
   alcance**: Postgres la analiza antes de evaluar. El corredor lee la
   versión con `query_to_xml`, que sólo corre si se llega a evaluar. Y el
