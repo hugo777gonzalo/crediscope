@@ -212,6 +212,16 @@ aceptada.
 
 ## 3. Propuestas sin decidir
 
+- **Observaciones del negocio sobre los análisis de marco-v28** (levantadas
+  el 2026-10-07, **en pausa desde el 2026-10-09** por decisión del negocio):
+  aprobación baja por la regla de capacidad (1 de 55 independientes),
+  bloqueos que no son de cumplimiento (48 de 77 sólo por lista negra de
+  Novacredit, OFAC sin cédula o providencias de certificación), demandas
+  viejas que pesan (56), calificaciones B1-E sin monto en atraso, saldo de
+  Novadata que es la misma deuda que el Banco Internacional (68). Todo
+  medido y con opciones en `docs/observaciones-del-negocio.md`; los casos
+  los lista `scripts/detectar-atipicos.mjs`. Se decide cuando esté completo.
+
 - **La antigüedad de las demandas no llega al perfil** (mejora posterior,
   decidido por el negocio el 2026-09-29: no es urgente). El grupo de
   cobro dice cuántas y de qué tipo, no de cuándo. Las 8 personas que

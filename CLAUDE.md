@@ -200,6 +200,10 @@ Romper cualquiera de estas rompe algo real.
   final.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
+- `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
+  análisis, medido y con opciones, en levantamiento (2026-10-07): se decide
+  con el cuadro completo. Los casos atípicos los lista
+  `scripts/detectar-atipicos.mjs` (sin modelo, Excel en `research/`).
 - `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
   y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
   que se cierre.
