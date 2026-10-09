@@ -22,7 +22,7 @@
 // control mide otra cosa sin avisar.
 
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -89,6 +89,8 @@ union all
 select 'usuarios', coalesce(p.rol, 'sin_perfil') || '=' || count(*) from auth.users u left join profiles p on p.id = u.id group by p.rol
 union all
 select 'usuario_sin_ingreso_90d', count(*)::text from auth.users where coalesce(last_sign_in_at, created_at) < now() - interval '90 days'
+union all
+select 'version_esquema', max(version)::text from esquema_version
 `;
 
 let filas = [];
@@ -131,6 +133,62 @@ if (filas.length > 0 || resultados.length === 0) {
   anotar("Usuarios", "Usuarios por rol", true, de("usuarios").join(", "), true);
   anotar("Usuarios", "Cuentas sin ingresar hace más de 90 días (revisar si siguen haciendo falta)", true, de("usuario_sin_ingreso_90d")[0] ?? "-", true);
   anotar("Usuarios", "Factores de doble autenticación (MFA pendiente de decidir)", true, de("mfa_factores")[0] ?? "-", true);
+
+  // La base contra la última migración del repositorio (116): una base
+  // atrasada es la deriva que el corredor existe para evitar.
+  const ultima = Math.max(
+    ...readdirSync("supabase/migrations").filter((f) => /^\d+_/.test(f)).map((f) => Number(f.match(/^\d+/)[0]))
+  );
+  const enLaBase = Number(de("version_esquema")[0] ?? 0);
+  anotar("Base", "La base está en la última migración del repositorio", enLaBase === ultima, `base ${enLaBase || "sin control"}, repositorio ${ultima}`);
+}
+
+// ---------------------------------------------------------------
+// 1b. Ninguna cédula de un cliente real en el repositorio
+// ---------------------------------------------------------------
+// El repositorio fue público desde el 2026-10-04 y tenía 31 cédulas reales
+// en 121 menciones (docs, comentarios del código, migraciones); el
+// 2026-10-09 se reemplazaron por referencias c-xxxxxxxx (8 primeros
+// caracteres de clients.id). Se cruzan los números de 10 dígitos de lo
+// versionado con clients; las cédulas sintéticas de pruebas/aval/ no
+// cuentan (Novadata no las conoce).
+{
+  const versionados = execSync("git ls-files", { encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter((f) => f && !f.startsWith("pruebas/aval/") && f !== "package-lock.json");
+  const sinteticas = new Set();
+  const numeros = new Set();
+  for (const f of execSync("git ls-files pruebas/aval", { encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
+    for (const n of readFileSync(f, "utf8").match(/\b\d{10}\b/g) ?? []) sinteticas.add(n);
+  }
+  for (const f of versionados) {
+    let texto = "";
+    try {
+      texto = readFileSync(f, "utf8");
+    } catch {
+      continue;
+    }
+    for (const n of texto.match(/\b\d{10}\b/g) ?? []) if (!sinteticas.has(n)) numeros.add(n);
+  }
+  if (numeros.size === 0) {
+    anotar("Repositorio", "Ninguna cédula de un cliente real en los archivos versionados", true, "0 números de 10 dígitos");
+  } else {
+    const carpetaC = mkdtempSync(path.join(tmpdir(), "auditar-"));
+    const archivoC = path.join(carpetaC, "cedulas.sql");
+    writeFileSync(archivoC, `select count(*)::int as n from clients where cedula in (${[...numeros].map((n) => `'${n}'`).join(",")});`);
+    try {
+      const salida = execSync(`npx --yes supabase@latest db query --linked --file "${archivoC}" -o json`, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      const n = JSON.parse(salida.slice(salida.indexOf("{"))).rows?.[0]?.n ?? 0;
+      anotar("Repositorio", "Ninguna cédula de un cliente real en los archivos versionados", n === 0, `${n} de ${numeros.size} números de 10 dígitos son de clientes`);
+    } catch (e) {
+      anotar("Repositorio", "Ninguna cédula de un cliente real en los archivos versionados", false, `no se pudo consultar: ${String(e.message).split("\n")[0]}`);
+    } finally {
+      rmSync(carpetaC, { recursive: true, force: true });
+    }
+  }
 }
 
 // ---------------------------------------------------------------

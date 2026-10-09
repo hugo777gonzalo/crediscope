@@ -1,0 +1,13 @@
+{
+  "_nota": "Directorio de bases (docs/plan-segundo-cliente.md). Sólo qué clientes existen y a qué proyecto de Supabase apunta cada uno: NUNCA una cédula, un análisis ni un secreto. Los secretos de cada base viven en el archivo de 'secretos' (fuera de git). Lo lee scripts/migrar-clientes.mjs.",
+  "clientes": [
+    {
+      "clave": "plantilla",
+      "nombre": "Base actual: plantilla del esquema, NovaCredit y uso interno",
+      "proyecto": "ibrptvrjyclpmqbjdxyq",
+      "url": "https://ibrptvrjyclpmqbjdxyq.supabase.co",
+      "secretos": ".env.functions",
+      "sitio": "https://hugo777gonzalo.github.io/crediscope/"
+    }
+  ]
+}

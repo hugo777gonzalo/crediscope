@@ -38,6 +38,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
+import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { clavesIguales } from "../_shared/autorizacion.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
@@ -365,6 +366,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  // La base tiene que estar al día con lo que este código necesita (116).
+  const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
+  if (sinEsquema) return sinEsquema;
 
   try {
     // En paralelo: son dos proveedores distintos y uno caído no debe

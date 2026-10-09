@@ -26,6 +26,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
+import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { clavesIguales } from "../_shared/autorizacion.ts";
 import { consultarTodasLasFuentes, personaNoExiste } from "../_shared/novadata-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
@@ -287,6 +288,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  // La base tiene que estar al día con lo que este código necesita (116).
+  const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
+  if (sinEsquema) return sinEsquema;
 
   const arranque = Date.now();
 

@@ -2,6 +2,8 @@ node_modules
 dist
 .env
 .env.functions
+# Secretos de cada base de cliente (los nombra clientes/directorio.json).
+clientes/*.env
 .DS_Store
 supabase/.temp
 

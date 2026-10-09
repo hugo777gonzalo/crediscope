@@ -32,6 +32,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
+import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { consultarAval, laConsultaAvalSirve, porQueNoSirveAval, type TipoIdentificacionAval } from "../_shared/aval-client.ts";
@@ -114,6 +115,9 @@ Deno.serve(async (req) => {
   const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
   if (rechazo) return rechazo;
   const actorId: string | null = actor!.id;
+  // La base tiene que estar al día con lo que este código necesita (116).
+  const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
+  if (sinEsquema) return sinEsquema;
 
   try {
     // -1. ¿Aval está prendido como proveedor? A diferencia de Novadata, que
