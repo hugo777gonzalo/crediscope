@@ -171,11 +171,22 @@ if (modo === "funciones") {
   sello = git("rev-parse --short=12 HEAD");
   const archivoVersion = path.join(RAIZ, "supabase", "functions", "_shared", "version-despliegue.ts");
   const original = fs.readFileSync(archivoVersion, "utf8");
-  if (!original.includes('"sin-sello"')) {
+  // Anclado a la constante: el 2026-10-09 se reemplazaba la primera
+  // aparición de "sin-sello", que está en un comentario del archivo, y las
+  // seis funciones salieron sin sellar aunque el despliegue "terminó bien".
+  // Lo detectó la comprobación de abajo, no el despliegue.
+  // (?=\r?$): en una copia de Windows el archivo viene con CRLF.
+  const CONSTANTE = /^export const VERSION_DESPLIEGUE = "sin-sello";(?=\r?$)/m;
+  if (!CONSTANTE.test(original)) {
     console.error(`${archivoVersion} no dice "sin-sello": quedó sellado de un despliegue anterior. Restaurarlo con git antes de seguir.`);
     process.exit(1);
   }
-  fs.writeFileSync(archivoVersion, original.replace('"sin-sello"', `"${sello}"`));
+  const sellado = original.replace(CONSTANTE, `export const VERSION_DESPLIEGUE = "${sello}";`);
+  if (!sellado.includes(`VERSION_DESPLIEGUE = "${sello}"`)) {
+    console.error("No se pudo sellar version-despliegue.ts.");
+    process.exit(1);
+  }
+  fs.writeFileSync(archivoVersion, sellado);
   process.on("exit", () => fs.writeFileSync(archivoVersion, original));
 }
 const FUNCIONES = fs
@@ -222,11 +233,12 @@ for (const cliente of clientes) {
       continue;
     }
     // De a una función, y comprobando después que cada una contesta con el
-    // sello. El 2026-10-09 el despliegue de todas juntas (`functions
-    // deploy` sin nombre) dijo que había terminado bien y subió el archivo
-    // sin sellar; la segunda vez falló con TransportError en las seis. De a
-    // una, el mismo código salió sellado. Un despliegue no se da por hecho
-    // hasta que la función lo confirma.
+    // sello. El 2026-10-09 un despliegue de todas juntas (`functions deploy`
+    // sin nombre) falló con TransportError en las seis; de a una no. Y el
+    // primer despliegue sellado "terminó bien" con las seis funciones sin
+    // sellar (el reemplazo de arriba tocaba un comentario): sólo esta
+    // comprobación lo vio. Un despliegue no se da por hecho hasta que la
+    // función lo confirma.
     const desplegadas = [];
     for (const funcion of FUNCIONES) {
       try {
