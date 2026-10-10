@@ -233,6 +233,48 @@ aceptada.
   8. **Los medios y bajos (E6 a E26):** hoja de ruta en la sección 7 del
      informe.
 
+- **API única para IFI (2026-10-09 y 10). Para retomar ese frente, empezar
+  acá.** La propuesta completa está en `docs/cumplimiento/api/propuesta-api-ifi.md`
+  (fuera de git), y el contrato, en `api/openapi.yaml`.
+  - **Decidido** (D1 a D4, 2026-10-09):
+    - se devuelve siempre el análisis; el perfil es opcional y se habilita en
+      la configuración de cada IFI; el crudo, nunca;
+    - la IFI se autentica con OAuth y `private_key_jwt`, desde IP
+      permitidas;
+    - la cola asincrónica (E5.3) es de este frente;
+    - el pico es de 10 a 60 evaluaciones por minuto por IFI.
+  - **Hecho (Fase 0):**
+    - el contrato v1, que pasa el control estricto de Redocly;
+    - borradores del texto de autorización del titular y del anexo de
+      seguridad, en `docs/cumplimiento/api/`.
+  - Queda, por orden:
+  1. **Pasar `docs/cumplimiento/api/` a la carpeta principal** si todavía
+     está sólo en el worktree `cool-jemison-2a674d`. Está fuera de git y se
+     pierde si se borra ese worktree. Después, sumar `api/` al índice de
+     `docs/cumplimiento/README.md`.
+  2. **Arreglos chicos que se pueden hacer ya**, sin esperar la API:
+     - `analyze-client` deja de escribir la cédula en `llm_llamadas.contexto`
+       (323 filas) y `consultar-aval`, en `audit_log.meta` (463 filas, que lee
+       todo usuario con sesión). En su lugar va el `client_id`;
+     - el vigía prueba Haiku 4.5 y producción usa Sonnet 5.5
+       (`vigia/index.ts`): pasarlo al modelo real.
+  3. **Legal:**
+     - revisar el texto de autorización y el anexo de seguridad;
+     - los plazos del contrato modelo no coinciden con la norma
+       SPDP-SPD-2025-0030-R: el encargado suprime en 3 días desde el aviso y
+       devuelve o suprime en 5 días al terminar el contrato, y el contrato
+       dice 5 días hábiles y 30 días.
+  4. **Novadata, por escrito:** si una cuenta sostiene 60 perfiles por
+     minuto (hoy se satura cerca de 20) y si el contrato permite entregar
+     sus datos a la IFI, que es lo que necesita el perfil opcional.
+  5. **Decisiones D5 a D15** (sección 14 de la propuesta). Mientras no se
+     decidan, valen las recomendaciones.
+  6. **Fase 1** (núcleo: recepción, cola, trabajador, topes, sandbox):
+     - se construye y se prueba con simuladores, porque no hay ambiente de
+       prueba (E3), y se despliega apagada para terceros;
+     - su migración toma el número libre recién al aplicarse;
+     - la v1 se publica sólo después de E27.
+
 - **Seguridad, cumplimiento y cliente nuevo (2026-10-09).** Hecho ese día: auditoría con correcciones (113-116),
   corredor de migraciones y versión del esquema (base por cliente), las
   cédulas reales fuera del árbol del repositorio, y la ficha para clientes

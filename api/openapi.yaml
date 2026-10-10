@@ -1,0 +1,1592 @@
+openapi: 3.1.0
+
+# Contrato de la API de CrediScope para instituciones financieras (IFI).
+# Es la única fuente de verdad del contrato: de acá salen la validación de los
+# pedidos, las pruebas de contrato, el simulador del sandbox y la guía de
+# integración. El diseño y sus porqués están en
+# docs/cumplimiento/api/propuesta-api-ifi.md (fuera de git mientras el
+# repositorio sea público). Un cambio que rompe a un integrador no entra en la
+# v1: va a la v2 (ver "Versiones" abajo).
+
+info:
+  title: API de CrediScope para instituciones financieras
+  version: 1.0.0-borrador
+  summary: Evaluación crediticia de una persona con fuentes de Ecuador y un modelo de lenguaje.
+  description: |
+    La IFI pide la evaluación de una persona y CrediScope:
+
+    1. valida la identificación y la autorización del titular;
+    2. consulta las fuentes contratadas (Novadata y Aval);
+    3. arma el perfil estandarizado y aplica los controles de bloqueo, que son
+       reglas fijas y prevalecen sobre el modelo;
+    4. le pide el análisis al modelo con el marco interpretativo vigente;
+    5. entrega el resultado completo, firmado.
+
+    ## Asincrónica, con espera opcional
+
+    Consultar las fuentes y analizar toma de 40 segundos a varios minutos. Por
+    eso `POST /evaluaciones` responde enseguida con un identificador (202) y el
+    resultado se lee con `GET /evaluaciones/{id}` o llega un aviso al terminar.
+    Quien prefiera esperar en el mismo pedido manda `Prefer: wait=N` (hasta 90
+    segundos): si la evaluación termina antes, la respuesta es 200 con el
+    resultado.
+
+    ## Idempotencia
+
+    Todo `POST` lleva `Idempotency-Key`. Repetir un pedido con la misma clave
+    y el mismo cuerpo devuelve la misma evaluación y no vuelve a consultar ni a
+    analizar: es la forma segura de reintentar ante un corte de red. La misma
+    clave con otro cuerpo da 409. La `referencia` de la IFI también es única.
+
+    ## Revisión humana
+
+    El score y la recomendación son una ayuda: la decisión de crédito la toma
+    una persona de la IFI (LOPDP, art. 20, y norma de la SPDP sobre
+    inteligencia artificial). Por eso `requiereRevisionHumana` es siempre
+    `true`, el resultado trae sus motivos, y la IFI informa lo que decidió con
+    `POST /evaluaciones/{id}/decision`.
+
+    ## Variabilidad declarada
+
+    El mismo perfil analizado dos veces por el modelo puede variar unos 40
+    puntos. Dentro de la vigencia del perfil, un pedido idéntico devuelve el
+    mismo análisis (`trazabilidad.analisisReutilizado`).
+
+    ## Errores
+
+    Todo error es `application/problem+json` (RFC 9457) con `codigo` e
+    `idPedido`. El `idPedido` es lo que hay que citar al pedir soporte. Los
+    errores nunca llevan detalles internos.
+
+    ## Topes
+
+    Cada IFI tiene un tope por minuto, uno por día y uno de evaluaciones en
+    curso, informados en los encabezados `RateLimit-Policy` y `RateLimit`
+    (borrador del IETF). Si la espera estimada no alcanza para el plazo de la
+    prioridad pedida, la respuesta es 503 `capacidad-agotada` con
+    `Retry-After`: se rechaza a tiempo en vez de entregar tarde.
+
+    ## Avisos
+
+    Al terminar una evaluación se envía el aviso `evaluacion.terminada` a la
+    dirección que la IFI registró con CrediScope (nunca en el pedido). El
+    aviso no lleva datos personales: trae el id, y el resultado se lee con la
+    credencial de la IFI. Va firmado según Standard Webhooks (HMAC-SHA256).
+
+    ## Versiones
+
+    La versión mayor va en la ruta (`/v1`). Dentro de la v1 sólo se agregan
+    campos opcionales: el integrador tiene que ignorar los que no conoce. Un
+    cambio que rompe es la `/v2`, con seis meses de convivencia anunciados con
+    los encabezados `Deprecation` (RFC 9745) y `Sunset` (RFC 8594).
+
+    ## Sandbox
+
+    El sandbox no consulta a ninguna persona: devuelve respuestas fijas para
+    identificaciones de prueba que empiezan con `00`, una provincia que no
+    existe. Ninguna puede ser de una persona real, y producción las rechaza
+    con `identificacion-invalida`.
+
+    | Identificación | Resultado en el sandbox |
+    |---|---|
+    | `0000000001` | `completada`: "aprobar", por el modelo |
+    | `0000000002` | `completada`: "revisar", con `completitud: parcial` |
+    | `0000000003` | `completada`: "negar", por un control de bloqueo |
+    | `0000000004` | `completada`: `sin_veredicto` (el modelo no estuvo disponible) |
+    | `0000000005` | `persona_no_encontrada` |
+    | `0000000006` | `fallida`: `fuentes_no_disponibles` |
+    | `0000000007` | Tarda 120 segundos en terminar, para probar la espera y los avisos |
+  contact:
+    name: CrediScope
+  license:
+    name: Propietaria. Uso reservado a las IFI con contrato vigente con CrediScope.
+    identifier: LicenseRef-CrediScope-Propietaria
+
+servers:
+  - url: https://api.crediscope.example/v1
+    description: Producción (la dirección definitiva se fija antes del primer cliente externo)
+  - url: https://sandbox.crediscope.example/v1
+    description: Sandbox, con respuestas fijas y sin consultar a personas
+
+security:
+  - oauth2: []
+
+tags:
+  - name: Acceso
+    description: Fichas de acceso de 10 minutos, con OAuth 2.0.
+  - name: Evaluaciones
+    description: Pedir una evaluación, seguirla y leer el resultado.
+  - name: Decisiones
+    description: Lo que decidió la persona que revisó en la IFI.
+  - name: Servicio
+    description: Estado del servicio y claves públicas para verificar firmas.
+
+paths:
+  /oauth/token:
+    post:
+      tags: [Acceso]
+      operationId: pedirFicha
+      summary: Pedir una ficha de acceso
+      description: |
+        OAuth 2.0 con credenciales de cliente (RFC 6749, sección 4.4), y la IFI
+        se autentica con `private_key_jwt` (RFC 7523): firma una aserción JWT
+        con su clave privada, cuya clave pública registró en CrediScope.
+        CrediScope no guarda ningún secreto de la IFI.
+
+        La aserción lleva `iss` y `sub` iguales al `client_id`, `aud` igual a
+        la URL de esta operación, `exp` de 5 minutos como máximo y un `jti`
+        que no se puede repetir. Se firma con ES256 o PS256. El pedido tiene
+        que salir de una IP permitida para esa IFI.
+
+        La ficha dura 10 minutos. Los errores de esta operación siguen el
+        formato de OAuth 2.0 (RFC 6749, sección 5.2), no el de RFC 9457.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PedidoDeFicha'
+            example:
+              grant_type: client_credentials
+              client_assertion_type: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+              client_assertion: <aserción JWT firmada con la clave privada de la IFI>
+              scope: evaluaciones:crear evaluaciones:leer
+      responses:
+        '200':
+          description: Ficha emitida.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ficha'
+              example:
+                access_token: <ficha de acceso emitida por CrediScope>
+                token_type: Bearer
+                expires_in: 600
+                scope: evaluaciones:crear evaluaciones:leer
+        '400':
+          description: Pedido inválido según OAuth 2.0.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOAuth'
+              example:
+                error: invalid_scope
+                error_description: El alcance pedido no está habilitado para este cliente.
+        '401':
+          description: La aserción no es válida, venció, ya se usó, o la IP no está permitida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOAuth'
+              example:
+                error: invalid_client
+                error_description: La aserción del cliente no es válida.
+
+  /evaluaciones:
+    post:
+      tags: [Evaluaciones]
+      operationId: crearEvaluacion
+      summary: Pedir la evaluación de una persona
+      description: |
+        Valida el pedido, lo deja en la cola y responde con el id (202). Con
+        `Prefer: wait=N`, espera hasta N segundos: si la evaluación termina
+        antes, responde 200 con el resultado y `Preference-Applied`.
+
+        Si la persona tiene un perfil vigente (consultado hace menos de los
+        días que fija la configuración), se reutiliza y no se vuelve a
+        consultar a las fuentes. Si ya hay un análisis del mismo pedido al
+        modelo, se reutiliza también. Las dos cosas se informan en
+        `trazabilidad`.
+      security:
+        - oauth2: [evaluaciones:crear]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/Prefer'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeEvaluacion'
+            example:
+              persona:
+                tipoIdentificacion: cedula
+                identificacion: '0000000001'
+              autorizacion:
+                id: AUT-2026-000123
+                otorgadaEl: '2026-10-09T10:02:00-05:00'
+                canal: firma_electronica
+                finalidad: evaluacion_de_credito
+                huellaDelDocumento: sha256:9f2b5c0e7a1d4b8c6e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d
+              solicitudDeCredito:
+                producto: consumo
+                monto: 8000
+                moneda: USD
+                plazoMeses: 36
+                destino: capital de trabajo
+              referencia: SOL-2026-55555
+              operador:
+                id: u-4821
+                agencia: Matriz
+              prioridad: interactiva
+      responses:
+        '202':
+          description: Aceptada. El resultado se lee con `GET /evaluaciones/{id}` o llega el aviso.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+            RateLimit-Policy:
+              $ref: '#/components/headers/RateLimitPolicy'
+            RateLimit:
+              $ref: '#/components/headers/RateLimit'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluacionAceptada'
+              example:
+                id: ev_01JABCD2EFGH3JKMN4PQRS5TVW
+                estado: recibida
+                referencia: SOL-2026-55555
+                recibidaEl: '2026-10-09T10:02:03-05:00'
+                esperaEstimadaSegundos: 75
+        '200':
+          description: Terminó dentro de la espera pedida con `Prefer`. Trae el resultado completo.
+          headers:
+            Preference-Applied:
+              $ref: '#/components/headers/PreferenceApplied'
+            Location:
+              $ref: '#/components/headers/Location'
+            RateLimit-Policy:
+              $ref: '#/components/headers/RateLimitPolicy'
+            RateLimit:
+              $ref: '#/components/headers/RateLimit'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluacion'
+              examples:
+                completada:
+                  $ref: '#/components/examples/EvaluacionCompletada'
+        '400':
+          $ref: '#/components/responses/PedidoInvalido'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '409':
+          $ref: '#/components/responses/ClaveReutilizada'
+        '413':
+          $ref: '#/components/responses/CuerpoDemasiadoGrande'
+        '415':
+          $ref: '#/components/responses/TipoNoSoportado'
+        '422':
+          $ref: '#/components/responses/AutorizacionInsuficiente'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+
+    get:
+      tags: [Evaluaciones]
+      operationId: buscarEvaluaciones
+      summary: Buscar evaluaciones por la referencia de la IFI
+      description: |
+        Devuelve las evaluaciones de la IFI con esa referencia, la más nueva
+        primero. Suele ser una sola; son varias cuando hubo un reanálisis
+        (`reemplazaA`).
+      security:
+        - oauth2: [evaluaciones:leer]
+      parameters:
+        - name: referencia
+          in: query
+          required: true
+          description: La referencia propia de la IFI, la misma que mandó al pedir la evaluación.
+          schema:
+            $ref: '#/components/schemas/Referencia'
+      responses:
+        '200':
+          description: Evaluaciones con esa referencia (puede ser una lista vacía).
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaDeEvaluaciones'
+        '400':
+          $ref: '#/components/responses/PedidoInvalido'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
+  /evaluaciones/{id}:
+    get:
+      tags: [Evaluaciones]
+      operationId: leerEvaluacion
+      summary: Ver el estado de una evaluación y, al terminar, su resultado
+      description: |
+        Mientras está en curso, `Retry-After` dice cuándo conviene volver a
+        preguntar. Un id que no existe y un id de otra IFI responden igual
+        (404): no se revela si existe.
+      security:
+        - oauth2: [evaluaciones:leer]
+      parameters:
+        - $ref: '#/components/parameters/IdEvaluacion'
+      responses:
+        '200':
+          description: La evaluación, con el resultado si ya terminó.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluacion'
+              examples:
+                enProceso:
+                  $ref: '#/components/examples/EvaluacionEnProceso'
+                completada:
+                  $ref: '#/components/examples/EvaluacionCompletada'
+                sinVeredicto:
+                  $ref: '#/components/examples/EvaluacionSinVeredicto'
+                fallida:
+                  $ref: '#/components/examples/EvaluacionFallida'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrada'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
+  /evaluaciones/{id}/decision:
+    post:
+      tags: [Decisiones]
+      operationId: informarDecision
+      summary: Informar qué decidió la persona que revisó
+      description: |
+        La IFI informa la decisión humana sobre la solicitud: la exige la
+        norma de la SPDP sobre inteligencia artificial y es lo que permite
+        medir si el criterio sirve. Se puede informar más de una vez (por
+        ejemplo, si la decisión se corrige): vale la última y todas quedan
+        registradas. Sólo sobre evaluaciones `completada`.
+      security:
+        - oauth2: [decisiones:escribir]
+      parameters:
+        - $ref: '#/components/parameters/IdEvaluacion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decision'
+            example:
+              decision: aprobado
+              decididaEl: '2026-10-09T11:30:00-05:00'
+              decididaPor: u-0077
+              montoAprobado: 6000
+              plazoMesesAprobado: 24
+              motivo: Se aprobó un monto menor al pedido por la carga de deuda actual.
+      responses:
+        '204':
+          description: Registrada.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+        '400':
+          $ref: '#/components/responses/PedidoInvalido'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrada'
+        '409':
+          $ref: '#/components/responses/EstadoNoPermite'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
+  /evaluaciones/{id}/cancelacion:
+    post:
+      tags: [Evaluaciones]
+      operationId: cancelarEvaluacion
+      summary: Cancelar una evaluación antes de que se consulten las fuentes
+      description: |
+        Sirve, por ejemplo, cuando el titular retira su autorización o la
+        solicitud se pidió por error. Si las fuentes ya se consultaron, la
+        consulta quedó hecha y registrada: responde 409.
+      security:
+        - oauth2: [evaluaciones:crear]
+      parameters:
+        - $ref: '#/components/parameters/IdEvaluacion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Cancelada.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluacionAceptada'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrada'
+        '409':
+          $ref: '#/components/responses/EstadoNoPermite'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
+  /salud:
+    get:
+      tags: [Servicio]
+      operationId: verSalud
+      summary: Estado del servicio
+      description: No requiere ficha y no devuelve datos de personas.
+      security: []
+      responses:
+        '200':
+          description: El servicio recibe evaluaciones.
+          headers:
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Salud'
+              example:
+                estado: operativo
+                version: 1.0.0
+        '503':
+          description: El servicio no recibe evaluaciones por ahora.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Salud'
+              example:
+                estado: no_disponible
+                version: 1.0.0
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+
+  /.well-known/jwks.json:
+    servers:
+      - url: https://api.crediscope.example
+      - url: https://sandbox.crediscope.example
+    get:
+      tags: [Servicio]
+      operationId: verClavesPublicas
+      summary: Claves públicas para verificar la firma de los resultados
+      description: |
+        El campo `firma` de una evaluación es una firma JWS separada del
+        cuerpo (RFC 7515, apéndice F). Se verifica con la clave de esta lista
+        cuyo `kid` coincide. Las claves rotan con aviso; las retiradas siguen
+        publicadas un año para verificar resultados viejos.
+      security: []
+      responses:
+        '200':
+          description: Conjunto de claves (RFC 7517).
+          headers:
+            Cache-Control:
+              description: Se puede guardar hasta un día.
+              schema:
+                type: string
+                example: public, max-age=86400
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConjuntoDeClaves'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+
+webhooks:
+  evaluacionTerminada:
+    post:
+      tags: [Evaluaciones]
+      operationId: avisarEvaluacionTerminada
+      summary: Aviso de que una evaluación llegó a un estado final
+      description: |
+        CrediScope lo envía a la dirección https que la IFI registró. Firma
+        según Standard Webhooks: `webhook-signature` es
+        `v1,<base64 de HMAC-SHA256(secreto, webhook-id + "." + webhook-timestamp + "." + cuerpo)>`.
+        La IFI tiene que verificar la firma, rechazar los avisos con más de 5
+        minutos y descartar los `webhook-id` repetidos.
+
+        Si la IFI no responde 2xx en 10 segundos, se reintenta durante 24 horas
+        (a los 1, 5, 15 y 60 minutos, y a las 3, 6, 12 y 24 horas). El resultado
+        se puede leer igual con `GET /evaluaciones/{id}`.
+      parameters:
+        - name: webhook-id
+          in: header
+          required: true
+          description: Identificador único del aviso; se repite igual en los reintentos.
+          schema:
+            type: string
+            maxLength: 64
+        - name: webhook-timestamp
+          in: header
+          required: true
+          description: Segundos desde 1970 (UTC) en que se firmó.
+          schema:
+            type: integer
+        - name: webhook-signature
+          in: header
+          required: true
+          description: Firma HMAC-SHA256, con el prefijo de versión.
+          schema:
+            type: string
+            pattern: '^v1,[A-Za-z0-9+/=]+( v1,[A-Za-z0-9+/=]+)*$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Aviso'
+            example:
+              tipo: evaluacion.terminada
+              id: ev_01JABCD2EFGH3JKMN4PQRS5TVW
+              estado: completada
+              referencia: SOL-2026-55555
+              ocurridoEl: '2026-10-09T10:03:21-05:00'
+      responses:
+        '200':
+          description: Recibido. Cualquier 2xx sirve.
+        '204':
+          description: Recibido.
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      description: |
+        Credenciales de cliente con autenticación `private_key_jwt` (ver
+        `POST /oauth/token`), desde las IP permitidas para la IFI. La ficha va
+        en `Authorization: Bearer`.
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.crediscope.example/v1/oauth/token
+          scopes:
+            evaluaciones:crear: Pedir y cancelar evaluaciones.
+            evaluaciones:leer: Leer evaluaciones y sus resultados.
+            decisiones:escribir: Informar la decisión humana.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Clave única por pedido, generada por la IFI (se recomienda un UUID).
+        Se guarda 48 horas. Para reintentar, se repite la misma clave.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+      example: 6f1c2a9e-0d4b-4c35-9a51-2f7d8e3b1c40
+    Prefer:
+      name: Prefer
+      in: header
+      required: false
+      description: '`wait=N` (RFC 7240): esperar hasta N segundos (1 a 90) a que la evaluación termine.'
+      schema:
+        type: string
+        pattern: '^wait=([1-9]|[1-8][0-9]|90)$'
+      example: wait=60
+    Traceparent:
+      name: traceparent
+      in: header
+      required: false
+      description: Contexto de traza (W3C Trace Context), si la IFI lo usa. Queda en el registro del pedido.
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'
+    IdEvaluacion:
+      name: id
+      in: path
+      required: true
+      description: El id que devolvió `POST /evaluaciones`.
+      schema:
+        $ref: '#/components/schemas/IdEvaluacion'
+
+  headers:
+    Location:
+      description: Dirección de la evaluación.
+      schema:
+        type: string
+        format: uri-reference
+        example: /v1/evaluaciones/ev_01JABCD2EFGH3JKMN4PQRS5TVW
+    RetryAfter:
+      description: Segundos que conviene esperar antes de volver a preguntar o reintentar.
+      schema:
+        type: integer
+        minimum: 1
+        example: 15
+    PreferenceApplied:
+      description: La preferencia que se respetó (RFC 7240).
+      schema:
+        type: string
+        example: wait=60
+    RateLimitPolicy:
+      description: Topes de la IFI (borrador del IETF `RateLimit` header fields).
+      schema:
+        type: string
+        example: '"por-minuto";q=60;w=60, "por-dia";q=20000;w=86400'
+    RateLimit:
+      description: Lo que queda de cada tope (borrador del IETF `RateLimit` header fields).
+      schema:
+        type: string
+        example: '"por-minuto";r=42;t=18'
+    XRequestId:
+      description: 'Identificador del pedido. Es el mismo `idPedido` de los errores: citarlo al pedir soporte.'
+      schema:
+        type: string
+        example: ped_8f3a2c1d9e
+    XCrediscopeVersion:
+      description: Versión del código que contestó.
+      schema:
+        type: string
+        example: 1.0.0+0934d0d
+    CacheControl:
+      description: Los resultados tienen datos de buró y no se guardan en ningún intermediario.
+      schema:
+        type: string
+        const: no-store
+
+  schemas:
+    PedidoDeFicha:
+      type: object
+      additionalProperties: false
+      required: [grant_type, client_assertion_type, client_assertion]
+      properties:
+        grant_type:
+          type: string
+          const: client_credentials
+        client_assertion_type:
+          type: string
+          const: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+        client_assertion:
+          type: string
+          description: Aserción JWT firmada con la clave privada de la IFI.
+          maxLength: 4096
+        scope:
+          type: string
+          description: Alcances pedidos, separados por espacio. Sin este campo, se emiten todos los habilitados.
+          example: evaluaciones:crear evaluaciones:leer
+
+    Ficha:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          const: Bearer
+        expires_in:
+          type: integer
+          description: Segundos de vida de la ficha.
+          example: 600
+        scope:
+          type: string
+
+    ErrorOAuth:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_request, invalid_client, invalid_grant, unauthorized_client, unsupported_grant_type, invalid_scope]
+        error_description:
+          type: string
+
+    IdEvaluacion:
+      type: string
+      description: '`ev_` seguido de un ULID (26 caracteres, base32 de Crockford).'
+      pattern: '^ev_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: ev_01JABCD2EFGH3JKMN4PQRS5TVW
+
+    Referencia:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: '^[A-Za-z0-9._/-]+$'
+      description: Referencia propia de la IFI (por ejemplo, su número de solicitud). Única por IFI.
+      example: SOL-2026-55555
+
+    PedidoDeEvaluacion:
+      type: object
+      additionalProperties: false
+      required: [persona, autorizacion, referencia, operador]
+      properties:
+        persona:
+          $ref: '#/components/schemas/Persona'
+        autorizacion:
+          $ref: '#/components/schemas/Autorizacion'
+        solicitudDeCredito:
+          $ref: '#/components/schemas/SolicitudDeCredito'
+        referencia:
+          $ref: '#/components/schemas/Referencia'
+        operador:
+          $ref: '#/components/schemas/Operador'
+        prioridad:
+          type: string
+          enum: [interactiva, diferida]
+          default: interactiva
+          description: |
+            `interactiva`: la persona espera en la ventanilla; plazo de 15
+            minutos y se atiende primero. `diferida`: cartera o campañas;
+            plazo de 24 horas.
+        recibirPerfil:
+          type: boolean
+          default: true
+          description: |
+            Sólo tiene efecto si la configuración de la IFI habilita la
+            entrega del perfil estandarizado. Con `false`, no se entrega
+            aunque esté habilitada.
+        reemplazaA:
+          $ref: '#/components/schemas/IdEvaluacion'
+          description: |
+            Para pedir de nuevo el análisis de una evaluación que terminó
+            `sin_veredicto`. Reutiliza el perfil de esa evaluación: no vuelve
+            a consultar las fuentes. La evaluación original no cambia.
+
+    Persona:
+      type: object
+      additionalProperties: false
+      required: [tipoIdentificacion, identificacion]
+      properties:
+        tipoIdentificacion:
+          type: string
+          enum: [cedula, ruc]
+          description: Un RUC de persona natural se convierte en su cédula. El RUC de una sociedad y el pasaporte se rechazan.
+        identificacion:
+          type: string
+          pattern: '^[0-9]{10}([0-9]{3})?$'
+          description: |
+            10 dígitos (cédula) o 13 (RUC). Además del formato, se validan la
+            provincia y el dígito verificador.
+
+    Autorizacion:
+      type: object
+      additionalProperties: false
+      required: [id, otorgadaEl, canal, finalidad, huellaDelDocumento]
+      description: |
+        La autorización previa, expresa e informada del titular, que la IFI
+        recoge y conserva (contrato de encargo, cláusula 2). CrediScope guarda
+        estos datos y la huella del documento, no el documento.
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Identificador de la autorización en los registros de la IFI.
+        otorgadaEl:
+          type: string
+          format: date-time
+        vigenteHasta:
+          type: string
+          format: date
+          description: Si la autorización vence, hasta cuándo vale. Vencida, se rechaza con 422.
+        canal:
+          type: string
+          enum: [firma_electronica, documento_fisico_digitalizado, aceptacion_electronica]
+        finalidad:
+          type: string
+          enum: [evaluacion_de_credito]
+        huellaDelDocumento:
+          type: string
+          pattern: '^sha256:[0-9a-f]{64}$'
+          description: SHA-256 del documento o de la constancia de aceptación, para el muestreo de autorizaciones.
+
+    SolicitudDeCredito:
+      type: object
+      additionalProperties: false
+      description: Opcional en la v1. Se guarda, y se usa cuando el marco interpretativo la incorpore.
+      properties:
+        producto:
+          type: string
+          enum: [consumo, microcredito, productivo, educativo, inmobiliario, vivienda_interes_social_publico, otro]
+        monto:
+          type: number
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+        moneda:
+          type: string
+          const: USD
+          default: USD
+        plazoMeses:
+          type: integer
+          minimum: 1
+          maximum: 480
+        destino:
+          type: string
+          maxLength: 200
+        garantia:
+          type: string
+          maxLength: 200
+
+    Operador:
+      type: object
+      additionalProperties: false
+      required: [id]
+      description: Quién pidió la evaluación dentro de la IFI. Hace falta para responder "¿quién vio mis datos?" y para los topes por operador.
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        agencia:
+          type: string
+          maxLength: 100
+
+    EvaluacionAceptada:
+      type: object
+      required: [id, estado, referencia, recibidaEl]
+      properties:
+        id:
+          $ref: '#/components/schemas/IdEvaluacion'
+        estado:
+          $ref: '#/components/schemas/Estado'
+        referencia:
+          $ref: '#/components/schemas/Referencia'
+        recibidaEl:
+          type: string
+          format: date-time
+        esperaEstimadaSegundos:
+          type: integer
+          minimum: 0
+          description: Estimación según la cola y el ritmo de los últimos 10 minutos.
+
+    Estado:
+      type: string
+      enum: [recibida, en_proceso, completada, persona_no_encontrada, fallida, cancelada]
+      description: |
+        `completada`, `persona_no_encontrada`, `fallida` y `cancelada` son
+        finales y no cambian nunca.
+
+    Evaluacion:
+      type: object
+      required: [id, estado, referencia, recibidaEl, plazoHasta]
+      properties:
+        id:
+          $ref: '#/components/schemas/IdEvaluacion'
+        estado:
+          $ref: '#/components/schemas/Estado'
+        etapa:
+          type: string
+          enum: [fuentes, perfil, modelo, entrega]
+          description: Sólo mientras está `en_proceso`.
+        referencia:
+          $ref: '#/components/schemas/Referencia'
+        recibidaEl:
+          type: string
+          format: date-time
+        terminadaEl:
+          type: string
+          format: date-time
+        plazoHasta:
+          type: string
+          format: date-time
+          description: Hasta cuándo puede seguir en curso (15 minutos si es interactiva, 24 horas si es diferida).
+        reemplazaA:
+          $ref: '#/components/schemas/IdEvaluacion'
+        resultado:
+          $ref: '#/components/schemas/Resultado'
+        disponibilidad:
+          $ref: '#/components/schemas/Disponibilidad'
+        perfil:
+          type: object
+          description: |
+            El perfil estandarizado, sólo si la configuración de la IFI lo
+            habilita y el pedido no lo rechazó. Su forma sigue la estructura
+            estandarizada de la versión `versiones.estructura`. Nunca trae el
+            crudo de las fuentes.
+          additionalProperties: true
+        fallo:
+          $ref: '#/components/schemas/Fallo'
+        versiones:
+          $ref: '#/components/schemas/Versiones'
+        trazabilidad:
+          $ref: '#/components/schemas/Trazabilidad'
+        variabilidadDeclarada:
+          type: string
+          example: El mismo perfil analizado dos veces puede variar unos 40 puntos.
+        firma:
+          type: string
+          description: |
+            Firma JWS separada del cuerpo (RFC 7515, apéndice F), calculada
+            sobre la evaluación sin este campo, serializada con JCS (RFC 8785).
+            Sólo en estados finales.
+
+    Resultado:
+      type: object
+      required: [veredictoOrigen, requiereRevisionHumana, controlesDeBloqueo]
+      description: Todo lo que produce el análisis. Presente cuando la evaluación está `completada`.
+      properties:
+        score:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 999
+          description: '`null` con `veredictoOrigen: sin_veredicto`. Nunca se rellena un valor por defecto.'
+        recomendacion:
+          type: [string, 'null']
+          enum: [aprobar, revisar, negar, null]
+          description: '`null` con `veredictoOrigen: sin_veredicto`. Con `completitud: parcial` nunca es "aprobar".'
+        veredictoOrigen:
+          type: string
+          enum: [modelo, control_bloqueo, sin_veredicto]
+          description: |
+            `control_bloqueo`: una regla fija negó (score 1 y "negar"), diga lo
+            que diga el modelo. `sin_veredicto`: el modelo no estuvo
+            disponible o se negó a responder.
+        indicadorRiesgo:
+          type: [string, 'null']
+          enum: [muy bajo, bajo, moderado, alto, muy alto, null]
+        indicadorHistorial:
+          type: [string, 'null']
+          enum: [excelente, bueno, regular, malo, sin historial, null]
+        positivos:
+          type: array
+          items:
+            type: string
+            maxLength: 1000
+        negativos:
+          type: array
+          items:
+            type: string
+            maxLength: 1000
+        informacionFaltante:
+          type: array
+          items:
+            type: string
+            maxLength: 1000
+        accionesSugeridas:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 1000
+        razonamiento:
+          type: [string, 'null']
+          maxLength: 20000
+          description: Texto libre del modelo. La IFI lo muestra como texto, sin interpretarlo como HTML.
+        controlesDeBloqueo:
+          $ref: '#/components/schemas/ControlesDeBloqueo'
+        requiereRevisionHumana:
+          type: boolean
+          const: true
+          description: La decisión de crédito la toma una persona de la IFI.
+
+    ControlesDeBloqueo:
+      type: object
+      required: [bloqueado, hallazgos]
+      properties:
+        bloqueado:
+          type: boolean
+        hallazgos:
+          type: array
+          items:
+            type: object
+            required: [codigo, mensaje, bloqueante]
+            properties:
+              codigo:
+                type: string
+                enum: [fallecido, cedula_inconsistente, lista_control, lista_negra, listas_control_interno, pep, homonimo_en_lista_control, delito_seguridad_ciudadana]
+              mensaje:
+                type: string
+              bloqueante:
+                type: boolean
+                description: '`false`: se informa, pero no fuerza la negación (por ejemplo, una persona expuesta políticamente o un homónimo).'
+
+    Disponibilidad:
+      type: object
+      required: [completitud, temasNoConsultados]
+      properties:
+        completitud:
+          type: string
+          enum: [completa, parcial]
+          description: '`parcial`: faltó al menos un tema crítico después de reintentar las fuentes que fallaron.'
+        temasNoConsultados:
+          type: array
+          description: Temas cuya fuente no respondió. Nada de lo que no se consultó se presenta como "no tiene".
+          items:
+            type: string
+          example: [cooperativas]
+
+    Fallo:
+      type: object
+      required: [codigo]
+      description: Presente cuando la evaluación está `fallida`.
+      properties:
+        codigo:
+          type: string
+          enum: [fuentes_no_disponibles, plazo_vencido, error_interno]
+        detalle:
+          type: string
+
+    Versiones:
+      type: object
+      required: [api, marco, estructura, fuentesIngreso, modelo]
+      description: Con qué versión de cada pieza se hizo la evaluación. Dos evaluaciones sólo son comparables con las mismas versiones.
+      properties:
+        api:
+          type: string
+          example: 1.0.0
+        marco:
+          type: string
+          example: marco-v29
+        estructura:
+          type: string
+          example: estructura-v13
+        fuentesIngreso:
+          type: string
+          example: fuentes-v9
+        modelo:
+          type: string
+          description: El modelo que contestó, que puede no ser el pedido si el proveedor reintentó en otro.
+          example: claude-sonnet-5-5
+
+    Trazabilidad:
+      type: object
+      properties:
+        consultadaEl:
+          type: [string, 'null']
+          format: date-time
+          description: Cuándo se consultaron las fuentes (si se reutilizó un perfil, la fecha de ese perfil).
+        analizadaEl:
+          type: [string, 'null']
+          format: date-time
+        perfilReutilizado:
+          type: boolean
+        analisisReutilizado:
+          type: boolean
+          description: El pedido al modelo era idéntico a uno anterior de la misma persona y se reutilizó su análisis.
+        huellaDelPedidoAlModelo:
+          type: [string, 'null']
+          pattern: '^sha256:[0-9a-f]{64}$'
+
+    ListaDeEvaluaciones:
+      type: object
+      required: [evaluaciones]
+      properties:
+        evaluaciones:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/Evaluacion'
+
+    Decision:
+      type: object
+      additionalProperties: false
+      required: [decision, decididaEl, decididaPor]
+      properties:
+        decision:
+          type: string
+          enum: [aprobado, negado, aprobado_con_condiciones, desistido]
+        decididaEl:
+          type: string
+          format: date-time
+        decididaPor:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: El id, en la IFI, de la persona que decidió.
+        montoAprobado:
+          type: number
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+        plazoMesesAprobado:
+          type: integer
+          minimum: 1
+          maximum: 480
+        motivo:
+          type: string
+          maxLength: 1000
+
+    Aviso:
+      type: object
+      required: [tipo, id, estado, referencia, ocurridoEl]
+      properties:
+        tipo:
+          type: string
+          const: evaluacion.terminada
+        id:
+          $ref: '#/components/schemas/IdEvaluacion'
+        estado:
+          $ref: '#/components/schemas/Estado'
+        referencia:
+          $ref: '#/components/schemas/Referencia'
+        ocurridoEl:
+          type: string
+          format: date-time
+
+    Salud:
+      type: object
+      required: [estado, version]
+      properties:
+        estado:
+          type: string
+          enum: [operativo, degradado, no_disponible]
+          description: '`degradado`: recibe evaluaciones, pero alguna fuente o el modelo no responde y las esperas son mayores.'
+        version:
+          type: string
+
+    ConjuntoDeClaves:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            required: [kty, kid, use, alg]
+            properties:
+              kty:
+                type: string
+                example: EC
+              kid:
+                type: string
+                example: cs-2026-10
+              use:
+                type: string
+                const: sig
+              alg:
+                type: string
+                example: ES256
+              crv:
+                type: string
+                example: P-256
+              x:
+                type: string
+              y:
+                type: string
+
+    Problema:
+      type: object
+      required: [type, title, status, codigo, idPedido]
+      description: Error según RFC 9457, con dos campos propios, `codigo` e `idPedido`.
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Dirección de la explicación del error.
+          example: https://api.crediscope.example/problemas/identificacion-invalida
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        codigo:
+          type: string
+          enum:
+            - cuerpo-invalido
+            - identificacion-invalida
+            - falta-clave-de-idempotencia
+            - no-autenticado
+            - sin-permiso
+            - no-encontrada
+            - clave-reutilizada
+            - estado-no-permite
+            - cuerpo-demasiado-grande
+            - tipo-no-soportado
+            - autorizacion-insuficiente
+            - limite-de-velocidad
+            - cuota-agotada
+            - capacidad-agotada
+            - servicio-no-disponible
+            - error-interno
+        idPedido:
+          type: string
+          description: El mismo valor que el encabezado `X-Request-Id`.
+        errores:
+          type: array
+          description: Con `cuerpo-invalido`, qué campo falló y por qué.
+          items:
+            type: object
+            required: [campo, motivo]
+            properties:
+              campo:
+                type: string
+                description: Puntero JSON (RFC 6901) al campo.
+              motivo:
+                type: string
+
+  responses:
+    PedidoInvalido:
+      description: El pedido no cumple el contrato, la identificación no es válida o falta la clave de idempotencia.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          examples:
+            identificacionInvalida:
+              value:
+                type: https://api.crediscope.example/problemas/identificacion-invalida
+                title: Identificación inválida
+                status: 400
+                detail: El dígito verificador no coincide.
+                codigo: identificacion-invalida
+                idPedido: ped_8f3a2c1d9e
+            cuerpoInvalido:
+              value:
+                type: https://api.crediscope.example/problemas/cuerpo-invalido
+                title: El pedido no cumple el contrato
+                status: 400
+                codigo: cuerpo-invalido
+                idPedido: ped_8f3a2c1d9e
+                errores:
+                  - campo: /autorizacion/huellaDelDocumento
+                    motivo: Tiene que ser sha256 seguido de 64 caracteres hexadecimales.
+    NoAutenticado:
+      description: Falta la ficha, venció o su firma no es válida.
+      headers:
+        WWW-Authenticate:
+          description: Esquema y motivo (RFC 6750).
+          schema:
+            type: string
+            example: Bearer error="invalid_token"
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/no-autenticado
+            title: Ficha no válida
+            status: 401
+            codigo: no-autenticado
+            idPedido: ped_8f3a2c1d9e
+    SinPermiso:
+      description: El alcance de la ficha no incluye la operación, o la IP no está permitida.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/sin-permiso
+            title: Sin permiso para esta operación
+            status: 403
+            codigo: sin-permiso
+            idPedido: ped_8f3a2c1d9e
+    NoEncontrada:
+      description: No existe, o es de otra IFI. A propósito, las dos se responden igual.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/no-encontrada
+            title: Evaluación no encontrada
+            status: 404
+            codigo: no-encontrada
+            idPedido: ped_8f3a2c1d9e
+    ClaveReutilizada:
+      description: La misma clave de idempotencia ya se usó con otro cuerpo.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/clave-reutilizada
+            title: Clave de idempotencia ya usada con otro pedido
+            status: 409
+            codigo: clave-reutilizada
+            idPedido: ped_8f3a2c1d9e
+    EstadoNoPermite:
+      description: El estado de la evaluación no permite la operación (por ejemplo, cancelar cuando ya se consultaron las fuentes).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/estado-no-permite
+            title: La evaluación ya consultó las fuentes
+            status: 409
+            codigo: estado-no-permite
+            idPedido: ped_8f3a2c1d9e
+    CuerpoDemasiadoGrande:
+      description: El cuerpo supera los 16 KB.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/cuerpo-demasiado-grande
+            title: Pedido demasiado grande
+            status: 413
+            codigo: cuerpo-demasiado-grande
+            idPedido: ped_8f3a2c1d9e
+    TipoNoSoportado:
+      description: El cuerpo no es `application/json`.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/tipo-no-soportado
+            title: Tipo de contenido no soportado
+            status: 415
+            codigo: tipo-no-soportado
+            idPedido: ped_8f3a2c1d9e
+    AutorizacionInsuficiente:
+      description: La autorización del titular falta, venció o no cubre la finalidad.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/autorizacion-insuficiente
+            title: Autorización del titular insuficiente
+            status: 422
+            detail: La autorización venció.
+            codigo: autorizacion-insuficiente
+            idPedido: ped_8f3a2c1d9e
+    LimiteExcedido:
+      description: Superó su tope por minuto (`limite-de-velocidad`) o su cuota del día o del mes (`cuota-agotada`).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        RateLimit-Policy:
+          $ref: '#/components/headers/RateLimitPolicy'
+        RateLimit:
+          $ref: '#/components/headers/RateLimit'
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/limite-de-velocidad
+            title: Demasiados pedidos
+            status: 429
+            codigo: limite-de-velocidad
+            idPedido: ped_8f3a2c1d9e
+    NoDisponible:
+      description: |
+        La espera estimada supera el plazo de la prioridad pedida
+        (`capacidad-agotada`), o el servicio está en mantenimiento
+        (`servicio-no-disponible`).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/capacidad-agotada
+            title: No alcanza el tiempo para atenderla en su plazo
+            status: 503
+            detail: La espera estimada es de 14 minutos y el plazo de una evaluación interactiva es de 10.
+            codigo: capacidad-agotada
+            idPedido: ped_8f3a2c1d9e
+    ErrorInterno:
+      description: Algo inesperado. Se puede reintentar con la misma clave de idempotencia.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: https://api.crediscope.example/problemas/error-interno
+            title: Error interno
+            status: 500
+            codigo: error-interno
+            idPedido: ped_8f3a2c1d9e
+
+  examples:
+    EvaluacionEnProceso:
+      summary: En curso, consultando las fuentes
+      value:
+        id: ev_01JABCD2EFGH3JKMN4PQRS5TVW
+        estado: en_proceso
+        etapa: fuentes
+        referencia: SOL-2026-55555
+        recibidaEl: '2026-10-09T10:02:03-05:00'
+        plazoHasta: '2026-10-09T10:17:03-05:00'
+    EvaluacionCompletada:
+      summary: Completada, con el análisis del modelo
+      value:
+        id: ev_01JABCD2EFGH3JKMN4PQRS5TVW
+        estado: completada
+        referencia: SOL-2026-55555
+        recibidaEl: '2026-10-09T10:02:03-05:00'
+        terminadaEl: '2026-10-09T10:03:21-05:00'
+        plazoHasta: '2026-10-09T10:17:03-05:00'
+        resultado:
+          score: 712
+          recomendacion: revisar
+          veredictoOrigen: modelo
+          indicadorRiesgo: moderado
+          indicadorHistorial: bueno
+          positivos:
+            - Paga al día sus créditos en bancos y cooperativas desde hace más de cuatro años.
+          negativos:
+            - La deuda vigente en el sistema es alta frente al ingreso reportado al IESS.
+          informacionFaltante:
+            - No hay información de cooperativas en esta consulta.
+          accionesSugeridas:
+            - Confirmar el ingreso con los tres últimos roles de pago.
+          razonamiento: Historial de pago bueno y estable, con un nivel de deuda que pide confirmar la capacidad de pago antes de aprobar.
+          controlesDeBloqueo:
+            bloqueado: false
+            hallazgos: []
+          requiereRevisionHumana: true
+        disponibilidad:
+          completitud: completa
+          temasNoConsultados: []
+        versiones:
+          api: 1.0.0
+          marco: marco-v29
+          estructura: estructura-v13
+          fuentesIngreso: fuentes-v9
+          modelo: claude-sonnet-5-5
+        trazabilidad:
+          consultadaEl: '2026-10-09T10:02:41-05:00'
+          analizadaEl: '2026-10-09T10:03:19-05:00'
+          perfilReutilizado: false
+          analisisReutilizado: false
+          huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b
+        variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
+        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
+    EvaluacionSinVeredicto:
+      summary: Completada sin veredicto, porque el modelo no estuvo disponible
+      value:
+        id: ev_01JABCE3FGHJ4KMNP5QRST6VWX
+        estado: completada
+        referencia: SOL-2026-55556
+        recibidaEl: '2026-10-09T10:05:00-05:00'
+        terminadaEl: '2026-10-09T10:20:00-05:00'
+        plazoHasta: '2026-10-09T10:20:00-05:00'
+        resultado:
+          score: null
+          recomendacion: null
+          veredictoOrigen: sin_veredicto
+          indicadorRiesgo: null
+          indicadorHistorial: null
+          positivos: []
+          negativos: []
+          informacionFaltante:
+            - El servicio de análisis no respondió dentro del plazo. Se puede pedir de nuevo con reemplazaA.
+          accionesSugeridas: []
+          razonamiento: null
+          controlesDeBloqueo:
+            bloqueado: false
+            hallazgos: []
+          requiereRevisionHumana: true
+        disponibilidad:
+          completitud: completa
+          temasNoConsultados: []
+        versiones:
+          api: 1.0.0
+          marco: marco-v29
+          estructura: estructura-v13
+          fuentesIngreso: fuentes-v9
+          modelo: claude-sonnet-5-5
+        trazabilidad:
+          consultadaEl: '2026-10-09T10:05:39-05:00'
+          analizadaEl: null
+          perfilReutilizado: false
+          analisisReutilizado: false
+          huellaDelPedidoAlModelo: null
+        variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
+        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
+    EvaluacionFallida:
+      summary: Fallida, porque las fuentes no respondieron dentro del plazo
+      value:
+        id: ev_01JABCF4GHJK5MNPQ6RSTV7WXY
+        estado: fallida
+        referencia: SOL-2026-55557
+        recibidaEl: '2026-10-09T10:07:00-05:00'
+        terminadaEl: '2026-10-09T10:22:00-05:00'
+        plazoHasta: '2026-10-09T10:22:00-05:00'
+        fallo:
+          codigo: fuentes_no_disponibles
+          detalle: Ninguna fuente respondió dentro del plazo. No se guardó ningún perfil.
+        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
