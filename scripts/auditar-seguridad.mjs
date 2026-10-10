@@ -425,5 +425,5 @@ for (const r of resultados) {
   console.log(`${marca} ${r.control}${r.detalle ? `  [${r.detalle}]` : ""}`);
 }
 const fallas = resultados.filter((r) => r.estado === "FALLA").length;
-console.log(`\n${fallas === 0 ? "Todo cerrado." : `${fallas} control(es) con falla.`} ${resultados.length} controles, ${new Date().toISOString().slice(0, 10)}.`);
+console.log(`\n${fallas === 0 ? "Todo cerrado." : `${fallas} control(es) con falla.`} ${resultados.length} controles, ${new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" })}.`);
 process.exit(fallas === 0 ? 0 : 1);

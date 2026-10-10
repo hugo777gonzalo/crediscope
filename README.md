@@ -18,6 +18,9 @@ En uso interno, sobre un proyecto Supabase real y con clientes reales.
 La ingesta de Novadata está cableada contra producción (confirmada con
 HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
 El frontend se despliega solo a GitHub Pages en cada push a `main`.
+Desde el 2026-10-09 `main` está protegida: los cambios entran por PR con
+los controles de `.github/workflows/controles.yml` en verde (lint,
+compilación, tipos y pruebas de las funciones, guiones y secretos).
 
 - **Marco interpretativo:** `marco-v26` (`MARCO_VERSION` en
   `supabase/functions/_shared/marco-interpretativo.ts`). Cada versión
@@ -285,11 +288,22 @@ configurado" en vez de fallar.
 ### Edge Functions (requiere Supabase CLI)
 
 ```bash
-supabase login
-supabase link --project-ref <project-ref>
+npx --yes supabase@latest login
+npx --yes supabase@latest link --project-ref <project-ref>
 cp .env.functions.example .env.functions
-supabase secrets set --env-file .env.functions
-supabase functions deploy analyze-client
+npx --yes supabase@latest secrets set --env-file .env.functions
+```
+
+Las funciones no se despliegan a mano. El corredor
+(`node scripts/migrar-clientes.mjs --funciones`) despliega de a una, desde
+una copia limpia de `origin/main`, sella el commit en cada función y lo
+anota en la base. Los pasos están en `docs/remediacion-auditoria-externa.md`,
+sección 5.
+
+Pruebas y tipos de las funciones, en local:
+
+```bash
+npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/
 ```
 
 Para probar antes de desplegar (requiere Docker corriendo):

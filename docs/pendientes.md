@@ -1,9 +1,10 @@
 # Pendientes
 
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
-con el bloque de seguridad puesto al día el 2026-10-09 (sección 2, primer
-punto; la última migración es la **116** y desde ella se aplican con el
-corredor). Las versiones vigentes son
+con los bloques de la auditoría externa y de seguridad puestos al día el
+2026-10-09 (sección 2, primeros puntos). La última migración es la **119**;
+desde la 116 se aplican con el corredor, y la 120 está reservada para la
+sesión de la API para IFI. Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -185,13 +186,57 @@ aceptada.
 
 ## 2. Riesgos técnicos conocidos
 
-- **Seguridad, cumplimiento y cliente nuevo (2026-10-09). Para retomar,
-  empezar acá.** Hecho ese día: auditoría con correcciones (113-116),
+- **Auditoría externa integral (2026-10-09). Para retomar, empezar acá.**
+  - Informe con 27 hallazgos en `auditoria/2026-10-09-auditoria-externa-integral.md`
+    (fuera de git). Remediación de los altos E1 a E5 en
+    `docs/remediacion-auditoria-externa.md`.
+  - Hecho ese día:
+    - `main` protegida, con controles en cada PR y Dependabot;
+    - despliegue sellado y confirmado;
+    - clave de guiones (E4);
+    - análisis reutilizado por huella (E1);
+    - plazo por fuente y un token por consulta (E5);
+    - constancia de los guiones;
+    - las 240 sintéticas fuera de los totales;
+    - migraciones 117 a 119.
+  - `auditar-seguridad.mjs`: 50 controles en OK.
+  - Queda, por orden:
+  1. **E27, urgente: lo que lee el modelo.** Se corrige con una versión nueva
+     del marco, en otra sesión (decisión del negocio).
+     - Detalle y opciones en el informe.
+     - Los atributos personales se deciden con legal.
+     - **La ficha de seguridad para clientes no se comparte** hasta
+       desplegar el cambio y corregirla.
+  2. **Probar con sesión real:** analizar dos veces a la misma persona. La
+     segunda fila de `analysis_results` tiene que traer
+     `reutiliza_analisis_id` y `duracion_llm_ms` nulo. Revisar también que
+     la bandeja y Fuentes de ingreso no muestren a las sintéticas.
+  3. **Antes de pasar el repositorio a privado:** decidir GitHub Pro. En el
+     plan gratuito, un repositorio privado pierde la protección de ramas. El
+     escaneo de secretos lo cubre gitleaks en los controles.
+  4. **Los PRs de Dependabot** (#1 gitleaks-action 3.0.0, #2 diez
+     actualizaciones menores de npm): revisarlos y fusionarlos si los
+     controles pasan.
+  5. **E3, ambiente de prueba:** el negocio decidió esperar. Antes hace falta
+     la línea base del esquema (E15).
+  6. **E5:**
+     - disyuntor por fuente;
+     - después de la próxima reconsulta masiva, mirar
+       `duracion_por_fuente_ms` y ajustar `PLAZO_POR_FUENTE_MS`;
+     - la cola asincrónica la hace la sesión de la API para IFI, que tiene
+       reservada la migración 120.
+  7. **E1, con impagos reales** (desde el 25/12/2026): la tarjeta de
+     puntaje, según `docs/tarjeta-de-puntaje.md`.
+  8. **Los medios y bajos (E6 a E26):** hoja de ruta en la sección 7 del
+     informe.
+
+- **Seguridad, cumplimiento y cliente nuevo (2026-10-09).** Hecho ese día: auditoría con correcciones (113-116),
   corredor de migraciones y versión del esquema (base por cliente), las
   cédulas reales fuera del árbol del repositorio, y la ficha para clientes
   publicada como página privada (https://claude.ai/artifact/VPGD2bGsN6UVk5ofAr7XdV;
   fuente en `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`).
-  `node scripts/auditar-seguridad.mjs`: 41 controles en OK. Estado de cada
+  `node scripts/auditar-seguridad.mjs`: 41 controles en OK ese día y 50
+  desde la auditoría externa. Estado de cada
   hallazgo en `auditoria/2026-10-09-auditoria-seguridad-y-cumplimiento.md`
   (sección 0) y documentos del SGSI, LOPDP e ISO 9001 en
   `docs/cumplimiento/` (las dos carpetas fuera de git). Queda, por orden:
@@ -239,14 +284,18 @@ aceptada.
   reescribirlo (force push, con confirmación, y `git filter-repo` necesita
   Python, que no está).
 
-- **La cartera tiene 240 personas que no existen.** Son las cédulas
-  sintéticas de prueba de Aval: 2.807 clientes = 2.567 reales + 240.
-  - Tuercen todo total sobre la cartera (porcentajes, segmentos,
-    "sin datos").
-  - Decisión pendiente: marcarlas o borrarlas.
-  - La lista está en `research/aval-pool-240.txt` y `pruebas/aval/`. Son
-    exactamente las 240 cuyo último perfil está en estructura-v3
-    (medido el 2026-09-29): se separan sin la lista.
+- **Las 240 personas sintéticas de Aval: marcadas y fuera de los totales**
+  (118, decisión del negocio del 2026-10-09).
+  - `clients.es_sintetico`: 240 marcadas, 2.572 reales.
+  - Los totales de la base las excluyen; la bandeja las trae con la marca y
+    las listas de la pantalla las filtran.
+  - **Ojo: "sintética" quiere decir que los datos que trajo Aval son de
+    prueba, no que el número no exista.** El 2026-10-09 una de esas cédulas
+    trajo nombre y datos en Novadata. Nunca usarlas para probar contra
+    Novadata.
+  - Una de ellas ya tiene un perfil en estructura-v13 por esa prueba. El
+    perfil se borró, pero ya no se separan por "último perfil en
+    estructura-v3": vale la marca.
 - **Demandas que pueden ser de un homónimo.** Novadata asocia las
   demandas por nombre, y hay dos grupos sin resolver:
   - 31 de 4.602 (0,7%) no tienen el nombre de la persona entre los

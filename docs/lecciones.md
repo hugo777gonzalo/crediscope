@@ -438,3 +438,56 @@ está el porqué. Una lección nueva va en los dos lugares.
   alcance**: Postgres la analiza antes de evaluar. El corredor lee la
   versión con `query_to_xml`, que sólo corre si se llega a evaluar. Y el
   CLI pide `--linked` junto con `--project-ref`.
+
+**Auditoría externa y su remediación (2026-10-09)**
+
+El detalle está en `docs/remediacion-auditoria-externa.md`.
+
+- **El sello del despliegue cayó en un comentario.**
+  - El corredor reemplazaba la primera aparición de `"sin-sello"` en
+    `version-despliegue.ts`, y esa aparición estaba en un comentario. El
+    despliegue "terminó bien" y las seis funciones contestaban sin sellar.
+  - Lo vio sólo la comprobación posterior, que pregunta a cada función qué
+    versión tiene. Un reemplazo de texto se ancla a la línea, y un
+    despliegue no se da por hecho hasta que la función lo confirma.
+  - El commit que lo arregló a medias (`52a4e41`) le echó la culpa al
+    despliegue de todas juntas: el diagnóstico estaba mal hasta que se
+    reprodujo paso a paso.
+- **Una cédula "sintética" de Aval era de una persona real.**
+  - Para probar el plazo por fuente en producción se consultó una de las
+    240. La memoria del proyecto decía que Novadata no las conocía, y trajo
+    nombre y 4 fuentes con datos.
+  - Se borraron el perfil y el crudo con constancia, por decisión del
+    negocio.
+  - "Sintética" describía los datos de Aval, no el número. Una prueba en
+    producción va con una identificación inválida.
+- **"El modelo no recibe cédula ni nombre" estaba en siete documentos y era
+  falso** (E27).
+  - Lo afirmó una auditoría como verificado, y los demás documentos lo
+    copiaron. La auditoría externa lo repitió como fortaleza.
+  - Medido en `analysis_results.mensaje_al_modelo`, no se cumplía en
+    ninguno de los 205 análisis.
+  - Lo que lee el modelo se mide en lo que leyó, no en el código ni en un
+    documento.
+- **`create or replace view` reemplaza las opciones de la vista.**
+  - Sin `with (security_invoker = true)` la vista vuelve a leer con los
+    permisos de su dueño y saltea la RLS. La 118 recrea tres vistas con la
+    opción explícita.
+  - Las definiciones se tomaron de la base viva y no de la última migración
+    que las tocó: entre las dos pudo haber cambios.
+- **La cola larga de la ingesta no es la del uso normal.**
+  - En los días de uso normal el p95 diario fue de 11 a 57 s. El 15/09, en
+    una reconsulta masiva, fue de 143,7 s.
+  - Un plazo calculado con el p95 global (118 s) habría parecido justo y
+    era el de otra situación. Por eso el plazo quedó en 120 s y la duración
+    de cada fuente se guarda: el ajuste se hace con esos números.
+- **52 inicios de sesión al mismo tiempo.** Cada fuente pedía su token, y con
+  el token vencido eran 52 logins simultáneos contra el mismo usuario.
+  Ahora hay un pedido por consulta, compartido entre consultas simultáneas.
+- **El primer chequeo de tipos de las funciones dio cero errores** en 11.019
+  líneas. El TypeScript estaba sano, pero nada lo garantizaba. Desde ese día
+  lo garantiza la integración continua.
+- **El evento "exit" de Node no espera nada asíncrono.** Para cerrar la
+  constancia de un guion al salir, el aviso a la base sale por un proceso
+  hijo sincrónico, con la clave pasada por el entorno y no en la línea de
+  comandos.

@@ -78,6 +78,15 @@ Romper cualquiera de estas rompe algo real.
    migra, después se despliega (`--funciones`), o la función contesta
    503. Para consultas sueltas sigue
    `npx --yes supabase@latest db query --linked --file <archivo>`.
+   **Las funciones se despliegan sólo con `--funciones`, desde una copia
+   limpia de `origin/main`.** Se arma con `git worktree add --detach`,
+   copiando `supabase/.temp` a esa copia. El corredor:
+   - despliega de a una función;
+   - sella el commit (encabezado `x-crediscope-version`);
+   - confirma que cada función contesta con ese sello;
+   - lo anota en `despliegues` (117).
+   Con `functions deploy` a mano la función queda "sin-sello" y el control
+   lo marca. Pasos en `docs/remediacion-auditoria-externa.md`, sección 5.
 2. **El CLI no está en el PATH**: usar `npx --yes supabase@latest`.
    Desde un worktree, `--linked` falla con "Cannot find project ref":
    el enlace vive en `supabase/.temp`, que no está en git. Agregar
@@ -101,8 +110,14 @@ Romper cualquiera de estas rompe algo real.
    llama a `exigirRol()` antes de leer el cuerpo**: el portón de Supabase
    deja pasar la clave pública, que va en la página. Así estuvo abierta
    `structure-client` hasta el 2026-10-09: cualquiera en internet
-   consultaba el buró de cualquier cédula. Con la clave de servicio,
-   `structure-client` exige `actorId` y `baseLegal`.
+   consultaba el buró de cualquier cédula.
+   - **Los guiones entran a `structure-client` con `GUIONES_CLAVE`**
+     (encabezado `x-guiones-clave`), y desde ahí la función exige
+     `actorId` y `baseLegal`.
+   - Hasta la noche de ese mismo día se reconocían por el rol
+     `service_role` leído del token sin verificar la firma: con
+     `verify_jwt` apagado, un token armado a mano lo abría (E4).
+   - Nunca confiar en un dato del token que no se verificó acá.
 7. **Windows + Git Bash.** Los heredocs mutilan el código con acentos y
    comillas: usar las herramientas de escritura y edición de archivos,
    no `cat <<EOF`.
@@ -121,6 +136,23 @@ Romper cualquiera de estas rompe algo real.
    `registrar_evento()`. El registro público de cuentas está cerrado
    (2026-10-09): las da de alta el admin. La auditoría de ese día y su
    procedimiento están en `auditoria/` (fuera de git: describe fallas).
+10. **`main` está protegida** (2026-10-09). Todo cambio entra por PR con
+    los cuatro controles de `.github/workflows/controles.yml` en verde:
+    `pantalla`, `funciones`, `guiones` y `secretos`. Esos nombres los exige
+    la regla de la rama: si se cambia uno, se cambia también la regla.
+    - Una sesión trabaja en una rama, abre el PR con `gh pr create` y lo
+      fusiona con `gh pr merge --squash --delete-branch` cuando pasan los
+      controles.
+    - Sin empujes forzados. La regla vale también para el admin.
+    - Las acciones van fijadas por SHA, y Dependabot propone las
+      actualizaciones como PR.
+11. **Un guion que escribe en la base abre su registro** con
+    `abrirEjecucion()` (`scripts/_comun/ejecucion.mjs`, tabla
+    `ejecuciones_operativas`, 117).
+    - Sin constancia no corre.
+    - Con cambios sin commitear tampoco, salvo `--sin-commit`, que queda
+      anotado.
+    - La corrida se cierra sola al salir, "terminada" o "fallida".
 
 ## Dónde está cada cosa
 
@@ -144,6 +176,10 @@ Romper cualquiera de estas rompe algo real.
   análisis, el lote (`scripts/analizar-en-lote.mjs`) y
   `scripts/comparar-razonamiento.mjs`: un camino nuevo al modelo también.
   Modelo: `claude-sonnet-5-5` desde marco-v28.
+  - `huellaDelPedido()` (119): con la misma huella, un análisis terminado
+    de esa misma persona se reutiliza en vez de volver a preguntar (E1).
+  - La huella no cuenta `cache_control` ni `max_tokens`.
+  - `puntuarPedido()` llama al modelo con un pedido ya armado.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
   de temas que el perfil no trae (v29). Corta el marco vigente por marcas,
   sin copiarlo; está APAGADO (`CONFIG_LLM.marcoPorCliente`) hasta validarlo.
@@ -231,6 +267,19 @@ Romper cualquiera de estas rompe algo real.
 - `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
   y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
   que se cierre.
+- `docs/remediacion-auditoria-externa.md` — qué se hizo con los hallazgos
+  altos de la auditoría externa del 2026-10-09 (E1 a E5), qué falta y cómo
+  se trabaja desde ahí.
+  - El informe completo (E1 a E27) está en `auditoria/`, fuera de git.
+  - La ficha del modelo, en `docs/cumplimiento/ficha-del-modelo.md`.
+  - El diseño de la tarjeta de puntaje, en `docs/tarjeta-de-puntaje.md`.
+- **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
+  corren con:
+  - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`
+  - `npx --yes deno@2.9.6 check --no-lock supabase/functions/*/index.ts`
+
+  Las corre también la integración continua. Una regla nueva en `_shared`
+  lleva su prueba.
 - **Una base por cliente** (`docs/plan-segundo-cliente.md`, construido el
   2026-10-09): `clientes/directorio.json` dice qué bases existen (sólo
   referencia de proyecto y URL, nunca datos ni secretos),
@@ -275,6 +324,18 @@ antes de tocar esa área.
 - Dos formas conviven: `laboral.empleoActual` (objeto, antes de
   marco-v20) y `empleosActuales` (arreglo). Leer las dos.
 
+- **Cada fuente de Novadata espera como mucho 120 s**
+  (`PLAZO_POR_FUENTE_MS`), y la consulta pide un solo token, compartido.
+  Antes eran 52 inicios de sesión simultáneos con el token vencido (E5).
+  - Medido el 2026-10-09: en el uso normal una consulta tarda menos de un
+    minuto, y la cola cerca del corte de 150 s es de las reconsultas
+    masivas.
+  - La duración de cada fuente se guarda en
+    `client_profiles.duracion_por_fuente_ms` (119): el plazo se ajusta con
+    esos números, no a ojo.
+  - La cola asincrónica es de la sesión de la API para IFI (migración 120
+    reservada para ella).
+
 **Base, PostgREST y procesos**
 - PostgREST corta en 1.000 filas sin avisar: agregar en la base (función
   `security invoker`), listar con `traerTodas()`.
@@ -289,6 +350,21 @@ antes de tocar esa área.
   `cron.job_run_details`, no en `cron.job`.
 - Lo que no pasa por `lint` ni `build` se rompe en silencio: los scripts
   sueltos llevan su propio aviso adentro.
+- `create or replace view` REEMPLAZA las opciones de la vista: sin
+  `with (security_invoker = true)` vuelve a leer como su dueño y saltea la
+  RLS. La 118 recrea tres vistas así. Además, una definición vieja se toma
+  de la base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
+  migración que la tocó.
+- Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
+  El 2026-10-09 el sello del despliegue reemplazó una palabra en un
+  comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
+  comprobación posterior.
+- **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
+  Aval.
+  - Los totales de la base las excluyen.
+  - La bandeja las trae con la marca, y las listas de la pantalla filtran
+    `es_sintetico = false`.
+  - Un total nuevo sobre la cartera las filtra igual.
 
 **Crudo y recálculo**
 - El crudo de Novadata se guarda desde la 090 en el depósito privado
@@ -379,6 +455,13 @@ antes de tocar esa área.
   que arma es versión nueva del marco con su fila en
   `scoring_rules_versions`. De `fuentesIngreso.detalle` va sólo un
   resumen; la renta nunca.
+- **El perfil del modelo todavía lleva datos personales que no necesita**
+  (E27, abierto; el detalle está en `auditoria/` y en
+  `docs/cumplimiento/ficha-del-modelo.md`, fuera de git).
+  - Siete documentos afirmaban una minimización que no existe: no afirmarla
+    en ningún lado hasta que se despliegue la versión que la corrige.
+  - Una afirmación sobre lo que lee el modelo se mide en
+    `analysis_results.mensaje_al_modelo`, no en el código.
 - Escribe Sonnet 5.5 desde marco-v28 (sin cascada con Haiku desde v24).
   El mismo perfil analizado dos veces mueve el score ~40 puntos y cambia 1
   de cada 13 recomendaciones: una diferencia menor que eso no se atribuye
@@ -463,7 +546,16 @@ antes de tocar esa área.
   se marca como no medido; rellenarlo con cero hace que uno subestime su
   propio problema.
 - `npm run lint` y `npm run build` antes de commitear.
+  - Si se tocaron las funciones, también `deno check` y `deno test`.
+  - La integración continua los corre igual, y sin ellos en verde el PR no
+    entra.
 - Commits en castellano, explicando el porqué y qué se midió.
+- **Una prueba en producción no consulta a personas.**
+  - Va con una identificación inválida, que la función rechaza antes de la
+    fuente, o con una persona concreta autorizada por el negocio.
+  - Las 240 cédulas "sintéticas" de Aval no sirven: son datos de prueba de
+    Aval, no números inexistentes. Una trajo nombre en Novadata el
+    2026-10-09.
 
 ## Para no quemar el límite de uso
 
