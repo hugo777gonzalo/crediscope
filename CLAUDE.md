@@ -277,6 +277,18 @@ Romper cualquiera de estas rompe algo real.
   - El informe completo (E1 a E27) está en `auditoria/`, fuera de git.
   - La ficha del modelo, en `docs/cumplimiento/ficha-del-modelo.md`.
   - El diseño de la tarjeta de puntaje, en `docs/tarjeta-de-puntaje.md`.
+- **API única para IFI** (propuesta del 2026-10-09; Fase 0 cerrada el 10/10).
+  - **El contrato es `api/openapi.yaml`**, en OpenAPI 3.1, y es la única
+    fuente: de ahí salen la validación, las pruebas y el sandbox.
+  - Se valida con
+    `npx --yes @redocly/cli@latest lint api/openapi.yaml --extends=recommended-strict`.
+  - Los ejemplos del contrato no llevan nada con forma de JWT: el control de
+    secretos (gitleaks) los marcaría.
+  - La propuesta (mediciones, flujo, reintentos, análisis de ataque, cifrado,
+    normativa y decisiones) vive en `docs/cumplimiento/api/`, fuera de git
+    porque describe debilidades.
+  - **La v1 no se publica antes de corregir E27.** Lo que falta está en
+    `docs/pendientes.md`.
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
   - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`

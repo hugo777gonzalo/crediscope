@@ -131,7 +131,21 @@ salen de configuración, nunca clavadas en el código.
 
 Eso es todo. El resto se construye cuando aparezca el cliente dos.
 
-## Pendiente aparte: el contrato de la API
+## El contrato de la API
+
+**Resuelto en el contrato v1** (`api/openapi.yaml`, 2026-10-10). Las tres
+cosas de abajo están ahí:
+
+- asincrónica, con espera opcional (`Prefer: wait`, hasta 90 s), y el
+  resultado por aviso firmado o por consulta;
+- `Idempotency-Key` obligatoria en todo `POST`, además de la referencia
+  única de la IFI;
+- la versión en la ruta (`/v1`), y los motivos (positivos, negativos,
+  acciones y razonamiento) desde la v1.
+
+La propuesta que lo fundamenta está en `docs/cumplimiento/api/`, fuera de
+git. Lo que sigue es el texto original, que se deja como registro de por qué
+se pidió:
 
 Las cooperativas quieren simple — "te mando una identificación,
 devolveme el resultado". Eso hace que el contrato de respuesta **sea**
