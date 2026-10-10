@@ -14,7 +14,7 @@ va lo que ya está cerrado o no expone nada.
 | E2 · Cambios sin control | ✅ Cerrado | Decidir GitHub Pro antes de pasar el repositorio a privado |
 | E3 · Un solo ambiente, guiones sin rastro | 🟡 Rastro y sintéticas hechos | Crear el proyecto de prueba (decisión del negocio: todavía no) |
 | E4 · Token sin verificar en `structure-client` | ✅ Cerrado | — |
-| E5 · Consultas al límite de los 150 s | 🟡 Plazo y token hechos | Disyuntor por fuente; la cola asincrónica la construye la sesión de la API para IFI (migración 120 reservada) |
+| E5 · Consultas al límite de los 150 s | 🟡 Plazo y token hechos | Disyuntor por fuente; la cola asincrónica la construye la sesión de la API para IFI (su migración toma el número libre al aplicarse) |
 | E27 · Lo que lee el modelo (nuevo) | ❌ Abierto | Versión nueva del marco en otra sesión; parte, con legal. Detalle en `auditoria/` (fuera de git) |
 
 ---
@@ -142,6 +142,12 @@ va lo que ya está cerrado o no expone nada.
     - `metricas_gerenciales().totalClientes` pasó de 2.812 a 2.572;
     - `resumen_fuentes_ingreso().total` da 2.572;
     - la bandeja sigue trayendo 2.812, de las cuales 240 están marcadas.
+  - **Se le escapó la franja de la bandeja** (arreglado el 2026-10-10 con la
+    120). `bandeja_conteos` lee la vista, que conserva a las sintéticas, y
+    siguió contándolas: 2.812 con la lista en 2.572. Lo vio la revisión de
+    UX. La 118 había buscado a los lectores de `clients` y `client_profiles`,
+    no a los de la vista. Ese día se revisaron en la base viva los demás
+    lectores sin el filtro, y ninguno las cuenta.
 - **Ambiente de prueba**: pendiente por decisión del negocio. Hace falta, en
   este orden:
   1. **Una línea base del esquema** (E15, sin hacer): el corredor no arma una
@@ -197,7 +203,9 @@ va lo que ya está cerrado o no expone nada.
   - **No se pasó el análisis a asincrónico:** en el uso normal no hace falta.
     Además, la cola asincrónica la construye la sesión de la API única para
     IFI (decisión del negocio del 2026-10-09, coordinada entre las dos
-    sesiones). Esa sesión tiene reservada la **migración 120**.
+    sesiones). Su migración toma el número libre al aplicarse: la 120 que
+    tenía reservada la cedió para la franja de la bandeja (E3), y desde
+    entonces los números no se reservan.
   - **El plazo puede bajar más adelante.** La sesión de la API propuso fijarlo
     en p99 × 1,5 con un tope de 60 s. Se dejó en 120 s mientras la consulta
     corra dentro de un pedido de 150 s, porque un tope de 60 s cortaría
@@ -217,13 +225,15 @@ va lo que ya está cerrado o no expone nada.
 
 ## 3. Inventario de cambios
 
-**Migraciones** (aplicadas con el corredor el 2026-10-09; base en la 119):
+**Migraciones** (aplicadas con el corredor: 117 a 119 el 2026-10-09 y la 120
+el 2026-10-10; base en la 120):
 
 | Migración | Qué hace |
 |---|---|
 | 117 | `ejecuciones_operativas` y `despliegues`, con RLS y lectura para admin |
 | 118 | `clients.es_sintetico`; cuatro funciones y tres vistas sin sintéticas. Las vistas se recrean con `security_invoker` explícito, y las definiciones salen de la base viva, no de las migraciones viejas |
 | 119 | `analysis_results.huella_pedido` y `reutiliza_analisis_id`; `client_profiles.duracion_por_fuente_ms` |
+| 120 | `bandeja_conteos` sin sintéticas: la franja de la bandeja suma lo mismo que la lista, y la migración lo comprueba antes de terminar |
 
 **Commits** en `main`, en orden:
 
@@ -237,7 +247,9 @@ va lo que ya está cerrado o no expone nada.
 | `52a4e41` | Despliegue de a una función |
 | `f045b3d` | Sello anclado a la constante |
 
-Después vienen la documentación y el arreglo de la fecha del control.
+Después vienen la documentación y el arreglo de la fecha del control. El
+2026-10-10 entró por PR (rama `fix/franja-de-la-bandeja`) la 120, con la
+franja de la bandeja.
 
 **Funciones desplegadas:** las seis, con el sello `f045b3dc304a`.
 
@@ -356,7 +368,8 @@ Después vienen la documentación y el arreglo de la fecha del control.
    - Recién con el cambio desplegado, actualizar la ficha de seguridad para
      clientes.
 2. **Verificar con sesión real:** el análisis reutilizado (E1) y las listas
-   sin sintéticas (bandeja, Fuentes de ingreso).
+   sin sintéticas (bandeja, Fuentes de ingreso), con la franja de la bandeja
+   igual a la lista.
 3. **E1, cuando haya impagos reales** (desde la reconsulta del 25/12/2026):
    la tarjeta de puntaje según `docs/tarjeta-de-puntaje.md`, la validación
    independiente y las pruebas de equidad (ficha del modelo, sección 7).

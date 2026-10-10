@@ -73,8 +73,12 @@ Romper cualquiera de estas rompe algo real.
    una en una transacción con su fila en `esquema_version`, y rellena los
    marcadores desde el archivo de secretos de cada base. Aplicarla a mano
    deja la base sin su versión y el control lo marca. Una migración nueva
-   no abre su propia transacción. Si una función empieza a depender de
-   ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
+   no abre su propia transacción. **El número se toma al aplicarla, no se
+   reserva**: el corredor aplica sólo los números mayores que el último
+   aplicado, y uno salteado no se aplica nunca. Antes de escribirla, mirar
+   en qué número está cada base (el corredor sin banderas) y las ramas
+   abiertas, y avisar a las otras sesiones. Si una función empieza a
+   depender de ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
    migra, después se despliega (`--funciones`), o la función contesta
    503. Para consultas sueltas sigue
    `npx --yes supabase@latest db query --linked --file <archivo>`.
@@ -333,8 +337,8 @@ antes de tocar esa área.
   - La duración de cada fuente se guarda en
     `client_profiles.duracion_por_fuente_ms` (119): el plazo se ajusta con
     esos números, no a ojo.
-  - La cola asincrónica es de la sesión de la API para IFI (migración 120
-    reservada para ella).
+  - La cola asincrónica es de la sesión de la API para IFI; su migración
+    toma el número libre al aplicarse (regla 1).
 
 **Base, PostgREST y procesos**
 - PostgREST corta en 1.000 filas sin avisar: agregar en la base (función
@@ -364,7 +368,11 @@ antes de tocar esa área.
   - Los totales de la base las excluyen.
   - La bandeja las trae con la marca, y las listas de la pantalla filtran
     `es_sintetico = false`.
-  - Un total nuevo sobre la cartera las filtra igual.
+  - Un total nuevo sobre la cartera las filtra igual, también si lee
+    `bandeja_solicitudes`: la vista las conserva. La franja de la bandeja
+    (`bandeja_conteos`) las contó hasta la 120 (2.812 contra 2.572 de la
+    lista), porque la 118 buscó a los lectores de las tablas y no a los de
+    la vista.
 
 **Crudo y recálculo**
 - El crudo de Novadata se guarda desde la 090 en el depósito privado

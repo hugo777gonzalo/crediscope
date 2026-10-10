@@ -2,9 +2,9 @@
 
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
-2026-10-09 (sección 2, primeros puntos). La última migración es la **119**;
-desde la 116 se aplican con el corredor, y la 120 está reservada para la
-sesión de la API para IFI. Las versiones vigentes son
+2026-10-09 (sección 2, primeros puntos). La última migración es la **120**;
+desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
+no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -198,7 +198,8 @@ aceptada.
     - plazo por fuente y un token por consulta (E5);
     - constancia de los guiones;
     - las 240 sintéticas fuera de los totales;
-    - migraciones 117 a 119.
+    - migraciones 117 a 119, y la 120 el 2026-10-10 (la franja de la
+      bandeja sin sintéticas).
   - `auditar-seguridad.mjs`: 50 controles en OK.
   - Queda, por orden:
   1. **E27, urgente: lo que lee el modelo.** Se corrige con una versión nueva
@@ -210,7 +211,9 @@ aceptada.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
      `reutiliza_analisis_id` y `duracion_llm_ms` nulo. Revisar también que
-     la bandeja y Fuentes de ingreso no muestren a las sintéticas.
+     la bandeja y Fuentes de ingreso no muestren a las sintéticas, y que la
+     franja de la bandeja sume lo mismo que la lista (en la base coincide
+     desde la 120).
   3. **Antes de pasar el repositorio a privado:** decidir GitHub Pro. En el
      plan gratuito, un repositorio privado pierde la protección de ramas. El
      escaneo de secretos lo cubre gitleaks en los controles.
@@ -223,8 +226,8 @@ aceptada.
      - disyuntor por fuente;
      - después de la próxima reconsulta masiva, mirar
        `duracion_por_fuente_ms` y ajustar `PLAZO_POR_FUENTE_MS`;
-     - la cola asincrónica la hace la sesión de la API para IFI, que tiene
-       reservada la migración 120.
+     - la cola asincrónica la hace la sesión de la API para IFI; su
+       migración toma el número libre al aplicarse.
   7. **E1, con impagos reales** (desde el 25/12/2026): la tarjeta de
      puntaje, según `docs/tarjeta-de-puntaje.md`.
   8. **Los medios y bajos (E6 a E26):** hoja de ruta en la sección 7 del
@@ -288,7 +291,8 @@ aceptada.
   (118, decisión del negocio del 2026-10-09).
   - `clients.es_sintetico`: 240 marcadas, 2.572 reales.
   - Los totales de la base las excluyen; la bandeja las trae con la marca y
-    las listas de la pantalla las filtran.
+    las listas de la pantalla las filtran. La franja de la bandeja
+    (`bandeja_conteos`) las excluye desde la 120.
   - **Ojo: "sintética" quiere decir que los datos que trajo Aval son de
     prueba, no que el número no exista.** El 2026-10-09 una de esas cédulas
     trajo nombre y datos en Novadata. Nunca usarlas para probar contra
