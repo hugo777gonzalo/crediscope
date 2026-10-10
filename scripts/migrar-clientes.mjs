@@ -221,17 +221,49 @@ for (const cliente of clientes) {
       fallas++;
       continue;
     }
-    try {
-      execSync(`npx --yes supabase@latest functions deploy --project-ref ${cliente.proyecto}`, {
-        cwd: RAIZ,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      console.log(`               funciones desplegadas (${sello})`);
+    // De a una función, y comprobando después que cada una contesta con el
+    // sello. El 2026-10-09 el despliegue de todas juntas (`functions
+    // deploy` sin nombre) dijo que había terminado bien y subió el archivo
+    // sin sellar; la segunda vez falló con TransportError en las seis. De a
+    // una, el mismo código salió sellado. Un despliegue no se da por hecho
+    // hasta que la función lo confirma.
+    const desplegadas = [];
+    for (const funcion of FUNCIONES) {
+      try {
+        execSync(`npx --yes supabase@latest functions deploy ${funcion} --project-ref ${cliente.proyecto}`, {
+          cwd: RAIZ,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch (e) {
+        console.log(`               FALLÓ ${funcion}: ${String(e.stderr || e.message).split("\n").filter(Boolean).slice(-2).join(" | ")}`);
+        fallas++;
+        continue;
+      }
+      // La versión vieja puede contestar unos segundos más.
+      let contesta = "sin respuesta";
+      for (let intento = 1; intento <= 6 && contesta !== sello; intento++) {
+        try {
+          const r = await fetch(`${cliente.url}/functions/v1/${funcion}`, { method: "OPTIONS" });
+          contesta = r.headers.get("x-crediscope-version") ?? "sin encabezado";
+        } catch (e) {
+          contesta = `sin respuesta (${e.message})`;
+        }
+        if (contesta !== sello) await new Promise((r) => setTimeout(r, 5_000));
+      }
+      if (contesta === sello) {
+        desplegadas.push(funcion);
+      } else {
+        console.log(`               ${funcion}: desplegada pero contesta "${contesta}" y no ${sello}`);
+        fallas++;
+      }
+    }
+    console.log(`               desplegadas y confirmadas ${desplegadas.length} de ${FUNCIONES.length} (${sello})`);
+    if (desplegadas.length) {
       const texto = (s) => `'${String(s).replaceAll("'", "''")}'`;
       const anotado = correrSql(
         cliente.proyecto,
-        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${FUNCIONES.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`
+        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${desplegadas.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`
       );
       if (anotado.ok) {
         console.log("               anotado en despliegues");
@@ -239,9 +271,6 @@ for (const cliente of clientes) {
         console.log(`               desplegado pero NO anotado en despliegues: ${anotado.error}`);
         fallas++;
       }
-    } catch (e) {
-      console.log(`               FALLÓ el despliegue: ${String(e.stderr || e.message).split("\n").filter(Boolean).slice(-2).join(" | ")}`);
-      fallas++;
     }
   }
 }
