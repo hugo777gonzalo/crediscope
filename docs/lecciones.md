@@ -475,6 +475,16 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
     opción explícita.
   - Las definiciones se tomaron de la base viva y no de la última migración
     que las tocó: entre las dos pudo haber cambios.
+- **Sacar una población de los totales es buscar también a quien lee la
+  vista que la conserva.**
+  - La 118 marcó a las 240 sintéticas y las sacó de los totales que leen
+    `clients` y `client_profiles`. La vista `bandeja_solicitudes` las
+    conserva con la marca, y `bandeja_conteos`, que la lee, quedó afuera:
+    la franja de la bandeja dijo 2.812 con la lista en 2.572 hasta la 120
+    (2026-10-10).
+  - Lo vio otra sesión, mirando la pantalla. Un total y su lista se
+    comprueban juntos, y la migración que los toca trae la comprobación
+    adentro.
 - **La cola larga de la ingesta no es la del uso normal.**
   - En los días de uso normal el p95 diario fue de 11 a 57 s. El 15/09, en
     una reconsulta masiva, fue de 143,7 s.
