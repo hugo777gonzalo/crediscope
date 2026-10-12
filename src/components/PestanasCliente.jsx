@@ -15,7 +15,7 @@ export default function PestanasCliente({ cedula, activa }) {
     <div className="crediscope-tabs">
       {PESTANAS.map(([ruta, texto]) =>
         ruta === activa ? (
-          <span key={ruta} className="crediscope-tab crediscope-tab-active">
+          <span key={ruta} className="crediscope-tab crediscope-tab-active" aria-current="page">
             {texto}
           </span>
         ) : (

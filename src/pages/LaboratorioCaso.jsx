@@ -5,6 +5,7 @@ import { getCorte, getPerfil, getAnalisis, getCrudo, getEventosDeSolicitud, getM
 import { armarPerfilDelModelo } from "../../supabase/functions/_shared/perfil-del-modelo.ts";
 import { parecidos, diferenciasJson } from "../lib/analisisProfundo.js";
 import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
+import { plural } from "../lib/formatos.js";
 import ArbolJson from "../components/laboratorio/ArbolJson.jsx";
 import { Volver, MensajeError, Cargando, FranjaSintetica, Etiqueta, ETIQUETA_RECOMENDACION, ETIQUETA_MOTIVO, ETIQUETA_SE_PODIA_VER, num, dec } from "../components/laboratorio/Comunes.jsx";
 
@@ -181,7 +182,7 @@ export default function LaboratorioCaso() {
               Rearmado desde el perfil del día del análisis con el código de hoy (armarPerfilDelModelo).
               {analisis?.mensaje_al_modelo
                 ? derivado.cambiosContraLoGuardado.length
-                  ? ` Contra lo que guardó el análisis cambian ${derivado.cambiosContraLoGuardado.length} campos: el modelo leyó algo distinto de lo que hoy armaríamos.`
+                  ? ` Contra lo que guardó el análisis ${derivado.cambiosContraLoGuardado.length === 1 ? "cambia" : "cambian"} ${plural(derivado.cambiosContraLoGuardado.length, "campo")}: el modelo leyó algo distinto de lo que hoy armaríamos.`
                   : " Coincide con lo que guardó el análisis."
                 : analisis
                   ? " El análisis es anterior a la 090 y no guardó lo que leyó: no se puede comparar."

@@ -146,6 +146,7 @@ export default function LaboratorioDatos() {
           <button
             key={t.clave}
             className={`crediscope-tab ${pestana.clave === t.clave ? "crediscope-tab-active" : ""}`}
+            aria-current={pestana.clave === t.clave ? "true" : undefined}
             onClick={() => setParams({ pestana: t.clave })}
             style={{ border: "none", background: "none", cursor: "pointer" }}
           >
