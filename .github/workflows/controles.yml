@@ -43,6 +43,12 @@ jobs:
       # Sin las variables de Supabase compila igual: la pantalla se
       # construye y avisa en el navegador que no está configurada.
       - run: npm run build
+      # La revisión de UX (habilidad revision-ux, docs/revision-ux.md): ningún
+      # texto de pantalla con una palabra que el negocio retiró (piso,
+      # asalariado, default, backtest...) y los formatos, la traducción de
+      # errores y la navegación. Sin base ni red: leen el código.
+      - run: node scripts/revisar-textos.mjs
+      - run: node scripts/probar-formatos.mjs
 
   funciones:
     name: funciones
@@ -67,7 +73,7 @@ jobs:
         with:
           node-version: 24
       # Los guiones no pasan por lint ni build: al menos que compilen.
-      - run: for f in scripts/*.mjs scripts/_comun/*.mjs; do node --check "$f"; done
+      - run: for f in scripts/*.mjs scripts/_comun/*.mjs scripts/lib/*.mjs; do node --check "$f"; done
       # El detector de eventos se prueba sin base, sin red y sin datos de
       # personas; las otras pruebas de scripts/ necesitan la base viva.
       - run: node scripts/probar-detector.mjs
