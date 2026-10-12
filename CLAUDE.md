@@ -171,6 +171,10 @@ Romper cualquiera de estas rompe algo real.
     - Sin empujes forzados. La regla vale también para el admin.
     - Las acciones van fijadas por SHA, y Dependabot propone las
       actualizaciones como PR.
+    - `pantalla` corre lint, build, `revisar-textos.mjs` y
+      `probar-formatos.mjs`. Su build compila sin las variables de Supabase:
+      sirve para ver que compila, no para medir lo que se publica (el
+      principal sale en 273 KB contra 476 KB con el `.env`).
 11. **Un guion que escribe en la base abre su registro** con
     `abrirEjecucion()` (`scripts/_comun/ejecucion.mjs`, tabla
     `ejecuciones_operativas`, 117).
@@ -561,6 +565,10 @@ antes de tocar esa área.
   en silencio: la nuestra decía fuentes-v9 con el código en v10.
 - Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
   (`Link is not defined` con el import presente): `touch` y recargar.
+- El tamaño de la aplicación se mide con el `.env`: sin las variables de
+  Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
+  cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
+  continua miden 273 KB donde lo publicado pesa 476 KB.
 
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`

@@ -37,7 +37,8 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
    ```
    Corta con los **errores** (palabras que el negocio retiró) y lista los **avisos**
    (casi siempre mal, con excepciones). Una excepción justificada se marca en el
-   código: `// revisar-textos: permitir <regla> -- por qué`.
+   código: `// revisar-textos: permitir <regla> -- por qué`. Los dos guiones corren
+   también en cada PR (control `pantalla`): un error de textos o de formatos lo frena.
 3. **Recorrido en el navegador con la sesión de QA** (`recorrido-qa.md`).
    Cargá el verificador y corrélo en cada pantalla tocada:
    ```js
@@ -67,9 +68,9 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
 - **Números, fechas y moneda sólo con `src/lib/formatos.js` y `src/lib/fechas.js`.**
   Nunca `${n}` ni `.toFixed()` en un texto: "2.812", "37,0 s", "$1.784", "15/09/2026 17:26".
 - **Piezas compartidas antes que copias**: `src/components/ui/` (`Kpi`, `Barra`,
-  `Cargando`, `AvisoDeError`, `LimiteDeError`). Había ocho `Kpi` y treinta y nueve
-  avisos de error escritos a mano. Un error se muestra con `AvisoDeError`, jamás con
-  `error.message` crudo.
+  `Cargando`, `Aviso`, `AvisoDeError`, `LimiteDeError`). Había ocho `Kpi`, treinta y
+  nueve cajas de error y una veintena de cuadros de aviso escritos a mano. Un error se
+  muestra con `AvisoDeError`, jamás con `error.message` crudo.
 - **Los nombres del menú y de la barra salen de `src/lib/navegacion.js`.** Un nombre
   se cambia en un solo lugar.
 - **Tres estados siempre**: cargando (`Cargando`), vacío (qué falta y qué hacer) y

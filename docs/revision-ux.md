@@ -1,5 +1,9 @@
 # Revisión de UX — 2026-10-10
 
+Hecha el 2026-10-10 y puesta en el repositorio el 2026-10-12 (rama
+`feat/revision-de-ux`). Lo que falta repasar en pantalla y lo que espera una
+decisión del negocio está también en `docs/pendientes.md`, sección 1.
+
 Revisión completa de la interfaz con la mirada de una aplicación bancaria de
 crédito: cada pantalla del menú recorrida con la sesión de QA, todos los textos
 leídos con un analizador de JSX, y las cifras de una sección contrastadas con las
@@ -15,7 +19,7 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
   cuatro pantallas del cliente. A 1280 px; Bandeja a 768 y 414; desborde horizontal a
   414 px en 10 rutas.
 - **Control de textos con el analizador de Vite** (no un grep: el primer grep devolvió
-  569 coincidencias y casi ninguna era un texto de pantalla). 4.189 textos en 136
+  569 coincidencias y casi ninguna era un texto de pantalla). 4.188 textos en 146
   archivos. `node scripts/revisar-textos.mjs`.
 - **Verificador dentro de la página** (`verificar-pantalla.js`): formatos, códigos
   internos, estados en blanco, campos sin etiqueta, contraste, desborde.
@@ -230,13 +234,15 @@ node scripts/revisar-textos.mjs --glosario      # las reglas
 node scripts/probar-formatos.mjs                # 62 casos de formatos, errores y navegación
 ```
 
-Los dos pasos ya están sumados al control `pantalla` de `.github/workflows/controles.yml`
+Los dos pasos están sumados al control `pantalla` de `.github/workflows/controles.yml`
 (corren con `npm ci`, sin red ni base) para que un texto con una palabra retirada no entre
-por un PR, y `scripts/lib/` entra al `node --check` del control `guiones`. Quedan **sin
-commitear**, como todo lo demás: toman efecto cuando se fusione el PR. Se acordó con la sesión
-de la auditoría externa que van en este PR (si los sumara ella antes, `pantalla` fallaría en
-todos los demás porque los guiones todavía no están en `main`). No se cambió `name: pantalla`:
-es el nombre que exige la regla de la rama.
+por un PR, y `scripts/lib/` entra al `node --check` del control `guiones`. Entraron con el PR
+de esta revisión, junto con los guiones: se acordó con la sesión de la auditoría externa que
+fueran en el mismo PR (si los hubiera sumado ella antes, `pantalla` habría fallado en todos
+los demás porque los guiones todavía no estaban en `main`). No se cambió `name: pantalla`: es
+el nombre que exige la regla de la rama. El `build` de ese control compila sin las variables
+de Supabase, así que sirve para ver que compila y no para medir el tamaño de lo que se publica
+(ver el defecto 10).
 
 Y en el navegador de QA, el verificador (ver `.claude/skills/revision-ux/recorrido-qa.md`).
 Cuando se descubra un defecto nuevo que una regla pueda detectar, se agrega la regla.

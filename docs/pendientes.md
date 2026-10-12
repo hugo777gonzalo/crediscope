@@ -2,7 +2,8 @@
 
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
-2026-10-09 (sección 2, primeros puntos). La última migración es la **120**;
+2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
+2026-10-12 (sección 1, primer punto). La última migración es la **120**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -21,6 +22,48 @@ aceptada.
 
 ## 1. Para retomar primero
 
+- **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
+  El informe es `docs/revision-ux.md`; para repetirla cuando cambie una
+  pantalla, la habilidad `revision-ux`
+  (`.claude/skills/revision-ux/SKILL.md`). Entró a `main` con el PR de la
+  rama `feat/revision-de-ux`.
+  - **Hecho:**
+    - trece defectos funcionales (el enlace directo que caía en "/", las
+      pantallas de administración en blanco, los submenús escondidos bajo
+      860 px...), seis cifras que no cerraban y unos 90 archivos con textos,
+      formatos y estados unificados (`formatos.js`, `mensajesDeError.js`,
+      `navegacion.js`, `src/components/ui/`);
+    - dos pasos nuevos en el control `pantalla` de cada PR:
+      `scripts/revisar-textos.mjs` (4.188 textos, 0 errores, 0 avisos) y
+      `scripts/probar-formatos.mjs` (62 casos);
+    - lo último que se hizo se verificó con lint, build, esos dos guiones y la
+      lectura del código, **pero no en pantalla**: la sesión de QA caducó.
+  - Queda, por orden:
+  1. **Repasar en pantalla lo que no se vio.** Claude no escribe
+     contraseñas: el negocio ingresa con la cuenta de QA en el panel de vista
+     previa (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`) y se
+     sigue `.claude/skills/revision-ux/recorrido-qa.md` a 1280, 768 y 414 px.
+     Mirar:
+     - la franja de la bandeja: con la 120 tiene que dar 2.572 y sumar lo
+       mismo que sus tarjetas (medido en la base el 2026-10-10: revisar 151,
+       aprobar 50, sin analizar 2.335, con bloqueo 73; volver a medir);
+     - el menú acordeón y, bajo 860 px, la fila con las opciones de la
+       sección abierta;
+     - los cuadros de aviso y de error nuevos (`Aviso`, `AvisoDeError`) en
+       Costos (Avisos, Corridas, Fallas e incidentes), Reglas de
+       clasificación, Aval y Fuentes de Ingreso;
+     - las pestañas internas del Laboratorio (sólo se vio el Resumen de la
+       prueba retrospectiva), el detalle de un lote y Cargar un lote;
+     - Laboratorio › Inicio, que dio `statement timeout` y hoy muestra el
+       aviso con "Reintentar": averiguar cuál de las ocho cosas que pide
+       (una función `lab_*`) se pasa del tiempo.
+     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`; lo
+     que no, se corrige con la habilidad.
+  2. **Decisiones del negocio:** nombres y diseño, en la sección 3 de este
+     archivo. Nada se renombró sin su decisión.
+  3. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+     migrar los estilos en línea a clases a medida que se toque cada una.
+
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
    haciendo el negocio** (2026-10-04) y va a comentar el resultado. Todas las
    pantallas que pidió el negocio están construidas (fases A a F y módulos
@@ -32,7 +75,7 @@ aceptada.
    y `node scripts/probar-estadistica.mjs`: todo cuadra) y todos los
    módulos cargan en el navegador sin errores. Recorrido, con el usuario
    logueado en `localhost:5184`:
-   - Laboratorio › Inicio (hallazgos críticos, default por mes, análisis por
+   - Laboratorio › Inicio (hallazgos críticos, impago por mes, análisis por
      mes, trabajos a medias, actividad).
    - Instituciones y proyectos: registrar una institución de prueba y un
      proyecto; asignarle una carga.
@@ -433,6 +476,12 @@ aceptada.
     mientras tanto la pantalla los arregla al mostrarlos.
   - La auditoría del expediente nombra a los demás usuarios como "Otro
     usuario": nombrarlos exige exponer una vista con los nombres (permisos).
+  - "Cargando..." por esqueletos en las tres pantallas más lentas (Bandeja,
+    Expediente, Panorama: de 5 a 10 s en desarrollo; la medida real se toma
+    con `npm run build && npm run preview`).
+  - El orden de los nombres que trae la fuente es inconsistente ("Apellidos
+    Nombres" para unas personas y "Nombre Apellido" para otras) y se muestra
+    tal cual.
   - Quedan 1.761 estilos en línea en 110 archivos: lo nuevo usa clases.
 
 ## 4. Parámetros que vencen
