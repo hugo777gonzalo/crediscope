@@ -5,6 +5,8 @@ import GrupoConfigurable from "../components/GrupoConfigurable.jsx";
 import FilaConfig from "../components/FilaConfig.jsx";
 import PestanasProveedor from "../components/PestanasProveedor.jsx";
 import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Qué campos del Perfil del Cliente entran al Análisis con IA.
 //
@@ -68,7 +70,7 @@ export default function ConfigCampos() {
 
   const totalActivos = items?.filter((i) => i.enabled).length ?? 0;
   const descripcion =
-    "Un campo apagado se sigue calculando y guardando en el perfil, pero viaja en blanco hacia el modelo: existe y se puede ver, solo no pesa en el criterio.";
+    "Un campo apagado se sigue calculando y guardando en el perfil, pero viaja en blanco hacia el modelo: existe y se puede ver, sólo no pesa en el criterio.";
 
   return (
     <div>
@@ -89,9 +91,7 @@ export default function ConfigCampos() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-card">
@@ -104,7 +104,7 @@ export default function ConfigCampos() {
       </div>
 
       {!items ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : grupos.length === 0 ? (
         <div className="crediscope-card">
           <p className="crediscope-muted" style={{ margin: 0 }}>Ningún campo con ese nombre.</p>

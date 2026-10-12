@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { exploreNovadata } from "../lib/api.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 
 function tagClass(status) {
   if (status === "ok") return "crediscope-tag-ok";
@@ -53,7 +54,7 @@ export default function NovadataExplorer() {
       <div className="crediscope-card">
         <h2>Explorador de Fuentes</h2>
         <p className="crediscope-muted">
-          Consulta en vivo las 52 fuentes mapeadas. No guarda nada — es solo para inspeccionar la ingesta. La
+          Consulta en vivo las 52 fuentes mapeadas. No guarda nada — es sólo para inspeccionar lo que contesta cada fuente. La
           contraseña no se persiste en ningún lado, se usa una sola vez para pedir el token.
         </p>
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 360, marginTop: 12 }}>
@@ -86,9 +87,7 @@ export default function NovadataExplorer() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)" }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       {result?.controlBloqueo?.hallazgos?.length > 0 ? (

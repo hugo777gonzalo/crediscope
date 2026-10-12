@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { getTarifasLlm, getConsumoLlm } from "../lib/api.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import { moneda } from "../lib/formatos.js";
+import { formatearDia } from "../lib/fechas.js";
+import Aviso from "../components/ui/Aviso.jsx";
 
 // Las tarifas con las que se valúa cada llamada.
 //
@@ -46,9 +50,7 @@ export default function CostosTarifas() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   return (
@@ -67,33 +69,22 @@ export default function CostosTarifas() {
       </div>
 
       {!tarifas ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : (
         <>
           {modelosSinTarifa.length > 0 ? (
-            <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <AlertTriangle size={20} color="var(--bad)" style={{ flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Hay consumo de modelos sin tarifa cargada.</p>
-                  <p style={{ margin: 0 }}>
-                    {modelosSinTarifa.map((m) => <code key={m} style={{ marginRight: 8 }}>{m}</code>)}
-                    <br />
-                    Esas llamadas se están contando en <strong>cero</strong>. El costo informado es menor que el real hasta que
-                    se carguen.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Aviso tipo="peligro" titulo="Hay consumo de modelos sin tarifa cargada.">
+              <p>
+                {modelosSinTarifa.map((m) => <code key={m} style={{ marginRight: 8 }}>{m}</code>)}
+                <br />
+                Esas llamadas se están contando en <strong>cero</strong>. El costo informado es menor que el real hasta que
+                se carguen.
+              </p>
+            </Aviso>
           ) : (
-            <div className="crediscope-card">
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <CheckCircle2 size={20} color="var(--good)" style={{ flexShrink: 0 }} />
-                <p className="crediscope-muted" style={{ margin: 0 }}>
-                  Todos los modelos que consumieron tienen tarifa cargada.
-                </p>
-              </div>
-            </div>
+            <Aviso tipo="exito">
+              <p className="crediscope-muted">Todos los modelos que consumieron tienen tarifa cargada.</p>
+            </Aviso>
           )}
 
           <div className="crediscope-card">
@@ -105,7 +96,7 @@ export default function CostosTarifas() {
                     <th>Modelo</th>
                     <th>Desde</th>
                     {CAMPOS.map(([k, etiqueta, ayuda]) => (
-                      <th key={k} style={{ textAlign: "right" }} title={ayuda}>{etiqueta}</th>
+                      <th key={k} className="crediscope-cifra" title={ayuda}>{etiqueta}</th>
                     ))}
                   </tr>
                 </thead>
@@ -113,10 +104,10 @@ export default function CostosTarifas() {
                   {tarifas.map((t) => (
                     <tr key={t.id}>
                       <td style={{ fontSize: 13 }}>{t.modelo}</td>
-                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{t.vigente_desde}</td>
+                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{formatearDia(t.vigente_desde)}</td>
                       {CAMPOS.map(([k]) => (
-                        <td key={k} style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                          ${Number(t[k]).toFixed(2)}
+                        <td key={k} className="crediscope-cifra">
+                          {moneda(t[k], 2)}
                         </td>
                       ))}
                     </tr>
@@ -125,7 +116,7 @@ export default function CostosTarifas() {
               </table>
             </div>
             <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-              Los valores son por millón de tokens. Pasá el mouse por cada columna para ver qué se paga en ella.
+              Los valores son por millón de tokens. Pasá el cursor por cada columna para ver qué se paga en ella.
             </p>
           </div>
 

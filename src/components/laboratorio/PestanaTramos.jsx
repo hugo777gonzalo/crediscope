@@ -62,7 +62,7 @@ export default function PestanaTramos({ corteId, poblacion }) {
           Cortes (el tramo llega hasta cada valor, inclusive; separados por punto y coma)
           <input className="crediscope-input" value={texto ?? cortesDe(r.iniciales)} onChange={(e) => setTexto(e.target.value)} />
         </label>
-        {r.extras.length ? <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>Además: {r.extras.map((t) => (t.tipo === "sin_dato" ? "sin dato" : `${t.valor} en su propio tramo`)).join(" · ")}.</p> : null}
+        {r.extras.length ? <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>Además: {r.extras.map((t) => (t.tipo === "sin_dato" ? "sin dato" : `${t.valor} en su propio tramo`)).join(" · ")}.</p> : null}
       </div>
 
       <div className="crediscope-card">
@@ -111,7 +111,7 @@ export default function PestanaTramos({ corteId, poblacion }) {
             </tbody>
           </table>
         </div>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           IV: menos de 0,02 nada · hasta 0,1 débil · hasta 0,3 media · más, fuerte · más de 0,5, sospechar que la variable trae el resultado. WoE con
           el suavizado de la base (0,5 por tramo).
         </p>

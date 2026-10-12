@@ -150,7 +150,7 @@ export default function LaboratorioInstituciones() {
                   </div>
                   <button className="crediscope-btn crediscope-btn-ghost" onClick={() => setEditando(i.id)}>Editar</button>
                 </div>
-                <p style={{ fontSize: 13.5 }}>
+                <p style={{ fontSize: 14 }}>
                   {num(suyas.length)} cargas · {num(suyas.reduce((s, c) => s + Number(c.conciliacion?.operaciones ?? 0), 0))} operaciones · {num(susCortes.length)} cortes
                   {ultimo ? ` · último desempeño: AUC ${dec(ultimo.d.resultado.auc, 3)}, ${pct(ultimo.d.n_malos / ultimo.d.n)} de malos («${ultimo.c.nombre}»)` : ""}
                 </p>
@@ -183,7 +183,7 @@ export default function LaboratorioInstituciones() {
       {sinInstitucion.length ? (
         <div className="crediscope-card">
           <h3 style={{ marginTop: 0 }}>Cargas sin institución ({num(sinInstitucion.length)})</h3>
-          <ul style={{ margin: 0, fontSize: 13.5 }}>
+          <ul style={{ margin: 0, fontSize: 14 }}>
             {sinInstitucion.map((c) => (
               <li key={c.id}>
                 <Link to={`/laboratorio/cargas/${c.id}`}>{c.etiqueta}</Link>

@@ -11,6 +11,9 @@ import RecomendacionBadge from "../components/RecomendacionBadge.jsx";
 import ScoreGauge from "../components/ScoreGauge.jsx";
 import IndicadoresAnalisis from "../components/IndicadoresAnalisis.jsx";
 import ListaControlPanel from "../components/ListaControlPanel.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import { plural } from "../lib/formatos.js";
 
 // "Análisis con IA" — nombre comercial del scoring por LLM. Antes de
 // correrlo, decide si reutiliza el Perfil del Cliente ya consultado
@@ -99,7 +102,7 @@ export default function AnalisisIA() {
 
   const avisoReutilizacion = profile
     ? profileReciente
-      ? `Perfil del Cliente consultado hace ${Math.floor(diasDesde(profile.created_at))} día(s) — se reutiliza sin volver a consultar la fuente de datos.`
+      ? `Perfil del Cliente consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
       : `Perfil del Cliente tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`
     : "Sin Perfil del Cliente todavía — hace falta consultar la fuente de datos antes de analizar.";
 
@@ -114,7 +117,7 @@ export default function AnalisisIA() {
           Ver Perfil del Cliente
         </Link>
         <Link className="crediscope-tab" to={`/ingresos/${cedula}`}>
-          Ver Fuentes de ingreso
+          Ver Fuentes de Ingreso
         </Link>
         <Link className="crediscope-tab" to={`/aval/${cedula}`}>
           Ver Aval
@@ -122,9 +125,7 @@ export default function AnalisisIA() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-analisis-grid">
@@ -175,7 +176,7 @@ export default function AnalisisIA() {
         </div>
 
         <div>
-          {loading ? <p className="crediscope-muted">Cargando...</p> : null}
+          {loading ? <Cargando /> : null}
           {!loading && !result ? (
             <div className="crediscope-card">
               <p className="crediscope-muted" style={{ margin: 0 }}>

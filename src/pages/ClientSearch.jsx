@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Info } from "lucide-react";
 import { clasificarIdentificacion } from "../../supabase/functions/_shared/identificacion.ts";
 
@@ -48,7 +48,13 @@ export default function ClientSearch() {
         Ingresá la cédula del cliente para ver su análisis más reciente o generar uno nuevo.
       </p>
       <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        {/* Sin etiqueta, un lector de pantalla anuncia sólo "campo de texto"
+            y el placeholder desaparece al escribir. */}
+        <label htmlFor="inicio-cedula" className="crediscope-solo-lectores">
+          Cédula del cliente
+        </label>
         <input
+          id="inicio-cedula"
           className="crediscope-input"
           placeholder="Cédula"
           value={cedula}
@@ -67,19 +73,25 @@ export default function ClientSearch() {
       {mostrarProblema ? (
         <p
           id="aviso-cedula"
-          style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, color: "var(--bad)", fontSize: 13.5 }}
+          style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, color: "var(--bad)", fontSize: 14 }}
         >
-          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
           <span>{ident.mensaje}</span>
         </p>
       ) : null}
 
       {ident.tipo === "ruc_persona_natural" ? (
-        <p style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, fontSize: 13.5 }}>
-          <Info size={16} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
+        <p style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, fontSize: 14 }}>
+          <Info size={16} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
           <span>{ident.mensaje}</span>
         </p>
       ) : null}
+
+      {/* Acá sólo se busca por cédula. Quien no la tiene a mano, o quiere
+          ver a quién se consultó hoy, tiene la bandeja. */}
+      <p className="crediscope-muted" style={{ margin: "16px 0 0", fontSize: 13 }}>
+        ¿Sin la cédula a mano? Buscá por nombre en la <Link to="/solicitudes">bandeja de solicitudes</Link>.
+      </p>
     </div>
   );
 }

@@ -22,11 +22,11 @@ function Lista({ titulo, items, vacio }) {
     <div>
       <strong>{titulo} ({num(items.length)})</strong>
       {items.length ? (
-        <ul style={{ margin: "4px 0 10px", fontSize: 12.5 }}>
+        <ul style={{ margin: "4px 0 10px", fontSize: 13 }}>
           {items.slice(0, 30).map((d) => <li key={d.ruta}><code>{d.ruta}</code>{d.tipo === "distinto" ? `: ${valorLegible(d.a)} → ${valorLegible(d.b)}` : ""}</li>)}
           {items.length > 30 ? <li className="crediscope-muted">y {items.length - 30} más</li> : null}
         </ul>
-      ) : <p className="crediscope-muted" style={{ margin: "4px 0 10px", fontSize: 12.5 }}>{vacio}</p>}
+      ) : <p className="crediscope-muted" style={{ margin: "4px 0 10px", fontSize: 13 }}>{vacio}</p>}
     </div>
   );
 }
@@ -128,7 +128,7 @@ export default function PestanaEntradaAlModelo({ corteId, poblacion }) {
               analisisA.contraGuardada.length ? (
                 <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
                   <strong>El modelo leyó algo distinto de lo que hoy le daríamos</strong> ({num(analisisA.contraGuardada.length)} campos):
-                  <ul style={{ margin: "4px 0 0", fontSize: 12.5 }}>
+                  <ul style={{ margin: "4px 0 0", fontSize: 13 }}>
                     {analisisA.contraGuardada.slice(0, 20).map((d) => <li key={d.ruta}><code>{d.ruta}</code>: {valorLegible(d.a)} → {valorLegible(d.b)}</li>)}
                   </ul>
                 </div>
@@ -153,11 +153,11 @@ export default function PestanaEntradaAlModelo({ corteId, poblacion }) {
       {entreDos ? (
         <div className="crediscope-card">
           <h3 style={{ marginTop: 0 }}>Entre los dos análisis cambian {num(entreDos.length)} campos de la entrada</h3>
-          <ul style={{ fontSize: 12.5 }}>
+          <ul style={{ fontSize: 13 }}>
             {entreDos.slice(0, 60).map((d) => <li key={d.ruta}><code>{d.ruta}</code>: {valorLegible(d.a)} → {valorLegible(d.b)}</li>)}
           </ul>
           {entreDos.length > 60 ? <p className="crediscope-muted">y {entreDos.length - 60} más</p> : null}
-          <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+          <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
             Si son dos análisis de la misma persona, esto es lo que cambió en sus datos; si son de dos personas, por qué el modelo pudo leerlas distinto.
           </p>
         </div>

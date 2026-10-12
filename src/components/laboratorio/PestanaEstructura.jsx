@@ -76,7 +76,7 @@ export default function PestanaEstructura({ corteId }) {
               {visibles.map((x) => (
                 <tr key={`${x.grupo}.${x.campo}`}>
                   <td className="crediscope-muted">{x.grupo}</td>
-                  <td><code style={{ fontSize: 12.5 }}>{x.campo}</code></td>
+                  <td><code style={{ fontSize: 13 }}>{x.campo}</code></td>
                   <td style={{ textAlign: "right" }}>{pct(datos.perfiles ? x.con_valor / datos.perfiles : null, 0)}</td>
                   {c.versiones.length > 1 ? c.versiones.map((v) => <td key={v} style={{ textAlign: "right" }}>{x.por_version[v] === undefined ? "—" : pct(x.por_version[v], 0)}</td>) : null}
                   <td>
@@ -89,7 +89,7 @@ export default function PestanaEstructura({ corteId }) {
           </table>
         </div>
         {datos.sin_configurar?.length ? (
-          <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+          <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
             Fuera de la configuración: {datos.sin_configurar.map((x) => `${x.grupo}.${x.campo} (${num(x.con_valor)})`).join(", ")}.
           </p>
         ) : null}

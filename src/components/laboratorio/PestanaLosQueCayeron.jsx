@@ -50,7 +50,7 @@ export default function PestanaLosQueCayeron({ corteId, poblacion }) {
         <>
           {r.malos < 30 ? (
             <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-              <p style={{ margin: 0, fontSize: 13.5 }}>Con {r.malos} que cayeron, las diferencias orientan pero no prueban: mirar las que sobreviven a la corrección (q).</p>
+              <p style={{ margin: 0, fontSize: 14 }}>Con {r.malos} que cayeron, las diferencias orientan pero no prueban: mirar las que sobreviven a la corrección (q).</p>
             </div>
           ) : null}
           <div className="crediscope-card" style={{ overflowX: "auto" }}>
@@ -78,8 +78,8 @@ export default function PestanaLosQueCayeron({ corteId, poblacion }) {
                       </>
                     ) : (
                       <>
-                        <td style={{ fontSize: 12.5 }}>{d.categorias?.slice(0, 3).map((c) => `${c.valor} ${pct(c.malos, 0)}`).join(" · ")}</td>
-                        <td style={{ fontSize: 12.5 }}>{d.categorias?.slice(0, 3).map((c) => `${c.valor} ${pct(c.buenos, 0)}`).join(" · ")}</td>
+                        <td style={{ fontSize: 13 }}>{d.categorias?.slice(0, 3).map((c) => `${c.valor} ${pct(c.malos, 0)}`).join(" · ")}</td>
+                        <td style={{ fontSize: 13 }}>{d.categorias?.slice(0, 3).map((c) => `${c.valor} ${pct(c.buenos, 0)}`).join(" · ")}</td>
                       </>
                     )}
                     <td style={{ textAlign: "right" }} title={d.tipo === "numero" ? "delta de Cliff" : "V de Cramér"}>{dec(d.efecto, 3)}</td>
@@ -90,7 +90,7 @@ export default function PestanaLosQueCayeron({ corteId, poblacion }) {
                 ))}
               </tbody>
             </table>
-            <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+            <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
               Efecto: delta de Cliff para las numéricas (positivo: los que cayeron tienen más), V de Cramér para el resto. q corrige por las {num(r.diferencias.length)} comparaciones.
             </p>
           </div>
@@ -117,13 +117,13 @@ export default function PestanaLosQueCayeron({ corteId, poblacion }) {
             ) : (
               <p className="crediscope-muted" style={{ margin: 0 }}>Ninguna: hacen falta variables con diferencia (q menor a 0,2) y 20 personas o más con las dos condiciones.</p>
             )}
-            <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>Refuerzo: la tasa con las dos condiciones dividida por la mayor de las dos solas. Más de 1,5: juntas dicen algo que ninguna dice sola.</p>
+            <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>Refuerzo: la tasa con las dos condiciones dividida por la mayor de las dos solas. Más de 1,5: juntas dicen algo que ninguna dice sola.</p>
           </div>
 
           <div className="crediscope-card">
             <h3 style={{ marginTop: 0 }}>Variables cuyo riesgo da la vuelta</h3>
             {r.noLineales.length ? r.noLineales.map((v) => (
-              <p key={v.id} style={{ fontSize: 13.5 }}>
+              <p key={v.id} style={{ fontSize: 14 }}>
                 <strong>{v.nombre}</strong> {v.forma} (p {pTexto(v.p)}): {v.tramos.map((t) => `${t.tramo} ${pct(t.tasa)}`).join(" · ")}
               </p>
             )) : (

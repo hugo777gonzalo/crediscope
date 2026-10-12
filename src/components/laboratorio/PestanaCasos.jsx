@@ -69,7 +69,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
                     <td style={{ textAlign: "right" }}>{c.puntaje ?? "—"}</td>
                     <td>{c.veredicto_origen === "control_bloqueo" ? "Negado por bloqueo" : c.recomendacion ?? "—"}</td>
                     <td>{c.malo === null ? "—" : c.malo ? <Etiqueta texto="Cayó" color="var(--bad)" /> : <Etiqueta texto="Pagó" color="var(--good)" />}</td>
-                    <td className="crediscope-muted" style={{ fontSize: 12.5 }}>
+                    <td className="crediscope-muted" style={{ fontSize: 13 }}>
                       {filtro === "excluidas" ? c.motivo_exclusion : c.fuente_puntaje === "sintetico" ? "sintético" : c.marco_version ?? "—"}
                     </td>
                     <td>{c.analysis_result_id ? <Link to={`/historial/analisis/${c.analysis_result_id}`}>Ver análisis</Link> : null}</td>
@@ -77,7 +77,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
                 ))}
               </tbody>
             </table>
-            {visibles.length > 500 ? <p className="crediscope-muted" style={{ fontSize: 12.5 }}>Se muestran 500 de {num(visibles.length)}.</p> : null}
+            {visibles.length > 500 ? <p className="crediscope-muted" style={{ fontSize: 13 }}>Se muestran 500 de {num(visibles.length)}.</p> : null}
           </div>
         )}
       </div>

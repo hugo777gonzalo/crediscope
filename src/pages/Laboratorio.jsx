@@ -132,7 +132,7 @@ export default function Laboratorio() {
       <div className="crediscope-card" style={{ borderColor: criticos.length ? "var(--bad)" : undefined }}>
         <h3 style={{ marginTop: 0 }}>Hallazgos críticos ({num(criticos.length)})</h3>
         {criticos.length ? (
-          <ul style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>
+          <ul style={{ margin: 0, fontSize: 14, lineHeight: 1.7 }}>
             {criticos.map((h, i) => (
               <li key={i}>
                 <Etiqueta texto={h.tipo} color="var(--bad)" /> <Link to={h.enlace}>{h.texto}</Link>
@@ -149,14 +149,14 @@ export default function Laboratorio() {
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <div className="crediscope-card" style={{ margin: 0 }}>
-          <h3 style={{ marginTop: 0 }}>Default por mes {d.cortes[0] ? <span className="crediscope-muted" style={{ fontSize: 13, fontWeight: 400 }}>· «{d.cortes[0].nombre}»</span> : null}</h3>
+          <h3 style={{ marginTop: 0 }}>Impago por mes {d.cortes[0] ? <span className="crediscope-muted" style={{ fontSize: 13, fontWeight: 400 }}>· «{d.cortes[0].nombre}»</span> : null}</h3>
           {d.evolucion?.segmentos.length ? (
             <GraficoBarras
               categorias={d.evolucion.segmentos.map((s) => s.nombre)}
               series={[{ nombre: "Tasa de malos", color: "var(--bad)", valores: d.evolucion.segmentos.map((s) => s.tasa), formato: (v) => pct(v) }]}
               y={{ formato: (v) => pct(v, 0) }}
               alto={200}
-              etiqueta="Default por mes de desembolso"
+              etiqueta="Impago por mes de desembolso"
             />
           ) : <p className="crediscope-muted">Sin cortes.</p>}
           <Link to="/laboratorio/datos?pestana=cartera" style={{ fontSize: 13 }}>Explorador de cartera</Link>
@@ -199,7 +199,7 @@ export default function Laboratorio() {
         </div>
         <div className="crediscope-card" style={{ margin: 0 }}>
           <h3 style={{ marginTop: 0 }}><AlertTriangle size={16} style={{ verticalAlign: "-2px", color: "var(--warn)" }} /> Trabajos a medias y alertas</h3>
-          <ul style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>
+          <ul style={{ margin: 0, fontSize: 14, lineHeight: 1.7 }}>
             <li>Cargas incompletas o con errores: <strong>{num(fallidas.length)}</strong>{fallidas.length ? ` (${fallidas.map((c) => c.etiqueta).join(", ")})` : ""}</li>
             <li>Reconsultas del ciclo sin procesar: <strong>{num(d.sinProcesar)}</strong>{d.sinProcesar ? " · scripts/procesar-reconsultas.mjs" : ""}</li>
             <li>Análisis del motor fallidos: <strong>{num(analisisFallidos)}</strong></li>

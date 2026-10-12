@@ -38,7 +38,7 @@ export default function PestanaSegmentos({ corteId, poblacion }) {
       </div>
       {d.protegida ? (
         <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-          <p style={{ margin: 0, fontSize: 13.5 }}>Variable protegida: el negocio decidió que no pese en la decisión. Se mira sólo para vigilar que el motor no trate distinto a un grupo.</p>
+          <p style={{ margin: 0, fontSize: 14 }}>Variable protegida: el negocio decidió que no pese en la decisión. Se mira sólo para vigilar que el motor no trate distinto a un grupo.</p>
         </div>
       ) : null}
 
@@ -84,7 +84,7 @@ export default function PestanaSegmentos({ corteId, poblacion }) {
             </tbody>
           </table>
         </div>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           Tasa de malos de todo el corte: {pct(c.tasaTotal)}. "Pocos casos": menos de {MIN_PERSONAS} personas o de {MIN_MALOS} malos. El AUC de un segmento
           sólo se muestra con {MIN_MALOS} malos y {MIN_MALOS} buenos o más.
         </p>

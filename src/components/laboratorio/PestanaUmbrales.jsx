@@ -34,7 +34,7 @@ export default function PestanaUmbrales({ corteId, poblacion }) {
   return (
     <div>
       <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-        <p style={{ margin: 0, fontSize: 13.5 }}>
+        <p style={{ margin: 0, fontSize: 14 }}>
           Esto simula una política por puntaje, no al motor: el motor recomienda con el marco, y un mismo puntaje puede salir aprobar o revisar.
           Sirve para ver qué costaría cada umbral y compararlo con lo que hizo el motor.
         </p>

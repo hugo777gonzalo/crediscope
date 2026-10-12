@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Upload, CheckCircle2, Copy, FileWarning, Info } from "lucide-react";
 import { leerArchivoDeLote, extensionAceptada } from "../lib/leerLoteExcel.js";
 import { crearLote, arrancarLote } from "../lib/api.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 
 // Cargar un archivo y ver qué trae, ANTES de consultar nada.
 //
@@ -149,9 +150,7 @@ export default function LoteNuevo() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       {t ? (
@@ -206,7 +205,7 @@ export default function LoteNuevo() {
             ) : null}
 
             {t.rucPersonaNatural > 0 ? (
-              <p style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 0, fontSize: 13.5 }}>
+              <p style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 0, fontSize: 14 }}>
                 <Info size={16} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
                 <span>
                   Hay {t.rucPersonaNatural} RUC de persona natural. Se consulta a la persona detrás de cada uno, que es la
@@ -241,7 +240,7 @@ export default function LoteNuevo() {
                 onClick={() => crearYArrancar(false)}
                 disabled={guardando || !baseLegalSuficiente}
               >
-                Solo cargar, arranco después
+                Sólo cargar, arranco después
               </button>
             </div>
             {!baseLegalSuficiente ? (

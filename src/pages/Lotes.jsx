@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { Layers, Upload, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { getLotes } from "../lib/api.js";
 import { formatearFechaHora } from "../lib/fechas.js";
+import Kpi from "../components/ui/Kpi.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Todos los lotes corridos, el más reciente primero.
 //
@@ -26,19 +29,6 @@ const COLOR_ESTADO = {
   cancelado: "var(--text-muted)",
 };
 
-function Kpi({ Icono, etiqueta, valor, detalle }) {
-  return (
-    <div className="crediscope-card crediscope-kpi">
-      <p className="crediscope-kpi-label">
-        <Icono size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-        {etiqueta}
-      </p>
-      <p className="crediscope-kpi-valor">{valor}</p>
-      {detalle ? <p className="crediscope-kpi-detalle">{detalle}</p> : null}
-    </div>
-  );
-}
-
 export default function Lotes() {
   const [lotes, setLotes] = useState(null);
   const [error, setError] = useState(null);
@@ -54,9 +44,7 @@ export default function Lotes() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   return (
@@ -76,7 +64,7 @@ export default function Lotes() {
       </div>
 
       {!lotes ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : lotes.length === 0 ? (
         <div className="crediscope-card">
           <p style={{ margin: 0 }}>Todavía no se corrió ningún lote.</p>

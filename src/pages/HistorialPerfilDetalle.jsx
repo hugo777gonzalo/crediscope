@@ -5,6 +5,8 @@ import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
 import { formatearFechaHora } from "../lib/fechas.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Visor de SOLO LECTURA de un Perfil del Cliente puntual del Historial —
 // mismo snapshot que se vio ese día, sin botón de reconsultar (a
@@ -40,12 +42,10 @@ export default function HistorialPerfilDetalle() {
       </p>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)" }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
-      {loading ? <p className="crediscope-muted">Cargando...</p> : null}
+      {loading ? <Cargando /> : null}
 
       {!loading && !profile ? <p className="crediscope-muted">No se encontró este registro.</p> : null}
 

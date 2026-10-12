@@ -33,6 +33,8 @@ import { rutaDeRegreso } from "../lib/regresoBandeja.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
 import ListaControlPanel from "../components/ListaControlPanel.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import { entero, plural, segundos, humanizarTexto } from "../lib/formatos.js";
 
 // El expediente: todo lo que se sabe de una persona, en una pantalla.
 //
@@ -60,12 +62,19 @@ const SECCIONES = [
   { id: "auditoria", texto: "Auditoría", Icono: Eye },
 ];
 
+// Cada acción que queda en el registro, dicha como la entiende quien lo lee.
+// Faltaba "expediente.vista" y la tabla mostraba el código tal cual.
 const ETIQUETA_ACCION = {
   "client.structure": "Consulta a la fuente de datos",
   "client.analyze": "Análisis con IA",
   "client.view": "Consulta del perfil",
   "lote.consulta": "Consulta dentro de una corrida por lote",
   "lote.reutiliza": "Perfil reutilizado por una corrida por lote",
+  "expediente.vista": "Abrió el expediente",
+  "exportacion.solicitudes": "Exportó solicitudes a un archivo",
+  "exportacion.lote": "Exportó un lote a un archivo",
+  "exportacion.conciliacion": "Exportó una conciliación a un archivo",
+  "exportacion.informe_laboratorio": "Exportó un informe del Laboratorio",
 };
 
 export default function Expediente() {
@@ -126,9 +135,7 @@ export default function Expediente() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   if (!datos)
@@ -162,13 +169,18 @@ export default function Expediente() {
           <Link className="crediscope-exp-volver" to={rutaDeRegreso()}>
             <ArrowLeft size={16} /> Volver a la bandeja
           </Link>
-          <div style={{ display: "flex", gap: 8 }}>
+          {/* Son acciones y se llaman con un verbo: con el nombre de las
+              secciones ("Perfil del Cliente", "Análisis con IA") decían lo
+              mismo que dos opciones del menú de al lado y parecían un
+              atajo a ellas. Acá se actualiza el perfil o se corre el
+              análisis; leerlos está abajo. */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Link className="crediscope-btn crediscope-btn-ghost" to={`/perfil/${cedula}`}>
-              Perfil del Cliente
+              {perfil ? "Actualizar el perfil" : "Consultar el perfil"}
             </Link>
             <Link className="crediscope-btn" to={`/analisis/${cedula}`}>
-              <Sparkles size={15} style={{ marginRight: 7, verticalAlign: "-3px" }} />
-              Análisis con IA
+              <Sparkles size={15} style={{ marginRight: 7, verticalAlign: "-3px" }} aria-hidden="true" />
+              {analisis ? "Volver a analizar" : "Correr el análisis"}
             </Link>
           </div>
         </div>
@@ -189,7 +201,7 @@ export default function Expediente() {
             valor={textoRecomendacion(analisis?.recomendacion) ?? "Sin dictamen"}
             color={analisis?.recomendacion ? colorRecomendacion(analisis.recomendacion) : null}
           />
-          <Sello etiqueta="Fuente de ingreso" valor={f?.segmento ? (ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento) : "Sin clasificar"} />
+          <Sello etiqueta="Segmento" valor={f?.segmento ? (ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento) : "Sin clasificar"} />
           <Sello etiqueta="Ingreso reportado al IESS" valor={textoIngresoReportado(f?.pisoIngresoMensualReportado, f?.corteIessUsado)} />
           <Sello
             etiqueta="Listas de control"
@@ -221,7 +233,8 @@ export default function Expediente() {
               <Veredicto
                 rot="Nivel de riesgo"
                 valor={analisis?.indicador_riesgo ? capitalizar(analisis.indicador_riesgo) : "Sin evaluar"}
-                pie={analisis?.rules_version ?? "todavía no se corrió el análisis"}
+                pie={analisis ? "Según el Análisis con IA" : "todavía no se corrió el análisis"}
+                titulo={analisis?.rules_version ? `Criterio usado: ${analisis.rules_version}` : undefined}
                 color={analisis?.indicador_riesgo ? colorRiesgo(analisis.indicador_riesgo) : null}
               />
               <Veredicto
@@ -233,15 +246,15 @@ export default function Expediente() {
               <Veredicto
                 rot="Evidencia del ingreso"
                 valor={f?.estadoSegmento ? (ETIQUETA_ESTADO[f.estadoSegmento] ?? f.estadoSegmento) : "—"}
-                pie={f?.segmento ? (ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento) : null}
+                pie={f?.corteIessUsado ? `Información IESS: ${mesLegible(f.corteIessUsado)}` : null}
                 color={f?.estadoSegmento === "confirmada" ? "var(--good)" : f?.estadoSegmento === "provisional" ? "var(--warn)" : null}
               />
               <Veredicto
                 rot="Empleos vigentes"
                 valor={(sp?.laboral?.empleosActuales?.length ?? (sp?.laboral?.empleoActual ? 1 : 0)) || "Ninguno"}
-                pie={sp?.laboral?.antiguedadEmpleoActualMeses ? `${sp.laboral.antiguedadEmpleoActualMeses} meses de antigüedad` : null}
+                pie={sp?.laboral?.antiguedadEmpleoActualMeses ? `${plural(sp.laboral.antiguedadEmpleoActualMeses, "mes", "meses")} de antigüedad` : null}
               />
-              <Veredicto rot="Veces consultada" valor={consultas.length} pie={`${analisisPrevios.length} análisis corridos`} />
+              <Veredicto rot="Veces consultada" valor={consultas.length} pie={plural(analisisPrevios.length, "análisis hecho", "análisis hechos")} />
             </div>
 
             {/* Qué se pudo medir y qué no. No es información de la
@@ -256,10 +269,10 @@ export default function Expediente() {
                 "9 de 9" y "18 de 52" no son la misma medida. */}
             {meta ? (
               <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Trajeron datos <strong>{meta.conDatos.length}</strong>{" "}
-                {meta.porBloques ? "ejes (medición vieja, por bloques)" : "fuentes"}
-                {meta.sinDatos.length ? `, ${meta.sinDatos.length} contestaron que no hay nada` : ""}
-                {meta.noMedidas.length ? ` y ${meta.noMedidas.length} no se pudieron medir` : ""}.
+                {meta.porBloques ? "Consulta antigua, medida por bloques: " : "De las fuentes consultadas: "}
+                <strong>{entero(meta.conDatos.length)}</strong> trajeron datos
+                {meta.sinDatos.length ? `, ${entero(meta.sinDatos.length)} dijeron que no hay registros de esta persona` : ""}
+                {meta.noMedidas.length ? ` y ${entero(meta.noMedidas.length)} no se pudieron medir` : ""}.
                 {meta.noMedidas.length
                   ? ` Sin medir: ${meta.noMedidas.join(", ")}.`
                   : ""}
@@ -272,8 +285,8 @@ export default function Expediente() {
                 cuando exista la solicitud. */}
             <div className="crediscope-pendiente" style={{ marginTop: 12 }}>
               <p>
-                <strong>Falta la capacidad de pago.</strong> Es la cuota contra el ingreso reportado, y es donde se decide un
-                crédito. No se puede calcular todavía porque no hay monto ni plazo: eso llega con la solicitud como entidad.
+                <strong>Falta la capacidad de pago.</strong> Es la cuota frente al ingreso reportado, y es donde se decide un
+                crédito. Todavía no se puede calcular: faltan el monto y el plazo del crédito solicitado, que hoy no se registran.
               </p>
             </div>
           </section>
@@ -337,9 +350,9 @@ export default function Expediente() {
                     {h.quien ? <p className="crediscope-hito-quien">{h.quien}</p> : null}
                     {h.enlace ? (
                       <div className="crediscope-hito-acciones">
-                        <Link className="crediscope-btn crediscope-btn-ghost" style={{ padding: "3px 10px", fontSize: 12.5 }} to={h.enlace}>
+                        <Link className="crediscope-btn crediscope-btn-ghost" style={{ padding: "3px 10px", fontSize: 13 }} to={h.enlace}>
                           <FileSearch size={13} style={{ marginRight: 5, verticalAlign: "-2px" }} />
-                          Ver como quedó ese día
+                          Ver cómo quedó ese día
                         </Link>
                       </div>
                     ) : null}
@@ -385,9 +398,8 @@ export default function Expediente() {
               {/* Limitación real, dicha donde se nota. */}
               <div className="crediscope-pendiente" style={{ marginTop: 14 }}>
                 <p>
-                  <strong>Los demás usuarios salen como «otro usuario».</strong> La política de la base deja que cada quien lea
-                  solo su propia ficha, así que el nombre de otro no se puede resolver desde el navegador. Para nombrarlos hace
-                  falta exponer una vista con los nombres — decisión pendiente, porque toca permisos.
+                  <strong>Los demás usuarios salen como «Otro usuario».</strong> Cada usuario sólo puede leer su propia ficha, por
+                  eso acá no se puede nombrar a los demás.
                 </p>
               </div>
             </div>
@@ -411,9 +423,9 @@ function Sello({ etiqueta, valor, color }) {
   );
 }
 
-function Veredicto({ rot, valor, pie, color }) {
+function Veredicto({ rot, valor, pie, color, titulo }) {
   return (
-    <div className="crediscope-veredicto" style={color ? { borderTopColor: color } : undefined}>
+    <div className="crediscope-veredicto" style={color ? { borderTopColor: color } : undefined} title={titulo}>
       <p className="crediscope-veredicto-rot">{rot}</p>
       <p className="crediscope-veredicto-valor" style={color ? { color } : undefined}>
         {valor}
@@ -452,27 +464,27 @@ function SeccionIngresos({ f, laboral }) {
           clasificación con el área de crédito es discutir contra una
           caja negra. */}
       {f.motivoSegmento ? (
-        <p style={{ margin: "0 0 14px", fontSize: 13.5 }}>
+        <p style={{ margin: "0 0 14px", fontSize: 14 }}>
           <span className="crediscope-muted">Por qué: </span>
-          {f.motivoSegmento}
+          {humanizarTexto(f.motivoSegmento)}
         </p>
       ) : null}
 
       {f.corteDesactualizado ? (
-        <p style={{ color: "var(--warn)", fontSize: 13.5, margin: "0 0 14px" }}>
-          El corte del IESS que usó esta clasificación quedó atrás del más reciente de la cartera.
+        <p style={{ color: "var(--warn)", fontSize: 14, margin: "0 0 14px" }}>
+          La información IESS que usó esta clasificación es anterior a la más reciente de la cartera.
         </p>
       ) : null}
 
       {empleos.length > 0 ? (
         <>
-          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>Empleos vigentes</h4>
+          <h4 style={{ fontSize: 14, margin: "0 0 6px" }}>Empleos vigentes</h4>
           <table className="crediscope-table" style={{ marginBottom: 14 }}>
             <thead>
               <tr>
                 <th>Empleador</th>
                 <th>Cargo</th>
-                <th style={{ textAlign: "right" }}>Salario aproximado</th>
+                <th className="crediscope-cifra">Salario aproximado</th>
               </tr>
             </thead>
             <tbody>
@@ -480,7 +492,7 @@ function SeccionIngresos({ f, laboral }) {
                 <tr key={i}>
                   <td className="crediscope-celda-fuerte">{e.empleador ?? "—"}</td>
                   <td>{e.cargo ?? "—"}</td>
-                  <td style={{ textAlign: "right" }} className="crediscope-num">
+                  <td className="crediscope-cifra">
                     {e.salarioAprox ? formatMoneda(e.salarioAprox) : "—"}
                   </td>
                 </tr>
@@ -492,14 +504,14 @@ function SeccionIngresos({ f, laboral }) {
 
       {fuentes.length > 0 ? (
         <>
-          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>Fuentes detectadas</h4>
+          <h4 style={{ fontSize: 14, margin: "0 0 6px" }}>Fuentes detectadas</h4>
           <table className="crediscope-table" style={{ marginBottom: 14 }}>
             <thead>
               <tr>
                 <th>Tipo</th>
                 <th>Origen</th>
                 <th>Declarado por</th>
-                <th style={{ textAlign: "right" }}>Monto reportado</th>
+                <th className="crediscope-cifra">Monto reportado</th>
                 <th>Vigente</th>
               </tr>
             </thead>
@@ -507,12 +519,12 @@ function SeccionIngresos({ f, laboral }) {
               {fuentes.map((fu, i) => (
                 <tr key={i}>
                   <td>
-                    <span className="crediscope-celda-fuerte">{fu.tipo}</span>
-                    {fu.detalle ? <span className="crediscope-celda-sub">{fu.detalle}</span> : null}
+                    <span className="crediscope-celda-fuerte">{capitalizar(fu.tipo)}</span>
+                    {fu.detalle ? <span className="crediscope-celda-sub">{humanizarTexto(fu.detalle)}</span> : null}
                   </td>
                   <td>{fu.empleador ?? "—"}</td>
                   <td>{quienDeclara(fu, { laboral })}</td>
-                  <td style={{ textAlign: "right" }} className="crediscope-num">
+                  <td className="crediscope-cifra">
                     {fu.montoMensualReportado ? formatMoneda(fu.montoMensualReportado) : "—"}
                   </td>
                   <td style={{ color: fu.vigenteAlCorte ? "var(--good)" : "var(--text-muted)" }}>{fu.vigenteAlCorte ? "Sí" : "No"}</td>
@@ -525,12 +537,12 @@ function SeccionIngresos({ f, laboral }) {
 
       {(f.senalesDeEscala ?? []).length > 0 ? (
         <>
-          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>Tamaño del negocio</h4>
-          <ul className="crediscope-list" style={{ fontSize: 13.5, marginBottom: 14 }}>
+          <h4 style={{ fontSize: 14, margin: "0 0 6px" }}>Tamaño del negocio</h4>
+          <ul className="crediscope-list" style={{ fontSize: 14, marginBottom: 14 }}>
             {f.senalesDeEscala.map((s, i) => (
               <li key={i}>
                 <strong>{ETIQUETA_SENAL[s.senal] ?? s.senal}</strong>
-                {s.valor !== null && s.valor !== undefined ? `: ${s.valor}` : ""} — {s.detalle}
+                {s.valor !== null && s.valor !== undefined ? `: ${s.valor}` : ""} — {humanizarTexto(s.detalle)}
               </li>
             ))}
           </ul>
@@ -539,10 +551,10 @@ function SeccionIngresos({ f, laboral }) {
 
       {(f.paraConfirmar ?? []).length > 0 ? (
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-          <h4 style={{ fontSize: 13.5, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</h4>
-          <ul className="crediscope-list" style={{ fontSize: 13.5, margin: 0 }}>
+          <h4 style={{ fontSize: 14, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</h4>
+          <ul className="crediscope-list" style={{ fontSize: 14, margin: 0 }}>
             {f.paraConfirmar.map((p, i) => (
-              <li key={i}>{p}</li>
+              <li key={i}>{humanizarTexto(p)}</li>
             ))}
           </ul>
         </div>
@@ -577,8 +589,8 @@ function construirLineaDeTiempo(datos) {
     quien: [
       c.structure_version,
       c.fuente_segmento ? `${ETIQUETA_SEGMENTO[c.fuente_segmento] ?? c.fuente_segmento}` : null,
-      c.fuente_piso_ingreso ? `ingreso IESS ${textoIngresoReportado(c.fuente_piso_ingreso, c.fuente_corte)}` : null,
-      c.duracion_ms ? `${(c.duracion_ms / 1000).toFixed(1)} s` : null,
+      c.fuente_piso_ingreso ? `ingreso reportado al IESS ${textoIngresoReportado(c.fuente_piso_ingreso, c.fuente_corte)}` : null,
+      c.duracion_ms ? segundos(c.duracion_ms) : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -593,7 +605,7 @@ function construirLineaDeTiempo(datos) {
     quien: a.fallo_tipo
       ? `${ETIQUETA_FALLO[a.fallo_tipo] ?? "falla sin clasificar"} · ${a.rules_version}`
       : [
-          `puntaje ${a.crediscope_score}`,
+          `Puntaje ${a.crediscope_score}`,
           textoRecomendacion(a.recomendacion),
           a.rules_version,
           a.veredicto_origen === "control_bloqueo" ? "decidió un control de bloqueo, no el modelo" : null,

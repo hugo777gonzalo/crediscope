@@ -33,7 +33,7 @@ export default function PestanaCuadrantes({ resultado }) {
       </div>
 
       {observadosNegados > 0 ? (
-        <p style={{ fontSize: 13.5 }}>
+        <p style={{ fontSize: 14 }}>
           De los negados que se pudieron observar, cayó el <strong>{pct(Number(r.negados_que_cayeron_con_otro) / observadosNegados)}</strong>. Los
           negados que la institución financió igual: {num(r.negados_desembolsados)}, de los que cayeron {num(r.negados_desembolsados_que_cayeron)}.
         </p>
@@ -81,7 +81,7 @@ export default function PestanaCuadrantes({ resultado }) {
             </tbody>
           </table>
         </div>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           "Observadas": tuvieron crédito con alguien en el año, nuevo o de antes. Las tasas de las dos mitades no se comparan una a una: una sale de nuestro
           crédito y la otra, del de otra institución.
         </p>

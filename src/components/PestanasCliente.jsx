@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const PESTANAS = [
   ["perfil", "Perfil del Cliente"],
   ["analisis", "Análisis con IA"],
-  ["ingresos", "Fuentes de ingreso"],
+  ["ingresos", "Fuentes de Ingreso"],
   ["aval", "Aval"],
 ];
 

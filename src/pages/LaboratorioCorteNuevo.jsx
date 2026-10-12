@@ -102,7 +102,7 @@ export default function LaboratorioCorteNuevo() {
               <option key={d.id} value={d.id}>{d.nombre}</option>
             ))}
           </select>
-          {def ? <div className="crediscope-muted" style={{ fontSize: 12.5, marginTop: 4 }}>{describirDefinicion(def)}</div> : null}
+          {def ? <div className="crediscope-muted" style={{ fontSize: 13, marginTop: 4 }}>{describirDefinicion(def)}</div> : null}
         </label>
         <label>
           <div className="crediscope-muted" style={{ fontSize: 13 }}>Ventana</div>
