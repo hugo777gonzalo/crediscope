@@ -32,8 +32,9 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
   pestañas internas de cada módulo del Laboratorio (las pantallas abren, no se recorrió
   cada pestaña) y Cargar archivo con un archivo; las cuatro pantallas del cliente con datos;
   y las capturas de 768 y 414 px, que se midieron en el DOM porque el panel oculto hace
-  fallar las capturas. Laboratorio › Inicio ya abre, pero sin el centro de datos: su consulta
-  se pasa del límite de la base (ver la sección 4).
+  fallar las capturas. Laboratorio › Inicio y Datos y cartera › Centro de datos abrían sin el
+  centro (su consulta se pasaba del límite de la base); lo arregló la 121 y se vieron abrir con
+  el centro el mismo día (sección 4).
 
 ## 2. Lo que estaba roto y se corrigió
 

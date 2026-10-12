@@ -42,7 +42,8 @@ aceptada.
       bandeja da 2.572 y sus tarjetas suman 2.572; el menú abre una sección a
       la vez; a 768 y 414 px no hay desborde; Costos, Fuentes de Ingreso,
       Monitoreo, Lotes y los módulos del Laboratorio abren sin error, salvo la
-      pestaña Centro de datos (se arregló con la 121). Lo que apareció se corrigió;
+      pestaña Centro de datos, que se arregló con la 121 y se vio abrir (52 fuentes);
+      lo que apareció se corrigió;
     - **el mismo día el negocio decidió los nombres** y se aplicaron: «Lotes
       consultados», «Monitoreo» (antes Reportes; la página interna, «Panorama»),
       «Explorador de la fuente de datos», «Personas por segmento», **Score** en

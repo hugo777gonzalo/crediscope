@@ -63,8 +63,10 @@ instituciones, volumen, reconsultas sin procesar y los resultados de cada corte:
 menos de 1 s cada uno) decide si se dibuja. La evolución del impago y el centro de
 datos se piden después y cada tarjeta dice qué le falta: sin el centro no se escribe
 "Ninguno" ni "0", se dice "Revisando..." o "No se pudo revisar". El centro
-(`lab_centro_de_datos`) tarda unos 6 s sola y a veces se pasa del límite de la base;
-antes arrastraba a toda la pantalla (`docs/pendientes.md`, sección 1).
+(`lab_centro_de_datos`) tardaba unos 6 s sola y a veces se pasaba del límite de la base,
+y arrastraba a toda la pantalla; la 121 lo arregló (un índice parcial en el corte del
+IESS y `as materialized` en el resumen por semana) y se vio abrir el 2026-10-12, también
+la pestaña de 120 días. La pantalla sigue cargando por partes por si vuelve a pasar.
 
 ## 2. Instituciones y proyectos (`/laboratorio/instituciones`)
 
