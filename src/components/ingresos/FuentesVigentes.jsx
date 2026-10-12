@@ -4,6 +4,7 @@ import { formatearValorAval } from "../../lib/avalCampos.js";
 import { quienDeclara } from "../../lib/fuentesIngresoConsolidado.js";
 import { origenDeFuente, ETIQUETA_ORIGEN, mesLegible, esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
 import { tamanoDelNegocio } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
+import { humanizarTexto } from "../../lib/formatos.js";
 
 // Cuatro bloques, por de dónde sale cada cosa: los aportes al IESS (con
 // monto), el negocio propio registrado en el SRI, el tamaño de ese negocio
@@ -33,13 +34,13 @@ function Aporte({ fuente, perfil, corte }) {
         <span style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
           <span
             className={`crediscope-tag ${CLASE_QUIEN[fuente.evidencia] ?? "crediscope-tag-neutral"}`}
-            style={{ fontSize: 11.5, padding: "2px 8px" }}
-            title={fuente.detalle}
+            style={{ fontSize: 12, padding: "2px 8px" }}
+            title={humanizarTexto(fuente.detalle)}
           >
             {quienDeclara(fuente, perfil)}
           </span>
           {enElSbu ? (
-            <span className="crediscope-tag crediscope-tag-neutral" style={{ fontSize: 11.5, padding: "2px 8px" }}>
+            <span className="crediscope-tag crediscope-tag-neutral" style={{ fontSize: 12, padding: "2px 8px" }}>
               {INGRESO_MINIMO_SBU}
             </span>
           ) : null}
@@ -97,7 +98,7 @@ export default function FuentesVigentes({ f, perfil }) {
 
   return (
     <div className="crediscope-card">
-      <TituloTarjeta Icono={Landmark}>Fuentes de ingreso</TituloTarjeta>
+      <TituloTarjeta Icono={Landmark}>Fuentes de Ingreso</TituloTarjeta>
 
       <section className="crediscope-aval-subseccion">
         <p className="crediscope-aval-subtitulo">
@@ -125,7 +126,7 @@ export default function FuentesVigentes({ f, perfil }) {
           Negocio propio (SRI) <small>· sin monto público</small>
         </p>
         {ruc ? (
-          <p style={{ margin: 0, fontSize: 13.5, display: "flex", alignItems: "center", gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
             {ruc.activo ? <Check size={16} color="var(--good)" aria-hidden="true" /> : <X size={16} color="var(--bad)" aria-hidden="true" />}
             <strong className={ruc.activo ? "crediscope-aval-bueno" : "crediscope-aval-malo"}>RUC {ruc.texto.toLowerCase()}</strong>
             {ruc.pie ? <span className="crediscope-muted">{ruc.pie}</span> : null}
@@ -174,7 +175,7 @@ export default function FuentesVigentes({ f, perfil }) {
               <li key={i} className="crediscope-ing-fuente">
                 <div style={{ minWidth: 0 }}>
                   <strong>{ETIQUETA_ORIGEN[origenDeFuente(x)]}</strong>
-                  <span className="crediscope-ing-fuente-sub">{x.detalle}</span>
+                  <span className="crediscope-ing-fuente-sub">{humanizarTexto(x.detalle)}</span>
                 </div>
               </li>
             ))}

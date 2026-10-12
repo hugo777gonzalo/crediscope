@@ -48,7 +48,7 @@ export default function FilaConfig({ item, etiqueta, descripcion, onSave }) {
         <span>
           <code>{etiqueta}</code>
           {descripcion ? (
-            <span className="crediscope-muted" style={{ display: "block", fontSize: 12.5 }}>{descripcion}</span>
+            <span className="crediscope-muted" style={{ display: "block", fontSize: 13 }}>{descripcion}</span>
           ) : null}
         </span>
       </label>

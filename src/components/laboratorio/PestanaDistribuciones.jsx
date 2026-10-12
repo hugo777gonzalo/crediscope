@@ -80,7 +80,7 @@ export default function PestanaDistribuciones({ corteId, poblacion }) {
           ejeDerecho={{ titulo: "Tasa de malos", formato: (v) => pct(v, 0) }}
           etiqueta={`Distribución de ${columna.nombre}`}
         />
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           La línea es la tasa de malos de cada tramo (sólo en tramos de 10 personas o más).
           {columna.tipo === "numero" ? ` Mediana de los malos ${formato(dist.malos.mediana ?? 0)}, de los buenos ${formato(dist.buenos.mediana ?? 0)}.` : ""}
         </p>

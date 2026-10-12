@@ -6,6 +6,8 @@ import { exportarInforme } from "../lib/informeLaboratorio.js";
 import { registrarEvento } from "../lib/api.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 import { Volver, MensajeError, FranjaSintetica, Kpi, num, pct } from "../components/laboratorio/Comunes.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import { plural } from "../lib/formatos.js";
 
 // La ficha de un corte congelado: qué población es, qué se calculó y la
 // puerta a los tres módulos que trabajan sobre él (fase B de
@@ -55,7 +57,7 @@ export default function LaboratorioCorte() {
   }
 
   if (error && !corte) return <MensajeError mensaje={error} />;
-  if (!corte) return <p className="crediscope-muted">Cargando...</p>;
+  if (!corte) return <Cargando />;
   const r = corte.resumen ?? {};
   const s = r.solicitudes ?? null;
   const tipos = [...new Set(resultados.map((x) => x.tipo))];
@@ -125,7 +127,7 @@ export default function LaboratorioCorte() {
               {tipos.map((t) => (
                 <tr key={t}>
                   <td>{ETIQUETA_TIPO[t] ?? t}</td>
-                  <td className="crediscope-muted">{resultados.filter((x) => x.tipo === t).length} cálculo(s)</td>
+                  <td className="crediscope-muted">{plural(resultados.filter((x) => x.tipo === t).length, "cálculo")}</td>
                   <td className="crediscope-muted">el último, {formatearFechaHora(ultimo(t).created_at)}</td>
                 </tr>
               ))}

@@ -62,6 +62,27 @@ es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
 real, un número medido, un error que costó caro. Un comentario que
 repite lo que el código ya dice es ruido.
 
+**Lo que ve el analista pasa por la revisión de UX** (habilidad
+`revision-ux`, en `.claude/skills/revision-ux/`; el porqué de cada regla,
+`docs/revision-ux.md`):
+- Números, moneda, porcentajes y duraciones sólo con `src/lib/formatos.js`
+  ("2.812", "37,0 s", "$1.784") y las fechas con `fechas.js`. Nunca `${n}`
+  ni `.toFixed()` en un texto: la misma cifra salía de cuatro maneras.
+- Tres puntos ("Cargando..."), plurales con `plural()` (no "cliente(s)").
+- Nombres comerciales en Title Case y el resto como oración. Un nombre que
+  eligió el negocio no se cambia por gusto: se propone con opciones
+  (`terminologia.md` de la habilidad).
+- Piezas compartidas antes que copias: `src/components/ui/` (`Kpi`, `Barra`,
+  `Cargando`, `Aviso`, `AvisoDeError`, `LimiteDeError`). Un error nunca se
+  muestra con `error.message` crudo.
+- Una versión (`marco-v28`), un código o un JSON no van en una tarjeta
+  principal.
+- `node scripts/revisar-textos.mjs` corta con los términos que el negocio
+  retiró (piso, asalariado, default, backtest, LLM...), y
+  `node scripts/probar-formatos.mjs` prueba los formatos, la traducción de
+  errores y la navegación: correrlos después de tocar `formatos.js`,
+  `mensajesDeError.js`, `navegacion.js` o `destinoDeIngreso.js`.
+
 ## Reglas duras
 
 Romper cualquiera de estas rompe algo real.
@@ -150,6 +171,10 @@ Romper cualquiera de estas rompe algo real.
     - Sin empujes forzados. La regla vale también para el admin.
     - Las acciones van fijadas por SHA, y Dependabot propone las
       actualizaciones como PR.
+    - `pantalla` corre lint, build, `revisar-textos.mjs` y
+      `probar-formatos.mjs`. Su build compila sin las variables de Supabase:
+      sirve para ver que compila, no para medir lo que se publica (el
+      principal sale en 273 KB contra 476 KB con el `.env`).
 11. **Un guion que escribe en la base abre su registro** con
     `abrirEjecucion()` (`scripts/_comun/ejecucion.mjs`, tabla
     `ejecuciones_operativas`, 117).
@@ -262,6 +287,15 @@ Romper cualquiera de estas rompe algo real.
   la primera página, no hasta una página corta, y pide un orden total
   (desempate por id) en el que lo insertado durante la lectura caiga al
   final.
+- `src/lib/navegacion.js` — la estructura de la aplicación: de ahí salen el
+  menú lateral y la ubicación "Sección › Página" de la barra superior. Un
+  nombre del menú se cambia ahí, no en dos listas.
+- `src/lib/formatos.js`, `src/lib/mensajesDeError.js` y
+  `src/components/ui/` — cómo se escribe un número, qué se le dice a la
+  persona cuando algo falla y las piezas que comparten las pantallas.
+- `.claude/skills/revision-ux/` — la revisión de UX: flujo, glosario con el
+  porqué, mapa de pantallas, criterios y un verificador para el navegador de
+  QA. Se corre al cambiar una pantalla.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
@@ -516,6 +550,26 @@ antes de tocar esa área.
 - Una curva de cosechas sin la fecha del impago de una parte de los malos
   dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.
 
+**Interfaz** (revisión del 2026-10-10, `docs/revision-ux.md`)
+- Una pantalla que espera la sesión no es una pantalla sin sesión:
+  `App.jsx` espera `loading`; si no, un enlace directo cae en
+  `*` → /login → "/" y el expediente no sobrevive a una recarga.
+- El perfil de acceso se pide una vez (`useProfile`). Una guardia de ruta no
+  devuelve `null` mientras carga: una pantalla de administración quedaba en
+  blanco de 4 a 10 s.
+- Una franja de totales suma, y una barra mide lo que dice su título.
+- Un texto que la clasificación guardó con formato de JavaScript ("el corte
+  2026-08", "$1084") se muestra con `humanizarTexto()`; no se reescriben
+  miles de perfiles por un problema de presentación.
+- Las pantallas que documentan reglas (Reglas de clasificación) se desfasan
+  en silencio: la nuestra decía fuentes-v9 con el código en v10.
+- Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
+  (`Link is not defined` con el import presente): `touch` y recargar.
+- El tamaño de la aplicación se mide con el `.env`: sin las variables de
+  Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
+  cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
+  continua miden 273 KB donde lo publicado pesa 476 KB.
+
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`
   en cada push a `main` (https://hugo777gonzalo.github.io/crediscope/).
@@ -569,6 +623,9 @@ antes de tocar esa área.
   - Si se tocaron las funciones, también `deno check` y `deno test`.
   - La integración continua los corre igual, y sin ellos en verde el PR no
     entra.
+- **Una pantalla tocada se revisa con la habilidad `revision-ux`**: el
+  control de textos, el verificador en el navegador de QA y una captura a
+  1280 (y a 768 y 414 si tiene tablas). Lint y build no prueban una pantalla.
 - Commits en castellano, explicando el porqué y qué se midió.
 - **Una prueba en producción no consulta a personas.**
   - Va con una identificación inválida, que la función rechaza antes de la

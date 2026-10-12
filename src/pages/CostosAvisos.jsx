@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { BellRing, BellOff, Wallet, CheckCircle2, AlertTriangle } from "lucide-react";
 import { getAvisos, getConfigOperativa, guardarConfigOperativa, getGastoDelMes, getEstadoServicio } from "../lib/api.js";
 import { money2, fechaHora } from "../lib/consumoLlm.js";
+import { humanizarTexto } from "../lib/formatos.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Avisos: el canal por donde sale la noticia de que algo pasa, y el
 // único incidente que se puede anticipar.
@@ -35,6 +38,21 @@ const COLOR_ESTADO_AVISO = {
   sin_canal: "var(--warn)",
   fallida: "var(--bad)",
 };
+
+function CuerpoDelAviso({ texto }) {
+  const [principal, ...tecnico] = String(texto).split(/\n?\s*Detalle:\s*/);
+  return (
+    <div className="crediscope-muted" style={{ marginTop: 2 }}>
+      <div style={{ whiteSpace: "pre-wrap" }}>{humanizarTexto(principal)}</div>
+      {tecnico.length ? (
+        <details style={{ fontSize: 12, marginTop: 4 }}>
+          <summary style={{ cursor: "pointer" }}>Detalle técnico</summary>
+          <code style={{ display: "block", marginTop: 4, wordBreak: "break-word" }}>{tecnico.join(" Detalle: ")}</code>
+        </details>
+      ) : null}
+    </div>
+  );
+}
 
 export default function CostosAvisos() {
   const [avisos, setAvisos] = useState(null);
@@ -84,9 +102,7 @@ export default function CostosAvisos() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   const hayCanal = canal?.estado === "operativo";
@@ -125,7 +141,7 @@ export default function CostosAvisos() {
                   El sistema detecta y registra, pero <strong>nadie recibe nada</strong>. Los avisos de abajo quedaron anotados
                   con el motivo, que es lo único que se puede hacer sin un canal.
                 </p>
-                <p className="crediscope-muted" style={{ margin: 0, fontSize: 13.5 }}>
+                <p className="crediscope-muted" style={{ margin: 0, fontSize: 14 }}>
                   Para activarlo hacen falta dos valores en las variables de la función: <code>TELEGRAM_BOT_TOKEN</code> y{" "}
                   <code>TELEGRAM_CHAT_ID</code>. Se obtienen creando un bot y agregándolo al grupo que deba recibirlos.
                 </p>
@@ -191,7 +207,7 @@ export default function CostosAvisos() {
               <strong>{money2(gastado)}</strong> de {money2(presupuesto)} en {gasto?.mes} — {pct}%
             </p>
             {gasto?.llamadas_sin_medir > 0 ? (
-              <p className="crediscope-muted" style={{ margin: "6px 0 0", fontSize: 13.5 }}>
+              <p className="crediscope-muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
                 No incluye {gasto.llamadas_sin_medir} llamadas que no se pudieron valuar: el gasto real es mayor. Y es consumo
                 registrado por nosotros, no la factura del proveedor.
               </p>
@@ -215,7 +231,7 @@ export default function CostosAvisos() {
           garantizan que se dejen de leer.
         </p>
         {!avisos ? (
-          <p className="crediscope-muted" style={{ marginBottom: 0 }}>Cargando...</p>
+          <Cargando />
         ) : avisos.length === 0 ? (
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>Todavía no hubo nada que avisar.</p>
         ) : (
@@ -233,19 +249,21 @@ export default function CostosAvisos() {
                 {avisos.map((a) => (
                   <tr key={a.id}>
                     <td style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fechaHora(a.created_at)}</td>
-                    <td style={{ fontSize: 13.5 }}>{ETIQUETA_TIPO[a.tipo] ?? a.tipo}</td>
-                    <td style={{ fontSize: 13.5, maxWidth: 420 }}>
-                      <strong>{a.titulo}</strong>
-                      {a.cuerpo ? (
-                        <div className="crediscope-muted" style={{ whiteSpace: "pre-wrap", marginTop: 2 }}>{a.cuerpo}</div>
-                      ) : null}
+                    <td style={{ fontSize: 14 }}>{ETIQUETA_TIPO[a.tipo] ?? a.tipo}</td>
+                    <td style={{ fontSize: 14, maxWidth: 420 }}>
+                      <strong>{humanizarTexto(a.titulo)}</strong>
+                      {a.cuerpo ? <CuerpoDelAviso texto={a.cuerpo} /> : null}
                     </td>
                     <td style={{ fontSize: 13, whiteSpace: "nowrap" }}>
                       <span style={{ color: COLOR_ESTADO_AVISO[a.estado] }}>{ETIQUETA_ESTADO_AVISO[a.estado] ?? a.estado}</span>
+                      {/* La respuesta cruda del proveedor (un JSON con el
+                          identificador del pedido) iba entera en la tabla.
+                          Queda plegada: quien la necesita la abre. */}
                       {a.detalle ? (
-                        <div className="crediscope-muted" style={{ fontSize: 12, maxWidth: 240, whiteSpace: "normal" }}>
-                          {a.detalle}
-                        </div>
+                        <details style={{ fontSize: 12, maxWidth: 260, whiteSpace: "normal" }}>
+                          <summary className="crediscope-muted" style={{ cursor: "pointer" }}>Detalle técnico</summary>
+                          <code style={{ display: "block", marginTop: 4, wordBreak: "break-word" }}>{a.detalle}</code>
+                        </details>
                       ) : null}
                     </td>
                   </tr>

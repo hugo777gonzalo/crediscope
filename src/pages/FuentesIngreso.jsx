@@ -10,6 +10,11 @@ import {
   ETIQUETA_INDICIO,
   formatMoneda,
 } from "../lib/fuentesIngresoConsolidado.js";
+import Kpi from "../components/ui/Kpi.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import Barra from "../components/ui/Barra.jsx";
+import { entero, humanizarTexto } from "../lib/formatos.js";
 
 // Panorama de fuentes de ingreso sobre toda la cartera consultada.
 //
@@ -21,40 +26,6 @@ import {
 // 081 contaba en el navegador sobre 1.000 perfiles de 3.303.
 
 const COLOR_ESTADO = { confirmada: "var(--good)", provisional: "var(--warn)", indeterminada: "var(--text-muted)" };
-
-function Kpi({ Icono, etiqueta, valor, detalle }) {
-  return (
-    <div className="crediscope-card crediscope-kpi">
-      <p className="crediscope-kpi-label">
-        <Icono size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-        {etiqueta}
-      </p>
-      <p className="crediscope-kpi-valor">{valor}</p>
-      {detalle ? <p className="crediscope-kpi-detalle">{detalle}</p> : null}
-    </div>
-  );
-}
-
-// La barra enlaza al listado filtrado: el primer reflejo de quien ve
-// "135 independientes" es querer saber quiénes son.
-function Barra({ etiqueta, n, pct, color, ayuda, enlace }) {
-  const contenido = (
-    <>
-      <span className="crediscope-barrapct-label">{enlace ? <Link to={enlace}>{etiqueta}</Link> : etiqueta}</span>
-      <div className="crediscope-barrapct-track">
-        <div className="crediscope-barrapct-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="crediscope-barrapct-valor">
-        {pct}% <span className="crediscope-muted">({n})</span>
-      </span>
-    </>
-  );
-  return (
-    <div className="crediscope-barrapct-row" title={ayuda}>
-      {contenido}
-    </div>
-  );
-}
 
 export default function FuentesIngreso() {
   const [d, setD] = useState(null);
@@ -68,11 +39,9 @@ export default function FuentesIngreso() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
-  if (!d) return <p className="crediscope-muted">Cargando...</p>;
+  if (!d) return <Cargando />;
 
   return (
     <div>
@@ -92,7 +61,7 @@ export default function FuentesIngreso() {
         <div className="crediscope-card">
           <p style={{ margin: 0 }}>Todavía no hay clientes clasificados.</p>
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            La clasificación se calcula al generar el Perfil del Cliente. Los {d.sinClasificar} perfiles ya guardados son
+            La clasificación se calcula al generar el Perfil del Cliente. Los {entero(d.sinClasificar)} perfiles ya guardados son
             anteriores al módulo y no se pueden reclasificar sin volver a consultar la fuente: el dato crudo de origen no se
             almacena. Se irán clasificando a medida que se consulten clientes.
           </p>
@@ -100,7 +69,7 @@ export default function FuentesIngreso() {
       ) : (
         <>
           <div className="crediscope-kpi-grid">
-            <Kpi Icono={Users} etiqueta="Clientes clasificados" valor={d.total} detalle={d.sinClasificar ? `${d.sinClasificar} perfiles previos al módulo, sin clasificar` : null} />
+            <Kpi Icono={Users} etiqueta="Clientes clasificados" valor={d.total} detalle={d.sinClasificar ? `${entero(d.sinClasificar)} perfiles previos al módulo, sin clasificar` : null} />
             <Kpi
               Icono={ShieldQuestion}
               etiqueta="Con ingreso reportado al IESS"
@@ -117,7 +86,7 @@ export default function FuentesIngreso() {
               Icono={FileWarning}
               etiqueta="Sin información actual en el IESS"
               valor={d.desvinculados}
-              detalle="Aportaban y no aparecen en el corte más reciente del IESS (sin contar jubilados)"
+              detalle="Aportaban y no aparecen en la información IESS más reciente (sin contar jubilados)"
             />
           </div>
 
@@ -152,7 +121,7 @@ export default function FuentesIngreso() {
                   {d.evidencias.map((ev) => (
                     <tr key={ev.clave}>
                       <td>{ETIQUETA_EVIDENCIA[ev.clave] ?? ev.clave}</td>
-                      <td style={{ textAlign: "right", fontWeight: 600 }}>{ev.n}</td>
+                      <td className="crediscope-cifra" style={{ fontWeight: 600 }}>{entero(ev.n)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,7 +164,7 @@ export default function FuentesIngreso() {
                   {(d.dependientesConActividadPorSegmento ?? []).map((s) => (
                     <tr key={s.clave}>
                       <td>{ETIQUETA_SEGMENTO[s.clave] ?? s.clave}</td>
-                      <td style={{ textAlign: "right", fontWeight: 600 }}>{s.n.toLocaleString("es-EC")}</td>
+                      <td className="crediscope-cifra" style={{ fontWeight: 600 }}>{entero(s.n)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -232,14 +201,14 @@ export default function FuentesIngreso() {
                 />
               ))}
               <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-                {d.indicios.soloRenta.toLocaleString("es-EC")} lo tienen sólo por el impuesto a la renta.
-                {d.indicios.sinCalcular ? ` ${d.indicios.sinCalcular.toLocaleString("es-EC")} perfiles todavía sin calcular.` : ""}
+                {entero(d.indicios.soloRenta)} lo tienen sólo por el impuesto a la renta.
+                {d.indicios.sinCalcular ? ` ${entero(d.indicios.sinCalcular)} perfiles todavía sin calcular.` : ""}
               </p>
             </div>
           ) : null}
 
           <div className="crediscope-card">
-            <h3>Clientes que necesitan respaldo ({d.requierenRespaldoTotal.toLocaleString("es-EC")})</h3>
+            <h3>Clientes que necesitan respaldo ({entero(d.requierenRespaldoTotal)})</h3>
             <p className="crediscope-muted" style={{ marginTop: 0 }}>
               Su segmento no está confirmado. Acá está qué pedirles para confirmarlo.
               {/* Antes el título decía el total y la tabla cortaba en 40
@@ -249,8 +218,8 @@ export default function FuentesIngreso() {
                 <>
                   {" "}
                   Se muestran los {d.requierenRespaldo.length} más recientes; el resto está en{" "}
-                  <Link to="/fuentes/clientes?estado=provisional">provisionales</Link> e{" "}
-                  <Link to="/fuentes/clientes?estado=indeterminada">indeterminados</Link>.
+                  <Link to="/fuentes/clientes?estado=provisional">Por confirmar</Link> y{" "}
+                  <Link to="/fuentes/clientes?estado=indeterminada">Sin determinar</Link>.
                 </>
               ) : null}
             </p>
@@ -276,11 +245,11 @@ export default function FuentesIngreso() {
                         {ETIQUETA_SEGMENTO[r.segmento] ?? r.segmento}
                         <div className="crediscope-muted" style={{ fontSize: 12 }}>{ETIQUETA_ESTADO[r.estado]}</div>
                       </td>
-                      <td style={{ fontSize: 13 }}>{r.motivo}</td>
+                      <td style={{ fontSize: 13 }}>{humanizarTexto(r.motivo)}</td>
                       <td style={{ fontSize: 13 }}>
                         <ul style={{ margin: 0, paddingLeft: 16 }}>
                           {r.pedir.map((p, i) => (
-                            <li key={i}>{p}</li>
+                            <li key={i}>{humanizarTexto(p)}</li>
                           ))}
                         </ul>
                       </td>

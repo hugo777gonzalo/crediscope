@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, Info } from "lucide-react";
 import { getResumenCarteraIngresos } from "../lib/api.js";
 import { mesLegible } from "../lib/ingresosCampos.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import { plural } from "../lib/formatos.js";
 
 // Parámetros operativos del módulo.
 //
@@ -46,22 +49,20 @@ export default function FuentesParametros() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-card">
         <h3>Corte del registro del IESS</h3>
         <p className="crediscope-muted" style={{ marginTop: 0 }}>
           Novadata actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
-          vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce solo: es el mes más reciente en el
+          vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce sólo: es el mes más reciente en el
           que aparecen al menos 20 clientes consultados en los últimos 90 días. Algunos aportes llegan antes que el resto: esos
           clientes se clasifican con su propio mes, sin mover el corte de todos.
         </p>
 
         {!d ? (
-          <p className="crediscope-muted">Cargando...</p>
+          <Cargando />
         ) : (
           <>
             <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "4px 0 16px" }}>
@@ -99,9 +100,9 @@ export default function FuentesParametros() {
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
                 <Info size={20} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
                 <p style={{ margin: 0 }}>
-                  {conCorteAnterior.toLocaleString("es-EC")} cliente(s) tienen su clasificación hecha con un corte anterior. No
-                  está mal: es la foto de cuando se los consultó. Quien trabaje con uno de ellos lo ve en su pestaña Fuentes de
-                  ingreso, y reconsultarlo lo pone al día.
+                  {plural(conCorteAnterior, "cliente")} {conCorteAnterior === 1 ? "tiene" : "tienen"} su clasificación hecha con una información
+                  IESS anterior. No está mal: es la foto de cuando se lo consultó. Quien trabaje con {conCorteAnterior === 1 ? "él" : "uno de ellos"} lo
+                  ve en su pestaña Fuentes de Ingreso, y reconsultarlo lo pone al día.
                 </p>
               </div>
             ) : null}

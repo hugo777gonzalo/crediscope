@@ -82,7 +82,7 @@ export default function PestanaDesempeno({ resultado }) {
             color={Number(t.tasa) > 0.15 ? "var(--bad)" : Number(t.tasa) > 0.07 ? "var(--warn)" : "var(--good)"}
           />
         ))}
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>{NOTA_RUIDO}</p>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>{NOTA_RUIDO}</p>
       </div>
 
       <div className="crediscope-card">

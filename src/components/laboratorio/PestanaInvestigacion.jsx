@@ -88,7 +88,7 @@ export default function PestanaInvestigacion({ corteId, poblacion }) {
               })}
             </tbody>
           </table>
-          {elegidos.length > 200 ? <p className="crediscope-muted" style={{ fontSize: 12.5 }}>Se muestran los primeros 200 de {num(elegidos.length)}.</p> : null}
+          {elegidos.length > 200 ? <p className="crediscope-muted" style={{ fontSize: 13 }}>Se muestran los primeros 200 de {num(elegidos.length)}.</p> : null}
         </div>
       ) : (
         <p className="crediscope-muted">Ningún caso en este corte.</p>

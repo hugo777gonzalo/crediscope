@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getMetricasGerenciales, agregarPorCampo } from "../lib/api.js";
 import { camposDeEje } from "../lib/reporteGerencial.js";
 import { ORDEN_GRUPOS, ETIQUETAS_GRUPO, formatValor } from "../lib/perfilClienteCampos.js";
+import { entero, moneda, porcentajeDe, segundos, plural } from "../lib/formatos.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import Kpi from "../components/ui/Kpi.jsx";
+import Barra from "../components/ui/Barra.jsx";
 
 // Inteligencia de Negocios -- a pedido del usuario, un tablero EN
 // VIVO (no un PDF exportable) para mostrar a un Jefe/Coordinador/
 // Sub-gerente: panorama agregado de TODA la cartera consultada, no un
 // cliente a la vez (eso ya lo cubren Perfil del Cliente/Historial). Ver
 // reporteGerencial.js para la agregación y la nota de escala.
-
-const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 // El cuarto valor marca una recomendación que ya no se produce
 // ("observar", retirada en marco-v27): su barra aparece sólo mientras
@@ -22,11 +26,6 @@ const RECOMENDACIONES_ORDEN = [
   ["negar", "Negar", "var(--bad)"],
 ];
 
-function formatDuracion(ms) {
-  if (ms === null || ms === undefined) return "—";
-  return `${(ms / 1000).toFixed(1)}s`;
-}
-
 function FilaTiempo({ etiqueta, stats }) {
   return (
     <div className="crediscope-tiempo-row">
@@ -36,42 +35,18 @@ function FilaTiempo({ etiqueta, stats }) {
       ) : (
         <span className="crediscope-tiempo-valores">
           <span>
-            prom. <strong>{formatDuracion(stats.promedioMs)}</strong>
+            promedio <strong>{segundos(stats.promedioMs)}</strong>
           </span>
-          <span className="crediscope-muted">mín. {formatDuracion(stats.minMs)}</span>
-          <span className="crediscope-muted">máx. {formatDuracion(stats.maxMs)}</span>
-          <span className="crediscope-muted">({stats.n} consultas)</span>
+          <span className="crediscope-muted">mínimo {segundos(stats.minMs)}</span>
+          <span className="crediscope-muted">máximo {segundos(stats.maxMs)}</span>
+          <span className="crediscope-muted">({plural(stats.n, "consulta")})</span>
         </span>
       )}
     </div>
   );
 }
 
-function TarjetaKpi({ etiqueta, valor, detalle }) {
-  return (
-    <div className="crediscope-card crediscope-kpi">
-      <p className="crediscope-kpi-label">{etiqueta}</p>
-      <p className="crediscope-kpi-valor">{valor}</p>
-      {detalle ? <p className="crediscope-kpi-detalle">{detalle}</p> : null}
-    </div>
-  );
-}
-
-function BarraPorcentaje({ etiqueta, valor, pct, color }) {
-  return (
-    <div className="crediscope-barrapct-row">
-      <span className="crediscope-barrapct-label">{etiqueta}</span>
-      <div className="crediscope-barrapct-track">
-        <div className="crediscope-barrapct-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="crediscope-barrapct-valor">
-        {pct}% <span className="crediscope-muted">({valor})</span>
-      </span>
-    </div>
-  );
-}
-
-function DistribucionScore({ distribucion, total }) {
+function DistribucionPuntaje({ distribucion, total }) {
   const segmentos = [
     { clave: "bueno", etiqueta: "Bueno (700-999)", color: "var(--good)" },
     { clave: "medio", etiqueta: "Medio (400-699)", color: "var(--warn)" },
@@ -83,14 +58,14 @@ function DistribucionScore({ distribucion, total }) {
         {segmentos.map((s) => {
           const n = distribucion[s.clave];
           const pct = total ? (n / total) * 100 : 0;
-          return pct > 0 ? <div key={s.clave} style={{ width: `${pct}%`, background: s.color }} title={`${s.etiqueta}: ${n}`} /> : null;
+          return pct > 0 ? <div key={s.clave} style={{ width: `${pct}%`, background: s.color }} title={`${s.etiqueta}: ${entero(n)}`} /> : null;
         })}
       </div>
       <div className="crediscope-stackedbar-legend">
         {segmentos.map((s) => (
           <span key={s.clave} className="crediscope-legend-item">
             <span className="crediscope-legend-dot" style={{ background: s.color }} />
-            {s.etiqueta} — {total ? Math.round((distribucion[s.clave] / total) * 100) : 0}% ({distribucion[s.clave]})
+            {s.etiqueta} — {porcentajeDe(distribucion[s.clave], total)} ({entero(distribucion[s.clave])})
           </span>
         ))}
       </div>
@@ -98,24 +73,27 @@ function DistribucionScore({ distribucion, total }) {
   );
 }
 
+// El dibujo mide 420 de ancho y no 560: dentro de una tarjeta de ~330 px se
+// reducía a 0,6 y las etiquetas de 10 unidades quedaban en 6 píxeles.
 function GraficoTendencia({ datos }) {
   const max = Math.max(1, ...datos.map((d) => d.total));
-  const ancho = 560;
-  const alto = 160;
-  const paddingIzq = 28;
-  const paddingAbajo = 22;
+  const ancho = 420;
+  const alto = 170;
+  const paddingIzq = 34;
+  const paddingAbajo = 26;
   const anchoBarra = (ancho - paddingIzq) / datos.length - 12;
+  const mayuscula = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
   return (
-    <svg viewBox={`0 0 ${ancho} ${alto}`} width="100%" style={{ maxWidth: ancho, display: "block" }}>
+    <svg viewBox={`0 0 ${ancho} ${alto}`} width="100%" style={{ maxWidth: ancho, display: "block" }} role="img" aria-label="Consultas por mes, últimos seis meses">
       <line x1={paddingIzq} y1={alto - paddingAbajo} x2={ancho} y2={alto - paddingAbajo} stroke="var(--border)" strokeWidth="1" />
       {[0.5, 1].map((f) => (
         <line key={f} x1={paddingIzq} y1={(alto - paddingAbajo) * (1 - f)} x2={ancho} y2={(alto - paddingAbajo) * (1 - f)} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3" />
       ))}
-      <text x="2" y={alto - paddingAbajo + 4} fontSize="10" fill="var(--text-muted)">
+      <text x="2" y={alto - paddingAbajo + 4} fontSize="12" fill="var(--text-muted)">
         0
       </text>
-      <text x="2" y={(alto - paddingAbajo) * 0.5 + 4} fontSize="10" fill="var(--text-muted)">
-        {Math.round(max / 2)}
+      <text x="2" y={(alto - paddingAbajo) * 0.5 + 4} fontSize="12" fill="var(--text-muted)">
+        {entero(Math.round(max / 2))}
       </text>
       {datos.map((d, i) => {
         const h = ((alto - paddingAbajo) * d.total) / max;
@@ -123,11 +101,11 @@ function GraficoTendencia({ datos }) {
         return (
           <g key={d.clave}>
             <rect x={x} y={alto - paddingAbajo - h} width={anchoBarra} height={h} rx="3" fill="var(--brand)" />
-            <text x={x + anchoBarra / 2} y={alto - paddingAbajo - h - 5} fontSize="11" fill="var(--text)" textAnchor="middle" fontWeight="600">
-              {d.total}
+            <text x={x + anchoBarra / 2} y={alto - paddingAbajo - h - 5} fontSize="13" fill="var(--text)" textAnchor="middle" fontWeight="600">
+              {entero(d.total)}
             </text>
-            <text x={x + anchoBarra / 2} y={alto - 6} fontSize="10" fill="var(--text-muted)" textAnchor="middle">
-              {d.etiqueta}
+            <text x={x + anchoBarra / 2} y={alto - 8} fontSize="12" fill="var(--text-muted)" textAnchor="middle">
+              {mayuscula(d.etiqueta)}
             </text>
           </g>
         );
@@ -142,7 +120,7 @@ function GraficoTendencia({ datos }) {
 //
 // Se piden en paralelo al cambiar de grupo -- son diez o doce campos y
 // cada uno es una cuenta sobre el último perfil de cada cliente.
-function ExploradorPorEje() {
+function ExploradorPorGrupo() {
   const [grupo, setGrupo] = useState(ORDEN_GRUPOS[0]);
   const [resultados, setResultados] = useState({});
   const [cargando, setCargando] = useState(true);
@@ -174,8 +152,8 @@ function ExploradorPorEje() {
   return (
     <div className="crediscope-card">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-        <h3 style={{ margin: 0 }}>Explorador por eje</h3>
-        <select className="crediscope-input" style={{ maxWidth: 280 }} value={grupo} onChange={(e) => setGrupo(e.target.value)}>
+        <h3 style={{ margin: 0 }}>Explorador por grupo del Perfil del Cliente</h3>
+        <select className="crediscope-input" style={{ maxWidth: 280 }} value={grupo} onChange={(e) => setGrupo(e.target.value)} aria-label="Grupo del Perfil del Cliente">
           {ORDEN_GRUPOS.map((g) => (
             <option key={g} value={g}>
               {ETIQUETAS_GRUPO[g]}
@@ -192,11 +170,10 @@ function ExploradorPorEje() {
               <span className="crediscope-eje-etiqueta">{etiqueta}</span>
               <span className="crediscope-eje-valor">
                 {resultado.tipo === "cargando" && <span className="crediscope-muted">...</span>}
-                {resultado.tipo === "cargando" && <span className="crediscope-muted">…</span>}
                 {resultado.tipo === "vacio" && <span className="crediscope-muted">Sin datos</span>}
                 {resultado.tipo === "porcentaje" && (
                   <>
-                    <strong>{resultado.pct}%</strong> <span className="crediscope-muted">de {resultado.conDato} con dato</span>
+                    <strong>{resultado.pct}%</strong> <span className="crediscope-muted">de {entero(resultado.conDato)} con dato</span>
                   </>
                 )}
                 {resultado.tipo === "promedio" && (
@@ -204,7 +181,7 @@ function ExploradorPorEje() {
                 )}
                 {resultado.tipo === "distribucion" && (
                   <span className="crediscope-muted">
-                    {resultado.top.map(([v, n]) => `${formatValor(v, tipo === "lista" ? "texto" : tipo)} (${n})`).join(" · ")}
+                    {resultado.top.map(([v, n]) => `${formatValor(v, tipo === "lista" ? "texto" : tipo)} (${entero(n)})`).join(" · ")}
                   </span>
                 )}
               </span>
@@ -231,13 +208,8 @@ export default function Reportes() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="crediscope-muted">Cargando reporte...</p>;
-  if (error)
-    return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)" }}>{error}</p>
-      </div>
-    );
+  if (loading) return <Cargando texto="Cargando reporte..." />;
+  if (error) return <AvisoDeError error={error} />;
   if (!metricas.totalClientes)
     return (
       <div className="crediscope-card">
@@ -259,20 +231,26 @@ export default function Reportes() {
       </div>
 
       <div className="crediscope-kpi-grid">
-        <TarjetaKpi etiqueta="Clientes en cartera" valor={metricas.totalClientes} detalle={`${metricas.totalAnalizados} con Análisis con IA generado`} />
-        <TarjetaKpi etiqueta="Score promedio" valor={metricas.scorePromedio ?? "—"} detalle="Sobre 999, último análisis por cliente" />
-        <TarjetaKpi
+        <Kpi etiqueta="Clientes en cartera" valor={metricas.totalClientes} detalle={`${entero(metricas.totalAnalizados)} ya tienen Análisis con IA`} />
+        <Kpi etiqueta="Puntaje promedio" valor={metricas.scorePromedio ?? "—"} detalle="Sobre 999, con el último análisis de cada cliente" />
+        {/* El mes en curso no terminó: compararlo con el anterior completo
+            daba "-57%" el día 9 y se leía como una caída del negocio. */}
+        <Kpi
           etiqueta="Consultas este mes"
           valor={mesActual}
-          detalle={variacion === null ? "Sin mes anterior para comparar" : `${variacion >= 0 ? "+" : ""}${variacion}% vs. mes anterior`}
+          detalle={
+            variacion === null
+              ? "Sin mes anterior para comparar"
+              : `En lo que va del mes: ${Math.abs(variacion)}% ${variacion >= 0 ? "más" : "menos"} que todo el mes anterior`
+          }
         />
-        <TarjetaKpi etiqueta="Con respaldo patrimonial" valor={`${metricas.patrimonio.pct}%`} detalle={`Colateral estimado: ${MONEDA.format(metricas.patrimonio.valorColateralTotal)}`} />
+        <Kpi etiqueta="Con respaldo patrimonial" valor={`${metricas.patrimonio.pct}%`} detalle={`Colateral estimado: ${moneda(metricas.patrimonio.valorColateralTotal)}`} />
       </div>
 
       <div className="crediscope-reportes-grid">
         <div className="crediscope-card">
-          <h3>Distribución de score</h3>
-          <DistribucionScore distribucion={metricas.distribucionScore} total={metricas.totalAnalizados} />
+          <h3>Distribución del puntaje</h3>
+          <DistribucionPuntaje distribucion={metricas.distribucionScore} total={metricas.totalAnalizados} />
         </div>
 
         <div className="crediscope-card">
@@ -281,18 +259,18 @@ export default function Reportes() {
         </div>
 
         <div className="crediscope-card">
-          <h3>Acción recomendada</h3>
+          <h3>Recomendación</h3>
           {metricas.totalAnalizados === metricas.distribucionRecomendacion.sinDato ? (
-            <p className="crediscope-muted">Todavía no hay análisis con recomendación de acción (se registra desde marco-v14).</p>
+            <p className="crediscope-muted">Todavía no hay análisis con recomendación.</p>
           ) : (
             <>
               {RECOMENDACIONES_ORDEN.filter(
                 ([clave, , , retirada]) => !retirada || metricas.distribucionRecomendacion[clave] > 0
               ).map(([clave, etiqueta, color]) => (
-                <BarraPorcentaje
+                <Barra
                   key={clave}
                   etiqueta={etiqueta}
-                  valor={metricas.distribucionRecomendacion[clave]}
+                  n={metricas.distribucionRecomendacion[clave]}
                   pct={
                     metricas.totalAnalizados
                       ? Math.round((metricas.distribucionRecomendacion[clave] / metricas.totalAnalizados) * 100)
@@ -302,8 +280,8 @@ export default function Reportes() {
                 />
               ))}
               {metricas.distribucionRecomendacion.sinDato > 0 ? (
-                <p className="crediscope-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-                  {metricas.distribucionRecomendacion.sinDato} análisis previos a marco-v14 no tienen recomendación registrada.
+                <p className="crediscope-muted" style={{ fontSize: 13, marginTop: 10 }}>
+                  {plural(metricas.distribucionRecomendacion.sinDato, "análisis antiguo no tiene", "análisis antiguos no tienen")} recomendación registrada.
                 </p>
               ) : null}
             </>
@@ -313,27 +291,35 @@ export default function Reportes() {
         <div className="crediscope-card">
           <h3>Riesgo y cumplimiento</h3>
           {metricas.riesgo.map((r) => (
-            <BarraPorcentaje key={r.etiqueta} etiqueta={r.etiqueta} valor={r.valor} pct={r.pct} color="var(--bad)" />
+            <Barra key={r.etiqueta} etiqueta={r.etiqueta} n={r.valor} pct={r.pct} color="var(--bad)" />
           ))}
         </div>
 
+        {/* El perfil laboral de acá usaba la clasificación de antes del módulo
+            de Fuentes de Ingreso (independientes, dependientes, jubilados,
+            pensionistas) y daba cifras distintas a las del Panorama bajo el
+            mismo nombre. Se mira en un solo lugar. */}
         <div className="crediscope-card">
-          <h3>Perfil laboral</h3>
-          {metricas.laboral.map((r) => (
-            <BarraPorcentaje key={r.etiqueta} etiqueta={r.etiqueta} valor={r.valor} pct={r.pct} color="var(--brand)" />
-          ))}
+          <h3>Perfil laboral y de qué vive la cartera</h3>
+          <p className="crediscope-muted" style={{ marginTop: 0 }}>
+            Se mira en Fuentes de Ingreso, con la clasificación vigente, para que las cifras no cambien de una pantalla a otra.
+          </p>
+          <Link className="crediscope-btn crediscope-btn-ghost" to="/fuentes">
+            Ver el Panorama de Fuentes de Ingreso
+          </Link>
         </div>
 
         <div className="crediscope-card">
           <h3>Actividad por analista</h3>
+          <p className="crediscope-muted" style={{ marginTop: 0 }}>Consultas y análisis registrados por cada usuario.</p>
           {metricas.actividadPorAnalista.length === 0 ? (
             <p className="crediscope-muted">Sin datos de actividad todavía.</p>
           ) : (
             metricas.actividadPorAnalista.map(([nombre, n]) => (
-              <BarraPorcentaje
+              <Barra
                 key={nombre}
                 etiqueta={nombre}
-                valor={n}
+                texto={entero(n)}
                 pct={Math.round((n / metricas.actividadPorAnalista[0][1]) * 100)}
                 color="var(--gold)"
               />
@@ -343,12 +329,12 @@ export default function Reportes() {
 
         <div className="crediscope-card">
           <h3>Tiempos de respuesta</h3>
-          <FilaTiempo etiqueta="Ingesta a la fuente (consulta nueva)" stats={metricas.tiempos.ingesta} />
-          <FilaTiempo etiqueta="Análisis con IA (LLM)" stats={metricas.tiempos.llm} />
+          <FilaTiempo etiqueta="Consulta a la fuente de datos (consulta nueva)" stats={metricas.tiempos.ingesta} />
+          <FilaTiempo etiqueta="Análisis con IA" stats={metricas.tiempos.llm} />
         </div>
       </div>
 
-      <ExploradorPorEje />
+      <ExploradorPorGrupo />
     </div>
   );
 }

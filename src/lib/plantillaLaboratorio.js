@@ -136,6 +136,7 @@ const SINONIMOS = {
   estado_operacion: ["estado al corte", "estado", "situacion", "estado de la operacion", "estado del credito"],
   dias_mora_max_12m: ["maximo de dias de mora en los primeros 12 meses", "dias mora 12", "mora 12 meses", "mora 12"],
   dias_mora_max_24m: ["maximo de dias de mora en los primeros 24 meses", "dias mora 24", "mora 24 meses", "mora 24"],
+  // revisar-textos: permitir default -- sinónimo de la columna en los archivos de las instituciones, no un texto de pantalla
   fecha_primer_default: ["fecha del primer impago", "fecha primer impago", "fecha de impago", "fecha default", "fecha de castigo"],
   cuota_mensual: ["cuota mensual", "cuota", "valor de la cuota", "valor cuota"],
   canal: ["canal de venta", "canal", "agencia"],

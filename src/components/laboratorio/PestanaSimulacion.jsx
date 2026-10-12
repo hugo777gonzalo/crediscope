@@ -101,7 +101,7 @@ export default function PestanaSimulacion({ corteId, catalogo, simulaciones, alS
         return (
           <div key={s.id} className="crediscope-card">
             <h3 style={{ marginTop: 0, marginBottom: 2 }}>{r.regla?.nombre}</h3>
-            <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 12.5 }}>
+            <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
               {(r.regla?.condiciones ?? []).map((c) => `${porId[c.variable]?.nombre ?? c.variable} ${c.op} ${String(c.valor)}`).join(" y ")} · {formatearFechaHora(s.created_at)}
             </p>
             <div className="crediscope-kpi-grid">

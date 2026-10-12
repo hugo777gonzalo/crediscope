@@ -4,6 +4,7 @@ import { getHistorialCliente } from "../lib/api.js";
 import RecomendacionBadge from "../components/RecomendacionBadge.jsx";
 import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
 import { formatearFechaHora } from "../lib/fechas.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 
 // Buscador histórico de consultas de un cliente — a diferencia de
 // Perfil del Cliente/Análisis con IA (que solo muestran lo más
@@ -46,7 +47,11 @@ export default function Historial() {
         <h2>Historial</h2>
         <p className="crediscope-muted">Consulta todas las veces que se generó un Perfil del Cliente o un Análisis con IA para una cédula.</p>
         <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <label htmlFor="historial-cedula" className="crediscope-solo-lectores">
+            Cédula del cliente
+          </label>
           <input
+            id="historial-cedula"
             className="crediscope-input"
             placeholder="Cédula"
             value={cedula}
@@ -60,9 +65,7 @@ export default function Historial() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)" }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       {buscado && !loading && !client ? (

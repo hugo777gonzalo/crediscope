@@ -22,6 +22,9 @@ import {
   proporcionScore,
 } from "../lib/bandeja.js";
 import { recordarBusquedaBandeja } from "../lib/regresoBandeja.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import { entero, plural } from "../lib/formatos.js";
 
 // La bandeja: una fila por persona consultada, con lo último que se
 // sabe de ella. Es la puerta de entrada al expediente.
@@ -44,17 +47,33 @@ const TARJETAS = [
   { clave: "total", etiqueta: "En la búsqueda", color: "var(--text)", filtro: null },
   { clave: "aprobar", etiqueta: "Aprobar", color: "var(--good)", filtro: ["recomendacion", "aprobar"] },
   { clave: "revisar", etiqueta: "Revisar", color: "var(--warn)", filtro: ["recomendacion", "revisar"] },
-  // Retirada en marco-v27: la tarjeta aparece sólo si la búsqueda
-  // encuentra análisis viejos con ella, o si su filtro está puesto y hay
-  // que poder sacarlo.
-  { clave: "observar", etiqueta: "Observar", color: "var(--brand)", filtro: ["recomendacion", "observar"], retirada: true },
+  // "soloSiHay": la tarjeta aparece sólo si la búsqueda encuentra casos, o
+  // si su filtro está puesto y hay que poder sacarlo. "Observar" se retiró
+  // en marco-v27 y sólo queda en análisis viejos.
+  { clave: "observar", etiqueta: "Observar", color: "var(--brand)", filtro: ["recomendacion", "observar"], soloSiHay: true },
   { clave: "negar", etiqueta: "Negar", color: "var(--bad)", filtro: ["recomendacion", "negar"] },
   { clave: "sin_analisis", etiqueta: "Sin analizar", color: "var(--text-muted)", filtro: ["estado", "sin_analisis"] },
+  // El 2026-10-10 la franja decía 2.812 y sus tarjetas sumaban 2.789: faltaban
+  // los 23 análisis que no se completaron, que estaban en el filtro de
+  // Estado pero no en ninguna tarjeta.
+  { clave: "no_completado", etiqueta: "No se completó", color: "var(--bad)", filtro: ["estado", "no_completado"], soloSiHay: true },
   // Las que hay que volver a consultar. Tienen su propia tarjeta
   // porque son trabajo pendiente nuestro, no de un analista.
   { clave: "consulta_fallida", etiqueta: "Consulta falló", color: "var(--warn)", filtro: ["estado", "consulta_fallida"] },
+  // Lo que queda para que las tarjetas sumen el total: análisis viejos que
+  // todavía no registraban recomendación. Se calcula acá, no viene de la base.
+  {
+    clave: "sin_recomendacion",
+    etiqueta: "Sin recomendación",
+    color: "var(--text-muted)",
+    filtro: null,
+    soloSiHay: true,
+    ayuda: "Análisis antiguos: todavía no registraban la recomendación.",
+  },
   { clave: "con_bloqueo", etiqueta: "Con bloqueo", color: "var(--bad)", filtro: null },
 ];
+
+const CLAVES_QUE_SUMAN = ["aprobar", "revisar", "observar", "negar", "sin_analisis", "no_completado", "consulta_fallida"];
 
 export default function Solicitudes() {
   const [params, setParams] = useSearchParams();
@@ -141,6 +160,14 @@ export default function Solicitudes() {
     filtros.origen && { clave: "origen", texto: filtros.origen === "lote" ? "De lote" : "Consulta individual" },
   ].filter(Boolean);
 
+  // Que las tarjetas sumen el total: la persona confía en una franja que cierra.
+  const valoresDeLaFranja = conteos
+    ? {
+        ...conteos,
+        sin_recomendacion: Math.max(0, Number(conteos.total) - CLAVES_QUE_SUMAN.reduce((s, k) => s + (Number(conteos[k]) || 0), 0)),
+      }
+    : null;
+
   const filas = datos?.filas ?? [];
   const total = datos?.total ?? 0;
   const primeraFila = filtros.pagina * BANDEJA_POR_PAGINA;
@@ -163,11 +190,11 @@ export default function Solicitudes() {
                 id="b-q"
                 value={textoBusqueda}
                 onChange={(e) => setTextoBusqueda(e.target.value)}
-                placeholder="Cédula o apellido"
+                placeholder="Cédula, nombre o apellido"
                 style={{ flex: 1 }}
               />
-              <button className="crediscope-btn" type="submit" style={{ padding: "7px 12px" }} title="Buscar">
-                <Search size={15} />
+              <button className="crediscope-btn" type="submit" style={{ padding: "7px 12px" }} title="Buscar" aria-label="Buscar">
+                <Search size={15} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -183,7 +210,7 @@ export default function Solicitudes() {
           </div>
 
           <div className="crediscope-filtro">
-            <label htmlFor="b-segmento">Fuente de ingreso</label>
+            <label htmlFor="b-segmento">Segmento</label>
             <select id="b-segmento" value={filtros.segmento} onChange={(e) => cambiar({ segmento: e.target.value })}>
               <option value="">Todas</option>
               {segmentos.map((s) => (
@@ -244,7 +271,7 @@ export default function Solicitudes() {
                 </button>
               </span>
             ))}
-            <button type="button" className="crediscope-btn crediscope-btn-ghost" style={{ padding: "3px 11px", fontSize: 12.5 }} onClick={limpiar}>
+            <button type="button" className="crediscope-btn crediscope-btn-ghost" style={{ padding: "3px 11px", fontSize: 13 }} onClick={limpiar}>
               Limpiar todo
             </button>
           </div>
@@ -252,16 +279,14 @@ export default function Solicitudes() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-franja">
         {TARJETAS.map((t) => {
-          const valor = conteos?.[t.clave];
+          const valor = valoresDeLaFranja?.[t.clave];
           const activa = t.filtro ? filtros[t.filtro[0]] === t.filtro[1] : false;
-          if (t.retirada && !activa && !(valor > 0)) return null;
+          if (t.soloSiHay && !activa && !(valor > 0)) return null;
           return (
             <button
               key={t.clave}
@@ -271,11 +296,11 @@ export default function Solicitudes() {
               aria-pressed={t.filtro ? activa : undefined}
               disabled={!t.filtro}
               onClick={() => t.filtro && cambiar({ [t.filtro[0]]: activa ? "" : t.filtro[1] })}
-              title={t.filtro ? (activa ? "Quitar este filtro" : `Ver solo: ${t.etiqueta}`) : undefined}
+              title={t.filtro ? (activa ? "Quitar este filtro" : `Ver sólo: ${t.etiqueta}`) : t.ayuda}
             >
               <span className="crediscope-franja-etiqueta">{t.etiqueta}</span>
               <span className="crediscope-franja-valor" style={{ color: t.clave === "total" ? "var(--text)" : t.color }}>
-                {valor === null || valor === undefined ? "—" : valor.toLocaleString("es-EC")}
+                {entero(valor)}
               </span>
             </button>
           );
@@ -283,7 +308,7 @@ export default function Solicitudes() {
       </div>
 
       <div className="crediscope-card">
-        {cargando && !datos ? <p className="crediscope-muted" style={{ margin: 0 }}>Cargando...</p> : null}
+        {cargando && !datos ? <Cargando /> : null}
 
         {datos && filas.length === 0 ? (
           <p className="crediscope-muted" style={{ margin: 0 }}>
@@ -299,9 +324,9 @@ export default function Solicitudes() {
                   <tr>
                     <th>Última actividad</th>
                     <th>Persona</th>
-                    <th>Fuente de ingreso</th>
-                    <th style={{ textAlign: "right" }}>Ingreso IESS</th>
-                    <th style={{ textAlign: "right" }}>Puntaje</th>
+                    <th>Segmento</th>
+                    <th className="crediscope-cifra">Ingreso reportado al IESS</th>
+                    <th className="crediscope-cifra">Puntaje</th>
                     <th>Resultado</th>
                     <th>Consultas</th>
                     <th></th>
@@ -317,7 +342,7 @@ export default function Solicitudes() {
 
             <div className="crediscope-paginacion">
               <span className="crediscope-muted">
-                {primeraFila + 1}–{primeraFila + filas.length} de {total.toLocaleString("es-EC")}
+                {entero(primeraFila + 1)}–{entero(primeraFila + filas.length)} de {entero(total)}
                 {cargando ? " · actualizando..." : ""}
               </span>
               <div className="crediscope-paginacion-botones">
@@ -341,9 +366,9 @@ export default function Solicitudes() {
           de agencia y no lo encuentra va a suponer que está roto. */}
       <div className="crediscope-pendiente">
         <p>
-          <strong>Todavía no se puede filtrar por asesor, agencia ni tipo de crédito.</strong> Son datos de la solicitud, y la
-          solicitud como entidad no existe todavía: hoy cada fila es una persona consultada, no un pedido de crédito. Tampoco hay
-          monto, plazo ni capacidad de pago por la misma razón.
+          <strong>Cada fila es una persona consultada, no un pedido de crédito.</strong> Por eso todavía no se puede filtrar por
+          asesor, agencia ni tipo de crédito, ni ver monto, plazo o capacidad de pago: son datos de la solicitud y hoy no se
+          registran.
         </p>
       </div>
     </div>
@@ -376,7 +401,7 @@ function FilaBandeja({ f }) {
             <span>{ETIQUETA_SEGMENTO[f.fuente_segmento] ?? f.fuente_segmento}</span>
             <span className="crediscope-celda-sub">
               {ETIQUETA_ESTADO[f.fuente_estado] ?? "—"}
-              {f.empleos_vigentes > 0 ? ` · ${f.empleos_vigentes} empleo${f.empleos_vigentes > 1 ? "s" : ""}` : ""}
+              {f.empleos_vigentes > 0 ? ` · ${plural(f.empleos_vigentes, "empleo")}` : ""}
             </span>
           </>
         ) : (
@@ -384,12 +409,12 @@ function FilaBandeja({ f }) {
         )}
       </td>
 
-      <td style={{ textAlign: "right" }} className="crediscope-num">
+      <td className="crediscope-cifra">
         {f.fuente_piso_ingreso ? (
           <>
             {formatMoneda(Number(f.fuente_piso_ingreso))}
             {esIngresoMinimoSbu(Number(f.fuente_piso_ingreso), f.fuente_corte) ? (
-              <div className="crediscope-muted" style={{ fontSize: 11.5 }}>
+              <div className="crediscope-muted" style={{ fontSize: 12 }}>
                 {INGRESO_MINIMO_SBU}
               </div>
             ) : null}
@@ -399,7 +424,7 @@ function FilaBandeja({ f }) {
         )}
       </td>
 
-      <td style={{ textAlign: "right" }}>
+      <td className="crediscope-cifra">
         {f.score ? (
           <>
             <div className="crediscope-score-celda" style={{ color: colorScore(f.score) }}>
@@ -421,7 +446,7 @@ function FilaBandeja({ f }) {
             {recomendacion}
           </span>
         ) : (
-          <span style={{ color: COLOR_ESTADO_BANDEJA[f.estado], fontSize: 12.5 }}>{ETIQUETA_ESTADO_BANDEJA[f.estado]}</span>
+          <span style={{ color: COLOR_ESTADO_BANDEJA[f.estado], fontSize: 13 }}>{ETIQUETA_ESTADO_BANDEJA[f.estado]}</span>
         )}
         {f.tiene_bloqueante ? (
           <span className="crediscope-celda-sub" style={{ color: "var(--bad)", display: "flex", alignItems: "center", gap: 4 }}>
@@ -436,18 +461,18 @@ function FilaBandeja({ f }) {
         {/* Siempre en esta posición y en este orden. Es lo que los
             convierte en memoria muscular. */}
         <div className="crediscope-accesos">
-          <Link className="crediscope-acceso" to={`/perfil/${f.cedula}`} title="Perfil del Cliente">
-            <IdCard size={15} />
+          <Link className="crediscope-acceso" to={`/perfil/${f.cedula}`} title="Perfil del Cliente" aria-label="Perfil del Cliente">
+            <IdCard size={15} aria-hidden="true" />
           </Link>
           {/* Las fuentes de ingreso DE ESTA PERSONA viven en el
               expediente. El panorama por segmento es otra pregunta
               ("quiénes son los independientes") y mandar ahí desde una
               fila sería cambiarle la pregunta al analista. */}
-          <Link className="crediscope-acceso" to={`/solicitudes/${f.cedula}#ingresos`} title="Fuentes de Ingreso">
-            <Wallet size={15} />
+          <Link className="crediscope-acceso" to={`/solicitudes/${f.cedula}#ingresos`} title="Fuentes de Ingreso" aria-label="Fuentes de Ingreso">
+            <Wallet size={15} aria-hidden="true" />
           </Link>
-          <Link className="crediscope-acceso" to={`/analisis/${f.cedula}`} title="Análisis con IA">
-            <Sparkles size={15} />
+          <Link className="crediscope-acceso" to={`/analisis/${f.cedula}`} title="Análisis con IA" aria-label="Análisis con IA">
+            <Sparkles size={15} aria-hidden="true" />
           </Link>
           <Link className="crediscope-abrir" to={`/solicitudes/${f.cedula}`}>
             Abrir <ArrowRight size={13} />

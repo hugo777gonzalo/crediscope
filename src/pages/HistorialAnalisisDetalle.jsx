@@ -5,6 +5,8 @@ import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
 import { formatearFechaHora } from "../lib/fechas.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Visor de SOLO LECTURA de un Análisis con IA puntual del Historial.
 // Todavía no muestra el Perfil del Cliente asociado, aunque desde la
@@ -35,12 +37,10 @@ export default function HistorialAnalisisDetalle() {
       </p>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)" }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
-      {loading ? <p className="crediscope-muted">Cargando...</p> : null}
+      {loading ? <Cargando /> : null}
 
       {!loading && !result ? <p className="crediscope-muted">No se encontró este registro.</p> : null}
 

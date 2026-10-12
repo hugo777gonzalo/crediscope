@@ -6,6 +6,7 @@ import { formatearFechaHora } from "../lib/fechas.js";
 import {
   Volver, MensajeError, Etiqueta, FranjaSintetica, ETIQUETA_TIPO_PROPUESTA, ETIQUETA_ESTADO_PROPUESTA, dec, pct,
 } from "../components/laboratorio/Comunes.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Propuestas de ajuste (diseño, 6.7). Ninguna entra sola al motor:
 // aprobar y aplicar son pasos distintos. Un cambio de marco, de dato o de
@@ -74,7 +75,7 @@ function Formulario({ inicial, corte, alGuardar, alCancelar }) {
         <select className="crediscope-input" {...campo("tipo")}>
           {Object.entries(ETIQUETA_TIPO_PROPUESTA).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
         </select>
-        <div className="crediscope-muted" style={{ fontSize: 12.5, marginTop: 4 }}>{AYUDA_TIPO[p.tipo]}</div>
+        <div className="crediscope-muted" style={{ fontSize: 13, marginTop: 4 }}>{AYUDA_TIPO[p.tipo]}</div>
       </label>
       <textarea className="crediscope-input" rows={3} placeholder="Hallazgo: qué se vio, en palabras del negocio y con sus números" {...campo("hallazgo")} />
       <textarea className="crediscope-input" rows={3} placeholder="Cambio propuesto (el texto del ajuste, el cambio de marco o la regla)" {...campo("cambio_propuesto")} />
@@ -174,7 +175,7 @@ export default function LaboratorioPropuestas() {
     await cargar();
   }
 
-  if (!propuestas) return error ? <MensajeError mensaje={error} /> : <p className="crediscope-muted">Cargando...</p>;
+  if (!propuestas) return error ? <MensajeError mensaje={error} /> : <Cargando />;
 
   return (
     <div>
@@ -226,7 +227,7 @@ export default function LaboratorioPropuestas() {
                 {p.vigente_desde ? <Etiqueta texto={`Vigente desde ${formatearFechaHora(p.vigente_desde)}`} color="var(--good)" /> : null}
               </div>
             </div>
-            <div className="crediscope-muted" style={{ fontSize: 12.5, textAlign: "right" }}>
+            <div className="crediscope-muted" style={{ fontSize: 13, textAlign: "right" }}>
               {formatearFechaHora(p.created_at)}
               {p.corte_id ? (
                 <div><Link to={`/laboratorio/cortes/${p.corte_id}`}>{p.lab_cortes?.nombre ?? "Ver corte"}</Link></div>

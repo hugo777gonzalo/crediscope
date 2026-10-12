@@ -35,6 +35,10 @@ export default function LaboratorioCaso() {
 
   useEffect(() => {
     let vigente = true;
+    if (!corteId || !id) {
+      setEstado({ sinCaso: true });
+      return undefined;
+    }
     (async () => {
       const [corte, filas, catalogo, deshabilitados] = await Promise.all([getCorte(corteId), getFilasDelCorte(corteId, poblacion), getCatalogoUnaVez(), getCamposDeshabilitados()]);
       const caso = filas.find((f) => f.id === id);
@@ -74,6 +78,19 @@ export default function LaboratorioCaso() {
     }
   }
 
+  if (estado.sinCaso)
+    return (
+      <div className="crediscope-card">
+        <h2>Falta elegir un caso</h2>
+        <p className="crediscope-muted">
+          Un caso se abre desde <strong>Descubrimiento profundo</strong>, en la pestaña Investigación de casos (o desde «Los que
+          cayeron»): ahí se elige el corte y la persona.
+        </p>
+        <Link className="crediscope-btn" to="/laboratorio/profundo">
+          Ir a Descubrimiento profundo
+        </Link>
+      </div>
+    );
   if (estado.error) return <MensajeError mensaje={estado.error} />;
   if (estado.cargando || !derivado) return <Cargando que="el caso" />;
   const { corte, caso, perfil, analisis, reconsulta, motivo, catalogo } = estado;
@@ -223,7 +240,7 @@ export default function LaboratorioCaso() {
             </tbody>
           </table>
         ) : <p className="crediscope-muted" style={{ margin: 0 }}>No se distingue de sus parecidos en ninguna variable (más de medio desvío).</p>}
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           Variables del caso: {catalogo.filter((v) => caso.variables[v.id] !== null && caso.variables[v.id] !== undefined).length} de {catalogo.length} con dato.
         </p>
       </Seccion>

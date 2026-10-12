@@ -1,6 +1,7 @@
 import { Sparkles, TrendingUp } from "lucide-react";
 import { TituloTarjeta, Cifra } from "../reporte/Piezas.jsx";
 import { indiciosDeIngresoMayor } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
+import { humanizarTexto } from "../../lib/formatos.js";
 
 // Los indicios de ingreso mayor, en su propia tarjeta (aprobado por el
 // negocio el 2026-09-28). Hasta entonces eran un desplegable chico debajo
@@ -40,7 +41,7 @@ export default function IndiciosIngreso({ f }) {
               Así lo lee el análisis con IA
             </summary>
             <div className="crediscope-ing-desplegado">
-              <p>&ldquo;{i.detalle}&rdquo;</p>
+              <p>&ldquo;{humanizarTexto(i.detalle)}&rdquo;</p>
               <p className="crediscope-muted" style={{ marginBottom: 0 }}>
                 Regla del marco: el análisis puede decir que la capacidad supera lo reportado sólo citando un indicio como
                 este.

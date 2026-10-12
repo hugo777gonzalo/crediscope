@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { DollarSign, Activity, AlertTriangle, Brain } from "lucide-react";
+import { DollarSign, Activity, Brain } from "lucide-react";
 import { getConsumoLlm } from "../lib/api.js";
+import { entero, plural } from "../lib/formatos.js";
+import { formatearDia } from "../lib/fechas.js";
+import Kpi from "../components/ui/Kpi.jsx";
+import Barra from "../components/ui/Barra.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import {
   agrupar,
   totales,
@@ -18,6 +24,7 @@ import {
   centavos,
   dia,
 } from "../lib/consumoLlm.js";
+import Aviso from "../components/ui/Aviso.jsx";
 
 // Panorama del consumo del LLM: cuánto se gastó, en qué y con qué
 // confianza está medido.
@@ -28,31 +35,6 @@ import {
 // tokens se perdieron. Mostrar solo el total medido haría creer que el
 // gasto fue menor de lo que fue -- y ese error es justamente el que
 // llevó a atribuirle al producto un consumo que no era suyo.
-
-function Kpi({ Icono, etiqueta, valor, detalle, color }) {
-  return (
-    <div className="crediscope-card crediscope-kpi">
-      <p className="crediscope-kpi-label">
-        <Icono size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-        {etiqueta}
-      </p>
-      <p className="crediscope-kpi-valor" style={color ? { color } : undefined}>{valor}</p>
-      {detalle ? <p className="crediscope-kpi-detalle">{detalle}</p> : null}
-    </div>
-  );
-}
-
-function Barra({ etiqueta, valor, pct, color, ayuda, enlace }) {
-  return (
-    <div className="crediscope-barrapct-row" title={ayuda}>
-      <span className="crediscope-barrapct-label">{enlace ? <Link to={enlace}>{etiqueta}</Link> : etiqueta}</span>
-      <div className="crediscope-barrapct-track">
-        <div className="crediscope-barrapct-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="crediscope-barrapct-valor">{valor}</span>
-    </div>
-  );
-}
 
 export default function Costos() {
   const [filas, setFilas] = useState(null);
@@ -86,12 +68,7 @@ export default function Costos() {
     };
   }, [filas]);
 
-  if (error)
-    return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
-    );
+  if (error) return <AvisoDeError error={error} />;
 
   const maxLlamadasDia = d ? Math.max(1, ...d.porDia.map((x) => x.llamadas)) : 1;
 
@@ -123,7 +100,7 @@ export default function Costos() {
       </div>
 
       {!d ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : d.t.llamadas === 0 ? (
         <div className="crediscope-card">
           <p style={{ margin: 0 }}>No hay llamadas registradas en ese rango.</p>
@@ -135,13 +112,13 @@ export default function Costos() {
               Icono={DollarSign}
               etiqueta="Gasto medido"
               valor={money2(d.t.costo)}
-              detalle={d.t.sinMedir ? `No incluye ${d.t.sinMedir} llamada(s) sin medición` : "Todas las llamadas del rango están medidas"}
+              detalle={d.t.sinMedir ? `No incluye ${plural(d.t.sinMedir, "llamada")} sin medición` : "Todas las llamadas del rango están medidas"}
             />
             <Kpi
               Icono={Activity}
               etiqueta="Llamadas al modelo"
               valor={num(d.t.llamadas)}
-              detalle={d.t.fallidas ? `${d.t.fallidas} fallaron` : "Ninguna falló"}
+              detalle={d.t.fallidas ? `${entero(d.t.fallidas)} fallaron` : "Ninguna falló"}
             />
             <Kpi
               Icono={DollarSign}
@@ -158,30 +135,22 @@ export default function Costos() {
           </div>
 
           {d.t.sinMedir > 0 ? (
-            <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <AlertTriangle size={20} color="var(--warn)" style={{ flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <p style={{ margin: "0 0 6px", fontWeight: 600 }}>
-                    {d.t.sinMedir} de {d.t.llamadas} llamadas no se pueden valuar.
-                  </p>
-                  <p className="crediscope-muted" style={{ margin: 0 }}>
-                    Ocurrieron antes de que existiera este registro, o su fila se borró al limpiar datos de prueba. Sabemos que
-                    pasaron porque quedaron en la bitácora, pero sus tokens ya no están. <strong>Su costo es desconocido, no
-                    cero</strong>: el gasto real del período es mayor que el total de arriba.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Aviso tipo="advertencia" titulo={`${entero(d.t.sinMedir)} de ${plural(d.t.llamadas, "llamada")} no se pueden valuar.`}>
+              <p className="crediscope-muted">
+                Ocurrieron antes de que existiera este registro, o su fila se borró al limpiar datos de prueba. Sabemos que
+                pasaron porque quedaron en la bitácora, pero sus tokens ya no están. <strong>Su costo es desconocido, no
+                cero</strong>: el gasto real del período es mayor que el total de arriba.
+              </p>
+            </Aviso>
           ) : null}
 
           {d.sinPrecio > 0 ? (
-            <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-              <p style={{ margin: 0 }}>
-                <strong>{d.sinPrecio} llamada(s) usan un modelo sin tarifa cargada.</strong> Se están contando en cero. Cargá el
+            <Aviso tipo="peligro">
+              <p>
+                <strong>{plural(d.sinPrecio, "llamada")} {d.sinPrecio === 1 ? "usa" : "usan"} un modelo sin tarifa cargada.</strong> Se están contando en cero. Cargá el
                 modelo en <Link to="/costos/tarifas">Tarifas</Link> para que el total sea real.
               </p>
-            </div>
+            </Aviso>
           ) : null}
 
           <div className="crediscope-reportes-grid">
@@ -194,8 +163,8 @@ export default function Costos() {
                 <Barra
                   key={n.clave}
                   etiqueta={ETIQUETA_NATURALEZA[n.clave] ?? n.clave}
-                  valor={`${money(n.costo)} · ${n.llamadas}`}
-                  pct={Math.round((n.llamadas / d.t.llamadas) * 100)}
+                  texto={`${money2(n.costo)} · ${plural(n.llamadas, "llamada")}`}
+                  pct={d.t.costo > 0 ? (n.costo / d.t.costo) * 100 : 0}
                   color={n.clave === "consulta" ? "var(--good)" : n.clave === "calibracion" ? "var(--warn)" : "var(--brand)"}
                   ayuda={DESCRIPCION_NATURALEZA[n.clave]}
                 />
@@ -206,8 +175,8 @@ export default function Costos() {
                 <thead>
                   <tr>
                     <th>Proceso</th>
-                    <th style={{ textAlign: "right" }}>Llamadas</th>
-                    <th style={{ textAlign: "right" }}>Costo</th>
+                    <th className="crediscope-cifra">Llamadas</th>
+                    <th className="crediscope-cifra">Costo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -215,16 +184,16 @@ export default function Costos() {
                     <tr key={f.clave}>
                       <td>
                         {ETIQUETA_FUNCION[f.clave] ?? f.clave}
-                        {f.sinMedir ? <div className="crediscope-muted" style={{ fontSize: 12 }}>{f.sinMedir} sin medir</div> : null}
+                        {f.sinMedir ? <div className="crediscope-muted" style={{ fontSize: 12 }}>{entero(f.sinMedir)} sin medir</div> : null}
                       </td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{f.llamadas}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money(f.costo)}</td>
+                      <td className="crediscope-cifra">{entero(f.llamadas)}</td>
+                      <td className="crediscope-cifra">{money(f.costo)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-                Un backtest no es una llamada: es una por caso del paquete.{" "}
+                Una prueba retrospectiva no es una llamada: es una por cada caso del corte.{" "}
                 <Link to="/costos/corridas">Ver las corridas masivas</Link>.
               </p>
             </div>
@@ -238,7 +207,7 @@ export default function Costos() {
                 <Barra
                   key={o.clave}
                   etiqueta={ETIQUETA_ORIGEN[o.clave] ?? o.clave}
-                  valor={`${o.llamadas}`}
+                  texto={entero(o.llamadas)}
                   pct={Math.round((o.llamadas / d.t.llamadas) * 100)}
                   color={o.clave === "medida" ? "var(--good)" : o.clave === "reconstruida" ? "var(--brand)" : "var(--text-muted)"}
                   ayuda={DESCRIPCION_ORIGEN[o.clave]}
@@ -250,16 +219,16 @@ export default function Costos() {
                 <thead>
                   <tr>
                     <th>Modelo</th>
-                    <th style={{ textAlign: "right" }}>Llamadas</th>
-                    <th style={{ textAlign: "right" }}>Costo</th>
+                    <th className="crediscope-cifra">Llamadas</th>
+                    <th className="crediscope-cifra">Costo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {d.porModelo.map((m) => (
                     <tr key={m.clave}>
                       <td style={{ fontSize: 13 }}>{m.clave}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{m.llamadas}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money(m.costo)}</td>
+                      <td className="crediscope-cifra">{entero(m.llamadas)}</td>
+                      <td className="crediscope-cifra">{money(m.costo)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -277,10 +246,10 @@ export default function Costos() {
                 <tr>
                   <th>Día</th>
                   <th>Volumen</th>
-                  <th style={{ textAlign: "right" }}>Llamadas</th>
-                  <th style={{ textAlign: "right" }}>Sin medir</th>
-                  <th style={{ textAlign: "right" }}>Costo medido</th>
-                  <th style={{ textAlign: "right" }}>Por llamada</th>
+                  <th className="crediscope-cifra">Llamadas</th>
+                  <th className="crediscope-cifra">Sin medir</th>
+                  <th className="crediscope-cifra">Costo medido</th>
+                  <th className="crediscope-cifra">Por llamada</th>
                 </tr>
               </thead>
               <tbody>
@@ -288,7 +257,7 @@ export default function Costos() {
                   const prom = promedioMedido(x);
                   return (
                     <tr key={x.clave}>
-                      <td style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{x.clave}</td>
+                      <td style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{formatearDia(x.clave)}</td>
                       <td style={{ width: "34%" }}>
                         <div className="crediscope-barrapct-track">
                           <div
@@ -297,12 +266,12 @@ export default function Costos() {
                           />
                         </div>
                       </td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{x.llamadas}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: x.sinMedir ? "var(--warn)" : undefined }}>
-                        {x.sinMedir || "—"}
+                      <td className="crediscope-cifra">{entero(x.llamadas)}</td>
+                      <td className="crediscope-cifra" style={{ color: x.sinMedir ? "var(--warn)" : undefined }}>
+                        {x.sinMedir ? entero(x.sinMedir) : "—"}
                       </td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{money(x.costo)}</td>
-                      <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{prom === null ? "—" : centavos(prom)}</td>
+                      <td className="crediscope-cifra">{money(x.costo)}</td>
+                      <td className="crediscope-cifra">{prom === null ? "—" : centavos(prom)}</td>
                     </tr>
                   );
                 })}

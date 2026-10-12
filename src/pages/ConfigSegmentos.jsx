@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Filter } from "lucide-react";
 import { getSegmentConfig, updateSegmentConfig } from "../lib/api.js";
 import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Qué ve el analista en el Perfil del Cliente.
 //
@@ -30,7 +32,7 @@ const MODOS = [
   },
   {
     valor: "con_datos",
-    etiqueta: "Solo si hay datos",
+    etiqueta: "Sólo si hay datos",
     Icono: Filter,
     color: "var(--brand)",
     detalle: "Aparece cuando la persona tiene algo en ese segmento. Evita llenar la pantalla de vacíos.",
@@ -45,7 +47,7 @@ const MODOS = [
     etiqueta: "Oculto",
     Icono: EyeOff,
     color: "var(--text-muted)",
-    detalle: "No se muestra nunca. Se sigue consultando, guardando y ponderando: solo no se ve.",
+    detalle: "No se muestra nunca. Se sigue consultando, guardando y ponderando: sólo no se ve.",
   },
 ];
 
@@ -70,7 +72,7 @@ function FilaSegmento({ item, onSave }) {
     <div className="crediscope-config-fila">
       <div style={{ minWidth: 0 }}>
         <strong>{ETIQUETAS_GRUPO[item.grupo] ?? item.grupo}</strong>
-        <div className="crediscope-muted" style={{ fontSize: 12.5 }}>
+        <div className="crediscope-muted" style={{ fontSize: 13 }}>
           <code>{item.grupo}</code>
         </div>
         {error ? <p style={{ color: "var(--bad)", fontSize: 12, margin: "4px 0 0" }}>{error}</p> : null}
@@ -85,7 +87,7 @@ function FilaSegmento({ item, onSave }) {
               className="crediscope-btn crediscope-btn-ghost"
               style={{
                 padding: "5px 11px",
-                fontSize: 12.5,
+                fontSize: 13,
                 borderColor: activo ? m.color : undefined,
                 color: activo ? m.color : undefined,
                 fontWeight: activo ? 700 : 500,
@@ -139,20 +141,18 @@ export default function ConfigSegmentos() {
         <h2 style={{ marginBottom: 4 }}>Qué ve el analista</h2>
         <p className="crediscope-muted" style={{ margin: 0, maxWidth: "66ch" }}>
           Esta es la única configuración que <strong>no cambia el análisis</strong>. Un segmento oculto se sigue consultando,
-          se sigue guardando y el modelo lo sigue usando: solo no se muestra en el Perfil del Cliente.
+          se sigue guardando y el modelo lo sigue usando: sólo no se muestra en el Perfil del Cliente.
         </p>
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Los tres modos</h3>
         {MODOS.map((m) => (
-          <p key={m.valor} style={{ display: "flex", gap: 9, alignItems: "flex-start", margin: "0 0 8px", fontSize: 13.5 }}>
+          <p key={m.valor} style={{ display: "flex", gap: 9, alignItems: "flex-start", margin: "0 0 8px", fontSize: 14 }}>
             <m.Icono size={16} color={m.color} style={{ flexShrink: 0, marginTop: 2 }} />
             <span>
               <strong>{m.etiqueta}.</strong> {m.detalle}
@@ -166,7 +166,7 @@ export default function ConfigSegmentos() {
               key={m.valor}
               type="button"
               className="crediscope-btn crediscope-btn-ghost"
-              style={{ padding: "5px 11px", fontSize: 12.5 }}
+              style={{ padding: "5px 11px", fontSize: 13 }}
               disabled={!items}
               onClick={() => todosA(m.valor)}
             >
@@ -177,7 +177,7 @@ export default function ConfigSegmentos() {
       </div>
 
       {!items ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : (
         <div className="crediscope-card">
           {items.map((i) => (

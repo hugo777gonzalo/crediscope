@@ -84,7 +84,7 @@ export default function PestanaFaltantes({ corteId, poblacion }) {
           <MapaDeCalor filas={c.matriz.variables} columnas={c.matriz.variables} valor={(i, j) => c.matriz.valores[i][j]} etiqueta="Faltantes conjuntos" />
         </div>
       ) : null}
-      <p className="crediscope-muted" style={{ fontSize: 12.5 }}>
+      <p className="crediscope-muted" style={{ fontSize: 13 }}>
         El corte guarda el valor de cada variable, no si la fuente "no tenía nada" o "no contestó": eso está en la disponibilidad por tema de cada perfil,
         que todavía no se congela con el corte.
       </p>

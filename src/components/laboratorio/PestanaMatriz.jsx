@@ -70,7 +70,7 @@ export default function PestanaMatriz({ resultado }) {
             </tbody>
           </table>
         </div>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           En rojo, los aprobados que cayeron (capital perdido); revisar también es "no impago" y cuenta igual. En amarillo, los negados que la
           institución financió igual y pagaron (negocio que el motor habría perdido).
         </p>
@@ -122,7 +122,7 @@ export default function PestanaMatriz({ resultado }) {
           </tbody>
         </table>
         {r.negados_sin_credito ? (
-          <p style={{ fontSize: 13.5, marginBottom: 0 }}>
+          <p style={{ fontSize: 14, marginBottom: 0 }}>
             <strong>Negados que no recibieron el crédito:</strong> {num(r.negados_sin_credito.n)}. Se pudo observar a {num(r.negados_sin_credito.observados)} en
             la reconsulta (tuvieron crédito con alguien) y {num(r.negados_sin_credito.cayeron_con_otro)} cayeron. Su detalle está en "Con y sin crédito".
           </p>

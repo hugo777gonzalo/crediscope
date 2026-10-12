@@ -97,7 +97,7 @@ export default function LaboratorioCargaNueva() {
             {instituciones.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
           </select>
           {!instituciones.length ? (
-            <div className="crediscope-muted" style={{ fontSize: 12.5 }}>
+            <div className="crediscope-muted" style={{ fontSize: 13 }}>
               No hay instituciones registradas: <Link to="/laboratorio/instituciones">registrar una</Link>.
             </div>
           ) : null}

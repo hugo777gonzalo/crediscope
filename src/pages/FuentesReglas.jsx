@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
 import { ETIQUETA_SEGMENTO, ETIQUETA_EVIDENCIA } from "../lib/fuentesIngresoConsolidado.js";
 import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuentes-ingreso.ts";
+import Aviso from "../components/ui/Aviso.jsx";
 
 // Las reglas de clasificación, escritas para que las lea el área de
 // Riesgos y no un programador.
@@ -17,7 +17,7 @@ import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuente
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v9";
+const VERSION_DOCUMENTADA = "fuentes-v10";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -63,15 +63,12 @@ export default function FuentesReglas() {
       </div>
 
       {desactualizada ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-          <p style={{ margin: 0, display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <AlertTriangle size={20} color="var(--warn)" style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>
-              Esta página documenta <strong>{VERSION_DOCUMENTADA}</strong>, pero el código clasifica con{" "}
-              <strong>{FUENTES_INGRESO_VERSION}</strong>. Alguna regla cambió y todavía no está escrita acá.
-            </span>
+        <Aviso tipo="advertencia">
+          <p>
+            Esta página documenta <strong>{VERSION_DOCUMENTADA}</strong>, pero el código clasifica con{" "}
+            <strong>{FUENTES_INGRESO_VERSION}</strong>. Alguna regla cambió y todavía no está escrita acá.
           </p>
-        </div>
+        </Aviso>
       ) : null}
 
       <Paso titulo="El principio: lo que se ve es lo reportado al IESS, no lo que la persona gana">
@@ -119,8 +116,8 @@ export default function FuentesReglas() {
         <p style={{ marginBottom: 0 }}>
           Novadata actualiza el IESS más o menos cada dos meses. El corte vigente es el mes más reciente en el que aparecen al
           menos <strong>20 clientes</strong> consultados en los últimos 90 días. Dos o tres aportes adelantados no lo mueven:
-          el 23 de septiembre dos aportes de agosto lo habían pasado a 2026-08 cuando el corte de Novadata era 2026-07, y todo
-          asalariado con su último aporte en julio habría quedado &ldquo;fuera del corte&rdquo;. Quien trae un mes más
+          el 23 de septiembre dos aportes de agosto lo habían pasado a Ago 2026 cuando el corte de Novadata era Jul 2026, y todo
+          dependiente con su último aporte en julio habría quedado &ldquo;fuera del corte&rdquo;. Quien trae un mes más
           reciente que el vigente se clasifica con el suyo.
         </p>
       </Paso>
@@ -129,7 +126,7 @@ export default function FuentesReglas() {
         <p className="crediscope-muted" style={{ marginTop: 0 }}>
           Se lee el <strong>código</strong> del tipo de empleador, nunca la etiqueta: vienen truncadas a distinto largo y con la
           codificación rota. Un código que no está en esta tabla deja a la persona como{" "}
-          <strong>{ETIQUETA_SEGMENTO.no_clasificado.toLowerCase()}</strong>, provisional, para que la revise alguien: meterla en
+          <strong>{ETIQUETA_SEGMENTO.no_clasificado.toLowerCase()}</strong>, por confirmar, para que la revise alguien: meterla en
           otro segmento la escondería.
         </p>
         <table className="crediscope-table">
@@ -179,16 +176,16 @@ export default function FuentesReglas() {
           engañoso: quien tiene dos ingresos de origen distinto está <em>más</em> diversificado, que es mejor riesgo.
         </p>
         <p style={{ marginBottom: 0 }}>
-          Desde la v4, una mezcla queda <strong>provisional</strong> si una de sus partes es cuenta propia, agrícola o de código
-          desconocido: la misma regla que si fuera la única fuente. Antes toda mezcla salía confirmada.
+          Desde la v4, una mezcla queda <strong>por confirmar</strong> si una de sus partes es cuenta propia, agrícola o de código
+          desconocido: la misma regla que si fuera la única fuente. Antes toda mezcla salía confirmada por un tercero.
         </p>
       </Paso>
 
       <Paso titulo="Paso 4: jubilación">
         <p>
-          Quien registra jubilación y no tiene ninguna otra fuente es <strong>jubilado</strong>, confirmado: la pensión la paga
+          Quien registra jubilación y no tiene ninguna otra fuente es <strong>jubilado</strong>, confirmado por un tercero: la pensión la paga
           el Estado. Si además aporta al IESS, tiene RUC activo o paga una nómina, es{" "}
-          <strong>jubilado con ingreso adicional</strong>, provisional: la jubilación es cierta y la actividad no tiene monto.
+          <strong>jubilado con ingreso adicional</strong>, por confirmar: la jubilación es cierta y la actividad no tiene monto.
           Hasta la v3 el RUC y la nómina no contaban, y 97 jubilados con actividad propia figuraban como jubilados a secas.
         </p>
         <p style={{ marginBottom: 0 }}>
@@ -224,9 +221,9 @@ export default function FuentesReglas() {
 
       <Paso titulo="Paso 6: sin aportes vigentes">
         <p>
-          Si hay aporte vigente pero sin monto, se clasifica por la naturaleza del aporte, provisional. Si no hay ningún aporte,
-          pero tiene RUC activo, paga una nómina o declara impuesto a la renta, es <strong>independiente</strong>, provisional. Si
-          no hay nada de eso, es <strong>informal o sin actividad</strong>, indeterminado: con datos públicos no se distingue el
+          Si hay aporte vigente pero sin monto, se clasifica por la naturaleza del aporte, por confirmar. Si no hay ningún aporte,
+          pero tiene RUC activo, paga una nómina o declara impuesto a la renta, es <strong>independiente</strong>, por confirmar. Si
+          no hay nada de eso, es <strong>informal o sin actividad</strong>, sin determinar: con datos públicos no se distingue el
           trabajo informal de la ausencia de ingresos.
         </p>
         <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
@@ -281,7 +278,7 @@ export default function FuentesReglas() {
       <Paso titulo="Lo que se muestra y no clasifica (desde la v4)">
         <p style={{ marginBottom: 0 }}>
           El historial de aportes de los últimos 24 meses (continuidad y tendencia del sueldo declarado), la actividad económica
-          registrada en el SRI y el impuesto a la renta de cada año. Se ven en la pestaña Fuentes de ingreso de cada cliente, no
+          registrada en el SRI y el impuesto a la renta de cada año. Se ven en la pestaña Fuentes de Ingreso de cada cliente, no
           cambian el segmento. Al análisis con IA (desde marco-v23) llega sólo un resumen: continuidad laboral, meses con aporte en
           el último año, promedio y variación contra hace un año. Los aportes mes a mes, la actividad económica y la renta de
           cada año <strong>no entran</strong>; de la renta se deduce sólo el indicio de ingreso mayor (desde la v9, ver más
@@ -293,7 +290,7 @@ export default function FuentesReglas() {
         <p>
           Mide la estabilidad laboral total: desde cuándo la persona trabaja con un empleador sin haber dejado de trabajar,
           aunque se haya cambiado de empleo. La antigüedad en el empleo actual no lo ve: quien cambió de trabajo sin parar
-          aparece con una antigüedad corta aunque lleve años trabajando. En la muestra, en 72 de 190 asalariados la continuidad
+          aparece con una antigüedad corta aunque lleve años trabajando. En la muestra, en 72 de 190 dependientes la continuidad
           supera a esa antigüedad en más de un año.
         </p>
         <ul style={{ marginBottom: 0 }}>
@@ -319,8 +316,8 @@ export default function FuentesReglas() {
             de la que tiene.
           </li>
           <li>
-            Los meses que el proveedor no publicó para nadie (2018-02, 2019-09 a 2019-11, 2020-01 a 2020-03, 2020-05,
-            2020-06, 2020-08 y 2020-11) no cuentan como meses sin trabajo.
+            Los meses que el proveedor no publicó para nadie (Feb 2018, Sep a Nov 2019, Ene a Mar 2020, May 2020,
+            Jun 2020, Ago 2020 y Nov 2020) no cuentan como meses sin trabajo.
           </li>
           <li>
             Si hoy no trabaja con un empleador ni por cuenta propia con RUC activo, la continuidad es 0 y se dice cuándo terminó
@@ -361,7 +358,7 @@ export default function FuentesReglas() {
         <p style={{ marginBottom: 0 }}>
           Un RUC está activo si no tiene cese, o si se reactivó después del último cese. Como cese cuentan la cancelación, la
           suspensión definitiva y la solicitud de suspensión (el cese temporal). Además, si el SRI informa establecimientos, al
-          menos uno tiene que estar abierto. Hasta la v7 la clasificación de ingresos no miraba la reactivación: 77 personas con
+          menos uno tiene que estar abierto. El SRI manda el estado de cada establecimiento a veces completo (&ldquo;ABIERTO&rdquo;) y a veces abreviado (&ldquo;ABI&rdquo;, desde octubre): los dos cuentan como abierto (desde la v10; antes, quien lo tenía abreviado salía sin RUC activo y sin actividad abierta). Hasta la v7 la clasificación de ingresos no miraba la reactivación: 77 personas con
           el RUC reactivado figuraban como &ldquo;informal o sin actividad&rdquo;. Ahora el perfil y la clasificación usan la
           misma regla.
         </p>

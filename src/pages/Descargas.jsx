@@ -93,23 +93,23 @@ export default function Descargas() {
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Información de Solicitudes</h3>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          Descarga una fila por solicitud con toda la información con la que se evaluó a la persona, el score, la acción recomendada
+          Un archivo con una fila por solicitud: toda la información con la que se evaluó a la persona, el puntaje, la recomendación
           y — cuando ya se cargó la cosecha — si el crédito incumplió.
         </p>
 
         <div className="crediscope-descarga-row">
           <div className="crediscope-descarga-campo">
-            <label htmlFor="solicitudes-desde">Fecha inicio</label>
+            <label htmlFor="solicitudes-desde">Desde</label>
             <input id="solicitudes-desde" type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} />
           </div>
           <div className="crediscope-descarga-campo">
-            <label htmlFor="solicitudes-hasta">Fecha fin</label>
+            <label htmlFor="solicitudes-hasta">Hasta</label>
             <input id="solicitudes-hasta" type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} />
           </div>
 
           <div className="crediscope-descarga-total">
             {rangoInvalido ? (
-              <span style={{ color: "var(--bad)" }}>La fecha de inicio es posterior a la de fin</span>
+              <span style={{ color: "var(--bad)" }}>La fecha «Desde» es posterior a la fecha «Hasta»</span>
             ) : contando ? (
               "Contando..."
             ) : (

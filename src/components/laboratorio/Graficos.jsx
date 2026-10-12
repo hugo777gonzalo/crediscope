@@ -50,7 +50,7 @@ function Ejes({ x, y, alto, margen, xMarcas, yMarcas, escX, escY, formatoX, form
 
 export function Leyenda({ series }) {
   return (
-    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12.5, margin: "4px 0 0 4px" }}>
+    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, margin: "4px 0 0 4px" }}>
       {series.map((s, i) => (
         <span key={s.nombre} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 14, height: 3, background: s.color ?? PALETA[i % PALETA.length], borderTop: s.punteada ? "1px dashed white" : undefined, display: "inline-block" }} />
@@ -168,7 +168,7 @@ export function GraficoBarras({ categorias, series, y = {}, alto = 300, apiladas
                 y={alto - margen.abajo + 14}
                 textAnchor={categorias.length > 8 ? "end" : "middle"}
                 transform={categorias.length > 8 ? `rotate(-35 ${x0 + banda / 2} ${alto - margen.abajo + 14})` : undefined}
-                style={{ fontSize: 10.5, fill: "var(--text-muted)" }}
+                style={{ fontSize: 11, fill: "var(--text-muted)" }}
               >
                 {String(cat).length > 18 ? `${String(cat).slice(0, 17)}…` : cat}
               </text>

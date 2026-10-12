@@ -8,6 +8,7 @@ import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
 import {
   Volver, MensajeError, FranjaSintetica, Kpi, Etiqueta, ETIQUETA_ESTADO_CARGA, ETIQUETA_VINCULO, num, pct,
 } from "../components/laboratorio/Comunes.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // La conciliación de una carga, sin nada en silencio: cuántas operaciones
 // se vincularon con un análisis anterior al desembolso, cuántas nunca se
@@ -65,7 +66,7 @@ export default function LaboratorioCarga() {
   }
 
   if (error) return <MensajeError mensaje={error} />;
-  if (!carga) return <p className="crediscope-muted">Cargando...</p>;
+  if (!carga) return <Cargando />;
   const k = carga.conciliacion ?? {};
   const total = Number(k.operaciones ?? 0);
   const conAnalisis = (k.exacto ?? 0) + (k.perfil_inferido ?? 0);
