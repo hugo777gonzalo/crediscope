@@ -242,9 +242,11 @@ Todas con sus opciones en `docs/modelo-de-la-persona.md`, sección 5.
   tarda unos 6 s sola (6,4 s medidos; una vez se pasó del límite) y con 120 días no abrió
   (pestaña Datos y cartera › Centro de datos).
   Explota `estado_por_fuente` (52 fuentes) de cada perfil de la ventana y agrupa dos veces.
-  El inicio del Laboratorio ya no depende de ella (defecto 14); la pestaña sí. La salida es
-  una tabla de resumen por semana que llene el vigía o un cron: es una migración (corredor,
-  regla 1 de CLAUDE.md). Está en `docs/pendientes.md`, sección 1.
+  El inicio del Laboratorio ya no depende de ella (defecto 14); la pestaña sí.
+  **Arreglado con la 121 (2026-10-12), sin tabla de resumen.** 3,5 s de los 4,1 s eran
+  `corte_iess_vigente()`, que abría el perfil entero de cada consulta (ahora usa un índice
+  parcial), y el resto un resumen por semana que se recalculaba 52 veces. Si la cartera
+  crece hasta volver a acercarse al límite, la tabla de resumen sigue siendo la salida.
 - **Vite sirvió un módulo viejo** tras varias ediciones seguidas del mismo archivo
   (`Link is not defined` con el import presente). `touch` del archivo lo arregla; el build compila
   bien. Anotado en `recorrido-qa.md`.
