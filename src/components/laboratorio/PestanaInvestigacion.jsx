@@ -45,7 +45,7 @@ export default function PestanaInvestigacion({ corteId, poblacion }) {
     <div>
       <div className="crediscope-tabs" style={{ flexWrap: "wrap" }}>
         {Object.entries(LISTAS).map(([clave, l]) => (
-          <button key={clave} className={`crediscope-tab ${lista === clave ? "crediscope-tab-active" : ""}`} onClick={() => setLista(clave)} style={{ border: "none", background: "none", cursor: "pointer" }}>
+          <button key={clave} className={`crediscope-tab ${lista === clave ? "crediscope-tab-active" : ""}`} aria-current={lista === clave ? "true" : undefined} onClick={() => setLista(clave)} style={{ border: "none", background: "none", cursor: "pointer" }}>
             {l.texto} ({num(casos[l.clave].length)})
           </button>
         ))}

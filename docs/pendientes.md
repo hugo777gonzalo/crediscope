@@ -36,32 +36,48 @@ aceptada.
     - dos pasos nuevos en el control `pantalla` de cada PR:
       `scripts/revisar-textos.mjs` (4.188 textos, 0 errores, 0 avisos) y
       `scripts/probar-formatos.mjs` (62 casos);
-    - lo último que se hizo se verificó con lint, build, esos dos guiones y la
-      lectura del código, **pero no en pantalla**: la sesión de QA caducó.
+    - el 2026-10-12, con la sesión de admin que el negocio abrió en el panel de
+      vista previa, se repasó en pantalla lo que faltaba (segundo PR, rama
+      `fix/revision-ux-repaso-en-pantalla`): la franja de la bandeja da 2.572 y
+      sus tarjetas suman 2.572; el menú abre una sección a la vez; a 768 y 414 px
+      no hay desborde y la fila de opciones se desliza; Costos, Fuentes de
+      Ingreso, Reportes, Lotes y los módulos del Laboratorio abren sin error,
+      salvo la pestaña Centro de datos (punto 1). Lo que apareció se corrigió: un mes en ISO en Avisos ("2026-10"), cifras sin
+      formato, un campo sin etiqueta en el detalle del lote, la barra blanca de
+      la fila de opciones y el inicio del Laboratorio, que quedaba vacío.
   - Queda, por orden:
-  1. **Repasar en pantalla lo que no se vio.** Claude no escribe
-     contraseñas: el negocio ingresa con la cuenta de QA en el panel de vista
-     previa (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`) y se
-     sigue `.claude/skills/revision-ux/recorrido-qa.md` a 1280, 768 y 414 px.
-     Mirar:
-     - la franja de la bandeja: con la 120 tiene que dar 2.572 y sumar lo
-       mismo que sus tarjetas (medido en la base el 2026-10-10: revisar 151,
-       aprobar 50, sin analizar 2.335, con bloqueo 73; volver a medir);
-     - el menú acordeón y, bajo 860 px, la fila con las opciones de la
-       sección abierta;
-     - los cuadros de aviso y de error nuevos (`Aviso`, `AvisoDeError`) en
-       Costos (Avisos, Corridas, Fallas e incidentes), Reglas de
-       clasificación, Aval y Fuentes de Ingreso;
-     - las pestañas internas del Laboratorio (sólo se vio el Resumen de la
-       prueba retrospectiva), el detalle de un lote y Cargar un lote;
-     - Laboratorio › Inicio, que dio `statement timeout` y hoy muestra el
-       aviso con "Reintentar": averiguar cuál de las ocho cosas que pide
-       (una función `lab_*`) se pasa del tiempo.
-     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`; lo
-     que no, se corrige con la habilidad.
-  2. **Decisiones del negocio:** nombres y diseño, en la sección 3 de este
+  1. **La base: `lab_centro_de_datos` no cabe en el límite** (medido el
+     2026-10-12).
+     - Con 60 días tarda unos 6 s sola (6,4 s medidos; la pide Laboratorio ›
+       Inicio) y otra vez se pasó del límite; con 120 días (Datos y cartera ›
+       Centro de datos) no abrió: "El servidor tardó demasiado en contestar".
+     - Hace un `jsonb_each` de `estado_por_fuente` de cada perfil de la
+       ventana (52 fuentes por perfil) y agrupa dos veces: última definición
+       en la migración 118.
+     - El inicio del Laboratorio ya no depende de ella: se dibuja sin el
+       centro y la tarjeta de hallazgos dice "No se pudo revisar si las
+       fuentes siguen contestando". La pestaña Centro de datos sí depende.
+     - Opciones: una tabla de resumen por semana que llene el vigía o un cron
+       y que la función sólo sume, o reducir lo que explota. Es una
+       migración: corredor y regla 1 de `CLAUDE.md`.
+  2. **Lo que todavía no se vio en pantalla:**
+     - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
+       analista, Explorador de Fuentes): la tanda en que iban se cortó por
+       tiempo;
+     - las pestañas internas de cada módulo del Laboratorio (las pantallas
+       abren, no se recorrió cada pestaña) y Cargar archivo con un archivo
+       (sólo se vio el formulario);
+     - las cuatro pantallas del cliente (Perfil, Análisis, Fuentes de
+       Ingreso, Aval) con datos;
+     - una captura: el panel oculto hace fallar las capturas, y lo de 768 y
+       414 px se midió en el DOM. Seguir
+       `.claude/skills/revision-ux/recorrido-qa.md`: Claude no escribe
+       contraseñas, el negocio ingresa con la cuenta de QA en el panel
+       (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
+     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
+  3. **Decisiones del negocio:** nombres y diseño, en la sección 3 de este
      archivo. Nada se renombró sin su decisión.
-  3. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
@@ -468,8 +484,7 @@ aceptada.
     "Puntaje" contra "score".
   - Diseño: Inicio como pantalla de trabajo, un solo camino a un cliente
     (falta **Aval** en el expediente), unir "Empleos vigentes" y "Fuentes
-    detectadas", menos accesos por fila en la bandeja, Laboratorio › Inicio
-    cargado por bloques (hoy un `statement timeout` lo deja sin nada).
+    detectadas", menos accesos por fila en la bandeja.
   - **Retirar `humanizarTexto()`** (`src/lib/formatos.js`) cuando
     `fuentes-ingreso.ts` guarde los meses y los dólares con el formato de la
     casa: es una versión nueva de fuentes con recálculo de los perfiles, y

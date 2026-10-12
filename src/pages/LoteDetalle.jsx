@@ -249,7 +249,7 @@ export default function LoteDetalle() {
       <div className="crediscope-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0 }}>Cédula por cédula</h3>
-          <select className="crediscope-input" style={{ maxWidth: 220 }} value={filtro} onChange={(e) => setFiltro(e.target.value)}>
+          <select className="crediscope-input" style={{ maxWidth: 220 }} aria-label="Filtrar las cédulas por estado" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
             <option value="">Todas ({entero(items.length)})</option>
             {Object.entries(ETIQUETA_ITEM).map(([k, v]) => {
               const n = items.filter((i) => i.estado === k).length;

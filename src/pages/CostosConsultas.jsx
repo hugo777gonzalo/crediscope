@@ -91,13 +91,13 @@ export default function CostosConsultas() {
               Icono={Database}
               etiqueta="Promedio histórico"
               valor={centavos(d.promedio)}
-              detalle={`Sobre ${d.medidas} análisis medidos`}
+              detalle={`Sobre ${num(d.medidas)} análisis medidos`}
             />
             <Kpi
               Icono={Database}
               etiqueta="Con el criterio actual"
               valor={d.actual ? centavos(promedioMedido(d.actual)) : "—"}
-              detalle={d.actual ? `${d.actual.clave} · ${d.actual.medidas} análisis` : null}
+              detalle={d.actual ? `${d.actual.clave} · ${num(d.actual.medidas)} análisis` : null}
             />
             <Kpi
               Icono={Brain}

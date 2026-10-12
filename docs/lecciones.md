@@ -531,6 +531,15 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   `error.message` tal cual: *column bandeja_solicitudes.es_sintetico does not
   exist* (la migración 118 todavía no estaba aplicada), *invalid input syntax for
   type uuid: "null"* y un JSON de la API del modelo con su identificador de pedido.
+- **Una pantalla que junta ocho consultas se cae con la más lenta.**
+  - Laboratorio › Inicio pedía todo a la vez y, si una se pasaba del límite de la
+    base, mostraba un solo mensaje de error: no abrió el 10 ni el 12 de octubre.
+  - La culpable era `lab_centro_de_datos`: unos 6 s sola con 60 días (6,4 s medidos), contra
+    menos de 1 s de cada una de las otras siete. Se midió una por una desde la
+    página antes de tocar nada.
+  - Lo liviano decide si se dibuja; lo pesado llega después y cada tarjeta dice
+    qué le falta. Sin el dato no se escribe «Ninguno» ni «0»: se dice que no se
+    pudo mirar.
 - **Las pantallas que documentan se desfasan en silencio.**
   - Reglas de clasificación documentaba fuentes-v9 con el código en v10 (se
     avisaba a sí misma, pero nadie la había reescrito).

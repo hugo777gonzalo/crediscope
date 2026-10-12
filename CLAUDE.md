@@ -565,6 +565,9 @@ antes de tocar esa área.
   en silencio: la nuestra decía fuentes-v9 con el código en v10.
 - Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
   (`Link is not defined` con el import presente): `touch` y recargar.
+- Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
+  liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
+  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola).
 - El tamaño de la aplicación se mide con el `.env`: sin las variables de
   Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
   cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración

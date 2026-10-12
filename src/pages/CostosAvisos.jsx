@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { BellRing, BellOff, Wallet, CheckCircle2, AlertTriangle } from "lucide-react";
 import { getAvisos, getConfigOperativa, guardarConfigOperativa, getGastoDelMes, getEstadoServicio } from "../lib/api.js";
 import { money2, fechaHora } from "../lib/consumoLlm.js";
-import { humanizarTexto } from "../lib/formatos.js";
+import { entero, humanizarTexto, mesAnio } from "../lib/formatos.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 
@@ -204,12 +204,13 @@ export default function CostosAvisos() {
               />
             </div>
             <p style={{ marginTop: 8, marginBottom: 0 }}>
-              <strong>{money2(gastado)}</strong> de {money2(presupuesto)} en {gasto?.mes} — {pct}%
+              <strong>{money2(gastado)}</strong> de {money2(presupuesto)} en {mesAnio(gasto?.mes)} — {pct}%
             </p>
             {gasto?.llamadas_sin_medir > 0 ? (
               <p className="crediscope-muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
-                No incluye {gasto.llamadas_sin_medir} llamadas que no se pudieron valuar: el gasto real es mayor. Y es consumo
-                registrado por nosotros, no la factura del proveedor.
+                No incluye {entero(gasto.llamadas_sin_medir)}{" "}
+                {Number(gasto.llamadas_sin_medir) === 1 ? "llamada que no se pudo valuar" : "llamadas que no se pudieron valuar"}: el
+                gasto real es mayor. Y es consumo registrado por nosotros, no la factura del proveedor.
               </p>
             ) : null}
           </div>
@@ -217,8 +218,8 @@ export default function CostosAvisos() {
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
             <AlertTriangle size={20} color="var(--warn)" style={{ flexShrink: 0, marginTop: 2 }} />
             <p style={{ margin: 0 }}>
-              <strong>Sin presupuesto definido no se avisa nada.</strong> Van {money2(gastado)} este mes. Es el punto 4.6 del
-              temario de puesta en marcha y sigue pendiente de decisión.
+              <strong>Sin presupuesto definido no se avisa nada.</strong> Van {money2(gastado)} este mes. Definí uno arriba y el
+              vigía avisa antes de que el servicio se pare.
             </p>
           </div>
         )}
