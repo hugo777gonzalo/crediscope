@@ -93,7 +93,7 @@ export default function PestanaMotivos({ resultado }) {
                 <th style={{ textAlign: "right" }}>Lo tuvieron</th>
                 <th style={{ textAlign: "right" }}>Cayeron</th>
                 <th style={{ textAlign: "right" }}>Tasa (general {pct(r.tasa_general)})</th>
-                <th style={{ textAlign: "right" }}>Puntaje</th>
+                <th style={{ textAlign: "right" }}>Score</th>
                 <th style={{ textAlign: "right" }}>Continuidad laboral (meses)</th>
                 <th style={{ textAlign: "right" }}>Meses con aporte en 24</th>
                 <th style={{ textAlign: "right" }}>Con deuda en atraso</th>

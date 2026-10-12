@@ -76,7 +76,7 @@ export default function Lotes() {
       ) : (
         <>
           <div className="crediscope-kpi-grid">
-            <Kpi Icono={Layers} etiqueta="Lotes corridos" valor={lotes.length} detalle={enProceso ? `${enProceso} en proceso ahora` : null} />
+            <Kpi Icono={Layers} etiqueta="Lotes consultados" valor={lotes.length} detalle={enProceso ? `${enProceso} en proceso ahora` : null} />
             <Kpi Icono={CheckCircle2} etiqueta="Perfiles disponibles" valor={total("correctas") + total("reutilizadas")} detalle={`${total("reutilizadas")} se reutilizaron sin consultar la fuente`} />
             <Kpi Icono={AlertTriangle} etiqueta="Con error" valor={total("con_error")} detalle="La fuente no las encontró o falló" />
             <Kpi Icono={Clock} etiqueta="Pendientes" valor={total("pendientes")} detalle="En cola de los lotes en proceso" />

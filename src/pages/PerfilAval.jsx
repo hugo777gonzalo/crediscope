@@ -110,7 +110,7 @@ export default function PerfilAval() {
     <div>
       <p>
         <Link to="/" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Buscar otro cliente
+          Buscar otra persona
         </Link>
       </p>
 

@@ -52,7 +52,7 @@ export default function NovadataExplorer() {
   return (
     <div>
       <div className="crediscope-card">
-        <h2>Explorador de Fuentes</h2>
+        <h2>Explorador de la fuente de datos</h2>
         <p className="crediscope-muted">
           Consulta en vivo las 52 fuentes mapeadas. No guarda nada — es sólo para inspeccionar lo que contesta cada fuente. La
           contraseña no se persiste en ningún lado, se usa una sola vez para pedir el token.

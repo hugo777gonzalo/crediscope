@@ -34,7 +34,7 @@ export function CentroDeDatos() {
       <div className="crediscope-kpi-grid">
         <Kpi etiqueta="Consultas en 120 días" valor={num(datos.perfiles)} detalle={`${num(datos.fuentes.length)} fuentes`} />
         {/* revisar-textos: permitir corte-del-iess -- es el parámetro del sistema (corte_iess_vigente), no el dato de una persona */}
-        <Kpi etiqueta="Corte del IESS vigente" valor={datos.corte_iess ?? "—"} detalle="El mes más reciente con 20 clientes o más en 90 días" />
+        <Kpi etiqueta="Corte del IESS vigente" valor={datos.corte_iess ?? "—"} detalle="El mes más reciente con 20 personas o más en 90 días" />
         <Kpi etiqueta="Fuentes que cayeron" valor={num(caidas.length)} detalle={caidas.map((f) => f.fuente).join(", ") || "Ninguna en la última semana"} color={caidas.length ? "var(--bad)" : undefined} />
       </div>
       <div className="crediscope-card" style={{ overflowX: "auto" }}>
@@ -292,7 +292,7 @@ export function ExploradorDeCartera({ cortes }) {
           />
           <table className="crediscope-table">
             <thead>
-              <tr><th>{DIMENSIONES[dimension].texto}</th><th style={{ textAlign: "right" }}>Personas</th><th style={{ textAlign: "right" }}>Buenos</th><th style={{ textAlign: "right" }}>Malos</th><th style={{ textAlign: "right" }}>Tasa</th><th style={{ textAlign: "right" }}>Puntaje medio</th></tr>
+              <tr><th>{DIMENSIONES[dimension].texto}</th><th style={{ textAlign: "right" }}>Personas</th><th style={{ textAlign: "right" }}>Buenos</th><th style={{ textAlign: "right" }}>Malos</th><th style={{ textAlign: "right" }}>Tasa</th><th style={{ textAlign: "right" }}>Score medio</th></tr>
             </thead>
             <tbody>
               {r.segmentos.map((s) => (

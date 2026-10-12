@@ -15,7 +15,7 @@ import { ServerCrash, ChevronDown } from "lucide-react";
 const MENSAJES = {
   tope_de_gasto: {
     titulo: "El servicio de análisis llegó a su límite de consumo",
-    que: "No es un problema de este cliente ni de sus datos: está alcanzado el tope contratado con el proveedor.",
+    que: "No es un problema de esta persona ni de sus datos: está alcanzado el tope contratado con el proveedor.",
     ahora: "Avisá al administrador. Hasta que se amplíe el tope, ningún análisis va a completarse.",
   },
   credencial: {
@@ -35,13 +35,13 @@ const MENSAJES = {
   },
   respuesta_cortada: {
     titulo: "El análisis quedó a medias",
-    que: "La respuesta superó el largo permitido. Suele pasar con clientes de historial muy extenso.",
-    ahora: "Volvé a analizar. Si se repite con el mismo cliente, avisá al administrador.",
+    que: "La respuesta superó el largo permitido. Suele pasar con personas de historial muy extenso.",
+    ahora: "Volvé a analizar. Si se repite con la misma persona, avisá al administrador.",
   },
   respuesta_ilegible: {
     titulo: "La respuesta del análisis no se pudo interpretar",
     que: "El modelo respondió en un formato que CrediScope no pudo leer.",
-    ahora: "Volvé a analizar. Si se repite en varios clientes, es del criterio y hay que avisar.",
+    ahora: "Volvé a analizar. Si se repite en varias personas, es del criterio y hay que avisar.",
   },
   sin_conexion: {
     titulo: "No se pudo contactar al servicio de análisis",
@@ -78,7 +78,7 @@ export default function AnalisisFallido({ fallo, tipo, hayVeredicto = false }) {
             </p>
           ) : (
             <p style={{ margin: "12px 0 0", fontSize: 13 }}>
-              <strong>El puntaje que aparece no es un resultado.</strong> Cuando el análisis falla, CrediScope deja el marcador
+              <strong>El score que aparece no es un resultado.</strong> Cuando el análisis falla, CrediScope deja el marcador
               en su valor neutro y la recomendación en "revisar" para que nadie lo tome por una opinión del sistema.
             </p>
           )}

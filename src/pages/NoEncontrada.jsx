@@ -8,7 +8,7 @@ export default function NoEncontrada() {
     <div className="crediscope-card">
       <h2>No encontramos esa página</h2>
       <p className="crediscope-muted">
-        La dirección no existe o ya no está disponible. Volvé al inicio para buscar un cliente, o elegí una opción del menú.
+        La dirección no existe o ya no está disponible. Volvé al inicio para buscar una persona, o elegí una opción del menú.
       </p>
       <Link className="crediscope-btn" to="/">
         Ir al inicio

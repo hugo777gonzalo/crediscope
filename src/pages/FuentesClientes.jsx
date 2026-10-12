@@ -89,12 +89,12 @@ export default function FuentesClientes() {
       </p>
 
       <div style={{ marginBottom: 16 }}>
-        <h2 style={{ marginBottom: 4 }}>Clientes por segmento</h2>
+        <h2 style={{ marginBottom: 4 }}>Personas por segmento</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
           {/* El total es el de verdad, no el de la página. Decir "292
               cliente(s)" cuando hay 814 fue el hallazgo; decir "1-50 de
               814" es la corrección. */}
-          {datos ? plural(datos.total, "cliente") : "Cargando..."}
+          {datos ? plural(datos.total, "persona") : "Cargando..."}
           {segmentoFiltro ? ` · ${ETIQUETA_SEGMENTO[segmentoFiltro] ?? segmentoFiltro}` : ""}
           {indicioFiltro
             ? ` · ${indicioFiltro === "cualquiera" ? "con algún indicio de ingreso mayor" : (ETIQUETA_INDICIO[indicioFiltro] ?? indicioFiltro)}`
@@ -143,7 +143,7 @@ export default function FuentesClientes() {
 
       {datos && filas.length === 0 ? (
         <div className="crediscope-card">
-          <p className="crediscope-muted" style={{ margin: 0 }}>Ningún cliente con ese filtro.</p>
+          <p className="crediscope-muted" style={{ margin: 0 }}>Ninguna persona con ese filtro.</p>
         </div>
       ) : null}
 

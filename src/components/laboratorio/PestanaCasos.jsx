@@ -41,7 +41,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
       </div>
       {esSintetico ? (
         <p className="crediscope-muted" style={{ fontSize: 13 }}>
-          En un corte sintético el puntaje y el resultado son inventados: el análisis enlazado (si existe) no es el que produjo este puntaje.
+          En un corte sintético el score y el resultado son inventados: el análisis enlazado (si existe) no es el que produjo este score.
         </p>
       ) : null}
       <div className="crediscope-card">
@@ -54,7 +54,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
                 <tr>
                   <th>Cédula</th>
                   <th>Desembolso</th>
-                  <th style={{ textAlign: "right" }}>Puntaje</th>
+                  <th style={{ textAlign: "right" }}>Score</th>
                   <th>Recomendación</th>
                   <th>Resultado</th>
                   <th>{filtro === "excluidas" ? "Motivo" : "Versión"}</th>

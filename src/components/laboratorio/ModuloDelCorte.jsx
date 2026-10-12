@@ -145,7 +145,7 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
         </div>
       </div>
 
-      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el puntaje de este corte" /> : null}
+      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el score de este corte" /> : null}
 
       <div className="crediscope-tabs" style={{ flexWrap: "wrap" }}>
         {visibles.map((t) => (
