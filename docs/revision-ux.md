@@ -23,15 +23,17 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
   archivos. `node scripts/revisar-textos.mjs`.
 - **Verificador dentro de la página** (`verificar-pantalla.js`): formatos, códigos
   internos, estados en blanco, campos sin etiqueta, contraste, desborde.
-- **No se vio** (dicho en vez de supuesto): las pestañas internas del Laboratorio salvo
-  Resumen de la prueba retrospectiva; el Laboratorio › Inicio dio `statement timeout`
-  de la base y no cargó; el detalle de un lote no se abrió y Cargar un lote sólo se leyó
-  como texto; las cuatro pantallas del cliente se revisaron por texto y con capturas
-  parciales; y **las últimas correcciones de esta sesión (el componente `Aviso`, Costos con
-  los avisos nuevos, el menú acordeón y la fila de opciones para pantallas angostas) se
-  verificaron con lint, build, las 62 pruebas de `probar-formatos.mjs` y lectura del código,
-  pero la sesión de QA caducó antes de repasarlas en pantalla**: queda por repasar a 1280,
-  768 y 414 px apenas se ingrese de nuevo.
+- **Repaso en pantalla del 2026-10-12** (el negocio abrió una sesión de admin en el panel
+  de vista previa): la bandeja (2.572 en la franja y en las tarjetas), el menú acordeón,
+  Costos, Fuentes de Ingreso, Reportes, Lotes (la lista y el detalle), el expediente y los
+  módulos del Laboratorio a 1280 px; 12 rutas a 414 px sin desborde y la fila de opciones a
+  768. Salió lo que está en la tabla de abajo (defectos 14 a 16).
+- **No se vio** (dicho en vez de supuesto): las cuatro pantallas de Configuración; las
+  pestañas internas de cada módulo del Laboratorio (las pantallas abren, no se recorrió
+  cada pestaña) y Cargar archivo con un archivo; las cuatro pantallas del cliente con datos;
+  y las capturas de 768 y 414 px, que se midieron en el DOM porque el panel oculto hace
+  fallar las capturas. Laboratorio › Inicio ya abre, pero sin el centro de datos: su consulta
+  se pasa del límite de la base (ver la sección 4).
 
 ## 2. Lo que estaba roto y se corrigió
 
@@ -52,6 +54,9 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
 | 11 | **Bajo 860 px el CSS escondía los submenús** y los botones de grupo abrían algo que nunca se veía | En una tablet no había cómo llegar a la Bandeja, a Costos ni al Laboratorio | Una segunda fila con las opciones de la sección abierta; los íconos llevan nombre accesible |
 | 12 | «Cerrar sesión» recordaba la última pantalla | Quien ingresara después en la misma computadora caía en el último expediente de la persona anterior | Salir a propósito no recuerda el destino; sí se recuerda al caducar la sesión o al abrir un enlace sin haber ingresado |
 | 13 | La barra decía «Detalle del lote» en la pantalla de cargar un archivo | Título equivocado (lo detectó la prueba de navegación nueva) | `/lotes/nuevo` ya no cae en el patrón del detalle |
+| 14 | **Laboratorio › Inicio pedía ocho cosas juntas** y, si la más lenta (`lab_centro_de_datos`, unos 6 s sola) se pasaba del límite de la base, la pantalla entera quedaba en «El servidor tardó demasiado en contestar» (no abrió el 10 ni el 12 de octubre) | El módulo no tenía puerta de entrada | Lo liviano (menos de 1 s cada cosa) decide si se dibuja; el centro de datos y la evolución llegan después y cada tarjeta dice qué le falta. Sin el centro no se escribe «Ninguno» ni «0»: se dice «Revisando...» o «No se pudo revisar» |
+| 15 | En Avisos, «$9,28 de $10,00 en **2026-10**» y «No incluye N llamadas…» con el número crudo; en Costo por consulta, los análisis medidos sin separador de miles; en el caso del Laboratorio, «cambian N campos» aun con uno | Mes en ISO, miles y plural: las reglas del control de textos no ven un número interpolado | «en Oct 2026», números con `formatos.js` y `plural()`; los meses de los gráficos del Laboratorio también salen como «Oct 2026» |
+| 16 | Un `<select>` del detalle del lote sin etiqueta; las pestañas de botones no decían cuál estaba activa; la barra de desplazamiento de la fila de opciones era blanca sobre el menú oscuro | Accesibilidad y un detalle visual | `aria-label`, `aria-current` y una barra fina translúcida |
 
 ### Cifras que no cerraban
 
@@ -91,6 +96,7 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
 | «Consultar desde la app desplegada todavía no funciona… Queda pendiente resolver la salida (proxy o servidor en Ecuador)» | «…Aval sólo acepta conexiones desde Ecuador y nuestro servidor está fuera del país» | Aval (se sacó el plan de trabajo) |
 | «Descarga una fila por solicitud… el score, la acción recomendada» · «Fecha inicio / Fecha fin» | «Un archivo con una fila por solicitud… el puntaje, la recomendación» · «Desde / Hasta» | Descargas |
 | «solo» y «sólo» (40 contra 13) | «sólo» (adverbio) en todas | 13 textos; el adjetivo («un solo incidente») sin tilde |
+| Avisos sin presupuesto: «Es el punto 4.6 del temario de puesta en marcha y sigue pendiente de decisión» | «Definí uno arriba y el vigía avisa antes de que el servicio se pare» | Avisos (era texto del equipo de desarrollo) |
 
 **Texto del equipo de desarrollo en pantallas de analistas** (se reescribió en
 lenguaje de caso): «eso llega con la solicitud como entidad», «la solicitud como entidad
@@ -191,16 +197,13 @@ No se aplicaron: son nombres y decisiones de producto. Cada una trae mi recomend
    pueden diferir. Propuesta: una tabla con una columna «Registro laboral» y otra «Reportado al IESS».
 4. **Bandeja: tres íconos de acceso por fila + «Abrir»** repiten las pestañas del Expediente.
    Propuesta: sólo «Abrir» y, con un clic más, el menú de accesos.
-5. **Laboratorio › Inicio** pide ocho cosas pesadas en una sola llamada: si una se pasa del
-   tiempo, la pantalla no muestra nada. Cargar por bloques (`Promise.allSettled`) y mostrar
-   en cada tarjeta lo suyo.
-6. **Auditoría con nombres.** Los demás usuarios salen como «Otro usuario» porque cada quien sólo
+5. **Auditoría con nombres.** Los demás usuarios salen como «Otro usuario» porque cada quien sólo
    lee su propia ficha. Nombrarlos exige exponer una vista con los nombres: decisión de permisos.
-7. **Skeletons** en lugar de «Cargando...» en las tres pantallas más lentas (Bandeja,
+6. **Skeletons** en lugar de «Cargando...» en las tres pantallas más lentas (Bandeja,
    Expediente, Panorama: de 5 a 10 s en desarrollo).
-8. **El orden de los nombres** que trae la fuente es inconsistente (a unas personas les llega
+7. **El orden de los nombres** que trae la fuente es inconsistente (a unas personas les llega
    «Apellidos Nombres» y a otras «Nombre Apellido») y se muestra tal cual.
-9. **Estilos en línea**: quedan 1.761 en 110 archivos. Lo nuevo usa clases; migrar el resto de
+8. **Estilos en línea**: quedan 1.761 en 110 archivos. Lo nuevo usa clases; migrar el resto de
    a poco cuando se toque cada pantalla.
 
 ## 4. Hallazgos que no son de la interfaz
@@ -217,8 +220,13 @@ No se aplicaron: son nombres y decisiones de producto. Cada una trae mi recomend
   la lista (se revierte si no coinciden): medido en la base, la franja da 2.572 y coinciden
   revisar (151), aprobar (50), sin analizar (2.335) y con bloqueo (73). No hizo falta código
   nuevo en la pantalla. Falta sólo verlo en el navegador cuando se ingrese de nuevo.
-- **`statement timeout`** al abrir Laboratorio › Inicio: una función `lab_*` supera el límite.
-  El aviso ya trae «Reintentar»; la causa está en la base.
+- **`lab_centro_de_datos` supera el límite de la base** (medido el 2026-10-12): con 60 días
+  tarda unos 6 s sola (6,4 s medidos; una vez se pasó del límite) y con 120 días no abrió
+  (pestaña Datos y cartera › Centro de datos).
+  Explota `estado_por_fuente` (52 fuentes) de cada perfil de la ventana y agrupa dos veces.
+  El inicio del Laboratorio ya no depende de ella (defecto 14); la pestaña sí. La salida es
+  una tabla de resumen por semana que llene el vigía o un cron: es una migración (corredor,
+  regla 1 de CLAUDE.md). Está en `docs/pendientes.md`, sección 1.
 - **Vite sirvió un módulo viejo** tras varias ediciones seguidas del mismo archivo
   (`Link is not defined` con el import presente). `touch` del archivo lo arregla; el build compila
   bien. Anotado en `recorrido-qa.md`.
