@@ -37,6 +37,10 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
 
 ## 2. Lo que estaba roto y se corrigió
 
+> Los nombres de esta sección son los del 2026-10-10. El 2026-10-12 el negocio cambió
+> «Puntaje» por «Score», «Reportes» por «Monitoreo», «Lotes corridos» por «Lotes
+> consultados» y retiró el historial por cédula (sección 3).
+
 ### Funcional
 
 | # | Defecto | Efecto | Corrección |
@@ -164,34 +168,48 @@ Fallas e incidentes («Qué falta para enterarse a tiempo») que se contradecía
 - Título de cada pestaña del navegador (el expediente se abre en varias a propósito y todas
   decían «CrediScope — Análisis crediticio»).
 
-## 3. Para decidir (el negocio)
+## 3. Decidido el 2026-10-12 y lo que sigue abierto
 
-No se aplicaron: son nombres y decisiones de producto. Cada una trae mi recomendación.
+El negocio respondió a las propuestas de nombres el 2026-10-12. Se aplicó lo que estaba
+claro; lo que no, queda anotado abajo y en `docs/modelo-de-la-persona.md`, sección 5.
 
-### Nombres
+### Nombres: lo que se decidió y se hizo
 
-| Hoy | Opciones | Recomendación |
+| Propuesta | Decisión | Hecho |
 |---|---|---|
-| Menú «Consultas por lote › **Lotes corridos**» | «Lotes consultados» · «Historial de lotes» · dejar | «Lotes consultados»: «corridos» es jerga de ejecución; el título de la pantalla ya dice «Consultas por lote» |
-| «**Explorador de Fuentes**» (Configuración) | «Explorador de la fuente de datos» · «Consulta directa a Novadata» | La primera: «fuentes» ya significa de dónde viene el ingreso en otro módulo |
-| «**Inteligencia de Negocios**» (Reportes, plural) y «Laboratorio de Inteligencia de Negocio» (CLAUDE.md, singular) | (a) Reportes sigue y el módulo se llama «Laboratorio de Riesgo» · (b) unificar en plural · (c) Reportes pasa a «Tablero de gerencia» | (a): no se parecen entre sí |
-| «**Historial por cédula**» | Retirarlo (el Expediente trae la misma línea de tiempo) · renombrar «Consultas de una cédula» | Retirarlo y que «Buscar cliente» abra el Expediente |
-| «Negación» (dictamen en la tarjeta grande) | «Negación» · «Negativa» · «Rechazo» | Dejar: el negocio escribió «Negar» y la decisión de usar el sustantivo está documentada |
-| «**cliente**» y «**persona**» (99 contra 71) | (a) «cliente» en el trabajo diario y «persona» en poblaciones · (b) todo «cliente» · (c) todo «persona» | (a), ya documentada en `terminologia.md` |
-| «**Puntaje**» y «**score**» | (a) «Puntaje» en pantalla, «score» en la conversación · (b) «Score» siempre | (a) |
+| «Lotes corridos» | **Lotes consultados** | Menú, título y ubicación |
+| «Explorador de Fuentes» | Respondió «fuentes»: se leyó como aceptar la recomendación, **Explorador de la fuente de datos** | Menú y título. **A confirmar**: si quería dejar el nombre, es una línea |
+| «Inteligencia de Negocios» (Reportes) | **Reportes pasa a «Monitoreo»**. La ruta sigue siendo `/reportes`; la página interna se llama «Panorama», como la de Costos y la de Fuentes de Ingreso | Menú, barra superior, título y textos |
+| «Historial por cédula» | **Retirarlo y que «Buscar cliente» abra el Expediente** | Salió del menú y se borró su pantalla; `/historial` lleva al Inicio; lo guardado de cada consulta vuelve al Expediente. La búsqueda abre `/solicitudes/<cédula>` y, si la persona nunca se consultó, el Expediente lo dice y ofrece consultarla |
+| «Negación» (dictamen) | Se queda | Sólo se separa del «Rechazado» de la solicitud (`docs/modelo-de-la-persona.md`, sección 4) |
+| «cliente» y «persona» | **La persona es la entidad y «cliente» es un estado** (quien tiene un crédito). Árbol y estados: `docs/modelo-de-la-persona.md` | «Buscar persona», «Personas por segmento», «Personas en cartera» y 31 textos más. **«Perfil del Cliente» no se tocó** (nombre de producto) |
+| «Puntaje» y «score» | **Score** | 55 textos; el control corta con «puntaje». Las columnas `puntaje` y `fuente_puntaje` de la plantilla que llenan las instituciones se quedan: son un contrato de datos |
 
-### Diseño y producto
+Las reglas quedaron en `scripts/revisar-textos.mjs` y en el verificador, y el cambio
+masivo se hizo con `scripts/renombrar-textos.mjs`, que sólo toca textos de pantalla.
+
+### Lo que quedó sin responder
+
+- **El nombre del segundo estado de la persona** («Solicitante» no convence): En evaluación
+  (recomendada), En trámite, Postulante o Aspirante.
+- **Qué estado tiene quien fue rechazado o desistió**, y quién decide «Preaprobado».
+- **Si «Perfil del Cliente» pasa a «Perfil de la Persona»** (menú, exportaciones, ~25 textos).
+- **Si el dictamen del modelo y la decisión de la solicitud usan el mismo verbo.**
+
+Todas con sus opciones en `docs/modelo-de-la-persona.md`, sección 5.
+
+### Diseño y producto (sigue abierto)
 
 1. **Inicio como pantalla de trabajo.** Hoy «Inicio» es una caja de búsqueda y el resto de la
    pantalla queda vacío. Propuesta: la caja de búsqueda y debajo «Lo que me espera»
    (la bandeja filtrada a *Sin analizar*, *No se completó*, *La consulta falló*) y un acceso
    a los últimos expedientes abiertos. Necesita la solicitud como entidad para ser completa; la
-   mitad se puede hacer ya.
-2. **Un solo camino a un cliente.** El Expediente ya reúne resumen, ingresos, perfil, análisis,
+   mitad se puede hacer ya. (La búsqueda ya abre el Expediente: lo que falta es lo de abajo.)
+2. **Un solo camino a una persona.** El Expediente ya reúne resumen, ingresos, perfil, análisis,
    línea de tiempo y auditoría. Falta **Aval**. Propuesta: sumar Aval al Expediente y dejar el
    grupo «Evaluación Crediticia» sólo con la búsqueda; Perfil / Análisis / Fuentes de Ingreso por
-   separado pasan a ser acciones. Mientras tanto, los cuatro enlaces del grupo sin cliente
-   previo llevan a la búsqueda.
+   separado pasan a ser acciones. Mientras tanto, los cuatro enlaces del grupo sin persona
+   previa llevan a la búsqueda.
 3. **Empleos vigentes y Fuentes detectadas** (Expediente › Con qué paga) listan el mismo empleador
    con el mismo monto en dos tablas. Vienen de dos registros distintos (el laboral y el IESS) y
    pueden diferir. Propuesta: una tabla con una columna «Registro laboral» y otra «Reportado al IESS».

@@ -94,7 +94,7 @@ export default function PestanaEstabilidad({ corte, corteId, cortes, poblacion, 
 
           <div className="crediscope-card">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <h3 style={{ margin: 0 }}>PSI del puntaje</h3>
+              <h3 style={{ margin: 0 }}>PSI del score</h3>
               <button className="crediscope-btn" onClick={calcularPsiDelPuntaje} disabled={calculando || !baseId}>{calculando ? "Calculando..." : ultimo ? "Recalcular" : "Calcular"}</button>
             </div>
             {ultimo ? (
@@ -111,7 +111,7 @@ export default function PestanaEstabilidad({ corte, corteId, cortes, poblacion, 
                   ]}
                   y={{ titulo: "Parte de la población", formato: (v) => pct(v, 0) }}
                   alto={240}
-                  etiqueta="Distribución del puntaje en los dos cortes"
+                  etiqueta="Distribución del score en los dos cortes"
                 />
               </>
             ) : (

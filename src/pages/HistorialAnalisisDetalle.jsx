@@ -28,11 +28,13 @@ export default function HistorialAnalisisDetalle() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const cedula = result?.clients?.cedula;
+
   return (
     <div>
       <p>
-        <Link to="/historial" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Volver al Historial
+        <Link to={cedula ? `/solicitudes/${cedula}` : "/solicitudes"} className="crediscope-muted" style={{ textDecoration: "none" }}>
+          {cedula ? "Volver al expediente" : "Volver a la bandeja"}
         </Link>
       </p>
 
@@ -50,10 +52,10 @@ export default function HistorialAnalisisDetalle() {
               los valores guardados son el neutro por defecto, no un
               juicio sobre esta persona. */}
           <ClienteHeader
-            cedula={result.clients?.cedula}
+            cedula={cedula}
             score={result.fallo ? null : result.crediscope_score}
             recomendacion={result.fallo ? null : result.recomendacion}
-            infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${formatearFechaHora(result.created_at)} (${result.rules_version}) — vista de solo lectura del Historial.`} />}
+            infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${formatearFechaHora(result.created_at)} (${result.rules_version}) — vista de solo lectura del expediente.`} />}
           />
           <AnalisisResultado result={result} />
         </>

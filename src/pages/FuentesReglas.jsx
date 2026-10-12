@@ -105,7 +105,7 @@ export default function FuentesReglas() {
 
       <Paso titulo="Paso 1: la vigencia se mide contra el corte, no contra hoy">
         <p>
-          El registro del IESS se actualiza cada dos o tres meses. Medido sobre 389 clientes reales, 243 terminan en el mismo
+          El registro del IESS se actualiza cada dos o tres meses. Medido sobre 389 personas reales, 243 terminan en el mismo
           mes: esa es la fecha de corte, no la fecha en que dejaron de trabajar. Si midiéramos la vigencia contra hoy, un retraso
           de la fuente marcaría a 243 personas como desempleadas de golpe.
         </p>
@@ -115,7 +115,7 @@ export default function FuentesReglas() {
         </p>
         <p style={{ marginBottom: 0 }}>
           Novadata actualiza el IESS más o menos cada dos meses. El corte vigente es el mes más reciente en el que aparecen al
-          menos <strong>20 clientes</strong> consultados en los últimos 90 días. Dos o tres aportes adelantados no lo mueven:
+          menos <strong>20 personas</strong> consultadas en los últimos 90 días. Dos o tres aportes adelantados no lo mueven:
           el 23 de septiembre dos aportes de agosto lo habían pasado a Ago 2026 cuando el corte de Novadata era Jul 2026, y todo
           dependiente con su último aporte en julio habría quedado &ldquo;fuera del corte&rdquo;. Quien trae un mes más
           reciente que el vigente se clasifica con el suyo.
@@ -168,7 +168,7 @@ export default function FuentesReglas() {
       <Paso titulo="Paso 3: cuál fuente manda">
         <p>
           Se suman los montos por naturaleza. Si una supera <strong>dos tercios del total</strong>, esa define el segmento. Si
-          ninguna llega, el cliente queda como <strong>ingresos mixtos</strong>.
+          ninguna llega, la persona queda como <strong>ingresos mixtos</strong>.
         </p>
         <p>
           Esa regla existe por un caso real: alguien con $2.641 del sector público y $2.750 del privado. Decidir por el mayor lo
@@ -278,7 +278,7 @@ export default function FuentesReglas() {
       <Paso titulo="Lo que se muestra y no clasifica (desde la v4)">
         <p style={{ marginBottom: 0 }}>
           El historial de aportes de los últimos 24 meses (continuidad y tendencia del sueldo declarado), la actividad económica
-          registrada en el SRI y el impuesto a la renta de cada año. Se ven en la pestaña Fuentes de Ingreso de cada cliente, no
+          registrada en el SRI y el impuesto a la renta de cada año. Se ven en la pestaña Fuentes de Ingreso de cada persona, no
           cambian el segmento. Al análisis con IA (desde marco-v23) llega sólo un resumen: continuidad laboral, meses con aporte en
           el último año, promedio y variación contra hace un año. Los aportes mes a mes, la actividad económica y la renta de
           cada año <strong>no entran</strong>; de la renta se deduce sólo el indicio de ingreso mayor (desde la v9, ver más

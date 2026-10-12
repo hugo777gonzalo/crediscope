@@ -37,21 +37,22 @@ export default function ClientSearch() {
     // Se navega a la CÉDULA, no a lo que se escribió: si entró un RUC
     // de persona natural, de acá en adelante el sistema trabaja con la
     // persona. El aviso de que eso pasó viaja en la dirección.
-    const destino = `/perfil/${encodeURIComponent(ident.cedula)}`;
+    const destino = `/solicitudes/${encodeURIComponent(ident.cedula)}`;
     navigate(ident.tipo === "ruc_persona_natural" ? `${destino}?desdeRuc=${ident.ingresado}` : destino);
   }
 
   return (
     <div className="crediscope-card" style={{ maxWidth: 480 }}>
-      <h2>Buscar cliente</h2>
+      <h2>Buscar persona</h2>
       <p className="crediscope-muted">
-        Ingresá la cédula del cliente para ver su análisis más reciente o generar uno nuevo.
+        Ingresá la cédula de la persona para abrir su expediente: el análisis más reciente, de dónde sale su ingreso y qué
+        se hizo con el caso.
       </p>
       <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 12 }}>
         {/* Sin etiqueta, un lector de pantalla anuncia sólo "campo de texto"
             y el placeholder desaparece al escribir. */}
         <label htmlFor="inicio-cedula" className="crediscope-solo-lectores">
-          Cédula del cliente
+          Cédula de la persona
         </label>
         <input
           id="inicio-cedula"

@@ -8,13 +8,13 @@ la lista que manda). «Admin» = sólo administración: lo exige la ruta (`Requi
 La columna **Se tiene que parecer a** es lo que más se rompe: dos pantallas que
 cuentan lo mismo y dicen cosas distintas.
 
-## Inicio y evaluación de un cliente
+## Inicio y evaluación de una persona
 
 | Ruta | Archivo | Quién | Qué hace | Se tiene que parecer a |
 |---|---|---|---|---|
-| `/` | `ClientSearch.jsx` | todos | Buscar una cédula (valida el dígito verificador, acepta el RUC de persona natural). Es el «Inicio» | Historial (el otro buscador por cédula) |
+| `/` | `ClientSearch.jsx` | todos | «Buscar persona»: una cédula (valida el dígito verificador, acepta el RUC de persona natural) y **abre el Expediente**, también el de quien nunca se consultó. Es el «Inicio» | Expediente |
 | `/perfil/:cedula` | `PerfilCliente.jsx` | todos | Perfil del Cliente: lo recopilado, por grupos plegables; botón Consultar/Reconsultar | Expediente › Perfil del Cliente (la misma información en una sola página) |
-| `/analisis/:cedula` | `AnalisisIA.jsx` | todos | Análisis con IA: puntaje, recomendación, puntos positivos/negativos; botones Analizar / Reconsultar y analizar | Expediente › Qué dijo el modelo |
+| `/analisis/:cedula` | `AnalisisIA.jsx` | todos | Análisis con IA: score, recomendación, puntos positivos/negativos; botones Analizar / Reconsultar y analizar | Expediente › Qué dijo el modelo |
 | `/ingresos/:cedula` | `IngresosCliente.jsx` | todos | Fuentes de Ingreso de la persona: segmento, estabilidad, fuentes vigentes, indicios | Expediente › Con qué paga; Panorama (mismo vocabulario) |
 | `/aval/:cedula` | `PerfilAval.jsx` | todos | Reporte de la fuente Aval (buró). **No está en el Expediente** | — |
 
@@ -25,9 +25,9 @@ cliente visto: `ultimaCedula.js`). El menú las lleva a `/` si todavía no hay n
 
 | Ruta | Archivo | Quién | Qué hace | Se tiene que parecer a |
 |---|---|---|---|---|
-| `/solicitudes` | `Solicitudes.jsx` | todos | **La bandeja**: una fila por persona consultada, filtros en la URL, franja de totales que filtra | Reportes (cantidades por recomendación), Panorama (segmentos), Historial |
+| `/solicitudes` | `Solicitudes.jsx` | todos | **La bandeja**: una fila por persona consultada, filtros en la URL, franja de totales que filtra | Monitoreo (cantidades por recomendación), Panorama (segmentos) |
 | `/solicitudes/:cedula` | `Expediente.jsx` | todos | **El expediente**: todo lo que se sabe de una persona, en una pantalla con ruta propia | Perfil, Análisis y Fuentes de Ingreso por separado (dicen lo mismo con otro marco) |
-| `/historial` | `Historial.jsx` | todos | Buscar por cédula y ver todas las consultas y análisis. **Redundante con Expediente › Línea de tiempo** (propuesta de retiro) | Expediente |
+| `/historial` | (redirige a `/`) | todos | **Se retiró el 2026-10-12**: el Expediente ya trae la línea de tiempo y la búsqueda del Inicio lleva a él | — |
 | `/historial/perfil/:id`, `/historial/analisis/:id` | `HistorialPerfilDetalle.jsx`, `HistorialAnalisisDetalle.jsx` | todos | Cómo quedó un perfil o un análisis ese día (sólo lectura). Se llega desde la línea de tiempo del Expediente | Perfil y Análisis |
 
 ## Fuentes de Ingreso (módulo sobre toda la cartera)
@@ -35,15 +35,15 @@ cliente visto: `ultimaCedula.js`). El menú las lleva a `/` si todavía no hay n
 | Ruta | Archivo | Quién | Qué hace |
 |---|---|---|---|
 | `/fuentes` | `FuentesIngreso.jsx` | todos | Panorama: de qué vive la cartera, qué tan firme es cada clasificación, perfil laboral, indicios, quiénes necesitan respaldo |
-| `/fuentes/clientes` | `FuentesClientes.jsx` | todos | Lista de clientes por segmento / estado / indicio (filtros en la URL; las barras del Panorama enlazan acá) |
+| `/fuentes/clientes` | `FuentesClientes.jsx` | todos | «Personas por segmento»: la lista por segmento / estado / indicio (filtros en la URL; las barras del Panorama enlazan acá) |
 | `/fuentes/reglas` | `FuentesReglas.jsx` | todos | **Documentación embebida** de la clasificación, escrita para Riesgos. Compara su versión con la del código y avisa si se desfasó (hoy `fuentes-v10`). Al cambiar una regla en `fuentes-ingreso.ts` hay que actualizarla acá |
-| `/fuentes/parametros` | `FuentesParametros.jsx` | admin | Corte vigente del IESS, SBU y fracción básica; cuántos clientes quedaron con un corte anterior |
+| `/fuentes/parametros` | `FuentesParametros.jsx` | admin | Corte vigente del IESS, SBU y fracción básica; cuántas personas quedaron con un corte anterior |
 
-## Reportes
+## Monitoreo (antes Reportes; la ruta sigue siendo `/reportes`)
 
 | Ruta | Archivo | Quién | Qué hace | Se tiene que parecer a |
 |---|---|---|---|---|
-| `/reportes` | `Reportes.jsx` | todos | Inteligencia de Negocios: tablero para jefatura (KPI, distribución del puntaje, consultas por mes, recomendación, riesgo, actividad, tiempos, explorador por grupo) | Bandeja (recomendaciones), Panorama (cantidad de clientes) |
+| `/reportes` | `Reportes.jsx` | todos | «Monitoreo › Panorama»: tablero para jefatura (KPI, distribución del score, consultas por mes, recomendación, riesgo, actividad, tiempos, explorador por grupo) | Bandeja (recomendaciones), Panorama (cantidad de personas) |
 | `/reportes/descargas` | `Descargas.jsx` | admin | Exportar planos (solicitudes por rango de fechas) | Registra `exportacion.solicitudes` |
 
 ## Consultas por lote (admin)
@@ -96,11 +96,11 @@ parecen y tienen consecuencias distintas. No fundirlas.
 
 | Dato | Dónde sale | Comprobar que coincide |
 |---|---|---|
-| Personas en cartera | Bandeja («En la búsqueda» sin filtros) · Reportes («Clientes en cartera») · Panorama («Clientes clasificados») · Clientes por segmento (total) | Sin filtros, los cuatro son el mismo número. Si no, hay un filtro (sintéticos, sin clasificar) que una pantalla aplica y otra no |
-| Recomendaciones | Franja de la Bandeja · Reportes › Recomendación | Mismos Aprobar / Revisar / Negar |
-| Segmentos | Filtro de la Bandeja · Panorama · Clientes por segmento · Sello del Expediente | Mismos nombres (`ETIQUETA_SEGMENTO`) |
-| Perfil laboral | Sólo Panorama (Reportes lo enlaza) | No reinstalar una segunda tabla con otra clasificación |
-| Una persona | Expediente · Perfil · Análisis · Fuentes de Ingreso | Puntaje, recomendación, segmento e ingreso son los mismos |
+| Personas en cartera | Bandeja («En la búsqueda» sin filtros) · Monitoreo («Personas en cartera») · Panorama («Personas clasificadas») · Personas por segmento (total) | Sin filtros, los cuatro son el mismo número. Si no, hay un filtro (sintéticos, sin clasificar) que una pantalla aplica y otra no |
+| Recomendaciones | Franja de la Bandeja · Monitoreo › Recomendación | Mismos Aprobar / Revisar / Negar |
+| Segmentos | Filtro de la Bandeja · Panorama · Personas por segmento · Sello del Expediente | Mismos nombres (`ETIQUETA_SEGMENTO`) |
+| Perfil laboral | Sólo Panorama (Monitoreo lo enlaza) | No reinstalar una segunda tabla con otra clasificación |
+| Una persona | Expediente · Perfil · Análisis · Fuentes de Ingreso | Score, recomendación, segmento e ingreso son los mismos |
 | Gasto de modelo | Panorama de Costos · Detalle de llamadas · Corridas | El total medido coincide |
 | Menú y barra superior | `navegacion.js` | Un solo origen |
 

@@ -23,10 +23,11 @@ aceptada.
 ## 1. Para retomar primero
 
 - **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
-  El informe es `docs/revision-ux.md`; para repetirla cuando cambie una
-  pantalla, la habilidad `revision-ux`
-  (`.claude/skills/revision-ux/SKILL.md`). Entró a `main` con el PR de la
-  rama `feat/revision-de-ux`.
+  El informe es `docs/revision-ux.md`; el vocabulario del producto,
+  `docs/modelo-de-la-persona.md`; para repetir la revisión cuando cambie una
+  pantalla, la habilidad `revision-ux` (`.claude/skills/revision-ux/SKILL.md`).
+  Entró a `main` en tres PR: la revisión, el repaso en pantalla y las decisiones
+  de nombres del 2026-10-12.
   - **Hecho:**
     - trece defectos funcionales (el enlace directo que caía en "/", las
       pantallas de administración en blanco, los submenús escondidos bajo
@@ -34,17 +35,21 @@ aceptada.
       formatos y estados unificados (`formatos.js`, `mensajesDeError.js`,
       `navegacion.js`, `src/components/ui/`);
     - dos pasos nuevos en el control `pantalla` de cada PR:
-      `scripts/revisar-textos.mjs` (4.188 textos, 0 errores, 0 avisos) y
-      `scripts/probar-formatos.mjs` (62 casos);
-    - el 2026-10-12, con la sesión de admin que el negocio abrió en el panel de
-      vista previa, se repasó en pantalla lo que faltaba (segundo PR, rama
-      `fix/revision-ux-repaso-en-pantalla`): la franja de la bandeja da 2.572 y
-      sus tarjetas suman 2.572; el menú abre una sección a la vez; a 768 y 414 px
-      no hay desborde y la fila de opciones se desliza; Costos, Fuentes de
-      Ingreso, Reportes, Lotes y los módulos del Laboratorio abren sin error,
-      salvo la pestaña Centro de datos (punto 1). Lo que apareció se corrigió: un mes en ISO en Avisos ("2026-10"), cifras sin
-      formato, un campo sin etiqueta en el detalle del lote, la barra blanca de
-      la fila de opciones y el inicio del Laboratorio, que quedaba vacío.
+      `scripts/revisar-textos.mjs` y `scripts/probar-formatos.mjs` (62 casos
+      más los de navegación);
+    - el 2026-10-12, con la sesión de admin que el negocio abrió en el panel
+      de vista previa, se repasó en pantalla lo que faltaba: la franja de la
+      bandeja da 2.572 y sus tarjetas suman 2.572; el menú abre una sección a
+      la vez; a 768 y 414 px no hay desborde; Costos, Fuentes de Ingreso,
+      Monitoreo, Lotes y los módulos del Laboratorio abren sin error, salvo la
+      pestaña Centro de datos (punto 1). Lo que apareció se corrigió;
+    - **el mismo día el negocio decidió los nombres** y se aplicaron: «Lotes
+      consultados», «Monitoreo» (antes Reportes; la página interna, «Panorama»),
+      «Explorador de la fuente de datos», «Personas por segmento», **Score** en
+      lugar de Puntaje (55 textos), el historial por cédula retirado y la
+      búsqueda del Inicio que abre el Expediente. Dio además el modelo de la
+      persona: el árbol y los estados. El control corta con los nombres viejos
+      y avisa de cada «cliente» suelto (0 avisos hoy).
   - Queda, por orden:
   1. **La base: `lab_centro_de_datos` no cabe en el límite** (medido el
      2026-10-12).
@@ -60,24 +65,40 @@ aceptada.
      - Opciones: una tabla de resumen por semana que llene el vigía o un cron
        y que la función sólo sume, o reducir lo que explota. Es una
        migración: corredor y regla 1 de `CLAUDE.md`.
-  2. **Lo que todavía no se vio en pantalla:**
+  2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+     la persona, la solicitud como entidad, las direcciones, las referencias,
+     los documentos y los créditos de la persona no existen todavía como datos:
+     hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
+     en la sección 5 de ese documento):
+     - el nombre del segundo estado: «Solicitante» no convence;
+     - qué estado tiene quien fue rechazado o desistió, y quién decide
+       «Preaprobado»;
+     - si «Perfil del Cliente» pasa a «Perfil de la Persona»;
+     - si el dictamen del modelo («Negación») y la decisión de la solicitud
+       («Rechazado») usan el mismo verbo;
+     - confirmar que «fuentes» era aceptar «Explorador de la fuente de datos».
+     Con eso respondido, el orden de construcción propuesto es: la solicitud
+     como entidad, el estado de la persona calculado de sus hechos (con su
+     historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
+     Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
+     `docs/arquitectura-fabrica-de-credito.md`.
+  3. **Lo que todavía no se vio en pantalla:**
      - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
-       analista, Explorador de Fuentes): la tanda en que iban se cortó por
-       tiempo;
+       analista): la tanda en que iban se cortó por tiempo;
      - las pestañas internas de cada módulo del Laboratorio (las pantallas
        abren, no se recorrió cada pestaña) y Cargar archivo con un archivo
        (sólo se vio el formulario);
-     - las cuatro pantallas del cliente (Perfil, Análisis, Fuentes de
+     - las cuatro pantallas de la persona (Perfil, Análisis, Fuentes de
        Ingreso, Aval) con datos;
      - una captura: el panel oculto hace fallar las capturas, y lo de 768 y
        414 px se midió en el DOM. Seguir
        `.claude/skills/revision-ux/recorrido-qa.md`: Claude no escribe
-       contraseñas, el negocio ingresa con la cuenta de QA en el panel
+       contraseñas, el negocio ingresa con su cuenta en el panel
        (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
      Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
-  3. **Decisiones del negocio:** nombres y diseño, en la sección 3 de este
-     archivo. Nada se renombró sin su decisión.
-  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  4. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+     construyó sin su decisión.
+  5. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
@@ -476,13 +497,11 @@ aceptada.
   desalinearse, que es lo que pasó hasta d81591b. Primero las funciones
   tienen que dejar de escribirlas: regla 8 de CLAUDE.md.
 
-- **Revisión de UX del 2026-10-10: lo que queda para decidir**
-  (`docs/revision-ux.md`, sección 3, con las opciones y mi recomendación):
-  - Nombres: "Lotes corridos", "Explorador de Fuentes", "Inteligencia de
-    Negocios" contra "Laboratorio de Inteligencia de Negocio", "Historial por
-    cédula" (redundante con el expediente), "cliente" contra "persona",
-    "Puntaje" contra "score".
-  - Diseño: Inicio como pantalla de trabajo, un solo camino a un cliente
+- **Revisión de UX: diseño y producto sin decidir**
+  (`docs/revision-ux.md`, sección 3, con las opciones y la recomendación; los
+  nombres se decidieron el 2026-10-12 y las preguntas que quedaron están en
+  `docs/modelo-de-la-persona.md`, sección 5):
+  - Diseño: Inicio como pantalla de trabajo, un solo camino a una persona
     (falta **Aval** en el expediente), unir "Empleos vigentes" y "Fuentes
     detectadas", menos accesos por fila en la bandeja.
   - **Retirar `humanizarTexto()`** (`src/lib/formatos.js`) cuando

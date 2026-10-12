@@ -165,7 +165,7 @@ export function PestanaPca({ resultado, corteId }) {
             etiqueta="Varianza explicada"
           />
           <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
-            Sobre {num(r.columnas)} columnas estandarizadas. Si la primera explica poco, la información está repartida: no hay unos pocos ejes que resuman al cliente.
+            Sobre {num(r.columnas)} columnas estandarizadas. Si la primera explica poco, la información está repartida: no hay unos pocos ejes que resuman a la persona.
           </p>
         </div>
         <div className="crediscope-card" style={{ margin: 0 }}>

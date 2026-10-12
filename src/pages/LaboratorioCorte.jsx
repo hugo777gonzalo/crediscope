@@ -88,13 +88,13 @@ export default function LaboratorioCorte() {
         </div>
       </div>
 
-      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el puntaje de este corte" /> : null}
+      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el score de este corte" /> : null}
       <MensajeError mensaje={error} />
 
       <div className="crediscope-kpi-grid">
         <Kpi etiqueta="Operaciones incluidas" valor={num(r.incluidas)} detalle={`de ${num(r.operaciones)} en las cargas`} />
         <Kpi etiqueta="Malos" valor={num(r.malos)} detalle={r.incluidas ? `${pct(r.malos / r.incluidas)} de las incluidas` : null} />
-        <Kpi etiqueta="Con puntaje" valor={num(r.con_puntaje)} detalle="Sirven para medir el motor" />
+        <Kpi etiqueta="Con score" valor={num(r.con_puntaje)} detalle="Sirven para medir el motor" />
         <Kpi
           etiqueta="Excluidas"
           valor={num((r.operaciones ?? 0) - (r.incluidas ?? 0))}

@@ -109,7 +109,7 @@ export default function AnalisisIA() {
   return (
     <div>
       <div className="crediscope-pagina-cabecera">
-        <Link to="/" className="crediscope-volver" title="Buscar otro cliente">
+        <Link to="/" className="crediscope-volver" title="Buscar otra persona">
           <ArrowLeft size={19} />
         </Link>
         <h2>Análisis con IA</h2>
@@ -180,7 +180,7 @@ export default function AnalisisIA() {
           {!loading && !result ? (
             <div className="crediscope-card">
               <p className="crediscope-muted" style={{ margin: 0 }}>
-                Este cliente todavía no tiene un Análisis con IA. Generalo con los botones de la izquierda.
+                Esta persona todavía no tiene un Análisis con IA. Generalo con los botones de la izquierda.
               </p>
             </div>
           ) : null}

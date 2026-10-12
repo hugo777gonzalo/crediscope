@@ -59,7 +59,7 @@ export default function AnalisisResultado({ result, ocultarListaControl = false,
         {decidioElControl ? (
           <RecomendacionCard
             recomendacion={result.recomendacion}
-            acciones={hallazgos.length ? hallazgos : ["Verificar la identidad del cliente contra el hallazgo de la lista de control."]}
+            acciones={hallazgos.length ? hallazgos : ["Verificar la identidad de la persona contra el hallazgo de la lista de control."]}
             origen="Decidido por una regla de control, sin intervención del modelo."
           />
         ) : null}

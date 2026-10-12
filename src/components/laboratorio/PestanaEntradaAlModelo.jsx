@@ -96,7 +96,7 @@ export default function PestanaEntradaAlModelo({ corteId, poblacion }) {
     <div>
       {!lista.some((x) => delCorte.has(x.id)) ? (
         <p className="crediscope-muted" style={{ fontSize: 13 }}>
-          Este corte no tiene análisis del modelo (su puntaje es {filas?.[0]?.fuentePuntaje === "sintetico" ? "sintético" : "de otra fuente"}): se muestran los últimos análisis reales.
+          Este corte no tiene análisis del modelo (su score es {filas?.[0]?.fuentePuntaje === "sintetico" ? "sintético" : "de otra fuente"}): se muestran los últimos análisis reales.
         </p>
       ) : null}
       <div className="crediscope-card" style={{ display: "grid", gap: 8 }}>

@@ -93,9 +93,9 @@ export default function CostosCorridas() {
 
           <Aviso tipo="advertencia" titulo="Antes de correr un análisis en lote, mirá cuántos casos lleva.">
             <p className="crediscope-muted">
-              El análisis en lote evalúa <strong>un caso por llamada</strong>: un lote de 200 clientes son 200 llamadas al
-              modelo, equivalentes a 200 consultas de cliente (a mitad de precio, porque va por la API de lotes). Repetir una
-              corrida sobre los mismos clientes la vuelve a pagar entera, y el razonamiento del modelo es lo más caro. Se
+              El análisis en lote evalúa <strong>un caso por llamada</strong>: un lote de 200 personas son 200 llamadas al
+              modelo, equivalentes a 200 consultas individuales (a mitad de precio, porque va por la API de lotes). Repetir una
+              corrida sobre las mismas personas la vuelve a pagar entera, y el razonamiento del modelo es lo más caro. Se
               corren sólo con autorización del negocio y con el costo estimado.
             </p>
           </Aviso>

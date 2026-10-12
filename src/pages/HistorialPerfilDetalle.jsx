@@ -32,12 +32,13 @@ export default function HistorialPerfilDetalle() {
   }, [id]);
 
   const standardProfile = profile?.standard_profile;
+  const cedula = profile?.clients?.cedula;
 
   return (
     <div>
       <p>
-        <Link to="/historial" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Volver al Historial
+        <Link to={cedula ? `/solicitudes/${cedula}` : "/solicitudes"} className="crediscope-muted" style={{ textDecoration: "none" }}>
+          {cedula ? "Volver al expediente" : "Volver a la bandeja"}
         </Link>
       </p>
 
@@ -53,8 +54,8 @@ export default function HistorialPerfilDetalle() {
         <>
           <ClienteHeader
             nombreCompleto={standardProfile?.identidad?.nombreCompleto}
-            cedula={profile.clients?.cedula}
-            infoTooltip={<InfoTooltip texto={`Perfil del Cliente consultado el ${formatearFechaHora(profile.created_at)} — vista de solo lectura del Historial.`} />}
+            cedula={cedula}
+            infoTooltip={<InfoTooltip texto={`Perfil del Cliente consultado el ${formatearFechaHora(profile.created_at)} — vista de solo lectura del expediente.`} />}
           />
           <SegmentosPerfil standardProfile={standardProfile} segmentConfig={segmentConfig} controlBloqueo={profile.control_bloqueo} />
         </>

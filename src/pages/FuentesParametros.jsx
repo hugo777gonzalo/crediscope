@@ -57,8 +57,8 @@ export default function FuentesParametros() {
         <p className="crediscope-muted" style={{ marginTop: 0 }}>
           Novadata actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
           vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce sólo: es el mes más reciente en el
-          que aparecen al menos 20 clientes consultados en los últimos 90 días. Algunos aportes llegan antes que el resto: esos
-          clientes se clasifican con su propio mes, sin mover el corte de todos.
+          que aparecen al menos 20 personas consultadas en los últimos 90 días. Algunos aportes llegan antes que el resto: esas
+          personas se clasifican con su propio mes, sin mover el corte de todos.
         </p>
 
         {!d ? (
@@ -77,7 +77,7 @@ export default function FuentesParametros() {
               <thead>
                 <tr>
                   <th>Corte con que se clasificó</th>
-                  <th>Clientes (último perfil de cada uno)</th>
+                  <th>Personas (último perfil de cada una)</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,7 +100,7 @@ export default function FuentesParametros() {
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
                 <Info size={20} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
                 <p style={{ margin: 0 }}>
-                  {plural(conCorteAnterior, "cliente")} {conCorteAnterior === 1 ? "tiene" : "tienen"} su clasificación hecha con una información
+                  {plural(conCorteAnterior, "persona")} {conCorteAnterior === 1 ? "tiene" : "tienen"} su clasificación hecha con una información
                   IESS anterior. No está mal: es la foto de cuando se lo consultó. Quien trabaje con {conCorteAnterior === 1 ? "él" : "uno de ellos"} lo
                   ve en su pestaña Fuentes de Ingreso, y reconsultarlo lo pone al día.
                 </p>

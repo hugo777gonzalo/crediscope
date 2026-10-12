@@ -208,13 +208,13 @@ export default function Reportes() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Cargando texto="Cargando reporte..." />;
+  if (loading) return <Cargando texto="Cargando el monitoreo..." />;
   if (error) return <AvisoDeError error={error} />;
   if (!metricas.totalClientes)
     return (
       <div className="crediscope-card">
-        <h2>Inteligencia de Negocios</h2>
-        <p className="crediscope-muted">Todavía no hay clientes consultados para armar el reporte.</p>
+        <h2>Monitoreo</h2>
+        <p className="crediscope-muted">Todavía no hay personas consultadas para armar el monitoreo.</p>
       </div>
     );
 
@@ -226,13 +226,13 @@ export default function Reportes() {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ marginBottom: 4 }}>Inteligencia de Negocios</h2>
-        <p className="crediscope-muted">Panorama agregado de la cartera de clientes consultados — para revisión con jefatura/coordinación.</p>
+        <h2 style={{ marginBottom: 4 }}>Monitoreo</h2>
+        <p className="crediscope-muted">Panorama agregado de las personas consultadas — para revisión con jefatura/coordinación.</p>
       </div>
 
       <div className="crediscope-kpi-grid">
-        <Kpi etiqueta="Clientes en cartera" valor={metricas.totalClientes} detalle={`${entero(metricas.totalAnalizados)} ya tienen Análisis con IA`} />
-        <Kpi etiqueta="Puntaje promedio" valor={metricas.scorePromedio ?? "—"} detalle="Sobre 999, con el último análisis de cada cliente" />
+        <Kpi etiqueta="Personas en cartera" valor={metricas.totalClientes} detalle={`${entero(metricas.totalAnalizados)} ya tienen Análisis con IA`} />
+        <Kpi etiqueta="Score promedio" valor={metricas.scorePromedio ?? "—"} detalle="Sobre 999, con el último análisis de cada persona" />
         {/* El mes en curso no terminó: compararlo con el anterior completo
             daba "-57%" el día 9 y se leía como una caída del negocio. */}
         <Kpi
@@ -249,7 +249,7 @@ export default function Reportes() {
 
       <div className="crediscope-reportes-grid">
         <div className="crediscope-card">
-          <h3>Distribución del puntaje</h3>
+          <h3>Distribución del score</h3>
           <DistribucionPuntaje distribucion={metricas.distribucionScore} total={metricas.totalAnalizados} />
         </div>
 

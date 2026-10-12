@@ -102,7 +102,7 @@ export default function PestanaMatriz({ resultado }) {
               <th style={{ textAlign: "right" }}>Tasa</th>
               <th style={{ textAlign: "right" }}>Intervalo 95%</th>
               <th style={{ textAlign: "right" }} title="Llegaron a 15 días de atraso o más en el primer año sin caer, aunque se pusieran al día">En observación</th>
-              <th style={{ textAlign: "right" }}>Puntaje mediano malos / buenos</th>
+              <th style={{ textAlign: "right" }}>Score mediano malos / buenos</th>
               <th style={{ textAlign: "right" }}>Con ingreso sin confirmar (malos)</th>
             </tr>
           </thead>

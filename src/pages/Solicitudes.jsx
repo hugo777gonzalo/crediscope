@@ -326,7 +326,7 @@ export default function Solicitudes() {
                     <th>Persona</th>
                     <th>Segmento</th>
                     <th className="crediscope-cifra">Ingreso reportado al IESS</th>
-                    <th className="crediscope-cifra">Puntaje</th>
+                    <th className="crediscope-cifra">Score</th>
                     <th>Resultado</th>
                     <th>Consultas</th>
                     <th></th>

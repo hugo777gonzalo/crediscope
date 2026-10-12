@@ -531,6 +531,18 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   `error.message` tal cual: *column bandeja_solicitudes.es_sintetico does not
   exist* (la migración 118 todavía no estaba aplicada), *invalid input syntax for
   type uuid: "null"* y un JSON de la API del modelo con su identificador de pedido.
+- **«Cliente» no era una palabra de estilo: era un estado.**
+  - La revisión encontró 99 «persona» y 71 «cliente» mezclados y propuso tres
+    reglas de escritura. El negocio no eligió ninguna: contestó con el ciclo de
+    una persona (Persona → Solicitud → Evaluación → Aprobado o Rechazado →
+    Cliente) y sus estados. «Cliente» es quien tiene un crédito.
+  - Cuando dos palabras se mezclan en una pantalla, preguntar qué cosa distinta
+    nombra cada una antes de elegir una (`docs/modelo-de-la-persona.md`).
+- **Un reemplazo masivo sobre el código toca lo que no debe.** «Puntaje» a
+  «Score» en 31 archivos habría cambiado `puntaje` y `fuente_puntaje`, las
+  columnas de la plantilla que llenan las instituciones. `renombrar-textos.mjs`
+  usa las posiciones que da el analizador de JSX y reemplaza sólo dentro de los
+  textos de pantalla; no concuerda género ni número, y eso se lee y se edita.
 - **Una pantalla que junta ocho consultas se cae con la más lenta.**
   - Laboratorio › Inicio pedía todo a la vez y, si una se pasaba del límite de la
     base, mostraba un solo mensaje de error: no abrió el 10 ni el 12 de octubre.

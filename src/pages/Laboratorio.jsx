@@ -108,7 +108,7 @@ function hallazgosCriticos(d) {
     const des = rs.find((r) => r.tipo === "desempeno");
     if (des && Number(des.resultado.auc) < 0.65) lista.push({ tipo: "Desempeño", texto: `AUC ${dec(des.resultado.auc, 3)} en «${c.nombre}»: el motor casi no ordena`, enlace: `/laboratorio/desempeno?corte=${c.id}`, sintetico: c.es_sintetico });
     for (const e of rs.filter((r) => r.tipo === "estabilidad")) {
-      if (Number(e.resultado.psi) > 0.25) lista.push({ tipo: "Estabilidad", texto: `PSI del puntaje ${dec(e.resultado.psi, 3)} en «${c.nombre}»: la población cambió`, enlace: `/laboratorio/desempeno?corte=${c.id}&pestana=estabilidad`, sintetico: c.es_sintetico });
+      if (Number(e.resultado.psi) > 0.25) lista.push({ tipo: "Estabilidad", texto: `PSI del score ${dec(e.resultado.psi, 3)} en «${c.nombre}»: la población cambió`, enlace: `/laboratorio/desempeno?corte=${c.id}&pestana=estabilidad`, sintetico: c.es_sintetico });
     }
   }
   return lista;

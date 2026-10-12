@@ -3,7 +3,7 @@
 Calificación crediticia para Ecuador. Una persona se consulta contra
 Novadata, se arma un Perfil del Cliente estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
-lenguaje natural produce un puntaje de 1 a 999 y una recomendación.
+lenguaje natural produce un score de 1 a 999 y una recomendación.
 
 Frontend Vite + React 19 en JavaScript (sin TypeScript, sin Tailwind).
 Backend: Supabase — Postgres con RLS, Auth y Edge Functions en Deno.
@@ -77,8 +77,16 @@ repite lo que el código ya dice es ruido.
   muestra con `error.message` crudo.
 - Una versión (`marco-v28`), un código o un JSON no van en una tarjeta
   principal.
+- **Score**, no «puntaje»; **persona**, no «cliente» (cliente es quien tiene un
+  crédito); **Monitoreo**, no Reportes. El negocio ordenó el producto alrededor
+  de la persona (2026-10-12): el árbol, los estados y lo que quedó abierto están
+  en `docs/modelo-de-la-persona.md`.
+- Un nombre que cambia el negocio se cambia con
+  `node scripts/renombrar-textos.mjs` (primero en seco: sólo toca textos de
+  pantalla, nunca una variable ni una columna de datos) y con una regla nueva en
+  el control, para que el nombre viejo no vuelva.
 - `node scripts/revisar-textos.mjs` corta con los términos que el negocio
-  retiró (piso, asalariado, default, backtest, LLM...), y
+  retiró (piso, asalariado, default, backtest, LLM, puntaje...), y
   `node scripts/probar-formatos.mjs` prueba los formatos, la traducción de
   errores y la navegación: correrlos después de tocar `formatos.js`,
   `mensajesDeError.js`, `navegacion.js` o `destinoDeIngreso.js`.
@@ -296,6 +304,11 @@ Romper cualquiera de estas rompe algo real.
 - `.claude/skills/revision-ux/` — la revisión de UX: flujo, glosario con el
   porqué, mapa de pantallas, criterios y un verificador para el navegador de
   QA. Se corre al cambiar una pantalla.
+- `docs/modelo-de-la-persona.md` — la persona como entidad (decisión del
+  negocio del 2026-10-12): el árbol (solicitudes, direcciones, empleos,
+  referencias, documentos, scores, créditos), los estados (Prospecto, ..., Cliente
+  activo, Cliente cerrado), qué existe hoy y qué falta. Leerlo antes de ponerle
+  nombre a una pantalla o a una tabla.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los

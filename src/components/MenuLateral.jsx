@@ -135,7 +135,7 @@ export default function MenuLateral({ profile }) {
       to: h.conCedula ? (ultimaCedula ? `${h.ruta}/${ultimaCedula}` : "/") : h.ruta,
       texto: h.texto,
       activo: hijoActivo(h, pathname),
-      ayuda: h.conCedula && !ultimaCedula ? "Primero buscá un cliente en Inicio" : undefined,
+      ayuda: h.conCedula && !ultimaCedula ? "Primero buscá una persona en Inicio" : undefined,
     }));
   const seccionAbierta = seccionesVisibles(admin).find((s) => s.hijos && s.id === abiertaId) ?? null;
 

@@ -103,13 +103,13 @@ export default function LaboratorioCaso() {
       <Volver a={volver} texto="Volver a la investigación" />
       <h2 style={{ marginBottom: 4 }}>
         {caso.malo ? "Cayó" : "Pagó"} · {ETIQUETA_RECOMENDACION[caso.recomendacion] ?? caso.recomendacion}
-        {caso.puntaje !== null && caso.puntaje !== undefined ? ` · puntaje ${num(caso.puntaje)}` : ""}
+        {caso.puntaje !== null && caso.puntaje !== undefined ? ` · score ${num(caso.puntaje)}` : ""}
       </h2>
       <p className="crediscope-muted" style={{ marginTop: 0 }}>
         {corte.nombre} · {poblacion === "solicitudes" ? "solicitud" : "operación"} del {formatearDia(caso.fecha?.toISOString().slice(0, 10))}
         {cedula ? <> · <Link to={`/perfil/${cedula}`}>ver el perfil de la persona</Link></> : null}
       </p>
-      {corte.es_sintetico ? <FranjaSintetica que="El resultado, el puntaje y los eventos de este caso" /> : null}
+      {corte.es_sintetico ? <FranjaSintetica que="El resultado, el score y los eventos de este caso" /> : null}
 
       <Seccion titulo="1. Qué le pasó">
         <table className="crediscope-table">
@@ -170,7 +170,7 @@ export default function LaboratorioCaso() {
           </>
         ) : (
           <p className="crediscope-muted" style={{ margin: 0 }}>
-            Sin análisis del modelo: el puntaje de este caso es {caso.fuentePuntaje === "sintetico" ? "sintético (la simulación)" : "de otra fuente"}.
+            Sin análisis del modelo: el score de este caso es {caso.fuentePuntaje === "sintetico" ? "sintético (la simulación)" : "de otra fuente"}.
           </p>
         )}
       </Seccion>

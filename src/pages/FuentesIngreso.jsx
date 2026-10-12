@@ -49,7 +49,7 @@ export default function FuentesIngreso() {
         <div>
           <h2 style={{ marginBottom: 4 }}>Fuentes de Ingreso</h2>
           <p className="crediscope-muted" style={{ margin: 0 }}>
-            De qué vive cada cliente consultado y qué tan evidenciado está.
+            De qué vive cada persona consultada y qué tan evidenciado está.
           </p>
         </div>
         <Link className="crediscope-btn crediscope-btn-ghost" to="/fuentes/reglas">
@@ -59,17 +59,17 @@ export default function FuentesIngreso() {
 
       {d.total === 0 ? (
         <div className="crediscope-card">
-          <p style={{ margin: 0 }}>Todavía no hay clientes clasificados.</p>
+          <p style={{ margin: 0 }}>Todavía no hay personas clasificadas.</p>
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>
             La clasificación se calcula al generar el Perfil del Cliente. Los {entero(d.sinClasificar)} perfiles ya guardados son
             anteriores al módulo y no se pueden reclasificar sin volver a consultar la fuente: el dato crudo de origen no se
-            almacena. Se irán clasificando a medida que se consulten clientes.
+            almacena. Se irán clasificando a medida que se consulten personas.
           </p>
         </div>
       ) : (
         <>
           <div className="crediscope-kpi-grid">
-            <Kpi Icono={Users} etiqueta="Clientes clasificados" valor={d.total} detalle={d.sinClasificar ? `${entero(d.sinClasificar)} perfiles previos al módulo, sin clasificar` : null} />
+            <Kpi Icono={Users} etiqueta="Personas clasificadas" valor={d.total} detalle={d.sinClasificar ? `${entero(d.sinClasificar)} perfiles previos al módulo, sin clasificar` : null} />
             <Kpi
               Icono={ShieldQuestion}
               etiqueta="Con ingreso reportado al IESS"
@@ -180,7 +180,7 @@ export default function FuentesIngreso() {
             <div className="crediscope-card">
               <h3>Indicios de ingreso mayor</h3>
               <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Clientes con un dato que muestra que sus ingresos superan lo que reportan al IESS. Sin un indicio así, lo reportado
+                Personas con un dato que muestra que sus ingresos superan lo que reportan al IESS. Sin un indicio así, lo reportado
                 es la mejor evidencia que hay.
               </p>
               <Barra
@@ -208,7 +208,7 @@ export default function FuentesIngreso() {
           ) : null}
 
           <div className="crediscope-card">
-            <h3>Clientes que necesitan respaldo ({entero(d.requierenRespaldoTotal)})</h3>
+            <h3>Personas que necesitan respaldo ({entero(d.requierenRespaldoTotal)})</h3>
             <p className="crediscope-muted" style={{ marginTop: 0 }}>
               Su segmento no está confirmado. Acá está qué pedirles para confirmarlo.
               {/* Antes el título decía el total y la tabla cortaba en 40
@@ -224,12 +224,12 @@ export default function FuentesIngreso() {
               ) : null}
             </p>
             {d.requierenRespaldo.length === 0 ? (
-              <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ningún cliente pendiente de respaldo.</p>
+              <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ninguna persona pendiente de respaldo.</p>
             ) : (
               <table className="crediscope-table">
                 <thead>
                   <tr>
-                    <th>Cliente</th>
+                    <th>Persona</th>
                     <th>Segmento</th>
                     <th>Por qué</th>
                     <th>Qué pedir</th>

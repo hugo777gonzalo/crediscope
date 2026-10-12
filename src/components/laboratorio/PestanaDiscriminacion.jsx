@@ -21,7 +21,7 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
 
   if (error) return <MensajeError mensaje={error} />;
   if (!c) return <Cargando />;
-  if (c.auc.auc === null) return <p className="crediscope-muted">Hace falta tener buenos y malos con puntaje para medir la discriminación.</p>;
+  if (c.auc.auc === null) return <p className="crediscope-muted">Hace falta tener buenos y malos con score para medir la discriminación.</p>;
   const { auc, roc, k, pr, tramos, deciles, rompen } = c;
 
   return (
@@ -30,11 +30,11 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
       <div className="crediscope-kpi-grid">
         <Kpi etiqueta="AUC" valor={dec(auc.auc, 3)} detalle={`entre ${dec(auc.ic[0], 3)} y ${dec(auc.ic[1], 3)} · ${num(auc.malos)} malos, ${num(auc.buenos)} buenos`} />
         <Kpi etiqueta="Gini" valor={dec(auc.gini, 3)} detalle="2 × AUC − 1" />
-        <Kpi etiqueta="KS" valor={dec(k.ks, 3)} detalle={`mayor separación en el puntaje ${num(k.puntaje)}`} />
+        <Kpi etiqueta="KS" valor={dec(k.ks, 3)} detalle={`mayor separación en el score ${num(k.puntaje)}`} />
         <Kpi etiqueta="Precisión media" valor={dec(pr.precisionMedia, 3)} detalle={`contra ${pct(pr.base)} de malos al azar`} />
       </div>
       {c.bloqueados ? (
-        <p className="crediscope-muted" style={{ fontSize: 13 }}>{num(c.bloqueados)} bloqueados quedan afuera: el control de bloqueo los niega sin puntaje del motor.</p>
+        <p className="crediscope-muted" style={{ fontSize: 13 }}>{num(c.bloqueados)} bloqueados quedan afuera: el control de bloqueo los niega sin score del motor.</p>
       ) : null}
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
@@ -55,8 +55,8 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
               { nombre: "Malos", color: "var(--bad)", puntos: adelgazar(k.malos), escalon: true },
               { nombre: "Buenos", color: "var(--good)", puntos: adelgazar(k.buenos), escalon: true },
             ]}
-            x={{ titulo: "Puntaje" }}
-            y={{ titulo: "Acumulado con ese puntaje o menos", min: 0, max: 1, formato: (v) => pct(v, 0) }}
+            x={{ titulo: "Score" }}
+            y={{ titulo: "Acumulado con ese score o menos", min: 0, max: 1, formato: (v) => pct(v, 0) }}
             referencias={[{ x: k.puntaje, texto: `KS ${dec(k.ks, 2)}` }]}
             etiqueta="Curvas de KS"
           />
@@ -74,7 +74,7 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
           />
         </div>
         <div className="crediscope-card" style={{ margin: 0 }}>
-          <h3 style={{ marginTop: 0 }}>Distribución del puntaje por clase</h3>
+          <h3 style={{ marginTop: 0 }}>Distribución del score por clase</h3>
           <GraficoBarras
             categorias={tramos.map((t) => Math.round(t.desde))}
             series={[
@@ -82,15 +82,15 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
               { nombre: "Buenos", color: "var(--good)", valores: c.buenos, formato: (v) => pct(v) },
             ]}
             y={{ titulo: "Parte de cada clase", formato: (v) => pct(v, 0) }}
-            etiqueta="Distribución del puntaje por clase"
+            etiqueta="Distribución del score por clase"
           />
         </div>
       </div>
 
       <div className="crediscope-card" style={{ marginTop: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Tasa de malos por decil de puntaje</h3>
+        <h3 style={{ marginTop: 0 }}>Tasa de malos por decil de score</h3>
         <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Diez grupos del mismo tamaño, del puntaje más bajo al más alto. Si el motor ordena bien, la tasa baja decil a decil.{" "}
+          Diez grupos del mismo tamaño, del score más bajo al más alto. Si el motor ordena bien, la tasa baja decil a decil.{" "}
           {rompen ? <strong style={{ color: "var(--warn)" }}>{rompen} decil(es) suben en vez de bajar.</strong> : <strong style={{ color: "var(--good)" }}>Baja en todos.</strong>}
         </p>
         <GraficoBarras
@@ -105,7 +105,7 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
             <thead>
               <tr>
                 <th>Decil</th>
-                <th>Puntaje</th>
+                <th>Score</th>
                 <th style={{ textAlign: "right" }}>Personas</th>
                 <th style={{ textAlign: "right" }}>Malos</th>
                 <th style={{ textAlign: "right" }}>Tasa</th>

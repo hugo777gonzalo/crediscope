@@ -93,7 +93,7 @@ export default function Descargas() {
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Información de Solicitudes</h3>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          Un archivo con una fila por solicitud: toda la información con la que se evaluó a la persona, el puntaje, la recomendación
+          Un archivo con una fila por solicitud: toda la información con la que se evaluó a la persona, el score, la recomendación
           y — cuando ya se cargó la cosecha — si el crédito incumplió.
         </p>
 

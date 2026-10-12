@@ -46,6 +46,12 @@
     [/\bC[oó]mo puede fallar\b/i, "se sacó de todas las pantallas"],
     [/\bLLM\b/, "jerga: decir «el modelo» o «Análisis con IA»"],
     [/\bingesta\b/i, "decir «consulta a la fuente»"],
+    [/\bpuntajes?\b/i, "ahora «Score» (decisión del 2026-10-12)"],
+    [/\bLotes corridos\b/i, "ahora «Lotes consultados»"],
+    [/\bHistorial por c[eé]dula\b/i, "se retiró: la búsqueda abre el Expediente"],
+    [/\bExplorador de Fuentes\b/, "ahora «Explorador de la fuente de datos»"],
+    [/\bInteligencia de Negocios\b/, "ahora «Monitoreo»"],
+    [/\bClientes por segmento\b/, "ahora «Personas por segmento»"],
   ];
 
   const mascara = (s) => s.replace(/\d{7,}/g, (m) => "#".repeat(m.length));
