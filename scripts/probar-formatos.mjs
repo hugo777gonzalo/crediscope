@@ -102,7 +102,13 @@ const ubic = (ruta) => {
 igual("ubicación: inicio", ubic("/"), "Inicio");
 igual("ubicación: bandeja", ubic("/solicitudes"), "Solicitudes › Bandeja");
 igual("ubicación: expediente", ubic("/solicitudes/0000000000"), "Solicitudes › Expediente");
-igual("ubicación: la bandeja y el historial son de la misma sección", ubic("/historial"), "Solicitudes › Historial por cédula");
+igual("ubicación: lo que guardó una consulta cuelga del expediente", ubic("/historial/perfil/abc"), "Solicitudes › Perfil del Cliente guardado");
+igual("ubicación: el historial por cédula se retiró (cae en la sección, sin página)", ubic("/historial"), "Solicitudes");
+igual("ubicación: «Reportes» pasó a «Monitoreo»", ubic("/reportes"), "Monitoreo › Panorama");
+igual("ubicación: Descargas es de Monitoreo", ubic("/reportes/descargas"), "Monitoreo › Descargas");
+igual("ubicación: «Lotes corridos» pasó a «Lotes consultados»", ubic("/lotes"), "Consultas por lote › Lotes consultados");
+igual("ubicación: el explorador de la fuente de datos", ubic("/explorar"), "Configuración › Explorador de la fuente de datos");
+igual("ubicación: personas por segmento", ubic("/fuentes/clientes"), "Fuentes de Ingreso › Personas por segmento");
 igual("ubicación: /lotes/nuevo NO es el detalle de un lote", ubic("/lotes/nuevo"), "Consultas por lote › Cargar archivo");
 igual("ubicación: detalle de un lote", ubic("/lotes/abc"), "Consultas por lote › Detalle del lote");
 igual("ubicación: el Laboratorio ya no dice «CrediScope»", ubic("/laboratorio/desempeno"), "Laboratorio › Prueba retrospectiva");
