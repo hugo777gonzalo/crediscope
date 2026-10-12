@@ -44,7 +44,7 @@ criterio sin caso se discute y uno con caso se aplica.
 | Estado | Cómo | Qué evitar |
 |---|---|---|
 | Cargando | `<Cargando />` (gira, `role="status"`). Si ya había datos, se conservan y se avisa «actualizando...» | Pantalla en blanco (las guardias de ruta devolvían `null` de 4 a 10 s); un `<p>Cargando...</p>` distinto en cada archivo |
-| Vacío | Qué falta y qué hacer: «Todavía no hay clientes clasificados. Se irán clasificando a medida que se consulten.» | «Sin datos» a secas, tabla vacía con encabezados |
+| Vacío | Qué falta y qué hacer: «Todavía no hay personas clasificadas. Se irán clasificando a medida que se consulten.» | «Sin datos» a secas, tabla vacía con encabezados |
 | Error | `<AvisoDeError error={err} />`: lo que pasó en castellano + «Detalle técnico» plegado + «Reintentar» si se arregla esperando | `error.message` crudo («column bandeja_solicitudes.es_sintetico does not exist», `invalid input syntax for type uuid: "null"`, un JSON entero del proveedor) |
 
 Una pantalla que falla al dibujarse no tira abajo la aplicación: `LimiteDeError` (en `App.jsx`)
@@ -114,9 +114,29 @@ Se revisa a **1280**, **768** y **414**. La barra lateral pasa a barra superior 
 - Toda exportación y cada apertura de expediente quedan en `audit_log`: una pantalla nueva que saca
   datos de la persona llama a `registrarEvento()`.
 
-## 9. Antes de dar la pantalla por buena
+## 9. ¿Dice de quién habla?
+
+El negocio ordenó el producto alrededor de la persona (`docs/modelo-de-la-persona.md`).
+Una pantalla nueva o cambiada se revisa contra eso:
+
+- Dice **de qué entidad** habla: una persona, una solicitud, un score, un crédito, una
+  dirección, un empleo, una referencia o un documento. Un conteo dice qué cuenta:
+  «2.572 personas», no «2.572 clientes».
+- **«Cliente» sólo con un crédito** (Cliente activo, Cliente cerrado). El resto es «persona».
+- Si muestra un **estado**, es el de la persona o el del análisis, y lo dice. No hay una
+  columna «Estado» sin apellido.
+- Los estados de la persona se escriben exactos: Prospecto, Solicitante (por renombrar),
+  Preaprobado, Aprobado, Cliente activo, Cliente cerrado.
+- **Score**, no «puntaje». Y no se mezcla el score de CrediScope con el de Aval en la
+  misma etiqueta.
+- La **recomendación del modelo** (Aprobar / Revisar / Negar) y la **decisión de la
+  institución** (Aprobado / Rechazado) son dos cosas y no comparten columna.
+
+## 10. Antes de dar la pantalla por buena
 
 - [ ] `node scripts/revisar-textos.mjs` en cero errores y cero avisos (o la excepción marcada).
+- [ ] Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo liviano decide si
+      se dibuja y lo pesado llega después (Laboratorio › Inicio, 2026-10-12).
 - [ ] El verificador, sin hallazgos que no sean explicables (los `version-interna` de una tabla de
       costos son legítimos).
 - [ ] Capturada a 1280, y a 768/414 si tiene tablas.
