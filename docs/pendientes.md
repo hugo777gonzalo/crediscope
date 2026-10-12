@@ -417,6 +417,24 @@ aceptada.
   desalinearse, que es lo que pasó hasta d81591b. Primero las funciones
   tienen que dejar de escribirlas: regla 8 de CLAUDE.md.
 
+- **Revisión de UX del 2026-10-10: lo que queda para decidir**
+  (`docs/revision-ux.md`, sección 3, con las opciones y mi recomendación):
+  - Nombres: "Lotes corridos", "Explorador de Fuentes", "Inteligencia de
+    Negocios" contra "Laboratorio de Inteligencia de Negocio", "Historial por
+    cédula" (redundante con el expediente), "cliente" contra "persona",
+    "Puntaje" contra "score".
+  - Diseño: Inicio como pantalla de trabajo, un solo camino a un cliente
+    (falta **Aval** en el expediente), unir "Empleos vigentes" y "Fuentes
+    detectadas", menos accesos por fila en la bandeja, Laboratorio › Inicio
+    cargado por bloques (hoy un `statement timeout` lo deja sin nada).
+  - **Retirar `humanizarTexto()`** (`src/lib/formatos.js`) cuando
+    `fuentes-ingreso.ts` guarde los meses y los dólares con el formato de la
+    casa: es una versión nueva de fuentes con recálculo de los perfiles, y
+    mientras tanto la pantalla los arregla al mostrarlos.
+  - La auditoría del expediente nombra a los demás usuarios como "Otro
+    usuario": nombrarlos exige exponer una vista con los nombres (permisos).
+  - Quedan 1.761 estilos en línea en 110 archivos: lo nuevo usa clases.
+
 ## 4. Parámetros que vencen
 
 - **2027:** agregar el año a `SBU_POR_ANIO` y a `FRACCION_BASICA_RENTA`

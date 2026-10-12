@@ -5,10 +5,16 @@ existe. Complementa `docs/laboratorio-de-riesgo.md`, que tiene el modelo de
 datos y la metodología.
 
 **Estado al 2026-10-04:** las fases A a F y los módulos 1 a 3 están
-construidos (migraciones 100 a 109). **Ninguna pantalla se vio con sesión de
-admin**: los cálculos de cada pestaña se probaron en Node contra los cortes
-reales (`scripts/probar-pantallas-laboratorio.mjs`) y la estadística contra
-valores publicados y la base (`scripts/probar-estadistica.mjs`).
+construidos (migraciones 100 a 109). Los cálculos de cada pestaña se probaron en
+Node contra los cortes reales (`scripts/probar-pantallas-laboratorio.mjs`) y la
+estadística contra valores publicados y la base (`scripts/probar-estadistica.mjs`).
+
+**Puesto al día el 2026-10-10:** el 2026-10-07 el negocio vio con sesión de admin
+Resumen, Discriminación y Segmentos del ciclo simulado, y el 2026-10-10 la
+revisión de UX recorrió todas las rutas del Laboratorio con la sesión de QA
+(`docs/revision-ux.md`). La barra superior dice ahora «Laboratorio › <pantalla>»:
+hasta esa fecha decía «CrediScope» en todo el módulo. Cuando se toque una pantalla
+de acá, correr la habilidad `revision-ux`.
 
 **Estados**
 
@@ -29,8 +35,9 @@ Precisión / Sensibilidad.
 
 **Dónde está cada módulo:** Laboratorio en el menú lateral, con Inicio,
 Instituciones y proyectos, Datos y cartera, Prueba retrospectiva,
-Descubrimiento estadístico, Descubrimiento profundo, Propuestas y Criterio
-vigente. Los tres de análisis (4, 5 y 6) trabajan sobre un corte congelado
+Descubrimiento estadístico, Descubrimiento profundo y Propuestas. (Criterio
+vigente se retiró el 2026-10-07: sus ajustes ya no se suman al marco, todo
+cambio es una versión nueva.) Los tres de análisis (4, 5 y 6) trabajan sobre un corte congelado
 (`ModuloDelCorte`: el corte y la pestaña van en la dirección, el último
 corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 (lo desembolsado o todas las solicitudes observadas).

@@ -501,3 +501,54 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   constancia de un guion al salir, el aviso a la base sale por un proceso
   hijo sincrónico, con la clave pasada por el entorno y no en la línea de
   comandos.
+
+**Interfaz (revisión de UX del 2026-10-10)**
+- **Una pantalla que espera la sesión no es una pantalla sin sesión.**
+  - `App.jsx` ignoraba `loading` de `useSession`: mientras Supabase leía la
+    sesión guardada, `session` era null y cualquier enlace directo o recarga
+    caía en `*` → `/login` → `/`.
+  - El expediente, que tiene ruta propia "para compartirse por enlace y
+    sobrevivir a una recarga", volvía siempre al inicio. Se vio al revisar con
+    la sesión de QA, donde `navigate` a una ruta profunda terminaba siempre en
+    la raíz y se había tomado por una rareza del panel de vista previa.
+- **Lo que cada componente pide por su cuenta se pide muchas veces.**
+  - El perfil de acceso lo pedían el menú, la barra y cada guardia de ruta. Con
+    un enlace directo a una pantalla de administración, la guardia devolvía
+    `null` hasta que llegaba su pedido: de 4 a 10 s de pantalla en blanco, sin
+    un "Cargando".
+- **Una cifra, cuatro maneras de escribirla.**
+  - "2.812" en la bandeja, "2812" en el Panorama y en Reportes; "37.0 s" y "37,0
+    s"; "4.3¢" junto a "$15,36". Había ocho `Intl.NumberFormat` copiados y
+    números interpolados sin formato. Ahora todo pasa por `formatos.js`.
+- **Una franja de totales tiene que sumar.**
+  - La de la bandeja decía 2.812 y sus ocho tarjetas daban 2.789: faltaban 3
+    análisis que no se completaron y 20 análisis antiguos sin recomendación.
+- **Un porcentaje contra el mayor no es un porcentaje.** Reportes mostraba
+  "100% (5.937)" y "45% (2.642)" en la actividad por analista.
+- **Una barra tiene que medir lo que dice su título.** "En qué se gastó"
+  dibujaba el porcentaje de llamadas (96%) y no de dinero (79%).
+- **Un error técnico no es un mensaje.** Treinta y nueve pantallas mostraban
+  `error.message` tal cual: *column bandeja_solicitudes.es_sintetico does not
+  exist* (la migración 118 todavía no estaba aplicada), *invalid input syntax for
+  type uuid: "null"* y un JSON de la API del modelo con su identificador de pedido.
+- **Las pantallas que documentan se desfasan en silencio.**
+  - Reglas de clasificación documentaba fuentes-v9 con el código en v10 (se
+    avisaba a sí misma, pero nadie la había reescrito).
+  - Corridas masivas advertía de un backtest que ya no existe.
+  - Fallas e incidentes llevaba la bitácora de lo que faltaba construir: "Listo"
+    y "Nada de esto está construido todavía" en la misma tarjeta.
+- **Un archivo de 1,7 MB para entrar al login.** Todo viajaba junto (Laboratorio,
+  estadística, lectura de Excel). Con una pantalla por archivo el principal quedó
+  en 476 KB (139 KB comprimidos).
+  - El tamaño se mide con el `.env` de la aplicación. Sin `VITE_SUPABASE_URL` y
+    `VITE_SUPABASE_ANON_KEY`, `supabaseClient.js` exporta `null` y el compilador
+    deja afuera el cliente de Supabase (~200 KB): el mismo código sale en 273 KB.
+  - El control `pantalla` de la integración continua compila así, sin las
+    variables: sirve para ver que compila, no para medir lo que se publica.
+- **El menú y los títulos eran dos listas.** Todo el Laboratorio decía "CrediScope"
+  arriba y quedaba una entrada para Retroalimentación. Ahora los dos salen de
+  `navegacion.js`.
+- **Vite sirvió un módulo viejo.** Tras varias ediciones seguidas del mismo archivo,
+  el servidor de desarrollo entregó una transformación anterior (`Link is not
+  defined` con el import presente). `touch` del archivo y recargar; el build
+  compilaba bien.
