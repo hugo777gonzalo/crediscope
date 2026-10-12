@@ -3,7 +3,7 @@
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
-2026-10-12 (sección 1, primer punto). La última migración es la **120**;
+2026-10-12 (sección 1, primer punto). La última migración es la **121**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -42,7 +42,7 @@ aceptada.
       bandeja da 2.572 y sus tarjetas suman 2.572; el menú abre una sección a
       la vez; a 768 y 414 px no hay desborde; Costos, Fuentes de Ingreso,
       Monitoreo, Lotes y los módulos del Laboratorio abren sin error, salvo la
-      pestaña Centro de datos (punto 1). Lo que apareció se corrigió;
+      pestaña Centro de datos (se arregló con la 121). Lo que apareció se corrigió;
     - **el mismo día el negocio decidió los nombres** y se aplicaron: «Lotes
       consultados», «Monitoreo» (antes Reportes; la página interna, «Panorama»),
       «Explorador de la fuente de datos», «Personas por segmento», **Score** en
@@ -51,21 +51,7 @@ aceptada.
       persona: el árbol y los estados. El control corta con los nombres viejos
       y avisa de cada «cliente» suelto (0 avisos hoy).
   - Queda, por orden:
-  1. **La base: `lab_centro_de_datos` no cabe en el límite** (medido el
-     2026-10-12).
-     - Con 60 días tarda unos 6 s sola (6,4 s medidos; la pide Laboratorio ›
-       Inicio) y otra vez se pasó del límite; con 120 días (Datos y cartera ›
-       Centro de datos) no abrió: "El servidor tardó demasiado en contestar".
-     - Hace un `jsonb_each` de `estado_por_fuente` de cada perfil de la
-       ventana (52 fuentes por perfil) y agrupa dos veces: última definición
-       en la migración 118.
-     - El inicio del Laboratorio ya no depende de ella: se dibuja sin el
-       centro y la tarjeta de hallazgos dice "No se pudo revisar si las
-       fuentes siguen contestando". La pestaña Centro de datos sí depende.
-     - Opciones: una tabla de resumen por semana que llene el vigía o un cron
-       y que la función sólo sume, o reducir lo que explota. Es una
-       migración: corredor y regla 1 de `CLAUDE.md`.
-  2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+  1. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
      la persona, la solicitud como entidad, las direcciones, las referencias,
      los documentos y los créditos de la persona no existen todavía como datos:
      hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
@@ -82,7 +68,7 @@ aceptada.
      historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
      Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
      `docs/arquitectura-fabrica-de-credito.md`.
-  3. **Lo que todavía no se vio en pantalla:**
+  2. **Lo que todavía no se vio en pantalla:**
      - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
        analista): la tanda en que iban se cortó por tiempo;
      - las pestañas internas de cada módulo del Laboratorio (las pantallas
@@ -96,9 +82,9 @@ aceptada.
        contraseñas, el negocio ingresa con su cuenta en el panel
        (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
      Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
-  4. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+  3. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
      construyó sin su decisión.
-  5. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está

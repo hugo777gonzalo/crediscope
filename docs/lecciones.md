@@ -501,6 +501,17 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   constancia de un guion al salir, el aviso a la base sale por un proceso
   hijo sincrónico, con la clave pasada por el entorno y no en la línea de
   comandos.
+- **El corte del IESS abría el perfil entero de cada consulta de 90 días.**
+  - `corte_iess_vigente()` lee una marca de adentro de `standard_profile`, y
+    eso descomprime el perfil entero de cada fila. Con 8.590 perfiles tardaba
+    3,5 s antes de cada consulta y cada análisis, y crecía con cada perfil
+    guardado.
+  - Nadie lo había medido. Apareció el 2026-10-12, cuando el centro de datos
+    del Laboratorio, que también lo llama, se pasó del límite de 8 s.
+  - Un índice parcial que repite la condición evita abrir el perfil (121).
+  - En la misma función, un resumen por semana usado dentro de una
+    subconsulta se recalculaba una vez por fuente, 52 veces. `as materialized`
+    lo calcula una sola.
 
 **Interfaz (revisión de UX del 2026-10-10)**
 - **Una pantalla que espera la sesión no es una pantalla sin sesión.**

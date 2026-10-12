@@ -418,6 +418,9 @@ antes de tocar esa área.
   RLS. La 118 recrea tres vistas así. Además, una definición vieja se toma
   de la base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
   migración que la tocó.
+- Una CTE usada una sola vez dentro de una subconsulta correlacionada se
+  recalcula por cada fila de afuera: `as materialized`. El centro de datos
+  del Laboratorio la recalculaba 52 veces, una por fuente (121).
 - Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
   El 2026-10-09 el sello del despliegue reemplazó una palabra en un
   comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
@@ -470,6 +473,10 @@ antes de tocar esa área.
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
   con ≥20 clientes en 90 días. Quien trae un mes posterior usa el suyo.
+  Su condición sobre el perfil se repite en el índice parcial
+  `client_profiles_corte_iess` (121): sin él abría el perfil entero de cada
+  consulta de 90 días, 3,5 s antes de cada consulta. Si cambia la
+  condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
   aportes cuando el mecanizado no trae nada.
 - Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
@@ -580,7 +587,8 @@ antes de tocar esa área.
   (`Link is not defined` con el import presente): `touch` y recargar.
 - Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
   liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
-  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola).
+  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola
+  hasta la 121).
 - El tamaño de la aplicación se mide con el `.env`: sin las variables de
   Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
   cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
