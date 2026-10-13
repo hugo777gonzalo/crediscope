@@ -34,9 +34,9 @@ modelo se mide en `analysis_results.mensaje_al_modelo`, no en el código.
 
 - **Sin datos personales.** La estructura no los trae por construcción (sus
   pruebas buscan 702 valores personales de las 22 respuestas y no encuentran
-  ninguno). Es el primer bloque del perfil del modelo que lo cumple. **No
-  corrige E27**: el resto del perfil sigue llevando datos que el modelo no necesita,
-  y ningún documento debe afirmar la minimización hasta que se corrija.
+  ninguno). **No corrige E27**: el resto del perfil sigue llevando datos que el
+  modelo no necesita, y ningún documento debe afirmar la minimización hasta que se
+  corrija.
 - **Disponibilidad.** `disponibilidadPorTema()` suma el tema «buró de Equifax»:
   consultado si hay una consulta de producción de esa persona vigente a la fecha del
   análisis; no consultado en cualquier otro caso. Una consulta de ambiente de
@@ -96,8 +96,8 @@ como grupo 5 (los siguientes se renumeran; el marco sólo cita por número al gr
      contingente, nunca "no pagó". No la sumes a lo propio.
    - conciliaConElResumen = "no" en un sistema quiere decir que el detalle de
      Equifax no cuadra con el total que la propia Equifax publica para ese
-     sistema. Pasa más en el sector comercial, que mezcla cortes de distintos
-     meses. Si la deuda de ese sistema importa para la decisión, decilo en
+     sistema. Pasa más en el sector comercial, que trae operaciones con cortes de
+     distintos meses. Si la deuda de ese sistema importa para la decisión, decilo en
      missingInfo y no afirmes una cifra exacta de ese sistema.
    - conductaDePago es lo más informativo de esta fuente. Mirá cuántos de los
      últimos 24 meses tuvo mora y cuán grave fue:
@@ -116,9 +116,10 @@ como grupo 5 (los siguientes se renumeran; el marco sólo cita por número al gr
      Un vencido chico en el primer tramo con el resto al día es leve; vencido en
      los tramos de más de 90 días o en demanda o castigo pesa como en
      comportamientoBancario.
-   - estadoDeCartera es un cálculo de Equifax (el peor estado entre sus
-     operaciones): citalo como "Equifax lo clasifica como …", no como un hecho
-     del buró, y si contradice lo que ves en los otros grupos, mencionalo.
+   - estadoDeCartera es un cálculo de Equifax, no un hecho del buró: citalo como
+     "Equifax lo clasifica como …", y si contradice lo que ves en los otros
+     grupos, mencionalo. (Cómo lo calcula Equifax está en el pedido de
+     diccionario: hasta que lo conteste, no digas que es "el peor estado".)
    - El score de Equifax (scoreEquifax) es la opinión de un tercero con su propio
      modelo: contexto fuerte pero no decide, y no es el score de este análisis.
      Todavía no sabemos traducirlo a una probabilidad: no lo traduzcas ("640 es
@@ -224,8 +225,8 @@ caracteres por token). La sección del marco: unos 5.000 caracteres, alrededor d
      banda de score). Cada consulta se cobra y no hay tope del proveedor: hace falta
      la regla, su presupuesto y su base legal antes de construirla.
 4. **Si el score de Equifax se muestra al analista** (rótulo «Score de Equifax»). Es
-   de otra decisión: las pantallas esperan a que todo el proceso detrás de Equifax
-   esté listo.
+   otra decisión: las pantallas esperan a que todo el proceso detrás de Equifax
+   esté listo (decisión del negocio, 2026-10-13).
 5. **Qué hacer con las dudas del diccionario.** Los campos de la sección 3 que no
    van esperan al diccionario de Equifax.
 6. **El rótulo «Garantías»** (sección 4).
@@ -250,12 +251,20 @@ autorizar el gasto).
    la caché y 2.400 de salida). La sección suma unos 1.600 tokens al marco (en lote,
    a caché: el 11% de lo que ya se lee de la caché) y el bloque unos 1.050 al perfil
    (el 27% de la entrada propia). Con ese aumento, cada análisis saldría entre
-   USD 0,019 y USD 0,022: **las 44 respuestas, alrededor de USD 1 en lote**. En
-   octubre van USD 9,28 del presupuesto de 10: el tope mensual del proveedor de IA
-   (`docs/puesta-en-marcha-ifi.md`, 1.3) manda, no esta cuenta.
-4. **Una persona sin Equifax tiene que dar lo mismo que hoy.** Con el bloque
-   ausente, el pedido al modelo tiene que ser idéntico al de la versión vigente
-   (más la sección nueva del marco): se comprueba comparando `huellaDelPedido()`.
+   USD 0,019 y USD 0,022 (los precios salen de `llm_costos`: USD 2 por millón de
+   tokens de entrada, USD 10 de salida y USD 0,20 de lectura de caché, a mitad de
+   precio en lote): **las 44 respuestas, alrededor de USD 1 en lote** (unos USD 0,5
+   si sólo se corre la versión nueva y se reutilizan los análisis de marco-v28 que
+   ya existan para esas 22).
+   **Ojo con el presupuesto:** al 2026-10-13 octubre lleva **USD 9,28 de 10**
+   (1.453 llamadas). La comparación pasaría del presupuesto del mes: o se corre en
+   noviembre, o el negocio sube el tope del proveedor de IA antes
+   (`docs/puesta-en-marcha-ifi.md`, 1.3), que es lo que manda, no esta cuenta.
+4. **Una persona sin Equifax tiene que dar lo mismo que hoy.** El
+   `perfilDelModelo` armado para una persona sin Equifax tiene que ser idéntico,
+   byte a byte, al de la versión vigente: el bloque no aparece, ni siquiera como
+   `null`. (El pedido entero no puede ser idéntico, porque el marco cambia: se
+   compara el perfil, que es lo que se calcula en `armarPerfilDelModelo()`.)
 
 ## 8. Qué cambia en el código si se aprueba
 

@@ -63,7 +63,9 @@ aceptada.
        las 22 y lo que decide el negocio). **No cambia nada de lo que lee el
        modelo**: activarla es una versión nueva (`marco-v30`; la v29 es el marco
        por cliente, apagado), con su fila en `scoring_rules_versions` y la
-       autorización explícita del gasto (unos USD 1 en lote para comparar las 22).
+       autorización explícita del gasto (unos USD 1 en lote para comparar las 22;
+       **octubre lleva USD 9,28 de 10**: se corre en noviembre o el negocio sube
+       antes el tope del proveedor de IA).
     3. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
        dijo otra vez el 2026-10-13 que por ahora no; el riesgo sigue mientras no
        se roten.
