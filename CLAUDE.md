@@ -432,6 +432,19 @@ antes de tocar esa área.
   El 2026-10-09 el sello del despliegue reemplazó una palabra en un
   comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
   comprobación posterior.
+- **La bandeja, Monitoreo y Fuentes de ingreso leen `resumen_por_persona`**
+  (124): una fila por persona con lo que muestran de su último perfil y su
+  último análisis.
+  - La escribe sólo `refrescar_resumen_por_persona()`: una regla nueva de
+    esas pantallas va ahí, no en la vista ni en la función del tablero.
+  - La llaman disparadores por sentencia en `client_profiles`,
+    `analysis_results` y `clients`. Al insertar o actualizar, un fallo no
+    frena la consulta (queda un aviso); al borrar sí, porque borrar es la
+    supresión de un titular.
+  - Cada noche la reconstruye `reconstruir_resumen_por_persona()` (pg_cron
+    `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
+  - Medido el 2026-10-12: la primera página de la bandeja, de 570 ms a 6 ms;
+    Monitoreo, de 1,3 s a 126 ms; Fuentes de ingreso, de 1,4 s a 179 ms.
 - **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
   Aval.
   - Los totales de la base las excluyen.
