@@ -339,7 +339,12 @@ Romper cualquiera de estas rompe algo real.
   - **La v1 no se publica antes de corregir E27.** Lo que falta está en
     `docs/pendientes.md`.
 - **Equifax** (buró; en producción desde el 2026-10-12; credenciales y
-  datos de la cuenta en `.env.functions`, claves `EQUIFAX_*`):
+  datos de la cuenta en `.env.functions`, claves `EQUIFAX_*`). **Empezar por
+  `docs/pendientes.md`**; el diseño y lo medido, en
+  `docs/propuesta-estructura-equifax.md`; lo que hay que pedirle a Equifax, en
+  `docs/equifax-pedido-de-diccionario.md`; y cómo entraría al modelo, en
+  `docs/propuesta-marco-equifax.md` (propuesta: no cambia nada de lo que lee el
+  modelo):
   - `_shared/equifax-client.ts`: el token (en memoria, nunca guardado) y
     la consulta, que se cobra.
   - `_shared/equifax-persistencia.ts`: el recorrido completo (proveedor,
