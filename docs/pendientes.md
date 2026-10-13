@@ -3,7 +3,7 @@
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
-2026-10-12 (sección 1, primer punto). La última migración es la **123**;
+2026-10-12 (sección 1, primer punto). La última migración es la **124**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -54,18 +54,17 @@ aceptada.
   - Queda, por orden:
   1. **Tablas de resumen para que la cartera pueda crecer** (decisión del
      negocio del 2026-10-12: «según la pantalla»).
-     - Medido ese día con el rol de la pantalla, después de la 121 y la 123:
-       centro de datos 1,3 s, métricas de Monitoreo 1,3 s, Fuentes de ingreso
-       1,4 s y primera página de la bandeja 0,18 s. Todo recorre la cartera
-       entera en cada vista, y crece con ella.
-     - **La bandeja:** una tabla con una fila por persona, que se actualiza
-       al guardar cada consulta o análisis (disparadores, con una
-       reconstrucción nocturna de respaldo). La vista `bandeja_solicitudes`
-       pasa a leerla, con las mismas columnas. De esa tabla salen también los
-       totales por persona de Monitoreo y de Fuentes de ingreso.
-     - **El centro de datos:** un resumen por día y por fuente. Los días
-       cerrados los calcula cada noche una tarea programada (pg_cron, como el
-       vigía), y el día de hoy se suma al momento.
+     - **Hecho (124): la bandeja, Monitoreo y Fuentes de ingreso** leen
+       `resumen_por_persona`, una fila por persona al día por disparadores,
+       con una reconstrucción nocturna de respaldo. Medido con el rol de la
+       pantalla: la primera página de la bandeja, de 570 ms a 6 ms (de 3 a
+       5 s antes de la 123); la franja, 4 ms; Monitoreo, de 1,3 s a 126 ms;
+       Fuentes de ingreso, de 1,4 s a 179 ms. La salida de las cuatro se
+       comparó antes de aplicar: idéntica.
+     - **Falta:**
+       - **el centro de datos** (1,3 s): un resumen por día y por fuente.
+         Los días cerrados los calcula cada noche una tarea programada
+         (pg_cron), y el día de hoy se suma al momento.
      - Se descartó calcularlo en la primera consulta del día: esa persona
        espera el cálculo entero (y, con una cartera grande, el corte de 8 s),
        lo que entra durante el día no aparece hasta mañana, y dos personas a
