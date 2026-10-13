@@ -22,56 +22,55 @@ aceptada.
 
 ## 1. Para retomar primero
 
-- **Equifax (2026-10-13): el conector está en producción con 22 consultas
-  hechas, y las tablas y la estructura están construidas. Cada consulta se
-  cobra y su proveedor no pone tope: nada que consulte se corre sin
-  autorización explícita del negocio.**
-  - Qué hay: el conector desplegado (7 de 7 funciones, commit `4cbebdd`), la
+- **Equifax (2026-10-13): en producción, con 22 consultas hechas y sus tablas y su
+  estructura cargadas y verificadas. Cada consulta se cobra y su proveedor no
+  pone tope: nada que consulte se corre sin autorización explícita del negocio.**
+  - Qué hay: el conector desplegado (7 de 7 funciones, sello `7360d78b3096`), la
     tabla `consultas_equifax` (122) con 22 filas (2 de prueba y 20 de un lote:
     todas HTTP 200 y de la persona pedida), el guion local que simula por
     defecto, la exportación a Excel, el inventario y la conciliación de las
     respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El consumo del
     2026-10-12 fue de 22 de 30; el tope diario es `EQUIFAX_TOPE_DIARIO`.
-  - **Construido el 2026-10-13** (aprobado por el negocio: «ok»): la migración
-    126 con 11 tablas `equifax_*`, las funciones deterministas `equifax-tablas-v1`
-    y `equifax-estructura-v1`, la derivación al guardar cada consulta nueva y el
-    guion que rehace las ya guardadas (`scripts/cargar-tablas-equifax.mjs`).
-    Probado con una respuesta inventada (Deno) y con las 22 reales
-    (`scripts/probar-equifax-tablas.mjs`): bancos concilian 22 de 22 con el
-    resumen de Equifax, cooperativas 21 de 22 y comercial 16 de 22. El diseño
-    y lo que se midió: `docs/propuesta-estructura-equifax.md`.
+  - **Tablas y estructura (126, aplicada el 2026-10-13, aprobadas por el negocio:
+    «ok»):** 11 tablas `equifax_*` con 17.293 filas de las 22 consultas,
+    `equifax-tablas-v1` y `equifax-estructura-v1`, la derivación al guardar cada
+    consulta nueva y `scripts/cargar-tablas-equifax.mjs`, que rehace las ya
+    guardadas desde su crudo sin volver a pagar. El diseño y lo que se midió:
+    `docs/propuesta-estructura-equifax.md`.
+  - **Verificado en SQL contra el crudo:** las 11 tablas cuadran con las listas de
+    Equifax en las 22 consultas; el detalle de todos los roles concilia con el
+    resumen de Equifax en bancos 22 de 22, cooperativas 21 de 22 y comercial 16 de
+    22 (igual que sobre el JSON y que la marca de la estructura); la deuda del
+    titular de las tablas es la de la estructura en las 22. El control de seguridad
+    (`auditar-seguridad.mjs`) da 68 puntos en OK, con las tablas nuevas.
   - **`probar_conexion` desde las Edge Functions: ok** (2026-10-13, 544 ms, con
     la sesión de admin del negocio en el panel local). Equifax deja pasar a las
     funciones para pedir el token; la consulta misma desde las funciones no se
     probó porque cobra. Hoy se sigue consultando desde la máquina con IP de
     Ecuador.
   - Las 22 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
-    Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas
-    se cargan desde el crudo, que no cuesta.
+    Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas ya
+    están cargadas; no hace falta volver a pagar para tener la estructura.
   - Qué falta, por orden:
-    1. **Aplicar la 126, desplegar `consultar-equifax` y cargar las 22 desde el
-       crudo** (el 2026-10-13 la 126 entró a `main` por PR; aplicarla con el
-       corredor, después desplegar con `--funciones`, después
-       `node scripts/cargar-tablas-equifax.mjs`, `--seco` primero). Verificar
-       con SQL que la estructura cuadra con el resumen por sistema.
-    2. **El diccionario de datos de Equifax.** Lo consigue el negocio (dijo el
-       2026-10-13 que lo puede dar); la lista de lo que hay que pedir, con la
-       evidencia y la prioridad de cada punto, está en
-       `docs/equifax-pedido-de-diccionario.md`. Lo que conteste se carga sin
-       volver a pagar: se sube la versión y se rehacen las consultas.
-    3. **El ajuste al marco interpretativo**: una sección de comportamiento
-       crediticio del sistema financiero ecuatoriano con datos actuales e
-       históricos. El negocio dijo «procede» el 2026-10-13; la propuesta es
-       `docs/propuesta-marco-equifax.md`. No se activa sin validarla: versión
-       nueva del marco, su fila en `scoring_rules_versions`, y autorización
-       explícita del gasto del modelo.
-    4. **Rotar las credenciales de Equifax:** se pegaron en un chat. El
-       negocio dijo otra vez el 2026-10-13 que por ahora no; el riesgo sigue
-       mientras no se roten.
-    5. **Pantallas:** cuando todo el proceso detrás de Equifax esté listo
+    1. **El diccionario de datos de Equifax.** Lo consigue el negocio (dijo el
+       2026-10-13 que lo puede dar); lo que hay que pedir, con la evidencia y la
+       prioridad de cada punto, está en `docs/equifax-pedido-de-diccionario.md`. Lo
+       que conteste se carga sin volver a pagar: se sube la versión y se rehacen
+       las consultas.
+    2. **El ajuste al marco interpretativo.** El negocio dijo «procede» el
+       2026-10-13: la propuesta está escrita (`docs/propuesta-marco-equifax.md`:
+       el bloque del perfil del modelo, el borrador de la sección, lo medido con
+       las 22 y lo que decide el negocio). **No cambia nada de lo que lee el
+       modelo**: activarla es una versión nueva (`marco-v30`; la v29 es el marco
+       por cliente, apagado), con su fila en `scoring_rules_versions` y la
+       autorización explícita del gasto (unos USD 1 en lote para comparar las 22).
+    3. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
+       dijo otra vez el 2026-10-13 que por ahora no; el riesgo sigue mientras no
+       se roten.
+    4. **Pantallas:** cuando todo el proceso detrás de Equifax esté listo
        (decisión del negocio, 2026-10-13). Al hacerlas, rótulo «Score de
        Equifax» y el vocabulario de `docs/modelo-de-la-persona.md`.
-    6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
+    5. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Cuando
        Equifax termine de aprobar al proveedor (el negocio, 2026-10-13: «está
        en proceso de aprobación»).

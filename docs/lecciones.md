@@ -659,6 +659,12 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   - **Los tramos de mora salen de los días**: con cortes en 30, 60, 90, 180,
     270, 360, 720 y 1.080 días se reproducen los tramos de Equifax en bancos
     (20/22), y son del titular, que los de Equifax no separan.
+  - **El corredor desplegó 7 de 7 y no pudo anotarlo** (2026-10-13): el rol
+    temporal que el CLI crea para conectarse falló una vez (`password
+    authentication failed for user "cli_login_postgres"`, 28P01), justo en el
+    `insert` a `despliegues`. Las funciones quedaron selladas y confirmadas; el
+    registro se escribió a mano con el mismo `insert` que arma el corredor. Antes
+    de repetir un despliegue por esto, mirar `despliegues`.
   - **Una columna copiada en silencio.** `jsonb_populate_recordset` ignora las
     claves que no son columnas: un error de tipeo dejaría el dato en null sin
     avisar. Las filas se arman con una función que corta ante una clave

@@ -106,7 +106,12 @@ más `equifax_resumen`, y una se renombró.
   de filas de un mismo mes comparten institución y apertura; el cupo cambia
   entre meses en 191 grupos). La estructura cuenta **por mes**, no por operación.
 - **Las 22 primeras consultas** se cargaron desde el crudo, sin costo
-  (`scripts/cargar-tablas-equifax.mjs`).
+  (`scripts/cargar-tablas-equifax.mjs`, el 2026-10-13: 17.293 filas en 11 tablas,
+  0 errores). **Verificado en SQL contra el crudo:** las 11 tablas tienen las filas de
+  las listas de Equifax en las 22 consultas; el detalle de todos los roles concilia
+  con el resumen en bancos 22 de 22, cooperativas 21 de 22 y comercial 16 de 22
+  (igual que sobre el JSON y que `conciliaConElResumen`); y el saldo del titular de las
+  tablas es el de la estructura en las 22.
 
 Con unas 2.600 personas una pasada completa son del orden de 1,8 millones de
 filas, de ellas ~1,3 millones de historia mensual: cabe en la base. Cada
@@ -252,8 +257,8 @@ propuesta están en negrita y se explican en las secciones 1.1 y 3.1.
 ## 6. Qué no llega al modelo
 
 **Datos personales** (el modelo no los necesita; E27): nombre y documento de la
-persona y de terceros (`nombre_titular` e `identificacion_titular` de las
-garantías son de **otra persona**); fecha de nacimiento, provincia, cantón,
+persona y de terceros (`nombre_titular` e `identificacion_titular` de la
+lista de codeudor y garante son de **otra persona**); fecha de nacimiento, provincia, cantón,
 direcciones, coordenadas y teléfonos de `informacion_demografica`; dirección,
 nombre y nombre de fantasía del RUC; `numero_operacion` y `numero_tarjeta`;
 los identificadores de transacción. Son **22 campos** (los detecta el inventario
