@@ -170,7 +170,7 @@ if (!SOLO_EXCEL) {
         duracionMs,
         requestId: data?.id ?? null,
         clientId: p.clientId,
-        contexto: { cedula, marco: MARCO_VERSION, configuracion: clave, esfuerzo: config.esfuerzo ?? null },
+        contexto: { marco: MARCO_VERSION, configuracion: clave, esfuerzo: config.esfuerzo ?? null },
         esPrueba: true,
         razonamiento: config.razonamiento,
         maxTokens: config.maxTokens,

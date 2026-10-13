@@ -169,11 +169,17 @@ Deno.serve(async (req) => {
     if (!laConsultaAvalSirve(respuesta)) {
       // Registro durable del fallo, listo para una vista de salud/sobrecarga
       // (todavía sin UI): familia, intentos, si se agotó el tope, duración.
+      // La persona va por client_id, nunca por su número en meta: audit_log
+      // lo lee todo usuario con sesión y no se puede corregir después (113).
+      // Un fallo no crea a la persona; si todavía no existe, queda sin enlace.
+      const { data: conocida } = tipoIdentificacion === "C"
+        ? await serviceClient.from("clients").select("id").eq("cedula", identConsultar).maybeSingle()
+        : { data: null };
       await serviceClient.from("audit_log").insert({
         actor: actorId,
         action: "aval.consulta.fallo",
+        client_id: conocida?.id ?? null,
         meta: {
-          identificacion: identConsultar,
           familia: respuesta.familia,
           codigo: respuesta.codigo ?? null,
           intentos: respuesta.intentos,
@@ -262,7 +268,7 @@ Deno.serve(async (req) => {
       actor: actorId,
       action: "aval.consulta",
       client_id: clientId,
-      meta: { consulta_aval_id: guardado.id, identificacion: identConsultar, intentos: respuesta.intentos, duracion_ms: respuesta.duracionMs },
+      meta: { consulta_aval_id: guardado.id, intentos: respuesta.intentos, duracion_ms: respuesta.duracionMs },
     });
 
     return new Response(JSON.stringify({ ...guardado, reutilizada: false, vigente_hasta: finVigenciaAval().toISOString() }), {

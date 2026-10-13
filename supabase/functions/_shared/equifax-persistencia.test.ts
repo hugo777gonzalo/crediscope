@@ -215,6 +215,28 @@ Deno.test("simular dice que reutilizaría cuando hay una vigente", async () => {
   assertEquals(r.resultado === "simulada" && r.reutilizaria, true);
 });
 
+// audit_log lo lee todo usuario con sesión y no se corrige después: hasta el 2026-10-13 cada
+// consulta dejaba ahí la cédula (22 filas). La persona va por client_id.
+Deno.test("la auditoría nombra a la persona por client_id, nunca por su número", async () => {
+  const nueva = baseFalsa();
+  await procesarConsultaEquifax({ ...BASE, db: nueva, ahora: AHORA, consultar: llamadas().consultar });
+  const consulta = nueva.tablas.audit_log.find((f) => f.action === "equifax.consulta");
+  assertEquals(consulta?.client_id, nueva.tablas.clients[0].id);
+  assert(!JSON.stringify(consulta?.meta).includes(BASE.cedula), "la cédula quedó en meta");
+
+  const conocida = baseFalsa({ clients: [{ id: "persona-1", cedula: BASE.cedula }] });
+  await procesarConsultaEquifax({ ...BASE, db: conocida, ahora: AHORA, consultar: () => Promise.resolve(respuestaTimeout()) });
+  const fallo = conocida.tablas.audit_log.find((f) => f.action === "equifax.consulta.fallo");
+  assertEquals(fallo?.client_id, "persona-1");
+  assert(!JSON.stringify(fallo?.meta).includes(BASE.cedula), "la cédula quedó en meta");
+
+  // Un fallo no crea a la persona: si no existe, la constancia queda sin enlace.
+  const desconocida = baseFalsa();
+  await procesarConsultaEquifax({ ...BASE, db: desconocida, ahora: AHORA, consultar: () => Promise.resolve(respuestaTimeout()) });
+  assertEquals(desconocida.tablas.clients.length, 0);
+  assertEquals(desconocida.tablas.audit_log.find((f) => f.action === "equifax.consulta.fallo")?.client_id, null);
+});
+
 Deno.test("un timeout no deja fila, deja constancia de que pudo cobrarse", async () => {
   const db = baseFalsa();
   const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve(respuestaTimeout()), ahora: AHORA });
