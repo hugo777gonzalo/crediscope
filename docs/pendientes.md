@@ -51,6 +51,21 @@ aceptada.
   - Las 22 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
     Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas ya
     están cargadas; no hace falta volver a pagar para tener la estructura.
+  - **El negocio contestó el bloque A y la F1 del cuestionario (2026-10-13)** y
+    cambió el rumbo: **un solo buró por IFI** (no hay orden entre Equifax y Aval),
+    la deuda del sistema financiero de Novadata se apaga cuando hay buró, con una
+    sección de configuración para dejar de consultarla, y **Equifax y Aval son dos
+    pantallas aparte** (no van al Expediente). Lo medido sin gasto y la propuesta
+    («un tema, una fuente», el interruptor en tres capas, el diseño de la pestaña
+    Equifax): `docs/propuesta-buro-de-la-institucion.md`; se repite con
+    `node scripts/medir-solapamiento-equifax.mjs`. Lo que más pesa: bancos y
+    cooperativas son el mismo tema (saldo igual hasta 1% en 15 de 22 y 8 de 11), **el
+    comercial de Equifax y las casas comerciales de Novadata son otras empresas** (5
+    de 33 en común: no se apaga) y **Equifax no trae la calificación A1 a E** (se
+    reemplaza por días de mora; la usan el marco, `resumen_por_persona` y la
+    definición de impago del Laboratorio). Esperan respuesta del negocio las seis
+    preguntas de su sección 6 (entre ellas A4: en lugar de los niveles 3 y 4 del
+    marco, o como nivel 2).
   - Qué falta, por orden:
     1. **El diccionario de datos de Equifax.** Lo consigue el negocio (dijo el
        2026-10-13 que lo puede dar); lo que hay que pedir, con la evidencia y la
@@ -69,9 +84,12 @@ aceptada.
     3. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
        dijo otra vez el 2026-10-13 que por ahora no; el riesgo sigue mientras no
        se roten.
-    4. **Pantallas:** cuando todo el proceso detrás de Equifax esté listo
-       (decisión del negocio, 2026-10-13). Al hacerlas, rótulo «Score de
-       Equifax» y el vocabulario de `docs/modelo-de-la-persona.md`.
+    4. **Pantallas:** esta semana, junto con afinar la información (el negocio,
+       2026-10-13). Una pestaña Equifax propia, como la de Aval, con «Score de
+       Equifax» separado del Score de CrediScope y un reporte para descargar. El
+       diseño propuesto está en `docs/propuesta-buro-de-la-institucion.md`,
+       sección 5: **se construye cuando el negocio lo apruebe**, y se revisa con la
+       habilidad `revision-ux` en el navegador.
     5. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,

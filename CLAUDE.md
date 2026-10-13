@@ -345,6 +345,13 @@ Romper cualquiera de estas rompe algo real.
   `docs/equifax-pedido-de-diccionario.md`; y cómo entraría al modelo, en
   `docs/propuesta-marco-equifax.md` (propuesta: no cambia nada de lo que lee el
   modelo):
+  - **Un solo buró por IFI** (negocio, 2026-10-13: Equifax o Aval, no los dos
+    ni en orden). Cuando la persona lo tiene, reemplaza a la deuda de bancos y
+    cooperativas de Novadata: «un tema, una fuente», propuesto en
+    `docs/propuesta-buro-de-la-institucion.md` (sin construir). Medido con
+    `scripts/medir-solapamiento-equifax.mjs`: **el comercial de Equifax y las
+    casas comerciales de Novadata son otras empresas** (no se apagan) y **Equifax
+    no trae la calificación A1 a E** (se lee en días de mora).
   - `_shared/equifax-client.ts`: el token (en memoria, nunca guardado) y
     la consulta, que se cobra.
   - `_shared/equifax-persistencia.ts`: el recorrido completo (proveedor,

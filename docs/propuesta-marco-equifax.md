@@ -7,6 +7,15 @@ son una versión nueva del marco (`MARCO_VERSION`, con su fila en
 `scoring_rules_versions`), y esa versión no se activa sin validarla con el
 negocio y sin autorización explícita del gasto del modelo.
 
+**Cambió con las respuestas del negocio del 2026-10-13** (bloque A del
+cuestionario): Equifax ya no es «una segunda lectura» de la deuda sino que
+**reemplaza** a los grupos de bancos y cooperativas de Novadata cuando la persona
+lo tiene; la calificación A1 a E (que Equifax no trae) se reemplaza por días de
+mora; las casas comerciales de Novadata se quedan, sin repetir empresa; y el
+rótulo es «Deuda como codeudor o garante». Lo medido y la regla:
+`docs/propuesta-buro-de-la-institucion.md`, secciones 1, 2 y 4. Las secciones 2 y
+4 de este documento se reescriben con eso antes de construir `marco-v30`.
+
 Lo que sí está hecho y verificado es lo que esta propuesta necesita: la
 estructura estandarizada de Equifax, calculada desde las tablas
 (`docs/propuesta-estructura-equifax.md`, migración 126), con 24 meses de historia
