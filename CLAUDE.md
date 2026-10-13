@@ -421,6 +421,11 @@ antes de tocar esa área.
 - Una CTE usada una sola vez dentro de una subconsulta correlacionada se
   recalcula por cada fila de afuera: `as materialized`. El centro de datos
   del Laboratorio la recalculaba 52 veces, una por fuente (121).
+- Leer un campo de `standard_profile` descomprime el perfil entero. En una
+  consulta sobre muchos perfiles, se eligen primero las filas sin tocarlo y
+  el JSON se lee sólo de las elegidas, o la condición va a un índice
+  parcial. Así tardaban 3,5 s el corte del IESS (121) y 5,3 s la primera
+  página de la bandeja (122).
 - Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
   El 2026-10-09 el sello del despliegue reemplazó una palabra en un
   comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la

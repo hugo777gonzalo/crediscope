@@ -512,6 +512,15 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   - En la misma función, un resumen por semana usado dentro de una
     subconsulta se recalculaba una vez por fuente, 52 veces. `as materialized`
     lo calcula una sola.
+- **La bandeja abría los 8.590 perfiles para mostrar 50 personas.**
+  - La vista sacaba nombre, edad y provincia de adentro de `standard_profile`
+    antes de elegir el último perfil de cada persona: descomprimía todos los
+    perfiles para quedarse con 2.812. La primera página tardaba 5,3 s y la
+    franja, con la base fría, 8,6 s.
+  - Eligiendo primero el último perfil por persona y fecha, y leyendo el JSON
+    sólo de ése: 0,18 s, con las mismas filas (122).
+  - Es la misma falla que la del corte del IESS, en otro lugar. Apareció al
+    medir todas las funciones de la pantalla, no leyendo el SQL.
 
 **Interfaz (revisión de UX del 2026-10-10)**
 - **Una pantalla que espera la sesión no es una pantalla sin sesión.**
