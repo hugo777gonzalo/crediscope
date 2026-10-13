@@ -1,4 +1,8 @@
--- 122 · La bandeja sin abrir todos los perfiles
+-- 123 · La bandeja sin abrir todos los perfiles
+--
+-- Se fusionó como 122 y pasó a 123 sin aplicarse: la 122 de la base es
+-- 122_consultas_equifax.sql, que otra sesión aplicó desde su rama el mismo
+-- día. El corredor dio la base por al día y esta no corrió.
 --
 -- La primera página de la bandeja (50 personas, ordenadas por la última
 -- actividad) tardaba 5,3 s con el rol de la pantalla (medido el

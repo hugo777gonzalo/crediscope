@@ -518,9 +518,18 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
     perfiles para quedarse con 2.812. La primera página tardaba 5,3 s y la
     franja, con la base fría, 8,6 s.
   - Eligiendo primero el último perfil por persona y fecha, y leyendo el JSON
-    sólo de ése: 0,18 s, con las mismas filas (122).
+    sólo de ése: 0,18 s, con las mismas filas (123).
   - Es la misma falla que la del corte del IESS, en otro lugar. Apareció al
     medir todas las funciones de la pantalla, no leyendo el SQL.
+- **Dos sesiones, la misma 122.**
+  - Una sesión aplicó su `122_consultas_equifax.sql` a la base desde su
+    rama, sin subirla a `main`. Otra fusionó en `main` una 122 distinta sin
+    mirar antes en qué número estaba la base, sólo las ramas.
+  - El corredor vio la base en la 122, la dio por al día y la segunda no
+    corrió: lo mostró el `--seco` posterior, que decía "al día" antes de
+    aplicar nada.
+  - Se renumeró a 123. Una migración se escribe mirando la base y se aplica
+    recién fusionada.
 
 **Interfaz (revisión de UX del 2026-10-10)**
 - **Una pantalla que espera la sesión no es una pantalla sin sesión.**

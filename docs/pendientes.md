@@ -3,7 +3,7 @@
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
-2026-10-12 (sección 1, primer punto). La última migración es la **122**;
+2026-10-12 (sección 1, primer punto). La última migración es la **123**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -54,7 +54,7 @@ aceptada.
   - Queda, por orden:
   1. **Tablas de resumen para que la cartera pueda crecer** (decisión del
      negocio del 2026-10-12: «según la pantalla»).
-     - Medido ese día con el rol de la pantalla, después de la 121 y la 122:
+     - Medido ese día con el rol de la pantalla, después de la 121 y la 123:
        centro de datos 1,3 s, métricas de Monitoreo 1,3 s, Fuentes de ingreso
        1,4 s y primera página de la bandeja 0,18 s. Todo recorre la cartera
        entera en cada vista, y crece con ella.
