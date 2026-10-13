@@ -187,6 +187,17 @@ está el porqué. Una lección nueva va en los dos lugares.
   sirve para nada. Hay que leer `message`/`details`/`hint`/`code`.
 - **Reencolar ítems de un lote `terminado` no lo reabre**: el trabajador
   solo mira los `en_proceso`.
+- **Equifax cobra cada consulta y no tiene tope: la protección es
+  nuestra** (2026-10-12). El conector se diseñó desde ahí y no del patrón
+  de Aval, que es gratis en prueba: un timeout no se repite (pudo
+  cobrarse), se reutiliza lo ya pagado hasta el 17 del mes, el tope
+  diario cuenta también las fallas que pudieron cobrarse, el guion
+  simula por defecto y la respuesta cobrada se escribe a disco antes de
+  interpretarla. Con Aval, el guion local tuvo su propia copia del
+  recorrido; acá el recorrido es uno solo (`equifax-persistencia.ts`).
+  Para saber si Equifax deja pasar a las Edge Functions sin gastar una
+  consulta existe `probarConexion()`, que sólo pide un token: con Aval el
+  bloqueo de la IP se descubrió consultando personas.
 - **El ambiente de prueba de Aval contesta por otra persona.** Medido el
   2026-09-23 con 200 consultas a `api-test`: 73 (37%) volvieron con el
   nombre de alguien que no era la cédula pedida, y 143 con el archivo

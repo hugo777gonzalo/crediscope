@@ -37,3 +37,8 @@ verify_jwt = true
 # crédito, así que exige sesión de usuario igual que las dos de arriba.
 [functions.consultar-aval]
 verify_jwt = true
+
+# Consulta al buró Equifax: cada consulta se cobra y no hay tope del
+# proveedor. Exige sesión y rol dentro de la función, antes de leer el cuerpo.
+[functions.consultar-equifax]
+verify_jwt = true
