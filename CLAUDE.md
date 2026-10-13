@@ -369,6 +369,8 @@ Romper cualquiera de estas rompe algo real.
       se sube su versión y se corre `node scripts/cargar-tablas-equifax.mjs`
       (`--seco` primero)**: rehace desde el crudo las consultas que quedaron
       con la versión anterior, sin volver a pagar.
+    - `scripts/medir-bloque-equifax.mjs`: cuánto pesaría el bloque de Equifax del
+      perfil del modelo (`docs/propuesta-marco-equifax.md`), sin gasto.
     - `scripts/probar-equifax-tablas.mjs`: las mismas funciones contra las
       respuestas reales de `research/equifax/crudo/` (conciliación contra el
       resumen, titular + codeudor/garante, datos personales). Correrlo después de
@@ -398,7 +400,7 @@ Romper cualquiera de estas rompe algo real.
   una base atrasada. Falta armar desde cero la base de un cliente nuevo
   (ver `docs/pendientes.md`).
 - **Seguridad y cumplimiento** (auditoría del 2026-10-09):
-  `scripts/auditar-seguridad.mjs` es el control (41 puntos, correrlo
+  `scripts/auditar-seguridad.mjs` es el control (68 puntos al 2026-10-13, correrlo
   después de tocar permisos, políticas, funciones, migraciones o la
   publicación; hoy mide sólo la base enlazada);
   `scripts/derechos-del-titular.mjs` atiende acceso, portabilidad y
