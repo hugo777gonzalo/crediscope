@@ -106,7 +106,9 @@ Romper cualquiera de estas rompe algo real.
    reserva**: el corredor aplica sólo los números mayores que el último
    aplicado, y uno salteado no se aplica nunca. Antes de escribirla, mirar
    en qué número está cada base (el corredor sin banderas) y las ramas
-   abiertas, y avisar a las otras sesiones. Si una función empieza a
+   abiertas, y avisar a las otras sesiones. **Se aplica recién fusionada en
+   `main`**: el 2026-10-12 una 122 aplicada desde una rama dejó sin correr
+   otra 122 que ya estaba en `main`. Si una función empieza a
    depender de ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
    migra, después se despliega (`--funciones`), o la función contesta
    503. Para consultas sueltas sigue
@@ -425,7 +427,7 @@ antes de tocar esa área.
   consulta sobre muchos perfiles, se eligen primero las filas sin tocarlo y
   el JSON se lee sólo de las elegidas, o la condición va a un índice
   parcial. Así tardaban 3,5 s el corte del IESS (121) y 5,3 s la primera
-  página de la bandeja (122).
+  página de la bandeja (123).
 - Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
   El 2026-10-09 el sello del despliegue reemplazó una palabra en un
   comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
