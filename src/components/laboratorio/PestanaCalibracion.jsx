@@ -63,7 +63,7 @@ export default function PestanaCalibracion({ corte, corteId, cortes, poblacion, 
       const [a, b] = c.modelo.coeficientes;
       await guardarCalculo({
         corteId, tipo: "calibracion", poblacion, parametros: { estimarEn },
-        metodologia: { modelo: "logística: probabilidad de impago = 1 / (1 + e^-(a + b × puntaje))", estimacion: { cohorte: c.descripcion.estimacion, corte_id: estimarEn === MITAD ? corteId : estimarEn, n: c.estimacion.length, malos: c.malosE }, prueba: { cohorte: c.descripcion.prueba, n: c.prueba.length, malos: c.malosP } },
+        metodologia: { modelo: "logística: probabilidad de impago = 1 / (1 + e^-(a + b × score))", estimacion: { cohorte: c.descripcion.estimacion, corte_id: estimarEn === MITAD ? corteId : estimarEn, n: c.estimacion.length, malos: c.malosE }, prueba: { cohorte: c.descripcion.prueba, n: c.prueba.length, malos: c.malosP } },
         resultado: { intercepto: a, pendiente: b, error_pendiente: c.modelo.errores?.[1] ?? null, convergio: c.modelo.convergio, brier: c.cal.brier, brier_referencia: c.brierReferencia, habilidad: c.habilidad, ece: c.cal.ece, hosmer_lemeshow: c.cal.hosmerLemeshow, tabla: c.cal.tabla },
         n: c.prueba.length, nMalos: c.malosP,
       });
@@ -89,7 +89,7 @@ export default function PestanaCalibracion({ corte, corteId, cortes, poblacion, 
           </select>
         </label>
         <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
-          Estimación: {c.descripcion.estimacion} ({num(c.estimacion.length)} con puntaje, {num(c.malosE)} malos). Prueba: {c.descripcion.prueba} ({num(c.prueba.length)}, {num(c.malosP)} malos).
+          Estimación: {c.descripcion.estimacion} ({num(c.estimacion.length)} con score, {num(c.malosE)} malos). Prueba: {c.descripcion.prueba} ({num(c.prueba.length)}, {num(c.malosP)} malos).
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export default function PestanaCalibracion({ corte, corteId, cortes, poblacion, 
       ) : (
         <>
           <div className="crediscope-kpi-grid">
-            <Kpi etiqueta="Función" valor={`a ${dec(c.modelo.coeficientes[0], 3)} · b ${dec(c.modelo.coeficientes[1], 4)}`} detalle="probabilidad = 1 / (1 + e^-(a + b × puntaje))" />
+            <Kpi etiqueta="Función" valor={`a ${dec(c.modelo.coeficientes[0], 3)} · b ${dec(c.modelo.coeficientes[1], 4)}`} detalle="probabilidad = 1 / (1 + e^-(a + b × score))" />
             <Kpi etiqueta="Brier" valor={dec(c.cal.brier, 4)} detalle={`contra ${dec(c.brierReferencia, 4)} prediciendo la tasa promedio · habilidad ${pct(c.habilidad)}`} />
             <Kpi etiqueta="Error de calibración (ECE)" valor={pct(c.cal.ece, 2)} detalle="distancia media entre predicho y observado" />
             <Kpi

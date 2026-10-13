@@ -104,7 +104,7 @@ info:
 
 servers:
   - url: https://api.crediscope.example/v1
-    description: Producción (la dirección definitiva se fija antes del primer cliente externo)
+    description: Producción (la dirección definitiva se fija antes de la primera IFI externa)
   - url: https://sandbox.crediscope.example/v1
     description: Sandbox, con respuestas fijas y sin consultar a personas
 
@@ -919,6 +919,11 @@ components:
         `completada`, `persona_no_encontrada`, `fallida` y `cancelada` son
         finales y no cambian nunca.
 
+        Es el estado de la evaluación, no el de la persona (de Prospecto a
+        Cliente cerrado, `docs/modelo-de-la-persona.md`), que la v1 no expone.
+        Si se expone, va con otro nombre (`estadoDeLaPersona`): los dos no se
+        llaman «estado» en el mismo lugar.
+
     Evaluacion:
       type: object
       required: [id, estado, referencia, recibidaEl, plazoHasta]
@@ -1137,7 +1142,12 @@ components:
       properties:
         decision:
           type: string
-          enum: [aprobado, negado, aprobado_con_condiciones, desistido]
+          enum: [aprobado, rechazado, aprobado_con_condiciones, desistido]
+          description: |
+            La decisión de la institución sobre la solicitud: Aprobado o
+            Rechazado, como en el modelo de la persona del negocio
+            (2026-10-12). No es la recomendación del modelo (`aprobar`,
+            `revisar`, `negar`), y por eso usa otra palabra.
         decididaEl:
           type: string
           format: date-time

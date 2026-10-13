@@ -11,6 +11,8 @@ import {
   formatMoneda,
   textoIngresoReportado,
 } from "../lib/fuentesIngresoConsolidado.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import { humanizarTexto, plural, entero } from "../lib/formatos.js";
 
 // El listado detrás de los números del panorama. Sin esto el módulo
 // informa pero no sirve para trabajar: una jefatura que ve "135
@@ -75,9 +77,7 @@ export default function FuentesClientes() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   return (
@@ -89,12 +89,12 @@ export default function FuentesClientes() {
       </p>
 
       <div style={{ marginBottom: 16 }}>
-        <h2 style={{ marginBottom: 4 }}>Clientes por segmento</h2>
+        <h2 style={{ marginBottom: 4 }}>Personas por segmento</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
           {/* El total es el de verdad, no el de la página. Decir "292
               cliente(s)" cuando hay 814 fue el hallazgo; decir "1-50 de
               814" es la corrección. */}
-          {datos ? `${datos.total.toLocaleString("es-EC")} cliente(s)` : "Cargando..."}
+          {datos ? plural(datos.total, "persona") : "Cargando..."}
           {segmentoFiltro ? ` · ${ETIQUETA_SEGMENTO[segmentoFiltro] ?? segmentoFiltro}` : ""}
           {indicioFiltro
             ? ` · ${indicioFiltro === "cualquiera" ? "con algún indicio de ingreso mayor" : (ETIQUETA_INDICIO[indicioFiltro] ?? indicioFiltro)}`
@@ -143,7 +143,7 @@ export default function FuentesClientes() {
 
       {datos && filas.length === 0 ? (
         <div className="crediscope-card">
-          <p className="crediscope-muted" style={{ margin: 0 }}>Ningún cliente con ese filtro.</p>
+          <p className="crediscope-muted" style={{ margin: 0 }}>Ninguna persona con ese filtro.</p>
         </div>
       ) : null}
 
@@ -172,7 +172,7 @@ export default function FuentesClientes() {
             )}
           </div>
 
-          <p className="crediscope-muted" style={{ marginTop: 8, marginBottom: 10, fontSize: 13.5 }}>{f.motivoSegmento}</p>
+          <p className="crediscope-muted" style={{ marginTop: 8, marginBottom: 10, fontSize: 14 }}>{humanizarTexto(f.motivoSegmento)}</p>
 
           {(f.fuentes ?? []).length > 0 ? (
             <ul className="crediscope-items">
@@ -186,7 +186,7 @@ export default function FuentesClientes() {
                         {quienDeclara(fu, fila.standard_profile)}
                       </span>
                     </span>
-                    <span className="crediscope-item-detalle">{fu.detalle}</span>
+                    <span className="crediscope-item-detalle">{humanizarTexto(fu.detalle)}</span>
                   </span>
                 </li>
               ))}
@@ -195,16 +195,16 @@ export default function FuentesClientes() {
 
           {(f.senalesDeEscala ?? []).length > 0 ? (
             <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 6 }}>
-              {f.senalesDeEscala.map((s) => s.detalle).join(" ")}
+              {humanizarTexto(f.senalesDeEscala.map((s) => s.detalle).join(" "))}
             </p>
           ) : null}
 
           {(f.paraConfirmar ?? []).length > 0 ? (
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: 4 }}>
               <p style={{ fontWeight: 600, fontSize: 13, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</p>
-              <ul className="crediscope-list" style={{ fontSize: 13.5, margin: 0 }}>
+              <ul className="crediscope-list" style={{ fontSize: 14, margin: 0 }}>
                 {f.paraConfirmar.map((p, i) => (
-                  <li key={i}>{p}</li>
+                  <li key={i}>{humanizarTexto(p)}</li>
                 ))}
               </ul>
             </div>
@@ -216,8 +216,8 @@ export default function FuentesClientes() {
         <div className="crediscope-card">
           <div className="crediscope-paginacion" style={{ marginTop: 0, paddingTop: 0, borderTop: "none" }}>
             <span className="crediscope-muted">
-              {pagina * CLIENTES_POR_PAGINA + 1}–{pagina * CLIENTES_POR_PAGINA + filas.length} de{" "}
-              {datos.total.toLocaleString("es-EC")}
+              {entero(pagina * CLIENTES_POR_PAGINA + 1)}–{entero(pagina * CLIENTES_POR_PAGINA + filas.length)} de{" "}
+              {entero(datos.total)}
             </span>
             <div className="crediscope-paginacion-botones">
               <button

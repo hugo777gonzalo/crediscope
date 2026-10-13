@@ -4,6 +4,7 @@ import { faltantes } from "../../lib/analisisEstadistico.js";
 import { GraficoLineas, MapaDeCalor } from "./Graficos.jsx";
 import { MensajeError, Cargando, SinGuardar, num, pct, dec } from "./Comunes.jsx";
 import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
+import { mesAnio } from "../../lib/formatos.js";
 
 // Datos faltantes: ¿la ausencia anticipa el impago, o es un problema de
 // captura? Por variable, la tasa de malos con y sin el dato (y si la
@@ -66,8 +67,8 @@ export default function PestanaFaltantes({ corteId, poblacion }) {
         <div className="crediscope-card">
           <h3 style={{ marginTop: 0 }}>Faltantes de «{detalle.nombre}» por mes</h3>
           <GraficoLineas
-            series={[{ nombre: "Faltan", puntos: detalle.porMes.map((m, i) => ({ x: i, y: m.n ? m.faltan / m.n : 0, titulo: `${m.mes}: ${num(m.faltan)} de ${num(m.n)}` })) }]}
-            x={{ titulo: "Mes", formato: (v) => detalle.porMes[Math.round(v)]?.mes ?? "" }}
+            series={[{ nombre: "Faltan", puntos: detalle.porMes.map((m, i) => ({ x: i, y: m.n ? m.faltan / m.n : 0, titulo: `${mesAnio(m.mes)}: ${num(m.faltan)} de ${num(m.n)}` })) }]}
+            x={{ titulo: "Mes", formato: (v) => mesAnio(detalle.porMes[Math.round(v)]?.mes) }}
             y={{ titulo: "Parte sin el dato", min: 0, max: 1, formato: (v) => pct(v, 0) }}
             alto={220}
             etiqueta="Faltantes por mes"
@@ -84,7 +85,7 @@ export default function PestanaFaltantes({ corteId, poblacion }) {
           <MapaDeCalor filas={c.matriz.variables} columnas={c.matriz.variables} valor={(i, j) => c.matriz.valores[i][j]} etiqueta="Faltantes conjuntos" />
         </div>
       ) : null}
-      <p className="crediscope-muted" style={{ fontSize: 12.5 }}>
+      <p className="crediscope-muted" style={{ fontSize: 13 }}>
         El corte guarda el valor de cada variable, no si la fuente "no tenía nada" o "no contestó": eso está en la disponibilidad por tema de cada perfil,
         que todavía no se congela con el corte.
       </p>

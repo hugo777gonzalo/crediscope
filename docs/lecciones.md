@@ -501,3 +501,104 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   constancia de un guion al salir, el aviso a la base sale por un proceso
   hijo sincrónico, con la clave pasada por el entorno y no en la línea de
   comandos.
+- **El corte del IESS abría el perfil entero de cada consulta de 90 días.**
+  - `corte_iess_vigente()` lee una marca de adentro de `standard_profile`, y
+    eso descomprime el perfil entero de cada fila. Con 8.590 perfiles tardaba
+    3,5 s antes de cada consulta y cada análisis, y crecía con cada perfil
+    guardado.
+  - Nadie lo había medido. Apareció el 2026-10-12, cuando el centro de datos
+    del Laboratorio, que también lo llama, se pasó del límite de 8 s.
+  - Un índice parcial que repite la condición evita abrir el perfil (121).
+  - En la misma función, un resumen por semana usado dentro de una
+    subconsulta se recalculaba una vez por fuente, 52 veces. `as materialized`
+    lo calcula una sola.
+- **La bandeja abría los 8.590 perfiles para mostrar 50 personas.**
+  - La vista sacaba nombre, edad y provincia de adentro de `standard_profile`
+    antes de elegir el último perfil de cada persona: descomprimía todos los
+    perfiles para quedarse con 2.812. La primera página tardaba 5,3 s y la
+    franja, con la base fría, 8,6 s.
+  - Eligiendo primero el último perfil por persona y fecha, y leyendo el JSON
+    sólo de ése: 0,18 s, con las mismas filas (123).
+  - Es la misma falla que la del corte del IESS, en otro lugar. Apareció al
+    medir todas las funciones de la pantalla, no leyendo el SQL.
+- **Dos sesiones, la misma 122.**
+  - Una sesión aplicó su `122_consultas_equifax.sql` a la base desde su
+    rama, sin subirla a `main`. Otra fusionó en `main` una 122 distinta sin
+    mirar antes en qué número estaba la base, sólo las ramas.
+  - El corredor vio la base en la 122, la dio por al día y la segunda no
+    corrió: lo mostró el `--seco` posterior, que decía "al día" antes de
+    aplicar nada.
+  - Se renumeró a 123. Una migración se escribe mirando la base y se aplica
+    recién fusionada.
+
+**Interfaz (revisión de UX del 2026-10-10)**
+- **Una pantalla que espera la sesión no es una pantalla sin sesión.**
+  - `App.jsx` ignoraba `loading` de `useSession`: mientras Supabase leía la
+    sesión guardada, `session` era null y cualquier enlace directo o recarga
+    caía en `*` → `/login` → `/`.
+  - El expediente, que tiene ruta propia "para compartirse por enlace y
+    sobrevivir a una recarga", volvía siempre al inicio. Se vio al revisar con
+    la sesión de QA, donde `navigate` a una ruta profunda terminaba siempre en
+    la raíz y se había tomado por una rareza del panel de vista previa.
+- **Lo que cada componente pide por su cuenta se pide muchas veces.**
+  - El perfil de acceso lo pedían el menú, la barra y cada guardia de ruta. Con
+    un enlace directo a una pantalla de administración, la guardia devolvía
+    `null` hasta que llegaba su pedido: de 4 a 10 s de pantalla en blanco, sin
+    un "Cargando".
+- **Una cifra, cuatro maneras de escribirla.**
+  - "2.812" en la bandeja, "2812" en el Panorama y en Reportes; "37.0 s" y "37,0
+    s"; "4.3¢" junto a "$15,36". Había ocho `Intl.NumberFormat` copiados y
+    números interpolados sin formato. Ahora todo pasa por `formatos.js`.
+- **Una franja de totales tiene que sumar.**
+  - La de la bandeja decía 2.812 y sus ocho tarjetas daban 2.789: faltaban 3
+    análisis que no se completaron y 20 análisis antiguos sin recomendación.
+- **Un porcentaje contra el mayor no es un porcentaje.** Reportes mostraba
+  "100% (5.937)" y "45% (2.642)" en la actividad por analista.
+- **Una barra tiene que medir lo que dice su título.** "En qué se gastó"
+  dibujaba el porcentaje de llamadas (96%) y no de dinero (79%).
+- **Un error técnico no es un mensaje.** Treinta y nueve pantallas mostraban
+  `error.message` tal cual: *column bandeja_solicitudes.es_sintetico does not
+  exist* (la migración 118 todavía no estaba aplicada), *invalid input syntax for
+  type uuid: "null"* y un JSON de la API del modelo con su identificador de pedido.
+- **«Cliente» no era una palabra de estilo: era un estado.**
+  - La revisión encontró 99 «persona» y 71 «cliente» mezclados y propuso tres
+    reglas de escritura. El negocio no eligió ninguna: contestó con el ciclo de
+    una persona (Persona → Solicitud → Evaluación → Aprobado o Rechazado →
+    Cliente) y sus estados. «Cliente» es quien tiene un crédito.
+  - Cuando dos palabras se mezclan en una pantalla, preguntar qué cosa distinta
+    nombra cada una antes de elegir una (`docs/modelo-de-la-persona.md`).
+- **Un reemplazo masivo sobre el código toca lo que no debe.** «Puntaje» a
+  «Score» en 31 archivos habría cambiado `puntaje` y `fuente_puntaje`, las
+  columnas de la plantilla que llenan las instituciones. `renombrar-textos.mjs`
+  usa las posiciones que da el analizador de JSX y reemplaza sólo dentro de los
+  textos de pantalla; no concuerda género ni número, y eso se lee y se edita.
+- **Una pantalla que junta ocho consultas se cae con la más lenta.**
+  - Laboratorio › Inicio pedía todo a la vez y, si una se pasaba del límite de la
+    base, mostraba un solo mensaje de error: no abrió el 10 ni el 12 de octubre.
+  - La culpable era `lab_centro_de_datos`: unos 6 s sola con 60 días (6,4 s medidos), contra
+    menos de 1 s de cada una de las otras siete. Se midió una por una desde la
+    página antes de tocar nada.
+  - Lo liviano decide si se dibuja; lo pesado llega después y cada tarjeta dice
+    qué le falta. Sin el dato no se escribe «Ninguno» ni «0»: se dice que no se
+    pudo mirar.
+- **Las pantallas que documentan se desfasan en silencio.**
+  - Reglas de clasificación documentaba fuentes-v9 con el código en v10 (se
+    avisaba a sí misma, pero nadie la había reescrito).
+  - Corridas masivas advertía de un backtest que ya no existe.
+  - Fallas e incidentes llevaba la bitácora de lo que faltaba construir: "Listo"
+    y "Nada de esto está construido todavía" en la misma tarjeta.
+- **Un archivo de 1,7 MB para entrar al login.** Todo viajaba junto (Laboratorio,
+  estadística, lectura de Excel). Con una pantalla por archivo el principal quedó
+  en 476 KB (139 KB comprimidos).
+  - El tamaño se mide con el `.env` de la aplicación. Sin `VITE_SUPABASE_URL` y
+    `VITE_SUPABASE_ANON_KEY`, `supabaseClient.js` exporta `null` y el compilador
+    deja afuera el cliente de Supabase (~200 KB): el mismo código sale en 273 KB.
+  - El control `pantalla` de la integración continua compila así, sin las
+    variables: sirve para ver que compila, no para medir lo que se publica.
+- **El menú y los títulos eran dos listas.** Todo el Laboratorio decía "CrediScope"
+  arriba y quedaba una entrada para Retroalimentación. Ahora los dos salen de
+  `navegacion.js`.
+- **Vite sirvió un módulo viejo.** Tras varias ediciones seguidas del mismo archivo,
+  el servidor de desarrollo entregó una transformación anterior (`Link is not
+  defined` con el import presente). `touch` del archivo y recargar; el build
+  compilaba bien.

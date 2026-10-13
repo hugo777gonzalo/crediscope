@@ -19,7 +19,7 @@ export default function PestanasProveedor({ base, activo }) {
     <div className="crediscope-tabs">
       {PROVEEDORES.map((p) =>
         p.clave === activo ? (
-          <span key={p.clave} className="crediscope-tab crediscope-tab-active">
+          <span key={p.clave} className="crediscope-tab crediscope-tab-active" aria-current="page">
             {p.nombre}
           </span>
         ) : (

@@ -5,9 +5,11 @@ import { ShieldCheck, FileClock, Wallet } from "lucide-react";
 // texto -- el porqué está en el resumen.
 //
 // El tercero del diseño, capacidad de pago, se muestra como pendiente a
-// propósito: todavía no hay una fuente de ingresos confiable con qué
-// calcularlo. Se deja visible y explicado en vez de ocultarlo, para que
-// quede claro que falta la fuente, no el análisis.
+// propósito: es la cuota frente al ingreso reportado y no se puede calcular
+// sin el monto y el plazo del crédito pedido, que hoy no se registran (el
+// ingreso sí se conoce: es el de Fuentes de Ingreso). Se deja visible y
+// explicado en vez de ocultarlo, para que quede claro qué falta. El Expediente
+// dice lo mismo con las mismas palabras.
 
 const COLOR_RIESGO = {
   "muy bajo": "var(--good)",
@@ -71,9 +73,9 @@ export default function IndicadoresAnalisis({ riesgo, historial }) {
       <Indicador
         Icono={Wallet}
         etiqueta="Capacidad"
-        valor="Sin fuente"
+        valor="Sin calcular"
         color="var(--text-muted)"
-        titulo="Pendiente: todavía no hay una fuente de ingresos confiable con qué estimar la capacidad de pago."
+        titulo="Pendiente: la capacidad de pago es la cuota frente al ingreso reportado. Todavía no se puede calcular: faltan el monto y el plazo del crédito solicitado, que hoy no se registran."
       />
     </div>
   );

@@ -68,7 +68,7 @@ export default function PestanaResumenEstadistico({ corteId, poblacion }) {
             </tbody>
           </table>
         </div>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           Las dos mitades son el corte partido por fecha: una variable que sólo anticipa en una mitad es ruido. q es el valor p corregido por
           comparaciones múltiples (Benjamini-Hochberg sobre {num(sig.length)} pruebas). Cobertura media: {pct(sig.reduce((s, x) => s + x.cobertura, 0) / (sig.length || 1), 0)}.
         </p>

@@ -10,7 +10,7 @@
 
 import * as XLSX from "xlsx";
 
-const FRANJA = "SIMULACIÓN — no presentar. El resultado de los créditos y el puntaje son inventados: no es desempeño del motor.";
+const FRANJA = "SIMULACIÓN — no presentar. El resultado de los créditos y el score son inventados: no es desempeño del motor.";
 
 export function exportarInforme({ corte, desempeno, variables, propuestas }) {
   if (!desempeno) throw new Error("Primero hay que calcular el desempeño del corte.");
@@ -31,7 +31,7 @@ export function exportarInforme({ corte, desempeno, variables, propuestas }) {
     ["Ventana", `${corte.ventana_meses} meses`],
     ["Definición de impago", corte.lab_definiciones_default?.nombre ?? ""],
     ["Congelado el", corte.congelado_en],
-    ["Operaciones con puntaje", d.n],
+    ["Operaciones con score", d.n],
     ["Malos", d.n_malos],
     ["AUC", d.auc, "intervalo 95%", ...(d.auc_intervalo ?? [])],
     ["Gini", d.gini],
@@ -40,7 +40,7 @@ export function exportarInforme({ corte, desempeno, variables, propuestas }) {
     ["Advertencias"],
     ...(d.advertencias ?? []).map((a) => [a]),
     [],
-    ["Nota: el mismo perfil analizado dos veces mueve el puntaje ~40 puntos (medido el 2026-10-03); una diferencia menor no se atribuye a nada."],
+    ["Nota: el mismo perfil analizado dos veces mueve el score ~40 puntos (medido el 2026-10-03); una diferencia menor no se atribuye a nada."],
   ]);
   XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(resumen), "Resumen");
 
@@ -55,7 +55,7 @@ export function exportarInforme({ corte, desempeno, variables, propuestas }) {
   XLSX.utils.book_append_sheet(
     libro,
     hojaDeFilas((d.por_tramo ?? []).map((t) => ({ "Puntaje desde": t.desde, "Puntaje hasta": t.hasta, "Operaciones": t.n, "Malos": t.malos, "Tasa": t.tasa }))),
-    "Por tramo de puntaje",
+    "Por tramo de score",
   );
   if (variables) {
     XLSX.utils.book_append_sheet(

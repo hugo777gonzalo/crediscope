@@ -6,6 +6,7 @@ import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
 import { MensajeError, Etiqueta, ETIQUETA_ESTADO_CARGA, num, pct } from "../components/laboratorio/Comunes.jsx";
 import { CentroDeDatos, CalidadDeCarga, Conciliacion, ExploradorDeCartera, Diccionario } from "../components/laboratorio/PestanasDatos.jsx";
 import PestanaConfiguracion from "../components/laboratorio/PestanaConfiguracion.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Módulo 3 del negocio: Datos y cartera. Lo que entra al Laboratorio (las
 // cargas de la institución), cómo se concilia con lo que analizamos y las
@@ -54,7 +55,7 @@ function Cargas({ cargas }) {
 }
 
 function Cortes({ cortes }) {
-  if (!cortes.length) return <p className="crediscope-muted" style={{ margin: 0 }}>Un corte congela una población (cargas, definición de default, ventana) para analizarla.</p>;
+  if (!cortes.length) return <p className="crediscope-muted" style={{ margin: 0 }}>Un corte congela una población (cargas, definición de impago, ventana) para analizarla.</p>;
   return (
     <div style={{ overflowX: "auto" }}>
       <table className="crediscope-table">
@@ -145,6 +146,7 @@ export default function LaboratorioDatos() {
           <button
             key={t.clave}
             className={`crediscope-tab ${pestana.clave === t.clave ? "crediscope-tab-active" : ""}`}
+            aria-current={pestana.clave === t.clave ? "true" : undefined}
             onClick={() => setParams({ pestana: t.clave })}
             style={{ border: "none", background: "none", cursor: "pointer" }}
           >
@@ -154,7 +156,7 @@ export default function LaboratorioDatos() {
       </div>
 
       <MensajeError mensaje={error} />
-      {!datos && !error ? <p className="crediscope-muted">Cargando...</p> : null}
+      {!datos && !error ? <Cargando /> : null}
       {datos ? <Componente cargas={datos.cargas} cortes={datos.cortes} /> : null}
     </div>
   );

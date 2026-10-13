@@ -21,7 +21,7 @@ function Prueba({ nombre, estadistico, p, efecto, nota }) {
       <td style={{ textAlign: "right" }}>{estadistico}</td>
       <td style={{ textAlign: "right", fontWeight: 700, color: p !== null && p < 0.05 ? "var(--bad)" : undefined }}>{pTexto(p)}</td>
       <td>{efecto}</td>
-      <td className="crediscope-muted" style={{ fontSize: 12.5 }}>{nota}</td>
+      <td className="crediscope-muted" style={{ fontSize: 13 }}>{nota}</td>
     </tr>
   );
 }

@@ -46,7 +46,7 @@ export default function RecomendacionCard({ recomendacion, acciones = [], origen
             {extra.titulo}
           </p>
           {origen ? (
-            <p className="crediscope-muted" style={{ margin: "2px 0 0", fontSize: 12.5 }}>{origen}</p>
+            <p className="crediscope-muted" style={{ margin: "2px 0 0", fontSize: 13 }}>{origen}</p>
           ) : null}
         </div>
       </div>

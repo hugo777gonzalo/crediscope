@@ -41,7 +41,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
       </div>
       {esSintetico ? (
         <p className="crediscope-muted" style={{ fontSize: 13 }}>
-          En un corte sintético el puntaje y el resultado son inventados: el análisis enlazado (si existe) no es el que produjo este puntaje.
+          En un corte sintético el score y el resultado son inventados: el análisis enlazado (si existe) no es el que produjo este score.
         </p>
       ) : null}
       <div className="crediscope-card">
@@ -54,7 +54,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
                 <tr>
                   <th>Cédula</th>
                   <th>Desembolso</th>
-                  <th style={{ textAlign: "right" }}>Puntaje</th>
+                  <th style={{ textAlign: "right" }}>Score</th>
                   <th>Recomendación</th>
                   <th>Resultado</th>
                   <th>{filtro === "excluidas" ? "Motivo" : "Versión"}</th>
@@ -69,7 +69,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
                     <td style={{ textAlign: "right" }}>{c.puntaje ?? "—"}</td>
                     <td>{c.veredicto_origen === "control_bloqueo" ? "Negado por bloqueo" : c.recomendacion ?? "—"}</td>
                     <td>{c.malo === null ? "—" : c.malo ? <Etiqueta texto="Cayó" color="var(--bad)" /> : <Etiqueta texto="Pagó" color="var(--good)" />}</td>
-                    <td className="crediscope-muted" style={{ fontSize: 12.5 }}>
+                    <td className="crediscope-muted" style={{ fontSize: 13 }}>
                       {filtro === "excluidas" ? c.motivo_exclusion : c.fuente_puntaje === "sintetico" ? "sintético" : c.marco_version ?? "—"}
                     </td>
                     <td>{c.analysis_result_id ? <Link to={`/historial/analisis/${c.analysis_result_id}`}>Ver análisis</Link> : null}</td>
@@ -77,7 +77,7 @@ export default function PestanaCasos({ corteId, esSintetico }) {
                 ))}
               </tbody>
             </table>
-            {visibles.length > 500 ? <p className="crediscope-muted" style={{ fontSize: 12.5 }}>Se muestran 500 de {num(visibles.length)}.</p> : null}
+            {visibles.length > 500 ? <p className="crediscope-muted" style={{ fontSize: 13 }}>Se muestran 500 de {num(visibles.length)}.</p> : null}
           </div>
         )}
       </div>

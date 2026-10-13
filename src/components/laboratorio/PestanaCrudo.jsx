@@ -119,7 +119,7 @@ function Detalle({ h }) {
         </table>
       ) : null}
       {h.equivalentes?.length ? (
-        <p className="crediscope-muted" style={{ margin: 0, fontSize: 12.5 }}>
+        <p className="crediscope-muted" style={{ margin: 0, fontSize: 13 }}>
           Separa exactamente a las mismas personas: {h.equivalentes.map((e) => e.replace(/\.data\./, " › ").replace(/\[\]/g, "")).join(" · ")}
           {h.mas_equivalentes ? ` y ${num(h.mas_equivalentes)} más` : ""}.
         </p>
@@ -283,7 +283,7 @@ function FilaFuente({ f, diccionario }) {
                     <td>{d.tipo}{d.tipos_mezclados ? <span style={{ color: "var(--warn)" }}> (mezcla {d.tipos_mezclados.join(" y ")})</span> : null}</td>
                     <td style={{ textAlign: "right" }}>{pct(d.cobertura, 0)}</td>
                     <td style={{ textAlign: "right" }}>{pct(d.vacias, 0)}</td>
-                    <td style={{ fontSize: 12.5 }}>{valoresDelCampo(d)}</td>
+                    <td style={{ fontSize: 13 }}>{valoresDelCampo(d)}</td>
                     <td>{d.nombrado ? "Sí" : "No"}</td>
                   </tr>
                 ))}

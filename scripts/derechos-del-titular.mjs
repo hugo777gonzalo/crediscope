@@ -81,6 +81,10 @@ const TABLAS = [
   ["lab_corte_operaciones", `cedula=eq.${CEDULA}`],
   ["lab_decisiones_institucion", `cedula=eq.${CEDULA}`],
   ["audit_log", `client_id=eq.${id}`],
+  // Copia de su último perfil y análisis (124). La supresión no la toca a
+  // mano: borrar los perfiles la rehace por disparador, y si no pudiera, el
+  // borrado falla.
+  ["resumen_por_persona", `client_id=eq.${id}`],
 ];
 
 const datos = { clients: [cliente] };

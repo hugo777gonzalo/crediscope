@@ -2,7 +2,8 @@
 
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
-2026-10-09 (sección 2, primeros puntos). La última migración es la **120**;
+2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
+2026-10-12 (sección 1, primer punto). La última migración es la **125**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -21,6 +22,72 @@ aceptada.
 
 ## 1. Para retomar primero
 
+- **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
+  El informe es `docs/revision-ux.md`; el vocabulario del producto,
+  `docs/modelo-de-la-persona.md`; para repetir la revisión cuando cambie una
+  pantalla, la habilidad `revision-ux` (`.claude/skills/revision-ux/SKILL.md`).
+  Entró a `main` en tres PR: la revisión, el repaso en pantalla y las decisiones
+  de nombres del 2026-10-12.
+  - **Hecho:**
+    - trece defectos funcionales (el enlace directo que caía en "/", las
+      pantallas de administración en blanco, los submenús escondidos bajo
+      860 px...), seis cifras que no cerraban y unos 90 archivos con textos,
+      formatos y estados unificados (`formatos.js`, `mensajesDeError.js`,
+      `navegacion.js`, `src/components/ui/`);
+    - dos pasos nuevos en el control `pantalla` de cada PR:
+      `scripts/revisar-textos.mjs` y `scripts/probar-formatos.mjs` (62 casos
+      más los de navegación);
+    - el 2026-10-12, con la sesión de admin que el negocio abrió en el panel
+      de vista previa, se repasó en pantalla lo que faltaba: la franja de la
+      bandeja da 2.572 y sus tarjetas suman 2.572; el menú abre una sección a
+      la vez; a 768 y 414 px no hay desborde; Costos, Fuentes de Ingreso,
+      Monitoreo, Lotes y los módulos del Laboratorio abren sin error, salvo la
+      pestaña Centro de datos, que se arregló con la 121 y se vio abrir (52 fuentes);
+      lo que apareció se corrigió;
+    - **el mismo día el negocio decidió los nombres** y se aplicaron: «Lotes
+      consultados», «Monitoreo» (antes Reportes; la página interna, «Panorama»),
+      «Explorador de la fuente de datos», «Personas por segmento», **Score** en
+      lugar de Puntaje (55 textos), el historial por cédula retirado y la
+      búsqueda del Inicio que abre el Expediente. Dio además el modelo de la
+      persona: el árbol y los estados. El control corta con los nombres viejos
+      y avisa de cada «cliente» suelto (0 avisos hoy).
+  - Queda, por orden:
+  1. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+     la persona, la solicitud como entidad, las direcciones, las referencias,
+     los documentos y los créditos de la persona no existen todavía como datos:
+     hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
+     en la sección 5 de ese documento):
+     - el nombre del segundo estado: «Solicitante» no convence;
+     - qué estado tiene quien fue rechazado o desistió, y quién decide
+       «Preaprobado»;
+     - si «Perfil del Cliente» pasa a «Perfil de la Persona»;
+     - si el dictamen del modelo («Negación») y la decisión de la solicitud
+       («Rechazado») usan el mismo verbo;
+     - confirmar que «fuentes» era aceptar «Explorador de la fuente de datos».
+     Con eso respondido, el orden de construcción propuesto es: la solicitud
+     como entidad, el estado de la persona calculado de sus hechos (con su
+     historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
+     Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
+     `docs/arquitectura-fabrica-de-credito.md`.
+  2. **Lo que todavía no se vio en pantalla:**
+     - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
+       analista): la tanda en que iban se cortó por tiempo;
+     - las pestañas internas de cada módulo del Laboratorio (las pantallas
+       abren, no se recorrió cada pestaña) y Cargar archivo con un archivo
+       (sólo se vio el formulario);
+     - las cuatro pantallas de la persona (Perfil, Análisis, Fuentes de
+       Ingreso, Aval) con datos;
+     - una captura: el panel oculto hace fallar las capturas, y lo de 768 y
+       414 px se midió en el DOM. Seguir
+       `.claude/skills/revision-ux/recorrido-qa.md`: Claude no escribe
+       contraseñas, el negocio ingresa con su cuenta en el panel
+       (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
+     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
+  3. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+     construyó sin su decisión.
+  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+     migrar los estilos en línea a clases a medida que se toque cada una.
+
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
    haciendo el negocio** (2026-10-04) y va a comentar el resultado. Todas las
    pantallas que pidió el negocio están construidas (fases A a F y módulos
@@ -32,7 +99,7 @@ aceptada.
    y `node scripts/probar-estadistica.mjs`: todo cuadra) y todos los
    módulos cargan en el navegador sin errores. Recorrido, con el usuario
    logueado en `localhost:5184`:
-   - Laboratorio › Inicio (hallazgos críticos, default por mes, análisis por
+   - Laboratorio › Inicio (hallazgos críticos, impago por mes, análisis por
      mes, trabajos a medias, actividad).
    - Instituciones y proyectos: registrar una institución de prueba y un
      proyecto; asignarle una carga.
@@ -246,30 +313,29 @@ aceptada.
   - **Hecho (Fase 0):**
     - el contrato v1, que pasa el control estricto de Redocly;
     - borradores del texto de autorización del titular y del anexo de
-      seguridad, en `docs/cumplimiento/api/`.
+      seguridad, en `docs/cumplimiento/api/` (ya en la carpeta principal);
+    - el contrato con los nombres del modelo de la persona (#12,
+      2026-10-12). Ese día se cerró la sesión de este frente: quien lo
+      retome empieza acá.
   - Queda, por orden:
-  1. **Pasar `docs/cumplimiento/api/` a la carpeta principal** si todavía
-     está sólo en el worktree `cool-jemison-2a674d`. Está fuera de git y se
-     pierde si se borra ese worktree. Después, sumar `api/` al índice de
-     `docs/cumplimiento/README.md`.
-  2. **Arreglos chicos que se pueden hacer ya**, sin esperar la API:
+  1. **Arreglos chicos que se pueden hacer ya**, sin esperar la API:
      - `analyze-client` deja de escribir la cédula en `llm_llamadas.contexto`
        (323 filas) y `consultar-aval`, en `audit_log.meta` (463 filas, que lee
        todo usuario con sesión). En su lugar va el `client_id`;
      - el vigía prueba Haiku 4.5 y producción usa Sonnet 5.5
        (`vigia/index.ts`): pasarlo al modelo real.
-  3. **Legal:**
+  2. **Legal:**
      - revisar el texto de autorización y el anexo de seguridad;
      - los plazos del contrato modelo no coinciden con la norma
        SPDP-SPD-2025-0030-R: el encargado suprime en 3 días desde el aviso y
        devuelve o suprime en 5 días al terminar el contrato, y el contrato
        dice 5 días hábiles y 30 días.
-  4. **Novadata, por escrito:** si una cuenta sostiene 60 perfiles por
+  3. **Novadata, por escrito:** si una cuenta sostiene 60 perfiles por
      minuto (hoy se satura cerca de 20) y si el contrato permite entregar
      sus datos a la IFI, que es lo que necesita el perfil opcional.
-  5. **Decisiones D5 a D15** (sección 14 de la propuesta). Mientras no se
+  4. **Decisiones D5 a D15** (sección 14 de la propuesta). Mientras no se
      decidan, valen las recomendaciones.
-  6. **Fase 1** (núcleo: recepción, cola, trabajador, topes, sandbox):
+  5. **Fase 1** (núcleo: recepción, cola, trabajador, topes, sandbox):
      - se construye y se prueba con simuladores, porque no hay ambiente de
        prueba (E3), y se despliega apagada para terceros;
      - su migración toma el número libre recién al aplicarse;
@@ -416,6 +482,27 @@ aceptada.
   (`generated always as (standard_profile->…) stored`). Así no podrían
   desalinearse, que es lo que pasó hasta d81591b. Primero las funciones
   tienen que dejar de escribirlas: regla 8 de CLAUDE.md.
+
+- **Revisión de UX: diseño y producto sin decidir**
+  (`docs/revision-ux.md`, sección 3, con las opciones y la recomendación; los
+  nombres se decidieron el 2026-10-12 y las preguntas que quedaron están en
+  `docs/modelo-de-la-persona.md`, sección 5):
+  - Diseño: Inicio como pantalla de trabajo, un solo camino a una persona
+    (falta **Aval** en el expediente), unir "Empleos vigentes" y "Fuentes
+    detectadas", menos accesos por fila en la bandeja.
+  - **Retirar `humanizarTexto()`** (`src/lib/formatos.js`) cuando
+    `fuentes-ingreso.ts` guarde los meses y los dólares con el formato de la
+    casa: es una versión nueva de fuentes con recálculo de los perfiles, y
+    mientras tanto la pantalla los arregla al mostrarlos.
+  - La auditoría del expediente nombra a los demás usuarios como "Otro
+    usuario": nombrarlos exige exponer una vista con los nombres (permisos).
+  - "Cargando..." por esqueletos en las tres pantallas más lentas (Bandeja,
+    Expediente, Panorama: de 5 a 10 s en desarrollo; la medida real se toma
+    con `npm run build && npm run preview`).
+  - El orden de los nombres que trae la fuente es inconsistente ("Apellidos
+    Nombres" para unas personas y "Nombre Apellido" para otras) y se muestra
+    tal cual.
+  - Quedan 1.761 estilos en línea en 110 archivos: lo nuevo usa clases.
 
 ## 4. Parámetros que vencen
 

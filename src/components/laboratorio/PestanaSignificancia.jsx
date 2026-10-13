@@ -104,7 +104,7 @@ export default function PestanaSignificancia({ corte, corteId, poblacion }) {
             ))}
           </tbody>
         </table>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           Efecto: delta de Cliff para las numéricas (de −1 a 1: cuánto más alto tienen los malos), V de Cramér para el resto (de 0 a 1). Estable: las dos
           mitades del corte por fecha dicen lo mismo (las dos con IV de 0,02 o más, o las dos por debajo).
         </p>

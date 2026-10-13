@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Info } from "lucide-react";
 import { clasificarIdentificacion } from "../../supabase/functions/_shared/identificacion.ts";
 
@@ -37,18 +37,25 @@ export default function ClientSearch() {
     // Se navega a la CÉDULA, no a lo que se escribió: si entró un RUC
     // de persona natural, de acá en adelante el sistema trabaja con la
     // persona. El aviso de que eso pasó viaja en la dirección.
-    const destino = `/perfil/${encodeURIComponent(ident.cedula)}`;
+    const destino = `/solicitudes/${encodeURIComponent(ident.cedula)}`;
     navigate(ident.tipo === "ruc_persona_natural" ? `${destino}?desdeRuc=${ident.ingresado}` : destino);
   }
 
   return (
     <div className="crediscope-card" style={{ maxWidth: 480 }}>
-      <h2>Buscar cliente</h2>
+      <h2>Buscar persona</h2>
       <p className="crediscope-muted">
-        Ingresá la cédula del cliente para ver su análisis más reciente o generar uno nuevo.
+        Ingresá la cédula de la persona para abrir su expediente: el análisis más reciente, de dónde sale su ingreso y qué
+        se hizo con el caso.
       </p>
       <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        {/* Sin etiqueta, un lector de pantalla anuncia sólo "campo de texto"
+            y el placeholder desaparece al escribir. */}
+        <label htmlFor="inicio-cedula" className="crediscope-solo-lectores">
+          Cédula de la persona
+        </label>
         <input
+          id="inicio-cedula"
           className="crediscope-input"
           placeholder="Cédula"
           value={cedula}
@@ -67,19 +74,25 @@ export default function ClientSearch() {
       {mostrarProblema ? (
         <p
           id="aviso-cedula"
-          style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, color: "var(--bad)", fontSize: 13.5 }}
+          style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, color: "var(--bad)", fontSize: 14 }}
         >
-          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
           <span>{ident.mensaje}</span>
         </p>
       ) : null}
 
       {ident.tipo === "ruc_persona_natural" ? (
-        <p style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, fontSize: 13.5 }}>
-          <Info size={16} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} />
+        <p style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, marginBottom: 0, fontSize: 14 }}>
+          <Info size={16} color="var(--brand)" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
           <span>{ident.mensaje}</span>
         </p>
       ) : null}
+
+      {/* Acá sólo se busca por cédula. Quien no la tiene a mano, o quiere
+          ver a quién se consultó hoy, tiene la bandeja. */}
+      <p className="crediscope-muted" style={{ margin: "16px 0 0", fontSize: 13 }}>
+        ¿Sin la cédula a mano? Buscá por nombre en la <Link to="/solicitudes">bandeja de solicitudes</Link>.
+      </p>
     </div>
   );
 }

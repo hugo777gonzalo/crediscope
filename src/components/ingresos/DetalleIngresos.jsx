@@ -2,6 +2,7 @@ import { Briefcase, Store, Receipt, ShieldCheck, ListTree, History } from "lucid
 import { TituloTarjeta, FilaCampo, Valor } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 import { duracionLegible, empleosActuales, fechaLegible, mesLegible } from "../../lib/ingresosCampos.js";
+import { humanizarTexto } from "../../lib/formatos.js";
 
 // Lo que se consulta cuando hace falta: cada empleo de los últimos dos
 // años, qué actividad tiene registrada, cuánto impuesto a la renta causó y
@@ -143,7 +144,7 @@ export default function DetalleIngresos({ perfil }) {
                     <span className="crediscope-ing-fuente-sub">{a.actividad ?? "Actividad no informada"}</span>
                     {a.inicio ? <span className="crediscope-ing-fuente-sub">Desde {fechaLegible(a.inicio)}</span> : null}
                   </div>
-                  <span className={`crediscope-tag ${a.abierto ? "crediscope-tag-ok" : "crediscope-tag-neutral"}`} style={{ fontSize: 11.5, padding: "2px 8px" }}>
+                  <span className={`crediscope-tag ${a.abierto ? "crediscope-tag-ok" : "crediscope-tag-neutral"}`} style={{ fontSize: 12, padding: "2px 8px" }}>
                     {a.abierto ? "Abierto" : "Cerrado"}
                   </span>
                 </li>
@@ -254,10 +255,10 @@ export default function DetalleIngresos({ perfil }) {
           <TituloTarjeta Icono={ListTree}>Cómo se clasificó</TituloTarjeta>
           <ul className="crediscope-ing-pedidos">
             {(f.fuentes ?? []).map((x, i) => (
-              <li key={i}>{x.detalle}</li>
+              <li key={i}>{humanizarTexto(x.detalle)}</li>
             ))}
             {(f.senalesDeEscala ?? []).map((s) => (
-              <li key={s.senal}>{s.detalle}</li>
+              <li key={s.senal}>{humanizarTexto(s.detalle)}</li>
             ))}
           </ul>
           <ul className="crediscope-aval-filas" style={{ marginTop: 10 }}>

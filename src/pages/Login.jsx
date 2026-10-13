@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient.js";
 import LogoMark from "../components/LogoMark.jsx";
 import { iniciarSesionVigilada } from "../lib/caducidadSesion.js";
+import { destinoDeIngreso, olvidarSalidaAProposito } from "../lib/destinoDeIngreso.js";
 
 export default function Login({ avisoCaducidad = null }) {
   const [email, setEmail] = useState("");
@@ -10,6 +11,8 @@ export default function Login({ avisoCaducidad = null }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const destino = destinoDeIngreso(state);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -18,11 +21,13 @@ export default function Login({ avisoCaducidad = null }) {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (authError) {
+      // revisar-textos: permitir anglicismo -- es el texto en inglés que devuelve Supabase, se traduce acá
       setError(authError.message === "Invalid login credentials" ? "Correo o contraseña incorrectos." : authError.message);
       return;
     }
     iniciarSesionVigilada();
-    navigate("/");
+    olvidarSalidaAProposito();
+    navigate(destino, { replace: true });
   }
 
   if (!isSupabaseConfigured) {
@@ -30,8 +35,8 @@ export default function Login({ avisoCaducidad = null }) {
       <div className="crediscope-card">
         <h2>Supabase no configurado</h2>
         <p className="crediscope-muted">
-          Define <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en{" "}
-          <code>.env</code> (ver <code>.env.example</code>) para habilitar el login.
+          Definí <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en{" "}
+          <code>.env</code> (ver <code>.env.example</code>) para habilitar el ingreso.
         </p>
       </div>
     );

@@ -33,7 +33,8 @@ export function CentroDeDatos() {
     <div>
       <div className="crediscope-kpi-grid">
         <Kpi etiqueta="Consultas en 120 días" valor={num(datos.perfiles)} detalle={`${num(datos.fuentes.length)} fuentes`} />
-        <Kpi etiqueta="Corte del IESS vigente" valor={datos.corte_iess ?? "—"} detalle="El mes más reciente con 20 clientes o más en 90 días" />
+        {/* revisar-textos: permitir corte-del-iess -- es el parámetro del sistema (corte_iess_vigente), no el dato de una persona */}
+        <Kpi etiqueta="Corte del IESS vigente" valor={datos.corte_iess ?? "—"} detalle="El mes más reciente con 20 personas o más en 90 días" />
         <Kpi etiqueta="Fuentes que cayeron" valor={num(caidas.length)} detalle={caidas.map((f) => f.fuente).join(", ") || "Ninguna en la última semana"} color={caidas.length ? "var(--bad)" : undefined} />
       </div>
       <div className="crediscope-card" style={{ overflowX: "auto" }}>
@@ -54,7 +55,7 @@ export function CentroDeDatos() {
             ))}
           </tbody>
         </table>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           "Contestó" es ok u ok vacío (la fuente respondió, tenga o no datos de la persona); "con datos", que además trajo algo. Una fila abre su evolución semanal.
         </p>
       </div>
@@ -154,9 +155,9 @@ export function CalidadDeCarga({ cargas }) {
               </tbody>
             </table>
             <h4 style={{ margin: "12px 0 4px" }}>Vínculo con lo que analizamos</h4>
-            <p style={{ margin: 0, fontSize: 13.5 }}>{Object.entries(calidad.por_vinculo).map(([v, n]) => `${ETIQUETA_VINCULO[v] ?? v}: ${num(n)}`).join(" · ")}</p>
+            <p style={{ margin: 0, fontSize: 14 }}>{Object.entries(calidad.por_vinculo).map(([v, n]) => `${ETIQUETA_VINCULO[v] ?? v}: ${num(n)}`).join(" · ")}</p>
             <h4 style={{ margin: "12px 0 4px" }}>Estado al corte</h4>
-            <p style={{ margin: 0, fontSize: 13.5 }}>{Object.entries(calidad.por_estado).map(([e, n]) => `${e}: ${num(n)}`).join(" · ")}</p>
+            <p style={{ margin: 0, fontSize: 14 }}>{Object.entries(calidad.por_estado).map(([e, n]) => `${e}: ${num(n)}`).join(" · ")}</p>
           </div>
         </>
       )}
@@ -231,12 +232,12 @@ export function Conciliacion({ cargas }) {
                 ))}
               </tbody>
             </table>
-            {visibles.length > 300 ? <p className="crediscope-muted" style={{ fontSize: 12.5 }}>Se muestran 300 de {num(visibles.length)}.</p> : null}
+            {visibles.length > 300 ? <p className="crediscope-muted" style={{ fontSize: 13 }}>Se muestran 300 de {num(visibles.length)}.</p> : null}
           </div>
           <div className="crediscope-card">
             <h3 style={{ marginTop: 0 }}>Personas con más de una operación ({num(resumen.varias.length)})</h3>
             {resumen.varias.length ? (
-              <ul style={{ margin: 0, fontSize: 13.5 }}>
+              <ul style={{ margin: 0, fontSize: 14 }}>
                 {resumen.varias.slice(0, 50).map((l) => <li key={l[0].cedula}>{l[0].cedula}: {l.map((o) => `${o.numero_operacion} (${formatearDia(o.fecha_desembolso)})`).join(", ")}</li>)}
               </ul>
             ) : <p className="crediscope-muted" style={{ margin: 0 }}>Ninguna: una operación por persona.</p>}
@@ -291,7 +292,7 @@ export function ExploradorDeCartera({ cortes }) {
           />
           <table className="crediscope-table">
             <thead>
-              <tr><th>{DIMENSIONES[dimension].texto}</th><th style={{ textAlign: "right" }}>Personas</th><th style={{ textAlign: "right" }}>Buenos</th><th style={{ textAlign: "right" }}>Malos</th><th style={{ textAlign: "right" }}>Tasa</th><th style={{ textAlign: "right" }}>Puntaje medio</th></tr>
+              <tr><th>{DIMENSIONES[dimension].texto}</th><th style={{ textAlign: "right" }}>Personas</th><th style={{ textAlign: "right" }}>Buenos</th><th style={{ textAlign: "right" }}>Malos</th><th style={{ textAlign: "right" }}>Tasa</th><th style={{ textAlign: "right" }}>Score medio</th></tr>
             </thead>
             <tbody>
               {r.segmentos.map((s) => (
@@ -360,7 +361,7 @@ export function Diccionario({ cortes }) {
             {visibles.slice(0, 300).map((f) => (
               <tr key={`${f.nivel}|${f.nombre}`}>
                 <td>{f.nivel}</td>
-                <td style={{ fontSize: 12.5 }}><code>{f.nombre}</code></td>
+                <td style={{ fontSize: 13 }}><code>{f.nombre}</code></td>
                 <td>{f.donde}</td>
                 <td>{f.tipo}</td>
                 <td style={{ textAlign: "right" }}>{f.cobertura === null || f.cobertura === undefined ? "—" : pct(f.cobertura, 0)}</td>
@@ -370,7 +371,7 @@ export function Diccionario({ cortes }) {
             ))}
           </tbody>
         </table>
-        {visibles.length > 300 ? <p className="crediscope-muted" style={{ fontSize: 12.5 }}>Se muestran 300 de {num(visibles.length)}: afinar la búsqueda.</p> : null}
+        {visibles.length > 300 ? <p className="crediscope-muted" style={{ fontSize: 13 }}>Se muestran 300 de {num(visibles.length)}: afinar la búsqueda.</p> : null}
       </div>
     </div>
   );

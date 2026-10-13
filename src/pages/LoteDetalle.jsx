@@ -12,6 +12,9 @@ import {
 } from "../lib/api.js";
 import { descargarExcelLote } from "../lib/exportLote.js";
 import { formatearFechaHora } from "../lib/fechas.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import { entero } from "../lib/formatos.js";
 
 // Un lote: cómo va y qué salió.
 //
@@ -106,11 +109,9 @@ export default function LoteDetalle() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
-  if (!lote) return <p className="crediscope-muted">Cargando...</p>;
+  if (!lote) return <Cargando />;
 
   const total = Number(lote.total_validas) || 0;
   const hechas = Number(lote.correctas) + Number(lote.reutilizadas ?? 0) + Number(lote.con_error);
@@ -156,7 +157,7 @@ export default function LoteDetalle() {
                 número de a cuántas va, no. */}
             {descargando
               ? avance?.total
-                ? `Armando el archivo... ${avance.hechos} de ${avance.total}`
+                ? `Armando el archivo... ${entero(avance.hechos)} de ${entero(avance.total)}`
                 : "Armando el archivo..."
               : "Descargar resultados"}
           </button>
@@ -171,7 +172,7 @@ export default function LoteDetalle() {
           <p style={{ marginTop: 10, marginBottom: 0 }}>
             <strong>{hechas}</strong> de {total} — {pct}%. Quedan {lote.pendientes}.
           </p>
-          <p className="crediscope-muted" style={{ margin: "6px 0 0", fontSize: 13.5 }}>
+          <p className="crediscope-muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
             Corre en el servidor: podés cerrar esta pantalla. Se actualiza sola cada diez segundos.
           </p>
         </div>
@@ -248,8 +249,8 @@ export default function LoteDetalle() {
       <div className="crediscope-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0 }}>Cédula por cédula</h3>
-          <select className="crediscope-input" style={{ maxWidth: 220 }} value={filtro} onChange={(e) => setFiltro(e.target.value)}>
-            <option value="">Todas ({items.length})</option>
+          <select className="crediscope-input" style={{ maxWidth: 220 }} aria-label="Filtrar las cédulas por estado" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
+            <option value="">Todas ({entero(items.length)})</option>
             {Object.entries(ETIQUETA_ITEM).map(([k, v]) => {
               const n = items.filter((i) => i.estado === k).length;
               return n ? (
@@ -281,7 +282,7 @@ export default function LoteDetalle() {
                   <td style={{ fontVariantNumeric: "tabular-nums" }}>
                     {i.cedula && i.estado === "ok" ? <Link to={`/perfil/${i.cedula}`}>{i.cedula}</Link> : i.cedula || "—"}
                   </td>
-                  <td style={{ color: COLOR_ITEM[i.estado], fontWeight: 600, fontSize: 13.5, whiteSpace: "nowrap" }}>
+                  <td style={{ color: COLOR_ITEM[i.estado], fontWeight: 600, fontSize: 14, whiteSpace: "nowrap" }}>
                     {ETIQUETA_ITEM[i.estado] ?? i.estado}
                   </td>
                   <td className="crediscope-muted" style={{ fontSize: 13 }}>{i.motivo ?? ""}</td>
@@ -292,7 +293,7 @@ export default function LoteDetalle() {
         </div>
         {visibles.length > 500 ? (
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            Se muestran las primeras 500 de {visibles.length}. El archivo descargado las incluye todas.
+            Se muestran las primeras 500 de {entero(visibles.length)}. El archivo descargado las incluye todas.
           </p>
         ) : null}
       </div>

@@ -12,6 +12,9 @@ import DetalleOperaciones from "../components/aval/DetalleOperaciones.jsx";
 import ReporteTotal, { seccionesConDatos } from "../components/aval/ReporteTotal.jsx";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import PestanasCliente from "../components/PestanasCliente.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
+import Aviso from "../components/ui/Aviso.jsx";
 
 // "Aval" — tercera pestaña junto a Perfil del Cliente / Análisis con IA.
 // Puramente informativa (sin recomendación: eso es trabajo del futuro marco
@@ -107,14 +110,14 @@ export default function PerfilAval() {
     <div>
       <p>
         <Link to="/" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Buscar otro cliente
+          Buscar otra persona
         </Link>
       </p>
 
       <PestanasCliente cedula={cedula} activa="aval" />
 
       {loading ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : (
         <EncabezadoAval
           cedula={cedula}
@@ -127,9 +130,7 @@ export default function PerfilAval() {
       )}
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       {/* La limitación se dice acá, no se descubre apretando el botón.
@@ -138,16 +139,12 @@ export default function PerfilAval() {
           bien); desde una IP ecuatoriana la misma petición pasa. Lo que se
           ve son consultas ya guardadas, traídas con el corredor local. */}
       {!loading && !consulta ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-          <p style={{ margin: 0 }}>
-            <strong>Sin consulta previa a Aval para esta cédula.</strong>
+        <Aviso tipo="advertencia" titulo="Sin consulta previa a Aval para esta cédula.">
+          <p className="crediscope-muted">
+            Consultar a Aval desde la aplicación publicada todavía no funciona: Aval sólo acepta conexiones desde Ecuador y
+            nuestro servidor está fuera del país. Mientras tanto, esta pantalla muestra las consultas que ya estén guardadas.
           </p>
-          <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            Consultar desde la app desplegada todavía no funciona: Aval solo admite conexiones desde IPs de Ecuador y el
-            servidor sale a internet desde fuera del país. Queda pendiente resolver la salida (proxy o servidor en Ecuador).
-            Mientras tanto, esta pantalla muestra las consultas que ya estén guardadas.
-          </p>
-        </div>
+        </Aviso>
       ) : null}
 
       {estructura ? (

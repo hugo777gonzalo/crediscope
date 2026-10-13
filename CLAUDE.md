@@ -3,7 +3,7 @@
 Calificación crediticia para Ecuador. Una persona se consulta contra
 Novadata, se arma un Perfil del Cliente estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
-lenguaje natural produce un puntaje de 1 a 999 y una recomendación.
+lenguaje natural produce un score de 1 a 999 y una recomendación.
 
 Frontend Vite + React 19 en JavaScript (sin TypeScript, sin Tailwind).
 Backend: Supabase — Postgres con RLS, Auth y Edge Functions en Deno.
@@ -62,6 +62,35 @@ es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
 real, un número medido, un error que costó caro. Un comentario que
 repite lo que el código ya dice es ruido.
 
+**Lo que ve el analista pasa por la revisión de UX** (habilidad
+`revision-ux`, en `.claude/skills/revision-ux/`; el porqué de cada regla,
+`docs/revision-ux.md`):
+- Números, moneda, porcentajes y duraciones sólo con `src/lib/formatos.js`
+  ("2.812", "37,0 s", "$1.784") y las fechas con `fechas.js`. Nunca `${n}`
+  ni `.toFixed()` en un texto: la misma cifra salía de cuatro maneras.
+- Tres puntos ("Cargando..."), plurales con `plural()` (no "cliente(s)").
+- Nombres comerciales en Title Case y el resto como oración. Un nombre que
+  eligió el negocio no se cambia por gusto: se propone con opciones
+  (`terminologia.md` de la habilidad).
+- Piezas compartidas antes que copias: `src/components/ui/` (`Kpi`, `Barra`,
+  `Cargando`, `Aviso`, `AvisoDeError`, `LimiteDeError`). Un error nunca se
+  muestra con `error.message` crudo.
+- Una versión (`marco-v28`), un código o un JSON no van en una tarjeta
+  principal.
+- **Score**, no «puntaje»; **persona**, no «cliente» (cliente es quien tiene un
+  crédito); **Monitoreo**, no Reportes. El negocio ordenó el producto alrededor
+  de la persona (2026-10-12): el árbol, los estados y lo que quedó abierto están
+  en `docs/modelo-de-la-persona.md`.
+- Un nombre que cambia el negocio se cambia con
+  `node scripts/renombrar-textos.mjs` (primero en seco: sólo toca textos de
+  pantalla, nunca una variable ni una columna de datos) y con una regla nueva en
+  el control, para que el nombre viejo no vuelva.
+- `node scripts/revisar-textos.mjs` corta con los términos que el negocio
+  retiró (piso, asalariado, default, backtest, LLM, puntaje...), y
+  `node scripts/probar-formatos.mjs` prueba los formatos, la traducción de
+  errores y la navegación: correrlos después de tocar `formatos.js`,
+  `mensajesDeError.js`, `navegacion.js` o `destinoDeIngreso.js`.
+
 ## Reglas duras
 
 Romper cualquiera de estas rompe algo real.
@@ -77,7 +106,9 @@ Romper cualquiera de estas rompe algo real.
    reserva**: el corredor aplica sólo los números mayores que el último
    aplicado, y uno salteado no se aplica nunca. Antes de escribirla, mirar
    en qué número está cada base (el corredor sin banderas) y las ramas
-   abiertas, y avisar a las otras sesiones. Si una función empieza a
+   abiertas, y avisar a las otras sesiones. **Se aplica recién fusionada en
+   `main`**: el 2026-10-12 una 122 aplicada desde una rama dejó sin correr
+   otra 122 que ya estaba en `main`. Si una función empieza a
    depender de ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
    migra, después se despliega (`--funciones`), o la función contesta
    503. Para consultas sueltas sigue
@@ -150,6 +181,10 @@ Romper cualquiera de estas rompe algo real.
     - Sin empujes forzados. La regla vale también para el admin.
     - Las acciones van fijadas por SHA, y Dependabot propone las
       actualizaciones como PR.
+    - `pantalla` corre lint, build, `revisar-textos.mjs` y
+      `probar-formatos.mjs`. Su build compila sin las variables de Supabase:
+      sirve para ver que compila, no para medir lo que se publica (el
+      principal sale en 273 KB contra 476 KB con el `.env`).
 11. **Un guion que escribe en la base abre su registro** con
     `abrirEjecucion()` (`scripts/_comun/ejecucion.mjs`, tabla
     `ejecuciones_operativas`, 117).
@@ -262,6 +297,20 @@ Romper cualquiera de estas rompe algo real.
   la primera página, no hasta una página corta, y pide un orden total
   (desempate por id) en el que lo insertado durante la lectura caiga al
   final.
+- `src/lib/navegacion.js` — la estructura de la aplicación: de ahí salen el
+  menú lateral y la ubicación "Sección › Página" de la barra superior. Un
+  nombre del menú se cambia ahí, no en dos listas.
+- `src/lib/formatos.js`, `src/lib/mensajesDeError.js` y
+  `src/components/ui/` — cómo se escribe un número, qué se le dice a la
+  persona cuando algo falla y las piezas que comparten las pantallas.
+- `.claude/skills/revision-ux/` — la revisión de UX: flujo, glosario con el
+  porqué, mapa de pantallas, criterios y un verificador para el navegador de
+  QA. Se corre al cambiar una pantalla.
+- `docs/modelo-de-la-persona.md` — la persona como entidad (decisión del
+  negocio del 2026-10-12): el árbol (solicitudes, direcciones, empleos,
+  referencias, documentos, scores, créditos), los estados (Prospecto, ..., Cliente
+  activo, Cliente cerrado), qué existe hoy y qué falta. Leerlo antes de ponerle
+  nombre a una pantalla o a una tabla.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
@@ -371,10 +420,45 @@ antes de tocar esa área.
   RLS. La 118 recrea tres vistas así. Además, una definición vieja se toma
   de la base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
   migración que la tocó.
+- Una CTE usada una sola vez dentro de una subconsulta correlacionada se
+  recalcula por cada fila de afuera: `as materialized`. El centro de datos
+  del Laboratorio la recalculaba 52 veces, una por fuente (121).
+- Leer un campo de `standard_profile` descomprime el perfil entero. En una
+  consulta sobre muchos perfiles, se eligen primero las filas sin tocarlo y
+  el JSON se lee sólo de las elegidas, o la condición va a un índice
+  parcial. Así tardaban 3,5 s el corte del IESS (121) y 5,3 s la primera
+  página de la bandeja (123).
 - Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
   El 2026-10-09 el sello del despliegue reemplazó una palabra en un
   comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
   comprobación posterior.
+- **La bandeja, Monitoreo y Fuentes de ingreso leen `resumen_por_persona`**
+  (124): una fila por persona con lo que muestran de su último perfil y su
+  último análisis.
+  - La escribe sólo `refrescar_resumen_por_persona()`: una regla nueva de
+    esas pantallas va ahí, no en la vista ni en la función del tablero.
+  - La llaman disparadores por sentencia en `client_profiles`,
+    `analysis_results` y `clients`. Al insertar o actualizar, un fallo no
+    frena la consulta (queda un aviso); al borrar sí, porque borrar es la
+    supresión de un titular.
+  - Cada noche la reconstruye `reconstruir_resumen_por_persona()` (pg_cron
+    `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
+  - Medido el 2026-10-12: la primera página de la bandeja, de 570 ms a 6 ms;
+    Monitoreo, de 1,3 s a 126 ms; Fuentes de ingreso, de 1,4 s a 179 ms.
+- **El centro de datos suma `consultas_por_dia_y_fuente`** (125), por día de
+  Ecuador y por fuente.
+  - Los días cerrados los rehace `refrescar_consultas_por_dia()` cada noche
+    (pg_cron `resumenes-crediscope-dias`, 00:20 de Ecuador, los últimos 40
+    días); lo que todavía no se resumió, normalmente hoy, se cuenta al
+    momento.
+  - La "última semana" y el "mes anterior" son días de Ecuador, no horas
+    corridas.
+  - Al marcar o desmarcar una persona sintética, o al corregir algo de hace
+    más de 40 días: `select refrescar_consultas_por_dia(null)`.
+  - Medido: de 1,3 s a 28 ms para 120 días.
+- **Se descartó resumir en la primera consulta del día** (decisión del
+  2026-10-12): esa persona espera el cálculo entero, con una cartera grande
+  vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
 - **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
   Aval.
   - Los totales de la base las excluyen.
@@ -423,6 +507,10 @@ antes de tocar esa área.
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
   con ≥20 clientes en 90 días. Quien trae un mes posterior usa el suyo.
+  Su condición sobre el perfil se repite en el índice parcial
+  `client_profiles_corte_iess` (121): sin él abría el perfil entero de cada
+  consulta de 90 días, 3,5 s antes de cada consulta. Si cambia la
+  condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
   aportes cuando el mecanizado no trae nada.
 - Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
@@ -516,6 +604,30 @@ antes de tocar esa área.
 - Una curva de cosechas sin la fecha del impago de una parte de los malos
   dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.
 
+**Interfaz** (revisión del 2026-10-10, `docs/revision-ux.md`)
+- Una pantalla que espera la sesión no es una pantalla sin sesión:
+  `App.jsx` espera `loading`; si no, un enlace directo cae en
+  `*` → /login → "/" y el expediente no sobrevive a una recarga.
+- El perfil de acceso se pide una vez (`useProfile`). Una guardia de ruta no
+  devuelve `null` mientras carga: una pantalla de administración quedaba en
+  blanco de 4 a 10 s.
+- Una franja de totales suma, y una barra mide lo que dice su título.
+- Un texto que la clasificación guardó con formato de JavaScript ("el corte
+  2026-08", "$1084") se muestra con `humanizarTexto()`; no se reescriben
+  miles de perfiles por un problema de presentación.
+- Las pantallas que documentan reglas (Reglas de clasificación) se desfasan
+  en silencio: la nuestra decía fuentes-v9 con el código en v10.
+- Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
+  (`Link is not defined` con el import presente): `touch` y recargar.
+- Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
+  liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
+  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola
+  hasta la 121, 28 ms desde la 125).
+- El tamaño de la aplicación se mide con el `.env`: sin las variables de
+  Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
+  cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
+  continua miden 273 KB donde lo publicado pesa 476 KB.
+
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`
   en cada push a `main` (https://hugo777gonzalo.github.io/crediscope/).
@@ -569,6 +681,9 @@ antes de tocar esa área.
   - Si se tocaron las funciones, también `deno check` y `deno test`.
   - La integración continua los corre igual, y sin ellos en verde el PR no
     entra.
+- **Una pantalla tocada se revisa con la habilidad `revision-ux`**: el
+  control de textos, el verificador en el navegador de QA y una captura a
+  1280 (y a 768 y 414 si tiene tablas). Lint y build no prueban una pantalla.
 - Commits en castellano, explicando el porqué y qué se midió.
 - **Una prueba en producción no consulta a personas.**
   - Va con una identificación inválida, que la función rechaza antes de la

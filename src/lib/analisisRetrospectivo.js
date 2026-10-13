@@ -233,7 +233,7 @@ export function compararCortes(filasA, filasB) {
 }
 
 // ------------------------------------------- lo que decidió la institución
-export const DECISIONES = [["desembolsada", "Desembolsó"], ["negada", "Negó"], ["desistio", "Desistió el cliente"], ["en_tramite", "En trámite"], [null, "Sin dato"]];
+export const DECISIONES = [["desembolsada", "Desembolsó"], ["negada", "Negó"], ["desistio", "Desistió la persona"], ["en_tramite", "En trámite"], [null, "Sin dato"]];
 
 export function decisionesDeLaInstitucion(filas) {
   return ["aprobar", "revisar", "negar", "bloqueado"].map((r) => {

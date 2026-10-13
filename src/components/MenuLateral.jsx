@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Home,
@@ -17,9 +17,14 @@ import {
 import LogoMark from "./LogoMark.jsx";
 import { getUltimaCedula } from "../lib/ultimaCedula.js";
 import { esAdmin } from "../lib/useProfile.js";
+import { seccionesVisibles, hijosVisibles, seccionActiva, hijoActivo } from "../lib/navegacion.js";
 
 // Menú lateral. Reemplaza a la barra superior de enlaces: con 6
 // secciones y submenús, en horizontal ya no entraba sin apretujar todo.
+//
+// Las secciones, sus nombres y qué queda resaltado salen de
+// lib/navegacion.js: la barra superior lee la misma lista, así que el menú
+// y el título de la página no pueden decir cosas distintas.
 //
 // Se puede colapsar a solo iconos con el botón de la cabecera, y la
 // preferencia se recuerda en este navegador -- un analista que trabaja
@@ -28,9 +33,27 @@ import { esAdmin } from "../lib/useProfile.js";
 //
 // Perfil del Cliente, Análisis con IA y Aval necesitan una cédula: llevan
 // a la del último cliente visto en este navegador (ver ultimaCedula.js) o
-// a Buscar Cliente si todavía no hay ninguno.
+// a la búsqueda del inicio si todavía no hay ninguno.
+//
+// Los tres interruptores de Configuración son pantallas distintas a
+// propósito: se parecen y tienen consecuencias distintas. Apagar una
+// fuente deja de consultar el dato; apagar un campo lo guarda pero lo saca
+// del criterio; ocultar un segmento solo cambia lo que se ve. Mezclarlas
+// invitaba a apagar una creyendo que se apagaba otra.
 
 const CLAVE_COLAPSADO = "crediscope.menu.colapsado";
+
+const ICONOS = {
+  inicio: Home,
+  evaluacion: ClipboardCheck,
+  solicitudes: FileStack,
+  fuentes: Wallet,
+  reportes: BarChart3,
+  lotes: Layers,
+  costos: Receipt,
+  laboratorio: FlaskConical,
+  configuracion: Settings,
+};
 
 function leerColapsado() {
   try {
@@ -40,10 +63,16 @@ function leerColapsado() {
   }
 }
 
-function Item({ to, Icono, texto, activo, colapsado, onClick }) {
+function Item({ to, Icono, texto, activo, colapsado }) {
   return (
-    <Link to={to} className={`crediscope-menu-item ${activo ? "crediscope-menu-item-activo" : ""}`} title={colapsado ? texto : undefined} onClick={onClick}>
-      <Icono size={19} />
+    <Link
+      to={to}
+      className={`crediscope-menu-item ${activo ? "crediscope-menu-item-activo" : ""}`}
+      title={colapsado ? texto : undefined}
+      aria-label={texto}
+      aria-current={activo ? "page" : undefined}
+    >
+      <Icono size={19} aria-hidden="true" />
       {!colapsado ? <span>{texto}</span> : null}
     </Link>
   );
@@ -52,30 +81,29 @@ function Item({ to, Icono, texto, activo, colapsado, onClick }) {
 // Sección con subsecciones. Colapsado el menú, el grupo no despliega
 // nada: primero lo expande, que es lo que el usuario quería al hacer
 // clic en un rubro que no puede leer.
-function Grupo({ Icono, texto, activo, colapsado, expandirMenu, hijos }) {
-  const [abierto, setAbierto] = useState(activo);
-
+function Grupo({ Icono, texto, activo, abierto, alternar, colapsado, expandirMenu, hijos }) {
   return (
     <div>
       <button
         type="button"
         className={`crediscope-menu-item crediscope-menu-grupo ${activo ? "crediscope-menu-item-activo" : ""}`}
-        onClick={() => (colapsado ? expandirMenu() : setAbierto((v) => !v))}
+        onClick={() => (colapsado ? expandirMenu() : alternar())}
         title={colapsado ? texto : undefined}
+        aria-label={texto}
         aria-expanded={abierto}
       >
-        <Icono size={19} />
+        <Icono size={19} aria-hidden="true" />
         {!colapsado ? (
           <>
             <span>{texto}</span>
-            <ChevronDown size={15} className={`crediscope-menu-chevron ${abierto ? "crediscope-menu-chevron-abierto" : ""}`} />
+            <ChevronDown size={15} aria-hidden="true" className={`crediscope-menu-chevron ${abierto ? "crediscope-menu-chevron-abierto" : ""}`} />
           </>
         ) : null}
       </button>
       {!colapsado && abierto ? (
         <div className="crediscope-menu-sub">
-          {hijos.map(({ to, texto: textoHijo, activo: activoHijo }) => (
-            <Link key={to} to={to} className={activoHijo ? "crediscope-menu-sub-activo" : ""}>
+          {hijos.map(({ to, texto: textoHijo, activo: activoHijo, ayuda }) => (
+            <Link key={to + textoHijo} to={to} title={ayuda} className={activoHijo ? "crediscope-menu-sub-activo" : ""} aria-current={activoHijo ? "page" : undefined}>
               {textoHijo}
             </Link>
           ))}
@@ -88,14 +116,28 @@ function Grupo({ Icono, texto, activo, colapsado, expandirMenu, hijos }) {
 export default function MenuLateral({ profile }) {
   const { pathname } = useLocation();
   const [colapsado, setColapsado] = useState(leerColapsado);
-  const enEvaluacion =
-    pathname === "/" ||
-    pathname.startsWith("/perfil") ||
-    pathname.startsWith("/analisis") ||
-    pathname.startsWith("/ingresos") ||
-    pathname.startsWith("/aval");
   const ultimaCedula = getUltimaCedula();
   const admin = esAdmin(profile);
+
+  // Una sección abierta a la vez. Entrar a otra desde cualquier lado (el
+  // menú, un enlace directo, un botón de una pantalla) abre la suya: antes
+  // quedaba cerrada con su nombre resaltado y las opciones escondidas.
+  const idActiva = seccionesVisibles(admin).find((s) => s.hijos && seccionActiva(s, pathname))?.id ?? null;
+  const [abiertaId, setAbiertaId] = useState(idActiva);
+  useEffect(() => {
+    setAbiertaId(idActiva);
+  }, [idActiva]);
+
+  // Los enlaces de una sección. Los que necesitan un cliente llevan al último
+  // visto, o a la búsqueda del inicio si todavía no hay ninguno (y lo dicen).
+  const enlacesDe = (seccion) =>
+    hijosVisibles(seccion, admin).map((h) => ({
+      to: h.conCedula ? (ultimaCedula ? `${h.ruta}/${ultimaCedula}` : "/") : h.ruta,
+      texto: h.texto,
+      activo: hijoActivo(h, pathname),
+      ayuda: h.conCedula && !ultimaCedula ? "Primero buscá una persona en Inicio" : undefined,
+    }));
+  const seccionAbierta = seccionesVisibles(admin).find((s) => s.hijos && s.id === abiertaId) ?? null;
 
   function alternarColapso() {
     setColapsado((v) => {
@@ -123,141 +165,49 @@ export default function MenuLateral({ profile }) {
           title={colapsado ? "Expandir menú" : "Colapsar menú"}
           aria-label={colapsado ? "Expandir menú" : "Colapsar menú"}
         >
-          {colapsado ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          {colapsado ? <PanelLeftOpen size={17} aria-hidden="true" /> : <PanelLeftClose size={17} aria-hidden="true" />}
         </button>
       </div>
 
-      <nav className="crediscope-menu-nav">
-        <Item to="/" Icono={Home} texto="Inicio" activo={pathname === "/"} colapsado={colapsado} />
-
-        <Grupo
-          Icono={ClipboardCheck}
-          texto="Evaluación Crediticia"
-          activo={enEvaluacion}
-          colapsado={colapsado}
-          expandirMenu={() => setColapsado(false)}
-          hijos={[
-            { to: "/", texto: "Buscar Cliente", activo: pathname === "/" },
-            { to: ultimaCedula ? `/perfil/${ultimaCedula}` : "/", texto: "Perfil del Cliente", activo: pathname.startsWith("/perfil") },
-            { to: ultimaCedula ? `/analisis/${ultimaCedula}` : "/", texto: "Análisis con IA", activo: pathname.startsWith("/analisis") },
-            { to: ultimaCedula ? `/ingresos/${ultimaCedula}` : "/", texto: "Fuentes de ingreso", activo: pathname.startsWith("/ingresos") },
-            { to: ultimaCedula ? `/aval/${ultimaCedula}` : "/", texto: "Aval", activo: pathname.startsWith("/aval") },
-          ]}
-        />
-
-        {/* La bandeja es ahora la puerta de entrada al trabajo del día.
-            El buscador viejo por cédula sigue existiendo en /historial,
-            pero como subsección: buscar el historial de UNA persona es
-            un caso particular de abrir su expediente. */}
-        <Grupo
-          Icono={FileStack}
-          texto="Solicitudes"
-          activo={pathname.startsWith("/solicitudes") || pathname.startsWith("/historial")}
-          colapsado={colapsado}
-          expandirMenu={() => setColapsado(false)}
-          hijos={[
-            { to: "/solicitudes", texto: "Bandeja", activo: pathname === "/solicitudes" },
-            { to: "/historial", texto: "Historial por cédula", activo: pathname.startsWith("/historial") },
-          ]}
-        />
-
-        <Grupo
-          Icono={Wallet}
-          texto="Fuentes de Ingreso"
-          activo={pathname.startsWith("/fuentes")}
-          colapsado={colapsado}
-          expandirMenu={() => setColapsado(false)}
-          hijos={[
-            { to: "/fuentes", texto: "Panorama", activo: pathname === "/fuentes" },
-            { to: "/fuentes/clientes", texto: "Clientes por segmento", activo: pathname.startsWith("/fuentes/clientes") },
-            { to: "/fuentes/reglas", texto: "Reglas", activo: pathname.startsWith("/fuentes/reglas") },
-            ...(admin ? [{ to: "/fuentes/parametros", texto: "Parámetros", activo: pathname.startsWith("/fuentes/parametros") }] : []),
-          ]}
-        />
-
-        <Grupo
-          Icono={BarChart3}
-          texto="Reportes"
-          activo={pathname.startsWith("/reportes")}
-          colapsado={colapsado}
-          expandirMenu={() => setColapsado(false)}
-          hijos={[
-            { to: "/reportes", texto: "Inteligencia de Negocios", activo: pathname === "/reportes" },
-            ...(admin ? [{ to: "/reportes/descargas", texto: "Descargas", activo: pathname.startsWith("/reportes/descargas") }] : []),
-          ]}
-        />
-
-        {admin ? (
-          <>
+      <nav className="crediscope-menu-nav" aria-label="Menú principal">
+        {seccionesVisibles(admin).map((seccion) => {
+          const Icono = ICONOS[seccion.id];
+          const activa = seccionActiva(seccion, pathname);
+          if (!seccion.hijos) {
+            return <Item key={seccion.id} to={seccion.ruta} Icono={Icono} texto={seccion.texto} activo={activa} colapsado={colapsado} />;
+          }
+          return (
             <Grupo
-              Icono={Layers}
-              texto="Consultas por lote"
-              activo={pathname.startsWith("/lotes")}
+              key={seccion.id}
+              Icono={Icono}
+              texto={seccion.texto}
+              activo={activa}
+              abierto={abiertaId === seccion.id}
+              alternar={() => setAbiertaId((actual) => (actual === seccion.id ? null : seccion.id))}
               colapsado={colapsado}
-              expandirMenu={() => setColapsado(false)}
-              hijos={[
-                { to: "/lotes", texto: "Lotes corridos", activo: pathname === "/lotes" },
-                { to: "/lotes/nuevo", texto: "Cargar archivo", activo: pathname.startsWith("/lotes/nuevo") },
-              ]}
+              expandirMenu={() => {
+                setColapsado(false);
+                setAbiertaId(seccion.id);
+              }}
+              hijos={enlacesDe(seccion)}
             />
-
-            <Grupo
-              Icono={Receipt}
-              texto="Costos"
-              activo={pathname.startsWith("/costos")}
-              colapsado={colapsado}
-              expandirMenu={() => setColapsado(false)}
-              hijos={[
-                { to: "/costos", texto: "Panorama", activo: pathname === "/costos" },
-                { to: "/costos/consultas", texto: "Costo por consulta", activo: pathname.startsWith("/costos/consultas") },
-                { to: "/costos/corridas", texto: "Corridas masivas", activo: pathname.startsWith("/costos/corridas") },
-                { to: "/costos/llamadas", texto: "Detalle de llamadas", activo: pathname.startsWith("/costos/llamadas") },
-                { to: "/costos/incidentes", texto: "Fallas e incidentes", activo: pathname.startsWith("/costos/incidentes") },
-                { to: "/costos/avisos", texto: "Avisos", activo: pathname.startsWith("/costos/avisos") },
-                { to: "/costos/tarifas", texto: "Tarifas", activo: pathname.startsWith("/costos/tarifas") },
-              ]}
-            />
-            {/* Los módulos que pidió el negocio (docs/laboratorio-pantallas.md):
-                los tres de análisis trabajan sobre un corte congelado y
-                recuerdan el último que se eligió. */}
-            <Grupo
-              Icono={FlaskConical}
-              texto="Laboratorio"
-              activo={pathname.startsWith("/laboratorio")}
-              colapsado={colapsado}
-              expandirMenu={() => setColapsado(false)}
-              hijos={[
-                { to: "/laboratorio", texto: "Inicio", activo: pathname === "/laboratorio" },
-                { to: "/laboratorio/instituciones", texto: "Instituciones y proyectos", activo: pathname.startsWith("/laboratorio/instituciones") },
-                { to: "/laboratorio/datos", texto: "Datos y cartera", activo: ["/laboratorio/datos", "/laboratorio/cargas", "/laboratorio/cortes"].some((r) => pathname.startsWith(r)) },
-                { to: "/laboratorio/desempeno", texto: "Prueba retrospectiva", activo: pathname.startsWith("/laboratorio/desempeno") },
-                { to: "/laboratorio/estadistica", texto: "Descubrimiento estadístico", activo: pathname.startsWith("/laboratorio/estadistica") },
-                { to: "/laboratorio/profundo", texto: "Descubrimiento profundo", activo: pathname.startsWith("/laboratorio/profundo") || pathname.startsWith("/laboratorio/caso") },
-                { to: "/laboratorio/propuestas", texto: "Propuestas", activo: pathname.startsWith("/laboratorio/propuestas") },
-              ]}
-            />
-            {/* Tres pantallas y no una: los tres interruptores se
-                parecen y tienen consecuencias distintas. Apagar una
-                fuente deja de consultar el dato; apagar un campo lo
-                guarda pero lo saca del criterio; ocultar un segmento
-                solo cambia lo que se ve. Mezclarlas invitaba a apagar
-                una creyendo que se apagaba otra. */}
-            <Grupo
-              Icono={Settings}
-              texto="Configuración"
-              activo={pathname.startsWith("/admin") || pathname.startsWith("/explorar")}
-              colapsado={colapsado}
-              expandirMenu={() => setColapsado(false)}
-              hijos={[
-                { to: "/admin/fuentes", texto: "Fuentes que consultamos", activo: pathname.startsWith("/admin/fuentes") },
-                { to: "/admin/campos", texto: "Campos del análisis", activo: pathname.startsWith("/admin/campos") },
-                { to: "/admin/segmentos", texto: "Qué ve el analista", activo: pathname.startsWith("/admin/segmentos") },
-                { to: "/explorar", texto: "Explorador de Fuentes", activo: pathname.startsWith("/explorar") },
-              ]}
-            />
-          </>
-        ) : null}
+          );
+        })}
       </nav>
+
+      {/* Sólo se ve en pantallas angostas (ver index.css): ahí el menú es una
+          franja de íconos y las opciones de la sección abierta van acá, en
+          una segunda fila. En escritorio las muestra el propio grupo. */}
+      {seccionAbierta ? (
+        <div className="crediscope-menu-subbarra" role="navigation" aria-label={`Opciones de ${seccionAbierta.texto}`}>
+          <span className="crediscope-menu-subbarra-titulo">{seccionAbierta.texto}</span>
+          {enlacesDe(seccionAbierta).map(({ to, texto, activo, ayuda }) => (
+            <Link key={to + texto} to={to} title={ayuda} aria-current={activo ? "page" : undefined}>
+              {texto}
+            </Link>
+          ))}
+        </div>
+      ) : null}
     </aside>
   );
 }

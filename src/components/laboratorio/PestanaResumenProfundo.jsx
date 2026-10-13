@@ -19,7 +19,7 @@ function Paso({ titulo, cifra, detalle, perdida, colorPerdida = "var(--bad)" }) 
       <p className="crediscope-kpi-label">{titulo}</p>
       <p className="crediscope-kpi-valor">{cifra}</p>
       <p className="crediscope-kpi-detalle">{detalle}</p>
-      {perdida ? <p style={{ fontSize: 12.5, color: colorPerdida, margin: "6px 0 0" }}>{perdida}</p> : null}
+      {perdida ? <p style={{ fontSize: 13, color: colorPerdida, margin: "6px 0 0" }}>{perdida}</p> : null}
     </div>
   );
 }
@@ -80,7 +80,7 @@ export default function PestanaResumenProfundo({ corteId, poblacion, ultimo }) {
       </div>
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Dónde mirar</h3>
-        <ul style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>
+        <ul style={{ margin: 0, fontSize: 14, lineHeight: 1.7 }}>
           <li><strong>Explorador del crudo</strong>: los {num(noVistosCrudo.length)} campos del crudo que anticipan, el modelo no tenía y la estructura no lee.</li>
           <li><strong>Estructura</strong>: los campos siempre vacíos, apagados o que cambiaron entre versiones.</li>
           <li><strong>Entrada al modelo</strong>: qué leyó el modelo en cada análisis y si coincide con lo que hoy le daríamos.</li>

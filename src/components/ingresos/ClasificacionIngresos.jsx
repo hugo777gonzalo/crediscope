@@ -4,6 +4,7 @@ import { formatearValorAval } from "../../lib/avalCampos.js";
 import { ETIQUETA_SEGMENTO, DOCUMENTOS_DE_CONFIRMACION } from "../../lib/fuentesIngresoConsolidado.js";
 import { mesLegible, fechaLegible } from "../../lib/ingresosCampos.js";
 import { clasificarPerfilLaboral } from "../../../supabase/functions/_shared/perfil-laboral.ts";
+import { humanizarTexto } from "../../lib/formatos.js";
 
 const SECTOR = {
   publico: "sector público",
@@ -139,7 +140,7 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
             <Pregunta
               texto="Actividad registrada en el SRI"
               respuesta={
-                <span className="crediscope-muted" style={{ fontSize: 12.5 }}>
+                <span className="crediscope-muted" style={{ fontSize: 13 }}>
                   {actividades.size} {actividades.size === 1 ? "actividad" : "actividades"}
                 </span>
               }
@@ -150,7 +151,7 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
                     <li key={actividad}>
                       {actividad.charAt(0) + actividad.slice(1).toLowerCase()}
                       {locales.map((l, i) => (
-                        <span key={i} className="crediscope-muted" style={{ display: "block", fontSize: 12.5 }}>
+                        <span key={i} className="crediscope-muted" style={{ display: "block", fontSize: 13 }}>
                           {l.nombreComercial ?? "Local sin nombre comercial"} ·{" "}
                           {l.abierto ? `abierto${l.inicio ? ` desde ${fechaLegible(l.inicio)}` : ""}` : "cerrado"}
                         </span>
@@ -190,16 +191,16 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
         ) : (
           <ul className="crediscope-aval-filas">
             {pedir.map((x, i) => (
-              <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, lineHeight: 1.45, padding: "4px 0" }}>
+              <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45, padding: "4px 0" }}>
                 <FileText size={15} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2, color: "var(--brand)" }} />
-                {x}
+                {humanizarTexto(x)}
               </li>
             ))}
           </ul>
         )}
 
         <Desplegable rotulo="Condiciones de la Segmentación">
-          <p style={{ margin: 0 }}>{f.motivoSegmento}</p>
+          <p style={{ margin: 0 }}>{humanizarTexto(f.motivoSegmento)}</p>
           {/* Migración 081: 466 motivos afirmaban un aporte al IESS que no
               existía. Se corrigieron en la base; se dice para que nadie
               compare con una captura vieja y crea que el dato cambió. */}

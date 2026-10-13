@@ -15,7 +15,7 @@ function Nodo({ nombre, v, nivel, abrirHasta }) {
   const compuesto = v !== null && typeof v === "object";
   if (!compuesto) {
     return (
-      <div style={{ paddingLeft: 14, fontSize: 12.5, lineHeight: 1.6 }}>
+      <div style={{ paddingLeft: 14, fontSize: 13, lineHeight: 1.6 }}>
         <span style={{ color: "var(--text-muted)" }}>{nombre}:</span> <Valor v={v} />
       </div>
     );
@@ -23,7 +23,7 @@ function Nodo({ nombre, v, nivel, abrirHasta }) {
   const entradas = Array.isArray(v) ? v.map((x, i) => [String(i), x]) : Object.entries(v);
   const resumen = Array.isArray(v) ? `[${v.length}]` : `{${entradas.length}}`;
   return (
-    <details open={nivel < abrirHasta} style={{ paddingLeft: nivel ? 14 : 0, fontSize: 12.5 }}>
+    <details open={nivel < abrirHasta} style={{ paddingLeft: nivel ? 14 : 0, fontSize: 13 }}>
       <summary style={{ cursor: "pointer", lineHeight: 1.6 }}>
         <span style={{ color: "var(--text)", fontWeight: nivel ? 400 : 700 }}>{nombre}</span> <span className="crediscope-muted">{resumen}</span>
       </summary>

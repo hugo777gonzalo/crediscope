@@ -231,13 +231,13 @@ const pedir = async (url, opciones = {}) => {
 const ajustes = await pedir(`${URL_SUPABASE}/auth/v1/settings`, { headers: { apikey: CLAVE_PUBLICA } });
 anotar("Afuera", "El registro público de cuentas está cerrado", ajustes.cuerpo?.disable_signup === true, `disable_signup=${ajustes.cuerpo?.disable_signup}`);
 
-for (const tabla of ["clients", "client_profiles", "analysis_results", "consultas_aval", "audit_log", "profiles", "lotes", "lab_solicitudes"]) {
+for (const tabla of ["clients", "client_profiles", "analysis_results", "resumen_por_persona", "consultas_por_dia_y_fuente", "consultas_aval", "audit_log", "profiles", "lotes", "lab_solicitudes"]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/${tabla}?select=*&limit=1`, { headers: h });
   const filasLeidas = Array.isArray(r.cuerpo) ? r.cuerpo.length : 0;
   anotar("Afuera", `Anónimo no lee ${tabla}`, filasLeidas === 0, `HTTP ${r.status}, ${filasLeidas} filas`);
 }
 
-for (const fn of ["metricas_gerenciales", "resumen_fuentes_ingreso", "lab_centro_de_datos", "crear_lote"]) {
+for (const fn of ["metricas_gerenciales", "resumen_fuentes_ingreso", "lab_centro_de_datos", "crear_lote", "reconstruir_resumen_por_persona", "refrescar_consultas_por_dia"]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/rpc/${fn}`, {
     method: "POST",
     headers: { ...h, "content-type": "application/json" },
