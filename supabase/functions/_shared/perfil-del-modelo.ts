@@ -39,7 +39,8 @@
 // tildes rotas.
 //
 // Desde marco-v29 no llegan la cédula, el nombre ni el de ningún empleador
-// (RUTAS_QUE_NO_LLEGAN, más abajo).
+// (RUTAS_QUE_NO_LLEGAN, más abajo), y todo número llega entero
+// (limpiarValores).
 //
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
@@ -86,16 +87,24 @@ export const IDENTIFICADORES_QUE_NO_LLEGAN = [
   "identidad.institucionTituloMasAlto",
 ];
 
-// Un número de 10 dígitos o más dentro de un texto se tapa, venga en el
-// campo que venga: el cargo que escribe el empleador trajo uno en 1 de los
-// 2.813 perfiles (2026-10-13), y una lista de campos no lo ve. Los números
-// que son montos no se tocan.
+// La última mano sobre todo lo que lee el modelo, venga del campo que venga:
+// - Un número de 10 dígitos o más dentro de un texto se tapa: el cargo que
+//   escribe el empleador trajo uno en 1 de los 2.813 perfiles (2026-10-13),
+//   y una lista de campos no lo ve.
+// - Todo número va entero (desde marco-v29, decisión del negocio del
+//   2026-10-13). El modelo copia los números tal cual al resumen y a los
+//   puntos a favor y en contra, y en crédito los centavos no cambian una
+//   decisión. Hasta v28 se redondeaba a centavos en tres grupos y los
+//   decimales seguían llegando por otros 33 campos, todos montos (ninguno
+//   una proporción): la deuda propia total en 2.509 de 2.813 perfiles, el
+//   avalúo de los vehículos con decimales de punto flotante.
 const NUMERO_LARGO = /\d{10,}/g;
-function taparNumerosLargos(nodo: unknown): unknown {
+function limpiarValores(nodo: unknown): unknown {
   if (typeof nodo === "string") return nodo.replace(NUMERO_LARGO, "[número omitido]");
-  if (Array.isArray(nodo)) return nodo.map(taparNumerosLargos);
+  if (typeof nodo === "number") return Number.isFinite(nodo) ? Math.round(nodo) : nodo;
+  if (Array.isArray(nodo)) return nodo.map(limpiarValores);
   if (nodo && typeof nodo === "object") {
-    return Object.fromEntries(Object.entries(nodo).map(([k, v]) => [k, taparNumerosLargos(v)]));
+    return Object.fromEntries(Object.entries(nodo).map(([k, v]) => [k, limpiarValores(v)]));
   }
   return nodo;
 }
@@ -350,7 +359,6 @@ const numero = (v: unknown): number => (typeof v === "number" && Number.isFinite
 // Idempotente: un tipo que ya viene legible (estructura-v11) queda igual.
 const tiposLegibles = (tipos: unknown[]): string[] =>
   [...new Set(tipos.map((t) => tipoDeDemandaLegible(t)).filter((t): t is string => Boolean(t)))];
-const aCentavos = (n: number): number => Math.round(n * 100) / 100;
 
 // La deuda de la persona sumada en todo el sistema (desde marco-v24).
 // Hasta v23 el modelo recibía cada fuente por separado y presentó $258.798
@@ -358,7 +366,9 @@ const aCentavos = (n: number): number => Math.round(n * 100) / 100;
 // $84.778 de cooperativas. Lo garantizado va aparte: no es deuda propia.
 // La cuota conocida es sólo la de cooperativas: los bancos no la informan.
 // Se calcula DESPUÉS de ocultar los campos deshabilitados: un campo
-// apagado no puede volver a entrar sumado acá.
+// apagado no puede volver a entrar sumado acá. En dólares enteros desde
+// marco-v29, y el total es la suma de las partes YA redondeadas: redondear
+// cada una por su lado podía dar un total que no cuadra por un dólar.
 export function endeudamientoDelPerfilDelModelo(perfil: AnyRecord): AnyRecord | null {
   const b = (perfil.comportamientoBancario ?? null) as AnyRecord | null;
   const c = (perfil.comportamientoCooperativas ?? null) as AnyRecord | null;
@@ -366,15 +376,17 @@ export function endeudamientoDelPerfilDelModelo(perfil: AnyRecord): AnyRecord | 
   // Perfiles anteriores a estructura-v8 no traen deudaEnAtraso: lo único
   // que había era el saldo en mora.
   const atrasoBancos = typeof b?.deudaEnAtraso === "number" ? b.deudaEnAtraso : numero(b?.saldoEnMoraBuroCredito);
-  const bancos = numero(b?.saldoTotalVigente) + atrasoBancos;
-  const cooperativas = numero(c?.saldoTotal);
-  const retail = numero(b?.totalDeudaRetail);
+  const bancos = Math.round(numero(b?.saldoTotalVigente) + atrasoBancos);
+  const cooperativas = Math.round(numero(c?.saldoTotal));
+  const retail = Math.round(numero(b?.totalDeudaRetail));
   return {
-    deudaPropiaTotal: aCentavos(bancos + cooperativas + retail),
-    deudaPropiaBancos: aCentavos(bancos),
-    deudaPropiaCooperativas: aCentavos(cooperativas),
-    deudaPropiaRetail: aCentavos(retail),
-    deudaEnAtrasoTotal: aCentavos(atrasoBancos + numero(c?.saldoEnMora) + numero(b?.valorVencidoRetail)),
+    deudaPropiaTotal: bancos + cooperativas + retail,
+    deudaPropiaBancos: bancos,
+    deudaPropiaCooperativas: cooperativas,
+    deudaPropiaRetail: retail,
+    // También por partes: con todo atrasado, redondear la suma daba un dólar
+    // más de atraso que de deuda.
+    deudaEnAtrasoTotal: Math.round(atrasoBancos) + Math.round(numero(c?.saldoEnMora)) + Math.round(numero(b?.valorVencidoRetail)),
     deudaComoGaranteOCodeudor: typeof b?.deudaComoGaranteOCodeudor === "number" ? b.deudaComoGaranteOCodeudor : null,
     cuotaMensualConocida: typeof c?.cuotaMensualTotal === "number" ? c.cuotaMensualTotal : null,
     cuotaMensualConocidaIncluye: "sólo cooperativas: los bancos no informan la cuota",
@@ -395,17 +407,9 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
     }
   };
   ocultar(copia);
-  // Montos a centavos. Desde estructura-v8 se guardan redondeados, pero un
-  // perfil anterior puede traer 50394.899999999994 (sumas en coma
-  // flotante), y el modelo copia el número tal cual. En estos grupos todo
-  // número con decimales es dinero.
-  for (const grupo of ["comportamientoBancario", "comportamientoCooperativas", "riesgoJudicialCivil"]) {
-    const g = copia[grupo] as AnyRecord | undefined;
-    if (!g || typeof g !== "object") continue;
-    for (const [campo, valor] of Object.entries(g)) {
-      if (typeof valor === "number" && !Number.isInteger(valor)) g[campo] = aCentavos(valor);
-    }
-  }
+  // Los montos salen enteros al final (limpiarValores): hasta v28 se
+  // redondeaban acá a centavos en tres grupos, y un perfil anterior a
+  // estructura-v8 traía 50394.899999999994 (sumas en coma flotante).
   // numeroCreditosFormales son préstamos IESS/BIESS, no operaciones del
   // buró: con el nombre viejo el modelo sumó 6 préstamos del BIESS a 6
   // operaciones del buró ("6 operaciones formales", c-3293f7eb). El
@@ -451,7 +455,7 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
   // La disponibilidad va PRIMERO (el modelo tiene que leerla antes que los
   // datos) y reemplaza a metaConsulta, que nombraba fuentes.
   delete copia.metaConsulta;
-  return taparNumerosLargos({ disponibilidad: disponibilidadPorTema(perfil), ...copia }) as AnyRecord;
+  return limpiarValores({ disponibilidad: disponibilidadPorTema(perfil), ...copia }) as AnyRecord;
 }
 
 // El mensaje completo que recibe el modelo. Lo usan el análisis
@@ -464,6 +468,6 @@ export function mensajeParaElModelo(
   return {
     perfilDelModelo: armarPerfilDelModelo(perfil, camposDeshabilitados),
     // Ya resueltos de forma determinística: el modelo no los recalcula.
-    hallazgosControlBloqueo: hallazgosControlBloqueo ?? [],
+    hallazgosControlBloqueo: limpiarValores(hallazgosControlBloqueo ?? []) as unknown[],
   };
 }

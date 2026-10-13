@@ -20,7 +20,8 @@
 //   6. Los campos deshabilitados llegan en null y el resto intacto.
 //   7. (marco-v24) Los préstamos IESS/BIESS llegan como
 //      numeroPrestamosIessBiess, y el bloque endeudamiento suma bien.
-//   8. (marco-v24) Ningún monto de deuda llega con más de dos decimales.
+//   8. (marco-v29) Ningún número llega con decimales (de v24 a v28, los
+//      montos de deuda llegaban a centavos y el resto, como viniera).
 //   9. (marco-v25) La disponibilidad llega primera, cada tema en una sola
 //      lista, y ningún nombre técnico de fuente llega al modelo.
 //  10. (marco-v25) Un jubilado no llega "sin información actual en el IESS"
@@ -104,6 +105,8 @@ const valoresDeTexto = (nodo, salida = []) => {
   else if (nodo && typeof nodo === "object") for (const v of Object.values(nodo)) valoresDeTexto(v, salida);
   return salida;
 };
+const conDecimales = (nodo) =>
+  typeof nodo === "number" ? !Number.isInteger(nodo) : Boolean(nodo) && typeof nodo === "object" && Object.values(nodo).some(conDecimales);
 const protegidosPresentes = new Map(Object.keys(ATRIBUTOS_PROTEGIDOS).map((r) => [r, 0]));
 let empleos = 0, empleosSinTipo = 0;
 
@@ -196,8 +199,9 @@ for (let i = 0; i < ids.length; i += 100) {
       if (Math.abs(suma - en.deudaPropiaTotal) > 0.01) fallar("7. la deuda propia total no es la suma de sus partes", caso);
       if (en.deudaEnAtrasoTotal > en.deudaPropiaTotal + 0.01) fallar("7. hay más deuda en atraso que deuda total", caso);
     }
-    // 8. Montos a centavos: 258798.83000000002 llegaba así al modelo.
-    if (/\d\.\d{3,}/.test(JSON.stringify({ b, c: pm.comportamientoCooperativas, en, p: pm.riesgoJudicialCivil }))) fallar("8. un monto llega con más de dos decimales", caso);
+    // 8. Todo número entero: 258798.83000000002 llegaba así al modelo, y el
+    // modelo copia los números tal cual a lo que escribe.
+    if (conDecimales(mensajeParaElModelo(sp, []))) fallar("8. un número llega con decimales", caso);
 
     // 9. Desde marco-v25: la disponibilidad por tema, primera, sin fuentes.
     const di = pm.disponibilidad;

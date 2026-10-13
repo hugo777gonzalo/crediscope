@@ -49,13 +49,26 @@ Deno.test("ningún nombre aparece en ningún lado del mensaje", () => {
   assertEquals(/\d{10}/.test(texto), false);
 });
 
-Deno.test("un número de 10 dígitos se tapa en cualquier texto, y los montos quedan", () => {
+Deno.test("un número de 10 dígitos se tapa en cualquier texto", () => {
   const p = perfil();
   (p.laboral as { empleosActuales: Array<Record<string, unknown>> }).empleosActuales[0].cargo = "ANALISTA 0000000000 EXT 12";
-  p.patrimonio = { valorAvaluoVehiculos: 1234.5678901234 };
+  assertEquals(armar(p).laboral.empleosActuales[0].cargo, "ANALISTA [número omitido] EXT 12");
+});
+
+Deno.test("todo número llega entero, y la deuda total es la suma de sus partes", () => {
+  const p = perfil();
+  p.patrimonio = { valorAvaluoVehiculos: 1234.5678901234, numeroVehiculos: 1 };
+  p.comportamientoBancario = { saldoTotalVigente: 100.4, deudaEnAtraso: 0.4, totalDeudaRetail: 10.4 };
+  p.comportamientoCooperativas = { saldoTotal: 50.4, cuotaMensualTotal: 25.5 };
   const pm = armar(p);
-  assertEquals(pm.laboral.empleosActuales[0].cargo, "ANALISTA [número omitido] EXT 12");
-  assertEquals(pm.patrimonio.valorAvaluoVehiculos, 1234.5678901234);
+  assertEquals(pm.patrimonio, { valorAvaluoVehiculos: 1235, numeroVehiculos: 1 });
+  assertEquals(pm.comportamientoCooperativas.cuotaMensualTotal, 26);
+  // 100,8 + 50,4 + 10,4 = 161,6 daría 162; las partes redondeadas suman 161.
+  const e = pm.endeudamiento;
+  assertEquals([e.deudaPropiaBancos, e.deudaPropiaCooperativas, e.deudaPropiaRetail, e.deudaPropiaTotal], [101, 50, 10, 161]);
+  const decimales = (n: unknown): boolean =>
+    typeof n === "number" ? !Number.isInteger(n) : Boolean(n) && typeof n === "object" && Object.values(n as object).some(decimales);
+  assertEquals(decimales(mensajeParaElModelo(p, [{ code: "x", monto: 1.5 }])), false);
 });
 
 Deno.test("la institución del título no llega (puede ser el empleador); el nivel sí", () => {

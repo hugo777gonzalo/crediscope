@@ -76,11 +76,14 @@ const aplanar = (nodo, ruta = "", salida = new Map()) => {
   else salida.set(ruta, nodo);
   return salida;
 };
+// También es esperado que v29 tape números largos y lleve todo número entero:
+// un total redondeado por partes se aleja a lo sumo un dólar y medio.
 const otrasDiferencias = (guardado, ahora) => {
   const a = aplanar(guardado), b = aplanar(ahora);
   return [...new Set([...a.keys(), ...b.keys()])].filter((r) =>
     !CAMBIOS_ESPERADOS.has(r.replace(/\[\d+\]/g, "[]")) && a.get(r) !== b.get(r)
-    && !(typeof b.get(r) === "string" && b.get(r).includes("[número omitido]")));
+    && !(typeof b.get(r) === "string" && b.get(r).includes("[número omitido]"))
+    && !(typeof a.get(r) === "number" && Number.isInteger(b.get(r)) && Math.abs(a.get(r) - b.get(r)) < 2));
 };
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 

@@ -12,5 +12,5 @@
 
 insert into scoring_rules_versions (version, description) values
   ('marco-v29',
-   'El perfil del modelo deja de llevar la cédula, el nombre completo, el nombre de cada empleador (cada empleo actual llega con su tipo: Empleador privado, público, etc.) y la institución de una PEP. El marco deja de pedir que se nombren los empleadores. Los atributos protegidos (sexo, estado civil, origen, familia, edad) siguen llegando hasta la decisión del negocio con legal.')
+   'El perfil del modelo deja de llevar la cédula, el nombre completo, el nombre de cada empleador (cada empleo actual llega con su tipo: Empleador privado, público, etc.) y la institución de una PEP. El marco deja de pedir que se nombren los empleadores. Todo número llega entero (los centavos no cambian una decisión y el modelo los copiaba al resumen). Los atributos protegidos (sexo, estado civil, origen, familia, edad) siguen llegando hasta la decisión del negocio con legal.')
 on conflict (version) do nothing;

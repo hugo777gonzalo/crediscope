@@ -339,8 +339,9 @@ aceptada.
   1. **E27, urgente: lo que lee el modelo.** marco-v29 hecha el 2026-10-13
      (PR aparte, sin desplegar): sin cédula, sin nombre, sin empleadores
      (cada empleo con su tipo), sin la institución de una PEP ni la del
-     título (en 13 perfiles era el empleador), y los números de 10+ dígitos
-     tapados en cualquier texto. Validada sin el modelo sobre los 2.813
+     título (en 13 perfiles era el empleador), los números de 10+ dígitos
+     tapados en cualquier texto y todo número entero (decisión del negocio
+     del mismo día: los decimales llegaban por 33 campos, todos montos). Validada sin el modelo sobre los 2.813
      perfiles (`validar-perfil-del-modelo.mjs`, regla 13: 0 fallas). Falta,
      por orden:
      - fusionar el PR y aplicar la **128** con el corredor, **después de la
@@ -368,10 +369,6 @@ aceptada.
        documentos (`docs/cumplimiento/` y el informe de la auditoría de
        seguridad) y **la ficha de seguridad para clientes, que no se comparte
        hasta entonces**. Decir qué atributos siguen llegando.
-     - Visto al medir, sin tocar: el avalúo y el valor de colateral de los
-       vehículos y lo adeudado en tránsito llegan con decimales de más
-       (56 perfiles); el modelo copia los números tal cual. El redondeo de
-       `armarPerfilDelModelo()` cubre sólo tres grupos.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
      `reutiliza_analisis_id` y `duracion_llm_ms` nulo. Revisar también que

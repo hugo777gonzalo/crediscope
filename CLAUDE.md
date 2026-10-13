@@ -693,7 +693,9 @@ antes de tocar esa área.
     estado civil, origen, familia, edad: `true` = llega, hasta que el negocio
     decida con legal; pasar uno a `false` es versión nueva del marco).
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
-    nombre de campo no ve una cédula escrita en el cargo.
+    nombre de campo no ve una cédula escrita en el cargo. Y todo número
+    llega entero (v29, decisión del negocio): el modelo copia los números
+    tal cual y en crédito los centavos no deciden nada.
   - Siete documentos afirmaban una minimización que no existe: no afirmarla
     en ningún lado hasta que v29 esté desplegada **y** el control lo
     confirme.

@@ -417,7 +417,10 @@
 // las 207 respuestas de v28 repetían el nombre de un empleador) y el falso
 // positivo de empleadorConApellidoDelCliente, que se descartaba mirando la
 // razón social. Los atributos protegidos siguen llegando hasta que el
-// negocio decida con legal. Hasta el 2026-10-13 la v29 estaba pensada para
+// negocio decida con legal. Y todo número llega entero (decisión del
+// negocio del mismo día): el modelo copiaba al resumen montos como
+// 50394.9 o el avalúo de un vehículo con decimales de punto flotante, y en
+// crédito los centavos no cambian una decisión. Hasta el 2026-10-13 la v29 estaba pensada para
 // el marco por cliente (apagado, sin fila): toma el número libre al
 // encenderse, como las migraciones.
 //
