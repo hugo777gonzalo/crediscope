@@ -374,6 +374,9 @@ Romper cualquiera de estas rompe algo real.
       se sube su versión y se corre `node scripts/cargar-tablas-equifax.mjs`
       (`--seco` primero)**: rehace desde el crudo las consultas que quedaron
       con la versión anterior, sin volver a pagar.
+    - `scripts/exportar-equifax-tablas.mjs`: un Excel con las 11 tablas de todas
+      las personas consultadas (una hoja por tabla, la persona por su código), más
+      «Consultas» y «Estructura». Sólo lee; va a `research/equifax/excel/`.
     - `scripts/medir-bloque-equifax.mjs`: cuánto pesaría el bloque de Equifax del
       perfil del modelo (`docs/propuesta-marco-equifax.md`), sin gasto.
     - `scripts/probar-equifax-tablas.mjs`: las mismas funciones contra las
