@@ -69,7 +69,8 @@ function baseFalsa(inicial: Partial<Record<string, Fila[]>> = {}, opciones: { fa
 
 const respuestaOk = (): RespuestaEquifax => ({
   status: "ok", familia: "exito", httpStatus: 200, httpEquifax: 200,
-  cuerpo: { decision: "X", listas: [{ a: 1 }] }, cabeceras: { "x-correlation-id": "abc" },
+  cuerpo: { decision: "X", listas: [{ a: 1 }], reporteCrediticio: { identificacion_consultada: [{ numero_documento: "0102030405" }] } },
+  cabeceras: { "x-correlation-id": "abc" },
   parametros: { tipoProducto: "1", monto: 5000, plazo: 12, restaGastoFinanciero: 0 },
   duracionMs: 1234, intentos: 1, puedeHaberCobrado: true,
 });
@@ -94,7 +95,7 @@ Deno.test("una consulta nueva se paga, se guarda entera y se audita con su base 
   assertEquals(r.resultado, "consultada");
   assertEquals(cuenta.n, 1);
   assertEquals(db.tablas.consultas_equifax.length, 1);
-  assertEquals(db.tablas.consultas_equifax[0].respuesta_cruda, { decision: "X", listas: [{ a: 1 }] });
+  assertEquals(db.tablas.consultas_equifax[0].respuesta_cruda, respuestaOk().cuerpo);
   assertEquals(db.tablas.consultas_equifax[0].base_legal, BASE.baseLegal);
   assertEquals(db.tablas.consultas_equifax[0].requested_by, "actor-1");
   const auditoria = db.tablas.audit_log.find((f) => f.action === "equifax.consulta");
@@ -236,6 +237,40 @@ Deno.test("un guardado que falla una vez y funciona la segunda termina bien", as
   const r = await procesarConsultaEquifax({ ...BASE, db, consultar: llamadas().consultar, ahora: AHORA });
   assertEquals(r.resultado, "consultada");
   assertEquals(db.tablas.consultas_equifax.length, 1);
+});
+
+Deno.test("una respuesta por OTRA persona no se guarda, se cobró y cuenta para el tope", async () => {
+  const db = baseFalsa();
+  const otra = (): RespuestaEquifax => ({
+    ...respuestaOk(),
+    cuerpo: { reporteCrediticio: { identificacion_consultada: [{ numero_documento: "0999999999" }] } },
+  });
+  let recibida = false;
+  const r = await procesarConsultaEquifax({
+    ...BASE, db, consultar: () => Promise.resolve(otra()), ahora: AHORA, alRecibir: () => { recibida = true; },
+  });
+  assertEquals(r.resultado === "rechazada" && r.motivo, "otra_persona");
+  assertEquals(db.tablas.consultas_equifax.length, 0, "no deja fila: serviría para calificar a la persona equivocada");
+  assert(recibida, "el crudo llegó a quien llama para que quede en disco como evidencia");
+  const fallo = db.tablas.audit_log.find((f) => f.action === "equifax.consulta.fallo");
+  assert(fallo);
+  assertEquals(fallo.meta.familia, "otra_persona");
+  assertEquals(fallo.meta.puede_haber_cobrado, true);
+  assertFalse(JSON.stringify(fallo).includes("0999999999"), "el documento ajeno es dato de un tercero: no va a la auditoría");
+});
+
+Deno.test("una respuesta sin documento se guarda y la auditoría dice que no se pudo verificar", async () => {
+  const db = baseFalsa();
+  const sinDocumento = (): RespuestaEquifax => ({ ...respuestaOk(), cuerpo: { reporteCrediticio: {} } });
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve(sinDocumento()), ahora: AHORA });
+  assertEquals(r.resultado, "consultada");
+  assertEquals(db.tablas.audit_log.find((f) => f.action === "equifax.consulta")?.meta.identidad_verificada, false);
+});
+
+Deno.test("una respuesta de la persona pedida queda con la identidad verificada", async () => {
+  const db = baseFalsa();
+  await procesarConsultaEquifax({ ...BASE, db, consultar: llamadas().consultar, ahora: AHORA });
+  assertEquals(db.tablas.audit_log.find((f) => f.action === "equifax.consulta")?.meta.identidad_verificada, true);
 });
 
 Deno.test("el día del tope empieza a las 00:00 de Ecuador, no de UTC", () => {

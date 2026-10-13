@@ -494,6 +494,21 @@ function mensajeParaLaPersona(familia: FamiliaEquifax, http: number | undefined,
   }
 }
 
+/**
+ * El documento por el que Equifax dice haber contestado
+ * (reporteCrediticio.identificacion_consultada[0].numero_documento, forma
+ * medida con la primera consulta real, 2026-10-12), o null si la respuesta no
+ * lo trae. Con Aval, el ambiente de prueba contestó por OTRA persona en el 37%
+ * de las consultas y el filtro de calidad sólo miraba si Aval había contestado,
+ * no de quién: acá se compara el documento de la respuesta con el pedido antes
+ * de guardar nada.
+ */
+export function documentoDeLaRespuesta(cuerpo: Record<string, unknown> | undefined): string | null {
+  const reporte = cuerpo?.reporteCrediticio as { identificacion_consultada?: Array<{ numero_documento?: unknown }> } | undefined;
+  const documento = reporte?.identificacion_consultada?.[0]?.numero_documento;
+  return typeof documento === "string" && documento.trim() !== "" ? documento.trim() : null;
+}
+
 /** ¿Vale la pena guardar esta consulta? Sólo si Equifax contestó con un JSON. */
 export function laConsultaEquifaxSirve(r: RespuestaEquifax): boolean {
   return r.status === "ok" && r.familia === "exito" && r.cuerpo !== undefined;

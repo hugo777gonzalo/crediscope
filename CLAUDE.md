@@ -581,6 +581,10 @@ antes de tocar esa área.
     sin base legal no corre.
   - No se envían datos del cónyuge (decisión del negocio): el pedido no
     tiene dónde ponerlos.
+  - Una respuesta por **otra persona** no se guarda: se compara el
+    documento que trae Equifax (`identificacion_consultada`) con el
+    pedido (`documentoDeLaRespuesta()`). Se cobró, así que cuenta para el
+    tope y queda en la auditoría sin el documento ajeno.
   - Los parámetros de la decisión (producto 1, monto, plazo) son de
     relleno: sólo interesa lo que el buró trae de la persona.
   - La clave y el token no salen en ningún mensaje (`sanitizar()`); el

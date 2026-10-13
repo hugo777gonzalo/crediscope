@@ -22,6 +22,7 @@
 import {
   ambienteEquifax,
   consultarEquifax,
+  documentoDeLaRespuesta,
   laConsultaEquifaxSirve,
   type RespuestaEquifax,
 } from "./equifax-client.ts";
@@ -71,7 +72,7 @@ export type ResultadoDeProceso =
   | { resultado: "simulada"; reutilizaria: boolean; consultasHoy: number; tope: number; fechaDeLaVigente?: string }
   | {
     resultado: "rechazada";
-    motivo: "proveedor_apagado" | "tope_diario" | "consumo_no_medible" | "fallo" | "no_se_pudo_guardar";
+    motivo: "proveedor_apagado" | "tope_diario" | "consumo_no_medible" | "fallo" | "otra_persona" | "no_se_pudo_guardar";
     http: number;
     error: string;
     respuesta?: RespuestaEquifax;
@@ -175,6 +176,38 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     return { resultado: "rechazada", motivo: "fallo", http: respuesta.httpStatus, error: respuesta.mensaje ?? "Equifax no contestó.", respuesta };
   }
 
+  // 4b. ¿Contestó por la persona pedida? Con Aval, el ambiente de prueba
+  //     contestó por otra persona en el 37% y el filtro de calidad no lo
+  //     veía. Una respuesta por otra persona no se guarda ni se reutiliza,
+  //     pero se cobró: queda constancia (sin el documento ajeno, que es
+  //     dato de un tercero) y cuenta para el tope. Si la respuesta no trae
+  //     el documento no se puede verificar y se guarda diciéndolo.
+  const documento = documentoDeLaRespuesta(respuesta.cuerpo);
+  if (documento !== null && documento !== o.cedula) {
+    const { error } = await o.db.from("audit_log").insert({
+      actor: o.actorId,
+      action: "equifax.consulta.fallo",
+      meta: {
+        identificacion: o.cedula,
+        familia: "otra_persona",
+        http_equifax: respuesta.httpEquifax ?? null,
+        intentos: respuesta.intentos,
+        duracion_ms: respuesta.duracionMs,
+        puede_haber_cobrado: true,
+        mensaje: "Equifax contestó por una identificación distinta de la pedida. No se guardó.",
+        cabeceras: respuesta.cabeceras ?? null,
+        base_legal: o.baseLegal,
+        transporte: o.transporte,
+      },
+    });
+    if (error) console.error("equifax: no se pudo auditar la respuesta de otra persona:", error.code ?? error.message);
+    return {
+      resultado: "rechazada", motivo: "otra_persona", http: 502, respuesta,
+      error: "Equifax contestó por una identificación distinta de la pedida (la consulta se cobró). No se guardó.",
+    };
+  }
+  const identidadVerificada = documento !== null;
+
   // 5. Enlace blando a la persona del registro común (mismo patrón que Aval).
   let clientId: string | null = null;
   const { data: existente } = await o.db.from("clients").select("id").eq("cedula", o.cedula).maybeSingle();
@@ -233,6 +266,8 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
       base_legal: o.baseLegal,
       origen: o.origen,
       transporte: o.transporte,
+      // false = la respuesta no trajo el documento y no se pudo comprobar de quién era.
+      identidad_verificada: identidadVerificada,
     },
   });
   if (errAuditoria) console.error("equifax: no se pudo auditar la consulta:", errAuditoria.code ?? errAuditoria.message);
