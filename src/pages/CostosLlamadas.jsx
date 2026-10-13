@@ -13,6 +13,8 @@ import {
   num,
   fechaHora,
 } from "../lib/consumoLlm.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import { entero, plural, decimal } from "../lib/formatos.js";
 
 // El detalle llamada por llamada, con filtros. Es la pantalla a la que
 // se baja cuando un número de arriba no cierra: acá está el registro
@@ -95,9 +97,7 @@ export default function CostosLlamadas() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   return (
@@ -111,8 +111,8 @@ export default function CostosLlamadas() {
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ marginBottom: 4 }}>Detalle de llamadas</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          {filas ? `${visibles.length} de ${filas.length} llamadas` : "Cargando..."}
-          {t ? ` · ${money(t.costo)} medidos${t.sinMedir ? ` · ${t.sinMedir} sin medir` : ""}` : ""}
+          {filas ? `${entero(visibles.length)} de ${plural(filas.length, "llamada")}` : "Cargando..."}
+          {t ? ` · ${money(t.costo)} medidos${t.sinMedir ? ` · ${entero(t.sinMedir)} sin medir` : ""}` : ""}
         </p>
       </div>
 
@@ -183,12 +183,12 @@ export default function CostosLlamadas() {
                 <th>Proceso</th>
                 <th>Modelo</th>
                 <th>Referencia</th>
-                <th style={{ textAlign: "right" }}>Entrada</th>
-                <th style={{ textAlign: "right" }}>Salida</th>
-                <th style={{ textAlign: "right" }}>Razon.</th>
-                <th style={{ textAlign: "right" }}>Caché esc./lec.</th>
-                <th style={{ textAlign: "right" }}>Seg.</th>
-                <th style={{ textAlign: "right" }}>Costo</th>
+                <th className="crediscope-cifra">Entrada</th>
+                <th className="crediscope-cifra">Salida</th>
+                <th className="crediscope-cifra">Razonam.</th>
+                <th className="crediscope-cifra">Caché esc./lec.</th>
+                <th className="crediscope-cifra">Duración (s)</th>
+                <th className="crediscope-cifra">Costo</th>
                 <th>Medición</th>
               </tr>
             </thead>
@@ -200,11 +200,11 @@ export default function CostosLlamadas() {
                     {ETIQUETA_FUNCION[r.funcion] ?? r.funcion}
                     <div className="crediscope-muted" style={{ fontSize: 12 }}>{ETIQUETA_NATURALEZA[r.naturaleza]}</div>
                   </td>
-                  <td style={{ fontSize: 12.5 }}>
+                  <td style={{ fontSize: 13 }}>
                     {r.modelo === "desconocido" ? <span className="crediscope-muted">sin registro</span> : r.modelo}
                     {r.contexto?.escalamiento ? <div className="crediscope-muted" style={{ fontSize: 12 }}>escalamiento</div> : null}
                   </td>
-                  <td style={{ fontSize: 12.5 }}>
+                  <td style={{ fontSize: 13 }}>
                     {r.contexto?.cedula ? (
                       <Link to={`/perfil/${r.contexto.cedula}`}>{r.contexto.cedula}</Link>
                     ) : r.contexto?.paquete_id ? (
@@ -220,14 +220,14 @@ export default function CostosLlamadas() {
                       </div>
                     ) : null}
                   </td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.origen_medicion === "sin_datos" ? "—" : num(r.tokens_entrada)}</td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.origen_medicion === "sin_datos" ? "—" : num(r.tokens_salida)}</td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.tokens_razonamiento === null ? "—" : num(r.tokens_razonamiento)}</td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 12.5 }}>
+                  <td className="crediscope-cifra">{r.origen_medicion === "sin_datos" ? "—" : num(r.tokens_entrada)}</td>
+                  <td className="crediscope-cifra">{r.origen_medicion === "sin_datos" ? "—" : num(r.tokens_salida)}</td>
+                  <td className="crediscope-cifra">{r.tokens_razonamiento === null ? "—" : num(r.tokens_razonamiento)}</td>
+                  <td className="crediscope-cifra" style={{ fontSize: 13 }}>
                     {r.origen_medicion === "sin_datos" ? "—" : `${num(r.tokens_cache_escritura)} / ${num(r.tokens_cache_lectura)}`}
                   </td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{r.duracion_ms ? (r.duracion_ms / 1000).toFixed(1) : "—"}</td>
-                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                  <td className="crediscope-cifra">{r.duracion_ms ? decimal(r.duracion_ms / 1000) : "—"}</td>
+                  <td className="crediscope-cifra" style={{ fontWeight: 600 }}>
                     {r.costo_usd === null ? <span className="crediscope-muted">?</span> : money(r.costo_usd)}
                   </td>
                   <td style={{ fontSize: 12 }} title={DESCRIPCION_ORIGEN[r.origen_medicion]}>
@@ -240,7 +240,7 @@ export default function CostosLlamadas() {
         </div>
         {visibles.length > 500 ? (
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            Se muestran las primeras 500. El CSV incluye las {visibles.length}.
+            Se muestran las primeras 500. El CSV incluye las {entero(visibles.length)}.
           </p>
         ) : null}
         {visibles.length === 0 && filas ? (

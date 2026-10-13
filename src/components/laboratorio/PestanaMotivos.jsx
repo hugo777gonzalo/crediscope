@@ -38,7 +38,7 @@ export default function PestanaMotivos({ resultado }) {
         {sePodia.map(([clave, n]) => (
           <Barra key={clave} etiqueta={ETIQUETA_SE_PODIA_VER[clave] ?? clave} valor={n} maximo={malos} texto={`${num(n)} (${pct(malos ? n / malos : null)})`} color={COLOR_SE_PODIA_VER[clave]} />
         ))}
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           Se podía ver y no lo vio: el modelo aprobó, y la cuota no cabía en el ingreso o el ingreso no estaba confirmado. Perfil frágil: la causa fue un
           golpe posterior, y el día del análisis tenía el ingreso sin confirmar, menos de 12 meses de continuidad laboral o deuda en atraso. Lo que ningún
           evento explica, en un aprobado, es lo que el modelo no vio en los datos: se busca en Variables.
@@ -65,7 +65,7 @@ export default function PestanaMotivos({ resultado }) {
             ))}
           </tbody>
         </table>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           El principal es la primera causa posterior con fecha; si no hay, lo que se veía el día del análisis. La mora de afuera empezó antes que la nuestra
           en {num(r.empezo_afuera)}: ahí el problema empezó en otra parte.
         </p>
@@ -93,7 +93,7 @@ export default function PestanaMotivos({ resultado }) {
                 <th style={{ textAlign: "right" }}>Lo tuvieron</th>
                 <th style={{ textAlign: "right" }}>Cayeron</th>
                 <th style={{ textAlign: "right" }}>Tasa (general {pct(r.tasa_general)})</th>
-                <th style={{ textAlign: "right" }}>Puntaje</th>
+                <th style={{ textAlign: "right" }}>Score</th>
                 <th style={{ textAlign: "right" }}>Continuidad laboral (meses)</th>
                 <th style={{ textAlign: "right" }}>Meses con aporte en 24</th>
                 <th style={{ textAlign: "right" }}>Con deuda en atraso</th>

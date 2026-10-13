@@ -72,7 +72,7 @@ export default function GrupoConfigurable({
           <span className="crediscope-seccion-titulo">
             {titulo}
             {descripcion ? (
-              <span className="crediscope-muted" style={{ display: "block", fontSize: 12.5, fontWeight: 400, marginTop: 2 }}>
+              <span className="crediscope-muted" style={{ display: "block", fontSize: 13, fontWeight: 400, marginTop: 2 }}>
                 {descripcion}
               </span>
             ) : null}

@@ -4,6 +4,8 @@ import { Info } from "lucide-react";
 import { getProveedor, updateProveedor } from "../lib/api.js";
 import FilaConfig from "../components/FilaConfig.jsx";
 import PestanasProveedor from "../components/PestanasProveedor.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Análogo a ConfigFuentes.jsx (Novadata) pero para Aval -- y con otra
 // forma, a propósito. Novadata son 52 endpoints independientes, cada uno
@@ -58,14 +60,12 @@ export default function ConfigFuentesAval() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-card">
         {!item ? (
-          <p className="crediscope-muted" style={{ margin: 0 }}>Cargando...</p>
+          <Cargando />
         ) : (
           <FilaConfig item={item} etiqueta="Aval Buró" descripcion="Buró de crédito de Ecuador" onSave={guardar} />
         )}

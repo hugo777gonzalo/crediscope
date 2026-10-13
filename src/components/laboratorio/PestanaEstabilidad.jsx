@@ -7,6 +7,7 @@ import { calcularEstabilidad } from "../../lib/calculosDelCorte.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { GraficoBarras, GraficoLineas } from "./Graficos.jsx";
 import { MensajeError, Cargando, Etiqueta, GuardarEsteResultado, num, pct, dec } from "./Comunes.jsx";
+import { plural } from "../../lib/formatos.js";
 
 // Estabilidad: ¿la población de este corte se parece a la de otro? PSI del
 // puntaje (se calcula en el navegador y se guarda en este corte, desde la
@@ -93,14 +94,14 @@ export default function PestanaEstabilidad({ corte, corteId, cortes, poblacion, 
 
           <div className="crediscope-card">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <h3 style={{ margin: 0 }}>PSI del puntaje</h3>
+              <h3 style={{ margin: 0 }}>PSI del score</h3>
               <button className="crediscope-btn" onClick={calcularPsiDelPuntaje} disabled={calculando || !baseId}>{calculando ? "Calculando..." : ultimo ? "Recalcular" : "Calcular"}</button>
             </div>
             {ultimo ? (
               <>
                 <p style={{ fontSize: 14 }}>
                   PSI <strong>{dec(ultimo.resultado.psi, 4)}</strong> <Etiqueta texto={nivel(ultimo.resultado.psi)[0]} color={nivel(ultimo.resultado.psi)[1]} />{" "}
-                  <span className="crediscope-muted" style={{ fontSize: 12.5 }}>calculado el {formatearFechaHora(ultimo.created_at)}, tramos de a 100 puntos</span>
+                  <span className="crediscope-muted" style={{ fontSize: 13 }}>calculado el {formatearFechaHora(ultimo.created_at)}, tramos de a 100 puntos</span>
                 </p>
                 <GraficoBarras
                   categorias={ultimo.resultado.tramos.map((t) => `${t.desde}-${t.desde + 99}`)}
@@ -110,7 +111,7 @@ export default function PestanaEstabilidad({ corte, corteId, cortes, poblacion, 
                   ]}
                   y={{ titulo: "Parte de la población", formato: (v) => pct(v, 0) }}
                   alto={240}
-                  etiqueta="Distribución del puntaje en los dos cortes"
+                  etiqueta="Distribución del score en los dos cortes"
                 />
               </>
             ) : (
@@ -154,7 +155,7 @@ export default function PestanaEstabilidad({ corte, corteId, cortes, poblacion, 
           <Cargando que="los resultados de cada corte" />
         ) : evol.length < 2 ? (
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            Con {evol.length} corte(s) con desempeño calculado no hay evolución que mostrar. Cada corte nuevo (cada cosecha que madura) suma un punto.
+            Con {plural(evol.length, "corte")} con desempeño calculado no hay evolución que mostrar. Cada corte nuevo (cada cosecha que madura) suma un punto.
           </p>
         ) : (
           <GraficoLineas

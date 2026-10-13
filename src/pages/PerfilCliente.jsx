@@ -8,6 +8,8 @@ import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
 import PestanasCliente from "../components/PestanasCliente.jsx";
 import { formatearFechaHora } from "../lib/fechas.js";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // "Perfil del Cliente" — nombre comercial de la Estructura Estandarizada
 // (internamente sigue siendo ese término). A propósito NO clasifica en
@@ -69,7 +71,7 @@ export default function PerfilCliente() {
     <div>
       <p>
         <Link to="/" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Buscar otro cliente
+          Buscar otra persona
         </Link>
       </p>
 
@@ -104,12 +106,10 @@ export default function PerfilCliente() {
       ) : null}
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)" }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
-      {loading ? <p className="crediscope-muted">Cargando...</p> : null}
+      {loading ? <Cargando /> : null}
 
       {!loading && !profile ? <p className="crediscope-muted">Sin consulta previa — usá el botón de arriba.</p> : null}
 

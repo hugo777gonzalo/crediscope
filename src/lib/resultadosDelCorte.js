@@ -50,7 +50,7 @@ export async function huellaDe({ corteId, tipo, poblacion = null, parametros = {
 
 // ------------------------------------------------------------ desempeño
 const ORDEN_RECOMENDACION = ["aprobar", "revisar", "negar", "bloqueado", "sin recomendación"];
-const AVISO_SINTETICO = "Corte sintético: el resultado y el puntaje son inventados. No es desempeño del motor.";
+const AVISO_SINTETICO = "Corte sintético: el resultado y el score son inventados. No es desempeño del motor.";
 
 // Lo que calculaba lab_calcular_desempeno (095), sobre las operaciones del
 // corte: las observadas con puntaje. El AUC, el KS y los tramos van sin los

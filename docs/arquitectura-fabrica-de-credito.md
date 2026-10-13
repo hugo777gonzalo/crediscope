@@ -6,6 +6,13 @@ construido todavía**: es el norte contra el cual ordenar lo que sigue.
 Lo que ya existe se describe en el README; este documento dice dónde
 encaja y qué falta para que sea un producto y no un conjunto de piezas.
 
+**Actualización del 2026-10-12.** El negocio fijó el modelo de la persona
+(`docs/modelo-de-la-persona.md`): la persona es la entidad y de ella cuelgan las
+solicitudes, las direcciones, los empleos, las referencias, los documentos, los
+scores y los créditos. Es la forma concreta de lo que este documento llama «la
+entidad solicitud». Desde esa fecha se dice «score» y no «puntaje»; acá queda el
+término de cuando se escribió.
+
 ## El diagnóstico
 
 Una fábrica de crédito procesa **solicitudes**. CrediScope hoy evalúa

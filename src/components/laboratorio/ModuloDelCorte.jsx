@@ -5,6 +5,7 @@ import { getCortes, getCorte, getResultados } from "../../lib/laboratorio.js";
 import { calcular } from "../../lib/calculosDelCorte.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { MensajeError, FranjaSintetica } from "./Comunes.jsx";
+import Cargando from "../ui/Cargando.jsx";
 
 // El armazón de los módulos que trabajan sobre un corte congelado (Prueba
 // retrospectiva, Descubrimiento estadístico, Descubrimiento profundo): el
@@ -88,7 +89,7 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
       </div>
     );
   }
-  if (!corte || corte.id !== corteId) return <p className="crediscope-muted">Cargando...</p>;
+  if (!corte || corte.id !== corteId) return <Cargando />;
 
   const conSolicitudes = Boolean(corte.resumen?.solicitudes);
   const visibles = pestanas.filter((t) => !t.requiere || t.requiere(corte));
@@ -127,14 +128,14 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <label className="crediscope-muted" style={{ fontSize: 13 }}>
             Corte{" "}
-            <select value={corteId} onChange={(e) => cambiar("corte", e.target.value)} className="crediscope-input" style={{ width: "auto" }}>
+            <select value={corteId} onChange={(e) => cambiar("corte", e.target.value)} className="crediscope-input" style={{ width: "auto", maxWidth: "min(560px, calc(100vw - 80px))" }}>
               {(cortes ?? []).map((c) => (
                 <option key={c.id} value={c.id}>{c.nombre}{c.es_sintetico ? " (sintético)" : ""}</option>
               ))}
             </select>
           </label>
           {conSolicitudes && pestana.usaPoblacion ? (
-            <select value={poblacion} onChange={(e) => cambiar("poblacion", e.target.value)} className="crediscope-input" style={{ width: "auto" }}>
+            <select value={poblacion} onChange={(e) => cambiar("poblacion", e.target.value)} className="crediscope-input" style={{ width: "auto", maxWidth: "min(560px, calc(100vw - 80px))" }}>
               {Object.entries(ETIQUETA_POBLACION).map(([clave, texto]) => (
                 <option key={clave} value={clave}>{texto}</option>
               ))}
@@ -144,13 +145,14 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
         </div>
       </div>
 
-      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el puntaje de este corte" /> : null}
+      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el score de este corte" /> : null}
 
       <div className="crediscope-tabs" style={{ flexWrap: "wrap" }}>
         {visibles.map((t) => (
           <button
             key={t.clave}
             className={`crediscope-tab ${pestana.clave === t.clave ? "crediscope-tab-active" : ""}`}
+            aria-current={pestana.clave === t.clave ? "true" : undefined}
             onClick={() => cambiar("pestana", t.clave)}
             style={{ border: "none", background: "none", cursor: "pointer" }}
           >

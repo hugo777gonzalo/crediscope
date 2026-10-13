@@ -4,6 +4,8 @@ import { getAvalFieldConfig, updateAvalFieldConfig } from "../lib/api.js";
 import GrupoConfigurable from "../components/GrupoConfigurable.jsx";
 import FilaConfig from "../components/FilaConfig.jsx";
 import PestanasProveedor from "../components/PestanasProveedor.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Análogo a ConfigCampos.jsx pero para la estructura estandarizada de
 // Aval (aval-estructura.ts). Los grupos ya vienen en castellano legible
@@ -66,7 +68,7 @@ export default function ConfigCamposAval() {
 
   const totalActivos = items?.filter((i) => i.enabled).length ?? 0;
   const descripcion =
-    "Un campo apagado se sigue calculando y guardando en la estructura de Aval, pero viaja en blanco hacia el modelo: existe y se puede ver, solo no pesa en el criterio.";
+    "Un campo apagado se sigue calculando y guardando en la estructura de Aval, pero viaja en blanco hacia el modelo: existe y se puede ver, sólo no pesa en el criterio.";
 
   return (
     <div>
@@ -87,9 +89,7 @@ export default function ConfigCamposAval() {
       </div>
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       <div className="crediscope-card">
@@ -102,7 +102,7 @@ export default function ConfigCamposAval() {
       </div>
 
       {!items ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : grupos.length === 0 ? (
         <div className="crediscope-card">
           <p className="crediscope-muted" style={{ margin: 0 }}>Ningún campo con ese nombre.</p>

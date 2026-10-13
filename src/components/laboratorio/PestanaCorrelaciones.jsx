@@ -59,7 +59,7 @@ export default function PestanaCorrelaciones({ corteId, poblacion }) {
             </table>
           </div>
         ) : (
-          <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>Tocá una celda para ver el par con los tres coeficientes.</p>
+          <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>Tocá una celda para ver el par con los tres coeficientes.</p>
         )}
       </div>
 
@@ -122,7 +122,7 @@ export default function PestanaCorrelaciones({ corteId, poblacion }) {
               ))}
             </tbody>
           </table>
-          <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+          <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
             Más de 5, mirar; más de 10, redundante; ∞, es combinación exacta de otras. Sin VIF (cobertura menor al 80% o constantes): {c.sinVif.join(", ") || "ninguna"}.
           </p>
         </div>

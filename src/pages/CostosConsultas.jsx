@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { Brain, Database, AlertTriangle } from "lucide-react";
 import { getConsumoLlm } from "../lib/api.js";
 import { agrupar, totales, promedioMedido, soloExitosas, num, centavos, money2 } from "../lib/consumoLlm.js";
+import Kpi from "../components/ui/Kpi.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // Lo que cuesta UNA consulta y por qué cuesta eso.
 //
@@ -13,19 +16,6 @@ import { agrupar, totales, promedioMedido, soloExitosas, num, centavos, money2 }
 // porque cada criterio nuevo le da al modelo una cosa más que
 // deliberar. El razonamiento se factura como salida, que vale cinco
 // veces la entrada.
-
-function Kpi({ Icono, etiqueta, valor, detalle, color }) {
-  return (
-    <div className="crediscope-card crediscope-kpi">
-      <p className="crediscope-kpi-label">
-        <Icono size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-        {etiqueta}
-      </p>
-      <p className="crediscope-kpi-valor" style={color ? { color } : undefined}>{valor}</p>
-      {detalle ? <p className="crediscope-kpi-detalle">{detalle}</p> : null}
-    </div>
-  );
-}
 
 export default function CostosConsultas() {
   const [filas, setFilas] = useState(null);
@@ -68,9 +58,7 @@ export default function CostosConsultas() {
 
   if (error)
     return (
-      <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-        <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-      </div>
+      <AvisoDeError error={error} />
     );
 
   const prom = (g, campo) => (g.medidas ? Math.round(g[campo] / g.medidas) : 0);
@@ -91,7 +79,7 @@ export default function CostosConsultas() {
       </div>
 
       {!d ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : d.medidas === 0 ? (
         <div className="crediscope-card">
           <p style={{ margin: 0 }}>Todavía no hay análisis con consumo medido.</p>
@@ -103,13 +91,13 @@ export default function CostosConsultas() {
               Icono={Database}
               etiqueta="Promedio histórico"
               valor={centavos(d.promedio)}
-              detalle={`Sobre ${d.medidas} análisis medidos`}
+              detalle={`Sobre ${num(d.medidas)} análisis medidos`}
             />
             <Kpi
               Icono={Database}
               etiqueta="Con el criterio actual"
               valor={d.actual ? centavos(promedioMedido(d.actual)) : "—"}
-              detalle={d.actual ? `${d.actual.clave} · ${d.actual.medidas} análisis` : null}
+              detalle={d.actual ? `${d.actual.clave} · ${num(d.actual.medidas)} análisis` : null}
             />
             <Kpi
               Icono={Brain}
@@ -210,7 +198,7 @@ export default function CostosConsultas() {
           <div className="crediscope-card">
             <h3>Cuánto costaría operar</h3>
             <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              Al costo del criterio actual. Sirve para poner piso a la tarifa, no para prometerla: el costo se mueve con cada
+              Al costo del criterio actual. Sirve para fijar el mínimo de la tarifa, no para prometerla: el costo se mueve con cada
               versión del criterio.
             </p>
             <div className="crediscope-descarga-row" style={{ marginTop: 0 }}>
@@ -243,7 +231,7 @@ export default function CostosConsultas() {
               </table>
             ) : null}
             <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-              Solo el modelo. No incluye la consulta a la fuente de datos, ni infraestructura, ni el consumo de calibración —
+              Sólo el modelo. No incluye la consulta a la fuente de datos, ni infraestructura, ni el consumo de calibración —
               que hoy es el más grande y se ve en <Link to="/costos/corridas">Corridas masivas</Link>.
             </p>
           </div>

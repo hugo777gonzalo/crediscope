@@ -20,7 +20,7 @@ function SinCalcular({ corteId, que }) {
 
 function Pie({ resultado }) {
   return (
-    <p className="crediscope-muted" style={{ fontSize: 12.5 }}>
+    <p className="crediscope-muted" style={{ fontSize: 13 }}>
       Calculado el {formatearFechaHora(resultado.created_at)} sobre {num(resultado.resultado.personas)} personas ({resultado.resultado.poblacion}). Se recalcula con el guion.
     </p>
   );
@@ -86,7 +86,7 @@ export function PestanaImportancia({ resultado, corteId }) {
             </tbody>
           </table>
         </div>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
           SHAP: cuánto cambia, en promedio, la probabilidad de caer que predice el bosque por esa variable (TreeSHAP exacto, sobre {num(r.prueba.shap_sobre)} personas de la
           mitad de prueba). Permutación: cuánto baja el AUC si se desordena la variable; cero o negativo, el bosque no la necesita. Una variable puede pesar en SHAP
           y no en permutación si otra dice lo mismo.
@@ -164,8 +164,8 @@ export function PestanaPca({ resultado, corteId }) {
             alto={220}
             etiqueta="Varianza explicada"
           />
-          <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
-            Sobre {num(r.columnas)} columnas estandarizadas. Si la primera explica poco, la información está repartida: no hay unos pocos ejes que resuman al cliente.
+          <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
+            Sobre {num(r.columnas)} columnas estandarizadas. Si la primera explica poco, la información está repartida: no hay unos pocos ejes que resuman a la persona.
           </p>
         </div>
         <div className="crediscope-card" style={{ margin: 0 }}>
@@ -176,18 +176,18 @@ export function PestanaPca({ resultado, corteId }) {
             y={{ titulo: "2.ª componente", formato: (x) => dec(x, 1) }}
             etiqueta="Las dos primeras componentes"
           />
-          <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>Rojo, cayó; verde, pagó. Una muestra, sin identificar a nadie.</p>
+          <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>Rojo, cayó; verde, pagó. Una muestra, sin identificar a nadie.</p>
         </div>
       </div>
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Qué forma cada componente</h3>
         {r.componentes.map((c) => (
-          <p key={c.componente} style={{ fontSize: 13.5 }}>
+          <p key={c.componente} style={{ fontSize: 14 }}>
             <strong>{c.componente}.ª</strong> ({pct(c.explicada)} de la varianza · AUC contra el resultado {dec(c.auc, 3)}):{" "}
             {c.cargas.map((x) => `${x.nombre} ${x.carga > 0 ? "+" : "−"}${dec(Math.abs(x.carga), 2)}`).join(" · ")}
           </p>
         ))}
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>Herramienta de investigación, no una etapa del modelo (anexo del diseño).</p>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>Herramienta de investigación, no una etapa del modelo (anexo del diseño).</p>
       </div>
     </div>
   );

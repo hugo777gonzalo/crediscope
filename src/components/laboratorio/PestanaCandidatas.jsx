@@ -59,7 +59,7 @@ function Candidata({ c, alCambiar }) {
         <div>
           <strong>{c.nombre}</strong> <Etiqueta texto={ORIGEN[c.origen] ?? c.origen} />{" "}
           {c.lab_cortes?.es_sintetico ? <Etiqueta texto="de un corte sintético" color="var(--warn)" /> : null}
-          <div className="crediscope-muted" style={{ fontSize: 12.5 }}>
+          <div className="crediscope-muted" style={{ fontSize: 13 }}>
             {c.definicion}
             {c.ruta_crudo ? <> · <code>{c.ruta_crudo}</code> ({c.derivacion})</> : null}
             {c.fuente ? ` · fuente: ${c.fuente}` : ""} · {c.disponible_desde ? `disponible desde el ${formatearDia(c.disponible_desde)}` : "sin fecha de disponibilidad"}

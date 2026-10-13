@@ -1,9 +1,11 @@
 # Pendientes
 
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
-con el bloque de seguridad puesto al día el 2026-10-09 (sección 2, primer
-punto; la última migración es la **116** y desde ella se aplican con el
-corredor). Las versiones vigentes son
+con los bloques de la auditoría externa y de seguridad puestos al día el
+2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
+2026-10-12 (sección 1, primer punto). La última migración es la **121**;
+desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
+no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
@@ -20,6 +22,72 @@ aceptada.
 
 ## 1. Para retomar primero
 
+- **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
+  El informe es `docs/revision-ux.md`; el vocabulario del producto,
+  `docs/modelo-de-la-persona.md`; para repetir la revisión cuando cambie una
+  pantalla, la habilidad `revision-ux` (`.claude/skills/revision-ux/SKILL.md`).
+  Entró a `main` en tres PR: la revisión, el repaso en pantalla y las decisiones
+  de nombres del 2026-10-12.
+  - **Hecho:**
+    - trece defectos funcionales (el enlace directo que caía en "/", las
+      pantallas de administración en blanco, los submenús escondidos bajo
+      860 px...), seis cifras que no cerraban y unos 90 archivos con textos,
+      formatos y estados unificados (`formatos.js`, `mensajesDeError.js`,
+      `navegacion.js`, `src/components/ui/`);
+    - dos pasos nuevos en el control `pantalla` de cada PR:
+      `scripts/revisar-textos.mjs` y `scripts/probar-formatos.mjs` (62 casos
+      más los de navegación);
+    - el 2026-10-12, con la sesión de admin que el negocio abrió en el panel
+      de vista previa, se repasó en pantalla lo que faltaba: la franja de la
+      bandeja da 2.572 y sus tarjetas suman 2.572; el menú abre una sección a
+      la vez; a 768 y 414 px no hay desborde; Costos, Fuentes de Ingreso,
+      Monitoreo, Lotes y los módulos del Laboratorio abren sin error, salvo la
+      pestaña Centro de datos, que se arregló con la 121 y se vio abrir (52 fuentes);
+      lo que apareció se corrigió;
+    - **el mismo día el negocio decidió los nombres** y se aplicaron: «Lotes
+      consultados», «Monitoreo» (antes Reportes; la página interna, «Panorama»),
+      «Explorador de la fuente de datos», «Personas por segmento», **Score** en
+      lugar de Puntaje (55 textos), el historial por cédula retirado y la
+      búsqueda del Inicio que abre el Expediente. Dio además el modelo de la
+      persona: el árbol y los estados. El control corta con los nombres viejos
+      y avisa de cada «cliente» suelto (0 avisos hoy).
+  - Queda, por orden:
+  1. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+     la persona, la solicitud como entidad, las direcciones, las referencias,
+     los documentos y los créditos de la persona no existen todavía como datos:
+     hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
+     en la sección 5 de ese documento):
+     - el nombre del segundo estado: «Solicitante» no convence;
+     - qué estado tiene quien fue rechazado o desistió, y quién decide
+       «Preaprobado»;
+     - si «Perfil del Cliente» pasa a «Perfil de la Persona»;
+     - si el dictamen del modelo («Negación») y la decisión de la solicitud
+       («Rechazado») usan el mismo verbo;
+     - confirmar que «fuentes» era aceptar «Explorador de la fuente de datos».
+     Con eso respondido, el orden de construcción propuesto es: la solicitud
+     como entidad, el estado de la persona calculado de sus hechos (con su
+     historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
+     Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
+     `docs/arquitectura-fabrica-de-credito.md`.
+  2. **Lo que todavía no se vio en pantalla:**
+     - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
+       analista): la tanda en que iban se cortó por tiempo;
+     - las pestañas internas de cada módulo del Laboratorio (las pantallas
+       abren, no se recorrió cada pestaña) y Cargar archivo con un archivo
+       (sólo se vio el formulario);
+     - las cuatro pantallas de la persona (Perfil, Análisis, Fuentes de
+       Ingreso, Aval) con datos;
+     - una captura: el panel oculto hace fallar las capturas, y lo de 768 y
+       414 px se midió en el DOM. Seguir
+       `.claude/skills/revision-ux/recorrido-qa.md`: Claude no escribe
+       contraseñas, el negocio ingresa con su cuenta en el panel
+       (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
+     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
+  3. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+     construyó sin su decisión.
+  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+     migrar los estilos en línea a clases a medida que se toque cada una.
+
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
    haciendo el negocio** (2026-10-04) y va a comentar el resultado. Todas las
    pantallas que pidió el negocio están construidas (fases A a F y módulos
@@ -31,7 +99,7 @@ aceptada.
    y `node scripts/probar-estadistica.mjs`: todo cuadra) y todos los
    módulos cargan en el navegador sin errores. Recorrido, con el usuario
    logueado en `localhost:5184`:
-   - Laboratorio › Inicio (hallazgos críticos, default por mes, análisis por
+   - Laboratorio › Inicio (hallazgos críticos, impago por mes, análisis por
      mes, trabajos a medias, actividad).
    - Instituciones y proyectos: registrar una institución de prueba y un
      proyecto; asignarle una carga.
@@ -185,13 +253,102 @@ aceptada.
 
 ## 2. Riesgos técnicos conocidos
 
-- **Seguridad, cumplimiento y cliente nuevo (2026-10-09). Para retomar,
-  empezar acá.** Hecho ese día: auditoría con correcciones (113-116),
+- **Auditoría externa integral (2026-10-09). Para retomar, empezar acá.**
+  - Informe con 27 hallazgos en `auditoria/2026-10-09-auditoria-externa-integral.md`
+    (fuera de git). Remediación de los altos E1 a E5 en
+    `docs/remediacion-auditoria-externa.md`.
+  - Hecho ese día:
+    - `main` protegida, con controles en cada PR y Dependabot;
+    - despliegue sellado y confirmado;
+    - clave de guiones (E4);
+    - análisis reutilizado por huella (E1);
+    - plazo por fuente y un token por consulta (E5);
+    - constancia de los guiones;
+    - las 240 sintéticas fuera de los totales;
+    - migraciones 117 a 119, y la 120 el 2026-10-10 (la franja de la
+      bandeja sin sintéticas).
+  - `auditar-seguridad.mjs`: 50 controles en OK.
+  - Queda, por orden:
+  1. **E27, urgente: lo que lee el modelo.** Se corrige con una versión nueva
+     del marco, en otra sesión (decisión del negocio).
+     - Detalle y opciones en el informe.
+     - Los atributos personales se deciden con legal.
+     - **La ficha de seguridad para clientes no se comparte** hasta
+       desplegar el cambio y corregirla.
+  2. **Probar con sesión real:** analizar dos veces a la misma persona. La
+     segunda fila de `analysis_results` tiene que traer
+     `reutiliza_analisis_id` y `duracion_llm_ms` nulo. Revisar también que
+     la bandeja y Fuentes de ingreso no muestren a las sintéticas, y que la
+     franja de la bandeja sume lo mismo que la lista (en la base coincide
+     desde la 120).
+  3. **Antes de pasar el repositorio a privado:** decidir GitHub Pro. En el
+     plan gratuito, un repositorio privado pierde la protección de ramas. El
+     escaneo de secretos lo cubre gitleaks en los controles.
+  4. **Los PRs de Dependabot** (#1 gitleaks-action 3.0.0, #2 diez
+     actualizaciones menores de npm): revisarlos y fusionarlos si los
+     controles pasan.
+  5. **E3, ambiente de prueba:** el negocio decidió esperar. Antes hace falta
+     la línea base del esquema (E15).
+  6. **E5:**
+     - disyuntor por fuente;
+     - después de la próxima reconsulta masiva, mirar
+       `duracion_por_fuente_ms` y ajustar `PLAZO_POR_FUENTE_MS`;
+     - la cola asincrónica la hace la sesión de la API para IFI; su
+       migración toma el número libre al aplicarse.
+  7. **E1, con impagos reales** (desde el 25/12/2026): la tarjeta de
+     puntaje, según `docs/tarjeta-de-puntaje.md`.
+  8. **Los medios y bajos (E6 a E26):** hoja de ruta en la sección 7 del
+     informe.
+
+- **API única para IFI (2026-10-09 y 10). Para retomar ese frente, empezar
+  acá.** La propuesta completa está en `docs/cumplimiento/api/propuesta-api-ifi.md`
+  (fuera de git), y el contrato, en `api/openapi.yaml`.
+  - **Decidido** (D1 a D4, 2026-10-09):
+    - se devuelve siempre el análisis; el perfil es opcional y se habilita en
+      la configuración de cada IFI; el crudo, nunca;
+    - la IFI se autentica con OAuth y `private_key_jwt`, desde IP
+      permitidas;
+    - la cola asincrónica (E5.3) es de este frente;
+    - el pico es de 10 a 60 evaluaciones por minuto por IFI.
+  - **Hecho (Fase 0):**
+    - el contrato v1, que pasa el control estricto de Redocly;
+    - borradores del texto de autorización del titular y del anexo de
+      seguridad, en `docs/cumplimiento/api/`.
+  - Queda, por orden:
+  1. **Pasar `docs/cumplimiento/api/` a la carpeta principal** si todavía
+     está sólo en el worktree `cool-jemison-2a674d`. Está fuera de git y se
+     pierde si se borra ese worktree. Después, sumar `api/` al índice de
+     `docs/cumplimiento/README.md`.
+  2. **Arreglos chicos que se pueden hacer ya**, sin esperar la API:
+     - `analyze-client` deja de escribir la cédula en `llm_llamadas.contexto`
+       (323 filas) y `consultar-aval`, en `audit_log.meta` (463 filas, que lee
+       todo usuario con sesión). En su lugar va el `client_id`;
+     - el vigía prueba Haiku 4.5 y producción usa Sonnet 5.5
+       (`vigia/index.ts`): pasarlo al modelo real.
+  3. **Legal:**
+     - revisar el texto de autorización y el anexo de seguridad;
+     - los plazos del contrato modelo no coinciden con la norma
+       SPDP-SPD-2025-0030-R: el encargado suprime en 3 días desde el aviso y
+       devuelve o suprime en 5 días al terminar el contrato, y el contrato
+       dice 5 días hábiles y 30 días.
+  4. **Novadata, por escrito:** si una cuenta sostiene 60 perfiles por
+     minuto (hoy se satura cerca de 20) y si el contrato permite entregar
+     sus datos a la IFI, que es lo que necesita el perfil opcional.
+  5. **Decisiones D5 a D15** (sección 14 de la propuesta). Mientras no se
+     decidan, valen las recomendaciones.
+  6. **Fase 1** (núcleo: recepción, cola, trabajador, topes, sandbox):
+     - se construye y se prueba con simuladores, porque no hay ambiente de
+       prueba (E3), y se despliega apagada para terceros;
+     - su migración toma el número libre recién al aplicarse;
+     - la v1 se publica sólo después de E27.
+
+- **Seguridad, cumplimiento y cliente nuevo (2026-10-09).** Hecho ese día: auditoría con correcciones (113-116),
   corredor de migraciones y versión del esquema (base por cliente), las
   cédulas reales fuera del árbol del repositorio, y la ficha para clientes
   publicada como página privada (https://claude.ai/artifact/VPGD2bGsN6UVk5ofAr7XdV;
   fuente en `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`).
-  `node scripts/auditar-seguridad.mjs`: 41 controles en OK. Estado de cada
+  `node scripts/auditar-seguridad.mjs`: 41 controles en OK ese día y 50
+  desde la auditoría externa. Estado de cada
   hallazgo en `auditoria/2026-10-09-auditoria-seguridad-y-cumplimiento.md`
   (sección 0) y documentos del SGSI, LOPDP e ISO 9001 en
   `docs/cumplimiento/` (las dos carpetas fuera de git). Queda, por orden:
@@ -239,14 +396,19 @@ aceptada.
   reescribirlo (force push, con confirmación, y `git filter-repo` necesita
   Python, que no está).
 
-- **La cartera tiene 240 personas que no existen.** Son las cédulas
-  sintéticas de prueba de Aval: 2.807 clientes = 2.567 reales + 240.
-  - Tuercen todo total sobre la cartera (porcentajes, segmentos,
-    "sin datos").
-  - Decisión pendiente: marcarlas o borrarlas.
-  - La lista está en `research/aval-pool-240.txt` y `pruebas/aval/`. Son
-    exactamente las 240 cuyo último perfil está en estructura-v3
-    (medido el 2026-09-29): se separan sin la lista.
+- **Las 240 personas sintéticas de Aval: marcadas y fuera de los totales**
+  (118, decisión del negocio del 2026-10-09).
+  - `clients.es_sintetico`: 240 marcadas, 2.572 reales.
+  - Los totales de la base las excluyen; la bandeja las trae con la marca y
+    las listas de la pantalla las filtran. La franja de la bandeja
+    (`bandeja_conteos`) las excluye desde la 120.
+  - **Ojo: "sintética" quiere decir que los datos que trajo Aval son de
+    prueba, no que el número no exista.** El 2026-10-09 una de esas cédulas
+    trajo nombre y datos en Novadata. Nunca usarlas para probar contra
+    Novadata.
+  - Una de ellas ya tiene un perfil en estructura-v13 por esa prueba. El
+    perfil se borró, pero ya no se separan por "último perfil en
+    estructura-v3": vale la marca.
 - **Demandas que pueden ser de un homónimo.** Novadata asocia las
   demandas por nombre, y hay dos grupos sin resolver:
   - 31 de 4.602 (0,7%) no tienen el nombre de la persona entre los
@@ -321,6 +483,27 @@ aceptada.
   (`generated always as (standard_profile->…) stored`). Así no podrían
   desalinearse, que es lo que pasó hasta d81591b. Primero las funciones
   tienen que dejar de escribirlas: regla 8 de CLAUDE.md.
+
+- **Revisión de UX: diseño y producto sin decidir**
+  (`docs/revision-ux.md`, sección 3, con las opciones y la recomendación; los
+  nombres se decidieron el 2026-10-12 y las preguntas que quedaron están en
+  `docs/modelo-de-la-persona.md`, sección 5):
+  - Diseño: Inicio como pantalla de trabajo, un solo camino a una persona
+    (falta **Aval** en el expediente), unir "Empleos vigentes" y "Fuentes
+    detectadas", menos accesos por fila en la bandeja.
+  - **Retirar `humanizarTexto()`** (`src/lib/formatos.js`) cuando
+    `fuentes-ingreso.ts` guarde los meses y los dólares con el formato de la
+    casa: es una versión nueva de fuentes con recálculo de los perfiles, y
+    mientras tanto la pantalla los arregla al mostrarlos.
+  - La auditoría del expediente nombra a los demás usuarios como "Otro
+    usuario": nombrarlos exige exponer una vista con los nombres (permisos).
+  - "Cargando..." por esqueletos en las tres pantallas más lentas (Bandeja,
+    Expediente, Panorama: de 5 a 10 s en desarrollo; la medida real se toma
+    con `npm run build && npm run preview`).
+  - El orden de los nombres que trae la fuente es inconsistente ("Apellidos
+    Nombres" para unas personas y "Nombre Apellido" para otras) y se muestra
+    tal cual.
+  - Quedan 1.761 estilos en línea en 110 archivos: lo nuevo usa clases.
 
 ## 4. Parámetros que vencen
 

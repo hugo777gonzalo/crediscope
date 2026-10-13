@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const PESTANAS = [
   ["perfil", "Perfil del Cliente"],
   ["analisis", "Análisis con IA"],
-  ["ingresos", "Fuentes de ingreso"],
+  ["ingresos", "Fuentes de Ingreso"],
   ["aval", "Aval"],
 ];
 
@@ -15,7 +15,7 @@ export default function PestanasCliente({ cedula, activa }) {
     <div className="crediscope-tabs">
       {PESTANAS.map(([ruta, texto]) =>
         ruta === activa ? (
-          <span key={ruta} className="crediscope-tab crediscope-tab-active">
+          <span key={ruta} className="crediscope-tab crediscope-tab-active" aria-current="page">
             {texto}
           </span>
         ) : (

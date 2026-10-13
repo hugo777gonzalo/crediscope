@@ -61,7 +61,7 @@ export default function ListaControlPanel({ controlBloqueo }) {
         </p>
       ) : (
         <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-          Ninguno de estos hallazgos descalifica al cliente por sí solo: son señales de cumplimiento a considerar en la debida
+          Ninguno de estos hallazgos descalifica a la persona por sí solo: son señales de cumplimiento a considerar en la debida
           diligencia.
         </p>
       )}

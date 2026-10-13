@@ -98,7 +98,7 @@ export default function PestanaComparar({ corte, corteId, cortes, poblacion }) {
                 ))}
               </tbody>
             </table>
-            <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+            <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
               La prueba del AUC supone cortes con personas distintas; si comparten personas, es conservadora (le cuesta más declarar una diferencia).
             </p>
           </div>

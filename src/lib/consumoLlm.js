@@ -9,24 +9,37 @@
 // completo cuando no lo es.
 
 import { minutoEcuador } from "./fechas.js";
+import { entero, moneda, centavos } from "./formatos.js";
 
+// Los procesos que llaman al modelo. Los tres primeros retirados quedan con
+// su nombre porque su historial sigue en la tabla; antes aparecían los
+// identificadores crudos (vigia, analisis-en-lote...) junto a los nombres
+// bien escritos.
 export const ETIQUETA_FUNCION = {
-  "analyze-client": "Análisis de cliente",
-  "analizar-feedback": "Informe de retroalimentación",
-  "proponer-ajustes": "Propuestas de ajuste",
-  "correr-backtest": "Backtest",
+  "analyze-client": "Análisis de una persona",
+  vigia: "Vigía (comprueba que el modelo responda)",
+  "analisis-en-lote": "Análisis en lote (corrida del Laboratorio)",
+  "comparacion-razonamiento": "Comparación de razonamiento (prueba interna)",
+  "verificacion-despliegue": "Verificación de un despliegue",
+  "analizar-feedback": "Informe de retroalimentación (retirado)",
+  "proponer-ajustes": "Propuestas de ajuste (retirado)",
+  "correr-backtest": "Prueba retrospectiva (versión anterior, retirada)",
 };
 
+// "calibracion" es la clave que arma la vista llm_costos para TODO lo que no
+// es un análisis de cliente: no sólo calibraciones. El 2026-10-10 contenía el
+// vigía (2.331 llamadas), el análisis en lote y las comparaciones, y el
+// rótulo "Calibración del criterio" no decía nada de eso.
 export const ETIQUETA_NATURALEZA = {
-  consulta: "Consulta de cliente",
+  consulta: "Consulta de una persona",
   prueba: "Prueba interna",
-  calibracion: "Calibración del criterio",
+  calibracion: "Laboratorio y vigía del servicio",
 };
 
 export const DESCRIPCION_NATURALEZA = {
   consulta: "Lo que se le cobra a alguien. Es el número que define la tarifa.",
   prueba: "Análisis que corrimos nosotros para validar. Se paga igual y no se factura.",
-  calibracion: "Retroalimentación y backtesting. Una acción dispara muchas llamadas.",
+  calibracion: "Todo lo que no es un análisis de una persona: el vigía, las corridas y las pruebas del Laboratorio. Una acción puede disparar muchas llamadas.",
 };
 
 export const ETIQUETA_ORIGEN = {
@@ -41,18 +54,20 @@ export const DESCRIPCION_ORIGEN = {
   sin_datos: "Sabemos que la llamada ocurrió pero sus tokens se perdieron. El costo es desconocido, no cero.",
 };
 
-const MONEDA4 = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 4 });
-const MONEDA2 = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const NUM = new Intl.NumberFormat("es-EC");
-
-export const money = (n) => (n === null || n === undefined ? "—" : MONEDA4.format(n));
-export const money2 = (n) => (n === null || n === undefined ? "—" : MONEDA2.format(n));
-export const num = (n) => (n === null || n === undefined ? "—" : NUM.format(Math.round(n)));
-export const centavos = (n) => (n === null || n === undefined ? "—" : `${(n * 100).toFixed(1)}¢`);
+// Los formatos son los de toda la aplicación (formatos.js): acá sólo se
+// fijan los decimales que pide un costo. `centavos` dejó el punto decimal
+// ("4.3¢") que no se usa en Ecuador.
+export const money = (n) => moneda(n, 4);
+export const money2 = (n) => moneda(n, 2);
+export const num = (n) => entero(n === null || n === undefined ? n : Math.round(n));
+export { centavos };
 
 // Reexportadas para que las pantallas de Costos no tengan que conocer
 // dos módulos. La zona horaria vive en fechas.js y solo ahí.
-export { diaEcuador as dia, fechaHoraOrdenable as fechaHora } from "./fechas.js";
+// La fecha de una llamada se lee como todas las demás de la aplicación
+// (15/09/2026 17:26): la forma ordenable (2026-09-15 17:26) era la única que
+// se veía así.
+export { diaEcuador as dia, formatearFechaHora as fechaHora } from "./fechas.js";
 
 const vacio = () => ({
   llamadas: 0,
@@ -182,7 +197,7 @@ export const QUE_HACER_FALLO = {
   limite_velocidad: "Espaciar las consultas o pedir más cuota. Con volumen sostenido, hace falta una cola.",
   proveedor_caido: "No se corrige: se comunica. Avisar a los usuarios y seguir con lo que no depende del modelo.",
   respuesta_cortada: "Subir el techo de tokens de salida o recortar lo que se envía.",
-  respuesta_ilegible: "Revisar el formato que exige el marco. Si aparece en varios clientes, es del criterio.",
+  respuesta_ilegible: "Revisar el formato que exige el marco. Si aparece en varias personas, es del criterio.",
   sin_conexion: "Revisar la salida a internet de la función y el estado de la red del proveedor.",
   desconocido: "Leer el detalle técnico y agregar la causa al clasificador.",
 };

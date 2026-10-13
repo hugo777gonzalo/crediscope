@@ -3,7 +3,7 @@
 Calificación crediticia para Ecuador. Una persona se consulta contra
 Novadata, se arma un Perfil del Cliente estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
-lenguaje natural produce un puntaje de 1 a 999 y una recomendación.
+lenguaje natural produce un score de 1 a 999 y una recomendación.
 
 Frontend Vite + React 19 en JavaScript (sin TypeScript, sin Tailwind).
 Backend: Supabase — Postgres con RLS, Auth y Edge Functions en Deno.
@@ -62,6 +62,35 @@ es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
 real, un número medido, un error que costó caro. Un comentario que
 repite lo que el código ya dice es ruido.
 
+**Lo que ve el analista pasa por la revisión de UX** (habilidad
+`revision-ux`, en `.claude/skills/revision-ux/`; el porqué de cada regla,
+`docs/revision-ux.md`):
+- Números, moneda, porcentajes y duraciones sólo con `src/lib/formatos.js`
+  ("2.812", "37,0 s", "$1.784") y las fechas con `fechas.js`. Nunca `${n}`
+  ni `.toFixed()` en un texto: la misma cifra salía de cuatro maneras.
+- Tres puntos ("Cargando..."), plurales con `plural()` (no "cliente(s)").
+- Nombres comerciales en Title Case y el resto como oración. Un nombre que
+  eligió el negocio no se cambia por gusto: se propone con opciones
+  (`terminologia.md` de la habilidad).
+- Piezas compartidas antes que copias: `src/components/ui/` (`Kpi`, `Barra`,
+  `Cargando`, `Aviso`, `AvisoDeError`, `LimiteDeError`). Un error nunca se
+  muestra con `error.message` crudo.
+- Una versión (`marco-v28`), un código o un JSON no van en una tarjeta
+  principal.
+- **Score**, no «puntaje»; **persona**, no «cliente» (cliente es quien tiene un
+  crédito); **Monitoreo**, no Reportes. El negocio ordenó el producto alrededor
+  de la persona (2026-10-12): el árbol, los estados y lo que quedó abierto están
+  en `docs/modelo-de-la-persona.md`.
+- Un nombre que cambia el negocio se cambia con
+  `node scripts/renombrar-textos.mjs` (primero en seco: sólo toca textos de
+  pantalla, nunca una variable ni una columna de datos) y con una regla nueva en
+  el control, para que el nombre viejo no vuelva.
+- `node scripts/revisar-textos.mjs` corta con los términos que el negocio
+  retiró (piso, asalariado, default, backtest, LLM, puntaje...), y
+  `node scripts/probar-formatos.mjs` prueba los formatos, la traducción de
+  errores y la navegación: correrlos después de tocar `formatos.js`,
+  `mensajesDeError.js`, `navegacion.js` o `destinoDeIngreso.js`.
+
 ## Reglas duras
 
 Romper cualquiera de estas rompe algo real.
@@ -73,11 +102,24 @@ Romper cualquiera de estas rompe algo real.
    una en una transacción con su fila en `esquema_version`, y rellena los
    marcadores desde el archivo de secretos de cada base. Aplicarla a mano
    deja la base sin su versión y el control lo marca. Una migración nueva
-   no abre su propia transacción. Si una función empieza a depender de
-   ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
+   no abre su propia transacción. **El número se toma al aplicarla, no se
+   reserva**: el corredor aplica sólo los números mayores que el último
+   aplicado, y uno salteado no se aplica nunca. Antes de escribirla, mirar
+   en qué número está cada base (el corredor sin banderas) y las ramas
+   abiertas, y avisar a las otras sesiones. Si una función empieza a
+   depender de ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
    migra, después se despliega (`--funciones`), o la función contesta
    503. Para consultas sueltas sigue
    `npx --yes supabase@latest db query --linked --file <archivo>`.
+   **Las funciones se despliegan sólo con `--funciones`, desde una copia
+   limpia de `origin/main`.** Se arma con `git worktree add --detach`,
+   copiando `supabase/.temp` a esa copia. El corredor:
+   - despliega de a una función;
+   - sella el commit (encabezado `x-crediscope-version`);
+   - confirma que cada función contesta con ese sello;
+   - lo anota en `despliegues` (117).
+   Con `functions deploy` a mano la función queda "sin-sello" y el control
+   lo marca. Pasos en `docs/remediacion-auditoria-externa.md`, sección 5.
 2. **El CLI no está en el PATH**: usar `npx --yes supabase@latest`.
    Desde un worktree, `--linked` falla con "Cannot find project ref":
    el enlace vive en `supabase/.temp`, que no está en git. Agregar
@@ -101,8 +143,14 @@ Romper cualquiera de estas rompe algo real.
    llama a `exigirRol()` antes de leer el cuerpo**: el portón de Supabase
    deja pasar la clave pública, que va en la página. Así estuvo abierta
    `structure-client` hasta el 2026-10-09: cualquiera en internet
-   consultaba el buró de cualquier cédula. Con la clave de servicio,
-   `structure-client` exige `actorId` y `baseLegal`.
+   consultaba el buró de cualquier cédula.
+   - **Los guiones entran a `structure-client` con `GUIONES_CLAVE`**
+     (encabezado `x-guiones-clave`), y desde ahí la función exige
+     `actorId` y `baseLegal`.
+   - Hasta la noche de ese mismo día se reconocían por el rol
+     `service_role` leído del token sin verificar la firma: con
+     `verify_jwt` apagado, un token armado a mano lo abría (E4).
+   - Nunca confiar en un dato del token que no se verificó acá.
 7. **Windows + Git Bash.** Los heredocs mutilan el código con acentos y
    comillas: usar las herramientas de escritura y edición de archivos,
    no `cat <<EOF`.
@@ -121,6 +169,27 @@ Romper cualquiera de estas rompe algo real.
    `registrar_evento()`. El registro público de cuentas está cerrado
    (2026-10-09): las da de alta el admin. La auditoría de ese día y su
    procedimiento están en `auditoria/` (fuera de git: describe fallas).
+10. **`main` está protegida** (2026-10-09). Todo cambio entra por PR con
+    los cuatro controles de `.github/workflows/controles.yml` en verde:
+    `pantalla`, `funciones`, `guiones` y `secretos`. Esos nombres los exige
+    la regla de la rama: si se cambia uno, se cambia también la regla.
+    - Una sesión trabaja en una rama, abre el PR con `gh pr create` y lo
+      fusiona con `gh pr merge --squash --delete-branch` cuando pasan los
+      controles.
+    - Sin empujes forzados. La regla vale también para el admin.
+    - Las acciones van fijadas por SHA, y Dependabot propone las
+      actualizaciones como PR.
+    - `pantalla` corre lint, build, `revisar-textos.mjs` y
+      `probar-formatos.mjs`. Su build compila sin las variables de Supabase:
+      sirve para ver que compila, no para medir lo que se publica (el
+      principal sale en 273 KB contra 476 KB con el `.env`).
+11. **Un guion que escribe en la base abre su registro** con
+    `abrirEjecucion()` (`scripts/_comun/ejecucion.mjs`, tabla
+    `ejecuciones_operativas`, 117).
+    - Sin constancia no corre.
+    - Con cambios sin commitear tampoco, salvo `--sin-commit`, que queda
+      anotado.
+    - La corrida se cierra sola al salir, "terminada" o "fallida".
 
 ## Dónde está cada cosa
 
@@ -144,6 +213,10 @@ Romper cualquiera de estas rompe algo real.
   análisis, el lote (`scripts/analizar-en-lote.mjs`) y
   `scripts/comparar-razonamiento.mjs`: un camino nuevo al modelo también.
   Modelo: `claude-sonnet-5-5` desde marco-v28.
+  - `huellaDelPedido()` (119): con la misma huella, un análisis terminado
+    de esa misma persona se reutiliza en vez de volver a preguntar (E1).
+  - La huella no cuenta `cache_control` ni `max_tokens`.
+  - `puntuarPedido()` llama al modelo con un pedido ya armado.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
   de temas que el perfil no trae (v29). Corta el marco vigente por marcas,
   sin copiarlo; está APAGADO (`CONFIG_LLM.marcoPorCliente`) hasta validarlo.
@@ -222,6 +295,20 @@ Romper cualquiera de estas rompe algo real.
   la primera página, no hasta una página corta, y pide un orden total
   (desempate por id) en el que lo insertado durante la lectura caiga al
   final.
+- `src/lib/navegacion.js` — la estructura de la aplicación: de ahí salen el
+  menú lateral y la ubicación "Sección › Página" de la barra superior. Un
+  nombre del menú se cambia ahí, no en dos listas.
+- `src/lib/formatos.js`, `src/lib/mensajesDeError.js` y
+  `src/components/ui/` — cómo se escribe un número, qué se le dice a la
+  persona cuando algo falla y las piezas que comparten las pantallas.
+- `.claude/skills/revision-ux/` — la revisión de UX: flujo, glosario con el
+  porqué, mapa de pantallas, criterios y un verificador para el navegador de
+  QA. Se corre al cambiar una pantalla.
+- `docs/modelo-de-la-persona.md` — la persona como entidad (decisión del
+  negocio del 2026-10-12): el árbol (solicitudes, direcciones, empleos,
+  referencias, documentos, scores, créditos), los estados (Prospecto, ..., Cliente
+  activo, Cliente cerrado), qué existe hoy y qué falta. Leerlo antes de ponerle
+  nombre a una pantalla o a una tabla.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
@@ -231,6 +318,31 @@ Romper cualquiera de estas rompe algo real.
 - `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
   y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
   que se cierre.
+- `docs/remediacion-auditoria-externa.md` — qué se hizo con los hallazgos
+  altos de la auditoría externa del 2026-10-09 (E1 a E5), qué falta y cómo
+  se trabaja desde ahí.
+  - El informe completo (E1 a E27) está en `auditoria/`, fuera de git.
+  - La ficha del modelo, en `docs/cumplimiento/ficha-del-modelo.md`.
+  - El diseño de la tarjeta de puntaje, en `docs/tarjeta-de-puntaje.md`.
+- **API única para IFI** (propuesta del 2026-10-09; Fase 0 cerrada el 10/10).
+  - **El contrato es `api/openapi.yaml`**, en OpenAPI 3.1, y es la única
+    fuente: de ahí salen la validación, las pruebas y el sandbox.
+  - Se valida con
+    `npx --yes @redocly/cli@latest lint api/openapi.yaml --extends=recommended-strict`.
+  - Los ejemplos del contrato no llevan nada con forma de JWT: el control de
+    secretos (gitleaks) los marcaría.
+  - La propuesta (mediciones, flujo, reintentos, análisis de ataque, cifrado,
+    normativa y decisiones) vive en `docs/cumplimiento/api/`, fuera de git
+    porque describe debilidades.
+  - **La v1 no se publica antes de corregir E27.** Lo que falta está en
+    `docs/pendientes.md`.
+- **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
+  corren con:
+  - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`
+  - `npx --yes deno@2.9.6 check --no-lock supabase/functions/*/index.ts`
+
+  Las corre también la integración continua. Una regla nueva en `_shared`
+  lleva su prueba.
 - **Una base por cliente** (`docs/plan-segundo-cliente.md`, construido el
   2026-10-09): `clientes/directorio.json` dice qué bases existen (sólo
   referencia de proyecto y URL, nunca datos ni secretos),
@@ -275,6 +387,18 @@ antes de tocar esa área.
 - Dos formas conviven: `laboral.empleoActual` (objeto, antes de
   marco-v20) y `empleosActuales` (arreglo). Leer las dos.
 
+- **Cada fuente de Novadata espera como mucho 120 s**
+  (`PLAZO_POR_FUENTE_MS`), y la consulta pide un solo token, compartido.
+  Antes eran 52 inicios de sesión simultáneos con el token vencido (E5).
+  - Medido el 2026-10-09: en el uso normal una consulta tarda menos de un
+    minuto, y la cola cerca del corte de 150 s es de las reconsultas
+    masivas.
+  - La duración de cada fuente se guarda en
+    `client_profiles.duracion_por_fuente_ms` (119): el plazo se ajusta con
+    esos números, no a ojo.
+  - La cola asincrónica es de la sesión de la API para IFI; su migración
+    toma el número libre al aplicarse (regla 1).
+
 **Base, PostgREST y procesos**
 - PostgREST corta en 1.000 filas sin avisar: agregar en la base (función
   `security invoker`), listar con `traerTodas()`.
@@ -289,6 +413,28 @@ antes de tocar esa área.
   `cron.job_run_details`, no en `cron.job`.
 - Lo que no pasa por `lint` ni `build` se rompe en silencio: los scripts
   sueltos llevan su propio aviso adentro.
+- `create or replace view` REEMPLAZA las opciones de la vista: sin
+  `with (security_invoker = true)` vuelve a leer como su dueño y saltea la
+  RLS. La 118 recrea tres vistas así. Además, una definición vieja se toma
+  de la base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
+  migración que la tocó.
+- Una CTE usada una sola vez dentro de una subconsulta correlacionada se
+  recalcula por cada fila de afuera: `as materialized`. El centro de datos
+  del Laboratorio la recalculaba 52 veces, una por fuente (121).
+- Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
+  El 2026-10-09 el sello del despliegue reemplazó una palabra en un
+  comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
+  comprobación posterior.
+- **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
+  Aval.
+  - Los totales de la base las excluyen.
+  - La bandeja las trae con la marca, y las listas de la pantalla filtran
+    `es_sintetico = false`.
+  - Un total nuevo sobre la cartera las filtra igual, también si lee
+    `bandeja_solicitudes`: la vista las conserva. La franja de la bandeja
+    (`bandeja_conteos`) las contó hasta la 120 (2.812 contra 2.572 de la
+    lista), porque la 118 buscó a los lectores de las tablas y no a los de
+    la vista.
 
 **Crudo y recálculo**
 - El crudo de Novadata se guarda desde la 090 en el depósito privado
@@ -327,6 +473,10 @@ antes de tocar esa área.
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
   con ≥20 clientes en 90 días. Quien trae un mes posterior usa el suyo.
+  Su condición sobre el perfil se repite en el índice parcial
+  `client_profiles_corte_iess` (121): sin él abría el perfil entero de cada
+  consulta de 90 días, 3,5 s antes de cada consulta. Si cambia la
+  condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
   aportes cuando el mecanizado no trae nada.
 - Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
@@ -379,6 +529,13 @@ antes de tocar esa área.
   que arma es versión nueva del marco con su fila en
   `scoring_rules_versions`. De `fuentesIngreso.detalle` va sólo un
   resumen; la renta nunca.
+- **El perfil del modelo todavía lleva datos personales que no necesita**
+  (E27, abierto; el detalle está en `auditoria/` y en
+  `docs/cumplimiento/ficha-del-modelo.md`, fuera de git).
+  - Siete documentos afirmaban una minimización que no existe: no afirmarla
+    en ningún lado hasta que se despliegue la versión que la corrige.
+  - Una afirmación sobre lo que lee el modelo se mide en
+    `analysis_results.mensaje_al_modelo`, no en el código.
 - Escribe Sonnet 5.5 desde marco-v28 (sin cascada con Haiku desde v24).
   El mismo perfil analizado dos veces mueve el score ~40 puntos y cambia 1
   de cada 13 recomendaciones: una diferencia menor que eso no se atribuye
@@ -412,6 +569,30 @@ antes de tocar esa área.
   valor nunca va en dos tramos (106).
 - Una curva de cosechas sin la fecha del impago de una parte de los malos
   dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.
+
+**Interfaz** (revisión del 2026-10-10, `docs/revision-ux.md`)
+- Una pantalla que espera la sesión no es una pantalla sin sesión:
+  `App.jsx` espera `loading`; si no, un enlace directo cae en
+  `*` → /login → "/" y el expediente no sobrevive a una recarga.
+- El perfil de acceso se pide una vez (`useProfile`). Una guardia de ruta no
+  devuelve `null` mientras carga: una pantalla de administración quedaba en
+  blanco de 4 a 10 s.
+- Una franja de totales suma, y una barra mide lo que dice su título.
+- Un texto que la clasificación guardó con formato de JavaScript ("el corte
+  2026-08", "$1084") se muestra con `humanizarTexto()`; no se reescriben
+  miles de perfiles por un problema de presentación.
+- Las pantallas que documentan reglas (Reglas de clasificación) se desfasan
+  en silencio: la nuestra decía fuentes-v9 con el código en v10.
+- Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
+  (`Link is not defined` con el import presente): `touch` y recargar.
+- Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
+  liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
+  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola
+  hasta la 121).
+- El tamaño de la aplicación se mide con el `.env`: sin las variables de
+  Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
+  cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
+  continua miden 273 KB donde lo publicado pesa 476 KB.
 
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`
@@ -463,7 +644,19 @@ antes de tocar esa área.
   se marca como no medido; rellenarlo con cero hace que uno subestime su
   propio problema.
 - `npm run lint` y `npm run build` antes de commitear.
+  - Si se tocaron las funciones, también `deno check` y `deno test`.
+  - La integración continua los corre igual, y sin ellos en verde el PR no
+    entra.
+- **Una pantalla tocada se revisa con la habilidad `revision-ux`**: el
+  control de textos, el verificador en el navegador de QA y una captura a
+  1280 (y a 768 y 414 si tiene tablas). Lint y build no prueban una pantalla.
 - Commits en castellano, explicando el porqué y qué se midió.
+- **Una prueba en producción no consulta a personas.**
+  - Va con una identificación inválida, que la función rechaza antes de la
+    fuente, o con una persona concreta autorizada por el negocio.
+  - Las 240 cédulas "sintéticas" de Aval no sirven: son datos de prueba de
+    Aval, no números inexistentes. Una trajo nombre en Novadata el
+    2026-10-09.
 
 ## Para no quemar el límite de uso
 

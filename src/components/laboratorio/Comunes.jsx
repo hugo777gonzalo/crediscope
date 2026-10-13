@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FlaskConical, AlertTriangle, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { guardarCalculo } from "../../lib/calculosDelCorte.js";
+import { entero, decimal, porcentaje } from "../../lib/formatos.js";
+import CargandoGeneral from "../ui/Cargando.jsx";
+import AvisoDeError from "../ui/AvisoDeError.jsx";
+import Aviso from "../ui/Aviso.jsx";
 
 // Piezas que comparten las pantallas del Laboratorio.
 
@@ -82,10 +86,11 @@ export const ETIQUETA_SE_PODIA_VER = {
   anticipable: "Anticipable: estaba en el perfil",
 };
 
-export const pct = (x, decimales = 1) => (x === null || x === undefined ? "—" : `${(Number(x) * 100).toFixed(decimales).replace(".", ",")}%`);
-export const num = (x, decimales = 0) =>
-  x === null || x === undefined ? "—" : Number(x).toLocaleString("es-EC", { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
-export const dec = (x, decimales = 3) => (x === null || x === undefined ? "—" : Number(x).toFixed(decimales).replace(".", ","));
+// Los formatos son los de toda la aplicación (lib/formatos.js): el
+// Laboratorio ya los usaba con otro nombre y los demás módulos no.
+export const pct = (x, decimales = 1) => porcentaje(x, decimales);
+export const num = (x, decimales = 0) => (decimales ? decimal(x, decimales) : entero(x));
+export const dec = (x, decimales = 3) => decimal(x, decimales);
 
 export function Volver({ a, texto }) {
   return (
@@ -102,48 +107,46 @@ export function Volver({ a, texto }) {
 // que no se puede cerrar.
 export function FranjaSintetica({ que = "Estos datos" }) {
   return (
-    <div className="crediscope-card" style={{ borderColor: "var(--warn)", background: "var(--panel-muted)", display: "flex", gap: 10, alignItems: "flex-start" }}>
-      <FlaskConical size={18} style={{ color: "var(--warn)", flexShrink: 0, marginTop: 2 }} />
-      <p style={{ margin: 0, fontSize: 13.5 }}>
+    <Aviso tipo="sintetico">
+      <p>
         <strong>Sintético.</strong> {que} son inventados con una regla plantada, para probar los cálculos. No dicen nada del
         motor real y no se presentan a una institución financiera.
       </p>
-    </div>
+    </Aviso>
   );
 }
 
 export function Advertencias({ lista }) {
-  if (!lista?.length) return null;
+  // El aviso de "corte sintético" ya lo dice la franja de arriba de toda la
+  // pantalla (FranjaSintetica): repetirlo dentro de cada pestaña ponía dos
+  // carteles iguales uno debajo del otro. Se filtra al mostrar porque los
+  // resultados ya guardados lo traen en sus advertencias.
+  const propias = (lista ?? []).filter((a) => !/^Corte sintético:/i.test(a));
+  if (!propias.length) return null;
   return (
-    <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
-      {lista.map((a) => (
-        <p key={a} style={{ margin: "2px 0", fontSize: 13.5 }}>
-          <AlertTriangle size={14} style={{ color: "var(--warn)", marginRight: 6, verticalAlign: "-2px" }} />
+    <Aviso tipo="advertencia">
+      {propias.map((a) => (
+        <p key={a} style={{ margin: "2px 0" }}>
           {a}
         </p>
       ))}
-    </div>
+    </Aviso>
   );
 }
 
 export function Cargando({ que = "las filas del corte" }) {
-  return <p className="crediscope-muted">Cargando {que}...</p>;
+  return <CargandoGeneral texto={`Cargando ${que}...`} />;
 }
 
 export function MensajeError({ mensaje }) {
-  if (!mensaje) return null;
-  return (
-    <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-      <p style={{ color: "var(--bad)", margin: 0 }}>{mensaje}</p>
-    </div>
-  );
+  return <AvisoDeError error={mensaje} />;
 }
 
 // Lo que se calcula en una pestaña se guarda solo (useGuardarResultado): si
 // no se pudo, se dice.
 export function SinGuardar({ error }) {
   if (!error) return null;
-  return <p style={{ color: "var(--bad)", fontSize: 12.5 }}>No se guardó este resultado: {error}</p>;
+  return <p style={{ color: "var(--bad)", fontSize: 13 }}>No se guardó este resultado: {error}</p>;
 }
 
 // Para lo que se mueve a mano (umbrales, tramos, una fórmula, una variable):
@@ -166,20 +169,12 @@ export function GuardarEsteResultado({ corteId, tipo, poblacion = null, parametr
       <button className="crediscope-btn crediscope-btn-ghost" onClick={guardar} disabled={!resultado || estado === "guardando" || estado === "guardado"}>
         {estado === "guardado" ? "Guardado" : estado === "guardando" ? "Guardando..." : texto}
       </button>
-      {estado && !["guardando", "guardado"].includes(estado) ? <span style={{ color: "var(--bad)", fontSize: 12.5 }}>{estado}</span> : null}
+      {estado && !["guardando", "guardado"].includes(estado) ? <span style={{ color: "var(--bad)", fontSize: 13 }}>{estado}</span> : null}
     </div>
   );
 }
 
-export function Kpi({ etiqueta, valor, detalle, color }) {
-  return (
-    <div className="crediscope-card crediscope-kpi">
-      <p className="crediscope-kpi-label">{etiqueta}</p>
-      <p className="crediscope-kpi-valor" style={color ? { color } : undefined}>{valor}</p>
-      {detalle ? <p className="crediscope-kpi-detalle">{detalle}</p> : null}
-    </div>
-  );
-}
+export { default as Kpi } from "../ui/Kpi.jsx";
 
 // Una barra horizontal proporcional (tasa de malos de un tramo, por ejemplo).
 export function Barra({ etiqueta, valor, maximo, texto, color = "var(--brand)" }) {

@@ -171,11 +171,22 @@ if (modo === "funciones") {
   sello = git("rev-parse --short=12 HEAD");
   const archivoVersion = path.join(RAIZ, "supabase", "functions", "_shared", "version-despliegue.ts");
   const original = fs.readFileSync(archivoVersion, "utf8");
-  if (!original.includes('"sin-sello"')) {
+  // Anclado a la constante: el 2026-10-09 se reemplazaba la primera
+  // aparición de "sin-sello", que está en un comentario del archivo, y las
+  // seis funciones salieron sin sellar aunque el despliegue "terminó bien".
+  // Lo detectó la comprobación de abajo, no el despliegue.
+  // (?=\r?$): en una copia de Windows el archivo viene con CRLF.
+  const CONSTANTE = /^export const VERSION_DESPLIEGUE = "sin-sello";(?=\r?$)/m;
+  if (!CONSTANTE.test(original)) {
     console.error(`${archivoVersion} no dice "sin-sello": quedó sellado de un despliegue anterior. Restaurarlo con git antes de seguir.`);
     process.exit(1);
   }
-  fs.writeFileSync(archivoVersion, original.replace('"sin-sello"', `"${sello}"`));
+  const sellado = original.replace(CONSTANTE, `export const VERSION_DESPLIEGUE = "${sello}";`);
+  if (!sellado.includes(`VERSION_DESPLIEGUE = "${sello}"`)) {
+    console.error("No se pudo sellar version-despliegue.ts.");
+    process.exit(1);
+  }
+  fs.writeFileSync(archivoVersion, sellado);
   process.on("exit", () => fs.writeFileSync(archivoVersion, original));
 }
 const FUNCIONES = fs
@@ -221,17 +232,50 @@ for (const cliente of clientes) {
       fallas++;
       continue;
     }
-    try {
-      execSync(`npx --yes supabase@latest functions deploy --project-ref ${cliente.proyecto}`, {
-        cwd: RAIZ,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      console.log(`               funciones desplegadas (${sello})`);
+    // De a una función, y comprobando después que cada una contesta con el
+    // sello. El 2026-10-09 un despliegue de todas juntas (`functions deploy`
+    // sin nombre) falló con TransportError en las seis; de a una no. Y el
+    // primer despliegue sellado "terminó bien" con las seis funciones sin
+    // sellar (el reemplazo de arriba tocaba un comentario): sólo esta
+    // comprobación lo vio. Un despliegue no se da por hecho hasta que la
+    // función lo confirma.
+    const desplegadas = [];
+    for (const funcion of FUNCIONES) {
+      try {
+        execSync(`npx --yes supabase@latest functions deploy ${funcion} --project-ref ${cliente.proyecto}`, {
+          cwd: RAIZ,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch (e) {
+        console.log(`               FALLÓ ${funcion}: ${String(e.stderr || e.message).split("\n").filter(Boolean).slice(-2).join(" | ")}`);
+        fallas++;
+        continue;
+      }
+      // La versión vieja puede contestar unos segundos más.
+      let contesta = "sin respuesta";
+      for (let intento = 1; intento <= 6 && contesta !== sello; intento++) {
+        try {
+          const r = await fetch(`${cliente.url}/functions/v1/${funcion}`, { method: "OPTIONS" });
+          contesta = r.headers.get("x-crediscope-version") ?? "sin encabezado";
+        } catch (e) {
+          contesta = `sin respuesta (${e.message})`;
+        }
+        if (contesta !== sello) await new Promise((r) => setTimeout(r, 5_000));
+      }
+      if (contesta === sello) {
+        desplegadas.push(funcion);
+      } else {
+        console.log(`               ${funcion}: desplegada pero contesta "${contesta}" y no ${sello}`);
+        fallas++;
+      }
+    }
+    console.log(`               desplegadas y confirmadas ${desplegadas.length} de ${FUNCIONES.length} (${sello})`);
+    if (desplegadas.length) {
       const texto = (s) => `'${String(s).replaceAll("'", "''")}'`;
       const anotado = correrSql(
         cliente.proyecto,
-        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${FUNCIONES.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`
+        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${desplegadas.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`
       );
       if (anotado.ok) {
         console.log("               anotado en despliegues");
@@ -239,9 +283,6 @@ for (const cliente of clientes) {
         console.log(`               desplegado pero NO anotado en despliegues: ${anotado.error}`);
         fallas++;
       }
-    } catch (e) {
-      console.log(`               FALLÓ el despliegue: ${String(e.stderr || e.message).split("\n").filter(Boolean).slice(-2).join(" | ")}`);
-      fallas++;
     }
   }
 }

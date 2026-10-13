@@ -69,18 +69,18 @@ export default function PestanaTaller({ corte, corteId, poblacion }) {
           Fórmula
           <input className="crediscope-input" value={formula} onChange={(e) => setFormula(e.target.value)} style={{ fontFamily: "ui-monospace, Consolas, monospace" }} />
         </label>
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 6 }}>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 6 }}>
           Variables por su nombre interno; + − * /; comparaciones &gt; &lt; &gt;= &lt;= = &lt;&gt;; «y», «o», «no»; min, max, abs, log, raiz, si(condición, a, b), falta(x).
           Decimales con punto. Un faltante en la cuenta da faltante.
         </p>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {EJEMPLOS.map(([n, f]) => (
-            <button key={n} className="crediscope-btn crediscope-btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { setNombre(n); setFormula(f); }}>{n}</button>
+            <button key={n} className="crediscope-btn crediscope-btn-ghost" style={{ fontSize: 13 }} onClick={() => { setNombre(n); setFormula(f); }}>{n}</button>
           ))}
         </div>
         <details style={{ marginTop: 8 }}>
           <summary className="crediscope-muted" style={{ cursor: "pointer", fontSize: 13 }}>Las {catalogo.length} variables</summary>
-          <p style={{ fontSize: 12.5 }}>{catalogo.map((v) => <code key={v.id} title={v.nombre} style={{ marginRight: 8, cursor: "pointer" }} onClick={() => setFormula((f) => `${f} ${v.id}`)}>{v.id}</code>)}</p>
+          <p style={{ fontSize: 13 }}>{catalogo.map((v) => <code key={v.id} title={v.nombre} style={{ marginRight: 8, cursor: "pointer" }} onClick={() => setFormula((f) => `${f} ${v.id}`)}>{v.id}</code>)}</p>
         </details>
       </div>
 

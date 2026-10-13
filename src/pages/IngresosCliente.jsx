@@ -14,6 +14,8 @@ import FuentesVigentes from "../components/ingresos/FuentesVigentes.jsx";
 import Estabilidad from "../components/ingresos/Estabilidad.jsx";
 import DetalleIngresos from "../components/ingresos/DetalleIngresos.jsx";
 import IndiciosIngreso from "../components/ingresos/IndiciosIngreso.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import Cargando from "../components/ui/Cargando.jsx";
 
 // "Fuentes de ingreso" — cuarta pestaña del cliente, con la misma gramática
 // que el reporte de Aval: arriba lo que decide (de qué vive, qué tan firme
@@ -84,14 +86,14 @@ export default function IngresosCliente() {
     <div>
       <p>
         <Link to="/" className="crediscope-muted" style={{ textDecoration: "none" }}>
-          Buscar otro cliente
+          Buscar otra persona
         </Link>
       </p>
 
       <PestanasCliente cedula={cedula} activa="ingresos" />
 
       {cargando ? (
-        <p className="crediscope-muted">Cargando...</p>
+        <Cargando />
       ) : (
         <EncabezadoIngresos
           cedula={cedula}
@@ -103,9 +105,7 @@ export default function IngresosCliente() {
       )}
 
       {error ? (
-        <div className="crediscope-card" style={{ borderColor: "var(--bad)" }}>
-          <p style={{ color: "var(--bad)", margin: 0 }}>{error}</p>
-        </div>
+        <AvisoDeError error={error} />
       ) : null}
 
       {!cargando && fila && !f ? (

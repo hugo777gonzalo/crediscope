@@ -108,7 +108,7 @@ function TablaDeCalificacion({ filas, alGuardar }) {
         </div>
       ) : null}
       <MensajeError mensaje={error} />
-      <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>
+      <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>
         Una tabla nueva no cambia las definiciones que ya existen: hay que crear una definición con la versión nueva.
       </p>
     </div>
@@ -182,7 +182,7 @@ function Definiciones({ definiciones, versiones, alCrear }) {
               </select>
             </label>
           </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13.5 }}>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 14 }}>
             <span className="crediscope-muted">También cuentan como impago, aunque no lleguen a los días:</span>
             {[["cuentaCastigo", "castigo"], ["cuentaReestructuracion", "reestructuración"], ["cuentaJudicial", "demanda judicial"]].map(([campo, texto]) => (
               <label key={campo} style={{ display: "flex", gap: 6, alignItems: "center" }}>

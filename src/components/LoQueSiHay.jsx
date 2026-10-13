@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, DOCUMENTOS_DE_CONFIRMACION, textoIngresoReportado } from "../lib/fuentesIngresoConsolidado.js";
 import { duracionLegible } from "../lib/ingresosCampos.js";
+import { plural, humanizarTexto } from "../lib/formatos.js";
 
 // Lo que sigue estando disponible cuando el modelo no responde.
 //
@@ -23,7 +24,7 @@ function Dato({ etiqueta, valor, detalle }) {
     <div style={{ minWidth: 180 }}>
       <p className="crediscope-kpi-label" style={{ margin: "0 0 2px" }}>{etiqueta}</p>
       <p style={{ margin: 0, fontWeight: 600 }}>{valor}</p>
-      {detalle ? <p className="crediscope-muted" style={{ margin: "2px 0 0", fontSize: 12.5 }}>{detalle}</p> : null}
+      {detalle ? <p className="crediscope-muted" style={{ margin: "2px 0 0", fontSize: 13 }}>{detalle}</p> : null}
     </div>
   );
 }
@@ -50,7 +51,7 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", margin: "14px 0" }}>
             {f?.segmento ? (
               <Dato
-                etiqueta="Fuente de ingreso"
+                etiqueta="Segmento"
                 valor={ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento}
                 detalle={ETIQUETA_ESTADO[f.estadoSegmento] ?? null}
               />
@@ -69,7 +70,7 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
             ) : null}
             <Dato
               etiqueta="Listas de control"
-              valor={hallazgos.length ? `${hallazgos.length} hallazgo(s)` : "Sin hallazgos"}
+              valor={hallazgos.length ? plural(hallazgos.length, "hallazgo") : "Sin hallazgos"}
               detalle={cumplimiento.enListaControl === true ? "Requiere verificación de identidad" : null}
             />
           </div>
@@ -77,9 +78,9 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
           {(f?.paraConfirmar ?? []).length > 0 ? (
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
               <p style={{ fontWeight: 600, fontSize: 13, margin: "0 0 6px" }}>{DOCUMENTOS_DE_CONFIRMACION}</p>
-              <ul className="crediscope-list" style={{ fontSize: 13.5, margin: 0 }}>
+              <ul className="crediscope-list" style={{ fontSize: 14, margin: 0 }}>
                 {f.paraConfirmar.map((p, i) => (
-                  <li key={i}>{p}</li>
+                  <li key={i}>{humanizarTexto(p)}</li>
                 ))}
               </ul>
             </div>

@@ -14,7 +14,7 @@ const ETIQUETA_REC = {
 
 // El ruido medido del modelo (2026-10-03): el mismo perfil dos veces mueve
 // el score ~40 puntos y cambia 1 de 13 recomendaciones.
-const NOTA_RUIDO = "El mismo perfil analizado dos veces mueve el puntaje ~40 puntos: una diferencia menor que eso no se atribuye a nada.";
+const NOTA_RUIDO = "El mismo perfil analizado dos veces mueve el score ~40 puntos: una diferencia menor que eso no se atribuye a nada.";
 
 export default function PestanaDesempeno({ resultado }) {
   if (!resultado) return <p className="crediscope-muted">Todavía no se calculó.</p>;
@@ -27,13 +27,13 @@ export default function PestanaDesempeno({ resultado }) {
       <Advertencias lista={r.advertencias} />
       <div className="crediscope-kpi-grid">
         <Kpi
-          etiqueta="AUC del puntaje"
+          etiqueta="AUC del score"
           valor={dec(r.auc, 3)}
           detalle={r.auc_intervalo ? `95%: ${dec(r.auc_intervalo[0], 3)} a ${dec(r.auc_intervalo[1], 3)} · ${lecturaAuc}` : "Hacen falta buenos y malos"}
         />
         <Kpi etiqueta="Gini" valor={dec(r.gini, 3)} detalle="2 × AUC − 1" />
         <Kpi etiqueta="KS" valor={dec(r.ks, 3)} detalle="Mayor separación entre buenos y malos" />
-        <Kpi etiqueta="Operaciones con puntaje" valor={num(r.n)} detalle={`${num(r.n_malos)} malos (${pct(r.n ? r.n_malos / r.n : null)})`} />
+        <Kpi etiqueta="Operaciones con score" valor={num(r.n)} detalle={`${num(r.n_malos)} malos (${pct(r.n ? r.n_malos / r.n : null)})`} />
       </div>
 
       <div className="crediscope-card">
@@ -67,10 +67,10 @@ export default function PestanaDesempeno({ resultado }) {
       </div>
 
       <div className="crediscope-card">
-        <h3 style={{ marginTop: 0 }}>Tasa de impago por tramo de puntaje</h3>
+        <h3 style={{ marginTop: 0 }}>Tasa de impago por tramo de score</h3>
         <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Tiene que bajar a medida que sube el puntaje. Si no baja, el puntaje no ordena, diga lo que diga el AUC. Sin los negados
-          por bloqueo (su puntaje lo fuerza la política).
+          Tiene que bajar a medida que sube el score. Si no baja, el score no ordena, diga lo que diga el AUC. Sin los negados
+          por bloqueo (su score lo fuerza la política).
         </p>
         {(r.por_tramo ?? []).map((t) => (
           <Barra
@@ -82,7 +82,7 @@ export default function PestanaDesempeno({ resultado }) {
             color={Number(t.tasa) > 0.15 ? "var(--bad)" : Number(t.tasa) > 0.07 ? "var(--warn)" : "var(--good)"}
           />
         ))}
-        <p className="crediscope-muted" style={{ fontSize: 12.5, marginBottom: 0 }}>{NOTA_RUIDO}</p>
+        <p className="crediscope-muted" style={{ fontSize: 13, marginBottom: 0 }}>{NOTA_RUIDO}</p>
       </div>
 
       <div className="crediscope-card">
@@ -101,7 +101,7 @@ export default function PestanaDesempeno({ resultado }) {
           <tbody>
             {(r.por_version ?? []).map((v) => (
               <tr key={v.version}>
-                <td>{v.version === "sintetico" ? "Puntaje sintético" : v.version}</td>
+                <td>{v.version === "sintetico" ? "Score sintético" : v.version}</td>
                 <td style={{ textAlign: "right" }}>{num(v.n)}</td>
                 <td style={{ textAlign: "right" }}>{num(v.malos)}</td>
                 <td style={{ textAlign: "right" }}>{pct(v.tasa)}</td>
