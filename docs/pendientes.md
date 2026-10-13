@@ -3,7 +3,7 @@
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
-2026-10-12 (sección 1, primer punto). La última migración es la **124**;
+2026-10-12 (sección 1, primer punto). La última migración es la **125**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -52,24 +52,7 @@ aceptada.
       persona: el árbol y los estados. El control corta con los nombres viejos
       y avisa de cada «cliente» suelto (0 avisos hoy).
   - Queda, por orden:
-  1. **Tablas de resumen para que la cartera pueda crecer** (decisión del
-     negocio del 2026-10-12: «según la pantalla»).
-     - **Hecho (124): la bandeja, Monitoreo y Fuentes de ingreso** leen
-       `resumen_por_persona`, una fila por persona al día por disparadores,
-       con una reconstrucción nocturna de respaldo. Medido con el rol de la
-       pantalla: la primera página de la bandeja, de 570 ms a 6 ms (de 3 a
-       5 s antes de la 123); la franja, 4 ms; Monitoreo, de 1,3 s a 126 ms;
-       Fuentes de ingreso, de 1,4 s a 179 ms. La salida de las cuatro se
-       comparó antes de aplicar: idéntica.
-     - **Falta:**
-       - **el centro de datos** (1,3 s): un resumen por día y por fuente.
-         Los días cerrados los calcula cada noche una tarea programada
-         (pg_cron), y el día de hoy se suma al momento.
-     - Se descartó calcularlo en la primera consulta del día: esa persona
-       espera el cálculo entero (y, con una cartera grande, el corte de 8 s),
-       lo que entra durante el día no aparece hasta mañana, y dos personas a
-       la vez lo calcularían dos veces.
-  2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+  1. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
      la persona, la solicitud como entidad, las direcciones, las referencias,
      los documentos y los créditos de la persona no existen todavía como datos:
      hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
@@ -86,7 +69,7 @@ aceptada.
      historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
      Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
      `docs/arquitectura-fabrica-de-credito.md`.
-  3. **Lo que todavía no se vio en pantalla:**
+  2. **Lo que todavía no se vio en pantalla:**
      - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
        analista): la tanda en que iban se cortó por tiempo;
      - las pestañas internas de cada módulo del Laboratorio (las pantallas
@@ -100,9 +83,9 @@ aceptada.
        contraseñas, el negocio ingresa con su cuenta en el panel
        (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
      Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
-  4. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+  3. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
      construyó sin su decisión.
-  5. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está

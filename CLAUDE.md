@@ -445,6 +445,20 @@ antes de tocar esa área.
     `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
   - Medido el 2026-10-12: la primera página de la bandeja, de 570 ms a 6 ms;
     Monitoreo, de 1,3 s a 126 ms; Fuentes de ingreso, de 1,4 s a 179 ms.
+- **El centro de datos suma `consultas_por_dia_y_fuente`** (125), por día de
+  Ecuador y por fuente.
+  - Los días cerrados los rehace `refrescar_consultas_por_dia()` cada noche
+    (pg_cron `resumenes-crediscope-dias`, 00:20 de Ecuador, los últimos 40
+    días); lo que todavía no se resumió, normalmente hoy, se cuenta al
+    momento.
+  - La "última semana" y el "mes anterior" son días de Ecuador, no horas
+    corridas.
+  - Al marcar o desmarcar una persona sintética, o al corregir algo de hace
+    más de 40 días: `select refrescar_consultas_por_dia(null)`.
+  - Medido: de 1,3 s a 28 ms para 120 días.
+- **Se descartó resumir en la primera consulta del día** (decisión del
+  2026-10-12): esa persona espera el cálculo entero, con una cartera grande
+  vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
 - **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
   Aval.
   - Los totales de la base las excluyen.
@@ -608,7 +622,7 @@ antes de tocar esa área.
 - Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
   liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
   le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola
-  hasta la 121).
+  hasta la 121, 28 ms desde la 125).
 - El tamaño de la aplicación se mide con el `.env`: sin las variables de
   Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
   cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
