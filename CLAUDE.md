@@ -366,6 +366,9 @@ Romper cualquiera de estas rompe algo real.
   contrato, y un lote declara su base legal. Lo que se le muestra a un
   cliente es `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`
   (publicada como página privada), nunca el informe de `auditoria/`.
+  Quien encuentre una falla la reporta en privado desde la pestaña Security
+  del repositorio (reporte privado de GitHub, activado el 2026-10-12):
+  `SECURITY.md` lo explica.
 
 ## Lo que costó caro aprender
 
