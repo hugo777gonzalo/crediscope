@@ -22,50 +22,59 @@ aceptada.
 
 ## 1. Para retomar primero
 
-- **Equifax (2026-10-12): en producción, con 22 consultas hechas. Cada
-  consulta se cobra y su proveedor no pone tope: nada que consulte se corre
-  sin autorización explícita del negocio.**
+- **Equifax (2026-10-13): el conector está en producción con 22 consultas
+  hechas, y las tablas y la estructura están construidas. Cada consulta se
+  cobra y su proveedor no pone tope: nada que consulte se corre sin
+  autorización explícita del negocio.**
   - Qué hay: el conector desplegado (7 de 7 funciones, commit `4cbebdd`), la
     tabla `consultas_equifax` (122) con 22 filas (2 de prueba y 20 de un lote:
     todas HTTP 200 y de la persona pedida), el guion local que simula por
     defecto, la exportación a Excel, el inventario y la conciliación de las
     respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El consumo del
     2026-10-12 fue de 22 de 30; el tope diario es `EQUIFAX_TOPE_DIARIO`.
-  - Decidido por el negocio: el camino es JSON → tablas → estructura
-    estandarizada (contadores, sumas, booleanos y listas se calculan desde las
-    tablas), `reporteCrediticio` es la fuente de la deuda, y qué parámetros de
-    la decisión mueven `interconnectResponse` no importa por ahora. La
-    propuesta es `docs/propuesta-estructura-equifax.md`.
+  - **Construido el 2026-10-13** (aprobado por el negocio: «ok»): la migración
+    126 con 11 tablas `equifax_*`, las funciones deterministas `equifax-tablas-v1`
+    y `equifax-estructura-v1`, la derivación al guardar cada consulta nueva y el
+    guion que rehace las ya guardadas (`scripts/cargar-tablas-equifax.mjs`).
+    Probado con una respuesta inventada (Deno) y con las 22 reales
+    (`scripts/probar-equifax-tablas.mjs`): bancos concilian 22 de 22 con el
+    resumen de Equifax, cooperativas 21 de 22 y comercial 16 de 22. El diseño
+    y lo que se midió: `docs/propuesta-estructura-equifax.md`.
+  - **`probar_conexion` desde las Edge Functions: ok** (2026-10-13, 544 ms, con
+    la sesión de admin del negocio en el panel local). Equifax deja pasar a las
+    funciones para pedir el token; la consulta misma desde las funciones no se
+    probó porque cobra. Hoy se sigue consultando desde la máquina con IP de
+    Ecuador.
   - Las 22 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
     Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas
     se cargan desde el crudo, que no cuesta.
   - Qué falta, por orden:
-    1. **Aprobar los nombres** (sección 5 de la propuesta) **y las tablas**
-       (1.1). Después: la migración con las tablas `equifax_*` (el número se
-       toma al aplicarla), las funciones `equifax-tablas` y `equifax-estructura`
-       con pruebas contra las 22 respuestas y la carga de las 22 desde el
-       crudo. Se verifica con SQL que la estructura cuadra con el resumen de
-       Equifax por sistema (hoy cuadran 22 de 22 en bancos, 21 de 22 en
-       cooperativas y 16 de 22 en comercial).
-    2. **Probar `probar_conexion` con una sesión de admin** (el negocio dijo
-       que sí; Claude no escribe contraseñas): saber si Equifax deja pasar a
-       las Edge Functions, cuyo egreso con Aval fue rechazado por el WAF. Hoy
-       se consulta desde la máquina con IP de Ecuador. Verificación:
-       `node scripts/consultar-equifax-local.mjs --probar-conexion` prueba esta
-       máquina; la de las funciones es la acción de la función.
+    1. **Aplicar la 126, desplegar `consultar-equifax` y cargar las 22 desde el
+       crudo** (el 2026-10-13 la 126 entró a `main` por PR; aplicarla con el
+       corredor, después desplegar con `--funciones`, después
+       `node scripts/cargar-tablas-equifax.mjs`, `--seco` primero). Verificar
+       con SQL que la estructura cuadra con el resumen por sistema.
+    2. **El diccionario de datos de Equifax.** Lo consigue el negocio (dijo el
+       2026-10-13 que lo puede dar); la lista de lo que hay que pedir, con la
+       evidencia y la prioridad de cada punto, está en
+       `docs/equifax-pedido-de-diccionario.md`. Lo que conteste se carga sin
+       volver a pagar: se sube la versión y se rehacen las consultas.
     3. **El ajuste al marco interpretativo**: una sección de comportamiento
        crediticio del sistema financiero ecuatoriano con datos actuales e
-       históricos. Se propone cuando la estructura esté lista.
-    4. **Pedirle a Equifax el diccionario de datos** (sección 7 de la
-       propuesta). Sin él quedan sin explicar `SFNR`, la composición de la
-       deuda directa e indirecta y el corte del sector comercial.
-    5. **Rotar las credenciales de Equifax:** se pegaron en un chat. El
-       negocio dijo el 2026-10-12 que por el momento no, y pidió borrar los
-       datos del chat; el riesgo sigue mientras no se roten.
-    6. Sin pantallas todavía (decisión del negocio): al hacerlas, rótulo
-       "Score de Equifax" y el vocabulario de `docs/modelo-de-la-persona.md`.
-    7. Sumar a Equifax a las fichas de cumplimiento (`docs/cumplimiento/`,
-       fuera de git): encargado y destinatario de datos de las personas.
+       históricos. El negocio dijo «procede» el 2026-10-13; la propuesta es
+       `docs/propuesta-marco-equifax.md`. No se activa sin validarla: versión
+       nueva del marco, su fila en `scoring_rules_versions`, y autorización
+       explícita del gasto del modelo.
+    4. **Rotar las credenciales de Equifax:** se pegaron en un chat. El
+       negocio dijo otra vez el 2026-10-13 que por ahora no; el riesgo sigue
+       mientras no se roten.
+    5. **Pantallas:** cuando todo el proceso detrás de Equifax esté listo
+       (decisión del negocio, 2026-10-13). Al hacerlas, rótulo «Score de
+       Equifax» y el vocabulario de `docs/modelo-de-la-persona.md`.
+    6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
+       Equifax como encargado y destinatario de datos de las personas. Cuando
+       Equifax termine de aprobar al proveedor (el negocio, 2026-10-13: «está
+       en proceso de aprobación»).
 
 - **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
   El informe es `docs/revision-ux.md`; el vocabulario del producto,

@@ -88,12 +88,34 @@ const TABLAS = [
   ["resumen_por_persona", `client_id=eq.${id}`],
 ];
 
+// Lo que Equifax dijo de la persona, descompuesto en tablas (126). Cuelga de la consulta, no de la
+// persona, y borrar la consulta borra sus filas (on delete cascade): la supresión no las toca a mano.
+// Una consulta trae cientos de filas de historia: PostgREST corta en 1.000 sin avisar, así que se pagina.
+const TABLAS_DE_EQUIFAX = [
+  "equifax_operaciones", "equifax_historia_mensual", "equifax_deuda_por_sistema_y_mes", "equifax_vencimientos", "equifax_tarjetas",
+  "equifax_creditos", "equifax_consultas_recibidas", "equifax_scores", "equifax_indicadores_por_periodo", "equifax_codeudor_garante", "equifax_resumen",
+];
+async function leerTodas(tabla, filtro) {
+  const filas = [];
+  const orden = tabla === "equifax_resumen" ? "consulta_equifax_id" : "consulta_equifax_id,orden"; // la PK: un orden total
+  for (let desde = 0; ; desde += 1000) {
+    const pagina = await pedir(`${env.SUPABASE_URL}/rest/v1/${tabla}?select=*&${filtro}&order=${orden}&limit=1000&offset=${desde}`);
+    filas.push(...pagina);
+    if (pagina.length < 1000) return filas;
+  }
+}
+
 const datos = { clients: [cliente] };
 for (const [tabla, filtro] of TABLAS) datos[tabla] = await leer(tabla, filtro);
+const idsDeConsultasEquifax = datos.consultas_equifax.map((c) => c.id);
+for (const tabla of TABLAS_DE_EQUIFAX) {
+  datos[tabla] = idsDeConsultasEquifax.length ? await leerTodas(tabla, `consulta_equifax_id=in.(${idsDeConsultasEquifax.join(",")})`) : [];
+}
 const crudos = datos.client_profiles.map((p) => p.crudo_ruta).filter(Boolean);
 
 console.log(`\nInventario de ${ENMASCARADA}`);
 for (const [tabla] of [["clients"], ...TABLAS]) console.log(`  ${tabla.padEnd(28)} ${datos[tabla].length}`);
+for (const tabla of TABLAS_DE_EQUIFAX) console.log(`  ${tabla.padEnd(28)} ${datos[tabla].length}`);
 console.log(`  ${"crudo en Storage".padEnd(28)} ${crudos.length}`);
 
 // Si la persona es un caso de desarrollo, el código la cita como

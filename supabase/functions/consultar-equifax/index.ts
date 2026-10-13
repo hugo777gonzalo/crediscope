@@ -115,6 +115,9 @@ Deno.serve(async (req) => {
       vigente_hasta: r.vigenteHasta,
       ambiente: r.fila.ambiente,
       identificacion: cedula,
+      // false = el crudo quedó guardado pero las tablas y la estructura no se pudieron derivar (se
+      // rehacen sin volver a pagar). null = la consulta se reutilizó: no se volvió a derivar nada.
+      tablas_hechas: r.resultado === "consultada" ? r.tablas.ok : null,
     });
   } catch (err) {
     // Sin el mensaje crudo: un error de un tercero puede repetir lo que se le mandó.
