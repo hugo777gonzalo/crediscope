@@ -96,8 +96,14 @@ mayúsculas). Dos cosas que el negocio también resolvió ese día:
    llegaron a Cliente activo o Cliente cerrado; «Sin crédito», las que se
    quedaron antes.
 6. **La API para las instituciones** (`api/openapi.yaml`) usa estos nombres para
-   sus recursos y estados: persona, solicitud, score, crédito. Hay que
-   coordinarlo con la sesión que la construye.
+   sus recursos y estados: persona, solicitud, score, crédito. **Alineado el
+   2026-10-12 en lo que la v1 ya tiene:**
+   - la decisión de la institución es `aprobado` / `rechazado` (antes decía
+     `negado`, la palabra del modelo), más `aprobado_con_condiciones` y
+     `desistido`;
+   - el score y la recomendación (`aprobar`, `revisar`, `negar`) van aparte;
+   - el `estado` del contrato es el de la evaluación, y lo dice. El de la
+     persona y el crédito no están en la v1: esperan la sección 5.
 
 ## 4. Lo que hay que respetar al escribir una pantalla
 
