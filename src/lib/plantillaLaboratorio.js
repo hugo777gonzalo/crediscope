@@ -74,7 +74,7 @@ const INSTRUCCIONES = [
   ["Observaciones: opcional; lo que el área de crédito sepa del caso."],
   [],
   [`Hoja "${HOJA_DECISIONES}" (opcional): una fila por cada solicitud evaluada que NO se desembolsó.`],
-  ["Decisión de la institución: Negada, Desistió (el cliente no siguió) o En trámite."],
+  ["Decisión de la institución: Negada, Desistió (la persona no siguió) o En trámite."],
 ];
 
 export function descargarPlantilla() {

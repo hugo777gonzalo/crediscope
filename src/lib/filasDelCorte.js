@@ -15,10 +15,10 @@
 // `observacion`: llegó a 15 días de atraso o más en el primer año (el umbral
 // lo dice la definición del corte), aunque después se pusiera al día.
 
-export const SELECT_OPERACIONES =
+export const SELECT_OPERACIONES = // revisar-textos: permitir puntaje -- columnas de la base y de la plantilla (contrato de datos)
   "operacion_id, cedula, producto, monto, fecha_desembolso, incluida, motivo_exclusion, malo, observacion, fuente_puntaje, puntaje, recomendacion, marco_version, structure_version, veredicto_origen, primera_de_la_persona, client_profile_id, analysis_result_id, variables, lab_operaciones(fecha_primer_default, canal, plazo_meses, estado_operacion, cuota_mensual, lab_cargas(fecha_corte, institucion))";
 
-export const SELECT_SOLICITUDES =
+export const SELECT_SOLICITUDES = // revisar-textos: permitir puntaje -- columnas de la base y de la plantilla (contrato de datos)
   "solicitud_id, cedula, desembolsada, recomendacion, puntaje, fuente_puntaje, incluida, motivo_exclusion, malo, observacion, observable_buro, motivo_buro, malo_buro, observacion_buro, origen_resultado, donde, recibio_credito_de_otro, fecha_default, cuota_mensual, variables, lab_solicitudes(fecha_solicitud, decision_institucion, client_profile_id, analysis_result_id, operacion_id, lab_reconsultas(fecha))";
 
 const fecha = (d) => (d ? new Date(`${d}T12:00:00Z`) : null);

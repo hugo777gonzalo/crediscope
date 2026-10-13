@@ -16,7 +16,7 @@ import { entero, moneda, centavos } from "./formatos.js";
 // identificadores crudos (vigia, analisis-en-lote...) junto a los nombres
 // bien escritos.
 export const ETIQUETA_FUNCION = {
-  "analyze-client": "Análisis de cliente",
+  "analyze-client": "Análisis de una persona",
   vigia: "Vigía (comprueba que el modelo responda)",
   "analisis-en-lote": "Análisis en lote (corrida del Laboratorio)",
   "comparacion-razonamiento": "Comparación de razonamiento (prueba interna)",
@@ -31,7 +31,7 @@ export const ETIQUETA_FUNCION = {
 // vigía (2.331 llamadas), el análisis en lote y las comparaciones, y el
 // rótulo "Calibración del criterio" no decía nada de eso.
 export const ETIQUETA_NATURALEZA = {
-  consulta: "Consulta de cliente",
+  consulta: "Consulta de una persona",
   prueba: "Prueba interna",
   calibracion: "Laboratorio y vigía del servicio",
 };
@@ -39,7 +39,7 @@ export const ETIQUETA_NATURALEZA = {
 export const DESCRIPCION_NATURALEZA = {
   consulta: "Lo que se le cobra a alguien. Es el número que define la tarifa.",
   prueba: "Análisis que corrimos nosotros para validar. Se paga igual y no se factura.",
-  calibracion: "Todo lo que no es un análisis de cliente: el vigía, las corridas y las pruebas del Laboratorio. Una acción puede disparar muchas llamadas.",
+  calibracion: "Todo lo que no es un análisis de una persona: el vigía, las corridas y las pruebas del Laboratorio. Una acción puede disparar muchas llamadas.",
 };
 
 export const ETIQUETA_ORIGEN = {
@@ -197,7 +197,7 @@ export const QUE_HACER_FALLO = {
   limite_velocidad: "Espaciar las consultas o pedir más cuota. Con volumen sostenido, hace falta una cola.",
   proveedor_caido: "No se corrige: se comunica. Avisar a los usuarios y seguir con lo que no depende del modelo.",
   respuesta_cortada: "Subir el techo de tokens de salida o recortar lo que se envía.",
-  respuesta_ilegible: "Revisar el formato que exige el marco. Si aparece en varios clientes, es del criterio.",
+  respuesta_ilegible: "Revisar el formato que exige el marco. Si aparece en varias personas, es del criterio.",
   sin_conexion: "Revisar la salida a internet de la función y el estado de la red del proveedor.",
   desconocido: "Leer el detalle técnico y agregar la causa al clasificador.",
 };

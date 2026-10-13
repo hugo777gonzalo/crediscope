@@ -162,14 +162,15 @@ Sin una institución real todavía, se desarrolla y se prueba con una
 **cartera sintética con señal plantada** (`scripts/generar-cartera-sintetica.mjs`),
 marcada como tal en toda pantalla y excluida de todo informe.
 
-## Reportes: Inteligencia de Negocios y Descargas
+## Monitoreo: Panorama y Descargas
 
-Son dos cosas distintas y por eso viven en pantallas separadas.
-**Inteligencia de Negocios** (`Reportes.jsx`) es un tablero EN VIVO
+Antes se llamaba Reportes (el negocio lo cambió el 2026-10-12; la ruta sigue
+siendo `/reportes`). Son dos cosas distintas y por eso viven en pantallas
+separadas. **Panorama** (`Reportes.jsx`) es un tablero EN VIVO
 sobre toda la cartera consultada — volumen, tendencia, distribución de
 score, riesgo y cumplimiento, actividad por analista, tiempos — pensado
 para mirarse en pantalla con una jefatura. **Descargas**
-(`Descargas.jsx`) son los reportes planos, para bajar y trabajar afuera.
+(`Descargas.jsx`) son los archivos planos, para bajar y trabajar afuera.
 
 ### Descargas › Información de Solicitudes
 
@@ -215,15 +216,15 @@ no solo ocultando enlaces del menú.
 
 | Sección | Ruta | Acceso |
 | --- | --- | --- |
-| Evaluación Crediticia (Buscar Cliente, Perfil del Cliente, Análisis con IA) | `/`, `/perfil/:cedula`, `/analisis/:cedula` | analista |
-| Solicitudes (historial de consultas y análisis) | `/historial` | analista |
-| Reportes › Inteligencia de Negocios (tablero en vivo) | `/reportes` | analista |
-| Reportes › Descargas (reportes planos) | `/reportes/descargas` | analista |
-| Fuentes de Ingreso (Panorama, Clientes por segmento, Reglas) | `/fuentes` | analista |
+| Evaluación Crediticia (Buscar persona, Perfil del Cliente, Análisis con IA) | `/`, `/perfil/:cedula`, `/analisis/:cedula` | analista |
+| Solicitudes (la bandeja y el expediente de cada persona) | `/solicitudes`, `/solicitudes/:cedula` | analista |
+| Monitoreo › Panorama (tablero en vivo) | `/reportes` | analista |
+| Monitoreo › Descargas (archivos planos) | `/reportes/descargas` | analista |
+| Fuentes de Ingreso (Panorama, Personas por segmento, Reglas) | `/fuentes` | analista |
 | Fuentes de Ingreso › Parámetros | `/fuentes/parametros` | admin |
 | Costos (Panorama, Costo por consulta, Corridas masivas, Detalle de llamadas, Fallas e incidentes, Tarifas) | `/costos` | admin |
 | Laboratorio › Riesgo de Crédito | `/laboratorio` | admin |
-| Explorador de Fuentes | `/explorar` | admin |
+| Explorador de la fuente de datos | `/explorar` | admin |
 | Configuración | `/admin/configuracion` | admin |
 
 Costos es admin en la ruta **y** en la política de la base: no es un dato
@@ -316,7 +317,7 @@ Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD`, cada fuente devuelve
 `status: "error"` sin romper el pipeline — sirve para probar el flujo
 completo de punta a punta.
 
-### Explorador de Fuentes
+### Explorador de la fuente de datos
 
 `src/pages/NovadataExplorer.jsx` (`/explorar`, **solo admin**) consulta
 las 52 fuentes de una cédula y muestra el estado y el crudo de cada

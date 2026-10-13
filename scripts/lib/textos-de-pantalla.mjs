@@ -58,7 +58,9 @@ function lineaDe(fuente, posicion) {
   return linea;
 }
 
-// Cada texto: { archivo, linea, tipo, texto }.
+// Cada texto: { archivo, linea, tipo, texto, rangos }. `rangos` son los
+// [inicio, fin) del texto en el archivo, sin las comillas ni los ${}: lo que se
+// puede reescribir sin tocar código (ver scripts/renombrar-textos.mjs).
 //   tipo "jsx"     — texto entre etiquetas
 //   tipo "atributo:<nombre>" — propiedad con cadena fija (title, label, etc.)
 //   tipo "cadena"  — cadena suelta dentro de {} o de tablas de rótulos
@@ -73,13 +75,13 @@ export function textosDeArchivo(rutaRelativa) {
   const ast = typeof program === "string" ? JSON.parse(program) : program;
   const textos = [];
   const vistos = new Set();
-  const agregar = (tipo, texto, inicio) => {
+  const agregar = (tipo, texto, inicio, rangos = []) => {
     const limpio = texto.replace(/\s+/g, " ").trim();
     if (!pareceTexto(limpio)) return;
     const clave = `${inicio}:${limpio}`;
     if (vistos.has(clave)) return;
     vistos.add(clave);
-    textos.push({ archivo: rutaRelativa, linea: lineaDe(fuente, inicio), tipo, texto: limpio });
+    textos.push({ archivo: rutaRelativa, linea: lineaDe(fuente, inicio), tipo, texto: limpio, rangos });
   };
 
   // Cadenas que NO son de pantalla aunque estén en el código.
@@ -95,12 +97,12 @@ export function textosDeArchivo(rutaRelativa) {
     ExportAllDeclaration(n) { marcarHijos(n.source); },
     ExportNamedDeclaration(n) { if (n.source) marcarHijos(n.source); },
     ImportExpression(n) { marcarHijos(n.source); },
-    JSXText(n) { agregar("jsx", n.value, n.start); },
+    JSXText(n) { agregar("jsx", n.value, n.start, [[n.start, n.end]]); },
     JSXAttribute(n) {
       const nombre = n.name?.name ?? "";
       if (!esAtributoVisible(nombre)) { marcarHijos(n.value); return; }
       if (n.value?.type === "Literal" && typeof n.value.value === "string") {
-        agregar(`atributo:${nombre}`, n.value.value, n.value.start);
+        agregar(`atributo:${nombre}`, n.value.value, n.value.start, [[n.value.start + 1, n.value.end - 1]]);
         marcarHijos(n.value);
       }
     },
@@ -108,7 +110,7 @@ export function textosDeArchivo(rutaRelativa) {
     // y plantillas. Se filtra con pareceTexto().
     Literal(n) {
       if (ignorar.has(n)) return;
-      if (typeof n.value === "string") agregar("cadena", n.value, n.start);
+      if (typeof n.value === "string") agregar("cadena", n.value, n.start, [[n.start + 1, n.end - 1]]);
     },
     TemplateLiteral(n) {
       if (ignorar.has(n)) return;
@@ -116,7 +118,7 @@ export function textosDeArchivo(rutaRelativa) {
       // suspensivos del texto real.
       const partes = n.quasis.map((q) => q.value.cooked ?? q.value.raw);
       const texto = partes.join("{}");
-      agregar("cadena", texto, n.start);
+      agregar("cadena", texto, n.start, n.quasis.map((q) => [q.start, q.end]));
     },
     // Las claves de un objeto ({ "Por confirmar": 1 }) y los argumentos de
     // navigate()/Link no son texto de pantalla, pero sí lo son los valores.

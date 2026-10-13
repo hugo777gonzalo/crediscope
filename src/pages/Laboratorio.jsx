@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Database, LineChart, Sigma, Microscope, FileText, Building2, AlertTriangle } from "lucide-react";
 import {
@@ -7,8 +7,10 @@ import {
 import { getFilasDelCorte } from "../lib/datosDelCorte.js";
 import { segmentar } from "../lib/analisisRetrospectivo.js";
 import { formatearFechaHora } from "../lib/fechas.js";
+import { mesAnio } from "../lib/formatos.js";
 import { GraficoBarras } from "../components/laboratorio/Graficos.jsx";
-import { Kpi, MensajeError, Cargando, Etiqueta, ETIQUETA_RECOMENDACION, num, pct, dec } from "../components/laboratorio/Comunes.jsx";
+import { Kpi, Cargando, Etiqueta, ETIQUETA_RECOMENDACION, num, pct, dec } from "../components/laboratorio/Comunes.jsx";
+import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 
 // Laboratorio de Inteligencia de Negocio › Riesgo de Crédito: el inicio
 // (módulo 1 del negocio). Indicadores, hallazgos críticos, evolución, el
@@ -44,19 +46,53 @@ const TIPO_RESULTADO = {
   estabilidad_variables: "Estabilidad de las variables", comparacion: "Comparar cortes",
 };
 
-async function cargarInicio() {
-  const [cargas, cortes, propuestas, candidatas, instituciones, volumen, centro, sinProcesar] = await Promise.all([
-    getCargas(), getCortes(), getPropuestas(), getCandidatas(), getInstituciones(), getVolumenDeAnalisis(), getCentroDeDatos(60), contarReconsultasSinProcesar(),
-  ]);
-  const resultados = Object.fromEntries(await Promise.all(cortes.map(async (c) => [c.id, await getResultados(c.id)])));
-  // La evolución del default, sobre el corte más reciente.
-  const evolucion = cortes[0] ? segmentar(await getFilasDelCorte(cortes[0].id, "operaciones"), "mes") : null;
-  return { cargas, cortes, propuestas, candidatas, instituciones, volumen, centro, sinProcesar, resultados, evolucion };
+// Cada uno tarda menos de 1 s (medido el 2026-10-12).
+const LIVIANOS = {
+  cargas: getCargas, cortes: getCortes, propuestas: getPropuestas, candidatas: getCandidatas,
+  instituciones: getInstituciones, volumen: getVolumenDeAnalisis, sinProcesar: contarReconsultasSinProcesar,
+};
+// Sin estos no hay pantalla. Los demás (el centro de datos y la evolución) se
+// piden después y se dibujan cuando llegan.
+const BASE = [...Object.keys(LIVIANOS), "resultados"];
+
+// "2026-08" -> "Ago 2026"; lo que no es un mes se deja tal cual.
+const mesOTexto = (m) => (/^\d{4}-\d{2}$/.test(String(m)) ? mesAnio(m) : m);
+const estadoDe = (recurso) => (!recurso ? "cargando" : "error" in recurso ? "error" : "listo");
+
+function useInicio() {
+  const [recursos, setRecursos] = useState({});
+  const [intento, setIntento] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    const guardar = (clave, parte) => { if (vivo) setRecursos((r) => ({ ...r, [clave]: parte })); };
+    const pedir = (clave, pedido) => pedido().then(
+      (valor) => { guardar(clave, { valor }); return valor; },
+      (error) => { guardar(clave, { error }); return null; },
+    );
+    setRecursos({});
+    (async () => {
+      const claves = Object.keys(LIVIANOS);
+      const valores = await Promise.all(claves.map((k) => pedir(k, LIVIANOS[k])));
+      const cortes = valores[claves.indexOf("cortes")];
+      if (cortes) {
+        await Promise.all([
+          pedir("resultados", async () => Object.fromEntries(await Promise.all(cortes.map(async (c) => [c.id, await getResultados(c.id)])))),
+          // La evolución del impago, sobre el corte más reciente.
+          pedir("evolucion", async () => (cortes[0] ? segmentar(await getFilasDelCorte(cortes[0].id, "operaciones"), "mes") : null)),
+        ]);
+      }
+      // Solo y al final: con las demás consultas en marcha se pasaba del límite.
+      await pedir("centro", () => getCentroDeDatos(60));
+    })();
+    return () => { vivo = false; };
+  }, [intento]);
+  const reintentar = useCallback(() => setIntento((n) => n + 1), []);
+  return { recursos, reintentar };
 }
 
 function hallazgosCriticos(d) {
   const lista = [];
-  for (const f of d.centro.fuentes) {
+  for (const f of d.centro?.fuentes ?? []) {
     if (f.contesto_mes_anterior !== null && f.contesto_ultima_semana !== null && f.consultas_ultima_semana >= 20 && f.contesto_mes_anterior - f.contesto_ultima_semana > 0.1) {
       lista.push({ tipo: "Fuente", texto: `${f.fuente} contesta ${pct(f.contesto_ultima_semana, 0)} en la última semana contra ${pct(f.contesto_mes_anterior, 0)} el mes anterior`, enlace: "/laboratorio/datos?pestana=centro" });
     }
@@ -72,7 +108,7 @@ function hallazgosCriticos(d) {
     const des = rs.find((r) => r.tipo === "desempeno");
     if (des && Number(des.resultado.auc) < 0.65) lista.push({ tipo: "Desempeño", texto: `AUC ${dec(des.resultado.auc, 3)} en «${c.nombre}»: el motor casi no ordena`, enlace: `/laboratorio/desempeno?corte=${c.id}`, sintetico: c.es_sintetico });
     for (const e of rs.filter((r) => r.tipo === "estabilidad")) {
-      if (Number(e.resultado.psi) > 0.25) lista.push({ tipo: "Estabilidad", texto: `PSI del puntaje ${dec(e.resultado.psi, 3)} en «${c.nombre}»: la población cambió`, enlace: `/laboratorio/desempeno?corte=${c.id}&pestana=estabilidad`, sintetico: c.es_sintetico });
+      if (Number(e.resultado.psi) > 0.25) lista.push({ tipo: "Estabilidad", texto: `PSI del score ${dec(e.resultado.psi, 3)} en «${c.nombre}»: la población cambió`, enlace: `/laboratorio/desempeno?corte=${c.id}&pestana=estabilidad`, sintetico: c.es_sintetico });
     }
   }
   return lista;
@@ -91,13 +127,17 @@ function actividad(d) {
 }
 
 export default function Laboratorio() {
-  const [d, setD] = useState(null);
-  const [error, setError] = useState(null);
-  useEffect(() => {
-    cargarInicio().then(setD).catch((e) => setError(e.message));
-  }, []);
-  if (error) return <MensajeError mensaje={error} />;
-  if (!d) return <Cargando que="el inicio del Laboratorio" />;
+  const { recursos, reintentar } = useInicio();
+  const falloDeLaBase = BASE.map((k) => recursos[k]?.error).find(Boolean);
+  if (falloDeLaBase) return <AvisoDeError error={falloDeLaBase} titulo="No se pudo abrir el inicio del Laboratorio" alReintentar={reintentar} />;
+  if (BASE.some((k) => !recursos[k] || !("valor" in recursos[k]))) return <Cargando que="el inicio del Laboratorio" />;
+  const d = {
+    ...Object.fromEntries(BASE.map((k) => [k, recursos[k].valor])),
+    centro: recursos.centro?.valor ?? null,
+    evolucion: recursos.evolucion?.valor ?? null,
+  };
+  const estadoCentro = estadoDe(recursos.centro);
+  const estadoEvolucion = estadoDe(recursos.evolucion);
 
   const reales = d.cargas.filter((c) => !c.es_sintetica && c.estado === "lista");
   const operacionesReales = reales.reduce((s, c) => s + Number(c.conciliacion?.operaciones ?? 0), 0);
@@ -130,7 +170,7 @@ export default function Laboratorio() {
       </div>
 
       <div className="crediscope-card" style={{ borderColor: criticos.length ? "var(--bad)" : undefined }}>
-        <h3 style={{ marginTop: 0 }}>Hallazgos críticos ({num(criticos.length)})</h3>
+        <h3 style={{ marginTop: 0 }}>Hallazgos críticos{estadoCentro === "listo" ? ` (${num(criticos.length)})` : ""}</h3>
         {criticos.length ? (
           <ul style={{ margin: 0, fontSize: 14, lineHeight: 1.7 }}>
             {criticos.map((h, i) => (
@@ -140,7 +180,9 @@ export default function Laboratorio() {
               </li>
             ))}
           </ul>
-        ) : <p className="crediscope-muted" style={{ margin: 0 }}>Ninguno.</p>}
+        ) : estadoCentro === "listo" ? <p className="crediscope-muted" style={{ margin: 0 }}>Ninguno.</p> : null}
+        {estadoCentro === "cargando" ? <p className="crediscope-muted" style={{ margin: criticos.length ? "8px 0 0" : 0 }}>Revisando si las fuentes siguen contestando...</p> : null}
+        {estadoCentro === "error" ? <AvisoDeError error={recursos.centro.error} titulo="No se pudo revisar si las fuentes siguen contestando" alReintentar={reintentar} /> : null}
         <p className="crediscope-muted" style={{ fontSize: 12, marginBottom: 0 }}>
           Crítico es todo resultado relevante y significativo de los análisis, y va en el informe a la institución (decisión del negocio). Esta lista
           muestra por ahora lo que está guardado: fuentes que dejaron de contestar, lo que el modelo no vio, AUC menor a 0,65 y PSI mayor a 0,25.
@@ -150,9 +192,11 @@ export default function Laboratorio() {
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <div className="crediscope-card" style={{ margin: 0 }}>
           <h3 style={{ marginTop: 0 }}>Impago por mes {d.cortes[0] ? <span className="crediscope-muted" style={{ fontSize: 13, fontWeight: 400 }}>· «{d.cortes[0].nombre}»</span> : null}</h3>
-          {d.evolucion?.segmentos.length ? (
+          {estadoEvolucion === "cargando" ? <Cargando que="el impago por mes" /> : null}
+          {estadoEvolucion === "error" ? <AvisoDeError error={recursos.evolucion.error} titulo="No se pudo calcular el impago por mes" alReintentar={reintentar} /> : null}
+          {estadoEvolucion !== "listo" ? null : d.evolucion?.segmentos.length ? (
             <GraficoBarras
-              categorias={d.evolucion.segmentos.map((s) => s.nombre)}
+              categorias={d.evolucion.segmentos.map((s) => mesOTexto(s.nombre))}
               series={[{ nombre: "Tasa de malos", color: "var(--bad)", valores: d.evolucion.segmentos.map((s) => s.tasa), formato: (v) => pct(v) }]}
               y={{ formato: (v) => pct(v, 0) }}
               alto={200}
@@ -165,7 +209,7 @@ export default function Laboratorio() {
           <h3 style={{ marginTop: 0 }}>Análisis del motor por mes</h3>
           {meses.length ? (
             <GraficoBarras
-              categorias={meses}
+              categorias={meses.map(mesOTexto)}
               series={recs.map((r, i) => ({ nombre: ETIQUETA_RECOMENDACION[r] ?? r, color: ["var(--good)", "var(--warn)", "var(--bad)", "var(--text-muted)"][i], valores: meses.map((m) => Number(d.volumen.find((v) => v.mes === m && v.recomendacion === r)?.n ?? 0)), formato: (v) => num(v) }))}
               apiladas
               y={{ formato: (v) => num(v) }}
@@ -204,7 +248,7 @@ export default function Laboratorio() {
             <li>Reconsultas del ciclo sin procesar: <strong>{num(d.sinProcesar)}</strong>{d.sinProcesar ? " · scripts/procesar-reconsultas.mjs" : ""}</li>
             <li>Análisis del motor fallidos: <strong>{num(analisisFallidos)}</strong></li>
             <li>Cargas con consultas posteriores al desembolso (fuga): <strong>{num(fugas.length)}</strong></li>
-            <li>Fuentes que dejaron de contestar: <strong>{num(criticos.filter((h) => h.tipo === "Fuente").length)}</strong> · <Link to="/laboratorio/datos?pestana=centro">centro de datos</Link></li>
+            <li>Fuentes que dejaron de contestar: <strong>{estadoCentro === "listo" ? num(criticos.filter((h) => h.tipo === "Fuente").length) : "—"}</strong>{estadoCentro === "cargando" ? " (revisando...)" : estadoCentro === "error" ? " (no se pudo revisar)" : ""} · <Link to="/laboratorio/datos?pestana=centro">centro de datos</Link></li>
           </ul>
         </div>
       </div>

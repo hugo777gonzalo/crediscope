@@ -73,6 +73,9 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
   muestra con `AvisoDeError`, jamás con `error.message` crudo.
 - **Los nombres del menú y de la barra salen de `src/lib/navegacion.js`.** Un nombre
   se cambia en un solo lugar.
+- **La persona es la entidad; «cliente» sólo con un crédito.** Score, no «puntaje». Los
+  estados de la persona y lo que cuelga de ella tienen nombres fijos: `terminologia.md`
+  y `docs/modelo-de-la-persona.md`.
 - **Tres estados siempre**: cargando (`Cargando`), vacío (qué falta y qué hacer) y
   error (`AvisoDeError`, con "Reintentar" si se arregla esperando).
 - **Los huecos se dicen**: un dato que no se midió es "No medido", nunca `0` ni vacío.
@@ -80,6 +83,19 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
   El verificador enmascara los números de 7 dígitos o más; un caso real se cita `c-xxxxxxxx`.
 - **No escribir contraseñas.** Si la sesión de QA caducó, se le pide a la persona que
   ingrese en el panel de vista previa.
+
+## Cuando el negocio cambia un nombre
+
+1. Anotar la decisión en `terminologia.md` (qué era, qué es, quién y cuándo).
+2. `node scripts/renombrar-textos.mjs --de="..." --a="..."` **en seco**: cambia sólo los textos
+   de pantalla (nunca una variable ni una columna) y lista cada cambio. Leerlo línea por línea;
+   si el cambio es de género o número («el cliente» → «la persona»), se edita a mano.
+3. `--aplicar` y, si es una columna de datos que se llama igual (la plantilla que llenan las
+   instituciones), una marca `// revisar-textos: permitir <regla> -- por qué`.
+4. Una regla nueva en `scripts/revisar-textos.mjs` para que el nombre viejo no vuelva, y una
+   prueba en `scripts/probar-formatos.mjs` si cambia `navegacion.js`.
+5. Mirarlo en pantalla (menú, barra superior, título de la pestaña) y comprobar que ninguna
+   ruta guardada se rompe: el nombre cambia, la dirección se queda.
 
 ## Qué hacer cuando se descubre algo nuevo
 
@@ -100,5 +116,7 @@ Una revisión que depende de que alguien se acuerde se vuelve a romper.
 | `recorrido-qa.md` | Cómo correr la sesión de QA sin tropezar (puerto, sesión, tamaño de ventana) |
 | `verificar-pantalla.js` | Verificador que corre dentro de la página |
 | `../../../scripts/revisar-textos.mjs` | Control de textos (analiza el JSX, no hace grep) |
+| `../../../scripts/renombrar-textos.mjs` | Renombra una palabra sólo en los textos de pantalla (en seco por defecto) |
+| `../../../docs/modelo-de-la-persona.md` | La persona, sus estados y lo que cuelga de ella: el vocabulario del producto |
 | `../../../scripts/probar-formatos.mjs` | Pruebas de `formatos.js`, `mensajesDeError.js`, `navegacion.js` y `destinoDeIngreso.js` |
 | `../../../scripts/lib/textos-de-pantalla.mjs` | Extractor de todo lo que un analista lee |

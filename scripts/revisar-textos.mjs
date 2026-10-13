@@ -39,12 +39,19 @@ export const REGLAS = [
   { id: "autodeclarada", nivel: "error", patron: /\bautodeclarad[oa]s?\b/i, permitir: /autodeclarada_/, motivo: "Se llama «Empresa propia» o «Afiliación voluntaria».", cambiar: "Empresa propia / Afiliación voluntaria" },
   { id: "como-puede-fallar", nivel: "error", patron: /\bC[oó]mo puede fallar\b/i, motivo: "Se sacó de todas las pantallas: era una generalidad, no un hecho de la persona.", cambiar: "(quitar)" },
   { id: "corte-del-iess", nivel: "aviso", patron: /\bcorte del IESS\b/i, motivo: "En pantalla se dice «Información IESS» (con el mes: «Ago 2026»).", cambiar: "información IESS" },
+  { id: "puntaje", nivel: "error", patron: /\bpuntajes?\b/i, motivo: "El negocio unificó «Puntaje» y «score» en «Score» el 2026-10-12. Una columna de datos que se llama puntaje (plantilla que llenan las instituciones) se marca como excepción.", cambiar: "Score" },
+  { id: "lotes-corridos", nivel: "error", patron: /\bLotes corridos\b/i, motivo: "Se llama «Lotes consultados» (decisión del negocio, 2026-10-12): «corridos» era jerga de ejecución.", cambiar: "Lotes consultados" },
+  { id: "historial-por-cedula", nivel: "error", patron: /\bHistorial por c[eé]dula\b/i, motivo: "Se retiró el 2026-10-12: la búsqueda abre el Expediente, que ya trae la línea de tiempo.", cambiar: "Expediente" },
+  { id: "explorador-de-fuentes", nivel: "error", patron: /\bExplorador de Fuentes\b/, motivo: "Se llama «Explorador de la fuente de datos» (2026-10-12): «fuentes» ya es de dónde viene el ingreso en otro módulo.", cambiar: "Explorador de la fuente de datos" },
+  { id: "reportes-menu", nivel: "error", patron: /^Reportes$/, motivo: "El menú «Reportes» pasó a «Monitoreo» el 2026-10-12.", cambiar: "Monitoreo" },
+  { id: "inteligencia-de-negocios", nivel: "error", patron: /\bInteligencia de Negocios\b/, motivo: "Era la página de Reportes, hoy «Monitoreo › Panorama». «Inteligencia de Negocio» (singular) es del Laboratorio.", cambiar: "Monitoreo / Panorama" },
+  { id: "cliente-generico", nivel: "aviso", patron: /(?<!Perfil del )(?<!perfil del )\b[Cc]lientes?\b(?! (activo|activa|cerrado|cerrada|interno)\b)/, motivo: "«Cliente» es quien tiene un crédito (Cliente activo, Cliente cerrado); antes es una persona (docs/modelo-de-la-persona.md, decisión del 2026-10-12). «Perfil del Cliente» es nombre de producto y no se toca.", cambiar: "persona" },
   { id: "fuente-de-ingreso-segmento", nivel: "aviso", patron: /^Fuente de ingreso$/i, motivo: "Cuando el valor es Independiente / Dependiente privado / ..., eso es el «Segmento» (el negocio lo dejó con ese nombre).", cambiar: "Segmento" },
 
   // ---- Jerga y anglicismos (sólo «score» y «colateral» son del negocio)
   { id: "llm", nivel: "error", patron: /\bLLM\b/, motivo: "Jerga de proveedor. Para el analista es «el modelo» o «Análisis con IA».", cambiar: "el modelo / Análisis con IA" },
   { id: "ingesta", nivel: "aviso", patron: /\bingesta\b/i, motivo: "Anglicismo de datos. Es «consulta a la fuente».", cambiar: "consulta a la fuente de datos" },
-  { id: "anglicismo", nivel: "error", patron: /\b(dashboard|ranking|feedback|scoring|batch|insights?|workflow|mouse|click|clicks|login|logout|e-?mail|backup|upload|download|ticket|tickets)\b/i, motivo: "Anglicismo: el negocio pidió castellano de Ecuador salvo «score» y «colateral».", cambiar: "(en castellano: tablero, puntaje, lote, hallazgo, puntero, clic, ingreso, correo, respaldo, subir, descargar)" },
+  { id: "anglicismo", nivel: "error", patron: /\b(dashboard|ranking|feedback|scoring|batch|insights?|workflow|mouse|click|clicks|login|logout|e-?mail|backup|upload|download|ticket|tickets)\b/i, motivo: "Anglicismo: el negocio pidió castellano de Ecuador salvo «score» y «colateral».", cambiar: "(en castellano: tablero, score, lote, hallazgo, puntero, clic, ingreso, correo, respaldo, subir, descargar)" },
   { id: "link", nivel: "aviso", patron: /\blinks?\b/i, motivo: "Anglicismo.", cambiar: "enlace" },
 
   // ---- Reglas de escritura de la casa
@@ -61,7 +68,6 @@ export const REGLAS = [
   { id: "nombre-fuentes-de-ingreso", nivel: "aviso", patron: /\bFuentes de ingreso\b/, motivo: "Nombre de módulo y pestaña: «Fuentes de Ingreso» (mayúscula en Ingreso). Si es un sustantivo común en medio de una frase, va en minúscula.", cambiar: "Fuentes de Ingreso" },
   { id: "nombre-perfil", nivel: "aviso", patron: /\bPerfil del cliente\b|\bperfil del Cliente\b/, motivo: "Nombre de producto: «Perfil del Cliente».", cambiar: "Perfil del Cliente" },
   { id: "nombre-analisis", nivel: "aviso", patron: /\bAnálisis con ia\b|\bAnálisis IA\b|\bAnalisis con IA\b/, motivo: "Nombre de producto: «Análisis con IA».", cambiar: "Análisis con IA" },
-  { id: "nombre-inteligencia", nivel: "aviso", patron: /\bInteligencia de Negocio\b(?!s)/, motivo: "El menú dice «Inteligencia de Negocios» (plural); CLAUDE.md dice «Laboratorio de Inteligencia de Negocio». Decidir uno.", cambiar: "(unificar)" },
 ];
 
 function leerOpciones() {

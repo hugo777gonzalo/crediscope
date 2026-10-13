@@ -3,7 +3,7 @@
 Calificación crediticia para Ecuador. Una persona se consulta contra
 Novadata, se arma un Perfil del Cliente estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
-lenguaje natural produce un puntaje de 1 a 999 y una recomendación.
+lenguaje natural produce un score de 1 a 999 y una recomendación.
 
 Frontend Vite + React 19 en JavaScript (sin TypeScript, sin Tailwind).
 Backend: Supabase — Postgres con RLS, Auth y Edge Functions en Deno.
@@ -77,8 +77,16 @@ repite lo que el código ya dice es ruido.
   muestra con `error.message` crudo.
 - Una versión (`marco-v28`), un código o un JSON no van en una tarjeta
   principal.
+- **Score**, no «puntaje»; **persona**, no «cliente» (cliente es quien tiene un
+  crédito); **Monitoreo**, no Reportes. El negocio ordenó el producto alrededor
+  de la persona (2026-10-12): el árbol, los estados y lo que quedó abierto están
+  en `docs/modelo-de-la-persona.md`.
+- Un nombre que cambia el negocio se cambia con
+  `node scripts/renombrar-textos.mjs` (primero en seco: sólo toca textos de
+  pantalla, nunca una variable ni una columna de datos) y con una regla nueva en
+  el control, para que el nombre viejo no vuelva.
 - `node scripts/revisar-textos.mjs` corta con los términos que el negocio
-  retiró (piso, asalariado, default, backtest, LLM...), y
+  retiró (piso, asalariado, default, backtest, LLM, puntaje...), y
   `node scripts/probar-formatos.mjs` prueba los formatos, la traducción de
   errores y la navegación: correrlos después de tocar `formatos.js`,
   `mensajesDeError.js`, `navegacion.js` o `destinoDeIngreso.js`.
@@ -296,6 +304,11 @@ Romper cualquiera de estas rompe algo real.
 - `.claude/skills/revision-ux/` — la revisión de UX: flujo, glosario con el
   porqué, mapa de pantallas, criterios y un verificador para el navegador de
   QA. Se corre al cambiar una pantalla.
+- `docs/modelo-de-la-persona.md` — la persona como entidad (decisión del
+  negocio del 2026-10-12): el árbol (solicitudes, direcciones, empleos,
+  referencias, documentos, scores, créditos), los estados (Prospecto, ..., Cliente
+  activo, Cliente cerrado), qué existe hoy y qué falta. Leerlo antes de ponerle
+  nombre a una pantalla o a una tabla.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
@@ -405,6 +418,9 @@ antes de tocar esa área.
   RLS. La 118 recrea tres vistas así. Además, una definición vieja se toma
   de la base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
   migración que la tocó.
+- Una CTE usada una sola vez dentro de una subconsulta correlacionada se
+  recalcula por cada fila de afuera: `as materialized`. El centro de datos
+  del Laboratorio la recalculaba 52 veces, una por fuente (121).
 - Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
   El 2026-10-09 el sello del despliegue reemplazó una palabra en un
   comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
@@ -457,6 +473,10 @@ antes de tocar esa área.
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
   con ≥20 clientes en 90 días. Quien trae un mes posterior usa el suyo.
+  Su condición sobre el perfil se repite en el índice parcial
+  `client_profiles_corte_iess` (121): sin él abría el perfil entero de cada
+  consulta de 90 días, 3,5 s antes de cada consulta. Si cambia la
+  condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
   aportes cuando el mecanizado no trae nada.
 - Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
@@ -565,6 +585,10 @@ antes de tocar esa área.
   en silencio: la nuestra decía fuentes-v9 con el código en v10.
 - Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
   (`Link is not defined` con el import presente): `touch` y recargar.
+- Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
+  liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
+  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola
+  hasta la 121).
 - El tamaño de la aplicación se mide con el `.env`: sin las variables de
   Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
   cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración

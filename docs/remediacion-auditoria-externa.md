@@ -197,6 +197,9 @@ va lo que ya está cerrado o no expone nada.
     (119).
   - **Trabajador de lotes:** no empieza una ronda a la que le queden menos de
     60 s y devuelve a la cola lo que cortó su propio reloj.
+  - **El corte del IESS sin abrir el perfil** (121, 2026-10-12).
+    `corte_iess_vigente()` corre antes de cada consulta y tardaba 3,5 s con
+    8.590 perfiles. Un índice parcial lo evita.
 - **Lo que no se hizo, y por qué.**
   - **No se limitó la concurrencia de una consulta**, aunque la auditoría lo
     proponía: medido, una consulta sola es rápida, y en fila sería más lenta.
@@ -225,8 +228,8 @@ va lo que ya está cerrado o no expone nada.
 
 ## 3. Inventario de cambios
 
-**Migraciones** (aplicadas con el corredor: 117 a 119 el 2026-10-09 y la 120
-el 2026-10-10; base en la 120):
+**Migraciones** (aplicadas con el corredor: 117 a 119 el 2026-10-09, la 120
+el 2026-10-10 y la 121 el 2026-10-12; base en la 121):
 
 | Migración | Qué hace |
 |---|---|
@@ -234,6 +237,7 @@ el 2026-10-10; base en la 120):
 | 118 | `clients.es_sintetico`; cuatro funciones y tres vistas sin sintéticas. Las vistas se recrean con `security_invoker` explícito, y las definiciones salen de la base viva, no de las migraciones viejas |
 | 119 | `analysis_results.huella_pedido` y `reutiliza_analisis_id`; `client_profiles.duracion_por_fuente_ms` |
 | 120 | `bandeja_conteos` sin sintéticas: la franja de la bandeja suma lo mismo que la lista, y la migración lo comprueba antes de terminar |
+| 121 | Índice parcial para `corte_iess_vigente()` y el resumen por semana de `lab_centro_de_datos` calculado una sola vez |
 
 **Commits** en `main`, en orden:
 

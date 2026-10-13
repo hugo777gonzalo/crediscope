@@ -145,13 +145,14 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
         </div>
       </div>
 
-      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el puntaje de este corte" /> : null}
+      {corte.es_sintetico ? <FranjaSintetica que="El resultado de los créditos y el score de este corte" /> : null}
 
       <div className="crediscope-tabs" style={{ flexWrap: "wrap" }}>
         {visibles.map((t) => (
           <button
             key={t.clave}
             className={`crediscope-tab ${pestana.clave === t.clave ? "crediscope-tab-active" : ""}`}
+            aria-current={pestana.clave === t.clave ? "true" : undefined}
             onClick={() => cambiar("pestana", t.clave)}
             style={{ border: "none", background: "none", cursor: "pointer" }}
           >

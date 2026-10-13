@@ -50,13 +50,23 @@ corte se recuerda) y, si el corte tiene solicitudes, eligen la población
 |---|---|---|
 | Indicadores: créditos conciliados, cortes a 12 y 24, análisis, propuestas pendientes, candidatas, instituciones y proyectos | Hecho | Cargas, cortes, propuestas, candidatas, instituciones, `lab_volumen_de_analisis` |
 | Hallazgos críticos | A medias | **Definición del negocio (2026-10-04): todo resultado relevante y significativo de los análisis exploratorios, descriptivos y estadísticos, y va en el informe a la institución.** Hoy el Inicio junta sólo lo guardado (fuentes, crudo, bosque, AUC, PSI); falta juntar lo de todas las pestañas y llevarlo al informe (docs/pendientes.md, 0a) |
-| Evolución del default por mes | Hecho | El corte más reciente, por mes de desembolso |
+| Evolución del impago por mes | Hecho | El corte más reciente, por mes de desembolso. Llega después de lo liviano (ver abajo) |
 | Desempeño del motor por institución | Hecho | El último desempeño de los cortes de las cargas de cada institución |
 | Mezcla aprobar / revisar / negar y volumen de análisis | Hecho | `lab_volumen_de_analisis` (contado en la base) |
 | Actividad reciente | A medias | Cargas, cortes, cálculos, propuestas y candidatas; los informes exportados no se registran |
 | Trabajos a medias | Hecho | Cargas incompletas o con errores, reconsultas sin procesar, análisis fallidos |
 | Comentarios institucionales | Falta decidir | Hoy la institución no entra al Laboratorio (sección 10 del diseño) |
 | Alertas: cohortes, conciliación, cobertura de la fuente, PSI | Hecho | Fuga en la conciliación, Centro de datos, estabilidad guardada |
+
+**Cómo carga (2026-10-12).** Lo liviano (cargas, cortes, propuestas, candidatas,
+instituciones, volumen, reconsultas sin procesar y los resultados de cada corte:
+menos de 1 s cada uno) decide si se dibuja. La evolución del impago y el centro de
+datos se piden después y cada tarjeta dice qué le falta: sin el centro no se escribe
+"Ninguno" ni "0", se dice "Revisando..." o "No se pudo revisar". El centro
+(`lab_centro_de_datos`) tardaba unos 6 s sola y a veces se pasaba del límite de la base,
+y arrastraba a toda la pantalla; la 121 lo arregló (un índice parcial en el corte del
+IESS y `as materialized` en el resumen por semana) y se vio abrir el 2026-10-12, también
+la pestaña de 120 días. La pantalla sigue cargando por partes por si vuelve a pasar.
 
 ## 2. Instituciones y proyectos (`/laboratorio/instituciones`)
 

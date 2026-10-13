@@ -3,7 +3,7 @@
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
-2026-10-12 (sección 1, primer punto). La última migración es la **120**;
+2026-10-12 (sección 1, primer punto). La última migración es la **121**;
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -23,10 +23,11 @@ aceptada.
 ## 1. Para retomar primero
 
 - **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
-  El informe es `docs/revision-ux.md`; para repetirla cuando cambie una
-  pantalla, la habilidad `revision-ux`
-  (`.claude/skills/revision-ux/SKILL.md`). Entró a `main` con el PR de la
-  rama `feat/revision-de-ux`.
+  El informe es `docs/revision-ux.md`; el vocabulario del producto,
+  `docs/modelo-de-la-persona.md`; para repetir la revisión cuando cambie una
+  pantalla, la habilidad `revision-ux` (`.claude/skills/revision-ux/SKILL.md`).
+  Entró a `main` en tres PR: la revisión, el repaso en pantalla y las decisiones
+  de nombres del 2026-10-12.
   - **Hecho:**
     - trece defectos funcionales (el enlace directo que caía en "/", las
       pantallas de administración en blanco, los submenús escondidos bajo
@@ -34,34 +35,57 @@ aceptada.
       formatos y estados unificados (`formatos.js`, `mensajesDeError.js`,
       `navegacion.js`, `src/components/ui/`);
     - dos pasos nuevos en el control `pantalla` de cada PR:
-      `scripts/revisar-textos.mjs` (4.188 textos, 0 errores, 0 avisos) y
-      `scripts/probar-formatos.mjs` (62 casos);
-    - lo último que se hizo se verificó con lint, build, esos dos guiones y la
-      lectura del código, **pero no en pantalla**: la sesión de QA caducó.
+      `scripts/revisar-textos.mjs` y `scripts/probar-formatos.mjs` (62 casos
+      más los de navegación);
+    - el 2026-10-12, con la sesión de admin que el negocio abrió en el panel
+      de vista previa, se repasó en pantalla lo que faltaba: la franja de la
+      bandeja da 2.572 y sus tarjetas suman 2.572; el menú abre una sección a
+      la vez; a 768 y 414 px no hay desborde; Costos, Fuentes de Ingreso,
+      Monitoreo, Lotes y los módulos del Laboratorio abren sin error, salvo la
+      pestaña Centro de datos, que se arregló con la 121 y se vio abrir (52 fuentes);
+      lo que apareció se corrigió;
+    - **el mismo día el negocio decidió los nombres** y se aplicaron: «Lotes
+      consultados», «Monitoreo» (antes Reportes; la página interna, «Panorama»),
+      «Explorador de la fuente de datos», «Personas por segmento», **Score** en
+      lugar de Puntaje (55 textos), el historial por cédula retirado y la
+      búsqueda del Inicio que abre el Expediente. Dio además el modelo de la
+      persona: el árbol y los estados. El control corta con los nombres viejos
+      y avisa de cada «cliente» suelto (0 avisos hoy).
   - Queda, por orden:
-  1. **Repasar en pantalla lo que no se vio.** Claude no escribe
-     contraseñas: el negocio ingresa con la cuenta de QA en el panel de vista
-     previa (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`) y se
-     sigue `.claude/skills/revision-ux/recorrido-qa.md` a 1280, 768 y 414 px.
-     Mirar:
-     - la franja de la bandeja: con la 120 tiene que dar 2.572 y sumar lo
-       mismo que sus tarjetas (medido en la base el 2026-10-10: revisar 151,
-       aprobar 50, sin analizar 2.335, con bloqueo 73; volver a medir);
-     - el menú acordeón y, bajo 860 px, la fila con las opciones de la
-       sección abierta;
-     - los cuadros de aviso y de error nuevos (`Aviso`, `AvisoDeError`) en
-       Costos (Avisos, Corridas, Fallas e incidentes), Reglas de
-       clasificación, Aval y Fuentes de Ingreso;
-     - las pestañas internas del Laboratorio (sólo se vio el Resumen de la
-       prueba retrospectiva), el detalle de un lote y Cargar un lote;
-     - Laboratorio › Inicio, que dio `statement timeout` y hoy muestra el
-       aviso con "Reintentar": averiguar cuál de las ocho cosas que pide
-       (una función `lab_*`) se pasa del tiempo.
-     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`; lo
-     que no, se corrige con la habilidad.
-  2. **Decisiones del negocio:** nombres y diseño, en la sección 3 de este
-     archivo. Nada se renombró sin su decisión.
-  3. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  1. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+     la persona, la solicitud como entidad, las direcciones, las referencias,
+     los documentos y los créditos de la persona no existen todavía como datos:
+     hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
+     en la sección 5 de ese documento):
+     - el nombre del segundo estado: «Solicitante» no convence;
+     - qué estado tiene quien fue rechazado o desistió, y quién decide
+       «Preaprobado»;
+     - si «Perfil del Cliente» pasa a «Perfil de la Persona»;
+     - si el dictamen del modelo («Negación») y la decisión de la solicitud
+       («Rechazado») usan el mismo verbo;
+     - confirmar que «fuentes» era aceptar «Explorador de la fuente de datos».
+     Con eso respondido, el orden de construcción propuesto es: la solicitud
+     como entidad, el estado de la persona calculado de sus hechos (con su
+     historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
+     Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
+     `docs/arquitectura-fabrica-de-credito.md`.
+  2. **Lo que todavía no se vio en pantalla:**
+     - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
+       analista): la tanda en que iban se cortó por tiempo;
+     - las pestañas internas de cada módulo del Laboratorio (las pantallas
+       abren, no se recorrió cada pestaña) y Cargar archivo con un archivo
+       (sólo se vio el formulario);
+     - las cuatro pantallas de la persona (Perfil, Análisis, Fuentes de
+       Ingreso, Aval) con datos;
+     - una captura: el panel oculto hace fallar las capturas, y lo de 768 y
+       414 px se midió en el DOM. Seguir
+       `.claude/skills/revision-ux/recorrido-qa.md`: Claude no escribe
+       contraseñas, el negocio ingresa con su cuenta en el panel
+       (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
+     Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
+  3. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+     construyó sin su decisión.
+  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
@@ -460,16 +484,13 @@ aceptada.
   desalinearse, que es lo que pasó hasta d81591b. Primero las funciones
   tienen que dejar de escribirlas: regla 8 de CLAUDE.md.
 
-- **Revisión de UX del 2026-10-10: lo que queda para decidir**
-  (`docs/revision-ux.md`, sección 3, con las opciones y mi recomendación):
-  - Nombres: "Lotes corridos", "Explorador de Fuentes", "Inteligencia de
-    Negocios" contra "Laboratorio de Inteligencia de Negocio", "Historial por
-    cédula" (redundante con el expediente), "cliente" contra "persona",
-    "Puntaje" contra "score".
-  - Diseño: Inicio como pantalla de trabajo, un solo camino a un cliente
+- **Revisión de UX: diseño y producto sin decidir**
+  (`docs/revision-ux.md`, sección 3, con las opciones y la recomendación; los
+  nombres se decidieron el 2026-10-12 y las preguntas que quedaron están en
+  `docs/modelo-de-la-persona.md`, sección 5):
+  - Diseño: Inicio como pantalla de trabajo, un solo camino a una persona
     (falta **Aval** en el expediente), unir "Empleos vigentes" y "Fuentes
-    detectadas", menos accesos por fila en la bandeja, Laboratorio › Inicio
-    cargado por bloques (hoy un `statement timeout` lo deja sin nada).
+    detectadas", menos accesos por fila en la bandeja.
   - **Retirar `humanizarTexto()`** (`src/lib/formatos.js`) cuando
     `fuentes-ingreso.ts` guarde los meses y los dólares con el formato de la
     casa: es una versión nueva de fuentes con recálculo de los perfiles, y

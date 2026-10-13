@@ -45,14 +45,14 @@ export default function PestanaInvestigacion({ corteId, poblacion }) {
     <div>
       <div className="crediscope-tabs" style={{ flexWrap: "wrap" }}>
         {Object.entries(LISTAS).map(([clave, l]) => (
-          <button key={clave} className={`crediscope-tab ${lista === clave ? "crediscope-tab-active" : ""}`} onClick={() => setLista(clave)} style={{ border: "none", background: "none", cursor: "pointer" }}>
+          <button key={clave} className={`crediscope-tab ${lista === clave ? "crediscope-tab-active" : ""}`} aria-current={lista === clave ? "true" : undefined} onClick={() => setLista(clave)} style={{ border: "none", background: "none", cursor: "pointer" }}>
             {l.texto} ({num(casos[l.clave].length)})
           </button>
         ))}
       </div>
       <p className="crediscope-muted" style={{ fontSize: 13, marginTop: 0 }}>
         {lista === "aprobados"
-          ? "Aprobar o revisar (no impago) y cayeron. Ordenados del puntaje más alto al más bajo: arriba, los que el motor creía más seguros."
+          ? "Aprobar o revisar (no impago) y cayeron. Ordenados del score más alto al más bajo: arriba, los que el motor creía más seguros."
           : lista === "observacion"
             ? "Llegaron a 15 días de atraso o más en el primer año sin caer en impago, aunque después se pusieran al día. El buró es una foto: entre dos reconsultas, un atraso que se pagó no se ve; el archivo de la institución sí lo trae."
             : poblacion === "solicitudes"
@@ -64,7 +64,7 @@ export default function PestanaInvestigacion({ corteId, poblacion }) {
           <table className="crediscope-table">
             <thead>
               <tr>
-                <th style={{ textAlign: "right" }}>Puntaje</th>
+                <th style={{ textAlign: "right" }}>Score</th>
                 <th>Recomendación</th>
                 {poblacion === "solicitudes" ? <th>Recibió nuestro crédito</th> : <th>Producto</th>}
                 {lista === "aprobados" && poblacion === "solicitudes" ? <th>Motivo principal</th> : null}

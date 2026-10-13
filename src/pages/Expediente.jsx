@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { metaDeLaConsulta } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 import {
   ArrowLeft,
@@ -33,6 +33,7 @@ import { rutaDeRegreso } from "../lib/regresoBandeja.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
 import ListaControlPanel from "../components/ListaControlPanel.jsx";
+import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import { entero, plural, segundos, humanizarTexto } from "../lib/formatos.js";
 
@@ -79,6 +80,8 @@ const ETIQUETA_ACCION = {
 
 export default function Expediente() {
   const { cedula } = useParams();
+  const [params] = useSearchParams();
+  const desdeRuc = params.get("desdeRuc");
   const { session } = useSession();
   const { profile: miPerfil } = useProfile();
 
@@ -131,6 +134,18 @@ export default function Expediente() {
 
   const hitos = useMemo(() => construirLineaDeTiempo(datos), [datos]);
 
+  // Se llegó escribiendo un RUC. Decirlo no es un detalle: quien buscó por RUC
+  // podría creer que está viendo la actividad del establecimiento, y está viendo
+  // a la persona.
+  const avisoRuc = desdeRuc ? (
+    <Aviso tipo="informacion">
+      <p className="crediscope-aviso-texto">
+        Buscaste el RUC <strong>{desdeRuc}</strong>. Lo que ves es la <strong>persona natural</strong> detrás de ese RUC,
+        cédula {cedula} — no la actividad del establecimiento.
+      </p>
+    </Aviso>
+  ) : null;
+
   if (cargando) return <p className="crediscope-muted">Cargando el expediente...</p>;
 
   if (error)
@@ -138,17 +153,27 @@ export default function Expediente() {
       <AvisoDeError error={error} />
     );
 
+  // La búsqueda del Inicio abre siempre el expediente, también el de una persona
+  // que todavía no se consultó: acá se la consulta, en vez de quedar sin salida.
   if (!datos)
     return (
-      <div className="crediscope-card">
-        <p style={{ margin: 0 }}>
-          No hay registro de la cédula <strong>{cedula}</strong>. Nunca se la consultó, o se la escribió distinto.
-        </p>
-        <p style={{ margin: "12px 0 0" }}>
-          <Link className="crediscope-btn crediscope-btn-ghost" to={rutaDeRegreso()}>
-            Volver a la bandeja
-          </Link>
-        </p>
+      <div>
+        {avisoRuc}
+        <div className="crediscope-card">
+          <h2 style={{ marginTop: 0 }}>Todavía no hay registro de esta persona</h2>
+          <p style={{ margin: 0 }}>
+            La cédula <strong>{cedula}</strong> nunca se consultó, o se la escribió distinto. Si es la correcta, consultá su perfil y
+            el expediente se arma con lo que conteste la fuente.
+          </p>
+          <p style={{ margin: "14px 0 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link className="crediscope-btn" to={`/perfil/${encodeURIComponent(cedula)}`}>
+              Consultar el perfil
+            </Link>
+            <Link className="crediscope-btn crediscope-btn-ghost" to="/">
+              Buscar otra persona
+            </Link>
+          </p>
+        </div>
       </div>
     );
 
@@ -164,6 +189,7 @@ export default function Expediente() {
 
   return (
     <div>
+      {avisoRuc}
       <div className="crediscope-exp-cabecera">
         <div className="crediscope-exp-migas">
           <Link className="crediscope-exp-volver" to={rutaDeRegreso()}>
@@ -195,7 +221,7 @@ export default function Expediente() {
             El color aparece solo cuando el valor lo amerita: si todo se
             pinta, nada resalta. */}
         <div className="crediscope-sellos">
-          <Sello etiqueta="Puntaje" valor={analisis && !analisis.fallo ? analisis.crediscope_score : "—"} color={analisis && !analisis.fallo ? colorScore(analisis.crediscope_score) : null} />
+          <Sello etiqueta="Score" valor={analisis && !analisis.fallo ? analisis.crediscope_score : "—"} color={analisis && !analisis.fallo ? colorScore(analisis.crediscope_score) : null} />
           <Sello
             etiqueta="Recomendación"
             valor={textoRecomendacion(analisis?.recomendacion) ?? "Sin dictamen"}
@@ -605,7 +631,7 @@ function construirLineaDeTiempo(datos) {
     quien: a.fallo_tipo
       ? `${ETIQUETA_FALLO[a.fallo_tipo] ?? "falla sin clasificar"} · ${a.rules_version}`
       : [
-          `Puntaje ${a.crediscope_score}`,
+          `Score ${a.crediscope_score}`,
           textoRecomendacion(a.recomendacion),
           a.rules_version,
           a.veredicto_origen === "control_bloqueo" ? "decidió un control de bloqueo, no el modelo" : null,

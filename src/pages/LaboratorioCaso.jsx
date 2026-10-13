@@ -5,6 +5,7 @@ import { getCorte, getPerfil, getAnalisis, getCrudo, getEventosDeSolicitud, getM
 import { armarPerfilDelModelo } from "../../supabase/functions/_shared/perfil-del-modelo.ts";
 import { parecidos, diferenciasJson } from "../lib/analisisProfundo.js";
 import { formatearFechaHora, formatearDia } from "../lib/fechas.js";
+import { plural } from "../lib/formatos.js";
 import ArbolJson from "../components/laboratorio/ArbolJson.jsx";
 import { Volver, MensajeError, Cargando, FranjaSintetica, Etiqueta, ETIQUETA_RECOMENDACION, ETIQUETA_MOTIVO, ETIQUETA_SE_PODIA_VER, num, dec } from "../components/laboratorio/Comunes.jsx";
 
@@ -102,13 +103,13 @@ export default function LaboratorioCaso() {
       <Volver a={volver} texto="Volver a la investigación" />
       <h2 style={{ marginBottom: 4 }}>
         {caso.malo ? "Cayó" : "Pagó"} · {ETIQUETA_RECOMENDACION[caso.recomendacion] ?? caso.recomendacion}
-        {caso.puntaje !== null && caso.puntaje !== undefined ? ` · puntaje ${num(caso.puntaje)}` : ""}
+        {caso.puntaje !== null && caso.puntaje !== undefined ? ` · score ${num(caso.puntaje)}` : ""}
       </h2>
       <p className="crediscope-muted" style={{ marginTop: 0 }}>
         {corte.nombre} · {poblacion === "solicitudes" ? "solicitud" : "operación"} del {formatearDia(caso.fecha?.toISOString().slice(0, 10))}
         {cedula ? <> · <Link to={`/perfil/${cedula}`}>ver el perfil de la persona</Link></> : null}
       </p>
-      {corte.es_sintetico ? <FranjaSintetica que="El resultado, el puntaje y los eventos de este caso" /> : null}
+      {corte.es_sintetico ? <FranjaSintetica que="El resultado, el score y los eventos de este caso" /> : null}
 
       <Seccion titulo="1. Qué le pasó">
         <table className="crediscope-table">
@@ -169,7 +170,7 @@ export default function LaboratorioCaso() {
           </>
         ) : (
           <p className="crediscope-muted" style={{ margin: 0 }}>
-            Sin análisis del modelo: el puntaje de este caso es {caso.fuentePuntaje === "sintetico" ? "sintético (la simulación)" : "de otra fuente"}.
+            Sin análisis del modelo: el score de este caso es {caso.fuentePuntaje === "sintetico" ? "sintético (la simulación)" : "de otra fuente"}.
           </p>
         )}
       </Seccion>
@@ -181,7 +182,7 @@ export default function LaboratorioCaso() {
               Rearmado desde el perfil del día del análisis con el código de hoy (armarPerfilDelModelo).
               {analisis?.mensaje_al_modelo
                 ? derivado.cambiosContraLoGuardado.length
-                  ? ` Contra lo que guardó el análisis cambian ${derivado.cambiosContraLoGuardado.length} campos: el modelo leyó algo distinto de lo que hoy armaríamos.`
+                  ? ` Contra lo que guardó el análisis ${derivado.cambiosContraLoGuardado.length === 1 ? "cambia" : "cambian"} ${plural(derivado.cambiosContraLoGuardado.length, "campo")}: el modelo leyó algo distinto de lo que hoy armaríamos.`
                   : " Coincide con lo que guardó el análisis."
                 : analisis
                   ? " El análisis es anterior a la 090 y no guardó lo que leyó: no se puede comparar."

@@ -23,17 +23,24 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
   archivos. `node scripts/revisar-textos.mjs`.
 - **Verificador dentro de la página** (`verificar-pantalla.js`): formatos, códigos
   internos, estados en blanco, campos sin etiqueta, contraste, desborde.
-- **No se vio** (dicho en vez de supuesto): las pestañas internas del Laboratorio salvo
-  Resumen de la prueba retrospectiva; el Laboratorio › Inicio dio `statement timeout`
-  de la base y no cargó; el detalle de un lote no se abrió y Cargar un lote sólo se leyó
-  como texto; las cuatro pantallas del cliente se revisaron por texto y con capturas
-  parciales; y **las últimas correcciones de esta sesión (el componente `Aviso`, Costos con
-  los avisos nuevos, el menú acordeón y la fila de opciones para pantallas angostas) se
-  verificaron con lint, build, las 62 pruebas de `probar-formatos.mjs` y lectura del código,
-  pero la sesión de QA caducó antes de repasarlas en pantalla**: queda por repasar a 1280,
-  768 y 414 px apenas se ingrese de nuevo.
+- **Repaso en pantalla del 2026-10-12** (el negocio abrió una sesión de admin en el panel
+  de vista previa): la bandeja (2.572 en la franja y en las tarjetas), el menú acordeón,
+  Costos, Fuentes de Ingreso, Reportes, Lotes (la lista y el detalle), el expediente y los
+  módulos del Laboratorio a 1280 px; 12 rutas a 414 px sin desborde y la fila de opciones a
+  768. Salió lo que está en la tabla de abajo (defectos 14 a 16).
+- **No se vio** (dicho en vez de supuesto): las cuatro pantallas de Configuración; las
+  pestañas internas de cada módulo del Laboratorio (las pantallas abren, no se recorrió
+  cada pestaña) y Cargar archivo con un archivo; las cuatro pantallas del cliente con datos;
+  y las capturas de 768 y 414 px, que se midieron en el DOM porque el panel oculto hace
+  fallar las capturas. Laboratorio › Inicio y Datos y cartera › Centro de datos abrían sin el
+  centro (su consulta se pasaba del límite de la base); lo arregló la 121 y se vieron abrir con
+  el centro el mismo día (sección 4).
 
 ## 2. Lo que estaba roto y se corrigió
+
+> Los nombres de esta sección son los del 2026-10-10. El 2026-10-12 el negocio cambió
+> «Puntaje» por «Score», «Reportes» por «Monitoreo», «Lotes corridos» por «Lotes
+> consultados» y retiró el historial por cédula (sección 3).
 
 ### Funcional
 
@@ -52,6 +59,9 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
 | 11 | **Bajo 860 px el CSS escondía los submenús** y los botones de grupo abrían algo que nunca se veía | En una tablet no había cómo llegar a la Bandeja, a Costos ni al Laboratorio | Una segunda fila con las opciones de la sección abierta; los íconos llevan nombre accesible |
 | 12 | «Cerrar sesión» recordaba la última pantalla | Quien ingresara después en la misma computadora caía en el último expediente de la persona anterior | Salir a propósito no recuerda el destino; sí se recuerda al caducar la sesión o al abrir un enlace sin haber ingresado |
 | 13 | La barra decía «Detalle del lote» en la pantalla de cargar un archivo | Título equivocado (lo detectó la prueba de navegación nueva) | `/lotes/nuevo` ya no cae en el patrón del detalle |
+| 14 | **Laboratorio › Inicio pedía ocho cosas juntas** y, si la más lenta (`lab_centro_de_datos`, unos 6 s sola) se pasaba del límite de la base, la pantalla entera quedaba en «El servidor tardó demasiado en contestar» (no abrió el 10 ni el 12 de octubre) | El módulo no tenía puerta de entrada | Lo liviano (menos de 1 s cada cosa) decide si se dibuja; el centro de datos y la evolución llegan después y cada tarjeta dice qué le falta. Sin el centro no se escribe «Ninguno» ni «0»: se dice «Revisando...» o «No se pudo revisar» |
+| 15 | En Avisos, «$9,28 de $10,00 en **2026-10**» y «No incluye N llamadas…» con el número crudo; en Costo por consulta, los análisis medidos sin separador de miles; en el caso del Laboratorio, «cambian N campos» aun con uno | Mes en ISO, miles y plural: las reglas del control de textos no ven un número interpolado | «en Oct 2026», números con `formatos.js` y `plural()`; los meses de los gráficos del Laboratorio también salen como «Oct 2026» |
+| 16 | Un `<select>` del detalle del lote sin etiqueta; las pestañas de botones no decían cuál estaba activa; la barra de desplazamiento de la fila de opciones era blanca sobre el menú oscuro | Accesibilidad y un detalle visual | `aria-label`, `aria-current` y una barra fina translúcida |
 
 ### Cifras que no cerraban
 
@@ -91,6 +101,7 @@ opciones. Para repetirla cuando cambie una pantalla: la habilidad
 | «Consultar desde la app desplegada todavía no funciona… Queda pendiente resolver la salida (proxy o servidor en Ecuador)» | «…Aval sólo acepta conexiones desde Ecuador y nuestro servidor está fuera del país» | Aval (se sacó el plan de trabajo) |
 | «Descarga una fila por solicitud… el score, la acción recomendada» · «Fecha inicio / Fecha fin» | «Un archivo con una fila por solicitud… el puntaje, la recomendación» · «Desde / Hasta» | Descargas |
 | «solo» y «sólo» (40 contra 13) | «sólo» (adverbio) en todas | 13 textos; el adjetivo («un solo incidente») sin tilde |
+| Avisos sin presupuesto: «Es el punto 4.6 del temario de puesta en marcha y sigue pendiente de decisión» | «Definí uno arriba y el vigía avisa antes de que el servicio se pare» | Avisos (era texto del equipo de desarrollo) |
 
 **Texto del equipo de desarrollo en pantallas de analistas** (se reescribió en
 lenguaje de caso): «eso llega con la solicitud como entidad», «la solicitud como entidad
@@ -158,49 +169,60 @@ Fallas e incidentes («Qué falta para enterarse a tiempo») que se contradecía
 - Título de cada pestaña del navegador (el expediente se abre en varias a propósito y todas
   decían «CrediScope — Análisis crediticio»).
 
-## 3. Para decidir (el negocio)
+## 3. Decidido el 2026-10-12 y lo que sigue abierto
 
-No se aplicaron: son nombres y decisiones de producto. Cada una trae mi recomendación.
+El negocio respondió a las propuestas de nombres el 2026-10-12. Se aplicó lo que estaba
+claro; lo que no, queda anotado abajo y en `docs/modelo-de-la-persona.md`, sección 5.
 
-### Nombres
+### Nombres: lo que se decidió y se hizo
 
-| Hoy | Opciones | Recomendación |
+| Propuesta | Decisión | Hecho |
 |---|---|---|
-| Menú «Consultas por lote › **Lotes corridos**» | «Lotes consultados» · «Historial de lotes» · dejar | «Lotes consultados»: «corridos» es jerga de ejecución; el título de la pantalla ya dice «Consultas por lote» |
-| «**Explorador de Fuentes**» (Configuración) | «Explorador de la fuente de datos» · «Consulta directa a Novadata» | La primera: «fuentes» ya significa de dónde viene el ingreso en otro módulo |
-| «**Inteligencia de Negocios**» (Reportes, plural) y «Laboratorio de Inteligencia de Negocio» (CLAUDE.md, singular) | (a) Reportes sigue y el módulo se llama «Laboratorio de Riesgo» · (b) unificar en plural · (c) Reportes pasa a «Tablero de gerencia» | (a): no se parecen entre sí |
-| «**Historial por cédula**» | Retirarlo (el Expediente trae la misma línea de tiempo) · renombrar «Consultas de una cédula» | Retirarlo y que «Buscar cliente» abra el Expediente |
-| «Negación» (dictamen en la tarjeta grande) | «Negación» · «Negativa» · «Rechazo» | Dejar: el negocio escribió «Negar» y la decisión de usar el sustantivo está documentada |
-| «**cliente**» y «**persona**» (99 contra 71) | (a) «cliente» en el trabajo diario y «persona» en poblaciones · (b) todo «cliente» · (c) todo «persona» | (a), ya documentada en `terminologia.md` |
-| «**Puntaje**» y «**score**» | (a) «Puntaje» en pantalla, «score» en la conversación · (b) «Score» siempre | (a) |
+| «Lotes corridos» | **Lotes consultados** | Menú, título y ubicación |
+| «Explorador de Fuentes» | Respondió «fuentes»: se leyó como aceptar la recomendación, **Explorador de la fuente de datos** | Menú y título. **A confirmar**: si quería dejar el nombre, es una línea |
+| «Inteligencia de Negocios» (Reportes) | **Reportes pasa a «Monitoreo»**. La ruta sigue siendo `/reportes`; la página interna se llama «Panorama», como la de Costos y la de Fuentes de Ingreso | Menú, barra superior, título y textos |
+| «Historial por cédula» | **Retirarlo y que «Buscar cliente» abra el Expediente** | Salió del menú y se borró su pantalla; `/historial` lleva al Inicio; lo guardado de cada consulta vuelve al Expediente. La búsqueda abre `/solicitudes/<cédula>` y, si la persona nunca se consultó, el Expediente lo dice y ofrece consultarla |
+| «Negación» (dictamen) | Se queda | Sólo se separa del «Rechazado» de la solicitud (`docs/modelo-de-la-persona.md`, sección 4) |
+| «cliente» y «persona» | **La persona es la entidad y «cliente» es un estado** (quien tiene un crédito). Árbol y estados: `docs/modelo-de-la-persona.md` | «Buscar persona», «Personas por segmento», «Personas en cartera» y 31 textos más. **«Perfil del Cliente» no se tocó** (nombre de producto) |
+| «Puntaje» y «score» | **Score** | 55 textos; el control corta con «puntaje». Las columnas `puntaje` y `fuente_puntaje` de la plantilla que llenan las instituciones se quedan: son un contrato de datos |
 
-### Diseño y producto
+Las reglas quedaron en `scripts/revisar-textos.mjs` y en el verificador, y el cambio
+masivo se hizo con `scripts/renombrar-textos.mjs`, que sólo toca textos de pantalla.
+
+### Lo que quedó sin responder
+
+- **El nombre del segundo estado de la persona** («Solicitante» no convence): En evaluación
+  (recomendada), En trámite, Postulante o Aspirante.
+- **Qué estado tiene quien fue rechazado o desistió**, y quién decide «Preaprobado».
+- **Si «Perfil del Cliente» pasa a «Perfil de la Persona»** (menú, exportaciones, ~25 textos).
+- **Si el dictamen del modelo y la decisión de la solicitud usan el mismo verbo.**
+
+Todas con sus opciones en `docs/modelo-de-la-persona.md`, sección 5.
+
+### Diseño y producto (sigue abierto)
 
 1. **Inicio como pantalla de trabajo.** Hoy «Inicio» es una caja de búsqueda y el resto de la
    pantalla queda vacío. Propuesta: la caja de búsqueda y debajo «Lo que me espera»
    (la bandeja filtrada a *Sin analizar*, *No se completó*, *La consulta falló*) y un acceso
    a los últimos expedientes abiertos. Necesita la solicitud como entidad para ser completa; la
-   mitad se puede hacer ya.
-2. **Un solo camino a un cliente.** El Expediente ya reúne resumen, ingresos, perfil, análisis,
+   mitad se puede hacer ya. (La búsqueda ya abre el Expediente: lo que falta es lo de abajo.)
+2. **Un solo camino a una persona.** El Expediente ya reúne resumen, ingresos, perfil, análisis,
    línea de tiempo y auditoría. Falta **Aval**. Propuesta: sumar Aval al Expediente y dejar el
    grupo «Evaluación Crediticia» sólo con la búsqueda; Perfil / Análisis / Fuentes de Ingreso por
-   separado pasan a ser acciones. Mientras tanto, los cuatro enlaces del grupo sin cliente
-   previo llevan a la búsqueda.
+   separado pasan a ser acciones. Mientras tanto, los cuatro enlaces del grupo sin persona
+   previa llevan a la búsqueda.
 3. **Empleos vigentes y Fuentes detectadas** (Expediente › Con qué paga) listan el mismo empleador
    con el mismo monto en dos tablas. Vienen de dos registros distintos (el laboral y el IESS) y
    pueden diferir. Propuesta: una tabla con una columna «Registro laboral» y otra «Reportado al IESS».
 4. **Bandeja: tres íconos de acceso por fila + «Abrir»** repiten las pestañas del Expediente.
    Propuesta: sólo «Abrir» y, con un clic más, el menú de accesos.
-5. **Laboratorio › Inicio** pide ocho cosas pesadas en una sola llamada: si una se pasa del
-   tiempo, la pantalla no muestra nada. Cargar por bloques (`Promise.allSettled`) y mostrar
-   en cada tarjeta lo suyo.
-6. **Auditoría con nombres.** Los demás usuarios salen como «Otro usuario» porque cada quien sólo
+5. **Auditoría con nombres.** Los demás usuarios salen como «Otro usuario» porque cada quien sólo
    lee su propia ficha. Nombrarlos exige exponer una vista con los nombres: decisión de permisos.
-7. **Skeletons** en lugar de «Cargando...» en las tres pantallas más lentas (Bandeja,
+6. **Skeletons** en lugar de «Cargando...» en las tres pantallas más lentas (Bandeja,
    Expediente, Panorama: de 5 a 10 s en desarrollo).
-8. **El orden de los nombres** que trae la fuente es inconsistente (a unas personas les llega
+7. **El orden de los nombres** que trae la fuente es inconsistente (a unas personas les llega
    «Apellidos Nombres» y a otras «Nombre Apellido») y se muestra tal cual.
-9. **Estilos en línea**: quedan 1.761 en 110 archivos. Lo nuevo usa clases; migrar el resto de
+8. **Estilos en línea**: quedan 1.761 en 110 archivos. Lo nuevo usa clases; migrar el resto de
    a poco cuando se toque cada pantalla.
 
 ## 4. Hallazgos que no son de la interfaz
@@ -217,8 +239,15 @@ No se aplicaron: son nombres y decisiones de producto. Cada una trae mi recomend
   la lista (se revierte si no coinciden): medido en la base, la franja da 2.572 y coinciden
   revisar (151), aprobar (50), sin analizar (2.335) y con bloqueo (73). No hizo falta código
   nuevo en la pantalla. Falta sólo verlo en el navegador cuando se ingrese de nuevo.
-- **`statement timeout`** al abrir Laboratorio › Inicio: una función `lab_*` supera el límite.
-  El aviso ya trae «Reintentar»; la causa está en la base.
+- **`lab_centro_de_datos` supera el límite de la base** (medido el 2026-10-12): con 60 días
+  tarda unos 6 s sola (6,4 s medidos; una vez se pasó del límite) y con 120 días no abrió
+  (pestaña Datos y cartera › Centro de datos).
+  Explota `estado_por_fuente` (52 fuentes) de cada perfil de la ventana y agrupa dos veces.
+  El inicio del Laboratorio ya no depende de ella (defecto 14); la pestaña sí.
+  **Arreglado con la 121 (2026-10-12), sin tabla de resumen.** 3,5 s de los 4,1 s eran
+  `corte_iess_vigente()`, que abría el perfil entero de cada consulta (ahora usa un índice
+  parcial), y el resto un resumen por semana que se recalculaba 52 veces. Si la cartera
+  crece hasta volver a acercarse al límite, la tabla de resumen sigue siendo la salida.
 - **Vite sirvió un módulo viejo** tras varias ediciones seguidas del mismo archivo
   (`Link is not defined` con el import presente). `touch` del archivo lo arregla; el build compila
   bien. Anotado en `recorrido-qa.md`.

@@ -22,7 +22,7 @@ export default function PestanaUmbrales({ corteId, poblacion }) {
 
   if (error) return <MensajeError mensaje={error} />;
   if (!base) return <Cargando />;
-  if (!acumulados?.totalMalos || !acumulados.totalBuenos) return <p className="crediscope-muted">Hace falta tener buenos y malos con puntaje.</p>;
+  if (!acumulados?.totalMalos || !acumulados.totalBuenos) return <p className="crediscope-muted">Hace falta tener buenos y malos con score.</p>;
 
   const minimo = puntajes[0], maximo = puntajes[puntajes.length - 1];
   const a = aprobarDesde ?? Math.round(cuantil(puntajes, 0.3));
@@ -35,18 +35,18 @@ export default function PestanaUmbrales({ corteId, poblacion }) {
     <div>
       <div className="crediscope-card" style={{ borderColor: "var(--warn)" }}>
         <p style={{ margin: 0, fontSize: 14 }}>
-          Esto simula una política por puntaje, no al motor: el motor recomienda con el marco, y un mismo puntaje puede salir aprobar o revisar.
+          Esto simula una política por score, no al motor: el motor recomienda con el marco, y un mismo score puede salir aprobar o revisar.
           Sirve para ver qué costaría cada umbral y compararlo con lo que hizo el motor.
         </p>
       </div>
 
       <div className="crediscope-card">
         <label style={{ display: "block", marginBottom: 10 }}>
-          <strong>Aprobar desde el puntaje {num(a)}</strong>
+          <strong>Aprobar desde el score {num(a)}</strong>
           <input type="range" min={minimo} max={maximo} value={a} onChange={(e) => setAprobarDesde(Number(e.target.value))} style={{ width: "100%" }} />
         </label>
         <label style={{ display: "block" }}>
-          <strong>Revisar desde el puntaje {num(b)}</strong> <span className="crediscope-muted">(igual al de aprobar: sin zona de revisión)</span>
+          <strong>Revisar desde el score {num(b)}</strong> <span className="crediscope-muted">(igual al de aprobar: sin zona de revisión)</span>
           <input type="range" min={minimo} max={a} value={b} onChange={(e) => setRevisarDesde(Number(e.target.value))} style={{ width: "100%" }} />
         </label>
       </div>
@@ -83,7 +83,7 @@ export default function PestanaUmbrales({ corteId, poblacion }) {
             { nombre: "Malos detectados", color: "var(--warn)", punteada: true, puntos: curva.map((u) => ({ x: u.umbral, y: u.sensibilidad })) },
             { nombre: "Buenos aprobados (especificidad)", color: "var(--good)", punteada: true, puntos: curva.map((u) => ({ x: u.umbral, y: u.especificidad })) },
           ]}
-          x={{ titulo: "Aprobar desde el puntaje" }}
+          x={{ titulo: "Aprobar desde el score" }}
           y={{ titulo: "Proporción", min: 0, max: 1, formato: (v) => pct(v, 0) }}
           referencias={[{ x: a, texto: "elegido" }]}
           etiqueta="Medidas por umbral"

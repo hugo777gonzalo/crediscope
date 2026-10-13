@@ -25,7 +25,6 @@ const IngresosCliente = lazy(() => import("./pages/IngresosCliente.jsx"));
 const PerfilAval = lazy(() => import("./pages/PerfilAval.jsx"));
 const Solicitudes = lazy(() => import("./pages/Solicitudes.jsx"));
 const Expediente = lazy(() => import("./pages/Expediente.jsx"));
-const Historial = lazy(() => import("./pages/Historial.jsx"));
 const HistorialPerfilDetalle = lazy(() => import("./pages/HistorialPerfilDetalle.jsx"));
 const HistorialAnalisisDetalle = lazy(() => import("./pages/HistorialAnalisisDetalle.jsx"));
 const Reportes = lazy(() => import("./pages/Reportes.jsx"));
@@ -212,7 +211,7 @@ export default function App() {
               varios en pestañas y sobrevive a recargar la página. */}
           <Route path="/solicitudes" element={<Solicitudes />} />
           <Route path="/solicitudes/:cedula" element={<Expediente />} />
-          <Route path="/historial" element={<Historial />} />
+          <Route path="/historial" element={<Navigate to="/" replace />} />
           <Route path="/historial/perfil/:id" element={<HistorialPerfilDetalle />} />
           <Route path="/historial/analisis/:id" element={<HistorialAnalisisDetalle />} />
           <Route path="/reportes" element={<Reportes />} />

@@ -46,7 +46,6 @@ export const SECCIONES = [
     prefijos: ["/solicitudes", "/historial"],
     hijos: [
       { texto: "Bandeja", ruta: "/solicitudes", exacta: true },
-      { texto: "Historial por cédula", ruta: "/historial" },
     ],
   },
   {
@@ -55,17 +54,20 @@ export const SECCIONES = [
     prefijos: ["/fuentes"],
     hijos: [
       { texto: "Panorama", ruta: "/fuentes", exacta: true },
-      { texto: "Clientes por segmento", ruta: "/fuentes/clientes" },
+      { texto: "Personas por segmento", ruta: "/fuentes/clientes" },
       { texto: "Reglas de clasificación", ruta: "/fuentes/reglas" },
       { texto: "Parámetros", ruta: "/fuentes/parametros", soloAdmin: true },
     ],
   },
   {
+    // «Reportes» pasó a «Monitoreo» el 2026-10-12 (decisión del negocio): el
+    // nombre viejo chocaba con «Laboratorio de Inteligencia de Negocio». El id
+    // y la ruta se quedan para no romper enlaces guardados.
     id: "reportes",
-    texto: "Reportes",
+    texto: "Monitoreo",
     prefijos: ["/reportes"],
     hijos: [
-      { texto: "Inteligencia de Negocios", ruta: "/reportes", exacta: true },
+      { texto: "Panorama", ruta: "/reportes", exacta: true },
       { texto: "Descargas", ruta: "/reportes/descargas", soloAdmin: true },
     ],
   },
@@ -75,7 +77,7 @@ export const SECCIONES = [
     prefijos: ["/lotes"],
     soloAdmin: true,
     hijos: [
-      { texto: "Lotes corridos", ruta: "/lotes", exacta: true },
+      { texto: "Lotes consultados", ruta: "/lotes", exacta: true },
       { texto: "Cargar archivo", ruta: "/lotes/nuevo" },
     ],
   },
@@ -120,7 +122,7 @@ export const SECCIONES = [
       { texto: "Fuentes que consultamos", ruta: "/admin/fuentes" },
       { texto: "Campos del análisis", ruta: "/admin/campos" },
       { texto: "Qué ve el analista", ruta: "/admin/segmentos" },
-      { texto: "Explorador de Fuentes", ruta: "/explorar" },
+      { texto: "Explorador de la fuente de datos", ruta: "/explorar" },
     ],
   },
 ];

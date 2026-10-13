@@ -16,7 +16,7 @@ opciones a la persona dueña del producto, no eligiendo.
 | Idioma | Castellano de Ecuador (cédula, IESS, SRI, RUC). Sólo `score` y `colateral` en inglés. | Pedido del negocio, muchas veces: se hizo una ronda entera de renombres (marco-v8). |
 | Persona a la que se le habla | Voseo: «ingresá», «podés», «pedísela». Ni «tú» ni «usted». | Está en CLAUDE.md. Hoy sólo hay 5 textos con imperativo: el resto va en tercera persona, lo que ya es neutro. |
 | Puntos suspensivos | Tres puntos: `Cargando...` | 67 textos ya lo hacen. El carácter `…` mezcla. |
-| Plurales | `plural(n, "cliente")` de `formatos.js`. Nunca `cliente(s)`. | El «(s)» es no decidir; salía «1 análisis corridos». |
+| Plurales | `plural(n, "persona")` de `formatos.js`. Nunca `persona(s)`. | El «(s)» es no decidir; salía «1 análisis corridos». |
 | Mayúsculas | **Nombres comerciales** en Title Case (lista abajo). Todo lo demás, como una oración: sólo la primera palabra. | El negocio capitaliza sus nombres («Información IESS»). El resto no es un nombre. |
 | Tildes | Interrogativos con tilde: «Ver **cómo** quedó ese día». | Faltaba y se leía como un error de descuido en la pantalla central. |
 | Textos técnicos | Nunca en la tarjeta principal: versiones (`marco-v28`), códigos (`expediente.vista`), identificadores (`canal_aviso`), JSON del proveedor. Van en `title`, en «Detalle técnico» plegado, o no van. | Pedido del negocio sobre la pestaña Fuentes de ingreso (2026-09-26): «los datos de versión no van en la tarjeta principal». |
@@ -25,12 +25,12 @@ opciones a la persona dueña del producto, no eligiendo.
 ### Nombres comerciales (Title Case, tal cual)
 
 Evaluación Crediticia · Perfil del Cliente · Análisis con IA · Fuentes de Ingreso ·
-Inteligencia de Negocios · Información IESS · Documentos de Confirmación de
-Ingresos · Condiciones de la Segmentación · Ingreso Mínimo SBU · Establecimientos
-Activos (SRI) · Consultas por lote.
+Monitoreo · Información IESS · Documentos de Confirmación de Ingresos · Condiciones de
+la Segmentación · Ingreso Mínimo SBU · Establecimientos Activos (SRI) · Consultas por
+lote · Score.
 
-El resto de pantallas, pestañas y botones, en oración: «Clientes por segmento»,
-«Historial por cédula», «Costo por consulta», «Reglas de clasificación».
+El resto de pantallas, pestañas y botones, en oración: «Personas por segmento»,
+«Lotes consultados», «Costo por consulta», «Reglas de clasificación».
 
 ## 2. Lo que se retiró (antes → ahora)
 
@@ -60,6 +60,12 @@ El resto de pantallas, pestañas y botones, en oración: «Clientes por segmento
 | LLM | «el modelo», «Análisis con IA» | Sigla de proveedor. |
 | Ingesta | consulta a la fuente de datos | Anglicismo. |
 | mouse | cursor / puntero | Anglicismo. |
+| Puntaje (y «score» suelto) | **Score**, en pantalla, en lo que se exporta y en los documentos. La columna `puntaje` de la plantilla que llenan las instituciones se queda: es un contrato de datos | Negocio, 2026-10-12: «unifiquemos todo a Score». 55 textos |
+| Lotes corridos | **Lotes consultados** | Negocio, 2026-10-12 |
+| Reportes · Inteligencia de Negocios | **Monitoreo › Panorama** (la ruta sigue siendo `/reportes`) | Negocio, 2026-10-12: «Reportes pasa a Monitoreo». Sacó el choque con «Laboratorio de Inteligencia de Negocio». «Panorama» lo puso quien lo hizo, como Costos y Fuentes de Ingreso |
+| Historial por cédula | Se retiró: **la búsqueda abre el Expediente** | Negocio, 2026-10-12. Lo guardado de cada consulta se abre desde la línea de tiempo del Expediente (`/historial` redirige al Inicio) |
+| Explorador de Fuentes | **Explorador de la fuente de datos** | Negocio, 2026-10-12 (respondió «fuentes»: se leyó como aceptar la recomendación; confirmar) |
+| «Cliente» para cualquier persona consultada | **Persona**; «cliente» sólo con un crédito (Cliente activo, Cliente cerrado) | Negocio, 2026-10-12, con el árbol de la persona: `docs/modelo-de-la-persona.md`. Clientes por segmento → **Personas por segmento** |
 
 Se conservan, con el aviso «(retirado)», los nombres de procesos que tienen historial
 en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
@@ -68,9 +74,12 @@ en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 
 | Concepto | Nombre | Se evita | Nota |
 |---|---|---|---|
-| El número de 1 a 999 | **Puntaje** en pantalla; `score` aceptado | mezclar «Score» y «Puntaje» en la misma pantalla | Reportes decía «Score promedio» junto a «Puntaje» en la bandeja. Elegir uno por pantalla; el negocio dice ambos. |
-| Lo que el modelo aconseja | **Aprobar / Revisar / Negar** (pastilla, sello, filtro). **Observar** se retiró en marco-v27 y sólo queda en análisis viejos | «Rechazar» para el modelo | El dictamen en la tarjeta grande va en sustantivo (Aprobación / Revisión / Negación) **a propósito**: es el dictamen, no una orden (`RecomendacionCard.jsx`). |
-| La persona evaluada | **cliente** en el trabajo diario (Buscar cliente, Perfil del Cliente); **persona** cuando se cuenta o se estudia una población (Laboratorio, tablas) | «Titular», «sujeto» (sólo en derechos del titular) | Hoy mezcla: 99 «persona» y 71 «cliente». No mezclar en una misma frase. Decisión pendiente (ver `docs/revision-ux.md`). |
+| El número de 1 a 999 | **Score** («Score promedio»; en una frase, «el score») | «Puntaje» | Decidido el 2026-10-12. El score de **Aval** es otro: «Score de Aval» o, dentro de su pantalla, «el score». |
+| Lo que el modelo aconseja | **Aprobar / Revisar / Negar** (pastilla, sello, filtro). **Observar** se retiró en marco-v27 y sólo queda en análisis viejos | «Rechazar» para el modelo | El dictamen en la tarjeta grande va en sustantivo (Aprobación / Revisión / Negación) **a propósito**: es el dictamen, no una orden (`RecomendacionCard.jsx`). El negocio lo dejó así el 2026-10-12. |
+| Lo que decide la institución con una solicitud | **Aprobado / Rechazado** | confundirlo con la recomendación del modelo | El modelo aconseja; la institución decide. Son dos columnas, no una (`docs/modelo-de-la-persona.md`, sección 4). |
+| La persona evaluada | **persona**. **Cliente** sólo es quien tiene un crédito (estados Cliente activo y Cliente cerrado). «Perfil del Cliente» es nombre de producto y se queda | «Titular», «sujeto» (sólo en derechos del titular); «cliente» para quien no tiene crédito | Decidido el 2026-10-12 con el árbol de la persona (`docs/modelo-de-la-persona.md`). El control avisa de cada «cliente» suelto. |
+| Los estados de la persona | **Prospecto · Solicitante (nombre por cambiar) · Preaprobado · Aprobado · Cliente activo · Cliente cerrado** | llamar «Estado» a los dos estados en una pantalla | El **estado de la persona** no es el **estado del análisis** (Analizado, Sin analizar, No se completó, La consulta falló). Hoy sólo existe el segundo. |
+| Lo que cuelga de la persona | **Solicitudes · Direcciones · Empleos · Referencias · Documentos · Scores · Créditos** | «historial» para una de ellas | Los nombres del árbol del negocio; una pantalla nueva usa éstos. |
 | Qué se consulta | **fuente de datos** (Novadata, Aval) | «proveedor» a secas, «servicio» | «Fuentes de ingreso» ≠ «fuentes de datos»: son dos cosas. Sólo la segunda es una fuente que se consulta. |
 | Un conjunto de cédulas consultadas de una vez | **lote** (Consultas por lote) | «corrida» para esto | «Corrida» es una acción que dispara muchas llamadas al modelo (Costos). |
 | Los resultados de crédito que sube la institución | **carga** (Laboratorio) | «lote» | Un lote consulta; una carga trae resultados. |
@@ -99,4 +108,12 @@ versión de fuentes) se retira.
 
 ## 5. Nombres que quedan por decidir (propuestas)
 
-No se aplicaron: son del negocio. Las opciones están en `docs/revision-ux.md`.
+No se aplicaron: son del negocio. Las opciones están en `docs/modelo-de-la-persona.md`,
+sección 5, y en `docs/revision-ux.md`:
+
+- el nombre del segundo estado de la persona («Solicitante» no convence): **En evaluación**
+  (recomendada), En trámite, Postulante, Aspirante;
+- si «Perfil del Cliente» pasa a «Perfil de la Persona»;
+- qué estado tiene quien fue rechazado o desistió, y quién decide Preaprobado;
+- si el dictamen del modelo («Negación») y la decisión de la solicitud («Rechazado») dicen lo mismo;
+- «Explorador de la fuente de datos»: confirmar que «fuentes» era aceptar la recomendación.
