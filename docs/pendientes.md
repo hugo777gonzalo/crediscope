@@ -73,9 +73,10 @@ aceptada.
        (decisión del negocio, 2026-10-13). Al hacerlas, rótulo «Score de
        Equifax» y el vocabulario de `docs/modelo-de-la-persona.md`.
     5. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
-       Equifax como encargado y destinatario de datos de las personas. Cuando
-       Equifax termine de aprobar al proveedor (el negocio, 2026-10-13: «está
-       en proceso de aprobación»).
+       Equifax como encargado y destinatario de datos de las personas. Se
+       hace cuando termine el proceso de aprobación de Equifax (el negocio,
+       2026-10-13: «Equifax está en proceso de aprobación»; no es una
+       decisión de Claude ni de este repositorio).
 
 - **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
   El informe es `docs/revision-ux.md`; el vocabulario del producto,
@@ -107,15 +108,17 @@ aceptada.
       persona: el árbol y los estados. El control corta con los nombres viejos
       y avisa de cada «cliente» suelto (0 avisos hoy).
   - Queda, por orden:
-  1. **Confirmar las tareas de la noche de las tablas de resumen** (124 y
-     125). Corren por primera vez el 2026-10-13: `resumenes-crediscope` a las
-     00:10 y `resumenes-crediscope-dias` a las 00:20 de Ecuador. Se mira en
-     `cron.job_run_details` (no en `cron.job`):
-     `select j.jobname, d.status, d.return_message, d.start_time from cron.job_run_details d join cron.job j using (jobid) where j.jobname like 'resumenes-%' order by d.start_time desc limit 4;`
-     Las dos tienen que decir `succeeded`, y la primera devolver
-     `"fallas": 0`. Ver también en pantalla, con sesión, la bandeja,
-     Monitoreo, Fuentes de ingreso y el centro de datos: la salida se
-     comparó idéntica en la base, pero no se recorrió.
+  1. **Las tareas de la noche de las tablas de resumen** (124 y 125) corrieron por
+     primera vez el 2026-10-13 y **salieron bien** (verificado ese día en la base):
+     `resumenes-crediscope` (00:10 de Ecuador) y `resumenes-crediscope-dias` (00:20)
+     figuran `succeeded` en `cron.job_run_details` (no en `cron.job`). El resumen por
+     persona tiene las 2.812 personas, todas reescritas a las 05:10 UTC, sin ninguna
+     sin fila ni huérfana; la tabla por día no tiene filas entre el 08 y el 12 porque
+     no hubo consultas a Novadata esos días (perfiles: 5 el 07 y ninguno después).
+     **Falta sólo ver en pantalla, con sesión,** la bandeja, Monitoreo, Fuentes de
+     ingreso y el centro de datos: la salida se comparó idéntica en la base, pero no
+     se recorrió. (El `"fallas": 0` de la reconstrucción no queda en el historial de
+     pg_cron, que sólo dice «1 row»: se midió con el conteo de personas.)
   2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
      la persona, la solicitud como entidad, las direcciones, las referencias,
      los documentos y los créditos de la persona no existen todavía como datos:

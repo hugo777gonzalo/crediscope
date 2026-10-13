@@ -35,7 +35,7 @@ Se resuelve **antes** de la sesión: sin esto no hay nada que configurar.
 | 1.3 | **Tope de gasto mensual del proveedor de IA** | Nosotros + Finanzas | Consola del proveedor |
 | 1.4 | Proyecto de base de datos propio de la IFI o compartido | Nosotros + TI | Decisión de arquitectura |
 | 1.5 | Servidor de correo propio para el código de verificación del registro | TI de la IFI | Código (pendiente, hoy el registro va por enlace) |
-| 1.6 | Buró de crédito (Equifax): credenciales de API | IFI | Credenciales cargadas el 2026-10-12; conector en producción y 22 consultas hechas. Faltan la estructura estandarizada y rotar las credenciales (ver `docs/pendientes.md`) |
+| 1.6 | Buró de crédito (Equifax): credenciales de API | IFI | Credenciales cargadas el 2026-10-12; conector en producción, 22 consultas hechas y su estructura estandarizada construida (2026-10-13, migración 126). Faltan el diccionario de datos de Equifax (`docs/equifax-pedido-de-diccionario.md`), el proceso de aprobación de Equifax y rotar las credenciales (ver `docs/pendientes.md`) |
 
 > **1.3 no es un detalle administrativo.** Es el parámetro que dejó el
 > servicio caído el 2026-09-15. Tiene que quedar con un responsable, un

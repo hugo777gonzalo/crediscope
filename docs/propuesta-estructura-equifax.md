@@ -320,5 +320,6 @@ guardadas (`scripts/cargar-tablas-equifax.mjs`).
 4. Las pantallas: cuando todo el proceso detrás de Equifax esté listo
    (decisión del negocio, 2026-10-13). Rótulo «Score de Equifax» y el vocabulario
    de `docs/modelo-de-la-persona.md`.
-5. Las fichas de cumplimiento (`docs/cumplimiento/`): cuando Equifax termine de
-   aprobar al proveedor (decisión del negocio, 2026-10-13).
+5. Las fichas de cumplimiento (`docs/cumplimiento/`): cuando termine el proceso de
+   aprobación de Equifax (el negocio, 2026-10-13: «Equifax está en proceso de
+   aprobación»).
