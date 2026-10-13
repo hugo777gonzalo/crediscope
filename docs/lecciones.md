@@ -631,3 +631,37 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
   el servidor de desarrollo entregó una transformación anterior (`Link is not
   defined` con el import presente). `touch` del archivo y recargar; el build
   compilaba bien.
+- **Equifax: lo que las 22 respuestas desmintieron antes de escribir una línea**
+  (2026-10-13, al descomponer el crudo en tablas, 126).
+  - **El resumen de Equifax cuenta también al codeudor y al garante.** El
+    detalle de bancos lo reproducía sumando todos los roles (22/22) y no
+    sumando sólo al titular. Lo mismo los impagos, las morosidades y la cuota
+    estimada. Atribuirle a la persona lo que dice el resumen habría sido
+    atribuirle deuda ajena: es la mezcla que inflaba la deuda con Aval.
+  - **La lista de «garantías personales» era la misma deuda que las
+    operaciones de rol codeudor** (22/22, cantidad y monto). Una tabla propia
+    habría invitado a sumarla. Y en Ecuador «garantía» es el colateral (un
+    auto, una casa, un pagaré): el negocio pidió el 2026-10-13 que la tabla se
+    llamara `equifax_codeudor_garante`.
+  - **Una operación no se puede seguir de un mes al siguiente.** Se armó una
+    «huella» (institución, apertura, vencimiento y cupo) para contar
+    operaciones que tuvieron mora; salían de 20 a 295 operaciones distintas por
+    persona en la historia contra 8 a 38 operaciones vigentes. El cupo cambia entre meses en 191 grupos y 788 pares de
+    filas de un mismo mes comparten institución y apertura. Se quitó la huella
+    y se cuenta por mes. Lo midió una pasada de conteos antes de commitear.
+  - **Los nombres de campo de un tercero prometen lo que no cumplen.**
+    `score_min` y `score_max` no son el rango del score sino la banda de la
+    persona (de 1 a 973 y de 414 a 999 según la persona). `porcentaje_uso_tarjeta`
+    es el saldo promedio de 6 meses sobre el cupo (136/136), no el saldo de
+    hoy, y llega a 7.192. El nombre propuesto («score mínimo») también
+    prometía de más. Se mide antes de nombrar; lo dudoso va al pedido de
+    diccionario (`docs/equifax-pedido-de-diccionario.md`).
+  - **Los tramos de mora salen de los días**: con cortes en 30, 60, 90, 180,
+    270, 360, 720 y 1.080 días se reproducen los tramos de Equifax en bancos
+    (20/22), y son del titular, que los de Equifax no separan.
+  - **Una columna copiada en silencio.** `jsonb_populate_recordset` ignora las
+    claves que no son columnas: un error de tipeo dejaría el dato en null sin
+    avisar. Las filas se arman con una función que corta ante una clave
+    desconocida, la lista de columnas es única (de ahí salen los tipos y la
+    comprobación contra la base) y el guion de carga la verifica antes de
+    escribir.

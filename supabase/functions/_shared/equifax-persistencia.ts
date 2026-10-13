@@ -2,7 +2,7 @@
 // desplegada (consultar-equifax) y por el guion local (consultar-equifax-local):
 //
 //   proveedor activo -> reutilizar -> tope diario -> consultar -> guardar el
-//   crudo -> enlazar a la persona -> auditar
+//   crudo -> descomponerlo en tablas -> enlazar a la persona -> auditar
 //
 // Una sola implementación: con Aval, el guion local tuvo su propia copia de
 // este recorrido y fue como aparecieron diferencias entre lo que validaba una
@@ -26,6 +26,8 @@ import {
   laConsultaEquifaxSirve,
   type RespuestaEquifax,
 } from "./equifax-client.ts";
+import { calcularEstructura, EQUIFAX_ESTRUCTURA_VERSION } from "./equifax-estructura.ts";
+import { derivarTablas } from "./equifax-tablas.ts";
 import { estaVigenteHastaElCorte, finDeLaVigencia } from "./vigencia-mensual.ts";
 
 export const TOPE_DIARIO_POR_DEFECTO = 30;
@@ -66,9 +68,19 @@ export interface OpcionesDeProceso {
   ahora?: Date;
 }
 
+// Lo que pasó al descomponer el crudo en tablas (126). `ok: false` NO es una consulta fallida: el
+// crudo ya está guardado y las tablas se rehacen sin volver a pagar.
+export interface TablasGuardadas {
+  ok: boolean;
+  conteos?: Record<string, number>;
+  avisos: string[];
+  codigo?: string;
+  mensaje?: string;
+}
+
 export type ResultadoDeProceso =
   | { resultado: "reutilizada"; fila: Base; vigenteHasta: string }
-  | { resultado: "consultada"; fila: Base; vigenteHasta: string; respuesta: RespuestaEquifax }
+  | { resultado: "consultada"; fila: Base; vigenteHasta: string; respuesta: RespuestaEquifax; tablas: TablasGuardadas }
   | { resultado: "simulada"; reutilizaria: boolean; consultasHoy: number; tope: number; fechaDeLaVigente?: string }
   | {
     resultado: "rechazada";
@@ -92,6 +104,46 @@ export async function consultasDeHoy(db: Base, ahora: Date = new Date()): Promis
     throw new Error("no se pudo contar el consumo del día: " + (guardadas.error?.message ?? dudosas.error?.message));
   }
   return (guardadas.count ?? 0) + (dudosas.count ?? 0);
+}
+
+// ¿De quién es la respuesta? true = el documento que trae es el pedido; null = la respuesta no trae
+// documento y no se pudo comprobar. (Una respuesta de OTRA persona no llega a guardarse.)
+export function identidadDeLaConsulta(cuerpo: unknown, cedula: string): boolean | null {
+  const documento = documentoDeLaRespuesta(cuerpo as Record<string, unknown> | undefined);
+  return documento === null ? null : documento === cedula;
+}
+
+// Descompone el crudo YA GUARDADO de una consulta en las tablas equifax_* y calcula su estructura
+// (docs/propuesta-estructura-equifax.md), todo en una llamada atómica a la base
+// (equifax_reemplazar_tablas, 126). La misma función sirve para una consulta recién pagada y para
+// rehacer las de antes desde su crudo (scripts/cargar-tablas-equifax.mjs): una sola implementación.
+// Nunca lanza: devuelve ok:false y dice por qué.
+export async function guardarTablasDeLaConsulta(
+  db: Base,
+  consulta: { id: string; identificacion: string; created_at: string; ambiente: string; respuesta_cruda: unknown },
+): Promise<TablasGuardadas> {
+  let avisos: string[] = [];
+  try {
+    const derivadas = derivarTablas(consulta.respuesta_cruda);
+    avisos = derivadas.avisos;
+    const estructura = calcularEstructura(derivadas, {
+      consultadoEl: consulta.created_at,
+      ambiente: consulta.ambiente,
+      identidadVerificada: identidadDeLaConsulta(consulta.respuesta_cruda, consulta.identificacion),
+    });
+    const { data, error } = await db.rpc("equifax_reemplazar_tablas", {
+      p_consulta: consulta.id,
+      p_tablas: derivadas.tablas,
+      p_estructura: estructura,
+      p_version_tablas: derivadas.version,
+      p_version_estructura: EQUIFAX_ESTRUCTURA_VERSION,
+    });
+    if (error) return { ok: false, avisos, codigo: error.code, mensaje: String(error.message ?? "").split("\n")[0].slice(0, 160) };
+    return { ok: true, conteos: data ?? {}, avisos };
+  } catch (err) {
+    // Sin el mensaje completo: un error al interpretar un valor puede repetirlo.
+    return { ok: false, avisos, codigo: (err as Error)?.name, mensaje: String((err as Error)?.message ?? "").split("\n")[0].slice(0, 160) };
+  }
 }
 
 async function consultaVigente(db: Base, cedula: string, ahora: Date) {
@@ -252,6 +304,21 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     };
   }
 
+  // 6b. Las tablas y la estructura, derivadas del crudo que ya quedó guardado. Si algo falla la
+  //     consulta (que se cobró) NO se pierde ni se da por fallida: el crudo está a salvo y las tablas
+  //     se rehacen sin volver a pagar. Queda constancia para que no pase inadvertido.
+  const tablas = await guardarTablasDeLaConsulta(o.db, guardado);
+  if (!tablas.ok) {
+    console.error("equifax: no se pudieron derivar las tablas:", tablas.codigo ?? "sin código");
+    const { error: errTablas } = await o.db.from("audit_log").insert({
+      actor: o.actorId,
+      action: "equifax.tablas.fallo",
+      client_id: clientId,
+      meta: { consulta_equifax_id: guardado.id, codigo: tablas.codigo ?? null, mensaje: tablas.mensaje ?? null, avisos: tablas.avisos },
+    });
+    if (errTablas) console.error("equifax: no se pudo auditar el fallo de las tablas:", errTablas.code ?? errTablas.message);
+  }
+
   // 7. Auditoría.
   const { error: errAuditoria } = await o.db.from("audit_log").insert({
     actor: o.actorId,
@@ -272,5 +339,5 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
   });
   if (errAuditoria) console.error("equifax: no se pudo auditar la consulta:", errAuditoria.code ?? errAuditoria.message);
 
-  return { resultado: "consultada", fila: guardado, vigenteHasta: finDeLaVigencia(ahora).toISOString(), respuesta };
+  return { resultado: "consultada", fila: guardado, vigenteHasta: finDeLaVigencia(ahora).toISOString(), respuesta, tablas };
 }

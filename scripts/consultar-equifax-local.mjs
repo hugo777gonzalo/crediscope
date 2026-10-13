@@ -204,6 +204,10 @@ for (const persona of personas) {
       const tam = (JSON.stringify(r.fila.respuesta_cruda).length / 1024).toFixed(1);
       console.log(`[${persona.etiqueta}] CONSULTADA | HTTP ${r.fila.http_equifax} | ${seg} s | ${tam} KB | fila ${r.fila.id.slice(0, 8)} | vigente hasta ${r.vigenteHasta}`);
       console.log(`  crudo en disco: ${path.relative(path.dirname(carpetaCrudo), archivoCrudo)}`);
+      // Las tablas se derivan del crudo ya guardado: si fallan, la consulta no se pierde (se rehacen sin pagar).
+      console.log(r.tablas.ok
+        ? `  tablas: hechas (${Object.values(r.tablas.conteos ?? {}).reduce((a, b) => a + b, 0)} filas en ${Object.keys(r.tablas.conteos ?? {}).length} tablas)${r.tablas.avisos.length ? ` | ${r.tablas.avisos.length} aviso(s) al descomponer` : ""}`
+        : `  tablas: NO SE PUDIERON HACER (${r.tablas.codigo ?? "sin código"}: ${r.tablas.mensaje ?? "sin detalle"}). El crudo está guardado: rehacerlas con scripts/cargar-tablas-equifax.mjs.`);
       console.log("  forma de la respuesta (sólo nombres y tamaños):");
       for (const linea of forma(r.fila.respuesta_cruda)) console.log("    " + linea);
     } else {

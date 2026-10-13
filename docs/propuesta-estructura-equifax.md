@@ -1,9 +1,12 @@
 # Propuesta: estructura estandarizada de Equifax
 
-Borrador del 2026-10-12, hecho sobre las **22 respuestas reales** (2 de
-prueba y 20 de un lote autorizado) guardadas en `consultas_equifax`. Nada de
-lo que sigue a la tabla `consultas_equifax` (122) está construido: es para
-decidir. No lleva valores ni personas, sólo nombres de campos y conteos.
+Propuesta del 2026-10-12, hecha sobre las **22 respuestas reales** (2 de
+prueba y 20 de un lote autorizado) guardadas en `consultas_equifax`.
+**El negocio la aprobó ese mismo día («ok») y se construyó el 2026-10-13**:
+migración 126, `_shared/equifax-tablas.ts` y `_shared/equifax-estructura.ts`.
+Donde lo construido se apartó de lo propuesto porque los datos lo pidieron, la
+sección lo dice con **«Construido»**. No lleva valores ni personas, sólo
+nombres de campos y conteos.
 
 **Decisiones del negocio del 2026-10-12:**
 
@@ -32,7 +35,7 @@ de campos, listas y datos personales) y con `node scripts/conciliar-equifax.mjs`
 | Paso | Qué es | Para qué sirve | Dónde vive |
 |---|---|---|---|
 | **1. Crudo** | La respuesta de Equifax, sin tocar | Evidencia de lo que se pagó y de lo que Equifax dijo un día concreto. La única fuente de verdad. | `consultas_equifax.respuesta_cruda` (122, hecha, inmutable) |
-| **2. Tablas** | El JSON descompuesto: una fila por operación, por mes, por tarjeta, por entidad que consultó… con tipos reales, fechas ISO y el rol (titular, codeudor, garante) ya normalizado | Poder preguntar en SQL, sumar sin abrir un JSON, y que cada número tenga filas detrás | Tablas `equifax_*` (a construir) |
+| **2. Tablas** | El JSON descompuesto: una fila por operación, por mes, por tarjeta, por entidad que consultó… con tipos reales, fechas ISO y el rol (titular, codeudor, garante) ya normalizado | Poder preguntar en SQL, sumar sin abrir un JSON, y que cada número tenga filas detrás | Tablas `equifax_*` (126) |
 | **3. Estructura estandarizada** | Los campos de la sección 5, **calculados con las filas de las tablas** | Leer, calificar, comparar fuentes, el Laboratorio | `consultas_equifax.estructura` (jsonb, versionada) |
 | **4. Perfil del modelo** | El subconjunto de la estructura que lee el modelo | Lo único que ve el modelo (`perfil-del-modelo.ts`) | Se arma al vuelo, nunca se guarda aparte |
 
@@ -67,28 +70,48 @@ ante un reclamo.
 - Cada tabla nueva: RLS con lectura sólo de analista y admin, sin permisos para
   el rol anónimo, y sumada a `auditar-seguridad.mjs`.
 
-### 1.1 Las tablas propuestas
+### 1.1 Las tablas
 
 Se agrupan las 58 listas en pocas tablas con una columna que dice de cuál
-vienen, en vez de una tabla por lista.
+vienen, en vez de una tabla por lista. **Construido:** son 11, las 10 aprobadas
+más `equifax_resumen`, y una se renombró.
 
-| Tabla | De qué listas de Equifax | Filas por consulta (medido) |
+| Tabla | De qué listas de Equifax | Filas por consulta (medido en las 22) |
 |---|---|---|
-| `equifax_operaciones` | `detalle_deuda_actual_sb`, `_seps`, `_sicom` | ~22 en promedio |
+| `equifax_operaciones` | `detalle_deuda_actual_sb`, `_seps`, `_sicom` | 9 a 43 |
 | `equifax_historia_mensual` | `detalle_deuda_historica_sb`, `_seps`, `_sicom` | 183 a 963 (promedio 512) |
-| `equifax_deuda_por_sistema_y_mes` | `deuda_historica`, `evolucion_deuda_sb_seps_sicom`, `valor_deuda_3_sistemas` | ~140 |
-| `equifax_vencimientos` | `estructura_vencimiento`, `detalle_estructura_vencimiento`, `saldos_por_vencer` | ~40 |
-| `equifax_tarjetas` | `detalle_tarjetas`, `tarjetas_canceladas` | ~6 |
-| `equifax_creditos` | `creditos_otorgados`, `operaciones_canceladas` | ~19 |
-| `equifax_consultas_recibidas` | `entidades_consultados` (una fila por entidad y mes) | ~10 entidades × 12 meses |
-| `equifax_scores` | `score`, `score_inclusion`, `score_sobreendeudamiento`, `historico_score`, `factores_influyen_score` | ~10 |
-| `equifax_indicadores_por_periodo` | los `historico_*` (acreedores, cuota, endeudamiento, vencidos) y `identificador_perfil_riesgo_directo*` | ~35 |
-| `equifax_garantias_dadas` | `garantias_personales_codeudores_*`, **sin nombre ni identificación del titular** | ~4 |
+| `equifax_deuda_por_sistema_y_mes` | `valor_deuda_3_sistemas` (el resumen de hoy), `deuda_historica`, `evolucion_deuda_sb_seps_sicom` | 95 a 171 |
+| `equifax_vencimientos` | `estructura_vencimiento`, `detalle_estructura_vencimiento`, `saldos_por_vencer` | 33 a 51 |
+| `equifax_tarjetas` | `detalle_tarjetas`, `tarjetas_canceladas` | 1 a 11 |
+| `equifax_creditos` | `creditos_otorgados`, `operaciones_canceladas` | 3 a 67 |
+| `equifax_consultas_recibidas` | `entidades_consultados` (una fila por entidad y mes, sin la fila de encabezado) | 2 a 32 |
+| `equifax_scores` | `score`, `score_inclusion`, `score_sobreendeudamiento`, `historico_score` | 6 |
+| `equifax_indicadores_por_periodo` | los `historico_*` (acreedores, cuota, endeudamiento, vencidos) y `identificador_perfil_riesgo_directo*`, en forma larga | 26 |
+| `equifax_codeudor_garante` | `garantias_personales_codeudores_*`, **sin nombre ni identificación del titular** | 0 a 20 |
+| `equifax_resumen` (**nueva**) | los datos de una sola fila: `resumen_informe`, `protestos_morosidades`, `cuota_estimada_mensual`, `personas_inhabilitadas`, `mantiene_historial_crediticio`, `factores_influyen_score`, `informacion_sri` (sin nombre, RUC ni dirección), `indicador_impacto_economico`, `sujeto_al_dia` (sólo cuántos), los doce meses del encabezado de las consultas recibidas y, de `interconnectResponse`, el estado de cartera y el ingreso estimado | 1 |
+
+**Construido, y por qué:**
+
+- **`equifax_resumen` no estaba en la propuesta.** Nueve listas de una sola fila
+  no tenían dónde ir y la regla es que la estructura sale de las tablas.
+- **`equifax_garantias_dadas` pasó a `equifax_codeudor_garante`** (pedido del
+  negocio, 2026-10-13): en Ecuador una garantía es el colateral (un auto, una
+  casa, un pagaré). Lo que Equifax llama «garantías personales» es una persona
+  respondiendo por la deuda de otra.
+- **`factores_influyen_score` se fue a `equifax_resumen`**, no a `equifax_scores`:
+  son doce cifras sueltas, no un score.
+- **La historia no lleva «huella» de la operación.** Se pensó para contar
+  «operaciones que tuvieron mora»: las listas no traen el número de operación y
+  ninguna combinación de campos la identifica de un mes al siguiente (788 pares
+  de filas de un mismo mes comparten institución y apertura; el cupo cambia
+  entre meses en 191 grupos). La estructura cuenta **por mes**, no por operación.
+- **Las 22 primeras consultas** se cargaron desde el crudo, sin costo
+  (`scripts/cargar-tablas-equifax.mjs`).
 
 Con unas 2.600 personas una pasada completa son del orden de 1,8 millones de
-filas, de ellas ~1,3 millones de historia mensual: cabe en la base. Las tablas
-se construyen **después de aprobar los nombres** de la sección 4 y 5, y las
-primeras 22 consultas se cargan desde el crudo, sin costo.
+filas, de ellas ~1,3 millones de historia mensual: cabe en la base. Cada
+consulta viaja a la base en una sola llamada de 190 a 550 KB
+(`equifax_reemplazar_tablas`, atómica: o queda todo lo nuevo o todo lo anterior).
 
 ## 2. Qué trae la respuesta
 
@@ -152,6 +175,28 @@ sí / no / sin resumen). Una persona que no concilia queda marcada, no corregida
 a escondidas. `interconnectResponse` aporta sólo los cálculos de Equifax que se
 elijan, rotulados como tales.
 
+### 3.1 Lo que se midió al construir (2026-10-13)
+
+Para escribir cada cálculo se midió antes cómo se relacionan las listas entre
+sí en las 22 respuestas (`scripts/probar-equifax-tablas.mjs` repite lo esencial).
+Lo que cambió respecto de lo propuesto:
+
+| Hallazgo | Medido | Qué se hizo |
+|---|---|---|
+| El resumen por sistema cuenta **todos los roles**: la suma del detalle de todos los roles lo reproduce, la del titular solo no | bancos 22/22 | `conciliaConElResumen` compara contra el saldo de todos los roles; el titular va aparte |
+| Los impagos, las morosidades y la cuota estimada de Equifax también incluyen codeudor y garante | impagos 22/22; cuota 20/22 | se guardan rotulados «todos los roles»; lo del titular sale de las operaciones |
+| La lista de «garantías personales» es la **misma deuda** que las operaciones de rol codeudor | 22/22, cantidad y monto | nunca se suman; queda como comprobación dentro de `deudaCodeudorGarante` |
+| `historico_endeudamiento_*` «Actual» es el resumen por sistema | 22/22 | la evolución de la deuda es de todos los roles y lo dice |
+| Los tramos de mora salen de los **días de mora** (hasta 30, 60, 90, 180, 270, 360, 720 y 1.080 días) | bancos 20/22; la suma de los tramos es el vencido 22/22 | la mora del titular se reparte por días: Equifax no separa por rol |
+| `porcentaje_uso_tarjeta` es el saldo **promedio de 6 meses** sobre el cupo, no el de hoy, y pasa de 100 | 136/136 | `usoPromedioPorcentaje` es ese; `usoActualPorcentaje` (saldo de hoy sobre cupo) coincide con la política de uso de Equifax en 13/13 |
+| `score_min` y `score_max` son los límites de la **banda** en la que cae la persona, no el rango posible del score | varían entre personas (1 a 973; 414 a 999) | se llaman `bandaDelScoreEquifaxDesde` y `…Hasta` |
+| Una operación no se puede seguir de un mes al siguiente | ver 1.1 | nada se cuenta «por operación» a través de los meses |
+| `dias_morosidad` mayor que cero sin vencido existe; lo contrario no | 670 filas de 11.264; 0 | «hubo mora» = días de mora; «deuda vencida» = monto vencido: son dos campos |
+| La historia trae **24 meses** exactos | 22/22 | la ventana de conducta de pago es de 24 meses desde el último corte |
+| La primera fila de `entidades_consultados` es un **encabezado** con los doce meses | 22/22 | de ahí salen los meses; sin él se avisa y no se inventan |
+| `NOVACREDIT S. A.` y `NOVACREDIT S.A.` consultan en 19 y 7 personas | — | se marcan y no cuentan como entidades que evalúan a la persona |
+| `protestos` viene siempre vacío | 22/22 | `null` (no medido), nunca cero |
+
 ## 4. Nomenclatura
 
 Reglas, para que un nombre no se pueda malinterpretar:
@@ -178,28 +223,31 @@ Reglas, para que un nombre no se pueda malinterpretar:
 - **Sin versión, código ni JSON en una tarjeta principal** (regla de la revisión
   de UX).
 
-## 5. Grupos y campos propuestos (`equifax-estructura-v1`)
+## 5. Grupos y campos (`equifax-estructura-v1`)
 
 Cada campo se calcula **desde las tablas** de la sección 1.1; la columna «De
 dónde sale» dice de qué lista de Equifax viene. La columna «Modelo» dice si el
-campo va al perfil del modelo (sección 6).
+campo va al perfil del modelo (sección 6). **Construido:** los nombres de abajo
+son los de `consultas_equifax.estructura`; los que cambiaron respecto de la
+propuesta están en negrita y se explican en las secciones 1.1 y 3.1.
 
 | Grupo | Campos principales (nombre propuesto) | De dónde sale | Modelo |
 |---|---|---|---|
 | **Consulta** | `consultadoEl`, `ambiente`, `identidadVerificada`, `version` | tabla y auditoría | no |
-| **Scores** | `scoreEquifax`, `scoreEquifaxMinimo`/`Maximo`, `tasaDeMalosAcumuladaPorcentaje`, `scoreEquifaxHace6Meses`, `scoreEquifaxHace12Meses`, `variacionDelScore12Meses`, `scoreInclusionEquifax`, `scoreSobreendeudamientoEquifax`, `probabilidadDeSobreendeudamientoPorcentaje`, `nivelDeSobreendeudamiento` | `score`, `score_inclusion`, `score_sobreendeudamiento`, `historico_score` | sí |
+| **Scores** | `scoreEquifax`, **`bandaDelScoreEquifaxDesde`/`Hasta`**, `tasaDeMalosAcumuladaPorcentaje`, `scoreEquifaxHace6Meses`, `scoreEquifaxHace12Meses`, `variacionDelScore12Meses`, `scoreInclusionEquifax`, `scoreSobreendeudamientoEquifax`, `probabilidadDeSobreendeudamientoPorcentaje`, `nivelDeSobreendeudamiento` | `score`, `score_inclusion`, `score_sobreendeudamiento`, `historico_score` | sí |
 | **Estado general** | `estadoDeCartera` (al día, mora 30, mora 60, mora 90, dudoso recaudo, cartera castigada), `fechaDelPrimerCredito`, `antiguedadCrediticiaMeses`, `tieneInhabilitacionBancaria`, `numeroDeMorosidades` | `ESTADO_CARTERA`, `mantiene_historial_crediticio`, `personas_inhabilitadas`, `protestos_morosidades` | sí |
-| **Deuda actual del titular** | por sistema y total: `numeroDeOperaciones`, `saldoDeudaUsd`, `saldoPorVencerUsd`, `saldoVencidoUsd`, `saldoNoDevengaInteresesUsd`, `saldoDemandaJudicialUsd`, `saldoCarteraCastigadaUsd`, `cuotaMensualUsd`, `maximoDiasDeMora`, `conciliaConElResumen` | `detalle_deuda_actual_*`, `valor_deuda_3_sistemas` | sí |
-| **Deuda como codeudor o garante** | los mismos, separados | `detalle_deuda_actual_*` con rol no titular | sí |
-| **Mora actual** | `vencidoDe0a1MesUsd` … `vencidoDeMasDe36MesesUsd`, `porcentajeDeLaDeudaVencida`, `numeroDeOperacionesVencidas` | `estructura_vencimiento`, `detalle_estructura_vencimiento` | sí |
-| **Conducta de pago (24 meses)** | `mesesConMoraEnLosUltimos24`, `maximoDiasDeMoraEnLosUltimos24`, `fechaDeLaUltimaMora`, `mesesConDeudaVencida`, `numeroDeOperacionesQueTuvieronMoraDeMasDe90Dias` | `detalle_deuda_historica_*`, `evolucion_deuda_sb_seps_sicom` | sí |
+| **Deuda actual del titular** | por sistema y total: `numeroDeOperaciones`, `institucionesDistintas`, `saldoDeudaUsd`, `saldoPorVencerUsd`, `saldoVencidoUsd`, `saldoNoDevengaInteresesUsd`, `saldoDemandaJudicialUsd`, `saldoCarteraCastigadaUsd`, `cuotaMensualUsd`, `maximoDiasDeMora`, y la conciliación: `saldoTodosLosRolesUsd`, `resumenDeEquifaxUsd`, `diferenciaConElResumenUsd`, `conciliaConElResumen` (`si` / `no` / `sin_resumen` / `sin_detalle`) | `detalle_deuda_actual_*`, `valor_deuda_3_sistemas` | sí |
+| **Deuda como codeudor o garante** | los mismos bloques (sin la conciliación), separados del titular, y **`listaAparteDeEquifax`**: la lista de «garantías personales» de Equifax (`numeroDeOperacionesVigentes`, `deudaTotalUsd`, `numeroDeOperacionesNoVigentes`, `coincideConLasOperacionesDeRolCodeudor`), que es la misma deuda y sirve para comprobar | `detalle_deuda_actual_*` con rol no titular; `garantias_personales_codeudores_*` | sí |
+| **Mora actual** | los nueve tramos del vencido del titular (`vencidoDe0a1MesUsd` … `vencidoDeMasDe36MesesUsd`) **repartidos por días de mora**, `saldoVencidoUsd`, `porcentajeDeLaDeudaVencida`, `numeroDeOperacionesVencidas`, `maximoDiasDeMora`, y el vencido que dice el resumen de Equifax (todos los roles) | `detalle_deuda_actual_*` (los tramos de Equifax, `deuda_historica`, sirvieron para validar la regla de los días) | sí |
+| **Conducta de pago (24 meses)** | `mesesObservados`, `mesesConMoraEnLosUltimos24`, **`mesesConMoraDeMasDe90Dias`**, `mesesConDeudaVencida`, `maximoDiasDeMoraEnLosUltimos24`, `fechaDeLaUltimaMora`, **`maximoDeOperacionesEnMoraEnUnMes`**, **`maximoDeOperacionesConMoraDeMasDe90DiasEnUnMes`**. Por mes y sólo del titular: una operación no se sigue de un mes a otro | `detalle_deuda_historica_*` | sí |
 | **Evolución** | `deudaHace6MesesUsd`, `deudaHace12MesesUsd`, `variacionDeLaDeuda12MesesPorcentaje`, `acreedoresActuales`, `acreedoresHace6Meses`, `acreedoresHace12Meses`, `cuotaEstimadaActualUsd`, `cuotaEstimadaHace12MesesUsd` | `historico_*`, `evolucion_*` | sí |
-| **Tarjetas de crédito** | `numeroDeTarjetasVigentes`, `cupoTotalUsd`, `saldoTotalUsd`, `usoPromedioPorcentaje`, `usoMaximoPorcentaje`, `saldoPromedio6MesesUsd`, `antiguedadDeLaMasAntiguaMeses`, `numeroDeTarjetasCanceladas` | `detalle_tarjetas`, `tarjetas_canceladas` | sí |
+| **Tarjetas de crédito** | `numeroDeTarjetasVigentes`, `cupoTotalUsd`, `saldoTotalUsd`, **`usoActualPorcentaje`** (saldo de hoy sobre cupo: lo que mide la política de Equifax), `usoPromedioPorcentaje` (saldo promedio de 6 meses sobre cupo: el «uso» de Equifax), `usoMaximoPorcentaje` (la tarjeta más cargada), `saldoPromedio6MesesUsd`, `antiguedadDeLaMasAntiguaMeses`, `numeroDeTarjetasConSaldoMayorAlCupo`, `numeroDeTarjetasCanceladas` | `detalle_tarjetas`, `tarjetas_canceladas` | sí |
 | **Créditos otorgados** | `numeroDeCreditosOtorgados`, `numeroDeCreditosRefinanciados`, `numeroDeCreditosReestructurados`, `numeroDeCreditosNovados`, `numeroDeCreditosCancelados`, `montoOriginalTotalUsd` y por tipo (consumo, vivienda, microcrédito, comercial) | `creditos_otorgados`, `operaciones_canceladas` | sí |
-| **Consultas recibidas** | `entidadesQueLaConsultaronEnLosUltimos12Meses`, `consultasPorMes` (12), `entidadesEnLosUltimos3Meses`, **sin contar a NovaCredit** | `entidades_consultados` | sí |
-| **Garantías dadas** | `numeroDeOperacionesComoCodeudor`, `deudaTotalComoCodeudorUsd` | `garantias_personales_codeudores_*` | sí (sin nombres ni identificaciones de terceros) |
+| **Consultas recibidas** | `entidadesQueLaConsultaronEnLosUltimos12Meses`, `consultasEnLosUltimos12Meses`, `consultasPorMes` (12), `entidadesEnLosUltimos3Meses`, `consultasEnLosUltimos3Meses`, `consultasDeNovaCreditEnLosUltimos12Meses`; **sin contar a NovaCredit**. Una entidad se escribe de varias maneras: el número de entidades sobrecuenta y el de consultas no | `entidades_consultados` | sí |
+| ~~**Garantías dadas**~~ | **Ya no existe como grupo** (pedido del negocio, 2026-10-13: «garantía» es el colateral). Pasó a `deudaCodeudorGarante.listaAparteDeEquifax` | `garantias_personales_codeudores_*` | sí (sin nombres ni identificaciones de terceros) |
 | **Actividad económica (SRI)** | `tieneRuc`, `estadoDelRuc`, `claseDeContribuyente`, `obligadoALlevarContabilidad` | `informacion_sri` | no (Novadata ya lo trae) |
-| **Estimaciones de Equifax** | `ingresoEstimadoUsd`, `cuotaFinancieraEstimadaUsd`, `indicadorDeImpactoEconomico` | `indicador_impacto_economico`, `IncomePredictor` | **no** (ver 6) |
+| **Estimaciones de Equifax** | `ingresoEstimadoUsd`, `cuotaFinancieraEstimadaUsd`, `indicadorDeImpactoEconomico` (y el ingreso del indicador, y la cuota estimada de todos los roles) | `indicador_impacto_economico`, `IncomePredictor` | **no** (ver 6) |
+| **Calidad de la respuesta** (nuevo) | `avisos` de la descomposición, `listasQueNoVinieron`, `operacionesConSaldoQueNoCuadra` (por vencer + vencido + no devenga + demanda + castigada contra el saldo: 18 de 476 operaciones), `operacionesConRolDesconocido`, `cortesDelDetalleActual` por sistema, `protestosMedidos` | todas | no |
 
 ## 6. Qué no llega al modelo
 
@@ -226,48 +274,46 @@ impacto económico son una estimación de un tercero. La regla del negocio es qu
 **no se especula sobre el ingreso**; se guarda y se rotula «estimación de
 Equifax», pero no entra al modelo hasta decidirlo.
 
-## 7. Preguntas a Equifax (para pedir el diccionario de datos)
+## 7. Preguntas a Equifax (el diccionario de datos)
 
-El diccionario de Aval mentía en dos campos y se supo con 240 respuestas;
-mejor preguntar antes de construir sobre una suposición.
+El diccionario de Aval mentía en dos campos y se supo con 240 respuestas; con 22
+respuestas de Equifax ya hay campos cuyo nombre promete algo que los datos no
+cumplen (`score_min` y `score_max` son una banda, `porcentaje_uso_tarjeta` es el
+saldo promedio de 6 meses, el resumen por sistema cuenta también al codeudor).
+Mejor preguntar antes de construir encima.
 
-1. ¿Hay un diccionario de datos de `reporteCrediticio` e
-   `interconnectResponse`?
-2. ¿Qué es `SFNR` y por qué cooperativas aparecen en `…RFRSBS`?
-3. ¿Qué filas trae de más `DetalleDeudaActualReportadaSBSSBS_Educativo` que
-   `detalle_deuda_actual_sb`? (9 de 22 coinciden; en las otras trae más.)
-4. ¿Cómo se calcula `Composicion_deuda_actual` (riesgo directo e indirecto)?
-5. El detalle comercial trae cortes de agosto, septiembre y octubre:
-   ¿cuál usa el resumen `valor_deuda_3_sistemas`?
-6. ¿`tipo_riesgo` = `GARANTE` y `CODEUDOR` están bien separados de lo que
-   aparece en `garantias_personales_codeudores_operaciones_vigentes`? ¿Son las
-   mismas operaciones o las de otras personas?
-7. ¿Qué significan los valores 1, 3 y 6 de `indicador_impacto_economico`?
-8. ¿Qué resultados de `interconnectResponse` dependen de `monto`, `plazo` y
-   `tipoProducto`, y cuáles sólo de la persona?
-9. ¿Cada cuánto se actualiza el reporte y cuándo corta el mes? (Rige la
-   vigencia «hasta el 17»: ¿coincide con el corte de Equifax?)
+**Construido (2026-10-13):** las nueve preguntas de la propuesta crecieron a una
+lista completa, con la evidencia de cada una y su prioridad, en
+`docs/equifax-pedido-de-diccionario.md`. Es el documento que el negocio lleva a
+Equifax (o contrasta con el diccionario que ya tenga). Lo que conteste se carga
+sin volver a pagar: se sube la versión de las tablas o de la estructura y se
+rehacen las consultas guardadas desde su crudo.
 
 ## 8. Lo que falta
 
 **Decidido (2026-10-12):** el camino JSON → tablas → estructura (sección 1);
 `reporteCrediticio` como fuente de la deuda (sección 3); no gastar consultas en
-averiguar qué depende de los parámetros por ahora.
+averiguar qué depende de los parámetros por ahora; los nombres de la sección 5 y
+la agrupación de la 1.1 («ok»).
 
-**Falta decidir:**
+**Hecho (2026-10-13):** la migración 126, las funciones deterministas
+`equifax-tablas-v1` y `equifax-estructura-v1` con sus pruebas (con una respuesta
+inventada en el repositorio y con las 22 reales en `scripts/probar-equifax-tablas.mjs`),
+la derivación al guardar cada consulta nueva, y el guion que rehace las ya
+guardadas (`scripts/cargar-tablas-equifax.mjs`).
 
-1. **Los nombres.** ¿Se aprueban los de la sección 5?, en particular
-   `conciliaConElResumen` y el rótulo «Score de Equifax».
-2. **Las tablas.** ¿Se aprueba la agrupación de la sección 1.1?
+**Falta:**
 
-**Después, en este orden:**
-
-1. Migración con las tablas, y las funciones `equifax-tablas` y
-   `equifax-estructura` con pruebas contra las 22 respuestas reales.
-2. Cargar las 22 consultas desde el crudo (sin costo) y comprobar con SQL que
-   la estructura cuadra con el resumen de Equifax.
-3. El ajuste al marco interpretativo: una sección nueva de comportamiento
+1. El diccionario de datos de Equifax (sección 7). Lo consigue el negocio.
+2. El ajuste al marco interpretativo: una sección nueva de comportamiento
    crediticio del sistema financiero ecuatoriano, con datos actuales e
-   históricos. Se propone aparte, cuando la estructura esté lista, como pidió el
-   negocio.
-4. Preguntarle a Equifax lo de la sección 7 (el diccionario de datos).
+   históricos. Se propone aparte, en `docs/propuesta-marco-equifax.md`, y no se
+   activa sin validarlo (versión nueva del marco, su fila en
+   `scoring_rules_versions` y autorización del gasto del modelo).
+3. El perfil del modelo (paso 4): qué subconjunto de la estructura lee el modelo.
+   Depende de 2 y de E27.
+4. Las pantallas: cuando todo el proceso detrás de Equifax esté listo
+   (decisión del negocio, 2026-10-13). Rótulo «Score de Equifax» y el vocabulario
+   de `docs/modelo-de-la-persona.md`.
+5. Las fichas de cumplimiento (`docs/cumplimiento/`): cuando Equifax termine de
+   aprobar al proveedor (decisión del negocio, 2026-10-13).
