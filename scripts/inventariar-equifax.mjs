@@ -30,7 +30,12 @@ const valor = (n) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.
 
 // Campos que identifican o ubican a la persona: no deben llegar a un modelo
 // de lenguaje (E27) y se señalan para que el diseño los deje fuera.
-const PERSONAL = /nombre|direcci|telefon|celular|coordenada|numero_documento|documento|fecha_nacimiento|correo|email|provincia|canton|parroquia|barrio|calle|latitud|longitud/i;
+const PERSONAL = /nombre|direcci|telefon|celular|coordenada|numero_(documento|operacion(?!es)|tarjeta)|documento|identificacion_titular|fecha_nacimiento|correo|email|provincia|canton|parroquia|barrio|calle|latitud|longitud/i;
+// Un valor con 6 o más dígitos seguidos es un teléfono, una tarjeta, una
+// cédula o un número de operación, aunque el campo se llame "institucion":
+// en sujeto_al_dia, las empresas de telefonía vienen con el teléfono de la
+// persona dentro del texto (visto el 2026-10-12). Esos valores no se listan.
+const TIENE_IDENTIFICADOR = /\d{6,}/;
 // Nunca se listan valores de estos, aunque tengan pocos distintos.
 const NO_LISTAR = PERSONAL;
 const MAX_DISTINTOS = 40;
@@ -88,7 +93,12 @@ const pct = (n) => Math.round((n / total) * 100);
 
 const filasCampos = [...campos].map(([ruta, c]) => {
   const personal = PERSONAL.test(ruta);
-  const enum_ = c.distintos.size > 0 && c.distintos.size <= MAX_ENUM && !NO_LISTAR.test(ruta) && !c.tipos.has("lista") && !c.tipos.has("objeto");
+  // Sólo se listan los valores de los campos de TEXTO: los numéricos son
+  // montos y saldos de personas reales, y esos no se imprimen ni se listan
+  // (el 2026-10-12 un primer inventario los mostró en pantalla).
+  const soloTexto = [...c.tipos].every((t) => t === "string" || t === "null");
+  const contieneIdentificador = [...c.distintos].some((v) => typeof v === "string" && TIENE_IDENTIFICADOR.test(v));
+  const enum_ = soloTexto && c.distintos.size > 0 && c.distintos.size <= MAX_ENUM && !NO_LISTAR.test(ruta) && !contieneIdentificador;
   return {
     Campo: ruta,
     Tipos: [...c.tipos].join(" / "),
@@ -98,7 +108,7 @@ const filasCampos = [...campos].map(([ruta, c]) => {
     "Valores (si son pocos)": enum_ ? [...c.distintos].join(" | ") : "",
     Mínimo: c.min ?? "",
     Máximo: c.max ?? "",
-    "¿Dato personal?": personal ? "sí" : "",
+    "¿Dato personal?": personal ? "sí" : contieneIdentificador ? "sí (trae identificadores dentro del texto)" : "",
   };
 }).sort((a, b) => a.Campo.localeCompare(b.Campo));
 

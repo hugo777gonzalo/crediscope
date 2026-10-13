@@ -352,6 +352,10 @@ Romper cualquiera de estas rompe algo real.
     El proveedor `equifax` nace apagado en `proveedores`.
   - `scripts/exportar-equifax.mjs`: Excel con una hoja por cada tabla que
     trae la respuesta (`scripts/probar-hojas-de-json.mjs` lo prueba).
+  - `scripts/inventariar-equifax.mjs` (campos, listas y datos personales de
+    las respuestas guardadas) y `scripts/conciliar-equifax.mjs` (qué cifras
+    cuadran entre sí): sólo leen `research/equifax/crudo/` y no vuelven a
+    consultar.
   - Desde un worktree, los guiones leen `.env.functions` y escriben en
     `research/` de la carpeta principal (`scripts/_comun/entorno.mjs`).
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
@@ -585,6 +589,20 @@ antes de tocar esa área.
     documento que trae Equifax (`identificacion_consultada`) con el
     pedido (`documentoDeLaRespuesta()`). Se cobró, así que cuenta para el
     tope y queda en la auditoría sin el documento ajeno.
+  - **La deuda sale de `reporteCrediticio`.** `interconnectResponse` trae la
+    misma deuda en otra forma y **no cuadra** (bancos: coincide en 9 de 22
+    personas; el «riesgo directo» de Equifax no coincide con ninguna suma).
+    Nunca se suman dos bloques: es la «fila fantasma» de Aval otra vez.
+    Evidencia: `scripts/conciliar-equifax.mjs`.
+  - El rol viene como `TITULAR` y como `Titular`: se normaliza antes de
+    separar al titular del codeudor o garante (15 de 22 personas tienen
+    operaciones donde no son titulares).
+  - **Un guion que imprime valores filtra por el contenido, no por el nombre
+    del campo.** El inventario (`inventariar-equifax.mjs`) no lista números ni
+    valores con 6 o más dígitos seguidos: el teléfono de la persona viene
+    dentro de `sujeto_al_dia.institucion` y el filtro por nombre no lo veía.
+  - El camino es JSON → tablas → estructura: la estructura se calcula desde
+    las tablas, no desde el JSON (`docs/propuesta-estructura-equifax.md`).
   - Los parámetros de la decisión (producto 1, monto, plazo) son de
     relleno: sólo interesa lo que el buró trae de la persona.
   - La clave y el token no salen en ningún mensaje (`sanitizar()`); el

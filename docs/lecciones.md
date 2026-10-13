@@ -198,6 +198,24 @@ está el porqué. Una lección nueva va en los dos lugares.
   Para saber si Equifax deja pasar a las Edge Functions sin gastar una
   consulta existe `probarConexion()`, que sólo pide un token: con Aval el
   bloqueo de la IP se descubrió consultando personas.
+- **Equifax entrega la misma deuda dos veces y no cuadra** (2026-10-12, 22
+  respuestas reales). El detalle de bancos de `reporteCrediticio` coincide con
+  su propio resumen en 22 de 22 personas, pero con el bloque
+  `interconnectResponse` sólo en 9 de 22; el detalle comercial coincide con su
+  resumen en 16 de 22 y el de `interconnectResponse` en 20 de 22; el «riesgo
+  directo» de Equifax no coincide con ninguna suma (0 de 22). Quien suma los dos
+  bloques duplica deuda, como la fila fantasma de Aval. Por eso la deuda sale de
+  un solo bloque, el resumen por sistema es el total de referencia y cada
+  persona queda marcada si no concilia. `scripts/conciliar-equifax.mjs` lo
+  repite sin volver a consultar. El rol, además, viene como `TITULAR` y
+  `Titular`, y 15 de 22 personas tienen operaciones donde no son titulares.
+- **Un inventario que lista valores filtra datos personales.** El primer
+  inventario de las respuestas de Equifax (2026-10-12) listaba los valores de
+  los campos con pocos valores distintos: salieron montos y, por no mirar el
+  contenido, tres teléfonos y un número de tarjeta parcial (el teléfono viene
+  dentro de `sujeto_al_dia.institucion`). Ahora sólo lista texto, y nada que
+  tenga 6 o más dígitos seguidos. El filtro es por el contenido, no por el
+  nombre del campo.
 - **El ambiente de prueba de Aval contesta por otra persona.** Medido el
   2026-09-23 con 200 consultas a `api-test`: 73 (37%) volvieron con el
   nombre de alguien que no era la cédula pedida, y 143 con el archivo
