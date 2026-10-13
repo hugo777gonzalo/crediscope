@@ -1,21 +1,43 @@
-# Security Policy
+# Política de seguridad
 
-## Supported Versions
+CrediScope califica el riesgo de crédito de personas en Ecuador y trata
+datos personales. Una falla de seguridad puede exponer datos de terceros:
+por eso se reporta en privado.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Versiones con soporte
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+CrediScope no publica versiones numeradas. Lo que corre en producción es la
+rama `main`, y sólo `main` recibe arreglos de seguridad.
 
-## Reporting a Vulnerability
+## Cómo reportar una falla
 
-Use this section to tell people how to report a vulnerability.
+- **No abras un issue ni un pedido de fusión público.** El repositorio es
+  público, y un reporte abierto muestra la falla antes de que esté
+  corregida.
+- **Reportala en privado** desde la pestaña **Security** del repositorio,
+  con el botón **Report a vulnerability**. El reporte sólo lo ven los
+  responsables del repositorio.
+- **Contá qué encontraste:** dónde está, cómo se reproduce y qué alcance
+  creés que tiene.
+- **No copies datos de personas** en el reporte (cédulas, nombres, datos de
+  buró). Si los viste, decí dónde, sin copiarlos.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+## Qué pasa después
+
+- Te contestamos por el mismo canal privado en cuanto lo revisemos.
+- Si la falla se confirma, se corrige en `main` y te avisamos. Si
+  corresponde un aviso público, sale después de la corrección.
+- Si la falla expuso datos personales, se trata como un incidente según la
+  Ley Orgánica de Protección de Datos Personales.
+
+## Alcance
+
+- **Incluye:** la aplicación (`src/`), las funciones de Supabase
+  (`supabase/functions/`), las migraciones y los guiones de este
+  repositorio.
+- **No incluye:** los servicios de terceros (Supabase, GitHub, los
+  proveedores de datos). Una falla de ellos se les reporta a ellos.
+- **No está permitido**, ni para probar:
+  - consultar a personas reales;
+  - saturar el servicio;
+  - entrar a datos que no son tuyos.

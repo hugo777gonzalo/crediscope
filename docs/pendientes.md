@@ -52,7 +52,21 @@ aceptada.
       persona: el árbol y los estados. El control corta con los nombres viejos
       y avisa de cada «cliente» suelto (0 avisos hoy).
   - Queda, por orden:
-  1. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+  1. **Confirmar las tareas de la noche de las tablas de resumen** (124 y
+     125). Corren por primera vez el 2026-10-13: `resumenes-crediscope` a las
+     00:10 y `resumenes-crediscope-dias` a las 00:20 de Ecuador. Se mira en
+     `cron.job_run_details` (no en `cron.job`):
+     `select j.jobname, d.status, d.return_message, d.start_time from cron.job_run_details d join cron.job j using (jobid) where j.jobname like 'resumenes-%' order by d.start_time desc limit 4;`
+     Las dos tienen que decir `succeeded`, y la primera devolver
+     `"fallas": 0`. Ver también en pantalla, con sesión, la bandeja,
+     Monitoreo, Fuentes de ingreso y el centro de datos: la salida se
+     comparó idéntica en la base, pero no se recorrió.
+  2. **La 122 de Equifax está aplicada en la base y no en `main`.** La
+     sesión «Conexión Equifax en producción» la aplicó desde su rama
+     (`feat/conector-equifax`) el 2026-10-12, y quedó avisada de subirla por
+     PR sin cambiarle el número ni el contenido. Mientras no esté en `main`,
+     otra base del directorio no la recibe.
+  3. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
      la persona, la solicitud como entidad, las direcciones, las referencias,
      los documentos y los créditos de la persona no existen todavía como datos:
      hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
@@ -69,7 +83,7 @@ aceptada.
      historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
      Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
      `docs/arquitectura-fabrica-de-credito.md`.
-  2. **Lo que todavía no se vio en pantalla:**
+  4. **Lo que todavía no se vio en pantalla:**
      - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
        analista): la tanda en que iban se cortó por tiempo;
      - las pestañas internas de cada módulo del Laboratorio (las pantallas
@@ -83,9 +97,9 @@ aceptada.
        contraseñas, el negocio ingresa con su cuenta en el panel
        (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
      Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
-  3. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+  5. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
      construyó sin su decisión.
-  4. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  6. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
