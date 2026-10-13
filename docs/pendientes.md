@@ -347,13 +347,17 @@ aceptada.
        127** del PR #24 (si la 127 no entró antes, renumerar: el corredor no
        vuelve a un número salteado). `ESQUEMA_MINIMO` pasa a 128: primero se
        migra, después se despliega `analyze-client` (`--funciones`);
-     - **la comparación** (14 llamadas, ~USD 0,50; el negocio no la autorizó
-       el 2026-10-13 porque octubre lleva USD 9,28 de 10). Lista en
-       `research/cedulas_validacion_marco_v29.txt` (fuera de git):
-       `node scripts/comparar-razonamiento.mjs --cedulas=research/cedulas_validacion_marco_v29.txt --configs=hoy,nuevo --hoy-de-la-base=marco-v28`.
-       "Hoy" sale de los análisis de v28 guardados, sin pagarlos; un caso
-       cuyo perfil cambió se salta solo. Esperado: dentro del ruido (±40 de
-       score, 1 de 13 recomendaciones);
+     - **la comparación** (14 llamadas, ~USD 0,56 con el marco en caché; el
+       negocio no la autorizó el 2026-10-13 porque octubre lleva USD 9,28 de
+       10). Los 14 casos, en `research/cedulas_validacion_marco_v29.txt`
+       (fuera de git): cuatro con posible negocio familiar, tres PEP, dos con
+       varios empleos, dos de Otros empleadores y uno de cada otro grupo. Lo
+       de v28 ya está en `research/comparacion-marco-v29/` (sacado de la
+       base sin pagar: los 14 mensajes difieren del de v29 sólo en las rutas
+       de E27). Falta sólo v29:
+       `node scripts/comparar-razonamiento.mjs --cedulas=research/cedulas_validacion_marco_v29.txt --configs=hoy,nuevoCache --hoy-de-la-base=marco-v28 --concurrencia=1 --salida=research/comparacion-marco-v29`.
+       Un caso cuyo perfil cambió para entonces se salta solo. Esperado:
+       dentro del ruido (±40 de score, 1 de 13 recomendaciones);
      - `auditar-seguridad.mjs` («El último mensaje al modelo...») en OK, que
        pide un análisis con v29;
      - **los atributos protegidos**: bloque B del cuestionario

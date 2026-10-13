@@ -97,6 +97,12 @@ const CONFIGURACIONES = {
   // "nuevo" y "s55" se corren con el marco nuevo en el código: el marco de
   // cada llamada queda guardado en su archivo.
   nuevo: { etiqueta: "Marco nuevo, mismo modelo", config: CONFIG_LLM },
+  // Lo mismo con el marco en caché: el modelo lee exactamente lo mismo (la
+  // huella no cuenta cache_control) y, de a una (--concurrencia=1), el
+  // marco se paga una vez y después a la décima parte: 14 llamadas de
+  // marco-v29, ~USD 0,56 contra ~0,85. Sirve para validar, no para medir el
+  // costo de producción, que va sin caché.
+  nuevoCache: { etiqueta: "Marco nuevo, marco en caché", config: { ...CONFIG_LLM, cachearMarco: true } },
   s55: { etiqueta: "Marco nuevo, Sonnet 5.5", config: { ...CONFIG_LLM, modelo: "claude-sonnet-5-5" } },
   // El marco armado según el cliente (marco-por-cliente.ts), contra "hoy"
   // con el marco entero: si coincide dentro del ruido, se puede adoptar.
@@ -341,7 +347,7 @@ const resumen = orden.filter((c) => detalle.some((d) => d.clave === c)).map((cla
 });
 
 // Por caso: una fila por cliente, las configuraciones lado a lado.
-const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", s55: "Sonnet 5.5", porCliente: "Por cliente" };
+const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", nuevoCache: "Marco nuevo (caché)", s55: "Sonnet 5.5", porCliente: "Por cliente" };
 const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
   const fila = { "Cédula": cedula, "Nombre": Object.values(cs)[0]?.nombre ?? "", "Bloqueado por política": Object.values(cs)[0]?.bloqueado ? "Sí" : "No" };
   for (const clave of orden) {
@@ -357,7 +363,7 @@ const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
     fila[`${n} · Segundos`] = red(d.f.duracionMs / 1000, 1);
     fila[`${n} · Tokens razonamiento`] = d.razonamiento;
   }
-  for (const clave of ["sin", "medio", "hoy2", "nuevo", "s55", "porCliente"]) {
+  for (const clave of ["sin", "medio", "hoy2", "nuevo", "nuevoCache", "s55", "porCliente"]) {
     const d = cs[clave], h = cs.hoy;
     if (!d || !h) continue;
     const ambos = d.estado === "Completo" && h.estado === "Completo";
