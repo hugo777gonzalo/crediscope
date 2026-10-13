@@ -1,5 +1,7 @@
-// El marco armado según el cliente (marco-v29, en preparación desde el
-// 2026-10-03; apagado hasta validarlo: CONFIG_LLM.marcoPorCliente).
+// El marco armado según el cliente (en preparación desde el 2026-10-03;
+// apagado hasta validarlo: CONFIG_LLM.marcoPorCliente). Encenderlo es una
+// versión nueva del marco con el número libre de ese día: la v29, que
+// estaba pensada para esto, la tomó E27 el 2026-10-13.
 //
 // Por qué: con Sonnet 5.5 el razonamiento bajó a ~1.400 tokens y el marco
 // (~12.000) pasó a ser el 36% del costo de cada análisis. Muchas de sus

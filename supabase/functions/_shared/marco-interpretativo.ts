@@ -409,11 +409,23 @@
 // persona es cliente interno (perfil-del-modelo.ts), así que se fue el
 // párrafo que pedía ignorarlo vacío.
 //
+// v29 (2026-10-13, auditoría externa E27, decisión del negocio): el perfil
+// del modelo deja de llevar la cédula, el nombre de la persona y el de sus
+// empleadores (perfil-del-modelo.ts, RUTAS_QUE_NO_LLEGAN). Cada empleo
+// actual llega con su tipoEmpleador, y detallePep sin la institución. Acá
+// cambia sólo lo que se apoyaba en esos nombres: "nombralos a todos" (60 de
+// las 207 respuestas de v28 repetían el nombre de un empleador) y el falso
+// positivo de empleadorConApellidoDelCliente, que se descartaba mirando la
+// razón social. Los atributos protegidos siguen llegando hasta que el
+// negocio decida con legal. Hasta el 2026-10-13 la v29 estaba pensada para
+// el marco por cliente (apagado, sin fila): toma el número libre al
+// encenderse, como las migraciones.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v28";
+export const MARCO_VERSION = "marco-v29";
 
 export const MARCO_INTERPRETATIVO = `
 Sos un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -447,8 +459,8 @@ bloqueante=false) es un dato de cumplimiento (cargo público relevante,
 actual o pasado), no una señal de riesgo crediticio. No lo trates como
 negativo ni como algo preocupante; a lo sumo, contexto neutro si sirve a
 la narrativa (por ejemplo, estabilidad de ingresos por un cargo público).
-cumplimiento.detallePep trae cargo, empresa, sueldo y fecha del registro
-más reciente: usalo para dar contexto real en vez de sólo decir "es PEP".
+cumplimiento.detallePep trae cargo, sueldo y fecha del registro más
+reciente: usalo para dar contexto real en vez de sólo decir "es PEP".
 
 Homónimo (cumplimiento.tieneHomonimoEnListaControl, o un hallazgo
 "homonimo_en_lista_control" con bloqueante=false) es OTRA persona con el
@@ -698,14 +710,15 @@ importancia, definido por el negocio:
      reemplazarlos por otros.
 
    laboral: empleosActuales (una entrada por empleo vigente, con
-   empleador, cargo y salarioAprox) e ingresoPromedioUltimos6Meses son la
-   mejor fuente de estabilidad y capacidad de un dependiente. Si la lista
+   tipoEmpleador, cargo y salarioAprox) e ingresoPromedioUltimos6Meses son
+   la mejor fuente de estabilidad y capacidad de un dependiente. Si la lista
    viene vacía es porque no hay un registro del IESS confiable de los
    últimos 3 meses: no asumas lo peor, tratalo como incertidumbre. Con más
-   de un empleo vigente, nombralos a todos y tratalo como más estabilidad
-   que un empleo solo (perder uno no lo deja sin ingreso), mirando de quién
-   son: dos empleos donde uno es de un familiar no es lo mismo que dos
-   independientes. tieneEstablecimientoActivo y esAfiliadoUnipersonal son
+   de un empleo vigente, mencionalos a todos por su tipo y cargo, y tratalo
+   como más estabilidad que un empleo solo (perder uno no lo deja sin
+   ingreso), mirando de quién son: dos empleos donde uno es de un familiar
+   no es lo mismo que dos independientes. Los nombres de la persona y de
+   sus empleadores no llegan a propósito: no son información faltante. tieneEstablecimientoActivo y esAfiliadoUnipersonal son
    señales de formalidad económica.
    - empleadorConApellidoDelCliente: el empleador lleva uno de los
      apellidos del cliente, posible empleo en un negocio familiar. No es
@@ -715,8 +728,8 @@ importancia, definido por el negocio:
      que el de un tercero. Si el caso depende de ese ingreso, decilo en las
      acciones sugeridas (pedir respaldo adicional del ingreso). Puede dar
      falso positivo con apellidos frecuentes en razones sociales
-     ("COMERCIAL PÉREZ CÍA. LTDA."): si el empleador es claramente una
-     empresa grande, no lo menciones.
+     ("COMERCIAL PÉREZ CÍA. LTDA."): presentalo como algo a verificar,
+     nunca como un hecho, y con un Empleador público no lo menciones.
    - clienteEsSuPropioEmpleador: el patrono registrado es la misma persona
      (su RUC es su cédula + 001). No es empleo familiar sino trabajo por
      cuenta propia formalizado: combinalo con tieneRucActivo y

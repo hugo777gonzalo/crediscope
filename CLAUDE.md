@@ -220,7 +220,8 @@ Romper cualquiera de estas rompe algo real.
   - La huella no cuenta `cache_control` ni `max_tokens`.
   - `puntuarPedido()` llama al modelo con un pedido ya armado.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
-  de temas que el perfil no trae (v29). Corta el marco vigente por marcas,
+  de temas que el perfil no trae (toma el número de versión libre al
+  encenderse; la v29 fue E27). Corta el marco vigente por marcas,
   sin copiarlo; está APAGADO (`CONFIG_LLM.marcoPorCliente`) hasta validarlo.
 - `fila-del-analisis.ts` → `filaDelAnalisis()` — la fila de
   `analysis_results`, la única para `analyze-client` y el lote.
@@ -686,10 +687,20 @@ antes de tocar esa área.
 - **El perfil del modelo todavía lleva datos personales que no necesita**
   (E27, abierto; el detalle está en `auditoria/` y en
   `docs/cumplimiento/ficha-del-modelo.md`, fuera de git).
+  - marco-v29 saca la cédula, el nombre y los empleadores (cada empleo llega
+    con su tipo). Las listas viven en `perfil-del-modelo.ts`:
+    `IDENTIFICADORES_QUE_NO_LLEGAN` (fijos) y `ATRIBUTOS_PROTEGIDOS` (sexo,
+    estado civil, origen, familia, edad: `true` = llega, hasta que el negocio
+    decida con legal; pasar uno a `false` es versión nueva del marco).
+  - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
+    nombre de campo no ve una cédula escrita en el cargo.
   - Siete documentos afirmaban una minimización que no existe: no afirmarla
-    en ningún lado hasta que se despliegue la versión que la corrige.
+    en ningún lado hasta que v29 esté desplegada **y** el control lo
+    confirme.
   - Una afirmación sobre lo que lee el modelo se mide en
-    `analysis_results.mensaje_al_modelo`, no en el código.
+    `analysis_results.mensaje_al_modelo`, no en el código: lo mide
+    `auditar-seguridad.mjs` (el último mensaje) y, sin llamar al modelo,
+    `scripts/validar-perfil-del-modelo.mjs` (regla 13, todos los perfiles).
 - Escribe Sonnet 5.5 desde marco-v28 (sin cascada con Haiku desde v24).
   El mismo perfil analizado dos veces mueve el score ~40 puntos y cambia 1
   de cada 13 recomendaciones: una diferencia menor que eso no se atribuye

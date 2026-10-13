@@ -38,6 +38,9 @@
 // (demandas.ts) y los tipos de cobro, legibles: ni artículos del COIP ni
 // tildes rotas.
 //
+// Desde marco-v29 no llegan la cédula, el nombre ni el de ningún empleador
+// (RUTAS_QUE_NO_LLEGAN, más abajo).
+//
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
 // scoring_rules_versions.
@@ -48,6 +51,126 @@ import { ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, quienDeclara } from "./nombres-ingr
 import { tipoDeDemandaLegible } from "./demandas.ts";
 
 type AnyRecord = Record<string, unknown>;
+
+// ---- Lo que no llega al modelo (desde marco-v29) ----
+//
+// Hasta marco-v28 este archivo copiaba el perfil estandarizado y le sacaba
+// grupos y campos puntuales, pero nunca la identidad directa: los 207
+// análisis de v28 llevaron la cédula y el nombre completo, y 137 el nombre
+// de cada empleador, por dos lados (los aportes y los empleos actuales).
+// Lo encontró la auditoría externa del 2026-10-09 (E27), con siete
+// documentos que afirmaban lo contrario. Calificar no necesita nada de eso.
+// Y el nombre del empleador es texto de un tercero -- una puerta para
+// meterle instrucciones al modelo --, que en el empleo doméstico es el
+// nombre de otra persona: en 60 de los 207 la respuesta lo repetía.
+//
+// Rutas del mensaje; "[]" es cada elemento de una lista. Se BORRAN, no van
+// en null: el modelo no tiene nada que hacer con saber que existen. La misma
+// lista la verifica scripts/auditar-seguridad.mjs sobre el último mensaje
+// guardado (analysis_results.mensaje_al_modelo).
+export const IDENTIFICADORES_QUE_NO_LLEGAN = [
+  "cedula",
+  "identidad.nombreCompleto",
+  // En su lugar, tipoEmpleador (tipoDeCadaEmpleo).
+  "laboral.empleosActuales[].empleador",
+  // La forma de los perfiles anteriores a marco-v20.
+  "laboral.empleoActual.empleador",
+  // El tipo ya va en tipo y declaradoPor ("empleo doméstico", "Empleador
+  // público").
+  "fuentesIngreso.aportes[].empleador",
+  // La institución del cargo público: con el cargo, dice quién es.
+  "cumplimiento.detallePep.empresa",
+  // Quien estudió y trabaja en la misma universidad la tiene de empleador:
+  // así llegaba el nombre en 13 de los 2.813 perfiles (2026-10-13). El marco
+  // no la usa; el nivel del título sigue.
+  "identidad.institucionTituloMasAlto",
+];
+
+// Un número de 10 dígitos o más dentro de un texto se tapa, venga en el
+// campo que venga: el cargo que escribe el empleador trajo uno en 1 de los
+// 2.813 perfiles (2026-10-13), y una lista de campos no lo ve. Los números
+// que son montos no se tocan.
+const NUMERO_LARGO = /\d{10,}/g;
+function taparNumerosLargos(nodo: unknown): unknown {
+  if (typeof nodo === "string") return nodo.replace(NUMERO_LARGO, "[número omitido]");
+  if (Array.isArray(nodo)) return nodo.map(taparNumerosLargos);
+  if (nodo && typeof nodo === "object") {
+    return Object.fromEntries(Object.entries(nodo).map(([k, v]) => [k, taparNumerosLargos(v)]));
+  }
+  return nodo;
+}
+
+// Los atributos protegidos: sexo, estado civil, origen, familia y edad. El
+// marco prohíbe usarlos para el score desde v11, pero llegan. Si se sacan
+// lo decide el negocio con legal (bloque B del cuestionario del 2026-10-13;
+// sin contestar al cerrar marco-v29): true = llega. Pasar uno a false lo
+// saca del mensaje y lo suma al control de seguridad. Cambia lo que lee el
+// modelo, así que es una versión nueva del marco con su fila en
+// scoring_rules_versions.
+export const ATRIBUTOS_PROTEGIDOS: Record<string, boolean> = {
+  "identidad.genero": true,
+  "identidad.estadoCivil": true,
+  "identidad.tieneConyuge": true,
+  "identidad.edadConyuge": true,
+  "identidad.añosCasado": true,
+  "identidad.edad": true,
+  "identidad.provinciaNacimiento": true,
+  "identidad.cantonNacimiento": true,
+  "identidad.paisOrigen": true,
+  "identidad.paisOrigenIso3": true,
+  "identidad.paisOrigenIso": true,
+  "identidad.esExtranjero": true,
+  "familia.numeroHijos": true,
+  "familia.tieneHijos": true,
+  "familia.tieneHijoMenorEdad": true,
+  "familia.padresFallecidos": true,
+};
+
+export const RUTAS_QUE_NO_LLEGAN: string[] = [
+  ...IDENTIFICADORES_QUE_NO_LLEGAN,
+  ...Object.entries(ATRIBUTOS_PROTEGIDOS).filter(([, llega]) => !llega).map(([ruta]) => ruta),
+];
+
+function quitarRuta(nodo: unknown, partes: string[]): void {
+  if (!nodo || typeof nodo !== "object" || partes.length === 0) return;
+  const [primera, ...resto] = partes;
+  const esLista = primera.endsWith("[]");
+  const clave = esLista ? primera.slice(0, -2) : primera;
+  const o = nodo as AnyRecord;
+  if (!(clave in o)) return;
+  if (resto.length === 0) {
+    delete o[clave];
+    return;
+  }
+  for (const hijo of esLista ? (Array.isArray(o[clave]) ? (o[clave] as unknown[]) : []) : [o[clave]]) quitarRuta(hijo, resto);
+}
+
+const nombreNormalizado = (v: unknown): string => String(v ?? "").trim().toUpperCase();
+
+// El tipo de cada empleo actual, en lugar del nombre de su empleador: el
+// mismo que lleva su aporte en fuentesIngreso (quienDeclara), así el modelo
+// y la pestaña Fuentes de ingreso dicen lo mismo. El empleo y el aporte
+// salen del mismo registro del IESS y se cruzan por el nombre ANTES de
+// borrarlo: en los análisis de marco-v28, 150 de 152 empleos tenían su
+// aporte. Los que no, llegan con tipoEmpleador null.
+function tipoDeCadaEmpleo(perfil: AnyRecord, laboral: AnyRecord): void {
+  const fuentes = (Array.isArray((perfil.fuentesIngreso as AnyRecord | undefined)?.fuentes)
+    ? (perfil.fuentesIngreso as AnyRecord).fuentes
+    : []) as AnyRecord[];
+  const tipoPorEmpleador = new Map<string, string>();
+  for (const f of fuentes) {
+    if (f.evidencia === "indirecta" || !f.empleador) continue;
+    const nombre = nombreNormalizado(f.empleador);
+    if (!tipoPorEmpleador.has(nombre)) tipoPorEmpleador.set(nombre, quienDeclara(f, perfil));
+  }
+  const conTipo = (e: unknown) => {
+    if (!e || typeof e !== "object" || !("empleador" in e)) return e;
+    const { empleador, ...resto } = e as AnyRecord;
+    return { tipoEmpleador: tipoPorEmpleador.get(nombreNormalizado(empleador)) ?? null, ...resto };
+  };
+  if (Array.isArray(laboral.empleosActuales)) laboral.empleosActuales = laboral.empleosActuales.map(conTipo);
+  if (laboral.empleoActual && typeof laboral.empleoActual === "object") laboral.empleoActual = conTipo(laboral.empleoActual);
+}
 
 // ---- Disponibilidad por tema (desde marco-v25) ----
 //
@@ -174,7 +297,6 @@ export function ingresosDelPerfilDelModelo(perfil: AnyRecord | null | undefined)
       .map((x) => ({
         tipo: x.tipo ?? null,
         declaradoPor: quienDeclara(x, perfil),
-        empleador: x.empleador ?? null,
         montoMensual: x.montoMensualReportado ?? null,
       })),
     otrasFuentesSinMonto: fuentes
@@ -323,10 +445,13 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
   }
   // Los bloques nuevos también se pueden apagar campo por campo.
   ocultar(copia);
+  const laboral = copia.laboral as AnyRecord | null | undefined;
+  if (laboral && typeof laboral === "object") tipoDeCadaEmpleo(perfil, laboral);
+  for (const ruta of RUTAS_QUE_NO_LLEGAN) quitarRuta(copia, ruta.split("."));
   // La disponibilidad va PRIMERO (el modelo tiene que leerla antes que los
   // datos) y reemplaza a metaConsulta, que nombraba fuentes.
   delete copia.metaConsulta;
-  return { disponibilidad: disponibilidadPorTema(perfil), ...copia };
+  return taparNumerosLargos({ disponibilidad: disponibilidadPorTema(perfil), ...copia }) as AnyRecord;
 }
 
 // El mensaje completo que recibe el modelo. Lo usan el análisis

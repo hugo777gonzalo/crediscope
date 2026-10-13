@@ -25,6 +25,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const leerEnv = (archivo) =>
   Object.fromEntries(
@@ -205,6 +206,60 @@ if (filas.length > 0 || resultados.length === 0) {
     } finally {
       rmSync(carpetaC, { recursive: true, force: true });
     }
+  }
+}
+
+// ---------------------------------------------------------------
+// 1c. Lo que leyó el modelo en el último análisis
+// ---------------------------------------------------------------
+// Hasta marco-v28 el modelo recibía la cédula, el nombre y los empleadores
+// (auditoría externa, E27), y la auditoría de seguridad lo había dado por
+// verificado leyendo el código. Se mide en lo que se le mandó de verdad: el
+// último analysis_results.mensaje_al_modelo. La base devuelve sólo las rutas
+// de las claves y cuáles traen un número de 10 o más dígitos (una cédula o un
+// RUC con otro nombre de campo), nunca los valores. La lista prohibida es la
+// de perfil-del-modelo.ts: una sola.
+{
+  const { RUTAS_QUE_NO_LLEGAN } = await import(pathToFileURL(path.resolve("supabase/functions/_shared/perfil-del-modelo.ts")).href);
+  const control = "El último mensaje al modelo no lleva cédula, nombres ni atributos retirados";
+  const carpetaM = mkdtempSync(path.join(tmpdir(), "auditar-"));
+  const archivoM = path.join(carpetaM, "mensaje.sql");
+  writeFileSync(archivoM, `
+with recursive ultimo as (
+  select rules_version, created_at, mensaje_al_modelo->'perfilDelModelo' as j from analysis_results
+  where mensaje_al_modelo is not null order by created_at desc limit 1
+), caminar(ruta, v) as (
+  select '', j from ultimo
+  union all
+  select c.ruta || case when jsonb_typeof(c.v) = 'array' then '[]' else '.' || k.key end, k.value
+  from caminar c cross join lateral (
+    select e.key, e.value from jsonb_each(case when jsonb_typeof(c.v) = 'object' then c.v else '{}'::jsonb end) e
+    union all
+    select null, a.value from jsonb_array_elements(case when jsonb_typeof(c.v) = 'array' then c.v else '[]'::jsonb end) a
+  ) k
+)
+select distinct 'ruta' as k, substr(ruta, 2) as v from caminar where ruta <> ''
+union all
+select distinct 'digitos', substr(ruta, 2) from caminar where jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '[0-9]{10}'
+union all
+select 'version', rules_version || ' del ' || to_char(created_at at time zone 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') from ultimo;`);
+  try {
+    const salida = execSync(`npx --yes supabase@latest db query --linked --file "${archivoM}" -o json`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const filasM = JSON.parse(salida.slice(salida.indexOf("{"))).rows ?? [];
+    const de = (k) => filasM.filter((f) => f.k === k).map((f) => f.v);
+    const rutas = new Set(de("ruta"));
+    const prohibidas = RUTAS_QUE_NO_LLEGAN.filter((r) => rutas.has(r));
+    const conDigitos = de("digitos");
+    const version = de("version")[0] ?? "ningún análisis con mensaje guardado";
+    const problemas = [...prohibidas, ...conDigitos.map((r) => `${r} (10+ dígitos)`)];
+    anotar("Modelo", control, rutas.size > 0 && problemas.length === 0, `${version}${problemas.length ? `: ${problemas.slice(0, 6).join(", ")}${problemas.length > 6 ? ` (+${problemas.length - 6})` : ""}` : ""}`);
+  } catch (e) {
+    anotar("Modelo", control, false, `no se pudo consultar: ${String(e.message).split("\n")[0]}`);
+  } finally {
+    rmSync(carpetaM, { recursive: true, force: true });
   }
 }
 

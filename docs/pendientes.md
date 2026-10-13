@@ -61,8 +61,8 @@ aceptada.
        2026-10-13: la propuesta está escrita (`docs/propuesta-marco-equifax.md`:
        el bloque del perfil del modelo, el borrador de la sección, lo medido con
        las 22 y lo que decide el negocio). **No cambia nada de lo que lee el
-       modelo**: activarla es una versión nueva (`marco-v30`; la v29 es el marco
-       por cliente, apagado), con su fila en `scoring_rules_versions` y la
+       modelo**: activarla es una versión nueva (el número libre de ese día: la
+       v29 la tomó E27 el 2026-10-13), con su fila en `scoring_rules_versions` y la
        autorización explícita del gasto (unos USD 1 en lote para comparar las 22;
        **octubre lleva USD 9,28 de 10**: se corre en noviembre o el negocio sube
        antes el tope del proveedor de IA).
@@ -284,7 +284,7 @@ aceptada.
      y cambia 1 de 13 recomendaciones. c-64955685 (ingreso "Por
      confirmar") pasó de aprobar a revisar con v28: el negocio confirmó
      que es lo correcto.
-   - **Marco por cliente (v29), hecho y apagado**: ver la sección 3.
+   - **Marco por cliente, hecho y apagado**: ver la sección 3.
      Encenderlo necesita la comparación `--configs=hoy,porCliente` (~USD 2,
      con autorización).
    - **Lote de análisis reales: hecho el 2026-10-07** con los 200 candidatos
@@ -336,12 +336,38 @@ aceptada.
       bandeja sin sintéticas).
   - `auditar-seguridad.mjs`: 50 controles en OK.
   - Queda, por orden:
-  1. **E27, urgente: lo que lee el modelo.** Se corrige con una versión nueva
-     del marco, en otra sesión (decisión del negocio).
-     - Detalle y opciones en el informe.
-     - Los atributos personales se deciden con legal.
-     - **La ficha de seguridad para clientes no se comparte** hasta
-       desplegar el cambio y corregirla.
+  1. **E27, urgente: lo que lee el modelo.** marco-v29 hecha el 2026-10-13
+     (PR aparte, sin desplegar): sin cédula, sin nombre, sin empleadores
+     (cada empleo con su tipo), sin la institución de una PEP ni la del
+     título (en 13 perfiles era el empleador), y los números de 10+ dígitos
+     tapados en cualquier texto. Validada sin el modelo sobre los 2.813
+     perfiles (`validar-perfil-del-modelo.mjs`, regla 13: 0 fallas). Falta,
+     por orden:
+     - fusionar el PR y aplicar la **128** con el corredor, **después de la
+       127** del PR #24 (si la 127 no entró antes, renumerar: el corredor no
+       vuelve a un número salteado). `ESQUEMA_MINIMO` pasa a 128: primero se
+       migra, después se despliega `analyze-client` (`--funciones`);
+     - **la comparación** (14 llamadas, ~USD 0,50; el negocio no la autorizó
+       el 2026-10-13 porque octubre lleva USD 9,28 de 10). Lista en
+       `research/cedulas_validacion_marco_v29.txt` (fuera de git):
+       `node scripts/comparar-razonamiento.mjs --cedulas=research/cedulas_validacion_marco_v29.txt --configs=hoy,nuevo --hoy-de-la-base=marco-v28`.
+       "Hoy" sale de los análisis de v28 guardados, sin pagarlos; un caso
+       cuyo perfil cambió se salta solo. Esperado: dentro del ruido (±40 de
+       score, 1 de 13 recomendaciones);
+     - `auditar-seguridad.mjs` («El último mensaje al modelo...») en OK, que
+       pide un análisis con v29;
+     - **los atributos protegidos**: bloque B del cuestionario
+       (`research/decisiones/`), sin contestar. Se sacan pasando cada uno a
+       `false` en `ATRIBUTOS_PROTEGIDOS` (`perfil-del-modelo.ts`): versión
+       nueva del marco, su fila y su comparación;
+     - recién con v29 desplegada y el control en OK: corregir los siete
+       documentos (`docs/cumplimiento/` y el informe de la auditoría de
+       seguridad) y **la ficha de seguridad para clientes, que no se comparte
+       hasta entonces**. Decir qué atributos siguen llegando.
+     - Visto al medir, sin tocar: el avalúo y el valor de colateral de los
+       vehículos y lo adeudado en tránsito llegan con decimales de más
+       (56 perfiles); el modelo copia los números tal cual. El redondeo de
+       `armarPerfilDelModelo()` cubre sólo tres grupos.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
      `reutiliza_analisis_id` y `duracion_llm_ms` nulo. Revisar también que
@@ -513,7 +539,8 @@ aceptada.
   secciones que van siempre (cómo escribir, recomendación, acciones:
   ~3.300 tokens) cambia lo que el modelo lee en todos los casos: necesita
   comparación y autorización.
-- **Marco por cliente (v29), hecho y apagado** (2026-10-03,
+- **Marco por cliente, hecho y apagado** (2026-10-03; iba a ser la v29, que
+  tomó E27: lleva el número libre al encenderse;
   `_shared/marco-por-cliente.ts`). Omite las secciones de temas que el
   perfil del modelo no trae (PEP, pensión, demandas civiles, garantías,
   jubilados, etc.); con todo aplicable da el marco vigente byte a byte.
@@ -523,7 +550,8 @@ aceptada.
   - **validar** con `node scripts/comparar-razonamiento.mjs --configs=hoy,porCliente`
     (14 casos, ~USD 2, **sólo con autorización**): tiene que quedar dentro
     del ruido (±40 de score, 1 de 13 recomendaciones);
-  - fila de marco-v29 en `scoring_rules_versions` y `MARCO_VERSION`;
+  - una versión nueva del marco (el número libre) con su fila en
+    `scoring_rules_versions` y `MARCO_VERSION`;
   - guardar qué secciones se omitieron en cada análisis (columna nueva);
   - falta la segunda mitad: no mandar los grupos vacíos del perfil del
     modelo cuando el tema se consultó (~3-4% más), con una línea en el
