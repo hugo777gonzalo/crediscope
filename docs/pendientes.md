@@ -22,33 +22,50 @@ aceptada.
 
 ## 1. Para retomar primero
 
-- **Equifax (2026-10-12). Cada consulta se cobra y su proveedor no pone
-  tope: nada de lo de abajo se corre sin autorización explícita del
-  negocio.** Qué hay: cliente, persistencia, función `consultar-equifax`,
-  tabla `consultas_equifax` (122, aplicada), guion local que simula por
-  defecto y exportación a Excel (ver "Dónde está cada cosa" de CLAUDE.md).
-  Qué falta:
-  - La primera consulta real a una persona autorizada, para ver la
-    respuesta y diseñar lo que sigue. Hasta entonces la forma de la
-    respuesta es desconocida: no hay perfil ni estructura estandarizada
-    de Equifax, y `perfil` y `estructura` llegan en migraciones propias.
-  - El proveedor `equifax` está apagado en `proveedores`: se enciende a
-    propósito antes de consultar.
-  - Probar si Equifax deja pasar a las Edge Functions (con Aval el WAF
-    rechazó su IP): después del despliegue, la acción `probar_conexion`
-    de la función pide sólo un token y no cuesta. Si no deja pasar, se
-    sigue con el guion local, como Aval.
-  - Subir las claves `EQUIFAX_*` como secrets de Supabase (desde
-    `.env.functions`, sin que pasen por un chat) y desplegar con
-    `--funciones` desde una copia limpia de `origin/main`.
-  - **Rotar las credenciales de Equifax al terminar el desarrollo:** se
-    pegaron en un chat.
-  - La prueba con 20 identificaciones (autorizarla aparte, con su costo)
-    y la sección de Equifax en el marco, que es del negocio decidir.
-  - Sin pantallas todavía (decisión del negocio): al hacerlas, rótulo
-    "Score de Equifax" y el vocabulario de `docs/modelo-de-la-persona.md`.
-  - Sumar a Equifax a las fichas de cumplimiento (`docs/cumplimiento/`,
-    fuera de git): encargado y destinatario de datos de las personas.
+- **Equifax (2026-10-12): en producción, con 22 consultas hechas. Cada
+  consulta se cobra y su proveedor no pone tope: nada que consulte se corre
+  sin autorización explícita del negocio.**
+  - Qué hay: el conector desplegado (7 de 7 funciones, commit `4cbebdd`), la
+    tabla `consultas_equifax` (122) con 22 filas (2 de prueba y 20 de un lote:
+    todas HTTP 200 y de la persona pedida), el guion local que simula por
+    defecto, la exportación a Excel, el inventario y la conciliación de las
+    respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El consumo del
+    2026-10-12 fue de 22 de 30; el tope diario es `EQUIFAX_TOPE_DIARIO`.
+  - Decidido por el negocio: el camino es JSON → tablas → estructura
+    estandarizada (contadores, sumas, booleanos y listas se calculan desde las
+    tablas), `reporteCrediticio` es la fuente de la deuda, y qué parámetros de
+    la decisión mueven `interconnectResponse` no importa por ahora. La
+    propuesta es `docs/propuesta-estructura-equifax.md`.
+  - Las 22 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
+    Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas
+    se cargan desde el crudo, que no cuesta.
+  - Qué falta, por orden:
+    1. **Aprobar los nombres** (sección 5 de la propuesta) **y las tablas**
+       (1.1). Después: la migración con las tablas `equifax_*` (el número se
+       toma al aplicarla), las funciones `equifax-tablas` y `equifax-estructura`
+       con pruebas contra las 22 respuestas y la carga de las 22 desde el
+       crudo. Se verifica con SQL que la estructura cuadra con el resumen de
+       Equifax por sistema (hoy cuadran 22 de 22 en bancos, 21 de 22 en
+       cooperativas y 16 de 22 en comercial).
+    2. **Probar `probar_conexion` con una sesión de admin** (el negocio dijo
+       que sí; Claude no escribe contraseñas): saber si Equifax deja pasar a
+       las Edge Functions, cuyo egreso con Aval fue rechazado por el WAF. Hoy
+       se consulta desde la máquina con IP de Ecuador. Verificación:
+       `node scripts/consultar-equifax-local.mjs --probar-conexion` prueba esta
+       máquina; la de las funciones es la acción de la función.
+    3. **El ajuste al marco interpretativo**: una sección de comportamiento
+       crediticio del sistema financiero ecuatoriano con datos actuales e
+       históricos. Se propone cuando la estructura esté lista.
+    4. **Pedirle a Equifax el diccionario de datos** (sección 7 de la
+       propuesta). Sin él quedan sin explicar `SFNR`, la composición de la
+       deuda directa e indirecta y el corte del sector comercial.
+    5. **Rotar las credenciales de Equifax:** se pegaron en un chat. El
+       negocio dijo el 2026-10-12 que por el momento no, y pidió borrar los
+       datos del chat; el riesgo sigue mientras no se roten.
+    6. Sin pantallas todavía (decisión del negocio): al hacerlas, rótulo
+       "Score de Equifax" y el vocabulario de `docs/modelo-de-la-persona.md`.
+    7. Sumar a Equifax a las fichas de cumplimiento (`docs/cumplimiento/`,
+       fuera de git): encargado y destinatario de datos de las personas.
 
 - **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
   El informe es `docs/revision-ux.md`; el vocabulario del producto,
@@ -89,12 +106,7 @@ aceptada.
      `"fallas": 0`. Ver también en pantalla, con sesión, la bandeja,
      Monitoreo, Fuentes de ingreso y el centro de datos: la salida se
      comparó idéntica en la base, pero no se recorrió.
-  2. **La 122 de Equifax está aplicada en la base y no en `main`.** La
-     sesión «Conexión Equifax en producción» la aplicó desde su rama
-     (`feat/conector-equifax`) el 2026-10-12, y quedó avisada de subirla por
-     PR sin cambiarle el número ni el contenido. Mientras no esté en `main`,
-     otra base del directorio no la recibe.
-  3. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
+  2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
      la persona, la solicitud como entidad, las direcciones, las referencias,
      los documentos y los créditos de la persona no existen todavía como datos:
      hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
@@ -111,7 +123,7 @@ aceptada.
      historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
      Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
      `docs/arquitectura-fabrica-de-credito.md`.
-  4. **Lo que todavía no se vio en pantalla:**
+  3. **Lo que todavía no se vio en pantalla:**
      - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
        analista): la tanda en que iban se cortó por tiempo;
      - las pestañas internas de cada módulo del Laboratorio (las pantallas
@@ -125,9 +137,9 @@ aceptada.
        contraseñas, el negocio ingresa con su cuenta en el panel
        (`npm run dev -- --port 5184`; en el panel, `crediscope-dev`).
      Lo que se vea bien se borra de la sección 1 de `docs/revision-ux.md`.
-  5. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
+  4. **Decisiones de diseño y producto** (sección 3 de este archivo): nada se
      construyó sin su decisión.
-  6. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
+  5. **Sin esperar decisión:** correr la habilidad al tocar una pantalla y
      migrar los estilos en línea a clases a medida que se toque cada una.
 
 0. **Ver las pantallas del Laboratorio con sesión de admin: lo está
