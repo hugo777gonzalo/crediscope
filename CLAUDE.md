@@ -338,6 +338,22 @@ Romper cualquiera de estas rompe algo real.
     porque describe debilidades.
   - **La v1 no se publica antes de corregir E27.** Lo que falta está en
     `docs/pendientes.md`.
+- **Equifax** (buró; en producción desde el 2026-10-12; credenciales y
+  datos de la cuenta en `.env.functions`, claves `EQUIFAX_*`):
+  - `_shared/equifax-client.ts`: el token (en memoria, nunca guardado) y
+    la consulta, que se cobra.
+  - `_shared/equifax-persistencia.ts`: el recorrido completo (proveedor,
+    reutilizar, tope diario, consultar, guardar, auditar). Lo usan la
+    función `consultar-equifax` y `scripts/consultar-equifax-local.mjs`:
+    una sola implementación.
+  - `_shared/vigencia-mensual.ts`: una consulta vale hasta el 17 de cada
+    mes; la comparte Aval (`aval-vigencia.ts`).
+  - Tabla `consultas_equifax` (122): `respuesta_cruda` entera e inmutable.
+    El proveedor `equifax` nace apagado en `proveedores`.
+  - `scripts/exportar-equifax.mjs`: Excel con una hoja por cada tabla que
+    trae la respuesta (`scripts/probar-hojas-de-json.mjs` lo prueba).
+  - Desde un worktree, los guiones leen `.env.functions` y escriben en
+    `research/` de la carpeta principal (`scripts/_comun/entorno.mjs`).
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
   - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`
@@ -551,6 +567,25 @@ antes de tocar esa área.
   `prueba`) no sirve para calificar a nadie.
 - Aval tarda ~0,9 s por consulta contra ~41 s de Novadata: las cuentas de
   capacidad de Novadata no aplican.
+- **Cada consulta a Equifax se cobra y su proveedor no pone tope**
+  (negocio, 2026-10-12). Por eso:
+  - Lo que contestó se guarda entero y se reutiliza hasta el 17 de cada
+    mes; `forzar` (volver a pagar) es sólo de admin.
+  - El tope diario es nuestro: `EQUIFAX_TOPE_DIARIO` (30 por defecto). Si
+    no se puede medir el consumo, no se consulta.
+  - Un timeout **no se reintenta**: el pedido salió y pudo cobrarse. Sólo
+    se repite lo que no llegó a procesarse (401 con token nuevo; 429, 502,
+    503 y 504).
+  - El guion local **simula por defecto**; para cobrar, `--ejecutar`. Más
+    de 2 personas por corrida exige `--autorizo=<n>`. Sin responsable y
+    sin base legal no corre.
+  - No se envían datos del cónyuge (decisión del negocio): el pedido no
+    tiene dónde ponerlos.
+  - Los parámetros de la decisión (producto 1, monto, plazo) son de
+    relleno: sólo interesa lo que el buró trae de la persona.
+  - La clave y el token no salen en ningún mensaje (`sanitizar()`); el
+    token vive en memoria. Las credenciales que se pegaron en un chat se
+    rotan al terminar el desarrollo.
 - Denuncias: decide el papel de la persona y sólo cuenta con su cédula
   (`_shared/denuncias.ts`). Delitos de seguridad: lista única en
   `_shared/delitos-seguridad.ts`.

@@ -22,6 +22,34 @@ aceptada.
 
 ## 1. Para retomar primero
 
+- **Equifax (2026-10-12). Cada consulta se cobra y su proveedor no pone
+  tope: nada de lo de abajo se corre sin autorización explícita del
+  negocio.** Qué hay: cliente, persistencia, función `consultar-equifax`,
+  tabla `consultas_equifax` (122, aplicada), guion local que simula por
+  defecto y exportación a Excel (ver "Dónde está cada cosa" de CLAUDE.md).
+  Qué falta:
+  - La primera consulta real a una persona autorizada, para ver la
+    respuesta y diseñar lo que sigue. Hasta entonces la forma de la
+    respuesta es desconocida: no hay perfil ni estructura estandarizada
+    de Equifax, y `perfil` y `estructura` llegan en migraciones propias.
+  - El proveedor `equifax` está apagado en `proveedores`: se enciende a
+    propósito antes de consultar.
+  - Probar si Equifax deja pasar a las Edge Functions (con Aval el WAF
+    rechazó su IP): después del despliegue, la acción `probar_conexion`
+    de la función pide sólo un token y no cuesta. Si no deja pasar, se
+    sigue con el guion local, como Aval.
+  - Subir las claves `EQUIFAX_*` como secrets de Supabase (desde
+    `.env.functions`, sin que pasen por un chat) y desplegar con
+    `--funciones` desde una copia limpia de `origin/main`.
+  - **Rotar las credenciales de Equifax al terminar el desarrollo:** se
+    pegaron en un chat.
+  - La prueba con 20 identificaciones (autorizarla aparte, con su costo)
+    y la sección de Equifax en el marco, que es del negocio decidir.
+  - Sin pantallas todavía (decisión del negocio): al hacerlas, rótulo
+    "Score de Equifax" y el vocabulario de `docs/modelo-de-la-persona.md`.
+  - Sumar a Equifax a las fichas de cumplimiento (`docs/cumplimiento/`,
+    fuera de git): encargado y destinatario de datos de las personas.
+
 - **Revisión de UX (2026-10-10 al 12). Para retomar ese frente, empezar acá.**
   El informe es `docs/revision-ux.md`; el vocabulario del producto,
   `docs/modelo-de-la-persona.md`; para repetir la revisión cuando cambie una
@@ -570,8 +598,6 @@ aceptada.
   ~5.000 personas son ~50 MB; conviene armarlo en el servidor al pasar
   de mil.
 - **A la espera de terceros:**
-  - Equifax: faltan credenciales de API. Se descartó automatizar el
-    portal.
   - SMTP propio (Resend), para volver al código de 6 dígitos al crear
     cuenta.
   - Aval: el WAF rechaza la IP de Supabase. Hoy se consulta desde la IP

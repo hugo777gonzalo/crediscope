@@ -231,7 +231,7 @@ const pedir = async (url, opciones = {}) => {
 const ajustes = await pedir(`${URL_SUPABASE}/auth/v1/settings`, { headers: { apikey: CLAVE_PUBLICA } });
 anotar("Afuera", "El registro público de cuentas está cerrado", ajustes.cuerpo?.disable_signup === true, `disable_signup=${ajustes.cuerpo?.disable_signup}`);
 
-for (const tabla of ["clients", "client_profiles", "analysis_results", "resumen_por_persona", "consultas_por_dia_y_fuente", "consultas_aval", "audit_log", "profiles", "lotes", "lab_solicitudes"]) {
+for (const tabla of ["clients", "client_profiles", "analysis_results", "resumen_por_persona", "consultas_por_dia_y_fuente", "consultas_aval", "consultas_equifax", "audit_log", "profiles", "lotes", "lab_solicitudes"]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/${tabla}?select=*&limit=1`, { headers: h });
   const filasLeidas = Array.isArray(r.cuerpo) ? r.cuerpo.length : 0;
   anotar("Afuera", `Anónimo no lee ${tabla}`, filasLeidas === 0, `HTTP ${r.status}, ${filasLeidas} filas`);
@@ -254,6 +254,9 @@ const cuerpos = {
   "structure-client": { cedula: "abc" },
   "analyze-client": { cedula: "abc" },
   "consultar-aval": { identificacion: "AUDITORIA-SIN-PERSONA", tipoIdentificacion: "P" },
+  // Cada consulta a Equifax se cobra. La función exige el rol ANTES de leer el
+  // cuerpo, así que con la clave pública contesta 401 sin mirar nada.
+  "consultar-equifax": { identificacion: "AUDITORIA-SIN-PERSONA", baseLegal: "Prueba del control de seguridad: sin persona" },
   "explore-novadata": { username: "x", password: "x", cedula: "abc" },
 };
 for (const [fn, cuerpo] of Object.entries(cuerpos)) {
@@ -338,7 +341,7 @@ try {
 {
   const head = execSync("git rev-parse --short=12 HEAD", { encoding: "utf8" }).trim();
   const versiones = {};
-  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "explore-novadata", "vigia", "procesar-lote"]) {
+  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "consultar-equifax", "explore-novadata", "vigia", "procesar-lote"]) {
     const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, { method: "OPTIONS" });
     versiones[fn] = r.headers?.get("x-crediscope-version") ?? "sin dato";
   }
