@@ -37,7 +37,7 @@ Contexto: `docs/propuesta-estructura-equifax.md` (las tablas y la estructura, 12
 | Las pantallas | Proceder con el diseño de la sección 5: moderno, preciso, informativo y fácil de leer, **con las explicaciones largas en ayudas emergentes** |
 
 **Construido el 2026-10-16** (las pantallas y la capa 1; el lado del modelo, la
-capa 2 y `marco-v30`, va en una sesión aparte):
+capa 2 y su versión del marco, va en una sesión aparte):
 
 - **Capa 1, migración 129**: `proveedores.es_buro` (a lo sumo uno, sólo Aval o
   Equifax), `elegir_buro()` y el selector «Buró» arriba de las pestañas de Aval y
@@ -205,8 +205,9 @@ cuánto debe y buroEquifax para el comportamiento»). Con A1 eso cambia:
     controles de bloqueo: es donde ya está la deuda y no cambia el orden del resto;
   - b) como nivel 2, antes de seguridad ciudadana.
 - **A7**: «Deuda como codeudor o garante» en lugar de «Garantías:».
-- Sigue siendo una versión nueva (`marco-v30`, con su fila en
-  `scoring_rules_versions`), y la comparación espera a A8: el negocio sube el tope
+- Sigue siendo una versión nueva (el número libre cuando se haga: `marco-v30` lo
+  tomó E27 el 2026-10-16), con su fila en
+  `scoring_rules_versions`, y la comparación espera a A8: el negocio sube el tope
   cuando todo esté listo.
 
 ## 5. Las pantallas (propuesta de diseño, sin construir)
@@ -257,7 +258,7 @@ el selector del buró de la institución y, en la de Novadata, la tarjeta de la 
 
 1. La capa 2 en `_shared/` con sus pruebas: el perfil del modelo de una persona **sin**
    buró tiene que salir idéntico, byte a byte, al de hoy.
-2. El marco nuevo (`marco-v30`) con la sección de Equifax ajustada a la sección 4. No
+2. El marco nuevo (el número libre: `marco-v30` es de E27) con la sección de Equifax ajustada a la sección 4. No
    se activa: la comparación espera a A8.
 3. `resumen_por_persona` y el Laboratorio a días de mora (migraciones).
 4. La capa 1 (un buró por base) y la tarjeta de la capa 3.
