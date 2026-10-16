@@ -7,11 +7,13 @@ import { enAtraso, nivelLegible } from "../../lib/equifaxPantalla.js";
 // de Equifax va con su nombre completo y sin el medidor del Score de
 // CrediScope: el negocio pidió que nunca se mezclen (cuestionario, A6).
 export default function IndicadoresEquifax({ estructura }) {
-  const s = estructura?.scores ?? {};
+  // «scores» y no «s»: «s.variacionDelScore12Meses» tiene la forma de un token
+  // de Vault y el control de secretos (gitleaks) frenó el PR #26.
+  const scores = estructura?.scores ?? {};
   const total = estructura?.deudaActualTitular?.total ?? null;
   const mora = estructura?.moraActual ?? null;
   const atraso = enAtraso(total);
-  const variacion = s.variacionDelScore12Meses;
+  const variacion = scores.variacionDelScore12Meses;
 
   return (
     <div className="crediscope-kpi-grid">
@@ -22,17 +24,17 @@ export default function IndicadoresEquifax({ estructura }) {
             <InfoTooltip etiqueta="Qué es el Score de Equifax">
               La calificación que calcula Equifax con su propio modelo. No es el Score de CrediScope: no se suman ni
               se comparan uno con otro.
-              {s.bandaDelScoreEquifaxDesde != null && s.bandaDelScoreEquifaxHasta != null
-                ? ` Equifax ubica a esta persona en la banda de ${entero(s.bandaDelScoreEquifaxDesde)} a ${entero(s.bandaDelScoreEquifaxHasta)}.`
+              {scores.bandaDelScoreEquifaxDesde != null && scores.bandaDelScoreEquifaxHasta != null
+                ? ` Equifax ubica a esta persona en la banda de ${entero(scores.bandaDelScoreEquifaxDesde)} a ${entero(scores.bandaDelScoreEquifaxHasta)}.`
                 : ""}
             </InfoTooltip>
           </>
         }
-        valor={s.scoreEquifax ?? "Sin score"}
+        valor={scores.scoreEquifax ?? "Sin score"}
         detalle={
-          s.scoreEquifaxHace12Meses != null ? (
+          scores.scoreEquifaxHace12Meses != null ? (
             <>
-              Hace 12 meses: {entero(s.scoreEquifaxHace12Meses)}
+              Hace 12 meses: {entero(scores.scoreEquifaxHace12Meses)}
               {variacion ? (
                 <span className={variacion < 0 ? "crediscope-equifax-baja" : "crediscope-equifax-sube"}>
                   {" "}
@@ -80,14 +82,14 @@ export default function IndicadoresEquifax({ estructura }) {
             Cuota mensual{" "}
             <InfoTooltip lado="derecha" etiqueta="De dónde sale la cuota">
               La suma de las cuotas que informan las instituciones por lo que debe como titular, en los tres sistemas.
-              {s.nivelDeSobreendeudamiento
-                ? ` Equifax califica su nivel de sobreendeudamiento como «${nivelLegible(s.nivelDeSobreendeudamiento)}».`
+              {scores.nivelDeSobreendeudamiento
+                ? ` Equifax califica su nivel de sobreendeudamiento como «${nivelLegible(scores.nivelDeSobreendeudamiento)}».`
                 : ""}
             </InfoTooltip>
           </>
         }
         valor={moneda(total?.cuotaMensualUsd)}
-        detalle={s.nivelDeSobreendeudamiento ? `Sobreendeudamiento según Equifax: ${nivelLegible(s.nivelDeSobreendeudamiento)}` : null}
+        detalle={scores.nivelDeSobreendeudamiento ? `Sobreendeudamiento según Equifax: ${nivelLegible(scores.nivelDeSobreendeudamiento)}` : null}
       />
     </div>
   );

@@ -47,7 +47,7 @@ const antiguedad = (meses) => {
 export default function ReporteCompletoEquifax({ estructura }) {
   const t = estructura?.tarjetas;
   const ev = estructura?.evolucion;
-  const s = estructura?.scores;
+  const scores = estructura?.scores;
   const c = estructura?.creditosOtorgados;
   const q = estructura?.consultasRecibidas;
   const g = estructura?.estadoGeneral;
@@ -99,18 +99,18 @@ export default function ReporteCompletoEquifax({ estructura }) {
       </Seccion>
 
       <Seccion Icono={Gauge} titulo="Scores de Equifax" datos={s}>
-        <Fila etiqueta="Score de Equifax hoy">{entero(s?.scoreEquifax)}</Fila>
-        <Fila etiqueta="Hace 6 meses">{entero(s?.scoreEquifaxHace6Meses)}</Fila>
-        <Fila etiqueta="Hace 12 meses">{entero(s?.scoreEquifaxHace12Meses)}</Fila>
+        <Fila etiqueta="Score de Equifax hoy">{entero(scores?.scoreEquifax)}</Fila>
+        <Fila etiqueta="Hace 6 meses">{entero(scores?.scoreEquifaxHace6Meses)}</Fila>
+        <Fila etiqueta="Hace 12 meses">{entero(scores?.scoreEquifaxHace12Meses)}</Fila>
         <Fila etiqueta="Score de inclusión" ayuda="Otro score de Equifax. Su definición exacta está pedida a Equifax.">
-          {entero(s?.scoreInclusionEquifax)}
+          {entero(scores?.scoreInclusionEquifax)}
         </Fila>
         <Fila
           etiqueta="Score de sobreendeudamiento"
           ayuda="La lectura de Equifax sobre la carga de deuda de la persona: una alerta de capacidad de pago, no un hecho de pago."
         >
-          {entero(s?.scoreSobreendeudamientoEquifax)}
-          {s?.nivelDeSobreendeudamiento ? ` · ${nivelLegible(s.nivelDeSobreendeudamiento)}` : ""}
+          {entero(scores?.scoreSobreendeudamientoEquifax)}
+          {scores?.nivelDeSobreendeudamiento ? ` · ${nivelLegible(scores.nivelDeSobreendeudamiento)}` : ""}
         </Fila>
       </Seccion>
 
