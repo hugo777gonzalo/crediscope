@@ -697,6 +697,11 @@ antes de tocar esa área.
     `IDENTIFICADORES_QUE_NO_LLEGAN` (fijos) y `ATRIBUTOS_PROTEGIDOS` (sexo,
     estado civil, origen, familia, edad: `true` = llega, hasta que el negocio
     decida con legal; pasar uno a `false` es versión nueva del marco).
+  - Desde marco-v30 cada empleo y cada aporte dicen de quién son
+    (`esSuPropioPatrono`, `posibleNegocioFamiliar`), calculados con el nombre
+    antes de borrarlo con `relacionConEmpleador()` (`patrono.ts`, la misma
+    que usa `process.ts`). El modelo no infiere parentescos de nombres: dejó
+    de hacerlo solo en v8, por eso se calcula en el código desde v17.
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números

@@ -108,7 +108,7 @@ const valoresDeTexto = (nodo, salida = []) => {
 const conDecimales = (nodo) =>
   typeof nodo === "number" ? !Number.isInteger(nodo) : Boolean(nodo) && typeof nodo === "object" && Object.values(nodo).some(conDecimales);
 const protegidosPresentes = new Map(Object.keys(ATRIBUTOS_PROTEGIDOS).map((r) => [r, 0]));
-let empleos = 0, empleosSinTipo = 0;
+let empleos = 0, empleosSinTipo = 0, empleosFamiliar = 0, empleosPropios = 0, personasFamiliar = 0, familiarSinEmpleo = 0;
 
 const fallas = new Map();
 const fallar = (regla, caso) => {
@@ -160,6 +160,14 @@ for (let i = 0; i < ids.length; i += 100) {
       const lista = Array.isArray(pm.laboral?.empleosActuales) ? pm.laboral.empleosActuales : [];
       empleos += lista.length;
       empleosSinTipo += lista.filter((e) => e?.tipoEmpleador == null).length;
+      // marco-v30: de quién es cada empleo. La marca de la persona sin ningún
+      // empleo marcado es un Empleador público o un nombre que no se cruzó.
+      empleosFamiliar += lista.filter((e) => e?.posibleNegocioFamiliar === true).length;
+      empleosPropios += lista.filter((e) => e?.esSuPropioPatrono === true).length;
+      if (pm.laboral?.empleadorConApellidoDelCliente === true) {
+        personasFamiliar++;
+        if (!lista.some((e) => e?.posibleNegocioFamiliar === true)) familiarSinEmpleo++;
+      }
     }
 
     const vi = pm.fuentesIngreso;
@@ -251,7 +259,8 @@ const mediana = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)];
 const p90 = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length * 0.9)];
 console.log(`perfiles revisados: ${revisados} (${conIngresos} con clasificación de ingresos)`);
 console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano} | con algún tema sin consultar: ${conTemasSinConsultar} | con demandas por categoría: ${conCategorias}`);
-console.log(`  empleos actuales: ${empleos}, sin tipo de empleador: ${empleosSinTipo}`);
+console.log(`  empleos actuales: ${empleos}, sin tipo de empleador: ${empleosSinTipo}, posible negocio familiar: ${empleosFamiliar}, su propio patrono: ${empleosPropios}`);
+console.log(`  personas con la marca de familiar: ${personasFamiliar}, sin ningún empleo marcado: ${familiarSinEmpleo}`);
 console.log(`  mensaje al modelo (caracteres): antes mediana ${mediana(tamanos.antes)} p90 ${p90(tamanos.antes)} | ahora mediana ${mediana(tamanos.despues)} p90 ${p90(tamanos.despues)}`);
 if (fallas.size === 0) {
   console.log("VALIDACIÓN OK: 0 fallas en las 13 reglas.");

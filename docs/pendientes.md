@@ -370,38 +370,30 @@ aceptada.
       bandeja sin sintéticas).
   - `auditar-seguridad.mjs`: 68 controles en OK al 2026-10-13.
   - Queda, por orden:
-  1. **E27, urgente: lo que lee el modelo.** marco-v29 hecha el 2026-10-13
-     (PR #25, sin desplegar): sin cédula, sin nombre, sin empleadores (cada
-     empleo con su tipo), sin la institución de una PEP ni la del título (en
-     13 perfiles era el empleador), los números de 10+ dígitos tapados en
-     cualquier texto y todo número entero (decisión del negocio del mismo
-     día: los decimales llegaban por 33 campos, todos montos). Validada sin
-     el modelo sobre los 2.813 perfiles (`validar-perfil-del-modelo.mjs`,
-     regla 13: 0 fallas). Falta, por orden:
-     - fusionar el PR #25 y aplicar la **128** con el corredor (la base ya
-       está en la 127 del PR #24). `ESQUEMA_MINIMO` pasa a 128: primero se
-       migra, después se despliega `analyze-client` (`--funciones`);
-     - **la comparación** (14 llamadas, ~USD 0,56 con el marco en caché; el
-       negocio no la autorizó el 2026-10-13 porque octubre lleva USD 9,28 de
-       10). Los 14 casos, en `research/cedulas_validacion_marco_v29.txt`
-       (fuera de git): cuatro con posible negocio familiar, tres PEP, dos con
-       varios empleos, dos de Otros empleadores y uno de cada otro grupo. Lo
-       de v28 ya está en `research/comparacion-marco-v29/` (sacado de la
-       base sin pagar: los 14 mensajes difieren del de v29 sólo en las rutas
-       de E27). Falta sólo v29:
-       `node scripts/comparar-razonamiento.mjs --cedulas=research/cedulas_validacion_marco_v29.txt --configs=hoy,nuevoCache --hoy-de-la-base=marco-v28 --concurrencia=1 --salida=research/comparacion-marco-v29`.
-       Un caso cuyo perfil cambió para entonces se salta solo. Esperado:
-       dentro del ruido (±40 de score, 1 de 13 recomendaciones);
+  1. **E27, urgente: lo que lee el modelo.** marco-v29 **desplegada el
+     2026-10-16** (PR #25, 128, funciones 684b243): sin cédula, sin nombre,
+     sin empleadores (cada empleo con su tipo), sin la institución de una PEP
+     ni la del título, los números de 10+ dígitos tapados y todo número
+     entero. **marco-v30** (129, mismo día, pedido del negocio): cada empleo y
+     cada aporte llevan esSuPropioPatrono y posibleNegocioFamiliar, calculados
+     con el nombre antes de borrarlo (con v29, en 9 de 72 personas con la
+     marca de familiar no se sabía cuál de sus empleos era). Validadas sin el
+     modelo sobre los 2.813 perfiles (`validar-perfil-del-modelo.mjs`: 0
+     fallas). Falta, por orden:
      - `auditar-seguridad.mjs` («El último mensaje al modelo...») en OK, que
-       pide un análisis con v29;
+       pide un análisis con v29 o v30;
      - **los atributos protegidos**: bloque B del cuestionario
        (`research/decisiones/`), sin contestar. Se sacan pasando cada uno a
        `false` en `ATRIBUTOS_PROTEGIDOS` (`perfil-del-modelo.ts`): versión
-       nueva del marco, su fila y su comparación;
-     - recién con v29 desplegada y el control en OK: corregir los siete
-       documentos (`docs/cumplimiento/` y el informe de la auditoría de
-       seguridad) y **la ficha de seguridad para clientes, que no se comparte
-       hasta entonces**. Decir qué atributos siguen llegando.
+       nueva del marco y su fila;
+     - con el control en OK: corregir los siete documentos
+       (`docs/cumplimiento/` y el informe de la auditoría de seguridad) y
+       **la ficha de seguridad para clientes, que no se comparte hasta
+       entonces**. Decir qué atributos siguen llegando.
+     - La comparación grande de 14 casos contra v28
+       (`research/cedulas_validacion_marco_v29.txt`, `--hoy-de-la-base`) queda
+       disponible pero no se corrió: el negocio prefirió 5 análisis reales con
+       v30 en lote, que se ven en la app como uno de la pantalla.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
      `reutiliza_analisis_id` y `duracion_llm_ms` nulo.

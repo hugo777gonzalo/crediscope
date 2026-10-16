@@ -49,6 +49,7 @@
 import { clasificarPerfilLaboral } from "./perfil-laboral.ts";
 import { dejoDeAparecerEnElIess, esIngresoMinimoSbu, indiciosDeIngresoMayor, tamanoDelNegocio } from "./fuentes-ingreso.ts";
 import { ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, quienDeclara } from "./nombres-ingresos.ts";
+import { relacionConEmpleador } from "./patrono.ts";
 import { tipoDeDemandaLegible } from "./demandas.ts";
 
 type AnyRecord = Record<string, unknown>;
@@ -156,26 +157,55 @@ function quitarRuta(nodo: unknown, partes: string[]): void {
 
 const nombreNormalizado = (v: unknown): string => String(v ?? "").trim().toUpperCase();
 
+// ¿El empleador de este empleo o aporte es la propia persona o puede ser un
+// pariente? Lo mismo que process.ts calcula para la persona entera
+// (relacionConEmpleador, patrono.ts), pero de a uno. null = no se sabe (sin
+// nombre comparable).
+// - Un Empleador público nunca es un negocio familiar: el apellido en
+//   "GAD MUNICIPAL DE ..." es una coincidencia, y era un falso positivo que
+//   el modelo descartaba mirando el nombre hasta v28.
+// - Sin el RUC del patrono, que no queda en el perfil, la propia persona se
+//   reconoce por el nombre o porque su aporte es como patrono de su propio
+//   negocio.
+function quienEsElEmpleador(perfil: AnyRecord, empleador: unknown, tipoEmpleador: string | null, tipoDeAporte: unknown) {
+  const nombreCliente = (perfil.identidad as AnyRecord | undefined)?.nombreCompleto ?? null;
+  const r = relacionConEmpleador(empleador, nombreCliente, null, (perfil.cedula as string | null | undefined) ?? null);
+  const propio = tipoDeAporte === "aporte como patrono de su propio negocio" || r?.esElMismoCliente === true;
+  return {
+    esSuPropioPatrono: propio ? true : r ? false : null,
+    posibleNegocioFamiliar: propio || tipoEmpleador === "Empleador público" ? false : (r?.comparteApellido ?? null),
+  };
+}
+
 // El tipo de cada empleo actual, en lugar del nombre de su empleador: el
 // mismo que lleva su aporte en fuentesIngreso (quienDeclara), así el modelo
 // y la pestaña Fuentes de ingreso dicen lo mismo. El empleo y el aporte
 // salen del mismo registro del IESS y se cruzan por el nombre ANTES de
 // borrarlo: en los análisis de marco-v28, 150 de 152 empleos tenían su
 // aporte. Los que no, llegan con tipoEmpleador null.
+//
+// Desde marco-v30, cada empleo dice además de quién es, calculado con el
+// nombre antes de borrarlo (quienEsElEmpleador). v29 dejaba sólo las marcas
+// de la persona (empleadorConApellidoDelCliente, clienteEsSuPropioEmpleador),
+// y con dos empleos el modelo ya no sabía cuál era el del pariente: 9 de las
+// 72 personas con la marca de familiar y 24 de las 409 que son su propio
+// patrono tienen más de un empleo (2026-10-16).
 function tipoDeCadaEmpleo(perfil: AnyRecord, laboral: AnyRecord): void {
   const fuentes = (Array.isArray((perfil.fuentesIngreso as AnyRecord | undefined)?.fuentes)
     ? (perfil.fuentesIngreso as AnyRecord).fuentes
     : []) as AnyRecord[];
-  const tipoPorEmpleador = new Map<string, string>();
+  const fuentePorEmpleador = new Map<string, AnyRecord>();
   for (const f of fuentes) {
     if (f.evidencia === "indirecta" || !f.empleador) continue;
     const nombre = nombreNormalizado(f.empleador);
-    if (!tipoPorEmpleador.has(nombre)) tipoPorEmpleador.set(nombre, quienDeclara(f, perfil));
+    if (!fuentePorEmpleador.has(nombre)) fuentePorEmpleador.set(nombre, f);
   }
   const conTipo = (e: unknown) => {
     if (!e || typeof e !== "object" || !("empleador" in e)) return e;
     const { empleador, ...resto } = e as AnyRecord;
-    return { tipoEmpleador: tipoPorEmpleador.get(nombreNormalizado(empleador)) ?? null, ...resto };
+    const fuente = fuentePorEmpleador.get(nombreNormalizado(empleador));
+    const tipoEmpleador = fuente ? quienDeclara(fuente, perfil) : null;
+    return { tipoEmpleador, ...quienEsElEmpleador(perfil, empleador, tipoEmpleador, fuente?.tipo), ...resto };
   };
   if (Array.isArray(laboral.empleosActuales)) laboral.empleosActuales = laboral.empleosActuales.map(conTipo);
   if (laboral.empleoActual && typeof laboral.empleoActual === "object") laboral.empleoActual = conTipo(laboral.empleoActual);
@@ -303,11 +333,17 @@ export function ingresosDelPerfilDelModelo(perfil: AnyRecord | null | undefined)
     esIngresoMinimoSbu: esIngresoMinimoSbu(monto, f.corteIessUsado as string | null),
     aportes: fuentes
       .filter((x) => x.evidencia !== "indirecta")
-      .map((x) => ({
-        tipo: x.tipo ?? null,
-        declaradoPor: quienDeclara(x, perfil),
-        montoMensual: x.montoMensualReportado ?? null,
-      })),
+      .map((x) => {
+        const declaradoPor = quienDeclara(x, perfil);
+        // Desde marco-v30: quién reporta el ingreso, el empleador de un
+        // tercero, la propia persona o posiblemente un pariente.
+        return {
+          tipo: x.tipo ?? null,
+          declaradoPor,
+          ...quienEsElEmpleador(perfil ?? {}, x.empleador, declaradoPor, x.tipo),
+          montoMensual: x.montoMensualReportado ?? null,
+        };
+      }),
     otrasFuentesSinMonto: fuentes
       .filter((x) => x.evidencia === "indirecta" && !SIN_MONTO_YA_DICHAS.has(String(x.tipo)))
       .map((x) => x.tipo),
