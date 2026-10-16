@@ -3,10 +3,10 @@
 // LLM reciba mucho menos texto por persona.
 // Ver docs/estructura-estandarizada.md.
 //
-// Esta lógica se validó primero en Node (scripts/reprocess-sample.mjs)
-// contra 25 clientes reales antes de portarla acá — cualquier cambio de
-// reglas debe reflejarse en AMBOS archivos (se mantienen en sync a mano,
-// no hay build step compartido entre Deno y Node en este proyecto).
+// Esta lógica se validó primero en Node, con una copia a mano
+// (scripts/reprocess-sample.mjs), contra 25 personas reales. La copia se
+// quedó atrás y se borró el 2026-10-13: hoy un cambio se valida corriendo
+// este mismo archivo bajo Node, el viejo contra el nuevo.
 //
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).

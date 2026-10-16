@@ -299,7 +299,7 @@ async function recoger() {
       requestId: data?.id ?? null,
       clientId: m.clientId,
       analysisResultId: analysisId,
-      contexto: { cedula: m.cedula, marco: estado.marco, lote: estado.batchId, repeticion: m.repeticion },
+      contexto: { marco: estado.marco, lote: estado.batchId, repeticion: m.repeticion },
       esPrueba: m.repeticion > 1,
       actor: estado.responsable,
       razonamiento: estado.config.razonamiento,

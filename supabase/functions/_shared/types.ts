@@ -118,8 +118,8 @@ export interface ResultadoControlBloqueo {
 // booleanos, "el más reciente") para que el
 // LLM reciba mucho menos texto por persona. Ver docs/estructura-estandarizada.md
 // y process.ts (que la construye) — validada con 25 clientes reales antes
-// de conectarla al scoring (ver scripts/reprocess-sample.mjs, la versión
-// Node usada para esa validación; debe mantenerse en sync con process.ts).
+// de conectarla al scoring (con una copia en Node que se borró el
+// 2026-10-13: ver el encabezado de process.ts).
 //
 // Convención de null vs 0: los conteos/sumas son 0 (no null) cuando el
 // eje SÍ se consultó pero no hay registros — null se reserva para "no se

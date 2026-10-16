@@ -220,7 +220,8 @@ Romper cualquiera de estas rompe algo real.
   - La huella no cuenta `cache_control` ni `max_tokens`.
   - `puntuarPedido()` llama al modelo con un pedido ya armado.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
-  de temas que el perfil no trae (v29). Corta el marco vigente por marcas,
+  de temas que el perfil no trae (toma el número de versión libre al
+  encenderse; la v29 fue E27). Corta el marco vigente por marcas,
   sin copiarlo; está APAGADO (`CONFIG_LLM.marcoPorCliente`) hasta validarlo.
 - `fila-del-analisis.ts` → `filaDelAnalisis()` — la fila de
   `analysis_results`, la única para `analyze-client` y el lote.
@@ -381,6 +382,9 @@ Romper cualquiera de estas rompe algo real.
       se sube su versión y se corre `node scripts/cargar-tablas-equifax.mjs`
       (`--seco` primero)**: rehace desde el crudo las consultas que quedaron
       con la versión anterior, sin volver a pagar.
+    - `scripts/exportar-equifax-tablas.mjs`: un Excel con las 11 tablas de todas
+      las personas consultadas (una hoja por tabla, la persona por su código), más
+      «Consultas» y «Estructura». Sólo lee; va a `research/equifax/excel/`.
     - `scripts/medir-bloque-equifax.mjs`: cuánto pesaría el bloque de Equifax del
       perfil del modelo (`docs/propuesta-marco-equifax.md`), sin gasto.
     - `scripts/probar-equifax-tablas.mjs`: las mismas funciones contra las
@@ -562,9 +566,9 @@ antes de tocar esa área.
 - Las columnas copiadas del perfil se escriben sólo con
   `columnasDelPerfil()`. Si cambia la regla de una columna sin cambiar el
   perfil: `scripts/calcular-columnas-del-perfil.mjs` (`--seco` primero).
-- `reprocess-sample.mjs` quedó atrás: para validar un cambio, comparar
-  `process.ts` viejo contra nuevo sobre `research/novadata-raw/` con el
-  perfil entero.
+- Para validar un cambio, comparar `process.ts` viejo contra nuevo sobre
+  `research/novadata-raw/` con el perfil entero (`reprocess-sample.mjs`, la
+  copia a mano, quedó atrás y se borró el 2026-10-13).
 
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
@@ -645,11 +649,13 @@ antes de tocar esa área.
   - **Lo medido al construir las tablas (2026-10-13), sobre las 22 respuestas:**
     - **El resumen por sistema, los impagos, las morosidades y la cuota
       estimada de Equifax cuentan también al codeudor y al garante.** La suma
-      del detalle de todos los roles reproduce el resumen (bancos 22/22); la
+      del detalle de todos los roles reproduce el resumen (bancos 22/22, y 62/62
+      con el lote del 2026-10-16); la
       del titular solo, no. `conciliaConElResumen` compara todos los roles, y
       lo del titular sale de las operaciones.
     - **La lista de «garantías personales» de Equifax es la misma deuda que las
-      operaciones de rol codeudor** (22/22): es una comprobación, nunca un
+      operaciones de rol codeudor** (22/22; 60/62 desde el 2026-10-16, con 2
+      casos sin mirar todavía): es una comprobación, nunca un
       sumando. **«Garantía» en Ecuador es el colateral** (auto, casa, pagaré):
       lo de codeudor y garante no se llama así (tabla `equifax_codeudor_garante`).
     - **Una operación no se puede seguir de un mes al siguiente**: las listas no
@@ -693,10 +699,22 @@ antes de tocar esa área.
 - **El perfil del modelo todavía lleva datos personales que no necesita**
   (E27, abierto; el detalle está en `auditoria/` y en
   `docs/cumplimiento/ficha-del-modelo.md`, fuera de git).
+  - marco-v29 saca la cédula, el nombre y los empleadores (cada empleo llega
+    con su tipo). Las listas viven en `perfil-del-modelo.ts`:
+    `IDENTIFICADORES_QUE_NO_LLEGAN` (fijos) y `ATRIBUTOS_PROTEGIDOS` (sexo,
+    estado civil, origen, familia, edad: `true` = llega, hasta que el negocio
+    decida con legal; pasar uno a `false` es versión nueva del marco).
+  - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
+    nombre de campo no ve una cédula escrita en el cargo. Y todo número
+    llega entero (v29, decisión del negocio): el modelo copia los números
+    tal cual y en crédito los centavos no deciden nada.
   - Siete documentos afirmaban una minimización que no existe: no afirmarla
-    en ningún lado hasta que se despliegue la versión que la corrige.
+    en ningún lado hasta que v29 esté desplegada **y** el control lo
+    confirme.
   - Una afirmación sobre lo que lee el modelo se mide en
-    `analysis_results.mensaje_al_modelo`, no en el código.
+    `analysis_results.mensaje_al_modelo`, no en el código: lo mide
+    `auditar-seguridad.mjs` (el último mensaje) y, sin llamar al modelo,
+    `scripts/validar-perfil-del-modelo.mjs` (regla 13, todos los perfiles).
 - Escribe Sonnet 5.5 desde marco-v28 (sin cascada con Haiku desde v24).
   El mismo perfil analizado dos veces mueve el score ~40 puntos y cambia 1
   de cada 13 recomendaciones: una diferencia menor que eso no se atribuye

@@ -285,11 +285,12 @@ autorizar el gasto).
   fecha del análisis) y pasarla. Un camino nuevo al modelo también pasa por
   `armarPerfilDelModelo()` (CLAUDE.md).
 - `marco-interpretativo.ts`: la sección, los tres ajustes de la sección 4 y
-  `MARCO_VERSION = "marco-v30"`. La v29 es el marco por cliente (apagado), que no
-  tiene su fila en `scoring_rules_versions`.
+  `MARCO_VERSION` con el número libre al activarla: la v29 la tomó E27 el
+  2026-10-13 (sin cédula, nombre ni empleadores), y el marco por cliente
+  también espera el suyo.
 - `marco-por-cliente.ts`: la sección nueva se corta cuando no hay `buroEquifax`
   (como las de PEP y pensión), con su marca y su prueba.
-- Una migración con la fila de `marco-v30` en `scoring_rules_versions` y el
+- Una migración con la fila de esa versión en `scoring_rules_versions` y el
   `ESQUEMA_MINIMO` de las funciones: primero se migra, después se desplegan.
 - Pruebas: una respuesta de Equifax inventada ya existe
   (`equifax-respuesta-de-prueba.ts`); el bloque se prueba con ella, y el pedido sin

@@ -38,7 +38,7 @@ function descargarCsv(filas) {
   for (const r of filas) {
     lineas.push([
       r.created_at, r.funcion, r.modelo, r.naturaleza, r.exito ? "si" : "no",
-      r.contexto?.cedula ?? "", r.contexto?.marco ?? "",
+      r.cedula ?? "", r.contexto?.marco ?? "",
       r.tokens_entrada, r.tokens_salida, r.tokens_razonamiento ?? "",
       r.tokens_cache_escritura, r.tokens_cache_lectura,
       r.duracion_ms ?? "", r.costo_usd ?? "", r.origen_medicion, r.error ?? "",
@@ -82,7 +82,7 @@ export default function CostosLlamadas() {
       if (f.exito === "si" && !r.exito) return false;
       if (f.exito === "no" && r.exito) return false;
       if (txt) {
-        const heno = `${r.contexto?.cedula ?? ""} ${r.contexto?.marco ?? ""} ${r.error ?? ""} ${r.request_id ?? ""}`.toLowerCase();
+        const heno = `${r.cedula ?? ""} ${r.contexto?.marco ?? ""} ${r.error ?? ""} ${r.request_id ?? ""}`.toLowerCase();
         if (!heno.includes(txt)) return false;
       }
       return true;
@@ -205,8 +205,8 @@ export default function CostosLlamadas() {
                     {r.contexto?.escalamiento ? <div className="crediscope-muted" style={{ fontSize: 12 }}>escalamiento</div> : null}
                   </td>
                   <td style={{ fontSize: 13 }}>
-                    {r.contexto?.cedula ? (
-                      <Link to={`/perfil/${r.contexto.cedula}`}>{r.contexto.cedula}</Link>
+                    {r.cedula ? (
+                      <Link to={`/perfil/${r.cedula}`}>{r.cedula}</Link>
                     ) : r.contexto?.paquete_id ? (
                       <span className="crediscope-muted">paquete {String(r.contexto.paquete_id).slice(0, 8)}</span>
                     ) : (

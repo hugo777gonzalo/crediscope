@@ -15,7 +15,7 @@ va lo que ya está cerrado o no expone nada.
 | E3 · Un solo ambiente, guiones sin rastro | 🟡 Rastro y sintéticas hechos | Crear el proyecto de prueba (decisión del negocio: todavía no) |
 | E4 · Token sin verificar en `structure-client` | ✅ Cerrado | — |
 | E5 · Consultas al límite de los 150 s | 🟡 Plazo y token hechos | Disyuntor por fuente; la cola asincrónica la construye la sesión de la API para IFI (su migración toma el número libre al aplicarse) |
-| E27 · Lo que lee el modelo (nuevo) | ❌ Abierto | Versión nueva del marco en otra sesión; parte, con legal. Detalle en `auditoria/` (fuera de git) |
+| E27 · Lo que lee el modelo (nuevo) | ❌ Abierto | marco-v29 hecha el 2026-10-13, sin desplegar: sin cédula, nombre ni empleadores. Los atributos protegidos, con legal. Detalle en `auditoria/` (fuera de git) |
 
 ---
 
@@ -364,13 +364,12 @@ franja de la bandeja.
 
 ## 6. Lo que sigue
 
-1. **E27, urgente:** la versión nueva del marco que corrige lo que lee el
-   modelo (otra sesión). Antes de empezarla, leer E27 en el informe de la
-   auditoría.
-   - Sumar un control a `auditar-seguridad.mjs` que falle si la clave vuelve
-     a aparecer.
-   - Recién con el cambio desplegado, actualizar la ficha de seguridad para
-     clientes.
+1. **E27, urgente:** marco-v29 (2026-10-13) saca la cédula, el nombre y los
+   empleadores; el control de `auditar-seguridad.mjs` («El último mensaje al
+   modelo...») falla mientras el último análisis sea de v28. Lo que falta para
+   desplegarla y cerrar E27, en `docs/pendientes.md`.
+   - Recién con el cambio desplegado y el control en OK, actualizar la ficha
+     de seguridad para clientes.
 2. **Verificar con sesión real:** el análisis reutilizado (E1) y las listas
    sin sintéticas (bandeja, Fuentes de ingreso), con la franja de la bandeja
    igual a la lista.

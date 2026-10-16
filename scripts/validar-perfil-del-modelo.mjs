@@ -20,7 +20,8 @@
 //   6. Los campos deshabilitados llegan en null y el resto intacto.
 //   7. (marco-v24) Los préstamos IESS/BIESS llegan como
 //      numeroPrestamosIessBiess, y el bloque endeudamiento suma bien.
-//   8. (marco-v24) Ningún monto de deuda llega con más de dos decimales.
+//   8. (marco-v29) Ningún número llega con decimales (de v24 a v28, los
+//      montos de deuda llegaban a centavos y el resto, como viniera).
 //   9. (marco-v25) La disponibilidad llega primera, cada tema en una sola
 //      lista, y ningún nombre técnico de fuente llega al modelo.
 //  10. (marco-v25) Un jubilado no llega "sin información actual en el IESS"
@@ -29,6 +30,10 @@
 //      mismo que el total; ya no llega la lista de textos.
 //  12. (marco-v26) Ningún tipo de demanda llega con artículos, numerales o
 //      tildes rotas.
+//  13. (marco-v29, E27) Ni la cédula, ni el nombre de la persona o de un
+//      empleador, ni un número de 10 dígitos, ni una ruta de
+//      RUTAS_QUE_NO_LLEGAN; y cada atributo protegido de la lista existe en
+//      algún perfil (si no, está mal escrito y nunca se sacaría).
 //
 // Uso:  node scripts/validar-perfil-del-modelo.mjs
 import fs from "node:fs";
@@ -37,7 +42,7 @@ import { pathToFileURL } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
-const { armarPerfilDelModelo, mensajeParaElModelo } = await compartido("perfil-del-modelo.ts");
+const { armarPerfilDelModelo, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN, ATRIBUTOS_PROTEGIDOS } = await compartido("perfil-del-modelo.ts");
 const { clasificarPerfilLaboral } = await compartido("perfil-laboral.ts");
 
 // Los secretos se leen del archivo y no se imprimen.
@@ -85,27 +90,48 @@ const CLAVES_QUE_NO_LLEGAN = /"(detalle|correccion|recalculo|pisoIngresoMensualR
 const NOMBRES_DE_FUENTES = /buroCredito(Super|Diners|Coop)|trabajoHistoricosMecanizado|bienesInmueble|pensionAlimenticiaNovadata|afiliacionIssfac|afiliacionSiisspol|sriImpuestoRenta|basesInternas|establecimientoActEconomica|deudas(Ant|Amt|Emov|Firmes)\b|listasControl|fuentes(ConDatos|SinDatos|NoMedidas)|metaConsulta/;
 const PALABRAS_RETIRADAS = /\bpiso\b|autodeclarad|reportada_por_tercero|reportada por un tercero|se[nñ]ales de escala/i;
 
+// "a.b[].c": ¿existe alguna instancia de la ruta?
+const tieneRuta = (nodo, partes) => {
+  if (!nodo || typeof nodo !== "object" || partes.length === 0) return false;
+  const [primera, ...resto] = partes;
+  const clave = primera.replace(/\[\]$/, "");
+  if (!(clave in nodo)) return false;
+  if (resto.length === 0) return true;
+  const hijos = primera.endsWith("[]") ? (Array.isArray(nodo[clave]) ? nodo[clave] : []) : [nodo[clave]];
+  return hijos.some((h) => tieneRuta(h, resto));
+};
+const valoresDeTexto = (nodo, salida = []) => {
+  if (typeof nodo === "string") salida.push(nodo.trim().toUpperCase());
+  else if (nodo && typeof nodo === "object") for (const v of Object.values(nodo)) valoresDeTexto(v, salida);
+  return salida;
+};
+const conDecimales = (nodo) =>
+  typeof nodo === "number" ? !Number.isInteger(nodo) : Boolean(nodo) && typeof nodo === "object" && Object.values(nodo).some(conDecimales);
+const protegidosPresentes = new Map(Object.keys(ATRIBUTOS_PROTEGIDOS).map((r) => [r, 0]));
+let empleos = 0, empleosSinTipo = 0;
+
 const fallas = new Map();
-const fallar = (regla, cedula) => {
+const fallar = (regla, caso) => {
   if (!fallas.has(regla)) fallas.set(regla, []);
-  fallas.get(regla).push(cedula);
+  fallas.get(regla).push(caso);
 };
 const tamanos = { antes: [], despues: [] };
 let revisados = 0, conIngresos = 0, propios = 0, conIndicios = 0, conEstabilidad = 0, conTamano = 0, conTemasSinConsultar = 0, conCategorias = 0;
 
 for (let i = 0; i < ids.length; i += 100) {
   const { cuerpo: filas } = await pedir(
-    `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${ids.slice(i, i + 100).join(",")})&select=id,perfil_laboral,standard_profile,clients(cedula)`,
+    `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${ids.slice(i, i + 100).join(",")})&select=id,client_id,perfil_laboral,standard_profile`,
   );
   for (const fila of filas) {
-    const cedula = fila.clients?.cedula ?? fila.id;
+    // Los casos se nombran c-xxxxxxxx: la salida termina en un chat.
+    const caso = `c-${String(fila.client_id).slice(0, 8)}`;
     const sp = fila.standard_profile;
     revisados++;
     let pm;
     try {
       pm = armarPerfilDelModelo(sp);
     } catch (e) {
-      fallar(`1. no se arma: ${e.message}`, cedula);
+      fallar(`1. no se arma: ${e.message}`, caso);
       continue;
     }
     // Lo que se mandaba hasta v22: el perfil sin fuentesIngreso.detalle.
@@ -114,27 +140,49 @@ for (let i = 0; i < ids.length; i += 100) {
     tamanos.antes.push(JSON.stringify(antes).length);
     tamanos.despues.push(JSON.stringify(mensajeParaElModelo(sp, [])).length);
 
+    // 13. Desde marco-v29 (E27): nada que identifique a la persona ni a un
+    // tercero. Se comparan valores enteros, no pedazos: "aportes al IESS"
+    // no es el nombre de un empleador que se llame IESS.
+    {
+      const mensaje = mensajeParaElModelo(sp, []);
+      const nombres = new Set(
+        [sp.identidad?.nombreCompleto, sp.laboral?.empleoActual?.empleador, sp.cumplimiento?.detallePep?.empresa,
+          ...(sp.laboral?.empleosActuales ?? []).map((e) => e?.empleador), ...(f?.fuentes ?? []).map((x) => x?.empleador)]
+          .filter((n) => typeof n === "string" && n.trim()).map((n) => n.trim().toUpperCase()),
+      );
+      if (valoresDeTexto(mensaje).some((v) => nombres.has(v))) fallar("13. llega el nombre de la persona o de un empleador", caso);
+      // En los textos: un monto puede traer decimales de más (el avalúo de
+      // los vehículos), y eso no identifica a nadie.
+      if (valoresDeTexto(mensaje).some((v) => /\d{10}/.test(v))) fallar("13. llega un número de 10 dígitos o más en un texto (¿una cédula?)", caso);
+      const prohibida = RUTAS_QUE_NO_LLEGAN.find((r) => tieneRuta(mensaje.perfilDelModelo, r.split(".")));
+      if (prohibida) fallar(`13. llega ${prohibida}`, caso);
+      for (const r of protegidosPresentes.keys()) if (tieneRuta(sp, r.split("."))) protegidosPresentes.set(r, protegidosPresentes.get(r) + 1);
+      const lista = Array.isArray(pm.laboral?.empleosActuales) ? pm.laboral.empleosActuales : [];
+      empleos += lista.length;
+      empleosSinTipo += lista.filter((e) => e?.tipoEmpleador == null).length;
+    }
+
     const vi = pm.fuentesIngreso;
     if (!f) {
-      if (vi !== null) fallar("2. perfil sin clasificación y la vista no es null", cedula);
+      if (vi !== null) fallar("2. perfil sin clasificación y la vista no es null", caso);
       continue;
     }
     conIngresos++;
-    if (Object.keys(vi).sort().join(",") !== CAMPOS_VISTA) fallar("2. la vista no trae exactamente sus campos", cedula);
+    if (Object.keys(vi).sort().join(",") !== CAMPOS_VISTA) fallar("2. la vista no trae exactamente sus campos", caso);
     const textoVista = JSON.stringify(vi);
-    if (CLAVES_QUE_NO_LLEGAN.test(textoVista)) fallar("2. llega un campo interno del perfil guardado", cedula);
-    if (PALABRAS_RETIRADAS.test(textoVista)) fallar("3. la parte de ingresos usa un nombre retirado", cedula);
-    if (/\bpiso\b/i.test(JSON.stringify(pm))) fallar("3. el perfil del modelo dice 'piso'", cedula);
+    if (CLAVES_QUE_NO_LLEGAN.test(textoVista)) fallar("2. llega un campo interno del perfil guardado", caso);
+    if (PALABRAS_RETIRADAS.test(textoVista)) fallar("3. la parte de ingresos usa un nombre retirado", caso);
+    if (/\bpiso\b/i.test(JSON.stringify(pm))) fallar("3. el perfil del modelo dice 'piso'", caso);
 
     const clave = clasificarPerfilLaboral(sp)?.clave ?? null;
-    if (clave !== fila.perfil_laboral) fallar(`4. perfil laboral ${clave} y la columna dice ${fila.perfil_laboral}`, cedula);
+    if (clave !== fila.perfil_laboral) fallar(`4. perfil laboral ${clave} y la columna dice ${fila.perfil_laboral}`, caso);
 
     const comoPatrono = vi.aportes.filter((a) => a.tipo === "aporte como patrono de su propio negocio");
     if (comoPatrono.length) {
       propios++;
-      if (comoPatrono.some((a) => a.declaradoPor !== "Empresa propia")) fallar("5. aporte como patrono no llega como Empresa propia", cedula);
+      if (comoPatrono.some((a) => a.declaradoPor !== "Empresa propia")) fallar("5. aporte como patrono no llega como Empresa propia", caso);
       const deUnEmpleador = vi.aportes.some((a) => String(a.declaradoPor).startsWith("Empleador") || a.declaradoPor === "Otros empleadores");
-      if (vi.perfilLaboral?.trabajaParaUnTercero && !deUnEmpleador) fallar("5. propio patrono figura trabajando para un tercero", cedula);
+      if (vi.perfilLaboral?.trabajaParaUnTercero && !deUnEmpleador) fallar("5. propio patrono figura trabajando para un tercero", caso);
     }
     if (vi.indiciosIngresoMayor.length) conIndicios++;
     if (vi.estabilidad) conEstabilidad++;
@@ -143,31 +191,32 @@ for (let i = 0; i < ids.length; i += 100) {
     // 7. Desde marco-v24: los préstamos IESS/BIESS con su nombre, y el
     // endeudamiento igual a la suma de sus partes.
     const b = pm.comportamientoBancario;
-    if (b && ("numeroCreditosFormales" in b || !("numeroPrestamosIessBiess" in b))) fallar("7. los préstamos IESS/BIESS no llegan con su nombre", cedula);
+    if (b && ("numeroCreditosFormales" in b || !("numeroPrestamosIessBiess" in b))) fallar("7. los préstamos IESS/BIESS no llegan con su nombre", caso);
     const en = pm.endeudamiento;
-    if ((sp.comportamientoBancario || sp.comportamientoCooperativas) && !en) fallar("7. falta el bloque endeudamiento", cedula);
+    if ((sp.comportamientoBancario || sp.comportamientoCooperativas) && !en) fallar("7. falta el bloque endeudamiento", caso);
     if (en) {
       const suma = Math.round((en.deudaPropiaBancos + en.deudaPropiaCooperativas + en.deudaPropiaRetail) * 100) / 100;
-      if (Math.abs(suma - en.deudaPropiaTotal) > 0.01) fallar("7. la deuda propia total no es la suma de sus partes", cedula);
-      if (en.deudaEnAtrasoTotal > en.deudaPropiaTotal + 0.01) fallar("7. hay más deuda en atraso que deuda total", cedula);
+      if (Math.abs(suma - en.deudaPropiaTotal) > 0.01) fallar("7. la deuda propia total no es la suma de sus partes", caso);
+      if (en.deudaEnAtrasoTotal > en.deudaPropiaTotal + 0.01) fallar("7. hay más deuda en atraso que deuda total", caso);
     }
-    // 8. Montos a centavos: 258798.83000000002 llegaba así al modelo.
-    if (/\d\.\d{3,}/.test(JSON.stringify({ b, c: pm.comportamientoCooperativas, en, p: pm.riesgoJudicialCivil }))) fallar("8. un monto llega con más de dos decimales", cedula);
+    // 8. Todo número entero: 258798.83000000002 llegaba así al modelo, y el
+    // modelo copia los números tal cual a lo que escribe.
+    if (conDecimales(mensajeParaElModelo(sp, []))) fallar("8. un número llega con decimales", caso);
 
     // 9. Desde marco-v25: la disponibilidad por tema, primera, sin fuentes.
     const di = pm.disponibilidad;
-    if (Object.keys(pm)[0] !== "disponibilidad") fallar("9. la disponibilidad no llega primera", cedula);
-    if (sp.metaConsulta && !di) fallar("9. hay metaConsulta y no llega la disponibilidad", cedula);
+    if (Object.keys(pm)[0] !== "disponibilidad") fallar("9. la disponibilidad no llega primera", caso);
+    if (sp.metaConsulta && !di) fallar("9. hay metaConsulta y no llega la disponibilidad", caso);
     if (di) {
       const temas = [...di.temasConsultados, ...di.temasNoConsultados];
-      if (new Set(temas).size !== temas.length) fallar("9. un tema está en las dos listas", cedula);
+      if (new Set(temas).size !== temas.length) fallar("9. un tema está en las dos listas", caso);
       if (di.temasNoConsultados.length) conTemasSinConsultar++;
     }
-    if (NOMBRES_DE_FUENTES.test(JSON.stringify(pm))) fallar("9. llega un nombre técnico de fuente", cedula);
+    if (NOMBRES_DE_FUENTES.test(JSON.stringify(pm))) fallar("9. llega un nombre técnico de fuente", caso);
 
     // 10. Desde marco-v25: un jubilado dejó de aportar porque se jubiló.
     if (vi.perfilLaboral?.registraJubilacion && (vi.sinInformacionActualEnElIess || vi.mesesSinAportar !== null)) {
-      fallar("10. un jubilado llega sin información actual en el IESS", cedula);
+      fallar("10. un jubilado llega sin información actual en el IESS", caso);
     }
 
     // 11. Desde marco-v26: las civiles por categoría, sumando el total.
@@ -175,12 +224,12 @@ for (let i = 0; i < ids.length; i += 100) {
     if (civil && Array.isArray(sp.riesgoJudicialCivil?.demandasPorCategoria)) {
       conCategorias++;
       const suma = Object.values(civil.demandasPorCategoria ?? {}).reduce((a, n) => a + n, 0);
-      if (suma !== civil.numeroDemandasComoDemandado) fallar("11. las categorías no suman el total de demandas civiles", cedula);
-      if ("tiposDemandasComoDemandado" in civil) fallar("11. llega la lista de textos de demandas civiles", cedula);
+      if (suma !== civil.numeroDemandasComoDemandado) fallar("11. las categorías no suman el total de demandas civiles", caso);
+      if ("tiposDemandasComoDemandado" in civil) fallar("11. llega la lista de textos de demandas civiles", caso);
     }
     // 12. Tipos legibles: ni "ART. 413", ni "NUM. 1", ni "298 ...", ni "��".
     const tipos = [...(pm.riesgoJudicialCrediticio?.tiposDemandasComoDemandado ?? []), ...(civil?.tiposDemandasComoDemandado ?? [])];
-    if (tipos.some((t) => /\bART\.?\s*\d|\bNUM\.?\s*\d|\bINC\.?\s*\d|^\d+\s|�/i.test(String(t)))) fallar("12. un tipo de demanda llega con artículos o tildes rotas", cedula);
+    if (tipos.some((t) => /\bART\.?\s*\d|\bNUM\.?\s*\d|\bINC\.?\s*\d|^\d+\s|�/i.test(String(t)))) fallar("12. un tipo de demanda llega con artículos o tildes rotas", caso);
   }
 }
 
@@ -196,13 +245,16 @@ for (let i = 0; i < ids.length; i += 100) {
   if (sp.fuentesIngreso && JSON.stringify(pm.fuentesIngreso.aportes) !== JSON.stringify(completo.fuentesIngreso.aportes)) fallar("6. ocultar un campo tocó otro", "prueba");
 }
 
+for (const [r, n] of protegidosPresentes) if (n === 0) fallar(`13. el atributo protegido ${r} no está en ningún perfil`, "lista");
+
 const mediana = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)];
 const p90 = (v) => [...v].sort((x, y) => x - y)[Math.floor(v.length * 0.9)];
 console.log(`perfiles revisados: ${revisados} (${conIngresos} con clasificación de ingresos)`);
 console.log(`  aportes como propio patrono: ${propios} | con indicios: ${conIndicios} | con estabilidad: ${conEstabilidad} | con tamaño del negocio: ${conTamano} | con algún tema sin consultar: ${conTemasSinConsultar} | con demandas por categoría: ${conCategorias}`);
+console.log(`  empleos actuales: ${empleos}, sin tipo de empleador: ${empleosSinTipo}`);
 console.log(`  mensaje al modelo (caracteres): antes mediana ${mediana(tamanos.antes)} p90 ${p90(tamanos.antes)} | ahora mediana ${mediana(tamanos.despues)} p90 ${p90(tamanos.despues)}`);
 if (fallas.size === 0) {
-  console.log("VALIDACIÓN OK: 0 fallas en las 12 reglas.");
+  console.log("VALIDACIÓN OK: 0 fallas en las 13 reglas.");
 } else {
   console.log("FALLAS:");
   for (const [regla, casos] of fallas) console.log(`  ${regla}: ${casos.length} (ej. ${casos.slice(0, 5).join(", ")})`);

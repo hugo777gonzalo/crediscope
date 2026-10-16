@@ -485,8 +485,19 @@ export async function getConsumoLlm({ desde = null, hasta = null } = {}) {
     // mientras se lee caiga al final y no corra las páginas.
     return q.order("created_at").order("id");
   });
+  // La cédula sale de la persona, no del registro de la llamada: hasta el
+  // 2026-10-13 se copiaba en contexto y quedaba ahí aunque se suprimiera al
+  // titular (suprimir_titular() sólo vacía client_id). De a 200: con más de
+  // ~350 uuid la dirección del pedido pasa el largo que acepta PostgREST.
+  const ids = [...new Set(filas.map((r) => r.client_id).filter(Boolean))];
+  const cedulaDe = new Map();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.from("clients").select("id, cedula").in("id", ids.slice(i, i + 200));
+    if (error) throw error;
+    for (const c of data) cedulaDe.set(c.id, c.cedula);
+  }
   // Las pantallas esperan lo más reciente primero.
-  return filas.reverse();
+  return filas.reverse().map((r) => ({ ...r, cedula: cedulaDe.get(r.client_id) ?? null }));
 }
 
 export async function getTarifasLlm() {

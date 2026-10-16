@@ -146,6 +146,14 @@ export async function guardarTablasDeLaConsulta(
   }
 }
 
+// La persona va a audit_log por client_id, nunca por su número en meta: audit_log lo lee todo usuario
+// con sesión y no se puede corregir después (113). Hasta el 2026-10-13 cada consulta dejaba ahí la
+// cédula. Un fallo no crea a la persona; si todavía no existe, la constancia queda sin enlace.
+async function personaConocida(db: Base, cedula: string): Promise<string | null> {
+  const { data } = await db.from("clients").select("id").eq("cedula", cedula).maybeSingle();
+  return data?.id ?? null;
+}
+
 async function consultaVigente(db: Base, cedula: string, ahora: Date) {
   const { data, error } = await db.from("consultas_equifax").select("*")
     .eq("identificacion", cedula).eq("tipo_identificacion", "C")
@@ -210,8 +218,8 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     const { error } = await o.db.from("audit_log").insert({
       actor: o.actorId,
       action: "equifax.consulta.fallo",
+      client_id: await personaConocida(o.db, o.cedula),
       meta: {
-        identificacion: o.cedula,
         familia: respuesta.familia,
         http_equifax: respuesta.httpEquifax ?? null,
         intentos: respuesta.intentos,
@@ -239,8 +247,8 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     const { error } = await o.db.from("audit_log").insert({
       actor: o.actorId,
       action: "equifax.consulta.fallo",
+      client_id: await personaConocida(o.db, o.cedula),
       meta: {
-        identificacion: o.cedula,
         familia: "otra_persona",
         http_equifax: respuesta.httpEquifax ?? null,
         intentos: respuesta.intentos,
@@ -326,7 +334,6 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     client_id: clientId,
     meta: {
       consulta_equifax_id: guardado.id,
-      identificacion: o.cedula,
       ambiente: fila.ambiente,
       intentos: respuesta.intentos,
       duracion_ms: respuesta.duracionMs,
