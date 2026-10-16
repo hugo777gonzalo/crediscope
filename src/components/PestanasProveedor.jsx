@@ -9,15 +9,19 @@ import { Link } from "react-router-dom";
 // Cada proveedor tiene su propia URL (/admin/fuentes/novadata,
 // /admin/fuentes/aval) -- se puede compartir el link y el botón atrás del
 // navegador funciona, igual que con Perfil del Cliente / Análisis con IA.
+// Equifax sólo tiene la pestaña de fuentes: qué campos suyos lee el modelo se
+// decide con la versión del marco (docs/propuesta-marco-equifax.md), no con
+// interruptores por campo.
 const PROVEEDORES = [
   { clave: "novadata", nombre: "Novadata" },
   { clave: "aval", nombre: "Aval" },
+  { clave: "equifax", nombre: "Equifax", soloEn: "fuentes" },
 ];
 
 export default function PestanasProveedor({ base, activo }) {
   return (
     <div className="crediscope-tabs">
-      {PROVEEDORES.map((p) =>
+      {PROVEEDORES.filter((p) => !p.soloEn || p.soloEn === base).map((p) =>
         p.clave === activo ? (
           <span key={p.clave} className="crediscope-tab crediscope-tab-active" aria-current="page">
             {p.nombre}

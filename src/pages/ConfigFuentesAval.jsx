@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import { getProveedor, updateProveedor } from "../lib/api.js";
 import FilaConfig from "../components/FilaConfig.jsx";
 import PestanasProveedor from "../components/PestanasProveedor.jsx";
+import SelectorDeBuro from "../components/SelectorDeBuro.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 
@@ -58,6 +59,8 @@ export default function ConfigFuentesAval() {
           </span>
         </h2>
       </div>
+
+      <SelectorDeBuro />
 
       {error ? (
         <AvisoDeError error={error} />
