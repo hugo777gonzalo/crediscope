@@ -2,10 +2,7 @@
 --
 -- Sólo la fila de la versión: sin ella el primer análisis con v30 falla por
 -- la clave foránea de analysis_results.rules_version. ESQUEMA_MINIMO sube a
--- 129: primero se migra, después se despliega.
---
--- Tomó el 129 al aplicarse, antes que el PR #26 (un solo buró por
--- institución), que lo tenía en su rama sin aplicar: ése pasa al siguiente.
+-- 130: primero se migra, después se despliega.
 
 insert into scoring_rules_versions (version, description) values
   ('marco-v30',

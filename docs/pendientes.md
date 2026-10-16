@@ -404,7 +404,7 @@ aceptada.
      2026-10-16** (PR #25, 128, funciones 684b243): sin cédula, sin nombre,
      sin empleadores (cada empleo con su tipo), sin la institución de una PEP
      ni la del título, los números de 10+ dígitos tapados y todo número
-     entero. **marco-v30** (129, mismo día, pedido del negocio): cada empleo y
+     entero. **marco-v30** (130, mismo día, pedido del negocio): cada empleo y
      cada aporte llevan esSuPropioPatrono y posibleNegocioFamiliar, calculados
      con el nombre antes de borrarlo (con v29, en 9 de 72 personas con la
      marca de familiar no se sabía cuál de sus empleos era). Validadas sin el
