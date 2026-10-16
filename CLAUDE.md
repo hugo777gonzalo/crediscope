@@ -558,9 +558,9 @@ antes de tocar esa área.
 - Las columnas copiadas del perfil se escriben sólo con
   `columnasDelPerfil()`. Si cambia la regla de una columna sin cambiar el
   perfil: `scripts/calcular-columnas-del-perfil.mjs` (`--seco` primero).
-- `reprocess-sample.mjs` quedó atrás: para validar un cambio, comparar
-  `process.ts` viejo contra nuevo sobre `research/novadata-raw/` con el
-  perfil entero.
+- Para validar un cambio, comparar `process.ts` viejo contra nuevo sobre
+  `research/novadata-raw/` con el perfil entero (`reprocess-sample.mjs`, la
+  copia a mano, quedó atrás y se borró el 2026-10-13).
 
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente

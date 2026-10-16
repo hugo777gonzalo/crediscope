@@ -281,8 +281,10 @@ Deno.serve(async (req) => {
           requestId: llamada.requestId ?? null,
           clientId: client.id,
           analysisResultId,
+          // Sin la cédula: la persona ya queda en client_id, y una copia en
+          // contexto sobrevivía a la supresión del titular (que sólo vacía
+          // client_id).
           contexto: {
-            cedula,
             reutilizoPerfil: Boolean(profileId),
             escalamiento: Boolean(llamada.escalamiento),
             intento: llamada.intento ?? 1,
