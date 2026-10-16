@@ -194,11 +194,15 @@ async function unaIdentificacion(ingresado) {
   // sobre 373 personas.
   if (!laConsultaAvalSirve(r)) {
     if (!SECO) {
+      // La persona va por client_id, no por su número en meta: igual que la
+      // función consultar-aval (audit_log no se puede corregir después).
+      const { data: conocida } = await db.from("clients").select("id").eq("cedula", cedula).maybeSingle();
       await db.from("audit_log").insert({
         actor: RESPONSABLE,
         action: "aval.consulta.fallo",
+        client_id: conocida?.id ?? null,
         meta: {
-          identificacion: cedula, familia: r.familia, codigo: r.codigo ?? null,
+          familia: r.familia, codigo: r.codigo ?? null,
           intentos: r.intentos, agotoReintentos: r.agotoReintentos ?? false,
           duracion_ms: r.duracionMs, mensaje: porQueNoSirveAval(r),
           http_aval: r.httpAval ?? null, detalle_tecnico: r.errorMessage ?? null,
@@ -256,7 +260,7 @@ async function unaIdentificacion(ingresado) {
   await db.from("audit_log").insert({
     actor: RESPONSABLE, action: "aval.consulta", client_id: clientId,
     meta: {
-      consulta_aval_id: guardado.id, identificacion: cedula,
+      consulta_aval_id: guardado.id,
       intentos: r.intentos, duracion_ms: r.duracionMs, ambiente: AMBIENTE,
       // La fila de consultas_aval es igual a la de una consulta normal para que
       // la aplicación no tenga que saber de esto; la auditoría sí lo dice.
