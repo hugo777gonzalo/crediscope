@@ -41,6 +41,7 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { clavesIguales } from "../_shared/autorizacion.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
+import { MODELO } from "../_shared/llm-scoring.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { probarFuenteDeDatos } from "../_shared/novadata-client.ts";
 import { avisar, hayCanal } from "../_shared/notificador.ts";
@@ -51,9 +52,11 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_WORKSPACE_ID = Deno.env.get("ANTHROPIC_WORKSPACE_ID") ?? "";
 const VIGIA_CLAVE = Deno.env.get("VIGIA_CLAVE") ?? "";
 
-// El mismo modelo que atiende la mayoría de las consultas reales: el
-// chequeo tiene que ejercitar el camino que de verdad se usa.
-const MODELO_VIGIA = "claude-haiku-4-5-20251001";
+// El mismo modelo que atiende las consultas reales: el chequeo tiene que
+// ejercitar el camino que de verdad se usa. Se toma de llm-scoring.ts y no
+// se copia: la copia se quedó en Haiku 4.5 cuando producción pasó a Sonnet
+// 5.5 (2026-10-03), y el vigía decía «el modelo contesta» de otro modelo.
+const MODELO_VIGIA = MODELO;
 
 const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 

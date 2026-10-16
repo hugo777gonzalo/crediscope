@@ -6,14 +6,22 @@
 // deno test --allow-env supabase/functions/
 
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { inicioDelDiaEcuador, procesarConsultaEquifax } from "./equifax-persistencia.ts";
+import { guardarTablasDeLaConsulta, identidadDeLaConsulta, inicioDelDiaEcuador, procesarConsultaEquifax } from "./equifax-persistencia.ts";
 import type { RespuestaEquifax } from "./equifax-client.ts";
+import { CEDULA_DE_PRUEBA, respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
 
 // deno-lint-ignore no-explicit-any
 type Fila = Record<string, any>;
 
 // Una base mínima: lo justo de supabase-js que usa el módulo.
-function baseFalsa(inicial: Partial<Record<string, Fila[]>> = {}, opciones: { fallanInsertsDeConsultas?: number } = {}) {
+function baseFalsa(
+  inicial: Partial<Record<string, Fila[]>> = {},
+  opciones: {
+    fallanInsertsDeConsultas?: number;
+    rpcFalla?: { code: string; message: string };
+    rpcLanza?: boolean;
+  } = {},
+) {
   const tablas: Record<string, Fila[]> = {
     proveedores: [{ clave: "equifax", activo: true, notas: null }],
     consultas_equifax: [],
@@ -64,7 +72,16 @@ function baseFalsa(inicial: Partial<Record<string, Fila[]>> = {}, opciones: { fa
     };
     return b;
   }
-  return { from: constructor, tablas, intentosDeInsertEnConsultas };
+  // La función de la base que rehace las tablas de una consulta (126): se anota cada llamada y cuántas
+  // consultas había guardadas CUANDO se llamó (tiene que ser después de guardar el crudo).
+  const llamadasRpc: Array<{ nombre: string; args: Fila; consultasGuardadas: number }> = [];
+  const rpc = (nombre: string, args: Fila) => {
+    llamadasRpc.push({ nombre, args, consultasGuardadas: tablas.consultas_equifax.length });
+    if (opciones.rpcLanza) throw new Error("la base no contesta\nsegunda línea con detalle");
+    if (opciones.rpcFalla) return Promise.resolve({ data: null, error: opciones.rpcFalla });
+    return Promise.resolve({ data: { equifax_operaciones: 5, equifax_resumen: 1 }, error: null });
+  };
+  return { from: constructor, rpc, tablas, intentosDeInsertEnConsultas, llamadasRpc };
 }
 
 const respuestaOk = (): RespuestaEquifax => ({
@@ -198,6 +215,28 @@ Deno.test("simular dice que reutilizaría cuando hay una vigente", async () => {
   assertEquals(r.resultado === "simulada" && r.reutilizaria, true);
 });
 
+// audit_log lo lee todo usuario con sesión y no se corrige después: hasta el 2026-10-13 cada
+// consulta dejaba ahí la cédula (22 filas). La persona va por client_id.
+Deno.test("la auditoría nombra a la persona por client_id, nunca por su número", async () => {
+  const nueva = baseFalsa();
+  await procesarConsultaEquifax({ ...BASE, db: nueva, ahora: AHORA, consultar: llamadas().consultar });
+  const consulta = nueva.tablas.audit_log.find((f) => f.action === "equifax.consulta");
+  assertEquals(consulta?.client_id, nueva.tablas.clients[0].id);
+  assert(!JSON.stringify(consulta?.meta).includes(BASE.cedula), "la cédula quedó en meta");
+
+  const conocida = baseFalsa({ clients: [{ id: "persona-1", cedula: BASE.cedula }] });
+  await procesarConsultaEquifax({ ...BASE, db: conocida, ahora: AHORA, consultar: () => Promise.resolve(respuestaTimeout()) });
+  const fallo = conocida.tablas.audit_log.find((f) => f.action === "equifax.consulta.fallo");
+  assertEquals(fallo?.client_id, "persona-1");
+  assert(!JSON.stringify(fallo?.meta).includes(BASE.cedula), "la cédula quedó en meta");
+
+  // Un fallo no crea a la persona: si no existe, la constancia queda sin enlace.
+  const desconocida = baseFalsa();
+  await procesarConsultaEquifax({ ...BASE, db: desconocida, ahora: AHORA, consultar: () => Promise.resolve(respuestaTimeout()) });
+  assertEquals(desconocida.tablas.clients.length, 0);
+  assertEquals(desconocida.tablas.audit_log.find((f) => f.action === "equifax.consulta.fallo")?.client_id, null);
+});
+
 Deno.test("un timeout no deja fila, deja constancia de que pudo cobrarse", async () => {
   const db = baseFalsa();
   const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve(respuestaTimeout()), ahora: AHORA });
@@ -271,6 +310,89 @@ Deno.test("una respuesta de la persona pedida queda con la identidad verificada"
   const db = baseFalsa();
   await procesarConsultaEquifax({ ...BASE, db, consultar: llamadas().consultar, ahora: AHORA });
   assertEquals(db.tablas.audit_log.find((f) => f.action === "equifax.consulta")?.meta.identidad_verificada, true);
+});
+
+// ---------- las tablas y la estructura (126) ----------
+const respuestaCompleta = (): RespuestaEquifax => ({ ...respuestaOk(), cuerpo: respuestaDePrueba() });
+
+Deno.test("una consulta nueva deriva las tablas y las guarda DESPUÉS de guardar el crudo, en una sola llamada", async () => {
+  const db = baseFalsa();
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve(respuestaCompleta()), ahora: AHORA });
+  assertEquals(r.resultado, "consultada");
+  assertEquals(db.llamadasRpc.length, 1, "una sola llamada atómica, no una por tabla");
+  const llamada = db.llamadasRpc[0];
+  assertEquals(llamada.nombre, "equifax_reemplazar_tablas");
+  assertEquals(llamada.consultasGuardadas, 1, "el crudo ya estaba guardado cuando se derivaron las tablas");
+  assertEquals(llamada.args.p_consulta, db.tablas.consultas_equifax[0].id);
+  assertEquals(llamada.args.p_version_tablas, "equifax-tablas-v1");
+  assertEquals(llamada.args.p_version_estructura, "equifax-estructura-v1");
+  assertEquals(Object.keys(llamada.args.p_tablas).length, 11);
+  assertEquals(llamada.args.p_tablas.equifax_operaciones.length, 5);
+  assertEquals(llamada.args.p_estructura.deudaActualTitular.bancos.conciliaConElResumen, "si");
+  assertEquals(llamada.args.p_estructura.consulta.identidadVerificada, true);
+  assert(r.resultado === "consultada" && r.tablas.ok);
+  assertEquals(db.tablas.audit_log.filter((f) => f.action === "equifax.tablas.fallo").length, 0);
+});
+
+Deno.test("si las tablas fallan la consulta cobrada NO se pierde ni se da por fallida, y queda constancia", async () => {
+  const db = baseFalsa({}, { rpcFalla: { code: "23514", message: "falló una restricción\nsegunda línea con un valor de la respuesta" } });
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve(respuestaCompleta()), ahora: AHORA });
+  assertEquals(r.resultado, "consultada", "se cobró y el crudo quedó guardado");
+  assertEquals(db.tablas.consultas_equifax.length, 1);
+  assert(r.resultado === "consultada" && !r.tablas.ok);
+  assertEquals(r.resultado === "consultada" && r.tablas.codigo, "23514");
+  const fallo = db.tablas.audit_log.find((f) => f.action === "equifax.tablas.fallo");
+  assert(fallo, "queda constancia para rehacerlas sin volver a pagar");
+  assertEquals(fallo.meta.consulta_equifax_id, db.tablas.consultas_equifax[0].id);
+  assertEquals(fallo.meta.codigo, "23514");
+  assertFalse(String(fallo.meta.mensaje).includes("segunda línea"), "sólo la primera línea del error: el resto puede repetir un valor de la respuesta");
+  assert(db.tablas.audit_log.some((f) => f.action === "equifax.consulta"), "la consulta se audita igual");
+});
+
+Deno.test("si la base lanza una excepción al guardar las tablas, tampoco se pierde la consulta", async () => {
+  const db = baseFalsa({}, { rpcLanza: true });
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve(respuestaCompleta()), ahora: AHORA });
+  assertEquals(r.resultado, "consultada");
+  assert(r.resultado === "consultada" && !r.tablas.ok);
+  assertEquals(db.tablas.consultas_equifax.length, 1);
+  assertEquals(db.tablas.audit_log.filter((f) => f.action === "equifax.tablas.fallo").length, 1);
+});
+
+Deno.test("una consulta reutilizada no vuelve a derivar nada", async () => {
+  const db = baseFalsa({ consultas_equifax: [{ id: "previa", identificacion: "0102030405", tipo_identificacion: "C", created_at: "2026-10-19T12:00:00Z" }] });
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: llamadas().consultar, ahora: AHORA });
+  assertEquals(r.resultado, "reutilizada");
+  assertEquals(db.llamadasRpc.length, 0);
+});
+
+Deno.test("una consulta rechazada (fallo, otra persona) no deriva tablas", async () => {
+  const fallo = baseFalsa();
+  await procesarConsultaEquifax({ ...BASE, db: fallo, consultar: () => Promise.resolve(respuestaTimeout()), ahora: AHORA });
+  assertEquals(fallo.llamadasRpc.length, 0);
+  const otra = baseFalsa();
+  await procesarConsultaEquifax({
+    ...BASE, db: otra, ahora: AHORA,
+    consultar: () => Promise.resolve({ ...respuestaOk(), cuerpo: { reporteCrediticio: { identificacion_consultada: [{ numero_documento: "0999999999" }] } } }),
+  });
+  assertEquals(otra.llamadasRpc.length, 0, "no se derivan tablas de la respuesta de otra persona");
+});
+
+Deno.test("rehacer las tablas de una consulta guardada usa la misma función y no toca nada más", async () => {
+  const db = baseFalsa();
+  const fila = { id: "c1", identificacion: CEDULA_DE_PRUEBA, created_at: "2026-10-13T02:54:14.996Z", ambiente: "produccion", respuesta_cruda: respuestaDePrueba() };
+  const r = await guardarTablasDeLaConsulta(db, fila);
+  assert(r.ok);
+  assertEquals(db.llamadasRpc.length, 1);
+  assertEquals(db.llamadasRpc[0].args.p_consulta, "c1");
+  assertEquals(db.llamadasRpc[0].args.p_estructura.consulta.consultadoEl, "2026-10-13T02:54:14.996Z", "la estructura lleva la fecha de la consulta original, no la de hoy");
+  assertEquals(db.llamadasRpc[0].args.p_estructura.consulta.ambiente, "produccion");
+  assertEquals(db.tablas.audit_log.length, 0);
+});
+
+Deno.test("la identidad de la consulta: true si el documento es el pedido, null si la respuesta no lo trae", () => {
+  assertEquals(identidadDeLaConsulta(respuestaDePrueba(), CEDULA_DE_PRUEBA), true);
+  assertEquals(identidadDeLaConsulta({ reporteCrediticio: {} }, CEDULA_DE_PRUEBA), null);
+  assertEquals(identidadDeLaConsulta(respuestaDePrueba(), "0999999999"), false);
 });
 
 Deno.test("el día del tope empieza a las 00:00 de Ecuador, no de UTC", () => {
