@@ -375,6 +375,9 @@ Romper cualquiera de estas rompe algo real.
       se sube su versión y se corre `node scripts/cargar-tablas-equifax.mjs`
       (`--seco` primero)**: rehace desde el crudo las consultas que quedaron
       con la versión anterior, sin volver a pagar.
+    - `scripts/exportar-equifax-tablas.mjs`: un Excel con las 11 tablas de todas
+      las personas consultadas (una hoja por tabla, la persona por su código), más
+      «Consultas» y «Estructura». Sólo lee; va a `research/equifax/excel/`.
     - `scripts/medir-bloque-equifax.mjs`: cuánto pesaría el bloque de Equifax del
       perfil del modelo (`docs/propuesta-marco-equifax.md`), sin gasto.
     - `scripts/probar-equifax-tablas.mjs`: las mismas funciones contra las
@@ -639,11 +642,13 @@ antes de tocar esa área.
   - **Lo medido al construir las tablas (2026-10-13), sobre las 22 respuestas:**
     - **El resumen por sistema, los impagos, las morosidades y la cuota
       estimada de Equifax cuentan también al codeudor y al garante.** La suma
-      del detalle de todos los roles reproduce el resumen (bancos 22/22); la
+      del detalle de todos los roles reproduce el resumen (bancos 22/22, y 62/62
+      con el lote del 2026-10-16); la
       del titular solo, no. `conciliaConElResumen` compara todos los roles, y
       lo del titular sale de las operaciones.
     - **La lista de «garantías personales» de Equifax es la misma deuda que las
-      operaciones de rol codeudor** (22/22): es una comprobación, nunca un
+      operaciones de rol codeudor** (22/22; 60/62 desde el 2026-10-16, con 2
+      casos sin mirar todavía): es una comprobación, nunca un
       sumando. **«Garantía» en Ecuador es el colateral** (auto, casa, pagaré):
       lo de codeudor y garante no se llama así (tabla `equifax_codeudor_garante`).
     - **Una operación no se puede seguir de un mes al siguiente**: las listas no
