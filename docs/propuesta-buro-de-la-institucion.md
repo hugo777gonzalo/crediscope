@@ -24,6 +24,39 @@ Contexto: `docs/propuesta-estructura-equifax.md` (las tablas y la estructura, 12
 | A8 | La comparación con y sin Equifax (unos USD 1) | El negocio sube el tope, **pero sólo con todo listo**: la estructura afinada y el marco nuevo |
 | F1 | Aval en el Expediente | **No**: Aval y Equifax son dos pantallas aparte, parecidas pero no iguales; una IFI usa una u otra |
 
+### Lo que decidió el negocio sobre esta propuesta (2026-10-16)
+
+| Pregunta (sección 6) | Respuesta |
+|---|---|
+| Qué se apaga de Novadata | **Nada se deja de consultar**: Novadata se consulta entera, como hasta ahora. Lo que el buró repite sólo deja de ir al modelo (capa 2). La capa 3 (dejar de consultar) no se construye |
+| A4, el lugar del buró en el marco | **En lugar de los niveles 3 y 4** (bancos y cooperativas) |
+| El nombre del selector | **«Buró»** |
+| Las casas comerciales | **Se suman**: «veamos cómo nos va sumando» |
+| La calificación A1 a E | Se reemplaza por **días de mora** |
+| El reporte | **PDF** |
+| Las pantallas | Proceder con el diseño de la sección 5: moderno, preciso, informativo y fácil de leer, **con las explicaciones largas en ayudas emergentes** |
+
+**Construido el 2026-10-16** (las pantallas y la capa 1; el lado del modelo, la
+capa 2 y `marco-v30`, va en una sesión aparte):
+
+- **Capa 1, migración 129**: `proveedores.es_buro` (a lo sumo uno, sólo Aval o
+  Equifax), `elegir_buro()` y el selector «Buró» arriba de las pestañas de Aval y
+  de Equifax en Configuración › Fuentes que consultamos. Esta base nace con
+  Equifax como buró. Elegirlo no prende ni apaga consultas.
+- **La pestaña Equifax** (`/equifax/:cedula`), como la de Aval y aparte del
+  Expediente (F1): cabecera con lo grave, cuatro indicadores (Score de Equifax,
+  deuda como titular, en atraso hoy, cuota mensual), la deuda por sistema con lo
+  de codeudor o garante aparte, la franja de 24 meses, las operaciones y el resto
+  plegado. Las explicaciones van en `InfoTooltip`, que ahora también se abre con
+  el dedo y con el teclado.
+- **El reporte en PDF**: la misma pantalla impresa, con todo abierto y un
+  encabezado (qué es, de cuándo, quién lo sacó). Queda en la auditoría
+  (`exportacion.reporte_equifax`, 129).
+- **El menú** dice «Buró» (antes «Aval») y lleva al buró de la institución
+  (`/buro/:cedula`); la pestaña de cada persona dice su nombre (Equifax o Aval).
+- **Sin botón para consultar a Equifax**: la pestaña sólo muestra lo guardado. Ver
+  la pregunta abierta en `docs/pendientes.md`.
+
 ## 1. Lo medido: Equifax contra el buró de Novadata
 
 Se comparó cada consulta de Equifax (las 22, todas de producción) con el último
