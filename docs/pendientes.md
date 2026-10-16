@@ -3,7 +3,8 @@
 Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
-2026-10-12 (sección 1, primer punto). La última migración es la **125**;
+2026-10-12 (sección 1, primer punto). La última migración aplicada es la
+**126** (al 2026-10-13; la 127 espera su PR y el despliegue de las funciones);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -57,7 +58,13 @@ aceptada.
        prioridad de cada punto, está en `docs/equifax-pedido-de-diccionario.md`. Lo
        que conteste se carga sin volver a pagar: se sube la versión y se rehacen
        las consultas.
-    2. **El ajuste al marco interpretativo.** El negocio dijo «procede» el
+    2. **Afinar la información de Equifax antes de cualquier muestra con y sin
+       Equifax** (decisión del negocio del 2026-10-13, más tarde ese día): hay
+       que decidir qué de Novadata repite lo que trae Equifax (o Aval), que
+       tendrían la información más completa, y poder apagar esa parte de
+       Novadata. Sin eso, la comparación mide la deuda dos veces. Se trabaja
+       la semana del 2026-10-13, con las pantallas (punto 5).
+    3. **El ajuste al marco interpretativo.** El negocio dijo «procede» el
        2026-10-13: la propuesta está escrita (`docs/propuesta-marco-equifax.md`:
        el bloque del perfil del modelo, el borrador de la sección, lo medido con
        las 22 y lo que decide el negocio). **No cambia nada de lo que lee el
@@ -66,13 +73,13 @@ aceptada.
        autorización explícita del gasto (unos USD 1 en lote para comparar las 22;
        **octubre lleva USD 9,28 de 10**: se corre en noviembre o el negocio sube
        antes el tope del proveedor de IA).
-    3. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
-       dijo otra vez el 2026-10-13 que por ahora no; el riesgo sigue mientras no
-       se roten.
-    4. **Pantallas:** cuando todo el proceso detrás de Equifax esté listo
-       (decisión del negocio, 2026-10-13). Al hacerlas, rótulo «Score de
+    4. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
+       dijo otra vez el 2026-10-13 que no es posible por ahora y que sigue en
+       observación; el riesgo sigue mientras no se roten.
+    5. **Pantallas:** el negocio decidió hacerlas la semana del 2026-10-13,
+       junto con afinar la información (punto 2). Al hacerlas, rótulo «Score de
        Equifax» y el vocabulario de `docs/modelo-de-la-persona.md`.
-    5. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
+    6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,
        2026-10-13: «Equifax está en proceso de aprobación»; no es una
@@ -215,7 +222,8 @@ aceptada.
    hay evidencia que juntar.
 
 0b. **Laboratorio: seguir `docs/laboratorio-guia.md`** (desde el
-   2026-10-07; paso actual: 1, registrar el Universo). La guía reemplaza al
+   2026-10-07; paso actual: 1, registrar el Universo; se retoma la semana del
+   2026-10-19, decisión del negocio del 2026-10-13). La guía reemplaza al
    plan de la revisión (sección 11) y a la propuesta de la fase 3 (sección
    15): los grupos (Universo, Universo analizado, Con crédito, Sin crédito),
    cómo se sigue cada uno, el plan por pasos y las reglas. **Sin pantallas
@@ -334,19 +342,18 @@ aceptada.
     - las 240 sintéticas fuera de los totales;
     - migraciones 117 a 119, y la 120 el 2026-10-10 (la franja de la
       bandeja sin sintéticas).
-  - `auditar-seguridad.mjs`: 50 controles en OK.
+  - `auditar-seguridad.mjs`: 68 controles en OK al 2026-10-13.
   - Queda, por orden:
   1. **E27, urgente: lo que lee el modelo.** marco-v29 hecha el 2026-10-13
-     (PR aparte, sin desplegar): sin cédula, sin nombre, sin empleadores
-     (cada empleo con su tipo), sin la institución de una PEP ni la del
-     título (en 13 perfiles era el empleador), los números de 10+ dígitos
-     tapados en cualquier texto y todo número entero (decisión del negocio
-     del mismo día: los decimales llegaban por 33 campos, todos montos). Validada sin el modelo sobre los 2.813
-     perfiles (`validar-perfil-del-modelo.mjs`, regla 13: 0 fallas). Falta,
-     por orden:
-     - fusionar el PR y aplicar la **128** con el corredor, **después de la
-       127** del PR #24 (si la 127 no entró antes, renumerar: el corredor no
-       vuelve a un número salteado). `ESQUEMA_MINIMO` pasa a 128: primero se
+     (PR #25, sin desplegar): sin cédula, sin nombre, sin empleadores (cada
+     empleo con su tipo), sin la institución de una PEP ni la del título (en
+     13 perfiles era el empleador), los números de 10+ dígitos tapados en
+     cualquier texto y todo número entero (decisión del negocio del mismo
+     día: los decimales llegaban por 33 campos, todos montos). Validada sin
+     el modelo sobre los 2.813 perfiles (`validar-perfil-del-modelo.mjs`,
+     regla 13: 0 fallas). Falta, por orden:
+     - fusionar el PR #25 y aplicar la **128** con el corredor (la base ya
+       está en la 127 del PR #24). `ESQUEMA_MINIMO` pasa a 128: primero se
        migra, después se despliega `analyze-client` (`--funciones`);
      - **la comparación** (14 llamadas, ~USD 0,56 con el marco en caché; el
        negocio no la autorizó el 2026-10-13 porque octubre lleva USD 9,28 de
@@ -371,16 +378,26 @@ aceptada.
        hasta entonces**. Decir qué atributos siguen llegando.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
-     `reutiliza_analisis_id` y `duracion_llm_ms` nulo. Revisar también que
+     `reutiliza_analisis_id` y `duracion_llm_ms` nulo.
+     - **Intento del 2026-10-13 (c-a1b2684a): no reutilizó, y no podía.** Su
+       análisis anterior era del lote del 07/10, anterior a la 119 y sin huella;
+       el de ese día salió de una consulta nueva a Novadata, con otra fecha de
+       consulta (`perfilDelModelo.consultadoEn`) y un tema que esta vez no
+       contestó («deudas con sentencia firme»).
+     - **La reutilización vale sólo dentro de una misma consulta.** La fecha de
+       consulta va en lo que lee el modelo, así que una consulta nueva siempre
+       da otra huella, aunque los datos sean iguales.
+     - **Falta la prueba de verdad:** volver a analizar a esa persona sobre el
+       perfil del 13/10, sin consultar de nuevo, y mirar la fila nueva. Revisar también que
      la bandeja y Fuentes de ingreso no muestren a las sintéticas, y que la
      franja de la bandeja sume lo mismo que la lista (en la base coincide
      desde la 120).
   3. **Antes de pasar el repositorio a privado:** decidir GitHub Pro. En el
      plan gratuito, un repositorio privado pierde la protección de ramas. El
      escaneo de secretos lo cubre gitleaks en los controles.
-  4. **Los PRs de Dependabot** (#1 gitleaks-action 3.0.0, #2 diez
-     actualizaciones menores de npm): revisarlos y fusionarlos si los
-     controles pasan.
+  4. **El PR #19 de Dependabot** (3 actualizaciones menores de npm): los
+     controles pasan (2026-10-13), falta fusionarlo. Los #1 y #2 entraron el
+     2026-10-12.
   5. **E3, ambiente de prueba:** el negocio decidió esperar. Antes hace falta
      la línea base del esquema (E15).
   6. **E5:**
@@ -412,12 +429,19 @@ aceptada.
       2026-10-12). Ese día se cerró la sesión de este frente: quien lo
       retome empieza acá.
   - Queda, por orden:
-  1. **Arreglos chicos que se pueden hacer ya**, sin esperar la API:
-     - `analyze-client` deja de escribir la cédula en `llm_llamadas.contexto`
-       (323 filas) y `consultar-aval`, en `audit_log.meta` (463 filas, que lee
-       todo usuario con sesión). En su lugar va el `client_id`;
-     - el vigía prueba Haiku 4.5 y producción usa Sonnet 5.5
-       (`vigia/index.ts`): pasarlo al modelo real.
+  1. **Arreglos chicos, hechos el 2026-10-13 en la rama
+     `fix/sin-cedula-en-registros`; falta fusionar, desplegar con el corredor y
+     aplicar la 127, en ese orden:**
+     - `analyze-client`, el lote y la comparación de razonamiento dejan de
+       escribir la cédula en `llm_llamadas.contexto`. La 127 la borra de las
+       325 filas viejas, que tienen todas `client_id`, y Costos › Detalle de
+       llamadas la lee de `clients`.
+     - `consultar-aval`, el guion local de Aval y Equifax dejan de escribirla
+       en `audit_log.meta`: la persona va por `client_id`. Las 485 filas viejas
+       (448 de consultas a Aval, 15 de fallos de Aval y 22 de Equifax) se
+       quedan, porque `audit_log` no se corrige (113). Sigue abierto que esa
+       tabla la lee todo usuario con sesión.
+     - El vigía prueba el modelo de producción, tomado de `llm-scoring.ts`.
   2. **Legal:**
      - revisar el texto de autorización y el anexo de seguridad;
      - los plazos del contrato modelo no coinciden con la norma
@@ -522,6 +546,10 @@ aceptada.
   Novadata que es la misma deuda que el Banco Internacional (68). Todo
   medido y con opciones en `docs/observaciones-del-negocio.md`; los casos
   los lista `scripts/detectar-atipicos.mjs`. Se decide cuando esté completo.
+  El 2026-10-13 el negocio volvió a marcar que el modelo manda demasiados
+  casos a revisar (en el lote del 07/10 fueron 143 de 200, y las dos personas
+  analizadas ese día también salieron a revisar). Está en el cuestionario de
+  decisiones de ese día.
 
 - **La antigüedad de las demandas no llega al perfil** (mejora posterior,
   decidido por el negocio el 2026-09-29: no es urgente). El grupo de
@@ -665,18 +693,24 @@ aceptada.
 
 ## 6. Limpieza
 
-- `scripts/reprocess-sample.mjs` quedó atrás de `process.ts`: lee la
-  forma vieja de `empleoActual`. Hay que ponerlo al día o borrarlo; hoy
-  se valida con `process.ts` directo bajo Node.
 - Ramas locales ya contenidas en `main` o superadas:
-  `aval-corredor-local-y-ambiente`, `claude/xenodochial-albattani-950de3`,
-  `claude/fervent-swirles-6ceaac` (marco-v27, integrada) y
-  `claude/cool-jemison-2a674d` (el parche 720f31b de Retroalimentación, que
-  ya no existe; su 082 está en `main`). Se pueden borrar.
+  `aval-corredor-local-y-ambiente` (4159844), `claude/xenodochial-albattani-950de3`
+  (dc5077b), `claude/fervent-swirles-6ceaac` (80dc918, marco-v27, integrada),
+  `claude/modest-moser-a6250b` (c7ce76f, el contrato de la API, entró como
+  #5) y `claude/cool-jemison-2a674d` (720f31b, el parche de Retroalimentación,
+  que ya no existe; su 082 está en `main`). Se pueden borrar, y también las
+  carpetas de trabajo `.claude/worktrees/cool-jemison-2a674d` y
+  `xenodochial-albattani-950de3`. **Revisado el 2026-10-13:** lo que tienen
+  fuera de git (`docs/cumplimiento/`, `.env`) es igual a lo de la carpeta
+  principal. El único archivo distinto es el README de `docs/cumplimiento/api/`,
+  igual byte a byte con otro nombre. El borrado espera el permiso del negocio:
+  el control de permisos de la sesión lo frenó.
 - La cartera sintética del Laboratorio (carga "Cartera sintética (semilla
   1)") se queda: es la que prueba los cálculos. Si se regenera, anular la
   anterior desde la pantalla.
 - En la base quedan 5 lotes de prueba terminados: 3 del 2026-09-15
-  ("Prueba de…") y 2 del 2026-09-23 ("prueba 078…"). Se pueden borrar
-  los lotes. Antes, mirar si los perfiles que dejaron son de personas de
-  la cartera.
+  ("Prueba de…") y 2 del 2026-09-23 ("prueba 078…"). **Revisado el
+  2026-10-13:** tienen 26 ítems en total, y los 11 perfiles que dejaron son
+  de personas reales que ya tienen un perfil más nuevo. Borrar un lote borra
+  sus ítems (`on delete cascade`), pero no los perfiles: los ítems sólo los
+  apuntan. Falta el sí explícito del negocio para borrarlos.
