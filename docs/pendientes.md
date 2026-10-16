@@ -4,7 +4,8 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**126** (al 2026-10-13; la 127 espera su PR y el despliegue de las funciones);
+**127** (2026-10-16; la 128 de marco-v29 espera el PR #25). Las funciones
+desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
@@ -23,9 +24,34 @@ aceptada.
 
 ## 1. Para retomar primero
 
-- **Equifax (2026-10-13): en producción, con 22 consultas hechas y sus tablas y su
-  estructura cargadas y verificadas. Cada consulta se cobra y su proveedor no
+- **Equifax (al 2026-10-16): en producción, con 62 consultas hechas y sus tablas y
+  su estructura cargadas y verificadas. Cada consulta se cobra y su proveedor no
   pone tope: nada que consulte se corre sin autorización explícita del negocio.**
+  - **Lote del 2026-10-16** (40 personas, autorizado por el negocio): personas
+    reales sin consulta previa y con la historia crediticia más larga en su último
+    perfil de Novadata, con 11 o 12 operaciones cada una. 17 tienen cooperativas,
+    17 retail y 24 son codeudoras o garantes. La lista está en
+    `research/equifax/lotes/lote-2026-10-16.txt`, y los casos con lo que trae cada
+    uno, en `lote-2026-10-16-casos.tsv` (fuera de git).
+    - Se pagaron 40 de 40. Todas son HTTP 200, de ambiente producción, de la
+      persona pedida, con su `client_id`, y la auditoría no lleva la cédula.
+      Ningún fallo.
+    - Para cubrir las 40 en un día, el tope se subió sólo para esa corrida
+      (`EQUIFAX_TOPE_DIARIO=40` en el entorno del guion, no en las secrets).
+    - **El crudo queda doble:** el archivo en `research/equifax/crudo/` (62),
+      escrito antes de interpretarlo, y `consultas_equifax.respuesta_cruda` (62,
+      inmutable). Las tablas se rehacen desde ahí sin volver a pagar
+      (`cargar-tablas-equifax.mjs`).
+    - **Valen hasta el 17/10**: la vigencia es por ciclo, del 18 al 17 de cada
+      mes, sin importar el día de la consulta. Desde el 18 a las 00:00 de Ecuador,
+      volver a consultar a cualquiera de las 62 se cobra.
+    - **`probar-equifax-tablas.mjs` sobre las 62:** todo da ok salvo una
+      comprobación. La lista de «garantías personales» coincide con las
+      operaciones de rol codeudor en 60 de 62 personas (antes, 22 de 22). Las
+      tablas no pierden nada: es una comprobación, no un sumando. Falta mirar
+      esos 2 casos y sumarlo al pedido de diccionario. El resumen concilia en
+      bancos 62 de 62, cooperativas 60 de 62 y comercial 49 de 62.
+    - En total, `equifax_operaciones` tiene 1.154 filas.
   - Qué hay: el conector desplegado (7 de 7 funciones, sello `7360d78b3096`), la
     tabla `consultas_equifax` (122) con 22 filas (2 de prueba y 20 de un lote:
     todas HTTP 200 y de la persona pedida), el guion local que simula por
@@ -49,7 +75,7 @@ aceptada.
     funciones para pedir el token; la consulta misma desde las funciones no se
     probó porque cobra. Hoy se sigue consultando desde la máquina con IP de
     Ecuador.
-  - Las 22 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
+  - Las 62 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
     Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas ya
     están cargadas; no hace falta volver a pagar para tener la estructura.
   - Qué falta, por orden:
@@ -371,9 +397,6 @@ aceptada.
   3. **Antes de pasar el repositorio a privado:** decidir GitHub Pro. En el
      plan gratuito, un repositorio privado pierde la protección de ramas. El
      escaneo de secretos lo cubre gitleaks en los controles.
-  4. **El PR #19 de Dependabot** (3 actualizaciones menores de npm): los
-     controles pasan (2026-10-13), falta fusionarlo. Los #1 y #2 entraron el
-     2026-10-12.
   5. **E3, ambiente de prueba:** el negocio decidió esperar. Antes hace falta
      la línea base del esquema (E15).
   6. **E5:**
@@ -405,19 +428,14 @@ aceptada.
       2026-10-12). Ese día se cerró la sesión de este frente: quien lo
       retome empieza acá.
   - Queda, por orden:
-  1. **Arreglos chicos, hechos el 2026-10-13 en la rama
-     `fix/sin-cedula-en-registros`; falta fusionar, desplegar con el corredor y
-     aplicar la 127, en ese orden:**
-     - `analyze-client`, el lote y la comparación de razonamiento dejan de
-       escribir la cédula en `llm_llamadas.contexto`. La 127 la borra de las
-       325 filas viejas, que tienen todas `client_id`, y Costos › Detalle de
-       llamadas la lee de `clients`.
-     - `consultar-aval`, el guion local de Aval y Equifax dejan de escribirla
-       en `audit_log.meta`: la persona va por `client_id`. Las 485 filas viejas
-       (448 de consultas a Aval, 15 de fallos de Aval y 22 de Equifax) se
-       quedan, porque `audit_log` no se corrige (113). Sigue abierto que esa
-       tabla la lee todo usuario con sesión.
-     - El vigía prueba el modelo de producción, tomado de `llm-scoring.ts`.
+  1. **Lo que quedó de los arreglos chicos** (cerrados el 2026-10-16, #24; la
+     127 se aplicó y las funciones se desplegaron ese día; `llm_llamadas` quedó
+     sin ninguna cédula):
+     - las 485 filas viejas de `audit_log` con la cédula se quedan, porque
+       `audit_log` no se corrige (113). Sigue abierto que esa tabla la lee todo
+       usuario con sesión (pregunta G8 del cuestionario de decisiones);
+     - falta ver en pantalla, con sesión de admin, Costos › Detalle de llamadas,
+       que ahora lee la cédula de `clients`.
   2. **Legal:**
      - revisar el texto de autorización y el anexo de seguridad;
      - los plazos del contrato modelo no coinciden con la norma
@@ -667,18 +685,11 @@ aceptada.
 
 ## 6. Limpieza
 
-- Ramas locales ya contenidas en `main` o superadas:
-  `aval-corredor-local-y-ambiente` (4159844), `claude/xenodochial-albattani-950de3`
-  (dc5077b), `claude/fervent-swirles-6ceaac` (80dc918, marco-v27, integrada),
-  `claude/modest-moser-a6250b` (c7ce76f, el contrato de la API, entró como
-  #5) y `claude/cool-jemison-2a674d` (720f31b, el parche de Retroalimentación,
-  que ya no existe; su 082 está en `main`). Se pueden borrar, y también las
-  carpetas de trabajo `.claude/worktrees/cool-jemison-2a674d` y
-  `xenodochial-albattani-950de3`. **Revisado el 2026-10-13:** lo que tienen
-  fuera de git (`docs/cumplimiento/`, `.env`) es igual a lo de la carpeta
-  principal. El único archivo distinto es el README de `docs/cumplimiento/api/`,
-  igual byte a byte con otro nombre. El borrado espera el permiso del negocio:
-  el control de permisos de la sesión lo frenó.
+- Las cinco ramas locales superadas se borraron el 2026-10-16 (4159844,
+  dc5077b, 80dc918, c7ce76f y 720f31b, por si hace falta recuperar una). Las
+  carpetas `.claude/worktrees/cool-jemison-2a674d` y
+  `xenodochial-albattani-950de3` NO se borran: las reusan las sesiones de E27
+  (`fix/e27-marco-v29`) y de Equifax (`claude/reverent-volhard-f00d53`).
 - La cartera sintética del Laboratorio (carga "Cartera sintética (semilla
   1)") se queda: es la que prueba los cálculos. Si se regenera, anular la
   anterior desde la pantalla.
@@ -687,4 +698,7 @@ aceptada.
   2026-10-13:** tienen 26 ítems en total, y los 11 perfiles que dejaron son
   de personas reales que ya tienen un perfil más nuevo. Borrar un lote borra
   sus ítems (`on delete cascade`), pero no los perfiles: los ítems sólo los
-  apuntan. Falta el sí explícito del negocio para borrarlos.
+  apuntan. El negocio dijo que sí el 2026-10-16, pero el control de
+  permisos de la sesión frenó el borrado. Lo corre el negocio, o una sesión
+  con permiso, con un `delete from lotes` filtrado por los 5 ids
+  (7e04c608, 73d87af4, 940607a1, 2886c0c2 y 19e7fa81, estado `terminado`).

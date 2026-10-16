@@ -641,11 +641,13 @@ antes de tocar esa área.
   - **Lo medido al construir las tablas (2026-10-13), sobre las 22 respuestas:**
     - **El resumen por sistema, los impagos, las morosidades y la cuota
       estimada de Equifax cuentan también al codeudor y al garante.** La suma
-      del detalle de todos los roles reproduce el resumen (bancos 22/22); la
+      del detalle de todos los roles reproduce el resumen (bancos 22/22, y 62/62
+      con el lote del 2026-10-16); la
       del titular solo, no. `conciliaConElResumen` compara todos los roles, y
       lo del titular sale de las operaciones.
     - **La lista de «garantías personales» de Equifax es la misma deuda que las
-      operaciones de rol codeudor** (22/22): es una comprobación, nunca un
+      operaciones de rol codeudor** (22/22; 60/62 desde el 2026-10-16, con 2
+      casos sin mirar todavía): es una comprobación, nunca un
       sumando. **«Garantía» en Ecuador es el colateral** (auto, casa, pagaré):
       lo de codeudor y garante no se llama así (tabla `equifax_codeudor_garante`).
     - **Una operación no se puede seguir de un mes al siguiente**: las listas no
