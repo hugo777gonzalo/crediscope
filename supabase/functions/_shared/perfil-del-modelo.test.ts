@@ -82,22 +82,42 @@ Deno.test("la institución del título no llega (puede ser el empleador); el niv
 Deno.test("cada empleo llega con el tipo de su aporte en lugar del empleador", () => {
   const pm = armar();
   assertEquals(pm.laboral.empleosActuales, [
-    { tipoEmpleador: "Empleador público", cargo: "ANALISTA", salarioAprox: 1200 },
+    { tipoEmpleador: "Empleador público", esSuPropioPatrono: false, posibleNegocioFamiliar: false, cargo: "ANALISTA", salarioAprox: 1200 },
     // Se cruza sin importar mayúsculas ni espacios.
-    { tipoEmpleador: "Otros empleadores", cargo: "EMPLEADA DOMESTICA", salarioAprox: 470 },
+    { tipoEmpleador: "Otros empleadores", esSuPropioPatrono: false, posibleNegocioFamiliar: false, cargo: "EMPLEADA DOMESTICA", salarioAprox: 470 },
     // Sin su aporte, el tipo no se sabe: null, no un tipo inventado.
-    { tipoEmpleador: null, cargo: "VENDEDOR", salarioAprox: 600 },
+    { tipoEmpleador: null, esSuPropioPatrono: false, posibleNegocioFamiliar: false, cargo: "VENDEDOR", salarioAprox: 600 },
   ]);
   assertEquals(pm.fuentesIngreso.aportes.map((a: Record<string, unknown>) => Object.keys(a)), [
-    ["tipo", "declaradoPor", "montoMensual"],
-    ["tipo", "declaradoPor", "montoMensual"],
+    ["tipo", "declaradoPor", "esSuPropioPatrono", "posibleNegocioFamiliar", "montoMensual"],
+    ["tipo", "declaradoPor", "esSuPropioPatrono", "posibleNegocioFamiliar", "montoMensual"],
   ]);
+});
+
+Deno.test("cada empleo y cada aporte dicen si es de la persona o posiblemente de un pariente", () => {
+  const p = perfil();
+  (p.laboral as { empleosActuales: Array<Record<string, unknown>> }).empleosActuales = [
+    { empleador: "COMERCIAL ZZINVENTADA CIA LTDA", cargo: "VENDEDORA" },
+    // Lleva el apellido, pero un Empleador público nunca es negocio familiar.
+    { empleador: "GAD MUNICIPAL ZZINVENTADA", cargo: "TECNICA" },
+    { empleador: NOMBRES[0], cargo: "GERENTE" },
+  ];
+  (p.fuentesIngreso as { fuentes: Array<Record<string, unknown>> }).fuentes = [
+    { evidencia: "reportada_por_tercero", naturaleza: "privado", empleador: "COMERCIAL ZZINVENTADA CIA LTDA", tipo: "empleo en relación de dependencia" },
+    { evidencia: "reportada_por_tercero", naturaleza: "publico", empleador: "GAD MUNICIPAL ZZINVENTADA", tipo: "empleo en el sector público" },
+    { evidencia: "autodeclarada_sobre_minimo", naturaleza: "cuenta_propia", empleador: NOMBRES[0], tipo: "aporte como patrono de su propio negocio" },
+  ];
+  const pm = armar(p);
+  const marcas = (xs: Array<Record<string, unknown>>) => xs.map((x) => [x.esSuPropioPatrono, x.posibleNegocioFamiliar]);
+  assertEquals(marcas(pm.laboral.empleosActuales), [[false, true], [false, false], [true, false]]);
+  assertEquals(marcas(pm.fuentesIngreso.aportes), [[false, true], [false, false], [true, false]]);
+  assertEquals(JSON.stringify(pm).includes("ZZINVENTADA"), false);
 });
 
 Deno.test("la forma vieja del empleo actual (antes de marco-v20) tampoco lleva el empleador", () => {
   const p = perfil();
   p.laboral = { empleoActual: { empleador: NOMBRES[1], cargo: "ANALISTA" } };
-  assertEquals(armar(p).laboral.empleoActual, { tipoEmpleador: "Empleador público", cargo: "ANALISTA" });
+  assertEquals(armar(p).laboral.empleoActual, { tipoEmpleador: "Empleador público", esSuPropioPatrono: false, posibleNegocioFamiliar: false, cargo: "ANALISTA" });
 });
 
 Deno.test("los atributos protegidos llegan o no según la lista", () => {

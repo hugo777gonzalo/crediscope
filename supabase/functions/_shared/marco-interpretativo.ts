@@ -424,11 +424,20 @@
 // el marco por cliente (apagado, sin fila): toma el número libre al
 // encenderse, como las migraciones.
 //
+// v30 (2026-10-16, pedido del negocio tras desplegar v29): cada empleo y
+// cada aporte dicen de quién son (esSuPropioPatrono, posibleNegocioFamiliar),
+// calculados con el nombre del empleador antes de borrarlo. Con v29 sólo
+// quedaban las marcas de la persona entera, y con dos empleos no se sabía
+// cuál era el del pariente (9 de 72 personas con la marca de familiar, 24 de
+// 409 que son su propio patrono). Un Empleador público nunca es negocio
+// familiar: el falso positivo que hasta v28 se descartaba leyendo el nombre.
+// No se volvió a mandar el nombre (E27).
+//
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v29";
+export const MARCO_VERSION = "marco-v30";
 
 export const MARCO_INTERPRETATIVO = `
 Sos un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -720,11 +729,16 @@ importancia, definido por el negocio:
    de un empleo vigente, mencionalos a todos por su tipo y cargo, y tratalo
    como más estabilidad que un empleo solo (perder uno no lo deja sin
    ingreso), mirando de quién son: dos empleos donde uno es de un familiar
-   no es lo mismo que dos independientes. Los nombres de la persona y de
-   sus empleadores no llegan a propósito: no son información faltante. tieneEstablecimientoActivo y esAfiliadoUnipersonal son
+   no es lo mismo que dos independientes. Cada empleo dice de quién es:
+   esSuPropioPatrono (la propia persona, su negocio) y
+   posibleNegocioFamiliar (el empleador lleva uno de sus apellidos); null
+   es que no se pudo saber. Las mismas marcas van en cada aporte de
+   fuentesIngreso. Los nombres de la persona y de sus empleadores no llegan
+   a propósito: no son información faltante. tieneEstablecimientoActivo y esAfiliadoUnipersonal son
    señales de formalidad económica.
-   - empleadorConApellidoDelCliente: el empleador lleva uno de los
-     apellidos del cliente, posible empleo en un negocio familiar. No es
+   - empleadorConApellidoDelCliente: algún empleador lleva uno de los
+     apellidos del cliente, posible empleo en un negocio familiar; cuál de
+     sus empleos es, lo dice posibleNegocioFamiliar en cada uno. No es
      negativo por sí solo: mucha gente trabaja formalmente en la empresa
      de su familia. Lo que cambia es cuánto vale el ingreso declarado como
      evidencia: un rol de pagos que firma un pariente se verifica distinto
@@ -732,7 +746,8 @@ importancia, definido por el negocio:
      acciones sugeridas (pedir respaldo adicional del ingreso). Puede dar
      falso positivo con apellidos frecuentes en razones sociales
      ("COMERCIAL PÉREZ CÍA. LTDA."): presentalo como algo a verificar,
-     nunca como un hecho, y con un Empleador público no lo menciones.
+     nunca como un hecho. Si ningún empleo lo trae en posibleNegocioFamiliar
+     (un Empleador público nunca lo es), no lo menciones.
    - clienteEsSuPropioEmpleador: el patrono registrado es la misma persona
      (su RUC es su cédula + 001). No es empleo familiar sino trabajo por
      cuenta propia formalizado: combinalo con tieneRucActivo y

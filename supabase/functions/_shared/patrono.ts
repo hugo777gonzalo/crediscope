@@ -99,3 +99,70 @@ export function esElPropioAfiliado(e: AnyRecord, cedula: string | null | undefin
   if (ci.length === 10 && c.length === 10) return ci === c;
   return esLaMismaPersona(e.nomAfi, nombreCliente);
 }
+
+// ¿El empleador lleva el apellido del cliente? Señal de empleo en
+// negocio familiar, que no es mala por sí sola pero SÍ cambia cuánto
+// vale el ingreso reportado como evidencia: un rol de pagos que firma
+// un pariente se verifica distinto que uno de un tercero.
+//
+// Se calcula acá y no se deja al criterio del LLM a propósito. Es una
+// comparación de texto, y el modelo dejó de hacerla: hasta marco-v8 la
+// mencionaba solo, después no volvió a aparecer en ningún análisis (44
+// análisis seguidos sin una sola mención). A medida que el marco se
+// volvió más prescriptivo, el modelo dejó de mirar lo que el marco no
+// le nombra.
+//
+// nombreCompleto de pn_inf_basica viene "Apellido1 Apellido2 Nombre1
+// Nombre2", así que los apellidos son las 2 primeras palabras. Se
+// exigen 4+ letras para no disparar con partículas ("DE", "DEL") y se
+// busca palabra completa dentro del nombre del empleador.
+//
+// OJO: da falsos positivos con apellidos frecuentes en razones sociales
+// ("COMERCIAL PEREZ CIA. LTDA."). Por eso es informativo y el marco lo
+// trata como matiz sobre la verificabilidad del ingreso, nunca como
+// penalización automática.
+// Validando contra los 41 clientes reales cacheados aparecieron 2 casos
+// que la primera versión marcaba mal:
+//   - El cliente figura como su PROPIO empleador (nombre completo igual
+//     al del patrono): eso es trabajo por cuenta propia, no un negocio
+//     familiar. Se separa en su propio campo.
+//   - Los nombres vienen con la Ñ corrompida en algunos registros de la
+//     fuente ("PICHUCHO MU?OZ"), así que la comparación no puede exigir
+//     igualdad exacta de todas las palabras.
+// Desde estructura-v7 "es el mismo cliente" sale de patrono.ts: el RUC del
+// patrono contra la cédula, y el nombre sólo si el registro no trae RUC. La
+// regla por nombre de acá (un apellido y todos los nombres de pila) marcaba
+// como su propio empleador a quien trabaja para su padre homónimo: 2 casos
+// en la cartera. Con un RUC ajeno, esa persona queda "comparte apellido",
+// que es lo que es.
+// La usan process.ts (al armar el perfil), perfil-del-modelo.ts (cada empleo
+// y cada aporte, antes de borrar el nombre: marco-v30) y
+// scripts/corregir-empleo-actual.mjs: el mismo criterio en los tres.
+export function relacionConEmpleador(
+  nombreEmpleador: unknown,
+  nombreCliente: unknown,
+  rucEmpleador: unknown = null,
+  cedula: string | null = null
+): { esElMismoCliente: boolean; comparteApellido: boolean } | null {
+  const limpiar = (s: unknown) =>
+    String(s ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // tildes
+      .replace(/[^A-Z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+  const esElMismoCliente = esSuPropioPatrono({ ruc: rucEmpleador, nombrePatrono: nombreEmpleador }, cedula, String(nombreCliente ?? ""));
+
+  const empleador = limpiar(nombreEmpleador);
+  const cliente = limpiar(nombreCliente);
+  // "Apellido1 Apellido2 Nombre1 Nombre2" (formato de pn_inf_basica).
+  const apellidos = cliente.length >= 3 ? cliente.slice(0, 2).filter((a) => a.length >= 4) : [];
+  // Sin nombres comparables no se sabe si es un pariente; si el RUC ya dijo
+  // que es la propia persona, eso sí se sabe.
+  if (!esElMismoCliente && (empleador.length === 0 || apellidos.length === 0)) return null;
+
+  const comparteApellido = apellidos.some((apellido) => empleador.includes(apellido));
+  return { esElMismoCliente, comparteApellido: comparteApellido && !esElMismoCliente };
+}
