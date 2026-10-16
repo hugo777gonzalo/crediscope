@@ -78,18 +78,41 @@ aceptada.
   - Las 62 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
     Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas ya
     están cargadas; no hace falta volver a pagar para tener la estructura.
+  - **El negocio contestó el bloque A y la F1 del cuestionario (2026-10-13)** y
+    cambió el rumbo: **un solo buró por IFI** (no hay orden entre Equifax y Aval),
+    la deuda del sistema financiero de Novadata se apaga cuando hay buró, con una
+    sección de configuración para dejar de consultarla, y **Equifax y Aval son dos
+    pantallas aparte** (no van al Expediente). Lo medido sin gasto y la propuesta
+    («un tema, una fuente», el interruptor en tres capas, el diseño de la pestaña
+    Equifax): `docs/propuesta-buro-de-la-institucion.md`; se repite con
+    `node scripts/medir-solapamiento-equifax.mjs`. Lo que más pesa: bancos y
+    cooperativas son el mismo tema (saldo igual hasta 1% en 15 de 22 y 8 de 11), **el
+    comercial de Equifax y las casas comerciales de Novadata son otras empresas** (5
+    de 33 en común: no se apaga) y **Equifax no trae la calificación A1 a E** (se
+    reemplaza por días de mora; la usan el marco, `resumen_por_persona` y la
+    definición de impago del Laboratorio). **El negocio contestó su sección 6 el
+    2026-10-16**: Novadata **se sigue consultando entera** y lo que repite el buró
+    sólo deja de ir al modelo (no se apaga ninguna fuente); el buró va **en lugar
+    de los niveles 3 y 4** del marco (bancos y cooperativas); el selector se llama
+    **«Buró»**; las casas comerciales se suman («veamos cómo nos va sumando»); la
+    calificación se reemplaza por días de mora; el reporte es en **PDF**.
   - Qué falta, por orden:
     1. **El diccionario de datos de Equifax.** Lo consigue el negocio (dijo el
        2026-10-13 que lo puede dar); lo que hay que pedir, con la evidencia y la
        prioridad de cada punto, está en `docs/equifax-pedido-de-diccionario.md`. Lo
        que conteste se carga sin volver a pagar: se sube la versión y se rehacen
        las consultas.
-    2. **Afinar la información de Equifax antes de cualquier muestra con y sin
-       Equifax** (decisión del negocio del 2026-10-13, más tarde ese día): hay
-       que decidir qué de Novadata repite lo que trae Equifax (o Aval), que
-       tendrían la información más completa, y poder apagar esa parte de
-       Novadata. Sin eso, la comparación mide la deuda dos veces. Se trabaja
-       la semana del 2026-10-13, con las pantallas (punto 5).
+    2. **Un tema, una fuente en lo que lee el modelo (capa 2) y `marco-v30`.**
+       Decidido el 2026-10-16 (`docs/propuesta-buro-de-la-institucion.md`,
+       secciones 2 y 4, y la tabla de decisiones de la sección 0): cuando la
+       persona tiene una consulta vigente del buró de la institución, el perfil del
+       modelo lleva el bloque del buró **en lugar de** los grupos de bancos y
+       cooperativas de Novadata (los campos que el buró cubre no van, ni en
+       `null`); la calificación A1 a E se lee en días de mora; las casas
+       comerciales de Novadata se suman a las del buró; y una persona sin buró
+       tiene que dar un perfil idéntico, byte a byte, al de hoy. Novadata se sigue
+       consultando entera. Va en una sesión aparte (frente del modelo). Sin esto,
+       la comparación con y sin Equifax mide la deuda dos veces.
     3. **El ajuste al marco interpretativo.** El negocio dijo «procede» el
        2026-10-13: la propuesta está escrita (`docs/propuesta-marco-equifax.md`:
        el bloque del perfil del modelo, el borrador de la sección, lo medido con
@@ -102,9 +125,16 @@ aceptada.
     4. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
        dijo otra vez el 2026-10-13 que no es posible por ahora y que sigue en
        observación; el riesgo sigue mientras no se roten.
-    5. **Pantallas:** el negocio decidió hacerlas la semana del 2026-10-13,
-       junto con afinar la información (punto 2). Al hacerlas, rótulo «Score de
-       Equifax» y el vocabulario de `docs/modelo-de-la-persona.md`.
+    5. **Pantallas: construidas el 2026-10-16** (la pestaña Equifax, el reporte
+       en PDF, el selector «Buró» y la migración 129; el detalle, en
+       `docs/propuesta-buro-de-la-institucion.md`, sección 0). Falta:
+       - **Aplicar la 129** con el corredor, recién fusionada en `main`. Hasta
+         entonces la pantalla funciona igual (sin la columna, la pestaña del buró
+         sigue siendo Aval) pero el selector da error y el PDF no queda en la
+         auditoría.
+       - **¿Botón para consultar a Equifax desde la pestaña?** Hoy no hay: cada
+         consulta se cobra, se hace a mano (A5) y la consulta desde las Edge
+         Functions nunca se probó (cobraría). Lo decide el negocio.
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,

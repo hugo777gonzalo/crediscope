@@ -23,6 +23,8 @@ const PerfilCliente = lazy(() => import("./pages/PerfilCliente.jsx"));
 const AnalisisIA = lazy(() => import("./pages/AnalisisIA.jsx"));
 const IngresosCliente = lazy(() => import("./pages/IngresosCliente.jsx"));
 const PerfilAval = lazy(() => import("./pages/PerfilAval.jsx"));
+const PerfilEquifax = lazy(() => import("./pages/PerfilEquifax.jsx"));
+const BuroDeLaPersona = lazy(() => import("./pages/BuroDeLaPersona.jsx"));
 const Solicitudes = lazy(() => import("./pages/Solicitudes.jsx"));
 const Expediente = lazy(() => import("./pages/Expediente.jsx"));
 const HistorialPerfilDetalle = lazy(() => import("./pages/HistorialPerfilDetalle.jsx"));
@@ -48,6 +50,7 @@ const LaboratorioInstituciones = lazy(() => import("./pages/LaboratorioInstituci
 const NovadataExplorer = lazy(() => import("./pages/NovadataExplorer.jsx"));
 const ConfigFuentes = lazy(() => import("./pages/ConfigFuentes.jsx"));
 const ConfigFuentesAval = lazy(() => import("./pages/ConfigFuentesAval.jsx"));
+const ConfigFuentesEquifax = lazy(() => import("./pages/ConfigFuentesEquifax.jsx"));
 const ConfigCampos = lazy(() => import("./pages/ConfigCampos.jsx"));
 const ConfigCamposAval = lazy(() => import("./pages/ConfigCamposAval.jsx"));
 const ConfigSegmentos = lazy(() => import("./pages/ConfigSegmentos.jsx"));
@@ -206,6 +209,8 @@ export default function App() {
           <Route path="/analisis/:cedula" element={<AnalisisIA />} />
           <Route path="/ingresos/:cedula" element={<IngresosCliente />} />
           <Route path="/aval/:cedula" element={<PerfilAval />} />
+          <Route path="/equifax/:cedula" element={<PerfilEquifax />} />
+          <Route path="/buro/:cedula" element={<BuroDeLaPersona />} />
           {/* La bandeja y el expediente. El expediente tiene ruta
               propia a propósito: se comparte por enlace, se abren
               varios en pestañas y sobrevive a recargar la página. */}
@@ -264,6 +269,7 @@ export default function App() {
           <Route path="/admin/fuentes" element={<Navigate to="/admin/fuentes/novadata" replace />} />
           <Route path="/admin/fuentes/novadata" element={<RequireAdmin><ConfigFuentes /></RequireAdmin>} />
           <Route path="/admin/fuentes/aval" element={<RequireAdmin><ConfigFuentesAval /></RequireAdmin>} />
+          <Route path="/admin/fuentes/equifax" element={<RequireAdmin><ConfigFuentesEquifax /></RequireAdmin>} />
           <Route path="/admin/campos" element={<Navigate to="/admin/campos/novadata" replace />} />
           <Route path="/admin/campos/novadata" element={<RequireAdmin><ConfigCampos /></RequireAdmin>} />
           <Route path="/admin/campos/aval" element={<RequireAdmin><ConfigCamposAval /></RequireAdmin>} />

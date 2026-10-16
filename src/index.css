@@ -161,7 +161,30 @@ a {
 .crediscope-tooltip-wrap {
   position: relative;
   display: inline-flex;
+  vertical-align: middle;
+}
+
+.crediscope-tooltip-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin: 0 2px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
   cursor: help;
+}
+
+.crediscope-tooltip-boton:hover,
+.crediscope-tooltip-abierta .crediscope-tooltip-boton {
+  color: var(--brand);
+}
+
+.crediscope-tooltip-boton:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
 }
 
 .crediscope-tooltip-bubble {
@@ -175,15 +198,35 @@ a {
   line-height: 1.4;
   padding: 8px 12px;
   border-radius: 8px;
-  width: 260px;
+  width: max-content;
+  max-width: min(300px, 80vw);
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.15s;
-  z-index: 10;
+  z-index: 20;
+  /* La ayuda puede vivir dentro de un rótulo en mayúsculas o en negrita (las
+     tarjetas de indicadores): la explicación se lee siempre como texto. */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+
+.crediscope-tooltip-derecha .crediscope-tooltip-bubble {
+  left: auto;
+  right: -6px;
+  transform: none;
+}
+
+.crediscope-tooltip-izquierda .crediscope-tooltip-bubble {
+  left: -6px;
+  transform: none;
 }
 
 .crediscope-tooltip-wrap:hover .crediscope-tooltip-bubble,
-.crediscope-tooltip-wrap:focus .crediscope-tooltip-bubble {
+.crediscope-tooltip-wrap:focus-within .crediscope-tooltip-bubble,
+.crediscope-tooltip-abierta .crediscope-tooltip-bubble {
   visibility: visible;
   opacity: 1;
 }
@@ -2338,6 +2381,8 @@ a {
 }
 
 .crediscope-aval-boton-reporte small {
+  /* <small> lo bajaba a 11 px: el verificador de UX lo marcó (2026-10-16). */
+  font-size: 12px;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -2902,5 +2947,404 @@ a {
 
   label:has(> select.crediscope-input) {
     max-width: 100%;
+  }
+}
+
+/* ---------- Pestaña Equifax (2026-10-16) ----------
+   Mismo lenguaje visual que Aval (tarjetas, títulos con ícono, ceros
+   apagados, lo malo en rojo), con la franja de 24 meses como pieza propia.
+   Las explicaciones largas van en ayudas emergentes (pedido del negocio). */
+
+.crediscope-equifax-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.crediscope-equifax-cabecera-texto {
+  min-width: 0;
+}
+
+.crediscope-equifax-titulo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.crediscope-equifax-subtitulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.crediscope-equifax-vencida {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.crediscope-equifax-alertas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.crediscope-equifax-baja {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.crediscope-equifax-sube {
+  color: var(--good);
+  font-weight: 600;
+}
+
+/* Una tabla ancha se desliza dentro de su tarjeta; la página no. */
+.crediscope-equifax-tabla-envoltura {
+  overflow-x: auto;
+}
+
+.crediscope-equifax-tabla {
+  margin-top: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-equifax-tabla th[scope="row"] {
+  text-align: left;
+  font-weight: 600;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.crediscope-equifax-tabla tfoot th,
+.crediscope-equifax-tabla tfoot td {
+  font-weight: 700;
+  border-bottom: none;
+  border-top: 2px solid var(--border);
+}
+
+.crediscope-equifax-num {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.crediscope-equifax-sistema,
+.crediscope-equifax-institucion {
+  display: block;
+}
+
+.crediscope-equifax-sistema-detalle {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Lo que hay que saber de una fila (demanda, castigo, no cuadra): una línea
+   chica debajo del nombre. Una pastilla de color ahí ocupaba tres renglones. */
+.crediscope-equifax-marca {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.crediscope-equifax-marca-mala {
+  color: var(--bad);
+}
+
+.crediscope-equifax-marca-aviso {
+  color: var(--warn);
+}
+
+.crediscope-equifax-fila-vacia th,
+.crediscope-equifax-fila-vacia td {
+  color: var(--text-muted);
+}
+
+.crediscope-equifax-fila-ajena th,
+.crediscope-equifax-fila-ajena td {
+  background: var(--panel-muted);
+}
+
+.crediscope-equifax-codeudor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  font-size: 14px;
+}
+
+.crediscope-equifax-cuenta {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.crediscope-equifax-ver-mas {
+  margin-top: 10px;
+}
+
+/* Cómo pagó: cuatro cifras y la franja de 24 meses. */
+.crediscope-equifax-resumen-pagos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 16px;
+  margin: 0 0 16px;
+}
+
+.crediscope-equifax-resumen-pagos dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.crediscope-equifax-resumen-pagos dd {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.crediscope-equifax-franja {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crediscope-equifax-franja .crediscope-equifax-mes {
+  height: 30px;
+  cursor: pointer;
+}
+
+.crediscope-equifax-franja .crediscope-equifax-mes[aria-current="true"] {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.crediscope-equifax-mes {
+  display: inline-block;
+  border-radius: 3px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.crediscope-equifax-mes-al_dia { background: #86efac; }
+.crediscope-equifax-mes-hasta_30 { background: #fcd34d; }
+.crediscope-equifax-mes-hasta_90 { background: #f97316; }
+.crediscope-equifax-mes-mas_de_90 { background: #b91c1c; }
+.crediscope-equifax-mes-sin_deuda { background: #e5e3ef; }
+
+.crediscope-equifax-franja-meses {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.crediscope-equifax-mes-detalle {
+  min-height: 20px;
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.crediscope-equifax-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.crediscope-equifax-leyenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crediscope-equifax-leyenda .crediscope-equifax-mes {
+  width: 12px;
+  height: 12px;
+}
+
+/* El reporte completo: tarjetas de datos en grilla. */
+.crediscope-equifax-reporte {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.crediscope-equifax-reporte > .crediscope-card {
+  margin-bottom: 0;
+}
+
+.crediscope-equifax-datos {
+  margin: 0;
+}
+
+.crediscope-equifax-dato {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.crediscope-equifax-dato:last-child {
+  border-bottom: none;
+}
+
+.crediscope-equifax-dato dt {
+  color: var(--text-muted);
+}
+
+.crediscope-equifax-dato dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* El selector del buró en Configuración. */
+.crediscope-selector-buro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.crediscope-selector-buro h3 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.crediscope-selector-buro .crediscope-muted {
+  margin: 0;
+}
+
+.crediscope-selector-buro-opciones {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  background: var(--panel-muted);
+}
+
+.crediscope-selector-buro-opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.crediscope-selector-buro-opcion:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.crediscope-selector-buro-elegida {
+  background: var(--panel);
+  color: var(--brand);
+  box-shadow: 0 1px 2px rgba(23, 19, 52, 0.12);
+}
+
+.crediscope-selector-buro-opcion:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+/* ---------- Impresión (el reporte en PDF) ----------
+   Se imprime la pantalla misma, sin el menú, la barra, las pestañas ni los
+   botones, y con un encabezado que dice qué es, de cuándo y quién lo sacó. */
+
+.crediscope-solo-impresion {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .crediscope-menu,
+  .crediscope-topbar,
+  .crediscope-tabs,
+  .crediscope-no-imprimir,
+  .crediscope-tooltip-boton,
+  .crediscope-tooltip-bubble {
+    display: none !important;
+  }
+
+  .crediscope-solo-impresion {
+    display: block;
+  }
+
+  .crediscope-main {
+    padding: 0;
+    max-width: none;
+  }
+
+  .crediscope-card {
+    break-inside: avoid;
+    border-color: #cfcbe0;
+  }
+
+  .crediscope-equifax-tabla-envoltura {
+    overflow: visible;
+  }
+
+  .crediscope-equifax-impresion {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--text);
+    font-size: 12px;
+  }
+
+  .crediscope-equifax-reporte {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

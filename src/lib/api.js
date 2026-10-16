@@ -219,6 +219,67 @@ export async function consultarAval(cedula) {
   return data;
 }
 
+// La última consulta a Equifax de esta cédula: la estructura, no el crudo. El
+// crudo pesa de 120 a 463 KB y trae los datos personales que la estructura
+// deja afuera (nombre, direcciones, teléfonos, terceros). null si nunca se
+// consultó. No llama a Equifax: cada consulta se cobra.
+export async function getUltimaConsultaEquifax(cedula) {
+  const { data, error } = await supabase
+    .from("consultas_equifax")
+    .select("id, client_id, created_at, ambiente, estructura, estructura_version")
+    .eq("identificacion", cedula)
+    .eq("tipo_identificacion", "C")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Las operaciones de hoy de una consulta (de 9 a 43 en las 62 primeras).
+export async function getOperacionesEquifax(consultaId) {
+  const { data, error } = await supabase
+    .from("equifax_operaciones")
+    .select(
+      "orden, sistema, institucion, rol, tipo_credito, fecha_corte, saldo_deuda_usd, por_vencer_usd, vencido_usd, no_devenga_intereses_usd, demanda_judicial_usd, cartera_castigada_usd, cuota_mensual_usd, dias_morosidad",
+    )
+    .eq("consulta_equifax_id", consultaId)
+    .order("orden");
+  if (error) throw error;
+  return data ?? [];
+}
+
+// La historia mensual de una consulta, para la franja de 24 meses. Llegó a 963
+// filas en una sola persona: cerca del corte de 1.000 de PostgREST, así que se
+// pagina con traerTodas() en vez de confiar en que entra en una página.
+export async function getHistoriaDePagosEquifax(consultaId) {
+  const { filas } = await traerTodas((opciones) =>
+    supabase
+      .from("equifax_historia_mensual")
+      .select("orden, fecha_corte, rol, dias_morosidad, vencido_usd", opciones)
+      .eq("consulta_equifax_id", consultaId)
+      .order("orden"),
+  );
+  return filas;
+}
+
+// El buró de la institución (cuestionario, A2: uno solo por IFI): "equifax",
+// "aval" o null si no tiene. Antes de la migración 129 la columna no existe y
+// se sigue mostrando Aval, como hasta entonces: la página se publica en cuanto
+// entra a main y la migración se aplica después.
+export async function getBuroDeLaInstitucion() {
+  const { data, error } = await supabase.from("proveedores").select("*").in("clave", ["aval", "equifax"]);
+  if (error) throw error;
+  const filas = data ?? [];
+  if (!filas.some((p) => "es_buro" in p)) return "aval";
+  return filas.find((p) => p.es_buro)?.clave ?? null;
+}
+
+export async function elegirBuro(clave) {
+  const { error } = await supabase.rpc("elegir_buro", { p_clave: clave });
+  if (error) throw error;
+}
+
 export async function getAvalFieldConfig() {
   const { data, error } = await supabase.from("aval_field_config").select("*").order("grupo").order("campo");
   if (error) throw error;

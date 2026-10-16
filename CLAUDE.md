@@ -346,6 +346,24 @@ Romper cualquiera de estas rompe algo real.
   `docs/equifax-pedido-de-diccionario.md`; y cómo entraría al modelo, en
   `docs/propuesta-marco-equifax.md` (propuesta: no cambia nada de lo que lee el
   modelo):
+  - **Un solo buró por IFI** (negocio, 2026-10-13: Equifax o Aval, no los dos
+    ni en orden). Cuando la persona lo tiene, reemplaza a la deuda de bancos y
+    cooperativas de Novadata: «un tema, una fuente», propuesto en
+    `docs/propuesta-buro-de-la-institucion.md` (sin construir). Medido con
+    `scripts/medir-solapamiento-equifax.mjs`: **el comercial de Equifax y las
+    casas comerciales de Novadata son otras empresas** (no se apagan) y **Equifax
+    no trae la calificación A1 a E** (se lee en días de mora). **Novadata se
+    sigue consultando entera** (negocio, 2026-10-16): lo repetido sólo deja de
+    ir al modelo.
+  - **El buró de la base** es `proveedores.es_buro` (129, a lo sumo uno): lo
+    elige el selector «Buró» de Configuración y decide la pestaña de cada
+    persona; el menú dice «Buró» y `/buro/:cedula` lleva a la que corresponde.
+    `activo` sigue diciendo sólo si se puede consultar.
+  - **La pestaña Equifax** (`PerfilEquifax.jsx`, `components/equifax/`) lee la
+    estructura y las tablas, nunca el crudo; la franja de 24 meses y la deuda
+    por sistema salen de `src/lib/equifaxPantalla.js`, que se prueba con
+    `scripts/probar-formatos.mjs`. El PDF es la pantalla impresa
+    (`@media print`) y queda en la auditoría (`exportacion.reporte_equifax`).
   - `_shared/equifax-client.ts`: el token (en memoria, nunca guardado) y
     la consulta, que se cobra.
   - `_shared/equifax-persistencia.ts`: el recorrido completo (proveedor,

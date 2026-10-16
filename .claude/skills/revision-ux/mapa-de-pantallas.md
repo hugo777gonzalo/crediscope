@@ -17,6 +17,8 @@ cuentan lo mismo y dicen cosas distintas.
 | `/analisis/:cedula` | `AnalisisIA.jsx` | todos | Análisis con IA: score, recomendación, puntos positivos/negativos; botones Analizar / Reconsultar y analizar | Expediente › Qué dijo el modelo |
 | `/ingresos/:cedula` | `IngresosCliente.jsx` | todos | Fuentes de Ingreso de la persona: segmento, estabilidad, fuentes vigentes, indicios | Expediente › Con qué paga; Panorama (mismo vocabulario) |
 | `/aval/:cedula` | `PerfilAval.jsx` | todos | Reporte de la fuente Aval (buró). **No está en el Expediente** | — |
+| `/equifax/:cedula` | `PerfilEquifax.jsx`, `components/equifax/`, `lib/equifaxPantalla.js` | todos | Reporte de Equifax (buró): Score de Equifax, deuda por sistema, 24 meses de pagos, operaciones; el resto plegado; «Descargar reporte (PDF)» imprime la pantalla. **No está en el Expediente** (F1). La pestaña aparece cuando el buró de la institución es Equifax | Aval |
+| `/buro/:cedula` | `BuroDeLaPersona.jsx` | todos | «Buró» del menú: lleva a la pestaña del buró de la institución (129), o dice que no hay uno elegido | — |
 
 Las cuatro llevan la tira de pestañas `PestanasCliente.jsx` (la cédula es la del último
 cliente visto: `ultimaCedula.js`). El menú las lleva a `/` si todavía no hay ninguno.
@@ -84,7 +86,7 @@ Las direcciones viejas `/retroalimentacion/*` y `/laboratorio/criterio` redirige
 
 | Ruta | Archivo | Qué hace |
 |---|---|---|
-| `/admin/fuentes/novadata`, `/aval` | `ConfigFuentes.jsx`, `ConfigFuentesAval.jsx` | Qué fuentes se consultan (apagar una deja de consultar el dato) |
+| `/admin/fuentes/novadata`, `/aval`, `/equifax` | `ConfigFuentes.jsx`, `ConfigFuentesAval.jsx`, `ConfigFuentesEquifax.jsx` (con el selector «Buró», `SelectorDeBuro.jsx`) | Qué fuentes se consultan (apagar una deja de consultar el dato) |
 | `/admin/campos/novadata`, `/aval` | `ConfigCampos.jsx`, `ConfigCamposAval.jsx` | Qué campos entran al Análisis con IA (apagar uno lo guarda pero lo saca del criterio) |
 | `/admin/segmentos` | `ConfigSegmentos.jsx` | Qué segmentos ve el analista (ocultar sólo cambia lo que se ve) |
 | `/explorar` | `NovadataExplorer.jsx` | Consulta en vivo a las 52 fuentes, con usuario y contraseña de la fuente. No guarda nada |
