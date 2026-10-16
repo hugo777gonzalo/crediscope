@@ -102,7 +102,8 @@ aceptada.
        prioridad de cada punto, está en `docs/equifax-pedido-de-diccionario.md`. Lo
        que conteste se carga sin volver a pagar: se sube la versión y se rehacen
        las consultas.
-    2. **Un tema, una fuente en lo que lee el modelo (capa 2) y `marco-v30`.**
+    2. **Un tema, una fuente en lo que lee el modelo (capa 2) y su versión del marco** (el
+       número libre cuando se haga: `marco-v30` lo tomó E27 el 2026-10-16, PR #29).
        Decidido el 2026-10-16 (`docs/propuesta-buro-de-la-institucion.md`,
        secciones 2 y 4, y la tabla de decisiones de la sección 0): cuando la
        persona tiene una consulta vigente del buró de la institución, el perfil del
@@ -126,12 +127,15 @@ aceptada.
        dijo otra vez el 2026-10-13 que no es posible por ahora y que sigue en
        observación; el riesgo sigue mientras no se roten.
     5. **Pantallas: construidas el 2026-10-16** (la pestaña Equifax, el reporte
-       en PDF, el selector «Buró» y la migración 129; el detalle, en
-       `docs/propuesta-buro-de-la-institucion.md`, sección 0). Falta:
-       - **Aplicar la 129** con el corredor, recién fusionada en `main`. Hasta
-         entonces la pantalla funciona igual (sin la columna, la pestaña del buró
-         sigue siendo Aval) pero el selector da error y el PDF no queda en la
-         auditoría.
+       en PDF, el selector «Buró» y la migración 129, PR #28; el detalle, en
+       `docs/propuesta-buro-de-la-institucion.md`, sección 0). **La 129 se
+       aplicó ese día con el corredor** (la plantilla, en la 129) y se comprobó
+       en pantalla: el selector marca Equifax, «Buró» lleva a la pestaña de
+       Equifax y Aval ya no aparece entre las pestañas. El control de seguridad
+       da 66 de 67 (la que falla es de E27: el último análisis guardado es de
+       marco-v28). Falta:
+       - **Mirar la pestaña a 768 e imprimir el PDF de verdad** (el diálogo de
+         impresión no se probó; la vista de impresión sí está escrita).
        - **¿Botón para consultar a Equifax desde la pestaña?** Hoy no hay: cada
          consulta se cobra, se hace a mano (A5) y la consulta desde las Edge
          Functions nunca se probó (cobraría). Lo decide el negocio.

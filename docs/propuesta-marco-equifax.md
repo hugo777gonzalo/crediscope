@@ -14,7 +14,8 @@ lo tiene; la calificación A1 a E (que Equifax no trae) se reemplaza por días d
 mora; las casas comerciales de Novadata se quedan, sin repetir empresa; y el
 rótulo es «Deuda como codeudor o garante». Lo medido y la regla:
 `docs/propuesta-buro-de-la-institucion.md`, secciones 1, 2 y 4. Las secciones 2 y
-4 de este documento se reescriben con eso antes de construir `marco-v30`.
+4 de este documento se reescriben con eso antes de construir su versión del marco
+(el número libre cuando se haga: `marco-v30` lo tomó E27 el 2026-10-16).
 
 Lo que sí está hecho y verificado es lo que esta propuesta necesita: la
 estructura estandarizada de Equifax, calculada desde las tablas
