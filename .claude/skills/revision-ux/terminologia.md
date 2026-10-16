@@ -64,6 +64,8 @@ El resto de pantallas, pestañas y botones, en oración: «Personas por segmento
 | Lotes corridos | **Lotes consultados** | Negocio, 2026-10-12 |
 | Reportes · Inteligencia de Negocios | **Monitoreo › Panorama** (la ruta sigue siendo `/reportes`) | Negocio, 2026-10-12: «Reportes pasa a Monitoreo». Sacó el choque con «Laboratorio de Inteligencia de Negocio». «Panorama» lo puso quien lo hizo, como Costos y Fuentes de Ingreso |
 | Historial por cédula | Se retiró: **la búsqueda abre el Expediente** | Negocio, 2026-10-12. Lo guardado de cada consulta se abre desde la línea de tiempo del Expediente (`/historial` redirige al Inicio) |
+| Aval (en el menú) | **Buró**: lleva al buró de la institución, Equifax o Aval (uno solo por IFI) | Negocio, 2026-10-16: el selector de Configuración se llama «Buró»; el menú usa el mismo nombre. La pestaña de la persona dice el nombre del buró (Equifax o Aval) |
+| «Garantías» (personas que respaldan la deuda de otra) | **Deuda como codeudor o garante** | Negocio, 2026-10-13: en Ecuador «garantía» es el colateral (auto, casa, pagaré) |
 | Explorador de Fuentes | **Explorador de la fuente de datos** | Negocio, 2026-10-12 (respondió «fuentes»: se leyó como aceptar la recomendación; confirmar) |
 | «Cliente» para cualquier persona consultada | **Persona**; «cliente» sólo con un crédito (Cliente activo, Cliente cerrado) | Negocio, 2026-10-12, con el árbol de la persona: `docs/modelo-de-la-persona.md`. Clientes por segmento → **Personas por segmento** |
 
@@ -74,7 +76,7 @@ en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 
 | Concepto | Nombre | Se evita | Nota |
 |---|---|---|---|
-| El número de 1 a 999 | **Score** («Score promedio»; en una frase, «el score») | «Puntaje» | Decidido el 2026-10-12. El score de **Aval** es otro: «Score de Aval» o, dentro de su pantalla, «el score». |
+| El número de 1 a 999 | **Score** («Score promedio»; en una frase, «el score») | «Puntaje» | Decidido el 2026-10-12. El score de **Aval** es otro: «Score de Aval» o, dentro de su pantalla, «el score». El de **Equifax**, «Score de Equifax» siempre, también dentro de su pantalla, y sin el medidor del Score de CrediScope (negocio, 2026-10-13: nunca se mezclan). |
 | Lo que el modelo aconseja | **Aprobar / Revisar / Negar** (pastilla, sello, filtro). **Observar** se retiró en marco-v27 y sólo queda en análisis viejos | «Rechazar» para el modelo | El dictamen en la tarjeta grande va en sustantivo (Aprobación / Revisión / Negación) **a propósito**: es el dictamen, no una orden (`RecomendacionCard.jsx`). El negocio lo dejó así el 2026-10-12. |
 | Lo que decide la institución con una solicitud | **Aprobado / Rechazado** | confundirlo con la recomendación del modelo | El modelo aconseja; la institución decide. Son dos columnas, no una (`docs/modelo-de-la-persona.md`, sección 4). |
 | La persona evaluada | **persona**. **Cliente** sólo es quien tiene un crédito (estados Cliente activo y Cliente cerrado). «Perfil del Cliente» es nombre de producto y se queda | «Titular», «sujeto» (sólo en derechos del titular); «cliente» para quien no tiene crédito | Decidido el 2026-10-12 con el árbol de la persona (`docs/modelo-de-la-persona.md`). El control avisa de cada «cliente» suelto. |

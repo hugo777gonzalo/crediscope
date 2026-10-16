@@ -32,12 +32,14 @@ export const SECCIONES = [
   {
     id: "evaluacion",
     texto: "Evaluación Crediticia",
-    prefijos: ["/perfil", "/analisis", "/ingresos", "/aval"],
+    prefijos: ["/perfil", "/analisis", "/ingresos", "/aval", "/equifax", "/buro"],
     hijos: [
       { texto: "Perfil del Cliente", ruta: "/perfil", conCedula: true },
       { texto: "Análisis con IA", ruta: "/analisis", conCedula: true },
       { texto: "Fuentes de Ingreso", ruta: "/ingresos", conCedula: true },
-      { texto: "Aval", ruta: "/aval", conCedula: true },
+      // El buró de la institución, uno solo por IFI (cuestionario, A2): /buro
+      // lleva a la pestaña de Equifax o de Aval según cuál eligió (129).
+      { texto: "Buró", ruta: "/buro", conCedula: true, tambien: ["/equifax", "/aval"] },
     ],
   },
   {
@@ -139,6 +141,7 @@ const PAGINAS_FUERA_DEL_MENU = [
   [/^\/laboratorio\/cortes\/nuevo/, "laboratorio", "Nuevo corte"],
   [/^\/laboratorio\/cortes\/./, "laboratorio", "Corte"],
   [/^\/laboratorio\/caso/, "laboratorio", "Investigación de un caso"],
+  [/^\/admin\/fuentes\/equifax/, "configuracion", "Fuentes que consultamos › Equifax"],
   [/^\/admin\/fuentes\/aval/, "configuracion", "Fuentes que consultamos › Aval"],
   [/^\/admin\/campos\/aval/, "configuracion", "Campos del análisis › Aval"],
 ];

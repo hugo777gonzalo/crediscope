@@ -1,6 +1,7 @@
 // Prueba lo que decide cómo se escribe y dónde se ubica una pantalla, sin
 // navegador, sin base y sin datos de personas: formatos.js, mensajesDeError.js,
-// navegacion.js y destinoDeIngreso.js (todos de src/lib, sin React).
+// navegacion.js, destinoDeIngreso.js y equifaxPantalla.js (todos de src/lib, sin
+// React).
 //
 // Cada caso sale de un defecto real de la revisión de UX del 2026-10-10
 // (docs/revision-ux.md): "2812" donde otra pantalla decía "2.812", "37.0 s",
@@ -114,6 +115,9 @@ igual("ubicación: detalle de un lote", ubic("/lotes/abc"), "Consultas por lote 
 igual("ubicación: el Laboratorio ya no dice «CrediScope»", ubic("/laboratorio/desempeno"), "Laboratorio › Prueba retrospectiva");
 igual("ubicación: pantalla del Laboratorio fuera del menú", ubic("/laboratorio/cortes/nuevo"), "Laboratorio › Nuevo corte");
 igual("ubicación: Aval de Configuración", ubic("/admin/fuentes/aval"), "Configuración › Fuentes que consultamos › Aval");
+igual("ubicación: Equifax de Configuración", ubic("/admin/fuentes/equifax"), "Configuración › Fuentes que consultamos › Equifax");
+igual("ubicación: la pestaña Equifax cuenta como «Buró»", ubic("/equifax/0000000000"), "Evaluación Crediticia › Buró");
+igual("ubicación: la pestaña Aval también", ubic("/aval/0000000000"), "Evaluación Crediticia › Buró");
 igual("ubicación: «Evaluación Crediticia» no se prende en el inicio", ubic("/"), "Inicio");
 igual("ubicación: una dirección que no existe", ubic("/no-existe"), "CrediScope");
 {
@@ -133,6 +137,56 @@ igual("destino: una URL completa no se acepta", D.destinoDeIngreso({ desde: "htt
 igual("destino: no se vuelve al ingreso (sería un ciclo)", D.destinoDeIngreso({ desde: "/login" }), "/");
 igual("destino: después de salir a propósito no se recuerda", (D.marcarSalidaAProposito(), D.sePuedeRecordarElDestino()), false);
 igual("destino: al ingresar se vuelve a recordar", (D.olvidarSalidaAProposito(), D.sePuedeRecordarElDestino()), true);
+
+// ---- Equifax: la franja de 24 meses y la deuda por sistema (equifaxPantalla.js)
+{
+  const E = await cargar("src/lib/equifaxPantalla.js");
+  const fila = (fecha_corte, rol, dias_morosidad) => ({ fecha_corte, rol, dias_morosidad, vencido_usd: 0 });
+  const historia = [
+    fila("2026-08-31", "titular", 0),
+    fila("2026-08-31", "titular", 45),
+    fila("2026-07-31", "titular", 0),
+    // Un mes sólo como codeudor: no es un mes al día del titular.
+    fila("2026-06-30", "codeudor", 120),
+    fila("2024-09-30", "titular", 95),
+  ];
+  const franja = E.franjaDePagos(historia);
+  igual("equifax: la franja tiene 24 meses", franja.length, 24);
+  igual("equifax: termina en el último corte", franja[23].mes, "2026-08");
+  igual("equifax: empieza 23 meses antes", franja[0].mes, "2024-09");
+  igual("equifax: el color es el peor atraso del mes", franja[23].nivel, "hasta_90");
+  igual("equifax: cuenta las operaciones con atraso del mes", [franja[23].operaciones, franja[23].enMora], [2, 1]);
+  igual("equifax: un mes al día", franja[22].nivel, "al_dia");
+  igual("equifax: lo del codeudor no pinta el mes del titular", franja[21].nivel, "sin_deuda");
+  igual("equifax: más de 90 días", franja[0].nivel, "mas_de_90");
+  igual("equifax: el mes se escribe como en el resto de la app", franja[23].texto, "Ago 2026");
+  igual("equifax: sin historia, sin franja", E.franjaDePagos([]), []);
+  igual(
+    "equifax: el atraso suma vencido, no devenga, demanda y castigo",
+    E.enAtraso({ saldoVencidoUsd: 10.1, saldoNoDevengaInteresesUsd: 0.2, saldoDemandaJudicialUsd: 5, saldoCarteraCastigadaUsd: 0 }),
+    15.3,
+  );
+  const filas = E.filasDeDeuda({ deudaActualTitular: { bancos: { numeroDeOperaciones: 2, saldoDeudaUsd: 100, conciliaConElResumen: "si" } } });
+  igual("equifax: siempre los tres sistemas, aunque uno no tenga deuda", filas.map((f) => [f.texto, f.operaciones]), [
+    ["Bancos", 2],
+    ["Cooperativas", 0],
+    ["Sector comercial", 0],
+  ]);
+  igual(
+    "equifax: lo propio primero y la deuda más grande arriba",
+    E.operacionesOrdenadas([
+      { orden: 1, rol: "codeudor", saldo_deuda_usd: 900 },
+      { orden: 2, rol: "titular", saldo_deuda_usd: 10 },
+      { orden: 3, rol: "titular", saldo_deuda_usd: 50 },
+    ]).map((o) => o.orden),
+    [3, 2, 1],
+  );
+  igual("equifax: «Tarjeta» se lee como tarjeta de crédito", E.tipoDeCredito("Tarjeta"), "Tarjeta de crédito");
+  igual("equifax: «MORA 30 AL DIA» no se lee como contradicción", E.estadoDeCarteraLegible("MORA 30 AL DIA"), "Al día, con atrasos de hasta 30 días");
+  igual("equifax: «ESTA EN MORA 60»", E.estadoDeCarteraLegible("ESTA EN MORA 60"), "En mora de hasta 60 días");
+  igual("equifax: «CART. CASTIGADA»", E.estadoDeCarteraLegible("CART. CASTIGADA"), "Cartera castigada");
+  igual("equifax: un estado desconocido, como oración", E.estadoDeCarteraLegible("ALGO NUEVO"), "Algo nuevo");
+}
 
 console.log(fallas ? `\n${fallas} FALLAS` : "\nTodo cuadra.");
 process.exit(fallas ? 1 : 0);
