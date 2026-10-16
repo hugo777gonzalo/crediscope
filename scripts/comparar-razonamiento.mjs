@@ -17,9 +17,18 @@
 // Se puede cortar y retomar: una llamada ya guardada no se repite (ni se
 // paga dos veces).
 //
+// --hoy-de-la-base=marco-vNN (desde marco-v29): "hoy" no se pide al modelo,
+// se toma del análisis guardado con ese marco sobre el mismo perfil. Sirve
+// para comparar una versión nueva del marco contra la anterior pagando la
+// mitad. Un caso entra sólo si el mensaje guardado y el de ahora difieren
+// únicamente en lo que la versión nueva cambió a propósito
+// (CAMBIOS_ESPERADOS); si no (el perfil o los campos apagados cambiaron
+// desde entonces), se salta sin llamar al modelo.
+//
 // Uso:
 //   node scripts/comparar-razonamiento.mjs [--cedulas=research/cedulas_validacion_marco_v23.txt]
 //        [--configs=hoy,sin,medio] [--solo=N] [--concurrencia=3]
+//        [--hoy-de-la-base=marco-v28]
 //        [--salida=research/comparacion-razonamiento-AAAA-MM-DD] [--solo-excel]
 import fs from "node:fs";
 import path from "node:path";
@@ -50,6 +59,32 @@ globalThis.Deno = { env: { get: (k) => env[k] } };
 const compartido = (archivo) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", archivo)).href);
 const { armarPedidoScoring, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
+const { mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN } = await compartido("perfil-del-modelo.ts");
+const HOY_DE_LA_BASE = arg("hoy-de-la-base", null);
+
+// Lo que marco-v29 cambió a propósito en el mensaje (E27): con
+// --hoy-de-la-base, cualquier otra diferencia saca al caso. Al comparar otra
+// versión, se ajusta acá.
+const CAMBIOS_ESPERADOS = new Set([
+  ...RUTAS_QUE_NO_LLEGAN,
+  "laboral.empleosActuales[].tipoEmpleador",
+  "laboral.empleoActual.tipoEmpleador",
+].map((r) => `perfilDelModelo.${r}`));
+const aplanar = (nodo, ruta = "", salida = new Map()) => {
+  if (Array.isArray(nodo)) nodo.forEach((x, i) => aplanar(x, `${ruta}[${i}]`, salida));
+  else if (nodo && typeof nodo === "object") for (const [k, v] of Object.entries(nodo)) aplanar(v, ruta ? `${ruta}.${k}` : k, salida);
+  else salida.set(ruta, nodo);
+  return salida;
+};
+// También es esperado que v29 tape números largos y lleve todo número entero:
+// un total redondeado por partes se aleja a lo sumo un dólar y medio.
+const otrasDiferencias = (guardado, ahora) => {
+  const a = aplanar(guardado), b = aplanar(ahora);
+  return [...new Set([...a.keys(), ...b.keys()])].filter((r) =>
+    !CAMBIOS_ESPERADOS.has(r.replace(/\[\d+\]/g, "[]")) && a.get(r) !== b.get(r)
+    && !(typeof b.get(r) === "string" && b.get(r).includes("[número omitido]"))
+    && !(typeof a.get(r) === "number" && Number.isInteger(b.get(r)) && Math.abs(a.get(r) - b.get(r)) < 2));
+};
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 
 // "hoy" es exactamente la configuración de producción (CONFIG_LLM), para
@@ -65,6 +100,12 @@ const CONFIGURACIONES = {
   // "nuevo" y "s55" se corren con el marco nuevo en el código: el marco de
   // cada llamada queda guardado en su archivo.
   nuevo: { etiqueta: "Marco nuevo, mismo modelo", config: CONFIG_LLM },
+  // Lo mismo con el marco en caché: el modelo lee exactamente lo mismo (la
+  // huella no cuenta cache_control) y, de a una (--concurrencia=1), el
+  // marco se paga una vez y después a la décima parte: 14 llamadas de
+  // marco-v29, ~USD 0,56 contra ~0,85. Sirve para validar, no para medir el
+  // costo de producción, que va sin caché.
+  nuevoCache: { etiqueta: "Marco nuevo, marco en caché", config: { ...CONFIG_LLM, cachearMarco: true } },
   s55: { etiqueta: "Marco nuevo, Sonnet 5.5", config: { ...CONFIG_LLM, modelo: "claude-sonnet-5-5" } },
   // El marco armado según el cliente (marco-por-cliente.ts), contra "hoy"
   // con el marco entero: si coincide dentro del ruido, se puede adoptar.
@@ -110,6 +151,42 @@ if (!SOLO_EXCEL) {
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (e2 || !perfil) { console.log(`${cedula}: sin perfil guardado, se salta`); continue; }
     perfiles.set(cedula, { clientId: cliente.id, ...perfil });
+  }
+
+  // "hoy" desde el análisis guardado. Un caso sin un análisis comparable sale
+  // de la corrida entera: si no, "hoy" se pediría al modelo y se pagaría.
+  if (HOY_DE_LA_BASE) {
+    const saltados = {};
+    for (const [cedula, p] of perfiles) {
+      if (fs.existsSync(archivoDe(cedula, "hoy"))) continue;
+      const { data: a } = await supabase.from("analysis_results")
+        .select("id, created_at, crediscope_score, recomendacion, acciones_sugeridas, indicador_riesgo, indicador_historial, positives, negatives, missing_info, narrative_summary, llm_model, llm_stop_reason, llm_usage, duracion_llm_ms, mensaje_al_modelo")
+        .eq("client_profile_id", p.id).eq("rules_version", HOY_DE_LA_BASE).is("fallo", null).not("mensaje_al_modelo", "is", null)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const guardado = a?.mensaje_al_modelo;
+      if (guardado && typeof guardado.perfilDelModelo === "string") guardado.perfilDelModelo = JSON.parse(guardado.perfilDelModelo);
+      const motivo = !a ? `sin análisis de ${HOY_DE_LA_BASE} sobre su último perfil`
+        : !(a.llm_model ?? "").startsWith(MODELO) ? "el análisis guardado es de otro modelo"
+        : otrasDiferencias(guardado, mensajeParaElModelo(p.standard_profile, p.control_bloqueo?.hallazgos ?? [], camposDeshabilitados)).length
+          ? "el mensaje cambió en algo más que lo esperado" : null;
+      if (motivo) {
+        saltados[motivo] = (saltados[motivo] ?? 0) + 1;
+        perfiles.delete(cedula);
+        continue;
+      }
+      fs.writeFileSync(archivoDe(cedula, "hoy"), JSON.stringify({
+        cedula, clave: "hoy", config: CONFIG_LLM, marco: HOY_DE_LA_BASE, perfilId: p.id, perfilDel: p.created_at, deLaBase: a.id,
+        fecha: a.created_at, duracionMs: a.duracion_llm_ms, costoUsd: costoDe(a.llm_usage ?? {}, MODELO),
+        respuesta: { model: a.llm_model, stop_reason: a.llm_stop_reason, usage: a.llm_usage },
+        resultado: {
+          score: a.crediscope_score, recomendacion: a.recomendacion, accionesSugeridas: a.acciones_sugeridas,
+          indicadorRiesgo: a.indicador_riesgo, indicadorHistorial: a.indicador_historial, positives: a.positives,
+          negatives: a.negatives, missingInfo: a.missing_info, reasoning: a.narrative_summary,
+        },
+        fallo: null,
+      }, null, 1));
+    }
+    for (const [motivo, n] of Object.entries(saltados)) console.log(`${n} caso(s) fuera de la corrida: ${motivo}`);
   }
 
   // Primero "hoy" y "sin" en todos, después "medio": si hay que cortar,
@@ -273,7 +350,7 @@ const resumen = orden.filter((c) => detalle.some((d) => d.clave === c)).map((cla
 });
 
 // Por caso: una fila por cliente, las configuraciones lado a lado.
-const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", s55: "Sonnet 5.5", porCliente: "Por cliente" };
+const CORTO = { hoy: "Hoy", sin: "Sin razonamiento", medio: "Esfuerzo medio", hoy2: "Hoy (2ª)", nuevo: "Marco nuevo", nuevoCache: "Marco nuevo (caché)", s55: "Sonnet 5.5", porCliente: "Por cliente" };
 const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
   const fila = { "Cédula": cedula, "Nombre": Object.values(cs)[0]?.nombre ?? "", "Bloqueado por política": Object.values(cs)[0]?.bloqueado ? "Sí" : "No" };
   for (const clave of orden) {
@@ -289,7 +366,7 @@ const porCaso = [...porCedula.entries()].map(([cedula, cs]) => {
     fila[`${n} · Segundos`] = red(d.f.duracionMs / 1000, 1);
     fila[`${n} · Tokens razonamiento`] = d.razonamiento;
   }
-  for (const clave of ["sin", "medio", "hoy2", "nuevo", "s55", "porCliente"]) {
+  for (const clave of ["sin", "medio", "hoy2", "nuevo", "nuevoCache", "s55", "porCliente"]) {
     const d = cs[clave], h = cs.hoy;
     if (!d || !h) continue;
     const ambos = d.estado === "Completo" && h.estado === "Completo";
@@ -370,6 +447,9 @@ const notas = [
   ["Técnico", "Tokens, tiempos, costo e identificador de cada llamada, y la respuesta tal como llegó."],
   [""],
   ["Todas las llamadas usan el mismo marco, los mismos ajustes vigentes y el mismo perfil del modelo que el análisis de la pantalla."],
+  ...(filas.some((f) => f.deLaBase)
+    ? [["Hoy, desde la base", "Las filas de Hoy son los análisis guardados con el marco anterior sobre el mismo perfil: no se volvieron a pedir. Su costo es el de lista, para comparar."]]
+    : []),
   ["Un análisis \"Cortado por largo\" es el que en la pantalla aparece como \"El análisis quedó a medias\"."],
   ["Las respuestas crudas están en la carpeta crudo/, al lado de este archivo."],
 ];
