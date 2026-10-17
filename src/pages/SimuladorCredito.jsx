@@ -86,7 +86,7 @@ export default function SimuladorCredito() {
           <Calculator size={17} style={{ marginRight: 7, verticalAlign: "-3px" }} aria-hidden="true" />
           Condiciones del crédito
         </h3>
-        <div className="crediscope-descarga-row" style={{ marginTop: 0, flexWrap: "wrap" }}>
+        <div className="crediscope-descarga-row" style={{ marginTop: 0, flexWrap: "wrap", alignItems: "flex-start" }}>
           <Campo id="sim-monto" etiqueta="Monto, en dólares">
             <input id="sim-monto" className="crediscope-input" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} />
           </Campo>
@@ -111,7 +111,7 @@ export default function SimuladorCredito() {
           <ShieldCheck size={15} style={{ marginRight: 6, verticalAlign: "-2px" }} aria-hidden="true" />
           Seguro de desgravamen
         </h4>
-        <div className="crediscope-descarga-row" style={{ marginTop: 0, flexWrap: "wrap" }}>
+        <div className="crediscope-descarga-row" style={{ marginTop: 0, flexWrap: "wrap", alignItems: "flex-start" }}>
           <Campo id="sim-seguro" etiqueta="Tasa del seguro, en %">
             <input id="sim-seguro" className="crediscope-input" inputMode="decimal" value={tasaSeguro} onChange={(e) => setTasaSeguro(e.target.value)} />
           </Campo>
