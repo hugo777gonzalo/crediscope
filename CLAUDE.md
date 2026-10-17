@@ -686,10 +686,12 @@ antes de tocar esa área.
       con el lote del 2026-10-16); la
       del titular solo, no. `conciliaConElResumen` compara todos los roles, y
       lo del titular sale de las operaciones.
-    - **La lista de «garantías personales» de Equifax es la misma deuda que las
-      operaciones de rol codeudor** (22/22; 60/62 desde el 2026-10-16, con 2
-      casos sin mirar todavía): es una comprobación, nunca un
-      sumando. **«Garantía» en Ecuador es el colateral** (auto, casa, pagaré):
+    - **Los `CODEUDOR` de la lista de «garantías personales» de Equifax son la
+      misma deuda que las operaciones de rol codeudor** (62/62): es una
+      comprobación, nunca un sumando. **Los `GARANTE` no**: la lista y el detalle
+      no coinciden en ninguna de las 6 personas con alguno (2026-10-17; pregunta
+      en el pedido de diccionario, 3.8). Se compara por tipo, nunca la lista
+      entera. **«Garantía» en Ecuador es el colateral** (auto, casa, pagaré):
       lo de codeudor y garante no se llama así (tabla `equifax_codeudor_garante`).
     - **Una operación no se puede seguir de un mes al siguiente**: las listas no
       traen su número y ninguna combinación de campos la identifica (788 pares
@@ -810,6 +812,14 @@ antes de tocar esa área.
   Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
   cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
   continua miden 273 KB donde lo publicado pesa 476 KB.
+- Debajo de 860 px las tarjetas desplazan lo que les sobra (`overflow-x: auto`)
+  y recortan lo que sale de ellas: `InfoTooltip` dibuja la burbuja en el body,
+  con posición fija. Hasta el 2026-10-17, en una tableta o un teléfono no se
+  leía ninguna ayuda de la pestaña Equifax. Algo que flota (menú, aviso) va igual.
+- `.oxlintrc.json` activa `no-undef` en `src/` (2026-10-17): ni el lint sin
+  configuración ni el build ven una variable sin definir, y una que quedó suelta
+  tras un renombre tumbó el reporte de Equifax en producción con los cuatro
+  controles en verde.
 
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`

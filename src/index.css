@@ -187,11 +187,12 @@ a {
   outline-offset: 1px;
 }
 
+/* La burbuja vive en el body con posición fija: InfoTooltip la ubica junto al
+   ícono y dentro de la pantalla. Dentro de la tarjeta, la tarjeta la recortaba. */
 .crediscope-tooltip-bubble {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  top: 0;
+  left: 0;
   background: var(--bg);
   color: #fff;
   font-size: 13px;
@@ -203,7 +204,7 @@ a {
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.15s;
-  z-index: 20;
+  z-index: 1000;
   /* La ayuda puede vivir dentro de un rótulo en mayúsculas o en negrita (las
      tarjetas de indicadores): la explicación se lee siempre como texto. */
   text-transform: none;
@@ -213,20 +214,7 @@ a {
   white-space: normal;
 }
 
-.crediscope-tooltip-derecha .crediscope-tooltip-bubble {
-  left: auto;
-  right: -6px;
-  transform: none;
-}
-
-.crediscope-tooltip-izquierda .crediscope-tooltip-bubble {
-  left: -6px;
-  transform: none;
-}
-
-.crediscope-tooltip-wrap:hover .crediscope-tooltip-bubble,
-.crediscope-tooltip-wrap:focus-within .crediscope-tooltip-bubble,
-.crediscope-tooltip-abierta .crediscope-tooltip-bubble {
+.crediscope-tooltip-visible {
   visibility: visible;
   opacity: 1;
 }
@@ -947,6 +935,7 @@ a {
 
 .crediscope-pagina-cabecera {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
@@ -3012,6 +3001,24 @@ a {
   overflow-x: auto;
 }
 
+/* Los cuatro indicadores van de a 4, de a 2 o de a 1 por fila: con el auto-fit
+   de la grilla común quedaban 3 + 1 a 768, con la cuota sola abajo. */
+.crediscope-equifax-indicadores {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 899px) {
+  .crediscope-equifax-indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .crediscope-equifax-indicadores {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .crediscope-equifax-tabla {
   margin-top: 0;
   font-variant-numeric: tabular-nums;
@@ -3038,6 +3045,12 @@ a {
 .crediscope-equifax-num {
   text-align: right !important;
   white-space: nowrap;
+}
+
+/* Las cifras no se parten; los títulos sí: a 768 «Mora más larga» en una línea
+   dejaba la tabla 9 px más ancha que su tarjeta, con barra de desplazamiento. */
+.crediscope-equifax-tabla thead th.crediscope-equifax-num {
+  white-space: normal;
 }
 
 .crediscope-equifax-sistema,

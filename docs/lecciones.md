@@ -671,3 +671,25 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
     desconocida, la lista de columnas es única (de ahí salen los tipos y la
     comprobación contra la base) y el guion de carga la verifica antes de
     escribir.
+  - **El reporte completo de Equifax se caía en producción con los cuatro
+    controles en verde** (2026-10-16 al 17). Para esquivar un falso positivo de
+    gitleaks se renombró la variable `s` a `scores`, y una referencia quedó suelta
+    (`datos={s}`): «s is not defined» al abrir el reporte completo o al
+    descargar el PDF. Ni `oxlint` sin configuración ni `vite build` miran
+    variables sin definir. Desde ese día `.oxlintrc.json` activa `no-undef` en
+    `src/` con las globales del navegador (el resto del lint queda igual: los
+    mismos 7 avisos). Lo encontró la prueba del PDF en el navegador, no un
+    control: una pantalla se prueba abriendo cada parte, también lo plegado.
+  - **Una ayuda emergente dentro de una tarjeta no se veía en teléfonos ni
+    tabletas** (2026-10-17). Debajo de 860 px las tarjetas tienen
+    `overflow-x: auto` (para que nada desborde la página), y eso recorta lo
+    que sale de ellas: medido a 768 en la pestaña Equifax, ninguna de las 11
+    ayudas se leía al abrirla. `InfoTooltip` dibuja la burbuja en el body, con
+    posición fija, dentro de la pantalla; a 375, 768 y 1280 se leen las 24 de
+    la pestaña con el reporte abierto. Se prueba abriéndola, no mirando que el
+    ícono esté.
+  - **La lista de «garantías personales» trae codeudores y garantes, y sólo
+    los codeudores son la misma deuda que el detalle** (2026-10-17). Comparada
+    entera contra el rol codeudor coincidía en 60 de 62: las 2 que no son las
+    únicas con tipo `GARANTE` en la lista. Por tipo, codeudor 62 de 62; los
+    garantes no coinciden en ninguna de las 6 personas que tienen alguno.
