@@ -4,9 +4,9 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**131** (la fila de marco-v31, aplicada con el corredor el 2026-10-16). Las
-funciones desplegadas llevan el sello `db358647b36f` (2026-10-16, 7 de 7,
-medido en `despliegues`);
+**132** (las marcas de Monitoreo con buró; medido en `esquema_version` el
+2026-10-17; la 131 es la fila de marco-v31). Las funciones desplegadas llevan
+el sello `db358647b36f` (2026-10-16, 7 de 7, medido en `despliegues`);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
 marco-v30 (desde el 2026-10-16, la de E27: ver la sección 2, punto 1) con
