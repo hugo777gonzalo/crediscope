@@ -261,7 +261,12 @@ Romper cualquiera de estas rompe algo real.
     observación desde N días) y la tabla de calificación (categoría → días,
     versionada) se cambian en Datos y cartera › Configuración. Vigente desde
     el 2026-10-06: más de 90 días (Basilea), bancos D o E, retail con deuda de
-    más de USD 500, observación desde 15 días; revisar = no impago. Una
+    más de USD 500, observación desde 15 días; revisar = no impago. «D o E» se
+    aplica sólo a la operación que trae calificación (Novadata); la que trae
+    días se juzga por días, así que la del buró de la institución (Equifax no
+    trae calificación) no pide cambiar la definición. Traer el resultado del
+    buró en el t1 sí falta (`docs/propuesta-dias-de-mora-con-buro.md`,
+    sección 3). Una
     solicitud tiene dos resultados: `malo` (archivo para lo desembolsado,
     buró para el resto: cuadrantes y motivos) y `malo_buro` (el buró para
     todos: lo usa todo cálculo que junta las dos poblaciones).

@@ -280,10 +280,12 @@ autorizar el gasto).
 `buroDeLaInstitucion: true`, desplegar con `--funciones` y hacer una llamada suelta de
 comprobación sobre una persona con consulta vigente (está aceptada).
 
-**Lo que queda fuera de esta versión** (la capa 2 en SQL,
-`docs/propuesta-buro-de-la-institucion.md`, sección 7, paso 3): `resumen_por_persona`
-(la marca «D o E» de la bandeja y Monitoreo) y la definición de impago del Laboratorio
-(«bancos D o E») siguen leyendo la calificación de Novadata; pasan a días de mora para
-quien tenga buró con sus propias migraciones. El Laboratorio, además: la estructura de
-Equifax es de la fecha de la consulta, así que sirve para t0 sólo si la consulta es
-anterior al análisis.
+**Lo que quedó fuera de esta versión** (la capa 2 en SQL,
+`docs/propuesta-buro-de-la-institucion.md`, sección 7, paso 3): **hecho el 2026-10-17
+con la 132** (`docs/propuesta-dias-de-mora-con-buro.md`). Con una consulta vigente del
+buró, las dos marcas de Monitoreo (`resumen_por_persona`) salen de los días de mora y
+del monto en atraso de Equifax. La definición de impago del Laboratorio no necesitó
+migración: ya juzga por días a la operación que trae días. Lo que falta en el
+Laboratorio es traer el resultado del buró en el t1, con una consulta paga por
+solicitud; espera a la primera carga real. Además, la estructura de Equifax es de la
+fecha de la consulta: sirve para el t0 sólo si la consulta es anterior al análisis.
