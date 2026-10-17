@@ -14,6 +14,7 @@ import ListaControlPanel from "../components/ListaControlPanel.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import { plural } from "../lib/formatos.js";
+import { useBuro, NOMBRE_DEL_BURO } from "../lib/useBuro.js";
 
 // "Análisis con IA" — nombre comercial del scoring por LLM. Antes de
 // correrlo, decide si reutiliza el Perfil del Cliente ya consultado
@@ -34,6 +35,7 @@ function diasDesde(fechaIso) {
 
 export default function AnalisisIA() {
   const { cedula } = useParams();
+  const { buro } = useBuro();
 
   const [result, setResult] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -119,9 +121,13 @@ export default function AnalisisIA() {
         <Link className="crediscope-tab" to={`/ingresos/${cedula}`}>
           Ver Fuentes de Ingreso
         </Link>
-        <Link className="crediscope-tab" to={`/aval/${cedula}`}>
-          Ver Aval
-        </Link>
+        {/* El buró de la institución (129): decía «Ver Aval» fijo y en una base con
+            Equifax llevaba a la pestaña que no corresponde. */}
+        {buro ? (
+          <Link className="crediscope-tab" to={`/${buro}/${cedula}`}>
+            Ver {NOMBRE_DEL_BURO[buro]}
+          </Link>
+        ) : null}
       </div>
 
       {error ? (

@@ -166,9 +166,9 @@ nuestra: `equifax_codeudor_garante`.
 
 | Campo | Lo que entendemos hoy | Necesitamos | Para qué | Prior. |
 |---|---|---|---|---|
-| (la lista) | Operaciones de **otras personas** de las que ésta es codeudora. Coincide con las operaciones de rol `CODEUDOR` del detalle actual en 22/22 (cantidad y monto). | ¿Es siempre la misma deuda? ¿Cuándo difieren? | Nunca se suma la deuda dos veces. | Alta |
+| (la lista) | Operaciones de **otras personas** de las que ésta es codeudora o garante. Las de tipo `CODEUDOR` coinciden con las operaciones de rol `CODEUDOR` del detalle actual en 62 de 62 (cantidad y monto; 2026-10-17). | ¿Es siempre la misma deuda? ¿Cuándo difieren? | Nunca se suma la deuda dos veces. | Alta |
 | `…_no_vigentes` | Vacía en las 22 personas. | Qué debería traer. | Historial como codeudor. | Baja |
-| `tipo_deudor` | Siempre `CODEUDOR`. ¿Y el garante? | Dónde están las operaciones de rol `GARANTE` (aparecen en el detalle pero no acá). | Cobertura. | Media |
+| `tipo_deudor` | `CODEUDOR` en 34 de 62 personas y `GARANTE` en 2 (2026-10-17). **Los garantes de la lista y las operaciones de rol `GARANTE` del detalle no coinciden**: de las 6 personas que tienen alguno en un lado o en el otro, en ninguna son iguales la cantidad y el monto. En una, la lista trae 3 garantes y el detalle ninguno (las tres instituciones figuran en el detalle con otro rol); en cuatro, el detalle trae una operación de garante y la lista ninguna; en la otra, la lista trae 1 y el detalle 2 (una coincide en institución y monto). | ¿Por qué un garante figura en una lista y no en la otra? ¿Cuál de las dos dice lo que la persona respalda como garante? | La «Deuda como codeudor o garante» sale del detalle: un garante que sólo está en la lista no se cuenta. | Alta |
 
 ### 3.9 Consultas recibidas
 

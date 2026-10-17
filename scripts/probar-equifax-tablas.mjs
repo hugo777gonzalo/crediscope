@@ -15,9 +15,9 @@
 //      2026-10-12);
 //   4. titular + codeudor/garante = todos los roles, por sistema;
 //   5. los tramos de mora suman el vencido del titular;
-//   6. la lista aparte de codeudor y garante coincide con las operaciones de
-//      rol codeudor del detalle (en Ecuador «garantía» es el colateral: acá
-//      no se usa esa palabra);
+//   6. los CODEUDOR de la lista aparte de codeudor y garante coinciden con las
+//      operaciones de rol codeudor del detalle; los garantes sólo se cuentan
+//      (en Ecuador «garantía» es el colateral: acá no se usa esa palabra);
 //   7. NINGÚN dato personal de la persona (nombre, documento, RUC, dirección,
 //      teléfono, coordenadas, nombre e identificación de terceros, números de
 //      operación y de tarjeta) aparece en las tablas ni en la estructura.
@@ -135,7 +135,17 @@ verifica("el pico de operaciones en mora en un mes es de verdad el pico (contado
 }).length);
 
 console.log("\n6. Tarjetas, codeudor y garante, y otros");
-verifica("la lista aparte de codeudor y garante = operaciones de rol codeudor del detalle actual (cantidad y monto)", salidas.filter((s) => s.e.deudaCodeudorGarante.listaAparteDeEquifax?.coincideConLasOperacionesDeRolCodeudor === true).length);
+// La lista aparte trae tipo CODEUDOR y tipo GARANTE. Comparada entera contra el rol codeudor
+// coincidía en 60 de 62 (2026-10-16): las dos que no son las únicas con GARANTE en la lista.
+// Separada por tipo, CODEUDOR = rol codeudor en 62 de 62; los garantes de la lista y los del
+// detalle casi nunca son los mismos (pregunta a Equifax: docs/equifax-pedido-de-diccionario.md),
+// así que se cuentan sin cortar la prueba.
+const deLaLista = (s, tipo) => s.r.tablas.equifax_codeudor_garante.filter((g) => g.vigente && String(g.tipo_deudor).toUpperCase() === tipo);
+const delDetalle = (s, rol) => s.r.tablas.equifax_operaciones.filter((o) => o.rol === rol);
+const mismaDeuda = (lista, detalle) => lista.length === detalle.length && igual(S(lista, "deuda_total_usd"), S(detalle, "saldo_deuda_usd"));
+verifica("la lista aparte, tipo CODEUDOR = operaciones de rol codeudor del detalle actual (cantidad y monto)", salidas.filter((s) => mismaDeuda(deLaLista(s, "CODEUDOR"), delDetalle(s, "codeudor"))).length);
+const conGarante = salidas.filter((s) => deLaLista(s, "GARANTE").length > 0 || delDetalle(s, "garante").length > 0);
+console.log(`      (garante: ${conGarante.length} personas con alguno en la lista o en el detalle; coinciden en ${conGarante.filter((s) => mismaDeuda(deLaLista(s, "GARANTE"), delDetalle(s, "garante"))).length}. No corta: espera la respuesta de Equifax)`);
 const conPoliticaDeUso = salidas.filter((s) => s.cuerpo.interconnectResponse.ResultadoPoliticas?.some((x) => /USO CUPO/.test(x.Politica)) && s.e.tarjetas?.usoActualPorcentaje !== null);
 verifica(
   "el uso del cupo de hoy coincide con la política de uso de Equifax (sólo donde la política existe)",

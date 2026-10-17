@@ -98,7 +98,7 @@ export default function ReporteCompletoEquifax({ estructura }) {
         </Fila>
       </Seccion>
 
-      <Seccion Icono={Gauge} titulo="Scores de Equifax" datos={s}>
+      <Seccion Icono={Gauge} titulo="Scores de Equifax" datos={scores}>
         <Fila etiqueta="Score de Equifax hoy">{entero(scores?.scoreEquifax)}</Fila>
         <Fila etiqueta="Hace 6 meses">{entero(scores?.scoreEquifaxHace6Meses)}</Fila>
         <Fila etiqueta="Hace 12 meses">{entero(scores?.scoreEquifaxHace12Meses)}</Fila>

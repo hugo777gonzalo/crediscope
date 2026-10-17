@@ -17,7 +17,7 @@ export default function IndicadoresEquifax({ estructura }) {
   const variacion = scores.variacionDelScore12Meses;
 
   return (
-    <div className="crediscope-kpi-grid">
+    <div className="crediscope-kpi-grid crediscope-equifax-indicadores">
       <Kpi
         etiqueta={
           <>

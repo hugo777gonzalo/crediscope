@@ -46,12 +46,21 @@ aceptada.
     - **Valen hasta el 17/10**: la vigencia es por ciclo, del 18 al 17 de cada
       mes, sin importar el día de la consulta. Desde el 18 a las 00:00 de Ecuador,
       volver a consultar a cualquiera de las 62 se cobra.
-    - **`probar-equifax-tablas.mjs` sobre las 62:** todo da ok salvo una
-      comprobación. La lista de «garantías personales» coincide con las
-      operaciones de rol codeudor en 60 de 62 personas (antes, 22 de 22). Las
-      tablas no pierden nada: es una comprobación, no un sumando. Falta mirar
-      esos 2 casos y sumarlo al pedido de diccionario. El resumen concilia en
-      bancos 62 de 62, cooperativas 60 de 62 y comercial 49 de 62.
+    - **`probar-equifax-tablas.mjs` sobre las 62: todo da ok** (2026-10-17). La
+      lista de «garantías personales» coincidía con las operaciones de rol
+      codeudor en 60 de 62 personas: las 2 que no son las únicas cuya lista trae
+      tipo `GARANTE`. Separada por tipo, **`CODEUDOR` = rol codeudor en 62 de
+      62**, y la prueba compara así. **Los garantes no coinciden**: de 6 personas
+      con alguno en la lista o en el detalle, en ninguna son iguales cantidad y
+      monto (una tiene 3 garantes en la lista que el detalle no trae con ese
+      rol). La «Deuda como codeudor o garante» sale del detalle, así que un
+      garante que sólo está en la lista no se cuenta: la pregunta quedó en
+      `docs/equifax-pedido-de-diccionario.md` (3.8, prioridad alta). **El campo
+      `coincideConLasOperacionesDeRolCodeudor` de la estructura todavía compara
+      la lista entera**: se separa por tipo con la próxima versión de la
+      estructura (la del diccionario), no vale una versión sola. Ni el modelo
+      ni las pantallas lo leen. El resumen concilia en bancos 62 de 62,
+      cooperativas 60 de 62 y comercial 49 de 62.
     - En total, `equifax_operaciones` tiene 1.154 filas.
   - Qué hay: el conector desplegado (7 de 7 funciones, sello `7360d78b3096`), la
     tabla `consultas_equifax` (122) con 22 filas (2 de prueba y 20 de un lote:
@@ -174,8 +183,23 @@ aceptada.
        Equifax y Aval ya no aparece entre las pestañas. El control de seguridad
        da 66 de 67 (la que falla es de E27: el último análisis guardado es de
        marco-v28). Falta:
-       - **Mirar la pestaña a 768 e imprimir el PDF de verdad** (el diálogo de
-         impresión no se probó; la vista de impresión sí está escrita).
+       - **Repaso del 2026-10-17 a 375, 768 y 1280** (sesión de QA, datos
+         tapados en las capturas). Salieron y se corrigieron tres defectos:
+         **el reporte completo se caía** al abrirlo o al descargar el PDF (una
+         variable suelta del renombre por gitleaks; publicado desde el #28), **las
+         ayudas no se veían debajo de 860 px** (la tarjeta las recortaba; ahora
+         `InfoTooltip` las dibuja en el body, y se leen las 24 de la pestaña) y el
+         Análisis con IA decía «Ver Aval» fijo (ahora lleva al buró de la base).
+         Además, los cuatro indicadores van de a 4, 2 o 1 por fila (quedaban
+         3 + 1), y la tabla de deuda entra en su tarjeta a 768. El verificador de
+         UX da 0 hallazgos a 375 y a 768 con el reporte abierto.
+       - **El PDF:** el botón abre las 11 secciones y las 43 operaciones, llama a
+         imprimir una vez y deja la descarga en la auditoría (comprobado en
+         `audit_log`: 2 descargas de la cuenta de QA, con la persona y la
+         consulta). Con las reglas de impresión aplicadas al ancho útil de una
+         A4 (186 mm), nada se recorta, el menú y los botones no salen y son unas
+         5 hojas. **Falta imprimir una vez desde el diálogo del navegador**: el
+         panel de pruebas no lo abre (la impresión se reemplazó por una marca).
        - **¿Botón para consultar a Equifax desde la pestaña?** Hoy no hay: cada
          consulta se cobra, se hace a mano (A5) y la consulta desde las Edge
          Functions nunca se probó (cobraría). Lo decide el negocio.
