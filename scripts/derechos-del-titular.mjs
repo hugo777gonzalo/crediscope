@@ -73,6 +73,8 @@ const TABLAS = [
   ["analysis_results", `client_id=eq.${id}`],
   ["consultas_aval", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
   ["consultas_equifax", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
+  // Las solicitudes de crédito y su evaluación (133): la persona puede no estar en clients al crearse.
+  ["solicitudes", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
   ["ingestion_runs", `client_id=eq.${id}`],
   ["llm_llamadas", `client_id=eq.${id}`],
   ["lote_items", `cedula=eq.${CEDULA}`],

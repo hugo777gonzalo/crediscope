@@ -259,6 +259,35 @@ export async function consultarEquifax(cedula) {
   return data;
 }
 
+// Las solicitudes de crédito (133). La función `evaluar-solicitud` crea la
+// solicitud y la evalúa por pasos: `avanzar` corre uno por llamada (consultar
+// Novadata y el modelo juntos pasan los 150 s de una función). La pantalla
+// llama hasta que no quede ninguno.
+export async function evaluarSolicitud(cuerpo) {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase no está configurado.");
+  }
+  const { data, error } = await supabase.functions.invoke("evaluar-solicitud", { body: cuerpo });
+  if (error) throw await errorDeFuncion(error);
+  return data;
+}
+
+export async function getSolicitud(id) {
+  const { data, error } = await supabase.from("solicitudes").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getSolicitudesRecientes({ limite = 8 } = {}) {
+  const { data, error } = await supabase
+    .from("solicitudes")
+    .select("id, identificacion, modalidad, monto, plazo_meses, estado, creada_el, resultado->analisis->recomendacion, resultado->capacidad->capacidad->veredicto")
+    .order("creada_el", { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data ?? [];
+}
+
 // Cuántas consultas a Equifax quedaron guardadas hoy (día de Ecuador). Es lo
 // que se le muestra a quien está por pagar una: el tope diario de la función
 // cuenta además los fallos que pudieron cobrarse, que esta lectura no ve.

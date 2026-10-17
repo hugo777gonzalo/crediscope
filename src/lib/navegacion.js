@@ -48,9 +48,10 @@ export const SECCIONES = [
   {
     id: "solicitudes",
     texto: "Solicitudes",
-    prefijos: ["/solicitudes", "/historial"],
+    prefijos: ["/solicitudes", "/historial", "/solicitud"],
     hijos: [
       { texto: "Bandeja", ruta: "/solicitudes", exacta: true },
+      { texto: "Nueva solicitud", ruta: "/solicitud/nueva" },
     ],
   },
   {
@@ -136,6 +137,7 @@ export const SECCIONES = [
 // Páginas que no están en el menú (se llega a ellas desde otra) y cómo se
 // llaman. Va de lo más específico a lo más general: gana la primera.
 const PAGINAS_FUERA_DEL_MENU = [
+  [/^\/solicitud\/(?!nueva)./, "solicitudes", "Solicitud"],
   [/^\/solicitudes\/./, "solicitudes", "Expediente"],
   [/^\/historial\/perfil\//, "solicitudes", "Perfil del Cliente guardado"],
   [/^\/historial\/analisis\//, "solicitudes", "Análisis con IA guardado"],

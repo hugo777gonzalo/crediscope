@@ -16,7 +16,8 @@
 //
 // SUBIRLO cuando una función empiece a usar una tabla, columna o función
 // de una migración nueva: primero se migra, después se despliega.
-export const ESQUEMA_MINIMO = 130;
+// 133: evaluar-solicitud escribe en solicitudes.
+export const ESQUEMA_MINIMO = 133;
 
 let verificada: number | null = null;
 
