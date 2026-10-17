@@ -4,13 +4,14 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**127** (2026-10-16; la 128 de marco-v29 espera el PR #25). Las funciones
-desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
+**130** (el corredor, 2026-10-16; la 131 de marco-v31 espera su PR). Las
+funciones desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
-no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
-marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
-fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
-y cómo se verifica.
+no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
+(ver la sección 2, punto 1) con Claude Sonnet 5.5, estructura-v13,
+fuentes-v10 y perfil-laboral-v3; marco-v31 (el buró de la institución) está
+construido y apagado. Cada punto dice qué falta, por qué importa y cómo se
+verifica.
 
 Los números son de la base o del crudo local, medidos ese día. Antes de
 actuar sobre uno, volver a medirlo: este archivo envejece.
@@ -102,27 +103,50 @@ aceptada.
        prioridad de cada punto, está en `docs/equifax-pedido-de-diccionario.md`. Lo
        que conteste se carga sin volver a pagar: se sube la versión y se rehacen
        las consultas.
-    2. **Un tema, una fuente en lo que lee el modelo (capa 2) y su versión del marco** (el
-       número libre cuando se haga: `marco-v30` lo tomó E27 el 2026-10-16, PR #29).
-       Decidido el 2026-10-16 (`docs/propuesta-buro-de-la-institucion.md`,
-       secciones 2 y 4, y la tabla de decisiones de la sección 0): cuando la
-       persona tiene una consulta vigente del buró de la institución, el perfil del
-       modelo lleva el bloque del buró **en lugar de** los grupos de bancos y
-       cooperativas de Novadata (los campos que el buró cubre no van, ni en
-       `null`); la calificación A1 a E se lee en días de mora; las casas
-       comerciales de Novadata se suman a las del buró; y una persona sin buró
-       tiene que dar un perfil idéntico, byte a byte, al de hoy. Novadata se sigue
-       consultando entera. Va en una sesión aparte (frente del modelo). Sin esto,
-       la comparación con y sin Equifax mide la deuda dos veces.
-    3. **El ajuste al marco interpretativo.** El negocio dijo «procede» el
-       2026-10-13: la propuesta está escrita (`docs/propuesta-marco-equifax.md`:
-       el bloque del perfil del modelo, el borrador de la sección, lo medido con
-       las 22 y lo que decide el negocio). **No cambia nada de lo que lee el
-       modelo**: activarla es una versión nueva (el número libre de ese día: la
-       v29 la tomó E27 el 2026-10-13), con su fila en `scoring_rules_versions` y la
-       autorización explícita del gasto (unos USD 1 en lote para comparar las 22;
-       **octubre lleva USD 9,28 de 10**: se corre en noviembre o el negocio sube
-       antes el tope del proveedor de IA).
+    2. **Un tema, una fuente en lo que lee el modelo (capa 2) y su marco:
+       construidos el 2026-10-16 como `marco-v31`, APAGADO**
+       (`CONFIG_LLM.buroDeLaInstitucion = false`: desplegar no cambia nada de lo
+       que lee el modelo; todo sigue en v30). Lo construido, lo medido y cómo
+       encenderlo: `docs/propuesta-marco-equifax.md`, secciones 2 a 8. En corto:
+       con una consulta vigente de Equifax (producción, la más reciente anterior al
+       análisis, hasta el 17 del mes; `_shared/buro-de-la-institucion.ts`), el
+       perfil del modelo lleva `buroEquifax` en lugar del buró de bancos y de
+       cooperativas de Novadata (que no llegan ni en `null`), `endeudamiento` suma
+       el buró y las casas comerciales de Novadata, bancos/Diners/cooperativas
+       cuentan como consultados, y el marco lleva la sección del buró en lugar de
+       los grupos 3 y 4. **Sin buró, el perfil y el pedido entero son los de v30:
+       2.813 de 2.813 personas, byte a byte** (y una prueba de Deno con un perfil
+       inventado). Medido sin gasto sobre las 62: el bloque pesa **unos 2.000
+       tokens** (no 1.050: la estimación con 3,2 caracteres por token estaba mal,
+       se calibró con el contador de tokens de la API sobre datos inventados), la
+       sección del marco 1.602, y **ningún dato personal** de 1.588 buscados.
+       Falta:
+       - **Aplicar la 131** (la fila de `marco-v31`) con el corredor **después de
+         fusionar el PR en `main`** (regla 1). Se puede aplicar antes de
+         encender: es sólo una fila. Si al fusionar 131 está tomado, se renombra.
+       - **La comparación con y sin Equifax** (autoriza el negocio con una cifra):
+         62 personas con v30 y con v31, **unos USD 2,3 en lote**, estimado, no
+         medido. Octubre lleva USD 9,28 de 10. **Las 62 consultas caducan el 18/10
+         a las 00:00 de Ecuador**: después, v31 no encuentra ninguna vigente. O se
+         vuelve a pagar Equifax (lo autoriza el negocio aparte) o se le suma al lote
+         una fecha de análisis anterior al corte (un cambio chico): lo decide el
+         negocio.
+       - **Encenderlo** cuando el negocio lo decida: la 131 aplicada,
+         `ESQUEMA_MINIMO` en 131, `buroDeLaInstitucion: true`, desplegar con
+         `--funciones` y una llamada suelta de comprobación.
+       - **La capa 2 en SQL**: `resumen_por_persona` (la marca «D o E» de la
+         bandeja y Monitoreo) y la definición de impago del Laboratorio («bancos D
+         o E») siguen con la calificación de Novadata; pasan a días de mora para
+         quien tenga buró con sus migraciones
+         (`docs/propuesta-buro-de-la-institucion.md`, sección 7, paso 3).
+       - `comparar-razonamiento.mjs` no lee el buró: se niega a correr con el
+         interruptor encendido hasta que se le sume.
+    3. **El ajuste al marco interpretativo: hecho, en el mismo `marco-v31`** (el
+       negocio dijo «procede» el 2026-10-13). La sección quedó en
+       `marco-interpretativo.ts` (`GRUPOS_DEL_BURO_EQUIFAX`, `marcoConElBuro()`),
+       con «Deuda como codeudor o garante» en lugar de «Garantías:» y la
+       calificación leída en días de mora. Lo que espera: la comparación (punto 2)
+       y las dudas del diccionario (punto 1).
     4. **Rotar las credenciales de Equifax:** se pegaron en un chat. El negocio
        dijo otra vez el 2026-10-13 que no es posible por ahora y que sigue en
        observación; el riesgo sigue mientras no se roten.
