@@ -1,5 +1,6 @@
 // Las dos marcas de Monitoreo que leen la deuda de bancos y cooperativas
-// («Calificación baja en buró (D/E)» y «Mora bancaria o en cooperativas»),
+// («Más de 90 días de mora en bancos (D o E)», que hasta la 132 se llamaba
+// «Calificación baja en buró (D/E)», y «Mora bancaria o en cooperativas»),
 // leídas de Novadata y del buró de la institución, en las personas que tienen
 // una consulta de Equifax. Es la evidencia de
 // docs/propuesta-dias-de-mora-con-buro.md: Equifax no trae la calificación A1
