@@ -134,11 +134,17 @@ aceptada.
        - **Encenderlo** cuando el negocio lo decida: la 131 aplicada,
          `ESQUEMA_MINIMO` en 131, `buroDeLaInstitucion: true`, desplegar con
          `--funciones` y una llamada suelta de comprobación.
-       - **La capa 2 en SQL**: `resumen_por_persona` (la marca «D o E» de la
-         bandeja y Monitoreo) y la definición de impago del Laboratorio («bancos D
-         o E») siguen con la calificación de Novadata; pasan a días de mora para
-         quien tenga buró con sus migraciones
-         (`docs/propuesta-buro-de-la-institucion.md`, sección 7, paso 3).
+       - **La capa 2 en SQL: propuesta medida el 2026-10-16, espera al negocio**
+         (`docs/propuesta-dias-de-mora-con-buro.md`, cinco decisiones en la sección
+         4; se mide con `node scripts/medir-dias-de-mora-con-buro.mjs`). Las dos
+         marcas las muestra sólo Monitoreo, no la bandeja. «D o E» pasa a «más de
+         90 días en bancos» con buró (2 y 2 en las 62, las mismas personas) y
+         «Mora» lee el monto en atraso del buró (6 de 7). La definición de impago
+         del Laboratorio **ya juzga por días** a la operación que trae días: no
+         cambia. Lo que falta allí es traer el resultado del buró en el t1, con
+         una consulta paga por solicitud; se propone esperar a la primera carga
+         real (hoy no hay ninguna). Si se aprueba: una migración (el número libre
+         al aplicarla) para `resumen_por_persona` y el nombre en Monitoreo.
        - `comparar-razonamiento.mjs` no lee el buró: se niega a correr con el
          interruptor encendido hasta que se le sume.
     3. **El ajuste al marco interpretativo: hecho, en el mismo `marco-v31`** (el
