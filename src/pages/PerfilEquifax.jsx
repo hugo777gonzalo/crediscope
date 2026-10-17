@@ -32,8 +32,8 @@ import Aviso from "../components/ui/Aviso.jsx";
 // es sólo para administración y sólo cuando la persona no tiene una consulta
 // vigente, como decía el diseño aprobado el 2026-10-16 (A5: consulta a mano,
 // por persona). Pide confirmar porque cada consulta se cobra y su proveedor no
-// pone tope (negocio, 2026-10-12). La función acepta también a un analista:
-// el límite de la pantalla es del negocio, no de seguridad.
+// pone tope (negocio, 2026-10-12). La función exige lo mismo (admin), así que
+// un analista tampoco puede consultar llamándola directamente.
 
 export default function PerfilEquifax() {
   const { cedula } = useParams();

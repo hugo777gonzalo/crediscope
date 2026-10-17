@@ -381,10 +381,11 @@ Romper cualquiera de estas rompe algo real.
     `scripts/probar-formatos.mjs`. El PDF es la pantalla impresa
     (`@media print`) y queda en la auditoría (`exportacion.reporte_equifax`).
   - **El botón para consultar** (`ConsultarEquifax.jsx`, 2026-10-17) es sólo
-    para administración (diseño aprobado el 16/10; la función acepta también a
-    un analista) y llama a `consultar-equifax` sólo cuando la persona no tiene
+    para administración (diseño aprobado el 16/10; la función `consultar-equifax`
+    exige admin también desde ese día) y la llama sólo cuando la persona no tiene
     una consulta vigente, nunca de un clic: primero dice que se cobra y pide
-    confirmar. El
+    confirmar. Lo gastado se ve en Costos › Equifax (`costoEquifax.js`, USD 0,40
+    por consulta, tarifa del negocio del 17/10). El
     tope, la base legal (`BASE_LEGAL_EQUIFAX` en `api.js`) y la auditoría los
     pone la función. No ofrece `forzar`. **Para probarlo sin pagar**: una cédula
     con el dígito verificador mal (la función la rechaza antes de llamar a

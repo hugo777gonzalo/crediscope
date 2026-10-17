@@ -208,9 +208,9 @@ aceptada.
          aprobado el 16/10, es **sólo para administración** y aparece sólo sin
          consulta vigente: «Consultar a Equifax» cuando no hay ninguna y «Volver
          a consultar a Equifax» en la cabecera cuando venció. Un analista ve
-         «pedila a administración» (la función, en cambio, acepta a un analista:
-         si el negocio quiere el límite también ahí, es un cambio a la función y
-         un despliegue). Nunca consulta de
+         «pedila a administración», y la función también exige admin desde el
+         17/10 (antes aceptaba a un analista, que podía saltar el botón llamándola
+         directamente; el negocio: «haz lo mejor»). Nunca consulta de
          un clic: un cuadro dice que se cobra, hasta cuándo valdrá, si es el
          último día del ciclo y cuántas van hoy, y pide «Sí, consultar». La
          función pone el resto: sesión de analista o admin, tope diario, base
@@ -220,6 +220,11 @@ aceptada.
          reutilización (ver arriba). **Falta la primera consulta paga desde el
          botón**, con una persona que el negocio autorice: es también la
          primera consulta paga desde las Edge Functions.
+       - **Costos › Equifax** (2026-10-17): consultas pagadas por mes a USD 0,40
+         (tarifa que dio el negocio ese día; constante en `src/lib/costoEquifax.js`,
+         sin historia: si cambia, valúa también lo de antes) y, aparte, las que
+         pudieron cobrarse (fallos con el pedido ya enviado). Hoy: 62 consultas,
+         USD 24,80, todas de octubre.
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,

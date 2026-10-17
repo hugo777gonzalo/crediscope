@@ -271,6 +271,27 @@ export async function contarConsultasEquifaxDeHoy() {
   return count ?? 0;
 }
 
+// Lo que se le pagó (o pudo pagársele) a Equifax, para Costos › Equifax: las
+// consultas guardadas (sólo la fecha y el ambiente, nunca la persona) y los
+// fallos que pudieron cobrarse. El cálculo, en costoEquifax.js.
+export async function getConsumoEquifax() {
+  const [consultas, dudosas] = await Promise.all([
+    traerTodas((opciones) =>
+      supabase.from("consultas_equifax").select("id, created_at, ambiente", opciones).order("created_at").order("id"),
+    ),
+    traerTodas((opciones) =>
+      supabase
+        .from("audit_log")
+        .select("id, created_at", opciones)
+        .eq("action", "equifax.consulta.fallo")
+        .filter("meta->>puede_haber_cobrado", "eq", "true")
+        .order("created_at")
+        .order("id"),
+    ),
+  ]);
+  return { consultas: consultas.filas, dudosas: dudosas.filas };
+}
+
 // Las operaciones de hoy de una consulta (de 9 a 43 en las 62 primeras).
 export async function getOperacionesEquifax(consultaId) {
   const { data, error } = await supabase

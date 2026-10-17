@@ -68,6 +68,7 @@ Siete pantallas sobre `llm_costos`. Regla del módulo: **una llamada sin medir v
 | `/costos/corridas` | `CostosCorridas.jsx` | Corridas masivas (acciones que disparan muchas llamadas) |
 | `/costos/llamadas` | `CostosLlamadas.jsx` | Detalle de cada llamada (con descarga CSV) |
 | `/costos/incidentes` | `CostosIncidentes.jsx` | Estado ahora, incidentes, causas, quién responde |
+| `/costos/equifax` | `CostosEquifax.jsx`, `lib/costoEquifax.js` | Lo que se le paga a Equifax: consultas pagadas por mes a USD 0,40 (tarifa del 17/10/2026, constante en `costoEquifax.js`) y, aparte, las que pudieron cobrarse |
 | `/costos/avisos` | `CostosAvisos.jsx` | Canal de avisos, presupuesto mensual, avisos emitidos |
 | `/costos/tarifas` | `CostosTarifas.jsx` | Tarifas por modelo y por millón de tokens |
 
