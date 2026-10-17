@@ -429,12 +429,25 @@ aceptada.
   - `auditar-seguridad.mjs`: 69 controles en OK al 2026-10-16.
   - Queda, por orden:
   1. **E27: los atributos protegidos que todavía lee el modelo.** Lo de los
-     identificadores está hecho: marco-v29 y v30 (128 y 130, funciones
-     db35864, desplegadas el 2026-10-16) sacan la cédula, el nombre y los
+     identificadores está hecho: marco-v29 y v30 (128 y 130, sello
+     db358647b36f, desplegadas el 2026-10-16) sacan la cédula, el nombre y los
      empleadores. El control de `auditar-seguridad.mjs` («El último mensaje al
      modelo...») da OK sobre un análisis de v30 (69 de 69). Los siete
      documentos y la ficha de seguridad para clientes se corrigieron el
-     2026-10-16 y dicen qué sale y qué sigue llegando. Falta:
+     2026-10-16 y dicen qué sale y qué sigue llegando:
+     - en `docs/cumplimiento/` (fuera de git): `contrato-de-encargo-modelo.md`
+       (8.1 y Anexo A, con una nota interna que se saca antes de enviarlo),
+       `declaracion-de-aplicabilidad.md` (versión 3, 8.11 en parcial),
+       `lopdp.md`, `sgsi.md`, `ficha-del-modelo.md` (para marco-v30) y, además,
+       `anexo-de-seguridad-api.md` y `texto-de-autorizacion-del-titular.md`;
+     - en `auditoria/` (fuera de git): A4 y el punto 12 del informe de
+       seguridad, y la fortaleza 14 y el estado de E27 del informe externo;
+     - **la ficha para clientes, versión 2, republicada el 2026-10-17 en la
+       misma página privada** (la del archivo
+       `ficha-de-seguridad-para-clientes.html`). Ya se puede compartir:
+       hacerlo es decisión del negocio, desde el menú Share de la página.
+
+     Falta:
      - **El bloque B del cuestionario** (`research/decisiones/`), sin
        contestar: el negocio decide con legal cuáles de los atributos
        protegidos siguen. Hoy llegan los 16 de `ATRIBUTOS_PROTEGIDOS`
@@ -444,8 +457,9 @@ aceptada.
        hay uno menor de edad) y padres fallecidos. Medido el 2026-10-16: los 5
        análisis de v30 los llevan todos.
      - Sacar uno es pasarlo a `false`: versión nueva del marco con su fila en
-       `scoring_rules_versions`, y el control lo suma solo. Después, volver a
-       corregir lo que dicen los documentos y la ficha.
+       `scoring_rules_versions` (toma el número libre: marco-v31 ya existe,
+       apagado), y el control lo suma solo. Después, volver a corregir los
+       mismos documentos de arriba y republicar la ficha en la misma página.
      - La comparación de 14 casos contra v28
        (`research/cedulas_validacion_marco_v29.txt`, `--hoy-de-la-base`) es
        opcional: el negocio prefirió ver 5 análisis reales con v30.
