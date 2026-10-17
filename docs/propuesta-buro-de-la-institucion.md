@@ -265,8 +265,9 @@ el selector del buró de la institución y, en la de Novadata, la tarjeta de la 
    modelo de una persona **sin** buró sale idéntico, byte a byte, al de hoy.
 2. **Hecho (2026-10-16).** El marco nuevo, `marco-v31`, con la sección de Equifax
    ajustada a la sección 4. No se activa: la comparación espera a A8.
-3. `resumen_por_persona` y el Laboratorio a días de mora: propuesta medida el
-   2026-10-16 en `docs/propuesta-dias-de-mora-con-buro.md`, espera al negocio. La
-   definición de impago del Laboratorio ya juzga por días: no necesita migración.
+3. **Hecho (2026-10-17).** `resumen_por_persona` a días de mora: la 132, aplicada
+   (`docs/propuesta-dias-de-mora-con-buro.md`). La definición de impago del
+   Laboratorio ya juzga por días: no necesitó migración. El resultado por el buró en
+   el t1 espera a la primera carga real.
 4. La capa 1 (un buró por base) y la tarjeta de la capa 3.
 5. La pestaña de Equifax y su reporte, con la revisión de UX en el navegador.
