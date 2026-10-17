@@ -4,14 +4,15 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**131** (la fila de marco-v31, aplicada con el corredor el 2026-10-16). Las
-funciones desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
+**132** (las marcas de Monitoreo con buró; medido en `esquema_version` el
+2026-10-17; la 131 es la fila de marco-v31). Las funciones desplegadas llevan
+el sello `db358647b36f` (2026-10-16, 7 de 7, medido en `despliegues`);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
-no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
-(ver la sección 2, punto 1) con Claude Sonnet 5.5, estructura-v13,
-fuentes-v10 y perfil-laboral-v3; marco-v31 (el buró de la institución) está
-construido y apagado. Cada punto dice qué falta, por qué importa y cómo se
-verifica.
+no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
+marco-v30 (desde el 2026-10-16, la de E27: ver la sección 2, punto 1) con
+Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13, fuentes-v10 y
+perfil-laboral-v3; marco-v31 (el buró de la institución) está construido y
+apagado. Cada punto dice qué falta, por qué importa y cómo se verifica.
 
 Los números son de la base o del crudo local, medidos ese día. Antes de
 actuar sobre uno, volver a medirlo: este archivo envejece.
@@ -524,32 +525,43 @@ aceptada.
     - las 240 sintéticas fuera de los totales;
     - migraciones 117 a 119, y la 120 el 2026-10-10 (la franja de la
       bandeja sin sintéticas).
-  - `auditar-seguridad.mjs`: 68 controles en OK al 2026-10-13.
+  - `auditar-seguridad.mjs`: 69 controles en OK al 2026-10-16.
   - Queda, por orden:
-  1. **E27, urgente: lo que lee el modelo.** marco-v29 **desplegada el
-     2026-10-16** (PR #25, 128, funciones 684b243): sin cédula, sin nombre,
-     sin empleadores (cada empleo con su tipo), sin la institución de una PEP
-     ni la del título, los números de 10+ dígitos tapados y todo número
-     entero. **marco-v30** (130, mismo día, pedido del negocio): cada empleo y
-     cada aporte llevan esSuPropioPatrono y posibleNegocioFamiliar, calculados
-     con el nombre antes de borrarlo (con v29, en 9 de 72 personas con la
-     marca de familiar no se sabía cuál de sus empleos era). Validadas sin el
-     modelo sobre los 2.813 perfiles (`validar-perfil-del-modelo.mjs`: 0
-     fallas). Falta, por orden:
-     - `auditar-seguridad.mjs` («El último mensaje al modelo...») en OK, que
-       pide un análisis con v29 o v30;
-     - **los atributos protegidos**: bloque B del cuestionario
-       (`research/decisiones/`), sin contestar. Se sacan pasando cada uno a
-       `false` en `ATRIBUTOS_PROTEGIDOS` (`perfil-del-modelo.ts`): versión
-       nueva del marco y su fila;
-     - con el control en OK: corregir los siete documentos
-       (`docs/cumplimiento/` y el informe de la auditoría de seguridad) y
-       **la ficha de seguridad para clientes, que no se comparte hasta
-       entonces**. Decir qué atributos siguen llegando.
-     - La comparación grande de 14 casos contra v28
-       (`research/cedulas_validacion_marco_v29.txt`, `--hoy-de-la-base`) queda
-       disponible pero no se corrió: el negocio prefirió 5 análisis reales con
-       v30 en lote, que se ven en la app como uno de la pantalla.
+  1. **E27: los atributos protegidos que todavía lee el modelo.** Lo de los
+     identificadores está hecho: marco-v29 y v30 (128 y 130, sello
+     db358647b36f, desplegadas el 2026-10-16) sacan la cédula, el nombre y los
+     empleadores. El control de `auditar-seguridad.mjs` («El último mensaje al
+     modelo...») da OK sobre un análisis de v30 (69 de 69). Los siete
+     documentos y la ficha de seguridad para clientes se corrigieron el
+     2026-10-16 y dicen qué sale y qué sigue llegando:
+     - en `docs/cumplimiento/` (fuera de git): `contrato-de-encargo-modelo.md`
+       (8.1 y Anexo A, con una nota interna que se saca antes de enviarlo),
+       `declaracion-de-aplicabilidad.md` (versión 3, 8.11 en parcial),
+       `lopdp.md`, `sgsi.md`, `ficha-del-modelo.md` (para marco-v30) y, además,
+       `anexo-de-seguridad-api.md` y `texto-de-autorizacion-del-titular.md`;
+     - en `auditoria/` (fuera de git): A4 y el punto 12 del informe de
+       seguridad, y la fortaleza 14 y el estado de E27 del informe externo;
+     - **la ficha para clientes, versión 2, republicada el 2026-10-17 en la
+       misma página privada** (la del archivo
+       `ficha-de-seguridad-para-clientes.html`). Ya se puede compartir:
+       hacerlo es decisión del negocio, desde el menú Share de la página.
+
+     Falta:
+     - **El bloque B del cuestionario** (`research/decisiones/`), sin
+       contestar: el negocio decide con legal cuáles de los atributos
+       protegidos siguen. Hoy llegan los 16 de `ATRIBUTOS_PROTEGIDOS`
+       (`perfil-del-modelo.ts`): género, estado civil, cónyuge (si tiene, su
+       edad, los años de casado), edad, provincia y cantón de nacimiento, país
+       de origen y sus códigos, si es extranjero, hijos (cuántos, si tiene, si
+       hay uno menor de edad) y padres fallecidos. Medido el 2026-10-16: los 5
+       análisis de v30 los llevan todos.
+     - Sacar uno es pasarlo a `false`: versión nueva del marco con su fila en
+       `scoring_rules_versions` (toma el número libre: marco-v31 ya existe,
+       apagado), y el control lo suma solo. Después, volver a corregir los
+       mismos documentos de arriba y republicar la ficha en la misma página.
+     - La comparación de 14 casos contra v28
+       (`research/cedulas_validacion_marco_v29.txt`, `--hoy-de-la-base`) es
+       opcional: el negocio prefirió ver 5 análisis reales con v30.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
      `reutiliza_analisis_id` y `duracion_llm_ms` nulo.

@@ -15,7 +15,7 @@ va lo que ya está cerrado o no expone nada.
 | E3 · Un solo ambiente, guiones sin rastro | 🟡 Rastro y sintéticas hechos | Crear el proyecto de prueba (decisión del negocio: todavía no) |
 | E4 · Token sin verificar en `structure-client` | ✅ Cerrado | — |
 | E5 · Consultas al límite de los 150 s | 🟡 Plazo y token hechos | Disyuntor por fuente; la cola asincrónica la construye la sesión de la API para IFI (su migración toma el número libre al aplicarse) |
-| E27 · Lo que lee el modelo (nuevo) | ❌ Abierto | marco-v29 hecha el 2026-10-13, sin desplegar: sin cédula, nombre ni empleadores. Los atributos protegidos, con legal. Detalle en `auditoria/` (fuera de git) |
+| E27 · Lo que lee el modelo (nuevo) | 🟡 Identificadores hechos (2026-10-16) | marco-v29 y v30 desplegadas: sin cédula, nombre ni empleadores, con el control de `auditar-seguridad.mjs` en OK sobre un análisis de v30; documentos de cumplimiento y ficha para clientes corregidos. Falta: los atributos protegidos, con legal (bloque B del cuestionario). Detalle en `auditoria/` (fuera de git) |
 
 ---
 
@@ -309,6 +309,10 @@ franja de la bandeja.
   - lo que se les muestra a los clientes se actualiza recién cuando el
     cambio esté desplegado.
 - Los documentos internos de cumplimiento ya dicen el estado real.
+- **2026-10-16:** con marco-v29 y v30 desplegadas y el control en OK, los
+  siete documentos y la ficha para clientes dicen ahora lo medido en
+  `analysis_results.mensaje_al_modelo`: sin cédula, nombre ni empleadores, y
+  con los atributos protegidos, que siguen llegando hasta la decisión legal.
 - **Lección:** una afirmación de un documento anterior es una suposición
   hasta que se mide.
 
@@ -364,12 +368,12 @@ franja de la bandeja.
 
 ## 6. Lo que sigue
 
-1. **E27, urgente:** marco-v29 (2026-10-13) saca la cédula, el nombre y los
-   empleadores; el control de `auditar-seguridad.mjs` («El último mensaje al
-   modelo...») falla mientras el último análisis sea de v28. Lo que falta para
-   desplegarla y cerrar E27, en `docs/pendientes.md`.
-   - Recién con el cambio desplegado y el control en OK, actualizar la ficha
-     de seguridad para clientes.
+1. **E27:** marco-v29 y v30 (desplegadas el 2026-10-16) sacan la cédula, el
+   nombre y los empleadores, y el control de `auditar-seguridad.mjs` («El
+   último mensaje al modelo...») da OK sobre un análisis de v30 (69 de 69).
+   Los documentos de cumplimiento y la ficha para clientes ya dicen qué sale
+   y qué sigue llegando. Falta lo de los atributos protegidos, en
+   `docs/pendientes.md`.
 2. **Verificar con sesión real:** el análisis reutilizado (E1) y las listas
    sin sintéticas (bandeja, Fuentes de ingreso), con la franja de la bandeja
    igual a la lista.
