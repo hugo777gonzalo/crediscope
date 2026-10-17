@@ -45,7 +45,12 @@ La definición vigente desde el 2026-10-06, que se cambia en Datos y cartera
 - Con crédito, por el reporte de la institución: más de 90 días de mora
   (Basilea), castigo, reestructuración o demanda judicial.
 - Sin crédito, por Novadata: más de 90 días en cualquier entidad, bancos en
-  D o E, retail con deuda de más de USD 500, castigo o demanda.
+  D o E, retail con deuda de más de USD 500, castigo o demanda. «D o E» es para
+  la operación que trae calificación. Si algún día el resultado viene del buró
+  de la institución, que trae días y no calificación, la misma definición lo
+  juzga por días y no hay que cambiarla. Traer ese resultado necesita una
+  consulta paga por solicitud en el t1 (`docs/propuesta-dias-de-mora-con-buro.md`,
+  sección 3), y se construye con la primera carga real.
 - Lista de observación: llegar a 15 días de mora o más en el primer año,
   aunque después se ponga al día.
 - La prueba del modelo: aprobar y revisar = "no impago"; negar = "impago".
