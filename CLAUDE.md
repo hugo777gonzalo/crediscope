@@ -292,6 +292,12 @@ Romper cualquiera de estas rompe algo real.
     de la base que calculaban estadística (`lab_auc`, `lab_calcular_*`,
     `lab_estabilidad`, `lab_calificar_simulacion`) se borraron en la 112: lo
     que guardaron (origen `base`) es la referencia de las pruebas.
+- `simulador-credito.ts` → `simularCredito()` — la cuota de un crédito de
+  consumo con el desgravamen, en centavos enteros, y su tabla. La usan la
+  pantalla `/simulador` y la usarán la capacidad de pago y la API: no se copia
+  la fórmula. Los parámetros del producto (`PRODUCTO_CONSUMO`: tasa nominal
+  máxima de 15%, desgravamen de 0,6%) son del negocio (2026-10-17). El plan de
+  la demo, con lo que falta, en `docs/plan-demo-ifi.md`.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.

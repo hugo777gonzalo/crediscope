@@ -19,6 +19,7 @@ cuentan lo mismo y dicen cosas distintas.
 | `/aval/:cedula` | `PerfilAval.jsx` | todos | Reporte de la fuente Aval (buró). **No está en el Expediente** | — |
 | `/equifax/:cedula` | `PerfilEquifax.jsx`, `components/equifax/`, `lib/equifaxPantalla.js` | todos | Reporte de Equifax (buró): Score de Equifax, deuda por sistema, 24 meses de pagos, operaciones; el resto plegado; «Descargar reporte (PDF)» imprime la pantalla; «Consultar a Equifax» (sólo admin, sin consulta vigente, con confirmación porque se cobra; `ConsultarEquifax.jsx`). **No está en el Expediente** (F1). La pestaña aparece cuando el buró de la institución es Equifax | Aval |
 | `/buro/:cedula` | `BuroDeLaPersona.jsx` | todos | «Buró» del menú: lleva a la pestaña del buró de la institución (129), o dice que no hay uno elegido | — |
+| `/simulador` | `SimuladorCredito.jsx`, `_shared/simulador-credito.ts` | todos | Simulador de crédito: monto, plazo, tasa (máximo 15%), sistema y desgravamen; cuota del primer mes, totales y tabla de amortización plegada. No necesita una persona | La capacidad de pago, cuando exista (la misma cuota) |
 
 Las cuatro llevan la tira de pestañas `PestanasCliente.jsx` (la cédula es la del último
 cliente visto: `ultimaCedula.js`). El menú las lleva a `/` si todavía no hay ninguno.
