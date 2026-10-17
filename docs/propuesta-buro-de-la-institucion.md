@@ -59,8 +59,11 @@ hoy byte a byte: 2.813 de 2.813) y su sección del marco en lugar de los grupos 
   (`exportacion.reporte_equifax`, 129).
 - **El menú** dice «Buró» (antes «Aval») y lleva al buró de la institución
   (`/buro/:cedula`); la pestaña de cada persona dice su nombre (Equifax o Aval).
-- **Sin botón para consultar a Equifax**: la pestaña sólo muestra lo guardado. Ver
-  la pregunta abierta en `docs/pendientes.md`.
+- **El botón para consultar a Equifax** (el negocio lo pidió el 2026-10-17): sólo
+  para administración y sólo sin una consulta vigente, como en la sección 5. Antes
+  de consultar dice que se cobra, hasta cuándo valdrá y cuántas van hoy, y pide
+  confirmar. La primera consulta paga desde el botón espera a una persona que
+  autorice el negocio (`docs/pendientes.md`).
 
 ## 1. Lo medido: Equifax contra el buró de Novadata
 
