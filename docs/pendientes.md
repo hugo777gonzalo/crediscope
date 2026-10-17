@@ -25,7 +25,7 @@ aceptada.
 
 ## 1. Para retomar primero
 
-- **Equifax (al 2026-10-17): en producción, con 62 consultas hechas y sus tablas y
+- **Equifax (al 2026-10-17): en producción, con 87 consultas hechas y sus tablas y
   su estructura cargadas y verificadas, la pestaña con su PDF y, desde el
   2026-10-17, el botón para consultar desde la pantalla. Cada consulta se cobra y
   su proveedor no pone tope: nada que consulte se corre sin autorización explícita
@@ -64,10 +64,47 @@ aceptada.
       ni las pantallas lo leen. El resumen concilia en bancos 62 de 62,
       cooperativas 60 de 62 y comercial 49 de 62.
     - En total, `equifax_operaciones` tiene 1.154 filas.
+  - **Lote del 2026-10-17: 25 personas poco bancarizadas** (pedido por el negocio;
+    **87 consultas en total**). Personas reales sin consulta previa, elegidas por lo
+    poco que traía su último perfil de Novadata: 5 sin operaciones, 9 con 1 o 2, 4
+    con mora y 7 con 3 a 9. Lista y casos en `research/equifax/lotes/lote-2026-10-17.txt`
+    y `-casos.tsv`; bitácora en `corrida-2026-10-17.log` (fuera de git). Se pagaron
+    25 de 25, todas HTTP 200 y con sus tablas hechas; el tope del día quedó en 25 de
+    30. **Valen hasta el 17/10 a las 23:59** (mismo ciclo que las 62 anteriores).
+    - **Un expediente delgado no es uno vacío.** De las 5 sin operaciones en
+      Novadata, 4 traen deuda en Equifax. La quinta (`c-8b595446`) sí vino vacía:
+      6 KB, sin score ni historia. `c-e6db9ee9` y `c-c105874a` traen 14 y 22 meses
+      de historia, y `c-0be1e991` no trae consultas recibidas y tiene 3 operaciones
+      cuyo saldo no cuadra (`operacionesConSaldoQueNoCuadra`).
+    - **Por qué Novadata no veía esa deuda (reconsulta gratis del mismo día, 4
+      personas, crudo en `research/novadata-raw-2026-10-17/`):** el resultado no
+      cambió, así que reconsultar no la hace aparecer.
+      - En dos de las tres con deuda bancaria (`c-b980f5b2`, `c-79f1a4ae`), el
+        crédito se abrió el 16 y el 18 de septiembre, y el único corte de Super que
+        se vio en Novadata es el del **2026-08-31**. Es lo esperado: la deuda es
+        posterior al corte. Se confirma cuando Novadata publique el de septiembre
+        (Equifax ya trae el del 30/09).
+      - En la tercera (`c-23474215`) no cabe esa explicación: la operación de banco
+        se abrió el 9 de enero y su corte en Equifax es el 31/08, y Novadata contesta
+        «OK» con la lista vacía. Es una diferencia real de cobertura, sin explicar.
+      - `c-79f1a4ae` sólo trae en Novadata una fila de riesgo `G` (garante) de otra
+        deuda, no su crédito de titular.
+      - `c-acdc2297`: Equifax trae una operación comercial con 2.149 días de mora y
+        Novadata nada. Es el comercial de Equifax, que no es el retail de Novadata
+        (otras empresas).
+      - Con 4 personas es un indicio, no una tasa. Medirla de verdad pide comparar
+        las 87 contra su perfil de Novadata más reciente, por corte.
+    - Las comprobaciones de `probar-equifax-tablas.mjs` que suponen un expediente
+      denso (24 meses de historia, score, estado de cartera, consultas de 12 meses)
+      fallan con estas personas: son una suposición de la prueba, no un error de
+      las tablas. **Falta ajustarlas**. Además el probador agrupa por la etiqueta
+      `persona-N` y el lote nuevo pisó a `persona-1` a `persona-25` del anterior: ya
+      no prueba las 87. Etiquetar los lotes por fecha.
   - Qué hay: la función `consultar-equifax` desplegada y **sólo para admin** (las
     7 funciones, sello `835ccc58c4c1` del 2026-10-17, con el corredor; el control
-    de seguridad da 67 de 67 en OK después del despliegue), la tabla `consultas_equifax` (122) con 62 filas (2 pedidas una
-    por una y 60 de dos lotes, todas de producción y de la persona pedida), el
+    de seguridad da 67 de 67 en OK después del despliegue), la tabla
+    `consultas_equifax` (122) con 87 filas (2 pedidas una por una y 85 de tres
+    lotes, todas de producción y de la persona pedida), el
     guion local que simula por defecto, la exportación a Excel, el inventario y la
     conciliación de las respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El
     tope diario es `EQUIFAX_TOPE_DIARIO` (30); los lotes del 12/10 y del 16/10

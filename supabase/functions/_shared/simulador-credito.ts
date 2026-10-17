@@ -45,10 +45,10 @@ export interface ParametrosProducto {
   desgravamen: ParametrosDesgravamen;
 }
 
-// Decisión del negocio del 2026-10-17. La periodicidad y la base del 0,6% son
-// un supuesto (anual, sobre el saldo) hasta tener el tarifario de una
-// institución: 0,6% mensual sería 7,2% al año, más que cualquier seguro de
-// desgravamen de consumo.
+// Decisión del negocio del 2026-10-17: el 0,6% es anual (confirmado ese día;
+// mensual sería 7,2% al año, más que cualquier seguro de desgravamen de
+// consumo). Que se cobre sobre el saldo es lo usual en consumo; cada
+// institución puede cobrarlo sobre el monto.
 export const PRODUCTO_CONSUMO: ParametrosProducto = {
   tasaNominalMaximaPorcentaje: 15,
   sistema: "frances",
@@ -197,4 +197,31 @@ export function simularCredito(p: PedidoDeSimulacion): ResultadoDeSimulacion {
       tabla,
     },
   };
+}
+
+// El monto más alto cuya cuota del primer mes no pasa de `cuotaMaxima`, con
+// las mismas condiciones. Responde «hasta cuánto le alcanza» en la capacidad
+// de pago. Se busca con el mismo simulador, no con la fórmula invertida: con
+// el seguro y el redondeo de cada mes, invertir la fórmula daba un monto cuya
+// cuota real pasaba el tope por un centavo.
+export function montoMaximoParaCuota(
+  cuotaMaxima: number,
+  condiciones: Omit<PedidoDeSimulacion, "monto">,
+): number | null {
+  if (!esNumeroFinito(cuotaMaxima) || cuotaMaxima <= 0) return 0;
+  const cuotaDe = (montoC: number): number | null => {
+    const r = simularCredito({ ...condiciones, monto: montoC / 100 });
+    return r.ok ? r.simulacion.cuotaPrimerMes : null;
+  };
+  if (cuotaDe(100) === null) return null; // las condiciones no son válidas
+  // La cuota crece con el monto: búsqueda binaria en centavos.
+  let bajo = 0;
+  let alto = 100;
+  while ((cuotaDe(alto) as number) <= cuotaMaxima && alto < 1e11) alto *= 2;
+  while (alto - bajo > 1) {
+    const medio = Math.floor((bajo + alto) / 2);
+    if ((cuotaDe(medio) as number) <= cuotaMaxima) bajo = medio;
+    else alto = medio;
+  }
+  return bajo / 100;
 }
