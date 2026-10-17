@@ -64,9 +64,9 @@ aceptada.
       ni las pantallas lo leen. El resumen concilia en bancos 62 de 62,
       cooperativas 60 de 62 y comercial 49 de 62.
     - En total, `equifax_operaciones` tiene 1.154 filas.
-  - Qué hay: la función `consultar-equifax` desplegada (las 7 funciones, sello
-    `db358647b36f` del 2026-10-16; lo que cambió después en su código son
-    comentarios), la tabla `consultas_equifax` (122) con 62 filas (2 pedidas una
+  - Qué hay: la función `consultar-equifax` desplegada y **sólo para admin** (las
+    7 funciones, sello `835ccc58c4c1` del 2026-10-17, con el corredor; el control
+    de seguridad da 67 de 67 en OK después del despliegue), la tabla `consultas_equifax` (122) con 62 filas (2 pedidas una
     por una y 60 de dos lotes, todas de producción y de la persona pedida), el
     guion local que simula por defecto, la exportación a Excel, el inventario y la
     conciliación de las respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El
