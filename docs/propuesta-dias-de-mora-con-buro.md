@@ -1,8 +1,9 @@
 # Propuesta: los días de mora del buró en Monitoreo y en el Laboratorio
 
 Propuesta del 2026-10-16. **El negocio aprobó lo recomendado ese mismo día** (1a, 2a,
-3a, 4a y 5a de la sección 4), y quedó construida como la migración 132, sin aplicar
-(sección 6). Es el paso 3 de
+3a, 4a y 5a de la sección 4). Quedó construida como la migración 132 (sección 6), y
+**se aplicó el 2026-10-17 con el corredor**. Después de aplicarla, las dos marcas
+coinciden con el buró en las 62 personas con consulta vigente. Es el paso 3 de
 `docs/propuesta-buro-de-la-institucion.md` (sección 7): las dos lecturas en SQL que
 todavía usan la calificación A1 a E de Novadata pasan a días de mora para la persona
 con una consulta vigente del buró de la institución. Equifax no trae esa calificación
