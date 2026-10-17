@@ -37,9 +37,9 @@ import type {
   NivelHistorial,
   NivelRiesgo,
 } from "./types.ts";
-import { MARCO_VERSION, MARCO_INTERPRETATIVO } from "./marco-interpretativo.ts";
+import { MARCO_VERSION, MARCO_INTERPRETATIVO, MARCO_VERSION_CON_BURO, marcoConElBuro } from "./marco-interpretativo.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
-import { mensajeParaElModelo } from "./perfil-del-modelo.ts";
+import { type BuroDeLaInstitucion, mensajeParaElModelo } from "./perfil-del-modelo.ts";
 import { componerMarco } from "./marco-por-cliente.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "negar"];
@@ -129,8 +129,24 @@ export type ConfigRazonamiento = {
   // contra el marco entero; no se combina con cachearMarco (en lote el marco
   // entero cacheado cuesta menos que uno recortado sin caché).
   marcoPorCliente?: boolean;
+  // marco-v31: el buró de la institución en lugar del de bancos y
+  // cooperativas de Novadata, cuando la persona tiene una consulta vigente
+  // (perfil-del-modelo.ts, buro-de-la-institucion.ts). APAGADO hasta que el
+  // negocio lo decida con la comparación con y sin Equifax (autorizada con
+  // una cifra). Mientras esté apagado, el pedido es el de v30 byte a byte
+  // aunque llegue un buró. Encenderlo pide antes la migración 131 (la fila de
+  // marco-v31) aplicada y ESQUEMA_MINIMO en 131: primero se migra, después
+  // se despliega. Todavía no se combina con marcoPorCliente: sus marcas son
+  // del texto de v30.
+  buroDeLaInstitucion?: boolean;
 };
-export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000 };
+export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000, buroDeLaInstitucion: false };
+
+// La versión del marco que lee un pedido armado con esta configuración: va en
+// analysis_results.rules_version y en el registro de consumo.
+export function versionDelMarco(config: ConfigRazonamiento = CONFIG_LLM): string {
+  return config.buroDeLaInstitucion ? MARCO_VERSION_CON_BURO : MARCO_VERSION;
+}
 
 // Lo que cada configuración le agrega al pedido. "activo" no manda nada:
 // es lo que el modelo hace por defecto.
@@ -371,19 +387,29 @@ async function pedirScoringConReintentos(
 // en vigencia (texto libre sumado al marco). Se retiró: todo cambio a lo que
 // lee el modelo es una versión nueva del marco. No había ninguno en vigencia,
 // así que el pedido no cambió.
+//
+// buro: la consulta vigente del buró de la institución
+// (buro-de-la-institucion.ts), o null. Sólo se lee con
+// config.buroDeLaInstitucion encendido; apagado, se ignora.
 export function armarPedidoScoring(
   profile: Record<string, unknown>,
   controlBloqueo: ResultadoControlBloqueo,
   camposDeshabilitados: Set<string>,
-  config: ConfigRazonamiento = CONFIG_LLM
+  config: ConfigRazonamiento = CONFIG_LLM,
+  buro: BuroDeLaInstitucion | null = null,
 ): Record<string, unknown> {
+  if (config.buroDeLaInstitucion && config.marcoPorCliente) {
+    throw new Error("marcoPorCliente y buroDeLaInstitucion todavía no se combinan: las marcas del marco por cliente son del texto de v30");
+  }
   // El marco va SIN caché desde el 2026-09-27. La caché dura 5 minutos y
   // la mediana entre dos análisis es de 26: en 12 escrituras desde el
   // 2026-09-15 no hubo UNA lectura. Escribirla cuesta 25% más que
   // mandarlo normal (~$0,008 por análisis tirados). En lote sí conviene
   // (config.cachearMarco, desde el 2026-10-03): los pedidos salen juntos.
-  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados);
-  const textoMarco = config.marcoPorCliente
+  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados, config.buroDeLaInstitucion ? buro : null);
+  const textoMarco = config.buroDeLaInstitucion
+    ? marcoConElBuro("buroEquifax" in userPayload.perfilDelModelo)
+    : config.marcoPorCliente
     ? componerMarco(userPayload.perfilDelModelo, userPayload.hallazgosControlBloqueo as Array<{ code?: string }>).texto
     : MARCO_INTERPRETATIVO;
   const bloqueMarco: Record<string, unknown> = { type: "text", text: textoMarco };

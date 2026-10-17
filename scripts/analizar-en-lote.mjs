@@ -12,7 +12,10 @@
 // El pedido lo arma armarPedidoScoring() y la fila de analysis_results
 // filaDelAnalisis(): los mismos que usa analyze-client. Un análisis en lote
 // queda igual que uno de la pantalla, atado a su perfil y con lo que leyó el
-// modelo. Reutiliza perfiles guardados: no reconsulta Novadata.
+// modelo. Reutiliza perfiles guardados: no reconsulta Novadata. Con
+// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v31) lee la consulta vigente
+// del buró de la institución igual que analyze-client
+// (buro-de-la-institucion.ts); nunca consulta a Equifax.
 //
 // Las repeticiones (--ruido) miden cuánto cambia el modelo con el mismo
 // perfil. Sólo la primera de cada perfil se guarda como análisis; las demás
@@ -47,7 +50,8 @@ const env = Object.fromEntries(
 globalThis.Deno = { env: { get: (k) => env[k] } };
 
 const compartido = (a) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", a)).href);
-const { armarPedidoScoring, huellaDelPedido, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
+const { armarPedidoScoring, huellaDelPedido, interpretar, CONFIG_LLM, versionDelMarco, MODELO } = await compartido("llm-scoring.ts");
+const { buroDeLaBase, consultaVigenteDeEquifax } = await compartido("buro-de-la-institucion.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 const { elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
@@ -63,6 +67,7 @@ const ANTHROPIC = {
   ...(env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": env.ANTHROPIC_WORKSPACE_ID } : {}),
 };
 const CONFIG_LOTE = { ...CONFIG_LLM, maxTokens: 16_000, cachearMarco: true };
+const MARCO_DEL_LOTE = versionDelMarco(CONFIG_LOTE);
 
 // Un error de PostgREST es un objeto plano: String(err) lo aplasta.
 const motivo = (e) => [e?.message, e?.details, e?.hint, e?.code].filter(Boolean).join(" · ") || String(e);
@@ -165,6 +170,11 @@ async function enviar() {
   if (!/^[0-9a-f-]{36}$/.test(responsable ?? "")) throw new Error("Falta --responsable=<uuid>: quién ordena el lote (auditoría)");
   const seleccion = leer("seleccion.json");
   const camposDeshabilitados = await loadDisabledFields(supabase);
+  // El buró de la institución (marco-v31), con la misma regla que
+  // analyze-client: sólo con el interruptor encendido, la consulta vigente a
+  // la fecha del envío y nunca una consulta nueva a Equifax.
+  const ahora = new Date();
+  const conBuro = CONFIG_LOTE.buroDeLaInstitucion ? (await buroDeLaBase(supabase)) === "equifax" : false;
 
   const datos = new Map();
   for (let i = 0; i < seleccion.length; i += 100) {
@@ -181,7 +191,8 @@ async function enviar() {
     const d = datos.get(s.perfilId);
     if (!d) { console.log(`${s.cedula}: el perfil ya no existe, se salta`); continue; }
     const control = d.control_bloqueo ?? { bloqueado: false, hallazgos: [] };
-    const params = armarPedidoScoring(d.standard_profile, control, camposDeshabilitados, CONFIG_LOTE);
+    const buro = conBuro ? await consultaVigenteDeEquifax(supabase, s.clientId, ahora) : null;
+    const params = armarPedidoScoring(d.standard_profile, control, camposDeshabilitados, CONFIG_LOTE, buro);
     // El mismo pedido que un análisis que ya existe da el mismo resultado
     // (huellaDelPedido, auditoría externa E1): no se paga dos veces. Salvo
     // que el perfil esté para medir el ruido, que es repetir a propósito.
@@ -198,7 +209,7 @@ async function enviar() {
     }
     // Lo que leyó el modelo y el control de bloqueo, una vez por perfil:
     // los necesita filaDelAnalisis al recoger.
-    meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control, huellaPedido };
+    meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control, huellaPedido, consultaBuro: buro?.consultaId ?? null };
   }
   if (yaAnalizados) console.log(`${yaAnalizados} ya tenían un análisis con este mismo pedido: no se mandan.`);
   if (requests.length === 0) {
@@ -215,16 +226,17 @@ async function enviar() {
   escribir("meta.json", meta);
   escribir("estado.json", {
     batchId: lote.id, enviadoEl: new Date().toISOString(), pedidos: requests.length,
-    marco: MARCO_VERSION, modelo: CONFIG_LOTE.modelo ?? MODELO, config: CONFIG_LOTE,
+    marco: MARCO_DEL_LOTE, modelo: CONFIG_LOTE.modelo ?? MODELO, config: CONFIG_LOTE,
     responsable,
   });
-  console.log(`Lote ${lote.id} enviado: ${requests.length} pedidos (${MARCO_VERSION}, ${CONFIG_LOTE.modelo ?? MODELO}). Estado: ${lote.processing_status}`);
+  const conConsulta = Object.values(meta).filter((x) => x.consultaBuro).length;
+  console.log(`Lote ${lote.id} enviado: ${requests.length} pedidos (${MARCO_DEL_LOTE}, ${CONFIG_LOTE.modelo ?? MODELO}${conBuro ? `, ${conConsulta} con el buró de la institución` : ""}). Estado: ${lote.processing_status}`);
 }
 
 // -------------------------------------------------------------- recoger
 async function recoger() {
   const estado = leer("estado.json");
-  if (estado.marco !== MARCO_VERSION) throw new Error(`El lote se armó con ${estado.marco} y el código dice ${MARCO_VERSION}`);
+  if (estado.marco !== MARCO_DEL_LOTE) throw new Error(`El lote se armó con ${estado.marco} y el código dice ${MARCO_DEL_LOTE}`);
   const meta = leer("meta.json");
 
   const r = await fetch(`https://api.anthropic.com/v1/messages/batches/${estado.batchId}`, { headers: ANTHROPIC });
@@ -249,7 +261,7 @@ async function recoger() {
     const m = meta[customId];
     // huellaPedido falta en los lotes enviados antes del 2026-10-09: esos
     // análisis quedan sin huella, como todos los anteriores.
-    const { mensajeAlModelo, controlBloqueo, huellaPedido } = meta[m.perfilId];
+    const { mensajeAlModelo, controlBloqueo, huellaPedido, consultaBuro } = meta[m.perfilId];
     const data = linea.result?.type === "succeeded" ? linea.result.message : null;
     const modelo = data?.model ?? estado.modelo;
     const resultado = data ? { ...interpretar(data, modelo), mensajeAlModelo, huellaPedido } : null;
@@ -299,7 +311,7 @@ async function recoger() {
       requestId: data?.id ?? null,
       clientId: m.clientId,
       analysisResultId: analysisId,
-      contexto: { marco: estado.marco, lote: estado.batchId, repeticion: m.repeticion },
+      contexto: { marco: estado.marco, lote: estado.batchId, repeticion: m.repeticion, ...(consultaBuro ? { consultaBuro } : {}) },
       esPrueba: m.repeticion > 1,
       actor: estado.responsable,
       razonamiento: estado.config.razonamiento,

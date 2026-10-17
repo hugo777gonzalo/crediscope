@@ -433,6 +433,23 @@
 // familiar: el falso positivo que hasta v28 se descartaba leyendo el nombre.
 // No se volvió a mandar el nombre (E27).
 //
+// v31 (2026-10-16, decisiones del negocio del 2026-10-13 y del 2026-10-16,
+// docs/propuesta-buro-de-la-institucion.md). NO ESTÁ ACTIVA: la enciende
+// CONFIG_LLM.buroDeLaInstitucion (llm-scoring.ts) cuando el negocio lo
+// decida, y hasta entonces todo análisis sigue siendo v30. Un tema, una
+// fuente: cuando la persona tiene una consulta vigente del buró de la
+// institución (Equifax), el perfil del modelo lleva buroEquifax en lugar del
+// buró de bancos y de cooperativas de Novadata, y el marco lleva su sección
+// en lugar de los grupos 3 y 4 (el lugar que eligió el negocio, A4). La
+// calificación A1 a E, que Equifax no trae, se lee en días de mora. Sin buró
+// el perfil es idéntico al de v30 y el marco cambia sólo el rótulo
+// «Garantías:», que pasa a «Deuda como codeudor o garante» (A7: en Ecuador
+// garantía es el colateral, no una persona que responde por otra). Son dos
+// textos de una misma versión, como el marco por cliente: cuál leyó cada
+// análisis lo dice su mensaje_al_modelo (con o sin buroEquifax). Se arman
+// sobre MARCO_INTERPRETATIVO con cortes anclados (marcoConElBuro, al final),
+// no con una copia.
+//
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
@@ -1009,3 +1026,215 @@ La respuesta es un único objeto JSON con estos campos: score,
 recomendacion, accionesSugeridas, indicadorRiesgo, indicadorHistorial,
 positives, negatives, missingInfo y reasoning.
 `.trim();
+
+// ---------------------------------------------------------------------------
+// marco-v31: el buró de la institución (apagado; ver la nota v31 arriba)
+// ---------------------------------------------------------------------------
+
+export const MARCO_VERSION_CON_BURO = "marco-v31";
+
+// Los grupos 3 y 4 cuando llega buroEquifax. Los criterios dentro del grupo
+// son, como los demás del marco, una propuesta a validar con el negocio
+// (docs/propuesta-marco-equifax.md, sección 4). Lo que cambió desde ese
+// borrador: Equifax ya no es "una segunda lectura" de la deuda sino LA lectura
+// (bancos y cooperativas de Novadata no llegan), la calificación se lee en
+// días de mora con los tramos que ya usa la institución (al día, 1 a 30, 31 a
+// 90, más de 90: la franja de la pestaña Equifax y la definición de impago,
+// 110), y las casas comerciales de Novadata se suman.
+const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la institución, Equifax. Es la fuente
+   más directa de comportamiento de pago, y cuando llega reemplaza al buró
+   de bancos y de cooperativas de Novadata: la deuda, el atraso, las
+   demandas, la cartera castigada y lo que respalda como codeudora o
+   garante, en bancos (también Diners), cooperativas y sector comercial,
+   salen de acá. Por eso comportamientoCooperativas no llega, y
+   comportamientoBancario trae sólo lo que el buró no cubre (ver 4). Todo
+   es según Equifax y a la fecha de su reporte (fechaDelReporte): decilo
+   así.
+   - Equifax no da la calificación de la Superintendencia (A1 a E): el
+     atraso se lee en días de mora, que es lo que esa calificación mide. Hoy,
+     maximoDiasDeMora de cada sistema; en los últimos 24 meses,
+     conductaDePago. Al día (0 días) es lo mejor; de 1 a 30 días, un atraso
+     leve; de 31 a 90, un atraso relevante; más de 90, un incumplimiento
+     grave (es la definición de impago de la institución). No escribas una
+     calificación que Equifax no da.
+   - deudaActualTitular: lo que debe como titular, por sistema (bancos,
+     cooperativas, comercial) y en total: saldo, por vencer, vencido, lo que
+     no devenga intereses, en demanda judicial y castigado, la cuota mensual
+     y los días de mora de hoy. Un saldo en demanda judicial o castigado
+     mayor que 0 es muy grave, en el sistema que sea. numeroDeOperaciones
+     cuenta cada tarjeta como una operación.
+   - conciliaConElResumen "no" en un sistema: el detalle de Equifax no
+     cuadra con el total que la propia Equifax publica para ese sistema
+     (pasa más en el comercial, que trae operaciones con cortes de distintos
+     meses). Si la deuda de ese sistema importa para la decisión, decilo en
+     missingInfo y no afirmes una cifra exacta de ese sistema.
+   - Deuda como codeudor o garante (deudaCodeudorGarante): deuda de otra
+     persona que ésta respalda. No es su comportamiento de pago: es un
+     riesgo contingente (si el deudor no paga, le pueden cobrar a ella). Un
+     atraso ahí se menciona como riesgo contingente, nunca como "no pagó",
+     y no se suma a lo propio.
+   - moraActual: lo vencido hoy como titular. porcentajeDeLaDeudaVencida
+     dice cuánto de su deuda propia está vencido, y vencidoPorTramo cómo se
+     reparte por antigüedad (sólo trae los tramos con saldo). Un vencido
+     chico de menos de un mes con el resto al día es leve; vencido de más de
+     3 meses pesa como un incumplimiento.
+   - conductaDePago: los últimos 24 meses, contados por mes. Es lo más
+     informativo de esta fuente.
+     · Mora ocasional y corta (pocos meses, hasta 30 días) es leve.
+     · mesesConMoraDeMasDe90Dias mayor que 0 es grave aunque hoy esté al
+       día: fue un incumplimiento real, y pesa más cuanto más reciente
+       (fechaDeLaUltimaMora).
+     · Una mora grave de hace casi dos años con los últimos 12 meses limpios
+       es historia, no situación actual.
+     · maximoDeOperacionesEnMoraEnUnMes alto (varias atrasadas a la vez) es
+       más preocupante que una sola.
+     Una operación no se puede seguir de un mes al otro: hablá de meses, no
+     de "la misma operación".
+   - estadoDeCartera es un cálculo de Equifax, no un hecho del buró: citalo
+     como "Equifax lo clasifica como …", y si contradice lo que ves en el
+     resto, mencionalo.
+   - scoreEquifax es la opinión de un tercero con su propio modelo:
+     contexto, no decide, y no es el score de este análisis. No lo traduzcas
+     a una probabilidad ni lo restes del tuyo. Lo que sirve es la tendencia:
+     una caída fuerte en 12 meses (variacionDelScore12Meses) es una señal de
+     deterioro. scoreSobreendeudamientoEquifax y nivelDeSobreendeudamiento
+     son su lectura de la carga de deuda: "alto" es una alerta de capacidad,
+     no un hecho de pago.
+   - tarjetas: usoActualPorcentaje es el saldo de hoy sobre el cupo, y
+     usoPromedioPorcentaje el saldo promedio de 6 meses sobre el cupo (puede
+     pasar de 100). Un uso sostenido por encima del 90%, o tarjetas con
+     saldo mayor que el cupo, es tensión de liquidez; si los dos usos
+     difieren mucho, nombrá la tendencia.
+   - evolucionTodosLosRoles: cómo cambiaron la deuda, los acreedores y la
+     cuota estimada en 6 y 12 meses. Equifax la calcula con todos los roles
+     (también lo que respalda como codeudora o garante): no la compares con
+     la deuda propia. Mucha más deuda y más acreedores en un año con un
+     ingreso que no creció es una tensión de capacidad, no mal
+     comportamiento.
+   - creditosOtorgados: los reestructurados y refinanciados son señal de una
+     dificultad previa (negativo moderado); los novados son renovaciones y
+     no dicen nada por sí solos.
+   - consultasRecibidas: cuántas entidades la consultaron (sin contar a esta
+     institución). Muchas en pocos meses es búsqueda activa de crédito: una
+     señal leve de necesidad, no de mal pago. Decí "al menos N consultas":
+     una misma entidad puede venir escrita de varias maneras.
+   - tieneInhabilitacionBancaria true es grave (cierre de cuentas): nombrá
+     la acción y la fecha (ultimaInhabilitacion).
+   - Un grupo en null es información que Equifax no trajo: no es un cero ni
+     un hecho de la persona.
+
+4. comportamientoBancario, cuando llega buroEquifax: lo de Novadata que el
+   buró no cubre.
+   - figuraEnRegistroDeudores: figura en el registro de deudores.
+   - numeroPrestamosIessBiess y diasMoraCreditoIessBiess son préstamos del
+     IESS/BIESS (quirografarios e hipotecarios). No los sumes a la deuda del
+     buró: Equifax puede traer el mismo préstamo del BIESS dentro de bancos.
+   - Retail (numeroDeudasRetail, totalDeudaRetail, valorVencidoRetail,
+     diasMoraMaximaRetail): deudas con casas comerciales según Novadata.
+     Casi siempre son otras empresas que las del sector comercial de
+     Equifax, y por eso se suman; alguna puede figurar en las dos fuentes.
+     valorVencidoRetail es lo vencido; si es igual al total, toda esa deuda
+     está vencida, no vigente.
+
+   endeudamiento (bloque del perfil del modelo): la deuda sumada. Con
+   buroEquifax, deudaPropiaBancos, deudaPropiaCooperativas y
+   deudaPropiaSectorComercial son de Equifax (como titular, con lo que está
+   en atraso) y deudaPropiaRetail son las casas comerciales de Novadata;
+   deudaPropiaTotal las suma. deudaEnAtrasoTotal suma lo vencido, lo que no
+   devenga intereses, lo que está en demanda y lo castigado.
+   deudaComoGaranteOCodeudor va aparte: no es propia. Para decir cuánto
+   debe, usá deudaPropiaTotal, no el saldo de un solo sistema. La cuota
+   conocida (cuotaMensualConocida) es la de Equifax en los tres sistemas:
+   podés compararla con el ingreso reportado al IESS, aclarando que las
+   casas comerciales no informan su cuota.
+
+`;
+
+// A7 (negocio, 2026-10-13): «Garantías:» pasa a «Deuda como codeudor o
+// garante». Con buró, el grupo 3 de Novadata no llega y el rótulo vive en la
+// sección del buró; sin buró, es el único cambio contra v30.
+const DEUDA_COMO_CODEUDOR_EN_NOVADATA = `   - Deuda como codeudor o garante: numeroOperacionesComoGaranteOCodeudor,
+     deudaComoGaranteOCodeudor y peorCalificacionComoGaranteOCodeudor son
+     deudas de otra persona que ésta respalda como codeudora o garante. No
+     son su comportamiento de pago: son un riesgo contingente (si el deudor
+     no paga, le pueden cobrar a ella). Una D o E como codeudora o garante
+     se menciona como riesgo contingente, nunca como "no pagó".
+`;
+
+interface Corte {
+  desde: string; // el texto reemplazado empieza acá...
+  hasta: string; // ...y termina justo antes de esto
+  nuevo: string;
+}
+
+// Un corte cuya marca no está, o está dos veces, rompe el armado en vez de
+// cortar mal: si alguien edita el marco, la prueba lo dice (como en
+// marco-por-cliente.ts).
+function aplicarCortes(texto: string, cortes: Corte[]): string {
+  let salida = texto;
+  for (const c of cortes) {
+    const unaVez = (marca: string, desde = 0) => {
+      const i = salida.indexOf(marca, desde);
+      if (i < 0 || salida.indexOf(marca, i + 1) >= 0) {
+        throw new Error(`marco-v31: la marca no está, o está más de una vez: ${JSON.stringify(marca.slice(0, 50))}`);
+      }
+      return i;
+    };
+    const inicio = unaVez(c.desde);
+    const fin = unaVez(c.hasta);
+    if (fin < inicio) throw new Error(`marco-v31: ${JSON.stringify(c.desde.slice(0, 50))} termina antes de empezar`);
+    salida = salida.slice(0, inicio) + c.nuevo + salida.slice(fin);
+  }
+  return salida;
+}
+
+const CORTE_DEL_ROTULO: Corte = {
+  desde: "   - Garantías: numeroOperacionesComoGaranteOCodeudor,",
+  hasta: "   - numeroPrestamosIessBiess",
+  nuevo: DEUDA_COMO_CODEUDOR_EN_NOVADATA,
+};
+
+const CORTES_CON_BURO: Corte[] = [
+  {
+    desde: "la información de Novadata ya\nprocesada",
+    hasta: "procesada y calculada",
+    nuevo: "la información de Novadata y de Equifax ya\n",
+  },
+  { desde: "3. comportamientoBancario: la fuente más directa", hasta: "5. riesgoJudicialCrediticio", nuevo: GRUPOS_DEL_BURO_EQUIFAX },
+  {
+    desde: "como comportamientoCooperativas: alguien",
+    hasta: " alguien ya le",
+    nuevo: "como un incumplimiento en el buró:",
+  },
+  { desde: "pesa como comportamientoBancario o más", hasta: " o más. Si no", nuevo: "pesa como buroEquifax" },
+  {
+    desde: "\n\nDe eso se sigue:",
+    hasta: "De eso se sigue:",
+    nuevo: `
+- Con buroEquifax, "buró de crédito de bancos", "tarjetas Diners" y
+  "cooperativas" están entre los consultados porque los trajo Equifax,
+  aunque Novadata no haya contestado por ellos.
+
+`,
+  },
+  {
+    desde: "juzgado sólo con comportamientoBancario,\n  comportamientoCooperativas, comportamientoInterno y",
+    hasta: "\n  riesgoJudicialCrediticio",
+    nuevo: "juzgado sólo con buroEquifax, comportamientoBancario (casas\n  comerciales y préstamos del IESS/BIESS), comportamientoInterno y",
+  },
+];
+
+const marcosV31 = new Map<boolean, string>();
+
+// El texto de marco-v31 para una persona: con la sección del buró si su
+// perfil del modelo trae buroEquifax, y si no, el de v30 con el rótulo
+// nuevo. Se arma la primera vez que se pide: con el interruptor apagado,
+// nada de esto corre en producción.
+export function marcoConElBuro(conBuroEquifax: boolean): string {
+  let texto = marcosV31.get(conBuroEquifax);
+  if (texto === undefined) {
+    texto = aplicarCortes(MARCO_INTERPRETATIVO, conBuroEquifax ? CORTES_CON_BURO : [CORTE_DEL_ROTULO]);
+    marcosV31.set(conBuroEquifax, texto);
+  }
+  return texto;
+}

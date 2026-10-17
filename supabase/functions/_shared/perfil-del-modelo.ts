@@ -42,6 +42,12 @@
 // (RUTAS_QUE_NO_LLEGAN, más abajo), y todo número llega entero
 // (limpiarValores).
 //
+// Desde marco-v31 (apagado: CONFIG_LLM.buroDeLaInstitucion), cuando la
+// persona tiene una consulta vigente del buró de la institución, llega
+// `buroEquifax` EN LUGAR del buró de bancos y de cooperativas de Novadata
+// (un tema, una fuente: ver "El buró de la institución", más abajo). Sin
+// buró, el perfil sale idéntico al de marco-v30, byte a byte.
+//
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
 // scoring_rules_versions.
@@ -51,6 +57,7 @@ import { dejoDeAparecerEnElIess, esIngresoMinimoSbu, indiciosDeIngresoMayor, tam
 import { ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, quienDeclara } from "./nombres-ingresos.ts";
 import { relacionConEmpleador } from "./patrono.ts";
 import { tipoDeDemandaLegible } from "./demandas.ts";
+import { fechaEnEcuador } from "./equifax-estructura.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -282,7 +289,11 @@ const TEMAS_DE_CONSULTA: Array<[tema: string, fuentes: string[]]> = [
 // null si el perfil no trae metaConsulta o no nombra ninguna fuente
 // conocida (los anteriores a estructura-v3 nombraban nueve "ejes"): mejor
 // no decir nada que declarar todo como no consultado.
-export function disponibilidadPorTema(perfil: AnyRecord | null | undefined): AnyRecord | null {
+//
+// consultadosPorElBuro: los temas que trajo el buró de la institución
+// (marco-v31). Cuentan como consultados aunque la fuente de Novadata no haya
+// contestado: el modelo los lee del buró.
+export function disponibilidadPorTema(perfil: AnyRecord | null | undefined, consultadosPorElBuro: readonly string[] = []): AnyRecord | null {
   const meta = perfil?.metaConsulta as AnyRecord | undefined;
   if (!meta) return null;
   const lista = (clave: string) => new Set((Array.isArray(meta[clave]) ? meta[clave] : []) as string[]);
@@ -292,7 +303,7 @@ export function disponibilidadPorTema(perfil: AnyRecord | null | undefined): Any
   const temasConsultados: string[] = [];
   const temasNoConsultados: string[] = [];
   for (const [tema, fuentes] of TEMAS_DE_CONSULTA) {
-    (fuentes.every((f) => respondieron.has(f)) ? temasConsultados : temasNoConsultados).push(tema);
+    (consultadosPorElBuro.includes(tema) || fuentes.every((f) => respondieron.has(f)) ? temasConsultados : temasNoConsultados).push(tema);
   }
   return { temasConsultados, temasNoConsultados };
 }
@@ -429,10 +440,226 @@ export function endeudamientoDelPerfilDelModelo(perfil: AnyRecord): AnyRecord | 
   };
 }
 
+// ---- El buró de la institución (marco-v31, apagado) ----
+//
+// Decisiones del negocio del 2026-10-13 y del 2026-10-16
+// (docs/propuesta-buro-de-la-institucion.md, secciones 0 y 2): cada IFI
+// trabaja con UN buró, y cuando la persona tiene una consulta vigente de ese
+// buró, la deuda de bancos y cooperativas se lee de ahí y no de Novadata. Un
+// tema, una fuente: con las dos, la comparación con y sin Equifax mediría la
+// deuda dos veces (bancos coincide hasta 1% en 15 de 22 personas y
+// cooperativas en 8 de 11: es la misma cartera). Novadata se sigue
+// consultando entera; lo que el buró repite sólo deja de llegar al modelo.
+//
+// Hoy el único buró con esta lectura es Equifax (buro-de-la-institucion.ts
+// dice cuál es el de la base y busca la consulta vigente).
+
+export interface BuroDeLaInstitucion {
+  proveedor: "equifax";
+  // consultas_equifax.estructura (equifax-estructura.ts).
+  estructura: AnyRecord;
+}
+
+// Lo que el buró cubre: estos temas cuentan como consultados cuando llega.
+export const TEMAS_QUE_CUBRE_EL_BURO = ["buró de crédito de bancos", "tarjetas Diners", "cooperativas"] as const;
+
+// De comportamientoBancario quedan sólo estos campos cuando llega el buró:
+// lo que el buró no cubre. Una lista de los que QUEDAN y no de los que se
+// van: un campo de buró con otro nombre en un perfil viejo no puede colarse.
+// - El registro de deudores es otra fuente (deudores).
+// - Los préstamos del IESS/BIESS se quedan en Novadata y no se suman:
+//   Equifax trae los del BIESS dentro de bancos (las dos fuentes en 4 de 22).
+// - Las casas comerciales de Novadata y el sector comercial de Equifax son
+//   otras empresas (5 de 33 en común): se suman (negocio, 2026-10-16:
+//   «veamos cómo nos va sumando»).
+export const QUEDAN_DE_NOVADATA_CON_BURO = [
+  "figuraEnRegistroDeudores",
+  "numeroPrestamosIessBiess",
+  "tieneCreditoIessBiess",
+  "diasMoraCreditoIessBiess",
+  "numeroDeudasRetail",
+  "diasMoraMaximaRetail",
+  "totalDeudaRetail",
+  "valorVencidoRetail",
+] as const;
+
+// Los que se van, para que una prueba obligue a decidir sobre un campo nuevo
+// de comportamientoBancario (perfil-del-modelo-buro.test.ts). La calificación
+// A1 a E se va con ellos: Equifax no la trae, y la reemplazan los días de mora.
+export const CAMPOS_DEL_BURO_DE_NOVADATA = [
+  "numeroOperacionesBuroCredito",
+  "peorCalificacionRiesgo",
+  "mejorCalificacionRiesgo",
+  "tieneOperacionConDemanda",
+  "tieneOperacionCastigada",
+  "saldoTotalVigente",
+  "saldoEnMoraBuroCredito",
+  "saldoNoDevengaIntereses",
+  "deudaEnAtraso",
+  "operacionesEnAtrasoSinMonto",
+  "numeroOperacionesComoGaranteOCodeudor",
+  "deudaComoGaranteOCodeudor",
+  "peorCalificacionComoGaranteOCodeudor",
+] as const;
+
+const SISTEMAS_DEL_BURO = ["bancos", "cooperativas", "comercial"] as const;
+const DEUDA_DEL_TITULAR = [
+  "numeroDeOperaciones", "saldoDeudaUsd", "saldoPorVencerUsd", "saldoVencidoUsd", "saldoNoDevengaInteresesUsd",
+  "saldoDemandaJudicialUsd", "saldoCarteraCastigadaUsd", "cuotaMensualUsd", "maximoDiasDeMora", "conciliaConElResumen",
+];
+const DEUDA_COMO_CODEUDOR_O_GARANTE = ["numeroDeOperaciones", "saldoDeudaUsd", "saldoVencidoUsd", "maximoDiasDeMora"];
+
+const comoObjeto = (v: unknown): AnyRecord | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as AnyRecord) : null);
+// null se queda null: un grupo que Equifax no trajo no es un grupo en cero.
+function elegir(origen: unknown, claves: readonly string[]): AnyRecord | null {
+  const o = comoObjeto(origen);
+  return o ? Object.fromEntries(claves.filter((k) => k in o).map((k) => [k, o[k]])) : null;
+}
+const porSistema = (grupo: unknown, claves: readonly string[]): AnyRecord => {
+  const g = comoObjeto(grupo);
+  return Object.fromEntries([...SISTEMAS_DEL_BURO, "total"].map((s) => [s, elegir(g?.[s], claves)]));
+};
+
+// El bloque buroEquifax: la estructura de la consulta, recortada a lo que le
+// sirve al modelo (docs/propuesta-marco-equifax.md, sección 3). Se queda
+// afuera:
+// - lo que espera al diccionario de Equifax y el modelo leería como una
+//   probabilidad: la tasa de malos, la probabilidad de sobreendeudamiento y
+//   la banda del score;
+// - las estimaciones de Equifax (el ingreso estimado): no se especula sobre
+//   el ingreso;
+// - lo que Equifax cuenta con TODOS los roles y se leería como propio: los
+//   impagos y las morosidades del resumen (lección del 2026-10-13: el resumen
+//   incluye al codeudor y al garante). La evolución sí va, con el rol en el
+//   nombre;
+// - el material de control (el resumen de Equifax, la lista aparte de
+//   codeudores, las listas que no vinieron: un grupo que no vino llega null);
+// - la actividad económica del SRI, que Novadata trae con más detalle.
+// La estructura no tiene datos personales por construcción
+// (equifax-tablas.ts); scripts/medir-bloque-equifax.mjs lo vuelve a buscar
+// sobre las consultas guardadas.
+export function buroEquifaxDelPerfilDelModelo(estructura: AnyRecord): AnyRecord {
+  const e = estructura ?? {};
+  const general = comoObjeto(e.estadoGeneral);
+  const cartera = comoObjeto(general?.estadoDeCartera);
+  const inhabilitacion = comoObjeto(general?.ultimaInhabilitacion);
+  const mora = comoObjeto(e.moraActual);
+  const consultadoEl = comoObjeto(e.consulta)?.consultadoEl;
+  return {
+    fechaDelReporte: typeof consultadoEl === "string" ? fechaEnEcuador(consultadoEl) : null,
+    scores: elegir(e.scores, [
+      "scoreEquifax", "scoreEquifaxHace6Meses", "scoreEquifaxHace12Meses", "variacionDelScore12Meses",
+      "scoreInclusionEquifax", "scoreSobreendeudamientoEquifax", "nivelDeSobreendeudamiento",
+    ]),
+    estadoGeneral: general
+      ? {
+          // Un cálculo del motor de Equifax, no un hecho del buró.
+          estadoDeCartera: cartera ? { descripcion: cartera.descripcion ?? null, calculadoPor: "Equifax" } : null,
+          antiguedadCrediticiaMeses: general.antiguedadCrediticiaMeses ?? null,
+          tieneInhabilitacionBancaria: general.tieneInhabilitacionBancaria ?? null,
+          ultimaInhabilitacion: inhabilitacion ? { fecha: inhabilitacion.fecha ?? null, accion: inhabilitacion.accion ?? null } : null,
+        }
+      : null,
+    deudaActualTitular: porSistema(e.deudaActualTitular, DEUDA_DEL_TITULAR),
+    deudaCodeudorGarante: porSistema(e.deudaCodeudorGarante, DEUDA_COMO_CODEUDOR_O_GARANTE),
+    moraActual: mora
+      ? {
+          saldoVencidoUsd: mora.saldoVencidoUsd ?? null,
+          porcentajeDeLaDeudaVencida: mora.porcentajeDeLaDeudaVencida ?? null,
+          numeroDeOperacionesVencidas: mora.numeroDeOperacionesVencidas ?? null,
+          maximoDiasDeMora: mora.maximoDiasDeMora ?? null,
+          // Sólo los tramos con saldo: los nueve, casi siempre en cero, eran
+          // un tercio del grupo.
+          vencidoPorTramo: Object.fromEntries(
+            Object.entries(mora).filter(([k, v]) => /^vencidoDe.*Usd$/.test(k) && typeof v === "number" && v > 0),
+          ),
+        }
+      : null,
+    conductaDePago: comoObjeto(e.conductaDePago),
+    // Equifax la calcula con todos los roles: el nombre lo dice, para que no
+    // se compare con la deuda propia.
+    evolucionTodosLosRoles: comoObjeto(e.evolucion),
+    tarjetas: elegir(e.tarjetas, [
+      "numeroDeTarjetasVigentes", "cupoTotalUsd", "saldoTotalUsd", "usoActualPorcentaje", "usoPromedioPorcentaje",
+      "numeroDeTarjetasConSaldoMayorAlCupo", "antiguedadDeLaMasAntiguaMeses",
+    ]),
+    // Sin los montos por tipo: qué es cada columna (titular, codeudor,
+    // garante) espera al diccionario.
+    creditosOtorgados: elegir(e.creditosOtorgados, [
+      "numeroDeCreditosOtorgados", "numeroDeCreditosRefinanciados", "numeroDeCreditosReestructurados", "numeroDeCreditosNovados",
+    ]),
+    // Sin NovaCredit, que es la consulta de CrediScope.
+    consultasRecibidas: elegir(e.consultasRecibidas, [
+      "entidadesQueLaConsultaronEnLosUltimos12Meses", "consultasEnLosUltimos12Meses", "entidadesEnLosUltimos3Meses", "consultasEnLosUltimos3Meses",
+    ]),
+  };
+}
+
+// endeudamiento con el buró: bancos, cooperativas y sector comercial de
+// Equifax (como titular, con lo que está en atraso) más las casas comerciales
+// de Novadata. Las mismas reglas que sin buró: dólares enteros, el total es
+// la suma de las partes ya redondeadas, y lo de codeudor o garante va aparte.
+// Una parte que Equifax no trajo es null, y entonces el total también: no se
+// sabe, no es cero.
+export function endeudamientoConBuroEquifax(perfil: AnyRecord, buro: AnyRecord): AnyRecord {
+  const b = (perfil.comportamientoBancario ?? null) as AnyRecord | null;
+  const titular = comoObjeto(buro.deudaActualTitular);
+  const delSistema = (s: string) => comoObjeto(titular?.[s]);
+  const entero = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null);
+  const enAtraso = (d: AnyRecord | null): number | null =>
+    d ? Math.round(numero(d.saldoVencidoUsd) + numero(d.saldoNoDevengaInteresesUsd) + numero(d.saldoDemandaJudicialUsd) + numero(d.saldoCarteraCastigadaUsd)) : null;
+  const sumar = (partes: Array<number | null>): number | null => (partes.some((p) => p === null) ? null : (partes as number[]).reduce((a, p) => a + p, 0));
+  const bancos = entero(delSistema("bancos")?.saldoDeudaUsd);
+  const cooperativas = entero(delSistema("cooperativas")?.saldoDeudaUsd);
+  const comercial = entero(delSistema("comercial")?.saldoDeudaUsd);
+  const retail = Math.round(numero(b?.totalDeudaRetail));
+  return {
+    deudaPropiaTotal: sumar([bancos, cooperativas, comercial, retail]),
+    deudaPropiaBancos: bancos,
+    deudaPropiaCooperativas: cooperativas,
+    deudaPropiaSectorComercial: comercial,
+    deudaPropiaRetail: retail,
+    deudaEnAtrasoTotal: sumar([...SISTEMAS_DEL_BURO.map((s) => enAtraso(delSistema(s))), Math.round(numero(b?.valorVencidoRetail))]),
+    deudaComoGaranteOCodeudor: entero(comoObjeto(comoObjeto(buro.deudaCodeudorGarante)?.total)?.saldoDeudaUsd),
+    cuotaMensualConocida: entero(comoObjeto(titular?.total)?.cuotaMensualUsd),
+    cuotaMensualConocidaIncluye: "bancos, cooperativas y sector comercial según Equifax; las casas comerciales no informan la cuota",
+  };
+}
+
+// Con el buró, el perfil deja de llevar lo que el buró repite: los campos de
+// buró de comportamientoBancario y comportamientoCooperativas entero. No van
+// ni en null: el modelo no tiene nada que hacer con saber que existen, y un
+// null le diría que es un dato que falta. buroEquifax va donde estaba el
+// buró de bancos, para que el orden siga siendo el de importancia.
+function conElBuro(copia: Record<string, unknown>, bloque: AnyRecord): Record<string, unknown> {
+  const bancario = comoObjeto(copia.comportamientoBancario);
+  const quedan = new Set<string>(QUEDAN_DE_NOVADATA_CON_BURO);
+  // En el orden en que venían: lo que queda se lee igual que sin buró.
+  const reducido = bancario ? Object.fromEntries(Object.entries(bancario).filter(([k]) => quedan.has(k))) : null;
+  delete copia.comportamientoCooperativas;
+  const salida: Record<string, unknown> = {};
+  let puesto = false;
+  for (const [clave, valor] of Object.entries(copia)) {
+    if (!puesto && (clave === "comportamientoBancario" || clave === "riesgoJudicialCrediticio" || clave === "endeudamiento")) {
+      salida.buroEquifax = bloque;
+      puesto = true;
+    }
+    salida[clave] = clave === "comportamientoBancario" ? reducido : valor;
+  }
+  if (!puesto) salida.buroEquifax = bloque;
+  return salida;
+}
+
 // El perfil del modelo entero. `camposDeshabilitados` son "grupo.campo"
 // de standard_profile_field_config: se ponen en null, no se borran, para
-// que el modelo sepa que el campo existe y no se le dio.
-export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Set<string> = new Set()): AnyRecord {
+// que el modelo sepa que el campo existe y no se le dio. `buro`: la consulta
+// vigente del buró de la institución, o null; sólo la pasa
+// armarPedidoScoring() con CONFIG_LLM.buroDeLaInstitucion encendido.
+export function armarPerfilDelModelo(
+  perfil: AnyRecord,
+  camposDeshabilitados: Set<string> = new Set(),
+  buro: BuroDeLaInstitucion | null = null,
+): AnyRecord {
   const copia = JSON.parse(JSON.stringify(perfil ?? {})) as Record<string, unknown>;
   copia.fuentesIngreso = ingresosDelPerfilDelModelo(perfil);
   const ocultar = (destino: Record<string, unknown>) => {
@@ -455,7 +682,8 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
     bancario.numeroPrestamosIessBiess = bancario.numeroCreditosFormales;
     delete bancario.numeroCreditosFormales;
   }
-  copia.endeudamiento = endeudamientoDelPerfilDelModelo(copia);
+  const bloqueDelBuro = buro?.proveedor === "equifax" && buro.estructura ? buroEquifaxDelPerfilDelModelo(buro.estructura) : null;
+  copia.endeudamiento = bloqueDelBuro ? endeudamientoConBuroEquifax(copia, bloqueDelBuro) : endeudamientoDelPerfilDelModelo(copia);
   // Las demandas (desde marco-v26): de las civiles, cuántas hay de cada
   // categoría (demandas.ts) en lugar de 615 textos libres con artículos del
   // COIP, que el modelo repetía tal cual y contaba todos como "demandas
@@ -491,6 +719,9 @@ export function armarPerfilDelModelo(perfil: AnyRecord, camposDeshabilitados: Se
   // La disponibilidad va PRIMERO (el modelo tiene que leerla antes que los
   // datos) y reemplaza a metaConsulta, que nombraba fuentes.
   delete copia.metaConsulta;
+  if (bloqueDelBuro) {
+    return limpiarValores({ disponibilidad: disponibilidadPorTema(perfil, TEMAS_QUE_CUBRE_EL_BURO), ...conElBuro(copia, bloqueDelBuro) }) as AnyRecord;
+  }
   return limpiarValores({ disponibilidad: disponibilidadPorTema(perfil), ...copia }) as AnyRecord;
 }
 
@@ -500,9 +731,10 @@ export function mensajeParaElModelo(
   perfil: AnyRecord,
   hallazgosControlBloqueo: unknown[] | null | undefined,
   camposDeshabilitados: Set<string> = new Set(),
+  buro: BuroDeLaInstitucion | null = null,
 ): { perfilDelModelo: AnyRecord; hallazgosControlBloqueo: unknown[] } {
   return {
-    perfilDelModelo: armarPerfilDelModelo(perfil, camposDeshabilitados),
+    perfilDelModelo: armarPerfilDelModelo(perfil, camposDeshabilitados, buro),
     // Ya resueltos de forma determinística: el modelo no los recalcula.
     hallazgosControlBloqueo: limpiarValores(hallazgosControlBloqueo ?? []) as unknown[],
   };

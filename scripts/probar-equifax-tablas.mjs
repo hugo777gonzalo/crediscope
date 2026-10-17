@@ -33,6 +33,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { carpetaDeResearch } from "./_comun/entorno.mjs";
+import { centinelas } from "./_comun/equifax-personales.mjs";
 import { derivarTablas, ESPECIFICACION_DE_TABLAS } from "../supabase/functions/_shared/equifax-tablas.ts";
 import { calcularEstructura } from "../supabase/functions/_shared/equifax-estructura.ts";
 
@@ -148,22 +149,6 @@ verifica("el estado de cartera de Equifax viene rotulado como cálculo de Equifa
 verifica("las consultas recibidas cubren 12 meses sin contar a NovaCredit", salidas.filter((s) => s.e.consultasRecibidas?.consultasPorMes.length === 12 && s.e.consultasRecibidas.consultasDeNovaCreditEnLosUltimos12Meses >= 0).length);
 
 console.log("\n7. Datos personales: ninguno llega a las tablas ni a la estructura");
-function centinelas(cuerpo) {
-  const rc = cuerpo.reporteCrediticio ?? {};
-  const v = [];
-  const poner = (x) => { if (typeof x === "string" && x.trim().length >= 6) v.push(x.trim()); };
-  for (const f of rc.identificacion_consultada ?? []) { poner(f.nombre); poner(f.numero_documento); }
-  for (const f of rc.informacion_sri ?? []) { poner(f.nombre); poner(f.ruc); poner(f.direccion); poner(f.nombre_fantasia_comercial); }
-  for (const f of rc.informacion_demografica ?? []) { poner(f.fecha_nacimiento); poner(f.direcciones); poner(f.coordenada_x); poner(f.coordenada_y); poner(f.numero_telefonico_convencional); poner(f.numero_telefonico_celular); }
-  for (const nombre of ["garantias_personales_codeudores_operaciones_vigentes", "garantias_personales_codeudores_operaciones_no_vigentes"]) {
-    for (const f of rc[nombre] ?? []) { poner(f.nombre_titular); poner(f.identificacion_titular); poner(f.numero_operacion); }
-  }
-  for (const f of rc.operaciones_canceladas ?? []) poner(f.numero_operacion);
-  for (const f of rc.tarjetas_canceladas ?? []) poner(f.numero_tarjeta);
-  for (const f of rc.sujeto_al_dia ?? []) for (const d of String(f.institucion ?? "").match(/\d{6,}/g) ?? []) poner(d);
-  poner(cuerpo.transactionId); poner(cuerpo.originalTransactionId);
-  return v;
-}
 let totalCentinelas = 0;
 verifica("ningún dato personal de la persona aparece en las tablas ni en la estructura", salidas.filter((s) => {
   const texto = JSON.stringify(s.r.tablas) + JSON.stringify(s.e);

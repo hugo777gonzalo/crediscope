@@ -29,7 +29,8 @@ import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
 import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 import { estadoPorFuente, cuantasFuentesContestaron } from "../_shared/calidad-de-la-consulta.ts";
-import { armarPedidoScoring, huellaDelPedido, puntuarPedido, MARCO_VERSION, CONFIG_LLM } from "../_shared/llm-scoring.ts";
+import { armarPedidoScoring, huellaDelPedido, puntuarPedido, versionDelMarco, CONFIG_LLM } from "../_shared/llm-scoring.ts";
+import { buroVigenteDeLaPersona } from "../_shared/buro-de-la-institucion.ts";
 import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado } from "../_shared/fila-del-analisis.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { loadDisabledFields, loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
@@ -219,7 +220,13 @@ Deno.serve(async (req) => {
     // Desde el 2026-10-06 no hay "ajustes del criterio": todo cambio a lo que
     // lee el modelo es una versión nueva del marco (decisión del negocio).
     const disabledFields = await loadDisabledFields(serviceClient);
-    const pedido = armarPedidoScoring(profile as unknown as Record<string, unknown>, controlBloqueo, disabledFields);
+    // El buró de la institución (marco-v31): con el interruptor apagado no se
+    // lee nada y el pedido es el de v30. Encendido, la deuda de bancos y
+    // cooperativas sale de la consulta vigente del buró, si la persona la
+    // tiene; nunca se consulta a Equifax desde acá (cada consulta se cobra).
+    const buro = CONFIG_LLM.buroDeLaInstitucion ? await buroVigenteDeLaPersona(serviceClient, client.id) : null;
+    const marcoVersion = versionDelMarco(CONFIG_LLM);
+    const pedido = armarPedidoScoring(profile as unknown as Record<string, unknown>, controlBloqueo, disabledFields, CONFIG_LLM, buro);
 
     // ¿Ya se le hizo a esta persona exactamente este pedido? Entonces el
     // resultado es el de entonces (auditoría externa, E1): el mismo perfil
@@ -251,7 +258,7 @@ Deno.serve(async (req) => {
       runId: run.id,
       clientId: client.id,
       clientProfileId,
-      marcoVersion: MARCO_VERSION,
+      marcoVersion,
       llmResult,
       controlBloqueo,
       duracionIngestaMs,
@@ -291,7 +298,9 @@ Deno.serve(async (req) => {
             // Con qué versión del criterio corrió. Es lo que permite
             // ver en Costos que el gasto sube con cada marco nuevo y no
             // con el volumen.
-            marco: MARCO_VERSION,
+            marco: marcoVersion,
+            // Qué consulta del buró leyó (marco-v31). El id, nunca la cédula.
+            ...(buro ? { consultaBuro: buro.consultaId } : {}),
           },
           esPrueba,
           razonamiento: CONFIG_LLM.razonamiento,
@@ -329,6 +338,7 @@ Deno.serve(async (req) => {
         recomendacion: finalRecomendacion,
         control_bloqueado: controlBloqueo.bloqueado,
         ...(reutilizaAnalisisId ? { reutiliza_analisis_id: reutilizaAnalisisId } : {}),
+        ...(buro ? { consulta_equifax_id: buro.consultaId } : {}),
       },
     });
 
