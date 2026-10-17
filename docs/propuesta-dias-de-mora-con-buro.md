@@ -1,6 +1,8 @@
 # Propuesta: los días de mora del buró en Monitoreo y en el Laboratorio
 
-Propuesta del 2026-10-16. **Todavía no cambia nada.** Es el paso 3 de
+Propuesta del 2026-10-16. **El negocio aprobó lo recomendado ese mismo día** (1a, 2a,
+3a, 4a y 5a de la sección 4), y quedó construida como la migración 132, sin aplicar
+(sección 6). Es el paso 3 de
 `docs/propuesta-buro-de-la-institucion.md` (sección 7): las dos lecturas en SQL que
 todavía usan la calificación A1 a E de Novadata pasan a días de mora para la persona
 con una consulta vigente del buró de la institución. Equifax no trae esa calificación
@@ -238,18 +240,18 @@ modelo no vio. Se decide cuando se encienda v31 y haya cortes reales.
      real con buró. La definición no cambia;
    - b) construirlo ya y validarlo con historias de Equifax plantadas por el simulador.
 
-## 5. Cómo se construiría (si se aprueba)
+## 5. Cómo se construye
 
 Una migración, con el número libre al aplicarla (hoy la base está en la 131). Se
 aplica con el corredor recién fusionada en `main` (regla 1). No cambia ninguna función
 desplegada: no hace falta subir `ESQUEMA_MINIMO` ni desplegar.
 
-1. `inicio_del_ciclo_mensual(timestamptz)`: el 18 a las 00:00 de Ecuador del ciclo en
+1. `corte_vigente_mensual(timestamptz)`: el 18 a las 00:00 de Ecuador del ciclo en
    curso. Es la regla de `vigencia-mensual.ts`, y SQL no puede importar TypeScript:
    es la única copia posible. Para que no se desfase en silencio, la migración
    comprueba con un bloque que da lo mismo en las fechas de `vigencia-mensual.test.ts`,
    y cada archivo nombra al otro.
-2. `consulta_vigente_de_equifax(client_id, ahora)`: la de `buro-de-la-institucion.ts`
+2. `buro_vigente_de_la_persona(client_id, ahora)`: la de `buro-de-la-institucion.ts`
    en SQL (producción, 200, con estructura, identidad no rechazada, la más reciente,
    dentro del ciclo), sólo si el buró de la base es Equifax.
 3. `resumen_por_persona.consulta_buro_id` (al final, con la referencia a
@@ -269,3 +271,39 @@ desplegada: no hace falta subir `ESQUEMA_MINIMO` ni desplegar.
 7. Después: `node scripts/medir-dias-de-mora-con-buro.mjs`. «Monitoreo distinto de
    Equifax en las vigentes» tiene que dar 0 en las dos marcas.
 8. CLAUDE.md (la entrada de `resumen_por_persona`) y `docs/pendientes.md`.
+
+## 6. Lo construido y lo probado (2026-10-16)
+
+`supabase/migrations/132_con_buro_las_marcas_de_monitoreo_en_dias_de_mora.sql`, sin
+aplicar. Las dos funciones reemplazadas se armaron desde su texto vivo con reemplazos
+que tenían que coincidir una sola vez; la viva de `refrescar_resumen_por_persona()`
+era la de la 124. Lo que difiere de la sección 5:
+
+- la marca con buró sale sólo para quien tiene un perfil de Novadata, como sin buró:
+  son marcas de lo que se sabe de la persona;
+- un sistema que Equifax no trajo no cuenta en «Mora», y si no trajo ninguno de los
+  dos, la marca queda sin medir (null). Pasó en 0 de 62;
+- la foto de antes sale de una reconstrucción con la regla vieja dentro de la misma
+  migración: así la comparación final no tropieza con una fila que un disparador
+  haya dejado vieja.
+
+Probada entera contra la base enlazada, en una transacción que termina en error y se
+revierte. Antes se comprobó con una sonda que no queda nada escrito, y al final que la
+base sigue en la 131, sin la columna, las funciones ni los disparadores.
+
+| Prueba | Resultado |
+|---|---|
+| Comprobaciones de la propia migración (vigencia, una fila por persona, nada distinto fuera de las vigentes, la marca igual a los días) | pasan |
+| Personas con las marcas del buró | 62 |
+| De ellas, «D o E» / «Mora» | 2 / 6 |
+| Monitoreo: «Más de 90 días de mora en bancos (D o E)» / «Mora bancaria o en cooperativas» | 50 / 102 (antes 50 / 103) |
+| Una estructura rehecha con 200 días en bancos | el disparador la marca «D o E» |
+| Sin buró (`elegir_buro(null)`) | 0 con las marcas del buró; «Mora» vuelve a 103 |
+| Equifax otra vez | 62 |
+| Vigentes el 17/10 a las 23:59:59 / el 18/10 a las 00:00 | 62 / 0 |
+| El rol anónimo ejecuta alguna función nueva | no |
+| Reconstrucción, en la misma vuelta de una transacción | antes 1,25 a 1,47 s (una de 2,8); después 1,13 a 1,56 s |
+
+La primera reconstrucción del día, con la caché fría, tardó 5,9 s con la regla de
+antes; no se repitió con la nueva. La diferencia entre las vueltas calientes está dentro
+del ruido.

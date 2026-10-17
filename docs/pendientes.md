@@ -133,17 +133,28 @@ aceptada.
        - **Encenderlo** cuando el negocio lo decida: `ESQUEMA_MINIMO` en 131,
          `buroDeLaInstitucion: true`, desplegar con
          `--funciones` y una llamada suelta de comprobación.
-       - **La capa 2 en SQL: propuesta medida el 2026-10-16, espera al negocio**
-         (`docs/propuesta-dias-de-mora-con-buro.md`, cinco decisiones en la sección
-         4; se mide con `node scripts/medir-dias-de-mora-con-buro.mjs`). Las dos
-         marcas las muestra sólo Monitoreo, no la bandeja. «D o E» pasa a «más de
-         90 días en bancos» con buró (2 y 2 en las 62, las mismas personas) y
-         «Mora» lee el monto en atraso del buró (6 de 7). La definición de impago
-         del Laboratorio **ya juzga por días** a la operación que trae días: no
-         cambia. Lo que falta allí es traer el resultado del buró en el t1, con
-         una consulta paga por solicitud; se propone esperar a la primera carga
-         real (hoy no hay ninguna). Si se aprueba: una migración (el número libre
-         al aplicarla) para `resumen_por_persona` y el nombre en Monitoreo.
+       - **La capa 2 en SQL: construida el 2026-10-16 como la migración 132, SIN
+         APLICAR** (el negocio aprobó lo recomendado en la sección 4 de
+         `docs/propuesta-dias-de-mora-con-buro.md`). Con una consulta vigente del
+         buró, las marcas de Monitoreo salen de Equifax: «D o E» es más de 90 días
+         en bancos y «Mora», el monto en atraso; la marca se llama ahora «Más de
+         90 días de mora en bancos (D o E)». Probada en una transacción revertida:
+         62 personas con las marcas del buró, Monitoreo 50 en «D o E» (igual) y
+         102 en «Mora» (103 antes; la diferencia es de tiempo). La reconstrucción
+         no tarda más (de 1,1 a 1,6 s antes y después). Falta:
+         - **Aplicarla con el corredor recién fusionada en `main`** (regla 1). No
+           toca funciones: no hace falta subir `ESQUEMA_MINIMO` ni desplegar. Al
+           aplicarla, la bandeja y Monitoreo esperan unos segundos.
+         - Después, `node scripts/medir-dias-de-mora-con-buro.mjs`: «Monitoreo
+           distinto de Equifax en las vigentes» tiene que dar 0 en las dos marcas.
+           **Las 62 consultas caducan el 18/10 a las 00:00**: aplicada después de
+           eso no se nota hasta que haya consultas nuevas.
+         - **El resultado del Laboratorio por el buró** (decisión 5a): la
+           definición de impago no cambia (ya juzga por días a la operación que
+           trae días). Lo que falta es traer el resultado de Equifax en el t1, con
+           una consulta paga por solicitud y contando por mes desde la historia
+           de 24 meses (la propuesta, sección 3). Se construye con la primera
+           carga real de una institución con buró; hoy no hay ninguna.
        - `comparar-razonamiento.mjs` no lee el buró: se niega a correr con el
          interruptor encendido hasta que se le sume.
     3. **El ajuste al marco interpretativo: hecho, en el mismo `marco-v31`** (el
