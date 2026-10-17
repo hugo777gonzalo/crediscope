@@ -306,12 +306,30 @@ final de cada ficha.
 #### 4.8 Verdad que es una cota inferior: censura
 
 Se explica primero el problema porque la elección del método depende de él. Un
-independiente aporta al IESS sobre una base elegida, con mínimo en el SBU: lo que
-vemos es **un valor por debajo o igual del ingreso**, no el ingreso. En
-estadística eso es un dato **censurado por la derecha** (el valor real es
-«al menos x»). El dependiente tiene el problema contrario y más leve: el
-empleador puede subdeclarar. El tratamiento correcto no es descartar a los
-independientes ni tomar el aporte como valor, sino entrenar con **rangos**.
+independiente aporta al IESS sobre una base elegida, con mínimo en el SBU.
+**Corrección del 2026-10-17** (la versión anterior de este párrafo lo decía mal y
+lo contradice `fuentes-ingreso.ts`): la información depende de dónde esté el aporte.
+- **Sobre el SBU**: el aporte es evidencia de capacidad (la persona desembolsa esa
+  base todos los meses). En estadística sería un dato **censurado por la
+  derecha** («al menos x»), con una salvedad: quien aporta de más para mejorar su
+  pensión puede **sobredeclarar**, y entonces la cota falla.
+- **En el SBU** (±5%): **el aporte no dice nada del ingreso.** Es un mínimo legal;
+  el ingreso puede ser menor o mayor. Ahí no hay cota: la fila no informa y se
+  excluye del entrenamiento o entra como `[0, ∞)`.
+- El dependiente tiene el problema contrario y más leve: el empleador puede
+  subdeclarar.
+
+**Prueba de humo (2026-10-17, datos sintéticos, no reales).** Con censura al azar
+(el 40% son autoafiliados, aportan el máximo entre el SBU y una fracción del
+ingreso), el error medio en logaritmo sobre los autoafiliados fue 0,391 si se toma
+el aporte como ingreso, 0,365 si se entrena solo con dependientes y 0,363 con
+`survival:aft` (cota sobre el SBU, SBU excluido). **O sea, la censura casi no
+mejora a «entrenar solo con dependientes» cuando la censura es al azar.** Su ventaja
+real aparecería si los autoafiliados difieren de los dependientes, y eso solo se
+mide con datos reales. No se debe vender como solución del cambio de población.
+(En una primera versión de la prueba el SBU se trató como cota inferior y el
+modelo quedó sesgado hacia arriba en más de 0,6: ese es el error que esta
+corrección evita.)
 
 | Solución | Autoría y enlace | Qué hace | Requisitos | Compatibilidad / adaptación | Limitaciones |
 |---|---|---|---|---|---|
@@ -710,9 +728,11 @@ es la ENEMDU (4.20).
      una **versión sin aportes** para ese caso (edad, sexo, educación, ocupación,
      provincia, RUC, patrimonio, endeudamiento, consultas, scores). Depende de qué
      columnas tiene la base (sección 8.5).
-   - **Pérdida**: cuantiles, o `survival:aft` con rangos (4.8) para tratar el aporte
-     de los autoafiliados como `[aporte, ∞)` en vez de descartarlos o tomarlos como
-     valor.
+   - **Pérdida**: cuantiles sobre dependientes como línea base. Opcional,
+     `survival:aft` con rangos (4.8): el aporte del autoafiliado **sobre el SBU**
+     entra como `[aporte, ∞)`; el aporte **en el SBU** se excluye porque no dice
+     nada del ingreso. En la prueba sintética la mejora fue mínima (4.8): se adopta
+     solo si con datos reales supera a «solo dependientes».
    - **Pesos**: reponderación por el cociente de densidades **solo en la zona de
      solapamiento** (4.13); fuera de ella, el modelo extrapola y se rotula así.
    - **Anclaje al nivel**: ajustar la distribución estimada por celda (provincia ×
@@ -1101,11 +1121,16 @@ solo el de las sociedades.
 
 ## 10. Instalación de Python en esta máquina
 
-Ver la respuesta del chat del 2026-10-17. Resumen: Python 3.12 o 3.13 con
-`winget`, un entorno virtual **fuera** del repositorio, y `pandas`, `pyarrow`,
-`duckdb`, `numpy`, `scikit-learn`, `lightgbm`, `xgboost`, `statsmodels` y
-`matplotlib`. Los datos (3,9 millones y 120.000) quedan en una carpeta fuera de
-`C:\Users\hugop\siint`.
+**Hecho el 2026-10-17.** El negocio instaló Python 3.15.0 (administrador de
+instalaciones de Python). Se creó el entorno `C:\datos\ingresos\entorno` (fuera del
+repositorio) y se instalaron, desde paquetes ya compilados: numpy 2.5.4, pandas
+3.0.6, pyarrow 26.0.0, duckdb 2.0.0.dev (versión de desarrollo, no estable),
+scikit-learn 1.9.1, scipy 1.18.1, lightgbm 4.7.0, xgboost 3.4.1, statsmodels 0.15.0,
+matplotlib 3.11.2 y openpyxl 3.1.5. Prueba de humo con datos sintéticos: `survival:aft`
+de XGBoost, cuantiles de LightGBM y DuckDB sobre parquet funcionan. Los datos
+(3,9 millones y 120.000) van en `C:\datos\ingresos\`, fuera de
+`C:\Users\hugop\siint`. Python 3.15 es muy nuevo: si un paquete falla al instalarse,
+se usa un Python 3.12 o 3.13 aparte.
 
 ## 11. El Censo 2022 como fuente (analizado el 2026-10-17)
 
@@ -1200,7 +1225,111 @@ en CSV (la de cantón no trae parroquia) y la ENEMDU anual 2024, y producir dos
 tablas: «sector → indicadores de entorno» y «ocupación × categoría × cantón ×
 aporta al IESS». Con la segunda se contesta cuántos independientes aportan.
 
-## 12. Registro de verificación
+## 12. Resultados con datos públicos: ENEMDU 2024 y Censo 2022 (calculados el 2026-10-17)
+
+Se descargaron con autorización del negocio: la base de personas de la ENEMDU anual
+2024 (datos abiertos, CSV, 14 MB; 341.394 personas) y la base de sector del censo
+(595 MB comprimida; 16.938.986 personas y 5.193.548 hogares). Todo se calculó en
+local con Python (`C:\datos\ingresos\scripts\`, resultados en
+`C:\datos\ingresos\resultados\`, fuera del repositorio). Son datos públicos y sin
+identificadores.
+
+### 12.1 Cuánto gana la gente: ENEMDU 2024 (ingreso laboral `ingrl`, ponderado)
+
+Universo: 8.175.813 personas con empleo; con ingreso laboral válido 7.139.346. Se
+excluyeron 17.597 sin ingreso, 381 que no respondieron (código 999999) y 1.556 con
+ingreso negativo; se mantuvieron los 2.518 con ingreso cero. SBU 2024: USD 460.
+
+| Grupo | Población | P25 | Mediana | P75 | P90 | Gana menos del SBU | Gana USD 2.000 o más |
+|---|---|---|---|---|---|---|---|
+| **Todos los ocupados** | 7,14 M | 190 | **400** | 573 | 940 | 56,0% | **1,7%** |
+| Cuenta propia | 2,90 M | 110 | 230 | 420 | 600 | 78,0% | 0,7% |
+| Empleado privado | 2,30 M | 400 | 500 | 650 | 960 | 30,6% | 1,6% |
+| Jornalero o peón | 0,97 M | 162 | 250 | 400 | 500 | 83,7% | 0,0% |
+| Empleado de gobierno | 0,54 M | 785 | 980 | 1.320 | 1.800 | 0,7% | 7,8% |
+| Patrono | 0,18 M | 500 | 700 | 1.200 | 2.100 | 22,8% | 13,0% |
+| Empleado doméstico | 0,21 M | 230 | 335 | 510 | 560 | 64,7% | 0,0% |
+
+Por afiliación (`p05a`): sin seguro 4,42 M (mediana 270); IESS general 2,03 M (mediana
+640; el 8,8% gana menos del SBU); seguro campesino 0,36 M (mediana 200); **IESS
+voluntario 0,21 M (mediana 480; P25 300; P75 730; P90 1.200; el 45,5% gana menos del
+SBU; el 7,7% gana entre 0,95 y 1,05 SBU; el 17,1% gana más de dos SBU)**. Por
+sector: informal 3,44 M (mediana 210), formal 3,38 M (mediana 550).
+
+**Qué cambia respecto de lo que se había dicho:**
+- **La premisa «el 90% gana menos de USD 2.000» se queda corta:** en la ENEMDU el
+  **98,3%** de los ocupados gana menos de USD 2.000 y el P90 es USD 940. El 1,7% que gana
+  USD 2.000 o más es el tramo que se pensó resolver con la cuota. Lo que no mide la
+  encuesta es la cartera de una institución financiera: quien tiene crédito es más
+  formal y gana más que el promedio, así que **el peso de ese tramo en la cartera de una
+  IFI no se puede deducir de acá** (se medirá con las 120.000).
+- **Una encuesta subestima los ingresos altos** (se conoce como problema general de
+  las encuestas de hogares; no se midió acá). El ingreso laboral tampoco incluye
+  capital, pensiones ni transferencias.
+- **El afiliado voluntario típico gana alrededor del SBU, pero casi la mitad gana
+  menos.** Confirma con datos la corrección de 4.8: **aportar en el SBU no dice que se
+  gane el SBU**.
+
+### 12.2 Cuántos independientes aportan al IESS
+
+| Fuente | Cuenta propia | Aporta IESS (general o voluntario) | % |
+|---|---|---|---|
+| ENEMDU 2024 (ponderado, afiliado o cubierto) | 2,90 M | 0,27 M (voluntario 0,15 M; general 0,12 M) | **9,4%** |
+| Censo 2022 (ocupados, «aporta actualmente») | 1,67 M | 0,28 M (voluntario 0,14 M; general 0,14 M) | 16,7% |
+
+Las dos fuentes coinciden en el número absoluto (**unos 275.000 independientes
+aportan**) y difieren en el denominador, porque el censo cuenta menos ocupados que la
+ENEMDU (6,57 M contra 8,18 M). Así, el 9% que había citado con reserva (Primicias) queda
+**respaldado por la ENEMDU**. En el censo, el 79,2% de los cuenta propia no aporta a
+nada, y el 8,5% aporta al seguro general y el 1,5% al campesino. Por provincia, el
+aporte de los cuenta propia va del 8,2% (Esmeraldas y Orellana) al 24,1% (Pichincha); Guayas
+tiene el 14,0%.
+
+**Consecuencia para el diseño:** la población a la que hay que extrapolar (cuenta propia sin IESS) es de
+**1,3 a 2,4 millones de personas**, y las que sí están en la base del IESS con ingreso
+propio son **unas 275.000**, una minoría que se afilió. Parecen muy pocas para
+representar a todas.
+
+### 12.3 El «estrato» que el censo permite construir
+
+Con el censo se calculó, para cada uno de los **53.470 sectores censales**, qué porcentaje
+de su población está en pobreza por NBI, su escolaridad promedio (25 años o más), el
+porcentaje de ocupados que son cuenta propia o aportan al IESS/ISSFA/ISSPOL, y el
+porcentaje de hogares con automóvil, computadora, internet fijo y vivienda propia
+(`censo2022_entorno_por_sector.csv`). Los indicadores se mueven juntos: la correlación
+entre escolaridad promedio y hogares con computadora es 0,88, y entre NBI y hogares con
+computadora, −0,82. Hay **1.242 sectores con menos de 50 personas** y 117 sin ocupados: se
+marcan para no usarlos. Falta unir la parroquia que trae Novadata con el código de
+parroquia del censo (`I03`): las dos codificaciones **no se compararon**.
+
+### 12.4 Variables de la ENEMDU que también están en nuestro lado
+
+`ingrl` (ingreso laboral), `p63` (ingreso de patronos y cuenta propia), `p66` (ingreso
+de asalariados), `p42` (categoría de ocupación), `p05a` (afiliación), `grupo1`
+(ocupación CIUO-08 a un dígito), `rama1` (actividad CIIU 4 a un dígito), `prov`,
+`area`, `p02` (sexo), `p03` (edad), `nnivins` (nivel de instrucción) y `secemp`
+(formal, informal, doméstico). La variable `estrato` de la base **es un estrato
+muestral, no un estrato socioeconómico** (la guía dice «identificación de estrato
+muestral»): no se usa como tal. Los códigos de `p42` no vienen explicados en el
+diccionario ni en la guía; se tomaron de los tamaños de población (cuenta propia
+2,9 M, empleado privado 2,3 M, doméstico 0,2 M) y de la clasificación usual de la
+encuesta: **confirmar con el cuestionario de la ENEMDU**.
+
+### 12.5 Qué sigue con esto
+
+1. **Previa de mercado**: ya está la tabla de ingreso por categoría, provincia y grupo
+   de ocupación (CSV en `resultados/`); falta decidir las celdas finas (con pocas
+   observaciones el percentil no es confiable: cada tabla trae `n_muestra`).
+2. **Estimación por áreas pequeñas** con el censo como población y la ENEMDU como
+   encuesta: las variables en común son edad, sexo, escolaridad, categoría de
+   ocupación, ocupación, rama, afiliación y bienes del hogar. El censo ya está cargado en
+   DuckDB (`censo.duckdb`).
+3. **Referencia para el modelo de autoafiliados**: cuando haya modelo, el ingreso
+   predicho para los afiliados voluntarios debería parecerse a la distribución de
+   12.1 (P25 300, mediana 480, P75 730, P90 1.200 en la ENEMDU). Si no se parece, el
+   modelo está mal calibrado en ese grupo.
+
+## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,
 cuestionario censal y guía de usuario, todos leídos; los pesos de los archivos
