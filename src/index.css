@@ -313,7 +313,8 @@ a {
 }
 
 .crediscope-tag-ok { background: #dcfce7; color: var(--good); }
-.crediscope-tag-warn { background: #fef3c7; color: var(--warn); }
+/* El ámbar de --warn sobre este fondo daba 4,42:1 (el verificador pide 4,5). */
+.crediscope-tag-warn { background: #fef3c7; color: #854d0e; }
 .crediscope-tag-bad { background: #fee2e2; color: var(--bad); }
 
 /* Con la quinta pestaña (Capacidad de pago, 2026-10-17) dejaron de entrar
@@ -3901,6 +3902,13 @@ a {
   margin: 14px 0 0;
   font-size: 14px;
   color: var(--text-muted);
+}
+
+.crediscope-capacidad-comparacion {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(23, 19, 52, 0.12);
+  font-size: 14px;
 }
 
 .crediscope-capacidad-maximo {

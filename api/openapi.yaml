@@ -587,6 +587,12 @@ paths:
         - con `ingresos` y `obligaciones`: usa los datos que manda la IFI (por
           ejemplo, del rol de pagos) y no lee nada de CrediScope.
 
+        `ingresoDeclarado` es lo que la persona que pide el crédito dice que
+        recibe por mes. Si viene, reemplaza al ingreso reportado al IESS en el
+        cálculo (es el total), no se le descuenta nada y el resultado lo marca
+        como no verificado (`ingresoDeclarado: true`). Con `identificacion`, la
+        respuesta trae además `capacidadSoloIess`, para comparar.
+
         Al sueldo de un dependiente se le descuenta el aporte personal al IESS.
         Una deuda sin cuota informada no se cuenta como cero: se devuelve en
         `deudasSinCuota` y `obligacionesIncompletas` es `true`.
@@ -628,7 +634,7 @@ paths:
                 $ref: '#/components/schemas/RespuestaDeCapacidad'
               example:
                 capacidad:
-                  version: capacidad-v1
+                  version: capacidad-v2
                   veredicto: alcanza
                   ingresoReportado: 1200
                   aportePersonal: 113.4
@@ -643,6 +649,7 @@ paths:
                   disponibleDespues: 825.77
                   obligacionesIncompletas: false
                   ingresoSoloSbu: false
+                  ingresoDeclarado: false
                   avisos: []
                 simulacion:
                   version: simulador-v1
@@ -1519,6 +1526,10 @@ components:
           maxItems: 50
           items:
             $ref: '#/components/schemas/DeudaSinCuota'
+        ingresoDeclarado:
+          type: number
+          minimum: 0
+          description: Lo que la persona dice que recibe por mes, en dólares. Reemplaza al ingreso del IESS en el cálculo.
         solicitud:
           $ref: '#/components/schemas/PedidoDeSimulacion'
         parametros:
@@ -1538,8 +1549,8 @@ components:
           description: Lo que se reporta, antes del aporte personal al IESS.
         tipo:
           type: string
-          enum: [sueldo, aporte_propio]
-          description: Al `sueldo` se le descuenta el aporte personal; al `aporte_propio`, no.
+          enum: [sueldo, aporte_propio, declarado]
+          description: Al `sueldo` se le descuenta el aporte personal; al `aporte_propio` y al `declarado`, no.
         origen:
           type: string
           maxLength: 100
@@ -1600,7 +1611,7 @@ components:
 
     Capacidad:
       type: object
-      required: [version, veredicto, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, avisos]
+      required: [version, veredicto, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, ingresoDeclarado, avisos]
       properties:
         version:
           type: string
@@ -1635,6 +1646,9 @@ components:
           type: boolean
         ingresoSoloSbu:
           type: boolean
+        ingresoDeclarado:
+          type: boolean
+          description: El ingreso con que se midió es el que declara la persona, sin verificar.
         avisos:
           type: array
           items:
@@ -1651,6 +1665,11 @@ components:
         montoMaximo:
           type: [number, 'null']
           description: El monto más alto que alcanza con el mismo plazo y la misma tasa.
+        capacidadSoloIess:
+          description: Con `identificacion` e `ingresoDeclarado`, el resultado con sólo el ingreso reportado al IESS. Si no, `null`.
+          oneOf:
+            - $ref: '#/components/schemas/Capacidad'
+            - type: 'null'
 
     Salud:
       type: object

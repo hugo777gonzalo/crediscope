@@ -248,9 +248,17 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
      se sabe de la persona, sin consultar fuentes) o los datos de la institución.
    - Pantalla Evaluación Crediticia › Capacidad de pago (`/capacidad/:cedula`),
      también como pestaña de la persona.
-   - **Supuesto a confirmar**: la carga máxima de 40% del ingreso neto
-     (`PARAMETROS_CAPACIDAD`); el resultado es «justo» desde 5 puntos antes.
-     Cada institución pone la suya.
+   - La carga máxima es 40% del ingreso neto (`PARAMETROS_CAPACIDAD`,
+     **confirmada por el negocio el 2026-10-17**); el resultado es «justo»
+     desde 5 puntos antes. Cada institución puede poner la suya.
+   - **Ingreso declarado** (nombre del negocio, 2026-10-17): lo que la persona
+     que pide el crédito dice que recibe por mes. Es opcional; si se completa,
+     reemplaza al del IESS en el cálculo, sin descontarle nada, y se rotula
+     «sin verificar»; la pantalla y la función (`ingresoDeclarado`, con
+     `capacidadSoloIess` en la respuesta) muestran además lo que daría sólo el
+     IESS. Hizo falta porque, con sólo el IESS, **55 de las 62 personas con
+     Equifax ya pagaban más que su ingreso neto** (la cuota de Equifax sí es
+     mensual: mediana de la cuota sobre el saldo, 4%).
    - Falta: que la carga máxima de cada institución viva en la base, y la
      cuota de las casas comerciales (hoy se lista sin cuota).
 4. **Política configurable y orquestador de modalidades**, con la pantalla de la

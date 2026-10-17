@@ -304,6 +304,8 @@ Romper cualquiera de estas rompe algo real.
   cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
   Una deuda sin cuota se lista aparte, nunca como cero. La usan la pantalla
   `/capacidad/:cedula` y la función `capacidad-de-pago`.
+  El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
+  al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de

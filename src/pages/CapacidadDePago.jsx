@@ -4,18 +4,19 @@ import { Landmark, Sparkles, Wallet } from "lucide-react";
 import { getLatestProfile, getUltimaConsultaEquifax } from "../lib/api.js";
 import { useBuro } from "../lib/useBuro.js";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
-import { useCondicionesDelCredito } from "../lib/credito.js";
+import { aNumero, useCondicionesDelCredito } from "../lib/credito.js";
 import { entero, mesAnio, moneda, porcentaje } from "../lib/formatos.js";
 import { formatearFecha } from "../lib/fechas.js";
 import PestanasCliente from "../components/PestanasCliente.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import CondicionesDelCredito from "../components/credito/CondicionesDelCredito.jsx";
 import VeredictoDeCapacidad from "../components/credito/VeredictoDeCapacidad.jsx";
+import IngresoDeclarado from "../components/credito/IngresoDeclarado.jsx";
 import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import { montoMaximoParaCuota, simularCredito } from "../../supabase/functions/_shared/simulador-credito.ts";
-import { datosDeCapacidad, evaluarCapacidad } from "../../supabase/functions/_shared/capacidad-de-pago.ts";
+import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "../../supabase/functions/_shared/capacidad-de-pago.ts";
 
 // Capacidad de pago de una persona (docs/plan-demo-ifi.md, paso 3): si la
 // cuota del crédito que pide entra en lo que recibe, sumada a lo que ya paga.
@@ -32,6 +33,7 @@ export default function CapacidadDePago() {
   const { buro } = useBuro();
   const { valores, cambiar, pedido } = useCondicionesDelCredito();
   const [carga, setCarga] = useState({ cargando: true, error: null, fila: null, equifax: null });
+  const [declarado, setDeclarado] = useState("");
 
   useEffect(() => {
     setUltimaCedula(cedula);
@@ -54,11 +56,18 @@ export default function CapacidadDePago() {
   }, [cedula, buro]);
 
   const perfil = carga.fila?.standard_profile ?? null;
-  const datos = useMemo(() => (perfil ? datosDeCapacidad(perfil, carga.equifax?.estructura ?? null) : null), [perfil, carga.equifax]);
+  const datosIess = useMemo(() => (perfil ? datosDeCapacidad(perfil, carga.equifax?.estructura ?? null) : null), [perfil, carga.equifax]);
+  const datos = useMemo(() => (datosIess ? conIngresoDeclarado(datosIess, aNumero(declarado)) : null), [datosIess, declarado]);
+  const conDeclarado = Boolean(datos && datos !== datosIess);
   const simulacion = useMemo(() => simularCredito(pedido), [pedido]);
   const capacidad = useMemo(
     () => (datos && simulacion.ok ? evaluarCapacidad({ ...datos, cuotaNueva: simulacion.simulacion.cuotaPrimerMes }) : null),
     [datos, simulacion],
+  );
+  // Con un Ingreso declarado, lo que daría sólo el IESS, para comparar.
+  const soloIess = useMemo(
+    () => (conDeclarado && simulacion.ok ? evaluarCapacidad({ ...datosIess, cuotaNueva: simulacion.simulacion.cuotaPrimerMes }) : null),
+    [conDeclarado, datosIess, simulacion],
   );
   const montoMaximo = useMemo(() => {
     if (!capacidad) return null;
@@ -91,12 +100,15 @@ export default function CapacidadDePago() {
           <ClienteHeader nombreCompleto={perfil?.identidad?.nombreCompleto} cedula={cedula} />
 
           <div className="crediscope-credito-grid">
-            <CondicionesDelCredito valores={valores} cambiar={cambiar} />
+            <div className="crediscope-credito-columna">
+              <CondicionesDelCredito valores={valores} cambiar={cambiar} />
+              <IngresoDeclarado valor={declarado} alCambiar={setDeclarado} />
+            </div>
 
             <div className="crediscope-credito-columna">
               {capacidad ? (
                 <>
-                  <VeredictoDeCapacidad capacidad={capacidad} />
+                  <VeredictoDeCapacidad capacidad={capacidad} soloIess={soloIess} />
                   {capacidad.veredicto !== "sin_ingreso" ? (
                     <div className="crediscope-card crediscope-capacidad-maximo">
                       <Sparkles size={20} aria-hidden="true" className="crediscope-capacidad-maximo-icono" />
@@ -151,7 +163,8 @@ export default function CapacidadDePago() {
               </h3>
               {datos.ingresos.length === 0 ? (
                 <p className="crediscope-muted" style={{ margin: 0 }}>
-                  No tiene un ingreso reportado al IESS en {datos.corteIess ? mesAnio(datos.corteIess) : "el último corte"}.
+                  No tiene un ingreso reportado al IESS en {datos.corteIess ? mesAnio(datos.corteIess) : "el último corte"}. Podés completar el Ingreso
+                  declarado.
                 </p>
               ) : (
                 <div className="crediscope-capacidad-lista">
@@ -159,6 +172,7 @@ export default function CapacidadDePago() {
                     <div key={i} className="crediscope-capacidad-fila">
                       <span>
                         {x.concepto}
+                        {x.tipo === "declarado" ? <span className="crediscope-tag crediscope-tag-warn" style={{ marginLeft: 8 }}>Sin verificar</span> : null}
                         {x.esIngresoMinimoSbu ? <span className="crediscope-tag crediscope-tag-warn" style={{ marginLeft: 8 }}>Ingreso Mínimo SBU</span> : null}
                       </span>
                       <span>{moneda(x.montoMensual, 2)}</span>
@@ -172,15 +186,42 @@ export default function CapacidadDePago() {
                   ) : null}
                   {capacidad ? (
                     <div className="crediscope-capacidad-fila crediscope-capacidad-fila-total">
-                      <span>Ingreso neto</span>
+                      <span>{conDeclarado ? "Ingreso con que se mide" : "Ingreso neto"}</span>
                       <span>{moneda(capacidad.ingresoNeto, 2)}</span>
                     </div>
                   ) : null}
                 </div>
               )}
+
+              {conDeclarado ? (
+                <>
+                  <p className="crediscope-capacidad-sin-cuota-titulo">Reportado al IESS, como referencia</p>
+                  {datosIess.ingresos.length === 0 ? (
+                    <p className="crediscope-muted" style={{ margin: "6px 0 0" }}>
+                      No tiene un ingreso reportado en {datosIess.corteIess ? mesAnio(datosIess.corteIess) : "el último corte"}.
+                    </p>
+                  ) : (
+                    <div className="crediscope-capacidad-lista">
+                      {datosIess.ingresos.map((x, i) => (
+                        <div key={i} className="crediscope-capacidad-fila crediscope-capacidad-fila-tenue">
+                          <span>{x.concepto}</span>
+                          <span>{moneda(x.montoMensual, 2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null}
+
               <p className="crediscope-capacidad-origen">
-                Reportado al IESS{datos.corteIess ? ` · Información IESS ${mesAnio(datos.corteIess)}` : ""}. Es lo que declara el empleador o el afiliado, no
-                necesariamente todo lo que gana.
+                {conDeclarado ? (
+                  "El Ingreso declarado es lo que dice la persona y no está verificado. Lo reportado al IESS queda como referencia."
+                ) : (
+                  <>
+                    Reportado al IESS{datos.corteIess ? ` · Información IESS ${mesAnio(datos.corteIess)}` : ""}. Es lo que declara el empleador o el afiliado,
+                    no necesariamente todo lo que gana.
+                  </>
+                )}
               </p>
             </section>
 
