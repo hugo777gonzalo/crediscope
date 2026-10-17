@@ -26,6 +26,7 @@ const PerfilAval = lazy(() => import("./pages/PerfilAval.jsx"));
 const PerfilEquifax = lazy(() => import("./pages/PerfilEquifax.jsx"));
 const BuroDeLaPersona = lazy(() => import("./pages/BuroDeLaPersona.jsx"));
 const SimuladorCredito = lazy(() => import("./pages/SimuladorCredito.jsx"));
+const CapacidadDePago = lazy(() => import("./pages/CapacidadDePago.jsx"));
 const Solicitudes = lazy(() => import("./pages/Solicitudes.jsx"));
 const Expediente = lazy(() => import("./pages/Expediente.jsx"));
 const HistorialPerfilDetalle = lazy(() => import("./pages/HistorialPerfilDetalle.jsx"));
@@ -214,6 +215,7 @@ export default function App() {
           <Route path="/equifax/:cedula" element={<PerfilEquifax />} />
           <Route path="/buro/:cedula" element={<BuroDeLaPersona />} />
           <Route path="/simulador" element={<SimuladorCredito />} />
+          <Route path="/capacidad/:cedula" element={<CapacidadDePago />} />
           {/* La bandeja y el expediente. El expediente tiene ruta
               propia a propósito: se comparte por enlace, se abren
               varios en pestañas y sobrevive a recargar la página. */}

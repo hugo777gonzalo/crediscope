@@ -118,6 +118,10 @@ tags:
     description: Pedir una evaluación, seguirla y leer el resultado.
   - name: Decisiones
     description: Lo que decidió la persona que revisó en la IFI.
+  - name: Simulador
+    description: La cuota de un crédito de consumo con el seguro de desgravamen, sin consultar a nadie.
+  - name: Capacidad de pago
+    description: Si la cuota de un crédito entra en el ingreso de una persona.
   - name: Servicio
     description: Estado del servicio y claves públicas para verificar firmas.
 
@@ -487,6 +491,192 @@ paths:
         '500':
           $ref: '#/components/responses/ErrorInterno'
 
+  /simulaciones:
+    post:
+      tags: [Simulador]
+      operationId: simularCredito
+      summary: Simular la cuota de un crédito de consumo
+      description: |
+        Calcula la cuota mensual con el seguro de desgravamen y la tabla de
+        amortización. No consulta a ninguna persona ni a ninguna fuente: se
+        puede llamar sola, sin pedir una evaluación. Es el mismo cálculo que
+        usan la capacidad de pago y la pantalla del analista.
+
+        La tasa es nominal anual y no puede pasar la máxima del producto (15%
+        para consumo, que la IFI puede bajar). El seguro de desgravamen es, si
+        no se indica otro, 0,6% anual sobre el saldo de cada mes. Cada valor
+        se redondea al centavo en su mes y la última cuota ajusta la
+        diferencia.
+      security:
+        - oauth2: [simulaciones:crear]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeSimulacion'
+            example:
+              monto: 5000
+              plazoMeses: 36
+              tasaNominalAnualPorcentaje: 15
+              sistema: frances
+              desgravamen:
+                tasaPorcentaje: 0.6
+                periodicidad: anual
+                base: saldo
+              incluirTabla: false
+      responses:
+        '200':
+          description: La simulación.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaDeSimulacion'
+              example:
+                simulacion:
+                  version: simulador-v1
+                  monto: 5000
+                  plazoMeses: 36
+                  tasaNominalAnualPorcentaje: 15
+                  sistema: frances
+                  desgravamen:
+                    tasaPorcentaje: 0.6
+                    periodicidad: anual
+                    base: saldo
+                  tasaMensual: 0.0125
+                  tasaEfectivaAnual: 0.160755
+                  cuotaPrimerMes: 175.83
+                  cuotaUltimoMes: 173.28
+                  capitalEInteresPrimerMes: 173.33
+                  seguroPrimerMes: 2.5
+                  totalInteres: 1239.74
+                  totalSeguro: 49.62
+                  totalPagado: 6289.36
+        '400':
+          $ref: '#/components/responses/PedidoInvalido'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
+  /capacidades-de-pago:
+    post:
+      tags: [Capacidad de pago]
+      operationId: evaluarCapacidadDePago
+      summary: Medir si la cuota de un crédito entra en el ingreso de una persona
+      description: |
+        Simula la cuota del crédito pedido y la compara con el ingreso neto de
+        la persona y lo que ya paga por mes. Se puede llamar sola, sin pedir una
+        evaluación, de dos maneras:
+
+        - con `identificacion`: usa lo que CrediScope ya sabe de la persona (el
+          ingreso reportado al IESS y las cuotas del buró de la IFI). No
+          consulta a ninguna fuente; si la persona no se consultó antes,
+          responde 404;
+        - con `ingresos` y `obligaciones`: usa los datos que manda la IFI (por
+          ejemplo, del rol de pagos) y no lee nada de CrediScope.
+
+        Al sueldo de un dependiente se le descuenta el aporte personal al IESS.
+        Una deuda sin cuota informada no se cuenta como cero: se devuelve en
+        `deudasSinCuota` y `obligacionesIncompletas` es `true`.
+      security:
+        - oauth2: [capacidades:crear]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeCapacidad'
+            example:
+              ingresos:
+                - concepto: Sueldo del rol de pagos
+                  montoMensual: 1200
+                  tipo: sueldo
+              obligaciones:
+                - concepto: Tarjeta de crédito
+                  montoMensual: 85
+              solicitud:
+                monto: 5000
+                plazoMeses: 36
+                tasaNominalAnualPorcentaje: 15
+              parametros:
+                cargaMaxima: 0.4
+      responses:
+        '200':
+          description: La capacidad de pago, la simulación y el monto máximo que alcanza.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaDeCapacidad'
+              example:
+                capacidad:
+                  version: capacidad-v1
+                  veredicto: alcanza
+                  ingresoReportado: 1200
+                  aportePersonal: 113.4
+                  ingresoNeto: 1086.6
+                  obligacionesActuales: 85
+                  cuotaNueva: 175.83
+                  cargaActual: 0.0782
+                  cargaConElCredito: 0.24
+                  cargaMaxima: 0.4
+                  cuotaMaximaAdmisible: 349.64
+                  holgura: 173.81
+                  disponibleDespues: 825.77
+                  obligacionesIncompletas: false
+                  ingresoSoloSbu: false
+                  avisos: []
+                simulacion:
+                  version: simulador-v1
+                  monto: 5000
+                  plazoMeses: 36
+                  tasaNominalAnualPorcentaje: 15
+                  sistema: frances
+                  desgravamen:
+                    tasaPorcentaje: 0.6
+                    periodicidad: anual
+                    base: saldo
+                  tasaMensual: 0.0125
+                  tasaEfectivaAnual: 0.160755
+                  cuotaPrimerMes: 175.83
+                  cuotaUltimoMes: 173.28
+                  capitalEInteresPrimerMes: 173.33
+                  seguroPrimerMes: 2.5
+                  totalInteres: 1239.74
+                  totalSeguro: 49.62
+                  totalPagado: 6289.36
+                montoMaximo: 9942.93
+        '400':
+          $ref: '#/components/responses/PedidoInvalido'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrada'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+
   /salud:
     get:
       tags: [Servicio]
@@ -624,6 +814,8 @@ components:
             evaluaciones:crear: Pedir y cancelar evaluaciones.
             evaluaciones:leer: Leer evaluaciones y sus resultados.
             decisiones:escribir: Informar la decisión humana.
+            simulaciones:crear: Simular la cuota de un crédito.
+            capacidades:crear: Medir la capacidad de pago de una persona.
 
   parameters:
     IdempotencyKey:
@@ -1184,6 +1376,281 @@ components:
         ocurridoEl:
           type: string
           format: date-time
+
+    PedidoDeSimulacion:
+      type: object
+      additionalProperties: false
+      required: [monto, plazoMeses, tasaNominalAnualPorcentaje]
+      properties:
+        monto:
+          type: number
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+          description: En dólares.
+        plazoMeses:
+          type: integer
+          minimum: 1
+          maximum: 480
+        tasaNominalAnualPorcentaje:
+          type: number
+          minimum: 0
+          description: Nominal anual, en porcentaje (15 quiere decir 15%). No puede pasar la máxima del producto.
+        sistema:
+          type: string
+          enum: [frances, aleman]
+          default: frances
+          description: '`frances`: cuota fija de capital e interés. `aleman`: capital fijo.'
+        desgravamen:
+          $ref: '#/components/schemas/Desgravamen'
+        incluirTabla:
+          type: boolean
+          default: true
+          description: Si la respuesta trae la tabla de amortización.
+
+    Desgravamen:
+      type: object
+      additionalProperties: false
+      required: [tasaPorcentaje, periodicidad, base]
+      properties:
+        tasaPorcentaje:
+          type: number
+          minimum: 0
+          description: En porcentaje (0.6 quiere decir 0,6%).
+        periodicidad:
+          type: string
+          enum: [anual, mensual]
+          description: Si la tasa es anual se divide para 12.
+        base:
+          type: string
+          enum: [saldo, monto]
+          description: Sobre qué se cobra cada mes.
+
+    Simulacion:
+      type: object
+      required: [version, monto, plazoMeses, tasaNominalAnualPorcentaje, sistema, desgravamen, tasaMensual, tasaEfectivaAnual, cuotaPrimerMes, cuotaUltimoMes, capitalEInteresPrimerMes, seguroPrimerMes, totalInteres, totalSeguro, totalPagado]
+      properties:
+        version:
+          type: string
+        monto:
+          type: number
+        plazoMeses:
+          type: integer
+        tasaNominalAnualPorcentaje:
+          type: number
+        sistema:
+          type: string
+          enum: [frances, aleman]
+        desgravamen:
+          $ref: '#/components/schemas/Desgravamen'
+        tasaMensual:
+          type: number
+          description: Fracción (0.0125 es 1,25% al mes).
+        tasaEfectivaAnual:
+          type: number
+          description: Fracción. La equivalente a la nominal, sin el seguro.
+        cuotaPrimerMes:
+          type: number
+          description: La cuota total del primer mes, la más alta. Es la que mide la capacidad de pago.
+        cuotaUltimoMes:
+          type: number
+        capitalEInteresPrimerMes:
+          type: number
+        seguroPrimerMes:
+          type: number
+        totalInteres:
+          type: number
+        totalSeguro:
+          type: number
+        totalPagado:
+          type: number
+        tabla:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilaDeAmortizacion'
+
+    FilaDeAmortizacion:
+      type: object
+      required: [mes, saldoInicial, capital, interes, seguro, cuota, saldoFinal]
+      properties:
+        mes:
+          type: integer
+        saldoInicial:
+          type: number
+        capital:
+          type: number
+        interes:
+          type: number
+        seguro:
+          type: number
+        cuota:
+          type: number
+        saldoFinal:
+          type: number
+
+    RespuestaDeSimulacion:
+      type: object
+      required: [simulacion]
+      properties:
+        simulacion:
+          $ref: '#/components/schemas/Simulacion'
+
+    PedidoDeCapacidad:
+      type: object
+      additionalProperties: false
+      required: [solicitud]
+      description: Con `identificacion`, o con `ingresos` y `obligaciones`.
+      properties:
+        identificacion:
+          type: string
+          pattern: '^[0-9]{10}([0-9]{3})?$'
+          description: Cédula o RUC de persona natural de alguien ya consultado.
+        ingresos:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/IngresoMensual'
+        obligaciones:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ObligacionMensual'
+        deudasSinCuota:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/DeudaSinCuota'
+        solicitud:
+          $ref: '#/components/schemas/PedidoDeSimulacion'
+        parametros:
+          $ref: '#/components/schemas/ParametrosDeCapacidad'
+
+    IngresoMensual:
+      type: object
+      additionalProperties: false
+      required: [montoMensual, tipo]
+      properties:
+        concepto:
+          type: string
+          maxLength: 200
+        montoMensual:
+          type: number
+          minimum: 0
+          description: Lo que se reporta, antes del aporte personal al IESS.
+        tipo:
+          type: string
+          enum: [sueldo, aporte_propio]
+          description: Al `sueldo` se le descuenta el aporte personal; al `aporte_propio`, no.
+        origen:
+          type: string
+          maxLength: 100
+        esIngresoMinimoSbu:
+          type: boolean
+
+    ObligacionMensual:
+      type: object
+      additionalProperties: false
+      required: [montoMensual]
+      properties:
+        concepto:
+          type: string
+          maxLength: 200
+        montoMensual:
+          type: number
+          minimum: 0
+        origen:
+          type: string
+          maxLength: 100
+
+    DeudaSinCuota:
+      type: object
+      additionalProperties: false
+      required: [concepto]
+      properties:
+        concepto:
+          type: string
+          maxLength: 200
+        saldo:
+          type: [number, 'null']
+          description: '`null` cuando se sabe que existe pero no el saldo.'
+        origen:
+          type: string
+          maxLength: 100
+
+    ParametrosDeCapacidad:
+      type: object
+      additionalProperties: false
+      properties:
+        cargaMaxima:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.4
+          description: Tope de las cuotas sobre el ingreso neto, como fracción.
+        margenJusto:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.05
+          description: Desde cuántos puntos por debajo del tope el veredicto es `justo`.
+        aportePersonalIess:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.0945
+
+    Capacidad:
+      type: object
+      required: [version, veredicto, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, avisos]
+      properties:
+        version:
+          type: string
+        veredicto:
+          type: string
+          enum: [alcanza, justo, no_alcanza, sin_ingreso]
+          description: '`sin_ingreso`: no hay un ingreso con el que medir la cuota; no es un rechazo.'
+        ingresoReportado:
+          type: number
+        aportePersonal:
+          type: number
+        ingresoNeto:
+          type: number
+        obligacionesActuales:
+          type: number
+        cuotaNueva:
+          type: number
+        cargaActual:
+          type: [number, 'null']
+        cargaConElCredito:
+          type: [number, 'null']
+        cargaMaxima:
+          type: number
+        cuotaMaximaAdmisible:
+          type: number
+        holgura:
+          type: number
+          description: Cuota máxima admisible menos la cuota pedida. Negativa si no alcanza.
+        disponibleDespues:
+          type: number
+        obligacionesIncompletas:
+          type: boolean
+        ingresoSoloSbu:
+          type: boolean
+        avisos:
+          type: array
+          items:
+            type: string
+
+    RespuestaDeCapacidad:
+      type: object
+      required: [capacidad, simulacion, montoMaximo]
+      properties:
+        capacidad:
+          $ref: '#/components/schemas/Capacidad'
+        simulacion:
+          $ref: '#/components/schemas/Simulacion'
+        montoMaximo:
+          type: [number, 'null']
+          description: El monto más alto que alcanza con el mismo plazo y la misma tasa.
 
     Salud:
       type: object
