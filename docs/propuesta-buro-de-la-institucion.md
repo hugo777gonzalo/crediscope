@@ -36,8 +36,13 @@ Contexto: `docs/propuesta-estructura-equifax.md` (las tablas y la estructura, 12
 | El reporte | **PDF** |
 | Las pantallas | Proceder con el diseño de la sección 5: moderno, preciso, informativo y fácil de leer, **con las explicaciones largas en ayudas emergentes** |
 
-**Construido el 2026-10-16** (las pantallas y la capa 1; el lado del modelo, la
-capa 2 y su versión del marco, va en una sesión aparte):
+**El lado del modelo, construido el 2026-10-16 como `marco-v31`, apagado**
+(`CONFIG_LLM.buroDeLaInstitucion`): la capa 2 en `_shared/` (el perfil del modelo
+con `buroEquifax` en lugar de bancos y cooperativas, y una persona sin buró igual a
+hoy byte a byte: 2.813 de 2.813) y su sección del marco en lugar de los grupos 3 y
+4. Lo construido, lo medido y cómo encenderlo: `docs/propuesta-marco-equifax.md`.
+
+**Construido el 2026-10-16** (las pantallas y la capa 1):
 
 - **Capa 1, migración 129**: `proveedores.es_buro` (a lo sumo uno, sólo Aval o
   Equifax), `elegir_buro()` y el selector «Buró» arriba de las pestañas de Aval y
@@ -256,10 +261,10 @@ el selector del buró de la institución y, en la de Novadata, la tarjeta de la 
 
 ## 7. En qué orden se construiría
 
-1. La capa 2 en `_shared/` con sus pruebas: el perfil del modelo de una persona **sin**
-   buró tiene que salir idéntico, byte a byte, al de hoy.
-2. El marco nuevo (el número libre: `marco-v30` es de E27) con la sección de Equifax ajustada a la sección 4. No
-   se activa: la comparación espera a A8.
+1. **Hecho (2026-10-16).** La capa 2 en `_shared/` con sus pruebas: el perfil del
+   modelo de una persona **sin** buró sale idéntico, byte a byte, al de hoy.
+2. **Hecho (2026-10-16).** El marco nuevo, `marco-v31`, con la sección de Equifax
+   ajustada a la sección 4. No se activa: la comparación espera a A8.
 3. `resumen_por_persona` y el Laboratorio a días de mora (migraciones).
 4. La capa 1 (un buró por base) y la tarjeta de la capa 3.
 5. La pestaña de Equifax y su reporte, con la revisión de UX en el navegador.

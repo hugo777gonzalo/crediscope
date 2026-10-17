@@ -359,6 +359,17 @@ Romper cualquiera de estas rompe algo real.
     elige el selector «Buró» de Configuración y decide la pestaña de cada
     persona; el menú dice «Buró» y `/buro/:cedula` lleva a la que corresponde.
     `activo` sigue diciendo sólo si se puede consultar.
+  - **El buró en lo que lee el modelo es `marco-v31`, APAGADO**
+    (`CONFIG_LLM.buroDeLaInstitucion`): `_shared/buro-de-la-institucion.ts` busca
+    la consulta vigente y `armarPerfilDelModelo(perfil, campos, buro)` pone
+    `buroEquifax` en lugar de bancos y cooperativas de Novadata;
+    `marcoConElBuro()` arma los dos textos de v31 sobre el de v30. Sin buró, el
+    perfil es el de v30 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).
+    Cómo encenderlo: `docs/propuesta-marco-equifax.md`, sección 8.
+  - **Los tokens de un JSON se miden, no se estiman** (2026-10-16): con 3,2
+    caracteres por token el bloque del buró salía en 1.050 y pesa 2.000 (1,63:
+    casi todo números y nombres largos). El contador de tokens de la API no cobra
+    ni corre el modelo; se le manda sólo el marco o datos inventados.
   - **La pestaña Equifax** (`PerfilEquifax.jsx`, `components/equifax/`) lee la
     estructura y las tablas, nunca el crudo; la franja de 24 meses y la deuda
     por sistema salen de `src/lib/equifaxPantalla.js`, que se prueba con

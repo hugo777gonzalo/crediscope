@@ -72,7 +72,8 @@ const distintos = <T>(valores: T[]): number => new Set(valores).size;
 const mesDe = (fecha: string): string => fecha.slice(0, 7);
 
 // 00:00 de Ecuador es UTC-5 sin horario de verano: la fecha de la consulta es la de Ecuador.
-function fechaEnEcuador(iso: string): string {
+// La usa también el perfil del modelo (la fecha del reporte de Equifax).
+export function fechaEnEcuador(iso: string): string {
   const t = new Date(iso);
   if (Number.isNaN(t.getTime())) return iso.slice(0, 10);
   return new Date(t.getTime() - 5 * 3600_000).toISOString().slice(0, 10);

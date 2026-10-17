@@ -1,0 +1,214 @@
+{
+  "disponibilidad": {
+    "temasConsultados": [
+      "buró de crédito de bancos",
+      "tarjetas Diners",
+      "cooperativas",
+      "casas comerciales",
+      "préstamos del IESS/BIESS",
+      "historial de pago con Novadata",
+      "registro de deudores",
+      "deudas con sentencia firme",
+      "demandas en su contra",
+      "demandas que presentó",
+      "pensiones alimenticias",
+      "denuncias en la Fiscalía",
+      "antecedentes penales",
+      "listas de control y sanciones",
+      "lista negra",
+      "impedimento para cargos públicos",
+      "SERCOP y Contraloría",
+      "aportes al IESS",
+      "empleos registrados en el IESS",
+      "historial mensual de aportes al IESS",
+      "afiliación al IESS",
+      "empleados a su cargo",
+      "jubilación y pensión del IESS",
+      "seguro social militar (ISSFAC)",
+      "seguro social policial (ISSPOL)",
+      "seguro de salud",
+      "RUC y actividad económica",
+      "impuesto a la renta",
+      "empresas que administra",
+      "vehículos",
+      "inmuebles",
+      "seguros y siniestros",
+      "multas de tránsito",
+      "licencia de conducir",
+      "identidad",
+      "familia",
+      "títulos académicos",
+      "datos de contacto"
+    ],
+    "temasNoConsultados": [
+      "inversiones"
+    ]
+  },
+  "identidad": {
+    "edad": 41,
+    "genero": "MUJER",
+    "estadoCivil": "CASADO",
+    "tieneConyuge": true,
+    "nivelEducacion": "TERCER NIVEL",
+    "fallecido": false
+  },
+  "cumplimiento": {
+    "enListaControl": false,
+    "enListaNegra": false,
+    "registraSercopContraloria": false,
+    "esPersonaExpuestaPoliticamente": false,
+    "impedimentoCargosPublicos": false,
+    "tieneHomonimoEnListaControl": false
+  },
+  "riesgoSeguridadCiudadana": {
+    "tieneDelitoSeguridadCiudadana": false,
+    "categoriasDelitoSeguridadCiudadana": []
+  },
+  "comportamientoBancario": {
+    "figuraEnRegistroDeudores": false,
+    "numeroOperacionesBuroCredito": 3,
+    "peorCalificacionRiesgo": "B1",
+    "mejorCalificacionRiesgo": "A1",
+    "tieneOperacionConDemanda": false,
+    "tieneOperacionCastigada": false,
+    "saldoTotalVigente": 5200,
+    "saldoEnMoraBuroCredito": 310,
+    "saldoNoDevengaIntereses": 0,
+    "deudaEnAtraso": 310,
+    "operacionesEnAtrasoSinMonto": 0,
+    "numeroOperacionesComoGaranteOCodeudor": 1,
+    "deudaComoGaranteOCodeudor": 901,
+    "peorCalificacionComoGaranteOCodeudor": "A2",
+    "numeroDeudasRetail": 2,
+    "diasMoraMaximaRetail": 12,
+    "totalDeudaRetail": 641,
+    "valorVencidoRetail": 80,
+    "tieneCreditoIessBiess": true,
+    "diasMoraCreditoIessBiess": 0,
+    "numeroPrestamosIessBiess": 1
+  },
+  "comportamientoCooperativas": {
+    "numeroOperaciones": 1,
+    "diasMoraMaxima": 0,
+    "saldoTotal": 2101,
+    "saldoEnMora": 0,
+    "tieneOperacionConDemanda": false,
+    "tieneOperacionCastigada": false,
+    "cuotaMensualTotal": 145
+  },
+  "riesgoJudicialCrediticio": {
+    "numeroDemandasComoDemandado": 0,
+    "tiposDemandasComoDemandado": []
+  },
+  "riesgoJudicialCivil": {
+    "numeroDemandasComoDemandado": 1,
+    "demandasPorCategoria": {
+      "Familia": 1
+    },
+    "numeroDemandasComoOfendido": 0,
+    "tienePensionAlimenticia": false,
+    "pensionAlimenticiaEnMora": false,
+    "deudaPensionAlimenticia": null
+  },
+  "riesgoPenal": {
+    "tieneAntecedentesPenales": false,
+    "descripcionAntecedentes": null,
+    "numeroDenunciasComoSospechoso": 0,
+    "numeroDenunciasComoVictima": 0
+  },
+  "laboral": {
+    "empleosActuales": [
+      {
+        "tipoEmpleador": "Empleador privado",
+        "esSuPropioPatrono": false,
+        "posibleNegocioFamiliar": false,
+        "cargo": "ANALISTA",
+        "salarioAprox": 1200
+      }
+    ],
+    "ingresoPromedioUltimos6Meses": 1181,
+    "antiguedadEmpleoActualMeses": 50,
+    "duracionEmpleoMasLargoMeses": 50,
+    "tieneRucActivo": false,
+    "empleadorConApellidoDelCliente": false,
+    "clienteEsSuPropioEmpleador": false
+  },
+  "tributario": {
+    "pagaISD": false,
+    "montoMaximoISD": null,
+    "generaImpuestoRenta": false,
+    "esAfiliadoUnipersonal": false
+  },
+  "fuentesIngreso": {
+    "segmento": "Dependiente privado",
+    "estado": "Confirmado por un tercero",
+    "condicionesDeLaSegmentacion": null,
+    "informacionIess": "2026-08",
+    "sinInformacionActualEnElIess": false,
+    "mesesSinAportar": null,
+    "ingresoReportadoIess": 1200,
+    "esIngresoMinimoSbu": false,
+    "aportes": [
+      {
+        "tipo": "empleo en relación de dependencia",
+        "declaradoPor": "Empleador privado",
+        "esSuPropioPatrono": false,
+        "posibleNegocioFamiliar": false,
+        "montoMensual": 1200
+      }
+    ],
+    "otrasFuentesSinMonto": [],
+    "perfilLaboral": {
+      "tipo": "Dependiente",
+      "trabajaParaUnTercero": true,
+      "tieneActividadPropia": false,
+      "tieneEmpleados": false,
+      "rucActivoDesde": null,
+      "aportaSinRucActivo": false,
+      "actividadPropiaEsLaPrincipal": false,
+      "registraJubilacion": false
+    },
+    "tamanoDelNegocio": null,
+    "indiciosIngresoMayor": [],
+    "estabilidad": null,
+    "documentosDeConfirmacion": []
+  },
+  "seguridadSocial": {
+    "afiliadoIessActivo": true,
+    "esPensionista": false,
+    "esJubilado": false,
+    "estadoAfiliacionIess": "ACTIVO"
+  },
+  "patrimonio": {
+    "numeroVehiculos": 1,
+    "valorAvaluoVehiculos": 6501,
+    "numeroInmuebles": 0,
+    "numeroInversiones": 0,
+    "valorColateralVehiculos": 9100
+  },
+  "familia": {
+    "numeroHijos": 2,
+    "tieneHijos": true,
+    "tieneHijoMenorEdad": true
+  },
+  "contacto": {
+    "numeroDireccionesUltimos12Meses": 1,
+    "numeroTelefonosUltimos12Meses": 1
+  },
+  "transitoVehicular": {
+    "tieneLicenciaVigente": true,
+    "puntosLicencia": 30,
+    "numeroMultas": 0,
+    "valorAdeudadoTransito": 0
+  },
+  "endeudamiento": {
+    "deudaPropiaTotal": 8253,
+    "deudaPropiaBancos": 5511,
+    "deudaPropiaCooperativas": 2101,
+    "deudaPropiaRetail": 641,
+    "deudaEnAtrasoTotal": 390,
+    "deudaComoGaranteOCodeudor": 901,
+    "cuotaMensualConocida": 145,
+    "cuotaMensualConocidaIncluye": "sólo cooperativas: los bancos no informan la cuota"
+  }
+}

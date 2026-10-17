@@ -60,6 +60,10 @@ const compartido = (archivo) => import(pathToFileURL(path.join(RAIZ, "supabase/f
 const { armarPedidoScoring, interpretar, CONFIG_LLM, MARCO_VERSION, MODELO } = await compartido("llm-scoring.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN } = await compartido("perfil-del-modelo.ts");
+// Esta comparación arma los pedidos sin el buró de la institución: con
+// marco-v31 encendido mediría otro pedido que el de producción y lo anotaría
+// como v30.
+if (CONFIG_LLM.buroDeLaInstitucion) throw new Error("comparar-razonamiento todavía no lee el buró de la institución (marco-v31): sumarlo antes de usarlo con el interruptor encendido");
 const HOY_DE_LA_BASE = arg("hoy-de-la-base", null);
 
 // Lo que marco-v29 cambió a propósito en el mensaje (E27): con
