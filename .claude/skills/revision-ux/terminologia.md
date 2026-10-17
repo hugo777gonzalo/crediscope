@@ -87,6 +87,8 @@ en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 | Los resultados de crédito que sube la institución | **carga** (Laboratorio) | «lote» | Un lote consulta; una carga trae resultados. |
 | Congelado de una cartera para analizarla | **corte** (Laboratorio) | | No confundir con el «corte del IESS»: son dos cosas. |
 | Dato que la fuente no dio | **No medido** / «—» con su motivo | `0`, vacío, «N/D» | CLAUDE.md: los huecos se dicen. |
+| Lo que la persona que pide el crédito dice que recibe por mes | **Ingreso declarado** (con «sin verificar» a la vista) | «ingreso según documento», «ingreso estimado», «ingreso real» | Negocio, 2026-10-17 (capacidad de pago). Es una declaración, no una estimación: no choca con «no se especula sobre el ingreso». Cuando lo hay, la capacidad se mide con él y el reportado al IESS queda como referencia. |
+| Si la cuota entra en el ingreso | **Capacidad de pago**: «Le alcanza / Le alcanza, pero justo / No le alcanza / No se puede medir» | «capacidad de endeudamiento», «DTI» | 2026-10-17. El tope es la **carga máxima** (40% del ingreso neto, confirmado por el negocio ese día; cada institución pone la suya). |
 
 ## 4. Formatos
 

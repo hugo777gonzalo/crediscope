@@ -16,7 +16,11 @@
 // Exige sesión (analista o admin) antes de leer el cuerpo (regla 6).
 //
 // Body: { "cedula": "...", "solicitud": { "monto": 5000, "plazoMeses": 36,
-//         "tasaNominalAnualPorcentaje": 15 }, "parametros": { "cargaMaxima": 0.4 } }
+//         "tasaNominalAnualPorcentaje": 15 }, "ingresoDeclarado": 2500,
+//         "parametros": { "cargaMaxima": 0.4 } }
+// ingresoDeclarado (opcional) es lo que la persona dice que recibe por mes:
+// reemplaza al del IESS en el cálculo, y la respuesta trae además el
+// resultado con sólo el IESS (capacidadSoloIess), para comparar.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
@@ -25,6 +29,7 @@ import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { montoMaximoParaCuota, type PedidoDeSimulacion, simularCredito } from "../_shared/simulador-credito.ts";
 import {
+  conIngresoDeclarado,
   type DatosDeCapacidad,
   datosDeCapacidad,
   evaluarCapacidad,
@@ -145,19 +150,28 @@ Deno.serve(async (req) => {
       fuenteDeLasCuotas: "novadata",
       corteIess: null,
     } as DatosDeCapacidad;
-    if (datos.ingresos.some((x) => typeof x?.montoMensual !== "number" || (x.tipo !== "sueldo" && x.tipo !== "aporte_propio"))) {
-      return responder({ error: "Cada ingreso lleva montoMensual (número) y tipo («sueldo» o «aporte_propio»)." }, 400);
+    if (datos.ingresos.some((x) => typeof x?.montoMensual !== "number" || !["sueldo", "aporte_propio", "declarado"].includes(x.tipo))) {
+      return responder({ error: "Cada ingreso lleva montoMensual (número) y tipo («sueldo», «aporte_propio» o «declarado»)." }, 400);
     }
   }
 
-  const capacidad = evaluarCapacidad({ ...datos, cuotaNueva: simulacion.simulacion.cuotaPrimerMes, parametros });
+  const declarado = cuerpo.ingresoDeclarado;
+  if (declarado !== undefined && declarado !== null && (typeof declarado !== "number" || !Number.isFinite(declarado) || declarado < 0)) {
+    return responder({ error: "ingresoDeclarado va en dólares por mes, como número." }, 400);
+  }
+  const cuotaNueva = simulacion.simulacion.cuotaPrimerMes;
+  const conDeclarado = conIngresoDeclarado(datos, declarado as number | null | undefined);
+  const capacidad = evaluarCapacidad({ ...conDeclarado, cuotaNueva, parametros });
+  // Con una persona y un Ingreso declarado, también lo que da el IESS solo.
+  const capacidadSoloIess = conDeclarado !== datos && procedencia.modo === "persona" ? evaluarCapacidad({ ...datos, cuotaNueva, parametros }) : null;
   const { tabla: _tabla, ...resumenSimulacion } = simulacion.simulacion;
   const { monto: _monto, ...condiciones } = solicitud;
   return responder({
     capacidad,
     simulacion: resumenSimulacion,
     montoMaximo: montoMaximoParaCuota(capacidad.cuotaMaximaAdmisible, condiciones),
-    datos,
+    capacidadSoloIess,
+    datos: conDeclarado,
     procedencia,
   });
 });

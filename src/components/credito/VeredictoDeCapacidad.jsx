@@ -3,7 +3,8 @@ import { entero, moneda, porcentaje } from "../../lib/formatos.js";
 
 // El resultado de la capacidad de pago dicho en simple: un título que se
 // entiende sin saber de crédito, una frase con «de cada $100» y un medidor que
-// muestra lo que ya paga, lo que sumaría este crédito y el tope.
+// muestra lo que ya paga, lo que sumaría este crédito y el tope. Con un
+// Ingreso declarado lo dice arriba y, abajo, qué daría sólo con el IESS.
 
 const VEREDICTOS = {
   alcanza: { titulo: "Le alcanza", Icono: CheckCircle2 },
@@ -12,7 +13,7 @@ const VEREDICTOS = {
   sin_ingreso: { titulo: "No se puede medir", Icono: HelpCircle },
 };
 
-export default function VeredictoDeCapacidad({ capacidad: c }) {
+export default function VeredictoDeCapacidad({ capacidad: c, soloIess = null }) {
   const { titulo, Icono } = VEREDICTOS[c.veredicto];
   const deCien = (fraccion) => moneda(Math.round(fraccion * 100));
   const nueva = c.ingresoNeto > 0 ? c.cuotaNueva / c.ingresoNeto : 0;
@@ -23,6 +24,7 @@ export default function VeredictoDeCapacidad({ capacidad: c }) {
   const escala = Math.max(1, c.cargaConElCredito ?? 0);
   const ancho = (fraccion) => `${Math.max(0, Math.min(100, (fraccion / escala) * 100))}%`;
   const yaSupera = (c.cargaActual ?? 0) >= 1;
+  const suIngreso = c.ingresoDeclarado ? "su ingreso declarado" : "su ingreso neto";
 
   return (
     <section className={`crediscope-capacidad-veredicto crediscope-capacidad-${c.veredicto}`} aria-live="polite">
@@ -30,17 +32,22 @@ export default function VeredictoDeCapacidad({ capacidad: c }) {
         <Icono size={26} aria-hidden="true" />
         {titulo}
       </p>
+      {c.ingresoDeclarado ? (
+        <p style={{ margin: "8px 0 0" }}>
+          <span className="crediscope-tag crediscope-tag-warn">Con el Ingreso declarado, sin verificar</span>
+        </p>
+      ) : null}
 
       {c.veredicto === "sin_ingreso" ? (
         <p className="crediscope-capacidad-frase">
-          No hay un ingreso reportado al IESS con el que comparar la cuota de {moneda(c.cuotaNueva, 2)}. Hace falta un documento que confirme lo que
-          recibe.
+          No hay un ingreso reportado al IESS con el que comparar la cuota de {moneda(c.cuotaNueva, 2)}. Completá el Ingreso declarado con lo que la
+          persona dice recibir, o pedí un documento que lo confirme.
         </p>
       ) : (
         <>
           {yaSupera ? (
             <p className="crediscope-capacidad-frase">
-              Lo que ya paga por mes (<strong>{moneda(c.obligacionesActuales, 2)}</strong>) es más que su ingreso neto ({moneda(c.ingresoNeto, 2)}): no hay
+              Lo que ya paga por mes (<strong>{moneda(c.obligacionesActuales, 2)}</strong>) es más que {suIngreso} ({moneda(c.ingresoNeto, 2)}): no hay
               espacio para otra cuota.
             </p>
           ) : (
@@ -72,12 +79,24 @@ export default function VeredictoDeCapacidad({ capacidad: c }) {
           </div>
           <p className="crediscope-capacidad-pie">
             {c.disponibleDespues >= 0
-              ? `Le quedarían ${moneda(c.disponibleDespues, 2)} por mes de un ingreso neto de ${moneda(c.ingresoNeto, 2)}.`
+              ? `Le quedarían ${moneda(c.disponibleDespues, 2)} por mes de ${suIngreso} de ${moneda(c.ingresoNeto, 2)}.`
               : `Con este crédito le faltarían ${moneda(-c.disponibleDespues, 2)} por mes para cubrir todas sus cuotas.`}
-            {escala > 1 ? " La línea punteada marca todo su ingreso neto." : ""}
+            {escala > 1 ? ` La línea punteada marca todo ${suIngreso}.` : ""}
           </p>
         </>
       )}
+
+      {soloIess ? (
+        <p className="crediscope-capacidad-comparacion">
+          {soloIess.veredicto === "sin_ingreso" ? (
+            <>Con sólo lo reportado al IESS no se podría medir: no tiene un ingreso reportado.</>
+          ) : (
+            <>
+              Con sólo lo reportado al IESS ({moneda(soloIess.ingresoNeto, 2)} netos): <strong>{VEREDICTOS[soloIess.veredicto].titulo}</strong>.
+            </>
+          )}
+        </p>
+      ) : null}
     </section>
   );
 }

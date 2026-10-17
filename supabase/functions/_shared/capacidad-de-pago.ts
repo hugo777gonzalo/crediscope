@@ -19,10 +19,18 @@
 //   subestime su propio problema.
 // - El tope de la carga (cuotas sobre ingreso) es un parámetro de cada
 //   institución, no una regla del sistema.
+// - El «Ingreso declarado» (nombre del negocio, 2026-10-17) es lo que la
+//   persona que pide el crédito dice que recibe por mes. Cuando lo hay,
+//   reemplaza al del IESS en el cálculo (es el total: sumarlo al IESS contaría
+//   dos veces el sueldo) y no se le descuenta nada: es lo que dice recibir. No
+//   es una estimación: es una declaración, y se rotula como no verificada. Hizo
+//   falta porque, con sólo el IESS, 55 de las 62 personas con Equifax ya
+//   pagaban más que su ingreso neto (medido el 2026-10-17).
 
 import { esIngresoMinimoSbu } from "./fuentes-ingreso.ts";
 
-export const CAPACIDAD_VERSION = "capacidad-v1";
+// v2 (2026-10-17): el Ingreso declarado.
+export const CAPACIDAD_VERSION = "capacidad-v2";
 
 export interface ParametrosCapacidad {
   /** Fracción: 0.40 quiere decir que las cuotas no pasan del 40% del ingreso neto. */
@@ -33,15 +41,16 @@ export interface ParametrosCapacidad {
   aportePersonalIess: number;
 }
 
-// La carga máxima de 40% es un supuesto de partida, a reemplazar por el de
-// cada institución. El aporte personal de 9,45% es el del régimen general.
+// La carga máxima de 40% la confirmó el negocio el 2026-10-17; cada
+// institución puede poner la suya. El aporte personal de 9,45% es el del
+// régimen general.
 export const PARAMETROS_CAPACIDAD: ParametrosCapacidad = {
   cargaMaxima: 0.4,
   margenJusto: 0.05,
   aportePersonalIess: 0.0945,
 };
 
-export type TipoDeIngreso = "sueldo" | "aporte_propio";
+export type TipoDeIngreso = "sueldo" | "aporte_propio" | "declarado";
 
 export interface IngresoMensual {
   concepto: string;
@@ -97,6 +106,8 @@ export interface Capacidad {
   disponibleDespues: number;
   obligacionesIncompletas: boolean;
   ingresoSoloSbu: boolean;
+  /** El ingreso con que se midió es el que declara la persona, sin verificar. */
+  ingresoDeclarado: boolean;
   avisos: string[];
   parametros: ParametrosCapacidad;
 }
@@ -119,6 +130,7 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
 
   const obligacionesIncompletas = e.deudasSinCuota.length > 0;
   const ingresoSoloSbu = ingresos.length > 0 && ingresos.every((x) => x.esIngresoMinimoSbu === true);
+  const ingresoDeclarado = ingresos.some((x) => x.tipo === "declarado");
 
   const cargaActual = netoC > 0 ? obligacionesC / netoC : null;
   const cargaConElCredito = netoC > 0 ? (obligacionesC + cuotaC) / netoC : null;
@@ -131,10 +143,13 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
 
   const avisos: string[] = [];
   if (veredicto === "sin_ingreso") {
-    avisos.push("No hay un ingreso reportado al IESS con el que medir la cuota.");
+    avisos.push("No hay un ingreso reportado al IESS ni declarado con el que medir la cuota.");
   }
   if (obligacionesIncompletas) {
     avisos.push("Hay deudas sin cuota informada: lo que paga por mes es más de lo que se cuenta acá.");
+  }
+  if (ingresoDeclarado) {
+    avisos.push("El ingreso es el que declara la persona: no está verificado.");
   }
   if (ingresoSoloSbu) {
     avisos.push("El ingreso es un aporte propio sobre el Salario Básico Unificado: no muestra lo que gana la persona.");
@@ -156,6 +171,7 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
     disponibleDespues: dolares(netoC - obligacionesC - cuotaC),
     obligacionesIncompletas,
     ingresoSoloSbu,
+    ingresoDeclarado,
     avisos,
     parametros,
   };
@@ -243,4 +259,14 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
   if (pension !== null && pension > 0) obligaciones.push({ concepto: "Pensión alimenticia que paga", montoMensual: pension, origen: "Función Judicial" });
 
   return { ingresos, obligaciones, deudasSinCuota, fuenteDeLasCuotas: titular ? "equifax" : "novadata", corteIess };
+}
+
+// El Ingreso declarado reemplaza al del IESS (ver el encabezado). Sin un
+// monto válido, los datos quedan como estaban.
+export function conIngresoDeclarado(datos: DatosDeCapacidad, montoMensual: number | null | undefined): DatosDeCapacidad {
+  if (typeof montoMensual !== "number" || !Number.isFinite(montoMensual) || montoMensual <= 0) return datos;
+  return {
+    ...datos,
+    ingresos: [{ concepto: "Ingreso declarado", montoMensual: Math.round(montoMensual * 100) / 100, tipo: "declarado", origen: "La persona" }],
+  };
 }

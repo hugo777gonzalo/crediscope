@@ -5,7 +5,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals } from "jsr:@std/assert@1";
-import { datosDeCapacidad, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 
@@ -137,4 +137,26 @@ Deno.test("el monto máximo es el más alto cuya cuota no pasa el tope", () => {
   assertAlmostEquals(monto, 10000, 0.1);
   assertEquals(montoMaximoParaCuota(0, condiciones), 0);
   assertEquals(montoMaximoParaCuota(100, { plazoMeses: 0, tasaNominalAnualPorcentaje: 15 }), null);
+});
+
+Deno.test("el Ingreso declarado reemplaza al del IESS, sin descontarle el aporte, y se rotula sin verificar", () => {
+  const iess = datosDeCapacidad(perfilDePrueba(), null);
+  const d = conIngresoDeclarado(iess, 2500);
+  assertEquals(d.ingresos, [{ concepto: "Ingreso declarado", montoMensual: 2500, tipo: "declarado", origen: "La persona" }]);
+  // Las cuotas y las deudas sin cuota no cambian.
+  assertEquals(d.obligaciones, iess.obligaciones);
+  assertEquals(d.deudasSinCuota, iess.deudasSinCuota);
+  const c = evaluarCapacidad({ ...d, cuotaNueva: 300 });
+  assertEquals(c.aportePersonal, 0);
+  assertEquals(c.ingresoNeto, 2500);
+  assertEquals(c.ingresoDeclarado, true);
+  // 40% de 2.500 = 1.000, menos los 145,35 de cooperativas.
+  assertEquals(c.cuotaMaximaAdmisible, 854.65);
+  assert(c.avisos.some((a) => a.includes("declara la persona")));
+});
+
+Deno.test("sin un Ingreso declarado válido, los datos quedan como estaban", () => {
+  const iess = datosDeCapacidad(perfilDePrueba(), null);
+  for (const monto of [null, undefined, 0, -100, Number.NaN]) assertEquals(conIngresoDeclarado(iess, monto), iess);
+  assertEquals(evaluarCapacidad({ ...iess, cuotaNueva: 100 }).ingresoDeclarado, false);
 });
