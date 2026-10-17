@@ -13,6 +13,7 @@ const PESTANAS = [
   ["perfil", "Perfil del Cliente"],
   ["analisis", "Análisis con IA"],
   ["ingresos", "Fuentes de Ingreso"],
+  ["capacidad", "Capacidad de pago"],
 ];
 
 export default function PestanasCliente({ cedula, activa }) {

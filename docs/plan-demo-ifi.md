@@ -231,6 +231,28 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
    y la tasa máxima por institución guardada en la base.
 3. **Solicitud como entidad y capacidad de pago** con ingreso confirmado y
    obligaciones conocidas. Lo que no se puede evaluar se dice.
+   **La capacidad de pago, hecha el 2026-10-17** (la solicitud como entidad
+   sigue pendiente: pide una tabla y una migración):
+   - `_shared/capacidad-de-pago.ts`: `datosDeCapacidad()` saca del perfil el
+     ingreso reportado al IESS (al sueldo se le descuenta el aporte personal de
+     9,45%) y las cuotas (con Equifax, las del titular por sistema; sin él, las
+     de cooperativas); la pensión alimenticia que paga es una cuota más; las
+     deudas sin cuota (casas comerciales, bancos sin buró, préstamo del IESS) se
+     listan aparte, nunca como cero. `evaluarCapacidad()` da el veredicto
+     (alcanza, justo, no alcanza, sin ingreso) y la cuota máxima;
+     `montoMaximoParaCuota()` (en el simulador) dice hasta cuánto le alcanza.
+   - **Cada módulo con su propia puerta** (pedido del negocio del 2026-10-17):
+     las funciones `simular-credito` y `capacidad-de-pago` se llaman solas, sin
+     pasar por la evaluación; en el contrato de la API son `POST /simulaciones` y
+     `POST /capacidades-de-pago`. La capacidad acepta una cédula (lee lo que ya
+     se sabe de la persona, sin consultar fuentes) o los datos de la institución.
+   - Pantalla Evaluación Crediticia › Capacidad de pago (`/capacidad/:cedula`),
+     también como pestaña de la persona.
+   - **Supuesto a confirmar**: la carga máxima de 40% del ingreso neto
+     (`PARAMETROS_CAPACIDAD`); el resultado es «justo» desde 5 puntos antes.
+     Cada institución pone la suya.
+   - Falta: que la carga máxima de cada institución viva en la base, y la
+     cuota de las casas comerciales (hoy se lista sin cuota).
 4. **Política configurable y orquestador de modalidades**, con la pantalla de la
    evaluación (Básico / Pro / Plus).
 5. **Predictor v0, explicable**: confirmado + cota por crédito otorgado +
