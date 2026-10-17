@@ -386,6 +386,19 @@ Romper cualquiera de estas rompe algo real.
     por sistema salen de `src/lib/equifaxPantalla.js`, que se prueba con
     `scripts/probar-formatos.mjs`. El PDF es la pantalla impresa
     (`@media print`) y queda en la auditoría (`exportacion.reporte_equifax`).
+  - **El botón para consultar** (`ConsultarEquifax.jsx`, 2026-10-17) es sólo
+    para administración (diseño aprobado el 16/10; la función `consultar-equifax`
+    exige admin también desde ese día) y la llama sólo cuando la persona no tiene
+    una consulta vigente, nunca de un clic: primero dice que se cobra y pide
+    confirmar. Lo gastado se ve en Costos › Equifax (`costoEquifax.js`, USD 0,40
+    por consulta, tarifa del negocio del 17/10). El
+    tope, la base legal (`BASE_LEGAL_EQUIFAX` en `api.js`) y la auditoría los
+    pone la función. No ofrece `forzar`. **Para probarlo sin pagar**: una cédula
+    con el dígito verificador mal (la función la rechaza antes de llamar a
+    Equifax) o una persona con consulta vigente (la función devuelve la guardada
+    sin escribir nada). **No adelantar el reloj de la página para ver una
+    consulta vencida**: la sesión supera las 12 horas y se cierra en todos los
+    dispositivos (pasó el 2026-10-17).
   - `_shared/equifax-client.ts`: el token (en memoria, nunca guardado) y
     la consulta, que se cobra.
   - `_shared/equifax-persistencia.ts`: el recorrido completo (proveedor,
@@ -720,8 +733,10 @@ antes de tocar esa área.
       doce meses; NovaCredit (dos grafías) no cuenta como entidad que evalúa a
       la persona. `protestos` viene siempre vacío: `null` (no medido), no cero.
     - `probar_conexion` desde las Edge Functions contesta ok (2026-10-13): el
-      token se pide bien desde Supabase. La consulta misma desde las funciones
-      no se probó (cobraría).
+      token se pide bien desde Supabase. Desde la pantalla (2026-10-17) la
+      función rechaza una cédula inválida y reutiliza una vigente; una consulta
+      PAGA desde las funciones todavía no se hizo (la primera, con una persona
+      que autorice el negocio).
   - Los parámetros de la decisión (producto 1, monto, plazo) son de
     relleno: sólo interesa lo que el buró trae de la persona.
   - La clave y el token no salen en ningún mensaje (`sanitizar()`); el

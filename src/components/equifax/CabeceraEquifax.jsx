@@ -4,8 +4,9 @@ import { alertasDeLaCabecera } from "../../lib/equifaxPantalla.js";
 
 // De quién es el reporte, de cuándo, hasta cuándo vale y lo grave, arriba y
 // a la vista. El botón del reporte en PDF también va acá: es lo que el
-// analista adjunta al expediente de la solicitud.
-export default function CabeceraEquifax({ cedula, estructura, ambiente, consultadoEl, vigencia, onReporte, imprimiendo }) {
+// analista adjunta al expediente de la solicitud. `consultar` es el botón de
+// volver a consultar, que la página pasa sólo cuando la consulta venció.
+export default function CabeceraEquifax({ cedula, estructura, ambiente, consultadoEl, vigencia, onReporte, imprimiendo, consultar = null }) {
   const alertas = alertasDeLaCabecera(estructura);
   return (
     <div className="crediscope-card crediscope-equifax-cabecera">
@@ -46,10 +47,13 @@ export default function CabeceraEquifax({ cedula, estructura, ambiente, consulta
           </div>
         ) : null}
       </div>
-      <button type="button" className="crediscope-btn crediscope-no-imprimir" onClick={onReporte} disabled={imprimiendo}>
-        <FileDown size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} aria-hidden="true" />
-        {imprimiendo ? "Preparando el reporte..." : "Descargar reporte (PDF)"}
-      </button>
+      <div className="crediscope-equifax-acciones crediscope-no-imprimir">
+        {consultar}
+        <button type="button" className="crediscope-btn" onClick={onReporte} disabled={imprimiendo}>
+          <FileDown size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} aria-hidden="true" />
+          {imprimiendo ? "Preparando el reporte..." : "Descargar reporte (PDF)"}
+        </button>
+      </div>
     </div>
   );
 }

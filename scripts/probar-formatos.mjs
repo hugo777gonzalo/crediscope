@@ -1,7 +1,7 @@
 // Prueba lo que decide cómo se escribe y dónde se ubica una pantalla, sin
 // navegador, sin base y sin datos de personas: formatos.js, mensajesDeError.js,
-// navegacion.js, destinoDeIngreso.js y equifaxPantalla.js (todos de src/lib, sin
-// React).
+// navegacion.js, destinoDeIngreso.js, equifaxPantalla.js y costoEquifax.js (todos
+// de src/lib, sin React).
 //
 // Cada caso sale de un defecto real de la revisión de UX del 2026-10-10
 // (docs/revision-ux.md): "2812" donde otra pantalla decía "2.812", "37.0 s",
@@ -186,6 +186,26 @@ igual("destino: al ingresar se vuelve a recordar", (D.olvidarSalidaAProposito(),
   igual("equifax: «ESTA EN MORA 60»", E.estadoDeCarteraLegible("ESTA EN MORA 60"), "En mora de hasta 60 días");
   igual("equifax: «CART. CASTIGADA»", E.estadoDeCarteraLegible("CART. CASTIGADA"), "Cartera castigada");
   igual("equifax: un estado desconocido, como oración", E.estadoDeCarteraLegible("ALGO NUEVO"), "Algo nuevo");
+}
+
+// ---- Equifax: el gasto por mes de Costos (costoEquifax.js)
+{
+  const C = await cargar("src/lib/costoEquifax.js");
+  const consultas = [
+    { created_at: "2026-10-16T15:00:00Z", ambiente: "produccion" },
+    { created_at: "2026-10-12T15:00:00Z", ambiente: "produccion" },
+    // 20:30 del 30/09 en Ecuador: en UTC ya es octubre, pero es septiembre.
+    { created_at: "2026-10-01T01:30:00Z", ambiente: "produccion" },
+    { created_at: "2026-09-10T15:00:00Z", ambiente: "prueba" },
+  ];
+  const dudosas = [{ created_at: "2026-10-16T16:00:00Z" }];
+  const meses = C.gastoEquifaxPorMes(consultas, dudosas, 0.4);
+  igual("costo equifax: del mes más reciente al más viejo", meses.map((m) => m.mes), ["2026-10", "2026-09"]);
+  igual("costo equifax: el mes es el de Ecuador", meses[1].pagadas, 1);
+  igual("costo equifax: lo que pudo cobrarse va aparte", [meses[0].pagadas, meses[0].dudosas], [2, 1]);
+  igual("costo equifax: el gasto seguro no suma lo dudoso", Math.round(meses[0].gastoUsd * 100), 80);
+  igual("costo equifax: el máximo sí", Math.round(meses[0].gastoMaximoUsd * 100), 120);
+  igual("costo equifax: el ambiente de prueba no se cobra como producción", [meses[1].dePrueba, Math.round(meses[1].gastoUsd * 100)], [1, 40]);
 }
 
 console.log(fallas ? `\n${fallas} FALLAS` : "\nTodo cuadra.");

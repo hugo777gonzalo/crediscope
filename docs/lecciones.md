@@ -693,3 +693,10 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
     entera contra el rol codeudor coincidía en 60 de 62: las 2 que no son las
     únicas con tipo `GARANTE` en la lista. Por tipo, codeudor 62 de 62; los
     garantes no coinciden en ninguna de las 6 personas que tienen alguno.
+  - **Adelantar el reloj de la página cierra la sesión en todos lados**
+    (2026-10-17). Para ver el botón de una consulta vencida sin esperar al 18,
+    se reemplazó `Date` en el navegador de QA por uno dos días adelante: la
+    caducidad de la sesión (12 horas, `caducidadSesion.js`) la dio por vencida y
+    llamó a `signOut()`, que en Supabase cierra por defecto todas las sesiones
+    de la cuenta. Para probar un estado que depende de la fecha: datos que ya
+    estén en ese estado o una prueba en Node, no el reloj de la página.

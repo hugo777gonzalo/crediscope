@@ -6,9 +6,10 @@ import { estaVigenteHastaElCorte, finDeLaVigencia } from "../../supabase/functio
 import { formatearFecha, formatearFechaHora } from "../lib/fechas.js";
 import { franjaDePagos } from "../lib/equifaxPantalla.js";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
-import { useProfile } from "../lib/useProfile.js";
+import { useProfile, esAdmin } from "../lib/useProfile.js";
 import PestanasCliente from "../components/PestanasCliente.jsx";
 import CabeceraEquifax from "../components/equifax/CabeceraEquifax.jsx";
+import ConsultarEquifax from "../components/equifax/ConsultarEquifax.jsx";
 import IndicadoresEquifax from "../components/equifax/IndicadoresEquifax.jsx";
 import DeudaPorSistema from "../components/equifax/DeudaPorSistema.jsx";
 import FranjaDePagos from "../components/equifax/FranjaDePagos.jsx";
@@ -27,13 +28,17 @@ import Aviso from "../components/ui/Aviso.jsx";
 // Arriba lo que decide (de cuándo es, lo grave, cuatro números, la deuda por
 // sistema y cómo pagó mes a mes); después las operaciones; el resto, plegado.
 //
-// Sólo lee lo guardado: no hay botón para consultar a Equifax. Cada consulta
-// se cobra y su proveedor no pone tope (negocio, 2026-10-12); hoy se consulta
-// a mano, por persona (A5), desde administración.
+// Lee lo guardado. El botón para consultar (pedido del negocio, 2026-10-17)
+// es sólo para administración y sólo cuando la persona no tiene una consulta
+// vigente, como decía el diseño aprobado el 2026-10-16 (A5: consulta a mano,
+// por persona). Pide confirmar porque cada consulta se cobra y su proveedor no
+// pone tope (negocio, 2026-10-12). La función exige lo mismo (admin), así que
+// un analista tampoco puede consultar llamándola directamente.
 
 export default function PerfilEquifax() {
   const { cedula } = useParams();
   const { profile } = useProfile();
+  const admin = esAdmin(profile);
   const [consulta, setConsulta] = useState(null);
   const [operaciones, setOperaciones] = useState([]);
   const [historia, setHistoria] = useState([]);
@@ -41,6 +46,7 @@ export default function PerfilEquifax() {
   const [error, setError] = useState(null);
   const [reporteAbierto, setReporteAbierto] = useState(false);
   const [imprimiendo, setImprimiendo] = useState(false);
+  const [recienConsultada, setRecienConsultada] = useState(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -69,7 +75,15 @@ export default function PerfilEquifax() {
 
   useEffect(() => {
     setUltimaCedula(cedula);
+    setRecienConsultada(null);
   }, [cedula]);
+
+  // La función devuelve un resumen; lo que se muestra se vuelve a leer de lo
+  // guardado, igual que al entrar a la pestaña.
+  function alConsultar(resumen) {
+    setRecienConsultada(resumen);
+    cargar();
+  }
 
   // El PDF es la pantalla impresa con todo abierto: las operaciones completas
   // y el reporte entero. Se imprime cuando ya está dibujado así.
@@ -124,15 +138,32 @@ export default function PerfilEquifax() {
 
       {error ? <AvisoDeError error={error} alReintentar={cargar} /> : null}
 
+      {recienConsultada && !cargando ? (
+        <div className="crediscope-no-imprimir">
+          <Aviso tipo={recienConsultada.reutilizada ? "informacion" : "exito"}>
+            <p>
+              {recienConsultada.reutilizada
+                ? "Esta persona ya tenía una consulta vigente: se usa esa, sin volver a pagar."
+                : `Consulta a Equifax hecha y guardada. Vale hasta el ${formatearFecha(recienConsultada.vigente_hasta)}.`}
+            </p>
+          </Aviso>
+        </div>
+      ) : null}
+
       {cargando ? (
         <Cargando />
       ) : !consulta ? (
         error ? null : (
           <Aviso tipo="informacion" titulo="Esta persona no tiene consulta a Equifax.">
             <p className="crediscope-muted">
-              Cada consulta a Equifax se cobra, así que no se hace sola. Si hace falta para esta solicitud, pedila a
-              administración.
+              Cada consulta a Equifax se cobra, así que no se hace sola: se pide cuando la solicitud la necesita
+              {admin ? "." : ", a administración."}
             </p>
+            {admin ? (
+              <div className="crediscope-equifax-sin-consulta">
+                <ConsultarEquifax cedula={cedula} hayConsulta={false} alTerminar={alConsultar} />
+              </div>
+            ) : null}
           </Aviso>
         )
       ) : (
@@ -145,6 +176,7 @@ export default function PerfilEquifax() {
             vigencia={vigencia}
             onReporte={descargarReporte}
             imprimiendo={imprimiendo}
+            consultar={admin && !vigente ? <ConsultarEquifax cedula={cedula} hayConsulta alTerminar={alConsultar} /> : null}
           />
 
           {estructura ? (

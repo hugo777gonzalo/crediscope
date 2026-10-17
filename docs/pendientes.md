@@ -25,9 +25,11 @@ aceptada.
 
 ## 1. Para retomar primero
 
-- **Equifax (al 2026-10-16): en producción, con 62 consultas hechas y sus tablas y
-  su estructura cargadas y verificadas. Cada consulta se cobra y su proveedor no
-  pone tope: nada que consulte se corre sin autorización explícita del negocio.**
+- **Equifax (al 2026-10-17): en producción, con 62 consultas hechas y sus tablas y
+  su estructura cargadas y verificadas, la pestaña con su PDF y, desde el
+  2026-10-17, el botón para consultar desde la pantalla. Cada consulta se cobra y
+  su proveedor no pone tope: nada que consulte se corre sin autorización explícita
+  del negocio, y el botón pide confirmar cada una.**
   - **Lote del 2026-10-16** (40 personas, autorizado por el negocio): personas
     reales sin consulta previa y con la historia crediticia más larga en su último
     perfil de Novadata, con 11 o 12 operaciones cada una. 17 tienen cooperativas,
@@ -62,12 +64,14 @@ aceptada.
       ni las pantallas lo leen. El resumen concilia en bancos 62 de 62,
       cooperativas 60 de 62 y comercial 49 de 62.
     - En total, `equifax_operaciones` tiene 1.154 filas.
-  - Qué hay: el conector desplegado (7 de 7 funciones, sello `7360d78b3096`), la
-    tabla `consultas_equifax` (122) con 22 filas (2 de prueba y 20 de un lote:
-    todas HTTP 200 y de la persona pedida), el guion local que simula por
-    defecto, la exportación a Excel, el inventario y la conciliación de las
-    respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El consumo del
-    2026-10-12 fue de 22 de 30; el tope diario es `EQUIFAX_TOPE_DIARIO`.
+  - Qué hay: la función `consultar-equifax` desplegada (las 7 funciones, sello
+    `db358647b36f` del 2026-10-16; lo que cambió después en su código son
+    comentarios), la tabla `consultas_equifax` (122) con 62 filas (2 pedidas una
+    por una y 60 de dos lotes, todas de producción y de la persona pedida), el
+    guion local que simula por defecto, la exportación a Excel, el inventario y la
+    conciliación de las respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El
+    tope diario es `EQUIFAX_TOPE_DIARIO` (30); los lotes del 12/10 y del 16/10
+    usaron 22 y 40 (este último, con el tope subido sólo para esa corrida).
   - **Tablas y estructura (126, aplicada el 2026-10-13, aprobadas por el negocio:
     «ok»):** 11 tablas `equifax_*` con 17.293 filas de las 22 consultas,
     `equifax-tablas-v1` y `equifax-estructura-v1`, la derivación al guardar cada
@@ -81,13 +85,12 @@ aceptada.
     titular de las tablas es la de la estructura en las 22. El control de seguridad
     (`auditar-seguridad.mjs`) da 68 puntos en OK, con las tablas nuevas.
   - **`probar_conexion` desde las Edge Functions: ok** (2026-10-13, 544 ms, con
-    la sesión de admin del negocio en el panel local). Equifax deja pasar a las
-    funciones para pedir el token; la consulta misma desde las funciones no se
-    probó porque cobra. Hoy se sigue consultando desde la máquina con IP de
-    Ecuador.
-  - Las 62 consultas valen hasta el 17 de octubre: el 18 a las 00:00 de
-    Ecuador caducan y volver a consultar a esas personas se cobra. Las tablas ya
-    están cargadas; no hace falta volver a pagar para tener la estructura.
+    la sesión de admin del negocio en el panel local): Equifax deja pasar a las
+    funciones para pedir el token. **Desde la pantalla (2026-10-17), sin costo:**
+    una cédula inválida se rechaza antes de llamar a Equifax, y una persona con
+    consulta vigente recibe la guardada (`reutilizada`, la misma consulta, 0
+    consultas nuevas en el día). **Una consulta paga desde las funciones todavía
+    no se hizo nunca**: la primera la autoriza el negocio (ver el punto 5).
   - **El negocio contestó el bloque A y la F1 del cuestionario (2026-10-13)** y
     cambió el rumbo: **un solo buró por IFI** (no hay orden entre Equifax y Aval),
     la deuda del sistema financiero de Novadata se apaga cuando hay buró, con una
@@ -200,9 +203,28 @@ aceptada.
          A4 (186 mm), nada se recorta, el menú y los botones no salen y son unas
          5 hojas. **Falta imprimir una vez desde el diálogo del navegador**: el
          panel de pruebas no lo abre (la impresión se reemplazó por una marca).
-       - **¿Botón para consultar a Equifax desde la pestaña?** Hoy no hay: cada
-         consulta se cobra, se hace a mano (A5) y la consulta desde las Edge
-         Functions nunca se probó (cobraría). Lo decide el negocio.
+       - **El botón para consultar a Equifax: construido el 2026-10-17** (el
+         negocio lo pidió ese día; `ConsultarEquifax.jsx`). Como en el diseño
+         aprobado el 16/10, es **sólo para administración** y aparece sólo sin
+         consulta vigente: «Consultar a Equifax» cuando no hay ninguna y «Volver
+         a consultar a Equifax» en la cabecera cuando venció. Un analista ve
+         «pedila a administración», y la función también exige admin desde el
+         17/10 (antes aceptaba a un analista, que podía saltar el botón llamándola
+         directamente; el negocio: «haz lo mejor»). Nunca consulta de
+         un clic: un cuadro dice que se cobra, hasta cuándo valdrá, si es el
+         último día del ciclo y cuántas van hoy, y pide «Sí, consultar». La
+         función pone el resto: sesión de analista o admin, tope diario, base
+         legal (la del contrato con la institución, como en los lotes) y
+         auditoría. No ofrece volver a pagar una vigente (`forzar`, sólo admin).
+         Probado sin costo: el cuadro, el error de una cédula inválida y la
+         reutilización (ver arriba). **Falta la primera consulta paga desde el
+         botón**, con una persona que el negocio autorice: es también la
+         primera consulta paga desde las Edge Functions.
+       - **Costos › Equifax** (2026-10-17): consultas pagadas por mes a USD 0,40
+         (tarifa que dio el negocio ese día; constante en `src/lib/costoEquifax.js`,
+         sin historia: si cambia, valúa también lo de antes) y, aparte, las que
+         pudieron cobrarse (fallos con el pedido ya enviado). Hoy: 62 consultas,
+         USD 24,80, todas de octubre.
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,
