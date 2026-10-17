@@ -4,11 +4,12 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**127** (2026-10-16; la 128 de marco-v29 espera el PR #25). Las funciones
-desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
+**130** (2026-10-16, marco-v30). Las funciones desplegadas llevan el sello
+`db358647b36f` (2026-10-16, 7 de 7);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son
-marco-v28 con Claude Sonnet 5.5 (desde el 2026-10-03), estructura-v13,
+marco-v30 (desde el 2026-10-16) con Claude Sonnet 5.5 (desde el
+2026-10-03), estructura-v13,
 fuentes-v10 y perfil-laboral-v3. Cada punto dice qué falta, por qué importa
 y cómo se verifica.
 
@@ -402,32 +403,29 @@ aceptada.
     - las 240 sintéticas fuera de los totales;
     - migraciones 117 a 119, y la 120 el 2026-10-10 (la franja de la
       bandeja sin sintéticas).
-  - `auditar-seguridad.mjs`: 68 controles en OK al 2026-10-13.
+  - `auditar-seguridad.mjs`: 69 controles en OK al 2026-10-16.
   - Queda, por orden:
-  1. **E27, urgente: lo que lee el modelo.** marco-v29 **desplegada el
-     2026-10-16** (PR #25, 128, funciones 684b243): sin cédula, sin nombre,
-     sin empleadores (cada empleo con su tipo), sin la institución de una PEP
-     ni la del título, los números de 10+ dígitos tapados y todo número
-     entero. **marco-v30** (130, mismo día, pedido del negocio): cada empleo y
-     cada aporte llevan esSuPropioPatrono y posibleNegocioFamiliar, calculados
-     con el nombre antes de borrarlo (con v29, en 9 de 72 personas con la
-     marca de familiar no se sabía cuál de sus empleos era). Validadas sin el
-     modelo sobre los 2.813 perfiles (`validar-perfil-del-modelo.mjs`: 0
-     fallas). Falta, por orden:
-     - `auditar-seguridad.mjs` («El último mensaje al modelo...») en OK, que
-       pide un análisis con v29 o v30;
-     - **los atributos protegidos**: bloque B del cuestionario
-       (`research/decisiones/`), sin contestar. Se sacan pasando cada uno a
-       `false` en `ATRIBUTOS_PROTEGIDOS` (`perfil-del-modelo.ts`): versión
-       nueva del marco y su fila;
-     - con el control en OK: corregir los siete documentos
-       (`docs/cumplimiento/` y el informe de la auditoría de seguridad) y
-       **la ficha de seguridad para clientes, que no se comparte hasta
-       entonces**. Decir qué atributos siguen llegando.
-     - La comparación grande de 14 casos contra v28
-       (`research/cedulas_validacion_marco_v29.txt`, `--hoy-de-la-base`) queda
-       disponible pero no se corrió: el negocio prefirió 5 análisis reales con
-       v30 en lote, que se ven en la app como uno de la pantalla.
+  1. **E27: los atributos protegidos que todavía lee el modelo.** Lo de los
+     identificadores está hecho: marco-v29 y v30 (128 y 130, funciones
+     db35864, desplegadas el 2026-10-16) sacan la cédula, el nombre y los
+     empleadores. El control de `auditar-seguridad.mjs` («El último mensaje al
+     modelo...») da OK sobre un análisis de v30 (69 de 69). Los siete
+     documentos y la ficha de seguridad para clientes se corrigieron el
+     2026-10-16 y dicen qué sale y qué sigue llegando. Falta:
+     - **El bloque B del cuestionario** (`research/decisiones/`), sin
+       contestar: el negocio decide con legal cuáles de los atributos
+       protegidos siguen. Hoy llegan los 16 de `ATRIBUTOS_PROTEGIDOS`
+       (`perfil-del-modelo.ts`): género, estado civil, cónyuge (si tiene, su
+       edad, los años de casado), edad, provincia y cantón de nacimiento, país
+       de origen y sus códigos, si es extranjero, hijos (cuántos, si tiene, si
+       hay uno menor de edad) y padres fallecidos. Medido el 2026-10-16: los 5
+       análisis de v30 los llevan todos.
+     - Sacar uno es pasarlo a `false`: versión nueva del marco con su fila en
+       `scoring_rules_versions`, y el control lo suma solo. Después, volver a
+       corregir lo que dicen los documentos y la ficha.
+     - La comparación de 14 casos contra v28
+       (`research/cedulas_validacion_marco_v29.txt`, `--hoy-de-la-base`) es
+       opcional: el negocio prefirió ver 5 análisis reales con v30.
   2. **Probar con sesión real:** analizar dos veces a la misma persona. La
      segunda fila de `analysis_results` tiene que traer
      `reutiliza_analisis_id` y `duracion_llm_ms` nulo.
