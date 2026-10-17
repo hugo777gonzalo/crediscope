@@ -45,10 +45,10 @@ export interface ParametrosProducto {
   desgravamen: ParametrosDesgravamen;
 }
 
-// Decisión del negocio del 2026-10-17. La periodicidad y la base del 0,6% son
-// un supuesto (anual, sobre el saldo) hasta tener el tarifario de una
-// institución: 0,6% mensual sería 7,2% al año, más que cualquier seguro de
-// desgravamen de consumo.
+// Decisión del negocio del 2026-10-17: el 0,6% es anual (confirmado ese día;
+// mensual sería 7,2% al año, más que cualquier seguro de desgravamen de
+// consumo). Que se cobre sobre el saldo es lo usual en consumo; cada
+// institución puede cobrarlo sobre el monto.
 export const PRODUCTO_CONSUMO: ParametrosProducto = {
   tasaNominalMaximaPorcentaje: 15,
   sistema: "frances",
