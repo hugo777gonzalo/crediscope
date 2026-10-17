@@ -134,11 +134,28 @@ aceptada.
        - **Encenderlo** cuando el negocio lo decida: `ESQUEMA_MINIMO` en 131,
          `buroDeLaInstitucion: true`, desplegar con
          `--funciones` y una llamada suelta de comprobación.
-       - **La capa 2 en SQL**: `resumen_por_persona` (la marca «D o E» de la
-         bandeja y Monitoreo) y la definición de impago del Laboratorio («bancos D
-         o E») siguen con la calificación de Novadata; pasan a días de mora para
-         quien tenga buró con sus migraciones
-         (`docs/propuesta-buro-de-la-institucion.md`, sección 7, paso 3).
+       - **La capa 2 en SQL: la 132, aplicada el 2026-10-17 con el corredor**
+         (PR #34; el negocio aprobó lo recomendado en la sección 4 de
+         `docs/propuesta-dias-de-mora-con-buro.md`). Con una consulta vigente del
+         buró, las marcas de Monitoreo salen de Equifax: «D o E» es más de 90 días
+         en bancos y «Mora», el monto en atraso; la marca se llama ahora «Más de
+         90 días de mora en bancos (D o E)». No toca funciones: no hubo que subir
+         `ESQUEMA_MINIMO` ni desplegar. **Medido después de aplicarla**
+         (`node scripts/medir-dias-de-mora-con-buro.mjs`): 62 personas con las
+         marcas del buró y «Monitoreo distinto de Equifax en las vigentes» en 0
+         en las dos marcas; Monitoreo da 50 en «D o E» (igual que antes) y 102 en
+         «Mora» (103 antes: una persona en la que Equifax, días después que
+         Novadata, ve días de mora de 30 o menos, sin monto). El control de
+         seguridad da 68 de 69. La que falla es la comparación con la carpeta
+         principal, que tenía su `main` en la 130: la base está en la 132. **Las
+         62 consultas caducan el 18/10 a las 00:00**: la reconstrucción de las
+         00:10 las devuelve a Novadata. Falta:
+         - **El resultado del Laboratorio por el buró** (decisión 5a): la
+           definición de impago no cambia (ya juzga por días a la operación que
+           trae días). Lo que falta es traer el resultado de Equifax en el t1, con
+           una consulta paga por solicitud y contando por mes desde la historia
+           de 24 meses (la propuesta, sección 3). Se construye con la primera
+           carga real de una institución con buró; hoy no hay ninguna.
        - `comparar-razonamiento.mjs` no lee el buró: se niega a correr con el
          interruptor encendido hasta que se le sume.
     3. **El ajuste al marco interpretativo: hecho, en el mismo `marco-v31`** (el

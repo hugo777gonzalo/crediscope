@@ -5,7 +5,10 @@
 //
 // Una sola implementación para analyze-client y scripts/analizar-en-lote.mjs:
 // dos copias de "cuál es la consulta vigente" es como un análisis en lote lee
-// otro buró que el de la pantalla.
+// otro buró que el de la pantalla. La base tiene la suya porque no puede
+// importar esto: buro_vigente_de_la_persona() (132), con la que
+// resumen_por_persona lee las marcas de Monitoreo. Si cambia la regla, cambian
+// las dos.
 //
 // No consulta a Equifax: lee lo que ya está guardado (A5 del cuestionario,
 // 2026-10-13: se consulta a mano, por persona, y cada consulta se cobra).

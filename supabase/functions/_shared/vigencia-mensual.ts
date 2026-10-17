@@ -1,6 +1,9 @@
 // Vigencia de una consulta a un buró que se cobra por consulta y publica su
 // información un día fijo de cada mes. Una sola implementación para Aval y
-// Equifax: copiarla es como aparecen las diferencias silenciosas.
+// Equifax: copiarla es como aparecen las diferencias silenciosas. La única
+// copia es la de SQL, porque la base no puede importar esto:
+// corte_vigente_mensual() (132), que comprueba al crearse que da lo mismo en
+// las fechas de vigencia-mensual.test.ts. Si cambia una, cambia la otra.
 //
 // La regla (decisión del negocio): una consulta vale hasta el día anterior al
 // corte, y EL DÍA DE CORTE CADUCA TODO POR IGUAL, sin importar qué día se

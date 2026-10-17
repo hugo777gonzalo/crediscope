@@ -526,11 +526,22 @@ antes de tocar esa área.
   - La escribe sólo `refrescar_resumen_por_persona()`: una regla nueva de
     esas pantallas va ahí, no en la vista ni en la función del tablero.
   - La llaman disparadores por sentencia en `client_profiles`,
-    `analysis_results` y `clients`. Al insertar o actualizar, un fallo no
-    frena la consulta (queda un aviso); al borrar sí, porque borrar es la
-    supresión de un titular.
+    `analysis_results`, `clients` y `consultas_equifax`, y `proveedores` al
+    cambiar el buró (132). Al insertar o actualizar, un fallo no frena la
+    consulta (queda un aviso); al borrar sí, porque borrar es la supresión de
+    un titular.
   - Cada noche la reconstruye `reconstruir_resumen_por_persona()` (pg_cron
     `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
+    También devuelve a Novadata a quien se le venció la consulta del buró el
+    18 a las 00:00: la vigencia vence sin que nada cambie en la base.
+  - **Con una consulta vigente del buró de la institución (132), las marcas
+    de Monitoreo salen del buró**: `calificacion_baja` es más de 90 días en
+    bancos (D empieza a los 91) y `tiene_mora`, el monto en atraso de bancos y
+    cooperativas; `consulta_buro_id` dice de qué consulta salieron. La regla
+    de la consulta vigente es `buro_vigente_de_la_persona()`, la copia en SQL
+    de `_shared/buro-de-la-institucion.ts`; si cambia una, cambia la otra.
+    `docs/propuesta-dias-de-mora-con-buro.md`; se mide con
+    `node scripts/medir-dias-de-mora-con-buro.mjs`.
   - Medido el 2026-10-12: la primera página de la bandeja, de 570 ms a 6 ms;
     Monitoreo, de 1,3 s a 126 ms; Fuentes de ingreso, de 1,4 s a 179 ms.
 - **El centro de datos suma `consultas_por_dia_y_fuente`** (125), por día de
