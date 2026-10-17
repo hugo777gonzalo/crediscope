@@ -17,7 +17,7 @@ cuentan lo mismo y dicen cosas distintas.
 | `/analisis/:cedula` | `AnalisisIA.jsx` | todos | Análisis con IA: score, recomendación, puntos positivos/negativos; botones Analizar / Reconsultar y analizar | Expediente › Qué dijo el modelo |
 | `/ingresos/:cedula` | `IngresosCliente.jsx` | todos | Fuentes de Ingreso de la persona: segmento, estabilidad, fuentes vigentes, indicios | Expediente › Con qué paga; Panorama (mismo vocabulario) |
 | `/aval/:cedula` | `PerfilAval.jsx` | todos | Reporte de la fuente Aval (buró). **No está en el Expediente** | — |
-| `/equifax/:cedula` | `PerfilEquifax.jsx`, `components/equifax/`, `lib/equifaxPantalla.js` | todos | Reporte de Equifax (buró): Score de Equifax, deuda por sistema, 24 meses de pagos, operaciones; el resto plegado; «Descargar reporte (PDF)» imprime la pantalla. **No está en el Expediente** (F1). La pestaña aparece cuando el buró de la institución es Equifax | Aval |
+| `/equifax/:cedula` | `PerfilEquifax.jsx`, `components/equifax/`, `lib/equifaxPantalla.js` | todos | Reporte de Equifax (buró): Score de Equifax, deuda por sistema, 24 meses de pagos, operaciones; el resto plegado; «Descargar reporte (PDF)» imprime la pantalla; «Consultar a Equifax» (sólo admin, sin consulta vigente, con confirmación porque se cobra; `ConsultarEquifax.jsx`). **No está en el Expediente** (F1). La pestaña aparece cuando el buró de la institución es Equifax | Aval |
 | `/buro/:cedula` | `BuroDeLaPersona.jsx` | todos | «Buró» del menú: lleva a la pestaña del buró de la institución (129), o dice que no hay uno elegido | — |
 
 Las cuatro llevan la tira de pestañas `PestanasCliente.jsx` (la cédula es la del último
@@ -68,6 +68,7 @@ Siete pantallas sobre `llm_costos`. Regla del módulo: **una llamada sin medir v
 | `/costos/corridas` | `CostosCorridas.jsx` | Corridas masivas (acciones que disparan muchas llamadas) |
 | `/costos/llamadas` | `CostosLlamadas.jsx` | Detalle de cada llamada (con descarga CSV) |
 | `/costos/incidentes` | `CostosIncidentes.jsx` | Estado ahora, incidentes, causas, quién responde |
+| `/costos/equifax` | `CostosEquifax.jsx`, `lib/costoEquifax.js` | Lo que se le paga a Equifax: consultas pagadas por mes a USD 0,40 (tarifa del 17/10/2026, constante en `costoEquifax.js`) y, aparte, las que pudieron cobrarse |
 | `/costos/avisos` | `CostosAvisos.jsx` | Canal de avisos, presupuesto mensual, avisos emitidos |
 | `/costos/tarifas` | `CostosTarifas.jsx` | Tarifas por modelo y por millón de tokens |
 

@@ -5,15 +5,18 @@
 //   que comparte con scripts/consultar-equifax-local.mjs: una sola
 //   implementación.
 //
-// Requiere sesión de analista o admin, que se verifica ANTES de leer el
-// cuerpo (el portón de Supabase deja pasar la clave pública, que va en la
-// página). El responsable de la consulta sale de la sesión, nunca del cuerpo.
+// Requiere sesión de ADMIN, que se verifica ANTES de leer el cuerpo (el
+// portón de Supabase deja pasar la clave pública, que va en la página). El
+// responsable de la consulta sale de la sesión, nunca del cuerpo. Hasta el
+// 2026-10-17 bastaba ser analista: el botón de la pantalla es sólo de
+// administración (diseño aprobado el 2026-10-16) y un analista podía saltarlo
+// llamando a la función directamente, con una consulta que se cobra.
 //
 // Body: { "identificacion": "0102030405", "baseLegal": "...", "forzar": false }
 //   - baseLegal: bajo qué contrato se consulta a esta persona; queda en la
 //     auditoría de cada consulta. Obligatoria (10 caracteres o más).
-//   - forzar: salta la reutilización y vuelve a pagar. Sólo admin.
-//   - { "accion": "probar_conexion" } (sólo admin): pide un token y nada más.
+//   - forzar: salta la reutilización y vuelve a pagar.
+//   - { "accion": "probar_conexion" }: pide un token y nada más.
 //     No consulta a nadie y no cuesta; sirve para saber si Equifax deja pasar
 //     a las Edge Functions (con Aval, el WAF rechazó su IP de salida).
 //
@@ -48,7 +51,7 @@ Deno.serve(async (req) => {
     serviceClient,
     createClient,
   );
-  const rechazo = exigirRol(actor, ["analista", "admin"], corsHeaders);
+  const rechazo = exigirRol(actor, ["admin"], corsHeaders);
   if (rechazo) return rechazo;
 
   const sinEsquema = await exigirEsquema(serviceClient, corsHeaders);
@@ -62,8 +65,6 @@ Deno.serve(async (req) => {
   }
 
   if (cuerpo?.accion === "probar_conexion") {
-    const admin = exigirRol(actor, ["admin"], corsHeaders);
-    if (admin) return admin;
     const prueba = await probarConexion();
     return responder({ ...prueba, accion: "probar_conexion" }, prueba.ok ? 200 : 502);
   }
@@ -78,10 +79,6 @@ Deno.serve(async (req) => {
 
   // forzar vuelve a pagar una consulta que ya estaba pagada y vigente.
   const forzar = cuerpo?.forzar === true;
-  if (forzar) {
-    const admin = exigirRol(actor, ["admin"], corsHeaders);
-    if (admin) return admin;
-  }
 
   // La misma validación que Novadata y Aval: un RUC de persona natural se
   // reduce a su cédula, y lo que no es persona natural se rechaza antes de

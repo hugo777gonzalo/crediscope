@@ -236,6 +236,62 @@ export async function getUltimaConsultaEquifax(cedula) {
   return data;
 }
 
+// Bajo qué contrato se consulta a la persona: la función la exige y queda en
+// la auditoría de cada consulta. La autorización de cada titular la garantiza
+// la institución por contrato (CrediScope es su encargado), como en el lote
+// del 2026-10-16; acá dice además que la pidió un analista desde la pantalla.
+const BASE_LEGAL_EQUIFAX =
+  "Contrato con la institución: autorización del titular garantizada por la IFI; consulta de buró Equifax para calificación crediticia, pedida desde la pantalla";
+
+// Llama a la Edge Function `consultar-equifax`. SE COBRA, salvo que la persona
+// tenga una consulta vigente (hasta el 17 de cada mes): entonces la función
+// devuelve esa sin volver a pagar. Nunca pasa `forzar` (volver a pagar una
+// vigente es sólo de admin y la pantalla no lo ofrece). Devuelve el resumen
+// de la función (id, reutilizada, vigente_hasta, tablas_hechas), no el crudo.
+export async function consultarEquifax(cedula) {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase no está configurado.");
+  }
+  const { data, error } = await supabase.functions.invoke("consultar-equifax", {
+    body: { identificacion: cedula, baseLegal: BASE_LEGAL_EQUIFAX },
+  });
+  if (error) throw await errorDeFuncion(error);
+  return data;
+}
+
+// Cuántas consultas a Equifax quedaron guardadas hoy (día de Ecuador). Es lo
+// que se le muestra a quien está por pagar una: el tope diario de la función
+// cuenta además los fallos que pudieron cobrarse, que esta lectura no ve.
+export async function contarConsultasEquifaxDeHoy() {
+  const { count, error } = await supabase
+    .from("consultas_equifax")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", inicioDelDia(diaEcuador(new Date())));
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Lo que se le pagó (o pudo pagársele) a Equifax, para Costos › Equifax: las
+// consultas guardadas (sólo la fecha y el ambiente, nunca la persona) y los
+// fallos que pudieron cobrarse. El cálculo, en costoEquifax.js.
+export async function getConsumoEquifax() {
+  const [consultas, dudosas] = await Promise.all([
+    traerTodas((opciones) =>
+      supabase.from("consultas_equifax").select("id, created_at, ambiente", opciones).order("created_at").order("id"),
+    ),
+    traerTodas((opciones) =>
+      supabase
+        .from("audit_log")
+        .select("id, created_at", opciones)
+        .eq("action", "equifax.consulta.fallo")
+        .filter("meta->>puede_haber_cobrado", "eq", "true")
+        .order("created_at")
+        .order("id"),
+    ),
+  ]);
+  return { consultas: consultas.filas, dudosas: dudosas.filas };
+}
+
 // Las operaciones de hoy de una consulta (de 9 a 43 en las 62 primeras).
 export async function getOperacionesEquifax(consultaId) {
   const { data, error } = await supabase

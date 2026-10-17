@@ -64,6 +64,7 @@ const CostosLlamadas = lazy(() => import("./pages/CostosLlamadas.jsx"));
 const CostosIncidentes = lazy(() => import("./pages/CostosIncidentes.jsx"));
 const CostosAvisos = lazy(() => import("./pages/CostosAvisos.jsx"));
 const CostosTarifas = lazy(() => import("./pages/CostosTarifas.jsx"));
+const CostosEquifax = lazy(() => import("./pages/CostosEquifax.jsx"));
 const NoEncontrada = lazy(() => import("./pages/NoEncontrada.jsx"));
 
 // Explorador de Fuentes y Configuración son solo para admin -- ocultar
@@ -243,6 +244,7 @@ export default function App() {
           <Route path="/costos/incidentes" element={<RequireAdmin><CostosIncidentes /></RequireAdmin>} />
           <Route path="/costos/avisos" element={<RequireAdmin><CostosAvisos /></RequireAdmin>} />
           <Route path="/costos/tarifas" element={<RequireAdmin><CostosTarifas /></RequireAdmin>} />
+          <Route path="/costos/equifax" element={<RequireAdmin><CostosEquifax /></RequireAdmin>} />
           <Route path="/fuentes" element={<FuentesIngreso />} />
           <Route path="/fuentes/clientes" element={<FuentesClientes />} />
           <Route path="/fuentes/reglas" element={<FuentesReglas />} />

@@ -94,6 +94,7 @@ export const SECCIONES = [
       { texto: "Corridas masivas", ruta: "/costos/corridas" },
       { texto: "Detalle de llamadas", ruta: "/costos/llamadas" },
       { texto: "Fallas e incidentes", ruta: "/costos/incidentes" },
+      { texto: "Equifax", ruta: "/costos/equifax" },
       { texto: "Avisos", ruta: "/costos/avisos" },
       { texto: "Tarifas", ruta: "/costos/tarifas" },
     ],

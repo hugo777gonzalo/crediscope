@@ -2979,6 +2979,59 @@ a {
   font-weight: 600;
 }
 
+/* Los botones de la cabecera, uno debajo del otro a la derecha. La
+   confirmación de una consulta (que se cobra) aparece en el lugar del botón
+   que la pidió, a la vista de quien acaba de apretarlo. */
+.crediscope-equifax-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 400px;
+}
+
+@media (max-width: 640px) {
+  .crediscope-equifax-acciones {
+    align-items: stretch;
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.crediscope-equifax-confirmar {
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.crediscope-equifax-confirmar p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.crediscope-equifax-confirmar-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.crediscope-equifax-confirmar-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Sin consulta, el botón va dentro del aviso, debajo de su texto. */
+.crediscope-equifax-sin-consulta {
+  margin-top: 10px;
+  max-width: 420px;
+}
+
 .crediscope-equifax-alertas {
   display: flex;
   flex-wrap: wrap;
