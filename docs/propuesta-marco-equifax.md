@@ -233,7 +233,7 @@ autorizar el gasto).
    atribuye** a Equifax (hay que leer el razonamiento, no mirar el score). Se corre con
    `scripts/analizar-en-lote.mjs`, una vez con el interruptor apagado y otra con
    `CONFIG_LLM.buroDeLaInstitucion` encendido en la copia local (el lote corre desde la
-   máquina: encenderlo ahí no despliega nada), con la migración 131 aplicada.
+   máquina: encenderlo ahí no despliega nada). La 131 ya está aplicada.
 3. **Costo estimado (no medido):** cada análisis en lote costó USD 0,0178 (200 análisis
    de marco-v28, USD 3,55). Con buró, el perfil suma unos 1.650 tokens de entrada propia
    y el marco 1.602 que en lote se leen de la caché (con los precios de `llm_costos`:
@@ -269,13 +269,14 @@ autorizar el gasto).
   `scripts/comparar-razonamiento.mjs` se niega a correr con el interruptor encendido
   (todavía no lee el buró).
 - Migración **131** (`131_marco_v31_buro_de_la_institucion.sql`): la fila de `marco-v31`
-  en `scoring_rules_versions`. Toma el número libre al aplicarse.
+  en `scoring_rules_versions`. Aplicada con el corredor el 2026-10-16, recién
+  fusionado el PR #31.
 - Pruebas: `perfil-del-modelo-buro.test.ts` (con el perfil inventado de
   `perfil-de-prueba.ts` y la respuesta inventada de Equifax) y
   `buro-de-la-institucion.test.ts`. La medición: `scripts/medir-bloque-equifax.mjs`.
 
-**Para encenderlo** (cuando el negocio lo decida): aplicar la 131 con el corredor una
-vez fusionada en `main`, subir `ESQUEMA_MINIMO` a 131, poner
+**Para encenderlo** (cuando el negocio lo decida; la 131 ya está aplicada): subir
+`ESQUEMA_MINIMO` a 131, poner
 `buroDeLaInstitucion: true`, desplegar con `--funciones` y hacer una llamada suelta de
 comprobación sobre una persona con consulta vigente (está aceptada).
 

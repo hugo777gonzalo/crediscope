@@ -4,7 +4,7 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**130** (el corredor, 2026-10-16; la 131 de marco-v31 espera su PR). Las
+**131** (la fila de marco-v31, aplicada con el corredor el 2026-10-16). Las
 funciones desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
@@ -120,10 +120,9 @@ aceptada.
        tokens** (no 1.050: la estimación con 3,2 caracteres por token estaba mal,
        se calibró con el contador de tokens de la API sobre datos inventados), la
        sección del marco 1.602, y **ningún dato personal** de 1.588 buscados.
-       Falta:
-       - **Aplicar la 131** (la fila de `marco-v31`) con el corredor **después de
-         fusionar el PR en `main`** (regla 1). Se puede aplicar antes de
-         encender: es sólo una fila. Si al fusionar 131 está tomado, se renombra.
+       Entró a `main` en el PR #31 (`4d40d27`), y **la 131 (la fila de
+       `marco-v31`) se aplicó ese día con el corredor**: la plantilla está en la
+       131, sin ningún análisis con v31 (el interruptor sigue apagado). Falta:
        - **La comparación con y sin Equifax** (autoriza el negocio con una cifra):
          62 personas con v30 y con v31, **unos USD 2,3 en lote**, estimado, no
          medido. Octubre lleva USD 9,28 de 10. **Las 62 consultas caducan el 18/10
@@ -131,8 +130,8 @@ aceptada.
          vuelve a pagar Equifax (lo autoriza el negocio aparte) o se le suma al lote
          una fecha de análisis anterior al corte (un cambio chico): lo decide el
          negocio.
-       - **Encenderlo** cuando el negocio lo decida: la 131 aplicada,
-         `ESQUEMA_MINIMO` en 131, `buroDeLaInstitucion: true`, desplegar con
+       - **Encenderlo** cuando el negocio lo decida: `ESQUEMA_MINIMO` en 131,
+         `buroDeLaInstitucion: true`, desplegar con
          `--funciones` y una llamada suelta de comprobación.
        - **La capa 2 en SQL: propuesta medida el 2026-10-16, espera al negocio**
          (`docs/propuesta-dias-de-mora-con-buro.md`, cinco decisiones en la sección
