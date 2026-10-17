@@ -263,6 +263,27 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
      cuota de las casas comerciales (hoy se lista sin cuota).
 4. **Política configurable y orquestador de modalidades**, con la pantalla de la
    evaluación (Básico / Pro / Plus).
+   **La solicitud y el orquestador, hechos el 2026-10-17 (133)**, con tres
+   decisiones del negocio de ese día:
+   - **El orquestador vive en el servidor y avanza por pasos**: la función
+     `evaluar-solicitud` crea la solicitud (tabla `solicitudes`) y cada llamada
+     a `avanzar` corre un paso, porque Novadata y el modelo juntos pasan los
+     150 s de una función. Los pasos llaman a las funciones de cada módulo con
+     la sesión de quien pidió (`structure-client`, `consultar-equifax`,
+     `analyze-client`) y la capacidad se calcula ahí mismo. El perfil se
+     reutiliza si tiene menos de 7 días; Equifax, si está vigente.
+   - **La recomendación del modelo y la capacidad se muestran por separado**:
+     no hay una regla que las combine (la política queda para después).
+   - **Plus consulta Equifax si no hay una consulta vigente**, y eso es sólo de
+     administración (se cobra): a un analista el paso le falla con el motivo.
+   - Las modalidades son configuración (`_shared/modalidades.ts`): Básico =
+     perfil y modelo; Pro = más la capacidad; Plus = más el buró. En el contrato,
+     `modalidad` de `POST /evaluaciones` y `capacidadDePago` en su resultado.
+   - Pantallas: Solicitudes › Nueva solicitud (`/solicitud/nueva`) y la
+     solicitud con su avance (`/solicitud/:id`).
+   - Falta: lo que decide la institución (Aprobado / Rechazado) espera los
+     estados de la persona; la política configurable que combine modelo y
+     capacidad, si el negocio la quiere.
 5. **Predictor v0, explicable**: confirmado + cota por crédito otorgado +
    estimación de Equifax rotulada. Sin entrenar nada.
 6. **Predictor v1, entrenado**, cuando llegue la base de 20.000 y se sepa qué es

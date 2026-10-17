@@ -306,6 +306,14 @@ Romper cualquiera de estas rompe algo real.
   `/capacidad/:cedula` y la función `capacidad-de-pago`.
   El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
+- `modalidades.ts` y la función `evaluar-solicitud` (133) — la solicitud de
+  crédito (tabla `solicitudes`) y su evaluación en Básico, Pro o Plus. Corre UN
+  paso por llamada (Novadata y el modelo juntos pasan los 150 s) y llama a las
+  funciones de cada módulo con la sesión de quien pidió; toma el paso con la
+  fila que devolvió la actualización (un paso de Equifax se cobra). El modelo y
+  la capacidad van por separado (negocio, 2026-10-17). Una tabla nueva con
+  datos de la persona: `suprimir_titular()` la borra y está en
+  `derechos-del-titular.mjs` y `auditar-seguridad.mjs`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
