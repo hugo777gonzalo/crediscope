@@ -316,11 +316,24 @@ a {
 .crediscope-tag-warn { background: #fef3c7; color: var(--warn); }
 .crediscope-tag-bad { background: #fee2e2; color: var(--bad); }
 
+/* Con la quinta pestaña (Capacidad de pago, 2026-10-17) dejaron de entrar
+   en un teléfono y ensanchaban la página: se deslizan dentro de su fila. La
+   línea de abajo es una sombra y no un borde: con el borde, el subrayado de
+   la pestaña activa (que la pisaba con margin -1px) abría una barra vertical. */
 .crediscope-tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 -1px 0 var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.crediscope-tabs > .crediscope-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-bottom: 0;
 }
 
 .crediscope-tab {
@@ -3613,7 +3626,9 @@ a {
 
 /* La cuota protagonista. */
 .crediscope-credito-hero {
-  background: linear-gradient(140deg, var(--brand) 0%, #312e81 100%);
+  /* El color de base respalda al degradado y es el que mide el verificador de contraste. */
+  background-color: var(--brand);
+  background-image: linear-gradient(140deg, var(--brand) 0%, #312e81 100%);
   color: #fff;
   border-radius: 18px;
   padding: 26px;
@@ -3843,6 +3858,13 @@ a {
   margin-left: -1px;
   border-radius: 2px;
   background: var(--text);
+}
+
+.crediscope-capacidad-ingreso {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  border-left: 2px dashed var(--text-muted);
 }
 
 .crediscope-capacidad-leyenda {

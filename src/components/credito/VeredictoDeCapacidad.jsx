@@ -12,12 +12,17 @@ const VEREDICTOS = {
   sin_ingreso: { titulo: "No se puede medir", Icono: HelpCircle },
 };
 
-const ancho = (fraccion) => `${Math.max(0, Math.min(100, fraccion * 100))}%`;
-
 export default function VeredictoDeCapacidad({ capacidad: c }) {
   const { titulo, Icono } = VEREDICTOS[c.veredicto];
   const deCien = (fraccion) => moneda(Math.round(fraccion * 100));
   const nueva = c.ingresoNeto > 0 ? c.cuotaNueva / c.ingresoNeto : 0;
+  // Hay personas que ya pagan por mes más de lo que reciben (medido el
+  // 2026-10-17 con una consulta real de Equifax): con la escala fija en el
+  // ingreso, la barra quedaba llena de gris y la cuota nueva no se veía. La
+  // escala crece hasta que entre todo.
+  const escala = Math.max(1, c.cargaConElCredito ?? 0);
+  const ancho = (fraccion) => `${Math.max(0, Math.min(100, (fraccion / escala) * 100))}%`;
+  const yaSupera = (c.cargaActual ?? 0) >= 1;
 
   return (
     <section className={`crediscope-capacidad-veredicto crediscope-capacidad-${c.veredicto}`} aria-live="polite">
@@ -33,14 +38,22 @@ export default function VeredictoDeCapacidad({ capacidad: c }) {
         </p>
       ) : (
         <>
-          <p className="crediscope-capacidad-frase">
-            Con este crédito, de cada {moneda(100)} que recibe se irían <strong>{deCien(c.cargaConElCredito)}</strong> en cuotas. La institución acepta
-            hasta {deCien(c.cargaMaxima)}.
-          </p>
+          {yaSupera ? (
+            <p className="crediscope-capacidad-frase">
+              Lo que ya paga por mes (<strong>{moneda(c.obligacionesActuales, 2)}</strong>) es más que su ingreso neto ({moneda(c.ingresoNeto, 2)}): no hay
+              espacio para otra cuota.
+            </p>
+          ) : (
+            <p className="crediscope-capacidad-frase">
+              Con este crédito, de cada {moneda(100)} que recibe se irían <strong>{deCien(c.cargaConElCredito)}</strong> en cuotas. La institución acepta
+              hasta {deCien(c.cargaMaxima)}.
+            </p>
+          )}
 
           <div className="crediscope-capacidad-medidor" role="img" aria-label={`Cuotas: ${porcentaje(c.cargaConElCredito)} del ingreso neto; tope ${porcentaje(c.cargaMaxima)}`}>
             <span className="crediscope-capacidad-tramo-actual" style={{ width: ancho(c.cargaActual) }} />
-            <span className="crediscope-capacidad-tramo-nuevo" style={{ left: ancho(c.cargaActual), width: ancho(Math.min(nueva, 1 - c.cargaActual)) }} />
+            <span className="crediscope-capacidad-tramo-nuevo" style={{ left: ancho(c.cargaActual), width: ancho(nueva) }} />
+            {escala > 1 ? <span className="crediscope-capacidad-ingreso" style={{ left: ancho(1) }} /> : null}
             <span className="crediscope-capacidad-tope" style={{ left: ancho(c.cargaMaxima) }} />
           </div>
           <div className="crediscope-capacidad-leyenda">
@@ -58,7 +71,10 @@ export default function VeredictoDeCapacidad({ capacidad: c }) {
             </span>
           </div>
           <p className="crediscope-capacidad-pie">
-            Le quedarían {moneda(Math.max(0, c.disponibleDespues), 2)} por mes de un ingreso neto de {moneda(c.ingresoNeto, 2)}.
+            {c.disponibleDespues >= 0
+              ? `Le quedarían ${moneda(c.disponibleDespues, 2)} por mes de un ingreso neto de ${moneda(c.ingresoNeto, 2)}.`
+              : `Con este crédito le faltarían ${moneda(-c.disponibleDespues, 2)} por mes para cubrir todas sus cuotas.`}
+            {escala > 1 ? " La línea punteada marca todo su ingreso neto." : ""}
           </p>
         </>
       )}
