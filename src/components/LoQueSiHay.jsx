@@ -89,7 +89,7 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
           {cedula ? (
             <p style={{ margin: "14px 0 0" }}>
               <Link className="crediscope-btn crediscope-btn-ghost" to={`/perfil/${cedula}`}>
-                Ver el Perfil del Cliente completo
+                Ver el Perfil de la Persona completo
                 <ArrowRight size={15} style={{ marginLeft: 6, verticalAlign: "-2px" }} />
               </Link>
             </p>

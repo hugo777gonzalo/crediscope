@@ -11,7 +11,7 @@ import { useBuro, NOMBRE_DEL_BURO } from "../lib/useBuro.js";
 // es, no se dibuja: una pestaña que aparece y cambia de nombre confunde más
 // que una que llega un instante después.
 const PESTANAS = [
-  ["perfil", "Perfil del Cliente"],
+  ["perfil", "Perfil de la Persona"],
   ["analisis", "Análisis con IA"],
   ["ingresos", "Fuentes de Ingreso"],
   ["capacidad", "Capacidad de pago"],

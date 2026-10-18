@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import Aviso from "../components/ui/Aviso.jsx";
 import CondicionesDelCredito from "../components/credito/CondicionesDelCredito.jsx";
 import CuotaDestacada from "../components/credito/CuotaDestacada.jsx";
+import ResumenFijo from "../components/credito/ResumenFijo.jsx";
 import TablaDeAmortizacion from "../components/credito/TablaDeAmortizacion.jsx";
 import { useCondicionesDelCredito } from "../lib/credito.js";
 import { porcentaje } from "../lib/formatos.js";
@@ -61,6 +62,7 @@ export default function SimuladorCredito() {
             </Aviso>
           )}
         </div>
+        {s ? <ResumenFijo cuota={s.cuotaPrimerMes} /> : null}
       </div>
 
       {s ? <TablaDeAmortizacion simulacion={s} /> : null}

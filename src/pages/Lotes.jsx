@@ -53,7 +53,7 @@ export default function Lotes() {
         <div>
           <h2 style={{ marginBottom: 4 }}>Consultas por lote</h2>
           <p className="crediscope-muted" style={{ margin: 0, maxWidth: "62ch" }}>
-            Cargar muchas cédulas de una vez y traer su Perfil del Cliente. Los perfiles quedan disponibles para el flujo
+            Cargar muchas cédulas de una vez y traer su Perfil de la Persona. Los perfiles quedan disponibles para el flujo
             normal: si un analista busca después a una de estas personas, no se vuelve a consultar la fuente.
           </p>
         </div>

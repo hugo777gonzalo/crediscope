@@ -146,7 +146,7 @@ export default function SegmentosPerfil({ standardProfile, segmentConfig, contro
     <div style={{ marginTop: 24 }}>
       <AvisoBloqueo hallazgosBloqueantes={hallazgosBloqueantes} />
       <button className="crediscope-btn crediscope-btn-ghost" onClick={() => setExpandido((v) => !v)}>
-        {expandido ? "Ocultar" : "Ver"} Perfil del Cliente completo
+        {expandido ? "Ocultar" : "Ver"} Perfil de la Persona completo
       </button>
       {expandido ? (
         <div style={{ marginTop: 12 }}>

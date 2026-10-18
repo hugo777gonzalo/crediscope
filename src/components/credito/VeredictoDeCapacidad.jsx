@@ -6,7 +6,7 @@ import { entero, moneda, porcentaje } from "../../lib/formatos.js";
 // muestra lo que ya paga, lo que sumaría este crédito y el tope. Con un
 // Ingreso declarado lo dice arriba y, abajo, qué daría sólo con el IESS.
 
-const VEREDICTOS = {
+export const VEREDICTOS = {
   alcanza: { titulo: "Le alcanza", Icono: CheckCircle2 },
   justo: { titulo: "Le alcanza, pero justo", Icono: AlertTriangle },
   no_alcanza: { titulo: "No le alcanza", Icono: XCircle },

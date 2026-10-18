@@ -141,7 +141,7 @@ export default function ConfigSegmentos() {
         <h2 style={{ marginBottom: 4 }}>Qué ve el analista</h2>
         <p className="crediscope-muted" style={{ margin: 0, maxWidth: "66ch" }}>
           Esta es la única configuración que <strong>no cambia el análisis</strong>. Un segmento oculto se sigue consultando,
-          se sigue guardando y el modelo lo sigue usando: sólo no se muestra en el Perfil del Cliente.
+          se sigue guardando y el modelo lo sigue usando: sólo no se muestra en el Perfil de la Persona.
         </p>
       </div>
 

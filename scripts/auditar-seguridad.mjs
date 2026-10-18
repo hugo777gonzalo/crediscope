@@ -321,6 +321,12 @@ const cuerpos = {
   // cuerpo, así que con la clave pública contesta 401 sin mirar nada.
   "consultar-equifax": { identificacion: "AUDITORIA-SIN-PERSONA", baseLegal: "Prueba del control de seguridad: sin persona" },
   "explore-novadata": { username: "x", password: "x", cedula: "abc" },
+  // Los módulos de la demo (133). evaluar-solicitud llama a structure-client,
+  // consultar-equifax y analyze-client con la sesión de quien pide: abierta,
+  // sería una puerta a las tres.
+  "simular-credito": { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 },
+  "capacidad-de-pago": { cedula: "abc", solicitud: { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 } },
+  "evaluar-solicitud": { accion: "avanzar", id: "00000000-0000-0000-0000-000000000000" },
 };
 for (const [fn, cuerpo] of Object.entries(cuerpos)) {
   const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, {
@@ -404,7 +410,7 @@ try {
 {
   const head = execSync("git rev-parse --short=12 HEAD", { encoding: "utf8" }).trim();
   const versiones = {};
-  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "consultar-equifax", "explore-novadata", "vigia", "procesar-lote"]) {
+  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "consultar-equifax", "explore-novadata", "vigia", "procesar-lote", "simular-credito", "capacidad-de-pago", "evaluar-solicitud"]) {
     const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, { method: "OPTIONS" });
     versiones[fn] = r.headers?.get("x-crediscope-version") ?? "sin dato";
   }

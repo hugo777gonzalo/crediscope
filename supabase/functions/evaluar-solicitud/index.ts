@@ -19,7 +19,10 @@
 //   - capacidad: la cuota (simularCredito) y la capacidad (evaluarCapacidad),
 //                acá mismo: son cálculos.
 // Las funciones se llaman con la sesión de quien pidió, así cada una exige su
-// rol y la auditoría queda a su nombre.
+// rol y la auditoría queda a su nombre. Lo que contestan al fallar no se copia
+// en la solicitud (falloDeUnPaso, en modalidades.ts), y un paso que pudo dejar
+// algo en vuelo -- sobre todo una consulta a Equifax, que se cobra -- no se
+// deja reintentar hasta que esa función terminó seguro.
 //
 // Acciones (body):
 //   { "accion": "crear", "cedula": "...", "modalidad": "pro",
@@ -27,21 +30,31 @@
 //     "ingresoDeclarado": 1800 }
 //   { "accion": "avanzar", "id": "<uuid>" }
 //   { "accion": "reintentar", "id": "<uuid>" }
+//   { "accion": "decidir", "id": "<uuid>", "decision": "aprobado", "motivo": "..." }
 // Todas devuelven la solicitud entera.
+//
+// `decidir` anota lo que decidió la institución (134; negocio, 2026-10-18: lo
+// marca el analista, con motivo). Aprobar o rechazar, con la evaluación
+// terminada; desistir, en cualquier momento, y entonces la evaluación no sigue.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
+import { validarDecision } from "../_shared/estado-de-la-persona.ts";
 import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-institucion.ts";
 import { montoMaximoParaCuota, simularCredito } from "../_shared/simulador-credito.ts";
 import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "../_shared/capacidad-de-pago.ts";
 import {
+  falloDeUnPaso,
+  marcarFallido,
   marcarPaso,
   MODALIDADES,
   MODALIDADES_VERSION,
   type Paso,
+  pasoEnCurso,
+  PASO_CAIDO_MS,
   pasosIniciales,
   type RegistroDePaso,
   reintentarPasos,
@@ -66,9 +79,22 @@ const BASE_LEGAL_EQUIFAX =
 
 type Fila = Record<string, any>;
 
-class PasoFallido extends Error {}
+// `esperarMs`: cuánto esperar antes de dejar reintentar el paso (modalidades.ts).
+class PasoFallido extends Error {
+  constructor(mensaje: string, readonly esperarMs = 0, readonly http: number | null = null) {
+    super(mensaje);
+  }
+}
 
-async function llamarFuncion(nombre: string, cuerpo: unknown, autorizacion: string) {
+// La respuesta de la otra función no se copia en la solicitud, que lee todo
+// analista: su `error` puede traer el mensaje de Novadata, de Equifax, del
+// modelo o de la base. Se leen el estado y, de consultar-equifax, el motivo.
+function fallo(paso: Paso, r: { status: number; datos: Fila | null }): PasoFallido {
+  const { detalle, esperarMs } = falloDeUnPaso(paso, r.status, r.datos?.motivo ?? null);
+  return new PasoFallido(detalle, esperarMs, r.status);
+}
+
+async function llamarFuncion(nombre: string, cuerpo: unknown, autorizacion: string): Promise<{ status: number; datos: Fila | null }> {
   try {
     const r = await fetch(`${SUPABASE_URL}/functions/v1/${nombre}`, {
       method: "POST",
@@ -78,9 +104,8 @@ async function llamarFuncion(nombre: string, cuerpo: unknown, autorizacion: stri
     });
     const datos = await r.json().catch(() => null);
     return { status: r.status, datos };
-  } catch (e) {
-    const tiempo = (e as Error)?.name === "TimeoutError";
-    return { status: 0, datos: { error: tiempo ? "La consulta tardó más de lo que una función puede esperar." : "No se pudo llamar al servicio." } };
+  } catch {
+    return { status: 0, datos: null };
   }
 }
 
@@ -110,7 +135,7 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
       }
     }
     const r = await llamarFuncion("structure-client", { cedula: s.identificacion }, autorizacion);
-    if (r.status !== 200 || !r.datos?.id) throw new PasoFallido(r.datos?.error ?? "No se pudo consultar a la persona.");
+    if (r.status !== 200 || !r.datos?.id) throw fallo("perfil", r);
     const f = r.datos.standard_profile?.fuentesIngreso ?? {};
     return {
       cambios: { client_id: r.datos.client_id, client_profile_id: r.datos.id },
@@ -128,19 +153,39 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
         resultado: { buro: { consultaId: vigente.consultaId, consultadoEl: vigente.consultadoEl, reutilizada: true } },
       };
     }
+    // Otra solicitud de la misma persona consultando Equifax ahora mismo: la
+    // reutilización de consultar-equifax mira lo guardado, y lo que está en
+    // vuelo todavía no lo está. Dos solicitudes Plus a la vez pagaban dos veces.
+    const { data: otras, error: errorOtras } = await serviceClient
+      .from("solicitudes")
+      .select("id, pasos")
+      .eq("identificacion", s.identificacion)
+      .eq("estado", "en_evaluacion")
+      .neq("id", s.id);
+    if (errorOtras) throw new Error("no se pudieron leer las otras solicitudes");
+    if ((otras ?? []).some((o: Fila) => pasoEnCurso(o.pasos, "buro"))) {
+      throw new PasoFallido("Otra solicitud de esta persona está consultando Equifax en este momento. Se puede reintentar en unos minutos: si esa consulta quedó guardada, se reutiliza.", PASO_CAIDO_MS);
+    }
     const r = await llamarFuncion("consultar-equifax", { identificacion: s.identificacion, baseLegal: BASE_LEGAL_EQUIFAX }, autorizacion);
-    if (r.status === 403) throw new PasoFallido("La persona no tiene una consulta de Equifax vigente, y consultar Equifax se cobra: lo hace un administrador. Pedile que la consulte o usá la modalidad Pro.");
-    if (r.status !== 200 || !r.datos?.id) throw new PasoFallido(r.datos?.error ?? "No se pudo consultar Equifax.");
+    if (r.status !== 200 || !r.datos?.id) throw fallo("buro", r);
+    // La misma regla que el camino de arriba y que el modelo. consultar-equifax
+    // reutiliza la última consulta del mes aunque no tenga su estructura (las
+    // tablas pueden fallar después de pagar), y sin estructura la capacidad de
+    // Plus caía sin avisar a las cuotas de Novadata.
+    const usable = await consultaVigenteDeEquifax(serviceClient, s.client_id);
+    if (!usable || usable.consultaId !== r.datos.id) {
+      throw new PasoFallido("La consulta de Equifax quedó guardada pero todavía no se puede leer (falta calcular su estructura). Se rehace desde lo guardado, sin volver a pagar; reintentar tampoco la cobra otra vez.");
+    }
     return {
-      cambios: { consulta_equifax_id: r.datos.id },
+      cambios: { consulta_equifax_id: usable.consultaId },
       detalle: r.datos.reutilizada ? "Se reutilizó la consulta de Equifax vigente." : "Se consultó Equifax (la consulta se cobró).",
-      resultado: { buro: { consultaId: r.datos.id, consultadoEl: r.datos.consultada_el, reutilizada: Boolean(r.datos.reutilizada) } },
+      resultado: { buro: { consultaId: usable.consultaId, consultadoEl: usable.consultadoEl, reutilizada: Boolean(r.datos.reutilizada) } },
     };
   }
 
   if (paso === "analisis") {
     const r = await llamarFuncion("analyze-client", { cedula: s.identificacion, profileId: s.client_profile_id }, autorizacion);
-    if (r.status !== 200 || !r.datos?.id) throw new PasoFallido(r.datos?.error ?? "El modelo no pudo analizar a la persona.");
+    if (r.status !== 200 || !r.datos?.id) throw fallo("analisis", r);
     const resumen = resumenDelAnalisis(r.datos);
     return {
       cambios: { analysis_result_id: r.datos.id },
@@ -157,6 +202,7 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     const { data } = await serviceClient.from("consultas_equifax").select("estructura").eq("id", s.consulta_equifax_id).maybeSingle();
     estructura = data?.estructura ?? null;
   }
+  if (s.modalidad === "plus" && !estructura) throw new PasoFallido("Falta la consulta de Equifax de la persona: Plus calcula la capacidad con las cuotas del buró.");
   const condiciones = { plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen };
   const simulacion = simularCredito({ ...condiciones, monto: Number(s.monto) });
   if (!simulacion.ok) throw new PasoFallido(simulacion.errores.join(" "));
@@ -243,27 +289,56 @@ Deno.serve(async (req) => {
     return responder(creada);
   }
 
-  if (cuerpo.accion !== "avanzar" && cuerpo.accion !== "reintentar") return responder({ error: "La acción es «crear», «avanzar» o «reintentar»." }, 400);
+  if (!["avanzar", "reintentar", "decidir"].includes(cuerpo.accion as string)) return responder({ error: "La acción es «crear», «avanzar», «reintentar» o «decidir»." }, 400);
   if (typeof cuerpo.id !== "string") return responder({ error: "Falta el id de la solicitud." }, 400);
 
   const { data: s } = await serviceClient.from("solicitudes").select("*").eq("id", cuerpo.id).maybeSingle();
   if (!s) return responder({ error: "No existe esa solicitud." }, 404);
 
+  if (cuerpo.accion === "decidir") {
+    const errores = validarDecision(cuerpo.decision, cuerpo.motivo, s.estado);
+    if (errores.length) return responder({ error: "La decisión no es válida.", errores }, 400);
+    // La base vuelve a mirar el estado: entre la lectura y acá la evaluación pudo fallar.
+    const { data, error } = await serviceClient.rpc("decidir_solicitud", {
+      p_id: s.id,
+      p_decision: cuerpo.decision,
+      p_motivo: cuerpo.motivo,
+      p_actor: actor!.id,
+    });
+    const decidida = Array.isArray(data) ? data[0] : null;
+    if (error || !decidida) return responder({ error: "No se pudo anotar la decisión. Volvé a abrir la solicitud y probá de nuevo." }, 409);
+    // El motivo no va a la auditoría: es texto libre y puede traer datos de la persona.
+    await serviceClient.from("audit_log").insert({
+      actor: actor!.id,
+      action: "solicitud.decidir",
+      client_id: decidida.client_id ?? null,
+      meta: { solicitud_id: s.id, decision: cuerpo.decision, anterior: s.decision ?? null },
+    });
+    return responder(decidida);
+  }
+
+  // Quien desistió no sigue: los pasos que faltan pueden consultar fuentes o cobrarse.
+  if (s.decision === "desistido") return responder(s);
+
   if (cuerpo.accion === "reintentar") {
+    if (s.estado !== "fallida") return responder(s);
+    const pasos = reintentarPasos(s.pasos);
+    // Un paso que pudo dejar algo en vuelo todavía espera: su detalle lo dice.
+    if (pasos.some((p) => p.estado === "fallido")) return responder(s);
     const { data } = await serviceClient
       .from("solicitudes")
-      .update({ pasos: reintentarPasos(s.pasos), estado: "en_evaluacion", actualizada_el: new Date().toISOString() })
+      .update({ pasos, estado: "en_evaluacion", actualizada_el: new Date().toISOString() })
       .eq("id", s.id)
-      .select("*")
-      .single();
-    return responder(data ?? s);
+      .eq("actualizada_el", s.actualizada_el)
+      .select("*");
+    return responder(data?.[0] ?? s);
   }
 
   const pasos = s.pasos as RegistroDePaso[];
   const paso = siguientePaso(pasos);
   if (!paso) {
     if (s.estado === "en_evaluacion" && todosHechos(pasos)) {
-      const { data } = await serviceClient.from("solicitudes").update({ estado: "evaluada" }).eq("id", s.id).select("*").single();
+      const { data } = await serviceClient.from("solicitudes").update({ estado: "evaluada", evaluada_el: new Date().toISOString() }).eq("id", s.id).select("*").single();
       return responder(data ?? s);
     }
     return responder(s);
@@ -294,11 +369,16 @@ Deno.serve(async (req) => {
         pasos: nuevosPasos,
         resultado: { ...(tomada.resultado ?? {}), ...resultado },
         estado: todosHechos(nuevosPasos) ? "evaluada" : "en_evaluacion",
+        evaluada_el: todosHechos(nuevosPasos) ? new Date().toISOString() : (tomada.evaluada_el ?? null),
         actualizada_el: new Date().toISOString(),
       })
       .eq("id", s.id)
       .select("*")
       .single();
+    // Lo que hizo el paso quedó guardado por su función: sin la anotación, el
+    // paso sigue en curso, se da por caído a los 3 minutos y se retoma
+    // reutilizando lo guardado.
+    if (!data) return responder({ error: "El paso terminó pero no se pudo anotar en la solicitud. Se retoma solo en unos minutos." }, 500);
     if (todosHechos(nuevosPasos)) {
       await serviceClient.from("audit_log").insert({
         actor: actor!.id,
@@ -310,14 +390,24 @@ Deno.serve(async (req) => {
     return responder(data);
   } catch (err) {
     // Sin el mensaje crudo de un tercero: un PasoFallido trae uno nuestro.
-    const detalle = err instanceof PasoFallido ? err.message : "Algo falló en este paso.";
-    if (!(err instanceof PasoFallido)) console.error("evaluar-solicitud:", paso, (err as Error)?.name);
+    const propio = err instanceof PasoFallido;
+    const detalle = propio ? err.message : "Algo falló en este paso.";
+    // Un error nuestro a mitad del paso del buró puede llegar después de pagar.
+    const esperarMs = propio ? err.esperarMs : paso === "buro" ? PASO_CAIDO_MS : 0;
+    if (!propio) console.error("evaluar-solicitud:", paso, (err as Error)?.name);
     const { data } = await serviceClient
       .from("solicitudes")
-      .update({ pasos: marcarPaso(tomada.pasos, paso, "fallido", detalle), estado: "fallida", actualizada_el: new Date().toISOString() })
+      .update({ pasos: marcarFallido(tomada.pasos, paso, detalle, esperarMs), estado: "fallida", actualizada_el: new Date().toISOString() })
       .eq("id", s.id)
       .select("*")
       .single();
-    return responder(data);
+    // Quién corrió el paso que falló: el del buró pudo cobrarse.
+    await serviceClient.from("audit_log").insert({
+      actor: actor!.id,
+      action: "solicitud.paso_fallido",
+      client_id: tomada.client_id ?? null,
+      meta: { solicitud_id: s.id, paso, http: propio ? err.http : null },
+    });
+    return data ? responder(data) : responder({ error: "El paso falló y no se pudo anotar en la solicitud. Se retoma solo en unos minutos." }, 500);
   }
 });

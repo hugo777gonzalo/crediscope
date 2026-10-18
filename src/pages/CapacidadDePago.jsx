@@ -11,6 +11,7 @@ import PestanasCliente from "../components/PestanasCliente.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import CondicionesDelCredito from "../components/credito/CondicionesDelCredito.jsx";
 import VeredictoDeCapacidad from "../components/credito/VeredictoDeCapacidad.jsx";
+import ResumenFijo from "../components/credito/ResumenFijo.jsx";
 import IngresoDeclarado from "../components/credito/IngresoDeclarado.jsx";
 import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
@@ -90,7 +91,7 @@ export default function CapacidadDePago() {
       {!carga.cargando && !carga.error && !carga.fila ? (
         <Aviso tipo="informacion" titulo="Esta persona todavía no se consultó">
           <p style={{ margin: 0 }}>
-            La capacidad de pago se mide con el ingreso reportado al IESS y las deudas de la persona. <Link to={`/perfil/${cedula}`}>Consultala desde el Perfil del Cliente</Link> y volvé acá.
+            La capacidad de pago se mide con el ingreso reportado al IESS y las deudas de la persona. <Link to={`/perfil/${cedula}`}>Consultala desde el Perfil de la Persona</Link> y volvé acá.
           </p>
         </Aviso>
       ) : null}
@@ -143,6 +144,7 @@ export default function CapacidadDePago() {
                 </Aviso>
               )}
             </div>
+            {capacidad ? <ResumenFijo cuota={capacidad.cuotaNueva} veredicto={capacidad.veredicto} /> : null}
           </div>
 
           {capacidad && (capacidad.obligacionesIncompletas || capacidad.ingresoSoloSbu) ? (

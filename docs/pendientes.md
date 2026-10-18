@@ -4,8 +4,8 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**131** (la fila de marco-v31, aplicada con el corredor el 2026-10-16). Las
-funciones desplegadas llevan el sello `a524b7fd569c` (2026-10-16, 7 de 7);
+**133** (las solicitudes, 2026-10-17; la 131 es la fila de marco-v31). Las
+funciones desplegadas llevan el sello `6d5c4296e1e3` (10 de 10);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
 (ver la sección 2, punto 1) con Claude Sonnet 5.5, estructura-v13,
@@ -24,6 +24,128 @@ costo estimado. Una llamada suelta para comprobar un despliegue está
 aceptada.
 
 ## 1. Para retomar primero
+
+- **Revisión de UX de las pantallas de crédito (2026-10-18): corregido lo seguro,
+  queda por ver en pantalla y por decidir.**
+  - Se vio con la sesión de QA a 1280 y a 414 px: simulador, Nueva solicitud,
+    una solicitud Plus evaluada y la pestaña Capacidad (misma cuota y mismo
+    veredicto que la solicitud). **No se vio a 768 px, ni en pantalla las
+    correcciones** (el servidor de 5184 era de otra rama): se probaron el
+    simulador y el resumen fijo en una página de prueba, a 414 y 1280.
+    Falta verlas con la sesión: la solicitud que no existe, la solicitud evaluada
+    con los pasos plegados, la confirmación de Plus (admin), la lista de
+    recientes con error y las flechas del grupo de modalidades.
+  - Por decidir con el negocio: la lista de «Solicitudes recientes» muestra la
+    cédula completa de cada persona (es la bandeja del analista, pero conviene
+    confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
+    se dibujan.
+- **Demo para una IFI (al 2026-10-18). Empezar por `docs/plan-demo-ifi.md`**
+  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **133**,
+  funciones con el sello `6d5c4296e1e3` (10 de 10). Hecho y en producción:
+  simulador (#39), capacidad de pago con el Ingreso declarado (#42, #45),
+  solicitud y orquestador Básico / Pro / Plus (#46, 133). Las tres modalidades
+  se probaron de punta a punta el 2026-10-18 con una persona real (Plus pagó
+  una consulta de Equifax, autorizada). Queda, por orden:
+  1. **Construir los estados de la persona** (`docs/modelo-de-la-persona.md`,
+     sección 5). El negocio decidió los nombres el 2026-10-18: el segundo estado
+     es «En proceso»; quien fue rechazado o desistió está en «No aprobado»; la
+     decisión de la institución (Aprobado / Rechazado) la marca el analista en
+     la solicitud (la solicitud todavía no tiene dónde guardarla); «Perfil del
+     Cliente» pasa a «Perfil de la Persona». Falta construirlos y renombrar las
+     pantallas (menú, exportaciones y unos 25 textos) con
+     `scripts/renombrar-textos.mjs`. La preaprobación la da el modelo (P3).
+  2. **Una revisión integral** de lo construido, en sesiones aparte. **Hecha la
+     del contrato y los documentos (2026-10-18)**: `api/openapi.yaml` ya
+     describe las dos puertas nuevas y la modalidad, con ejemplos calculados con
+     el código. Quedan las de cálculos, funciones y seguridad, y pantallas, y lo
+     que el contrato dice y el código no hace (se corrige tocando código):
+     - **`ingresoDeclarado` de la evaluación**: el contrato lo pone dentro de
+       `solicitudDeCredito`; `evaluar-solicitud` lo lee en la raíz del cuerpo.
+     - **La evaluación pide su propia forma**: el contrato exige `autorizacion`,
+       `referencia` y `operador`, acepta `reemplazaA` y `prioridad`, y por
+       omisión es `basico`; `evaluar-solicitud` no guarda ninguno de ésos
+       (la tabla `solicitudes` no tiene dónde) y exige `modalidad`.
+     - **Estados y etapas**: el contrato tiene `estado` (recibida, en_proceso,
+       completada, persona_no_encontrada, fallida, cancelada) y `etapa`
+       (fuentes, perfil, modelo, entrega); `solicitudes` tiene `en_evaluacion`,
+       `evaluada`, `fallida` y cuatro pasos (perfil, buro, analisis,
+       capacidad). Hay que traducir una cosa a la otra al construir la Fase 1.
+       Además `en_proceso` del contrato es el nombre que el negocio eligió para
+       el segundo estado de la persona.
+     - **`Fallo.codigo`** admite tres códigos; un paso que falla en
+       `evaluar-solicitud` sólo deja un texto (por ejemplo, Plus sin consulta
+       vigente y sin ser admin). Falta el código de «el buró necesita que lo
+       consulte un administrador».
+     - **Quién paga Equifax por la API**: Plus consulta Equifax si no hay una
+       consulta vigente, y esa llamada exige un administrador; una IFI no lo es.
+       Hay que decidir si la IFI autoriza el gasto en el pedido o si Plus exige
+       una consulta ya hecha.
+     - **El resultado de la evaluación**: `evaluar-solicitud` guarda un resumen
+       del análisis (score, recomendación, origen, indicador de riesgo, marco);
+       el contrato exige además positivos, negativos, información faltante,
+       acciones, razonamiento y controles de bloqueo (están en
+       `analysis_results`) y la firma.
+     - **`POST /simulaciones`**: `simular-credito` (y `solicitud` de
+       `capacidad-de-pago`) deja pasar un campo que el
+       contrato no tiene, `tasaNominalMaximaPorcentaje`: quien lo manda puede
+       subir el tope de 15%. En la puerta de las instituciones el tope sale de la
+       configuración de la institución, nunca del cuerpo. Tampoco rechaza campos
+       desconocidos (el contrato dice `additionalProperties: false`).
+     - **`POST /capacidades-de-pago`**: el contrato dice `identificacion`; la
+       función acepta también `cedula`. La función no hace todas las validaciones
+       que el contrato declara (máximos de 20 ingresos, 50 obligaciones y 50
+       deudas sin cuota, `ingresoDeclarado` de más de mil millones, `parametros`
+       fuera de 0 a 1 que se ignoran en vez de dar 400; sí rechaza una
+       obligación que no es número) y,
+       con `identificacion` e `ingresos` a la vez, ignora los `ingresos` sin
+       avisar.
+     - **Errores**: las funciones contestan `{ error, errores: [texto] }` y el
+       contrato `application/problem+json` con `codigo`, `idPedido` y
+       `errores: [{ campo, motivo }]`; la autenticación es la sesión de un
+       analista y no OAuth, y no leen `Idempotency-Key`. Una base atrasada da 503
+       (`exigirEsquema`), que `POST /capacidades-de-pago` no lista.
+     - **Fracciones sin redondear**: `tasaMensual`, `tasaEfectivaAnual`,
+       `cargaActual` y `cargaConElCredito` llegan con todos los decimales
+       (0.012499999999999999 en vez de 0.0125). El contrato lo dice; si se quiere
+       otra cosa, se redondea en la función.
+     - **`datos` y `procedencia`** en la respuesta de la capacidad: el contrato
+       los describe ahora (`datos` es donde viaja `deudasSinCuota`); si la API
+       no debe devolver esos ingresos y cuotas, hay que sacarlos del contrato y
+       de la función.
+     - **Funciones y base (2026-10-18), corregido en código y SIN DESPLEGAR**
+       (`--funciones`; no hace falta migrar): `evaluar-solicitud` ya no copia en
+       la solicitud el mensaje de la función llamada (podía traer el de Novadata,
+       Equifax, el modelo o la base: `falloDeUnPaso()`); un paso que pudo dejar
+       algo en vuelo (el buró, sobre todo) no se reintenta hasta 3 minutos
+       después; dos solicitudes de la misma persona no consultan Equifax a la
+       vez; Plus ya no calcula con Novadata cuando la consulta de Equifax no tiene
+       estructura; y un fallo queda en `audit_log` (`solicitud.paso_fallido`).
+       `capacidad-de-pago` lee la misma consulta de Equifax que la pantalla y
+       rechaza una cuota que no es número.
+     - **Abierto: la supresión de una solicitud sin persona.** Si el primer paso
+       no llega a crear a la persona en `clients` (la fuente no la encuentra o no
+       contesta), la solicitud queda sólo con la identificación y
+       `suprimir_titular()` no la alcanza (exige la fila en `clients`; igual con
+       una consulta de buró suelta). Hoy no hay ninguna (medido el 2026-10-18);
+       `derechos-del-titular.mjs` ya las lista y exporta. Arreglarlo es una
+       migración que recrea la función desde su definición viva.
+     - **Para decidir: qué consulta de Equifax entra en la capacidad.** La
+       pantalla y `capacidad-de-pago` usan la última de la persona aunque haya
+       vencido; Plus, sólo la vigente (la misma regla que el modelo); Pro, ninguna
+       (plan, sección 4). El enlace «Ver el detalle de la capacidad de pago» de la
+       solicitud abre la pantalla, que puede dar otra cuota que la solicitud.
+     - **Abierto: dos consultas a Equifax a la vez desde caminos distintos** (el
+       botón de administración y una solicitud Plus) se pueden pagar las dos:
+       `procesarConsultaEquifax()` reutiliza lo guardado, no lo que está en vuelo.
+       Pide un candado en la base por persona.
+  3. **El predictor de ingresos**: lo lleva otra sesión
+     (`docs/investigacion-predictor-de-ingresos.md`).
+  4. **El marco y el modelo, al final** (decisión del negocio): que lea la
+     solicitud, la cuota y la capacidad es una versión nueva del marco.
+  - Hallazgo que pesa en la demo: con sólo el IESS, 55 de las 62 personas con
+    Equifax ya pagan más que su ingreso neto (la cuota de Equifax sí es
+    mensual). Por eso existe el Ingreso declarado.
+  - Las pruebas con sesión van en el puerto 5184 (origen permitido por CORS).
 
 - **Equifax (al 2026-10-17): en producción, con 87 consultas hechas y sus tablas y
   su estructura cargadas y verificadas, la pestaña con su PDF y, desde el
@@ -348,23 +470,22 @@ aceptada.
      ingreso y el centro de datos: la salida se comparó idéntica en la base, pero no
      se recorrió. (El `"fallas": 0` de la reconstrucción no queda en el historial de
      pg_cron, que sólo dice «1 row»: se midió con el conteo de personas.)
-  2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). El estado de
-     la persona, la solicitud como entidad, las direcciones, las referencias,
-     los documentos y los créditos de la persona no existen todavía como datos:
-     hoy sólo hay nombres. Lo que espera al negocio (opciones y recomendación
-     en la sección 5 de ese documento):
-     - el nombre del segundo estado: «Solicitante» no convence;
-     - qué estado tiene quien fue rechazado o desistió, y quién decide
-       «Preaprobado»;
-     - si «Perfil del Cliente» pasa a «Perfil de la Persona»;
+  2. **El modelo de la persona** (`docs/modelo-de-la-persona.md`). La solicitud
+     ya es una entidad (133, 2026-10-17). El estado de la persona, las
+     direcciones, las referencias, los documentos y los créditos de la persona no
+     existen todavía como datos: hoy sólo hay nombres. El negocio decidió el
+     2026-10-18 cuatro de los puntos abiertos (el segundo estado es «En
+     proceso», «No aprobado» para quien fue rechazado o desistió, la decisión
+     de la institución la marca el analista en la solicitud, «Perfil de la
+     Persona»); ver el primer punto de este bloque. Lo que sigue esperando al
+     negocio (opciones y recomendación en la sección 5 de ese documento):
      - si el dictamen del modelo («Negación») y la decisión de la solicitud
        («Rechazado») usan el mismo verbo;
      - confirmar que «fuentes» era aceptar «Explorador de la fuente de datos».
-     Con eso respondido, el orden de construcción propuesto es: la solicitud
-     como entidad, el estado de la persona calculado de sus hechos (con su
-     historial), el filtro y la columna en la bandeja, y el embudo en Monitoreo.
-     Se cruza con la API para las instituciones (`api/openapi.yaml`) y con
-     `docs/arquitectura-fabrica-de-credito.md`.
+     El orden de construcción propuesto es: el estado de la persona calculado
+     de sus hechos (con su historial), el filtro y la columna en la bandeja, y
+     el embudo en Monitoreo. Se cruza con la API para las instituciones
+     (`api/openapi.yaml`) y con `docs/arquitectura-fabrica-de-credito.md`.
   3. **Lo que todavía no se vio en pantalla:**
      - Configuración (Fuentes que consultamos, Campos del análisis, Qué ve el
        analista): la tanda en que iban se cortó por tiempo;
@@ -638,7 +759,11 @@ aceptada.
       seguridad, en `docs/cumplimiento/api/` (ya en la carpeta principal);
     - el contrato con los nombres del modelo de la persona (#12,
       2026-10-12). Ese día se cerró la sesión de este frente: quien lo
-      retome empieza acá.
+      retome empieza acá;
+    - el contrato con las puertas de cada módulo (`POST /simulaciones`, `POST
+      /capacidades-de-pago`) y la `modalidad` de la evaluación (2026-10-17),
+      revisado contra el código el 2026-10-18. Las diferencias que sólo se
+      resuelven tocando código están en el primer punto de la sección 1.
   - Queda, por orden:
   1. **Lo que quedó de los arreglos chicos** (cerrados el 2026-10-16, #24; la
      127 se aplicó y las funciones se desplegaron ese día; `llm_llamadas` quedó

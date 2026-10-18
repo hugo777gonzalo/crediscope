@@ -1,7 +1,7 @@
 # CrediScope
 
 Calificación crediticia para Ecuador. Una persona se consulta contra
-Novadata, se arma un Perfil del Cliente estandarizado, se clasifica su
+Novadata, se arma un Perfil de la Persona estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
 lenguaje natural produce un score de 1 a 999 y una recomendación.
 
@@ -294,8 +294,8 @@ Romper cualquiera de estas rompe algo real.
     que guardaron (origen `base`) es la referencia de las pruebas.
 - `simulador-credito.ts` → `simularCredito()` — la cuota de un crédito de
   consumo con el desgravamen, en centavos enteros, y su tabla. La usan la
-  pantalla `/simulador` y la usarán la capacidad de pago y la API: no se copia
-  la fórmula. Los parámetros del producto (`PRODUCTO_CONSUMO`: tasa nominal
+  pantalla `/simulador`, la función `simular-credito`, la capacidad de pago y
+  `evaluar-solicitud`, y la usará la API: no se copia la fórmula. Los parámetros del producto (`PRODUCTO_CONSUMO`: tasa nominal
   máxima de 15%, desgravamen de 0,6% anual) son del negocio (2026-10-17). El plan de
   la demo, con lo que falta, en `docs/plan-demo-ifi.md`.
   `montoMaximoParaCuota()` busca el monto con el mismo simulador, no con la
@@ -303,22 +303,35 @@ Romper cualquiera de estas rompe algo real.
 - `capacidad-de-pago.ts` → `datosDeCapacidad()` y `evaluarCapacidad()` — si la
   cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
   Una deuda sin cuota se lista aparte, nunca como cero. La usan la pantalla
-  `/capacidad/:cedula` y la función `capacidad-de-pago`.
+  `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
   El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
 - `modalidades.ts` y la función `evaluar-solicitud` (133) — la solicitud de
   crédito (tabla `solicitudes`) y su evaluación en Básico, Pro o Plus. Corre UN
   paso por llamada (Novadata y el modelo juntos pasan los 150 s) y llama a las
   funciones de cada módulo con la sesión de quien pidió; toma el paso con la
-  fila que devolvió la actualización (un paso de Equifax se cobra). El modelo y
-  la capacidad van por separado (negocio, 2026-10-17). Una tabla nueva con
+  fila que devolvió la actualización (un paso de Equifax se cobra, y la
+  consulta que falta sólo la hace un admin). El modelo y la capacidad van por
+  separado (negocio, 2026-10-17). En el contrato son `modalidad` y
+  `resultado.capacidadDePago` de `POST /evaluaciones`; lo que el contrato dice y
+  esta función todavía no hace está en `docs/pendientes.md`, sección 1. Una tabla nueva con
   datos de la persona: `suprimir_titular()` la borra y está en
   `derechos-del-titular.mjs` y `auditar-seguridad.mjs`.
+  La decisión de la institución (Aprobado / Rechazado / Desistió) la marca el
+  analista en la solicitud, con motivo (acción `decidir`, `decidir_solicitud()`,
+  134): vale la última y todas quedan en `decisiones`.
+- `estado-de-la-persona.ts` → `estadoDeLaPersona()` — el estado de la persona
+  (Prospecto, En proceso, Preaprobado, Aprobado, No aprobado) calculado desde sus
+  solicitudes, nunca guardado a mano. Manda la última solicitud; Preaprobado es
+  sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
+  proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
+  el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
-  lo que use la evaluación entera. El marco y el modelo se tocan al final,
-  cuando lo demás esté pulido.
+  lo que use la evaluación entera (`POST /simulaciones` y `POST
+  /capacidades-de-pago`, con sus ejemplos calculados con el código). El marco y
+  el modelo se tocan al final, cuando lo demás esté pulido.
 - `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
   `client_profiles` que copian algo del perfil (ver abajo).
 - `src/lib/fechas.js` — el único lugar donde se formatean fechas.
@@ -341,9 +354,13 @@ Romper cualquiera de estas rompe algo real.
   QA. Se corre al cambiar una pantalla.
 - `docs/modelo-de-la-persona.md` — la persona como entidad (decisión del
   negocio del 2026-10-12): el árbol (solicitudes, direcciones, empleos,
-  referencias, documentos, scores, créditos), los estados (Prospecto, ..., Cliente
-  activo, Cliente cerrado), qué existe hoy y qué falta. Leerlo antes de ponerle
-  nombre a una pantalla o a una tabla.
+  referencias, documentos, scores, créditos), los estados (Prospecto, En proceso,
+  Preaprobado, Aprobado, No aprobado, Cliente activo, Cliente cerrado), qué existe
+  hoy y qué falta. Leerlo antes de ponerle nombre a una pantalla o a una tabla.
+  **Decididos el 2026-10-18 y todavía sin aplicar en pantalla**: «En proceso»,
+  «No aprobado», «Perfil de la Persona» (hoy las pantallas dicen «Perfil del
+  Cliente») y que la decisión de la institución la marca el analista en la
+  solicitud; los renombres los hace la sesión que construye los estados.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los

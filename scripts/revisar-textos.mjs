@@ -45,7 +45,7 @@ export const REGLAS = [
   { id: "explorador-de-fuentes", nivel: "error", patron: /\bExplorador de Fuentes\b/, motivo: "Se llama «Explorador de la fuente de datos» (2026-10-12): «fuentes» ya es de dónde viene el ingreso en otro módulo.", cambiar: "Explorador de la fuente de datos" },
   { id: "reportes-menu", nivel: "error", patron: /^Reportes$/, motivo: "El menú «Reportes» pasó a «Monitoreo» el 2026-10-12.", cambiar: "Monitoreo" },
   { id: "inteligencia-de-negocios", nivel: "error", patron: /\bInteligencia de Negocios\b/, motivo: "Era la página de Reportes, hoy «Monitoreo › Panorama». «Inteligencia de Negocio» (singular) es del Laboratorio.", cambiar: "Monitoreo / Panorama" },
-  { id: "cliente-generico", nivel: "aviso", patron: /(?<!Perfil del )(?<!perfil del )\b[Cc]lientes?\b(?! (activo|activa|cerrado|cerrada|interno)\b)/, motivo: "«Cliente» es quien tiene un crédito (Cliente activo, Cliente cerrado); antes es una persona (docs/modelo-de-la-persona.md, decisión del 2026-10-12). «Perfil del Cliente» es nombre de producto y no se toca.", cambiar: "persona" },
+  { id: "cliente-generico", nivel: "aviso", patron: /(?<![Pp]erfil del )\b[Cc]lientes?\b(?! (activo|activa|cerrado|cerrada|interno)\b)/, motivo: "«Cliente» es quien tiene un crédito (Cliente activo, Cliente cerrado); antes es una persona (docs/modelo-de-la-persona.md, decisión del 2026-10-12).", cambiar: "persona" },
   { id: "fuente-de-ingreso-segmento", nivel: "aviso", patron: /^Fuente de ingreso$/i, motivo: "Cuando el valor es Independiente / Dependiente privado / ..., eso es el «Segmento» (el negocio lo dejó con ese nombre).", cambiar: "Segmento" },
 
   // ---- Jerga y anglicismos (sólo «score» y «colateral» son del negocio)
@@ -66,7 +66,8 @@ export const REGLAS = [
 
   // ---- Nombres de producto: mayúsculas como las usa el negocio
   { id: "nombre-fuentes-de-ingreso", nivel: "aviso", patron: /\bFuentes de ingreso\b/, motivo: "Nombre de módulo y pestaña: «Fuentes de Ingreso» (mayúscula en Ingreso). Si es un sustantivo común en medio de una frase, va en minúscula.", cambiar: "Fuentes de Ingreso" },
-  { id: "nombre-perfil", nivel: "aviso", patron: /\bPerfil del cliente\b|\bperfil del Cliente\b/, motivo: "Nombre de producto: «Perfil del Cliente».", cambiar: "Perfil del Cliente" },
+  { id: "perfil-del-cliente", nivel: "error", patron: /\b[Pp]erfil del [Cc]liente\b/, motivo: "El negocio lo renombró «Perfil de la Persona» el 2026-10-18: cliente es sólo quien tiene un crédito (docs/modelo-de-la-persona.md, 5).", cambiar: "Perfil de la Persona" },
+  { id: "nombre-perfil", nivel: "aviso", patron: /\bPerfil de la persona\b|\bperfil de la Persona\b/, motivo: "Nombre de producto: «Perfil de la Persona».", cambiar: "Perfil de la Persona" },
   { id: "nombre-analisis", nivel: "aviso", patron: /\bAnálisis con ia\b|\bAnálisis IA\b|\bAnalisis con IA\b/, motivo: "Nombre de producto: «Análisis con IA».", cambiar: "Análisis con IA" },
 ];
 
