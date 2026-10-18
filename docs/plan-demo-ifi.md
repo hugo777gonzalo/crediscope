@@ -2,21 +2,31 @@
 
 Etapa 1 del plan del negocio del 2026-10-15 («Pendientes y planificación
 estratégica»): qué existe, qué falta, qué se midió y qué hay que decidir antes
-de diseñar. Escrito el 2026-10-16. **Nada de esto está construido ni decidido**:
-lo que dice «recomiendo» es una propuesta.
+de diseñar. Escrito el 2026-10-16 y puesto al día el 2026-10-18. Las secciones 0
+a 6 son el diagnóstico del 16 con la nota de lo que se construyó después; la 7
+es el orden y dice, paso por paso, qué está hecho. Lo que dice «recomiendo» es
+una propuesta, salvo donde la sección 0.1 diga que el negocio la decidió.
 
 Fuera de alcance por decisión del negocio: cumplimiento, seguridad y normativa.
 Se nombran sólo cuando bloquean un paso concreto.
 
 ## 0. En seis líneas
 
-1. **El simulador de crédito no existe** (ni una línea). Es la pieza más
-   independiente: no espera datos de nadie. Conviene empezar por ahí.
-2. **La capacidad de pago no existe, y el marco la excluye a propósito**: dice
+Escritas el 2026-10-16. Las tres primeras se construyeron el 17 (marcadas);
+las otras tres siguen vigentes y son del predictor, que lleva otra sesión.
+
+1. **El simulador de crédito no existía.** Era la pieza más independiente.
+   *Hecho el 2026-10-17* (`_shared/simulador-credito.ts`, función
+   `simular-credito`, pantalla `/simulador`).
+2. **La capacidad de pago no existía, y el marco la excluye a propósito**: dice
    que la resuelve «el análisis económico de la entidad, que simula la cuota».
-   Tiene que ser un cálculo en código, no algo que decida el modelo.
-3. **La solicitud no es una entidad** (`docs/modelo-de-la-persona.md`). Sin
-   solicitud no hay flujo Pro ni Plus. La API ya la prevé, opcional y sin tasa.
+   Tiene que ser un cálculo en código, no algo que decida el modelo. *Hecho el
+   2026-10-17* (`_shared/capacidad-de-pago.ts`, función `capacidad-de-pago`,
+   pantalla `/capacidad/:cedula`). El marco sigue sin leerla (decisión del
+   negocio: el marco y el modelo se tocan al final).
+3. **La solicitud no era una entidad** (`docs/modelo-de-la-persona.md`). Sin
+   solicitud no hay flujo Pro ni Plus. *Hecho el 2026-10-17* (tabla
+   `solicitudes`, 133; función `evaluar-solicitud`; Básico, Pro y Plus).
 4. **La línea IESS ya la tenemos en buena parte**: Novadata trae el ingreso
    reportado al IESS de 1.713 de 2.573 personas (67%). Sirve de verdad para los
    dependientes, no para los independientes, que son justo quienes necesitan
@@ -26,12 +36,13 @@ Se nombran sólo cuando bloquean un paso concreto.
    construir sobre la base de 20.000 hay que saber qué es ese número.
 6. **El predictor choca con una regla vigente**: «no se especula sobre el
    ingreso». Mostrar un ingreso estimado es una decisión del negocio, no un
-   detalle de diseño.
+   detalle de diseño. *Resuelto en parte (P5)*: se muestra sólo el ingreso
+   estimado por nuestro propio predictor, no el de Equifax.
 
-## 0.1 Lo que decidió el negocio el 2026-10-17
+## 0.1 Lo que decidió el negocio el 2026-10-17 y 18
 
-Respuestas a las preguntas de la sección 5. Donde cambian lo propuesto abajo,
-manda esto.
+Respuestas a las preguntas de la sección 5 (P1 a P7) y, después de la tabla, lo
+que decidió mientras se construía. Donde cambian lo propuesto abajo, manda esto.
 
 | # | Decisión | Qué implica |
 |---|---|---|
@@ -43,7 +54,25 @@ manda esto.
 | P6 | El plan del predictor lo lleva otra sesión. | `docs/investigacion-predictor-de-ingresos.md`, secciones 8 a 11 (las bases de 3,9 millones y de 120.000, el pedido de columnas y el censo). |
 | P7 | Tasa **nominal anual máxima de 15%** para consumo; cada institución puede usar menos (14,5%, 12,9%). Desgravamen de **0,6%** por el momento, con la fórmula en un módulo con parámetros. | Construido el 2026-10-17 (`_shared/simulador-credito.ts`). El 0,6% es **anual** (confirmado el 2026-10-17) y se cobra cada mes sobre el saldo. La pantalla deja cambiar la periodicidad y la base. |
 
+Lo que decidió mientras se construía (el detalle de cada una está en la sección
+7, en el paso que la usa):
+
+| Cuándo | Decisión | Qué implica |
+|---|---|---|
+| 2026-10-17 | **Cada módulo con su propia puerta.** | Una función y una operación del contrato por módulo (`simular-credito` y `POST /simulaciones`; `capacidad-de-pago` y `POST /capacidades-de-pago`), además de lo que corre la evaluación entera. |
+| 2026-10-17 | **Carga máxima de 40%** del ingreso neto. | Parámetro de cada institución (`PARAMETROS_CAPACIDAD`); «justo» desde 5 puntos antes. |
+| 2026-10-17 | **Ingreso declarado**: lo que la persona dice recibir por mes. | Reemplaza al ingreso del IESS en la capacidad, sin descontarle nada, y se rotula «sin verificar». No es una estimación: no choca con «no se especula sobre el ingreso». |
+| 2026-10-17 | **El orquestador vive en el servidor y avanza por pasos.** | `evaluar-solicitud` corre un paso por llamada; la pantalla (y después la API) vuelve a llamar hasta que no queda ninguno. |
+| 2026-10-17 | **La recomendación del modelo y la capacidad de pago se muestran por separado.** | Ninguna regla las combina; la política configurable queda para después, si el negocio la quiere. |
+| 2026-10-17 | **Plus consulta Equifax si no hay una consulta vigente, y eso es sólo de administración** (se cobra). | A un analista el paso del buró le falla con el motivo. Para la API queda por decidir quién autoriza ese gasto (ver `docs/pendientes.md`). |
+| 2026-10-18 | **El segundo estado de la persona se llama «En proceso».** | Reemplaza a «Solicitante». Choca con el `en_proceso` del estado de la evaluación en el contrato (ver `docs/modelo-de-la-persona.md`, sección 5). |
+| 2026-10-18 | **Quien fue rechazado o desistió tiene un estado propio: «No aprobado».** | Cierra la pregunta «¿y el que no pasa?» de `docs/modelo-de-la-persona.md`. |
+| 2026-10-18 | **La decisión de la institución (Aprobado / Rechazado) la marca el analista en la solicitud.** | La marca una persona, no el modelo ni una regla. La preaprobación sigue siendo del modelo (P3). Todavía no está construido: la solicitud no tiene dónde guardarla (ver la sección 7, paso 4). |
+| 2026-10-18 | **«Perfil del Cliente» pasa a «Perfil de la Persona».** | Se renombra junto con los estados, en una sesión aparte (menú, exportaciones y textos). **Todavía no se aplicó en pantalla.** |
+
 ## 1. Qué existe hoy
+
+El diagnóstico del 2026-10-16, con lo que cambió hasta el 18.
 
 | Pieza | Estado | Dónde | Comentario |
 |---|---|---|---|
@@ -54,13 +83,13 @@ manda esto.
 | Perfil de Ingresos | Existe | `fuentes-ingreso.ts` (fuentes-v10) | Segmento, perfil laboral, ingreso reportado al IESS, Ingreso Mínimo SBU, indicios de ingreso mayor, tamaño del negocio. **No estima montos.** |
 | Predictor de ingresos | **Falta** | — | Ver sección 3. |
 | Análisis de riesgo (score 1-999) | Existe | `analyze-client`, `marco-interpretativo.ts` (v30), `controles-bloqueo.ts` | Modelo de lenguaje + controles fijos. Recomienda aprobar / revisar / negar. |
-| Obligaciones mensuales | Parcial | `equifax-estructura.ts` (`cuotaMensualUsd` del titular); Novadata sólo en cooperativas | Con Equifax hay cuota por operación; con Novadata sola, casi nunca. |
-| Simulador de crédito | **Falta** | — | Ninguna fórmula de cuota ni de desgravamen en el código. |
-| Capacidad de pago | **Falta** | — | El marco la deja afuera (comentario en `marco-interpretativo.ts`, líneas 284-286). |
-| Solicitud como entidad | **Falta** | — | Hoy se evalúa a la persona en abstracto. |
+| Obligaciones mensuales | Existe (2026-10-17) | `capacidad-de-pago.ts` → `datosDeCapacidad()`; `equifax-estructura.ts` (`cuotaMensualUsd` del titular); Novadata sólo en cooperativas | Con Equifax hay cuota por operación; con Novadata sola, casi nunca: lo que no trae cuota se lista aparte (`deudasSinCuota`), nunca como cero. |
+| Simulador de crédito | Existe (2026-10-17) | `simulador-credito.ts`, función `simular-credito`, pantalla `/simulador` | Francés y alemán, desgravamen sobre el saldo o el monto. Falta: comisiones. |
+| Capacidad de pago | Existe (2026-10-17) | `capacidad-de-pago.ts`, función `capacidad-de-pago`, pantalla `/capacidad/:cedula` | Es un cálculo, no una opinión del modelo: el marco la deja afuera a propósito (comentario en `marco-interpretativo.ts`, hacia la línea 285). Con Ingreso declarado opcional. |
+| Solicitud como entidad | Existe (2026-10-17) | tabla `solicitudes` (133), función `evaluar-solicitud`, pantallas `/solicitud/nueva` y `/solicitud/:id` | Falta lo que decide la institución (Aprobado / Rechazado) y el estado de la persona. |
 | Política separada del score | **Falta** | — | Hoy el marco valora el riesgo **y** recomienda (`arquitectura-fabrica-de-credito.md`). |
-| Modalidades Básico / Pro / Plus | **Falta** | — | Hay un solo camino: consulta → perfil → análisis. |
-| API para la IFI | Sólo el contrato | `api/openapi.yaml` (Fase 0) | La Fase 1 (recepción, cola, trabajador) no está construida. |
+| Modalidades Básico / Pro / Plus | Existe (2026-10-17) | `modalidades.ts`, `evaluar-solicitud` | Son configuración sobre un solo orquestador. Probadas de punta a punta el 2026-10-18. |
+| API para la IFI | Sólo el contrato | `api/openapi.yaml` (Fase 0; revisado contra el código el 2026-10-18) | Trae `modalidad`, `capacidadDePago`, `POST /simulaciones` y `POST /capacidades-de-pago`. La Fase 1 (recepción, cola, OAuth) no está construida: hoy las funciones piden la sesión de un analista. |
 | Trazabilidad y versiones | Existe | versiones del marco, fuentes y estructura; `huellaDelPedido()`; `mensaje_al_modelo`; sello del despliegue | Es la base para trazar también los nuevos módulos. |
 
 **¿Se puede organizar en módulos? (3.1 del plan)** Ya lo está, como bibliotecas
@@ -142,7 +171,8 @@ cubre a independientes con crédito bancario. Falta: la relación cuota/ingreso
 que usa cada tipo de entidad (supuesto configurable) y descontar lo de codeudor
 y garante (ya se separa por rol).
 
-**3.4 El simulador es una función pura y la más segura de construir.** Va en
+**3.4 El simulador es una función pura y la más segura de construir.** (Hecho
+el 2026-10-17.) Va en
 `_shared/simulador-credito.ts`, con pruebas en Deno y la misma función para la
 pantalla, la capacidad de pago y la API. Equifax ya calcula una cuota con tasa
 y desgravamen cuando se le manda una solicitud real (`ResultadoSegmentacion`:
@@ -156,14 +186,18 @@ modelo queda como una entrada más, no como la decisión. Esto ya lo proponía
 `arquitectura-fabrica-de-credito.md` y es lo que hace distintos a los tres
 flujos de verdad.
 
-**3.6 Lo que el negocio dejó abierto y ahora bloquea.** Del modelo de la
-persona: **¿quién decide «Preaprobado»?** (el modelo o la institución). Sin esa
-respuesta no se puede definir el resultado del flujo Básico.
+**3.6 Lo que el negocio dejó abierto y bloqueaba.** Del modelo de la persona:
+**¿quién decide «Preaprobado»?** (el modelo o la institución). *Contestado el
+2026-10-17 (P3)*: lo decide el modelo. La decisión de la institución (Aprobado /
+Rechazado) la marca el analista en la solicitud (2026-10-18).
 
 ## 4. Los tres flujos sobre lo que existe
 
-Recomendación: una modalidad es una **configuración** que declara entradas
-exigidas, módulos que corren y qué entrega; el orquestador es uno solo.
+Recomendación (adoptada el 2026-10-17): una modalidad es una **configuración**
+que declara entradas exigidas, módulos que corren y qué entrega; el orquestador
+es uno solo. La tabla es la propuesta del 16; lo construido difiere en las filas
+de política y resultado: no hay una regla que combine el modelo y la capacidad,
+y cada uno se entrega por separado (sección 0.1).
 
 | | Básico | Pro | Plus |
 |---|---|---|---|
@@ -172,7 +206,7 @@ exigidas, módulos que corren y qué entrega; el orquestador es uno solo.
 | Score del modelo | Sí (marco vigente) | Sí | Sí (con buró: marco-v31, hoy apagado) |
 | Simulador | — | Sí | Sí |
 | Obligaciones mensuales | — | Las que haya (cooperativas) | Las del buró, por operación |
-| Ingreso para la capacidad | — | Confirmado (IESS) o «no evaluable» | Confirmado, cota por crédito, estimación |
+| Ingreso para la capacidad | — | Confirmado (IESS), Ingreso declarado o «no evaluable» | Lo mismo (la cota por crédito y la estimación esperan al predictor) |
 | Capacidad de pago | — | Sí | Sí |
 | Política | Preaprobación por score | + regla de capacidad | + reglas de buró |
 | Resultado | Preaprobación preliminar + Perfil de Ingresos | Preaprobación con capacidad | Recomendación ampliada (aprobar / revisar / rechazar) |
@@ -180,15 +214,21 @@ exigidas, módulos que corren y qué entrega; el orquestador es uno solo.
 Cuando falta un dato, el módulo no corre y el resultado lo dice («Capacidad de
 pago: no evaluable, sin ingreso confirmado»). Nunca se rellena con cero.
 
-**La API**: el contrato ya tiene `POST /evaluaciones` con `solicitudDeCredito`
-opcional. Le faltan `modalidad`, la tasa y las condiciones en la solicitud, y en
-el resultado los bloques `simulacion`, `capacidadDePago` e `ingresos` (con el
-origen de cada estimación). Como la Fase 1 no está construida, para la demo la
-pantalla llama al mismo orquestador; la API lo usa después sin duplicar nada.
+**La API**: el contrato tenía `POST /evaluaciones` con `solicitudDeCredito`
+opcional. Ya trae `modalidad`, la tasa y las condiciones en la solicitud, y en el
+resultado `capacidadDePago` (con la simulación adentro); además, `POST
+/simulaciones` y `POST /capacidades-de-pago` como puertas propias. Falta el
+bloque `ingresos` con el origen de cada estimación, que espera al predictor.
+Como la Fase 1 no está construida, para la demo la pantalla llama al mismo
+orquestador (`evaluar-solicitud`); la API lo usa después sin duplicar nada. Lo
+que el contrato dice y el código todavía no hace está en el informe de la
+revisión del 2026-10-18 (resumido en `docs/pendientes.md`, sección 1).
 
 ## 5. Preguntas que condicionan el diseño
 
-Hay que contestarlas antes de diseñar los flujos. Las demás pueden esperar.
+Había que contestarlas antes de diseñar los flujos. **Las siete se contestaron
+el 2026-10-17** (P1 a P7, sección 0.1); se dejan acá con la pregunta original.
+Las demás pueden esperar.
 
 | # | Pregunta | Qué cambia |
 |---|---|---|
@@ -231,8 +271,8 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
    y la tasa máxima por institución guardada en la base.
 3. **Solicitud como entidad y capacidad de pago** con ingreso confirmado y
    obligaciones conocidas. Lo que no se puede evaluar se dice.
-   **La capacidad de pago, hecha el 2026-10-17** (la solicitud como entidad
-   sigue pendiente: pide una tabla y una migración):
+   **La capacidad de pago, hecha el 2026-10-17** (la solicitud como entidad, el
+   paso 4):
    - `_shared/capacidad-de-pago.ts`: `datosDeCapacidad()` saca del perfil el
      ingreso reportado al IESS (al sueldo se le descuenta el aporte personal de
      9,45%) y las cuotas (con Equifax, las del titular por sistema; sin él, las
@@ -281,14 +321,22 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
      `modalidad` de `POST /evaluaciones` y `capacidadDePago` en su resultado.
    - Pantallas: Solicitudes › Nueva solicitud (`/solicitud/nueva`) y la
      solicitud con su avance (`/solicitud/:id`).
-   - Falta: lo que decide la institución (Aprobado / Rechazado) espera los
-     estados de la persona; la política configurable que combine modelo y
+   - Falta: lo que decide la institución (Aprobado / Rechazado) y los estados de
+     la persona. El negocio decidió el 2026-10-18 cómo se llaman y quién marca
+     la decisión (sección 0.1); la sesión que los construye hace también los
+     renombres de pantalla. La política configurable que combine modelo y
      capacidad, si el negocio la quiere.
+   - Probadas de punta a punta el 2026-10-18 con una persona real; Plus pagó una
+     consulta de Equifax, autorizada.
 5. **Predictor v0, explicable**: confirmado + cota por crédito otorgado +
    estimación de Equifax rotulada. Sin entrenar nada.
 6. **Predictor v1, entrenado**, cuando llegue la base de 20.000 y se sepa qué es
    el predictor de Equifax (3.2). Se valida contra el IESS en dependientes.
 7. **API**: el contrato con los bloques nuevos; la Fase 1 sólo si P4 lo pide.
+   **El contrato, hecho y revisado contra el código el 2026-10-18**
+   (`modalidad`, `capacidadDePago`, `POST /simulaciones`, `POST
+   /capacidades-de-pago`). La Fase 1 sigue sin construirse (P4: va después de
+   las pantallas).
 8. **Escenarios y guion de la demo**, separando lo calculado de lo supuesto.
 
 La investigación de soluciones existentes (2.5 del plan) puede correr ya, en
