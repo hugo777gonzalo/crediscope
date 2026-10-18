@@ -55,7 +55,7 @@ export default function HistorialPerfilDetalle() {
           <ClienteHeader
             nombreCompleto={standardProfile?.identidad?.nombreCompleto}
             cedula={cedula}
-            infoTooltip={<InfoTooltip texto={`Perfil del Cliente consultado el ${formatearFechaHora(profile.created_at)} — vista de solo lectura del expediente.`} />}
+            infoTooltip={<InfoTooltip texto={`Perfil de la Persona consultado el ${formatearFechaHora(profile.created_at)} — vista de solo lectura del expediente.`} />}
           />
           <SegmentosPerfil standardProfile={standardProfile} segmentConfig={segmentConfig} controlBloqueo={profile.control_bloqueo} />
         </>

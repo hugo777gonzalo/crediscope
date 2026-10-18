@@ -461,7 +461,7 @@ function FilaBandeja({ f }) {
         {/* Siempre en esta posición y en este orden. Es lo que los
             convierte en memoria muscular. */}
         <div className="crediscope-accesos">
-          <Link className="crediscope-acceso" to={`/perfil/${f.cedula}`} title="Perfil del Cliente" aria-label="Perfil del Cliente">
+          <Link className="crediscope-acceso" to={`/perfil/${f.cedula}`} title="Perfil de la Persona" aria-label="Perfil de la Persona">
             <IdCard size={15} aria-hidden="true" />
           </Link>
           {/* Las fuentes de ingreso DE ESTA PERSONA viven en el

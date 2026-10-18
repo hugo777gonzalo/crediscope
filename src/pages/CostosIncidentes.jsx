@@ -97,7 +97,7 @@ function Semaforo({ estado }) {
       </table>
       {caidos.length > 0 && caidos.length < estado.length ? (
         <p style={{ marginBottom: 0 }}>
-          <strong>El servicio funciona en modo reducido.</strong> El Perfil del Cliente y las Fuentes de Ingreso siguen
+          <strong>El servicio funciona en modo reducido.</strong> El Perfil de la Persona y las Fuentes de Ingreso siguen
           disponibles: no dependen de lo que está caído.
         </p>
       ) : null}

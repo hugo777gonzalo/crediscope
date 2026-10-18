@@ -152,8 +152,8 @@ function ExploradorPorGrupo() {
   return (
     <div className="crediscope-card">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-        <h3 style={{ margin: 0 }}>Explorador por grupo del Perfil del Cliente</h3>
-        <select className="crediscope-input" style={{ maxWidth: 280 }} value={grupo} onChange={(e) => setGrupo(e.target.value)} aria-label="Grupo del Perfil del Cliente">
+        <h3 style={{ margin: 0 }}>Explorador por grupo del Perfil de la Persona</h3>
+        <select className="crediscope-input" style={{ maxWidth: 280 }} value={grupo} onChange={(e) => setGrupo(e.target.value)} aria-label="Grupo del Perfil de la Persona">
           {ORDEN_GRUPOS.map((g) => (
             <option key={g} value={g}>
               {ETIQUETAS_GRUPO[g]}

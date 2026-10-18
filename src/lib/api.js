@@ -281,9 +281,22 @@ export async function getSolicitud(id) {
 export async function getSolicitudesRecientes({ limite = 8 } = {}) {
   const { data, error } = await supabase
     .from("solicitudes")
-    .select("id, identificacion, modalidad, monto, plazo_meses, estado, creada_el, resultado->analisis->recomendacion, resultado->capacidad->capacidad->veredicto")
+    .select("id, identificacion, modalidad, monto, plazo_meses, estado, creada_el, decision, resultado->analisis->recomendacion, resultado->capacidad->capacidad->veredicto")
     .order("creada_el", { ascending: false })
     .limit(limite);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Los hechos de cada solicitud de una persona, para calcular su estado
+// (_shared/estado-de-la-persona.ts, 134). Sin el resultado entero: sólo la
+// recomendación del modelo.
+export async function getSolicitudesDeLaPersona(identificacion) {
+  const { data, error } = await supabase
+    .from("solicitudes")
+    .select("id, creada_el, estado, evaluada_el, decision, decidida_el, recomendacion:resultado->analisis->>recomendacion")
+    .eq("identificacion", identificacion)
+    .order("creada_el", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }

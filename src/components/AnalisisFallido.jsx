@@ -31,7 +31,7 @@ const MENSAJES = {
   proveedor_caido: {
     titulo: "El servicio de análisis no está respondiendo",
     que: "Es una falla del proveedor. CrediScope está funcionando; la parte que usa inteligencia artificial, no.",
-    ahora: "El Perfil del Cliente y las Fuentes de Ingreso siguen disponibles: no dependen del proveedor.",
+    ahora: "El Perfil de la Persona y las Fuentes de Ingreso siguen disponibles: no dependen del proveedor.",
   },
   respuesta_cortada: {
     titulo: "El análisis quedó a medias",

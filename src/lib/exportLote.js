@@ -143,7 +143,7 @@ const COMO_LEER = [
   ["Cómo leer este archivo"],
   [],
   ["Resumen del proceso — qué traía el archivo y cómo terminó cada cédula."],
-  ["Perfil del Cliente — una fila por persona con TODOS los campos de la Estructura"],
+  ["Perfil de la Persona — una fila por persona con TODOS los campos de la Estructura"],
   ["  Estandarizada, en columnas \"grupo.campo\". Es la base para análisis estadístico."],
   ["Ingresos (resumen) — una fila por persona. Es la que se cruza contra la cartera."],
   ["Ingresos (detalle) — una fila por fuente de ingreso. Responde de dónde sale el ingreso reportado."],
@@ -198,7 +198,7 @@ export async function descargarExcelLote({ lote, items, tandasDePerfiles, avisar
   }
 
   if (filasPerfil.length) {
-    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasPerfil), "Perfil del Cliente");
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filasPerfil), "Perfil de la Persona");
   }
   if (resumenIngresos.length) {
     XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(resumenIngresos), "Ingresos (resumen)");

@@ -16,7 +16,7 @@ import Aviso from "../components/ui/Aviso.jsx";
 // tienen tarifa.
 
 const CAMPOS = [
-  ["usd_entrada", "Entrada", "Lo que se manda: el perfil del cliente y el marco interpretativo."],
+  ["usd_entrada", "Entrada", "Lo que se manda: el Perfil de la Persona y el marco interpretativo."],
   ["usd_salida", "Salida", "Lo que responde, razonamiento incluido. Es lo más caro, cinco veces la entrada."],
   ["usd_cache_escritura", "Escribir caché", "Recargo por dejar el marco guardado para la próxima llamada."],
   ["usd_cache_lectura", "Leer caché", "Lo que cuesta reusarlo. Una décima parte de procesarlo de nuevo."],

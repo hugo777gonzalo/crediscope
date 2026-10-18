@@ -34,7 +34,7 @@ export const SECCIONES = [
     texto: "Evaluación Crediticia",
     prefijos: ["/perfil", "/analisis", "/ingresos", "/aval", "/equifax", "/buro", "/simulador", "/capacidad"],
     hijos: [
-      { texto: "Perfil del Cliente", ruta: "/perfil", conCedula: true },
+      { texto: "Perfil de la Persona", ruta: "/perfil", conCedula: true },
       { texto: "Análisis con IA", ruta: "/analisis", conCedula: true },
       { texto: "Fuentes de Ingreso", ruta: "/ingresos", conCedula: true },
       { texto: "Capacidad de pago", ruta: "/capacidad", conCedula: true },
@@ -139,7 +139,7 @@ export const SECCIONES = [
 const PAGINAS_FUERA_DEL_MENU = [
   [/^\/solicitud\/(?!nueva)./, "solicitudes", "Solicitud"],
   [/^\/solicitudes\/./, "solicitudes", "Expediente"],
-  [/^\/historial\/perfil\//, "solicitudes", "Perfil del Cliente guardado"],
+  [/^\/historial\/perfil\//, "solicitudes", "Perfil de la Persona guardado"],
   [/^\/historial\/analisis\//, "solicitudes", "Análisis con IA guardado"],
   [/^\/lotes\/(?!nuevo)./, "lotes", "Detalle del lote"],
   [/^\/laboratorio\/cargas\/nueva/, "laboratorio", "Cargar resultados de crédito"],

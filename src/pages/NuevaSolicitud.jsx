@@ -15,6 +15,7 @@ import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import { MODALIDADES, NOMBRE_DEL_PASO } from "../../supabase/functions/_shared/modalidades.ts";
+import { NOMBRE_DE_LA_DECISION } from "../../supabase/functions/_shared/estado-de-la-persona.ts";
 import { clasificarIdentificacion } from "../../supabase/functions/_shared/identificacion.ts";
 import { validarPedido } from "../../supabase/functions/_shared/simulador-credito.ts";
 
@@ -259,7 +260,8 @@ export default function NuevaSolicitud() {
                   {r.monto ? ` · ${moneda(Number(r.monto))} a ${plural(r.plazo_meses, "mes", "meses")}` : ""}
                   <span className="crediscope-celda-sub">{formatearFechaHora(r.creada_el)}</span>
                 </span>
-                <span>{ESTADO_DE_LA_SOLICITUD[r.estado] ?? r.estado}</span>
+                {/* Decidida, lo que importa es lo que decidió la institución. */}
+                <span>{r.decision ? NOMBRE_DE_LA_DECISION[r.decision] : (ESTADO_DE_LA_SOLICITUD[r.estado] ?? r.estado)}</span>
               </Link>
             ))}
           </div>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Bot, Calculator, CheckCircle2, Circle, Loader2, RotateCcw, XCircle } from "lucide-react";
-import { evaluarSolicitud, getSolicitud } from "../lib/api.js";
+import { evaluarSolicitud, getSolicitud, getSolicitudesDeLaPersona } from "../lib/api.js";
 import { moneda, plural, porcentaje } from "../lib/formatos.js";
 import { formatearFechaHora } from "../lib/fechas.js";
 import { ETIQUETA_SEGMENTO } from "../lib/fuentesIngresoConsolidado.js";
@@ -11,7 +11,10 @@ import VeredictoDeCapacidad from "../components/credito/VeredictoDeCapacidad.jsx
 import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
+import DecisionDeLaSolicitud from "../components/credito/DecisionDeLaSolicitud.jsx";
+import EstadoDeLaPersona from "../components/persona/EstadoDeLaPersona.jsx";
 import { MODALIDADES, NOMBRE_DEL_PASO } from "../../supabase/functions/_shared/modalidades.ts";
+import { estadoDeLaPersona, hechosDeLaFila } from "../../supabase/functions/_shared/estado-de-la-persona.ts";
 import { simularCredito } from "../../supabase/functions/_shared/simulador-credito.ts";
 
 // Una solicitud y su evaluación (133). Mientras está «en evaluación», la
@@ -36,6 +39,8 @@ export default function Solicitud() {
   const [error, setError] = useState(null);
   const [noExiste, setNoExiste] = useState(false);
   const [avanzando, setAvanzando] = useState(false);
+  // Las otras solicitudes de la persona: su estado lo decide la última (estado-de-la-persona.ts).
+  const [otras, setOtras] = useState(null);
   const vigente = useRef(true);
 
   // Avanza de a un paso mientras quede alguno pendiente y la pantalla siga abierta.
@@ -71,6 +76,10 @@ export default function Solicitud() {
         if (!fila) return setNoExiste(true);
         setS(fila);
         if (fila.estado === "en_evaluacion") avanzar(fila);
+        // Sin las otras, el estado de la persona no se muestra: mejor nada que uno equivocado.
+        getSolicitudesDeLaPersona(fila.identificacion)
+          .then((filas) => vigente.current && setOtras(filas))
+          .catch(() => {});
       })
       .catch(setError);
     return () => {
@@ -95,6 +104,12 @@ export default function Solicitud() {
     const r = simularCredito({ monto: Number(s.monto), plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen });
     return r.ok ? r.simulacion : null;
   }, [s?.monto, s?.plazo_meses, s?.tasa_nominal_anual, s?.sistema, s?.desgravamen]);
+
+  // Esta solicitud con lo último que se sabe de ella (avanza y se decide en la pantalla), y las demás como se leyeron.
+  const estadoPersona = useMemo(() => {
+    if (!s || !otras) return null;
+    return estadoDeLaPersona([...otras.filter((o) => o.id !== s.id).map(hechosDeLaFila), hechosDeLaFila(s)]).estado;
+  }, [s, otras]);
 
   if (error && !s) return <AvisoDeError error={error} />;
   if (noExiste) {
@@ -150,6 +165,11 @@ export default function Solicitud() {
             Cédula {s.identificacion} · creada el {formatearFechaHora(s.creada_el)}
             {s.ingreso_declarado ? ` · Ingreso declarado ${moneda(Number(s.ingreso_declarado))}` : ""}
           </p>
+          {estadoPersona ? (
+            <p style={{ margin: "10px 0 0" }}>
+              <EstadoDeLaPersona estado={estadoPersona} />
+            </p>
+          ) : null}
         </div>
         {s.client_id ? (
           <Link className="crediscope-btn crediscope-btn-ghost" to={`/solicitudes/${s.identificacion}`}>
@@ -260,6 +280,8 @@ export default function Solicitud() {
           ) : null}
         </>
       ) : null}
+
+      <DecisionDeLaSolicitud solicitud={s} alDecidir={setS} />
     </div>
   );
 }

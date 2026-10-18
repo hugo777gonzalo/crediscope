@@ -61,7 +61,7 @@ export default function FuentesIngreso() {
         <div className="crediscope-card">
           <p style={{ margin: 0 }}>Todavía no hay personas clasificadas.</p>
           <p className="crediscope-muted" style={{ marginBottom: 0 }}>
-            La clasificación se calcula al generar el Perfil del Cliente. Los {entero(d.sinClasificar)} perfiles ya guardados son
+            La clasificación se calcula al generar el Perfil de la Persona. Los {entero(d.sinClasificar)} perfiles ya guardados son
             anteriores al módulo y no se pueden reclasificar sin volver a consultar la fuente: el dato crudo de origen no se
             almacena. Se irán clasificando a medida que se consulten personas.
           </p>

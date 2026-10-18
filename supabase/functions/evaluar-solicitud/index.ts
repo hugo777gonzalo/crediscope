@@ -30,13 +30,19 @@
 //     "ingresoDeclarado": 1800 }
 //   { "accion": "avanzar", "id": "<uuid>" }
 //   { "accion": "reintentar", "id": "<uuid>" }
+//   { "accion": "decidir", "id": "<uuid>", "decision": "aprobado", "motivo": "..." }
 // Todas devuelven la solicitud entera.
+//
+// `decidir` anota lo que decidió la institución (134; negocio, 2026-10-18: lo
+// marca el analista, con motivo). Aprobar o rechazar, con la evaluación
+// terminada; desistir, en cualquier momento, y entonces la evaluación no sigue.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
+import { validarDecision } from "../_shared/estado-de-la-persona.ts";
 import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-institucion.ts";
 import { montoMaximoParaCuota, simularCredito } from "../_shared/simulador-credito.ts";
 import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "../_shared/capacidad-de-pago.ts";
@@ -283,11 +289,36 @@ Deno.serve(async (req) => {
     return responder(creada);
   }
 
-  if (cuerpo.accion !== "avanzar" && cuerpo.accion !== "reintentar") return responder({ error: "La acción es «crear», «avanzar» o «reintentar»." }, 400);
+  if (!["avanzar", "reintentar", "decidir"].includes(cuerpo.accion as string)) return responder({ error: "La acción es «crear», «avanzar», «reintentar» o «decidir»." }, 400);
   if (typeof cuerpo.id !== "string") return responder({ error: "Falta el id de la solicitud." }, 400);
 
   const { data: s } = await serviceClient.from("solicitudes").select("*").eq("id", cuerpo.id).maybeSingle();
   if (!s) return responder({ error: "No existe esa solicitud." }, 404);
+
+  if (cuerpo.accion === "decidir") {
+    const errores = validarDecision(cuerpo.decision, cuerpo.motivo, s.estado);
+    if (errores.length) return responder({ error: "La decisión no es válida.", errores }, 400);
+    // La base vuelve a mirar el estado: entre la lectura y acá la evaluación pudo fallar.
+    const { data, error } = await serviceClient.rpc("decidir_solicitud", {
+      p_id: s.id,
+      p_decision: cuerpo.decision,
+      p_motivo: cuerpo.motivo,
+      p_actor: actor!.id,
+    });
+    const decidida = Array.isArray(data) ? data[0] : null;
+    if (error || !decidida) return responder({ error: "No se pudo anotar la decisión. Volvé a abrir la solicitud y probá de nuevo." }, 409);
+    // El motivo no va a la auditoría: es texto libre y puede traer datos de la persona.
+    await serviceClient.from("audit_log").insert({
+      actor: actor!.id,
+      action: "solicitud.decidir",
+      client_id: decidida.client_id ?? null,
+      meta: { solicitud_id: s.id, decision: cuerpo.decision, anterior: s.decision ?? null },
+    });
+    return responder(decidida);
+  }
+
+  // Quien desistió no sigue: los pasos que faltan pueden consultar fuentes o cobrarse.
+  if (s.decision === "desistido") return responder(s);
 
   if (cuerpo.accion === "reintentar") {
     if (s.estado !== "fallida") return responder(s);
@@ -307,7 +338,7 @@ Deno.serve(async (req) => {
   const paso = siguientePaso(pasos);
   if (!paso) {
     if (s.estado === "en_evaluacion" && todosHechos(pasos)) {
-      const { data } = await serviceClient.from("solicitudes").update({ estado: "evaluada" }).eq("id", s.id).select("*").single();
+      const { data } = await serviceClient.from("solicitudes").update({ estado: "evaluada", evaluada_el: new Date().toISOString() }).eq("id", s.id).select("*").single();
       return responder(data ?? s);
     }
     return responder(s);
@@ -338,6 +369,7 @@ Deno.serve(async (req) => {
         pasos: nuevosPasos,
         resultado: { ...(tomada.resultado ?? {}), ...resultado },
         estado: todosHechos(nuevosPasos) ? "evaluada" : "en_evaluacion",
+        evaluada_el: todosHechos(nuevosPasos) ? new Date().toISOString() : (tomada.evaluada_el ?? null),
         actualizada_el: new Date().toISOString(),
       })
       .eq("id", s.id)

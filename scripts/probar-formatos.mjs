@@ -103,7 +103,7 @@ const ubic = (ruta) => {
 igual("ubicación: inicio", ubic("/"), "Inicio");
 igual("ubicación: bandeja", ubic("/solicitudes"), "Solicitudes › Bandeja");
 igual("ubicación: expediente", ubic("/solicitudes/0000000000"), "Solicitudes › Expediente");
-igual("ubicación: lo que guardó una consulta cuelga del expediente", ubic("/historial/perfil/abc"), "Solicitudes › Perfil del Cliente guardado");
+igual("ubicación: lo que guardó una consulta cuelga del expediente", ubic("/historial/perfil/abc"), "Solicitudes › Perfil de la Persona guardado");
 igual("ubicación: el historial por cédula se retiró (cae en la sección, sin página)", ubic("/historial"), "Solicitudes");
 igual("ubicación: «Reportes» pasó a «Monitoreo»", ubic("/reportes"), "Monitoreo › Panorama");
 igual("ubicación: Descargas es de Monitoreo", ubic("/reportes/descargas"), "Monitoreo › Descargas");
