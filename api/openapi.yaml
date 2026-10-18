@@ -1074,6 +1074,7 @@ components:
         monto:
           type: number
           exclusiveMinimum: 0
+          maximum: 1000000000
           multipleOf: 0.01
         moneda:
           type: string
@@ -1422,6 +1423,7 @@ components:
         monto:
           type: number
           exclusiveMinimum: 0
+          maximum: 1000000000
           multipleOf: 0.01
           description: En dólares.
         plazoMeses:
