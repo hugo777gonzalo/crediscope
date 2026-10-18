@@ -19,18 +19,23 @@ cuentan lo mismo y dicen cosas distintas.
 | `/aval/:cedula` | `PerfilAval.jsx` | todos | Reporte de la fuente Aval (buró). **No está en el Expediente** | — |
 | `/equifax/:cedula` | `PerfilEquifax.jsx`, `components/equifax/`, `lib/equifaxPantalla.js` | todos | Reporte de Equifax (buró): Score de Equifax, deuda por sistema, 24 meses de pagos, operaciones; el resto plegado; «Descargar reporte (PDF)» imprime la pantalla; «Consultar a Equifax» (sólo admin, sin consulta vigente, con confirmación porque se cobra; `ConsultarEquifax.jsx`). **No está en el Expediente** (F1). La pestaña aparece cuando el buró de la institución es Equifax | Aval |
 | `/buro/:cedula` | `BuroDeLaPersona.jsx` | todos | «Buró» del menú: lleva a la pestaña del buró de la institución (129), o dice que no hay uno elegido | — |
-| `/simulador` | `SimuladorCredito.jsx`, `_shared/simulador-credito.ts` | todos | Simulador de crédito: monto (con deslizador), plazo (12 a 60 de un toque), tasa (máximo 15%), cómo se paga y el seguro plegado; la cuota grande con su reparto (capital, interés, seguro), los totales y la tabla plegada. No necesita una persona | La capacidad de pago, cuando exista (la misma cuota) |
+| `/simulador` | `SimuladorCredito.jsx`, `_shared/simulador-credito.ts` | todos | Simulador de crédito: monto (con deslizador), plazo (12 a 60 de un toque), tasa (máximo 15%), cómo se paga y el seguro plegado; la cuota grande con su reparto (capital, interés, seguro), los totales y la tabla plegada. No necesita una persona | Capacidad de pago y Solicitud (la misma cuota) |
 | `/capacidad/:cedula` | `CapacidadDePago.jsx`, `components/credito/`, `_shared/capacidad-de-pago.ts` | todos | Capacidad de pago: las mismas condiciones del simulador y el veredicto (Le alcanza / justo / No le alcanza / No se puede medir) con «de cada $100», el medidor y el tope; hasta cuánto le alcanza; el Ingreso declarado (opcional, sin verificar: reemplaza al IESS y muestra qué daría sólo el IESS); lo que recibe (IESS, menos el aporte personal) y lo que ya paga (Equifax o Novadata), con las deudas sin cuota aparte. No consulta fuentes | Simulador de crédito (la misma cuota); Fuentes de Ingreso (el mismo ingreso reportado) |
-| `/solicitud/nueva` | `NuevaSolicitud.jsx`, `_shared/modalidades.ts` | todos | Nueva solicitud: cédula, la modalidad en tarjetas (Básico / Pro / Plus, con sus pasos; Plus apagada si el buró no es Equifax), las condiciones y el Ingreso declarado (Pro y Plus) y las solicitudes recientes | Simulador de crédito (el mismo formulario) |
-| `/solicitud/:id` | `Solicitud.jsx`, función `evaluar-solicitud` | todos | La solicitud: los pasos con su estado (avanza sola mientras está abierta; Reintentar si uno falla), lo que dice el modelo y lo que dicen los números, por separado | Análisis con IA (el score), Capacidad de pago (el veredicto) |
 
-Las cuatro llevan la tira de pestañas `PestanasCliente.jsx` (la cédula es la del último
-cliente visto: `ultimaCedula.js`). El menú las lleva a `/` si todavía no hay ninguno.
+Las de la persona (Perfil del Cliente, Análisis con IA, Fuentes de Ingreso, Capacidad de
+pago y el buró) llevan la tira de pestañas `PestanasCliente.jsx` (la cédula es la del
+último cliente visto: `ultimaCedula.js`). El menú las lleva a `/` si todavía no hay
+ninguno. Simulador y Solicitud no la llevan.
 
 ## Solicitudes
 
+La bandeja, el expediente y, desde el 2026-10-17, la solicitud de crédito (el menú las
+agrupa en «Solicitudes»).
+
 | Ruta | Archivo | Quién | Qué hace | Se tiene que parecer a |
 |---|---|---|---|---|
+| `/solicitud/nueva` | `NuevaSolicitud.jsx`, `_shared/modalidades.ts` | todos | Nueva solicitud: cédula, la modalidad en tarjetas (Básico / Pro / Plus, con sus pasos; Plus apagada si el buró no es Equifax), las condiciones y el Ingreso declarado (Pro y Plus) y las solicitudes recientes | Simulador de crédito (el mismo formulario) |
+| `/solicitud/:id` | `Solicitud.jsx`, función `evaluar-solicitud` | todos | La solicitud: los pasos con su estado (avanza sola mientras está abierta; Reintentar si uno falla), lo que dice el modelo y lo que dicen los números, por separado. Todavía no muestra el estado de la persona ni deja marcar la decisión de la institución | Análisis con IA (el score), Capacidad de pago (el veredicto) |
 | `/solicitudes` | `Solicitudes.jsx` | todos | **La bandeja**: una fila por persona consultada, filtros en la URL, franja de totales que filtra | Monitoreo (cantidades por recomendación), Panorama (segmentos) |
 | `/solicitudes/:cedula` | `Expediente.jsx` | todos | **El expediente**: todo lo que se sabe de una persona, en una pantalla con ruta propia | Perfil, Análisis y Fuentes de Ingreso por separado (dicen lo mismo con otro marco) |
 | `/historial` | (redirige a `/`) | todos | **Se retiró el 2026-10-12**: el Expediente ya trae la línea de tiempo y la búsqueda del Inicio lleva a él | — |

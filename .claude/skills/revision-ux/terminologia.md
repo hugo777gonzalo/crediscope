@@ -72,15 +72,29 @@ El resto de pantallas, pestañas y botones, en oración: «Personas por segmento
 Se conservan, con el aviso «(retirado)», los nombres de procesos que tienen historial
 en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 
+### Decididos el 2026-10-18, todavía sin aplicar en pantalla
+
+El negocio los decidió; **no se renombra ningún texto hasta que la sesión que construye
+los estados de la persona lo haga** (con `scripts/renombrar-textos.mjs`, primero en seco,
+y una regla nueva en el control). Mientras tanto, la revisión no los marca como error ni
+revierte lo que la pantalla dice hoy.
+
+| Hoy | Decidido | Quién y cuándo |
+|---|---|---|
+| Solicitante (segundo estado de la persona; sólo está en los documentos) | **En proceso** | Negocio, 2026-10-18. Se habían propuesto En evaluación, En trámite, Postulante y Aspirante. `en_proceso` ya es un estado de la *evaluación* en la API: no se usa el mismo código para los dos |
+| (no existía: el que fue rechazado o desistió no tenía estado) | **No aprobado** | Negocio, 2026-10-18 |
+| Perfil del Cliente | **Perfil de la Persona** (menú, exportaciones, la hoja del Excel de lotes y unos 25 textos) | Negocio, 2026-10-18. Se renombra junto con los estados |
+| (la decisión Aprobado / Rechazado no se puede marcar) | La marca **el analista en la solicitud** | Negocio, 2026-10-18 |
+
 ## 3. Un concepto, un nombre
 
 | Concepto | Nombre | Se evita | Nota |
 |---|---|---|---|
 | El número de 1 a 999 | **Score** («Score promedio»; en una frase, «el score») | «Puntaje» | Decidido el 2026-10-12. El score de **Aval** es otro: «Score de Aval» o, dentro de su pantalla, «el score». El de **Equifax**, «Score de Equifax» siempre, también dentro de su pantalla, y sin el medidor del Score de CrediScope (negocio, 2026-10-13: nunca se mezclan). |
 | Lo que el modelo aconseja | **Aprobar / Revisar / Negar** (pastilla, sello, filtro). **Observar** se retiró en marco-v27 y sólo queda en análisis viejos | «Rechazar» para el modelo | El dictamen en la tarjeta grande va en sustantivo (Aprobación / Revisión / Negación) **a propósito**: es el dictamen, no una orden (`RecomendacionCard.jsx`). El negocio lo dejó así el 2026-10-12. |
-| Lo que decide la institución con una solicitud | **Aprobado / Rechazado** | confundirlo con la recomendación del modelo | El modelo aconseja; la institución decide. Son dos columnas, no una (`docs/modelo-de-la-persona.md`, sección 4). |
-| La persona evaluada | **persona**. **Cliente** sólo es quien tiene un crédito (estados Cliente activo y Cliente cerrado). «Perfil del Cliente» es nombre de producto y se queda | «Titular», «sujeto» (sólo en derechos del titular); «cliente» para quien no tiene crédito | Decidido el 2026-10-12 con el árbol de la persona (`docs/modelo-de-la-persona.md`). El control avisa de cada «cliente» suelto. |
-| Los estados de la persona | **Prospecto · Solicitante (nombre por cambiar) · Preaprobado · Aprobado · Cliente activo · Cliente cerrado** | llamar «Estado» a los dos estados en una pantalla | El **estado de la persona** no es el **estado del análisis** (Analizado, Sin analizar, No se completó, La consulta falló). Hoy sólo existe el segundo. |
+| Lo que decide la institución con una solicitud | **Aprobado / Rechazado** | confundirlo con la recomendación del modelo | El modelo aconseja; la institución decide, y lo marca el analista en la solicitud (negocio, 2026-10-18; todavía no se puede marcar). Son dos columnas, no una (`docs/modelo-de-la-persona.md`, sección 4). La Solicitud muestra por separado lo que dice el modelo y lo que dicen los números (capacidad de pago): no se combinan en una sola cara (negocio, 2026-10-17). |
+| La persona evaluada | **persona**. **Cliente** sólo es quien tiene un crédito (estados Cliente activo y Cliente cerrado). «Perfil del Cliente» sigue siendo el nombre de producto en pantalla hasta que se aplique «Perfil de la Persona» (decidido el 2026-10-18) | «Titular», «sujeto» (sólo en derechos del titular); «cliente» para quien no tiene crédito | Decidido el 2026-10-12 con el árbol de la persona (`docs/modelo-de-la-persona.md`). El control avisa de cada «cliente» suelto. |
+| Los estados de la persona | **Prospecto · En proceso · Preaprobado · Aprobado · No aprobado · Cliente activo · Cliente cerrado** (decididos; el nombre de pantalla se aplica con los estados) | llamar «Estado» a los dos estados en una pantalla; «Solicitante» | El **estado de la persona** no es el **estado del análisis** (Analizado, Sin analizar, No se completó, La consulta falló) ni el **estado de la evaluación** de la API (`en_proceso`, `completada`...). Hoy sólo existe el del análisis. |
 | Lo que cuelga de la persona | **Solicitudes · Direcciones · Empleos · Referencias · Documentos · Scores · Créditos** | «historial» para una de ellas | Los nombres del árbol del negocio; una pantalla nueva usa éstos. |
 | Qué se consulta | **fuente de datos** (Novadata, Aval) | «proveedor» a secas, «servicio» | «Fuentes de ingreso» ≠ «fuentes de datos»: son dos cosas. Sólo la segunda es una fuente que se consulta. |
 | Un conjunto de cédulas consultadas de una vez | **lote** (Consultas por lote) | «corrida» para esto | «Corrida» es una acción que dispara muchas llamadas al modelo (Costos). |
@@ -110,14 +124,19 @@ en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 de JavaScript dentro de miles de perfiles. Cuando se arme bien en origen (próxima
 versión de fuentes) se retira.
 
-## 5. Nombres que quedan por decidir (propuestas)
+## 5. Nombres decididos sin aplicar y nombres que quedan por decidir
 
-No se aplicaron: son del negocio. Las opciones están en `docs/modelo-de-la-persona.md`,
-sección 5, y en `docs/revision-ux.md`:
+**Decididos el 2026-10-18 (sin aplicar en pantalla; ver la tabla de la sección 2):**
+el segundo estado de la persona es **En proceso**; quien fue rechazado o desistió está en
+**No aprobado**; la decisión de la institución la marca el analista en la solicitud; y
+«Perfil del Cliente» pasa a **Perfil de la Persona**. El detalle, en
+`docs/modelo-de-la-persona.md`, sección 5. Quién decide Preaprobado ya estaba contestado
+(el modelo, 2026-10-17).
 
-- el nombre del segundo estado de la persona («Solicitante» no convence): **En evaluación**
-  (recomendada), En trámite, Postulante, Aspirante;
-- si «Perfil del Cliente» pasa a «Perfil de la Persona»;
-- qué estado tiene quien fue rechazado o desistió, y quién decide Preaprobado;
+**Siguen por decidir** (son del negocio; las opciones están en el mismo documento y en
+`docs/revision-ux.md`):
+
 - si el dictamen del modelo («Negación») y la decisión de la solicitud («Rechazado») dicen lo mismo;
+- cómo pasa la persona de En proceso a Preaprobado cuando el modelo dice «Revisar», y si
+  quien está en No aprobado vuelve a En proceso al pedir otro crédito;
 - «Explorador de la fuente de datos»: confirmar que «fuentes» era aceptar la recomendación.

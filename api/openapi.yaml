@@ -16,11 +16,37 @@ info:
     La IFI pide la evaluación de una persona y CrediScope:
 
     1. valida la identificación y la autorización del titular;
-    2. consulta las fuentes contratadas (Novadata y Aval);
+    2. consulta las fuentes contratadas (Novadata y, en la modalidad `plus`, el
+       buró de la IFI: Equifax);
     3. arma el perfil estandarizado y aplica los controles de bloqueo, que son
        reglas fijas y prevalecen sobre el modelo;
     4. le pide el análisis al modelo con el marco interpretativo vigente;
-    5. entrega el resultado completo, firmado.
+    5. en las modalidades `pro` y `plus`, calcula la cuota del crédito pedido y
+       si entra en el ingreso de la persona;
+    6. entrega el resultado completo, firmado.
+
+    ## Modalidades
+
+    `POST /evaluaciones` corre una de tres modalidades (`modalidad`). Cada una
+    es una configuración de los mismos módulos, no un camino aparte:
+
+    | Modalidad | Qué corre | Qué exige |
+    |---|---|---|
+    | `basico` | Perfil, fuentes de ingreso y la recomendación del modelo | La identificación |
+    | `pro` | Lo de `basico`, más la cuota del crédito y la capacidad de pago | Las condiciones del crédito: monto, plazo y tasa |
+    | `plus` | Lo de `pro`, con el buró de la IFI: las cuotas de la capacidad salen de cada operación del buró | Lo de `pro`, y que el buró de la IFI sea Equifax |
+
+    La recomendación del modelo y la capacidad de pago se entregan por
+    separado, cada una en su bloque del resultado: ninguna regla las combina en
+    una decisión.
+
+    ## Módulos con puerta propia
+
+    La cuota y la capacidad de pago también se pueden pedir solas, sin evaluar
+    a la persona: `POST /simulaciones` calcula la cuota y la tabla de un crédito
+    sin consultar a nadie, y `POST /capacidades-de-pago` mide si esa cuota entra
+    en el ingreso, con lo que CrediScope ya sabe de la persona o con los datos
+    que manda la IFI. Es el mismo cálculo que corre dentro de `pro` y `plus`.
 
     ## Asincrónica, con espera opcional
 
@@ -205,6 +231,11 @@ paths:
         consultar a las fuentes. Si ya hay un análisis del mismo pedido al
         modelo, se reutiliza también. Las dos cosas se informan en
         `trazabilidad`.
+
+        La `modalidad` decide qué se evalúa (ver "Modalidades" arriba). Con
+        `pro` o `plus` hay que mandar `solicitudDeCredito` con monto, plazo y
+        tasa; sin eso, 400 `cuerpo-invalido`. `plus` también da 400 si el buró
+        de la IFI no es Equifax.
       security:
         - oauth2: [evaluaciones:crear]
       parameters:
@@ -217,27 +248,54 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PedidoDeEvaluacion'
-            example:
-              persona:
-                tipoIdentificacion: cedula
-                identificacion: '0000000001'
-              autorizacion:
-                id: AUT-2026-000123
-                otorgadaEl: '2026-10-09T10:02:00-05:00'
-                canal: firma_electronica
-                finalidad: evaluacion_de_credito
-                huellaDelDocumento: sha256:9f2b5c0e7a1d4b8c6e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d
-              solicitudDeCredito:
-                producto: consumo
-                monto: 8000
-                moneda: USD
-                plazoMeses: 36
-                destino: capital de trabajo
-              referencia: SOL-2026-55555
-              operador:
-                id: u-4821
-                agencia: Matriz
-              prioridad: interactiva
+            examples:
+              basico:
+                summary: Básico, sin condiciones del crédito
+                value:
+                  persona:
+                    tipoIdentificacion: cedula
+                    identificacion: '0000000001'
+                  autorizacion:
+                    id: AUT-2026-000123
+                    otorgadaEl: '2026-10-09T10:02:00-05:00'
+                    canal: firma_electronica
+                    finalidad: evaluacion_de_credito
+                    huellaDelDocumento: sha256:9f2b5c0e7a1d4b8c6e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d
+                  solicitudDeCredito:
+                    producto: consumo
+                    monto: 8000
+                    moneda: USD
+                    plazoMeses: 36
+                    destino: capital de trabajo
+                  referencia: SOL-2026-55555
+                  operador:
+                    id: u-4821
+                    agencia: Matriz
+                  prioridad: interactiva
+              pro:
+                summary: Pro, con la cuota y la capacidad de pago
+                value:
+                  persona:
+                    tipoIdentificacion: cedula
+                    identificacion: '0000000001'
+                  autorizacion:
+                    id: AUT-2026-000124
+                    otorgadaEl: '2026-10-09T10:02:00-05:00'
+                    canal: firma_electronica
+                    finalidad: evaluacion_de_credito
+                    huellaDelDocumento: sha256:9f2b5c0e7a1d4b8c6e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d
+                  modalidad: pro
+                  solicitudDeCredito:
+                    producto: consumo
+                    monto: 8000
+                    moneda: USD
+                    plazoMeses: 36
+                    tasaNominalAnualPorcentaje: 15
+                  referencia: SOL-2026-55558
+                  operador:
+                    id: u-4821
+                    agencia: Matriz
+                  prioridad: interactiva
       responses:
         '202':
           description: Aceptada. El resultado se lee con `GET /evaluaciones/{id}` o llega el aviso.
@@ -290,6 +348,8 @@ paths:
               examples:
                 completada:
                   $ref: '#/components/examples/EvaluacionCompletada'
+                completadaPro:
+                  $ref: '#/components/examples/EvaluacionCompletadaPro'
         '400':
           $ref: '#/components/responses/PedidoInvalido'
         '401':
@@ -387,6 +447,8 @@ paths:
                   $ref: '#/components/examples/EvaluacionEnProceso'
                 completada:
                   $ref: '#/components/examples/EvaluacionCompletada'
+                completadaPro:
+                  $ref: '#/components/examples/EvaluacionCompletadaPro'
                 sinVeredicto:
                   $ref: '#/components/examples/EvaluacionSinVeredicto'
                 fallida:
@@ -503,10 +565,14 @@ paths:
         usan la capacidad de pago y la pantalla del analista.
 
         La tasa es nominal anual y no puede pasar la máxima del producto (15%
-        para consumo, que la IFI puede bajar). El seguro de desgravamen es, si
-        no se indica otro, 0,6% anual sobre el saldo de cada mes. Cada valor
-        se redondea al centavo en su mes y la última cuota ajusta la
-        diferencia.
+        para consumo, que la IFI puede bajar; si pasa, 400). El seguro de
+        desgravamen es, si no se indica otro, 0,6% anual sobre el saldo de cada
+        mes. Cada valor se redondea al centavo en su mes y la última cuota
+        ajusta la diferencia. Las tasas y fracciones (`tasaMensual`,
+        `tasaEfectivaAnual`) llegan sin redondear: se redondean al mostrarlas.
+
+        El producto de referencia es el de consumo: para otros productos la
+        tasa máxima no aplica y todavía no hay parámetros.
       security:
         - oauth2: [simulaciones:crear]
       parameters:
@@ -550,15 +616,15 @@ paths:
                     tasaPorcentaje: 0.6
                     periodicidad: anual
                     base: saldo
-                  tasaMensual: 0.0125
-                  tasaEfectivaAnual: 0.160755
+                  tasaMensual: 0.012499999999999999
+                  tasaEfectivaAnual: 0.1607545177229981
                   cuotaPrimerMes: 175.83
-                  cuotaUltimoMes: 173.28
+                  cuotaUltimoMes: 173.41
                   capitalEInteresPrimerMes: 173.33
                   seguroPrimerMes: 2.5
-                  totalInteres: 1239.74
+                  totalInteres: 1239.75
                   totalSeguro: 49.62
-                  totalPagado: 6289.36
+                  totalPagado: 6289.37
         '400':
           $ref: '#/components/responses/PedidoInvalido'
         '401':
@@ -581,21 +647,30 @@ paths:
         evaluación, de dos maneras:
 
         - con `identificacion`: usa lo que CrediScope ya sabe de la persona (el
-          ingreso reportado al IESS y las cuotas del buró de la IFI). No
-          consulta a ninguna fuente; si la persona no se consultó antes,
-          responde 404;
+          ingreso reportado al IESS y las cuotas del buró de la IFI, o las de
+          cooperativas de Novadata si no hay buró). No consulta a ninguna
+          fuente; si la persona no se consultó antes, responde 404. Si además
+          vienen `ingresos` u `obligaciones`, se ignoran: manda la
+          identificación;
         - con `ingresos` y `obligaciones`: usa los datos que manda la IFI (por
-          ejemplo, del rol de pagos) y no lee nada de CrediScope.
+          ejemplo, del rol de pagos) y no lee nada de CrediScope. Sin ningún
+          ingreso, el veredicto es `sin_ingreso`: no es un rechazo, es que no
+          hay con qué medir.
 
         `ingresoDeclarado` es lo que la persona que pide el crédito dice que
-        recibe por mes. Si viene, reemplaza al ingreso reportado al IESS en el
-        cálculo (es el total), no se le descuenta nada y el resultado lo marca
-        como no verificado (`ingresoDeclarado: true`). Con `identificacion`, la
-        respuesta trae además `capacidadSoloIess`, para comparar.
+        recibe por mes. Si viene (y es mayor que cero), reemplaza al ingreso
+        reportado al IESS en el cálculo (es el total, no se suma al IESS), no se
+        le descuenta nada y el resultado lo marca como no verificado
+        (`ingresoDeclarado: true`). Sirve también con la segunda manera, sin
+        `ingresos`. Con `identificacion` e `ingresoDeclarado`, la respuesta trae
+        además `capacidadSoloIess` (lo que daría sólo el IESS), para comparar;
+        en cualquier otro caso es `null`.
 
         Al sueldo de un dependiente se le descuenta el aporte personal al IESS.
         Una deuda sin cuota informada no se cuenta como cero: se devuelve en
-        `deudasSinCuota` y `obligacionesIncompletas` es `true`.
+        `datos.deudasSinCuota` y `obligacionesIncompletas` es `true`. `datos`
+        dice con qué ingresos y cuotas se midió (con el Ingreso declarado, el
+        único ingreso es el declarado).
       security:
         - oauth2: [capacidades:crear]
       parameters:
@@ -606,20 +681,32 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PedidoDeCapacidad'
-            example:
-              ingresos:
-                - concepto: Sueldo del rol de pagos
-                  montoMensual: 1200
-                  tipo: sueldo
-              obligaciones:
-                - concepto: Tarjeta de crédito
-                  montoMensual: 85
-              solicitud:
-                monto: 5000
-                plazoMeses: 36
-                tasaNominalAnualPorcentaje: 15
-              parametros:
-                cargaMaxima: 0.4
+            examples:
+              conLosDatosDeLaIfi:
+                summary: Con los datos que manda la IFI, sin consultar a nadie
+                value:
+                  ingresos:
+                    - concepto: Sueldo del rol de pagos
+                      montoMensual: 1200
+                      tipo: sueldo
+                  obligaciones:
+                    - concepto: Tarjeta de crédito
+                      montoMensual: 85
+                  solicitud:
+                    monto: 5000
+                    plazoMeses: 36
+                    tasaNominalAnualPorcentaje: 15
+                  parametros:
+                    cargaMaxima: 0.4
+              conUnaPersonaYSuIngresoDeclarado:
+                summary: Con una persona ya consultada y lo que dice recibir
+                value:
+                  identificacion: '0000000001'
+                  ingresoDeclarado: 1800
+                  solicitud:
+                    monto: 5000
+                    plazoMeses: 36
+                    tasaNominalAnualPorcentaje: 15
       responses:
         '200':
           description: La capacidad de pago, la simulación y el monto máximo que alcanza.
@@ -632,45 +719,158 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RespuestaDeCapacidad'
-              example:
-                capacidad:
-                  version: capacidad-v3
-                  veredicto: alcanza
-                  ingresoReportado: 1200
-                  aportePersonal: 113.4
-                  ingresoNeto: 1086.6
-                  obligacionesActuales: 85
-                  cuotaNueva: 175.83
-                  cargaActual: 0.0782
-                  cargaConElCredito: 0.24
-                  cargaMaxima: 0.4
-                  cuotaMaximaAdmisible: 349.64
-                  holgura: 173.81
-                  disponibleDespues: 825.77
-                  obligacionesIncompletas: false
-                  ingresoSoloSbu: false
-                  ingresoDeclarado: false
-                  avisos: []
-                simulacion:
-                  version: simulador-v2
-                  monto: 5000
-                  plazoMeses: 36
-                  tasaNominalAnualPorcentaje: 15
-                  sistema: frances
-                  desgravamen:
-                    tasaPorcentaje: 0.6
-                    periodicidad: anual
-                    base: saldo
-                  tasaMensual: 0.0125
-                  tasaEfectivaAnual: 0.160755
-                  cuotaPrimerMes: 175.83
-                  cuotaUltimoMes: 173.28
-                  capitalEInteresPrimerMes: 173.33
-                  seguroPrimerMes: 2.5
-                  totalInteres: 1239.74
-                  totalSeguro: 49.62
-                  totalPagado: 6289.36
-                montoMaximo: 9942.93
+              examples:
+                conLosDatosDeLaIfi:
+                  summary: Respuesta al pedido con los datos de la IFI
+                  value:
+                    capacidad:
+                      version: capacidad-v3
+                      veredicto: alcanza
+                      ingresoReportado: 1200
+                      aportePersonal: 113.4
+                      ingresoNeto: 1086.6
+                      obligacionesActuales: 85
+                      cuotaNueva: 175.83
+                      cargaActual: 0.07822565801582919
+                      cargaConElCredito: 0.24004233388551444
+                      cargaMaxima: 0.4
+                      cuotaMaximaAdmisible: 349.64
+                      holgura: 173.81
+                      disponibleDespues: 825.77
+                      obligacionesIncompletas: false
+                      ingresoSoloSbu: false
+                      ingresoDeclarado: false
+                      avisos: []
+                      parametros:
+                        cargaMaxima: 0.4
+                        margenJusto: 0.05
+                        aportePersonalIess: 0.0945
+                    simulacion:
+                      version: simulador-v2
+                      monto: 5000
+                      plazoMeses: 36
+                      tasaNominalAnualPorcentaje: 15
+                      sistema: frances
+                      desgravamen:
+                        tasaPorcentaje: 0.6
+                        periodicidad: anual
+                        base: saldo
+                      tasaMensual: 0.012499999999999999
+                      tasaEfectivaAnual: 0.1607545177229981
+                      cuotaPrimerMes: 175.83
+                      cuotaUltimoMes: 173.41
+                      capitalEInteresPrimerMes: 173.33
+                      seguroPrimerMes: 2.5
+                      totalInteres: 1239.75
+                      totalSeguro: 49.62
+                      totalPagado: 6289.37
+                    montoMaximo: 9942.93
+                    capacidadSoloIess: null
+                    datos:
+                      ingresos:
+                        - concepto: Sueldo del rol de pagos
+                          montoMensual: 1200
+                          tipo: sueldo
+                      obligaciones:
+                        - concepto: Tarjeta de crédito
+                          montoMensual: 85
+                      deudasSinCuota: []
+                      fuenteDeLasCuotas: novadata
+                      corteIess: null
+                    procedencia:
+                      modo: datos_del_pedido
+                conUnaPersonaYSuIngresoDeclarado:
+                  summary: Respuesta al pedido con una persona y su Ingreso declarado (las cuotas, de Equifax)
+                  value:
+                    capacidad:
+                      version: capacidad-v3
+                      veredicto: alcanza
+                      ingresoReportado: 1800
+                      aportePersonal: 0
+                      ingresoNeto: 1800
+                      obligacionesActuales: 420
+                      cuotaNueva: 175.83
+                      cargaActual: 0.23333333333333334
+                      cargaConElCredito: 0.3310166666666667
+                      cargaMaxima: 0.4
+                      cuotaMaximaAdmisible: 300
+                      holgura: 124.17
+                      disponibleDespues: 1204.17
+                      obligacionesIncompletas: true
+                      ingresoSoloSbu: false
+                      ingresoDeclarado: true
+                      avisos:
+                        - 'Hay deudas sin cuota informada: lo que paga por mes es más de lo que se cuenta acá.'
+                        - 'El ingreso es el que declara la persona: no está verificado.'
+                      parametros:
+                        cargaMaxima: 0.4
+                        margenJusto: 0.05
+                        aportePersonalIess: 0.0945
+                    simulacion:
+                      version: simulador-v2
+                      monto: 5000
+                      plazoMeses: 36
+                      tasaNominalAnualPorcentaje: 15
+                      sistema: frances
+                      desgravamen:
+                        tasaPorcentaje: 0.6
+                        periodicidad: anual
+                        base: saldo
+                      tasaMensual: 0.012499999999999999
+                      tasaEfectivaAnual: 0.1607545177229981
+                      cuotaPrimerMes: 175.83
+                      cuotaUltimoMes: 173.41
+                      capitalEInteresPrimerMes: 173.33
+                      seguroPrimerMes: 2.5
+                      totalInteres: 1239.75
+                      totalSeguro: 49.62
+                      totalPagado: 6289.37
+                    montoMaximo: 8531.14
+                    capacidadSoloIess:
+                      version: capacidad-v3
+                      veredicto: no_alcanza
+                      ingresoReportado: 1200
+                      aportePersonal: 113.4
+                      ingresoNeto: 1086.6
+                      obligacionesActuales: 420
+                      cuotaNueva: 175.83
+                      cargaActual: 0.3865267807840972
+                      cargaConElCredito: 0.5483434566537825
+                      cargaMaxima: 0.4
+                      cuotaMaximaAdmisible: 14.64
+                      holgura: -161.19
+                      disponibleDespues: 490.77
+                      obligacionesIncompletas: true
+                      ingresoSoloSbu: false
+                      ingresoDeclarado: false
+                      avisos:
+                        - 'Hay deudas sin cuota informada: lo que paga por mes es más de lo que se cuenta acá.'
+                      parametros:
+                        cargaMaxima: 0.4
+                        margenJusto: 0.05
+                        aportePersonalIess: 0.0945
+                    datos:
+                      ingresos:
+                        - concepto: Ingreso declarado
+                          montoMensual: 1800
+                          tipo: declarado
+                          origen: La persona
+                      obligaciones:
+                        - concepto: Bancos
+                          montoMensual: 420
+                          origen: Equifax
+                      deudasSinCuota:
+                        - concepto: Casas comerciales
+                          saldo: 650
+                          origen: Novadata
+                      fuenteDeLasCuotas: equifax
+                      fuentesSinConsultar: []
+                      corteIess: '2026-08'
+                    procedencia:
+                      modo: persona
+                      perfilDel: '2026-10-16T14:05:33.412Z'
+                      buroDeLaInstitucion: equifax
+                      equifaxDel: '2026-10-16T14:07:10.906Z'
         '400':
           $ref: '#/components/responses/PedidoInvalido'
         '401':
@@ -986,9 +1186,13 @@ components:
             Qué se evalúa. `basico`: el perfil, las fuentes de ingreso y la
             recomendación del modelo. `pro`: además, la cuota del crédito pedido
             y la capacidad de pago (exige `solicitudDeCredito` con monto, plazo y
-            tasa). `plus`: además, el buró de la IFI (Equifax), con las cuotas de
-            cada operación. La recomendación del modelo y la capacidad de pago se
-            entregan por separado: no se combinan en una decisión.
+            tasa, y por ahora sólo del producto de consumo). `plus`: además, el
+            buró de la IFI: las cuotas de la capacidad salen de las operaciones
+            que trae Equifax en lugar de las de Novadata. Exige que el buró de la
+            IFI sea Equifax, y si la persona no tiene una consulta vigente, se
+            consulta (y esa consulta se cobra). La recomendación del modelo y la
+            capacidad de pago se entregan por separado: no se combinan en una
+            decisión.
         referencia:
           $ref: '#/components/schemas/Referencia'
         operador:
@@ -1066,11 +1270,17 @@ components:
     SolicitudDeCredito:
       type: object
       additionalProperties: false
-      description: Opcional en la v1. Se guarda, y se usa cuando el marco interpretativo la incorpore.
+      description: |
+        Las condiciones del crédito que pide la persona. En `basico` es
+        opcional y sólo se guarda. En `pro` y `plus` son obligatorios `monto`,
+        `plazoMeses` y `tasaNominalAnualPorcentaje`: con ellos se calcula la
+        cuota y la capacidad de pago. El modelo todavía no las lee: el marco
+        interpretativo las incorporará más adelante.
       properties:
         producto:
           type: string
           enum: [consumo, microcredito, productivo, educativo, inmobiliario, vivienda_interes_social_publico, otro]
+          description: Los cálculos de `pro` y `plus` usan los parámetros del producto de consumo (tasa máxima de 15%, desgravamen de 0,6% anual).
         monto:
           type: number
           exclusiveMinimum: 0
@@ -1093,7 +1303,7 @@ components:
         tasaNominalAnualPorcentaje:
           type: number
           minimum: 0
-          description: Nominal anual, en porcentaje. Obligatoria en las modalidades `pro` y `plus`.
+          description: Nominal anual, en porcentaje. Obligatoria en las modalidades `pro` y `plus`. No puede pasar la máxima del producto (15% para consumo).
         sistema:
           type: string
           enum: [frances, aleman]
@@ -1103,7 +1313,8 @@ components:
         ingresoDeclarado:
           type: number
           minimum: 0
-          description: Lo que la persona dice que recibe por mes. En la capacidad de pago reemplaza al ingreso del IESS y se marca sin verificar.
+          maximum: 1000000000
+          description: Lo que la persona dice que recibe por mes, en dólares. En la capacidad de pago reemplaza al ingreso del IESS y se marca sin verificar. Con 0 (o menos de medio centavo) no reemplaza nada. Sólo se usa en `pro` y `plus`.
 
     Operador:
       type: object
@@ -1147,7 +1358,10 @@ components:
         Es el estado de la evaluación, no el de la persona (de Prospecto a
         Cliente cerrado, `docs/modelo-de-la-persona.md`), que la v1 no expone.
         Si se expone, va con otro nombre (`estadoDeLaPersona`): los dos no se
-        llaman «estado» en el mismo lugar.
+        llaman «estado» en el mismo lugar. Ojo con `en_proceso`: es también
+        como se llama el segundo estado de la persona (decidido el
+        2026-10-18), y los dos valores no pueden convivir con el mismo
+        código.
 
     Evaluacion:
       type: object
@@ -1157,6 +1371,10 @@ components:
           $ref: '#/components/schemas/IdEvaluacion'
         estado:
           $ref: '#/components/schemas/Estado'
+        modalidad:
+          type: string
+          enum: [basico, pro, plus]
+          description: La modalidad con la que se evaluó. En `basico`, `resultado.capacidadDePago` es `null`.
         etapa:
           type: string
           enum: [fuentes, perfil, modelo, entrega]
@@ -1258,7 +1476,7 @@ components:
         controlesDeBloqueo:
           $ref: '#/components/schemas/ControlesDeBloqueo'
         capacidadDePago:
-          description: En las modalidades `pro` y `plus`, la cuota y la capacidad de pago (lo mismo que `POST /capacidades-de-pago`). Va aparte de la recomendación del modelo.
+          description: En las modalidades `pro` y `plus`, la cuota y la capacidad de pago (lo mismo que `POST /capacidades-de-pago`, medida con lo que se supo de la persona en esta evaluación y su `ingresoDeclarado`, si lo hubo). En `basico` es `null`. Va aparte de la recomendación del modelo; la capacidad no cambia el score.
           oneOf:
             - $ref: '#/components/schemas/RespuestaDeCapacidad'
             - type: 'null'
@@ -1324,13 +1542,13 @@ components:
           example: 1.0.0
         marco:
           type: string
-          example: marco-v29
+          example: marco-v30
         estructura:
           type: string
           example: estructura-v13
         fuentesIngreso:
           type: string
-          example: fuentes-v9
+          example: fuentes-v10
         modelo:
           type: string
           description: El modelo que contestó, que puede no ser el pedido si el proveedor reintentó en otro.
@@ -1441,10 +1659,11 @@ components:
           description: '`frances`: cuota fija de capital e interés. `aleman`: capital fijo.'
         desgravamen:
           $ref: '#/components/schemas/Desgravamen'
+          description: Si no se manda, 0,6% anual sobre el saldo de cada mes. Se manda completo (los tres campos) o no se manda.
         incluirTabla:
           type: boolean
           default: true
-          description: Si la respuesta trae la tabla de amortización.
+          description: Si la respuesta trae la tabla de amortización. En `solicitud` de `POST /capacidades-de-pago` no tiene efecto, porque esa respuesta nunca trae la tabla.
 
     Desgravamen:
       type: object
@@ -1483,10 +1702,10 @@ components:
           $ref: '#/components/schemas/Desgravamen'
         tasaMensual:
           type: number
-          description: Fracción (0.0125 es 1,25% al mes).
+          description: Fracción (0.0125 es 1,25% al mes), sin redondear.
         tasaEfectivaAnual:
           type: number
-          description: Fracción. La equivalente a la nominal, sin el seguro.
+          description: Fracción, sin redondear. La equivalente a la nominal, sin el seguro.
         cuotaPrimerMes:
           type: number
           description: La cuota total del primer mes, la más alta. Es la que mide la capacidad de pago.
@@ -1537,12 +1756,12 @@ components:
       type: object
       additionalProperties: false
       required: [solicitud]
-      description: Con `identificacion`, o con `ingresos` y `obligaciones`.
+      description: Con `identificacion`, o con `ingresos` y `obligaciones`. Si vienen las dos cosas, manda la identificación.
       properties:
         identificacion:
           type: string
           pattern: '^[0-9]{10}([0-9]{3})?$'
-          description: Cédula o RUC de persona natural de alguien ya consultado.
+          description: Cédula o RUC de persona natural de alguien ya consultado. Se valida el dígito verificador.
         ingresos:
           type: array
           maxItems: 20
@@ -1561,9 +1780,10 @@ components:
         ingresoDeclarado:
           type: number
           minimum: 0
-          description: Lo que la persona dice que recibe por mes, en dólares. Reemplaza al ingreso del IESS en el cálculo.
+          description: Lo que la persona dice que recibe por mes, en dólares. Reemplaza al ingreso del IESS en el cálculo y se marca sin verificar. Con 0 no reemplaza nada.
         solicitud:
           $ref: '#/components/schemas/PedidoDeSimulacion'
+          description: Las condiciones del crédito, las mismas de `POST /simulaciones`.
         parametros:
           $ref: '#/components/schemas/ParametrosDeCapacidad'
 
@@ -1643,7 +1863,7 @@ components:
 
     Capacidad:
       type: object
-      required: [version, veredicto, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, ingresoDeclarado, avisos]
+      required: [version, veredicto, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, ingresoDeclarado, avisos, parametros]
       properties:
         version:
           type: string
@@ -1676,6 +1896,7 @@ components:
           type: number
         obligacionesIncompletas:
           type: boolean
+          description: Lo que paga por mes es más de lo que se cuenta, porque hay deudas sin cuota, cuotas sin un monto válido o fuentes que no contestaron.
         ingresoSoloSbu:
           type: boolean
         ingresoDeclarado:
@@ -1683,8 +1904,65 @@ components:
           description: El ingreso con que se midió es el que declara la persona, sin verificar.
         avisos:
           type: array
+          description: Frases listas para mostrar (sin ingreso, deudas sin cuota, ingreso sin verificar, ingreso mínimo).
           items:
             type: string
+        parametros:
+          $ref: '#/components/schemas/ParametrosDeCapacidad'
+          description: Los parámetros con que se midió, con los valores por defecto ya aplicados.
+
+    DatosDeCapacidad:
+      type: object
+      required: [ingresos, obligaciones, deudasSinCuota, fuenteDeLasCuotas, corteIess]
+      description: Con qué ingresos y cuotas se midió la capacidad. Con un Ingreso declarado, el único ingreso es el declarado.
+      properties:
+        ingresos:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngresoMensual'
+        obligaciones:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObligacionMensual'
+        deudasSinCuota:
+          type: array
+          description: Deudas que existen pero cuya cuota no se conoce. No se cuentan como cero (`obligacionesIncompletas` es `true`).
+          items:
+            $ref: '#/components/schemas/DeudaSinCuota'
+        fuenteDeLasCuotas:
+          type: string
+          enum: [equifax, novadata]
+          description: De dónde salen las cuotas de las obligaciones. Con los datos de la IFI es `novadata` y no quiere decir nada.
+        corteIess:
+          type: [string, 'null']
+          pattern: '^[0-9]{4}-[0-9]{2}$'
+          description: El mes del IESS con el que se clasificó el ingreso. `null` con los datos de la IFI.
+        fuentesSinConsultar:
+          type: array
+          description: Temas de cuotas cuya fuente no contestó (por ejemplo, casas comerciales). No se sabe si la persona debe ahí, y `obligacionesIncompletas` es `true`. Sólo con `persona`.
+          items:
+            type: string
+
+    Procedencia:
+      type: object
+      required: [modo]
+      description: De dónde salieron los datos de la capacidad.
+      properties:
+        modo:
+          type: string
+          enum: [persona, datos_del_pedido]
+          description: '`persona`: lo que CrediScope sabía de ella. `datos_del_pedido`: lo que mandó la IFI.'
+        perfilDel:
+          type: string
+          format: date-time
+          description: Cuándo se consultó el perfil que se usó. Sólo con `persona`.
+        buroDeLaInstitucion:
+          type: [string, 'null']
+          description: El buró elegido por la IFI (`equifax` o `aval`), o `null` si no eligió. Sólo con `persona`.
+        equifaxDel:
+          type: [string, 'null']
+          format: date-time
+          description: Cuándo se hizo la consulta de Equifax de la que salen las cuotas, o `null` si no se usó. Sólo con `persona`.
 
     RespuestaDeCapacidad:
       type: object
@@ -1696,12 +1974,17 @@ components:
           $ref: '#/components/schemas/Simulacion'
         montoMaximo:
           type: [number, 'null']
-          description: El monto más alto que alcanza con el mismo plazo y la misma tasa.
+          description: El monto más alto que alcanza con el mismo plazo y la misma tasa. `0` si no queda margen para ninguna cuota.
         capacidadSoloIess:
           description: Con `identificacion` e `ingresoDeclarado`, el resultado con sólo el ingreso reportado al IESS. Si no, `null`.
           oneOf:
             - $ref: '#/components/schemas/Capacidad'
             - type: 'null'
+        datos:
+          $ref: '#/components/schemas/DatosDeCapacidad'
+        procedencia:
+          $ref: '#/components/schemas/Procedencia'
+          description: Sólo en la respuesta de `POST /capacidades-de-pago`; dentro de una evaluación no va.
 
     Salud:
       type: object
@@ -1989,7 +2272,7 @@ components:
             type: https://api.crediscope.example/problemas/capacidad-agotada
             title: No alcanza el tiempo para atenderla en su plazo
             status: 503
-            detail: La espera estimada es de 14 minutos y el plazo de una evaluación interactiva es de 10.
+            detail: La espera estimada es de 20 minutos y el plazo de una evaluación interactiva es de 15.
             codigo: capacidad-agotada
             idPedido: ped_8f3a2c1d9e
     ErrorInterno:
@@ -2019,10 +2302,11 @@ components:
         recibidaEl: '2026-10-09T10:02:03-05:00'
         plazoHasta: '2026-10-09T10:17:03-05:00'
     EvaluacionCompletada:
-      summary: Completada, con el análisis del modelo
+      summary: Completada en Básico, con el análisis del modelo
       value:
         id: ev_01JABCD2EFGH3JKMN4PQRS5TVW
         estado: completada
+        modalidad: basico
         referencia: SOL-2026-55555
         recibidaEl: '2026-10-09T10:02:03-05:00'
         terminadaEl: '2026-10-09T10:03:21-05:00'
@@ -2045,15 +2329,123 @@ components:
           controlesDeBloqueo:
             bloqueado: false
             hallazgos: []
+          capacidadDePago: null
           requiereRevisionHumana: true
         disponibilidad:
           completitud: completa
           temasNoConsultados: []
         versiones:
           api: 1.0.0
-          marco: marco-v29
+          marco: marco-v30
           estructura: estructura-v13
-          fuentesIngreso: fuentes-v9
+          fuentesIngreso: fuentes-v10
+          modelo: claude-sonnet-5-5
+        trazabilidad:
+          consultadaEl: '2026-10-09T10:02:41-05:00'
+          analizadaEl: '2026-10-09T10:03:19-05:00'
+          perfilReutilizado: false
+          analisisReutilizado: false
+          huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b
+        variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
+        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
+    EvaluacionCompletadaPro:
+      summary: Completada en Pro, con la recomendación del modelo y, aparte, la capacidad de pago
+      value:
+        id: ev_01JABCG5HJKM6NPQR7STVW8XYZ
+        estado: completada
+        modalidad: pro
+        referencia: SOL-2026-55558
+        recibidaEl: '2026-10-09T10:02:03-05:00'
+        terminadaEl: '2026-10-09T10:03:21-05:00'
+        plazoHasta: '2026-10-09T10:17:03-05:00'
+        resultado:
+          score: 712
+          recomendacion: revisar
+          veredictoOrigen: modelo
+          indicadorRiesgo: moderado
+          indicadorHistorial: bueno
+          positivos:
+            - Paga al día sus créditos en bancos y cooperativas desde hace más de cuatro años.
+          negativos:
+            - La deuda vigente en el sistema es alta frente al ingreso reportado al IESS.
+          informacionFaltante:
+            - No hay información de cooperativas en esta consulta.
+          accionesSugeridas:
+            - Confirmar el ingreso con los tres últimos roles de pago.
+          razonamiento: Historial de pago bueno y estable, con un nivel de deuda que pide confirmar la capacidad de pago antes de aprobar.
+          controlesDeBloqueo:
+            bloqueado: false
+            hallazgos: []
+          capacidadDePago:
+            capacidad:
+              version: capacidad-v3
+              veredicto: alcanza
+              ingresoReportado: 1200
+              aportePersonal: 113.4
+              ingresoNeto: 1086.6
+              obligacionesActuales: 85
+              cuotaNueva: 281.32
+              cargaActual: 0.07822565801582919
+              cargaConElCredito: 0.33712497699245353
+              cargaMaxima: 0.4
+              cuotaMaximaAdmisible: 349.64
+              holgura: 68.32
+              disponibleDespues: 720.28
+              obligacionesIncompletas: true
+              ingresoSoloSbu: false
+              ingresoDeclarado: false
+              avisos:
+                - 'Hay deudas sin cuota informada: lo que paga por mes es más de lo que se cuenta acá.'
+              parametros:
+                cargaMaxima: 0.4
+                margenJusto: 0.05
+                aportePersonalIess: 0.0945
+            simulacion:
+              version: simulador-v2
+              monto: 8000
+              plazoMeses: 36
+              tasaNominalAnualPorcentaje: 15
+              sistema: frances
+              desgravamen:
+                tasaPorcentaje: 0.6
+                periodicidad: anual
+                base: saldo
+              tasaMensual: 0.012499999999999999
+              tasaEfectivaAnual: 0.1607545177229981
+              cuotaPrimerMes: 281.32
+              cuotaUltimoMes: 277.47
+              capitalEInteresPrimerMes: 277.32
+              seguroPrimerMes: 4
+              totalInteres: 1983.67
+              totalSeguro: 79.36
+              totalPagado: 10063.03
+            montoMaximo: 9942.93
+            capacidadSoloIess: null
+            datos:
+              ingresos:
+                - concepto: Sueldo reportado al IESS · Empleador privado
+                  montoMensual: 1200
+                  tipo: sueldo
+                  origen: IESS
+              obligaciones:
+                - concepto: Cooperativas
+                  montoMensual: 85
+                  origen: Novadata
+              deudasSinCuota:
+                - concepto: Bancos
+                  saldo: 2400
+                  origen: Novadata
+              fuenteDeLasCuotas: novadata
+              corteIess: '2026-08'
+          requiereRevisionHumana: true
+        disponibilidad:
+          completitud: completa
+          temasNoConsultados: []
+        versiones:
+          api: 1.0.0
+          marco: marco-v30
+          estructura: estructura-v13
+          fuentesIngreso: fuentes-v10
           modelo: claude-sonnet-5-5
         trazabilidad:
           consultadaEl: '2026-10-09T10:02:41-05:00'
@@ -2093,9 +2485,9 @@ components:
           temasNoConsultados: []
         versiones:
           api: 1.0.0
-          marco: marco-v29
+          marco: marco-v30
           estructura: estructura-v13
-          fuentesIngreso: fuentes-v9
+          fuentesIngreso: fuentes-v10
           modelo: claude-sonnet-5-5
         trazabilidad:
           consultadaEl: '2026-10-09T10:05:39-05:00'
