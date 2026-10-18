@@ -25,6 +25,28 @@ aceptada.
 
 ## 1. Para retomar primero
 
+- **Demo para una IFI (al 2026-10-18). Empezar por `docs/plan-demo-ifi.md`**
+  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **133**,
+  funciones con el sello `6d5c4296e1e3` (10 de 10). Hecho y en producción:
+  simulador (#39), capacidad de pago con el Ingreso declarado (#42, #45),
+  solicitud y orquestador Básico / Pro / Plus (#46, 133). Las tres modalidades
+  se probaron de punta a punta el 2026-10-18 con una persona real (Plus pagó
+  una consulta de Equifax, autorizada). Queda, por orden:
+  1. **Los estados de la persona** (`docs/modelo-de-la-persona.md`, sección 5):
+     el nombre del segundo estado, qué estado tiene quien fue rechazado o
+     desistió, y lo que decide la institución (Aprobado / Rechazado) en la
+     solicitud. La preaprobación la da el modelo (P3).
+  2. **Una revisión integral** de lo construido (cálculos, funciones y
+     seguridad, pantallas, contrato y documentos), en sesiones aparte.
+  3. **El predictor de ingresos**: lo lleva otra sesión
+     (`docs/investigacion-predictor-de-ingresos.md`).
+  4. **El marco y el modelo, al final** (decisión del negocio): que lea la
+     solicitud, la cuota y la capacidad es una versión nueva del marco.
+  - Hallazgo que pesa en la demo: con sólo el IESS, 55 de las 62 personas con
+    Equifax ya pagan más que su ingreso neto (la cuota de Equifax sí es
+    mensual). Por eso existe el Ingreso declarado.
+  - Las pruebas con sesión van en el puerto 5184 (origen permitido por CORS).
+
 - **Equifax (al 2026-10-17): en producción, con 87 consultas hechas y sus tablas y
   su estructura cargadas y verificadas, la pestaña con su PDF y, desde el
   2026-10-17, el botón para consultar desde la pantalla. Cada consulta se cobra y
