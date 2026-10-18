@@ -10,7 +10,7 @@
 // Función pura: la usan la función, la pantalla (para dibujar los pasos) y
 // las pruebas.
 
-import { type PedidoDeSimulacion, validarPedido, PRODUCTO_CONSUMO } from "./simulador-credito.ts";
+import { MONTO_MAXIMO, type PedidoDeSimulacion, validarPedido, PRODUCTO_CONSUMO } from "./simulador-credito.ts";
 
 export const MODALIDADES_VERSION = "modalidades-v1";
 
@@ -90,9 +90,15 @@ export function siguientePaso(pasos: RegistroDePaso[], ahora: Date = new Date())
     if (p.estado === "hecho") continue;
     if (p.estado === "pendiente") return p.paso;
     if (p.estado === "en_curso") {
-      const desde = p.el ? Date.parse(p.el) : 0;
-      return ahora.getTime() - desde > PASO_CAIDO_MS ? p.paso : null;
+      // Sin fecha, o con una que no se entiende, no hay forma de saber cuándo
+      // empezó: se da por caído. Con NaN la resta daba falso y la evaluación
+      // quedaba trabada para siempre.
+      const desde = p.el ? Date.parse(p.el) : Number.NaN;
+      return Number.isNaN(desde) || ahora.getTime() - desde > PASO_CAIDO_MS ? p.paso : null;
     }
+    // Un estado que no existe: se detiene. Saltearlo correría el paso siguiente
+    // (que puede cobrarse) sin que este haya terminado.
+    return null;
   }
   return null;
 }
@@ -192,7 +198,7 @@ export interface PedidoDeSolicitud {
 // a la pantalla y a la API.
 export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok: true; pedido: PedidoDeSolicitud } | { ok: false; errores: string[] } {
   const errores: string[] = [];
-  const modalidad = cuerpo.modalidad;
+  const modalidad = cuerpo?.modalidad;
   if (!esModalidad(modalidad)) return { ok: false, errores: ["La modalidad es «basico», «pro» o «plus»."] };
 
   let condiciones: PedidoDeSimulacion | null = null;
@@ -201,7 +207,9 @@ export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok:
     if (!c || typeof c !== "object") {
       errores.push(`La modalidad ${MODALIDADES[modalidad].nombre} necesita las condiciones del crédito: monto, plazo y tasa.`);
     } else {
-      errores.push(...validarPedido(c));
+      // Se valida lo que se va a guardar, no lo que llegó: la solicitud no guarda
+      // `tasaNominalMaximaPorcentaje`, así que una tasa de 50% con un máximo de
+      // 99 pasaba la validación y el paso de capacidad la rechazaba después.
       condiciones = {
         monto: c.monto,
         plazoMeses: c.plazoMeses,
@@ -209,6 +217,7 @@ export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok:
         sistema: c.sistema ?? PRODUCTO_CONSUMO.sistema,
         desgravamen: c.desgravamen ?? PRODUCTO_CONSUMO.desgravamen,
       };
+      errores.push(...validarPedido(condiciones));
     }
   }
 
@@ -216,7 +225,12 @@ export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok:
   let ingresoDeclarado: number | null = null;
   if (declarado !== undefined && declarado !== null && declarado !== "") {
     if (typeof declarado !== "number" || !Number.isFinite(declarado) || declarado < 0) errores.push("El Ingreso declarado va en dólares por mes, como número.");
-    else if (declarado > 0) ingresoDeclarado = Math.round(declarado * 100) / 100;
+    else if (declarado > MONTO_MAXIMO) errores.push("El Ingreso declarado no puede pasar de 1.000.000.000 de dólares por mes.");
+    else {
+      // Menos de medio centavo queda en cero: es lo mismo que no declarar.
+      const redondeado = Math.round(declarado * 100) / 100;
+      if (redondeado > 0) ingresoDeclarado = redondeado;
+    }
   }
 
   return errores.length ? { ok: false, errores } : { ok: true, pedido: { modalidad, condiciones, ingresoDeclarado } };
