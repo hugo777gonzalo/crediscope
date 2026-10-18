@@ -29,8 +29,9 @@
 
 import { esIngresoMinimoSbu } from "./fuentes-ingreso.ts";
 
-// v2 (2026-10-17): el Ingreso declarado.
-export const CAPACIDAD_VERSION = "capacidad-v2";
+// v2 (2026-10-17): el Ingreso declarado. v3 (2026-10-18): el veredicto se
+// decide en centavos enteros y las entradas inválidas se dicen o se rechazan.
+export const CAPACIDAD_VERSION = "capacidad-v3";
 
 export interface ParametrosCapacidad {
   /** Fracción: 0.40 quiere decir que las cuotas no pasan del 40% del ingreso neto. */
@@ -81,6 +82,8 @@ export interface EntradaDeCapacidad {
   deudasSinCuota: DeudaSinCuota[];
   /** La cuota del primer mes del crédito pedido (simularCredito). */
   cuotaNueva: number;
+  /** Fuentes de cuotas que no contestaron: no se sabe si hay deuda ahí. */
+  fuentesSinConsultar?: string[];
   parametros?: Partial<ParametrosCapacidad>;
 }
 
@@ -100,7 +103,10 @@ export interface Capacidad {
   cargaMaxima: number;
   /** Lo que queda para una cuota nueva sin pasar el tope. Nunca negativo. */
   cuotaMaximaAdmisible: number;
-  /** Cuota máxima menos la cuota pedida: negativo si no alcanza. */
+  /**
+   * Cuota máxima menos la cuota pedida: negativo si no alcanza (también cuando
+   * las cuotas actuales ya pasan el tope: incluye ese exceso).
+   */
   holgura: number;
   /** Lo que queda del ingreso neto después de todas las cuotas. */
   disponibleDespues: number;
@@ -114,21 +120,60 @@ export interface Capacidad {
 
 const centavos = (n: number) => Math.round(n * 100);
 const dolares = (c: number) => c / 100;
+const lista = <T>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
+
+// Un parámetro explícito que no es una fracción entre 0 y 1 es un error de quien
+// llama, no algo que adivinar: con undefined o NaN el veredicto salía «alcanza»
+// para cualquier cuota, y una carga de 40 (en vez de 0,40) aprobaba todo.
+function parametrosValidos(dados: Partial<ParametrosCapacidad> | undefined): ParametrosCapacidad {
+  const salida = { ...PARAMETROS_CAPACIDAD };
+  for (const clave of ["cargaMaxima", "margenJusto", "aportePersonalIess"] as const) {
+    const v = dados?.[clave];
+    if (v === undefined) continue;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 1) {
+      throw new RangeError(`El parámetro ${clave} es una fracción entre 0 y 1.`);
+    }
+    salida[clave] = v;
+  }
+  return salida;
+}
 
 export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
-  const parametros = { ...PARAMETROS_CAPACIDAD, ...(e.parametros ?? {}) };
-  const ingresos = e.ingresos.filter((x) => Number.isFinite(x.montoMensual) && x.montoMensual > 0);
+  const parametros = parametrosValidos(e.parametros);
+  // Una cuota que no es número no se puede tratar como cero: «alcanza» para una
+  // cuota desconocida sería el peor resultado posible.
+  if (typeof e.cuotaNueva !== "number" || !Number.isFinite(e.cuotaNueva)) {
+    throw new RangeError("La cuota nueva tiene que ser un número.");
+  }
+  const ingresos = lista(e.ingresos).filter((x) => x && Number.isFinite(x.montoMensual) && x.montoMensual > 0);
 
   // Todo en centavos, sumando partes ya redondeadas: lo que se muestra suma.
   const reportadoC = ingresos.reduce((a, x) => a + centavos(x.montoMensual), 0);
   const aporteC = ingresos.filter((x) => x.tipo === "sueldo").reduce((a, x) => a + centavos(x.montoMensual * parametros.aportePersonalIess), 0);
   const netoC = reportadoC - aporteC;
-  const obligacionesC = e.obligaciones.reduce((a, x) => a + (Number.isFinite(x.montoMensual) && x.montoMensual > 0 ? centavos(x.montoMensual) : 0), 0);
+  // Una cuota sin un monto válido no se cuenta como cero sin decirlo: es un
+  // hueco, igual que una deuda sin cuota.
+  let obligacionesSinMonto = 0;
+  const obligacionesC = lista(e.obligaciones).reduce((a, x) => {
+    const monto = x?.montoMensual;
+    if (typeof monto !== "number" || !Number.isFinite(monto) || monto < 0) {
+      obligacionesSinMonto++;
+      return a;
+    }
+    return a + centavos(monto);
+  }, 0);
   const cuotaC = centavos(Math.max(0, e.cuotaNueva));
-  const topeC = Math.floor(netoC * parametros.cargaMaxima);
+  // Los topes se comparan en centavos enteros: comparar las fracciones dejaba un
+  // veredicto «justo» con una holgura de -0,01 (451 de 400.000 casos aleatorios
+  // con 0,35 de carga): 0,40 − 0,05 no da 0,35 exacto en coma flotante.
+  const topeDe = (fraccion: number) => Math.floor((netoC * Math.round(fraccion * 1e9)) / 1e9 + 1e-6);
+  const topeC = topeDe(parametros.cargaMaxima);
+  const justoDesdeC = topeDe(parametros.cargaMaxima - parametros.margenJusto);
   const cuotaMaximaC = Math.max(0, topeC - obligacionesC);
 
-  const obligacionesIncompletas = e.deudasSinCuota.length > 0;
+  const fuentesSinConsultar = lista(e.fuentesSinConsultar);
+  const deudasSinCuota = lista(e.deudasSinCuota);
+  const obligacionesIncompletas = deudasSinCuota.length > 0 || obligacionesSinMonto > 0 || fuentesSinConsultar.length > 0;
   const ingresoSoloSbu = ingresos.length > 0 && ingresos.every((x) => x.esIngresoMinimoSbu === true);
   const ingresoDeclarado = ingresos.some((x) => x.tipo === "declarado");
 
@@ -136,17 +181,23 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
   const cargaConElCredito = netoC > 0 ? (obligacionesC + cuotaC) / netoC : null;
 
   let veredicto: Veredicto;
-  if (netoC <= 0 || cargaConElCredito === null) veredicto = "sin_ingreso";
-  else if (cargaConElCredito > parametros.cargaMaxima) veredicto = "no_alcanza";
-  else if (cargaConElCredito > parametros.cargaMaxima - parametros.margenJusto) veredicto = "justo";
+  if (netoC <= 0) veredicto = "sin_ingreso";
+  else if (obligacionesC + cuotaC > topeC) veredicto = "no_alcanza";
+  else if (obligacionesC + cuotaC > justoDesdeC) veredicto = "justo";
   else veredicto = "alcanza";
 
   const avisos: string[] = [];
   if (veredicto === "sin_ingreso") {
     avisos.push("No hay un ingreso reportado al IESS ni declarado con el que medir la cuota.");
   }
-  if (obligacionesIncompletas) {
+  if (deudasSinCuota.length > 0) {
     avisos.push("Hay deudas sin cuota informada: lo que paga por mes es más de lo que se cuenta acá.");
+  }
+  if (obligacionesSinMonto > 0) {
+    avisos.push("Hay cuotas sin un monto válido: no se contaron, y lo que paga por mes es más de lo que se cuenta acá.");
+  }
+  if (fuentesSinConsultar.length > 0) {
+    avisos.push(`No se pudo consultar: ${fuentesSinConsultar.join(", ")}. Si tiene cuotas ahí, no están en este cálculo.`);
   }
   if (ingresoDeclarado) {
     avisos.push("El ingreso es el que declara la persona: no está verificado.");
@@ -167,7 +218,7 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
     cargaConElCredito,
     cargaMaxima: parametros.cargaMaxima,
     cuotaMaximaAdmisible: dolares(cuotaMaximaC),
-    holgura: dolares(cuotaMaximaC - cuotaC),
+    holgura: dolares(topeC - obligacionesC - cuotaC),
     disponibleDespues: dolares(netoC - obligacionesC - cuotaC),
     obligacionesIncompletas,
     ingresoSoloSbu,
@@ -193,6 +244,18 @@ const QUIEN_DECLARA: Record<string, string> = {
   diplomatico: "Empleador diplomático",
 };
 
+// De qué fuente de Novadata sale cada tema que pesa en lo que la persona paga
+// por mes. Los nombres de las fuentes son los de `metaConsulta`.
+const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cubre_el_buro" | "no_lo_cubre"]> = [
+  ["buroCreditoSuper", "buró de bancos", "lo_cubre_el_buro"],
+  ["buroCreditoCoop", "cooperativas", "lo_cubre_el_buro"],
+  ["retails", "casas comerciales", "no_lo_cubre"],
+  ["creditoHipotecario", "préstamos del IESS o BIESS", "no_lo_cubre"],
+  ["creditoQuirografario", "préstamos del IESS o BIESS", "no_lo_cubre"],
+  ["pensionAlimenticia", "pensiones alimenticias", "no_lo_cubre"],
+  ["pensionAlimenticiaNovadata", "pensiones alimenticias", "no_lo_cubre"],
+];
+
 export interface DatosDeCapacidad {
   ingresos: IngresoMensual[];
   obligaciones: ObligacionMensual[];
@@ -201,6 +264,8 @@ export interface DatosDeCapacidad {
   fuenteDeLasCuotas: "equifax" | "novadata";
   /** El mes del IESS con el que se clasificó el ingreso (yyyy-mm). */
   corteIess: string | null;
+  /** Lo que no contestó (error o apagada) y alimenta las cuotas: «no hay» no es «no se pudo ver». */
+  fuentesSinConsultar?: string[];
 }
 
 // Arma la entrada de evaluarCapacidad() desde el perfil estandarizado y, si
@@ -213,7 +278,9 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
   const fuentesIngreso = comoObjeto(perfil?.fuentesIngreso);
   const corteIess = typeof fuentesIngreso?.corteIessUsado === "string" ? fuentesIngreso.corteIessUsado : null;
   const ingresos: IngresoMensual[] = [];
-  for (const f of (Array.isArray(fuentesIngreso?.fuentes) ? fuentesIngreso.fuentes : []) as AnyRecord[]) {
+  for (const crudo of (Array.isArray(fuentesIngreso?.fuentes) ? fuentesIngreso.fuentes : []) as unknown[]) {
+    const f = comoObjeto(crudo);
+    if (!f) continue;
     const monto = numero(f.montoMensualReportado);
     if (f.vigenteAlCorte === false || monto === null || monto <= 0) continue;
     if (f.evidencia === "reportada_por_tercero") {
@@ -242,6 +309,9 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
       const s = comoObjeto(titular[clave]);
       const cuota = numero(s?.cuotaMensualUsd);
       if (cuota !== null && cuota > 0) obligaciones.push({ concepto: nombre, montoMensual: cuota, origen: "Equifax" });
+      // Con saldo y sin cuota, es una deuda sin cuota informada, no una cuota de
+      // cero: la estructura suma 0 cuando Equifax no trae la cuota de la operación.
+      else if ((numero(s?.saldoDeudaUsd) ?? 0) > 0) deudasSinCuota.push({ concepto: nombre, saldo: numero(s?.saldoDeudaUsd), origen: "Equifax" });
     }
   } else {
     const cuotaCoop = numero(cooperativas?.cuotaMensualTotal);
@@ -251,6 +321,17 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
     if (saldoBancos > 0) deudasSinCuota.push({ concepto: "Bancos", saldo: Math.round(saldoBancos * 100) / 100, origen: "Novadata" });
   }
 
+  // Una fuente que no contestó (error o apagada) no es una fuente sin deuda: el
+  // perfil trae ceros en sus campos y la capacidad los tomaba por un «no debe».
+  // Con el buró de la institución, bancos y cooperativas salen de él.
+  const noMedidas = new Set(((comoObjeto(perfil?.metaConsulta)?.fuentesNoMedidas ?? []) as unknown[]).filter((x) => typeof x === "string"));
+  const fuentesSinConsultar: string[] = [];
+  for (const [fuente, nombre, conBuro] of FUENTES_DE_CUOTAS) {
+    if (noMedidas.has(fuente) && !(titular && conBuro === "lo_cubre_el_buro")) {
+      if (!fuentesSinConsultar.includes(nombre)) fuentesSinConsultar.push(nombre);
+    }
+  }
+
   const retail = numero(bancario?.totalDeudaRetail);
   if (retail !== null && retail > 0) deudasSinCuota.push({ concepto: "Casas comerciales", saldo: retail, origen: "Novadata" });
   if (bancario?.tieneCreditoIessBiess === true) deudasSinCuota.push({ concepto: "Préstamo del IESS o BIESS", saldo: null, origen: "Novadata" });
@@ -258,15 +339,19 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
   const pension = numero(comoObjeto(perfil?.riesgoJudicialCivil)?.valorMensualPensiones);
   if (pension !== null && pension > 0) obligaciones.push({ concepto: "Pensión alimenticia que paga", montoMensual: pension, origen: "Función Judicial" });
 
-  return { ingresos, obligaciones, deudasSinCuota, fuenteDeLasCuotas: titular ? "equifax" : "novadata", corteIess };
+  return { ingresos, obligaciones, deudasSinCuota, fuenteDeLasCuotas: titular ? "equifax" : "novadata", corteIess, fuentesSinConsultar };
 }
 
 // El Ingreso declarado reemplaza al del IESS (ver el encabezado). Sin un
 // monto válido, los datos quedan como estaban.
 export function conIngresoDeclarado(datos: DatosDeCapacidad, montoMensual: number | null | undefined): DatosDeCapacidad {
-  if (typeof montoMensual !== "number" || !Number.isFinite(montoMensual) || montoMensual <= 0) return datos;
+  if (typeof montoMensual !== "number" || !Number.isFinite(montoMensual)) return datos;
+  // Menos de medio centavo se redondea a cero: reemplazaría el ingreso del IESS
+  // por un ingreso nulo.
+  const monto = Math.round(montoMensual * 100) / 100;
+  if (monto <= 0) return datos;
   return {
     ...datos,
-    ingresos: [{ concepto: "Ingreso declarado", montoMensual: Math.round(montoMensual * 100) / 100, tipo: "declarado", origen: "La persona" }],
+    ingresos: [{ concepto: "Ingreso declarado", montoMensual: monto, tipo: "declarado", origen: "La persona" }],
   };
 }

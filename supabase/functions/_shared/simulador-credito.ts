@@ -18,12 +18,20 @@
 //   consumo): con cuota fija, la cuota total baja un poco cada mes. Por eso se
 //   informa la del primer mes, que es la más alta y la que mide la capacidad
 //   de pago.
+// - La cuota (y en el alemán el capital) se vuelve a calcular cada mes sobre
+//   el saldo y los meses que quedan. Con una cuota fija redondeada UNA vez, el
+//   error de medio centavo se compone todos los meses: medido el 2026-10-18,
+//   a 480 meses la última cuota salía hasta USD 153 distinta de la primera, y
+//   a 240 o más el crédito terminaba de pagarse antes de tiempo y quedaban
+//   filas vacías (con el seguro sobre el monto, cobrando sobre un saldo de
+//   cero). El primer mes es idéntico a la fórmula; los demás se corrigen en
+//   un centavo cuando hace falta, y la última cuota sigue ajustando.
 // - Los parámetros del producto (tasa máxima y desgravamen) son datos, no
 //   código: el negocio fijó el 2026-10-17 una tasa nominal máxima de 15% para
 //   consumo, que cada institución puede bajar, y un desgravamen de 0,6% "por
 //   el momento". Cambiarlos no toca la fórmula.
 
-export const SIMULADOR_VERSION = "simulador-v1";
+export const SIMULADOR_VERSION = "simulador-v2";
 
 export type SistemaAmortizacion = "frances" | "aleman";
 export type PeriodicidadTasa = "anual" | "mensual";
@@ -57,6 +65,12 @@ export const PRODUCTO_CONSUMO: ParametrosProducto = {
 
 // El mismo rango que acepta el contrato de la API (SolicitudDeCredito).
 export const PLAZO_MAXIMO_MESES = 480;
+
+// Un tope técnico, no una política: con montos que no caben en un entero
+// exacto (2^53 centavos) el cálculo en centavos deja de ser exacto, y sin tope
+// montoMaximoParaCuota() no tiene dónde terminar. Ningún crédito de consumo
+// se le acerca.
+export const MONTO_MAXIMO = 1_000_000_000;
 
 export interface PedidoDeSimulacion {
   monto: number;
@@ -106,28 +120,40 @@ const esNumeroFinito = (n: unknown): n is number => typeof n === "number" && Num
 
 // Los mensajes se muestran tal cual en la pantalla y viajan en la API.
 export function validarPedido(p: PedidoDeSimulacion): string[] {
+  if (!p || typeof p !== "object") return ["Faltan las condiciones del crédito: monto, plazo y tasa."];
   const errores: string[] = [];
   const maxima = p.tasaNominalMaximaPorcentaje ?? PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
   if (!esNumeroFinito(p.monto) || p.monto <= 0) errores.push("El monto tiene que ser mayor que cero.");
-  else if (Math.abs(p.monto * 100 - Math.round(p.monto * 100)) > 1e-6) {
-    errores.push("El monto va en dólares con hasta dos decimales.");
+  else if (p.monto > MONTO_MAXIMO) errores.push("El monto no puede pasar de 1.000.000.000 de dólares.");
+  else {
+    // La tolerancia crece con el monto: a partir de unos 100 millones, el
+    // producto monto × 100 de un monto con dos decimales ya no cae en un entero
+    // exacto (la separación entre dos números es mayor que 1e-6), y el 8% de
+    // los montos válidos se rechazaba como «con más de dos decimales».
+    const enCentavos = p.monto * 100;
+    if (Math.abs(enCentavos - Math.round(enCentavos)) > Math.max(1e-6, enCentavos * 1e-13)) {
+      errores.push("El monto va en dólares con hasta dos decimales.");
+    }
   }
   if (!Number.isInteger(p.plazoMeses) || p.plazoMeses < 1 || p.plazoMeses > PLAZO_MAXIMO_MESES) {
     errores.push(`El plazo va en meses enteros, de 1 a ${PLAZO_MAXIMO_MESES}.`);
   }
   if (!esNumeroFinito(maxima) || maxima <= 0) errores.push("La tasa máxima del producto no es válida.");
-  if (!esNumeroFinito(p.tasaNominalAnualPorcentaje) || p.tasaNominalAnualPorcentaje < 0) {
-    errores.push("La tasa no puede ser negativa.");
-  } else if (esNumeroFinito(maxima) && p.tasaNominalAnualPorcentaje > maxima) {
+  if (!esNumeroFinito(p.tasaNominalAnualPorcentaje)) errores.push("La tasa tiene que ser un número.");
+  else if (p.tasaNominalAnualPorcentaje < 0) errores.push("La tasa no puede ser negativa.");
+  else if (esNumeroFinito(maxima) && p.tasaNominalAnualPorcentaje > maxima) {
     errores.push("La tasa supera la máxima del producto.");
   }
   const s = p.desgravamen;
-  if (s) {
-    if (!esNumeroFinito(s.tasaPorcentaje) || s.tasaPorcentaje < 0) errores.push("La tasa del seguro de desgravamen no puede ser negativa.");
-    if (s.periodicidad !== "anual" && s.periodicidad !== "mensual") errores.push("La tasa del seguro es anual o mensual.");
-    if (s.base !== "saldo" && s.base !== "monto") errores.push("El seguro se calcula sobre el saldo o sobre el monto.");
+  if (s !== undefined && s !== null) {
+    if (typeof s !== "object") errores.push("El seguro de desgravamen lleva tasa, periodicidad y base.");
+    else {
+      if (!esNumeroFinito(s.tasaPorcentaje) || s.tasaPorcentaje < 0) errores.push("La tasa del seguro de desgravamen no puede ser negativa.");
+      if (s.periodicidad !== "anual" && s.periodicidad !== "mensual") errores.push("La tasa del seguro es anual o mensual.");
+      if (s.base !== "saldo" && s.base !== "monto") errores.push("El seguro se calcula sobre el saldo o sobre el monto.");
+    }
   }
-  if (p.sistema !== undefined && p.sistema !== "frances" && p.sistema !== "aleman") {
+  if (p.sistema !== undefined && p.sistema !== null && p.sistema !== "frances" && p.sistema !== "aleman") {
     errores.push("El sistema de amortización es francés o alemán.");
   }
   return errores;
@@ -144,9 +170,6 @@ export function simularCredito(p: PedidoDeSimulacion): ResultadoDeSimulacion {
   const tasaSeguroMensual = desgravamen.tasaPorcentaje / 100 / (desgravamen.periodicidad === "anual" ? 12 : 1);
 
   const montoC = Math.round(p.monto * 100);
-  // Cuota fija de capital e interés (francés) o capital fijo (alemán), en centavos.
-  const cuotaFijaC = i === 0 ? Math.round(montoC / n) : Math.round((montoC * i) / (1 - Math.pow(1 + i, -n)));
-  const capitalFijoC = Math.round(montoC / n);
 
   const tabla: FilaDeAmortizacion[] = [];
   let saldoC = montoC;
@@ -154,10 +177,19 @@ export function simularCredito(p: PedidoDeSimulacion): ResultadoDeSimulacion {
   let seguroTotalC = 0;
   let pagadoC = 0;
   for (let mes = 1; mes <= n; mes++) {
+    const restantes = n - mes + 1;
     const interesC = Math.round(saldoC * i);
-    let capitalC = sistema === "frances" ? cuotaFijaC - interesC : capitalFijoC;
-    if (mes === n || capitalC > saldoC) capitalC = saldoC;
-    const seguroC = Math.round((desgravamen.base === "saldo" ? saldoC : montoC) * tasaSeguroMensual);
+    // El capital de este mes. Francés: la cuota de capital e interés que deja el
+    // saldo en cero en los meses que quedan, menos el interés. Alemán, o sin
+    // interés: el saldo entre los meses que quedan, hacia abajo para no pagar de
+    // más (hacia arriba, un crédito de USD 1.001 a 480 meses terminaba en el
+    // mes 479 y dejaba una fila vacía).
+    let capitalC = sistema === "frances" && i > 0
+      ? Math.round((saldoC * i) / (1 - Math.pow(1 + i, -restantes))) - interesC
+      : Math.floor(saldoC / restantes);
+    if (restantes === 1 || capitalC > saldoC) capitalC = saldoC;
+    // Con el seguro sobre el monto, un saldo en cero ya no paga seguro.
+    const seguroC = saldoC > 0 ? Math.round((desgravamen.base === "saldo" ? saldoC : montoC) * tasaSeguroMensual) : 0;
     const cuotaC = capitalC + interesC + seguroC;
     tabla.push({
       mes,
@@ -204,23 +236,32 @@ export function simularCredito(p: PedidoDeSimulacion): ResultadoDeSimulacion {
 // de pago. Se busca con el mismo simulador, no con la fórmula invertida: con
 // el seguro y el redondeo de cada mes, invertir la fórmula daba un monto cuya
 // cuota real pasaba el tope por un centavo.
+//
+// Se compara en centavos enteros: la cuota máxima que sale de un cálculo
+// (ingreso × 40% − cuotas) trae ruido de coma flotante, y comparar en dólares
+// dejaba fuera o dentro un monto por 1e-13. Si ni el monto máximo (MONTO_MAXIMO)
+// pasa el tope, devuelve ese monto: es el techo del simulador, no el de la
+// persona. Una cuota máxima infinita quiere decir «sin tope»; NaN o negativa, cero.
 export function montoMaximoParaCuota(
   cuotaMaxima: number,
   condiciones: Omit<PedidoDeSimulacion, "monto">,
 ): number | null {
-  if (!esNumeroFinito(cuotaMaxima) || cuotaMaxima <= 0) return 0;
-  const cuotaDe = (montoC: number): number | null => {
+  if (typeof cuotaMaxima !== "number" || Number.isNaN(cuotaMaxima) || cuotaMaxima <= 0) return 0;
+  const topeC = Math.floor(cuotaMaxima * 100 + 1e-6);
+  const cuotaDeC = (montoC: number): number | null => {
     const r = simularCredito({ ...condiciones, monto: montoC / 100 });
-    return r.ok ? r.simulacion.cuotaPrimerMes : null;
+    return r.ok ? Math.round(r.simulacion.cuotaPrimerMes * 100) : null;
   };
-  if (cuotaDe(100) === null) return null; // las condiciones no son válidas
-  // La cuota crece con el monto: búsqueda binaria en centavos.
+  if (cuotaDeC(100) === null) return null; // las condiciones no son válidas
+  const techoC = MONTO_MAXIMO * 100;
+  if ((cuotaDeC(techoC) as number) <= topeC) return MONTO_MAXIMO;
+  // La cuota no baja al subir el monto: búsqueda binaria en centavos entre un
+  // monto que cabe (0) y uno que no (el techo).
   let bajo = 0;
-  let alto = 100;
-  while ((cuotaDe(alto) as number) <= cuotaMaxima && alto < 1e11) alto *= 2;
+  let alto = techoC;
   while (alto - bajo > 1) {
     const medio = Math.floor((bajo + alto) / 2);
-    if ((cuotaDe(medio) as number) <= cuotaMaxima) bajo = medio;
+    if ((cuotaDeC(medio) as number) <= topeC) bajo = medio;
     else alto = medio;
   }
   return bajo / 100;

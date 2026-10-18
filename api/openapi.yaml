@@ -541,7 +541,7 @@ paths:
                 $ref: '#/components/schemas/RespuestaDeSimulacion'
               example:
                 simulacion:
-                  version: simulador-v1
+                  version: simulador-v2
                   monto: 5000
                   plazoMeses: 36
                   tasaNominalAnualPorcentaje: 15
@@ -634,7 +634,7 @@ paths:
                 $ref: '#/components/schemas/RespuestaDeCapacidad'
               example:
                 capacidad:
-                  version: capacidad-v2
+                  version: capacidad-v3
                   veredicto: alcanza
                   ingresoReportado: 1200
                   aportePersonal: 113.4
@@ -652,7 +652,7 @@ paths:
                   ingresoDeclarado: false
                   avisos: []
                 simulacion:
-                  version: simulador-v1
+                  version: simulador-v2
                   monto: 5000
                   plazoMeses: 36
                   tasaNominalAnualPorcentaje: 15
@@ -1669,7 +1669,7 @@ components:
           type: number
         holgura:
           type: number
-          description: Cuota máxima admisible menos la cuota pedida. Negativa si no alcanza.
+          description: Cuota máxima admisible menos la cuota pedida. Negativa si no alcanza, también cuando las cuotas actuales ya pasan el tope (incluye ese exceso).
         disponibleDespues:
           type: number
         obligacionesIncompletas:
