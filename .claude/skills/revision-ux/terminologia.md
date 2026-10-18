@@ -24,7 +24,7 @@ opciones a la persona dueña del producto, no eligiendo.
 
 ### Nombres comerciales (Title Case, tal cual)
 
-Evaluación Crediticia · Perfil del Cliente · Análisis con IA · Fuentes de Ingreso ·
+Evaluación Crediticia · Perfil de la Persona · Análisis con IA · Fuentes de Ingreso ·
 Monitoreo · Información IESS · Documentos de Confirmación de Ingresos · Condiciones de
 la Segmentación · Ingreso Mínimo SBU · Establecimientos Activos (SRI) · Consultas por
 lote · Score.
@@ -83,8 +83,8 @@ revierte lo que la pantalla dice hoy.
 |---|---|---|
 | Solicitante (segundo estado de la persona; sólo está en los documentos) | **En proceso** | Negocio, 2026-10-18. Se habían propuesto En evaluación, En trámite, Postulante y Aspirante. `en_proceso` ya es un estado de la *evaluación* en la API: no se usa el mismo código para los dos |
 | (no existía: el que fue rechazado o desistió no tenía estado) | **No aprobado** | Negocio, 2026-10-18 |
-| Perfil del Cliente | **Perfil de la Persona** (menú, exportaciones, la hoja del Excel de lotes y unos 25 textos) | Negocio, 2026-10-18. Se renombra junto con los estados |
-| (la decisión Aprobado / Rechazado no se puede marcar) | La marca **el analista en la solicitud** | Negocio, 2026-10-18 |
+| Perfil del Cliente | **Perfil de la Persona** (menú, exportaciones, la hoja del Excel de lotes y unos 25 textos) | Negocio, 2026-10-18. Renombrado ese día (24 textos); el control corta con el nombre viejo |
+| (la decisión Aprobado / Rechazado no se puede marcar) | La marca **el analista en la solicitud**: Aprobado, Rechazado o Desistió, con motivo | Negocio, 2026-10-18; construido ese día (134) |
 
 ## 3. Un concepto, un nombre
 

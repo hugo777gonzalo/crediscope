@@ -91,7 +91,7 @@ export default function CapacidadDePago() {
       {!carga.cargando && !carga.error && !carga.fila ? (
         <Aviso tipo="informacion" titulo="Esta persona todavía no se consultó">
           <p style={{ margin: 0 }}>
-            La capacidad de pago se mide con el ingreso reportado al IESS y las deudas de la persona. <Link to={`/perfil/${cedula}`}>Consultala desde el Perfil del Cliente</Link> y volvé acá.
+            La capacidad de pago se mide con el ingreso reportado al IESS y las deudas de la persona. <Link to={`/perfil/${cedula}`}>Consultala desde el Perfil de la Persona</Link> y volvé acá.
           </p>
         </Aviso>
       ) : null}

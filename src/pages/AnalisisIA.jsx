@@ -104,9 +104,9 @@ export default function AnalisisIA() {
 
   const avisoReutilizacion = profile
     ? profileReciente
-      ? `Perfil del Cliente consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
-      : `Perfil del Cliente tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`
-    : "Sin Perfil del Cliente todavía — hace falta consultar la fuente de datos antes de analizar.";
+      ? `Perfil de la Persona consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
+      : `Perfil de la Persona tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`
+    : "Sin Perfil de la Persona todavía — hace falta consultar la fuente de datos antes de analizar.";
 
   return (
     <div>
@@ -116,7 +116,7 @@ export default function AnalisisIA() {
         </Link>
         <h2>Análisis con IA</h2>
         <Link className="crediscope-tab" to={`/perfil/${cedula}`}>
-          Ver Perfil del Cliente
+          Ver Perfil de la Persona
         </Link>
         <Link className="crediscope-tab" to={`/ingresos/${cedula}`}>
           Ver Fuentes de Ingreso

@@ -57,7 +57,7 @@ export default function FuentesReglas() {
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Reglas de clasificación</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          Versión <strong>{VERSION_DOCUMENTADA}</strong>. Cada Perfil del Cliente guarda con qué versión se clasificó, así un
+          Versión <strong>{VERSION_DOCUMENTADA}</strong>. Cada Perfil de la Persona guarda con qué versión se clasificó, así un
           cambio de reglas no reescribe el pasado.
         </p>
       </div>

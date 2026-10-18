@@ -1,7 +1,7 @@
 # CrediScope
 
 Calificación crediticia para Ecuador. Una persona se consulta contra
-Novadata, se arma un Perfil del Cliente estandarizado, se clasifica su
+Novadata, se arma un Perfil de la Persona estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
 lenguaje natural produce un score de 1 a 999 y una recomendación.
 
@@ -317,6 +317,15 @@ Romper cualquiera de estas rompe algo real.
   esta función todavía no hace está en `docs/pendientes.md`, sección 1. Una tabla nueva con
   datos de la persona: `suprimir_titular()` la borra y está en
   `derechos-del-titular.mjs` y `auditar-seguridad.mjs`.
+  La decisión de la institución (Aprobado / Rechazado / Desistió) la marca el
+  analista en la solicitud, con motivo (acción `decidir`, `decidir_solicitud()`,
+  134): vale la última y todas quedan en `decisiones`.
+- `estado-de-la-persona.ts` → `estadoDeLaPersona()` — el estado de la persona
+  (Prospecto, En proceso, Preaprobado, Aprobado, No aprobado) calculado desde sus
+  solicitudes, nunca guardado a mano. Manda la última solicitud; Preaprobado es
+  sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
+  proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
+  el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de

@@ -4332,3 +4332,84 @@ a {
   color: var(--brand);
   font-variant-numeric: tabular-nums;
 }
+
+/* La decisión de la institución (134): tres opciones grandes, cada una con
+   qué quiere decir, en vez de tres botones que se disparan de un clic. */
+.crediscope-decision {
+  margin-top: 18px;
+}
+
+.crediscope-decision-formulario {
+  display: grid;
+  gap: 8px;
+}
+
+.crediscope-decision-etiqueta {
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.crediscope-decision-opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 6px;
+}
+
+.crediscope-decision-opciones legend {
+  margin-bottom: 8px;
+}
+
+.crediscope-decision-opcion {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  background: var(--panel);
+}
+
+.crediscope-decision-opcion:focus-within {
+  outline: 3px solid var(--brand-suave);
+  outline-offset: 2px;
+}
+
+.crediscope-decision-opcion-elegida {
+  border-color: var(--brand);
+  background: var(--panel-muted);
+}
+
+.crediscope-decision-opcion input {
+  margin-top: 3px;
+  accent-color: var(--brand);
+}
+
+.crediscope-decision-opcion span {
+  display: grid;
+  gap: 2px;
+}
+
+.crediscope-decision-opcion small {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.crediscope-decision-formulario textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  resize: vertical;
+}
+
+.crediscope-decision-historial {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}

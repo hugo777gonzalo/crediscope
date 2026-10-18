@@ -57,7 +57,7 @@ import { entero, plural, segundos, humanizarTexto } from "../lib/formatos.js";
 const SECCIONES = [
   { id: "resumen", texto: "Resumen", Icono: ClipboardList },
   { id: "ingresos", texto: "Fuentes de Ingreso", Icono: Wallet },
-  { id: "perfil", texto: "Perfil del Cliente", Icono: IdCard },
+  { id: "perfil", texto: "Perfil de la Persona", Icono: IdCard },
   { id: "analisis", texto: "Análisis con IA", Icono: Sparkles },
   { id: "tiempo", texto: "Línea de tiempo", Icono: History },
   { id: "auditoria", texto: "Auditoría", Icono: Eye },
