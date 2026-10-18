@@ -92,9 +92,11 @@ aceptada.
        configuración de la institución, nunca del cuerpo. Tampoco rechaza campos
        desconocidos (el contrato dice `additionalProperties: false`).
      - **`POST /capacidades-de-pago`**: el contrato dice `identificacion`; la
-       función acepta también `cedula`. La función no hace las validaciones que
-       el contrato declara (máximos de 20 ingresos y 50 obligaciones, montos no
-       negativos, `parametros` fuera de 0 a 1 se ignoran en vez de dar 400) y,
+       función acepta también `cedula`. La función no hace todas las validaciones
+       que el contrato declara (máximos de 20 ingresos, 50 obligaciones y 50
+       deudas sin cuota, `ingresoDeclarado` de más de mil millones, `parametros`
+       fuera de 0 a 1 que se ignoran en vez de dar 400; sí rechaza una
+       obligación que no es número) y,
        con `identificacion` e `ingresos` a la vez, ignora los `ingresos` sin
        avisar.
      - **Errores**: las funciones contestan `{ error, errores: [texto] }` y el
@@ -110,6 +112,32 @@ aceptada.
        los describe ahora (`datos` es donde viaja `deudasSinCuota`); si la API
        no debe devolver esos ingresos y cuotas, hay que sacarlos del contrato y
        de la función.
+     - **Funciones y base (2026-10-18), corregido en código y SIN DESPLEGAR**
+       (`--funciones`; no hace falta migrar): `evaluar-solicitud` ya no copia en
+       la solicitud el mensaje de la función llamada (podía traer el de Novadata,
+       Equifax, el modelo o la base: `falloDeUnPaso()`); un paso que pudo dejar
+       algo en vuelo (el buró, sobre todo) no se reintenta hasta 3 minutos
+       después; dos solicitudes de la misma persona no consultan Equifax a la
+       vez; Plus ya no calcula con Novadata cuando la consulta de Equifax no tiene
+       estructura; y un fallo queda en `audit_log` (`solicitud.paso_fallido`).
+       `capacidad-de-pago` lee la misma consulta de Equifax que la pantalla y
+       rechaza una cuota que no es número.
+     - **Abierto: la supresión de una solicitud sin persona.** Si el primer paso
+       no llega a crear a la persona en `clients` (la fuente no la encuentra o no
+       contesta), la solicitud queda sólo con la identificación y
+       `suprimir_titular()` no la alcanza (exige la fila en `clients`; igual con
+       una consulta de buró suelta). Hoy no hay ninguna (medido el 2026-10-18);
+       `derechos-del-titular.mjs` ya las lista y exporta. Arreglarlo es una
+       migración que recrea la función desde su definición viva.
+     - **Para decidir: qué consulta de Equifax entra en la capacidad.** La
+       pantalla y `capacidad-de-pago` usan la última de la persona aunque haya
+       vencido; Plus, sólo la vigente (la misma regla que el modelo); Pro, ninguna
+       (plan, sección 4). El enlace «Ver el detalle de la capacidad de pago» de la
+       solicitud abre la pantalla, que puede dar otra cuota que la solicitud.
+     - **Abierto: dos consultas a Equifax a la vez desde caminos distintos** (el
+       botón de administración y una solicitud Plus) se pueden pagar las dos:
+       `procesarConsultaEquifax()` reutiliza lo guardado, no lo que está en vuelo.
+       Pide un candado en la base por persona.
   3. **El predictor de ingresos**: lo lleva otra sesión
      (`docs/investigacion-predictor-de-ingresos.md`).
   4. **El marco y el modelo, al final** (decisión del negocio): que lea la
