@@ -25,6 +25,20 @@ aceptada.
 
 ## 1. Para retomar primero
 
+- **Revisión de UX de las pantallas de crédito (2026-10-18): corregido lo seguro,
+  queda por ver en pantalla y por decidir.**
+  - Se vio con la sesión de QA a 1280 y a 414 px: simulador, Nueva solicitud,
+    una solicitud Plus evaluada y la pestaña Capacidad (misma cuota y mismo
+    veredicto que la solicitud). **No se vio a 768 px, ni en pantalla las
+    correcciones** (el servidor de 5184 era de otra rama): se probaron el
+    simulador y el resumen fijo en una página de prueba, a 414 y 1280.
+    Falta verlas con la sesión: la solicitud que no existe, la solicitud evaluada
+    con los pasos plegados, la confirmación de Plus (admin), la lista de
+    recientes con error y las flechas del grupo de modalidades.
+  - Por decidir con el negocio: la lista de «Solicitudes recientes» muestra la
+    cédula completa de cada persona (es la bandeja del analista, pero conviene
+    confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
+    se dibujan.
 - **Demo para una IFI (al 2026-10-18). Empezar por `docs/plan-demo-ifi.md`**
   (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **133**,
   funciones con el sello `6d5c4296e1e3` (10 de 10). Hecho y en producción:

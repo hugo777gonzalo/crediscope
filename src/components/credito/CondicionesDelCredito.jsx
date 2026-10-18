@@ -1,5 +1,5 @@
 import { ShieldCheck } from "lucide-react";
-import { decimal, entero } from "../../lib/formatos.js";
+import { decimal, entero, moneda } from "../../lib/formatos.js";
 import { aNumero, MONTO_MAXIMO_DEL_DESLIZADOR, PLAZOS_FRECUENTES, SISTEMAS, SISTEMAS_DETALLE, textoDelSeguro } from "../../lib/credito.js";
 import EntradaDeMonto from "./EntradaDeMonto.jsx";
 import { PRODUCTO_CONSUMO } from "../../../supabase/functions/_shared/simulador-credito.ts";
@@ -14,6 +14,7 @@ import { PRODUCTO_CONSUMO } from "../../../supabase/functions/_shared/simulador-
 export default function CondicionesDelCredito({ valores, cambiar }) {
   const montoNumero = aNumero(valores.monto);
   const plazoNumero = aNumero(valores.plazo);
+  const tasaNumero = aNumero(valores.tasa);
   const maxima = PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
   const seguro = { tasaPorcentaje: aNumero(valores.tasaSeguro), periodicidad: valores.periodicidad, base: valores.base };
 
@@ -24,7 +25,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
           <label htmlFor="credito-monto">¿Cuánto necesita?</label>
           <span className="crediscope-muted">en dólares</span>
         </div>
-        <EntradaDeMonto id="credito-monto" prefijo="$" valor={valores.monto} alCambiar={cambiar.setMonto} etiquetaAccesible="Monto del crédito, en dólares" />
+        <EntradaDeMonto id="credito-monto" prefijo="$" valor={valores.monto} alCambiar={cambiar.setMonto} invalido={!(montoNumero > 0)} />
         <input
           type="range"
           className="crediscope-credito-rango"
@@ -33,7 +34,8 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
           step="500"
           value={Number.isFinite(montoNumero) ? Math.min(montoNumero, MONTO_MAXIMO_DEL_DESLIZADOR) : 500}
           onChange={(e) => cambiar.setMonto(entero(Number(e.target.value)))}
-          aria-label="Monto del crédito"
+          aria-label={`Monto del crédito, de ${moneda(500)} a ${moneda(MONTO_MAXIMO_DEL_DESLIZADOR)}`}
+          aria-valuetext={Number.isFinite(montoNumero) ? moneda(Math.min(montoNumero, MONTO_MAXIMO_DEL_DESLIZADOR)) : undefined}
         />
       </div>
 
@@ -56,7 +58,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
             ))}
           </div>
           <div style={{ width: 120 }}>
-            <EntradaDeMonto id="credito-plazo" sufijo="meses" modo="numeric" valor={valores.plazo} alCambiar={cambiar.setPlazo} etiquetaAccesible="Plazo, en meses" />
+            <EntradaDeMonto id="credito-plazo" sufijo="meses" modo="numeric" valor={valores.plazo} alCambiar={cambiar.setPlazo} invalido={!(Number.isInteger(plazoNumero) && plazoNumero > 0)} />
           </div>
         </div>
       </div>
@@ -67,7 +69,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
             <label htmlFor="credito-tasa">Tasa de interés</label>
             <span className="crediscope-muted">máximo {decimal(maxima, 1)}%</span>
           </div>
-          <EntradaDeMonto id="credito-tasa" sufijo="% anual" valor={valores.tasa} alCambiar={cambiar.setTasa} etiquetaAccesible="Tasa nominal anual, en porcentaje" />
+          <EntradaDeMonto id="credito-tasa" sufijo="% anual" valor={valores.tasa} alCambiar={cambiar.setTasa} invalido={!(tasaNumero >= 0 && tasaNumero <= maxima)} />
         </div>
         <div className="crediscope-credito-campo">
           <div className="crediscope-credito-campo-cabecera">
@@ -96,7 +98,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
         <div className="crediscope-credito-tres">
           <div className="crediscope-credito-campo">
             <label htmlFor="credito-seguro">Tasa del seguro</label>
-            <EntradaDeMonto id="credito-seguro" sufijo="%" valor={valores.tasaSeguro} alCambiar={cambiar.setTasaSeguro} etiquetaAccesible="Tasa del seguro, en porcentaje" />
+            <EntradaDeMonto id="credito-seguro" sufijo="%" valor={valores.tasaSeguro} alCambiar={cambiar.setTasaSeguro} invalido={!(seguro.tasaPorcentaje >= 0)} />
           </div>
           <div className="crediscope-credito-campo">
             <label htmlFor="credito-periodicidad">La tasa es</label>
