@@ -82,6 +82,107 @@ Deno.test("una modalidad desconocida o un Ingreso declarado que no es número se
   assert(cero.ok && cero.pedido.ingresoDeclarado === null);
 });
 
+// --- Revisión del 2026-10-18 -------------------------------------------------
+
+Deno.test("un paso en curso sin fecha o con una que no se entiende se da por caído, no se traba para siempre", () => {
+  const ahora = new Date("2026-10-18T12:00:00Z");
+  const sinFecha = pasosIniciales("pro").map((p, i) => (i === 0 ? { paso: p.paso, estado: "en_curso" as const } : p));
+  assertEquals(siguientePaso(sinFecha, ahora), "perfil");
+  const fechaRota = pasosIniciales("pro").map((p, i) => (i === 0 ? { paso: p.paso, estado: "en_curso" as const, el: "ayer" } : p));
+  assertEquals(siguientePaso(fechaRota, ahora), "perfil");
+});
+
+Deno.test("un paso en curso se da por caído pasados exactamente tres minutos y un milisegundo", () => {
+  const ahora = new Date("2026-10-18T12:00:00Z");
+  const enCurso = marcarPaso(pasosIniciales("basico"), "perfil", "en_curso", undefined, ahora);
+  assertEquals(siguientePaso(enCurso, new Date(ahora.getTime() + PASO_CAIDO_MS)), null);
+  assertEquals(siguientePaso(enCurso, new Date(ahora.getTime() + PASO_CAIDO_MS + 1)), "perfil");
+});
+
+Deno.test("un estado que no existe detiene la evaluación: no se saltea para correr el paso siguiente", () => {
+  // El buró de Plus se cobra: no puede correr si el perfil quedó en un estado raro.
+  const raro = [{ paso: "perfil", estado: "cancelado" }, { paso: "buro", estado: "pendiente" }] as unknown as Parameters<typeof siguientePaso>[0];
+  assertEquals(siguientePaso(raro), null);
+});
+
+Deno.test("sin pasos no hay siguiente ni está todo hecho; un paso pendiente detrás de uno fallido no corre", () => {
+  assertEquals(siguientePaso([]), null);
+  assertEquals(todosHechos([]), false);
+  const pasos = marcarPaso(pasosIniciales("plus"), "perfil", "fallido", "Novadata no contestó.");
+  assertEquals(siguientePaso(pasos), null);
+  assertEquals(todosHechos(pasos), false);
+});
+
+Deno.test("reintentar no toca lo hecho ni lo pendiente, no muta y repetirlo da lo mismo", () => {
+  let pasos = marcarPaso(pasosIniciales("plus"), "perfil", "hecho", "ok");
+  pasos = marcarPaso(pasos, "buro", "fallido", "Equifax no contestó.");
+  const copia = structuredClone(pasos);
+  const otraVez = reintentarPasos(pasos);
+  assertEquals(pasos, copia);
+  assertEquals(otraVez.map((p) => p.estado), ["hecho", "pendiente", "pendiente", "pendiente"]);
+  assertEquals(otraVez[0], pasos[0]);
+  assertEquals(reintentarPasos(otraVez), otraVez);
+  // Sin nada fallido queda igual.
+  assertEquals(reintentarPasos(pasosIniciales("pro")), pasosIniciales("pro"));
+});
+
+Deno.test("marcarPaso no muta los pasos, ignora un paso que la modalidad no tiene y no arrastra el detalle anterior", () => {
+  const ahora = new Date("2026-10-18T12:00:00Z");
+  const pasos = pasosIniciales("basico");
+  assertEquals(marcarPaso(pasos, "capacidad", "hecho"), pasos);
+  assertEquals(pasos.map((p) => p.estado), ["pendiente", "pendiente"]);
+  const fallido = marcarPaso(pasos, "perfil", "fallido", "Se cayó.", ahora);
+  const hecho = marcarPaso(fallido, "perfil", "hecho", undefined, ahora);
+  assertEquals(hecho[0], { paso: "perfil", estado: "hecho", el: "2026-10-18T12:00:00.000Z" });
+});
+
+Deno.test("la tasa máxima del cuerpo no se acepta: se valida lo que se guarda", () => {
+  // Antes, un `tasaNominalMaximaPorcentaje` de 99 dejaba pasar una tasa de 50%
+  // que el paso de capacidad rechazaba después, con la solicitud ya creada.
+  const r = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: { ...condiciones, tasaNominalAnualPorcentaje: 50, tasaNominalMaximaPorcentaje: 99 } });
+  assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
+  const ok = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: { ...condiciones, tasaNominalMaximaPorcentaje: 99 } });
+  assert(ok.ok && !("tasaNominalMaximaPorcentaje" in (ok.pedido.condiciones ?? {})));
+});
+
+Deno.test("las condiciones mal armadas se rechazan con el mensaje del simulador, sin romper", () => {
+  const malas: Array<Record<string, unknown>> = [
+    { modalidad: "pro", solicitud: [] },
+    { modalidad: "pro", solicitud: "5000" },
+    { modalidad: "pro", solicitud: { ...condiciones, monto: -1 } },
+    { modalidad: "plus", solicitud: { ...condiciones, plazoMeses: 481 } },
+    { modalidad: "plus", solicitud: { ...condiciones, sistema: "japones" } },
+    { modalidad: "pro", solicitud: { ...condiciones, desgravamen: { tasaPorcentaje: 0.6, periodicidad: "diaria", base: "saldo" } } },
+    { modalidad: "pro", solicitud: { monto: 1000, plazoMeses: 12 } },
+  ];
+  for (const cuerpo of malas) {
+    const r = validarPedidoDeSolicitud(cuerpo);
+    assert(!r.ok && r.errores.length > 0, JSON.stringify(cuerpo));
+  }
+  const sinTasa = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: { monto: 1000, plazoMeses: 12 } });
+  assert(!sinTasa.ok && sinTasa.errores.includes("La tasa tiene que ser un número."));
+  // El cuerpo no es un objeto: la validación responde, no lanza.
+  assertEquals(validarPedidoDeSolicitud(null as unknown as Record<string, unknown>).ok, false);
+  // Básico ignora las condiciones, también las malas.
+  assertEquals(validarPedidoDeSolicitud({ modalidad: "basico", solicitud: { monto: -1 } }).ok, true);
+});
+
+Deno.test("el Ingreso declarado: menos de medio centavo es no declarar; negativo, texto, booleano o desmedido se rechazan", () => {
+  const con = (ingresoDeclarado: unknown) => validarPedidoDeSolicitud({ modalidad: "basico", ingresoDeclarado });
+  const chico = con(0.004);
+  assert(chico.ok && chico.pedido.ingresoDeclarado === null);
+  const redondeado = con(1234.567);
+  assert(redondeado.ok && redondeado.pedido.ingresoDeclarado === 1234.57);
+  for (const [valor, texto] of [[-1, "dólares por mes"], ["1800", "dólares por mes"], [true, "dólares por mes"], [2e9, "no puede pasar"]] as const) {
+    const r = con(valor);
+    assert(!r.ok && r.errores[0].includes(texto), String(valor));
+  }
+  for (const vacio of [undefined, null, ""]) {
+    const r = con(vacio);
+    assert(r.ok && r.pedido.ingresoDeclarado === null);
+  }
+});
+
 Deno.test("del análisis se guarda el score, la recomendación y la versión del marco, no el razonamiento", () => {
   const r = resumenDelAnalisis({ id: "a1", crediscope_score: 640, recomendacion: "revisar", veredicto_origen: "modelo", indicador_riesgo: "moderado", rules_version: "marco-v30", narrative_summary: "largo" });
   assertEquals(r, { analisisId: "a1", score: 640, recomendacion: "revisar", veredictoOrigen: "modelo", indicadorRiesgo: "moderado", marco: "marco-v30" });
