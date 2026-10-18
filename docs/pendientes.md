@@ -223,8 +223,12 @@ aceptada.
        - **Costos › Equifax** (2026-10-17): consultas pagadas por mes a USD 0,40
          (tarifa que dio el negocio ese día; constante en `src/lib/costoEquifax.js`,
          sin historia: si cambia, valúa también lo de antes) y, aparte, las que
-         pudieron cobrarse (fallos con el pedido ya enviado). Hoy: 62 consultas,
-         USD 24,80, todas de octubre.
+         pudieron cobrarse (fallos con el pedido ya enviado). El 17/10: 62
+         consultas, USD 24,80; el 18/10: 87, USD 34,80, todas de octubre.
+       - **Visto en pantalla el 18/10 a 768** (sesión de QA, datos tapados): el
+         botón en la cabecera de una consulta vencida, su cuadro (sin confirmar)
+         y Costos › Equifax; el verificador de UX, sin hallazgos después de
+         oscurecer el texto de la etiqueta ámbar (daba 4,42:1).
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,

@@ -68,7 +68,9 @@ export default function CostosEquifax() {
         <Cargando />
       ) : (
         <>
-          <div className="crediscope-kpi-grid">
+          {/* La grilla de 4, 2 o 1 por fila de la pestaña Equifax: con la común
+              quedaban 3 + 1 a 768. */}
+          <div className="crediscope-kpi-grid crediscope-equifax-indicadores">
             <Kpi
               Icono={Receipt}
               etiqueta="Este mes"

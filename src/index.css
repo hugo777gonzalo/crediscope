@@ -313,7 +313,10 @@ a {
 }
 
 .crediscope-tag-ok { background: #dcfce7; color: var(--good); }
-.crediscope-tag-warn { background: #fef3c7; color: var(--warn); }
+/* El ámbar de --warn sobre su fondo daba 4,42:1 a 13 px (el mínimo es 4,5:1;
+   lo marcó el verificador en las alertas de Equifax, 2026-10-18): la etiqueta
+   lleva uno más oscuro, 6:1. */
+.crediscope-tag-warn { background: #fef3c7; color: #854d0e; }
 .crediscope-tag-bad { background: #fee2e2; color: var(--bad); }
 
 .crediscope-tabs {
