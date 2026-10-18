@@ -100,9 +100,10 @@ aceptada.
       las tablas. **Falta ajustarlas**. Además el probador agrupa por la etiqueta
       `persona-N` y el lote nuevo pisó a `persona-1` a `persona-25` del anterior: ya
       no prueba las 87. Etiquetar los lotes por fecha.
-  - Qué hay: la función `consultar-equifax` desplegada y **sólo para admin** (las
-    7 funciones, sello `835ccc58c4c1` del 2026-10-17, con el corredor; el control
-    de seguridad da 67 de 67 en OK después del despliegue), la tabla
+  - Qué hay: la función `consultar-equifax` desplegada y **sólo para admin**
+    desde el sello `835ccc58c4c1` (2026-10-17, con el corredor; el control de
+    seguridad dio 67 de 67 en OK después). El último despliegue (`6d5c4296e1e3`,
+    10 funciones, esquema 133) lo incluye. La tabla
     `consultas_equifax` (122) con 87 filas (2 pedidas una por una y 85 de tres
     lotes, todas de producción y de la persona pedida), el
     guion local que simula por defecto, la exportación a Excel, el inventario y la
