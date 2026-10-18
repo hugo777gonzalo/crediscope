@@ -108,10 +108,12 @@ export default function PerfilEquifax() {
   const estructura = consulta?.estructura ?? null;
   const franja = useMemo(() => franjaDePagos(historia), [historia]);
   const vigente = consulta ? estaVigenteHastaElCorte(consulta.created_at) : false;
+  // Vencida, dice cuándo venció: «volver a consultar se cobra» repetía lo que
+  // ya dicen la ayuda de al lado y el cuadro del botón (revisión del 2026-10-18).
   const vigencia = consulta
     ? vigente
       ? { vigente: true, texto: `Vale hasta el ${formatearFecha(finDeLaVigencia())}` }
-      : { vigente: false, texto: "Vencida: volver a consultar se cobra" }
+      : { vigente: false, texto: `Venció el ${formatearFecha(finDeLaVigencia(new Date(consulta.created_at)))}` }
     : null;
   const todoAbierto = reporteAbierto || imprimiendo;
 

@@ -88,6 +88,7 @@ en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 | Congelado de una cartera para analizarla | **corte** (Laboratorio) | | No confundir con el «corte del IESS»: son dos cosas. |
 | Dato que la fuente no dio | **No medido** / «—» con su motivo | `0`, vacío, «N/D» | CLAUDE.md: los huecos se dicen. |
 | Lo que la persona que pide el crédito dice que recibe por mes | **Ingreso declarado** (con «sin verificar» a la vista) | «ingreso según documento», «ingreso estimado», «ingreso real» | Negocio, 2026-10-17 (capacidad de pago). Es una declaración, no una estimación: no choca con «no se especula sobre el ingreso». Cuando lo hay, la capacidad se mide con él y el reportado al IESS queda como referencia. |
+| En la pestaña Equifax, lo propio y lo ajeno | **Como titular** / **Lo que respalda de otras personas** (filas que separan la tabla de operaciones); «como codeudor», «como garante» en cada fila ajena | mezclar las dos en una sola cuenta («28 operaciones» al lado de «15») | 2026-10-18, revisión de UX: se nombró con las palabras que ya usaba la pestaña, sin decisión nueva del negocio. «Mora más larga **hoy**» (en la tabla) no es «Atraso más largo» (24 meses, en «Cómo pagó»). |
 | Si la cuota entra en el ingreso | **Capacidad de pago**: «Le alcanza / Le alcanza, pero justo / No le alcanza / No se puede medir» | «capacidad de endeudamiento», «DTI» | 2026-10-17. El tope es la **carga máxima** (40% del ingreso neto, confirmado por el negocio ese día; cada institución pone la suya). |
 
 ## 4. Formatos
@@ -121,3 +122,9 @@ sección 5, y en `docs/revision-ux.md`:
 - qué estado tiene quien fue rechazado o desistió, y quién decide Preaprobado;
 - si el dictamen del modelo («Negación») y la decisión de la solicitud («Rechazado») dicen lo mismo;
 - «Explorador de la fuente de datos»: confirmar que «fuentes» era aceptar la recomendación.
+- **Los nombres de las instituciones que manda Equifax** llegan en mayúsculas y abreviados
+  («BCO DE GUAYAQUIL», «COOP. JARDIN AZUAYO»). Opciones: dejarlos como vienen (hoy, y es lo
+  que ve el analista en el reporte de Equifax); pasarlos a oración con una lista de siglas y
+  marcas (BIESS, PYCCA, CNT EP, B.P.: 92 nombres distintos al 2026-10-18); o una tabla de
+  nombres comerciales mantenida a mano («Banco Guayaquil»). La segunda es la recomendada si
+  el negocio quiere el cambio; la tercera no escala (2026-10-18).

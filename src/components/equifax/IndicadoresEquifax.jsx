@@ -83,9 +83,8 @@ export default function IndicadoresEquifax({ estructura }) {
             Cuota mensual{" "}
             <InfoTooltip lado="derecha" etiqueta="De dónde sale la cuota">
               La suma de las cuotas que informan las instituciones por lo que debe como titular, en los tres sistemas.
-              {scores.nivelDeSobreendeudamiento
-                ? ` Equifax califica su nivel de sobreendeudamiento como «${nivelLegible(scores.nivelDeSobreendeudamiento)}».`
-                : ""}
+              El sobreendeudamiento es la lectura de Equifax sobre esa carga: una alerta de capacidad de pago, no un
+              hecho de pago.
             </InfoTooltip>
           </>
         }
