@@ -313,17 +313,28 @@ a {
 }
 
 .crediscope-tag-ok { background: #dcfce7; color: var(--good); }
-/* El ámbar de --warn sobre su fondo daba 4,42:1 a 13 px (el mínimo es 4,5:1;
-   lo marcó el verificador en las alertas de Equifax, 2026-10-18): la etiqueta
-   lleva uno más oscuro, 6:1. */
+/* El ámbar de --warn sobre este fondo daba 4,42:1 (el verificador pide 4,5). */
 .crediscope-tag-warn { background: #fef3c7; color: #854d0e; }
 .crediscope-tag-bad { background: #fee2e2; color: var(--bad); }
 
+/* Con la quinta pestaña (Capacidad de pago, 2026-10-17) dejaron de entrar
+   en un teléfono y ensanchaban la página: se deslizan dentro de su fila. La
+   línea de abajo es una sombra y no un borde: con el borde, el subrayado de
+   la pestaña activa (que la pisaba con margin -1px) abría una barra vertical. */
 .crediscope-tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 -1px 0 var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.crediscope-tabs > .crediscope-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-bottom: 0;
 }
 
 .crediscope-tab {
@@ -3415,5 +3426,602 @@ a {
 
   .crediscope-equifax-reporte {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Simulador y capacidad de pago (2026-10-17) ----------
+   Pedido del negocio: calidad de app bancaria, que se lea sin ser experto.
+   Una cifra protagonista por tarjeta, lo que se elige a la izquierda y el
+   resultado a la derecha, y se recalcula al escribir (sin botón). */
+.crediscope-credito-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.crediscope-credito-columna {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.crediscope-credito-columna > .crediscope-card,
+.crediscope-credito-grid > .crediscope-card {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1080px) {
+  .crediscope-credito-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.crediscope-credito-formulario {
+  padding: 22px;
+}
+
+.crediscope-credito-campo {
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.crediscope-credito-campo > label,
+.crediscope-credito-campo-cabecera label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.crediscope-credito-campo-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.crediscope-credito-entrada {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 14px;
+  background: var(--panel);
+  color: var(--text-muted);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.crediscope-credito-entrada:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-suave);
+}
+
+.crediscope-credito-entrada input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 11px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-credito-entrada span {
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.crediscope-credito-rango {
+  width: 100%;
+  margin: 14px 0 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.crediscope-credito-plazos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.crediscope-credito-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.crediscope-credito-chip {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 999px;
+  min-width: 48px;
+  padding: 9px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.crediscope-credito-chip:hover {
+  border-color: var(--brand);
+}
+
+.crediscope-credito-chip[aria-pressed="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.crediscope-credito-chip:focus-visible,
+.crediscope-credito-mas summary:focus-visible,
+.crediscope-credito-tabla summary:focus-visible {
+  outline: 3px solid var(--brand-suave);
+  outline-offset: 2px;
+}
+
+.crediscope-credito-dos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0 16px;
+}
+
+.crediscope-credito-tres {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0 12px;
+  margin-top: 12px;
+}
+
+.crediscope-credito-selector {
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+}
+
+.crediscope-credito-ayuda {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+  line-height: 1.45;
+}
+
+.crediscope-credito-mas {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.crediscope-credito-mas summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  list-style: none;
+}
+
+.crediscope-credito-mas summary::-webkit-details-marker {
+  display: none;
+}
+
+.crediscope-credito-mas summary .crediscope-muted {
+  font-weight: 400;
+  margin-left: auto;
+}
+
+.crediscope-credito-mas .crediscope-credito-campo {
+  margin-bottom: 8px;
+}
+
+/* La cuota protagonista. */
+.crediscope-credito-hero {
+  /* El color de base respalda al degradado y es el que mide el verificador de contraste. */
+  background-color: var(--brand);
+  background-image: linear-gradient(140deg, var(--brand) 0%, #312e81 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: 0 14px 34px rgba(55, 48, 163, 0.22);
+}
+
+.crediscope-credito-hero-etiqueta {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.crediscope-credito-hero-cifra {
+  margin: 6px 0 4px;
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-credito-hero-sub {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.crediscope-credito-barra {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 20px 0 10px;
+}
+
+.crediscope-credito-barra span {
+  display: block;
+  height: 100%;
+}
+
+.crediscope-credito-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.crediscope-credito-leyenda strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-credito-punto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.crediscope-credito-punto-capital {
+  background: #ffffff;
+}
+
+.crediscope-credito-punto-interes {
+  background: var(--gold);
+}
+
+.crediscope-credito-punto-seguro {
+  background: #a5b4fc;
+}
+
+.crediscope-credito-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.crediscope-credito-datos p,
+.crediscope-credito-tasas p {
+  margin: 0 0 2px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.crediscope-credito-datos strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-credito-tasas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.crediscope-credito-tasas p {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.crediscope-credito-tasas strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-credito-tabla summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.crediscope-credito-tabla-envoltura {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.crediscope-credito-tabla td,
+.crediscope-credito-tabla th {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crediscope-credito-tabla td:first-child,
+.crediscope-credito-tabla th:first-child {
+  text-align: left;
+}
+
+/* El veredicto de la capacidad de pago: el color dice el resultado y el
+   ícono lo repite, para no depender sólo del color. */
+.crediscope-capacidad-veredicto {
+  border-radius: 18px;
+  padding: 24px 26px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.crediscope-capacidad-alcanza {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.crediscope-capacidad-justo {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.crediscope-capacidad-no_alcanza {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.crediscope-capacidad-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.crediscope-capacidad-alcanza .crediscope-capacidad-titulo {
+  color: var(--good);
+}
+
+.crediscope-capacidad-justo .crediscope-capacidad-titulo {
+  color: var(--warn);
+}
+
+.crediscope-capacidad-no_alcanza .crediscope-capacidad-titulo {
+  color: var(--bad);
+}
+
+.crediscope-capacidad-sin_ingreso .crediscope-capacidad-titulo {
+  color: var(--text-muted);
+}
+
+.crediscope-capacidad-frase {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.crediscope-capacidad-medidor {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  margin: 22px 0 10px;
+}
+
+.crediscope-capacidad-tramo-actual,
+.crediscope-capacidad-tramo-nuevo {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.crediscope-capacidad-tramo-actual {
+  left: 0;
+  background: #94a3b8;
+  border-radius: 999px 0 0 999px;
+}
+
+.crediscope-capacidad-tramo-nuevo {
+  background: var(--brand);
+}
+
+.crediscope-capacidad-no_alcanza .crediscope-capacidad-tramo-nuevo {
+  background: var(--bad);
+}
+
+.crediscope-capacidad-tope {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--text);
+}
+
+.crediscope-capacidad-ingreso {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  border-left: 2px dashed var(--text-muted);
+}
+
+.crediscope-capacidad-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.crediscope-capacidad-punto-actual {
+  background: #94a3b8;
+}
+
+.crediscope-capacidad-punto-nuevo {
+  background: var(--brand);
+}
+
+.crediscope-capacidad-no_alcanza .crediscope-capacidad-punto-nuevo {
+  background: var(--bad);
+}
+
+.crediscope-capacidad-marca {
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--text);
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.crediscope-capacidad-pie {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.crediscope-capacidad-comparacion {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(23, 19, 52, 0.12);
+  font-size: 14px;
+}
+
+.crediscope-capacidad-maximo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.crediscope-capacidad-maximo-icono {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.crediscope-capacidad-maximo-etiqueta {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.crediscope-capacidad-maximo-cifra {
+  margin: 2px 0 2px;
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.crediscope-capacidad-detalle {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.crediscope-capacidad-detalle > .crediscope-card {
+  margin-bottom: 0;
+}
+
+.crediscope-capacidad-subtitulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.crediscope-capacidad-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.crediscope-capacidad-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.crediscope-capacidad-fila > span:last-child {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crediscope-capacidad-fila-resta > span {
+  color: var(--text-muted);
+}
+
+.crediscope-capacidad-fila-total {
+  border-bottom: 0;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.crediscope-capacidad-fila-tenue > span:last-child {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.crediscope-capacidad-sin-cuota-titulo {
+  margin: 16px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.crediscope-capacidad-origen {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+  .crediscope-credito-hero {
+    padding: 20px;
+  }
+
+  .crediscope-credito-hero-cifra {
+    font-size: 38px;
+  }
+
+  .crediscope-capacidad-titulo {
+    font-size: 23px;
+  }
+
+  .crediscope-capacidad-detalle {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

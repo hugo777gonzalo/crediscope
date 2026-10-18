@@ -32,11 +32,12 @@ export const SECCIONES = [
   {
     id: "evaluacion",
     texto: "Evaluación Crediticia",
-    prefijos: ["/perfil", "/analisis", "/ingresos", "/aval", "/equifax", "/buro", "/simulador"],
+    prefijos: ["/perfil", "/analisis", "/ingresos", "/aval", "/equifax", "/buro", "/simulador", "/capacidad"],
     hijos: [
       { texto: "Perfil del Cliente", ruta: "/perfil", conCedula: true },
       { texto: "Análisis con IA", ruta: "/analisis", conCedula: true },
       { texto: "Fuentes de Ingreso", ruta: "/ingresos", conCedula: true },
+      { texto: "Capacidad de pago", ruta: "/capacidad", conCedula: true },
       // El buró de la institución, uno solo por IFI (cuestionario, A2): /buro
       // lleva a la pestaña de Equifax o de Aval según cuál eligió (129).
       { texto: "Buró", ruta: "/buro", conCedula: true, tambien: ["/equifax", "/aval"] },

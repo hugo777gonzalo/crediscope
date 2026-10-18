@@ -41,7 +41,7 @@ manda esto.
 | P4 | La demo muestra **todo lo que se construya, en pantallas**. La API es el canal por el que la IFI lo va a consumir. | Las pantallas y la API llaman al mismo orquestador. El contrato suma los bloques nuevos; la Fase 1 de la API va después de las pantallas. |
 | P5 | Se muestra **sólo el ingreso estimado por nuestro propio predictor**. | El estimado de Equifax no se muestra ni se usa como dato de la persona (reemplaza la recomendación de 3.1 de mostrar varias estimaciones). El confirmado del IESS sigue mostrándose aparte. |
 | P6 | El plan del predictor lo lleva otra sesión. | `docs/investigacion-predictor-de-ingresos.md`, secciones 8 a 11 (las bases de 3,9 millones y de 120.000, el pedido de columnas y el censo). |
-| P7 | Tasa **nominal anual máxima de 15%** para consumo; cada institución puede usar menos (14,5%, 12,9%). Desgravamen de **0,6%** por el momento, con la fórmula en un módulo con parámetros. | Construido el 2026-10-17 (`_shared/simulador-credito.ts`). **Supuesto a confirmar**: el 0,6% es anual y se cobra cada mes sobre el saldo (0,6% mensual sería 7,2% al año). La pantalla deja cambiar la periodicidad y la base. |
+| P7 | Tasa **nominal anual máxima de 15%** para consumo; cada institución puede usar menos (14,5%, 12,9%). Desgravamen de **0,6%** por el momento, con la fórmula en un módulo con parámetros. | Construido el 2026-10-17 (`_shared/simulador-credito.ts`). El 0,6% es **anual** (confirmado el 2026-10-17) y se cobra cada mes sobre el saldo. La pantalla deja cambiar la periodicidad y la base. |
 
 ## 1. Qué existe hoy
 
@@ -231,6 +231,36 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
    y la tasa máxima por institución guardada en la base.
 3. **Solicitud como entidad y capacidad de pago** con ingreso confirmado y
    obligaciones conocidas. Lo que no se puede evaluar se dice.
+   **La capacidad de pago, hecha el 2026-10-17** (la solicitud como entidad
+   sigue pendiente: pide una tabla y una migración):
+   - `_shared/capacidad-de-pago.ts`: `datosDeCapacidad()` saca del perfil el
+     ingreso reportado al IESS (al sueldo se le descuenta el aporte personal de
+     9,45%) y las cuotas (con Equifax, las del titular por sistema; sin él, las
+     de cooperativas); la pensión alimenticia que paga es una cuota más; las
+     deudas sin cuota (casas comerciales, bancos sin buró, préstamo del IESS) se
+     listan aparte, nunca como cero. `evaluarCapacidad()` da el veredicto
+     (alcanza, justo, no alcanza, sin ingreso) y la cuota máxima;
+     `montoMaximoParaCuota()` (en el simulador) dice hasta cuánto le alcanza.
+   - **Cada módulo con su propia puerta** (pedido del negocio del 2026-10-17):
+     las funciones `simular-credito` y `capacidad-de-pago` se llaman solas, sin
+     pasar por la evaluación; en el contrato de la API son `POST /simulaciones` y
+     `POST /capacidades-de-pago`. La capacidad acepta una cédula (lee lo que ya
+     se sabe de la persona, sin consultar fuentes) o los datos de la institución.
+   - Pantalla Evaluación Crediticia › Capacidad de pago (`/capacidad/:cedula`),
+     también como pestaña de la persona.
+   - La carga máxima es 40% del ingreso neto (`PARAMETROS_CAPACIDAD`,
+     **confirmada por el negocio el 2026-10-17**); el resultado es «justo»
+     desde 5 puntos antes. Cada institución puede poner la suya.
+   - **Ingreso declarado** (nombre del negocio, 2026-10-17): lo que la persona
+     que pide el crédito dice que recibe por mes. Es opcional; si se completa,
+     reemplaza al del IESS en el cálculo, sin descontarle nada, y se rotula
+     «sin verificar»; la pantalla y la función (`ingresoDeclarado`, con
+     `capacidadSoloIess` en la respuesta) muestran además lo que daría sólo el
+     IESS. Hizo falta porque, con sólo el IESS, **55 de las 62 personas con
+     Equifax ya pagaban más que su ingreso neto** (la cuota de Equifax sí es
+     mensual: mediana de la cuota sobre el saldo, 4%).
+   - Falta: que la carga máxima de cada institución viva en la base, y la
+     cuota de las casas comerciales (hoy se lista sin cuota).
 4. **Política configurable y orquestador de modalidades**, con la pantalla de la
    evaluación (Básico / Pro / Plus).
 5. **Predictor v0, explicable**: confirmado + cota por crédito otorgado +

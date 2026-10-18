@@ -42,3 +42,13 @@ verify_jwt = true
 # proveedor. Exige sesión y rol dentro de la función, antes de leer el cuerpo.
 [functions.consultar-equifax]
 verify_jwt = true
+
+# Simulador y capacidad de pago: cada módulo con su propia puerta (pedido del
+# negocio del 2026-10-17). Exigen sesión y rol dentro de la función, antes de
+# leer el cuerpo. capacidad-de-pago lee el perfil de una persona; no consulta
+# a ninguna fuente.
+[functions.simular-credito]
+verify_jwt = true
+
+[functions.capacidad-de-pago]
+verify_jwt = true
