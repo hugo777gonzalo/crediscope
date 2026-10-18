@@ -292,6 +292,8 @@ for (const tabla of [
   "equifax_operaciones", "equifax_historia_mensual", "equifax_deuda_por_sistema_y_mes", "equifax_vencimientos", "equifax_tarjetas", "equifax_creditos",
   "equifax_consultas_recibidas", "equifax_scores", "equifax_indicadores_por_periodo", "equifax_codeudor_garante", "equifax_resumen",
   "audit_log", "profiles", "lotes", "lab_solicitudes",
+  // Las solicitudes de crédito (133).
+  "solicitudes",
 ]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/${tabla}?select=*&limit=1`, { headers: h });
   const filasLeidas = Array.isArray(r.cuerpo) ? r.cuerpo.length : 0;

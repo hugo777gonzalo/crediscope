@@ -978,6 +978,17 @@ components:
           $ref: '#/components/schemas/Autorizacion'
         solicitudDeCredito:
           $ref: '#/components/schemas/SolicitudDeCredito'
+        modalidad:
+          type: string
+          enum: [basico, pro, plus]
+          default: basico
+          description: |
+            Qué se evalúa. `basico`: el perfil, las fuentes de ingreso y la
+            recomendación del modelo. `pro`: además, la cuota del crédito pedido
+            y la capacidad de pago (exige `solicitudDeCredito` con monto, plazo y
+            tasa). `plus`: además, el buró de la IFI (Equifax), con las cuotas de
+            cada operación. La recomendación del modelo y la capacidad de pago se
+            entregan por separado: no se combinan en una decisión.
         referencia:
           $ref: '#/components/schemas/Referencia'
         operador:
@@ -1078,6 +1089,20 @@ components:
         garantia:
           type: string
           maxLength: 200
+        tasaNominalAnualPorcentaje:
+          type: number
+          minimum: 0
+          description: Nominal anual, en porcentaje. Obligatoria en las modalidades `pro` y `plus`.
+        sistema:
+          type: string
+          enum: [frances, aleman]
+          default: frances
+        desgravamen:
+          $ref: '#/components/schemas/Desgravamen'
+        ingresoDeclarado:
+          type: number
+          minimum: 0
+          description: Lo que la persona dice que recibe por mes. En la capacidad de pago reemplaza al ingreso del IESS y se marca sin verificar.
 
     Operador:
       type: object
@@ -1231,6 +1256,11 @@ components:
           description: Texto libre del modelo. La IFI lo muestra como texto, sin interpretarlo como HTML.
         controlesDeBloqueo:
           $ref: '#/components/schemas/ControlesDeBloqueo'
+        capacidadDePago:
+          description: En las modalidades `pro` y `plus`, la cuota y la capacidad de pago (lo mismo que `POST /capacidades-de-pago`). Va aparte de la recomendación del modelo.
+          oneOf:
+            - $ref: '#/components/schemas/RespuestaDeCapacidad'
+            - type: 'null'
         requiereRevisionHumana:
           type: boolean
           const: true

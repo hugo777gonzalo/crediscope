@@ -52,3 +52,9 @@ verify_jwt = true
 
 [functions.capacidad-de-pago]
 verify_jwt = true
+
+# El orquestador de las solicitudes (133): corre un paso por llamada y llama a
+# las otras funciones con la sesión de quien pidió. Exige sesión y rol antes
+# de leer el cuerpo.
+[functions.evaluar-solicitud]
+verify_jwt = true
