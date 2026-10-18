@@ -6,7 +6,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals } from "jsr:@std/assert@1";
-import { simularCredito, type PedidoDeSimulacion, type Simulacion } from "./simulador-credito.ts";
+import { MONTO_MAXIMO, montoMaximoParaCuota, simularCredito, validarPedido, type PedidoDeSimulacion, type Simulacion } from "./simulador-credito.ts";
 
 const SIN_SEGURO = { tasaPorcentaje: 0, periodicidad: "anual", base: "saldo" } as const;
 
@@ -120,4 +120,136 @@ Deno.test("rechaza montos, plazos y seguros que no tienen sentido", () => {
   ];
   for (const p of malos) assertEquals(simularCredito(p).ok, false, JSON.stringify(p));
   assertEquals(simularCredito({ monto: 100.05, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).ok, true);
+});
+
+// --- Revisión del 2026-10-18 -------------------------------------------------
+
+const SEGURO_SOBRE_EL_MONTO = { tasaPorcentaje: 0.6, periodicidad: "anual", base: "monto" } as const;
+
+Deno.test("a 480 meses el crédito dura los 480 meses: sin filas vacías y con la última cuota igual a la primera", () => {
+  // Con la cuota fija redondeada una sola vez, estos terminaban de pagarse antes
+  // de tiempo (1 o 2 filas con saldo cero) y, a 480, la última cuota salía hasta
+  // USD 153 distinta de la primera.
+  for (const [monto, tasa] of [[2500, 11.2], [3000, 15], [4000, 14.5], [5000, 14.5], [100000, 15]]) {
+    const s = simular({ monto, plazoMeses: 480, tasaNominalAnualPorcentaje: tasa, desgravamen: SEGURO_SOBRE_EL_MONTO });
+    const caso = `${monto} ${tasa}`;
+    assertEquals(s.tabla.filter((f) => f.saldoInicial === 0).length, 0, caso);
+    assert(Math.abs(centavos(s.cuotaUltimoMes) - centavos(s.cuotaPrimerMes)) <= 1, caso);
+    assertEquals(s.tabla[479].saldoFinal, 0, caso);
+  }
+});
+
+Deno.test("alemán de 1.001 a 480 meses: el capital redondeado hacia arriba pagaba todo en el mes 479", () => {
+  const s = simular({ monto: 1001, plazoMeses: 480, tasaNominalAnualPorcentaje: 15, sistema: "aleman", desgravamen: SEGURO_SOBRE_EL_MONTO });
+  assertEquals(s.tabla.filter((f) => f.saldoInicial === 0).length, 0);
+  assertEquals(s.tabla.reduce((a, f) => a + centavos(f.capital), 0), centavos(1001));
+  assertEquals(s.tabla[479].saldoFinal, 0);
+});
+
+Deno.test("la cuota francesa varía a lo sumo un centavo entre meses, de 1 a 480 meses y de 0% al tope", () => {
+  for (const plazoMeses of [1, 2, 3, 12, 59, 84, 240, 480]) {
+    for (const tasa of [0, 0.5, 9.33, 15]) {
+      const s = simular({ monto: 12345.67, plazoMeses, tasaNominalAnualPorcentaje: tasa, desgravamen: SIN_SEGURO });
+      const cuotas = s.tabla.map((f) => centavos(f.cuota));
+      // Sólo el redondeo, nunca una deriva acumulada.
+      assert(Math.max(...cuotas) - Math.min(...cuotas) <= 1, `${plazoMeses} ${tasa}`);
+      assertEquals(s.tabla[plazoMeses - 1].saldoFinal, 0);
+    }
+  }
+});
+
+Deno.test("plazo de un mes: se paga todo con el interés de un mes y su seguro", () => {
+  const s = simular({ monto: 1000, plazoMeses: 1, tasaNominalAnualPorcentaje: 12 });
+  assertEquals(s.tabla.length, 1);
+  assertEquals(s.cuotaPrimerMes, 1010.5);
+  assertEquals(s.totalInteres, 10);
+  assertEquals(s.cuotaUltimoMes, s.cuotaPrimerMes);
+  assertEquals(simular({ monto: 1000, plazoMeses: 1, tasaNominalAnualPorcentaje: 0, desgravamen: SIN_SEGURO }).cuotaPrimerMes, 1000);
+});
+
+Deno.test("sin interés a 480 meses: tasa efectiva cero, el capital suma el monto y no hay filas vacías", () => {
+  const s = simular({ monto: 1000.01, plazoMeses: 480, tasaNominalAnualPorcentaje: 0, desgravamen: SIN_SEGURO });
+  assertEquals(s.tasaEfectivaAnual, 0);
+  assertEquals(s.totalInteres, 0);
+  assertEquals(s.tabla.reduce((a, f) => a + centavos(f.capital), 0), 100001);
+  assertEquals(s.tabla.filter((f) => f.saldoInicial === 0).length, 0);
+});
+
+Deno.test("con la tasa en el tope, la efectiva anual es la compuesta de la mensual", () => {
+  const s = simular({ monto: 8000, plazoMeses: 60, tasaNominalAnualPorcentaje: 15 });
+  assertAlmostEquals(s.tasaEfectivaAnual, Math.pow(1 + 0.15 / 12, 12) - 1, 1e-12);
+  assertEquals(s.sistema, "frances");
+});
+
+Deno.test("montos grandes con dos decimales son válidos; pasar de mil millones no", () => {
+  // Desde unos 100 millones, monto × 100 de estos ya no era un entero exacto y
+  // se rechazaban como «con más de dos decimales» (8% de los montos válidos).
+  for (const monto of [169557065.23, 614290342.92, 329088448.9, 999999999.99, 1000000000]) {
+    assertEquals(validarPedido({ monto, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }), [], String(monto));
+  }
+  assert(validarPedido({ monto: 1000000000.01, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).length > 0);
+  assert(validarPedido({ monto: 614290342.925, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).includes("El monto va en dólares con hasta dos decimales."));
+  assert(validarPedido({ monto: Number.POSITIVE_INFINITY, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).length > 0);
+  const grande = simular({ monto: 999999999.99, plazoMeses: 480, tasaNominalAnualPorcentaje: 15 });
+  assertEquals(grande.tabla.reduce((a, f) => a + centavos(f.capital), 0), centavos(999999999.99));
+  assertEquals(grande.tabla[479].saldoFinal, 0);
+});
+
+Deno.test("una tasa que no es número lo dice, y un seguro o un pedido mal armados se rechazan", () => {
+  assertEquals(validarPedido({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: Number.NaN }), ["La tasa tiene que ser un número."]);
+  const sinTasa = { monto: 1000, plazoMeses: 12 } as unknown as PedidoDeSimulacion;
+  assertEquals(validarPedido(sinTasa), ["La tasa tiene que ser un número."]);
+  const seguroRaro = { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 12, desgravamen: 5 } as unknown as PedidoDeSimulacion;
+  assertEquals(simularCredito(seguroRaro).ok, false);
+  assertEquals(simularCredito(null as unknown as PedidoDeSimulacion).ok, false);
+  // null quiere decir «el del producto», igual que ausente.
+  const conNulos = { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 12, sistema: null, desgravamen: null } as unknown as PedidoDeSimulacion;
+  assertEquals(simularCredito(conNulos).ok, true);
+});
+
+// El monto máximo se comprueba contra el simulador: la cuota del monto devuelto
+// no pasa el tope y la de un centavo más sí (o ya es el techo).
+function comprobarMaximo(tope: number, condiciones: Omit<PedidoDeSimulacion, "monto">, caso: string) {
+  const monto = montoMaximoParaCuota(tope, condiciones) as number;
+  const cuota = (m: number) => simular({ ...condiciones, monto: m }).cuotaPrimerMes;
+  const topeC = Math.floor(tope * 100 + 1e-6);
+  if (monto > 0) assert(centavos(cuota(monto)) <= topeC, `${caso}: ${monto} pasa el tope`);
+  if (monto < MONTO_MAXIMO) assert(centavos(cuota(Math.round((monto + 0.01) * 100) / 100)) > topeC, `${caso}: ${monto} no es el máximo`);
+}
+
+Deno.test("montoMaximoParaCuota: el más alto que cabe, en los dos sistemas, con las dos bases de seguro, de 1 a 480 meses, con tasa 0 y en el tope", () => {
+  for (const sistema of ["frances", "aleman"] as const) {
+    for (const base of ["saldo", "monto"] as const) {
+      for (const plazoMeses of [1, 2, 7, 36, 480]) {
+        for (const tasa of [0, 9.5, 15]) {
+          for (const tope of [0.01, 1, 87.5, 351.65, 1999.99, 25000]) {
+            const condiciones = { plazoMeses, tasaNominalAnualPorcentaje: tasa, sistema, desgravamen: { tasaPorcentaje: 0.6, periodicidad: "anual" as const, base } };
+            comprobarMaximo(tope, condiciones, `${sistema} ${base} ${plazoMeses} ${tasa} ${tope}`);
+          }
+        }
+      }
+    }
+  }
+});
+
+Deno.test("montoMaximoParaCuota: el ruido de coma flotante del tope no cambia la respuesta", () => {
+  const condiciones = { plazoMeses: 36, tasaNominalAnualPorcentaje: 15 };
+  const exacto = montoMaximoParaCuota(351.65, condiciones);
+  // 351,65 calculado como lo calcula la capacidad: ingreso neto por la carga.
+  assertEquals(montoMaximoParaCuota(879.125 * 0.4, condiciones), exacto);
+  assertEquals(montoMaximoParaCuota(351.65 - 1e-12, condiciones), exacto);
+  assertEquals(montoMaximoParaCuota(351.65 + 1e-12, condiciones), exacto);
+  // Un tope con fracción de centavo vale lo que el centavo de abajo.
+  assertEquals(montoMaximoParaCuota(351.649, condiciones), montoMaximoParaCuota(351.64, condiciones));
+});
+
+Deno.test("montoMaximoParaCuota: con un tope enorme devuelve el techo del simulador y termina", () => {
+  const condiciones = { plazoMeses: 480, tasaNominalAnualPorcentaje: 15 };
+  assertEquals(montoMaximoParaCuota(1e12, condiciones), MONTO_MAXIMO);
+  assertEquals(montoMaximoParaCuota(Number.POSITIVE_INFINITY, condiciones), MONTO_MAXIMO);
+  assertEquals(montoMaximoParaCuota(Number.NaN, condiciones), 0);
+  assertEquals(montoMaximoParaCuota(-5, condiciones), 0);
+  // Un tope que sí corta antes del techo.
+  comprobarMaximo(5_000_000, condiciones, "tope de 5 millones");
+  assertEquals(montoMaximoParaCuota(100, { plazoMeses: 12, tasaNominalAnualPorcentaje: 16 }), null);
 });

@@ -85,7 +85,8 @@ aceptada.
        el contrato exige además positivos, negativos, información faltante,
        acciones, razonamiento y controles de bloqueo (están en
        `analysis_results`) y la firma.
-     - **`POST /simulaciones`**: `simular-credito` deja pasar un campo que el
+     - **`POST /simulaciones`**: `simular-credito` (y `solicitud` de
+       `capacidad-de-pago`) deja pasar un campo que el
        contrato no tiene, `tasaNominalMaximaPorcentaje`: quien lo manda puede
        subir el tope de 15%. En la puerta de las instituciones el tope sale de la
        configuración de la institución, nunca del cuerpo. Tampoco rechaza campos
