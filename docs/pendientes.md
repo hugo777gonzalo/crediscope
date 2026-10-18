@@ -100,10 +100,12 @@ aceptada.
       las tablas. **Falta ajustarlas**. Además el probador agrupa por la etiqueta
       `persona-N` y el lote nuevo pisó a `persona-1` a `persona-25` del anterior: ya
       no prueba las 87. Etiquetar los lotes por fecha.
-  - Qué hay: la función `consultar-equifax` desplegada (las 7 funciones, sello
-    `db358647b36f` del 2026-10-16; lo que cambió después en su código son
-    comentarios), la tabla `consultas_equifax` (122) con 87 filas (2 pedidas una
-    por una y 85 de tres lotes, todas de producción y de la persona pedida), el
+  - Qué hay: la función `consultar-equifax` desplegada y **sólo para admin**
+    desde el sello `835ccc58c4c1` (2026-10-17, con el corredor; el control de
+    seguridad dio 67 de 67 en OK después). El último despliegue (`6d5c4296e1e3`,
+    10 funciones, esquema 133) lo incluye. La tabla
+    `consultas_equifax` (122) con 87 filas (2 pedidas una por una y 85 de tres
+    lotes, todas de producción y de la persona pedida), el
     guion local que simula por defecto, la exportación a Excel, el inventario y la
     conciliación de las respuestas (ver "Dónde está cada cosa" de CLAUDE.md). El
     tope diario es `EQUIFAX_TOPE_DIARIO` (30); los lotes del 12/10 y del 16/10
@@ -259,8 +261,12 @@ aceptada.
        - **Costos › Equifax** (2026-10-17): consultas pagadas por mes a USD 0,40
          (tarifa que dio el negocio ese día; constante en `src/lib/costoEquifax.js`,
          sin historia: si cambia, valúa también lo de antes) y, aparte, las que
-         pudieron cobrarse (fallos con el pedido ya enviado). Hoy: 62 consultas,
-         USD 24,80, todas de octubre.
+         pudieron cobrarse (fallos con el pedido ya enviado). El 17/10: 62
+         consultas, USD 24,80; el 18/10: 87, USD 34,80, todas de octubre.
+       - **Visto en pantalla el 18/10 a 768** (sesión de QA, datos tapados): el
+         botón en la cabecera de una consulta vencida, su cuadro (sin confirmar)
+         y Costos › Equifax; el verificador de UX, sin hallazgos después de
+         oscurecer el texto de la etiqueta ámbar (daba 4,42:1).
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,
