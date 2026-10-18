@@ -113,19 +113,25 @@ Deno.serve(async (req) => {
 
     // El buró de la institución decide si las cuotas salen de Equifax. Una
     // consulta del ambiente de prueba contesta por otra persona: no sirve.
-    const { data: buro } = await serviceClient.from("proveedores").select("clave").eq("es_buro", true).maybeSingle();
+    // La misma regla que la pantalla (CapacidadDePago.jsx): la última consulta,
+    // y sólo si es de producción y tiene su estructura. Buscar la última que
+    // las cumpla daba otra cuota que la pantalla cuando la más nueva no tenía
+    // estructura: la función tomaba una de un mes anterior.
+    const { data: buro, error: errorBuro } = await serviceClient.from("proveedores").select("clave").eq("es_buro", true).maybeSingle();
+    // Sin saber cuál es el buró, las cuotas saldrían de Novadata sin que nadie se entere.
+    if (errorBuro) return responder({ error: "No se pudo leer cuál es el buró de la institución." }, 500);
     let equifax: { id: string; created_at: string; estructura: Record<string, unknown> | null } | null = null;
     if (buro?.clave === "equifax") {
-      const { data } = await serviceClient
+      const { data, error } = await serviceClient
         .from("consultas_equifax")
-        .select("id, created_at, estructura")
+        .select("id, created_at, ambiente, estructura")
         .eq("identificacion", cedula)
-        .eq("ambiente", "produccion")
-        .not("estructura", "is", null)
+        .eq("tipo_identificacion", "C")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      equifax = data;
+      if (error) return responder({ error: "No se pudo leer la consulta de Equifax." }, 500);
+      equifax = data?.ambiente === "produccion" && data?.estructura ? data : null;
     }
 
     datos = datosDeCapacidad(perfil.standard_profile as Record<string, unknown>, equifax?.estructura ?? null);
@@ -152,6 +158,14 @@ Deno.serve(async (req) => {
     } as DatosDeCapacidad;
     if (datos.ingresos.some((x) => typeof x?.montoMensual !== "number" || !["sueldo", "aporte_propio", "declarado"].includes(x.tipo))) {
       return responder({ error: "Cada ingreso lleva montoMensual (número) y tipo («sueldo», «aporte_propio» o «declarado»)." }, 400);
+    }
+    // evaluarCapacidad() deja afuera una cuota que no es número: con un "350"
+    // en texto, la obligación contaba como cero y el crédito «alcanzaba».
+    if (datos.obligaciones.some((x) => typeof x?.montoMensual !== "number" || !Number.isFinite(x.montoMensual) || x.montoMensual < 0)) {
+      return responder({ error: "Cada obligación lleva montoMensual: lo que paga por mes, como número." }, 400);
+    }
+    if (datos.deudasSinCuota.some((x) => !x || typeof x !== "object")) {
+      return responder({ error: "Cada deuda sin cuota va como objeto: { concepto, saldo, origen }." }, 400);
     }
   }
 

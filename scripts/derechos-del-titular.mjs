@@ -62,7 +62,31 @@ const leer = (tabla, filtro) => pedir(`${env.SUPABASE_URL}/rest/v1/${tabla}?sele
 
 const cliente = (await leer("clients", `cedula=eq.${CEDULA}`))[0];
 if (!cliente) {
-  console.log(`No hay ningún registro de ${ENMASCARADA}.`);
+  // Sin fila en clients puede haber igual lo que se guarda por identificación:
+  // una solicitud cuyo primer paso no llegó a crear a la persona (la fuente no
+  // la encontró o no contestó), o la constancia de una consulta a un buró.
+  // Decir «no hay ningún registro» ahí contestaba mal un pedido de acceso.
+  const sueltas = {};
+  for (const tabla of ["solicitudes", "consultas_equifax", "consultas_aval"]) sueltas[tabla] = await leer(tabla, `identificacion=eq.${CEDULA}`);
+  const total = Object.values(sueltas).reduce((a, filas) => a + filas.length, 0);
+  if (total === 0) {
+    console.log(`No hay ningún registro de ${ENMASCARADA}.`);
+    process.exit(0);
+  }
+  console.log(`\n${ENMASCARADA} no está en clients, pero hay filas guardadas por su identificación:`);
+  for (const [tabla, filas] of Object.entries(sueltas)) console.log(`  ${tabla.padEnd(28)} ${filas.length}`);
+  if (bandera("exportar")) {
+    const carpeta = path.join(RAIZ, "research", "derechos");
+    fs.mkdirSync(carpeta, { recursive: true });
+    const archivo = path.join(carpeta, `${new Date().toISOString().slice(0, 10)}-${ENMASCARADA.replaceAll("*", "x")}.json`);
+    fs.writeFileSync(archivo, JSON.stringify({ generado: new Date().toISOString(), titular: CEDULA, datos: sueltas, crudo: [] }, null, 2));
+    console.log(`\nExportado en ${path.relative(RAIZ, archivo)} (datos personales: no sale de research/ salvo hacia el titular o la IFI).`);
+  }
+  if (bandera("suprimir")) {
+    // suprimir_titular() (115) exige la fila en clients. Pendiente en docs/pendientes.md.
+    console.error("\nsuprimir_titular() exige que la persona esté en clients: estas filas no se pueden suprimir con este guion todavía.");
+    process.exit(1);
+  }
   process.exit(0);
 }
 const id = cliente.id;
