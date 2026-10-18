@@ -34,6 +34,7 @@ export default function Solicitud() {
   const { id } = useParams();
   const [s, setS] = useState(null);
   const [error, setError] = useState(null);
+  const [noExiste, setNoExiste] = useState(false);
   const [avanzando, setAvanzando] = useState(false);
   const vigente = useRef(true);
 
@@ -66,8 +67,10 @@ export default function Solicitud() {
     getSolicitud(id)
       .then((fila) => {
         if (!vigente.current) return;
+        // Sin fila no es un error de red: la dirección está mal o la RLS no la deja ver.
+        if (!fila) return setNoExiste(true);
         setS(fila);
-        if (fila?.estado === "en_evaluacion") avanzar(fila);
+        if (fila.estado === "en_evaluacion") avanzar(fila);
       })
       .catch(setError);
     return () => {
@@ -94,11 +97,40 @@ export default function Solicitud() {
   }, [s?.monto, s?.plazo_meses, s?.tasa_nominal_anual, s?.sistema, s?.desgravamen]);
 
   if (error && !s) return <AvisoDeError error={error} />;
+  if (noExiste) {
+    return (
+      <Aviso tipo="informacion" titulo="No encontramos esta solicitud">
+        <p style={{ margin: 0 }}>
+          Puede que la dirección esté mal o que no tengas permiso para verla. <Link to="/solicitud/nueva">Volvé a Nueva solicitud</Link> para ver las
+          recientes.
+        </p>
+      </Aviso>
+    );
+  }
   if (!s) return <Cargando />;
 
   const def = MODALIDADES[s.modalidad];
   const r = s.resultado ?? {};
   const fallido = s.pasos.find((p) => p.estado === "fallido");
+
+  const listaDePasos = (
+    <ol className="crediscope-pasos">
+      {s.pasos.map((p) => {
+        const { Icono, clase, texto } = ICONO_DEL_PASO[p.estado] ?? ICONO_DEL_PASO.pendiente;
+        return (
+          <li key={p.paso} className={`crediscope-paso ${clase}`}>
+            <Icono size={20} aria-hidden="true" className="crediscope-paso-icono" />
+            <div>
+              <p className="crediscope-paso-nombre">
+                {NOMBRE_DEL_PASO[p.paso]} <span className="crediscope-solo-lectores">({texto})</span>
+              </p>
+              {p.detalle ? <p className="crediscope-paso-detalle">{p.detalle}</p> : null}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
 
   return (
     <div>
@@ -126,26 +158,21 @@ export default function Solicitud() {
         ) : null}
       </div>
 
-      <section className="crediscope-card">
-        <h3 style={{ marginTop: 0 }}>Evaluación</h3>
-        <ol className="crediscope-pasos">
-          {s.pasos.map((p) => {
-            const { Icono, clase, texto } = ICONO_DEL_PASO[p.estado] ?? ICONO_DEL_PASO.pendiente;
-            return (
-              <li key={p.paso} className={`crediscope-paso ${clase}`}>
-                <Icono size={20} aria-hidden="true" className="crediscope-paso-icono" />
-                <div>
-                  <p className="crediscope-paso-nombre">
-                    {NOMBRE_DEL_PASO[p.paso]} <span className="crediscope-solo-lectores">({texto})</span>
-                  </p>
-                  {p.detalle ? <p className="crediscope-paso-detalle">{p.detalle}</p> : null}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-        {avanzando ? <p className="crediscope-credito-ayuda">Consultar a la persona y al modelo puede tardar uno o dos minutos por paso.</p> : null}
-      </section>
+      {/* Terminada, lo que importa es el resultado: los pasos se pliegan. En curso o con un fallo, a la vista. */}
+      {s.estado === "evaluada" && !fallido ? (
+        <details className="crediscope-card crediscope-plegable">
+          <summary>Cómo se evaluó · {plural(s.pasos.length, "paso")}</summary>
+          <div style={{ marginTop: 12 }}>
+            {listaDePasos}
+          </div>
+        </details>
+      ) : (
+        <section className="crediscope-card">
+          <h3 style={{ marginTop: 0 }}>Evaluación</h3>
+          {listaDePasos}
+          {avanzando ? <p className="crediscope-credito-ayuda">Consultar a la persona y al modelo puede tardar uno o dos minutos por paso.</p> : null}
+        </section>
+      )}
 
       {fallido ? (
         <Aviso tipo="peligro" titulo={`No se completó: ${NOMBRE_DEL_PASO[fallido.paso]}`}>

@@ -11,6 +11,7 @@ import PestanasCliente from "../components/PestanasCliente.jsx";
 import ClienteHeader from "../components/ClienteHeader.jsx";
 import CondicionesDelCredito from "../components/credito/CondicionesDelCredito.jsx";
 import VeredictoDeCapacidad from "../components/credito/VeredictoDeCapacidad.jsx";
+import ResumenFijo from "../components/credito/ResumenFijo.jsx";
 import IngresoDeclarado from "../components/credito/IngresoDeclarado.jsx";
 import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
@@ -143,6 +144,7 @@ export default function CapacidadDePago() {
                 </Aviso>
               )}
             </div>
+            {capacidad ? <ResumenFijo cuota={capacidad.cuotaNueva} veredicto={capacidad.veredicto} /> : null}
           </div>
 
           {capacidad && (capacidad.obligacionesIncompletas || capacidad.ingresoSoloSbu) ? (
