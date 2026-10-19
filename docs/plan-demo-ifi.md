@@ -67,8 +67,8 @@ Lo que decidió mientras se construía (el detalle de cada una está en la secci
 | 2026-10-17 | **Plus consulta Equifax si no hay una consulta vigente, y eso es sólo de administración** (se cobra). | A un analista el paso del buró le falla con el motivo. Para la API queda por decidir quién autoriza ese gasto (ver `docs/pendientes.md`). |
 | 2026-10-18 | **El segundo estado de la persona se llama «En proceso».** | Reemplaza a «Solicitante». Choca con el `en_proceso` del estado de la evaluación en el contrato (ver `docs/modelo-de-la-persona.md`, sección 5). |
 | 2026-10-18 | **Quien fue rechazado o desistió tiene un estado propio: «No aprobado».** | Cierra la pregunta «¿y el que no pasa?» de `docs/modelo-de-la-persona.md`. |
-| 2026-10-18 | **La decisión de la institución (Aprobado / Rechazado) la marca el analista en la solicitud.** | La marca una persona, no el modelo ni una regla. La preaprobación sigue siendo del modelo (P3). Todavía no está construido: la solicitud no tiene dónde guardarla (ver la sección 7, paso 4). |
-| 2026-10-18 | **«Perfil del Cliente» pasa a «Perfil de la Persona».** | Se renombra junto con los estados, en una sesión aparte (menú, exportaciones y textos). **Todavía no se aplicó en pantalla.** |
+| 2026-10-18 | **La decisión de la institución (Aprobado / Rechazado) la marca el analista en la solicitud.** | La marca una persona, no el modelo ni una regla. La preaprobación sigue siendo del modelo (P3). **Construido el 2026-10-18** (134): Aprobado, Rechazado o Desistió, con motivo. |
+| 2026-10-18 | **«Perfil del Cliente» pasa a «Perfil de la Persona».** | **Renombrado el 2026-10-18** (#52, 24 textos); el control de textos corta con el nombre viejo. |
 
 ## 1. Qué existe hoy
 
@@ -321,11 +321,12 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
      `modalidad` de `POST /evaluaciones` y `capacidadDePago` en su resultado.
    - Pantallas: Solicitudes › Nueva solicitud (`/solicitud/nueva`) y la
      solicitud con su avance (`/solicitud/:id`).
-   - Falta: lo que decide la institución (Aprobado / Rechazado) y los estados de
-     la persona. El negocio decidió el 2026-10-18 cómo se llaman y quién marca
-     la decisión (sección 0.1); la sesión que los construye hace también los
-     renombres de pantalla. La política configurable que combine modelo y
-     capacidad, si el negocio la quiere.
+   - **La decisión de la institución y los estados de la persona, hechos el
+     2026-10-18** (#52, 134): el analista marca Aprobado, Rechazado o Desistió
+     en la solicitud, con motivo, y el estado de la persona se calcula desde sus
+     solicitudes (`_shared/estado-de-la-persona.ts`). Falta mostrarlo en la
+     bandeja, el Expediente y Monitoreo (`docs/pendientes.md`), y la política
+     configurable que combine modelo y capacidad, si el negocio la quiere.
    - Probadas de punta a punta el 2026-10-18 con una persona real; Plus pagó una
      consulta de Equifax, autorizada.
 5. **Predictor v0, explicable**: confirmado + cota por crédito otorgado +
