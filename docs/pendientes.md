@@ -27,15 +27,17 @@ aceptada.
 
 - **Revisión de UX de las pantallas de crédito (2026-10-18): corregido lo seguro,
   queda por ver en pantalla y por decidir.**
-  - Se vio con la sesión de QA a 1280 y a 414 px: simulador, Nueva solicitud,
-    una solicitud Plus evaluada y la pestaña Capacidad (misma cuota y mismo
-    veredicto que la solicitud). Desplegado el 2026-10-18 (#48). **No se vio a
-    768 px, ni en pantalla todas las correcciones** (el servidor de 5184 era de
-    otra rama): se probaron el
-    simulador y el resumen fijo en una página de prueba, a 414 y 1280.
-    Falta verlas con la sesión: la solicitud que no existe, la solicitud evaluada
-    con los pasos plegados, la confirmación de Plus (admin), la lista de
-    recientes con error y las flechas del grupo de modalidades.
+  - Se vio con la sesión de QA a 1280 y a 414 px (2026-10-18) y **a 768 px el
+    2026-10-20**: el simulador con la Tasa mínima y máxima (vacía, 16 y −1), la
+    solicitud que no existe, la solicitud evaluada con los pasos plegados, la
+    confirmación de Plus (admin; se canceló sin crear nada), la lista de recientes
+    con error (simulado: traduce el error de la base) y las flechas del grupo de
+    modalidades. Sin hallazgos del verificador salvo texto de 11 px en la bandeja.
+  - **El resumen fijo de la cuota** (pantallas chicas) quedaba pegado encima de la
+    tarjeta grande, con la misma cuota dos veces y el reparto tapado, a 768 y 414
+    px. Desde el 2026-10-20 se oculta mientras se ve alguna parte del resultado;
+    visto a 414 en el simulador. **Falta verlo en Capacidad de pago** con la sesión
+    (la sesión de QA se cerró a mitad de la revisión).
   - Por decidir con el negocio: la lista de «Solicitudes recientes» muestra la
     cédula completa de cada persona (es la bandeja del analista, pero conviene
     confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
