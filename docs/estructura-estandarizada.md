@@ -667,6 +667,11 @@ interface StandardClientProfile {
 > - **Lo que lee el modelo:** el campo es el mismo; null ahora también es
 >   «su afiliación vigente no es trabajo». El texto del marco que lo describe
 >   no lo dice todavía (`docs/pendientes.md`).
+> - Desplegado el 2026-10-20 (f09531e) y recalculados 2.561 perfiles con
+>   `recalcular-grupos.mjs --grupos=laboral
+>   --carpeta=research/novadata-raw-2026-10-03` (0 que el crudo no
+>   reproduzca). Después: 0 descalces en v14; 10 últimos perfiles siguen en
+>   v13 (sin crudo local).
 
 ## De dónde sale cada cálculo (trazabilidad)
 
