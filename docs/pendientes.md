@@ -72,59 +72,64 @@ aceptada.
      pantallas, #49 contrato y documentos, #50 funciones y seguridad, #51
      cálculos: simulador-v2 y capacidad-v3) y desplegada. Queda lo que el
      contrato dice y el código no hace (se corrige tocando código):
-     - **`ingresoDeclarado` de la evaluación**: el contrato lo pone dentro de
-       `solicitudDeCredito`; `evaluar-solicitud` lo lee en la raíz del cuerpo.
-     - **La evaluación pide su propia forma**: el contrato exige `autorizacion`,
-       `referencia` y `operador`, acepta `reemplazaA` y `prioridad`, y por
-       omisión es `basico`; `evaluar-solicitud` no guarda ninguno de ésos
-       (la tabla `solicitudes` no tiene dónde) y exige `modalidad`.
-     - **Estados y etapas**: el contrato tiene `estado` (recibida, en_proceso,
-       completada, persona_no_encontrada, fallida, cancelada) y `etapa`
-       (fuentes, perfil, modelo, entrega); `solicitudes` tiene `en_evaluacion`,
-       `evaluada`, `fallida` y cuatro pasos (perfil, buro, analisis,
-       capacidad). Hay que traducir una cosa a la otra al construir la Fase 1.
-       Además `en_proceso` del contrato es el nombre que el negocio eligió para
-       el segundo estado de la persona.
-     - **`Fallo.codigo`** admite tres códigos; un paso que falla en
-       `evaluar-solicitud` sólo deja un texto (por ejemplo, Plus sin consulta
-       vigente y sin ser admin). Falta el código de «el buró necesita que lo
-       consulte un administrador».
-     - **Quién paga Equifax por la API**: Plus consulta Equifax si no hay una
-       consulta vigente, y esa llamada exige un administrador; una IFI no lo es.
-       Hay que decidir si la IFI autoriza el gasto en el pedido o si Plus exige
-       una consulta ya hecha.
-     - **El resultado de la evaluación**: `evaluar-solicitud` guarda un resumen
-       del análisis (score, recomendación, origen, indicador de riesgo, marco);
-       el contrato exige además positivos, negativos, información faltante,
-       acciones, razonamiento y controles de bloqueo (están en
-       `analysis_results`) y la firma.
-     - **`POST /simulaciones`**: `simular-credito` (y `solicitud` de
-       `capacidad-de-pago`) deja pasar un campo que el
-       contrato no tiene, `tasaNominalMaximaPorcentaje`: quien lo manda puede
-       subir el tope de 15%. En la puerta de las instituciones el tope sale de la
-       configuración de la institución, nunca del cuerpo. Tampoco rechaza campos
-       desconocidos (el contrato dice `additionalProperties: false`).
-     - **`POST /capacidades-de-pago`**: el contrato dice `identificacion`; la
-       función acepta también `cedula`. La función no hace todas las validaciones
-       que el contrato declara (máximos de 20 ingresos, 50 obligaciones y 50
-       deudas sin cuota, `ingresoDeclarado` de más de mil millones, `parametros`
-       fuera de 0 a 1 que se ignoran en vez de dar 400; sí rechaza una
-       obligación que no es número) y,
-       con `identificacion` e `ingresos` a la vez, ignora los `ingresos` sin
-       avisar.
-     - **Errores**: las funciones contestan `{ error, errores: [texto] }` y el
-       contrato `application/problem+json` con `codigo`, `idPedido` y
-       `errores: [{ campo, motivo }]`; la autenticación es la sesión de un
-       analista y no OAuth, y no leen `Idempotency-Key`. Una base atrasada da 503
-       (`exigirEsquema`), que `POST /capacidades-de-pago` no lista.
-     - **Fracciones sin redondear**: `tasaMensual`, `tasaEfectivaAnual`,
-       `cargaActual` y `cargaConElCredito` llegan con todos los decimales
-       (0.012499999999999999 en vez de 0.0125). El contrato lo dice; si se quiere
-       otra cosa, se redondea en la función.
-     - **`datos` y `procedencia`** en la respuesta de la capacidad: el contrato
-       los describe ahora (`datos` es donde viaja `deudasSinCuota`); si la API
-       no debe devolver esos ingresos y cuotas, hay que sacarlos del contrato y
-       de la función.
+     - **Contestado por el negocio el 2026-10-19** (numeración del informe de la
+       revisión). Una palabra antes: «contrato», en esta lista, es la
+       especificación técnica de la API (`api/openapi.yaml`), no el contrato
+       comercial con la institución; en el comercial la IFI declara que tiene la
+       autorización de cada persona.
+       1. **`ingresoDeclarado` de la evaluación**: el contrato manda. Hay que
+          cambiar `evaluar-solicitud` para leerlo dentro de `solicitudDeCredito`
+          (la pantalla, para mandarlo ahí).
+       2. **Guardar los datos importantes de la evaluación**, con la
+          recomendación de la sesión: la solicitud guarda `autorizacion` (id,
+          fecha, canal, finalidad y la huella del documento, nunca el
+          documento), `referencia` (única por institución), `operador`,
+          `prioridad` y `reemplazaA`. Es una columna por dato en `solicitudes` y
+          una migración. `modalidad` sigue siendo obligatoria en la función
+          interna; el contrato pone `basico` por omisión y eso lo resuelve la
+          puerta de la API.
+       3. **Estados y etapas**: se hace cuando los flujos estén afinados
+          (capacidad de pago, predictor de ingresos). No se toca antes.
+       4. **`Fallo.codigo`**: recomendación aceptada para aplicar. El contrato
+          suma `buro_requiere_consulta_previa`, `tope_diario_agotado`,
+          `buro_no_disponible` y `identificacion_no_encontrada`, y
+          `evaluar-solicitud` guarda ese código además del texto.
+       5. **Quién paga Equifax por la API y los niveles de acceso**: el negocio
+          propone cuatro niveles (dueño, administrador de la institución, usuario
+          A que consulta y evalúa, usuario B que sólo ve). Ver «Niveles de
+          acceso» en la sección 3.
+       6. **Sin firma**: el negocio no quiere firmar los resultados. Se sacaron
+          del contrato el campo `firma` y la operación de claves públicas
+          (`/.well-known/jwks.json`). Queda la firma de los avisos
+          (`webhook-signature`, que protege a la institución de un aviso falso)
+          y la de la ficha de acceso (OAuth); no son lo mismo.
+       7. **`tasaNominalMaximaPorcentaje`**: `simular-credito` y `solicitud` de
+          `capacidad-de-pago` dejan pasar este campo del cuerpo y quien lo manda
+          sube el tope de 15%. Se corrige en código: el tope sale de la
+          configuración, nunca del cuerpo (hoy 15% fijo).
+       8. **Validaciones que el contrato declara y la función no hace**
+          (`additionalProperties: false`, máximos de 20 ingresos, 50 obligaciones
+          y 50 deudas sin cuota, `ingresoDeclarado` de más de mil millones,
+          `parametros` fuera de 0 a 1 que se ignoran en vez de dar 400, los
+          `ingresos` que se ignoran si viene `identificacion`, y `cedula` además
+          de `identificacion`): se hacen en la puerta de la API, no en la función
+          interna.
+       9. **Errores, autenticación e `Idempotency-Key`** (las funciones contestan
+          `{ error, errores: [texto] }` con la sesión de un analista; el contrato
+          pide `application/problem+json`, OAuth y la clave de idempotencia): es
+          la Fase 1 de la API. El contrato ya lista el 503 de `POST
+          /capacidades-de-pago`.
+       10. **Decimales**: los importes van con dos decimales (lo que cobra una
+           institución) y las tasas y fracciones con toda la precisión del cálculo
+           (más de 8 decimales), sin redondear. Ya es así; el contrato lo dice.
+       11. **`datos` y `procedencia`** de la respuesta de la capacidad: se
+           explicó al negocio (`datos` = qué ingresos y cuotas se contaron;
+           `procedencia` = de dónde y de qué fecha). Falta que decida si se
+           quedan en la API.
+     - **Las otras diferencias de la revisión** (el resultado de la evaluación
+       guarda un resumen del análisis y el contrato pide positivos, negativos,
+       razonamiento y controles de bloqueo, que están en `analysis_results`) se
+       resuelven al construir la puerta de la API.
      - **Funciones y base (2026-10-18), corregido y desplegado** (516dc33): `evaluar-solicitud` ya no copia en
        la solicitud el mensaje de la función llamada (podía traer el de Novadata,
        Equifax, el modelo o la base: `falloDeUnPaso()`); un paso que pudo dejar
@@ -845,6 +850,40 @@ aceptada.
   demandas no traen cédula de las partes.
 
 ## 3. Propuestas sin decidir
+
+- **Niveles de acceso (propuesta del negocio del 2026-10-19, con la evaluación
+  de la sesión; sin decidir ni construir).** Hoy hay dos roles en
+  `profiles.rol`: `analista` y `admin`, y «admin» ve de todo, incluidos Costos
+  (lo que CrediScope paga a Equifax y al modelo), el Laboratorio y las
+  fuentes que se consultan. El negocio propone cuatro niveles. La sesión los
+  encuentra adecuados, con estos ajustes:
+  - **Dueño** (el negocio, como operador de CrediScope): todo, y es el único que
+    ve Costos, el Laboratorio, el selector de buró, las tarifas y las bases de
+    todas las instituciones. Conviene que NO sea un rol que un administrador de
+    la institución pueda dar: el dueño se da de alta por fuera de la pantalla de
+    usuarios, y es el titular de la cuenta de Equifax (USD 0,40 por consulta,
+    tarifa del 17/10).
+  - **Administrador** (personal de la institución): la configuración que le toca
+    a la institución, que hoy no existe como pantalla: sus usuarios, la carga
+    máxima de la capacidad de pago, la tasa máxima y el desgravamen de sus
+    productos, y su tope diario de consultas a Equifax. No ve Costos ni el
+    Laboratorio.
+  - **Usuario A** (analista): consulta, evalúa, ve la bandeja y marca la decisión
+    de la solicitud. Puede pedir una consulta que se cobra (Equifax) dentro del
+    tope diario de su institución; hoy eso es sólo de administración
+    (2026-10-17), y es la pregunta de quién paga Equifax: la respuesta propuesta
+    es que la cuenta es del dueño, la institución la autoriza con su tope y el
+    pedido lleva la autorización de la persona.
+  - **Usuario B** (lector): ve la bandeja, las solicitudes y los resultados ya
+    hechos; no consulta, no evalúa y no guarda nada. Hace falta un rol nuevo
+    (`lector`) y revisar cada política de RLS y cada función que hoy acepta
+    `analista`.
+  - Para construirlo: una migración que amplía `profiles.rol` (`dueno`,
+    `admin`, `analista`, `lector`), `exigirRol()` en cada función, `RequireAdmin`
+    y el menú, y una prueba en `auditar-seguridad.mjs` de que cada rol no puede
+    lo que no le toca. El dueño y el administrador de la institución se separan
+    recién cuando haya una segunda institución usando la plantilla (hoy hay una
+    sola base).
 
 - **Observaciones del negocio sobre los análisis de marco-v28** (levantadas
   el 2026-10-07, **en pausa desde el 2026-10-09** por decisión del negocio):
