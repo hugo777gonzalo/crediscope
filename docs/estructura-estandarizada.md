@@ -647,6 +647,27 @@ interface StandardClientProfile {
 >   reproduzca); `calcular-columnas-del-perfil.mjs --seco` da 0 por corregir
 >   en 8.482 perfiles. Los 2.587 perfiles de ese día quedaron en v13.
 
+> **estructura-v14 (2026-10-20)** — la antigüedad con la regla de la continuidad.
+> - **Qué pasó:** en Fuentes de Ingreso una persona mostraba una continuidad
+>   laboral de 12 años y una antigüedad en el empleo actual de 14. La
+>   continuidad cuenta el aporte por cuenta propia sólo con RUC activo (y el
+>   RISE siempre); la antigüedad contaba cualquier afiliación vigente desde su
+>   fecha de ingreso. Medido en la base: 35 de 1.644 personas con la
+>   antigüedad más larga que la continuidad (21 aportaban por su cuenta antes
+>   de abrir o reabrir el RUC; 9, voluntarios sin RUC; 3, con un empleo y una
+>   afiliación voluntaria más larga; 2, del hogar o con un código desconocido).
+> - **Arreglo (decisión del negocio):** la regla vive en un solo lugar,
+>   `reglaDeTrabajo()` de `fuentes-ingreso.ts`; la usan la continuidad y
+>   `antiguedadEmpleoActualMeses`. Un empleo actual es sólo trabajo, y el
+>   aporte propio empieza, como muy temprano, cuando abrió el RUC.
+> - **Efecto** (código viejo contra nuevo, perfil entero, crudo del
+>   2026-10-03): 68 de 2.567 cambian, sólo en `antiguedadEmpleoActualMeses`
+>   (37 pasan a null, 31 bajan); antigüedad mayor que la continuidad, de 46 a
+>   0. La continuidad no cambia en ninguno (la regla se movió sin cambiarla).
+> - **Lo que lee el modelo:** el campo es el mismo; null ahora también es
+>   «su afiliación vigente no es trabajo». El texto del marco que lo describe
+>   no lo dice todavía (`docs/pendientes.md`).
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

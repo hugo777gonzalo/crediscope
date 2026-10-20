@@ -488,7 +488,20 @@ aceptada.
          mayor, que repite la nómina, los empleados y lo declarado: son los
          datos que lo sostienen, lado a lado (negocio, 2026-09-28). **No se
          vio**: una persona sin consulta, un perfil anterior a fuentes-v4 ni
-         la vista de un analista. (c) Los nombres de las
+         la vista de un analista. **La antigüedad y la continuidad (2026-10-20,
+         estructura-v14, decidido por el negocio):** la antigüedad en el empleo
+         actual contaba cualquier afiliación vigente y salía más larga que la
+         continuidad en 35 de 1.644 personas; ahora usa `reglaDeTrabajo()`, la
+         regla de la continuidad (detalle en `docs/estructura-estandarizada.md`).
+         La pantalla explica el descalce en los perfiles armados antes, hasta
+         reconsultar. **Falta**: desplegar las funciones y recalcular los
+         perfiles con `recalcular-grupos.mjs --grupos=laboral
+         --carpeta=research/novadata-raw-2026-10-03` (`--seco` primero); los
+         consultados después del 03/10 no tienen crudo local y quedan en v13
+         hasta reconsultarlos. **Para el marco** (cuando se toque, al final): su
+         texto dice que `antiguedadEmpleoActualMeses` null es un empleo de menos
+         de 3 meses o sin dato reciente; desde v14 también es «su afiliación
+         vigente no es trabajo» (37 de 2.567 perfiles). (c) Los nombres de las
          instituciones de Equifax **se quedan como vienen** (decidido; anotado en
          la terminología de la habilidad). (d) No se vio el estado sin consulta
          ni la vista de un analista (la cuenta de QA es admin): no cambiaron.

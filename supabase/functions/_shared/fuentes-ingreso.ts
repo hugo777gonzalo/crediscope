@@ -486,30 +486,57 @@ const TOLERANCIA_CONTINUIDAD_MESES = 2;
 // ingreso -- o su primer aporte, si es anterior -- hasta su último aporte,
 // y los huecos DENTRO de un mismo empleo no cortan: el IESS lo da por
 // continuo.
-function construirContinuidad(aportes: AnyRecord[], corte: string, consultadas: AnyRecord, esPropio: EsPropio): ContinuidadLaboral | null {
+// ¿Este aporte es trabajo, y desde cuándo puede empezar el empleo? La regla
+// de NATURALEZAS_CON_EMPLEADOR, en un solo lugar: la usan la continuidad y,
+// desde estructura-v14, la antigüedad en el empleo actual (process.ts).
+// Hasta entonces la antigüedad contaba cualquier afiliación vigente: en 35
+// de 1.644 personas (2026-10-19) salía más larga que la continuidad, con
+// años de aporte voluntario sin RUC, del hogar o de un código desconocido
+// contados como empleo.
+//
+// Devuelve null si no es trabajo; si lo es, el mes más temprano en que
+// puede empezar ese empleo ("1950-01" con un empleador) y si es por cuenta
+// propia.
+export type ReglaDeTrabajo = (a: AnyRecord) => { pisoInicio: string; cuentaPropia: boolean } | null;
+
+function reglaDeTrabajoCon(consultadas: AnyRecord, esPropio: EsPropio): ReglaDeTrabajo {
   const conRuc = periodosConRucActivo(consultadas);
-  const empleos = new Map<string, { empleador: string; inicio: string; fin: string; cuentaPropia: boolean }>();
-  for (const a of aportes) {
+  return (a) => {
     const mes = mesClave(a.anio, a.mes);
-    if (!mes || mes > corte) continue;
+    if (!mes) return null;
     const { naturaleza } = naturalezaDelAporte(a, esPropio);
+    if (NATURALEZAS_CON_EMPLEADOR.has(naturaleza)) return { pisoInicio: "1950-01", cuentaPropia: false };
+    if (naturaleza !== "cuenta_propia") return null;
     // El aporte propio cuenta sólo en un mes con RUC activo, y su empleo
     // no puede empezar antes que ese período del RUC. El RISE (código 34)
     // es un régimen del propio SRI: aportar como RISE ya prueba una
     // actividad registrada, aunque la fecha del RUC sea posterior -- caso
     // visto: RISE desde 2018 con un RUC que figura desde 2022, el año en
     // que el RIMPE reemplazó al RISE.
-    const esRise = codigoTipoEmpleador(a.tipEmp) === "34";
-    const periodo =
-      naturaleza === "cuenta_propia"
-        ? (conRuc.find(([d, h]) => d <= mes && mes <= h) ?? (esRise ? (["1950-01", "9999-12"] as [string, string]) : null))
-        : null;
-    if (!NATURALEZAS_CON_EMPLEADOR.has(naturaleza) && !periodo) continue;
-    const pisoInicio = periodo ? periodo[0] : "1950-01";
+    const periodo = conRuc.find(([d, h]) => d <= mes && mes <= h);
+    if (periodo) return { pisoInicio: periodo[0], cuentaPropia: true };
+    return codigoTipoEmpleador(a.tipEmp) === "34" ? { pisoInicio: "1950-01", cuentaPropia: true } : null;
+  };
+}
+
+// Para process.ts, que arma la antigüedad con las mismas filas del IESS.
+export function reglaDeTrabajo(raw: RespuestaNovadata, cedula: string | null, nombreCliente: string | null): ReglaDeTrabajo {
+  return reglaDeTrabajoCon(raw as unknown as AnyRecord, (a) => aporteDeSuPropioPatrono(a, cedula, nombreCliente));
+}
+
+function construirContinuidad(aportes: AnyRecord[], corte: string, consultadas: AnyRecord, esPropio: EsPropio): ContinuidadLaboral | null {
+  const esTrabajo = reglaDeTrabajoCon(consultadas, esPropio);
+  const empleos = new Map<string, { empleador: string; inicio: string; fin: string; cuentaPropia: boolean }>();
+  for (const a of aportes) {
+    const mes = mesClave(a.anio, a.mes);
+    if (!mes || mes > corte) continue;
+    const trabajo = esTrabajo(a);
+    if (!trabajo) continue;
+    const { pisoInicio } = trabajo;
     const empleador = String(a.rucEmp ?? a.nomEmp ?? "");
     const clave = `${empleador}|${a.fecIng ?? ""}|${pisoInicio}`;
     const ingreso = fechaIso(a.fecIng)?.slice(0, 7) ?? null;
-    const e = empleos.get(clave) ?? { empleador, inicio: mes, fin: mes, cuentaPropia: Boolean(periodo) };
+    const e = empleos.get(clave) ?? { empleador, inicio: mes, fin: mes, cuentaPropia: trabajo.cuentaPropia };
     if (mes < e.inicio) e.inicio = mes;
     if (mes > e.fin) e.fin = mes;
     // La fecha de ingreso sólo adelanta el inicio si es posible: no antes

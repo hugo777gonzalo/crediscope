@@ -12,7 +12,7 @@
 // entrada real del LLM (ver marco-interpretativo.ts).
 
 import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
-import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
+import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, establecimientoAbierto, fechasDelRuc, rucActivo } from "./ruc.ts";
 import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
@@ -330,7 +330,12 @@ function textoDe(v: unknown): string | null {
 // estructura-v13 (2026-10-03): Novadata manda el estado de algunos
 // establecimientos abreviado ("ABI", "CER"); quien tenía el suyo en "ABI"
 // quedaba sin RUC activo. Una sola comparación, en ruc.ts.
-export const PROCESS_VERSION = "estructura-v13"; // ver docs/estructura-estandarizada.md
+// estructura-v14 (2026-10-20, decisión del negocio): la antigüedad en el
+// empleo actual cuenta como empleo sólo lo que la continuidad cuenta como
+// trabajo (reglaDeTrabajo, fuentes-ingreso.ts): el aporte propio desde que
+// abrió el RUC, y nada del aporte voluntario sin RUC, del hogar o de un
+// código desconocido. Cambia en 35 de 1.644 personas.
+export const PROCESS_VERSION = "estructura-v14"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -682,12 +687,30 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // afirmar que siga). La antigüedad va hasta el último aporte, no hasta
   // hoy: la misma referencia que duracionEmpleoMasLargoMeses abajo, así
   // nunca sale mayor que el empleo más largo, que la incluye.
-  const ultimoMesConEmpleo = Math.max(-Infinity, ...[...empleosSinSalida.values()].map((e) => e.ultimo));
-  const antiguedadesVigentes = [...empleosSinSalida.values()]
+  //
+  // Desde estructura-v14 un empleo es lo que la continuidad cuenta como
+  // trabajo (reglaDeTrabajo, fuentes-ingreso.ts): el aporte por cuenta
+  // propia sin RUC activo, el del hogar y un código de empleador
+  // desconocido no son un empleo actual, y el aporte propio empieza, como
+  // muy temprano, cuando abrió el RUC. Con la regla anterior la antigüedad
+  // salía más larga que la continuidad en 35 de 1.644 personas: 21 que
+  // aportaban por su cuenta antes de abrir o reabrir el RUC y 14 cuyo
+  // «empleo actual» era una afiliación que no es trabajo. El mes más
+  // reciente se toma entre los empleos: una afiliación voluntaria que
+  // siguió un mes más no deja afuera al trabajo con un tercero.
+  const esTrabajo = reglaDeTrabajo(raw, cedula, (persona?.nombre as string) ?? null);
+  const empleosDeTrabajo = [...empleosSinSalida.values()]
+    .map((e) => ({ ...e, trabajo: esTrabajo(e.ultimaFila) }))
+    .filter((e) => e.trabajo !== null);
+  const ultimoMesConEmpleo = Math.max(-Infinity, ...empleosDeTrabajo.map((e) => e.ultimo));
+  const antiguedadesVigentes = empleosDeTrabajo
     .filter((e) => e.ultimo === ultimoMesConEmpleo && e.snapshots >= 3 && (mesesDesdeUltimaEvidenciaActiva(e.ultimaFila) ?? Infinity) <= 3)
     .map((e) => {
-      const inicio = parseFechaDDMMYYYY(e.fecIng);
-      return inicio ? mesesEntreFechas(inicio, fechaDeAnioMesA0(e.ultimo)) : null;
+      const ingreso = parseFechaDDMMYYYY(e.fecIng);
+      if (!ingreso) return null;
+      const [anioPiso, mesPiso] = (e.trabajo?.pisoInicio ?? "1950-01").split("-").map(Number);
+      const piso = new Date(anioPiso, mesPiso - 1, 1);
+      return mesesEntreFechas(ingreso < piso ? piso : ingreso, fechaDeAnioMesA0(e.ultimo));
     })
     .filter((m): m is number => m !== null);
   const antiguedadEmpleoActualMeses = antiguedadesVigentes.length ? Math.max(...antiguedadesVigentes) : null;
