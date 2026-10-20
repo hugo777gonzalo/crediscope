@@ -37,3 +37,7 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 - Para validar un cambio, comparar `process.ts` viejo contra nuevo sobre
   `research/novadata-raw/` con el perfil entero (`reprocess-sample.mjs`, la
   copia a mano, quedó atrás y se borró el 2026-10-13).
+- Al cruzar dos consultas a Postgres en memoria, unificar las claves con `String()`:
+  `node-pg` devuelve `integer` como número y `numeric` o `bigint` como texto, y un `Map`
+  no calza sin error (seis columnas salieron 100% vacías el 2026-10-20). Medir el
+  porcentaje de vacíos de cada columna antes de dar un archivo por bueno.

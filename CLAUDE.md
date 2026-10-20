@@ -228,6 +228,7 @@ Romper cualquiera de estas rompe algo real.
 | Pantallas | `src/CLAUDE.md` (se carga solo) y la habilidad `revision-ux` |
 | Guiones | `scripts/CLAUDE.md` (se carga solo) |
 | Equifax | `docs/equifax.md` |
+| La base de originación en AWS (requerimientos, ingresos, predictor) | `docs/base-aws-originacion.md` |
 | El Laboratorio | `docs/laboratorio-guia.md`: el plan por pasos y, al final, cómo está construido |
 | Ponerle nombre a una pantalla o a una tabla | `docs/modelo-de-la-persona.md`: la persona, su árbol y sus estados |
 | La demo para una institución | `docs/plan-demo-ifi.md` |
@@ -335,6 +336,8 @@ al CLAUDE.md que le corresponde, y con su caso a `docs/lecciones.md`.
     la vista.
 - Ecuador es UTC-5 sin horario de verano: a las 20:00 de Ecuador la fecha
   UTC ya es la de mañana. Las fechas se formatean sólo con `src/lib/fechas.js`.
+- Un archivo de secretos guardado desde el Bloc de notas queda como `.env.txt` y git no
+  lo ignora (la regla es `clientes/*.env`): `git check-ignore -v <archivo>` antes de leerlo.
 
 ## Cómo se trabaja
 
