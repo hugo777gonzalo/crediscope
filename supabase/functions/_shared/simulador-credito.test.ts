@@ -6,12 +6,27 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals } from "jsr:@std/assert@1";
-import { MONTO_MAXIMO, montoMaximoParaCuota, simularCredito, validarPedido, type PedidoDeSimulacion, type Simulacion } from "./simulador-credito.ts";
+import {
+  LIMITES_TECNICOS,
+  MONTO_MAXIMO,
+  montoMaximoParaCuota,
+  PRODUCTO_CONSUMO,
+  simularCredito,
+  validarPedido,
+  type PedidoDeSimulacion,
+  type Simulacion,
+} from "./simulador-credito.ts";
+
+// El motor se prueba sin la política del producto (de 1 a 480 meses, desde un centavo):
+// los límites del negocio se prueban aparte, al final.
+const calcular = (p: PedidoDeSimulacion) => simularCredito(p, LIMITES_TECNICOS);
+const validar = (p: PedidoDeSimulacion) => validarPedido(p, LIMITES_TECNICOS);
+const montoMaximo = (tope: number, condiciones: Omit<PedidoDeSimulacion, "monto">) => montoMaximoParaCuota(tope, condiciones, LIMITES_TECNICOS);
 
 const SIN_SEGURO = { tasaPorcentaje: 0, periodicidad: "anual", base: "saldo" } as const;
 
 function simular(p: PedidoDeSimulacion): Simulacion {
-  const r = simularCredito(p);
+  const r = calcular(p);
   if (!r.ok) throw new Error(r.errores.join(" "));
   return r.simulacion;
 }
@@ -99,11 +114,11 @@ Deno.test("en cualquier caso el capital suma el monto, el saldo termina en cero 
 });
 
 Deno.test("la tasa no puede pasar la máxima del producto, que la institución puede cambiar", () => {
-  const r = simularCredito({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15.5 });
+  const r = calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15.5 });
   assertEquals(r.ok, false);
   assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
-  assertEquals(simularCredito({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 }).ok, true);
-  assertEquals(simularCredito({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 13, tasaNominalMaximaPorcentaje: 12.9 }).ok, false);
+  assertEquals(calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 }).ok, true);
+  assertEquals(calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 13, tasaNominalMaximaPorcentaje: 12.9 }).ok, false);
 });
 
 Deno.test("rechaza montos, plazos y seguros que no tienen sentido", () => {
@@ -118,8 +133,8 @@ Deno.test("rechaza montos, plazos y seguros que no tienen sentido", () => {
     { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: -1 },
     { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 12, desgravamen: { tasaPorcentaje: -0.1, periodicidad: "anual", base: "saldo" } },
   ];
-  for (const p of malos) assertEquals(simularCredito(p).ok, false, JSON.stringify(p));
-  assertEquals(simularCredito({ monto: 100.05, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).ok, true);
+  for (const p of malos) assertEquals(calcular(p).ok, false, JSON.stringify(p));
+  assertEquals(calcular({ monto: 100.05, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).ok, true);
 });
 
 // --- Revisión del 2026-10-18 -------------------------------------------------
@@ -185,32 +200,32 @@ Deno.test("montos grandes con dos decimales son válidos; pasar de mil millones 
   // Desde unos 100 millones, monto × 100 de estos ya no era un entero exacto y
   // se rechazaban como «con más de dos decimales» (8% de los montos válidos).
   for (const monto of [169557065.23, 614290342.92, 329088448.9, 999999999.99, 1000000000]) {
-    assertEquals(validarPedido({ monto, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }), [], String(monto));
+    assertEquals(validar({ monto, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }), [], String(monto));
   }
-  assert(validarPedido({ monto: 1000000000.01, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).length > 0);
-  assert(validarPedido({ monto: 614290342.925, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).includes("El monto va en dólares con hasta dos decimales."));
-  assert(validarPedido({ monto: Number.POSITIVE_INFINITY, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).length > 0);
+  assert(validar({ monto: 1000000000.01, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).length > 0);
+  assert(validar({ monto: 614290342.925, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).includes("El monto va en dólares con hasta dos decimales."));
+  assert(validar({ monto: Number.POSITIVE_INFINITY, plazoMeses: 12, tasaNominalAnualPorcentaje: 12 }).length > 0);
   const grande = simular({ monto: 999999999.99, plazoMeses: 480, tasaNominalAnualPorcentaje: 15 });
   assertEquals(grande.tabla.reduce((a, f) => a + centavos(f.capital), 0), centavos(999999999.99));
   assertEquals(grande.tabla[479].saldoFinal, 0);
 });
 
 Deno.test("una tasa que no es número lo dice, y un seguro o un pedido mal armados se rechazan", () => {
-  assertEquals(validarPedido({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: Number.NaN }), ["La tasa tiene que ser un número."]);
+  assertEquals(validar({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: Number.NaN }), ["La tasa tiene que ser un número."]);
   const sinTasa = { monto: 1000, plazoMeses: 12 } as unknown as PedidoDeSimulacion;
-  assertEquals(validarPedido(sinTasa), ["La tasa tiene que ser un número."]);
+  assertEquals(validar(sinTasa), ["La tasa tiene que ser un número."]);
   const seguroRaro = { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 12, desgravamen: 5 } as unknown as PedidoDeSimulacion;
-  assertEquals(simularCredito(seguroRaro).ok, false);
-  assertEquals(simularCredito(null as unknown as PedidoDeSimulacion).ok, false);
+  assertEquals(calcular(seguroRaro).ok, false);
+  assertEquals(calcular(null as unknown as PedidoDeSimulacion).ok, false);
   // null quiere decir «el del producto», igual que ausente.
   const conNulos = { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 12, sistema: null, desgravamen: null } as unknown as PedidoDeSimulacion;
-  assertEquals(simularCredito(conNulos).ok, true);
+  assertEquals(calcular(conNulos).ok, true);
 });
 
 // El monto máximo se comprueba contra el simulador: la cuota del monto devuelto
 // no pasa el tope y la de un centavo más sí (o ya es el techo).
 function comprobarMaximo(tope: number, condiciones: Omit<PedidoDeSimulacion, "monto">, caso: string) {
-  const monto = montoMaximoParaCuota(tope, condiciones) as number;
+  const monto = montoMaximo(tope, condiciones) as number;
   const cuota = (m: number) => simular({ ...condiciones, monto: m }).cuotaPrimerMes;
   const topeC = Math.floor(tope * 100 + 1e-6);
   if (monto > 0) assert(centavos(cuota(monto)) <= topeC, `${caso}: ${monto} pasa el tope`);
@@ -234,22 +249,55 @@ Deno.test("montoMaximoParaCuota: el más alto que cabe, en los dos sistemas, con
 
 Deno.test("montoMaximoParaCuota: el ruido de coma flotante del tope no cambia la respuesta", () => {
   const condiciones = { plazoMeses: 36, tasaNominalAnualPorcentaje: 15 };
-  const exacto = montoMaximoParaCuota(351.65, condiciones);
+  const exacto = montoMaximo(351.65, condiciones);
   // 351,65 calculado como lo calcula la capacidad: ingreso neto por la carga.
-  assertEquals(montoMaximoParaCuota(879.125 * 0.4, condiciones), exacto);
-  assertEquals(montoMaximoParaCuota(351.65 - 1e-12, condiciones), exacto);
-  assertEquals(montoMaximoParaCuota(351.65 + 1e-12, condiciones), exacto);
+  assertEquals(montoMaximo(879.125 * 0.4, condiciones), exacto);
+  assertEquals(montoMaximo(351.65 - 1e-12, condiciones), exacto);
+  assertEquals(montoMaximo(351.65 + 1e-12, condiciones), exacto);
   // Un tope con fracción de centavo vale lo que el centavo de abajo.
-  assertEquals(montoMaximoParaCuota(351.649, condiciones), montoMaximoParaCuota(351.64, condiciones));
+  assertEquals(montoMaximo(351.649, condiciones), montoMaximo(351.64, condiciones));
 });
 
 Deno.test("montoMaximoParaCuota: con un tope enorme devuelve el techo del simulador y termina", () => {
   const condiciones = { plazoMeses: 480, tasaNominalAnualPorcentaje: 15 };
-  assertEquals(montoMaximoParaCuota(1e12, condiciones), MONTO_MAXIMO);
-  assertEquals(montoMaximoParaCuota(Number.POSITIVE_INFINITY, condiciones), MONTO_MAXIMO);
-  assertEquals(montoMaximoParaCuota(Number.NaN, condiciones), 0);
-  assertEquals(montoMaximoParaCuota(-5, condiciones), 0);
+  assertEquals(montoMaximo(1e12, condiciones), MONTO_MAXIMO);
+  assertEquals(montoMaximo(Number.POSITIVE_INFINITY, condiciones), MONTO_MAXIMO);
+  assertEquals(montoMaximo(Number.NaN, condiciones), 0);
+  assertEquals(montoMaximo(-5, condiciones), 0);
   // Un tope que sí corta antes del techo.
   comprobarMaximo(5_000_000, condiciones, "tope de 5 millones");
-  assertEquals(montoMaximoParaCuota(100, { plazoMeses: 12, tasaNominalAnualPorcentaje: 16 }), null);
+  assertEquals(montoMaximo(100, { plazoMeses: 12, tasaNominalAnualPorcentaje: 16 }), null);
+});
+
+// --- Límites del negocio (2026-10-19) ---------------------------------------
+
+Deno.test("el producto de consumo va de USD 1.000 a 120.000 y de 6 a 120 meses", () => {
+  assertEquals(PRODUCTO_CONSUMO.limites, { montoMinimo: 1000, montoMaximo: 120000, plazoMinimoMeses: 6, plazoMaximoMeses: 120 });
+  const con = (monto: number, plazoMeses: number) => simularCredito({ monto, plazoMeses, tasaNominalAnualPorcentaje: 15 });
+  for (const [monto, plazo] of [[1000, 6], [120000, 120], [1000, 120], [120000, 6], [54321.09, 37]]) assertEquals(con(monto, plazo).ok, true, `${monto} ${plazo}`);
+  for (const [monto, plazo] of [[999.99, 12], [120000.01, 12], [0.01, 12], [5000, 5], [5000, 121], [5000, 480], [5000, 1]]) assertEquals(con(monto, plazo).ok, false, `${monto} ${plazo}`);
+  const bajo = con(999.99, 12);
+  assert(!bajo.ok && bajo.errores.includes("El monto va de 1.000 a 120.000 dólares."));
+  const corto = con(5000, 5);
+  assert(!corto.ok && corto.errores.includes("El plazo va en meses enteros, de 6 a 120."));
+  // El monto con más de dos decimales sigue diciendo eso, no el rango.
+  assertEquals(validarPedido({ monto: 5000.005, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 }), ["El monto va en dólares con hasta dos decimales."]);
+});
+
+Deno.test("montoMaximoParaCuota con los límites del producto: nunca pasa de 120.000 ni devuelve menos del mínimo", () => {
+  const condiciones = { plazoMeses: 60, tasaNominalAnualPorcentaje: 15 };
+  // Un tope enorme: el techo del producto, no el del motor.
+  assertEquals(montoMaximoParaCuota(100000, condiciones), 120000);
+  // Un tope que no alcanza ni para el mínimo: no alcanza para un crédito.
+  const cuotaDeMil = simular({ ...condiciones, monto: 1000 }).cuotaPrimerMes;
+  assertEquals(montoMaximoParaCuota(cuotaDeMil - 0.01, condiciones), 0);
+  assertEquals(montoMaximoParaCuota(cuotaDeMil, condiciones) as number >= 1000, true);
+  // Entre medio, el más alto que cabe.
+  const monto = montoMaximoParaCuota(500, condiciones) as number;
+  assert(monto > 1000 && monto < 120000);
+  assert(calcular({ ...condiciones, monto }).ok && simular({ ...condiciones, monto }).cuotaPrimerMes <= 500);
+  assert(simular({ ...condiciones, monto: Math.round((monto + 0.01) * 100) / 100 }).cuotaPrimerMes > 500);
+  // Condiciones fuera del producto: no hay monto que calcular.
+  assertEquals(montoMaximoParaCuota(500, { plazoMeses: 5, tasaNominalAnualPorcentaje: 15 }), null);
+  assertEquals(montoMaximoParaCuota(500, { plazoMeses: 121, tasaNominalAnualPorcentaje: 15 }), null);
 });
