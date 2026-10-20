@@ -191,6 +191,10 @@ export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null
     if (motivo === "tope_diario") {
       return { detalle: "Se llegó al tope diario de consultas a Equifax (cada una se cobra). Se puede reintentar mañana.", codigo: "tope_diario_agotado", esperarMs: 0 };
     }
+    if (motivo === "equifax_no_responde") {
+      // No salió nada hacia Equifax: no hay nada en vuelo que esperar. El freno se abre solo.
+      return { detalle: "Equifax no está respondiendo (varios fallos seguidos). No se consultó ni se cobró." + enUnosMinutos, codigo: "buro_no_disponible", esperarMs: 0 };
+    }
     if (motivo === "proveedor_apagado" || motivo === "consumo_no_medible") {
       return { detalle: "Equifax no está disponible para consultar (está apagado o no se pudo medir el consumo del día). No se consultó.", codigo: "buro_no_disponible", esperarMs: 0 };
     }

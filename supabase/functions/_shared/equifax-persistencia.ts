@@ -84,11 +84,44 @@ export type ResultadoDeProceso =
   | { resultado: "simulada"; reutilizaria: boolean; consultasHoy: number; tope: number; fechaDeLaVigente?: string }
   | {
     resultado: "rechazada";
-    motivo: "proveedor_apagado" | "tope_diario" | "consumo_no_medible" | "fallo" | "otra_persona" | "no_se_pudo_guardar";
+    motivo: "proveedor_apagado" | "tope_diario" | "consumo_no_medible" | "equifax_no_responde" | "fallo" | "otra_persona" | "no_se_pudo_guardar";
     http: number;
     error: string;
     respuesta?: RespuestaEquifax;
   };
+
+// El freno (negocio, 2026-10-19): tras 3 fallos seguidos de Equifax, las consultas
+// siguientes no salen hasta que pasen 10 minutos desde el último. Cada intento
+// que llega a Equifax puede cobrarse (un timeout seguro) y hace esperar a quien
+// consulta hasta 60 s: con Equifax caído, cada analista lo volvía a golpear.
+//
+// «Seguidos» son los 3 últimos resultados (consulta que sirvió o fallo), sin
+// importar la persona. Un fallo cuenta sólo si dice que Equifax no está
+// respondiendo (no llegó, 5xx, credenciales rechazadas o respuesta
+// incomprensible): un pedido mal armado o una identificación que Equifax no
+// acepta es de esa persona, no de Equifax. Pasados los 10 minutos deja salir UNA
+// consulta de prueba: si falla, los últimos 3 siguen siendo fallos y se cierra
+// de nuevo; si sirve, se reinicia la cuenta.
+export const FRENO_FALLOS_SEGUIDOS = 3;
+export const FRENO_ESPERA_MS = 10 * 60 * 1000;
+const FAMILIAS_DE_CAIDA = new Set(["transitorio", "sin_respuesta", "desconocido", "configuracion"]);
+
+export async function frenoDeEquifax(db: Base, ahora: Date = new Date()): Promise<{ abierto: boolean; ultimoFallo?: string }> {
+  const { data, error } = await db.from("audit_log").select("action, created_at, meta")
+    .in("action", ["equifax.consulta", "equifax.consulta.fallo"])
+    .order("created_at", { ascending: false }).limit(FRENO_FALLOS_SEGUIDOS);
+  // Si no se puede leer, no se frena: el que protege la plata es el tope diario, y un freno que
+  // se cierra solo por no poder leer dejaría a todos sin Equifax por un fallo ajeno a Equifax.
+  if (error) {
+    console.error("equifax: no se pudo leer el freno:", error.code ?? error.message);
+    return { abierto: false };
+  }
+  const ultimos: Base[] = Array.isArray(data) ? data : [];
+  if (ultimos.length < FRENO_FALLOS_SEGUIDOS) return { abierto: false };
+  const todosCaidas = ultimos.every((f) => f.action === "equifax.consulta.fallo" && FAMILIAS_DE_CAIDA.has(String(f.meta?.familia)));
+  const hace = ahora.getTime() - Date.parse(ultimos[0].created_at);
+  return todosCaidas && hace < FRENO_ESPERA_MS ? { abierto: true, ultimoFallo: ultimos[0].created_at } : { abierto: false };
+}
 
 export async function consultasDeHoy(db: Base, ahora: Date = new Date()): Promise<number> {
   const desde = inicioDelDiaEcuador(ahora).toISOString();
@@ -207,6 +240,15 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     return {
       resultado: "rechazada", motivo: "tope_diario", http: 429,
       error: `Se llegó al tope diario de consultas a Equifax (${tope}); cada consulta se cobra. Subirlo requiere cambiar EQUIFAX_TOPE_DIARIO a propósito.`,
+    };
+  }
+
+  // 3b. El freno: con Equifax caído no se vuelve a llamar. No se consultó ni se cobró.
+  const freno = await frenoDeEquifax(o.db, ahora);
+  if (freno.abierto) {
+    return {
+      resultado: "rechazada", motivo: "equifax_no_responde", http: 503,
+      error: `Equifax no está respondiendo (${FRENO_FALLOS_SEGUIDOS} fallos seguidos). No se consultó ni se cobró. Se vuelve a intentar pasados ${FRENO_ESPERA_MS / 60000} minutos del último fallo.`,
     };
   }
 
