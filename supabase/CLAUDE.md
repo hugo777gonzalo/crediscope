@@ -245,6 +245,8 @@ su guía: `docs/equifax.md`.
   `prueba`) no sirve para calificar a nadie.
 - Aval tarda ~0,9 s por consulta contra ~41 s de Novadata: las cuentas de
   capacidad de Novadata no aplican.
+- Aval: las consultas de NOVACREDIT en su lista son nuestro propio tráfico;
+  `consultas12m` y `entidadesDistintas12m` se cuentan sin esa entidad.
 - Denuncias: decide el papel de la persona y sólo cuenta con su cédula
   (`_shared/denuncias.ts`). Delitos de seguridad: lista única en
   `_shared/delitos-seguridad.ts`.

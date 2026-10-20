@@ -16,7 +16,8 @@ Equifax: `docs/equifax.md`. El Laboratorio: `docs/laboratorio-guia.md`,
   1.000 de 1.006 llamadas hasta el 2026-09-24. Pagina hasta el conteo de
   la primera página, no hasta una página corta, y pide un orden total
   (desempate por id) en el que lo insertado durante la lectura caiga al
-  final.
+  final. Una lista de ids en `.in()` va en tandas de 200: la URL se corta
+  (`docs/lecciones.md`).
 - `src/lib/navegacion.js` — la estructura de la aplicación: de ahí salen el
   menú lateral y la ubicación "Sección › Página" de la barra superior. Un
   nombre del menú se cambia ahí, no en dos listas.

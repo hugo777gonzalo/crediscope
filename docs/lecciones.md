@@ -6,6 +6,25 @@ cuándo y con qué números. El CLAUDE.md de cada área tiene la regla en una o
 dos líneas; acá está el caso. Una lección nueva va con su regla al CLAUDE.md
 que le corresponde y con su caso acá.
 
+- **Borrar la rama remota antes de que el PR esté fusionado lo cierra.**
+  `gh pr merge` falla si `main` avanzó desde el último commit del PR (los
+  controles tienen que ser de ese commit); el 2026-10-20 se borró la rama
+  del #65 sin confirmar MERGED y el PR quedó cerrado. Confirmar el estado
+  del PR antes de borrar la rama.
+- **Una lista de ids en `.in()` revienta la URL.** Medido: 350 uuid andan,
+  400 (15,7 KB) fallan y 700 dan "Bad Request"; las cédulas, de 10
+  caracteres, aguantan ~1.000. Las listas van en tandas de 200.
+- **En Aval, nosotros estamos en la lista de consultas.** Las consultas de
+  NOVACREDIT aparecen como cualquier otra entidad: `consultas12m` y
+  `entidadesDistintas12m` incluyen nuestro propio tráfico, y una persona que
+  miramos cuatro veces parece buscar crédito por todos lados. Se cuentan
+  sin la entidad propia (con Equifax, NovaCredit ya no cuenta).
+- **Un guion que consulta a nombre del usuario pasa su `actorId`, y
+  `audit_log` no se corrige después.** La cuenta del usuario en CrediScope
+  usa un correo distinto del de Claude, así que buscarla por el de Claude no
+  la encuentra. Corregir `requested_by` o `audit_log` a posteriori es
+  alterar la auditoría (el disparador lo impide, con razón).
+  `analyze-client` no acepta la clave de servicio: exige un usuario con rol.
 - **Una prueba con la hora fija no puede mezclarse con la hora real.** La
   base simulada de `equifax-persistencia.test.ts` usaba por referencia la
   lista que recibía, y la prueba del freno armaba dos bases con la misma
