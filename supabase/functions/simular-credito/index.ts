@@ -14,9 +14,12 @@
 // Body: { "monto": 5000, "plazoMeses": 36, "tasaNominalAnualPorcentaje": 15,
 //         "sistema": "frances", "desgravamen": { "tasaPorcentaje": 0.6,
 //         "periodicidad": "anual", "base": "saldo" }, "incluirTabla": true }
-// Sólo los tres primeros son obligatorios; el resto toma los parámetros del
-// producto de consumo (PRODUCTO_CONSUMO). La tasa máxima no se puede cambiar
-// desde el cuerpo: es del producto.
+// Sólo el monto y el plazo son obligatorios: sin tasa se evalúa con la Tasa
+// máxima del producto, y con una tasa se pide una menor, de la Tasa mínima (0%)
+// a la máxima (negocio, 2026-10-19). El resto toma los parámetros del producto
+// de consumo (PRODUCTO_CONSUMO). La Tasa máxima no se puede cambiar desde el
+// cuerpo: es del producto. Un 400 trae en `detalles` el código de cada error
+// (ErrorDeCondiciones en api/openapi.yaml).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
@@ -54,7 +57,7 @@ Deno.serve(async (req) => {
   if (!cuerpo || typeof cuerpo !== "object" || Array.isArray(cuerpo)) return responder({ error: "El cuerpo tiene que ser un objeto." }, 400);
 
   const resultado = simularCredito(condicionesDelPedidoExterno(cuerpo));
-  if (!resultado.ok) return responder({ error: "Las condiciones del crédito no son válidas.", errores: resultado.errores }, 400);
+  if (!resultado.ok) return responder({ error: "Las condiciones del crédito no son válidas.", errores: resultado.errores, detalles: resultado.detalles }, 400);
 
   const { tabla, ...resumen } = resultado.simulacion;
   return responder({ simulacion: cuerpo.incluirTabla === false ? resumen : { ...resumen, tabla } });

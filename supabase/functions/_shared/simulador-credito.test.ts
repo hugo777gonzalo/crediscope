@@ -8,10 +8,12 @@
 import { assertEquals, assert, assertAlmostEquals } from "jsr:@std/assert@1";
 import {
   condicionesDelPedidoExterno,
+  erroresDelPedido,
   LIMITES_TECNICOS,
   MONTO_MAXIMO,
   montoMaximoParaCuota,
   PRODUCTO_CONSUMO,
+  SIGNIFICADO_DE_LOS_ERRORES,
   simularCredito,
   validarPedido,
   type PedidoDeSimulacion,
@@ -115,10 +117,10 @@ Deno.test("en cualquier caso el capital suma el monto, el saldo termina en cero 
 });
 
 Deno.test("la tasa no puede pasar la máxima del producto, que la institución puede cambiar", () => {
-  const r = calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15.5 });
+  const r = calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15.61 });
   assertEquals(r.ok, false);
-  assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
-  assertEquals(calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 }).ok, true);
+  assert(!r.ok && r.errores.includes("La tasa no puede ser mayor que la Tasa máxima del producto (15,6%)."));
+  assertEquals(calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15.6 }).ok, true);
   assertEquals(calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 13, tasaNominalMaximaPorcentaje: 12.9 }).ok, false);
 });
 
@@ -213,8 +215,7 @@ Deno.test("montos grandes con dos decimales son válidos; pasar de mil millones 
 
 Deno.test("una tasa que no es número lo dice, y un seguro o un pedido mal armados se rechazan", () => {
   assertEquals(validar({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: Number.NaN }), ["La tasa tiene que ser un número."]);
-  const sinTasa = { monto: 1000, plazoMeses: 12 } as unknown as PedidoDeSimulacion;
-  assertEquals(validar(sinTasa), ["La tasa tiene que ser un número."]);
+  assertEquals(validar({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: "12" } as unknown as PedidoDeSimulacion), ["La tasa tiene que ser un número."]);
   const seguroRaro = { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 12, desgravamen: 5 } as unknown as PedidoDeSimulacion;
   assertEquals(calcular(seguroRaro).ok, false);
   assertEquals(calcular(null as unknown as PedidoDeSimulacion).ok, false);
@@ -311,11 +312,11 @@ Deno.test("las condiciones de afuera no pueden subir la tasa máxima del product
   const cuerpo = { monto: 5000, plazoMeses: 36, tasaNominalAnualPorcentaje: 40, tasaNominalMaximaPorcentaje: 99 };
   assertEquals(simularCredito(cuerpo).ok, true, "la función pura acepta el tope como parámetro interno");
   const r = simularCredito(condicionesDelPedidoExterno(cuerpo));
-  assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
+  assert(!r.ok && r.errores.includes("La tasa no puede ser mayor que la Tasa máxima del producto (15,6%)."));
   // Tampoco la baja: el tope es el del producto, venga lo que venga.
   const baja = simularCredito(condicionesDelPedidoExterno({ monto: 5000, plazoMeses: 36, tasaNominalAnualPorcentaje: 15, tasaNominalMaximaPorcentaje: 10 }));
   assert(baja.ok);
-  assertEquals(PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje, 15);
+  assertEquals(PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje, 15.6);
 });
 
 Deno.test("las condiciones de afuera llevan sólo los campos del pedido, y lo que no es objeto da un pedido vacío que se rechaza", () => {
@@ -328,4 +329,43 @@ Deno.test("las condiciones de afuera llevan sólo los campos del pedido, y lo qu
     const r = simularCredito(condicionesDelPedidoExterno(nada));
     assert(!r.ok && r.errores.length > 0, JSON.stringify(nada));
   }
+});
+
+// --- Tasa máxima y Tasa mínima (negocio, 2026-10-19) ---------------------------
+
+Deno.test("sin tasa se evalúa con la Tasa máxima; con una tasa, de la mínima (0%) a la máxima", () => {
+  for (const vacia of [undefined, null, ""]) {
+    const r = calcular({ monto: 10000, plazoMeses: 36, tasaNominalAnualPorcentaje: vacia } as unknown as PedidoDeSimulacion);
+    assert(r.ok, String(vacia));
+    if (r.ok) assertEquals(r.simulacion.tasaNominalAnualPorcentaje, 15.6);
+  }
+  const conMaxima = calcular({ monto: 10000, plazoMeses: 36, tasaNominalAnualPorcentaje: 15.6 });
+  const sinTasa = calcular({ monto: 10000, plazoMeses: 36 } as PedidoDeSimulacion);
+  assert(conMaxima.ok && sinTasa.ok);
+  if (conMaxima.ok && sinTasa.ok) assertEquals(sinTasa.simulacion.cuotaPrimerMes, conMaxima.simulacion.cuotaPrimerMes);
+  // Financiamiento sin interés.
+  const cero = calcular({ monto: 1200, plazoMeses: 12, tasaNominalAnualPorcentaje: 0, desgravamen: SIN_SEGURO });
+  assert(cero.ok && cero.simulacion.cuotaPrimerMes === 100 && cero.simulacion.totalInteres === 0);
+});
+
+Deno.test("cada error de las condiciones trae su código, el campo y un significado", () => {
+  const codigos = (p: unknown) => erroresDelPedido(p as PedidoDeSimulacion).map((e) => e.codigo);
+  assertEquals(codigos({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: -0.01 }), ["tasa-menor-que-la-minima"]);
+  assertEquals(codigos({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15.61 }), ["tasa-mayor-que-la-maxima"]);
+  assertEquals(codigos({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: "alta" }), ["tasa-invalida"]);
+  assertEquals(codigos({ monto: 500, plazoMeses: 12 }), ["monto-fuera-de-limites"]);
+  assertEquals(codigos({ monto: 1000.005, plazoMeses: 12 }), ["monto-con-mas-de-dos-decimales"]);
+  assertEquals(codigos({ monto: 0, plazoMeses: 3 }), ["monto-invalido", "plazo-fuera-de-limites"]);
+  assertEquals(codigos({ monto: 1000, plazoMeses: 12, sistema: "japones" }), ["sistema-invalido"]);
+  assertEquals(codigos({ monto: 1000, plazoMeses: 12, desgravamen: 5 }), ["desgravamen-invalido"]);
+  assertEquals(codigos(null), ["faltan-condiciones"]);
+  const negativa = erroresDelPedido({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: -1 })[0];
+  assertEquals(negativa.campo, "/tasaNominalAnualPorcentaje");
+  assertEquals(negativa.motivo, "La tasa no puede ser menor que la Tasa mínima del producto (0%).");
+  // El resultado del simulador trae los mismos detalles que los mensajes.
+  const r = calcular({ monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 20 });
+  assert(!r.ok && r.detalles[0].codigo === "tasa-mayor-que-la-maxima" && r.errores[0] === r.detalles[0].motivo);
+  // Todo código tiene su significado, para el contrato de la API.
+  for (const codigo of Object.keys(SIGNIFICADO_DE_LOS_ERRORES)) assert(SIGNIFICADO_DE_LOS_ERRORES[codigo as keyof typeof SIGNIFICADO_DE_LOS_ERRORES].length > 10, codigo);
+  assertEquals(PRODUCTO_CONSUMO.tasaNominalMinimaPorcentaje, 0);
 });

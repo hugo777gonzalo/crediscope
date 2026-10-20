@@ -60,39 +60,28 @@ async function pedir(url, opciones = {}) {
 }
 const leer = (tabla, filtro) => pedir(`${env.SUPABASE_URL}/rest/v1/${tabla}?select=*&${filtro}`);
 
-const cliente = (await leer("clients", `cedula=eq.${CEDULA}`))[0];
-if (!cliente) {
-  // Sin fila en clients puede haber igual lo que se guarda por identificación:
-  // una solicitud cuyo primer paso no llegó a crear a la persona (la fuente no
-  // la encontró o no contestó), o la constancia de una consulta a un buró.
-  // Decir «no hay ningún registro» ahí contestaba mal un pedido de acceso.
-  const sueltas = {};
-  for (const tabla of ["solicitudes", "consultas_equifax", "consultas_aval"]) sueltas[tabla] = await leer(tabla, `identificacion=eq.${CEDULA}`);
-  const total = Object.values(sueltas).reduce((a, filas) => a + filas.length, 0);
-  if (total === 0) {
-    console.log(`No hay ningún registro de ${ENMASCARADA}.`);
-    process.exit(0);
-  }
-  console.log(`\n${ENMASCARADA} no está en clients, pero hay filas guardadas por su identificación:`);
-  for (const [tabla, filas] of Object.entries(sueltas)) console.log(`  ${tabla.padEnd(28)} ${filas.length}`);
-  if (bandera("exportar")) {
-    const carpeta = path.join(RAIZ, "research", "derechos");
-    fs.mkdirSync(carpeta, { recursive: true });
-    const archivo = path.join(carpeta, `${new Date().toISOString().slice(0, 10)}-${ENMASCARADA.replaceAll("*", "x")}.json`);
-    fs.writeFileSync(archivo, JSON.stringify({ generado: new Date().toISOString(), titular: CEDULA, datos: sueltas, crudo: [] }, null, 2));
-    console.log(`\nExportado en ${path.relative(RAIZ, archivo)} (datos personales: no sale de research/ salvo hacia el titular o la IFI).`);
-  }
-  if (bandera("suprimir")) {
-    // suprimir_titular() (115) exige la fila en clients. Pendiente en docs/pendientes.md.
-    console.error("\nsuprimir_titular() exige que la persona esté en clients: estas filas no se pueden suprimir con este guion todavía.");
-    process.exit(1);
-  }
-  process.exit(0);
-}
-const id = cliente.id;
+// Sin fila en clients puede haber igual lo que se guarda por la identificación:
+// una solicitud cuyo primer paso no llegó a crear a la persona (la fuente no la
+// encontró o no contestó), la constancia de una consulta a un buró, o lo que una
+// institución cargó al Laboratorio. Hasta el 2026-10-18 el guion contestaba «no
+// hay ningún registro» con esas filas guardadas, y hasta la 136 la supresión
+// tampoco las alcanzaba.
+const cliente = (await leer("clients", `cedula=eq.${CEDULA}`))[0] ?? null;
+const id = cliente?.id ?? null;
 
 // Dónde aparece una persona: medido sobre el catálogo el 2026-10-09.
-const TABLAS = [
+const TABLAS_SIN_PERSONA = [
+  ["consultas_aval", `identificacion=eq.${CEDULA}`],
+  ["consultas_equifax", `identificacion=eq.${CEDULA}`],
+  ["solicitudes", `identificacion=eq.${CEDULA}`],
+  ["lote_items", `cedula=eq.${CEDULA}`],
+  ["lab_solicitudes", `cedula=eq.${CEDULA}`],
+  ["lab_operaciones", `cedula=eq.${CEDULA}`],
+  ["lab_corte_solicitudes", `cedula=eq.${CEDULA}`],
+  ["lab_corte_operaciones", `cedula=eq.${CEDULA}`],
+  ["lab_decisiones_institucion", `cedula=eq.${CEDULA}`],
+];
+const TABLAS = !id ? TABLAS_SIN_PERSONA : [
   ["client_profiles", `client_id=eq.${id}`],
   ["analysis_results", `client_id=eq.${id}`],
   ["consultas_aval", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
@@ -131,13 +120,21 @@ async function leerTodas(tabla, filtro) {
   }
 }
 
-const datos = { clients: [cliente] };
+const datos = { clients: cliente ? [cliente] : [] };
 for (const [tabla, filtro] of TABLAS) datos[tabla] = await leer(tabla, filtro);
+if (!cliente) {
+  if (TABLAS.every(([tabla]) => datos[tabla].length === 0)) {
+    console.log(`No hay ningún registro de ${ENMASCARADA}.`);
+    process.exit(0);
+  }
+  console.log(`
+${ENMASCARADA} no está en clients, pero hay filas guardadas por su identificación.`);
+}
 const idsDeConsultasEquifax = datos.consultas_equifax.map((c) => c.id);
 for (const tabla of TABLAS_DE_EQUIFAX) {
   datos[tabla] = idsDeConsultasEquifax.length ? await leerTodas(tabla, `consulta_equifax_id=in.(${idsDeConsultasEquifax.join(",")})`) : [];
 }
-const crudos = datos.client_profiles.map((p) => p.crudo_ruta).filter(Boolean);
+const crudos = (datos.client_profiles ?? []).map((p) => p.crudo_ruta).filter(Boolean);
 
 console.log(`\nInventario de ${ENMASCARADA}`);
 for (const [tabla] of [["clients"], ...TABLAS]) console.log(`  ${tabla.padEnd(28)} ${datos[tabla].length}`);

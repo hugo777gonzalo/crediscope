@@ -569,8 +569,12 @@ paths:
         puede llamar sola, sin pedir una evaluación. Es el mismo cálculo que
         usan la capacidad de pago y la pantalla del analista.
 
-        La tasa es nominal anual y no puede pasar la máxima del producto (15%
-        para consumo, que la IFI puede bajar; si pasa, 400). El seguro de
+        La tasa es nominal anual y opcional. Sin tasa se evalúa con la Tasa
+        máxima del producto (15,6% para consumo, que la IFI puede bajar); con
+        una tasa, la IFI pide evaluar con una menor, desde la Tasa mínima (0%:
+        financiamiento sin interés). Nunca negativa ni mayor que la máxima: si
+        no, 400 con el código de cada error en `errores`
+        (`ErrorDeCondiciones`). El seguro de
         desgravamen es, si no se indica otro, 0,6% anual sobre el saldo de cada
         mes. Cada valor se redondea al centavo en su mes y la última cuota
         ajusta la diferencia. Los importes van en dólares con dos decimales, que es
@@ -1253,14 +1257,15 @@ components:
       description: |
         Las condiciones del crédito que pide la persona. En `basico` es
         opcional y sólo se guarda. En `pro` y `plus` son obligatorios `monto`,
-        `plazoMeses` y `tasaNominalAnualPorcentaje`: con ellos se calcula la
-        cuota y la capacidad de pago. El modelo todavía no las lee: el marco
+        `plazoMeses`, y `tasaNominalAnualPorcentaje` es opcional (sin ella, la
+        Tasa máxima del producto): con ellos se calcula la cuota y la capacidad
+        de pago. El modelo todavía no las lee: el marco
         interpretativo las incorporará más adelante.
       properties:
         producto:
           type: string
           enum: [consumo, microcredito, productivo, educativo, inmobiliario, vivienda_interes_social_publico, otro]
-          description: Los cálculos de `pro` y `plus` usan los parámetros del producto de consumo (tasa máxima de 15%, desgravamen de 0,6% anual).
+          description: Los cálculos de `pro` y `plus` usan los parámetros del producto de consumo (Tasa mínima de 0%, Tasa máxima de 15,6%, desgravamen de 0,6% anual).
         monto:
           type: number
           exclusiveMinimum: 0
@@ -1285,7 +1290,8 @@ components:
         tasaNominalAnualPorcentaje:
           type: number
           minimum: 0
-          description: Nominal anual, en porcentaje. Obligatoria en las modalidades `pro` y `plus`. No puede pasar la máxima del producto (15% para consumo).
+          maximum: 15.6
+          description: Nominal anual, en porcentaje. Opcional en `pro` y `plus`; sin ella se evalúa (y se guarda) la Tasa máxima del producto. Va de la Tasa mínima (0%, financiamiento sin interés) a la Tasa máxima (15,6% para consumo); nunca negativa.
         sistema:
           type: string
           enum: [frances, aleman]
@@ -1630,7 +1636,7 @@ components:
     PedidoDeSimulacion:
       type: object
       additionalProperties: false
-      required: [monto, plazoMeses, tasaNominalAnualPorcentaje]
+      required: [monto, plazoMeses]
       properties:
         monto:
           type: number
@@ -1646,7 +1652,8 @@ components:
         tasaNominalAnualPorcentaje:
           type: number
           minimum: 0
-          description: Nominal anual, en porcentaje (15 quiere decir 15%). No puede pasar la máxima del producto.
+          maximum: 15.6
+          description: Nominal anual, en porcentaje (15 quiere decir 15%). Opcional; sin ella se evalúa con la Tasa máxima del producto (15,6% para consumo). Va de la Tasa mínima (0%, financiamiento sin interés) a la Tasa máxima; nunca negativa.
         sistema:
           type: string
           enum: [frances, aleman]
@@ -2042,6 +2049,41 @@ components:
                 description: Puntero JSON (RFC 6901) al campo.
               motivo:
                 type: string
+              codigo:
+                $ref: '#/components/schemas/ErrorDeCondiciones'
+
+    ErrorDeCondiciones:
+      type: string
+      description: |
+        El código de un error de las condiciones del crédito (simulación,
+        capacidad de pago y evaluación en `pro` y `plus`). No cambia aunque
+        cambie el texto de `motivo`: la IFI decide con el código.
+
+        | Código | Significado |
+        |---|---|
+        | `faltan-condiciones` | No llegaron las condiciones del crédito. |
+        | `monto-invalido` | El monto no es un número mayor que cero. |
+        | `monto-con-mas-de-dos-decimales` | El monto tiene más de dos decimales (centavos). |
+        | `monto-fuera-de-limites` | El monto está fuera del mínimo y el máximo del producto (consumo: de 1.000 a 120.000 dólares). |
+        | `plazo-fuera-de-limites` | El plazo no es un número entero de meses dentro del mínimo y el máximo del producto (consumo: de 6 a 120). |
+        | `tasa-invalida` | La tasa no es un número. |
+        | `tasa-menor-que-la-minima` | La tasa es menor que la Tasa mínima del producto (0%): nunca negativa. |
+        | `tasa-mayor-que-la-maxima` | La tasa es mayor que la Tasa máxima del producto (consumo: 15,6%). |
+        | `tasa-del-producto-invalida` | La Tasa máxima o la Tasa mínima configuradas no son válidas: es un error de configuración de la institución, no del pedido. |
+        | `desgravamen-invalido` | El seguro de desgravamen no trae tasa (no negativa), periodicidad (`anual` o `mensual`) y base (`saldo` o `monto`). |
+        | `sistema-invalido` | El sistema de amortización no es `frances` ni `aleman`. |
+      enum:
+        - faltan-condiciones
+        - monto-invalido
+        - monto-con-mas-de-dos-decimales
+        - monto-fuera-de-limites
+        - plazo-fuera-de-limites
+        - tasa-invalida
+        - tasa-menor-que-la-minima
+        - tasa-mayor-que-la-maxima
+        - tasa-del-producto-invalida
+        - desgravamen-invalido
+        - sistema-invalido
 
   responses:
     PedidoInvalido:

@@ -8,14 +8,17 @@ import { PRODUCTO_CONSUMO } from "../../../supabase/functions/_shared/simulador-
 // para que las dos pantallas pidan lo mismo de la misma manera.
 //
 // Pensado para alguien que no es experto: lo que más se cambia (monto y plazo)
-// va arriba, con un deslizador y plazos de un toque; la tasa al lado de su
-// tope; el seguro, que casi nunca se toca, plegado con su resumen a la vista.
+// va arriba, con un deslizador y plazos de un toque; la tasa al lado de la
+// Tasa mínima y la máxima (vacía es la máxima); el seguro, que casi nunca se
+// toca, plegado con su resumen a la vista.
 
 export default function CondicionesDelCredito({ valores, cambiar }) {
   const montoNumero = aNumero(valores.monto);
   const plazoNumero = aNumero(valores.plazo);
+  const tasaVacia = String(valores.tasa ?? "").trim() === "";
   const tasaNumero = aNumero(valores.tasa);
   const maxima = PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
+  const minima = PRODUCTO_CONSUMO.tasaNominalMinimaPorcentaje;
   const { montoMinimo, montoMaximo, plazoMinimoMeses, plazoMaximoMeses } = PRODUCTO_CONSUMO.limites;
   const montoEnRango = Math.min(Math.max(montoNumero, montoMinimo), montoMaximo);
   const seguro = { tasaPorcentaje: aNumero(valores.tasaSeguro), periodicidad: valores.periodicidad, base: valores.base };
@@ -69,9 +72,16 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
         <div className="crediscope-credito-campo">
           <div className="crediscope-credito-campo-cabecera">
             <label htmlFor="credito-tasa">Tasa de interés</label>
-            <span className="crediscope-muted">máximo {decimal(maxima, 1)}%</span>
+            <span className="crediscope-muted">de {decimal(minima, 0)}% a {decimal(maxima, 1)}%</span>
           </div>
-          <EntradaDeMonto id="credito-tasa" sufijo="% anual" valor={valores.tasa} alCambiar={cambiar.setTasa} invalido={!(tasaNumero >= 0 && tasaNumero <= maxima)} />
+          <EntradaDeMonto
+            id="credito-tasa"
+            sufijo="% anual"
+            marcador={decimal(maxima, 1)}
+            valor={valores.tasa}
+            alCambiar={cambiar.setTasa}
+            invalido={!tasaVacia && !(tasaNumero >= minima && tasaNumero <= maxima)}
+          />
         </div>
         <div className="crediscope-credito-campo">
           <div className="crediscope-credito-campo-cabecera">

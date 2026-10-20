@@ -64,10 +64,10 @@ Deno.test("Básico no pide condiciones; Pro y Plus sí, y las valida con el simu
   assert(basico.ok && basico.pedido.condiciones === null);
 
   const sinCondiciones = validarPedidoDeSolicitud({ modalidad: "pro" });
-  assert(!sinCondiciones.ok && sinCondiciones.errores[0].includes("monto, plazo y tasa"));
+  assert(!sinCondiciones.ok && sinCondiciones.errores[0].includes("monto y plazo"));
 
   const tasaAlta = validarPedidoDeSolicitud({ modalidad: "plus", solicitudDeCredito: { ...condiciones, tasaNominalAnualPorcentaje: 16 } });
-  assert(!tasaAlta.ok && tasaAlta.errores.includes("La tasa supera la máxima del producto."));
+  assert(!tasaAlta.ok && tasaAlta.errores.includes("La tasa no puede ser mayor que la Tasa máxima del producto (15,6%)."));
 
   const pro = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, ingresoDeclarado: 1800 } });
   assert(pro.ok);
@@ -143,7 +143,7 @@ Deno.test("la tasa máxima del cuerpo no se acepta: se valida lo que se guarda",
   // Antes, un `tasaNominalMaximaPorcentaje` de 99 dejaba pasar una tasa de 50%
   // que el paso de capacidad rechazaba después, con la solicitud ya creada.
   const r = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, tasaNominalAnualPorcentaje: 50, tasaNominalMaximaPorcentaje: 99 } });
-  assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
+  assert(!r.ok && r.errores.includes("La tasa no puede ser mayor que la Tasa máxima del producto (15,6%)."));
   const ok = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, tasaNominalMaximaPorcentaje: 99 } });
   assert(ok.ok && !("tasaNominalMaximaPorcentaje" in (ok.pedido.condiciones ?? {})));
 });
@@ -156,14 +156,17 @@ Deno.test("las condiciones mal armadas se rechazan con el mensaje del simulador,
     { modalidad: "plus", solicitudDeCredito: { ...condiciones, plazoMeses: 481 } },
     { modalidad: "plus", solicitudDeCredito: { ...condiciones, sistema: "japones" } },
     { modalidad: "pro", solicitudDeCredito: { ...condiciones, desgravamen: { tasaPorcentaje: 0.6, periodicidad: "diaria", base: "saldo" } } },
-    { modalidad: "pro", solicitudDeCredito: { monto: 1000, plazoMeses: 12 } },
+    { modalidad: "pro", solicitudDeCredito: { ...condiciones, tasaNominalAnualPorcentaje: -0.5 } },
   ];
   for (const cuerpo of malas) {
     const r = validarPedidoDeSolicitud(cuerpo);
     assert(!r.ok && r.errores.length > 0, JSON.stringify(cuerpo));
   }
+  // Sin tasa se evalúa con la Tasa máxima, y se guarda la que se va a usar (negocio, 2026-10-19).
   const sinTasa = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { monto: 1000, plazoMeses: 12 } });
-  assert(!sinTasa.ok && sinTasa.errores.includes("La tasa tiene que ser un número."));
+  assert(sinTasa.ok && sinTasa.pedido.condiciones?.tasaNominalAnualPorcentaje === 15.6);
+  const sinInteres = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 0 } });
+  assert(sinInteres.ok && sinInteres.pedido.condiciones?.tasaNominalAnualPorcentaje === 0);
   // El cuerpo no es un objeto: la validación responde, no lanza.
   assertEquals(validarPedidoDeSolicitud(null as unknown as Record<string, unknown>).ok, false);
   // Básico ignora las condiciones, también las malas.
@@ -244,7 +247,7 @@ Deno.test("el Ingreso declarado y las condiciones se leen dentro de solicitudDeC
   // La forma anterior (condiciones en `solicitud`, ingreso en la raíz) ya no se lee:
   // una IFI que manda lo que dice la especificación no puede quedar sin ingreso declarado.
   const vieja = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: condiciones, ingresoDeclarado: 1800 });
-  assert(!vieja.ok && vieja.errores[0].includes("monto, plazo y tasa"));
+  assert(!vieja.ok && vieja.errores[0].includes("monto y plazo"));
   const raiz = validarPedidoDeSolicitud({ modalidad: "basico", ingresoDeclarado: 1800 });
   assert(raiz.ok && raiz.pedido.ingresoDeclarado === null);
   const nueva = validarPedidoDeSolicitud({ modalidad: "plus", solicitudDeCredito: { ...condiciones, ingresoDeclarado: 1800 } });

@@ -26,12 +26,14 @@
 //   filas vacías (con el seguro sobre el monto, cobrando sobre un saldo de
 //   cero). El primer mes es idéntico a la fórmula; los demás se corrigen en
 //   un centavo cuando hace falta, y la última cuota sigue ajustando.
-// - Los parámetros del producto (tasa máxima y desgravamen) son datos, no
-//   código: el negocio fijó el 2026-10-17 una tasa nominal máxima de 15% para
-//   consumo, que cada institución puede bajar, y un desgravamen de 0,6% "por
-//   el momento". Cambiarlos no toca la fórmula.
+// - Los parámetros del producto (tasa máxima y mínima, desgravamen) son datos,
+//   no código: el negocio fijó el 2026-10-17 un desgravamen de 0,6% "por el
+//   momento" y el 2026-10-19 la tasa de consumo: de 0% (financiamiento sin
+//   interés) a una Tasa máxima de 15,6%, que cada institución puede bajar.
+//   Sin tasa en el pedido se evalúa con la máxima; con una tasa, quien pide
+//   está pidiendo una menor. Nunca negativa. Cambiarlos no toca la fórmula.
 
-export const SIMULADOR_VERSION = "simulador-v3";
+export const SIMULADOR_VERSION = "simulador-v4";
 
 export type SistemaAmortizacion = "frances" | "aleman";
 export type PeriodicidadTasa = "anual" | "mensual";
@@ -55,8 +57,10 @@ export interface LimitesDelCredito {
 }
 
 export interface ParametrosProducto {
-  /** Tope de la tasa nominal anual, en porcentaje. */
+  /** Tasa máxima: la tasa nominal anual más alta del producto, en porcentaje. */
   tasaNominalMaximaPorcentaje: number;
+  /** Tasa mínima, en porcentaje: 0 es financiamiento sin interés. */
+  tasaNominalMinimaPorcentaje: number;
   /** Lo que se puede pedir: fuera de estos rangos no hay producto. */
   limites: LimitesDelCredito;
   sistema: SistemaAmortizacion;
@@ -73,7 +77,8 @@ export interface ParametrosProducto {
 // meses, y con montos y plazos así no hay producto: a USD 1,00 y 480 meses casi
 // todos los meses pagaban capital cero.
 export const PRODUCTO_CONSUMO: ParametrosProducto = {
-  tasaNominalMaximaPorcentaje: 15,
+  tasaNominalMaximaPorcentaje: 15.6,
+  tasaNominalMinimaPorcentaje: 0,
   limites: { montoMinimo: 1000, montoMaximo: 120000, plazoMinimoMeses: 6, plazoMaximoMeses: 120 },
   sistema: "frances",
   desgravamen: { tasaPorcentaje: 0.6, periodicidad: "anual", base: "saldo" },
@@ -96,7 +101,8 @@ const conMiles = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 export interface PedidoDeSimulacion {
   monto: number;
   plazoMeses: number;
-  tasaNominalAnualPorcentaje: number;
+  /** Sin tasa (o vacía) se evalúa con la Tasa máxima del producto. */
+  tasaNominalAnualPorcentaje?: number | null;
   sistema?: SistemaAmortizacion;
   desgravamen?: ParametrosDesgravamen;
   tasaNominalMaximaPorcentaje?: number;
@@ -105,9 +111,9 @@ export interface PedidoDeSimulacion {
 // Las condiciones del crédito tal como llegan de afuera (la pantalla, la IFI
 // por la API): sólo los campos del pedido, nunca `tasaNominalMaximaPorcentaje`.
 // Ese campo existe para que la función pura pueda probarse con otro tope, pero
-// el tope del producto sale de PRODUCTO_CONSUMO (o de la configuración de la
-// institución cuando exista): si se deja pasar del cuerpo, quien lo manda sube
-// el 15% a lo que quiera (revisión integral del 2026-10-18). Toda función que
+// la Tasa máxima sale de PRODUCTO_CONSUMO (o de la configuración de la
+// institución cuando exista): si se deja pasar del cuerpo, quien lo manda la
+// sube a lo que quiera (revisión integral del 2026-10-18). Toda función que
 // atiende pedidos externos arma las condiciones con esta.
 export function condicionesDelPedidoExterno(v: unknown): PedidoDeSimulacion {
   const c = (v && typeof v === "object" && !Array.isArray(v) ? v : {}) as Record<string, unknown>;
@@ -153,16 +159,72 @@ export interface Simulacion {
   tabla: FilaDeAmortizacion[];
 }
 
-export type ResultadoDeSimulacion = { ok: true; simulacion: Simulacion } | { ok: false; errores: string[] };
+// Cada error de las condiciones lleva un código que no cambia, el campo y el
+// mensaje: la pantalla muestra el mensaje y quien llama por la API decide con
+// el código (la lista y su significado están en api/openapi.yaml,
+// ErrorDeCondiciones).
+export type CodigoDeErrorDeCondiciones =
+  | "faltan-condiciones"
+  | "monto-invalido"
+  | "monto-con-mas-de-dos-decimales"
+  | "monto-fuera-de-limites"
+  | "plazo-fuera-de-limites"
+  | "tasa-invalida"
+  | "tasa-menor-que-la-minima"
+  | "tasa-mayor-que-la-maxima"
+  | "tasa-del-producto-invalida"
+  | "desgravamen-invalido"
+  | "sistema-invalido";
+
+export interface ErrorDeCondiciones {
+  codigo: CodigoDeErrorDeCondiciones;
+  /** El campo del pedido, como puntero JSON (RFC 6901): "/tasaNominalAnualPorcentaje". */
+  campo: string;
+  motivo: string;
+}
+
+export const SIGNIFICADO_DE_LOS_ERRORES: Record<CodigoDeErrorDeCondiciones, string> = {
+  "faltan-condiciones": "No llegaron las condiciones del crédito.",
+  "monto-invalido": "El monto no es un número mayor que cero.",
+  "monto-con-mas-de-dos-decimales": "El monto tiene más de dos decimales (centavos).",
+  "monto-fuera-de-limites": "El monto está fuera del mínimo y el máximo del producto.",
+  "plazo-fuera-de-limites": "El plazo no es un número entero de meses dentro del mínimo y el máximo del producto.",
+  "tasa-invalida": "La tasa no es un número.",
+  "tasa-menor-que-la-minima": "La tasa es menor que la Tasa mínima del producto (0%): nunca negativa.",
+  "tasa-mayor-que-la-maxima": "La tasa es mayor que la Tasa máxima del producto.",
+  "tasa-del-producto-invalida": "La Tasa máxima o la Tasa mínima configuradas no son válidas (error de configuración, no del pedido).",
+  "desgravamen-invalido": "El seguro de desgravamen no trae tasa (no negativa), periodicidad (anual o mensual) y base (saldo o monto).",
+  "sistema-invalido": "El sistema de amortización no es «frances» ni «aleman».",
+};
+
+export type ResultadoDeSimulacion =
+  | { ok: true; simulacion: Simulacion }
+  | { ok: false; errores: string[]; detalles: ErrorDeCondiciones[] };
 
 const esNumeroFinito = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 
+// 15.6 → "15,6", para los mensajes.
+const conComa = (n: number) => String(n).replace(".", ",");
+
+// Sin tasa, o vacía, es la Tasa máxima del producto (negocio, 2026-10-19).
+const sinTasa = (t: unknown) => t === undefined || t === null || t === "";
+export function tasaDelPedido(p: PedidoDeSimulacion): number {
+  const maxima = p.tasaNominalMaximaPorcentaje ?? PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
+  return sinTasa(p.tasaNominalAnualPorcentaje) ? maxima : (p.tasaNominalAnualPorcentaje as number);
+}
+
 // Los mensajes se muestran tal cual en la pantalla y viajan en la API.
 export function validarPedido(p: PedidoDeSimulacion, limites: LimitesDelCredito = PRODUCTO_CONSUMO.limites): string[] {
-  if (!p || typeof p !== "object") return ["Faltan las condiciones del crédito: monto, plazo y tasa."];
-  const errores: string[] = [];
+  return erroresDelPedido(p, limites).map((e) => e.motivo);
+}
+
+export function erroresDelPedido(p: PedidoDeSimulacion, limites: LimitesDelCredito = PRODUCTO_CONSUMO.limites): ErrorDeCondiciones[] {
+  if (!p || typeof p !== "object") return [{ codigo: "faltan-condiciones", campo: "", motivo: "Faltan las condiciones del crédito: monto y plazo." }];
+  const errores: ErrorDeCondiciones[] = [];
+  const agregar = (codigo: CodigoDeErrorDeCondiciones, campo: string, motivo: string) => errores.push({ codigo, campo, motivo });
   const maxima = p.tasaNominalMaximaPorcentaje ?? PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
-  if (!esNumeroFinito(p.monto) || p.monto <= 0) errores.push("El monto tiene que ser mayor que cero.");
+  const minima = PRODUCTO_CONSUMO.tasaNominalMinimaPorcentaje;
+  if (!esNumeroFinito(p.monto) || p.monto <= 0) agregar("monto-invalido", "/monto", "El monto tiene que ser mayor que cero.");
   else {
     // La tolerancia crece con el monto: a partir de unos 100 millones, el
     // producto monto × 100 de un monto con dos decimales ya no cae en un entero
@@ -170,43 +232,49 @@ export function validarPedido(p: PedidoDeSimulacion, limites: LimitesDelCredito 
     // los montos válidos se rechazaba como «con más de dos decimales».
     const enCentavos = p.monto * 100;
     if (Math.abs(enCentavos - Math.round(enCentavos)) > Math.max(1e-6, enCentavos * 1e-13)) {
-      errores.push("El monto va en dólares con hasta dos decimales.");
+      agregar("monto-con-mas-de-dos-decimales", "/monto", "El monto va en dólares con hasta dos decimales.");
     } else if (p.monto < limites.montoMinimo || p.monto > limites.montoMaximo) {
-      errores.push(`El monto va de ${conMiles(limites.montoMinimo)} a ${conMiles(limites.montoMaximo)} dólares.`);
+      agregar("monto-fuera-de-limites", "/monto", `El monto va de ${conMiles(limites.montoMinimo)} a ${conMiles(limites.montoMaximo)} dólares.`);
     }
   }
   if (!Number.isInteger(p.plazoMeses) || p.plazoMeses < limites.plazoMinimoMeses || p.plazoMeses > limites.plazoMaximoMeses) {
-    errores.push(`El plazo va en meses enteros, de ${limites.plazoMinimoMeses} a ${limites.plazoMaximoMeses}.`);
+    agregar("plazo-fuera-de-limites", "/plazoMeses", `El plazo va en meses enteros, de ${limites.plazoMinimoMeses} a ${limites.plazoMaximoMeses}.`);
   }
-  if (!esNumeroFinito(maxima) || maxima <= 0) errores.push("La tasa máxima del producto no es válida.");
-  if (!esNumeroFinito(p.tasaNominalAnualPorcentaje)) errores.push("La tasa tiene que ser un número.");
-  else if (p.tasaNominalAnualPorcentaje < 0) errores.push("La tasa no puede ser negativa.");
-  else if (esNumeroFinito(maxima) && p.tasaNominalAnualPorcentaje > maxima) {
-    errores.push("La tasa supera la máxima del producto.");
+  if (!esNumeroFinito(maxima) || !esNumeroFinito(minima) || minima < 0 || maxima < minima) {
+    agregar("tasa-del-producto-invalida", "/tasaNominalAnualPorcentaje", "La Tasa máxima o la Tasa mínima del producto no son válidas.");
+  } else if (!sinTasa(p.tasaNominalAnualPorcentaje)) {
+    const t = p.tasaNominalAnualPorcentaje;
+    if (!esNumeroFinito(t)) agregar("tasa-invalida", "/tasaNominalAnualPorcentaje", "La tasa tiene que ser un número.");
+    else if (t < minima) {
+      agregar("tasa-menor-que-la-minima", "/tasaNominalAnualPorcentaje", `La tasa no puede ser menor que la Tasa mínima del producto (${conComa(minima)}%).`);
+    } else if (t > maxima) {
+      agregar("tasa-mayor-que-la-maxima", "/tasaNominalAnualPorcentaje", `La tasa no puede ser mayor que la Tasa máxima del producto (${conComa(maxima)}%).`);
+    }
   }
   const s = p.desgravamen;
   if (s !== undefined && s !== null) {
-    if (typeof s !== "object") errores.push("El seguro de desgravamen lleva tasa, periodicidad y base.");
+    if (typeof s !== "object") agregar("desgravamen-invalido", "/desgravamen", "El seguro de desgravamen lleva tasa, periodicidad y base.");
     else {
-      if (!esNumeroFinito(s.tasaPorcentaje) || s.tasaPorcentaje < 0) errores.push("La tasa del seguro de desgravamen no puede ser negativa.");
-      if (s.periodicidad !== "anual" && s.periodicidad !== "mensual") errores.push("La tasa del seguro es anual o mensual.");
-      if (s.base !== "saldo" && s.base !== "monto") errores.push("El seguro se calcula sobre el saldo o sobre el monto.");
+      if (!esNumeroFinito(s.tasaPorcentaje) || s.tasaPorcentaje < 0) agregar("desgravamen-invalido", "/desgravamen/tasaPorcentaje", "La tasa del seguro de desgravamen no puede ser negativa.");
+      if (s.periodicidad !== "anual" && s.periodicidad !== "mensual") agregar("desgravamen-invalido", "/desgravamen/periodicidad", "La tasa del seguro es anual o mensual.");
+      if (s.base !== "saldo" && s.base !== "monto") agregar("desgravamen-invalido", "/desgravamen/base", "El seguro se calcula sobre el saldo o sobre el monto.");
     }
   }
   if (p.sistema !== undefined && p.sistema !== null && p.sistema !== "frances" && p.sistema !== "aleman") {
-    errores.push("El sistema de amortización es francés o alemán.");
+    agregar("sistema-invalido", "/sistema", "El sistema de amortización es francés o alemán.");
   }
   return errores;
 }
 
 export function simularCredito(p: PedidoDeSimulacion, limites: LimitesDelCredito = PRODUCTO_CONSUMO.limites): ResultadoDeSimulacion {
-  const errores = validarPedido(p, limites);
-  if (errores.length > 0) return { ok: false, errores };
+  const detalles = erroresDelPedido(p, limites);
+  if (detalles.length > 0) return { ok: false, errores: detalles.map((e) => e.motivo), detalles };
+  const tasa = tasaDelPedido(p);
 
   const sistema = p.sistema ?? PRODUCTO_CONSUMO.sistema;
   const desgravamen = p.desgravamen ?? PRODUCTO_CONSUMO.desgravamen;
   const n = p.plazoMeses;
-  const i = p.tasaNominalAnualPorcentaje / 100 / 12;
+  const i = tasa / 100 / 12;
   const tasaSeguroMensual = desgravamen.tasaPorcentaje / 100 / (desgravamen.periodicidad === "anual" ? 12 : 1);
 
   const montoC = Math.round(p.monto * 100);
@@ -254,7 +322,7 @@ export function simularCredito(p: PedidoDeSimulacion, limites: LimitesDelCredito
       version: SIMULADOR_VERSION,
       monto: montoC / 100,
       plazoMeses: n,
-      tasaNominalAnualPorcentaje: p.tasaNominalAnualPorcentaje,
+      tasaNominalAnualPorcentaje: tasa,
       sistema,
       desgravamen,
       tasaMensual: i,
