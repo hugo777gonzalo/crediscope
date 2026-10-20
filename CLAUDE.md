@@ -201,6 +201,9 @@ Romper cualquiera de estas rompe algo real.
     - Una sesión trabaja en una rama, abre el PR con `gh pr create` y lo
       fusiona con `gh pr merge --squash --delete-branch` cuando pasan los
       controles.
+    - `gh pr merge` falla si `main` avanzó (los controles tienen que ser del
+      último commit), y **borrar la rama remota antes de confirmar MERGED
+      cierra el PR**: ver `docs/lecciones.md`.
     - Sin empujes forzados. La regla vale también para el admin.
     - Las acciones van fijadas por SHA, y Dependabot propone las
       actualizaciones como PR.
