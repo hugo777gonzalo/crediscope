@@ -53,6 +53,7 @@ que decidió mientras se construía. Donde cambian lo propuesto abajo, manda est
 | P5 | Se muestra **sólo el ingreso estimado por nuestro propio predictor**. | El estimado de Equifax no se muestra ni se usa como dato de la persona (reemplaza la recomendación de 3.1 de mostrar varias estimaciones). El confirmado del IESS sigue mostrándose aparte. |
 | P6 | El plan del predictor lo lleva otra sesión. | `docs/investigacion-predictor-de-ingresos.md`, secciones 8 a 11 (las bases de 3,9 millones y de 120.000, el pedido de columnas y el censo). |
 | P7 | Tasa **nominal anual máxima de 15%** para consumo; cada institución puede usar menos (14,5%, 12,9%). Desgravamen de **0,6%** por el momento, con la fórmula en un módulo con parámetros. | Construido el 2026-10-17 (`_shared/simulador-credito.ts`). El 0,6% es **anual** (confirmado el 2026-10-17) y se cobra cada mes sobre el saldo. La pantalla deja cambiar la periodicidad y la base. |
+| P8 | **Límites del producto de consumo (2026-10-19):** monto de USD 1.000 a 120.000 y plazo de 6 a 120 meses. | `PRODUCTO_CONSUMO.limites` en `simulador-credito.ts` (simulador-v3). La pantalla, `simular-credito`, `capacidad-de-pago` y la solicitud Pro y Plus los exigen; `montoMaximoParaCuota()` devuelve 0 si lo que alcanza es menos que el mínimo. Las pruebas del motor usan `LIMITES_TECNICOS` (1 a 480 meses, desde un centavo). Una solicitud guardada fuera de estos rangos falla en el paso de capacidad. |
 
 Lo que decidió mientras se construía (el detalle de cada una está en la sección
 7, en el paso que la usa):

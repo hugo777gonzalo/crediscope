@@ -1,6 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { decimal, entero, moneda } from "../../lib/formatos.js";
-import { aNumero, MONTO_MAXIMO_DEL_DESLIZADOR, PLAZOS_FRECUENTES, SISTEMAS, SISTEMAS_DETALLE, textoDelSeguro } from "../../lib/credito.js";
+import { aNumero, PLAZOS_FRECUENTES, SISTEMAS, SISTEMAS_DETALLE, textoDelSeguro } from "../../lib/credito.js";
 import EntradaDeMonto from "./EntradaDeMonto.jsx";
 import { PRODUCTO_CONSUMO } from "../../../supabase/functions/_shared/simulador-credito.ts";
 
@@ -16,6 +16,8 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
   const plazoNumero = aNumero(valores.plazo);
   const tasaNumero = aNumero(valores.tasa);
   const maxima = PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
+  const { montoMinimo, montoMaximo, plazoMinimoMeses, plazoMaximoMeses } = PRODUCTO_CONSUMO.limites;
+  const montoEnRango = Math.min(Math.max(montoNumero, montoMinimo), montoMaximo);
   const seguro = { tasaPorcentaje: aNumero(valores.tasaSeguro), periodicidad: valores.periodicidad, base: valores.base };
 
   return (
@@ -25,17 +27,17 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
           <label htmlFor="credito-monto">¿Cuánto necesita?</label>
           <span className="crediscope-muted">en dólares</span>
         </div>
-        <EntradaDeMonto id="credito-monto" prefijo="$" valor={valores.monto} alCambiar={cambiar.setMonto} invalido={!(montoNumero > 0)} />
+        <EntradaDeMonto id="credito-monto" prefijo="$" valor={valores.monto} alCambiar={cambiar.setMonto} invalido={!(montoNumero >= montoMinimo && montoNumero <= montoMaximo)} />
         <input
           type="range"
           className="crediscope-credito-rango"
-          min="500"
-          max={MONTO_MAXIMO_DEL_DESLIZADOR}
+          min={montoMinimo}
+          max={montoMaximo}
           step="500"
-          value={Number.isFinite(montoNumero) ? Math.min(montoNumero, MONTO_MAXIMO_DEL_DESLIZADOR) : 500}
+          value={Number.isFinite(montoNumero) ? montoEnRango : montoMinimo}
           onChange={(e) => cambiar.setMonto(entero(Number(e.target.value)))}
-          aria-label={`Monto del crédito, de ${moneda(500)} a ${moneda(MONTO_MAXIMO_DEL_DESLIZADOR)}`}
-          aria-valuetext={Number.isFinite(montoNumero) ? moneda(Math.min(montoNumero, MONTO_MAXIMO_DEL_DESLIZADOR)) : undefined}
+          aria-label={`Monto del crédito, de ${moneda(montoMinimo)} a ${moneda(montoMaximo)}`}
+          aria-valuetext={Number.isFinite(montoNumero) ? moneda(montoEnRango) : undefined}
         />
       </div>
 
@@ -58,7 +60,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
             ))}
           </div>
           <div style={{ width: 120 }}>
-            <EntradaDeMonto id="credito-plazo" sufijo="meses" modo="numeric" valor={valores.plazo} alCambiar={cambiar.setPlazo} invalido={!(Number.isInteger(plazoNumero) && plazoNumero > 0)} />
+            <EntradaDeMonto id="credito-plazo" sufijo="meses" modo="numeric" valor={valores.plazo} alCambiar={cambiar.setPlazo} invalido={!(Number.isInteger(plazoNumero) && plazoNumero >= plazoMinimoMeses && plazoNumero <= plazoMaximoMeses)} />
           </div>
         </div>
       </div>

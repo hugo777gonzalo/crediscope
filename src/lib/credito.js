@@ -24,7 +24,6 @@ export const SISTEMAS_DETALLE = {
 };
 
 export const PLAZOS_FRECUENTES = [12, 24, 36, 48, 60];
-export const MONTO_MAXIMO_DEL_DESLIZADOR = 50000;
 
 export function textoDelSeguro({ tasaPorcentaje, periodicidad, base }) {
   return `${decimal(tasaPorcentaje, 2)}% ${periodicidad} sobre el ${base === "saldo" ? "saldo" : "monto"}`;

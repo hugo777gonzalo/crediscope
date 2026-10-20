@@ -16,7 +16,7 @@ import IngresoDeclarado from "../components/credito/IngresoDeclarado.jsx";
 import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
-import { montoMaximoParaCuota, simularCredito } from "../../supabase/functions/_shared/simulador-credito.ts";
+import { montoMaximoParaCuota, PRODUCTO_CONSUMO, simularCredito } from "../../supabase/functions/_shared/simulador-credito.ts";
 import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "../../supabase/functions/_shared/capacidad-de-pago.ts";
 
 // Capacidad de pago de una persona (docs/plan-demo-ifi.md, paso 3): si la
@@ -122,6 +122,8 @@ export default function CapacidadDePago() {
                               A {entero(pedido.plazoMeses)} meses y la misma tasa, con una cuota de hasta {moneda(capacidad.cuotaMaximaAdmisible, 2)}.
                             </p>
                           </>
+                        ) : capacidad.cuotaMaximaAdmisible > 0 && montoMaximo === 0 ? (
+                          <p style={{ margin: "4px 0 0" }}>Lo que le queda por mes no alcanza para el monto mínimo de {moneda(PRODUCTO_CONSUMO.limites.montoMinimo)}.</p>
                         ) : (
                           <p style={{ margin: "4px 0 0" }}>Con lo que ya paga por mes, no le queda espacio para otra cuota.</p>
                         )}
