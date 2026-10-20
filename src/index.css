@@ -3610,6 +3610,12 @@ a {
   display: none;
 }
 
+/* Con el resultado a la vista no hace falta (ResumenFijo.jsx). Se oculta sin
+   sacarlo del flujo, para que la página no salte al aparecer. */
+.crediscope-credito-resumen-fijo.crediscope-credito-resumen-fijo-oculto {
+  visibility: hidden;
+}
+
 @media (max-width: 1080px) {
   .crediscope-credito-resumen-fijo {
     grid-column: 1 / -1;
