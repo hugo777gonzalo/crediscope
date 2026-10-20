@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { describirError } from "../lib/mensajesDeError.js";
 
 // Una opción de configuración: el interruptor, el motivo y el guardado.
 //
@@ -11,8 +12,12 @@ import { useEffect, useState } from "react";
 // un guardado que falla dejaría el interruptor mostrando el cambio como
 // si hubiera funcionado -- React no vuelve a montar la fila porque la
 // clave no cambió.
+//
+// `codigo`: la etiqueta es el nombre técnico de una fuente o un campo
+// (`iess_mecanizado`) y va en letra de código. Un proveedor (Equifax, Aval)
+// tiene nombre comercial y va en letra normal (revisión del 2026-10-18).
 
-export default function FilaConfig({ item, etiqueta, descripcion, onSave }) {
+export default function FilaConfig({ item, etiqueta, descripcion, onSave, codigo = true }) {
   const [enabled, setEnabled] = useState(item.enabled);
   const [motivo, setMotivo] = useState(item.motivo || "");
   const [guardando, setGuardando] = useState(false);
@@ -30,7 +35,7 @@ export default function FilaConfig({ item, etiqueta, descripcion, onSave }) {
     try {
       await onSave(item, { enabled, motivo });
     } catch (err) {
-      setError(err.message);
+      setError(describirError(err).mensaje);
     } finally {
       setGuardando(false);
     }
@@ -46,7 +51,7 @@ export default function FilaConfig({ item, etiqueta, descripcion, onSave }) {
           aria-label={enabled ? `Desactivar ${etiqueta}` : `Activar ${etiqueta}`}
         />
         <span>
-          <code>{etiqueta}</code>
+          {codigo ? <code>{etiqueta}</code> : <strong>{etiqueta}</strong>}
           {descripcion ? (
             <span className="crediscope-muted" style={{ display: "block", fontSize: 13 }}>{descripcion}</span>
           ) : null}
@@ -56,6 +61,7 @@ export default function FilaConfig({ item, etiqueta, descripcion, onSave }) {
         className="crediscope-input"
         style={{ fontSize: 13, padding: "5px 9px" }}
         placeholder="Por qué se cambió"
+        aria-label={`Por qué se cambió ${etiqueta}`}
         value={motivo}
         onChange={(e) => setMotivo(e.target.value)}
       />

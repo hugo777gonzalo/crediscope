@@ -186,6 +186,9 @@ igual("destino: al ingresar se vuelve a recordar", (D.olvidarSalidaAProposito(),
   igual("equifax: «ESTA EN MORA 60»", E.estadoDeCarteraLegible("ESTA EN MORA 60"), "En mora de hasta 60 días");
   igual("equifax: «CART. CASTIGADA»", E.estadoDeCarteraLegible("CART. CASTIGADA"), "Cartera castigada");
   igual("equifax: un estado desconocido, como oración", E.estadoDeCarteraLegible("ALGO NUEVO"), "Algo nuevo");
+  igual("equifax: el estado del RUC, como oración", E.textoDeEquifaxLegible("SUSPENDIDO"), "Suspendido");
+  igual("equifax: una sigla del SRI queda en mayúsculas", E.textoDeEquifaxLegible("RIMPE"), "RIMPE");
+  igual("equifax: sin texto, nada (la pantalla pone la raya)", E.textoDeEquifaxLegible(null), null);
 }
 
 // ---- Equifax: el gasto por mes de Costos (costoEquifax.js)

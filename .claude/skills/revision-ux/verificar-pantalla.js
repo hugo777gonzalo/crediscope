@@ -24,6 +24,7 @@
 //   - texto-chico          menos de 12 px
 //   - blanco               la pantalla no dibujó nada (guardia que devuelve null)
 //   - desborde             scroll horizontal de la página
+//   - cifra-repetida       el mismo monto en 3 lugares o más (2026-10-18)
 //
 // Los números largos (7+ dígitos: cédulas, RUC) se enmascaran en la salida:
 // el repositorio y el chat no deben recibir datos de personas reales.
@@ -165,6 +166,27 @@
         const m = texto.match(re);
         if (m) agregar("termino-prohibido", texto.slice(Math.max(0, m.index - 22), m.index + m[0].length + 22), { motivo });
       }
+    }
+
+    // La misma cifra dicha varias veces: la pestaña Equifax mostraba la deuda
+    // en el indicador, en la fila del sistema y en la fila de total, y Costos ›
+    // Equifax el gasto del mes cuatro veces (2026-10-18). Se cuenta un monto
+    // (desde $100, el texto entero de un elemento) una vez por lugar: en una
+    // misma fila, «Deuda» y «Al día» pueden coincidir sin que sobre nada. Es un
+    // aviso para mirar, no siempre un defecto.
+    const lugares = new Map();
+    for (const { texto, el } of textos) {
+      const m = /^\$\s?(\d{1,3}(?:\.\d{3})*)(?:,\d{1,2})?$/.exec(texto);
+      if (!m || Number(m[1].replace(/\./g, "")) < 100) continue;
+      // Las filas de un mismo cuerpo de tabla son un lugar: en la bandeja, cinco
+      // personas con el SBU ($482) no son una redundancia. El pie (el total) es
+      // otro lugar, y cada tarjeta o indicador, otro.
+      const lugar = el.closest("tfoot") ?? el.closest("tbody, table") ?? el.closest(".crediscope-card") ?? el;
+      if (!lugares.has(texto)) lugares.set(texto, new Set());
+      lugares.get(texto).add(lugar);
+    }
+    for (const [cifra, donde] of lugares) {
+      if (donde.size >= 3) agregar("cifra-repetida", `${cifra} en ${donde.size} lugares: ¿indicador y total de tabla, o un resumen que repite lo de arriba?`);
     }
 
     // Texto cortado por el diseño: una celda con puntos suspensivos del

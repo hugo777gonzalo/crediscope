@@ -3,11 +3,17 @@ import InfoTooltip from "../InfoTooltip.jsx";
 import { TituloTarjeta } from "../reporte/Piezas.jsx";
 import { entero, moneda, decimal, plural } from "../../lib/formatos.js";
 import { formatearDia } from "../../lib/fechas.js";
-import { nivelLegible, estadoDeCarteraLegible } from "../../lib/equifaxPantalla.js";
+import { estadoDeCarteraLegible, textoDeEquifaxLegible } from "../../lib/equifaxPantalla.js";
 
 // El resto de lo que trae Equifax, plegado: sirve para entender el caso, pero
 // no decide de un vistazo. Cada tarjeta dice si Equifax no trajo esa parte en
 // esta consulta: un hueco se dice, no se rellena con ceros.
+//
+// Lo que ya está arriba no se repite acá (revisión del 2026-10-18): el Score
+// de Equifax de hoy y el de hace 12 meses, y el nivel de sobreendeudamiento,
+// están en los indicadores; la «cuota financiera estimada» de Equifax es la
+// misma cifra que la cuota estimada de hoy (88 de 88 consultas), así que va
+// una sola vez, en «Cómo cambió en un año».
 
 const porcentajeDe100 = (n) => (typeof n === "number" ? `${decimal(n, 0)}%` : "—");
 const siNo = (v) => (v === true ? "Sí" : v === false ? "No" : "—");
@@ -24,14 +30,20 @@ function Fila({ etiqueta, ayuda = null, children, alerta = false }) {
   );
 }
 
-function Seccion({ Icono, titulo, ayuda = null, datos, children }) {
+function Seccion({ Icono, titulo, ayuda = null, datos, lista = true, children }) {
   return (
     <div className="crediscope-card crediscope-equifax-seccion">
       <TituloTarjeta Icono={Icono}>
         {titulo}
         {ayuda ? <InfoTooltip etiqueta={`Sobre «${titulo}»`}>{ayuda}</InfoTooltip> : null}
       </TituloTarjeta>
-      {datos ? <dl className="crediscope-equifax-datos">{children}</dl> : <p className="crediscope-muted">Equifax no trajo esta parte en esta consulta.</p>}
+      {!datos ? (
+        <p className="crediscope-muted">Equifax no trajo esta parte en esta consulta.</p>
+      ) : lista ? (
+        <dl className="crediscope-equifax-datos">{children}</dl>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -79,38 +91,71 @@ export default function ReporteCompletoEquifax({ estructura }) {
       <Seccion
         Icono={TrendingUp}
         titulo="Cómo cambió en un año"
+        lista={false}
         ayuda="Equifax arma estas series con todo lo que la persona debe y respalda (como titular, codeudora o garante): por eso no coinciden con la deuda como titular."
         datos={ev}
       >
-        <Fila etiqueta="Deuda hoy">{moneda(ev?.deudaActualUsd)}</Fila>
-        <Fila etiqueta="Hace 6 meses">{moneda(ev?.deudaHace6MesesUsd)}</Fila>
-        <Fila etiqueta="Hace 12 meses">{moneda(ev?.deudaHace12MesesUsd)}</Fila>
-        <Fila etiqueta="Cambio en 12 meses">
-          {typeof ev?.variacionDeLaDeuda12MesesPorcentaje === "number"
-            ? `${ev.variacionDeLaDeuda12MesesPorcentaje > 0 ? "+" : ""}${decimal(ev.variacionDeLaDeuda12MesesPorcentaje, 0)}%`
-            : "—"}
-        </Fila>
-        <Fila etiqueta="Acreedores hoy / hace 12 meses">
-          {entero(ev?.acreedoresActuales)} / {entero(ev?.acreedoresHace12Meses)}
-        </Fila>
-        <Fila etiqueta="Cuota estimada hoy / hace 12 meses">
-          {moneda(ev?.cuotaEstimadaActualUsd)} / {moneda(ev?.cuotaEstimadaHace12MesesUsd)}
-        </Fila>
+        {/* Tres momentos en columnas, del más viejo a hoy como la franja de
+            pagos: en filas, «Acreedores hoy / hace 12 meses: 8 / 7» obligaba a
+            emparejar las cifras con las palabras (2026-10-18). Equifax no
+            trae los acreedores ni la cuota de hace 6 meses en la estructura. */}
+        <div className="crediscope-equifax-tabla-envoltura">
+          <table className="crediscope-table crediscope-equifax-tabla crediscope-equifax-evolucion">
+            <thead>
+              <tr>
+                <th scope="col">
+                  <span className="crediscope-solo-lectores">Qué se mide</span>
+                </th>
+                <th scope="col" className="crediscope-equifax-num">Hace 12 meses</th>
+                <th scope="col" className="crediscope-equifax-num">Hace 6 meses</th>
+                <th scope="col" className="crediscope-equifax-num">Hoy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Deuda total</th>
+                <td className="crediscope-equifax-num">{moneda(ev?.deudaHace12MesesUsd)}</td>
+                <td className="crediscope-equifax-num">{moneda(ev?.deudaHace6MesesUsd)}</td>
+                <td className="crediscope-equifax-num">{moneda(ev?.deudaActualUsd)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Acreedores</th>
+                <td className="crediscope-equifax-num">{entero(ev?.acreedoresHace12Meses)}</td>
+                <td className="crediscope-equifax-num">{entero(ev?.acreedoresHace6Meses)}</td>
+                <td className="crediscope-equifax-num">{entero(ev?.acreedoresActuales)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Cuota estimada</th>
+                <td className="crediscope-equifax-num">{moneda(ev?.cuotaEstimadaHace12MesesUsd)}</td>
+                <td className="crediscope-equifax-num">—</td>
+                <td className="crediscope-equifax-num">{moneda(ev?.cuotaEstimadaActualUsd)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {typeof ev?.variacionDeLaDeuda12MesesPorcentaje === "number" && ev.variacionDeLaDeuda12MesesPorcentaje !== 0 ? (
+          <p className="crediscope-equifax-evolucion-nota">
+            La deuda total {ev.variacionDeLaDeuda12MesesPorcentaje > 0 ? "subió" : "bajó"}{" "}
+            {decimal(Math.abs(ev.variacionDeLaDeuda12MesesPorcentaje), 0)}% en 12 meses.
+          </p>
+        ) : null}
       </Seccion>
 
-      <Seccion Icono={Gauge} titulo="Scores de Equifax" datos={scores}>
-        <Fila etiqueta="Score de Equifax hoy">{entero(scores?.scoreEquifax)}</Fila>
-        <Fila etiqueta="Hace 6 meses">{entero(scores?.scoreEquifaxHace6Meses)}</Fila>
-        <Fila etiqueta="Hace 12 meses">{entero(scores?.scoreEquifaxHace12Meses)}</Fila>
+      <Seccion
+        Icono={Gauge}
+        titulo="Scores de Equifax"
+        ayuda="El Score de Equifax de hoy y el de hace 12 meses están arriba, en los indicadores."
+        datos={scores}
+      >
+        <Fila etiqueta="Score de Equifax hace 6 meses">{entero(scores?.scoreEquifaxHace6Meses)}</Fila>
         <Fila etiqueta="Score de inclusión" ayuda="Otro score de Equifax. Su definición exacta está pedida a Equifax.">
           {entero(scores?.scoreInclusionEquifax)}
         </Fila>
         <Fila
           etiqueta="Score de sobreendeudamiento"
-          ayuda="La lectura de Equifax sobre la carga de deuda de la persona: una alerta de capacidad de pago, no un hecho de pago."
+          ayuda="La lectura de Equifax sobre la carga de deuda de la persona: una alerta de capacidad de pago, no un hecho de pago. El nivel que le corresponde está arriba, en «Cuota mensual»."
         >
           {entero(scores?.scoreSobreendeudamientoEquifax)}
-          {scores?.nivelDeSobreendeudamiento ? ` · ${nivelLegible(scores.nivelDeSobreendeudamiento)}` : ""}
         </Fila>
       </Seccion>
 
@@ -180,8 +225,8 @@ export default function ReporteCompletoEquifax({ estructura }) {
 
       <Seccion Icono={Store} titulo="Actividad económica (SRI, según Equifax)" datos={a}>
         <Fila etiqueta="Tiene RUC">{siNo(a?.tieneRuc)}</Fila>
-        <Fila etiqueta="Estado del RUC">{a?.estadoDelRuc ?? "—"}</Fila>
-        <Fila etiqueta="Clase de contribuyente">{a?.claseDeContribuyente ?? "—"}</Fila>
+        <Fila etiqueta="Estado del RUC">{textoDeEquifaxLegible(a?.estadoDelRuc) ?? "—"}</Fila>
+        <Fila etiqueta="Clase de contribuyente">{textoDeEquifaxLegible(a?.claseDeContribuyente) ?? "—"}</Fila>
         <Fila etiqueta="Lleva contabilidad">{siNo(a?.obligadoALlevarContabilidad)}</Fila>
         <Fila etiqueta="Inicio de actividades">{formatearDia(a?.fechaDeInicioDeActividades)}</Fila>
       </Seccion>
@@ -193,8 +238,12 @@ export default function ReporteCompletoEquifax({ estructura }) {
         datos={e}
       >
         <Fila etiqueta="Ingreso estimado">{moneda(e?.ingresoEstimadoUsd)}</Fila>
-        <Fila etiqueta="Cuota financiera estimada">{moneda(e?.cuotaFinancieraEstimadaUsd)}</Fila>
-        <Fila etiqueta="Impacto económico">{e?.indicadorDeImpactoEconomico ?? "—"}</Fila>
+        <Fila
+          etiqueta="Indicador de impacto económico"
+          ayuda="Un indicador de Equifax que en las consultas guardadas va del 1 al 6. Qué significa cada valor está pedido a Equifax: no leerlo como bueno o malo todavía."
+        >
+          {e?.indicadorDeImpactoEconomico ?? "—"}
+        </Fila>
       </Seccion>
     </div>
   );

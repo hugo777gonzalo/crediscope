@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useBuro, NOMBRE_DEL_BURO } from "../lib/useBuro.js";
 
@@ -18,6 +19,16 @@ const PESTANAS = [
 
 export default function PestanasCliente({ cedula, activa }) {
   const { buro } = useBuro();
+  const tira = useRef(null);
+  // En un teléfono la tira se desliza y la del buró, la última, quedaba fuera
+  // de la vista: el analista no veía en qué pestaña estaba (2026-10-18). Se
+  // corre la tira, no la página.
+  useEffect(() => {
+    const t = tira.current;
+    const a = t?.querySelector('[aria-current="page"]');
+    if (!t || !a || t.scrollWidth <= t.clientWidth) return;
+    t.scrollLeft = a.offsetLeft - t.offsetLeft - (t.clientWidth - a.offsetWidth) / 2;
+  }, [activa, buro]);
   const pestanas = buro ? [...PESTANAS, [buro, NOMBRE_DEL_BURO[buro]]] : PESTANAS;
   // Quien entró por un enlace a la pestaña del otro buró la sigue viendo.
   const conLaActiva =
@@ -25,7 +36,7 @@ export default function PestanasCliente({ cedula, activa }) {
       ? [...pestanas, [activa, NOMBRE_DEL_BURO[activa]]]
       : pestanas;
   return (
-    <div className="crediscope-tabs">
+    <div className="crediscope-tabs" ref={tira}>
       {conLaActiva.map(([ruta, texto]) =>
         ruta === activa ? (
           <span key={ruta} className="crediscope-tab crediscope-tab-active" aria-current="page">

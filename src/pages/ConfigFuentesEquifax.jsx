@@ -60,7 +60,7 @@ export default function ConfigFuentesEquifax() {
         {!item ? (
           error ? null : <Cargando />
         ) : (
-          <FilaConfig item={item} etiqueta="Equifax" descripcion="Buró de crédito · cada consulta se cobra" onSave={guardar} />
+          <FilaConfig item={item} etiqueta="Equifax" codigo={false} descripcion="Buró de crédito · cada consulta se cobra" onSave={guardar} />
         )}
       </div>
     </div>

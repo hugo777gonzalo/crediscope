@@ -248,7 +248,8 @@ export default function CapacidadDePago() {
                       <span>{moneda(x.montoMensual, 2)}</span>
                     </div>
                   ))}
-                  {capacidad ? (
+                  {/* Con una sola deuda, el total repetía su fila (2026-10-18). */}
+                  {capacidad && datos.obligaciones.length > 1 ? (
                     <div className="crediscope-capacidad-fila crediscope-capacidad-fila-total">
                       <span>Total por mes</span>
                       <span>{moneda(capacidad.obligacionesActuales, 2)}</span>

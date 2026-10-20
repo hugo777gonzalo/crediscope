@@ -8,6 +8,12 @@ import { filasDeDeuda, enAtraso } from "../../lib/equifaxPantalla.js";
 // persona. Lo de codeudor o garante NO se suma: en Aval esa mezcla inflaba la
 // deuda, y en Ecuador «garantía» es el colateral, así que tampoco se llama así
 // (negocio, 2026-10-13).
+//
+// Sin fila de total: la deuda, lo que está en atraso y la cuota totales son
+// los indicadores de justo arriba, y la fila repetía esas tres cifras debajo
+// (revisión del 2026-10-18). Un sistema sin deuda sigue a la vista (es
+// Equifax diciendo que no hay), pero en una sola celda: cuatro «$0» y una
+// raya decían lo mismo cinco veces.
 const Monto = ({ valor, alerta = false }) => (
   <span className={valor === 0 ? "crediscope-aval-cero" : alerta && valor > 0 ? "crediscope-aval-malo" : undefined}>
     {moneda(valor)}
@@ -16,12 +22,11 @@ const Monto = ({ valor, alerta = false }) => (
 
 export default function DeudaPorSistema({ estructura }) {
   const filas = filasDeDeuda(estructura);
-  const total = estructura?.deudaActualTitular?.total ?? null;
   const otros = estructura?.deudaCodeudorGarante?.total ?? null;
 
   return (
     <div className="crediscope-card">
-      <TituloTarjeta Icono={Landmark}>Cuánto debe como titular</TituloTarjeta>
+      <TituloTarjeta Icono={Landmark}>Cuánto debe como titular, por sistema</TituloTarjeta>
       <div className="crediscope-equifax-tabla-envoltura">
         <table className="crediscope-table crediscope-equifax-tabla">
           <thead>
@@ -37,64 +42,62 @@ export default function DeudaPorSistema({ estructura }) {
               </th>
               <th scope="col" className="crediscope-equifax-num">Cuota mensual</th>
               <th scope="col" className="crediscope-equifax-num">
-                Mora más larga{" "}
-                <InfoTooltip lado="derecha" etiqueta="Qué es la mora más larga">
-                  Los días de atraso de la operación más atrasada hoy, en ese sistema.
+                Mora más larga hoy{" "}
+                <InfoTooltip lado="derecha" etiqueta="Qué es la mora más larga hoy">
+                  Los días de atraso de la operación más atrasada hoy, en ese sistema. La de los últimos 24 meses está en
+                  «Cómo pagó».
                 </InfoTooltip>
               </th>
             </tr>
           </thead>
           <tbody>
-            {filas.map((f) => (
-              <tr key={f.clave} className={f.operaciones === 0 ? "crediscope-equifax-fila-vacia" : undefined}>
-                <th scope="row">
-                  <span className="crediscope-equifax-sistema">{f.texto}</span>
-                  <span className="crediscope-equifax-sistema-detalle">
-                    {f.operaciones > 0 ? plural(f.operaciones, "operación", "operaciones") : "Sin deuda"}
-                  </span>
-                  {f.demanda ? <span className="crediscope-equifax-marca crediscope-equifax-marca-mala">En demanda judicial</span> : null}
-                  {f.castigada ? <span className="crediscope-equifax-marca crediscope-equifax-marca-mala">Cartera castigada</span> : null}
-                  {f.noCuadra ? (
-                    <span className="crediscope-equifax-marca crediscope-equifax-marca-aviso">
-                      No cuadra con el total de Equifax
-                      <InfoTooltip lado="izquierda" etiqueta="Por qué no cuadra">
-                        La suma de las operaciones de este sistema no da el total que la propia Equifax publica. Pasa más
-                        en el sector comercial, que trae operaciones con cortes de distintos meses. Las cifras de esta
-                        fila son la suma de las operaciones.
-                      </InfoTooltip>
+            {filas.map((f) =>
+              f.operaciones === 0 ? (
+                <tr key={f.clave} className="crediscope-equifax-fila-vacia">
+                  <th scope="row">
+                    <span className="crediscope-equifax-sistema">{f.texto}</span>
+                  </th>
+                  <td colSpan={5} className="crediscope-equifax-sin-deuda">
+                    Sin deuda
+                  </td>
+                </tr>
+              ) : (
+                <tr key={f.clave}>
+                  <th scope="row">
+                    <span className="crediscope-equifax-sistema">{f.texto}</span>
+                    <span className="crediscope-equifax-sistema-detalle">
+                      {plural(f.operaciones, "operación", "operaciones")}
                     </span>
-                  ) : null}
-                </th>
-                <td className="crediscope-equifax-num"><Monto valor={f.saldo} /></td>
-                <td className="crediscope-equifax-num"><Monto valor={f.alDia} /></td>
-                <td className="crediscope-equifax-num"><Monto valor={f.atraso} alerta /></td>
-                <td className="crediscope-equifax-num"><Monto valor={f.cuota} /></td>
-                <td className="crediscope-equifax-num">
-                  {f.maximoDias === null ? (
-                    <span className="crediscope-aval-cero">—</span>
-                  ) : (
-                    <span className={f.maximoDias > 0 ? "crediscope-aval-malo" : "crediscope-aval-cero"}>
-                      {plural(f.maximoDias, "día", "días")}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    {f.demanda ? <span className="crediscope-equifax-marca crediscope-equifax-marca-mala">En demanda judicial</span> : null}
+                    {f.castigada ? <span className="crediscope-equifax-marca crediscope-equifax-marca-mala">Cartera castigada</span> : null}
+                    {f.noCuadra ? (
+                      <span className="crediscope-equifax-marca crediscope-equifax-marca-aviso">
+                        No cuadra con el total de Equifax
+                        <InfoTooltip lado="izquierda" etiqueta="Por qué no cuadra">
+                          La suma de las operaciones de este sistema no da el total que la propia Equifax publica. Pasa
+                          más en el sector comercial, que trae operaciones con cortes de distintos meses. Las cifras de
+                          esta fila son la suma de las operaciones.
+                        </InfoTooltip>
+                      </span>
+                    ) : null}
+                  </th>
+                  <td className="crediscope-equifax-num"><Monto valor={f.saldo} /></td>
+                  <td className="crediscope-equifax-num"><Monto valor={f.alDia} /></td>
+                  <td className="crediscope-equifax-num"><Monto valor={f.atraso} alerta /></td>
+                  <td className="crediscope-equifax-num"><Monto valor={f.cuota} /></td>
+                  <td className="crediscope-equifax-num">
+                    {f.maximoDias === null ? (
+                      <span className="crediscope-aval-cero">—</span>
+                    ) : (
+                      <span className={f.maximoDias > 0 ? "crediscope-aval-malo" : "crediscope-aval-cero"}>
+                        {plural(f.maximoDias, "día", "días")}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ),
+            )}
           </tbody>
-          {total ? (
-            <tfoot>
-              <tr>
-                <th scope="row">Total</th>
-                <td className="crediscope-equifax-num"><Monto valor={total.saldoDeudaUsd} /></td>
-                <td className="crediscope-equifax-num"><Monto valor={total.saldoPorVencerUsd} /></td>
-                <td className="crediscope-equifax-num"><Monto valor={enAtraso(total)} alerta /></td>
-                <td className="crediscope-equifax-num"><Monto valor={total.cuotaMensualUsd} /></td>
-                <td className="crediscope-equifax-num">
-                  {total.maximoDiasDeMora === null ? "—" : plural(total.maximoDiasDeMora, "día", "días")}
-                </td>
-              </tr>
-            </tfoot>
-          ) : null}
         </table>
       </div>
 

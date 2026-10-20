@@ -184,3 +184,16 @@ export function nivelLegible(nivel) {
   const t = String(nivel).trim();
   return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
 }
+
+// Los textos del SRI que reenvía Equifax llegan en mayúsculas («ACTIVO»,
+// «SUSPENDIDO», «OTROS»). Se escriben como oración; una sigla conocida queda
+// en mayúsculas (RIMPE, RUC, SRI).
+const SIGLAS = new Set(["RIMPE", "RUC", "SRI", "RISE"]);
+export function textoDeEquifaxLegible(texto) {
+  const t = String(texto ?? "").trim();
+  if (!t) return null;
+  return t
+    .split(/\s+/)
+    .map((p, i) => (SIGLAS.has(p.toUpperCase()) ? p.toUpperCase() : i === 0 ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : p.toLowerCase()))
+    .join(" ");
+}

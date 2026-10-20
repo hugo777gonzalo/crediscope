@@ -64,7 +64,11 @@ const SECCIONES = [
 ];
 
 // Cada acción que queda en el registro, dicha como la entiende quien lo lee.
-// Faltaba "expediente.vista" y la tabla mostraba el código tal cual.
+// Faltaba "expediente.vista" y la tabla mostraba el código tal cual. Volvió a
+// pasar con las de Equifax, Aval y la solicitud (2026-10-18: la descarga del
+// PDF salía como «exportacion.reporte_equifax»): una acción nueva que se
+// registra con la persona lleva su nombre acá. Una que igual falte se rotula
+// «Otra acción» con el código en la ayuda, nunca el código a la vista.
 const ETIQUETA_ACCION = {
   "client.structure": "Consulta a la fuente de datos",
   "client.analyze": "Análisis con IA",
@@ -76,6 +80,16 @@ const ETIQUETA_ACCION = {
   "exportacion.lote": "Exportó un lote a un archivo",
   "exportacion.conciliacion": "Exportó una conciliación a un archivo",
   "exportacion.informe_laboratorio": "Exportó un informe del Laboratorio",
+  "exportacion.reporte_equifax": "Descargó el reporte de Equifax (PDF)",
+  "equifax.consulta": "Consulta a Equifax",
+  "equifax.consulta.fallo": "Consulta a Equifax que falló",
+  "equifax.tablas.fallo": "No se pudo ordenar la respuesta de Equifax",
+  "aval.consulta": "Consulta a Aval",
+  "aval.consulta.fallo": "Consulta a Aval que falló",
+  "capacidad.evaluar": "Evaluó la capacidad de pago",
+  "solicitud.crear": "Creó una solicitud de crédito",
+  "solicitud.evaluada": "Evaluó una solicitud de crédito",
+  "perfil.borrado": "Borró un perfil",
 };
 
 export default function Expediente() {
@@ -412,7 +426,7 @@ export default function Expediente() {
                     {auditoria.map((a) => (
                       <tr key={a.id}>
                         <td className="crediscope-num">{formatearFechaHora(a.created_at)}</td>
-                        <td>{ETIQUETA_ACCION[a.action] ?? a.action}</td>
+                        <td title={ETIQUETA_ACCION[a.action] ? undefined : a.action}>{ETIQUETA_ACCION[a.action] ?? "Otra acción"}</td>
                         <td>{quienEs(a.actor, session?.user?.id, miPerfil?.nombre_corto)}</td>
                         <td className="crediscope-muted">{detalleAuditoria(a.meta)}</td>
                       </tr>

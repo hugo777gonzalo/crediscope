@@ -70,7 +70,7 @@ export default function ConfigFuentesAval() {
         {!item ? (
           <Cargando />
         ) : (
-          <FilaConfig item={item} etiqueta="Aval Buró" descripcion="Buró de crédito de Ecuador" onSave={guardar} />
+          <FilaConfig item={item} etiqueta="Aval Buró" codigo={false} descripcion="Buró de crédito de Ecuador" onSave={guardar} />
         )}
       </div>
 

@@ -67,6 +67,60 @@ la contiene. Una dirección que no existe muestra «No encontramos esa página»
   dependientes, jubilados, pensionistas) con cifras distintas a las del Panorama bajo el mismo
   nombre. Se dejó una sola, en Fuentes de Ingreso.
 
+Lo que sigue salió de la revisión de Equifax del 2026-10-18. El verificador marca el caso
+más común (`cifra-repetida`: el mismo monto en tres lugares); el resto se mira.
+
+- **Indicadores arriba, desglose abajo, sin fila de total.** Si una fila de indicadores ya da
+  la deuda, lo que está en atraso y la cuota, la tabla de abajo es el desglose y no lleva
+  «Total»: la pestaña Equifax decía la misma deuda cinco veces (indicador, fila, fila de total, y
+  «Al día» en las dos). Lo mismo en una lista de una sola deuda: Capacidad de pago tenía
+  «Bancos Equifax $X» y debajo «Total por mes $X». El total aparece cuando suma dos o más.
+- **Lo plegado no repite lo de arriba.** «Ver el reporte completo» volvía a dar el score de
+  hoy, el de hace 12 meses y el nivel de sobreendeudamiento. Al armar una sección plegada,
+  tachar lo que ya está a la vista y dejar sólo lo nuevo (con una ayuda que diga dónde está
+  lo otro).
+- **Dos campos del proveedor que valen lo mismo van una vez.** Antes de mostrar dos cifras con
+  nombres parecidos, **medir** si coinciden: la «cuota financiera estimada» y la «cuota
+  estimada de hoy» de Equifax son iguales en 88 de 88 consultas. Se mide en la base, no se
+  supone (CLAUDE.md, «Verificar contra la base»).
+- **Un vacío se dice una vez.** Un sistema sin deuda era «Sin deuda» debajo del nombre y
+  «$0 · $0 · $0 · $0 · —» en la fila: ahora es una celda «Sin deuda» que ocupa la fila. Igual
+  una columna que vale cero en todas las filas («Pudieron cobrarse», «Gasto máximo» igual al
+  gasto): se muestra cuando alguna fila la usa.
+- **El calendario también repite.** Con un solo mes de datos, «Este mes», «Desde el inicio»,
+  la fila del mes y el «Gasto máximo» eran el mismo número cuatro veces (Costos › Equifax).
+  Una tabla mes a mes aparece cuando hay más de un mes; «Desde el inicio» es su total.
+- **Un subtítulo igual en todas las filas sobra.** «Bancos» debajo de cada una de 15
+  operaciones, cuando todas son de bancos: se muestra cuando distingue.
+- **El estado no repite lo que dice el botón de al lado.** «Vencida: volver a consultar se
+  cobra» junto al botón «Volver a consultar» (que ya pide confirmar porque se cobra) pasó a
+  «Venció el 17/10/2026»: el lugar se usa para un dato nuevo, la fecha.
+- **Contar separado lo que se parece.** «28 operaciones» en una tarjeta y «15 operaciones» en
+  la de al lado parecían contradecirse: «15 como titular · 13 como codeudor o garante».
+
+## 4 bis. Legibilidad de lo que trae un proveedor
+
+Equifax, Aval y Novadata mandan textos y cifras con su propia forma. Se adaptan en la
+pantalla con una función probada, nunca reescribiendo lo guardado (2026-10-18):
+
+- **Pares con barra se leen mal.** «Acreedores hoy / hace 12 meses: 8 / 7» obliga a emparejar
+  cifras con palabras. Tres momentos van en una tabla chica con una columna por momento, del
+  más viejo a hoy, como la franja de 24 meses.
+- **MAYÚSCULAS del proveedor, como oración** («ACTIVO» → «Activo», «MORA 30 AL DIA» → «Al
+  día, con atrasos de hasta 30 días»), con las siglas en mayúsculas (RIMPE, RUC). La función
+  vive en `src/lib/equifaxPantalla.js` y se prueba en `probar-formatos.mjs`.
+- **Los nombres de instituciones se dejan como los manda Equifax** (negocio, 2026-10-19): entre
+  las 92 hay siglas y marcas («BIESS», «PYCCA», «CNT EP», «BANECUADOR B.P.») y es lo que el
+  analista ve en el reporte de Equifax. La regla de la oración es para estados y clases, no
+  para nombres propios.
+- **Un indicador del proveedor sin escala conocida lleva una ayuda que lo dice** («va del 1 al
+  6; qué significa cada valor está pedido a Equifax»). Un número sin unidad ni escala invita a
+  leerlo como bueno o malo.
+- **Días con miles también.** Una celda de «Días de mora» con `{o.dias}` crudo escribía
+  «2149»: todo número pasa por `entero()`.
+- **Un rótulo con su ventana.** «Mora más larga» (hoy) y «Atraso más largo» (24 meses) eran
+  dos cifras distintas con casi el mismo nombre: «Mora más larga hoy».
+
 ## 5. Accesibilidad (lo que el verificador mide)
 
 - Todo campo tiene etiqueta (`<label htmlFor>` o `aria-label`); un placeholder no es una etiqueta.
@@ -92,6 +146,19 @@ Se revisa a **1280**, **768** y **414**. La barra lateral pasa a barra superior 
   acota (`maxWidth: min(560px, calc(100vw - 80px))`).
 - El verificador devuelve `desborde` cuando `scrollWidth > clientWidth`. Si aparece, buscá el
   elemento que se sale (`getBoundingClientRect().right`).
+- **Una grilla con mínimo fijo desborda bajo ese ancho**: `minmax(320px, 1fr)` rompía la página a
+  329 px (el panel de vista previa sin tamaño fijado). Escribir `minmax(min(320px, 100%), 1fr)`.
+- **Toda tabla va en su envoltura** (`crediscope-equifax-tabla-envoltura` o la tarjeta con
+  `overflow-x`), también la chica que se suma después dentro de una tarjeta angosta.
+- **Un texto en una celda que ocupa la fila, a la izquierda**: centrado, en un teléfono la tabla
+  se desliza y el texto queda fuera de la vista.
+- **La pestaña activa se ve.** Bajo 860 px la tira de pestañas se desliza y la última (la del
+  buró) quedaba fuera: el analista no sabía dónde estaba. `PestanasCliente` corre la tira
+  hasta la activa; una tira nueva hace lo mismo.
+- **Cifras chicas de a dos en un teléfono**: `minmax(120px, 1fr)` y no 150, o cuatro contadores
+  ocupan una pantalla entera de a uno.
+- `th.crediscope-cifra` alinea a la derecha (desde 2026-10-18): antes `.crediscope-table th` le
+  ganaba a la clase y el encabezado quedaba corrido de sus números.
 
 ## 7. Tipografía y espacio
 
@@ -112,7 +179,10 @@ Se revisa a **1280**, **768** y **414**. La barra lateral pasa a barra superior 
   `c-xxxxxxxx` (8 primeros caracteres de `clients.id`). Las cédulas de una tabla sin nombre igual
   identifican.
 - Toda exportación y cada apertura de expediente quedan en `audit_log`: una pantalla nueva que saca
-  datos de la persona llama a `registrarEvento()`.
+  datos de la persona llama a `registrarEvento()`. **Y la acción nueva lleva su nombre en
+  `ETIQUETA_ACCION` de `Expediente.jsx`**: la descarga del PDF de Equifax salía en la Auditoría
+  del Expediente como «exportacion.reporte_equifax», y otras seis acciones (Equifax, Aval, la
+  solicitud) tampoco tenían nombre (2026-10-18). Una que falte se rotula «Otra acción».
 
 ## 9. ¿Dice de quién habla?
 
@@ -142,5 +212,11 @@ Una pantalla nueva o cambiada se revisa contra eso:
 - [ ] Capturada a 1280, y a 768/414 si tiene tablas.
 - [ ] Estado vacío, de carga y de error vistos (apagar la red del navegador o forzar un id inexistente).
 - [ ] Los números que repite otra pantalla, comparados con ella.
+- [ ] **Ninguna cifra dicha dos veces en la misma pantalla sin motivo**: recorrer de arriba abajo
+      tachando cada cifra que ya apareció (indicadores contra el total de la tabla, lo plegado
+      contra lo de arriba, un mes contra «desde el inicio»). El verificador ve tres repeticiones;
+      dos las ve quien mira.
+- [ ] Probada con datos que la base todavía no tiene (dos meses, un fallo, una persona sin
+      deuda), interceptando la respuesta en el navegador (`recorrido-qa.md`).
 - [ ] `npm run lint` y `npm run build`.
 - [ ] Dicho en el informe **qué se vio y qué no**.

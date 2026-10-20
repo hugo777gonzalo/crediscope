@@ -406,6 +406,43 @@ aceptada.
          botón en la cabecera de una consulta vencida, su cuadro (sin confirmar)
          y Costos › Equifax; el verificador de UX, sin hallazgos después de
          oscurecer el texto de la etiqueta ámbar (daba 4,42:1).
+       - **Revisión de UX del 2026-10-18** (habilidad `revision-ux`, a 1280, 768,
+         414 y 360, sesión de QA): se sacó lo repetido y se mejoró la lectura.
+         - Pestaña Equifax: la tabla de deuda ya no lleva fila de total (repetía
+           los indicadores: la misma deuda salía cinco veces), un sistema sin
+           deuda es una celda «Sin deuda», «Mora más larga hoy», la consulta
+           vencida dice cuándo venció, las operaciones se separan en «Como
+           titular» y «Lo que respalda de otras personas» y el sistema se muestra
+           sólo si hay más de uno. El reporte completo ya no repite el score ni el
+           nivel de sobreendeudamiento, «Cómo cambió en un año» es una tabla de
+           tres momentos, la «cuota financiera estimada» se sacó (es la cuota
+           estimada de hoy en 88 de 88 consultas), el RUC sale como oración y el
+           indicador de impacto económico dice que su escala no se conoce.
+         - Costos › Equifax: «Hoy» en lugar de «Desde el inicio» (que pasó a ser
+           el total de la tabla), la tabla mes a mes con dos meses o más y las
+           columnas de lo que pudo cobrarse sólo si hubo alguno. Probado con datos
+           inventados en el navegador (un mes anterior y un fallo): la base tiene
+           un solo mes.
+         - Configuración › Equifax y Aval: el motivo con etiqueta (el verificador
+           lo marcaba) y un error traducido en vez de `error.message`.
+         - Expediente › Auditoría: la descarga del PDF salía como
+           «exportacion.reporte_equifax»; se nombraron las ocho acciones que
+           faltaban y una desconocida dice «Otra acción».
+         - Capacidad de pago: con una sola deuda ya no lleva «Total por mes».
+         - Bajo 860 px la tira de pestañas muestra la activa (la del buró quedaba
+           fuera de la vista).
+         - El verificador marca desde ese día `cifra-repetida`.
+         **Lo que dijo el negocio el 2026-10-19:** (a) en Capacidad de pago la
+         cuota que ya paga sale en la frase del veredicto y en la leyenda del
+         medidor; propuesta: la leyenda dice «Ya paga» sin la cifra. **Lo valida
+         el negocio más adelante**: no se toca hasta entonces. (b) **Fuentes de
+         Ingreso de una persona hay que mejorarla** (pedido del negocio): con el
+         SBU, el verificador marca $482,00 en tres lugares (`cifra-repetida`).
+         Es el próximo frente de UX: recorrerla con la habilidad, sacar lo
+         repetido y mirar la legibilidad, como en Equifax. (c) Los nombres de las
+         instituciones de Equifax **se quedan como vienen** (decidido; anotado en
+         la terminología de la habilidad). (d) No se vio el estado sin consulta
+         ni la vista de un analista (la cuenta de QA es admin): no cambiaron.
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,

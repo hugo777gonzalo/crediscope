@@ -2875,6 +2875,13 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* `.crediscope-table th` alinea a la izquierda y pesa más que la clase sola:
+   el encabezado de una columna de cifras quedaba corrido de sus números
+   (Costos › Equifax, 2026-10-18). */
+.crediscope-table th.crediscope-cifra {
+  text-align: right;
+}
+
 /* Valor de una fila del explorador de Reportes: la clase se usaba en el JSX
    y nunca tuvo regla. */
 .crediscope-eje-valor {
@@ -3156,8 +3163,27 @@ a {
   color: var(--text-muted);
 }
 
+/* A la izquierda, debajo de «Deuda»: centrada, en un teléfono la tabla se
+   desliza y el texto quedaba fuera de la vista. */
+.crediscope-equifax-tabla td.crediscope-equifax-sin-deuda {
+  text-align: left;
+  font-size: 13px;
+}
+
 .crediscope-equifax-fila-ajena th,
 .crediscope-equifax-fila-ajena td {
+  background: var(--panel-muted);
+}
+
+/* El corte entre lo propio y lo que respalda de otras personas, en la tabla
+   de operaciones: una fila que lo dice una vez. */
+.crediscope-equifax-tabla tr.crediscope-equifax-grupo th {
+  padding-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
   background: var(--panel-muted);
 }
 
@@ -3184,9 +3210,11 @@ a {
 }
 
 /* Cómo pagó: cuatro cifras y la franja de 24 meses. */
+/* De a 4, o de a 2 en un teléfono: con 150 px de mínimo, a 414 iban de a una
+   y las cuatro cifras ocupaban una pantalla entera (2026-10-18). */
 .crediscope-equifax-resumen-pagos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px 16px;
   margin: 0 0 16px;
 }
@@ -3273,13 +3301,24 @@ a {
 /* El reporte completo: tarjetas de datos en grilla. */
 .crediscope-equifax-reporte {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  /* min(): en una pantalla de menos de 360 px, 320 fijos desbordaban la página. */
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 16px;
   margin-top: 16px;
 }
 
 .crediscope-equifax-reporte > .crediscope-card {
   margin-bottom: 0;
+}
+
+.crediscope-equifax-evolucion th[scope="row"] {
+  font-weight: 500;
+}
+
+.crediscope-equifax-evolucion-nota {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .crediscope-equifax-datos {

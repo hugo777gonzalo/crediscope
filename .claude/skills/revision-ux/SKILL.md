@@ -52,6 +52,13 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
    desborde horizontal.
 4. **Mirar la pantalla** (no sólo el texto): `resize_window` a 1280x800 y capturá; repetí a
    768 y 414 si la pantalla es nueva o tiene tablas. Criterios en `criterios.md`.
+   **Leela de arriba abajo tachando cada cifra que ya apareció**: un indicador y el total de
+   la tabla de abajo, lo plegado y lo de arriba, «este mes» y «desde el inicio» con un solo
+   mes. La revisión de Equifax del 2026-10-18 encontró la deuda cinco veces en una pantalla
+   que había pasado el verificador sin hallazgos; desde ese día el verificador marca
+   `cifra-repetida` (tres lugares o más), pero dos repeticiones las ve sólo quien lee.
+   Si un dato no está en la base (un segundo mes, un fallo), probalo interceptando la
+   respuesta en la página (`recorrido-qa.md`).
 5. **Corregir.** Lo que es regla (término retirado, formato, pieza compartida) se
    corrige sin preguntar. **Un nombre nuevo o distinto del que el negocio eligió
    se propone con 2-3 opciones**: ver `terminologia.md`.
@@ -79,6 +86,12 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
 - **Tres estados siempre**: cargando (`Cargando`), vacío (qué falta y qué hacer) y
   error (`AvisoDeError`, con "Reintentar" si se arregla esperando).
 - **Los huecos se dicen**: un dato que no se midió es "No medido", nunca `0` ni vacío.
+- **Cada cifra, una vez por pantalla.** Indicadores arriba = sin fila de total abajo; un
+  desglose de un solo elemento no lleva total; lo plegado no repite lo de arriba; un vacío
+  se dice en una celda, no en cinco ceros. Casos y porqué: `criterios.md`, sección 4.
+- **Lo que manda un proveedor se adapta al leerlo**, no se guarda reescrito: mayúsculas como
+  oración con las siglas a salvo, pares «a / b» en una tabla, y una ayuda cuando su escala
+  no se conoce (`criterios.md`, 4 bis).
 - **Sin datos de personas reales en pantallas capturadas, commits, chat ni documentos.**
   El verificador enmascara los números de 7 dígitos o más; un caso real se cita `c-xxxxxxxx`.
 - **No escribir contraseñas.** Si la sesión de QA caducó, se le pide a la persona que
