@@ -2390,6 +2390,20 @@ a {
   color: var(--text-muted);
 }
 
+/* En un teléfono el rótulo y lo que trae no entraban en una línea: «Ver
+   detalle completo» se partía en dos renglones al lado de la lista
+   (Fuentes de Ingreso a 414, 2026-10-19). Lo que trae baja a su renglón. */
+@media (max-width: 560px) {
+  .crediscope-aval-boton-reporte {
+    flex-wrap: wrap;
+  }
+
+  .crediscope-aval-boton-reporte small {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
 /* Mampostería con columnas: las tarjetas del reporte total tienen alturas
    muy distintas (3 filas contra 10), y una grilla por filas dejaba huecos
    del alto de la más larga. */
@@ -2538,6 +2552,21 @@ a {
   transition: opacity 0.12s;
   pointer-events: none;
   z-index: 5;
+}
+
+/* El globo centrado sobre las barras de los extremos salía de la tarjeta, y
+   aunque esté oculto cuenta para el ancho: con «2 empleadores» en el último
+   mes la página se desplazaba 6 px a lo ancho a 1280 (2026-10-19). En los
+   extremos se apoya en el borde de su barra. */
+.crediscope-ing-columna:nth-child(-n + 4) .crediscope-ing-globo {
+  left: 0;
+  transform: none;
+}
+
+.crediscope-ing-columna:nth-last-child(-n + 4) .crediscope-ing-globo {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 .crediscope-ing-columna:hover .crediscope-ing-globo {

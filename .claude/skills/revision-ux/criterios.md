@@ -95,6 +95,22 @@ más común (`cifra-repetida`: el mismo monto en tres lugares); el resto se mira
 - **El estado no repite lo que dice el botón de al lado.** «Vencida: volver a consultar se
   cobra» junto al botón «Volver a consultar» (que ya pide confirmar porque se cobra) pasó a
   «Venció el 17/10/2026»: el lugar se usa para un dato nuevo, la fecha.
+- **Una sola fuente es el total.** Si el encabezado dice el ingreso y quién lo declara, la
+  lista de fuentes con una sola fila no repite el monto ni las etiquetas: dice de qué empleo
+  sale. En Fuentes de Ingreso de una persona pasaba en 1.607 de 1.713 personas con monto
+  (2026-10-19). Con dos o más, cada fila lleva su monto: ahí es el desglose.
+- **Una cifra igual a la de arriba se dice con palabras.** El promedio de 6 meses era el mismo
+  ingreso del encabezado en 1.093 de 1.713 personas: «Igual al actual» dice lo que importa
+  (no varió) sin repetir el número, que queda en la ayuda. Igual con una duración («Empleo más
+  largo registrado: El actual») y con otro registro que coincide («Igual que en los aportes»:
+  que el mecanizado y los aportes digan lo mismo también es un dato).
+- **Lo que no se ve también desborda.** Un globo oculto (`visibility: hidden`) centrado sobre
+  la última barra de un gráfico cuenta para el ancho: la página se desplazaba 6 px a 1280. En
+  los extremos se apoya en el borde de su barra.
+- **Una pregunta de sí o no no repite el dato de la tarjeta de al lado.** «¿Tiene actividad
+  propia? Sí, desde 2015» junto a «RUC activo desde 2015», «¿Tiene empleados? 4» junto a
+  «Empleados 4», y un plegado con el empleador y el monto que ya eran la lista de aportes: la
+  respuesta es «Sí» y el dato vive en un solo lugar.
 - **Contar separado lo que se parece.** «28 operaciones» en una tarjeta y «15 operaciones» en
   la de al lado parecían contradecirse: «15 como titular · 13 como codeudor o garante».
 

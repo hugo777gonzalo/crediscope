@@ -2,6 +2,7 @@ import { Activity, TrendingUp, TrendingDown } from "lucide-react";
 import { TituloTarjeta, Cifra } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 import { duracionLegible, mesLegible, mesesHasta } from "../../lib/ingresosCampos.js";
+import { entero } from "../../lib/formatos.js";
 
 // Qué tan sostenido es el ingreso: cuánto lleva en el empleo, si aporta
 // todos los meses o con huecos, y si el sueldo reportado sube o baja. Un
@@ -104,6 +105,7 @@ export default function Estabilidad({ f, laboral }) {
   const d = f.detalle ?? null;
   const promedio6 = d?.promedioUltimos6 ?? laboral?.ingresoPromedioUltimos6Meses ?? null;
   const continuidad = d ? d.continuidadLaboral : undefined;
+  const promedioIgualAlActual = Boolean(promedio6) && Math.round(promedio6 * 100) === Math.round((f.pisoIngresoMensualReportado ?? 0) * 100);
 
   return (
     <div className="crediscope-card">
@@ -121,9 +123,15 @@ export default function Estabilidad({ f, laboral }) {
         >
           {duracionLegible(laboral?.antiguedadEmpleoActualMeses)}
         </Cifra>
-        <Cifra etiqueta="Empleo más largo registrado">{duracionLegible(laboral?.duracionEmpleoMasLargoMeses)}</Cifra>
+        {/* Cuando el empleo más largo es el actual, las dos cifras de al lado
+            eran la misma duración. */}
+        <Cifra etiqueta="Empleo más largo registrado">
+          {laboral?.duracionEmpleoMasLargoMeses != null && laboral.duracionEmpleoMasLargoMeses === laboral.antiguedadEmpleoActualMeses
+            ? "El actual"
+            : duracionLegible(laboral?.duracionEmpleoMasLargoMeses)}
+        </Cifra>
         <Cifra etiqueta="Empleadores en 2 años">
-          {laboral?.numeroEmpleadoresUltimos24Meses ?? "—"}
+          {entero(laboral?.numeroEmpleadoresUltimos24Meses)}
         </Cifra>
         {d ? (
           <Cifra etiqueta="Meses con aporte, último año">
@@ -132,8 +140,19 @@ export default function Estabilidad({ f, laboral }) {
             </span>
           </Cifra>
         ) : null}
-        <Cifra etiqueta="Promedio declarado, 6 meses" titulo="Promedio de los meses con aporte. Es lo reportado al IESS, igual que el del corte.">
-          {promedio6 ? formatearValorAval(promedio6, "dinero") : "—"}
+        {/* En 1.093 de las 1.713 personas con monto (medido el 2026-10-19) el
+            promedio es el mismo ingreso del encabezado: dicho con palabras,
+            la cifra no se repite y lo que importa -- que no varió -- se lee
+            igual. */}
+        <Cifra
+          etiqueta="Promedio declarado, 6 meses"
+          titulo={
+            promedioIgualAlActual
+              ? `Promedio de los meses con aporte: ${formatearValorAval(promedio6, "dinero")}, lo mismo que el ingreso reportado al IESS del encabezado.`
+              : "Promedio de los meses con aporte. Es lo reportado al IESS, igual que el del encabezado."
+          }
+        >
+          {promedioIgualAlActual ? "Igual al actual" : promedio6 ? formatearValorAval(promedio6, "dinero") : "—"}
         </Cifra>
         {d ? (
           <Cifra etiqueta="Frente a hace un año" titulo={d.totalHace12Meses ? `Hace 12 meses: ${formatearValorAval(d.totalHace12Meses, "dinero")}` : "Sin aporte hace 12 meses"}>

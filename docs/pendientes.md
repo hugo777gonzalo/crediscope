@@ -466,10 +466,27 @@ aceptada.
          cuota que ya paga sale en la frase del veredicto y en la leyenda del
          medidor; propuesta: la leyenda dice «Ya paga» sin la cifra. **Lo valida
          el negocio más adelante**: no se toca hasta entonces. (b) **Fuentes de
-         Ingreso de una persona hay que mejorarla** (pedido del negocio): con el
-         SBU, el verificador marca $482,00 en tres lugares (`cifra-repetida`).
-         Es el próximo frente de UX: recorrerla con la habilidad, sacar lo
-         repetido y mirar la legibilidad, como en Equifax. (c) Los nombres de las
+         Ingreso de una persona: hecho el 2026-10-19** (habilidad `revision-ux`,
+         a 1280, 768 y 414, con una persona con el SBU, una con ingresos mixtos
+         y una independiente; el verificador sin hallazgos con el detalle
+         cerrado y abierto, salvo la versión de las reglas en «Cómo se
+         clasificó», que es su lugar). Medido en la base: en 1.607 de las
+         1.713 personas con monto hay una sola fuente, y la fila de los aportes
+         repetía el monto, quién lo declara y el SBU del encabezado; en 1.093
+         el promedio de 6 meses era ese mismo ingreso. Ahora la fila dice de
+         qué empleo sale, el promedio dice «Igual al actual», el empleo más
+         largo «El actual» cuando lo es, Clasificación ya no repite el
+         empleador con su monto, el año del RUC ni los empleados de la tarjeta
+         de al lado, y el detalle no repite los locales del SRI, el RUC activo,
+         los establecimientos ni el mes del IESS, y dice «Igual que en los
+         aportes» cuando el mecanizado coincide. Se corrigieron «Sí, 0
+         empleos» (militar o policía en servicio), un desborde de 6 px a 1280
+         (el globo del último mes del gráfico) y el botón del detalle en un
+         teléfono. **Se dejó a propósito** la tarjeta del indicio de ingreso
+         mayor, que repite la nómina, los empleados y lo declarado: son los
+         datos que lo sostienen, lado a lado (negocio, 2026-09-28). **No se
+         vio**: una persona sin consulta, un perfil anterior a fuentes-v4 ni
+         la vista de un analista. (c) Los nombres de las
          instituciones de Equifax **se quedan como vienen** (decidido; anotado en
          la terminología de la habilidad). (d) No se vio el estado sin consulta
          ni la vista de un analista (la cuenta de QA es admin): no cambiaron.

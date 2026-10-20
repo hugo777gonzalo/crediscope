@@ -2,9 +2,9 @@ import { Landmark, Check, X } from "lucide-react";
 import { TituloTarjeta } from "../reporte/Piezas.jsx";
 import { formatearValorAval } from "../../lib/avalCampos.js";
 import { quienDeclara } from "../../lib/fuentesIngresoConsolidado.js";
-import { origenDeFuente, ETIQUETA_ORIGEN, mesLegible, esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
+import { origenDeFuente, ETIQUETA_ORIGEN, esIngresoMinimoSbu, INGRESO_MINIMO_SBU } from "../../lib/ingresosCampos.js";
 import { tamanoDelNegocio } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
-import { humanizarTexto } from "../../lib/formatos.js";
+import { humanizarTexto, plural, entero } from "../../lib/formatos.js";
 
 // Cuatro bloques, por de dónde sale cada cosa: los aportes al IESS (con
 // monto), el negocio propio registrado en el SRI, el tamaño de ese negocio
@@ -24,8 +24,23 @@ function capitalizar(t) {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
-function Aporte({ fuente, perfil, corte }) {
+// `esElTotal`: la única fuente con monto, que ya es el ingreso del
+// encabezado. Ahí ya se leen el monto, quién lo declara y si es el SBU: en
+// 1.607 de las 1.713 personas con monto (medido el 2026-10-19) esta fila los
+// repetía, y con el promedio de 6 meses el SBU salía tres veces. La fila
+// queda para decir de qué empleo sale.
+function Aporte({ fuente, perfil, corte, esElTotal }) {
   const enElSbu = esIngresoMinimoSbu(fuente.montoMensualReportado, corte);
+  if (esElTotal) {
+    return (
+      <li className="crediscope-ing-fuente" title={humanizarTexto(fuente.detalle)}>
+        <div style={{ minWidth: 0 }}>
+          <strong>{capitalizar(fuente.tipo)}</strong>
+          {fuente.empleador ? <span className="crediscope-ing-fuente-sub">{fuente.empleador}</span> : null}
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="crediscope-ing-fuente">
       <div style={{ minWidth: 0 }}>
@@ -83,6 +98,9 @@ export default function FuentesVigentes({ f, perfil }) {
   const laboral = perfil?.laboral ?? {};
   const fuentes = f.fuentes ?? [];
   const delIess = fuentes.filter((x) => origenDeFuente(x) === "iess");
+  // Las que suman al ingreso del encabezado (la misma regla que su
+  // «Declarado por»).
+  const conMonto = fuentes.filter((x) => x.evidencia !== "indirecta" && x.montoMensualReportado);
   // El RUC y la nómina ya están en "Negocio propio" y "Tamaño del negocio":
   // repetirlos como fuentes sin monto era leer lo mismo dos veces.
   const otras = fuentes.filter((x) => !["iess", "ruc", "nomina"].includes(origenDeFuente(x)));
@@ -101,13 +119,12 @@ export default function FuentesVigentes({ f, perfil }) {
       <TituloTarjeta Icono={Landmark}>Fuentes de Ingreso</TituloTarjeta>
 
       <section className="crediscope-aval-subseccion">
-        <p className="crediscope-aval-subtitulo">
-          Aportes al IESS <small>· {mesLegible(f.corteIessUsado)}</small>
-        </p>
+        {/* El mes de la información del IESS ya está en el encabezado. */}
+        <p className="crediscope-aval-subtitulo">Aportes al IESS</p>
         {delIess.length === 0 ? (
           <p className="crediscope-muted" style={{ margin: 0, fontSize: 13 }}>
             {f.cortesDesdeLaDesvinculacion
-              ? `Sin aportes en el último corte. Dejó de aportar hace ${f.cortesDesdeLaDesvinculacion} ${f.cortesDesdeLaDesvinculacion === 1 ? "mes" : "meses"}.`
+              ? `Sin aportes en el último corte. Dejó de aportar hace ${plural(f.cortesDesdeLaDesvinculacion, "mes", "meses")}.`
               : f.segmento === "sin_datos"
                 ? "La fuente de los aportes no respondió: no se sabe si aporta."
                 : "No registra aportes al IESS."}
@@ -115,7 +132,7 @@ export default function FuentesVigentes({ f, perfil }) {
         ) : (
           <ul className="crediscope-aval-filas">
             {delIess.map((x, i) => (
-              <Aporte key={i} fuente={x} perfil={perfil} corte={f.corteIessUsado} />
+              <Aporte key={i} fuente={x} perfil={perfil} corte={f.corteIessUsado} esElTotal={conMonto.length === 1 && conMonto[0] === x} />
             ))}
           </ul>
         )}
@@ -147,13 +164,13 @@ export default function FuentesVigentes({ f, perfil }) {
               pie={tamano.empleadosSinContarALaPersona ? "sin contar a la persona" : "puede incluir a la persona"}
               titulo="Afiliados al IESS en la nómina que paga, en el mes más reciente."
             >
-              {tamano.empleados ?? "—"}
+              {entero(tamano.empleados)}
             </Indicador>
             <Indicador etiqueta="Nómina" pie={tamano.nomina ? "al mes" : null}>
               {tamano.nomina ? formatearValorAval(tamano.nomina, "dinero") : "—"}
             </Indicador>
             <Indicador etiqueta="Establecimientos Activos (SRI)" titulo="Sólo los abiertos, y 0 si el RUC no está activo.">
-              {tamano.establecimientosActivos}
+              {entero(tamano.establecimientosActivos)}
             </Indicador>
             <Indicador
               etiqueta="Contabilidad"
