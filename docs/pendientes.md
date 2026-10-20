@@ -494,11 +494,16 @@ aceptada.
          continuidad en 35 de 1.644 personas; ahora usa `reglaDeTrabajo()`, la
          regla de la continuidad (detalle en `docs/estructura-estandarizada.md`).
          La pantalla explica el descalce en los perfiles armados antes, hasta
-         reconsultar. **Falta**: desplegar las funciones y recalcular los
-         perfiles con `recalcular-grupos.mjs --grupos=laboral
-         --carpeta=research/novadata-raw-2026-10-03` (`--seco` primero); los
-         consultados después del 03/10 no tienen crudo local y quedan en v13
-         hasta reconsultarlos. **Para el marco** (cuando se toque, al final): su
+         reconsultar. **Desplegada el 2026-10-20** (funciones en f09531e, 10 de
+         10 confirmadas) y **recalculados 2.561 perfiles** con
+         `recalcular-grupos.mjs --grupos=laboral
+         --carpeta=research/novadata-raw-2026-10-03` (2.561 de 2.561, 0 que el
+         crudo no reproduzca). Medido después: 0 descalces en v14; quedan 10
+         últimos perfiles en v13 (consultados después del 03/10, sin crudo
+         local), 1 con descalce, que la pantalla explica hasta reconsultarlo.
+         **Queda abierto**: `duracionEmpleoMasLargoMeses` sigue sin la regla
+         (cuenta el aporte propio desde la fecha de ingreso), así que el empleo
+         más largo puede ser el mismo empleo actual con más meses. **Para el marco** (cuando se toque, al final): su
          texto dice que `antiguedadEmpleoActualMeses` null es un empleo de menos
          de 3 meses o sin dato reciente; desde v14 también es «su afiliación
          vigente no es trabajo» (37 de 2.567 perfiles). (c) Los nombres de las
