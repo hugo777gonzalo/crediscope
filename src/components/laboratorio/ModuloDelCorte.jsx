@@ -40,7 +40,7 @@ function recordarCorte(id) {
   }
 }
 
-export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacionPorDefecto = "operaciones" }) {
+export default function ModuloDelCorte({ titulo, pestanas, poblacionPorDefecto = "operaciones" }) {
   const [params, setParams] = useSearchParams();
   const [cortes, setCortes] = useState(null);
   const [corte, setCorte] = useState(null);
@@ -84,6 +84,7 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
     return (
       <div className="crediscope-card">
         <h2 style={{ marginTop: 0 }}>{titulo}</h2>
+        {/* revisar-textos: permitir subtitulo-de-pagina -- estado vacío */}
         <p className="crediscope-muted">Todavía no hay cortes: un corte congela una población para analizarla.</p>
         <Link className="crediscope-btn" to="/laboratorio/cortes/nuevo">Nuevo corte</Link>
       </div>
@@ -123,7 +124,6 @@ export default function ModuloDelCorte({ titulo, descripcion, pestanas, poblacio
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>{titulo}</h2>
-          {descripcion ? <p className="crediscope-muted" style={{ margin: 0, maxWidth: "75ch" }}>{descripcion}</p> : null}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <label className="crediscope-muted" style={{ fontSize: 13 }}>

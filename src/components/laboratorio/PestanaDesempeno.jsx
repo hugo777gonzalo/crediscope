@@ -1,4 +1,5 @@
 import { Kpi, Advertencias, Barra, num, pct, dec } from "./Comunes.jsx";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // Desempeño del modelo sobre un corte (diseño, 7.1). Los números los
 // calcula desempenoDelCorte() (resultadosDelCorte.js); acá sólo se
@@ -38,10 +39,7 @@ export default function PestanaDesempeno({ resultado }) {
 
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Tasa de impago por recomendación</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Aprobar y revisar cuentan como aprobados por el motor. Lo que cuesta cada error: un <strong>aprobado que cayó</strong> es
-          capital perdido; un <strong>negado que habría pagado</strong> es negocio perdido.
-        </p>
+        <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>Aprobar y revisar cuentan como aprobados</p>
         <table className="crediscope-table">
           <thead>
             <tr>
@@ -69,8 +67,8 @@ export default function PestanaDesempeno({ resultado }) {
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Tasa de impago por tramo de score</h3>
         <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Tiene que bajar a medida que sube el score. Si no baja, el score no ordena, diga lo que diga el AUC. Sin los negados
-          por bloqueo (su score lo fuerza la política).
+          Sin los negados por bloqueo
+          <InfoTooltip etiqueta="Por qué se dejan afuera">Su score lo fuerza la política.</InfoTooltip>
         </p>
         {(r.por_tramo ?? []).map((t) => (
           <Barra

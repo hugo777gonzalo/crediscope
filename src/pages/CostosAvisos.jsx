@@ -6,6 +6,7 @@ import { money2, fechaHora } from "../lib/consumoLlm.js";
 import { entero, humanizarTexto, mesAnio } from "../lib/formatos.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Avisos: el canal por donde sale la noticia de que algo pasa, y el
 // único incidente que se puede anticipar.
@@ -117,9 +118,6 @@ export default function CostosAvisos() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Avisos</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Por dónde sale la noticia de que algo pasa, y el único problema que se puede anticipar en vez de sufrir.
-        </p>
       </div>
 
       <div className="crediscope-card" style={{ borderColor: hayCanal ? "var(--good)" : "var(--warn)" }}>
@@ -133,7 +131,8 @@ export default function CostosAvisos() {
             <h3 style={{ margin: "0 0 6px" }}>{hayCanal ? "Canal de aviso configurado" : "No hay canal de aviso"}</h3>
             {hayCanal ? (
               <p className="crediscope-muted" style={{ margin: 0 }}>
-                Los avisos salen por mensajería instantánea. Último chequeo del vigía: {fechaHora(canal?.ultimo_chequeo)}.
+                Último chequeo del vigía: {fechaHora(canal?.ultimo_chequeo)}.
+                <InfoTooltip etiqueta="Por dónde salen los avisos">Los avisos salen por mensajería instantánea.</InfoTooltip>
               </p>
             ) : (
               <>
@@ -155,11 +154,10 @@ export default function CostosAvisos() {
         <h3 style={{ marginTop: 0 }}>
           <Wallet size={17} style={{ marginRight: 7, verticalAlign: "-3px" }} />
           Presupuesto del mes
+          <InfoTooltip etiqueta="Cuándo avisa el vigía">
+            Con un presupuesto definido, el vigía avisa al {umbrales.join("%, ")}% antes de que el servicio se pare.
+          </InfoTooltip>
         </h3>
-        <p className="crediscope-muted" style={{ marginTop: 0 }}>
-          El tope de consumo es el único incidente que se ve venir. Con un presupuesto definido, el vigía avisa al{" "}
-          {umbrales.join("%, ")}% antes de que el servicio se pare.
-        </p>
 
         <form onSubmit={guardarPresupuesto} className="crediscope-descarga-row" style={{ marginTop: 0, alignItems: "flex-end" }}>
           <div className="crediscope-descarga-campo" style={{ maxWidth: 220 }}>
@@ -227,10 +225,6 @@ export default function CostosAvisos() {
 
       <div className="crediscope-card">
         <h3>Avisos emitidos</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0 }}>
-          Uno por hecho, nunca dos. Con reintentos, una caída de diez minutos genera decenas de errores; decenas de mensajes
-          garantizan que se dejen de leer.
-        </p>
         {!avisos ? (
           <Cargando />
         ) : avisos.length === 0 ? (

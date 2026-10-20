@@ -32,7 +32,6 @@ export default function LaboratorioEstadistica() {
   return (
     <ModuloDelCorte
       titulo="Descubrimiento estadístico"
-      descripcion="¿Qué anticipa el impago? Descriptivas, distribuciones, faltantes, correlaciones, pruebas y valor de información de cada variable del perfil."
       pestanas={PESTANAS_ESTADISTICA}
       poblacionPorDefecto="solicitudes"
     />

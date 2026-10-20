@@ -35,7 +35,7 @@ export default function PestanaMatriz({ resultado }) {
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Lo que recomendó el motor contra lo que pasó</h3>
         <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Sólo los créditos que la institución desembolsó: de los demás, el archivo no dice nada. {num(r.n)} operaciones, {num(r.n_malos)} malos.
+          Sólo créditos desembolsados · {num(r.n)} operaciones · {num(r.n_malos)} malos
         </p>
         <div style={{ overflowX: "auto" }}>
           <table className="crediscope-table">

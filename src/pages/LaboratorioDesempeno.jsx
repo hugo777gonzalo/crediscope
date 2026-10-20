@@ -53,7 +53,6 @@ export default function LaboratorioDesempeno() {
   return (
     <ModuloDelCorte
       titulo="Prueba retrospectiva y desempeño"
-      descripcion="¿El motor ordena bien a buenos y malos? Discriminación, umbrales, cosechas, segmentos, calibración y estabilidad sobre un corte congelado."
       pestanas={PESTANAS_DESEMPENO}
       poblacionPorDefecto="operaciones"
     />

@@ -124,10 +124,6 @@ export default function LaboratorioDatos() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>Datos y cartera</h2>
-          <p className="crediscope-muted" style={{ margin: 0, maxWidth: "75ch" }}>
-            Lo que entra al Laboratorio: las cargas de la institución, la calidad y la conciliación con lo que analizamos, y las poblaciones
-            congeladas sobre las que trabajan los otros módulos.
-          </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link className="crediscope-btn" to="/laboratorio/cargas/nueva">

@@ -3,6 +3,7 @@ import { useFilasDelCorte } from "../../lib/useFilasDelCorte.js";
 import { decisionesDeLaInstitucion, DECISIONES } from "../../lib/analisisRetrospectivo.js";
 import { MensajeError, Cargando, SinGuardar, ETIQUETA_RECOMENDACION, num, pct } from "./Comunes.jsx";
 import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // Lo que decidió la institución con cada recomendación del motor (101: la
 // hoja "Solicitudes no desembolsadas" del archivo). Responde a "¿qué pasa
@@ -55,11 +56,14 @@ export default function PestanaDecisionInstitucion({ corteId }) {
       </div>
 
       <div className="crediscope-card" style={{ overflowX: "auto" }}>
-        <h3 style={{ marginTop: 0 }}>¿Cómo le fue a cada grupo?</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Tasa de malos según la reconsulta del buró, entre quienes se pudieron observar (los que tuvieron crédito con alguien). Para quien la
-          institución no desembolsó, el resultado sale del crédito de otra institución o de lo que ya tenía.
-        </p>
+        <h3 style={{ marginTop: 0 }}>
+          ¿Cómo le fue a cada grupo?
+          <InfoTooltip etiqueta="De dónde sale la tasa">
+            Tasa de malos según la reconsulta del buró, entre quienes se pudieron observar (los que tuvieron crédito con
+            alguien). Para quien la institución no desembolsó, el resultado sale del crédito de otra institución o de lo que ya
+            tenía.
+          </InfoTooltip>
+        </h3>
         <table className="crediscope-table">
           <thead>
             <tr>

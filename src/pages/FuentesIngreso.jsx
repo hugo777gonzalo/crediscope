@@ -14,6 +14,7 @@ import Kpi from "../components/ui/Kpi.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import Barra from "../components/ui/Barra.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 import { entero, humanizarTexto } from "../lib/formatos.js";
 
 // Panorama de fuentes de ingreso sobre toda la cartera consultada.
@@ -48,9 +49,6 @@ export default function FuentesIngreso() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>Fuentes de Ingreso</h2>
-          <p className="crediscope-muted" style={{ margin: 0 }}>
-            De qué vive cada persona consultada y qué tan evidenciado está.
-          </p>
         </div>
         <Link className="crediscope-btn crediscope-btn-ghost" to="/fuentes/reglas">
           Ver reglas de clasificación
@@ -106,16 +104,21 @@ export default function FuentesIngreso() {
             </div>
 
             <div className="crediscope-card">
-              <h3>Qué tan firme es cada clasificación</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Confirmado por un tercero: un empleador declara y paga sobre esa base. Por confirmar: el monto lo puso la propia
-                persona o no existe.
-              </p>
+              <h3>
+                Qué tan firme es cada clasificación
+                <InfoTooltip etiqueta="Qué significa cada estado">
+                  Confirmado por un tercero: un empleador declara y paga sobre esa base. Por confirmar: el monto lo puso la propia
+                  persona o no existe.
+                </InfoTooltip>
+              </h3>
               {d.estados.map((e) => (
                 <Barra key={e.clave} etiqueta={ETIQUETA_ESTADO[e.clave] ?? e.clave} n={e.n} pct={e.pct} color={COLOR_ESTADO[e.clave]} enlace={`/fuentes/clientes?estado=${e.clave}`} />
               ))}
 
-              <h3 style={{ marginTop: 20 }}>Calidad de la evidencia</h3>
+              <h3 style={{ marginTop: 20 }}>
+                Calidad de la evidencia
+                <InfoTooltip etiqueta="Qué se cuenta acá">Cuenta fuentes, no personas: alguien con dos empleos aporta dos.</InfoTooltip>
+              </h3>
               <table className="crediscope-table">
                 <tbody>
                   {d.evidencias.map((ev) => (
@@ -126,9 +129,6 @@ export default function FuentesIngreso() {
                   ))}
                 </tbody>
               </table>
-              <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-                Cuenta fuentes, no personas: alguien con dos empleos aporta dos.
-              </p>
             </div>
           </div>
 
@@ -138,10 +138,12 @@ export default function FuentesIngreso() {
               segmento -- que sigue a la fuente con monto -- no lo muestra. */}
           <div className="crediscope-reportes-grid">
             <div className="crediscope-card">
-              <h3>Perfil laboral de la cartera</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Dependiente: trabaja para un tercero. Actividad propia: RUC activo o paga nómina. Una persona puede ser las dos cosas.
-              </p>
+              <h3>
+                Perfil laboral de la cartera
+                <InfoTooltip etiqueta="Qué es actividad propia">
+                  Actividad propia: RUC activo o paga nómina. Una persona puede ser dependiente y tener actividad propia.
+                </InfoTooltip>
+              </h3>
               {(d.perfilesLaborales ?? []).map((p) => (
                 <Barra
                   key={p.clave}
@@ -154,11 +156,13 @@ export default function FuentesIngreso() {
             </div>
 
             <div className="crediscope-card">
-              <h3>Dependientes con actividad propia, por segmento</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                El segmento los muestra por su empleo, que es lo que trae monto. Acá se ve cuántos de cada segmento tienen además un
-                negocio o ejercen por su cuenta.
-              </p>
+              <h3>
+                Dependientes con actividad propia, por segmento
+                <InfoTooltip etiqueta="Por qué el segmento no los muestra">
+                  El segmento los muestra por su empleo, que es lo que trae monto. Acá se ve cuántos de cada segmento tienen
+                  además un negocio o ejercen por su cuenta.
+                </InfoTooltip>
+              </h3>
               <table className="crediscope-table">
                 <tbody>
                   {(d.dependientesConActividadPorSegmento ?? []).map((s) => (
@@ -178,11 +182,12 @@ export default function FuentesIngreso() {
               Los cuenta la base, sobre la columna indicios_ingreso. */}
           {d.indicios ? (
             <div className="crediscope-card">
-              <h3>Indicios de ingreso mayor</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Personas con un dato que muestra que sus ingresos superan lo que reportan al IESS. Sin un indicio así, lo reportado
-                es la mejor evidencia que hay.
-              </p>
+              <h3>
+                Indicios de ingreso mayor
+                <InfoTooltip etiqueta="Qué es un indicio">
+                  Personas con un dato que muestra que sus ingresos superan lo que reportan al IESS.
+                </InfoTooltip>
+              </h3>
               <Barra
                 etiqueta="Con algún indicio"
                 n={d.indicios.conAlguno}
@@ -209,20 +214,16 @@ export default function FuentesIngreso() {
 
           <div className="crediscope-card">
             <h3>Personas que necesitan respaldo ({entero(d.requierenRespaldoTotal)})</h3>
-            <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              Su segmento no está confirmado. Acá está qué pedirles para confirmarlo.
-              {/* Antes el título decía el total y la tabla cortaba en 40
-                  sin avisar. Ahora se dice cuántos se ven y dónde están
-                  los demás. */}
-              {d.requierenRespaldoTotal > d.requierenRespaldo.length ? (
-                <>
-                  {" "}
-                  Se muestran los {d.requierenRespaldo.length} más recientes; el resto está en{" "}
-                  <Link to="/fuentes/clientes?estado=provisional">Por confirmar</Link> y{" "}
-                  <Link to="/fuentes/clientes?estado=indeterminada">Sin determinar</Link>.
-                </>
-              ) : null}
-            </p>
+            {/* Antes el título decía el total y la tabla cortaba en 40
+                sin avisar. Ahora se dice cuántos se ven y dónde están
+                los demás. */}
+            {d.requierenRespaldoTotal > d.requierenRespaldo.length ? (
+              <p className="crediscope-muted" style={{ marginTop: 0 }}>
+                Se muestran los {d.requierenRespaldo.length} más recientes; el resto está en{" "}
+                <Link to="/fuentes/clientes?estado=provisional">Por confirmar</Link> y{" "}
+                <Link to="/fuentes/clientes?estado=indeterminada">Sin determinar</Link>.
+              </p>
+            ) : null}
             {d.requierenRespaldo.length === 0 ? (
               <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ninguna persona pendiente de respaldo.</p>
             ) : (

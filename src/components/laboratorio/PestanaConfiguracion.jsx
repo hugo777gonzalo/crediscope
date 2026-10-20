@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getTablasCalificacion, guardarTablaCalificacion, getDefiniciones, crearDefinicion, describirDefinicion } from "../../lib/laboratorio.js";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { MensajeError, Cargando, Etiqueta, num } from "./Comunes.jsx";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // La configuración del Laboratorio (decisión del negocio del 2026-10-06): la
 // tabla de calificación (categoría → días de mora) y las definiciones de
@@ -66,8 +67,13 @@ function TablaDeCalificacion({ filas, alGuardar }) {
       </div>
       <p className="crediscope-muted" style={{ fontSize: 13 }}>
         {borrador
-          ? "Se parte de la última versión. Cada categoría empieza el día siguiente al último de la anterior; A1 empieza en 0 y E va sin tope."
+          ? "Se parte de la última versión"
           : `${deLaVersion[0]?.fuente ?? ""}${deLaVersion[0] ? ` · cargada el ${formatearFechaHora(deLaVersion[0].created_at)}` : ""}`}
+        {borrador ? (
+          <InfoTooltip etiqueta="Cómo se arman las categorías">
+            Cada categoría empieza el día siguiente al último de la anterior; A1 empieza en 0 y E va sin tope.
+          </InfoTooltip>
+        ) : null}
       </p>
       <table className="crediscope-table">
         <thead>
@@ -143,11 +149,12 @@ function Definiciones({ definiciones, versiones, alCrear }) {
 
   return (
     <div className="crediscope-card">
-      <h3 style={{ marginTop: 0 }}>Definiciones de impago</h3>
-      <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-        Un corte elige una al congelarse. Una definición no se edita: se crea otra, y los cortes que ya se congelaron siguen con la suya. Nuevo
-        corte propone la más reciente.
-      </p>
+      <h3 style={{ marginTop: 0 }}>
+        Definiciones de impago
+        <InfoTooltip etiqueta="Cómo se usan las definiciones">
+          Una definición no se edita: se crea otra. Cada corte conserva la que eligió al congelarse.
+        </InfoTooltip>
+      </h3>
       {[...definiciones].reverse().map((d) => (
         <div key={d.id} style={{ padding: "8px 0", borderTop: "1px solid var(--border)" }}>
           <strong>{d.nombre}</strong> {d.id === masNueva ? <Etiqueta texto="la más reciente" color="var(--good)" /> : null}

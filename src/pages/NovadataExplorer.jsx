@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { exploreNovadata } from "../lib/api.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 function tagClass(status) {
   if (status === "ok") return "crediscope-tag-ok";
@@ -53,10 +54,6 @@ export default function NovadataExplorer() {
     <div>
       <div className="crediscope-card">
         <h2>Explorador de la fuente de datos</h2>
-        <p className="crediscope-muted">
-          Consulta en vivo las 52 fuentes mapeadas. No guarda nada — es sólo para inspeccionar lo que contesta cada fuente. La
-          contraseña no se persiste en ningún lado, se usa una sola vez para pedir el token.
-        </p>
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, maxWidth: 360, marginTop: 12 }}>
           <input
             className="crediscope-input"
@@ -65,14 +62,21 @@ export default function NovadataExplorer() {
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          <input
-            className="crediscope-input"
-            type="password"
-            placeholder="Contraseña de la fuente"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input
+              className="crediscope-input"
+              style={{ flex: 1, minWidth: 0 }}
+              type="password"
+              placeholder="Contraseña de la fuente"
+              aria-label="Contraseña de la fuente"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <InfoTooltip etiqueta="Qué pasa con la contraseña" lado="derecha">
+              No se guarda en ningún lado: se usa una sola vez para pedir el token. La consulta tampoco guarda nada.
+            </InfoTooltip>
+          </div>
           <input
             className="crediscope-input"
             placeholder="Cédula a consultar"

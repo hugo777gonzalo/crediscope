@@ -76,11 +76,13 @@ export default function CostosEquifax() {
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Equifax</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          Lo que se le paga a Equifax: {moneda(TARIFA_EQUIFAX_USD, 2)} por consulta (tarifa informada por el negocio el{" "}
-          {formatearFecha(`${TARIFA_EQUIFAX_DESDE}T12:00:00-05:00`)}; no es lo que se le cobra a la institución). Una
-          consulta que todavía vale (hasta el 17 de cada mes) se vuelve a usar sin pagar.
+          Tarifa {moneda(TARIFA_EQUIFAX_USD, 2)} por consulta
+          <InfoTooltip etiqueta="De dónde sale la tarifa">
+            Tarifa informada por el negocio el {formatearFecha(`${TARIFA_EQUIFAX_DESDE}T12:00:00-05:00`)}; no es lo que se le
+            cobra a la institución. Una consulta que todavía vale (hasta el 17 de cada mes) se vuelve a usar sin pagar.
+          </InfoTooltip>
           {d && d.total.dePrueba > 0
-            ? ` Las ${plural(d.total.dePrueba, "consulta", "consultas")} del ambiente de prueba no se cuentan.`
+            ? ` · ${plural(d.total.dePrueba, "consulta", "consultas")} de prueba, no cuentan`
             : ""}
         </p>
       </div>

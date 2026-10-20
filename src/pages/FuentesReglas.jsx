@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ETIQUETA_SEGMENTO, ETIQUETA_EVIDENCIA } from "../lib/fuentesIngresoConsolidado.js";
 import { FUENTES_INGRESO_VERSION } from "../../supabase/functions/_shared/fuentes-ingreso.ts";
 import Aviso from "../components/ui/Aviso.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Las reglas de clasificación, escritas para que las lea el área de
 // Riesgos y no un programador.
@@ -57,8 +58,10 @@ export default function FuentesReglas() {
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Reglas de clasificación</h2>
         <p className="crediscope-muted" style={{ margin: 0 }}>
-          Versión <strong>{VERSION_DOCUMENTADA}</strong>. Cada Perfil de la Persona guarda con qué versión se clasificó, así un
-          cambio de reglas no reescribe el pasado.
+          Versión <strong>{VERSION_DOCUMENTADA}</strong>
+          <InfoTooltip etiqueta="Qué hace la versión">
+            Cada Perfil de la Persona guarda con qué versión se clasificó, así un cambio de reglas no reescribe el pasado.
+          </InfoTooltip>
         </p>
       </div>
 

@@ -175,3 +175,95 @@ export function todosLosTextos(opciones) {
   }
   return { textos: resultado, fallos };
 }
+
+// ---- Texto explicativo bajo un título --------------------------------------
+// El negocio decidió el 2026-10-20 que las pantallas son para personal de
+// crédito capacitado: bajo un título no va una frase que diga qué hace la
+// pantalla ni qué es un concepto de crédito. Lo propio de CrediScope (de dónde
+// sale una cifra, qué se cobra, una regla nuestra) va en una etiqueta junto al
+// dato o en un InfoTooltip. Esto encuentra los párrafos que siguen a un
+// <h2>/<h3> para que el control y la revisión por pantalla los miren.
+
+const esEspacio = (n) => n.type === "JSXText" && n.value.trim() === "";
+const esComentario = (n) => n.type === "JSXExpressionContainer" && n.expression?.type === "JSXEmptyExpression";
+
+function nombreDe(el) {
+  const n = el?.openingElement?.name;
+  return n?.type === "JSXIdentifier" ? n.name : null;
+}
+
+function claseDe(el) {
+  const a = el?.openingElement?.attributes?.find((x) => x.name?.name === "className");
+  return a?.value?.type === "Literal" ? a.value.value : "";
+}
+
+// El tramo de texto fijo más largo del elemento, en palabras. Los datos
+// («Ventana de 12 meses · congelado el …») se cortan en cada expresión y en
+// cada «·», así que quedan debajo de la frase que explica.
+function palabrasDelTramoMasLargo(el) {
+  let mejor = 0;
+  const tramo = (texto) => {
+    for (const parte of texto.split("·")) {
+      const n = parte.trim().split(/\s+/).filter(Boolean).length;
+      if (n > mejor) mejor = n;
+    }
+  };
+  const recorrer = (nodo) => {
+    for (const h of nodo.children ?? []) {
+      if (h.type === "JSXText") tramo(h.value);
+      // La ayuda ⓘ es donde va lo que sí corresponde explicar: no cuenta.
+      else if (h.type === "JSXElement" && nombreDe(h) !== "InfoTooltip") recorrer(h);
+      else if (h.type === "JSXExpressionContainer" && h.expression?.type === "Literal" && typeof h.expression.value === "string") tramo(h.expression.value);
+    }
+  };
+  recorrer(el);
+  return mejor;
+}
+
+function textoDe(fuente, el) {
+  return fuente
+    .slice(el.start, el.end)
+    .replace(/<InfoTooltip\b[\s\S]*?<\/InfoTooltip>/g, " ⓘ ")
+    .replace(/\s+/g, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\{[^}]*\}/g, "{}")
+    .trim();
+}
+
+// [{ archivo, linea, titulo: "h2"|"h3", palabras, texto }]: cada párrafo (o
+// elemento «crediscope-muted») que sigue de inmediato a un título.
+export function parrafosBajoTitulos(rutaRelativa) {
+  const ruta = path.join(RAIZ, rutaRelativa);
+  const fuente = fs.readFileSync(ruta, "utf8");
+  const { program, errors } = parseSync(rutaRelativa, fuente, { lang: "jsx" });
+  if (errors?.length) return { hallazgos: [], errores: errors.map((e) => e.message) };
+  const ast = typeof program === "string" ? JSON.parse(program) : program;
+  const hallazgos = [];
+
+  const visitar = (nodo) => {
+    if (!nodo || typeof nodo !== "object") return;
+    if (Array.isArray(nodo)) { nodo.forEach(visitar); return; }
+    if ((nodo.type === "JSXElement" || nodo.type === "JSXFragment") && nodo.children) {
+      const hijos = nodo.children;
+      for (let i = 0; i < hijos.length; i++) {
+        const nivel = hijos[i].type === "JSXElement" ? nombreDe(hijos[i]) : null;
+        if (nivel !== "h2" && nivel !== "h3") continue;
+        let j = i + 1;
+        while (j < hijos.length && (esEspacio(hijos[j]) || esComentario(hijos[j]))) j++;
+        const sig = hijos[j];
+        if (sig?.type !== "JSXElement") continue;
+        if (nombreDe(sig) !== "p" && !claseDe(sig).includes("crediscope-muted")) continue;
+        hallazgos.push({
+          archivo: rutaRelativa,
+          linea: lineaDe(fuente, sig.start),
+          titulo: nivel,
+          palabras: palabrasDelTramoMasLargo(sig),
+          texto: textoDe(fuente, sig),
+        });
+      }
+    }
+    for (const k of Object.keys(nodo)) if (k !== "type" && k !== "start" && k !== "end") visitar(nodo[k]);
+  };
+  visitar(ast);
+  return { hallazgos, errores: [] };
+}

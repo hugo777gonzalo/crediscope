@@ -4,6 +4,7 @@ import { discriminacion } from "../../lib/analisisRetrospectivo.js";
 import { GraficoLineas, GraficoBarras } from "./Graficos.jsx";
 import { Kpi, MensajeError, Cargando, SinGuardar, num, pct, dec } from "./Comunes.jsx";
 import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
+import { plural } from "../../lib/formatos.js";
 
 // ¿El puntaje separa a buenos de malos? Las curvas de la decisión 2 (ROC,
 // KS, precisión y sensibilidad), la distribución del puntaje en cada clase
@@ -90,8 +91,11 @@ export default function PestanaDiscriminacion({ corteId, poblacion }) {
       <div className="crediscope-card" style={{ marginTop: 12 }}>
         <h3 style={{ marginTop: 0 }}>Tasa de malos por decil de score</h3>
         <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Diez grupos del mismo tamaño, del score más bajo al más alto. Si el motor ordena bien, la tasa baja decil a decil.{" "}
-          {rompen ? <strong style={{ color: "var(--warn)" }}>{rompen} decil(es) suben en vez de bajar.</strong> : <strong style={{ color: "var(--good)" }}>Baja en todos.</strong>}
+          {rompen ? (
+            <strong style={{ color: "var(--warn)" }}>{plural(rompen, "decil", "deciles")} {rompen === 1 ? "sube" : "suben"} en vez de bajar.</strong>
+          ) : (
+            <strong style={{ color: "var(--good)" }}>Baja en todos.</strong>
+          )}
         </p>
         <GraficoBarras
           categorias={deciles.map((d) => `${d.decil}.º`)}

@@ -80,7 +80,7 @@ export default function PestanaFaltantes({ corteId, poblacion }) {
         <div className="crediscope-card">
           <h3 style={{ marginTop: 0 }}>¿Faltan juntas?</h3>
           <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-            Correlación entre "falta esta" y "falta aquella": rojo, faltan a la vez (casi siempre, la misma fuente que no contestó o no tenía nada).
+            Rojo: faltan a la vez.
           </p>
           <MapaDeCalor filas={c.matriz.variables} columnas={c.matriz.variables} valor={(i, j) => c.matriz.valores[i][j]} etiqueta="Faltantes conjuntos" />
         </div>

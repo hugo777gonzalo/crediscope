@@ -6,6 +6,10 @@
 //   node scripts/revisar-textos.mjs --estricto          las advertencias también cortan (exit 1)
 //   node scripts/revisar-textos.mjs --inventario        vuelca todos los textos, uno por línea
 //   node scripts/revisar-textos.mjs --glosario          lista las reglas y por qué existen
+//   node scripts/revisar-textos.mjs --explicativos --archivo=src/pages/X.jsx
+//                                                       los textos que explican (párrafos bajo un
+//                                                       título, ayudas ⓘ, title) de una pantalla,
+//                                                       para revisarlos uno por uno
 //
 // Sale con 1 si hay un error (una palabra que el negocio retiró o una regla de
 // la casa rota). Las ADVERTENCIAS son lo que casi siempre está mal pero admite
@@ -21,7 +25,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { todosLosTextos, textosDeArchivo } from "./lib/textos-de-pantalla.mjs";
+import { todosLosTextos, textosDeArchivo, archivosDePantalla, parrafosBajoTitulos } from "./lib/textos-de-pantalla.mjs";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
 
@@ -71,10 +75,65 @@ export const REGLAS = [
   { id: "nombre-analisis", nivel: "aviso", patron: /\bAnálisis con ia\b|\bAnálisis IA\b|\bAnalisis con IA\b/, motivo: "Nombre de producto: «Análisis con IA».", cambiar: "Análisis con IA" },
 ];
 
+// Bajo el título de una página no va una frase que diga qué hace la pantalla
+// ni qué es un concepto de crédito (negocio, 2026-10-20: las pantallas son para
+// personal de crédito capacitado). Lo propio de CrediScope (de dónde sale una
+// cifra, qué se cobra, una regla nuestra) va en una etiqueta junto al dato o en
+// un InfoTooltip. Se mide por el tramo de texto fijo más largo del párrafo: una
+// línea de datos («Ventana de 12 meses · congelado el {fecha}») queda debajo.
+// Excepciones: Login y NoEncontrada, y un estado vacío o un error, que se marca
+//   // revisar-textos: permitir subtitulo-de-pagina -- estado vacío
+export const REGLA_SUBTITULO = {
+  id: "subtitulo-de-pagina",
+  nivel: "error",
+  motivo: "Bajo el título de una página no va una frase que explique la pantalla (negocio, 2026-10-20: es para personal de crédito capacitado).",
+  cambiar: "borrarla; lo propio de CrediScope (origen de una cifra, un cobro, una regla nuestra) pasa a una etiqueta junto al dato o a un InfoTooltip",
+  palabrasMinimas: 5,
+  archivosExentos: ["src/pages/Login.jsx", "src/pages/NoEncontrada.jsx"],
+};
+
+function subtitulosDePagina(archivos) {
+  const hallazgos = [];
+  for (const a of archivos) {
+    if (REGLA_SUBTITULO.archivosExentos.includes(a)) continue;
+    const r = parrafosBajoTitulos(a);
+    if (r.errores.length) {
+      console.error(`No se pudo leer ${a}: ${r.errores.join("; ")}`);
+      process.exit(2);
+    }
+    for (const h of r.hallazgos) {
+      if (h.titulo !== "h2" || h.palabras < REGLA_SUBTITULO.palabrasMinimas) continue;
+      if (permitidoPorMarca(a, h.linea, REGLA_SUBTITULO.id)) continue;
+      hallazgos.push({ ...h, regla: REGLA_SUBTITULO });
+    }
+  }
+  return hallazgos;
+}
+
+// Para revisar una pantalla uno por uno: todo lo que explica algo (el párrafo
+// que sigue a un título, las ayudas ⓘ y los title) con su lugar en el archivo.
+function listarExplicativos(archivo) {
+  const salida = [];
+  for (const h of parrafosBajoTitulos(archivo).hallazgos) {
+    const error = h.titulo === "h2" && h.palabras >= REGLA_SUBTITULO.palabrasMinimas ? " (¡error!)" : "";
+    salida.push({ linea: h.linea, tipo: `párrafo bajo ${h.titulo}${error}`, texto: h.texto });
+  }
+  const fuente = fs.readFileSync(path.join(RAIZ, archivo), "utf8");
+  const lineaDe = (pos) => fuente.slice(0, pos).split("\n").length;
+  for (const m of fuente.matchAll(/<InfoTooltip\b[^>]*>([\s\S]*?)<\/InfoTooltip>/g)) {
+    salida.push({ linea: lineaDe(m.index), tipo: "ayuda ⓘ", texto: m[1].replace(/\s+/g, " ").trim() });
+  }
+  for (const t of textosDeArchivo(archivo).textos) {
+    if (t.tipo === "atributo:title" || t.tipo === "atributo:texto") salida.push({ linea: t.linea, tipo: t.tipo.replace("atributo:", "ayuda "), texto: t.texto });
+  }
+  return salida.sort((x, y) => x.linea - y.linea);
+}
+
 function leerOpciones() {
-  const o = { archivo: null, estricto: false, inventario: false, glosario: false };
+  const o = { archivo: null, estricto: false, inventario: false, glosario: false, explicativos: false };
   for (const a of process.argv.slice(2)) {
     if (a === "--estricto") o.estricto = true;
+    else if (a === "--explicativos") o.explicativos = true;
     else if (a === "--inventario") o.inventario = true;
     else if (a === "--glosario") o.glosario = true;
     else if (a.startsWith("--archivo=")) o.archivo = a.slice("--archivo=".length);
@@ -113,7 +172,16 @@ function main() {
   const o = leerOpciones();
 
   if (o.glosario) {
-    for (const r of REGLAS) console.log(`${r.id.padEnd(28)} [${r.nivel}]  ${r.motivo}  →  ${r.cambiar}`);
+    for (const r of [...REGLAS, REGLA_SUBTITULO]) console.log(`${r.id.padEnd(28)} [${r.nivel}]  ${r.motivo}  →  ${r.cambiar}`);
+    return;
+  }
+
+  if (o.explicativos) {
+    if (!o.archivo) {
+      console.error("--explicativos pide --archivo=src/pages/X.jsx");
+      process.exit(2);
+    }
+    for (const e of listarExplicativos(o.archivo)) console.log(`${o.archivo}:${e.linea}\t${e.tipo}\t${e.texto}`);
     return;
   }
 
@@ -139,7 +207,10 @@ function main() {
     return;
   }
 
-  const hallazgos = revisar(textos);
+  const hallazgos = [
+    ...revisar(textos),
+    ...subtitulosDePagina(o.archivo ? [o.archivo] : archivosDePantalla({ incluirLib: false })),
+  ];
   const errores = hallazgos.filter((h) => h.regla.nivel === "error");
   const avisos = hallazgos.filter((h) => h.regla.nivel === "aviso");
 

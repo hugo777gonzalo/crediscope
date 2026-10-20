@@ -155,10 +155,6 @@ export default function Laboratorio() {
     <div>
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ marginBottom: 4 }}>Laboratorio · Riesgo de Crédito</h2>
-        <p className="crediscope-muted" style={{ margin: 0, maxWidth: "70ch" }}>
-          Medir si el motor acertó contra lo que realmente pasó con los créditos, buscar qué datos anticipaban el impago y convertirlo en una
-          propuesta de ajuste con evidencia. Nada de esto cambia el motor por su cuenta.
-        </p>
       </div>
 
       <div className="crediscope-kpi-grid">

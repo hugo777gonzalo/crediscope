@@ -44,10 +44,6 @@ export default function ClientSearch() {
   return (
     <div className="crediscope-card" style={{ maxWidth: 480 }}>
       <h2>Buscar persona</h2>
-      <p className="crediscope-muted">
-        Ingresá la cédula de la persona para abrir su expediente: el análisis más reciente, de dónde sale su ingreso y qué
-        se hizo con el caso.
-      </p>
       <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 12 }}>
         {/* Sin etiqueta, un lector de pantalla anuncia sólo "campo de texto"
             y el placeholder desaparece al escribir. */}

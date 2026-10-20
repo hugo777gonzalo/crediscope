@@ -4,6 +4,7 @@ import { inferencia, pruebasDeTodas } from "../../lib/analisisEstadistico.js";
 import SelectorDeVariable from "./SelectorDeVariable.jsx";
 import { MensajeError, Cargando, SinGuardar, GuardarEsteResultado, Etiqueta, num, pct, dec } from "./Comunes.jsx";
 import { useGuardarResultado } from "../../lib/useGuardarResultado.js";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // Inferencia: para una variable, las pruebas que corresponden a su tipo
 // contra el resultado (y, las numéricas, entre las recomendaciones del
@@ -128,11 +129,13 @@ export default function PestanaInferencia({ corteId, poblacion }) {
       </div>
 
       <div className="crediscope-card">
-        <h3 style={{ marginTop: 0 }}>Todas las variables contra el resultado</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Mann-Whitney para las numéricas, chi cuadrado para el resto. q corrige por las {num(todas.length)} pruebas (Benjamini-Hochberg): al 5% saldrían ~
-          {Math.round(todas.length * 0.05)} por azar sin corregir.
-        </p>
+        <h3 style={{ marginTop: 0 }}>
+          Todas las variables contra el resultado
+          <InfoTooltip etiqueta="Qué pruebas se usan">
+            Mann-Whitney para las numéricas, chi cuadrado para el resto. q corrige por las {num(todas.length)} pruebas
+            (Benjamini-Hochberg): al 5% saldrían ~{Math.round(todas.length * 0.05)} por azar sin corregir.
+          </InfoTooltip>
+        </h3>
         <div style={{ overflowX: "auto" }}>
           <table className="crediscope-table">
             <thead>

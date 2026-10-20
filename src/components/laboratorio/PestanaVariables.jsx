@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { Advertencias, Etiqueta, num, pct, dec } from "./Comunes.jsx";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // Qué datos del cliente anticipaban el impago (diseño, 7.2). El cruce que
 // justifica el Laboratorio: variables fuertes que el modelo NO recibe.
@@ -108,10 +109,12 @@ export default function PestanaVariables({ resultado }) {
       </div>
       {protegidas.length ? (
         <div className="crediscope-card">
-          <h3 style={{ marginTop: 0 }}>Variables protegidas</h3>
-          <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-            El negocio decidió que no pesen en la decisión. Se muestran para vigilar sesgos, nunca para proponer usarlas.
-          </p>
+          <h3 style={{ marginTop: 0 }}>
+            Variables protegidas
+            <InfoTooltip etiqueta="Por qué se muestran">
+              El negocio decidió que no pesen en la decisión. Se muestran para vigilar sesgos, nunca para proponer usarlas.
+            </InfoTooltip>
+          </h3>
           <Tabla variables={protegidas} />
         </div>
       ) : null}

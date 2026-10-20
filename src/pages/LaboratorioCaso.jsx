@@ -83,6 +83,7 @@ export default function LaboratorioCaso() {
     return (
       <div className="crediscope-card">
         <h2>Falta elegir un caso</h2>
+        {/* revisar-textos: permitir subtitulo-de-pagina -- estado vacío: dice cómo llegar a un caso */}
         <p className="crediscope-muted">
           Un caso se abre desde <strong>Descubrimiento profundo</strong>, en la pestaña Investigación de casos (o desde «Los que
           cayeron»): ahí se elige el corte y la persona.
