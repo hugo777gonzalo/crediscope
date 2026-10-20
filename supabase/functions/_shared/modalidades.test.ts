@@ -333,3 +333,11 @@ Deno.test("la solicitud guarda el código junto al paso fallido, y reintentar lo
   assertEquals(reintentado[1], { paso: "buro", estado: "pendiente" });
   assertEquals("codigo" in marcarPaso(conEspera, "buro", "hecho")[1], false);
 });
+
+Deno.test("con el freno de Equifax abierto el paso del buró dice que no se consultó ni se cobró y no espera nada", () => {
+  const f = falloDeUnPaso("buro", 503, "equifax_no_responde");
+  assertEquals(f.codigo, "buro_no_disponible");
+  assertEquals(f.esperarMs, 0);
+  assert(f.detalle.includes("No se consultó ni se cobró"));
+  assert(!f.detalle.includes("pudo haberse cobrado"));
+});
