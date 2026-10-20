@@ -5,6 +5,7 @@ import { descargarPlantilla, leerPlanilla, COLUMNAS } from "../lib/plantillaLabo
 import { subirCarga, getInstituciones } from "../lib/laboratorio.js";
 import { hoyEcuador } from "../lib/fechas.js";
 import { Volver, MensajeError, num } from "../components/laboratorio/Comunes.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Subir el archivo de resultados de una IFI. Primero se lee y se valida
 // todo en el navegador, y se muestran las filas rechazadas con su motivo;
@@ -73,16 +74,16 @@ export default function LaboratorioCargaNueva() {
     <div>
       <Volver a="/laboratorio/datos" texto="Volver a Datos y cartera" />
       <h2 style={{ marginBottom: 4 }}>Cargar resultados de crédito</h2>
-      <p className="crediscope-muted" style={{ marginTop: 0, maxWidth: "70ch" }}>
-        Una fila por operación, con su fecha de desembolso y el máximo de días de mora en los primeros 12 y 24 meses. Con los
-        días de mora, la definición de impago la ponemos nosotros y se puede cambiar sin pedir otro archivo.
-      </p>
 
       <div className="crediscope-card">
         <button className="crediscope-btn crediscope-btn-ghost" onClick={descargarPlantilla}>
           <Download size={15} style={{ marginRight: 7, verticalAlign: "-2px" }} />
           Descargar la plantilla
         </button>
+        <InfoTooltip etiqueta="Qué lleva el archivo" lado="derecha">
+          Una fila por operación, con su fecha de desembolso y el máximo de días de mora en los primeros 12 y 24 meses. Con los
+          días de mora, el impago lo define CrediScope y se puede cambiar sin pedir otro archivo.
+        </InfoTooltip>
       </div>
 
       <div className="crediscope-card" style={{ display: "grid", gap: 12, maxWidth: 560 }}>

@@ -6,6 +6,7 @@ import Cargando from "../components/ui/Cargando.jsx";
 import { moneda } from "../lib/formatos.js";
 import { formatearDia } from "../lib/fechas.js";
 import Aviso from "../components/ui/Aviso.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Las tarifas con las que se valúa cada llamada.
 //
@@ -63,9 +64,6 @@ export default function CostosTarifas() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Tarifas</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Precio por millón de tokens, con vigencia por fecha. Todo el costo que muestra esta sección sale de acá.
-        </p>
       </div>
 
       {!tarifas ? (
@@ -88,7 +86,12 @@ export default function CostosTarifas() {
           )}
 
           <div className="crediscope-card">
-            <h3>Tarifas vigentes</h3>
+            <h3>
+              Tarifas vigentes
+              <InfoTooltip etiqueta="De dónde salen los costos">
+                Todo costo de esta sección se calcula con estas tarifas.
+              </InfoTooltip>
+            </h3>
             <div style={{ overflowX: "auto" }}>
               <table className="crediscope-table">
                 <thead>
@@ -116,16 +119,18 @@ export default function CostosTarifas() {
               </table>
             </div>
             <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
-              Los valores son por millón de tokens. Pasá el cursor por cada columna para ver qué se paga en ella.
+              Dólares por millón de tokens.
             </p>
           </div>
 
           <div className="crediscope-card">
             <h3>Qué falta confirmar</h3>
             <p>
-              Estas son <strong>tarifas de lista, no una factura</strong>. Antes de fijar el precio del servicio hay que
-              contrastarlas contra el consumo real que informa la consola del proveedor: descuentos, impuestos y diferencias de
-              redondeo no están acá.
+              <strong>Tarifas de lista, no factura</strong>
+              <InfoTooltip etiqueta="Qué falta para que sean una factura">
+                Antes de fijar el precio del servicio hay que contrastarlas contra el consumo real que informa la consola del
+                proveedor: descuentos, impuestos y diferencias de redondeo no están acá.
+              </InfoTooltip>
             </p>
             <p style={{ marginBottom: 0 }}>
               Cambiar una tarifa hoy requiere una migración. Si el proveedor cambia precios, la forma correcta es{" "}

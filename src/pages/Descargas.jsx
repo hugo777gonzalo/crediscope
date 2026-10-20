@@ -8,6 +8,7 @@ import {
   TOPE_DESCARGA_SOLICITUDES,
 } from "../lib/api.js";
 import { descargarTablaAnalitica } from "../lib/exportAnalitico.js";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 const NUM = new Intl.NumberFormat("es-EC");
 
@@ -85,17 +86,16 @@ export default function Descargas() {
     <div>
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Descargas</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Reportes planos para trabajar la información fuera de la aplicación — Power BI, Excel o el sistema que usen.
-        </p>
       </div>
 
       <div className="crediscope-card">
-        <h3 style={{ marginTop: 0 }}>Información de Solicitudes</h3>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Un archivo con una fila por solicitud: toda la información con la que se evaluó a la persona, el score, la recomendación
-          y — cuando ya se cargó la cosecha — si el crédito incumplió.
-        </p>
+        <h3 style={{ marginTop: 0 }}>
+          Información de Solicitudes
+          <InfoTooltip etiqueta="Qué trae el archivo">
+            Una fila por solicitud: la información con la que se evaluó a la persona, el score, la recomendación y, si ya se
+            cargó la cosecha, si el crédito incumplió.
+          </InfoTooltip>
+        </h3>
 
         <div className="crediscope-descarga-row">
           <div className="crediscope-descarga-campo">

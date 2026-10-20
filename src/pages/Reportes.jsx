@@ -8,6 +8,7 @@ import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import Kpi from "../components/ui/Kpi.jsx";
 import Barra from "../components/ui/Barra.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Inteligencia de Negocios -- a pedido del usuario, un tablero EN
 // VIVO (no un PDF exportable) para mostrar a un Jefe/Coordinador/
@@ -214,6 +215,7 @@ export default function Reportes() {
     return (
       <div className="crediscope-card">
         <h2>Monitoreo</h2>
+        {/* revisar-textos: permitir subtitulo-de-pagina -- estado vacío */}
         <p className="crediscope-muted">Todavía no hay personas consultadas para armar el monitoreo.</p>
       </div>
     );
@@ -227,7 +229,6 @@ export default function Reportes() {
     <div>
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Monitoreo</h2>
-        <p className="crediscope-muted">Panorama agregado de las personas consultadas — para revisión con jefatura/coordinación.</p>
       </div>
 
       <div className="crediscope-kpi-grid">
@@ -300,10 +301,12 @@ export default function Reportes() {
             pensionistas) y daba cifras distintas a las del Panorama bajo el
             mismo nombre. Se mira en un solo lugar. */}
         <div className="crediscope-card">
-          <h3>Perfil laboral y de qué vive la cartera</h3>
-          <p className="crediscope-muted" style={{ marginTop: 0 }}>
-            Se mira en Fuentes de Ingreso, con la clasificación vigente, para que las cifras no cambien de una pantalla a otra.
-          </p>
+          <h3>
+            Perfil laboral y de qué vive la cartera
+            <InfoTooltip etiqueta="De dónde salen estas cifras">
+              Las cifras salen de Fuentes de Ingreso, con la clasificación vigente, para que no cambien de una pantalla a otra.
+            </InfoTooltip>
+          </h3>
           <Link className="crediscope-btn crediscope-btn-ghost" to="/fuentes">
             Ver el Panorama de Fuentes de Ingreso
           </Link>
@@ -311,7 +314,6 @@ export default function Reportes() {
 
         <div className="crediscope-card">
           <h3>Actividad por analista</h3>
-          <p className="crediscope-muted" style={{ marginTop: 0 }}>Consultas y análisis registrados por cada usuario.</p>
           {metricas.actividadPorAnalista.length === 0 ? (
             <p className="crediscope-muted">Sin datos de actividad todavía.</p>
           ) : (

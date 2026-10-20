@@ -175,6 +175,7 @@ export default function Expediente() {
         {avisoRuc}
         <div className="crediscope-card">
           <h2 style={{ marginTop: 0 }}>Todavía no hay registro de esta persona</h2>
+          {/* revisar-textos: permitir subtitulo-de-pagina -- estado vacío: dice qué hacer */}
           <p style={{ margin: 0 }}>
             La cédula <strong>{cedula}</strong> nunca se consultó, o se la escribió distinto. Si es la correcta, consultá su perfil y
             el expediente se arma con lo que conteste la fuente.
@@ -407,8 +408,7 @@ export default function Expediente() {
             <h3 className="crediscope-exp-titulo">Quién vio esta información</h3>
             <div className="crediscope-card">
               <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Los datos de esta pantalla incluyen Fiscalía, Función Judicial y comportamiento bancario. Cada acceso queda
-                registrado — es lo que permite responder quién vio qué, y cuándo.
+                Cada acceso queda registrado.
               </p>
               {auditoria.length === 0 ? (
                 <p className="crediscope-muted" style={{ margin: 0 }}>Sin registros.</p>

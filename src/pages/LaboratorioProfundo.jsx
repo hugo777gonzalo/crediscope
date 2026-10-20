@@ -34,7 +34,6 @@ export default function LaboratorioProfundo() {
   return (
     <ModuloDelCorte
       titulo="Descubrimiento profundo de variables"
-      descripcion="¿Qué no vio el modelo? El crudo de Novadata, la estructura, lo que leyó el modelo, los casos donde se equivocó y el camino de una variable nueva."
       pestanas={PESTANAS_PROFUNDO}
       poblacionPorDefecto="solicitudes"
     />

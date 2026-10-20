@@ -4,6 +4,7 @@ import { Upload, CheckCircle2, Copy, FileWarning, Info } from "lucide-react";
 import { leerArchivoDeLote, extensionAceptada } from "../lib/leerLoteExcel.js";
 import { crearLote, arrancarLote } from "../lib/api.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Cargar un archivo y ver qué trae, ANTES de consultar nada.
 //
@@ -109,16 +110,17 @@ export default function LoteNuevo() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Cargar un lote</h2>
-        <p className="crediscope-muted" style={{ margin: 0, maxWidth: "64ch" }}>
-          Subí una planilla con una columna de cédulas. No hace falta una plantilla ni un nombre de columna en particular: se
-          busca sola la columna que las tiene.
-        </p>
       </div>
 
       <div className="crediscope-card">
         <div className="crediscope-descarga-row" style={{ marginTop: 0 }}>
           <div className="crediscope-descarga-campo" style={{ minWidth: 260 }}>
-            <label htmlFor="archivo">Archivo</label>
+            <label htmlFor="archivo">
+              Archivo
+              <InfoTooltip etiqueta="Qué archivo se acepta">
+                Se busca sola la columna de cédulas: no hace falta una plantilla ni un nombre de columna en particular.
+              </InfoTooltip>
+            </label>
             <input id="archivo" type="file" className="crediscope-input" accept=".xlsx,.xls,.csv,.txt" onChange={alElegirArchivo} />
           </div>
           <div className="crediscope-descarga-campo" style={{ minWidth: 240 }}>

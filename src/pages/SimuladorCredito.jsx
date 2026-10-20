@@ -26,9 +26,6 @@ export default function SimuladorCredito() {
     <div>
       <div className="crediscope-pagina-cabecera" style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Simulador de crédito</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Cuánto pagaría por mes un crédito de consumo, con el seguro de desgravamen incluido.
-        </p>
       </div>
 
       <div className="crediscope-credito-grid">

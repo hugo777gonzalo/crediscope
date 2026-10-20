@@ -5,6 +5,7 @@ import { getConsumoLlm } from "../lib/api.js";
 import { corridas, totales, promedioMedido, ETIQUETA_FUNCION, ETIQUETA_NATURALEZA, money, num, centavos, fechaHora } from "../lib/consumoLlm.js";
 import { entero, plural, segundos } from "../lib/formatos.js";
 import Kpi from "../components/ui/Kpi.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import Aviso from "../components/ui/Aviso.jsx";
@@ -60,9 +61,6 @@ export default function CostosCorridas() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Corridas masivas</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Acciones que disparan varias llamadas al modelo de una sola vez. Agrupadas por acción, no por llamada.
-        </p>
       </div>
 
       {!d ? (
@@ -102,15 +100,17 @@ export default function CostosCorridas() {
 
           <div className="crediscope-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-              <h3 style={{ margin: 0 }}>Cada corrida</h3>
+              <h3 style={{ margin: 0 }}>
+                Cada corrida
+                <InfoTooltip etiqueta="Cómo se agrupa una corrida">
+                  Se agrupa por proceso, minuto y paquete: así una corrida aparece como una fila, con las llamadas que costó.
+                </InfoTooltip>
+              </h3>
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, cursor: "pointer" }}>
                 <input type="checkbox" checked={soloMultiples} onChange={(e) => setSoloMultiples(e.target.checked)} />
                 Sólo las que dispararon más de una llamada
               </label>
             </div>
-            <p className="crediscope-muted" style={{ marginTop: 6 }}>
-              Se agrupa por proceso, minuto y paquete: así una corrida aparece como una fila, con las llamadas que costó.
-            </p>
             <div style={{ overflowX: "auto" }}>
               <table className="crediscope-table">
                 <thead>

@@ -4,6 +4,7 @@ import { ShieldAlert, Clock, Wallet, Radio } from "lucide-react";
 import { getConsumoLlm, getEstadoServicio, getIncidentes } from "../lib/api.js";
 import { haceCuanto } from "../lib/fechas.js";
 import { entero, plural, segundos, duracionLarga } from "../lib/formatos.js";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 import {
   incidentes,
   agrupar,
@@ -52,10 +53,12 @@ function Semaforo({ estado }) {
 
   return (
     <div className="crediscope-card" style={{ borderColor: todoBien ? "var(--good)" : "var(--bad)" }}>
-      <h3 style={{ marginTop: 0 }}>Estado ahora</h3>
-      <p className="crediscope-muted" style={{ marginTop: 0 }}>
-        Según el último chequeo automático. Corre cada quince minutos, haya o no consultas.
-      </p>
+      <h3 style={{ marginTop: 0 }}>
+        Estado ahora
+        <InfoTooltip etiqueta="De dónde sale el estado">
+          Según el último chequeo automático. Corre cada quince minutos, haya o no consultas.
+        </InfoTooltip>
+      </h3>
       <table className="crediscope-table">
         <thead>
           <tr>
@@ -151,20 +154,18 @@ export default function CostosIncidentes() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Fallas e incidentes</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Cuándo el análisis dejó de funcionar, por qué, cuánto duró y de quién dependía resolverlo.
-        </p>
       </div>
 
       <Semaforo estado={estado} />
 
       {vigilados.length > 0 ? (
         <div className="crediscope-card">
-          <h3>Detectados por el vigía</h3>
-          <p className="crediscope-muted" style={{ marginTop: 0 }}>
-            Cortes que encontró el chequeo automático, hubiera o no alguien consultando. Es la diferencia entre enterarse y
-            deducirlo después.
-          </p>
+          <h3>
+            Detectados por el vigía
+            <InfoTooltip etiqueta="Qué detecta el vigía">
+              Cortes que encontró el chequeo automático, hubiera o no alguien consultando.
+            </InfoTooltip>
+          </h3>
           <div style={{ overflowX: "auto" }}>
             <table className="crediscope-table">
               <thead>
@@ -238,10 +239,6 @@ export default function CostosIncidentes() {
 
           <div className="crediscope-card">
             <h3>Por causa</h3>
-            <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              Agrupar por causa es lo que vuelve accionable el dato: "doce llamadas fallaron" no se corrige, "doce fallaron
-              por tope de consumo" se corrige en dos minutos.
-            </p>
             <div style={{ overflowX: "auto" }}>
               <table className="crediscope-table">
                 <thead>
@@ -280,10 +277,12 @@ export default function CostosIncidentes() {
           </div>
 
           <div className="crediscope-card">
-            <h3>Cronología</h3>
-            <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              Fallas seguidas de la misma causa se cuentan como un solo incidente, con hasta una hora de silencio entre medio.
-            </p>
+            <h3>
+              Cronología
+              <InfoTooltip etiqueta="Cómo se cuenta un incidente">
+                Fallas seguidas de la misma causa se cuentan como un solo incidente, con hasta una hora de silencio entre medio.
+              </InfoTooltip>
+            </h3>
             <div style={{ overflowX: "auto" }}>
               <table className="crediscope-table">
                 <thead>

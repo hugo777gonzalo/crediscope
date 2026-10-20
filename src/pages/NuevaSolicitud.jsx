@@ -118,9 +118,6 @@ export default function NuevaSolicitud() {
     <form onSubmit={enviar}>
       <div className="crediscope-pagina-cabecera" style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Nueva solicitud</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Quién pide el crédito, cuánto evaluar y con qué condiciones.
-        </p>
       </div>
 
       <div className="crediscope-card crediscope-credito-formulario">

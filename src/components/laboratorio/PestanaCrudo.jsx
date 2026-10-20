@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { formatearFechaHora } from "../../lib/fechas.js";
 import { crearCandidata } from "../../lib/laboratorio.js";
 import { Advertencias, Etiqueta, Kpi, ETIQUETA_RECOMENDACION, num, pct, dec } from "./Comunes.jsx";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // El explorador del crudo (fase E, docs/laboratorio-pantallas.md): qué trae
 // el crudo de Novadata del día del análisis, qué de eso se asocia al impago y
@@ -335,11 +336,13 @@ export default function PestanaCrudo({ resultado, corteId, corte = null }) {
       </div>
 
       <div className="crediscope-card" style={{ borderColor: noVistos.length ? "var(--bad)" : undefined }}>
-        <h3 style={{ marginTop: 0 }}>Lo que el modelo no vio</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Campos del crudo que se asocian al impago, que siguen separando a buenos de malos dentro de cada recomendación del modelo (la mitad del efecto o
-          más) y que la estructura no lee. Son candidatos a dato nuevo: se validan en un corte posterior antes de proponerlos.
-        </p>
+        <h3 style={{ marginTop: 0 }}>
+          Lo que el modelo no vio
+          <InfoTooltip etiqueta="Qué campos entran acá">
+            Campos del crudo que se asocian al impago, que siguen separando a buenos de malos dentro de cada recomendación del
+            modelo (la mitad del efecto o más) y que la estructura no lee.
+          </InfoTooltip>
+        </h3>
         {noVistos.length ? <TablaHallazgos lista={noVistos} columnas="corto" corte={corte} /> : <p className="crediscope-muted" style={{ marginBottom: 0 }}>Ninguno en este corte.</p>}
       </div>
 

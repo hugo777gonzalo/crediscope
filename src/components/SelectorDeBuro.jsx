@@ -48,7 +48,6 @@ export default function SelectorDeBuro() {
             persona (Equifax o Aval). No prende ni apaga ninguna consulta: eso se maneja en el interruptor de cada fuente.
           </InfoTooltip>
         </h3>
-        <p className="crediscope-muted">El que usa esta institución para ver la deuda de cada persona.</p>
       </div>
       <div className="crediscope-selector-buro-opciones" role="radiogroup" aria-label="Buró de la institución">
         {OPCIONES.map((o) => {

@@ -4,6 +4,7 @@ import { getSegmentConfig, updateSegmentConfig } from "../lib/api.js";
 import { ETIQUETAS_GRUPO } from "../lib/etiquetasGrupos.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Qué ve el analista en el Perfil del Cliente.
 //
@@ -139,9 +140,12 @@ export default function ConfigSegmentos() {
     <div>
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ marginBottom: 4 }}>Qué ve el analista</h2>
-        <p className="crediscope-muted" style={{ margin: 0, maxWidth: "66ch" }}>
-          Esta es la única configuración que <strong>no cambia el análisis</strong>. Un segmento oculto se sigue consultando,
-          se sigue guardando y el modelo lo sigue usando: sólo no se muestra en el Perfil de la Persona.
+        <p className="crediscope-muted" style={{ margin: 0 }}>
+          <strong>No cambia el análisis</strong>
+          <InfoTooltip etiqueta="Qué pasa con un segmento oculto">
+            Un segmento oculto se sigue consultando, se sigue guardando y el modelo lo sigue usando: sólo no se muestra en el
+            Perfil de la Persona. Es la única configuración que no cambia el análisis.
+          </InfoTooltip>
         </p>
       </div>
 

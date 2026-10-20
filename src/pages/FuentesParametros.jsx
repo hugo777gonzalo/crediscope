@@ -5,6 +5,7 @@ import { getResumenCarteraIngresos } from "../lib/api.js";
 import { mesLegible } from "../lib/ingresosCampos.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 import { plural } from "../lib/formatos.js";
 
 // Parámetros operativos del módulo.
@@ -43,9 +44,6 @@ export default function FuentesParametros() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Parámetros</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Valores operativos de los que dependen las reglas. Cambian con el tiempo y no con el criterio.
-        </p>
       </div>
 
       {error ? (
@@ -53,13 +51,15 @@ export default function FuentesParametros() {
       ) : null}
 
       <div className="crediscope-card">
-        <h3>Corte del registro del IESS</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0 }}>
-          Novadata actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
-          vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce sólo: es el mes más reciente en el
-          que aparecen al menos 20 personas consultadas en los últimos 90 días. Algunos aportes llegan antes que el resto: esas
-          personas se clasifican con su propio mes, sin mover el corte de todos.
-        </p>
+        <h3>
+          Corte del registro del IESS
+          <InfoTooltip etiqueta="Cómo se deduce el corte">
+            Novadata actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
+            vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce sólo: es el mes más reciente en
+            el que aparecen al menos 20 personas consultadas en los últimos 90 días. Quien trae un mes posterior se clasifica
+            con el suyo, sin mover el corte de todos.
+          </InfoTooltip>
+        </h3>
 
         {!d ? (
           <Cargando />

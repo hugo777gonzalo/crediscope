@@ -29,6 +29,21 @@ criterio sin caso se discute y uno con caso se aplica.
   consulta se cobra, una regla nuestra (Ingreso Mínimo SBU), la escala desconocida de un
   indicador del proveedor. Los estados vacíos, los errores y las confirmaciones siguen
   diciendo qué pasa y qué hacer.
+  **Lo vigila el control**: `node scripts/revisar-textos.mjs` marca como error un párrafo
+  (o un elemento `crediscope-muted`) que sigue de inmediato a un `<h2>` con un tramo de
+  texto fijo de cinco palabras o más (regla `subtitulo-de-pagina`; el texto de dentro de un
+  `InfoTooltip` no cuenta). Una línea de datos («Ventana de 12 meses · congelado el …») queda
+  debajo. Excepciones: Login y NoEncontrada, y un estado vacío con la marca
+  `{/* revisar-textos: permitir subtitulo-de-pagina -- estado vacío */}`. El control mira
+  sólo el título de la página; lo de las tarjetas (un `<p>` bajo un `<h3>`) se revisa a ojo con
+  `node scripts/revisar-textos.mjs --explicativos --archivo=src/pages/X.jsx`, que lista los
+  párrafos bajo un título, las ayudas ⓘ y los `title` de una pantalla. *Revisión del
+  2026-10-20: 28 pantallas y unos 45 párrafos de tarjetas; los que explicaban un concepto
+  se borraron, los que dicen de dónde sale una cifra pasaron a un ⓘ.*
+- **Una etiqueta o un ⓘ, no un párrafo.** Qué pasa a cuál: lo que se lee de un vistazo y
+  cambia cómo se lee la cifra («Tarifa $0,40 por consulta», «Sin los negados por bloqueo»,
+  «No cambia el análisis») va en una etiqueta junto al dato; la explicación completa, en el
+  ⓘ pegado al título de la tarjeta o al encabezado de la columna.
 
 ## 2. ¿Se puede confiar en la cifra?
 

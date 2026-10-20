@@ -67,6 +67,25 @@ No reemplaza `npm run lint` ni `npm run build`: **no prueban una pantalla**
    (no decir "verificado" por haber compilado). Los hallazgos que quedan abiertos van
    a `docs/pendientes.md`.
 
+## Pedir la revisión de los textos de una pantalla
+
+Para revisar los textos informativos y las ayudas de una o varias pantallas sin recorrerlas a
+mano, pedirlo con el nombre de la pantalla («revisá los textos y etiquetas de Costos»). El
+procedimiento, en este orden:
+
+1. `node scripts/revisar-textos.mjs --explicativos --archivo=src/pages/<Pantalla>.jsx` lista
+   todo lo que explica algo: el párrafo que sigue a un título, cada ayuda ⓘ y cada `title`,
+   con su línea. Si la pantalla arma sus tarjetas con componentes (`src/components/...`),
+   se corre también sobre ellos.
+2. Cada texto se clasifica con `criterios.md`, sección 1: **borra** (explica qué hace la
+   pantalla o un concepto de crédito), **etiqueta** (se lee de un vistazo junto al dato),
+   **ⓘ** (propio de CrediScope: de dónde sale una cifra, sin verificar, se cobra, una regla
+   nuestra) o **queda** (dato, estado vacío, error, hueco que se dice, confirmación de un
+   cobro).
+3. Se muestra la tabla (pantalla, frase actual, qué pasa) y se espera el visto bueno: los
+   textos los decide el negocio.
+4. Se aplica, se corre el flujo de arriba y el verificador en el navegador.
+
 ## Reglas que no se negocian
 
 - **Todo en castellano de Ecuador**, con voseo («ingresá», «podés»). Sólo `score` y

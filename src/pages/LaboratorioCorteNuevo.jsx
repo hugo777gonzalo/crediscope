@@ -4,6 +4,7 @@ import { Scissors } from "lucide-react";
 import { getCargas, getDefiniciones, congelarCorte, describirDefinicion } from "../lib/laboratorio.js";
 import { formatearDia } from "../lib/fechas.js";
 import { Volver, MensajeError, Etiqueta, num } from "../components/laboratorio/Comunes.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Congelar un corte: la población que se va a analizar. Queda como foto
 // (puntaje, versiones y valores de las variables copiados), así el mismo
@@ -65,10 +66,6 @@ export default function LaboratorioCorteNuevo() {
     <div>
       <Volver a="/laboratorio" texto="Volver al Laboratorio" />
       <h2 style={{ marginBottom: 4 }}>Nuevo corte</h2>
-      <p className="crediscope-muted" style={{ marginTop: 0, maxWidth: "70ch" }}>
-        Las operaciones inmaduras (que no cumplieron la ventana al corte del archivo) y las consultadas después del desembolso
-        quedan fuera, con su motivo a la vista.
-      </p>
 
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>Cargas</h3>
@@ -133,6 +130,10 @@ export default function LaboratorioCorteNuevo() {
         <Scissors size={15} style={{ marginRight: 7, verticalAlign: "-2px" }} />
         {trabajando ? "Congelando..." : "Congelar corte"}
       </button>
+      <InfoTooltip etiqueta="Qué queda fuera del corte" lado="derecha">
+        Quedan fuera las operaciones inmaduras (que no cumplieron la ventana al corte del archivo) y las consultadas después
+        del desembolso; el motivo se ve en el corte.
+      </InfoTooltip>
     </div>
   );
 }

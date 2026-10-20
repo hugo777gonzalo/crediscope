@@ -183,10 +183,6 @@ export default function LaboratorioPropuestas() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>Propuestas de ajuste</h2>
-          <p className="crediscope-muted" style={{ marginTop: 0, maxWidth: "70ch" }}>
-            Cada propuesta dice qué se vio, con qué evidencia, qué cambia, qué no prueba y cómo se validará después. Una propuesta
-            sobre datos sintéticos no se presenta ni se aplica.
-          </p>
         </div>
         {!editando ? (
           <button className="crediscope-btn" onClick={() => setEditando({ ...VACIA })}>
@@ -223,7 +219,7 @@ export default function LaboratorioPropuestas() {
               <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <Etiqueta texto={ETIQUETA_TIPO_PROPUESTA[p.tipo]} />
                 <Etiqueta texto={ETIQUETA_ESTADO_PROPUESTA[p.estado]} color={p.estado === "aplicada" ? "var(--good)" : p.estado === "rechazada" ? "var(--bad)" : "var(--brand)"} />
-                {p.es_sintetica ? <Etiqueta texto="Sintética" color="var(--warn)" /> : null}
+                {p.es_sintetica ? <Etiqueta texto="Sintética: no se presenta ni se aplica" color="var(--warn)" /> : null}
                 {p.vigente_desde ? <Etiqueta texto={`Vigente desde ${formatearFechaHora(p.vigente_desde)}`} color="var(--good)" /> : null}
               </div>
             </div>

@@ -4,6 +4,7 @@ import { Brain, Database, AlertTriangle } from "lucide-react";
 import { getConsumoLlm } from "../lib/api.js";
 import { agrupar, totales, promedioMedido, soloExitosas, num, centavos, money2 } from "../lib/consumoLlm.js";
 import Kpi from "../components/ui/Kpi.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 
@@ -73,9 +74,6 @@ export default function CostosConsultas() {
 
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Costo por consulta</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Cuánto cuesta analizar a una persona, en qué se va ese dinero y hacia dónde se está moviendo.
-        </p>
       </div>
 
       {!d ? (
@@ -116,10 +114,6 @@ export default function CostosConsultas() {
 
           <div className="crediscope-card">
             <h3>Cómo evolucionó con cada versión del criterio</h3>
-            <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              Un promedio por análisis, versión por versión. La columna que importa es <strong>Razonamiento</strong>: son los
-              tokens que el modelo gasta pensando antes de responder, y se facturan como salida.
-            </p>
             <div style={{ overflowX: "auto" }}>
               <table className="crediscope-table">
                 <thead>
@@ -128,7 +122,12 @@ export default function CostosConsultas() {
                     <th style={{ textAlign: "right" }}>Análisis</th>
                     <th style={{ textAlign: "right" }}>Entrada</th>
                     <th style={{ textAlign: "right" }}>Respuesta</th>
-                    <th style={{ textAlign: "right" }}>Razonamiento</th>
+                    <th style={{ textAlign: "right" }}>
+                      Razonamiento
+                      <InfoTooltip etiqueta="Qué es el razonamiento" lado="derecha">
+                        Tokens que el modelo gasta pensando antes de responder. Se facturan como salida.
+                      </InfoTooltip>
+                    </th>
                     <th style={{ textAlign: "right" }}>% razon.</th>
                     <th style={{ textAlign: "right" }}>Costo</th>
                   </tr>
@@ -165,10 +164,12 @@ export default function CostosConsultas() {
           </div>
 
           <div className="crediscope-card">
-            <h3>El caché del marco</h3>
-            <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              El marco interpretativo viaja en un bloque cacheado. Escribirlo cuesta un recargo; leerlo, una décima parte.
-            </p>
+            <h3>
+              El caché del marco
+              <InfoTooltip etiqueta="Cómo se cobra el caché">
+                El marco interpretativo viaja en un bloque cacheado. Escribirlo cuesta un recargo; leerlo, una décima parte.
+              </InfoTooltip>
+            </h3>
             <table className="crediscope-table">
               <tbody>
                 <tr>
@@ -198,8 +199,10 @@ export default function CostosConsultas() {
           <div className="crediscope-card">
             <h3>Cuánto costaría operar</h3>
             <p className="crediscope-muted" style={{ marginTop: 0 }}>
-              Al costo del criterio actual. Sirve para fijar el mínimo de la tarifa, no para prometerla: el costo se mueve con cada
-              versión del criterio.
+              Al costo del criterio actual
+              <InfoTooltip etiqueta="Para qué sirve esta cuenta">
+                Sirve para fijar el mínimo de la tarifa, no para prometerla: el costo se mueve con cada versión del criterio.
+              </InfoTooltip>
             </p>
             <div className="crediscope-descarga-row" style={{ marginTop: 0 }}>
               <div className="crediscope-descarga-campo">

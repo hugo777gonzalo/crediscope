@@ -5,6 +5,7 @@ import { getConsumoLlm } from "../lib/api.js";
 import { entero, plural } from "../lib/formatos.js";
 import { formatearDia } from "../lib/fechas.js";
 import Kpi from "../components/ui/Kpi.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 import Barra from "../components/ui/Barra.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
@@ -76,9 +77,6 @@ export default function Costos() {
     <div>
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ marginBottom: 4 }}>Costos del análisis</h2>
-        <p className="crediscope-muted" style={{ margin: 0 }}>
-          Cada llamada al modelo, con su costo. Es la base para decidir a cuánto se vende una consulta.
-        </p>
       </div>
 
       <div className="crediscope-card">
@@ -155,10 +153,12 @@ export default function Costos() {
 
           <div className="crediscope-reportes-grid">
             <div className="crediscope-card">
-              <h3>En qué se gastó</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                Lo que se factura y lo que no. Hoy nada de esto se le cobró a nadie.
-              </p>
+              <h3>
+                En qué se gastó
+                <InfoTooltip etiqueta="Qué se le cobró a una institución">
+                  Hoy nada de esto se le cobró a nadie.
+                </InfoTooltip>
+              </h3>
               {d.porNaturaleza.map((n) => (
                 <Barra
                   key={n.clave}
@@ -199,10 +199,12 @@ export default function Costos() {
             </div>
 
             <div className="crediscope-card">
-              <h3>Qué tan confiable es el número</h3>
-              <p className="crediscope-muted" style={{ marginTop: 0 }}>
-                De dónde salieron los tokens de cada llamada.
-              </p>
+              <h3>
+                Qué tan confiable es el número
+                <InfoTooltip etiqueta="Qué mide esta tarjeta">
+                  Muestra de dónde salieron los tokens de cada llamada.
+                </InfoTooltip>
+              </h3>
               {d.porOrigen.map((o) => (
                 <Barra
                   key={o.clave}

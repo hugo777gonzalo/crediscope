@@ -6,6 +6,7 @@ import { formatearFechaHora } from "../lib/fechas.js";
 import Kpi from "../components/ui/Kpi.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
+import InfoTooltip from "../components/InfoTooltip.jsx";
 
 // Todos los lotes corridos, el más reciente primero.
 //
@@ -52,15 +53,17 @@ export default function Lotes() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>Consultas por lote</h2>
-          <p className="crediscope-muted" style={{ margin: 0, maxWidth: "62ch" }}>
-            Cargar muchas cédulas de una vez y traer su Perfil de la Persona. Los perfiles quedan disponibles para el flujo
-            normal: si un analista busca después a una de estas personas, no se vuelve a consultar la fuente.
-          </p>
         </div>
-        <Link className="crediscope-btn" to="/lotes/nuevo">
-          <Upload size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-          Cargar archivo
-        </Link>
+        <div>
+          <Link className="crediscope-btn" to="/lotes/nuevo">
+            <Upload size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
+            Cargar archivo
+          </Link>
+          <InfoTooltip etiqueta="Qué pasa con los perfiles del lote" lado="derecha">
+            Los perfiles quedan disponibles para el flujo normal: si un analista busca después a una de estas personas, no se
+            vuelve a consultar la fuente.
+          </InfoTooltip>
+        </div>
       </div>
 
       {!lotes ? (

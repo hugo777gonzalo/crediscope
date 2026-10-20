@@ -117,10 +117,6 @@ export default function LaboratorioInstituciones() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>Instituciones y proyectos</h2>
-          <p className="crediscope-muted" style={{ margin: 0, maxWidth: "75ch" }}>
-            Las instituciones con las que trabaja el Laboratorio y sus proyectos. Cada carga se sube a una institución y un proyecto; de ahí sale el
-            desempeño del motor por institución. Sigue abierta la pregunta de fondo: una instalación para varias instituciones o una por institución.
-          </p>
         </div>
         <button className="crediscope-btn" onClick={() => setEditando("nueva")}>Registrar una institución</button>
       </div>

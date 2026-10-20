@@ -19,7 +19,7 @@ export default function CuotaDestacada({ simulacion: s, titulo = "Cuota mensual"
       <p className="crediscope-credito-hero-etiqueta">{titulo}</p>
       <p className="crediscope-credito-hero-cifra">{moneda(s.cuotaPrimerMes, 2)}</p>
       <p className="crediscope-credito-hero-sub">
-        {plural(s.plazoMeses, "cuota", "cuotas")} · {comoCambiaLaCuota(s)}
+        {plural(s.plazoMeses, "cuota", "cuotas")} · Incluye desgravamen · {comoCambiaLaCuota(s)}
       </p>
 
       <div className="crediscope-credito-barra" role="img" aria-label={`Primera cuota: ${PARTES.map(([k, t]) => `${t} ${moneda(primera[k], 2)}`).join(", ")}`}>

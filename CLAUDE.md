@@ -90,6 +90,9 @@ repite lo que el código ya dice es ruido.
   consumo, con el seguro de desgravamen incluido», y unas 30 de 53 páginas
   llevaban una frase así bajo el título. Los estados vacíos, los errores y la
   confirmación de lo que se cobra siguen diciendo qué pasa y qué hacer.
+  `revisar-textos.mjs` corta con un párrafo explicativo bajo un `<h2>`
+  (`subtitulo-de-pagina`) y `--explicativos --archivo=` lista lo que explica
+  algo en una pantalla, para revisarla (habilidad `revision-ux`).
 - **La identificación y los datos de la persona van completos en pantalla**:
   no se tapan ni se propone taparlos (ver «Cómo se trabaja»).
 - **Score**, no «puntaje»; **persona**, no «cliente» (cliente es quien tiene un

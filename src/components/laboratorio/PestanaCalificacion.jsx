@@ -1,4 +1,5 @@
 import { Advertencias, Kpi, ETIQUETA_MOTIVO, num, pct, dec } from "./Comunes.jsx";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // ¿Encontró el Laboratorio lo que plantamos? (docs/laboratorio-de-riesgo.md,
 // 14.7). Sólo en un corte sintético del ciclo de un año: lo cuenta
@@ -44,10 +45,6 @@ export default function PestanaCalificacion({ resultado }) {
 
       <div className="crediscope-card">
         <h3 style={{ marginTop: 0 }}>El detector de eventos</h3>
-        <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Por persona y tipo de evento. "De la semana real": cambios que traía la reconsulta real de octubre sobre la consulta de septiembre, que no
-          plantamos nosotros (no son inventos del detector).
-        </p>
         <table className="crediscope-table">
           <thead>
             <tr>
@@ -55,7 +52,13 @@ export default function PestanaCalificacion({ resultado }) {
               <th style={{ textAlign: "right" }}>Plantados</th>
               <th style={{ textAlign: "right" }}>Encontrados</th>
               <th style={{ textAlign: "right" }}>Proporción</th>
-              <th style={{ textAlign: "right" }}>De la semana real</th>
+              <th style={{ textAlign: "right" }}>
+                De la semana real
+                <InfoTooltip etiqueta="Qué es «de la semana real»" lado="derecha">
+                  Cambios que traía la reconsulta real de octubre sobre la consulta de septiembre, que no plantamos nosotros (no
+                  son inventos del detector).
+                </InfoTooltip>
+              </th>
               <th style={{ textAlign: "right" }}>Inventados</th>
             </tr>
           </thead>
@@ -75,10 +78,14 @@ export default function PestanaCalificacion({ resultado }) {
       </div>
 
       <div className="crediscope-card">
-        <h3 style={{ marginTop: 0 }}>El motivo plantado, ¿apareció?</h3>
+        <h3 style={{ marginTop: 0 }}>
+          El motivo plantado, ¿apareció?
+          <InfoTooltip etiqueta="A quiénes cuenta">
+            Cuenta los malos cuyo motivo principal plantado es un evento. Los de la primera capa se ven en Variables.
+          </InfoTooltip>
+        </h3>
         <p className="crediscope-muted" style={{ marginTop: 0, fontSize: 13 }}>
-          Malos cuyo motivo principal plantado es un evento (los de la primera capa se ven en Variables): {num(mot.detectado)} de{" "}
-          {num(mot.malos_con_motivo_de_evento)} tienen ese evento detectado.
+          {num(mot.detectado)} de {num(mot.malos_con_motivo_de_evento)} con ese evento detectado
         </p>
         <table className="crediscope-table">
           <tbody>
