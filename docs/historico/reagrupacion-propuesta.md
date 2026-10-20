@@ -11,7 +11,7 @@
 > es el ROL de la persona ("DEMANDADO", constante), no el tipo de caso —
 > el tipo de caso real vive en `demanda.delito`.
 
-Basada en los datos reales de 25 personas consultadas (ver [novadata-fields-catalog.md](novadata-fields-catalog.md)). Los 9 bloques originales (Información general, Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función Judicial, Fiscalía, Bancos, Cooperativas) eran una traducción directa de las pestañas de la interfaz web de Novadata — agrupan por **de dónde viene el dato en la UI**, no por **qué significa el dato para crédito**. Con datos reales en mano aparecieron 2 errores de categorización concretos y varios recursos que encajan mejor en otro lado.
+Basada en los datos reales de 25 personas consultadas (ver [novadata-fields-catalog.md](../novadata-fields-catalog.md)). Los 9 bloques originales (Información general, Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función Judicial, Fiscalía, Bancos, Cooperativas) eran una traducción directa de las pestañas de la interfaz web de Novadata — agrupan por **de dónde viene el dato en la UI**, no por **qué significa el dato para crédito**. Con datos reales en mano aparecieron 2 errores de categorización concretos y varios recursos que encajan mejor en otro lado.
 
 ## Errores de categorización encontrados y corregidos
 
@@ -48,4 +48,4 @@ Esto debería ser la señal **más pesada** de todo el sistema — es literalmen
 ## Qué implica esto para el código
 
 - `novadata-client.ts`: mover `pensionAlimenticia`/`pensionAlimenticiaNovadata` de `vehiculos` a `funcion_judicial` (ya estaban ahí, correcto); mover `deudasAnt`/`deudasAmt`/`deudasEmov` de `bancos` a `vehiculos`; mover `retails` ya está en `bancos` (correcto, no moverlo — la corrección ya se había hecho antes de esta consulta).
-- La estructura estandarizada (ver [estructura-estandarizada.md](estructura-estandarizada.md)) usa estos 14 grupos como base, pero los colapsa donde tiene sentido para el LLM (ver siguiente documento).
+- La estructura estandarizada (ver [estructura-estandarizada.md](../estructura-estandarizada.md)) usa estos 14 grupos como base, pero los colapsa donde tiene sentido para el LLM (ver siguiente documento).

@@ -355,7 +355,7 @@ interface StandardClientProfile {
   };
 
   // La sección más importante para el score — ver hallazgo de
-  // personasIncumplimientos en reagrupacion-propuesta.md
+  // personasIncumplimientos en docs/historico/reagrupacion-propuesta.md
   comportamientoPagoFormal: {
     novadataResultadoHabitoPago: "Mal pagador" | "Buen pagador" | null; // veredicto propio de Novadata
     novadataPerfilInterno: "MALO" | "BUENO" | null;
