@@ -4,8 +4,8 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**133** (las solicitudes, 2026-10-17; la 131 es la fila de marco-v31). Las
-funciones desplegadas llevan el sello `6d5c4296e1e3` (10 de 10);
+**135** (los datos de la API en la solicitud, 2026-10-19; la 131 es la fila de
+marco-v31). Las funciones desplegadas llevan el sello `f4d80e0296ea` (10 de 10);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
 (ver la sección 2, punto 1) con Claude Sonnet 5.5, estructura-v13,
@@ -79,38 +79,16 @@ aceptada.
        especificación técnica de la API (`api/openapi.yaml`), no el contrato
        comercial con la institución; en el comercial la IFI declara que tiene la
        autorización de cada persona.
-       1. **`ingresoDeclarado` de la evaluación**: hecho en código (2026-10-19).
-          `evaluar-solicitud` lee las condiciones y el Ingreso declarado dentro de
-          `solicitudDeCredito` (antes: `solicitud` y la raíz) y la pantalla los
-          manda ahí. **Pendiente de desplegar** (ver «Falta aplicar» abajo).
-       2. **Guardar los datos importantes de la evaluación**: hecho en código
-          (2026-10-19, migración 135). La solicitud guarda `autorizacion` (id,
-          fecha, vigencia, canal, finalidad y la huella del documento, nunca el
-          documento), `referencia` (única en la base: hay una base por
-          institución), `operador`, `prioridad` y `reemplazaA`, una columna por
-          dato. Son opcionales en la función interna; los exige la puerta de la
-          API (Fase 1). `modalidad` sigue siendo obligatoria en la función
-          interna; el contrato pone `basico` por omisión y eso lo resuelve la
-          puerta de la API. `reemplazaA` sólo se guarda (y se comprueba que sea
-          una solicitud de la misma persona): que reutilice el perfil es de la
-          puerta. No cambió `suprimir_titular()`: son columnas de la fila que ya
-          se borra.
-       **Falta aplicar (no se hace sin autorización del negocio), en este orden:**
-       migración 135 con `node scripts/migrar-clientes.mjs --seco` y luego
-       `--aplicar`; después `--funciones` desde una copia limpia de `origin/main`
-       (`ESQUEMA_MINIMO` subió a 135: antes de migrar, las funciones contestarían
-       503); y al final, quitar de `NuevaSolicitud.jsx` las dos líneas
-       «TRANSITORIO» que siguen mandando la forma anterior. Hasta que se despliegue,
-       la pantalla publicada manda las dos formas para que la función vieja siga
-       andando.
+       1, 2, 4 y 7: **cerrados el 2026-10-19** (#59; migración 135 aplicada y
+       funciones desplegadas con el corredor, 10 de 10; control de seguridad 73
+       de 73). Quedó dicho en CLAUDE.md (módulo de la solicitud). Lo que sigue
+       abierto de ellos: `modalidad` es obligatoria en la función interna (el
+       contrato pone `basico` por omisión: lo resuelve la puerta de la API);
+       `reemplazaA` sólo se guarda, y que reutilice el perfil es de la puerta; y
+       en Básico las condiciones de `solicitudDeCredito`, que el contrato manda
+       guardar, todavía no se guardan.
        3. **Estados y etapas**: se hace cuando los flujos estén afinados
           (capacidad de pago, predictor de ingresos). No se toca antes.
-       4. **`Fallo.codigo`**: hecho en código (2026-10-19). La especificación suma
-          `buro_requiere_consulta_previa`, `tope_diario_agotado`,
-          `buro_no_disponible` e `identificacion_no_encontrada`; `falloDeUnPaso()`
-          devuelve el código (sale del estado y del motivo, nunca del texto de un
-          tercero) y la solicitud lo guarda en el paso fallido (`pasos[].codigo`,
-          sin columna nueva). `plazo_vencido` es de la cola de la API, no de un paso.
        5. **Quién paga Equifax por la API y los niveles de acceso**: el negocio
           propone cuatro niveles (dueño, administrador de la institución, usuario
           A que consulta y evalúa, usuario B que sólo ve). Ver «Niveles de
@@ -120,11 +98,6 @@ aceptada.
           (`/.well-known/jwks.json`). Queda la firma de los avisos
           (`webhook-signature`, que protege a la institución de un aviso falso)
           y la de la ficha de acceso (OAuth); no son lo mismo.
-       7. **`tasaNominalMaximaPorcentaje`**: corregido en código (2026-10-19).
-          `simular-credito` y `capacidad-de-pago` arman las condiciones con
-          `condicionesDelPedidoExterno()`, que descarta el campo: el tope sale de
-          `PRODUCTO_CONSUMO` (hoy 15% fijo; de la configuración de la institución
-          cuando exista), nunca del cuerpo.
        8. **Validaciones que el contrato declara y la función no hace**
           (`additionalProperties: false`, máximos de 20 ingresos, 50 obligaciones
           y 50 deudas sin cuota, `ingresoDeclarado` de más de mil millones,
