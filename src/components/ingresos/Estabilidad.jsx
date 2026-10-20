@@ -105,6 +105,15 @@ export default function Estabilidad({ f, laboral }) {
   const d = f.detalle ?? null;
   const promedio6 = d?.promedioUltimos6 ?? laboral?.ingresoPromedioUltimos6Meses ?? null;
   const continuidad = d ? d.continuidadLaboral : undefined;
+  // Hasta estructura-v14 (2026-10-20) la antigüedad contaba cualquier
+  // afiliación vigente y la continuidad sólo el trabajo: 46 de 2.567 perfiles
+  // mostraban una antigüedad mayor que la continuidad, o una antigüedad de
+  // años al lado de una continuidad en 0, sin nada que lo explicara. Con la
+  // regla nueva no pasa; queda en los perfiles armados antes, hasta
+  // reconsultar. Un mes de diferencia es redondeo: una se mide por día y la
+  // otra por mes.
+  const antiguedad = laboral?.antiguedadEmpleoActualMeses ?? null;
+  const antiguedadDeOtraRegla = Boolean(continuidad) && antiguedad !== null && (!continuidad.vigente || continuidad.meses + 1 < antiguedad);
   const promedioIgualAlActual = Boolean(promedio6) && Math.round(promedio6 * 100) === Math.round((f.pisoIngresoMensualReportado ?? 0) * 100);
 
   return (
@@ -119,7 +128,7 @@ export default function Estabilidad({ f, laboral }) {
         ) : null}
         <Cifra
           etiqueta="Antigüedad en el empleo actual"
-          titulo="Según el IESS. Se informa sólo con 3 meses o más de evidencia en ese empleo."
+          titulo="Según el IESS, con la regla de la continuidad: el aporte por cuenta propia cuenta desde que abrió el RUC, y el voluntario sin RUC o el del hogar no es un empleo. Se informa sólo con 3 meses o más de evidencia en ese empleo."
         >
           {duracionLegible(laboral?.antiguedadEmpleoActualMeses)}
         </Cifra>
@@ -160,6 +169,13 @@ export default function Estabilidad({ f, laboral }) {
           </Cifra>
         ) : null}
       </div>
+
+      {antiguedadDeOtraRegla ? (
+        <p className="crediscope-aval-nota" style={{ marginTop: -4 }}>
+          La antigüedad de este perfil cuenta también el aporte por cuenta propia sin RUC activo, o una afiliación que no es
+          trabajo, y la continuidad no. Desde el 20/10/2026 las dos usan la misma regla: reconsultá para ponerlo al día.
+        </p>
+      ) : null}
 
       {/* La explicación de la continuidad es larga y cambia con cada caso:
           plegada, para que la tarjeta se lea de un vistazo. */}

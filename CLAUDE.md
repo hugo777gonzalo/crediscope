@@ -692,7 +692,10 @@ antes de tocar esa área.
   2020-01..03, 05, 06, 08, 11) no cortan la continuidad. La antigüedad
   sale de `fecIng`, no del primer aporte (`continuidadLaboral`).
 - Aportar por cuenta propia cuenta como trabajo sólo en meses con RUC
-  activo; el RISE siempre.
+  activo; el RISE siempre. La regla es `reglaDeTrabajo()`
+  (`fuentes-ingreso.ts`) y la usan la continuidad y, desde estructura-v14,
+  la antigüedad en el empleo actual: antes contaba cualquier afiliación y
+  salía más larga que la continuidad en 35 personas.
 - "Es su propio patrono": sólo `_shared/patrono.ts` (RUC = cédula +
   001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
   lo hace empleador.
