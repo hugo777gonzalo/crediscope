@@ -29,8 +29,9 @@ aceptada.
   queda por ver en pantalla y por decidir.**
   - Se vio con la sesión de QA a 1280 y a 414 px: simulador, Nueva solicitud,
     una solicitud Plus evaluada y la pestaña Capacidad (misma cuota y mismo
-    veredicto que la solicitud). **No se vio a 768 px, ni en pantalla las
-    correcciones** (el servidor de 5184 era de otra rama): se probaron el
+    veredicto que la solicitud). Desplegado el 2026-10-18 (#48). **No se vio a
+    768 px, ni en pantalla todas las correcciones** (el servidor de 5184 era de
+    otra rama): se probaron el
     simulador y el resumen fijo en una página de prueba, a 414 y 1280.
     Falta verlas con la sesión: la solicitud que no existe, la solicitud evaluada
     con los pasos plegados, la confirmación de Plus (admin), la lista de
@@ -40,25 +41,37 @@ aceptada.
     confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
     se dibujan.
 - **Demo para una IFI (al 2026-10-18). Empezar por `docs/plan-demo-ifi.md`**
-  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **133**,
-  funciones con el sello `6d5c4296e1e3` (10 de 10). Hecho y en producción:
-  simulador (#39), capacidad de pago con el Ingreso declarado (#42, #45),
-  solicitud y orquestador Básico / Pro / Plus (#46, 133). Las tres modalidades
-  se probaron de punta a punta el 2026-10-18 con una persona real (Plus pagó
-  una consulta de Equifax, autorizada). Queda, por orden:
-  1. **Construir los estados de la persona** (`docs/modelo-de-la-persona.md`,
-     sección 5). El negocio decidió los nombres el 2026-10-18: el segundo estado
-     es «En proceso»; quien fue rechazado o desistió está en «No aprobado»; la
-     decisión de la institución (Aprobado / Rechazado) la marca el analista en
-     la solicitud (la solicitud todavía no tiene dónde guardarla); «Perfil del
-     Cliente» pasa a «Perfil de la Persona». Falta construirlos y renombrar las
-     pantallas (menú, exportaciones y unos 25 textos) con
-     `scripts/renombrar-textos.mjs`. La preaprobación la da el modelo (P3).
-  2. **Una revisión integral** de lo construido, en sesiones aparte. **Hecha la
-     del contrato y los documentos (2026-10-18)**: `api/openapi.yaml` ya
-     describe las dos puertas nuevas y la modalidad, con ejemplos calculados con
-     el código. Quedan las de cálculos, funciones y seguridad, y pantallas, y lo
-     que el contrato dice y el código no hace (se corrige tocando código):
+  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **134**,
+  funciones con el sello `516dc33493b0` (10 de 10, 2026-10-18), control de
+  seguridad 71 de 71. Hecho y en producción: simulador (#39), capacidad de pago
+  con el Ingreso declarado (#42, #45), solicitud y orquestador Básico / Pro /
+  Plus (#46, 133), la revisión integral (#48 a #51) y los estados de la persona
+  con la decisión de la institución (#52, 134). Las tres modalidades se probaron
+  de punta a punta el 2026-10-18 con una persona real (Plus pagó una consulta de
+  Equifax, autorizada). Queda, por orden:
+  1. **Los estados de la persona, hechos el 2026-10-18** (#52, 134;
+     `docs/modelo-de-la-persona.md`): el analista marca Aprobado, Rechazado o
+     Desistió en `/solicitud/:id`, con motivo (vale la última; todas en
+     `decisiones`); el estado se calcula con `estadoDeLaPersona()` y se ve en la
+     solicitud; «Perfil de la Persona» renombrado. Probado en pantalla a 500 y
+     1280 px con una solicitud de prueba (quedó **Aprobado** con el motivo
+     «Prueba de la pantalla de decisión»: la solicitud Básico más reciente de la
+     persona de las pruebas del 18/10). **Falta**:
+     - mostrar el estado en la bandeja (filtro y columna, con otro nombre que el
+       «Estado» del análisis), en el Expediente y el embudo en Monitoreo. Para la
+       bandeja conviene calcularlo en la base (`resumen_por_persona`): hoy la
+       regla vive sólo en `estado-de-la-persona.ts`, y si se copia a SQL las dos
+       tienen que cambiar juntas;
+     - Cliente activo y Cliente cerrado, que necesitan los créditos;
+     - que el negocio confirme lo que se resolvió sin su palabra: con Revisar o
+       Negar la persona sigue En proceso hasta que decide el analista, y manda la
+       última solicitud;
+     - la API: la decisión por `POST /evaluaciones/{id}/decision` admite además
+       `aprobado_con_condiciones`, monto y plazo aprobados; la pantalla, no.
+  2. **La revisión integral, hecha el 2026-10-18** en cuatro sesiones (#48
+     pantallas, #49 contrato y documentos, #50 funciones y seguridad, #51
+     cálculos: simulador-v2 y capacidad-v3) y desplegada. Queda lo que el
+     contrato dice y el código no hace (se corrige tocando código):
      - **`ingresoDeclarado` de la evaluación**: el contrato lo pone dentro de
        `solicitudDeCredito`; `evaluar-solicitud` lo lee en la raíz del cuerpo.
      - **La evaluación pide su propia forma**: el contrato exige `autorizacion`,
@@ -112,8 +125,7 @@ aceptada.
        los describe ahora (`datos` es donde viaja `deudasSinCuota`); si la API
        no debe devolver esos ingresos y cuotas, hay que sacarlos del contrato y
        de la función.
-     - **Funciones y base (2026-10-18), corregido en código y SIN DESPLEGAR**
-       (`--funciones`; no hace falta migrar): `evaluar-solicitud` ya no copia en
+     - **Funciones y base (2026-10-18), corregido y desplegado** (516dc33): `evaluar-solicitud` ya no copia en
        la solicitud el mensaje de la función llamada (podía traer el de Novadata,
        Equifax, el modelo o la base: `falloDeUnPaso()`); un paso que pudo dejar
        algo en vuelo (el buró, sobre todo) no se reintenta hasta 3 minutos

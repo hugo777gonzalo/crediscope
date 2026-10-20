@@ -31,7 +31,7 @@
 //   consumo, que cada institución puede bajar, y un desgravamen de 0,6% "por
 //   el momento". Cambiarlos no toca la fórmula.
 
-export const SIMULADOR_VERSION = "simulador-v2";
+export const SIMULADOR_VERSION = "simulador-v3";
 
 export type SistemaAmortizacion = "frances" | "aleman";
 export type PeriodicidadTasa = "anual" | "mensual";
@@ -46,9 +46,19 @@ export interface ParametrosDesgravamen {
   base: BaseDesgravamen;
 }
 
+export interface LimitesDelCredito {
+  /** En dólares. */
+  montoMinimo: number;
+  montoMaximo: number;
+  plazoMinimoMeses: number;
+  plazoMaximoMeses: number;
+}
+
 export interface ParametrosProducto {
   /** Tope de la tasa nominal anual, en porcentaje. */
   tasaNominalMaximaPorcentaje: number;
+  /** Lo que se puede pedir: fuera de estos rangos no hay producto. */
+  limites: LimitesDelCredito;
   sistema: SistemaAmortizacion;
   desgravamen: ParametrosDesgravamen;
 }
@@ -57,20 +67,31 @@ export interface ParametrosProducto {
 // mensual sería 7,2% al año, más que cualquier seguro de desgravamen de
 // consumo). Que se cobre sobre el saldo es lo usual en consumo; cada
 // institución puede cobrarlo sobre el monto.
+//
+// Límites del negocio (2026-10-19): de USD 1.000 a USD 120.000 y de 6 a 120
+// meses. Antes el simulador aceptaba de USD 0,01 a 1.000 millones y de 1 a 480
+// meses, y con montos y plazos así no hay producto: a USD 1,00 y 480 meses casi
+// todos los meses pagaban capital cero.
 export const PRODUCTO_CONSUMO: ParametrosProducto = {
   tasaNominalMaximaPorcentaje: 15,
+  limites: { montoMinimo: 1000, montoMaximo: 120000, plazoMinimoMeses: 6, plazoMaximoMeses: 120 },
   sistema: "frances",
   desgravamen: { tasaPorcentaje: 0.6, periodicidad: "anual", base: "saldo" },
 };
-
-// El mismo rango que acepta el contrato de la API (SolicitudDeCredito).
-export const PLAZO_MAXIMO_MESES = 480;
 
 // Un tope técnico, no una política: con montos que no caben en un entero
 // exacto (2^53 centavos) el cálculo en centavos deja de ser exacto, y sin tope
 // montoMaximoParaCuota() no tiene dónde terminar. Ningún crédito de consumo
 // se le acerca.
 export const MONTO_MAXIMO = 1_000_000_000;
+
+// Lo que el motor sabe calcular, sin la política del producto: lo usan las
+// pruebas del cálculo (1 mes, 480 meses, un centavo) y nadie más. El plazo
+// máximo es el de SolicitudDeCredito en el contrato de la API.
+export const LIMITES_TECNICOS: LimitesDelCredito = { montoMinimo: 0.01, montoMaximo: MONTO_MAXIMO, plazoMinimoMeses: 1, plazoMaximoMeses: 480 };
+
+// 120000 → "120.000", para los mensajes.
+const conMiles = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
 export interface PedidoDeSimulacion {
   monto: number;
@@ -119,12 +140,11 @@ export type ResultadoDeSimulacion = { ok: true; simulacion: Simulacion } | { ok:
 const esNumeroFinito = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 
 // Los mensajes se muestran tal cual en la pantalla y viajan en la API.
-export function validarPedido(p: PedidoDeSimulacion): string[] {
+export function validarPedido(p: PedidoDeSimulacion, limites: LimitesDelCredito = PRODUCTO_CONSUMO.limites): string[] {
   if (!p || typeof p !== "object") return ["Faltan las condiciones del crédito: monto, plazo y tasa."];
   const errores: string[] = [];
   const maxima = p.tasaNominalMaximaPorcentaje ?? PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje;
   if (!esNumeroFinito(p.monto) || p.monto <= 0) errores.push("El monto tiene que ser mayor que cero.");
-  else if (p.monto > MONTO_MAXIMO) errores.push("El monto no puede pasar de 1.000.000.000 de dólares.");
   else {
     // La tolerancia crece con el monto: a partir de unos 100 millones, el
     // producto monto × 100 de un monto con dos decimales ya no cae en un entero
@@ -133,10 +153,12 @@ export function validarPedido(p: PedidoDeSimulacion): string[] {
     const enCentavos = p.monto * 100;
     if (Math.abs(enCentavos - Math.round(enCentavos)) > Math.max(1e-6, enCentavos * 1e-13)) {
       errores.push("El monto va en dólares con hasta dos decimales.");
+    } else if (p.monto < limites.montoMinimo || p.monto > limites.montoMaximo) {
+      errores.push(`El monto va de ${conMiles(limites.montoMinimo)} a ${conMiles(limites.montoMaximo)} dólares.`);
     }
   }
-  if (!Number.isInteger(p.plazoMeses) || p.plazoMeses < 1 || p.plazoMeses > PLAZO_MAXIMO_MESES) {
-    errores.push(`El plazo va en meses enteros, de 1 a ${PLAZO_MAXIMO_MESES}.`);
+  if (!Number.isInteger(p.plazoMeses) || p.plazoMeses < limites.plazoMinimoMeses || p.plazoMeses > limites.plazoMaximoMeses) {
+    errores.push(`El plazo va en meses enteros, de ${limites.plazoMinimoMeses} a ${limites.plazoMaximoMeses}.`);
   }
   if (!esNumeroFinito(maxima) || maxima <= 0) errores.push("La tasa máxima del producto no es válida.");
   if (!esNumeroFinito(p.tasaNominalAnualPorcentaje)) errores.push("La tasa tiene que ser un número.");
@@ -159,8 +181,8 @@ export function validarPedido(p: PedidoDeSimulacion): string[] {
   return errores;
 }
 
-export function simularCredito(p: PedidoDeSimulacion): ResultadoDeSimulacion {
-  const errores = validarPedido(p);
+export function simularCredito(p: PedidoDeSimulacion, limites: LimitesDelCredito = PRODUCTO_CONSUMO.limites): ResultadoDeSimulacion {
+  const errores = validarPedido(p, limites);
   if (errores.length > 0) return { ok: false, errores };
 
   const sistema = p.sistema ?? PRODUCTO_CONSUMO.sistema;
@@ -239,22 +261,30 @@ export function simularCredito(p: PedidoDeSimulacion): ResultadoDeSimulacion {
 //
 // Se compara en centavos enteros: la cuota máxima que sale de un cálculo
 // (ingreso × 40% − cuotas) trae ruido de coma flotante, y comparar en dólares
-// dejaba fuera o dentro un monto por 1e-13. Si ni el monto máximo (MONTO_MAXIMO)
-// pasa el tope, devuelve ese monto: es el techo del simulador, no el de la
-// persona. Una cuota máxima infinita quiere decir «sin tope»; NaN o negativa, cero.
+// dejaba fuera o dentro un monto por 1e-13. Si ni el monto máximo del
+// producto pasa el tope, devuelve ese monto: es el techo del producto, no el de
+// la persona. Una cuota máxima infinita quiere decir «sin tope»; NaN o negativa, cero.
+//
+// Nunca devuelve algo que el producto no puede dar: si lo que alcanza es menos
+// que el monto mínimo, devuelve cero (no alcanza para un crédito), y el techo es
+// el monto máximo de los límites.
 export function montoMaximoParaCuota(
   cuotaMaxima: number,
   condiciones: Omit<PedidoDeSimulacion, "monto">,
+  limites: LimitesDelCredito = PRODUCTO_CONSUMO.limites,
 ): number | null {
   if (typeof cuotaMaxima !== "number" || Number.isNaN(cuotaMaxima) || cuotaMaxima <= 0) return 0;
   const topeC = Math.floor(cuotaMaxima * 100 + 1e-6);
+  // La búsqueda mira montos por debajo del mínimo; los límites sólo cuentan al final.
+  const paraBuscar = { ...limites, montoMinimo: 0.01 };
   const cuotaDeC = (montoC: number): number | null => {
-    const r = simularCredito({ ...condiciones, monto: montoC / 100 });
+    const r = simularCredito({ ...condiciones, monto: montoC / 100 }, paraBuscar);
     return r.ok ? Math.round(r.simulacion.cuotaPrimerMes * 100) : null;
   };
-  if (cuotaDeC(100) === null) return null; // las condiciones no son válidas
-  const techoC = MONTO_MAXIMO * 100;
-  if ((cuotaDeC(techoC) as number) <= topeC) return MONTO_MAXIMO;
+  // Las condiciones no son válidas (el plazo, la tasa, el seguro...).
+  if (validarPedido({ ...condiciones, monto: limites.montoMinimo }, limites).length > 0) return null;
+  const techoC = Math.round(limites.montoMaximo * 100);
+  if ((cuotaDeC(techoC) as number) <= topeC) return limites.montoMaximo;
   // La cuota no baja al subir el monto: búsqueda binaria en centavos entre un
   // monto que cabe (0) y uno que no (el techo).
   let bajo = 0;
@@ -264,5 +294,6 @@ export function montoMaximoParaCuota(
     if ((cuotaDeC(medio) as number) <= topeC) bajo = medio;
     else alto = medio;
   }
-  return bajo / 100;
+  const maximo = bajo / 100;
+  return maximo < limites.montoMinimo ? 0 : maximo;
 }
