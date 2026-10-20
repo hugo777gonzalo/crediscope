@@ -106,12 +106,6 @@ export default function NuevaSolicitud() {
         // Como en la especificación de la API: las condiciones y el Ingreso
         // declarado juntos, dentro de `solicitudDeCredito`.
         ...(def.exigeCondiciones ? { solicitudDeCredito: { ...pedido, ...ingresoDeclarado } } : {}),
-        // TRANSITORIO: la forma anterior (`solicitud` y el Ingreso declarado en
-        // la raíz) sigue yendo mientras `evaluar-solicitud` publicada sea la
-        // anterior a la 135: la pantalla se publica al fusionar y la función
-        // sólo al desplegarse con el corredor. Quitar estas dos líneas cuando la
-        // función esté desplegada (docs/pendientes.md).
-        ...(def.exigeCondiciones ? { solicitud: pedido, ...ingresoDeclarado } : {}),
       });
       navigate(`/solicitud/${creada.id}`);
     } catch (err) {
