@@ -17,7 +17,6 @@ const ENTORNO: Record<string, string> = {
   EQUIFAX_CUSTOMER: "CLIENTE-1",
   EQUIFAX_MODEL: "MODELO-1",
   EQUIFAX_ESPERA_MS: "1",
-  EQUIFAX_MAX_INTENTOS: "2",
   EQUIFAX_PLAZO_MS: "60",
 };
 const ponerEntorno = () => { for (const [k, v] of Object.entries(ENTORNO)) Deno.env.set(k, v); };
@@ -128,7 +127,8 @@ conEntorno("un 503 del portón se reintenta con tope y no cobra", async () => {
   const r = await consultarEquifax("0102030405");
   assertEquals(r.familia, "transitorio");
   assertEquals(r.httpStatus, 503);
-  assertEquals(eq.consultas, 2, "1 intento + 1 reintento");
+  assertEquals(eq.consultas, 3, "1 intento + 2 reintentos");
+  assertEquals(r.intentos, 3);
   assertEquals(r.puedeHaberCobrado, false);
 });
 
@@ -139,6 +139,18 @@ conEntorno("un 503 que se arregla al segundo intento termina bien", async () => 
   assertEquals(r.status, "ok");
   assertEquals(r.intentos, 2);
   assertEquals(eq.consultas, 2);
+});
+
+conEntorno("un 503 que se arregla al tercer intento termina bien, y el tope se puede bajar con EQUIFAX_MAX_INTENTOS", async () => {
+  const { consultarEquifax } = await cliente();
+  const eq = equifaxFalso({ consulta: [json({}, 503), json({}, 429), json({ listo: true })] });
+  const r = await consultarEquifax("0102030405");
+  assertEquals(r.status, "ok");
+  assertEquals(eq.consultas, 3);
+  Deno.env.set("EQUIFAX_MAX_INTENTOS", "1");
+  const sola = equifaxFalso({ consulta: [json({}, 503)] });
+  assertEquals((await consultarEquifax("0102030405")).familia, "transitorio");
+  assertEquals(sola.consultas, 1, "con 1 no se reintenta");
 });
 
 conEntorno("un 401 renueva el token y repite una vez", async () => {
