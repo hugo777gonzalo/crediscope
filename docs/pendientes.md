@@ -496,9 +496,11 @@ aceptada.
          10 confirmadas) y **recalculados 2.561 perfiles** con
          `recalcular-grupos.mjs --grupos=laboral
          --carpeta=research/novadata-raw-2026-10-03` (2.561 de 2.561, 0 que el
-         crudo no reproduzca). Medido después: 0 descalces en v14; quedan 10
-         últimos perfiles en v13 (consultados después del 03/10, sin crudo
-         local), 1 con descalce, que la pantalla explica hasta reconsultarlo.
+         crudo no reproduzca). Los 12 últimos perfiles consultados después del
+         03/10 tenían el crudo en Storage, pero el guion sólo leía la carpeta:
+         desde el mismo día lo lee del depósito cuando la carpeta no lo tiene, y
+         se recalcularon (12 de 12). Medido después: las 2.573 personas en v14,
+         todas con crudo y 0 con la antigüedad más larga que la continuidad.
          **Queda abierto**: `duracionEmpleoMasLargoMeses` sigue sin la regla
          (cuenta el aporte propio desde la fecha de ingreso), así que el empleo
          más largo puede ser el mismo empleo actual con más meses. **Para el marco** (cuando se toque, al final): su

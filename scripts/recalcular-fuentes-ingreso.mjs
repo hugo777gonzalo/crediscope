@@ -1,5 +1,6 @@
 // Recalcula la clasificación de ingresos de los perfiles guardados desde el
-// crudo local, sin volver a consultar Novadata.
+// crudo (la carpeta local y, lo que no tiene, el depósito), sin volver a
+// consultar Novadata.
 //
 // Nació con fuentes-v8 / estructura-v7 (2026-09-26): el aporte bajo el propio
 // RUC pasó a ser cuenta propia y la nómina dejó de contar a la propia
@@ -35,6 +36,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
+import { candidatosDelUltimoPerfil, leerCrudo } from "./_comun/crudo-del-ultimo-perfil.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
@@ -85,7 +87,7 @@ const ultimoPorCliente = new Map();
   let total = null;
   for (let desde = 0; total === null || desde < total; desde += 1000) {
     const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at&order=id&limit=1000&offset=${desde}`,
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
       { headers: { Prefer: "count=exact" } },
     );
     if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
@@ -96,20 +98,9 @@ const ultimoPorCliente = new Map();
     if (cuerpo.length === 0) break;
   }
 }
-const ultimosIds = new Set([...ultimoPorCliente.values()].map((p) => p.id));
 
-const crudos = fs.readdirSync(CARPETA).filter((a) => a.endsWith(".json")).map((a) => path.join(CARPETA, a));
-const candidatos = [];
-let sinPerfilId = 0, noEsElUltimo = 0;
-for (const archivo of crudos) {
-  // Sólo la cabecera: el crudo entero se lee después, de a uno.
-  const cabecera = fs.readFileSync(archivo, "utf8").slice(0, 400);
-  const perfilId = /"perfilId"\s*:\s*"([^"]+)"/.exec(cabecera)?.[1];
-  if (!perfilId) { sinPerfilId++; continue; }
-  if (!ultimosIds.has(perfilId)) { noEsElUltimo++; continue; }
-  candidatos.push({ archivo, perfilId });
-}
-console.log(`crudos: ${crudos.length} | del último perfil: ${candidatos.length} | ya no son el último: ${noEsElUltimo} | sin perfilId: ${sinPerfilId}`);
+const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
+console.log(`del último perfil: ${candidatos.length} (carpeta ${deDonde.enLaCarpeta}, depósito ${deDonde.delDeposito}) | en la carpeta pero ya no son el último: ${deDonde.noEsElUltimo} | sin perfilId: ${deDonde.sinPerfilId} | sin crudo: ${deDonde.sinCrudo}`);
 
 // Lo que se espera que cambie; cualquier otra diferencia es un crudo que no
 // reproduce el perfil guardado. Se compara con las claves ordenadas: jsonb
@@ -172,20 +163,23 @@ for (let i = 0; i < candidatos.length; i += 50) {
     `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${lote.map((c) => c.perfilId).join(",")})&select=id,perfil_laboral,standard_profile`,
   );
   const porId = new Map(filas.map((f) => [f.id, f]));
-  for (const { archivo, perfilId } of lote) {
+  for (const candidato of lote) {
+    const { perfilId } = candidato;
     const fila = porId.get(perfilId);
     const guardado = fila?.standard_profile;
     const fAnterior = guardado?.fuentesIngreso;
     if (!fAnterior) { sumar("sin fuentesIngreso guardado"); continue; }
     if (fAnterior.version === FUENTES_INGRESO_VERSION && !FORZAR) { sumar(`ya en ${FUENTES_INGRESO_VERSION}`); continue; }
-    const { cedula, capturadoEl, raw } = JSON.parse(fs.readFileSync(archivo, "utf8"));
+    const crudo = await leerCrudo(candidato, env.SUPABASE_URL, cabeceras);
+    if (crudo.perfilId !== perfilId) { noReproducen.push(`p-${perfilId.slice(0, 8)}: el crudo es de otro perfil`); continue; }
+    const { cedula, capturadoEl, raw } = crudo;
     // El corte con que se clasificó ese día: si el cliente traía un mes
     // posterior, el vigente era anterior a ese mes.
     const corte = fAnterior.corteDesactualizado ? mesMenos(fAnterior.corteIessUsado) : fAnterior.corteIessUsado;
     const nuevo = armarEnFecha(capturadoEl, () => buildStandardProfile(raw, cedula, corte).profile);
 
     const otras = rutasDistintas(guardado, nuevo).filter((r) => !ESPERADAS.some((e) => r === e || r.startsWith(`${e}.`)));
-    if (otras.length) { noReproducen.push(`${cedula}: ${otras.slice(0, 3).join(", ")}`); continue; }
+    if (otras.length) { noReproducen.push(`p-${perfilId.slice(0, 8)}: ${otras.slice(0, 3).join(", ")}`); continue; }
 
     const laboralAnterior = Object.fromEntries(
       CAMPOS_LABORAL.filter((c) => guardado.laboral?.[c] !== nuevo.laboral[c]).map((c) => [c, guardado.laboral?.[c] ?? null]),

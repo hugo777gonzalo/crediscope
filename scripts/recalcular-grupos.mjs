@@ -28,16 +28,14 @@
 // fila entera no se toca.
 //
 // El crudo se lee de la carpeta local y, para el último perfil que la
-// carpeta no tiene, del depósito crudo-novadata (crudo_ruta). Hasta el
-// 2026-10-20 sólo leía la carpeta: estructura-v14 dejó en v13 a 12 personas
-// consultadas después del respaldo del 03/10, con el crudo guardado en Storage.
+// carpeta no tiene, del depósito (_comun/crudo-del-ultimo-perfil.mjs).
 //
 // Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
 import fs from "node:fs";
-import zlib from "node:zlib";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
+import { candidatosDelUltimoPerfil, leerCrudo } from "./_comun/crudo-del-ultimo-perfil.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
@@ -92,24 +90,7 @@ const ultimoPorCliente = new Map();
     if (cuerpo.length === 0) break;
   }
 }
-const ultimosIds = new Set([...ultimoPorCliente.values()].map((p) => p.id));
-const candidatos = [];
-for (const a of fs.readdirSync(CARPETA).filter((x) => x.endsWith(".json"))) {
-  const archivo = path.join(CARPETA, a);
-  const perfilId = /"perfilId"\s*:\s*"([^"]+)"/.exec(fs.readFileSync(archivo, "utf8").slice(0, 400))?.[1];
-  if (perfilId && ultimosIds.has(perfilId)) candidatos.push({ archivo, perfilId });
-}
-const enLaCarpeta = new Set(candidatos.map((c) => c.perfilId));
-let delDeposito = 0;
-for (const p of ultimoPorCliente.values()) {
-  if (p.crudo_ruta && !enLaCarpeta.has(p.id)) { candidatos.push({ ruta: p.crudo_ruta, perfilId: p.id }); delDeposito++; }
-}
-async function leerCrudo({ archivo, ruta }) {
-  if (archivo) return JSON.parse(fs.readFileSync(archivo, "utf8"));
-  const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-novadata/${ruta}`, { headers: { apikey: cabeceras.apikey, Authorization: cabeceras.Authorization } });
-  if (!r.ok) throw new Error(`Storage ${r.status} al leer el crudo`);
-  return JSON.parse(zlib.gunzipSync(Buffer.from(await r.arrayBuffer())).toString("utf8"));
-}
+const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
 
 function armarEnFecha(instante, fn) {
   const DateReal = globalThis.Date;
@@ -158,7 +139,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
     const guardado = fila?.standard_profile;
     if (!guardado) continue;
     if (fila.structure_version === PROCESS_VERSION && !FORZAR) { yaEnVersion++; continue; }
-    const crudo = await leerCrudo(candidato);
+    const crudo = await leerCrudo(candidato, env.SUPABASE_URL, cabeceras);
     // Un crudo de otra consulta no reproduce este perfil.
     if (crudo.perfilId !== perfilId) { noReproducen.push(`p-${perfilId.slice(0, 8)}: el crudo es de otro perfil`); continue; }
     const { cedula, capturadoEl, raw } = crudo;
@@ -186,7 +167,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
     escrituras.push(escritura);
   }
 }
-console.log(`candidatos: ${candidatos.length} (del depósito: ${delDeposito}) | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
+console.log(`candidatos: ${candidatos.length} (carpeta ${deDonde.enLaCarpeta}, depósito ${deDonde.delDeposito}, sin crudo ${deDonde.sinCrudo}) | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
 if (noReproducen.length) console.log("no reproducen (no se tocan):", noReproducen.slice(0, 10));
 if (BLOQUEO) {
   console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);
