@@ -4,8 +4,8 @@ Lo que quedó abierto al 2026-10-04 (cierre de la sesión de las pantallas),
 con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
-**133** (las solicitudes, 2026-10-17; la 131 es la fila de marco-v31). Las
-funciones desplegadas llevan el sello `6d5c4296e1e3` (10 de 10);
+**135** (los datos de la API en la solicitud, 2026-10-19; la 131 es la fila de
+marco-v31). Las funciones desplegadas llevan el sello `2dacfcfbddd9` (10 de 10);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
 (ver la sección 2, punto 1) con Claude Sonnet 5.5, estructura-v13,
@@ -40,10 +40,12 @@ aceptada.
     cédula completa de cada persona (es la bandeja del analista, pero conviene
     confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
     se dibujan.
-- **Demo para una IFI (al 2026-10-18). Empezar por `docs/plan-demo-ifi.md`**
-  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **134**,
-  funciones con el sello `516dc33493b0` (10 de 10, 2026-10-18), control de
-  seguridad 71 de 71. Hecho y en producción: simulador (#39), capacidad de pago
+- **Demo para una IFI (al 2026-10-19). Empezar por `docs/plan-demo-ifi.md`**
+  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **135**,
+  funciones con el sello `2dacfcfbddd9` (10 de 10, desplegadas el 2026-10-19 con el freno de Equifax,
+  los límites del producto y los 3 intentos a Equifax). El control de seguridad
+  71 de 71 es del 2026-10-18; el 2026-10-19 sólo se comprobó la versión desplegada
+  (desde un worktree, el resto de sus puntos falla por el enlace a la base). Hecho y en producción: simulador (#39), capacidad de pago
   con el Ingreso declarado (#42, #45), solicitud y orquestador Básico / Pro /
   Plus (#46, 133), la revisión integral (#48 a #51) y los estados de la persona
   con la decisión de la institución (#52, 134). Las tres modalidades se probaron
@@ -77,38 +79,16 @@ aceptada.
        especificación técnica de la API (`api/openapi.yaml`), no el contrato
        comercial con la institución; en el comercial la IFI declara que tiene la
        autorización de cada persona.
-       1. **`ingresoDeclarado` de la evaluación**: hecho en código (2026-10-19).
-          `evaluar-solicitud` lee las condiciones y el Ingreso declarado dentro de
-          `solicitudDeCredito` (antes: `solicitud` y la raíz) y la pantalla los
-          manda ahí. **Pendiente de desplegar** (ver «Falta aplicar» abajo).
-       2. **Guardar los datos importantes de la evaluación**: hecho en código
-          (2026-10-19, migración 135). La solicitud guarda `autorizacion` (id,
-          fecha, vigencia, canal, finalidad y la huella del documento, nunca el
-          documento), `referencia` (única en la base: hay una base por
-          institución), `operador`, `prioridad` y `reemplazaA`, una columna por
-          dato. Son opcionales en la función interna; los exige la puerta de la
-          API (Fase 1). `modalidad` sigue siendo obligatoria en la función
-          interna; el contrato pone `basico` por omisión y eso lo resuelve la
-          puerta de la API. `reemplazaA` sólo se guarda (y se comprueba que sea
-          una solicitud de la misma persona): que reutilice el perfil es de la
-          puerta. No cambió `suprimir_titular()`: son columnas de la fila que ya
-          se borra.
-       **Falta aplicar (no se hace sin autorización del negocio), en este orden:**
-       migración 135 con `node scripts/migrar-clientes.mjs --seco` y luego
-       `--aplicar`; después `--funciones` desde una copia limpia de `origin/main`
-       (`ESQUEMA_MINIMO` subió a 135: antes de migrar, las funciones contestarían
-       503); y al final, quitar de `NuevaSolicitud.jsx` las dos líneas
-       «TRANSITORIO» que siguen mandando la forma anterior. Hasta que se despliegue,
-       la pantalla publicada manda las dos formas para que la función vieja siga
-       andando.
+       1, 2, 4 y 7: **cerrados el 2026-10-19** (#59; migración 135 aplicada y
+       funciones desplegadas con el corredor, 10 de 10; control de seguridad 73
+       de 73). Quedó dicho en CLAUDE.md (módulo de la solicitud). Lo que sigue
+       abierto de ellos: `modalidad` es obligatoria en la función interna (el
+       contrato pone `basico` por omisión: lo resuelve la puerta de la API);
+       `reemplazaA` sólo se guarda, y que reutilice el perfil es de la puerta; y
+       en Básico las condiciones de `solicitudDeCredito`, que el contrato manda
+       guardar, todavía no se guardan.
        3. **Estados y etapas**: se hace cuando los flujos estén afinados
           (capacidad de pago, predictor de ingresos). No se toca antes.
-       4. **`Fallo.codigo`**: hecho en código (2026-10-19). La especificación suma
-          `buro_requiere_consulta_previa`, `tope_diario_agotado`,
-          `buro_no_disponible` e `identificacion_no_encontrada`; `falloDeUnPaso()`
-          devuelve el código (sale del estado y del motivo, nunca del texto de un
-          tercero) y la solicitud lo guarda en el paso fallido (`pasos[].codigo`,
-          sin columna nueva). `plazo_vencido` es de la cola de la API, no de un paso.
        5. **Quién paga Equifax por la API y los niveles de acceso**: el negocio
           propone cuatro niveles (dueño, administrador de la institución, usuario
           A que consulta y evalúa, usuario B que sólo ve). Ver «Niveles de
@@ -118,11 +98,6 @@ aceptada.
           (`/.well-known/jwks.json`). Queda la firma de los avisos
           (`webhook-signature`, que protege a la institución de un aviso falso)
           y la de la ficha de acceso (OAuth); no son lo mismo.
-       7. **`tasaNominalMaximaPorcentaje`**: corregido en código (2026-10-19).
-          `simular-credito` y `capacidad-de-pago` arman las condiciones con
-          `condicionesDelPedidoExterno()`, que descarta el campo: el tope sale de
-          `PRODUCTO_CONSUMO` (hoy 15% fijo; de la configuración de la institución
-          cuando exista), nunca del cuerpo.
        8. **Validaciones que el contrato declara y la función no hace**
           (`additionalProperties: false`, máximos de 20 ingresos, 50 obligaciones
           y 50 deudas sin cuota, `ingresoDeclarado` de más de mil millones,
@@ -171,28 +146,29 @@ aceptada.
        botón de administración y una solicitud Plus) se pueden pagar las dos:
        `procesarConsultaEquifax()` reutiliza lo guardado, no lo que está en vuelo.
        Pide un candado en la base por persona.
-     - **Límites del producto de consumo (2026-10-19, PR #56, sin desplegar):**
+     - **Límites del producto de consumo (2026-10-19, PR #56, desplegado con f4d80e0):**
        monto de USD 1.000 a 120.000 y plazo de 6 a 120 meses (`PRODUCTO_CONSUMO.limites`,
-       simulador-v3). Las funciones los recogen al desplegarse con el corredor. Una
+       simulador-v3). Una
        solicitud guardada fuera de esos rangos falla en el paso de capacidad (no se
        midió si hay alguna).
-     - **Para decidir: cuántos intentos a Equifax.** Hoy son 2 en total
-       (`EQUIFAX_MAX_INTENTOS`, 1,5 s de espera) y sólo para lo que no llegó a
-       procesarse (429, 502, 503, 504; un 401 con token nuevo). Un timeout no se
-       reintenta solo, y un paso de la solicitud que pudo dejar algo en vuelo no se
-       reintenta hasta 3 minutos después. Recomendación: subir a 3 intentos
-       (`EQUIFAX_MAX_INTENTOS=3`, sin código) sólo para esos errores rápidos, con un
-       presupuesto de tiempo total (cada intento puede esperar 60 s y la función
-       corta a los 150 s); ninguno automático tras un timeout; y un freno: tras 3
-       fallos seguidos en 10 minutos, `consultar-equifax` dice «Equifax no responde»
-       sin llamar, para que cada analista no lo vuelva a golpear. El freno no está
-       construido.
-     - **Duda del negocio: la cuota de 200 de Equifax.** El pedido a Equifax lleva
-       `tipoProducto` 1, `monto` 5.000, `plazo` 12 y `restaGastoFinanciero` 0
-       (`PARAMETROS_DE_RELLENO`); no tiene un campo de cuota. El negocio dijo que
-       Equifax «va con cuota 200 por defecto» y después dudó si se confundió. Antes de
-       tocar la trama hay que confirmar contra el diccionario de Equifax
-       (`docs/equifax-pedido-de-diccionario.md`) si existe ese campo.
+     - **Intentos a Equifax: 3 en total desde el 2026-10-19** (decisión del negocio;
+       `EQUIFAX_MAX_INTENTOS`, por defecto 3 en el código; antes eran 2), con 1,5 s de
+       espera creciente y sólo para lo que no llegó a procesarse (429, 502, 503, 504;
+       un 401 con token nuevo). Un timeout no se reintenta solo, y un paso de la
+       solicitud que pudo dejar algo en vuelo no se reintenta hasta 3 minutos después.
+       **El freno** (construido y desplegado el 2026-10-19, 2dacfcf): tras 3 fallos seguidos
+       de Equifax (no llegó, 5xx, credenciales rechazadas o respuesta incomprensible; no
+       cuentan los de una persona), `consultar-equifax` contesta 503 con el motivo
+       `equifax_no_responde` sin llamar ni cobrar, hasta 10 minutos después del último
+       fallo; pasado ese tiempo sale UNA consulta de prueba (si falla se cierra de nuevo,
+       si sirve se reinicia). Vive en `frenoDeEquifax()` de `equifax-persistencia.ts`,
+       así que lo comparten la función y el guion local; lo reutilizado y la
+       simulación no lo tocan. En la solicitud, el paso del buró queda fallido con el
+       código `buro_no_disponible` y sin espera. Si la auditoría no se puede leer, no
+       frena (el tope diario es el que protege la plata).
+     - **Cuota de 200 de Equifax: aclarado, era un error de interpretación del
+       negocio (2026-10-19).** El pedido no tiene campo de cuota (`tipoProducto` 1,
+       `monto` 5.000, `plazo` 12, `restaGastoFinanciero` 0) y no hay nada que cambiar.
   3. **El predictor de ingresos**: lo lleva otra sesión
      (`docs/investigacion-predictor-de-ingresos.md`).
   4. **El marco y el modelo, al final** (decisión del negocio): que lea la
