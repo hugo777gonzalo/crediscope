@@ -40,10 +40,12 @@ aceptada.
     cédula completa de cada persona (es la bandeja del analista, pero conviene
     confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
     se dibujan.
-- **Demo para una IFI (al 2026-10-18). Empezar por `docs/plan-demo-ifi.md`**
-  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **134**,
-  funciones con el sello `516dc33493b0` (10 de 10, 2026-10-18), control de
-  seguridad 71 de 71. Hecho y en producción: simulador (#39), capacidad de pago
+- **Demo para una IFI (al 2026-10-19). Empezar por `docs/plan-demo-ifi.md`**
+  (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **135**,
+  funciones con el sello `f4d80e0296ea` (10 de 10, desplegadas el 2026-10-19 con
+  los límites del producto y los 3 intentos a Equifax). El control de seguridad
+  71 de 71 es del 2026-10-18; el 2026-10-19 sólo se comprobó la versión desplegada
+  (desde un worktree, el resto de sus puntos falla por el enlace a la base). Hecho y en producción: simulador (#39), capacidad de pago
   con el Ingreso declarado (#42, #45), solicitud y orquestador Básico / Pro /
   Plus (#46, 133), la revisión integral (#48 a #51) y los estados de la persona
   con la decisión de la institución (#52, 134). Las tres modalidades se probaron
@@ -171,9 +173,9 @@ aceptada.
        botón de administración y una solicitud Plus) se pueden pagar las dos:
        `procesarConsultaEquifax()` reutiliza lo guardado, no lo que está en vuelo.
        Pide un candado en la base por persona.
-     - **Límites del producto de consumo (2026-10-19, PR #56, sin desplegar):**
+     - **Límites del producto de consumo (2026-10-19, PR #56, desplegado con f4d80e0):**
        monto de USD 1.000 a 120.000 y plazo de 6 a 120 meses (`PRODUCTO_CONSUMO.limites`,
-       simulador-v3). Las funciones los recogen al desplegarse con el corredor. Una
+       simulador-v3). Una
        solicitud guardada fuera de esos rangos falla en el paso de capacidad (no se
        midió si hay alguna).
      - **Intentos a Equifax: 3 en total desde el 2026-10-19** (decisión del negocio;
