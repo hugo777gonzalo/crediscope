@@ -29,12 +29,17 @@ function baseFalsa(
     rpcLanza?: boolean;
   } = {},
 ) {
+  // Cada base copia sus listas: dos bases armadas con la misma lista se la
+  // compartían, y lo que insertaba una (con la hora real) lo veía la otra. La
+  // prueba del freno pasó hasta las 14:50 UTC del 2026-10-20 y desde ahí falló
+  // siempre: el fallo insertado quedaba después de AHORA y cerraba el freno.
+  const copias = Object.fromEntries(Object.entries(inicial).map(([tabla, filas]) => [tabla, [...(filas ?? [])]]));
   const tablas: Record<string, Fila[]> = {
     proveedores: [{ clave: "equifax", activo: true, notas: null }],
     consultas_equifax: [],
     audit_log: [],
     clients: [],
-    ...inicial,
+    ...copias,
   };
   let secuencia = 0;
   let fallosPendientes = opciones.fallanInsertsDeConsultas ?? 0;
