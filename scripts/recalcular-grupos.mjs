@@ -27,11 +27,15 @@
 // hallazgo que no sea ese tiene que salir idéntico al guardado; si no, la
 // fila entera no se toca.
 //
+// El crudo se lee de la carpeta local y, para el último perfil que la
+// carpeta no tiene, del depósito (_comun/crudo-del-ultimo-perfil.mjs).
+//
 // Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
+import { candidatosDelUltimoPerfil, leerCrudo } from "./_comun/crudo-del-ultimo-perfil.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
@@ -75,7 +79,7 @@ const ultimoPorCliente = new Map();
   let total = null;
   for (let desde = 0; total === null || desde < total; desde += 1000) {
     const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at&order=id&limit=1000&offset=${desde}`,
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
       { headers: { Prefer: "count=exact" } },
     );
     if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
@@ -86,13 +90,7 @@ const ultimoPorCliente = new Map();
     if (cuerpo.length === 0) break;
   }
 }
-const ultimosIds = new Set([...ultimoPorCliente.values()].map((p) => p.id));
-const candidatos = [];
-for (const a of fs.readdirSync(CARPETA).filter((x) => x.endsWith(".json"))) {
-  const archivo = path.join(CARPETA, a);
-  const perfilId = /"perfilId"\s*:\s*"([^"]+)"/.exec(fs.readFileSync(archivo, "utf8").slice(0, 400))?.[1];
-  if (perfilId && ultimosIds.has(perfilId)) candidatos.push({ archivo, perfilId });
-}
+const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
 
 function armarEnFecha(instante, fn) {
   const DateReal = globalThis.Date;
@@ -135,17 +133,21 @@ for (let i = 0; i < candidatos.length; i += 50) {
     `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${lote.map((c) => c.perfilId).join(",")})&select=id,structure_version,standard_profile,control_bloqueo`,
   );
   const porId = new Map(filas.map((f) => [f.id, f]));
-  for (const { archivo, perfilId } of lote) {
+  for (const candidato of lote) {
+    const { perfilId } = candidato;
     const fila = porId.get(perfilId);
     const guardado = fila?.standard_profile;
     if (!guardado) continue;
     if (fila.structure_version === PROCESS_VERSION && !FORZAR) { yaEnVersion++; continue; }
-    const { cedula, capturadoEl, raw } = JSON.parse(fs.readFileSync(archivo, "utf8"));
+    const crudo = await leerCrudo(candidato, env.SUPABASE_URL, cabeceras);
+    // Un crudo de otra consulta no reproduce este perfil.
+    if (crudo.perfilId !== perfilId) { noReproducen.push(`p-${perfilId.slice(0, 8)}: el crudo es de otro perfil`); continue; }
+    const { cedula, capturadoEl, raw } = crudo;
     const f = guardado.fuentesIngreso;
     const corte = f?.corteIessUsado ? (f.corteDesactualizado ? mesMenos(f.corteIessUsado) : f.corteIessUsado) : undefined;
     const nuevo = armarEnFecha(capturadoEl, () => buildStandardProfile(raw, cedula, corte).profile);
     const otras = rutasDistintas(guardado, nuevo).filter((r) => !ESPERADAS.some((e) => r === e || r.startsWith(`${e}.`)));
-    if (otras.length) { noReproducen.push(`${cedula}: ${otras.slice(0, 3).join(", ")}`); continue; }
+    if (otras.length) { noReproducen.push(`p-${perfilId.slice(0, 8)}: ${otras.slice(0, 3).join(", ")}`); continue; }
     const perfil = { ...guardado };
     for (const g of GRUPOS) perfil[g] = nuevo[g];
     const escritura = { id: perfilId, standard_profile: perfil };
@@ -155,7 +157,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
       if (!anterior) cambiosDeBloqueo.sinBloqueoGuardado++;
       else if (sinElQueCambia(anterior) !== sinElQueCambia(bloqueo)) {
         cambiosDeBloqueo.otroMotivo++;
-        noReproducen.push(`${cedula}: control_bloqueo difiere en otro hallazgo`);
+        noReproducen.push(`p-${perfilId.slice(0, 8)}: control_bloqueo difiere en otro hallazgo`);
         continue;
       }
       if (anterior?.bloqueado && !bloqueo.bloqueado) cambiosDeBloqueo.desbloqueados.push(cedula);
@@ -165,7 +167,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
     escrituras.push(escritura);
   }
 }
-console.log(`candidatos: ${candidatos.length} | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
+console.log(`candidatos: ${candidatos.length} (carpeta ${deDonde.enLaCarpeta}, depósito ${deDonde.delDeposito}, sin crudo ${deDonde.sinCrudo}) | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
 if (noReproducen.length) console.log("no reproducen (no se tocan):", noReproducen.slice(0, 10));
 if (BLOQUEO) {
   console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);

@@ -667,7 +667,10 @@ antes de tocar esa área.
   corte VIGENTE de ese día, no `fuente_corte`.
 - `scripts/recalcular-fuentes-ingreso.mjs`: sólo el último perfil, sólo
   si el crudo es de ese perfil (`perfilId`), reloj en la fecha de captura
-  y claves ordenadas al comparar.
+  y claves ordenadas al comparar. Él y `recalcular-grupos.mjs` leen el crudo
+  de `--carpeta=` y, lo que la carpeta no tiene, del depósito
+  (`_comun/crudo-del-ultimo-perfil.mjs`): hasta el 2026-10-20 leían sólo la
+  carpeta y un recálculo dejaba atrás a quien se consultó después del respaldo.
 - `scripts/recalcular-grupos.mjs --grupos=a,b`. Si cambian estructura y
   fuentes de ingreso a la vez: primero `recalcular-grupos.mjs ...
   --ignorar=fuentesIngreso` (con `--bloqueo` si cambió el bloqueo),
