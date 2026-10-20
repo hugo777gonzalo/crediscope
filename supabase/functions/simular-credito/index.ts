@@ -15,12 +15,13 @@
 //         "sistema": "frances", "desgravamen": { "tasaPorcentaje": 0.6,
 //         "periodicidad": "anual", "base": "saldo" }, "incluirTabla": true }
 // Sólo los tres primeros son obligatorios; el resto toma los parámetros del
-// producto de consumo (PRODUCTO_CONSUMO).
+// producto de consumo (PRODUCTO_CONSUMO). La tasa máxima no se puede cambiar
+// desde el cuerpo: es del producto.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
-import { type PedidoDeSimulacion, simularCredito } from "../_shared/simulador-credito.ts";
+import { condicionesDelPedidoExterno, simularCredito } from "../_shared/simulador-credito.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
   }
   if (!cuerpo || typeof cuerpo !== "object" || Array.isArray(cuerpo)) return responder({ error: "El cuerpo tiene que ser un objeto." }, 400);
 
-  const resultado = simularCredito(cuerpo as unknown as PedidoDeSimulacion);
+  const resultado = simularCredito(condicionesDelPedidoExterno(cuerpo));
   if (!resultado.ok) return responder({ error: "Las condiciones del crédito no son válidas.", errores: resultado.errores }, 400);
 
   const { tabla, ...resumen } = resultado.simulacion;

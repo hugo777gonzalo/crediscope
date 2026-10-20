@@ -66,10 +66,10 @@ Deno.test("Básico no pide condiciones; Pro y Plus sí, y las valida con el simu
   const sinCondiciones = validarPedidoDeSolicitud({ modalidad: "pro" });
   assert(!sinCondiciones.ok && sinCondiciones.errores[0].includes("monto, plazo y tasa"));
 
-  const tasaAlta = validarPedidoDeSolicitud({ modalidad: "plus", solicitud: { ...condiciones, tasaNominalAnualPorcentaje: 16 } });
+  const tasaAlta = validarPedidoDeSolicitud({ modalidad: "plus", solicitudDeCredito: { ...condiciones, tasaNominalAnualPorcentaje: 16 } });
   assert(!tasaAlta.ok && tasaAlta.errores.includes("La tasa supera la máxima del producto."));
 
-  const pro = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: condiciones, ingresoDeclarado: 1800 });
+  const pro = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, ingresoDeclarado: 1800 } });
   assert(pro.ok);
   if (pro.ok) {
     assertEquals(pro.pedido.condiciones?.sistema, "frances");
@@ -80,8 +80,8 @@ Deno.test("Básico no pide condiciones; Pro y Plus sí, y las valida con el simu
 
 Deno.test("una modalidad desconocida o un Ingreso declarado que no es número se rechazan", () => {
   assertEquals(validarPedidoDeSolicitud({ modalidad: "premium" }).ok, false);
-  assertEquals(validarPedidoDeSolicitud({ modalidad: "basico", ingresoDeclarado: "mil" }).ok, false);
-  const cero = validarPedidoDeSolicitud({ modalidad: "basico", ingresoDeclarado: 0 });
+  assertEquals(validarPedidoDeSolicitud({ modalidad: "basico", solicitudDeCredito: { ingresoDeclarado: "mil" } }).ok, false);
+  const cero = validarPedidoDeSolicitud({ modalidad: "basico", solicitudDeCredito: { ingresoDeclarado: 0 } });
   assert(cero.ok && cero.pedido.ingresoDeclarado === null);
 });
 
@@ -142,36 +142,36 @@ Deno.test("marcarPaso no muta los pasos, ignora un paso que la modalidad no tien
 Deno.test("la tasa máxima del cuerpo no se acepta: se valida lo que se guarda", () => {
   // Antes, un `tasaNominalMaximaPorcentaje` de 99 dejaba pasar una tasa de 50%
   // que el paso de capacidad rechazaba después, con la solicitud ya creada.
-  const r = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: { ...condiciones, tasaNominalAnualPorcentaje: 50, tasaNominalMaximaPorcentaje: 99 } });
+  const r = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, tasaNominalAnualPorcentaje: 50, tasaNominalMaximaPorcentaje: 99 } });
   assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
-  const ok = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: { ...condiciones, tasaNominalMaximaPorcentaje: 99 } });
+  const ok = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, tasaNominalMaximaPorcentaje: 99 } });
   assert(ok.ok && !("tasaNominalMaximaPorcentaje" in (ok.pedido.condiciones ?? {})));
 });
 
 Deno.test("las condiciones mal armadas se rechazan con el mensaje del simulador, sin romper", () => {
   const malas: Array<Record<string, unknown>> = [
-    { modalidad: "pro", solicitud: [] },
-    { modalidad: "pro", solicitud: "5000" },
-    { modalidad: "pro", solicitud: { ...condiciones, monto: -1 } },
-    { modalidad: "plus", solicitud: { ...condiciones, plazoMeses: 481 } },
-    { modalidad: "plus", solicitud: { ...condiciones, sistema: "japones" } },
-    { modalidad: "pro", solicitud: { ...condiciones, desgravamen: { tasaPorcentaje: 0.6, periodicidad: "diaria", base: "saldo" } } },
-    { modalidad: "pro", solicitud: { monto: 1000, plazoMeses: 12 } },
+    { modalidad: "pro", solicitudDeCredito: [] },
+    { modalidad: "pro", solicitudDeCredito: "5000" },
+    { modalidad: "pro", solicitudDeCredito: { ...condiciones, monto: -1 } },
+    { modalidad: "plus", solicitudDeCredito: { ...condiciones, plazoMeses: 481 } },
+    { modalidad: "plus", solicitudDeCredito: { ...condiciones, sistema: "japones" } },
+    { modalidad: "pro", solicitudDeCredito: { ...condiciones, desgravamen: { tasaPorcentaje: 0.6, periodicidad: "diaria", base: "saldo" } } },
+    { modalidad: "pro", solicitudDeCredito: { monto: 1000, plazoMeses: 12 } },
   ];
   for (const cuerpo of malas) {
     const r = validarPedidoDeSolicitud(cuerpo);
     assert(!r.ok && r.errores.length > 0, JSON.stringify(cuerpo));
   }
-  const sinTasa = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: { monto: 1000, plazoMeses: 12 } });
+  const sinTasa = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { monto: 1000, plazoMeses: 12 } });
   assert(!sinTasa.ok && sinTasa.errores.includes("La tasa tiene que ser un número."));
   // El cuerpo no es un objeto: la validación responde, no lanza.
   assertEquals(validarPedidoDeSolicitud(null as unknown as Record<string, unknown>).ok, false);
   // Básico ignora las condiciones, también las malas.
-  assertEquals(validarPedidoDeSolicitud({ modalidad: "basico", solicitud: { monto: -1 } }).ok, true);
+  assertEquals(validarPedidoDeSolicitud({ modalidad: "basico", solicitudDeCredito: { monto: -1 } }).ok, true);
 });
 
 Deno.test("el Ingreso declarado: menos de medio centavo es no declarar; negativo, texto, booleano o desmedido se rechazan", () => {
-  const con = (ingresoDeclarado: unknown) => validarPedidoDeSolicitud({ modalidad: "basico", ingresoDeclarado });
+  const con = (ingresoDeclarado: unknown) => validarPedidoDeSolicitud({ modalidad: "basico", solicitudDeCredito: { ingresoDeclarado } });
   const chico = con(0.004);
   assert(chico.ok && chico.pedido.ingresoDeclarado === null);
   const redondeado = con(1234.567);
@@ -194,13 +194,13 @@ Deno.test("del análisis se guarda el score, la recomendación y la versión del
 Deno.test("un paso que pudo dejar algo en vuelo no se reintenta hasta que pasó la espera", () => {
   const ahora = new Date("2026-10-18T12:00:00Z");
   let pasos = marcarPaso(pasosIniciales("plus"), "perfil", "hecho", undefined, ahora);
-  pasos = marcarFallido(pasos, "buro", "Equifax no completó la consulta.", PASO_CAIDO_MS, ahora);
+  pasos = marcarFallido(pasos, "buro", "Equifax no completó la consulta.", "buro_no_disponible", PASO_CAIDO_MS, ahora);
   assertEquals(pasos[1].reintentarDesde, new Date(ahora.getTime() + PASO_CAIDO_MS).toISOString());
   assertEquals(reintentarPasos(pasos, new Date(ahora.getTime() + 60_000)), pasos);
   const despues = reintentarPasos(pasos, new Date(ahora.getTime() + PASO_CAIDO_MS + 1));
   assertEquals(despues[1], { paso: "buro", estado: "pendiente" });
   // Sin espera, se reintenta en el momento.
-  const sinEspera = marcarFallido(pasosIniciales("pro"), "perfil", "Las fuentes no respondieron.", 0, ahora);
+  const sinEspera = marcarFallido(pasosIniciales("pro"), "perfil", "Las fuentes no respondieron.", "fuentes_no_disponibles", 0, ahora);
   assertEquals(sinEspera[0].reintentarDesde, undefined);
   assertEquals(reintentarPasos(sinEspera, ahora)[0].estado, "pendiente");
 });
@@ -236,4 +236,97 @@ Deno.test("un fallo se anota con un mensaje propio, y el del buró que pudo cobr
   for (const paso of ["perfil", "buro", "analisis"] as const) {
     for (const status of [0, 400, 401, 403, 404, 429, 500, 502, 503, 504]) assert(!/\d{6,}/.test(falloDeUnPaso(paso, status).detalle));
   }
+});
+
+// --- Datos de la especificación de la API (135, negocio 2026-10-19) ------------
+
+Deno.test("el Ingreso declarado y las condiciones se leen dentro de solicitudDeCredito, no de la raíz", () => {
+  // La forma anterior (condiciones en `solicitud`, ingreso en la raíz) ya no se lee:
+  // una IFI que manda lo que dice la especificación no puede quedar sin ingreso declarado.
+  const vieja = validarPedidoDeSolicitud({ modalidad: "pro", solicitud: condiciones, ingresoDeclarado: 1800 });
+  assert(!vieja.ok && vieja.errores[0].includes("monto, plazo y tasa"));
+  const raiz = validarPedidoDeSolicitud({ modalidad: "basico", ingresoDeclarado: 1800 });
+  assert(raiz.ok && raiz.pedido.ingresoDeclarado === null);
+  const nueva = validarPedidoDeSolicitud({ modalidad: "plus", solicitudDeCredito: { ...condiciones, ingresoDeclarado: 1800 } });
+  assert(nueva.ok && nueva.pedido.ingresoDeclarado === 1800);
+  // En Básico las condiciones no se exigen, pero el Ingreso declarado que viene se guarda.
+  const basico = validarPedidoDeSolicitud({ modalidad: "basico", solicitudDeCredito: { ingresoDeclarado: 900 } });
+  assert(basico.ok && basico.pedido.ingresoDeclarado === 900 && basico.pedido.condiciones === null);
+});
+
+Deno.test("los datos de la API viajan en el pedido, y un error de ellos lo rechaza con su mensaje", () => {
+  const ahora = new Date("2026-10-19T12:00:00Z");
+  const huella = `sha256:${"a1".repeat(32)}`;
+  const completo = validarPedidoDeSolicitud(
+    {
+      modalidad: "pro",
+      solicitudDeCredito: condiciones,
+      autorizacion: { id: "AUT-1", otorgadaEl: "2026-10-19T09:00:00-05:00", canal: "firma_electronica", finalidad: "evaluacion_de_credito", huellaDelDocumento: huella },
+      referencia: "SOL-2026-1",
+      operador: { id: "op-7", agencia: "Matriz" },
+      prioridad: "diferida",
+    },
+    ahora,
+  );
+  assert(completo.ok);
+  if (completo.ok) {
+    assertEquals(completo.pedido.datos.referencia, "SOL-2026-1");
+    assertEquals(completo.pedido.datos.operador, { id: "op-7", agencia: "Matriz" });
+    assertEquals(completo.pedido.datos.prioridad, "diferida");
+    assertEquals(completo.pedido.datos.autorizacion?.huellaDelDocumento, huella);
+  }
+  // Sin ninguno: todos null (la pantalla del analista no los manda).
+  const vacio = validarPedidoDeSolicitud({ modalidad: "basico" }, ahora);
+  assert(vacio.ok && vacio.pedido.datos.autorizacion === null && vacio.pedido.datos.referencia === null && vacio.pedido.datos.reemplazaA === null);
+  // Un error de los datos se suma a los de las condiciones.
+  const mal = validarPedidoDeSolicitud({ modalidad: "pro", solicitudDeCredito: { ...condiciones, monto: -1 }, prioridad: "urgente" }, ahora);
+  assert(!mal.ok && mal.errores.length === 2);
+});
+
+Deno.test("un fallo lleva el código de la especificación de la API, sacado del estado y del motivo", () => {
+  const codigo = (...a: Parameters<typeof falloDeUnPaso>) => falloDeUnPaso(...a).codigo;
+  // El buró: quién puede consultar, el tope, la disponibilidad y la identificación.
+  assertEquals(codigo("buro", 403), "buro_requiere_consulta_previa");
+  assertEquals(codigo("buro", 429, "tope_diario"), "tope_diario_agotado");
+  assertEquals(codigo("buro", 503, "proveedor_apagado"), "buro_no_disponible");
+  assertEquals(codigo("buro", 503, "consumo_no_medible"), "buro_no_disponible");
+  assertEquals(codigo("buro", 400), "identificacion_no_encontrada");
+  assertEquals(codigo("buro", 502, "otra_persona"), "buro_no_disponible");
+  assertEquals(codigo("buro", 0), "buro_no_disponible");
+  assertEquals(codigo("buro", 504, "fallo"), "buro_no_disponible");
+  // El perfil: la fuente no la encuentra, o no contestó.
+  assertEquals(codigo("perfil", 404), "identificacion_no_encontrada");
+  assertEquals(codigo("perfil", 503), "fuentes_no_disponibles");
+  assertEquals(codigo("perfil", 0), "fuentes_no_disponibles");
+  // Lo nuestro, y el modelo, son errores internos.
+  assertEquals(codigo("perfil", 500), "error_interno");
+  assertEquals(codigo("analisis", 500), "error_interno");
+  assertEquals(codigo("analisis", 0), "error_interno");
+  assertEquals(codigo("capacidad", 401), "error_interno");
+  // Los códigos son un conjunto cerrado: los de la especificación, menos plazo_vencido (de la cola).
+  const permitidos = ["fuentes_no_disponibles", "buro_requiere_consulta_previa", "tope_diario_agotado", "buro_no_disponible", "identificacion_no_encontrada", "error_interno"];
+  for (const paso of ["perfil", "buro", "analisis", "capacidad"] as const) {
+    for (const status of [0, 400, 401, 403, 404, 429, 500, 502, 503, 504]) {
+      for (const motivo of [null, "tope_diario", "proveedor_apagado", "consumo_no_medible", "otra_persona", "fallo"]) {
+        assert(permitidos.includes(falloDeUnPaso(paso, status, motivo).codigo), `${paso} ${status} ${motivo}`);
+      }
+    }
+  }
+});
+
+Deno.test("la solicitud guarda el código junto al paso fallido, y reintentar lo borra con el detalle", () => {
+  const ahora = new Date("2026-10-19T12:00:00Z");
+  const f = falloDeUnPaso("buro", 429, "tope_diario");
+  const pasos = marcarFallido(pasosIniciales("plus"), "buro", f.detalle, f.codigo, f.esperarMs, ahora);
+  assertEquals(pasos[1], { paso: "buro", estado: "fallido", el: ahora.toISOString(), detalle: f.detalle, codigo: "tope_diario_agotado" });
+  // Los pasos que no fallaron no llevan código.
+  assertEquals(pasos.filter((p) => "codigo" in p).length, 1);
+  // Con espera, el código y la fecha de reintento conviven.
+  const conEspera = marcarFallido(pasosIniciales("plus"), "buro", "x", "buro_no_disponible", PASO_CAIDO_MS, ahora);
+  assertEquals(conEspera[1].codigo, "buro_no_disponible");
+  assert(conEspera[1].reintentarDesde);
+  // Reintentar y terminar no arrastran el fallo anterior.
+  const reintentado = reintentarPasos(conEspera, new Date(ahora.getTime() + PASO_CAIDO_MS + 1));
+  assertEquals(reintentado[1], { paso: "buro", estado: "pendiente" });
+  assertEquals("codigo" in marcarPaso(conEspera, "buro", "hecho")[1], false);
 });

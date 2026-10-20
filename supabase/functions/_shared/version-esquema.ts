@@ -17,7 +17,8 @@
 // SUBIRLO cuando una función empiece a usar una tabla, columna o función
 // de una migración nueva: primero se migra, después se despliega.
 // 134: evaluar-solicitud anota la decisión (decidir_solicitud) y evaluada_el.
-export const ESQUEMA_MINIMO = 134;
+// 135: evaluar-solicitud guarda autorización, referencia, operador, prioridad y reemplazaA.
+export const ESQUEMA_MINIMO = 135;
 
 let verificada: number | null = null;
 

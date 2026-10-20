@@ -77,23 +77,38 @@ aceptada.
        especificación técnica de la API (`api/openapi.yaml`), no el contrato
        comercial con la institución; en el comercial la IFI declara que tiene la
        autorización de cada persona.
-       1. **`ingresoDeclarado` de la evaluación**: el contrato manda. Hay que
-          cambiar `evaluar-solicitud` para leerlo dentro de `solicitudDeCredito`
-          (la pantalla, para mandarlo ahí).
-       2. **Guardar los datos importantes de la evaluación**, con la
-          recomendación de la sesión: la solicitud guarda `autorizacion` (id,
-          fecha, canal, finalidad y la huella del documento, nunca el
-          documento), `referencia` (única por institución), `operador`,
-          `prioridad` y `reemplazaA`. Es una columna por dato en `solicitudes` y
-          una migración. `modalidad` sigue siendo obligatoria en la función
+       1. **`ingresoDeclarado` de la evaluación**: hecho en código (2026-10-19).
+          `evaluar-solicitud` lee las condiciones y el Ingreso declarado dentro de
+          `solicitudDeCredito` (antes: `solicitud` y la raíz) y la pantalla los
+          manda ahí. **Pendiente de desplegar** (ver «Falta aplicar» abajo).
+       2. **Guardar los datos importantes de la evaluación**: hecho en código
+          (2026-10-19, migración 135). La solicitud guarda `autorizacion` (id,
+          fecha, vigencia, canal, finalidad y la huella del documento, nunca el
+          documento), `referencia` (única en la base: hay una base por
+          institución), `operador`, `prioridad` y `reemplazaA`, una columna por
+          dato. Son opcionales en la función interna; los exige la puerta de la
+          API (Fase 1). `modalidad` sigue siendo obligatoria en la función
           interna; el contrato pone `basico` por omisión y eso lo resuelve la
-          puerta de la API.
+          puerta de la API. `reemplazaA` sólo se guarda (y se comprueba que sea
+          una solicitud de la misma persona): que reutilice el perfil es de la
+          puerta. No cambió `suprimir_titular()`: son columnas de la fila que ya
+          se borra.
+       **Falta aplicar (no se hace sin autorización del negocio), en este orden:**
+       migración 135 con `node scripts/migrar-clientes.mjs --seco` y luego
+       `--aplicar`; después `--funciones` desde una copia limpia de `origin/main`
+       (`ESQUEMA_MINIMO` subió a 135: antes de migrar, las funciones contestarían
+       503); y al final, quitar de `NuevaSolicitud.jsx` las dos líneas
+       «TRANSITORIO» que siguen mandando la forma anterior. Hasta que se despliegue,
+       la pantalla publicada manda las dos formas para que la función vieja siga
+       andando.
        3. **Estados y etapas**: se hace cuando los flujos estén afinados
           (capacidad de pago, predictor de ingresos). No se toca antes.
-       4. **`Fallo.codigo`**: recomendación aceptada para aplicar. El contrato
-          suma `buro_requiere_consulta_previa`, `tope_diario_agotado`,
-          `buro_no_disponible` y `identificacion_no_encontrada`, y
-          `evaluar-solicitud` guarda ese código además del texto.
+       4. **`Fallo.codigo`**: hecho en código (2026-10-19). La especificación suma
+          `buro_requiere_consulta_previa`, `tope_diario_agotado`,
+          `buro_no_disponible` e `identificacion_no_encontrada`; `falloDeUnPaso()`
+          devuelve el código (sale del estado y del motivo, nunca del texto de un
+          tercero) y la solicitud lo guarda en el paso fallido (`pasos[].codigo`,
+          sin columna nueva). `plazo_vencido` es de la cola de la API, no de un paso.
        5. **Quién paga Equifax por la API y los niveles de acceso**: el negocio
           propone cuatro niveles (dueño, administrador de la institución, usuario
           A que consulta y evalúa, usuario B que sólo ve). Ver «Niveles de
@@ -103,10 +118,11 @@ aceptada.
           (`/.well-known/jwks.json`). Queda la firma de los avisos
           (`webhook-signature`, que protege a la institución de un aviso falso)
           y la de la ficha de acceso (OAuth); no son lo mismo.
-       7. **`tasaNominalMaximaPorcentaje`**: `simular-credito` y `solicitud` de
-          `capacidad-de-pago` dejan pasar este campo del cuerpo y quien lo manda
-          sube el tope de 15%. Se corrige en código: el tope sale de la
-          configuración, nunca del cuerpo (hoy 15% fijo).
+       7. **`tasaNominalMaximaPorcentaje`**: corregido en código (2026-10-19).
+          `simular-credito` y `capacidad-de-pago` arman las condiciones con
+          `condicionesDelPedidoExterno()`, que descarta el campo: el tope sale de
+          `PRODUCTO_CONSUMO` (hoy 15% fijo; de la configuración de la institución
+          cuando exista), nunca del cuerpo.
        8. **Validaciones que el contrato declara y la función no hace**
           (`additionalProperties: false`, máximos de 20 ingresos, 50 obligaciones
           y 50 deudas sin cuota, `ingresoDeclarado` de más de mil millones,

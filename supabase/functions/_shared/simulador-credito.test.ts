@@ -7,6 +7,7 @@
 
 import { assertEquals, assert, assertAlmostEquals } from "jsr:@std/assert@1";
 import {
+  condicionesDelPedidoExterno,
   LIMITES_TECNICOS,
   MONTO_MAXIMO,
   montoMaximoParaCuota,
@@ -300,4 +301,31 @@ Deno.test("montoMaximoParaCuota con los límites del producto: nunca pasa de 120
   // Condiciones fuera del producto: no hay monto que calcular.
   assertEquals(montoMaximoParaCuota(500, { plazoMeses: 5, tasaNominalAnualPorcentaje: 15 }), null);
   assertEquals(montoMaximoParaCuota(500, { plazoMeses: 121, tasaNominalAnualPorcentaje: 15 }), null);
+});
+
+// --- Condiciones que llegan de afuera (revisión integral, 2026-10-18) ---------
+
+Deno.test("las condiciones de afuera no pueden subir la tasa máxima del producto", () => {
+  // Antes, quien mandaba `tasaNominalMaximaPorcentaje: 99` en el cuerpo de
+  // simular-credito o de capacidad-de-pago simulaba un crédito al 40%.
+  const cuerpo = { monto: 5000, plazoMeses: 36, tasaNominalAnualPorcentaje: 40, tasaNominalMaximaPorcentaje: 99 };
+  assertEquals(simularCredito(cuerpo).ok, true, "la función pura acepta el tope como parámetro interno");
+  const r = simularCredito(condicionesDelPedidoExterno(cuerpo));
+  assert(!r.ok && r.errores.includes("La tasa supera la máxima del producto."));
+  // Tampoco la baja: el tope es el del producto, venga lo que venga.
+  const baja = simularCredito(condicionesDelPedidoExterno({ monto: 5000, plazoMeses: 36, tasaNominalAnualPorcentaje: 15, tasaNominalMaximaPorcentaje: 10 }));
+  assert(baja.ok);
+  assertEquals(PRODUCTO_CONSUMO.tasaNominalMaximaPorcentaje, 15);
+});
+
+Deno.test("las condiciones de afuera llevan sólo los campos del pedido, y lo que no es objeto da un pedido vacío que se rechaza", () => {
+  const desgravamen = { tasaPorcentaje: 0.5, periodicidad: "anual", base: "saldo" };
+  const c = condicionesDelPedidoExterno({ monto: 5000, plazoMeses: 36, tasaNominalAnualPorcentaje: 12, sistema: "aleman", desgravamen, incluirTabla: false, otro: 1, tasaNominalMaximaPorcentaje: 99 });
+  assertEquals(Object.keys(c).sort(), ["desgravamen", "monto", "plazoMeses", "sistema", "tasaNominalAnualPorcentaje"]);
+  assertEquals(c.sistema, "aleman");
+  assertEquals(c.desgravamen, desgravamen);
+  for (const nada of [undefined, null, "5000", 5000, [], [{ monto: 5000 }]]) {
+    const r = simularCredito(condicionesDelPedidoExterno(nada));
+    assert(!r.ok && r.errores.length > 0, JSON.stringify(nada));
+  }
 });
