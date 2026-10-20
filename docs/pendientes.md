@@ -60,7 +60,9 @@ aceptada.
      «Prueba de la pantalla de decisión»: la solicitud Básico más reciente de la
      persona de las pruebas del 18/10). **Falta**:
      - mostrar el estado en la bandeja (filtro y columna, con otro nombre que el
-       «Estado» del análisis), en el Expediente y el embudo en Monitoreo. Para la
+       «Estado» del análisis), en el Expediente y el embudo en Monitoreo. **Se hace
+       cuando se rehagan esos procesos y pantallas** (negocio, 2026-10-19), no
+       antes. Para la
        bandeja conviene calcularlo en la base (`resumen_por_persona`): hoy la
        regla vive sólo en `estado-de-la-persona.ts`, y si se copia a SQL las dos
        tienen que cambiar juntas;
@@ -130,22 +132,35 @@ aceptada.
        estructura; y un fallo queda en `audit_log` (`solicitud.paso_fallido`).
        `capacidad-de-pago` lee la misma consulta de Equifax que la pantalla y
        rechaza una cuota que no es número.
-     - **Abierto: la supresión de una solicitud sin persona.** Si el primer paso
-       no llega a crear a la persona en `clients` (la fuente no la encuentra o no
-       contesta), la solicitud queda sólo con la identificación y
-       `suprimir_titular()` no la alcanza (exige la fila en `clients`; igual con
-       una consulta de buró suelta). Hoy no hay ninguna (medido el 2026-10-18);
-       `derechos-del-titular.mjs` ya las lista y exporta. Arreglarlo es una
-       migración que recrea la función desde su definición viva.
+     - **La supresión de una solicitud sin persona (136, pedida por el negocio el
+       2026-10-19).** Si el primer paso no llega a crear a la persona en `clients`
+       (la fuente no la encuentra o no contesta), la solicitud queda sólo con la
+       identificación, y `suprimir_titular()` exigía la fila en `clients`: no la
+       alcanzaba (igual con una consulta de buró suelta o lo cargado al
+       Laboratorio). La 136 la recrea desde su definición viva: sin persona borra lo
+       que hay por la identificación, y sólo si no hay nada contesta «No hay ningún
+       registro». `derechos-del-titular.mjs` lista, exporta y suprime también sin
+       persona. Hoy no hay ninguna fila así (medido el 2026-10-18).
      - **Para decidir: qué consulta de Equifax entra en la capacidad.** La
        pantalla y `capacidad-de-pago` usan la última de la persona aunque haya
        vencido; Plus, sólo la vigente (la misma regla que el modelo); Pro, ninguna
        (plan, sección 4). El enlace «Ver el detalle de la capacidad de pago» de la
        solicitud abre la pantalla, que puede dar otra cuota que la solicitud.
-     - **Abierto: dos consultas a Equifax a la vez desde caminos distintos** (el
-       botón de administración y una solicitud Plus) se pueden pagar las dos:
-       `procesarConsultaEquifax()` reutiliza lo guardado, no lo que está en vuelo.
-       Pide un candado en la base por persona.
+     - **Sin candado para dos consultas a Equifax a la vez** (decisión del negocio,
+       2026-10-19): que dos usuarios consulten a la misma persona al mismo tiempo
+       por caminos distintos (el botón de administración y una solicitud Plus) es
+       muy poco probable, y con unos 40 s de diferencia la segunda ya encuentra la
+       consulta vigente y la reutiliza. No se construye. Entre dos solicitudes Plus
+       ya se controla (`pasoEnCurso()`).
+     - **Tasa máxima y Tasa mínima (negocio, 2026-10-19; simulador-v4).** Consumo
+       va de una Tasa mínima de 0% (financiamiento sin interés) a una Tasa máxima
+       de **15,6%** (era 15%). Sin tasa en el pedido se evalúa, y se guarda en la
+       solicitud, la máxima; con una tasa, se pide una menor; nunca negativa ni
+       mayor que la máxima. Se dice «Tasa máxima» y «Tasa mínima», no «tope». Cada
+       error de las condiciones trae un código fijo con su significado
+       (`erroresDelPedido()`; `detalles` en el 400 de `simular-credito` y
+       `capacidad-de-pago`; `ErrorDeCondiciones` en `api/openapi.yaml`, con la
+       tabla).
      - **Límites del producto de consumo (2026-10-19, PR #56, desplegado con f4d80e0):**
        monto de USD 1.000 a 120.000 y plazo de 6 a 120 meses (`PRODUCTO_CONSUMO.limites`,
        simulador-v3). Una
@@ -170,7 +185,8 @@ aceptada.
        negocio (2026-10-19).** El pedido no tiene campo de cuota (`tipoProducto` 1,
        `monto` 5.000, `plazo` 12, `restaGastoFinanciero` 0) y no hay nada que cambiar.
   3. **El predictor de ingresos**: lo lleva otra sesión
-     (`docs/investigacion-predictor-de-ingresos.md`).
+     (`docs/investigacion-predictor-de-ingresos.md`); en proceso, alrededor de una
+     semana más (negocio, 2026-10-19).
   4. **El marco y el modelo, al final** (decisión del negocio): que lea la
      solicitud, la cuota y la capacidad es una versión nueva del marco.
   - Hallazgo que pesa en la demo: con sólo el IESS, 55 de las 62 personas con

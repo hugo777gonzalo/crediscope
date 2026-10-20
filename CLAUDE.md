@@ -295,9 +295,12 @@ Romper cualquiera de estas rompe algo real.
 - `simulador-credito.ts` → `simularCredito()` — la cuota de un crédito de
   consumo con el desgravamen, en centavos enteros, y su tabla. La usan la
   pantalla `/simulador`, la función `simular-credito`, la capacidad de pago y
-  `evaluar-solicitud`, y la usará la API: no se copia la fórmula. Los parámetros del producto (`PRODUCTO_CONSUMO`: tasa nominal
-  máxima de 15%, desgravamen de 0,6% anual, monto de USD 1.000 a 120.000 y plazo
-  de 6 a 120 meses, estos dos del 2026-10-19) son del negocio (2026-10-17). El plan de
+  `evaluar-solicitud`, y la usará la API: no se copia la fórmula. Los parámetros del producto (`PRODUCTO_CONSUMO`: Tasa
+  mínima de 0% y Tasa máxima de 15,6%, desgravamen de 0,6% anual, monto de USD
+  1.000 a 120.000 y plazo de 6 a 120 meses) son del negocio (2026-10-17; las tasas,
+  el monto y el plazo, del 2026-10-19). Sin tasa se evalúa con la máxima; se dice
+  «Tasa máxima» y «Tasa mínima», no «tope». Cada error de las condiciones lleva un
+  código (`erroresDelPedido()`, `ErrorDeCondiciones` en el contrato). El plan de
   la demo, con lo que falta, en `docs/plan-demo-ifi.md`.
   `montoMaximoParaCuota()` busca el monto con el mismo simulador, no con la
   fórmula invertida (con el seguro y el redondeo, invertirla pasaba el tope).

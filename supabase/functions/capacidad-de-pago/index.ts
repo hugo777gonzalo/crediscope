@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
   // Sin la tasa máxima del cuerpo: el tope es del producto (condicionesDelPedidoExterno).
   const solicitud = condicionesDelPedidoExterno(cuerpo.solicitud);
   const simulacion = simularCredito(solicitud);
-  if (!simulacion.ok) return responder({ error: "Las condiciones del crédito no son válidas.", errores: simulacion.errores }, 400);
+  if (!simulacion.ok) return responder({ error: "Las condiciones del crédito no son válidas.", errores: simulacion.errores, detalles: simulacion.detalles }, 400);
   const parametros = parametrosDelCuerpo(cuerpo.parametros);
 
   let datos: DatosDeCapacidad;

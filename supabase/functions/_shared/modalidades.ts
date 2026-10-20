@@ -10,7 +10,7 @@
 // Función pura: la usan la función, la pantalla (para dibujar los pasos) y
 // las pruebas.
 
-import { MONTO_MAXIMO, type PedidoDeSimulacion, validarPedido, PRODUCTO_CONSUMO } from "./simulador-credito.ts";
+import { MONTO_MAXIMO, type PedidoDeSimulacion, PRODUCTO_CONSUMO, tasaDelPedido, validarPedido } from "./simulador-credito.ts";
 import { type DatosDeLaSolicitud, validarDatosDeLaSolicitud } from "./datos-de-la-solicitud.ts";
 
 export const MODALIDADES_VERSION = "modalidades-v1";
@@ -274,7 +274,7 @@ export function validarPedidoDeSolicitud(
   if (MODALIDADES[modalidad].exigeCondiciones) {
     const c = sc as PedidoDeSimulacion | null;
     if (!c) {
-      errores.push(`La modalidad ${MODALIDADES[modalidad].nombre} necesita las condiciones del crédito: monto, plazo y tasa.`);
+      errores.push(`La modalidad ${MODALIDADES[modalidad].nombre} necesita las condiciones del crédito: monto y plazo.`);
     } else {
       // Se valida lo que se va a guardar, no lo que llegó: la solicitud no guarda
       // `tasaNominalMaximaPorcentaje`, así que una tasa de 50% con un máximo de
@@ -282,7 +282,8 @@ export function validarPedidoDeSolicitud(
       condiciones = {
         monto: c.monto,
         plazoMeses: c.plazoMeses,
-        tasaNominalAnualPorcentaje: c.tasaNominalAnualPorcentaje,
+        // Sin tasa, la Tasa máxima: se guarda la que se va a usar.
+        tasaNominalAnualPorcentaje: tasaDelPedido({ monto: c.monto, plazoMeses: c.plazoMeses, tasaNominalAnualPorcentaje: c.tasaNominalAnualPorcentaje }),
         sistema: c.sistema ?? PRODUCTO_CONSUMO.sistema,
         desgravamen: c.desgravamen ?? PRODUCTO_CONSUMO.desgravamen,
       };
