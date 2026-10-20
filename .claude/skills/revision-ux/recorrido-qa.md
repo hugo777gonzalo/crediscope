@@ -69,8 +69,8 @@ Revisar la causa antes de "corregir" estos:
 | `termino-prohibido` («Informe de retroalimentación (retirado)») | Costos › Panorama | El historial retirado está marcado «(retirado)» a propósito |
 | `fecha-iso`, `identificador`, `termino-prohibido` («error del LLM», «request_id») | Costos › Avisos | Es el «Detalle técnico» plegado de cada aviso: el texto original del proveedor, que sólo se ve al abrirlo. El verificador lee también lo plegado |
 | `texto-chico` (11 px) | Bandeja, Expediente | 11 px es el tamaño menor de la escala; son las etiquetas de columna |
-| `cifra-repetida` («$X en 3 lugares») | Capacidad de pago | La frase del veredicto, la leyenda del medidor y la lista de lo que ya paga dicen la misma cuota. Propuesto quitarla de la leyenda (`docs/pendientes.md`); hasta que se decida, es esperado |
-| `cifra-repetida` («$482,00 en 3 lugares») | Fuentes de Ingreso de una persona con el SBU | Sin revisar (2026-10-18): puede ser el SBU en el aporte, el ingreso y una referencia; mirarla antes de tocarla |
+| `cifra-repetida` («$X en 3 lugares») | Capacidad de pago | La frase del veredicto, la leyenda del medidor y la lista de lo que ya paga dicen la misma cuota. Propuesto quitarla de la leyenda; el negocio lo valida (`docs/pendientes.md`). Hasta entonces, es esperado |
+| `cifra-repetida` («$482,00 en 3 lugares») | Fuentes de Ingreso de una persona con el SBU | **Es un defecto**: el negocio pidió mejorar esa pantalla (2026-10-19, `docs/pendientes.md`) |
 | `desborde` a 329 px | Cualquier pantalla con el panel sin tamaño fijado | El panel mide 329 px de ancho: por debajo de cualquier teléfono. Medir a 360 o 375 antes de corregir |
 
 Lo que sí es un defecto aunque el verificador no lo vea: un número interpolado sin

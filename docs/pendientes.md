@@ -415,14 +415,17 @@ aceptada.
          - Bajo 860 px la tira de pestañas muestra la activa (la del buró quedaba
            fuera de la vista).
          - El verificador marca desde ese día `cifra-repetida`.
-         **Queda abierto:** (a) en Capacidad de pago la cuota que ya paga sale en
-         la frase del veredicto y en la leyenda del medidor; propuesta: la leyenda
-         dice «Ya paga» sin la cifra. (b) Fuentes de Ingreso de una persona con el
-         SBU marca $482,00 en tres lugares: sin mirar. (c) Los nombres de las
-         instituciones de Equifax van en mayúsculas: propuesta con opciones en
-         `.claude/skills/revision-ux/terminologia.md`, sección 5. (d) No se vio el
-         estado sin consulta ni la vista de un analista (la cuenta de QA es admin):
-         no cambiaron.
+         **Lo que dijo el negocio el 2026-10-19:** (a) en Capacidad de pago la
+         cuota que ya paga sale en la frase del veredicto y en la leyenda del
+         medidor; propuesta: la leyenda dice «Ya paga» sin la cifra. **Lo valida
+         el negocio más adelante**: no se toca hasta entonces. (b) **Fuentes de
+         Ingreso de una persona hay que mejorarla** (pedido del negocio): con el
+         SBU, el verificador marca $482,00 en tres lugares (`cifra-repetida`).
+         Es el próximo frente de UX: recorrerla con la habilidad, sacar lo
+         repetido y mirar la legibilidad, como en Equifax. (c) Los nombres de las
+         instituciones de Equifax **se quedan como vienen** (decidido; anotado en
+         la terminología de la habilidad). (d) No se vio el estado sin consulta
+         ni la vista de un analista (la cuenta de QA es admin): no cambiaron.
     6. **Fichas de cumplimiento** (`docs/cumplimiento/`, fuera de git): sumar a
        Equifax como encargado y destinatario de datos de las personas. Se
        hace cuando termine el proceso de aprobación de Equifax (el negocio,

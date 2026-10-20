@@ -109,9 +109,10 @@ pantalla con una función probada, nunca reescribiendo lo guardado (2026-10-18):
 - **MAYÚSCULAS del proveedor, como oración** («ACTIVO» → «Activo», «MORA 30 AL DIA» → «Al
   día, con atrasos de hasta 30 días»), con las siglas en mayúsculas (RIMPE, RUC). La función
   vive en `src/lib/equifaxPantalla.js` y se prueba en `probar-formatos.mjs`.
-- **Los nombres de instituciones NO se pasan a oración** sin una lista: entre las 92 que trajo
-  Equifax hay siglas y marcas («BIESS», «PYCCA», «CNT EP», «BANECUADOR B.P.»). Quedó como
-  propuesta, no como regla.
+- **Los nombres de instituciones se dejan como los manda Equifax** (negocio, 2026-10-19): entre
+  las 92 hay siglas y marcas («BIESS», «PYCCA», «CNT EP», «BANECUADOR B.P.») y es lo que el
+  analista ve en el reporte de Equifax. La regla de la oración es para estados y clases, no
+  para nombres propios.
 - **Un indicador del proveedor sin escala conocida lleva una ayuda que lo dice** («va del 1 al
   6; qué significa cada valor está pedido a Equifax»). Un número sin unidad ni escala invita a
   leerlo como bueno o malo.
