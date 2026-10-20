@@ -20,6 +20,15 @@ criterio sin caso se discute y uno con caso se aplica.
   que la sostenga («Cómo puede fallar» se sacó de todas las pantallas).
 - **Nada del plan del equipo.** «Eso llega con la solicitud como entidad» no le sirve a
   nadie que esté mirando un caso. Se dice qué falta y qué hacer.
+- **Quien lee es personal de crédito capacitado** (negocio, 2026-10-20). Bajo el título no
+  va una frase que diga qué hace la pantalla, y no se explican conceptos de crédito (cuota,
+  tasa nominal, desgravamen, capacidad de pago). *El Simulador decía «Cuánto pagaría por mes un
+  crédito de consumo, con el seguro de desgravamen incluido»: queda el título y, junto a la
+  cuota, «Incluye desgravamen».* Sí se dice, en una etiqueta corta junto al dato o en una
+  ayuda ⓘ, lo propio de CrediScope: de dónde sale una cifra, que está sin verificar, que una
+  consulta se cobra, una regla nuestra (Ingreso Mínimo SBU), la escala desconocida de un
+  indicador del proveedor. Los estados vacíos, los errores y las confirmaciones siguen
+  diciendo qué pasa y qué hacer.
 
 ## 2. ¿Se puede confiar en la cifra?
 
@@ -191,9 +200,15 @@ Se revisa a **1280**, **768** y **414**. La barra lateral pasa a barra superior 
 
 - Una versión (`marco-v28`, `estructura-v13`) puede ir en un `title`, en una línea secundaria o en
   «Detalle técnico»; no en una tarjeta principal ni en un sello.
-- Ningún dato de una persona real va a un commit, documento, captura compartida ni al chat: se cita
-  `c-xxxxxxxx` (8 primeros caracteres de `clients.id`). Las cédulas de una tabla sin nombre igual
-  identifican.
+- **En pantalla la identificación y los datos de la persona van completos**, y en el chat y las
+  capturas de la revisión también (negocio, 2026-10-20: es un entorno controlado y autorizado). No
+  se marca como hallazgo una cédula completa ni se propone taparla: la revisión de las pantallas
+  de crédito la dejó por decidir en «Solicitudes recientes» y el negocio la quiso completa
+  (2026-10-20).
+- Ningún dato de una persona real va a un commit ni a un documento del repositorio (es público):
+  se cita `c-xxxxxxxx` (8 primeros caracteres de `clients.id`). Las cédulas de una tabla sin nombre
+  igual identifican. Por eso el verificador sigue enmascarando sus muestras: terminan en informes
+  de `docs/`.
 - Toda exportación y cada apertura de expediente quedan en `audit_log`: una pantalla nueva que saca
   datos de la persona llama a `registrarEvento()`. **Y la acción nueva lleva su nombre en
   `ETIQUETA_ACCION` de `Expediente.jsx`**: la descarga del PDF de Equifax salía en la Auditoría
