@@ -77,6 +77,19 @@ repite lo que el código ya dice es ruido.
   muestra con `error.message` crudo.
 - Una versión (`marco-v28`), un código o un JSON no van en una tarjeta
   principal.
+- **Las pantallas son para personal de crédito capacitado** (negocio,
+  2026-10-20). El título nombra la pantalla, sin una frase que diga qué hace,
+  y no se explican conceptos de crédito (cuota, tasa nominal, desgravamen,
+  capacidad de pago). Lo propio de CrediScope, que un analista no puede saber
+  (de dónde sale una cifra, que está sin verificar, que una consulta se cobra,
+  una regla nuestra como el Ingreso Mínimo SBU), va en una etiqueta corta
+  junto al dato o en una ayuda ⓘ. Se venía diseñando para alguien que no
+  conoce de crédito: el Simulador decía «Cuánto pagaría por mes un crédito de
+  consumo, con el seguro de desgravamen incluido», y unas 30 de 53 páginas
+  llevaban una frase así bajo el título. Los estados vacíos, los errores y la
+  confirmación de lo que se cobra siguen diciendo qué pasa y qué hacer.
+- **La identificación y los datos de la persona van completos en pantalla**:
+  no se tapan ni se propone taparlos (ver «Cómo se trabaja»).
 - **Score**, no «puntaje»; **persona**, no «cliente» (cliente es quien tiene un
   crédito); **Monitoreo**, no Reportes. El negocio ordenó el producto alrededor
   de la persona (2026-10-12): el árbol, los estados y lo que quedó abierto están
@@ -369,10 +382,9 @@ Romper cualquiera de estas rompe algo real.
   referencias, documentos, scores, créditos), los estados (Prospecto, En proceso,
   Preaprobado, Aprobado, No aprobado, Cliente activo, Cliente cerrado), qué existe
   hoy y qué falta. Leerlo antes de ponerle nombre a una pantalla o a una tabla.
-  **Decididos el 2026-10-18 y todavía sin aplicar en pantalla**: «En proceso»,
-  «No aprobado», «Perfil de la Persona» (hoy las pantallas dicen «Perfil del
-  Cliente») y que la decisión de la institución la marca el analista en la
-  solicitud; los renombres los hace la sesión que construye los estados.
+  Decididos el 2026-10-18 y aplicados en pantalla (#52): «En proceso»,
+  «No aprobado», «Perfil de la Persona» y que la decisión de la institución la
+  marca el analista en la solicitud.
 - `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
   pausa. Leerlo antes de proponer cambios de estructura del producto.
 - `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
@@ -400,7 +412,13 @@ Romper cualquiera de estas rompe algo real.
   - La propuesta (mediciones, flujo, reintentos, análisis de ataque, cifrado,
     normativa y decisiones) vive en `docs/cumplimiento/api/`, fuera de git
     porque describe debilidades.
-  - **La v1 no se publica antes de corregir E27.** Lo que falta está en
+  - **A la institución, con su contrato firmado, la API le devuelve los
+    datos de la persona completos** (nombre, identificación, núcleo
+    familiar, perfil) según lo que habilite su configuración (negocio,
+    2026-10-20): la IFI es la responsable del tratamiento. Lo que viene de
+    una fuente se entrega si el contrato con esa fuente lo permite; el de
+    Novadata espera su respuesta por escrito.
+  - E27 ya no frena la v1 (cerrado el 2026-10-20). Lo que falta está en
     `docs/pendientes.md`.
 - **Equifax** (buró; en producción desde el 2026-10-12; credenciales y
   datos de la cuenta en `.env.functions`, claves `EQUIFAX_*`). **Empezar por
@@ -815,14 +833,17 @@ antes de tocar esa área.
   que arma es versión nueva del marco con su fila en
   `scoring_rules_versions`. De `fuentesIngreso.detalle` va sólo un
   resumen; la renta nunca.
-- **El perfil del modelo todavía lleva datos personales que no necesita**
-  (E27, abierto; el detalle está en `auditoria/` y en
+- **El perfil del modelo no lleva identificadores y sí los atributos de la
+  persona** (E27, cerrado el 2026-10-20; el detalle está en `auditoria/` y en
   `docs/cumplimiento/ficha-del-modelo.md`, fuera de git).
   - marco-v29 saca la cédula, el nombre y los empleadores (cada empleo llega
     con su tipo). Las listas viven en `perfil-del-modelo.ts`:
     `IDENTIFICADORES_QUE_NO_LLEGAN` (fijos) y `ATRIBUTOS_PROTEGIDOS` (sexo,
-    estado civil, origen, familia, edad: `true` = llega, hasta que el negocio
-    decida con legal; pasar uno a `false` es versión nueva del marco).
+    estado civil, origen, familia, edad: `true` = llega). **El negocio decidió
+    el 2026-10-20 que llegan** (bloque B): son parte del análisis cualitativo
+    y no tienen conflicto legal. El marco los lee como contexto y dice que no
+    pesan en el score (grupo 12, desde v11); cambiar eso, o pasar uno a
+    `false`, es versión nueva del marco.
   - Desde marco-v30 cada empleo y cada aporte dicen de quién son
     (`esSuPropioPatrono`, `posibleNegocioFamiliar`), calculados con el nombre
     antes de borrarlo con `relacionConEmpleador()` (`patrono.ts`, la misma
@@ -832,9 +853,9 @@ antes de tocar esa área.
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números
     tal cual y en crédito los centavos no deciden nada.
-  - Siete documentos afirmaban una minimización que no existe: no afirmarla
-    en ningún lado hasta que v29 esté desplegada **y** el control lo
-    confirme.
+  - Los documentos afirman sólo lo medido: sin cédula, nombre ni
+    empleadores, y con los atributos de la persona. Antes de v29 siete
+    documentos afirmaban una minimización que no existía.
   - Una afirmación sobre lo que lee el modelo se mide en
     `analysis_results.mensaje_al_modelo`, no en el código: lo mide
     `auditar-seguridad.mjs` (el último mensaje) y, sin llamar al modelo,
@@ -927,10 +948,20 @@ antes de tocar esa área.
 
 - **La clave de servicio nunca llega a `src/`.** El navegador usa sólo la
   clave anónima; lo que necesita más permisos va por una Edge Function.
-- **Buró, cédulas y montos no se imprimen** en logs, commits, chat ni
-  capturas: se cuentan o se enmascaran. Tampoco se escriben en `docs/`,
-  en el código ni en las pruebas: el repositorio es público. **Un caso
-  real se cita como `c-xxxxxxxx`**: los 8 primeros caracteres de
+- **Dentro de CrediScope los datos de la persona van completos** (negocio,
+  2026-10-20): pantallas, PDF, Excel y auditoría, y también el chat con
+  Claude y sus capturas, que son parte del desarrollo. Es un entorno
+  controlado y autorizado por las dos partes. Las sesiones extendían a las
+  pantallas la regla de lo que sale (la última vez, la cédula de
+  «Solicitudes recientes»). Lo que se controla es lo que sale, según quién lo
+  recibe:
+  - al modelo, sólo el perfil del modelo, sin identificadores;
+  - a la institución por la API, lo que habilite su contrato;
+  - a una fuente, sólo lo que pide la consulta.
+- **Lo que queda escrito fuera de la base no lleva datos de personas
+  reales**: ni buró, ni cédulas, ni montos en logs, commits, `docs/`, el
+  código, las pruebas ni los avisos (Telegram, webhooks). El repositorio es
+  público. **Un caso real se cita como `c-xxxxxxxx`**: los 8 primeros caracteres de
   `clients.id` (`select cedula from clients where id::text like
   'xxxxxxxx%'`). El 2026-10-09 había 31 cédulas reales en 121 menciones,
   la mayoría en comentarios del código; el control mensual las busca.
