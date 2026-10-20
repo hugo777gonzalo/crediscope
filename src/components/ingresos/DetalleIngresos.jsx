@@ -135,26 +135,18 @@ export default function DetalleIngresos({ perfil }) {
 
         <div className="crediscope-card">
           <TituloTarjeta Icono={Store}>Actividad económica (SRI)</TituloTarjeta>
+          {/* Los locales, el RUC activo y los establecimientos activos ya se
+              leen arriba: en «Actividad registrada en el SRI» (Clasificación),
+              agrupados por actividad, y en «Negocio propio» y «Tamaño del
+              negocio». Hasta el 2026-10-19 se repetían acá. */}
           {d && d.actividadesEconomicas.length > 0 ? (
-            <ul className="crediscope-aval-filas" style={{ marginBottom: 10 }}>
-              {d.actividadesEconomicas.map((a, i) => (
-                <li key={i} className="crediscope-ing-fuente">
-                  <div style={{ minWidth: 0 }}>
-                    <strong>{a.nombreComercial ?? "Sin nombre comercial"}</strong>
-                    <span className="crediscope-ing-fuente-sub">{a.actividad ?? "Actividad no informada"}</span>
-                    {a.inicio ? <span className="crediscope-ing-fuente-sub">Desde {fechaLegible(a.inicio)}</span> : null}
-                  </div>
-                  <span className={`crediscope-tag ${a.abierto ? "crediscope-tag-ok" : "crediscope-tag-neutral"}`} style={{ fontSize: 12, padding: "2px 8px" }}>
-                    {a.abierto ? "Abierto" : "Cerrado"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="crediscope-muted" style={{ margin: "0 0 10px", fontSize: 13 }}>
+              Las actividades y sus locales están en Clasificación, arriba.
+            </p>
           ) : d ? (
             <p className="crediscope-muted" style={{ margin: "0 0 10px", fontSize: 13 }}>Sin establecimientos registrados.</p>
           ) : null}
           <ul className="crediscope-aval-filas">
-            <FilaCampo etiqueta="RUC activo" valor={laboral.tieneRucActivo} tipo="booleano" />
             <FilaCampo etiqueta="Inicio de actividades" valor={laboral.fechaInicioActividadesRuc} tipo="fecha" />
             {/* El perfil guarda un código ("activa_sin_interrupciones"). */}
             <FilaCampo
@@ -176,7 +168,6 @@ export default function DetalleIngresos({ perfil }) {
               valor={laboral.mesesInactivoActividadEconomica ? duracionLegible(laboral.mesesInactivoActividadEconomica) : null}
               tipo="texto"
             />
-            <FilaCampo etiqueta="Establecimientos Activos (SRI)" valor={laboral.numeroEstablecimientosActivos} tipo="entero" />
             <FilaCampo etiqueta="Establecimientos inactivos" valor={laboral.numeroEstablecimientosInactivos} tipo="entero" />
             <FilaCampo etiqueta="Empleados registrados" valor={laboral.numeroEmpleadosRegistrados} tipo="entero" />
             <FilaCampo etiqueta="Obligaciones patronales en mora" valor={laboral.obligacionesPatronalesEnMora} tipo="booleano" />
@@ -263,7 +254,6 @@ export default function DetalleIngresos({ perfil }) {
           </ul>
           <ul className="crediscope-aval-filas" style={{ marginTop: 10 }}>
             <FilaCampo etiqueta="Versión de las reglas" valor={f.version} tipo="texto" />
-            <FilaCampo etiqueta="Información IESS" valor={mesLegible(f.corteIessUsado)} tipo="texto" />
             <FilaCampo etiqueta="Información actual en el IESS" valor={f.apareceEnUltimoCorte} tipo="booleano" />
             <FilaCampo etiqueta="Motivo antes de la corrección" valor={f.correccion?.motivoAnterior} tipo="texto" />
           </ul>

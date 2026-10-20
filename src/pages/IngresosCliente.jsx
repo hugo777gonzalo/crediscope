@@ -46,7 +46,7 @@ export default function IngresosCliente() {
       setFila(perfil);
       setCorteVigente(corte);
     } catch (err) {
-      setError(err.message);
+      setError(err);
     } finally {
       setCargando(false);
     }
@@ -66,7 +66,7 @@ export default function IngresosCliente() {
     try {
       setFila(await structureClient(cedula));
     } catch (err) {
-      setError(err.message);
+      setError(err);
     } finally {
       setConsultando(false);
     }

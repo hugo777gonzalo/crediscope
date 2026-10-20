@@ -1,19 +1,10 @@
 import { ClipboardCheck, Check, X, Users, FileText, HelpCircle } from "lucide-react";
 import { TituloTarjeta } from "../reporte/Piezas.jsx";
-import { formatearValorAval } from "../../lib/avalCampos.js";
 import { ETIQUETA_SEGMENTO, DOCUMENTOS_DE_CONFIRMACION } from "../../lib/fuentesIngresoConsolidado.js";
 import { mesLegible, fechaLegible } from "../../lib/ingresosCampos.js";
 import { clasificarPerfilLaboral } from "../../../supabase/functions/_shared/perfil-laboral.ts";
-import { humanizarTexto } from "../../lib/formatos.js";
-
-const SECTOR = {
-  publico: "sector público",
-  privado: "sector privado",
-  domestico: "empleo doméstico",
-  diplomatico: "misión diplomática",
-  agricola: "agrícola",
-  otro: "tipo de empleador no reconocido",
-};
+import { tamanoDelNegocio } from "../../../supabase/functions/_shared/fuentes-ingreso.ts";
+import { humanizarTexto, plural, entero } from "../../lib/formatos.js";
 
 function Respuesta({ si, children }) {
   const Icono = si === true ? Check : si === false ? X : HelpCircle;
@@ -56,6 +47,7 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
   const pedir = f.paraConfirmar ?? [];
   const otroCorte = f.corteIessUsado && corteVigente && f.corteIessUsado < corteVigente;
   const p = clasificarPerfilLaboral(perfil);
+  const tamano = tamanoDelNegocio(perfil);
   const sinDatos = f.segmento === "sin_datos";
   // Hasta fuentes-v7 el segmento no veía un RUC reactivado: 77 personas
   // quedaron "informal o sin actividad" con actividad propia vigente.
@@ -90,24 +82,18 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
                 <Respuesta si={null}>No se sabe</Respuesta>
               ) : (
                 <Respuesta si={p.dependencia}>
-                  {p.dependencia ? (p.empleos.length === 1 ? "Sí" : `Sí, ${p.empleos.length} empleos`) : "No"}
+                  {/* Un militar o policía en servicio trabaja para un
+                      tercero sin aportes al IESS: cero empleos, y decía
+                      «Sí, 0 empleos». */}
+                  {p.dependencia ? (p.empleos.length <= 1 ? "Sí" : `Sí, ${plural(p.empleos.length, "empleo")}`) : "No"}
                 </Respuesta>
               )
             }
-          >
-            {p.dependencia ? (
-              <Desplegable rotulo={p.empleos.length === 1 ? "Ver empleador" : "Ver empleadores"}>
-                <ul>
-                  {p.empleos.map((e, i) => (
-                    <li key={i}>
-                      {e.empleador ?? "Empleador sin nombre"} · {SECTOR[e.naturaleza] ?? e.naturaleza}
-                      {e.monto ? ` · ${formatearValorAval(e.monto, "dinero")}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              </Desplegable>
-            ) : null}
-          </Pregunta>
+          />
+          {/* Hasta el 2026-10-19 acá se plegaban el empleador, el sector y el
+              monto de cada empleo: son los aportes de la tarjeta de al lado
+              (perfil-laboral.ts los toma de ahí), que ya dicen el empleador y
+              el monto, y el encabezado quién lo declara. */}
 
           <Pregunta
             texto="¿Tiene actividad propia?"
@@ -116,7 +102,8 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
                 <Respuesta si={null}>No se sabe</Respuesta>
               ) : (
                 <Respuesta si={p.actividadPropia}>
-                  {p.actividadPropia ? (p.rucActivoDesde ? `Sí, desde ${String(p.rucActivoDesde).slice(0, 4)}` : "Sí") : "No"}
+                  {/* El año del RUC lo dice «Negocio propio (SRI)», al lado. */}
+                  {p.actividadPropia ? "Sí" : "No"}
                 </Respuesta>
               )
             }
@@ -130,7 +117,8 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
               ) : (
                 <Respuesta si={p.empleador}>
                   {p.empleador ? <Users size={13} aria-hidden="true" /> : null}
-                  {p.empleador ? (p.numeroEmpleados ? `${p.numeroEmpleados}` : "Sí") : "No"}
+                  {/* Cuántos, en «Tamaño del negocio» cuando se muestra. */}
+                  {p.empleador ? (p.numeroEmpleados && !tamano ? entero(p.numeroEmpleados) : "Sí") : "No"}
                 </Respuesta>
               )
             }
@@ -175,7 +163,10 @@ export default function ClasificacionIngresos({ f, perfil, corteVigente }) {
               Aporta al IESS por su cuenta sin RUC activo: puede ser sólo para no perder la seguridad social, y no prueba trabajo.
             </p>
           ) : null}
-          {p.vinculoConEmpleador === "empleador_con_su_apellido" ? (
+          {/* Con la etiqueta «Empleador comparte apellido» del encabezado, el
+              aviso se decía dos veces: acá queda sólo cuando la etiqueta no
+              sale (el encabezado prefiere «Es su propio patrono»). */}
+          {p.vinculoConEmpleador === "empleador_con_su_apellido" && perfil?.laboral?.clienteEsSuPropioEmpleador === true ? (
             <p className="crediscope-aval-nota">Su empleador comparte su apellido: puede ser un negocio familiar.</p>
           ) : null}
           {p.jubilacion ? <p className="crediscope-aval-nota">Registra jubilación.</p> : null}
