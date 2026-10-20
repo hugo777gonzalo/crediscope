@@ -43,7 +43,8 @@ export function useCondicionesDelCredito(inicial = {}) {
     () => ({
       monto: aNumero(monto),
       plazoMeses: aNumero(plazo),
-      tasaNominalAnualPorcentaje: aNumero(tasa),
+      // Vacía no es un error: se evalúa con la Tasa máxima (negocio, 2026-10-19).
+      tasaNominalAnualPorcentaje: String(tasa ?? "").trim() === "" ? null : aNumero(tasa),
       sistema,
       desgravamen: { tasaPorcentaje: aNumero(tasaSeguro), periodicidad, base },
     }),
