@@ -130,7 +130,10 @@ function configuracion(): Configuracion {
     // tarda. Se ajusta con el número real de la primera consulta, no a ojo.
     plazoConsultaMs: Number(env("EQUIFAX_PLAZO_MS") || "60000"),
     plazoTokenMs: 20_000,
-    maxIntentos: Math.max(1, Number(env("EQUIFAX_MAX_INTENTOS") || "2")),
+    // 3 en total (decisión del negocio, 2026-10-19): los reintentos son sólo de
+    // lo que no llegó a procesarse (429, 502, 503, 504), que responde en
+    // segundos y no se cobra; un timeout no se reintenta nunca.
+    maxIntentos: Math.max(1, Number(env("EQUIFAX_MAX_INTENTOS") || "3")),
     esperaMs: Number(env("EQUIFAX_ESPERA_MS") || "1500"),
   };
 }

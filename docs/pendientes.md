@@ -176,17 +176,14 @@ aceptada.
        simulador-v3). Las funciones los recogen al desplegarse con el corredor. Una
        solicitud guardada fuera de esos rangos falla en el paso de capacidad (no se
        midió si hay alguna).
-     - **Para decidir: cuántos intentos a Equifax.** Hoy son 2 en total
-       (`EQUIFAX_MAX_INTENTOS`, 1,5 s de espera) y sólo para lo que no llegó a
-       procesarse (429, 502, 503, 504; un 401 con token nuevo). Un timeout no se
-       reintenta solo, y un paso de la solicitud que pudo dejar algo en vuelo no se
-       reintenta hasta 3 minutos después. Recomendación: subir a 3 intentos
-       (`EQUIFAX_MAX_INTENTOS=3`, sin código) sólo para esos errores rápidos, con un
-       presupuesto de tiempo total (cada intento puede esperar 60 s y la función
-       corta a los 150 s); ninguno automático tras un timeout; y un freno: tras 3
-       fallos seguidos en 10 minutos, `consultar-equifax` dice «Equifax no responde»
-       sin llamar, para que cada analista no lo vuelva a golpear. El freno no está
-       construido.
+     - **Intentos a Equifax: 3 en total desde el 2026-10-19** (decisión del negocio;
+       `EQUIFAX_MAX_INTENTOS`, por defecto 3 en el código; antes eran 2), con 1,5 s de
+       espera creciente y sólo para lo que no llegó a procesarse (429, 502, 503, 504;
+       un 401 con token nuevo). Un timeout no se reintenta solo, y un paso de la
+       solicitud que pudo dejar algo en vuelo no se reintenta hasta 3 minutos después.
+       **Falta el freno** (no construido): tras 3 fallos seguidos en 10 minutos,
+       `consultar-equifax` diría «Equifax no responde» sin llamar, para que cada
+       analista no lo vuelva a golpear.
      - **Duda del negocio: la cuota de 200 de Equifax.** El pedido a Equifax lleva
        `tipoProducto` 1, `monto` 5.000, `plazo` 12 y `restaGastoFinanciero` 0
        (`PARAMETROS_DE_RELLENO`); no tiene un campo de cuota. El negocio dijo que
