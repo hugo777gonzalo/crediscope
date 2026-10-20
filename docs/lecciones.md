@@ -559,6 +559,15 @@ El detalle está en `docs/remediacion-auditoria-externa.md`.
     aplicar nada.
   - Se renumeró a 123. Una migración se escribe mirando la base y se aplica
     recién fusionada.
+- **La reutilización del análisis por huella vale sólo dentro de una misma
+  consulta** (2026-10-13, E1). Se intentó con c-a1b2684a y no reutilizó, y no
+  podía: su análisis anterior era del lote del 07/10, anterior a la 119 y sin
+  huella, y el de ese día salió de una consulta nueva a Novadata. La fecha de
+  consulta (`perfilDelModelo.consultadoEn`) va en lo que lee el modelo, así que
+  una consulta nueva siempre da otra huella aunque los datos sean iguales, y esa
+  vez además un tema no contestó. La prueba que vale es volver a analizar sobre
+  el MISMO perfil, sin consultar de nuevo: la fila nueva trae
+  `reutiliza_analisis_id` y `duracion_llm_ms` nulo.
 
 **Interfaz (revisión de UX del 2026-10-10)**
 - **Una pantalla que espera la sesión no es una pantalla sin sesión.**

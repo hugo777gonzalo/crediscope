@@ -132,3 +132,49 @@ verificar, y con esta guía al día.
 - `docs/laboratorio-pantallas.md`: el mapa de las pantallas que existen.
 - `docs/pendientes.md`: lo abierto de todo el producto, no sólo del
   Laboratorio.
+
+## Lo hecho antes de la guía y mejoras sin fecha
+
+Se movió acá desde `docs/pendientes.md` (2026-10-20). El detalle de las fases está en
+`docs/propuesta-revision-del-laboratorio.md`, secciones 13 y 14.
+
+- **Fase 1, hecha el 2026-10-06** (110): detector con disponibilidad de las fuentes
+  (`scripts/probar-detector.mjs`); impago parametrizable (más de 90 días, bancos D o E,
+  retail con deuda de más de USD 500, observación desde 15 días; tabla de calificación
+  versionada en Datos y cartera › Configuración); «revisar» = no impago en la Matriz, los
+  motivos y la investigación; el resultado del buró para todos en la población de
+  solicitudes; y el ciclo simulado otra vez (carga `746e5271…`). Las pantallas tocadas no se
+  vieron con sesión de admin: Configuración, Matriz (columna de observación), Investigación
+  de casos (lista de observación), Los que cayeron (aprobar o revisar) y Nuevo corte.
+- **Fase 2, hecha el 2026-10-07** (111 y 112): la estadística vive sólo en
+  `src/lib/estadistica.js` (la base cuenta; las funciones que calculaban se borraron después
+  de comparar en los tres cortes: todo igual), todo lo calculado se guarda con su huella, y el
+  ajuste de criterio se retiró (`analyze-client` desplegado sin él; el pedido al modelo quedó
+  igual byte a byte). Verificado con sesión de admin el 2026-10-07: Discriminación y Segmentos
+  guardaron solos (origen `navegador`, con el usuario y sin cédulas: los números de 10
+  dígitos del resultado son todos decimales), y volver a abrir Discriminación después de
+  recargar no sumó otra fila.
+- La carga del primer ciclo (`1196978e…`) está anulada (confirmado por el negocio); la
+  vigente es la del segundo (`746e5271…`). Resultados de la corrida del ciclo:
+  `docs/laboratorio-de-riesgo.md`, 14.10, 14.11 y 15.4 (carga `1196978e-…`, corte `4e18ca83-…`).
+- **El Universo analizado**: eran 14 solicitudes con análisis válido (no 33) y 3 con el marco
+  vigente; con el lote del 2026-10-07 son 205 personas con marco-v28 (la base tiene 207
+  análisis con marco-v28 al 2026-10-20).
+- 2 personas quedaron afuera del ciclo porque su perfil de t0 no tiene crudo guardado
+  (consultadas desde la pantalla antes de la 090).
+- Lo pesado (bosque, SHAP, K-medias, PCA) se recalcula con
+  `node scripts/analisis-pesado.mjs --corte=<id>` cuando cambia un corte; el explorador del
+  crudo, con `node scripts/explorar-crudo.mjs`.
+
+**Mejoras chicas que el plan no toca** (sin fecha; ninguna antes del paso 4):
+
+- El ajuste por la recomendación para un valor numérico en el explorador del crudo.
+- El origen de cada campo de la estructura como dato.
+- «No consultado» contra «no tiene» en Faltantes (congelar la disponibilidad por tema con el
+  corte).
+- Registrar los informes exportados y la revisión manual de la conciliación.
+- Un dato que falta: la provincia de residencia (está en el crudo, en direcciones).
+- La comparación entre modelos necesita un marco candidato (fase 7, con costo).
+- `n_malos` queda vacío cuando el resultado no trae un número de malos arriba
+  (`tamanoDe()` en `resultadosDelCorte.js`; en Discriminación `malos` es la distribución):
+  pasarlo explícito desde cada pestaña que guarda sola.

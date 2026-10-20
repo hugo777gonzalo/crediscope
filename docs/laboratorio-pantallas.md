@@ -191,3 +191,35 @@ se propusieron.
 5. **Datos nuevos en el archivo de la institución**: fecha del primer
    default obligatoria si cayó (para las cosechas), canal (opcional), y qué
    decidió en cada caso "revisar" (para medir la revisión).
+
+## Recorrido pendiente con una sesión de admin
+
+Se movió acá desde `docs/pendientes.md` (2026-10-20). Todas las pantallas que pidió el
+negocio están construidas; los cálculos de cada pestaña se probaron en Node contra los cortes
+reales (`node scripts/probar-pantallas-laboratorio.mjs` y `node scripts/probar-estadistica.mjs`)
+y todos los módulos cargan en el navegador sin errores. Lo que falta es verlas con una sesión
+de admin, que abre el negocio en el navegador integrado (Claude no escribe contraseñas; se
+vieron así Resumen, Discriminación y Segmentos del ciclo simulado el 2026-10-07):
+
+- Laboratorio › Inicio (hallazgos críticos, impago por mes, análisis por mes, trabajos a
+  medias, actividad).
+- Instituciones y proyectos: registrar una institución de prueba y un proyecto; asignarle una
+  carga.
+- Datos y cartera: Cargas, Cortes, Centro de datos (abrir una fuente), Calidad de la carga,
+  Conciliación, Explorador de cartera, Diccionario. Cargar un archivo chico con títulos que no
+  son los de la plantilla (tiene que aparecer el mapeo) y anular esa carga después.
+- Prueba retrospectiva, con los dos cortes y las dos poblaciones: Resumen (calcular),
+  Discriminación, Matriz, Umbrales (mover los dos deslizadores), Con y sin crédito, Lo que
+  decidió la institución, Cosechas (con solicitudes tiene que decir que no hay fechas),
+  Segmentos, Calibración (guardar una), Estabilidad (calcular el PSI), Comparar cortes,
+  Simulación de política, Casos, Calificación.
+- Descubrimiento estadístico: Resumen, Descriptivas, Distribuciones (variables numéricas,
+  sí/no y categóricas), Faltantes, Correlaciones (tocar una celda), Inferencia, IV y WoE
+  (calcular), Laboratorio de tramos (cuantiles, monótonos, cortes a mano), Explorador de
+  significancia (registrar la candidata), K-medias, PCA.
+- Descubrimiento profundo: Resumen, Explorador del crudo (registrar un hallazgo), Estructura,
+  Entrada al modelo (comparar dos análisis), Los que cayeron, Investigación de casos → abrir un
+  caso (ver el crudo), Motivos, Importancia, Taller (registrar la derivada), Registro de
+  candidatas (pasar una a aceptada y crear su propuesta: tiene que salir en borrador por ser
+  sintética).
+- Propuestas (Criterio vigente se retiró el 2026-10-07: la dirección vieja lleva a Propuestas).

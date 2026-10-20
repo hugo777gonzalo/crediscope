@@ -286,3 +286,63 @@ Archivos nuevos: `src/lib/{formatos,mensajesDeError,navegacion,destinoDeIngreso}
 Reescritos: `App.jsx`, `MenuLateral.jsx`, `useProfile.js`. Con cambios de texto, formato o
 piezas compartidas: unos 90 archivos (la mayoría, una línea: la sustitución de
 `Cargando...` y de la caja de error). `src/index.css` pasó a finales de línea LF como el resto del código.
+
+## 7. Repasos posteriores (2026-10-13 a 20)
+
+Se movió acá desde `docs/pendientes.md` (2026-10-20). Lo que sigue abierto del frente
+(lo que no se vio, el diseño y producto, la sesión de QA) está en las secciones 1 y 3.
+
+- **Tareas de la noche de las tablas de resumen** (124 y 125), 2026-10-13:
+  `resumenes-crediscope` (00:10 de Ecuador) y `resumenes-crediscope-dias` (00:20)
+  figuran `succeeded` en `cron.job_run_details` (no en `cron.job`). El resumen por
+  persona tenía las 2.812 personas, todas reescritas a las 05:10 UTC, sin ninguna sin fila
+  ni huérfana. El `"fallas": 0` de la reconstrucción no queda en el historial de pg_cron
+  (sólo dice «1 row»): se midió con el conteo de personas. La salida se comparó idéntica en
+  la base; no se recorrió en pantalla con sesión.
+- **Pestaña Equifax, Costos › Equifax y Configuración › Equifax y Aval** (2026-10-17 y 18, a
+  375, 768, 1280, 414 y 360). Salieron y se corrigieron: el reporte completo que se caía
+  (una variable suelta del renombre por gitleaks, publicada desde el #28), las ayudas que
+  no se veían bajo 860 px (`InfoTooltip` las dibuja en el body), el «Ver Aval» fijo del
+  Análisis con IA y los indicadores de a 3 + 1. Se sacó lo repetido: la tabla de deuda sin
+  fila de total, «Sin deuda» como celda, las operaciones separadas en «Como titular» y «Lo
+  que respalda de otras personas», el reporte sin repetir el score ni el sobreendeudamiento,
+  «Cómo cambió en un año» como tabla de tres momentos y la «cuota financiera estimada» fuera
+  (era la cuota estimada de hoy en 88 de 88 consultas). En Costos, «Hoy» en lugar de «Desde
+  el inicio» y la tabla mes a mes sólo con dos meses o más; en Auditoría, las ocho acciones
+  sin nombre; en Capacidad de pago, sin «Total por mes» con una sola deuda. El verificador
+  marca desde el 2026-10-18 `cifra-repetida`. El PDF: el botón abre las 11 secciones y las
+  43 operaciones de la persona de prueba, llama a imprimir una vez y deja la descarga en la
+  auditoría (3 descargas al 2026-10-20); con las reglas de impresión al ancho útil de una A4
+  (186 mm) nada se recorta y son unas 5 hojas. **No se imprimió desde el diálogo del
+  navegador**: el panel de pruebas no lo abre.
+- **Pantallas de crédito** (simulador, solicitud, capacidad; 2026-10-18, a 1280 y 414, y el
+  2026-10-20 a 768): el simulador con la Tasa mínima y máxima (vacía, 16 y −1), la solicitud
+  que no existe, la evaluada con los pasos plegados, la confirmación de Plus (admin; se
+  canceló sin crear nada), la lista de recientes con error simulado y las flechas del grupo de
+  modalidades. Sin hallazgos del verificador salvo texto de 11 px en la bandeja. El resumen
+  fijo de la cuota, en pantallas chicas, quedaba pegado sobre la tarjeta grande con la misma
+  cuota dos veces: desde el 2026-10-20 se oculta mientras se ve el resultado (#68). El
+  negocio decidió que «Solicitudes recientes» muestra la cédula completa (es la bandeja del
+  analista).
+- **Fuentes de Ingreso de una persona** (2026-10-19, a 1280, 768 y 414; una persona con el
+  SBU, una con ingresos mixtos y una independiente). Medido en la base: en 1.607 de las
+  1.713 personas con monto hay una sola fuente, y la fila de los aportes repetía el monto,
+  quién lo declara y el SBU del encabezado; en 1.093 el promedio de 6 meses era ese mismo
+  ingreso. Ahora la fila dice de qué empleo sale, el promedio dice «Igual al actual», el
+  empleo más largo «El actual» cuando lo es, y Clasificación y el detalle no repiten
+  empleador, monto, año del RUC, empleados, locales del SRI, RUC activo ni el mes del IESS.
+  Se corrigieron «Sí, 0 empleos» (militar o policía en servicio), un desborde de 6 px a 1280
+  y el botón del detalle en un teléfono. **Se dejó a propósito** la tarjeta del indicio de
+  ingreso mayor, que repite la nómina, los empleados y lo declarado porque son los datos que
+  lo sostienen (negocio, 2026-09-28). **No se vio**: una persona sin consulta, un perfil
+  anterior a fuentes-v4 ni la vista de un analista (la cuenta de QA es admin).
+- **Antigüedad y continuidad** (2026-10-20, estructura-v14, decidido por el negocio): la
+  antigüedad en el empleo actual contaba cualquier afiliación vigente y salía más larga que
+  la continuidad en 35 de 1.644 personas; ahora usa `reglaDeTrabajo()`. Desplegada con las
+  funciones en f09531e y 2.561 perfiles recalculados desde la carpeta de respaldo, más 12 que
+  el guion leyó del depósito (la carpeta no los tenía; el guion se arregló el mismo día, #71).
+  Medido después: las 2.573 personas reales en v14, todas con crudo y 0 con la antigüedad más
+  larga que la continuidad. La pantalla explica el descalce en los perfiles armados antes,
+  hasta reconsultar.
+- **Decidido**: los nombres de las instituciones de Equifax se quedan como vienen (anotado en
+  la terminología de la habilidad `revision-ux`).

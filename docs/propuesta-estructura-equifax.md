@@ -323,3 +323,70 @@ guardadas (`scripts/cargar-tablas-equifax.mjs`).
 5. Las fichas de cumplimiento (`docs/cumplimiento/`): cuando termine el proceso de
    aprobación de Equifax (el negocio, 2026-10-13: «Equifax está en proceso de
    aprobación»).
+
+## 9. Los lotes de consultas y lo que enseñaron (2026-10-12 a 17)
+
+Se movió acá desde `docs/pendientes.md` (2026-10-20), porque es conocimiento y
+no una tarea. Las 88 consultas de la base al 2026-10-20 son: 22 del 12/10 (2 de
+prueba y 20 de un lote autorizado), 40 del 16/10, 25 del 17/10 y 1 pedida por una
+solicitud Plus el 18/10. Todas de producción y de la persona pedida.
+
+**Vigencia.** Una consulta vale del 18 de un mes al 17 del siguiente, sin
+importar el día en que se hizo. Las 87 de antes del 18/10 caducaron ese día
+(medido el 2026-10-20: 87 anteriores al 18/10 y 1 del ciclo vigente); volver a
+consultar a cualquiera de ellas se cobra.
+
+**Lote del 16/10** (40 personas, autorizado por el negocio): reales, sin consulta
+previa y con la historia crediticia más larga de su último perfil de Novadata, con
+11 o 12 operaciones. 17 tienen cooperativas, 17 retail y 24 son codeudoras o
+garantes. Se pagaron 40 de 40, todas HTTP 200, de la persona pedida y con su
+`client_id`; la auditoría no lleva la cédula. El tope se subió sólo para esa
+corrida (`EQUIFAX_TOPE_DIARIO=40` en el entorno del guion, no en las secrets). El
+crudo quedó doble: el archivo en `research/equifax/crudo/` (escrito antes de
+interpretarlo) y `consultas_equifax.respuesta_cruda`. Lista y casos en
+`research/equifax/lotes/lote-2026-10-16*` (fuera de git).
+
+**Lote del 17/10** (25 personas poco bancarizadas, pedido por el negocio): reales,
+sin consulta previa, elegidas por lo poco que traía su último perfil de Novadata
+(5 sin operaciones, 9 con 1 o 2, 4 con mora y 7 con 3 a 9). Se pagaron 25 de 25, el
+tope del día quedó en 25 de 30. Bitácora en `corrida-2026-10-17.log` (fuera de git).
+
+- **Un expediente delgado no es uno vacío.** De las 5 sin operaciones en Novadata,
+  4 traen deuda en Equifax. La quinta (`c-8b595446`) sí vino vacía: 6 KB, sin score
+  ni historia. `c-e6db9ee9` y `c-c105874a` traen 14 y 22 meses de historia, y
+  `c-0be1e991` no trae consultas recibidas y tiene 3 operaciones cuyo saldo no
+  cuadra (`operacionesConSaldoQueNoCuadra`).
+- **Por qué Novadata no veía esa deuda** (reconsulta gratis del mismo día de 4
+  personas; crudo en `research/novadata-raw-2026-10-17/`): el resultado no cambió,
+  así que reconsultar no la hace aparecer.
+  - En dos de las tres con deuda bancaria (`c-b980f5b2`, `c-79f1a4ae`) el crédito
+    se abrió el 16 y el 18 de septiembre, y el único corte de Super que se vio en
+    Novadata es el del **2026-08-31**: la deuda es posterior al corte. Se confirma
+    cuando Novadata publique el de septiembre (Equifax ya trae el del 30/09).
+  - En la tercera (`c-23474215`) esa explicación no cabe: la operación de banco se
+    abrió el 9 de enero, su corte en Equifax es el 31/08 y Novadata contesta «OK»
+    con la lista vacía. Es una diferencia real de cobertura, sin explicar.
+  - `c-79f1a4ae` sólo trae en Novadata una fila de riesgo `G` (garante) de otra
+    deuda, no su crédito de titular.
+  - `c-acdc2297`: Equifax trae una operación comercial con 2.149 días de mora y
+    Novadata nada. Es el comercial de Equifax, que no es el retail de Novadata
+    (otras empresas).
+  - Con 4 personas es un indicio, no una tasa. Medirla de verdad pide comparar las
+    87 contra su perfil de Novadata más reciente, por corte.
+
+**`probar-equifax-tablas.mjs` sobre las 62 del 16/10: todo ok** (2026-10-17). La
+lista de «garantías personales» coincidía con las operaciones de rol codeudor en
+60 de 62; las 2 que no son las únicas cuya lista trae tipo `GARANTE`. Separada por
+tipo, `CODEUDOR` = rol codeudor en 62 de 62. Los garantes no coinciden: de 6
+personas con alguno en la lista o en el detalle, en ninguna son iguales cantidad y
+monto (una tiene 3 garantes en la lista que el detalle no trae con ese rol). La
+«Deuda como codeudor o garante» sale del detalle, así que un garante que sólo está
+en la lista no se cuenta (pregunta 3.8 de `docs/equifax-pedido-de-diccionario.md`).
+El campo `coincideConLasOperacionesDeRolCodeudor` de la estructura todavía compara
+la lista entera: se separa por tipo con la próxima versión de la estructura, no
+vale una versión sola. Ni el modelo ni las pantallas lo leen. El resumen concilia
+en bancos 62 de 62, cooperativas 60 de 62 y comercial 49 de 62. `equifax_operaciones`
+tenía 1.154 filas con las 62.
+
+**Costo.** USD 0,40 por consulta (tarifa del negocio, 2026-10-17). Acumulado: 62
+consultas al 17/10 (USD 24,80) y 87 al 18/10 (USD 34,80), todas de octubre.
