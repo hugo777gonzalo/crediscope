@@ -3,14 +3,27 @@
 Calificación crediticia para Ecuador. Una persona se consulta contra
 Novadata, se arma un Perfil de la Persona estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
-lenguaje natural produce un score de 1 a 999 y una recomendación.
+lenguaje natural produce un score de 1 a 999 y una recomendación. Sobre eso
+están la solicitud de crédito (simulador, capacidad de pago y evaluación
+Básico, Pro o Plus) y la API para las instituciones.
 
 Frontend Vite + React 19 en JavaScript (sin TypeScript, sin Tailwind).
 Backend: Supabase — Postgres con RLS, Auth y Edge Functions en Deno.
 
 Este archivo existe para que una sesión nueva sea productiva sin
-redescubrir lo que ya se aprendió. Si algo de acá resulta falso,
-corregirlo acá mismo.
+redescubrir lo que ya se aprendió. Lo lee cada sesión en cada vuelta, así
+que tiene sólo lo que vale en todo el repositorio:
+
+- **El detalle vive al lado de su código** y se carga solo al trabajar ahí:
+  `supabase/CLAUDE.md` (funciones, `_shared/` y base), `src/CLAUDE.md`
+  (pantalla) y `scripts/CLAUDE.md` (guiones). Equifax y el Laboratorio
+  tienen su guía en `docs/` (ver «Dónde empezar»).
+- **El estado vigente** (última migración aplicada, sello de las funciones,
+  versiones) y lo abierto están en `docs/pendientes.md`. Un número que cambia
+  con cada PR no va acá: este archivo llegó a 63 KB y a dar cuatro conteos
+  distintos del mismo control.
+- Si algo de acá resulta falso, corregirlo acá mismo. Lo nuevo que vale para
+  un área va al archivo de esa área.
 
 ## Cómo se escribe
 
@@ -31,31 +44,20 @@ importan. Los nombres internos que dicen piso
 leen en pantalla. Y quien trabaja para un tercero es **"dependiente"**,
 no "asalariado".
 
-**Nombres de pantalla de Fuentes de ingreso**, decididos por el negocio el
-2026-09-26 porque los anteriores no se entendían sin haber estado en el
-diseño. Viven en `src/lib/fuentesIngresoConsolidado.js` (`quienDeclara()`,
-`ETIQUETA_ESTADO`, `ETIQUETA_SENAL`, `DOCUMENTOS_DE_CONFIRMACION`):
+La IFI es **la institución**: «cliente» es quien tiene un crédito. Los
+nombres de código que dicen cliente por institución (`clientes/`,
+`migrar-clientes.mjs`) se quedan.
 
-| Antes | Ahora |
-|---|---|
-| Segmento | Segmento (se queda) |
-| Confirmada / Provisional / Indeterminada | Confirmado por un tercero / Por confirmar / Sin determinar |
-| Reportada por un tercero | Empleador privado · Empleador público · Empleador diplomático (embajada, consulado) · Empleador externo (SOLO organismos internacionales) · Otros empleadores (doméstico, agrícola, código no reconocido) |
-| Autodeclarada | Empresa propia (patrono de su negocio o RUC activo) · Afiliación voluntaria (sin negocio registrado) |
-| Indirecta | Sin monto: consta que existe (RUC, nómina, jubilación, pensión) |
-| Señales de escala | Tamaño del negocio: Empleados, Nómina, Establecimientos Activos (SRI), Contabilidad |
-| Nómina que paga | Nómina (sin contar a la propia persona) |
-| Establecimientos registrados | Establecimientos Activos (SRI): sólo abiertos, 0 si el RUC no está activo |
-| Otras fuentes · sin monto | Negocio propio (SRI) |
-| Corte del IESS usado | Información IESS (meses con mayúscula: "Ago 2026") |
-| Fuera del último corte | Sin información actual en el IESS |
-| Por qué este segmento | Condiciones de la Segmentación |
-| Qué pedir para confirmar | Documentos de Confirmación de Ingresos |
-| Es su propio empleador | Es su propio patrono |
-| Cómo puede fallar | (se sacó de todas las pantallas y de la exportación) |
-
-El código 29 del IESS junta embajadas y organismos internacionales: se
-separan por el nombre del empleador (`ES_MISION_DIPLOMATICA`).
+**Los nombres de pantalla los decide el negocio** y viven en
+`.claude/skills/revision-ux/terminologia.md`, con el nombre anterior y el
+porqué. Los de Fuentes de ingreso (2026-09-26: los anteriores no se
+entendían sin haber estado en el diseño) salen de
+`src/lib/fuentesIngresoConsolidado.js` (`quienDeclara()`, `ETIQUETA_ESTADO`,
+`ETIQUETA_SENAL`, `DOCUMENTOS_DE_CONFIRMACION`): no inventar otros.
+«Empleador externo» es sólo para organismos internacionales: el código 29
+del IESS junta embajadas y organismos, y se separan por el nombre del
+empleador (`ES_MISION_DIPLOMATICA`). «Cómo puede fallar» se sacó de todas
+las pantallas y de la exportación.
 
 **Los comentarios explican el porqué, no el qué.** Cuando una decisión
 es contraintuitiva, el comentario dice qué pasó que la motivó — un caso
@@ -151,6 +153,11 @@ Romper cualquiera de estas rompe algo real.
 5. **`create or replace view` no puede insertar una columna en el
    medio**: renombra la que estaba en esa posición y falla. Las columnas
    nuevas van al final, aunque quede feo.
+   Además, `create or replace view` REEMPLAZA las opciones de la vista: sin
+   `with (security_invoker = true)` vuelve a leer como su dueño y saltea la
+   RLS (la 118 recrea tres vistas así). La definición vieja se toma de la
+   base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
+   migración que la tocó.
 6. **Las funciones se despliegan sin `--no-verify-jwt`.** La
    configuración por función vive en `supabase/config.toml`; sólo el
    vigía y el trabajador de lotes van sin JWT (clave propia, comparada
@@ -206,200 +213,25 @@ Romper cualquiera de estas rompe algo real.
       anotado.
     - La corrida se cierra sola al salir, "terminada" o "fallida".
 
-## Dónde está cada cosa
+## Dónde empezar
 
-- `supabase/functions/_shared/` — código compartido entre Deno y el
-  navegador. `identificacion.ts` (qué se escribió en el buscador) y
-  `calidad-de-la-consulta.ts` (¿sirve lo que contestó la fuente?) los
-  importan los dos mundos. **Una sola implementación, nunca una copia**:
-  las copias es como aparecen las diferencias silenciosas.
-- `process.ts` → `buildStandardProfile` arma el perfil estandarizado
-  (~145 campos en 17 grupos).
-- `fuentes-ingreso.ts` — clasifica de qué vive la persona. Tiene su
-  propia versión (`FUENTES_INGRESO_VERSION`).
-- `marco-interpretativo.ts` — el prompt del modelo. `MARCO_VERSION` al
-  final. **Cada versión nueva necesita su fila en
-  `scoring_rules_versions` o falla la clave foránea.**
-- `perfil-del-modelo.ts` — lo ÚNICO que lee el modelo (ver abajo).
-  `nombres-ingresos.ts` — los nombres de ingresos que comparten la
-  pantalla y el modelo.
-- `llm-scoring.ts` → `armarPedidoScoring()` arma el pedido al modelo y
-  `CONFIG_LLM` decide el razonamiento y el tope de salida. Lo usan el
-  análisis, el lote (`scripts/analizar-en-lote.mjs`) y
-  `scripts/comparar-razonamiento.mjs`: un camino nuevo al modelo también.
-  Modelo: `claude-sonnet-5-5` desde marco-v28.
-  - `huellaDelPedido()` (119): con la misma huella, un análisis terminado
-    de esa misma persona se reutiliza en vez de volver a preguntar (E1).
-  - La huella no cuenta `cache_control` ni `max_tokens`.
-  - `puntuarPedido()` llama al modelo con un pedido ya armado.
-- `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
-  de temas que el perfil no trae (toma el número de versión libre al
-  encenderse; la v29 fue E27). Corta el marco vigente por marcas,
-  sin copiarlo; está APAGADO (`CONFIG_LLM.marcoPorCliente`) hasta validarlo.
-- `fila-del-analisis.ts` → `filaDelAnalisis()` — la fila de
-  `analysis_results`, la única para `analyze-client` y el lote.
-- `src/lib/laboratorio.js` y las funciones SQL `lab_*` — el Laboratorio
-  de Inteligencia de Negocio, que reemplazó a Retroalimentación.
-  **Empezar por `docs/laboratorio-guia.md`**: los grupos (Universo, Universo
-  analizado, Con crédito, Sin crédito), el plan por pasos y las reglas; se
-  pone al día al terminar cada sesión. **Sin pantallas nuevas del
-  Laboratorio hasta el paso 4 de la guía** (decisión del negocio del
-  2026-10-07: se venía construyendo sin guía clara). El diseño completo, en
-  `docs/laboratorio-de-riesgo.md`. Los "ajustes del criterio" (texto
-  sumado al marco sin versión nueva) se retiraron el 2026-10-07 (112): todo
-  cambio a lo que lee el modelo es una versión nueva del marco. La cartera
-  sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
-  plantada: un cálculo nuevo se valida contra ella). **La estadística vive
-  sólo en `src/lib/estadistica.js`** (111): la base congela, vincula y cuenta
-  (`lab_contar_*`); `resultadosDelCorte.js` arma con ella el desempeño, las
-  variables, la estabilidad y los intervalos, y `calculosDelCorte.js` guarda.
-  Todo lo calculado queda en `lab_resultados` con su huella (corte, tipo,
-  población, parámetros y versión del cálculo: `VERSION_DEL_CALCULO`, que se
-  sube al cambiar un cálculo); las pestañas guardan solas
-  (`useGuardarResultado`) y sin filas ni cédulas (`RESUMEN`).
-  - El **explorador del crudo** (14.11 del diseño) es un guion, no una
-    función: `scripts/explorar-crudo.mjs --corte=<id>` (`--seco` primero,
-    `--buscar=` para el puesto de un campo). Guarda en `lab_resultados`
-    (tipo `crudo`) y la pestaña del corte sólo lo muestra.
-  - El **ciclo de un año** (sección 14 del diseño, 098-104): solicitudes,
-    reconsultas y eventos; la verdad plantada vive aparte
-    (`lab_simulacion_verdad`) y sólo la lee `lab_contar_calificacion()`.
-    Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
-    (simulación y real): `scripts/procesar-reconsultas.mjs --carga=<id>`.
-    El detector de eventos es `_shared/eventos-entre-consultas.ts`: una
-    fuente cuenta sólo si contestó en t0 y en t1 (antes inventaba eventos);
-    se prueba con `scripts/probar-detector.mjs`.
-  - **El impago es un parámetro** (110), no código: la definición (más de N
-    días, categorías de bancos, retail con deuda de más de USD X, lista de
-    observación desde N días) y la tabla de calificación (categoría → días,
-    versionada) se cambian en Datos y cartera › Configuración. Vigente desde
-    el 2026-10-06: más de 90 días (Basilea), bancos D o E, retail con deuda de
-    más de USD 500, observación desde 15 días; revisar = no impago. «D o E» se
-    aplica sólo a la operación que trae calificación (Novadata); la que trae
-    días se juzga por días, así que la del buró de la institución (Equifax no
-    trae calificación) no pide cambiar la definición. Traer el resultado del
-    buró en el t1 sí falta (`docs/propuesta-dias-de-mora-con-buro.md`,
-    sección 3). Una
-    solicitud tiene dos resultados: `malo` (archivo para lo desembolsado,
-    buró para el resto: cuadrantes y motivos) y `malo_buro` (el buró para
-    todos: lo usa todo cálculo que junta las dos poblaciones).
-  - Las **pantallas pedidas por el negocio** están todas construidas
-    (fases A-F y módulos 1-3, 100-109; mapa y estados en
-    `docs/laboratorio-pantallas.md`, método en la sección 15 del diseño).
-    Los módulos de análisis usan `ModuloDelCorte` (corte y pestaña en la
-    dirección). La estadística del navegador es `src/lib/estadistica.js`
-    (jStat sólo para las distribuciones) y los cálculos de cada pestaña,
-    `src/lib/analisis{Retrospectivo,Estadistico,Profundo}.js`, sin React:
-    **se prueban en Node** con `scripts/probar-estadistica.mjs` y
-    `scripts/probar-pantallas-laboratorio.mjs` (correrlos después de tocar
-    cualquiera). Lo pesado, `scripts/analisis-pesado.mjs` (bosque con
-    SHAP, K-medias, PCA; Node porque no hay Python).
-  - **Hallazgos** (decisión del negocio del 2026-10-06, reemplaza a la del
-    04/10): los resultados de los análisis estadísticos, descriptivos,
-    inferenciales y exploratorios sobre los que el modelo dio por buenos
-    (aprobar o revisar) y cayeron; van al Informe de Desempeño del Modelo
-    (`informeLaboratorio.js`). Las decisiones del 2026-10-06 y el plan en
-    cuatro fases: `docs/propuesta-revision-del-laboratorio.md`, 10 a 12.
-  - La forma de una fila del corte vive en `src/lib/filasDelCorte.js` (sin
-    el cliente de Supabase, para que la importen los guiones). Las funciones
-    de la base que calculaban estadística (`lab_auc`, `lab_calcular_*`,
-    `lab_estabilidad`, `lab_calificar_simulacion`) se borraron en la 112: lo
-    que guardaron (origen `base`) es la referencia de las pruebas.
-- `simulador-credito.ts` → `simularCredito()` — la cuota de un crédito de
-  consumo con el desgravamen, en centavos enteros, y su tabla. La usan la
-  pantalla `/simulador`, la función `simular-credito`, la capacidad de pago y
-  `evaluar-solicitud`, y la usará la API: no se copia la fórmula. Los parámetros del producto (`PRODUCTO_CONSUMO`: Tasa
-  mínima de 0% y Tasa máxima de 15,6%, desgravamen de 0,6% anual, monto de USD
-  1.000 a 120.000 y plazo de 6 a 120 meses) son del negocio (2026-10-17; las tasas,
-  el monto y el plazo, del 2026-10-19). Sin tasa se evalúa con la máxima; se dice
-  «Tasa máxima» y «Tasa mínima», no «tope». Cada error de las condiciones lleva un
-  código (`erroresDelPedido()`, `ErrorDeCondiciones` en el contrato). El plan de
-  la demo, con lo que falta, en `docs/plan-demo-ifi.md`.
-  `montoMaximoParaCuota()` busca el monto con el mismo simulador, no con la
-  fórmula invertida (con el seguro y el redondeo, invertirla pasaba el tope).
-- `capacidad-de-pago.ts` → `datosDeCapacidad()` y `evaluarCapacidad()` — si la
-  cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
-  Una deuda sin cuota se lista aparte, nunca como cero. La usan la pantalla
-  `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
-  El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
-  al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
-- `modalidades.ts` y la función `evaluar-solicitud` (133) — la solicitud de
-  crédito (tabla `solicitudes`) y su evaluación en Básico, Pro o Plus. Corre UN
-  paso por llamada (Novadata y el modelo juntos pasan los 150 s) y llama a las
-  funciones de cada módulo con la sesión de quien pidió; toma el paso con la
-  fila que devolvió la actualización (un paso de Equifax se cobra, y la
-  consulta que falta sólo la hace un admin). El modelo y la capacidad van por
-  separado (negocio, 2026-10-17). En el contrato son `modalidad` y
-  `resultado.capacidadDePago` de `POST /evaluaciones`; lo que el contrato dice y
-  esta función todavía no hace está en `docs/pendientes.md`, sección 1. Una tabla nueva con
-  datos de la persona: `suprimir_titular()` la borra y está en
-  `derechos-del-titular.mjs` y `auditar-seguridad.mjs`.
-  El cuerpo de `crear` usa los nombres de `PedidoDeEvaluacion` de la
-  especificación: las condiciones y el Ingreso declarado van juntos en
-  `solicitudDeCredito`; `autorizacion`, `referencia`, `operador`, `prioridad` y
-  `reemplazaA` son opcionales y se guardan (135, `datos-de-la-solicitud.ts`; de la
-  autorización, la huella y nunca el documento). Un paso fallido guarda su
-  `Fallo.codigo` (`falloDeUnPaso()`). Las condiciones que llegan de afuera pasan
-  por `condicionesDelPedidoExterno()`: el tope de la tasa es del producto, nunca
-  del cuerpo.
-  La decisión de la institución (Aprobado / Rechazado / Desistió) la marca el
-  analista en la solicitud, con motivo (acción `decidir`, `decidir_solicitud()`,
-  134): vale la última y todas quedan en `decisiones`.
-- `estado-de-la-persona.ts` → `estadoDeLaPersona()` — el estado de la persona
-  (Prospecto, En proceso, Preaprobado, Aprobado, No aprobado) calculado desde sus
-  solicitudes, nunca guardado a mano. Manda la última solicitud; Preaprobado es
-  sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
-  proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
-  el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
-- **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
-  es una función propia que se llama sola (`simular-credito`,
-  `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
-  lo que use la evaluación entera (`POST /simulaciones` y `POST
-  /capacidades-de-pago`, con sus ejemplos calculados con el código). El marco y
-  el modelo se tocan al final, cuando lo demás esté pulido.
-- `columnas-del-perfil.ts` → `columnasDelPerfil()` — las columnas de
-  `client_profiles` que copian algo del perfil (ver abajo).
-- `src/lib/fechas.js` — el único lugar donde se formatean fechas.
-  Ecuador es UTC-5 sin horario de verano; a las 20:00 de Ecuador la
-  fecha UTC ya es la de mañana.
-- `src/lib/paginar.js` → `traerTodas()` — la forma de leer más de 1.000
-  filas desde el navegador. PostgREST corta ahí sin avisar: Costos sumó
-  1.000 de 1.006 llamadas hasta el 2026-09-24. Pagina hasta el conteo de
-  la primera página, no hasta una página corta, y pide un orden total
-  (desempate por id) en el que lo insertado durante la lectura caiga al
-  final.
-- `src/lib/navegacion.js` — la estructura de la aplicación: de ahí salen el
-  menú lateral y la ubicación "Sección › Página" de la barra superior. Un
-  nombre del menú se cambia ahí, no en dos listas.
-- `src/lib/formatos.js`, `src/lib/mensajesDeError.js` y
-  `src/components/ui/` — cómo se escribe un número, qué se le dice a la
-  persona cuando algo falla y las piezas que comparten las pantallas.
-- `.claude/skills/revision-ux/` — la revisión de UX: flujo, glosario con el
-  porqué, mapa de pantallas, criterios y un verificador para el navegador de
-  QA. Se corre al cambiar una pantalla.
-- `docs/modelo-de-la-persona.md` — la persona como entidad (decisión del
-  negocio del 2026-10-12): el árbol (solicitudes, direcciones, empleos,
-  referencias, documentos, scores, créditos), los estados (Prospecto, En proceso,
-  Preaprobado, Aprobado, No aprobado, Cliente activo, Cliente cerrado), qué existe
-  hoy y qué falta. Leerlo antes de ponerle nombre a una pantalla o a una tabla.
-  Decididos el 2026-10-18 y aplicados en pantalla (#52): «En proceso»,
-  «No aprobado», «Perfil de la Persona» y que la decisión de la institución la
-  marca el analista en la solicitud.
-- `docs/arquitectura-fabrica-de-credito.md` — el norte estratégico, en
-  pausa. Leerlo antes de proponer cambios de estructura del producto.
-- `docs/observaciones-del-negocio.md` — lo que el negocio observa en los
-  análisis, medido y con opciones, en levantamiento (2026-10-07): se decide
-  con el cuadro completo. Los casos atípicos los lista
-  `scripts/detectar-atipicos.mjs` (sin modelo, Excel en `research/`).
-- `docs/pendientes.md` — lo que quedó abierto, por urgencia, con números
-  y cómo verificarlo. **Empezar por ahí al retomar**, y borrar de ahí lo
-  que se cierre.
-- `docs/remediacion-auditoria-externa.md` — qué se hizo con los hallazgos
-  altos de la auditoría externa del 2026-10-09 (E1 a E5), qué falta y cómo
-  se trabaja desde ahí.
-  - El informe completo (E1 a E27) está en `auditoria/`, fuera de git.
-  - La ficha del modelo, en `docs/cumplimiento/ficha-del-modelo.md`.
-  - El diseño de la tarjeta de puntaje, en `docs/tarjeta-de-puntaje.md`.
+| Para | Leer |
+|---|---|
+| Retomar, o saber el estado vigente | `docs/pendientes.md`; borrar de ahí lo que se cierre |
+| Funciones, `_shared/`, migraciones y base | `supabase/CLAUDE.md` (se carga solo) |
+| Pantallas | `src/CLAUDE.md` (se carga solo) y la habilidad `revision-ux` |
+| Guiones | `scripts/CLAUDE.md` (se carga solo) |
+| Equifax | `docs/equifax.md` |
+| El Laboratorio | `docs/laboratorio-guia.md`: el plan por pasos y, al final, cómo está construido |
+| Ponerle nombre a una pantalla o a una tabla | `docs/modelo-de-la-persona.md`: la persona, su árbol y sus estados |
+| La demo para una institución | `docs/plan-demo-ifi.md` |
+| Cambios de estructura del producto | `docs/arquitectura-fabrica-de-credito.md` (en pausa) |
+| Lo que el negocio observa en los análisis | `docs/observaciones-del-negocio.md` (en pausa); los casos atípicos, `scripts/detectar-atipicos.mjs` |
+| La auditoría externa del 2026-10-09 | `docs/remediacion-auditoria-externa.md`; el informe (E1 a E27) en `auditoria/` y la ficha del modelo en `docs/cumplimiento/`, fuera de git; la tarjeta de puntaje, `docs/tarjeta-de-puntaje.md` |
+| El caso, la fecha y los números de una lección | `docs/lecciones.md` |
+
+## Lo que cruza todo el producto
+
 - **API única para IFI** (propuesta del 2026-10-09; Fase 0 cerrada el 10/10).
   - **El «contrato» de la API es `api/openapi.yaml`** (su especificación
     técnica; con el negocio se dice «especificación de la API», porque
@@ -420,119 +252,15 @@ Romper cualquiera de estas rompe algo real.
     Novadata espera su respuesta por escrito.
   - E27 ya no frena la v1 (cerrado el 2026-10-20). Lo que falta está en
     `docs/pendientes.md`.
-- **Equifax** (buró; en producción desde el 2026-10-12; credenciales y
-  datos de la cuenta en `.env.functions`, claves `EQUIFAX_*`). **Empezar por
-  `docs/pendientes.md`**; el diseño y lo medido, en
-  `docs/propuesta-estructura-equifax.md`; lo que hay que pedirle a Equifax, en
-  `docs/equifax-pedido-de-diccionario.md`; y cómo entraría al modelo, en
-  `docs/propuesta-marco-equifax.md` (propuesta: no cambia nada de lo que lee el
-  modelo):
-  - **Un solo buró por IFI** (negocio, 2026-10-13: Equifax o Aval, no los dos
-    ni en orden). Cuando la persona lo tiene, reemplaza a la deuda de bancos y
-    cooperativas de Novadata: «un tema, una fuente», propuesto en
-    `docs/propuesta-buro-de-la-institucion.md` (sin construir). Medido con
-    `scripts/medir-solapamiento-equifax.mjs`: **el comercial de Equifax y las
-    casas comerciales de Novadata son otras empresas** (no se apagan) y **Equifax
-    no trae la calificación A1 a E** (se lee en días de mora). **Novadata se
-    sigue consultando entera** (negocio, 2026-10-16): lo repetido sólo deja de
-    ir al modelo.
-  - **El buró de la base** es `proveedores.es_buro` (129, a lo sumo uno): lo
-    elige el selector «Buró» de Configuración y decide la pestaña de cada
-    persona; el menú dice «Buró» y `/buro/:cedula` lleva a la que corresponde.
-    `activo` sigue diciendo sólo si se puede consultar.
-  - **El buró en lo que lee el modelo es `marco-v31`, APAGADO**
-    (`CONFIG_LLM.buroDeLaInstitucion`): `_shared/buro-de-la-institucion.ts` busca
-    la consulta vigente y `armarPerfilDelModelo(perfil, campos, buro)` pone
-    `buroEquifax` en lugar de bancos y cooperativas de Novadata;
-    `marcoConElBuro()` arma los dos textos de v31 sobre el de v30. Sin buró, el
-    perfil es el de v30 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).
-    Cómo encenderlo: `docs/propuesta-marco-equifax.md`, sección 8.
-  - **Los tokens de un JSON se miden, no se estiman** (2026-10-16): con 3,2
-    caracteres por token el bloque del buró salía en 1.050 y pesa 2.000 (1,63:
-    casi todo números y nombres largos). El contador de tokens de la API no cobra
-    ni corre el modelo; se le manda sólo el marco o datos inventados.
-  - **La pestaña Equifax** (`PerfilEquifax.jsx`, `components/equifax/`) lee la
-    estructura y las tablas, nunca el crudo; la franja de 24 meses y la deuda
-    por sistema salen de `src/lib/equifaxPantalla.js`, que se prueba con
-    `scripts/probar-formatos.mjs`. El PDF es la pantalla impresa
-    (`@media print`) y queda en la auditoría (`exportacion.reporte_equifax`).
-  - **El botón para consultar** (`ConsultarEquifax.jsx`, 2026-10-17) es sólo
-    para administración (diseño aprobado el 16/10; la función `consultar-equifax`
-    exige admin también desde ese día) y la llama sólo cuando la persona no tiene
-    una consulta vigente, nunca de un clic: primero dice que se cobra y pide
-    confirmar. Lo gastado se ve en Costos › Equifax (`costoEquifax.js`, USD 0,40
-    por consulta, tarifa del negocio del 17/10). El
-    tope, la base legal (`BASE_LEGAL_EQUIFAX` en `api.js`) y la auditoría los
-    pone la función. No ofrece `forzar`. **Para probarlo sin pagar**: una cédula
-    con el dígito verificador mal (la función la rechaza antes de llamar a
-    Equifax) o una persona con consulta vigente (la función devuelve la guardada
-    sin escribir nada). **No adelantar el reloj de la página para ver una
-    consulta vencida**: la sesión supera las 12 horas y se cierra en todos los
-    dispositivos (pasó el 2026-10-17).
-  - `_shared/equifax-client.ts`: el token (en memoria, nunca guardado) y
-    la consulta, que se cobra.
-  - `_shared/equifax-persistencia.ts`: el recorrido completo (proveedor,
-    reutilizar, tope diario, consultar, guardar, auditar). Lo usan la
-    función `consultar-equifax` y `scripts/consultar-equifax-local.mjs`:
-    una sola implementación.
-  - `_shared/vigencia-mensual.ts`: una consulta vale hasta el 17 de cada
-    mes; la comparte Aval (`aval-vigencia.ts`).
-  - Tabla `consultas_equifax` (122): `respuesta_cruda` entera e inmutable.
-    El proveedor `equifax` nace apagado en `proveedores`.
-  - **Del crudo a las tablas y a la estructura** (126, 2026-10-13; el
-    diseño y lo medido, en `docs/propuesta-estructura-equifax.md`):
-    - `_shared/equifax-tablas.ts` → `derivarTablas()`: el crudo en 11 tablas
-      `equifax_*` (operaciones, historia mensual, deuda por sistema y mes,
-      vencimientos, tarjetas, créditos, consultas recibidas, scores,
-      indicadores por período, `equifax_codeudor_garante` y `equifax_resumen`).
-      Pura, determinista y versionada (`EQUIFAX_TABLAS_VERSION`). Sin datos
-      personales: se quedan sólo en el crudo.
-    - `_shared/equifax-estructura.ts` → `calcularEstructura()`: la estructura
-      estandarizada, calculada DESDE las tablas y guardada en
-      `consultas_equifax.estructura` (`EQUIFAX_ESTRUCTURA_VERSION`).
-    - `equifax_reemplazar_tablas()` (base): rehace las dos cosas de una
-      consulta de una vez, atómica; sólo la clave de servicio.
-      `guardarTablasDeLaConsulta()` la llama, y es la misma para una consulta
-      recién pagada y para rehacer una guardada.
-    - **Cambió una regla de `equifax-tablas.ts` o de `equifax-estructura.ts`:
-      se sube su versión y se corre `node scripts/cargar-tablas-equifax.mjs`
-      (`--seco` primero)**: rehace desde el crudo las consultas que quedaron
-      con la versión anterior, sin volver a pagar.
-    - `scripts/exportar-equifax-tablas.mjs`: un Excel con las 11 tablas de todas
-      las personas consultadas (una hoja por tabla, la persona por su código), más
-      «Consultas» y «Estructura». Sólo lee; va a `research/equifax/excel/`.
-    - `scripts/medir-bloque-equifax.mjs`: cuánto pesaría el bloque de Equifax del
-      perfil del modelo (`docs/propuesta-marco-equifax.md`), sin gasto.
-    - `scripts/probar-equifax-tablas.mjs`: las mismas funciones contra las
-      respuestas reales de `research/equifax/crudo/` (conciliación contra el
-      resumen, titular + codeudor/garante, datos personales). Correrlo después de
-      tocar cualquiera de los dos módulos. Las pruebas de Deno usan una
-      respuesta inventada (`_shared/equifax-respuesta-de-prueba.ts`): el
-      repositorio es público.
-  - `scripts/exportar-equifax.mjs`: Excel con una hoja por cada tabla que
-    trae la respuesta (`scripts/probar-hojas-de-json.mjs` lo prueba).
-  - `scripts/inventariar-equifax.mjs` (campos, listas y datos personales de
-    las respuestas guardadas) y `scripts/conciliar-equifax.mjs` (qué cifras
-    cuadran entre sí): sólo leen `research/equifax/crudo/` y no vuelven a
-    consultar.
-  - Desde un worktree, los guiones leen `.env.functions` y escriben en
-    `research/` de la carpeta principal (`scripts/_comun/entorno.mjs`).
-- **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
-  corren con:
-  - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`
-  - `npx --yes deno@2.9.6 check --no-lock supabase/functions/*/index.ts`
-
-  Las corre también la integración continua. Una regla nueva en `_shared`
-  lleva su prueba.
-- **Una base por cliente** (`docs/plan-segundo-cliente.md`, construido el
+- **Una base por institución** (`docs/plan-segundo-cliente.md`, construido el
   2026-10-09): `clientes/directorio.json` dice qué bases existen (sólo
   referencia de proyecto y URL, nunca datos ni secretos),
   `scripts/migrar-clientes.mjs` las mantiene al día y
   `_shared/version-esquema.ts` hace que una función se niegue a atender
-  una base atrasada. Falta armar desde cero la base de un cliente nuevo
+  una base atrasada. Falta armar desde cero la base de una institución nueva
   (ver `docs/pendientes.md`).
 - **Seguridad y cumplimiento** (auditoría del 2026-10-09):
-  `scripts/auditar-seguridad.mjs` es el control (68 puntos al 2026-10-13, correrlo
+  `scripts/auditar-seguridad.mjs` es el control (correrlo
   después de tocar permisos, políticas, funciones, migraciones o la
   publicación; hoy mide sólo la base enlazada);
   `scripts/derechos-del-titular.mjs` atiende acceso, portabilidad y
@@ -542,389 +270,12 @@ Romper cualquiera de estas rompe algo real.
   viven en `docs/cumplimiento/` (fuera de git mientras el repo sea
   público). La IFI es la responsable del tratamiento y CrediScope su
   encargado: la autorización de cada titular la garantiza la IFI por
-  contrato, y un lote declara su base legal. Lo que se le muestra a un
-  cliente es `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`
+  contrato, y un lote declara su base legal. Lo que se le muestra a una
+  institución es `docs/cumplimiento/ficha-de-seguridad-para-clientes.html`
   (publicada como página privada), nunca el informe de `auditoria/`.
   Quien encuentre una falla la reporta en privado desde la pestaña Security
   del repositorio (reporte privado de GitHub, activado el 2026-10-12):
   `SECURITY.md` lo explica.
-
-## Lo que costó caro aprender
-
-Cada una salió de un error real; no revivirlas. **El caso, la fecha y
-los números de cada una están en `docs/lecciones.md`**: leer la entrada
-antes de tocar esa área.
-
-**Consultas y disponibilidad**
-- Cédula: sólo se valida el dígito verificador. La regla del tercer
-  dígito es falsa (hay personas reales con 6).
-- Una consulta que no contestó ninguna fuente no se guarda: sale una
-  ficha en blanco igual a la de alguien sin historial.
-- "La fuente dice que no hay" ≠ "la fuente no contestó".
-  `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
-  `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.
-- "La fuente trajo datos" ≠ "la persona tiene registros" (antecedentes
-  "NO", SERCOP vacío). Al modelo le llega sólo consultado / no
-  consultado, por tema.
-- Los 9 bloques se retiraron (078); quedan 52 fuentes planas. `ejes_ok`
-  ya no se escribe pero NO se borra. ¿Sirve el perfil? `elPerfilSirve()`.
-- Dos formas conviven: `laboral.empleoActual` (objeto, antes de
-  marco-v20) y `empleosActuales` (arreglo). Leer las dos.
-
-- **Cada fuente de Novadata espera como mucho 120 s**
-  (`PLAZO_POR_FUENTE_MS`), y la consulta pide un solo token, compartido.
-  Antes eran 52 inicios de sesión simultáneos con el token vencido (E5).
-  - Medido el 2026-10-09: en el uso normal una consulta tarda menos de un
-    minuto, y la cola cerca del corte de 150 s es de las reconsultas
-    masivas.
-  - La duración de cada fuente se guarda en
-    `client_profiles.duracion_por_fuente_ms` (119): el plazo se ajusta con
-    esos números, no a ojo.
-  - La cola asincrónica es de la sesión de la API para IFI; su migración
-    toma el número libre al aplicarse (regla 1).
-
-**Base, PostgREST y procesos**
-- PostgREST corta en 1.000 filas sin avisar: agregar en la base (función
-  `security invoker`), listar con `traerTodas()`.
-- Una actualización bloqueada por RLS devuelve 0 filas, no error:
-  `.select()` y contar.
-- Un error de PostgREST es un objeto plano: leer
-  `message`/`details`/`hint`/`code`, no `String(err)`.
-- Al reclamar trabajo concurrente, usar las filas que DEVOLVIÓ la
-  actualización.
-- Reencolar ítems de un lote `terminado` no lo reabre.
-- pg_net está en el esquema `net`. Una tarea programada se verifica en
-  `cron.job_run_details`, no en `cron.job`.
-- Lo que no pasa por `lint` ni `build` se rompe en silencio: los scripts
-  sueltos llevan su propio aviso adentro.
-- `create or replace view` REEMPLAZA las opciones de la vista: sin
-  `with (security_invoker = true)` vuelve a leer como su dueño y saltea la
-  RLS. La 118 recrea tres vistas así. Además, una definición vieja se toma
-  de la base viva (`pg_get_viewdef` / `pg_get_functiondef`), no de la última
-  migración que la tocó.
-- Una CTE usada una sola vez dentro de una subconsulta correlacionada se
-  recalcula por cada fila de afuera: `as materialized`. El centro de datos
-  del Laboratorio la recalculaba 52 veces, una por fuente (121).
-- Leer un campo de `standard_profile` descomprime el perfil entero. En una
-  consulta sobre muchos perfiles, se eligen primero las filas sin tocarlo y
-  el JSON se lee sólo de las elegidas, o la condición va a un índice
-  parcial. Así tardaban 3,5 s el corte del IESS (121) y 5,3 s la primera
-  página de la bandeja (123).
-- Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
-  El 2026-10-09 el sello del despliegue reemplazó una palabra en un
-  comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
-  comprobación posterior.
-- **La bandeja, Monitoreo y Fuentes de ingreso leen `resumen_por_persona`**
-  (124): una fila por persona con lo que muestran de su último perfil y su
-  último análisis.
-  - La escribe sólo `refrescar_resumen_por_persona()`: una regla nueva de
-    esas pantallas va ahí, no en la vista ni en la función del tablero.
-  - La llaman disparadores por sentencia en `client_profiles`,
-    `analysis_results`, `clients` y `consultas_equifax`, y `proveedores` al
-    cambiar el buró (132). Al insertar o actualizar, un fallo no frena la
-    consulta (queda un aviso); al borrar sí, porque borrar es la supresión de
-    un titular.
-  - Cada noche la reconstruye `reconstruir_resumen_por_persona()` (pg_cron
-    `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
-    También devuelve a Novadata a quien se le venció la consulta del buró el
-    18 a las 00:00: la vigencia vence sin que nada cambie en la base.
-  - **Con una consulta vigente del buró de la institución (132), las marcas
-    de Monitoreo salen del buró**: `calificacion_baja` es más de 90 días en
-    bancos (D empieza a los 91) y `tiene_mora`, el monto en atraso de bancos y
-    cooperativas; `consulta_buro_id` dice de qué consulta salieron. La regla
-    de la consulta vigente es `buro_vigente_de_la_persona()`, la copia en SQL
-    de `_shared/buro-de-la-institucion.ts`; si cambia una, cambia la otra.
-    `docs/propuesta-dias-de-mora-con-buro.md`; se mide con
-    `node scripts/medir-dias-de-mora-con-buro.mjs`.
-  - Medido el 2026-10-12: la primera página de la bandeja, de 570 ms a 6 ms;
-    Monitoreo, de 1,3 s a 126 ms; Fuentes de ingreso, de 1,4 s a 179 ms.
-- **El centro de datos suma `consultas_por_dia_y_fuente`** (125), por día de
-  Ecuador y por fuente.
-  - Los días cerrados los rehace `refrescar_consultas_por_dia()` cada noche
-    (pg_cron `resumenes-crediscope-dias`, 00:20 de Ecuador, los últimos 40
-    días); lo que todavía no se resumió, normalmente hoy, se cuenta al
-    momento.
-  - La "última semana" y el "mes anterior" son días de Ecuador, no horas
-    corridas.
-  - Al marcar o desmarcar una persona sintética, o al corregir algo de hace
-    más de 40 días: `select refrescar_consultas_por_dia(null)`.
-  - Medido: de 1,3 s a 28 ms para 120 días.
-- **Se descartó resumir en la primera consulta del día** (decisión del
-  2026-10-12): esa persona espera el cálculo entero, con una cartera grande
-  vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
-- **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
-  Aval.
-  - Los totales de la base las excluyen.
-  - La bandeja las trae con la marca, y las listas de la pantalla filtran
-    `es_sintetico = false`.
-  - Un total nuevo sobre la cartera las filtra igual, también si lee
-    `bandeja_solicitudes`: la vista las conserva. La franja de la bandeja
-    (`bandeja_conteos`) las contó hasta la 120 (2.812 contra 2.572 de la
-    lista), porque la 118 buscó a los lectores de las tablas y no a los de
-    la vista.
-
-**Crudo y recálculo**
-- El crudo de Novadata se guarda desde la 090 en el depósito privado
-  `crudo-novadata` de Storage (gzip, ~8 KB), con la ruta en
-  `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
-  `_shared/crudo-novadata.ts`, desde las tres puertas que guardan perfiles.
-  A Storage con supabase-js se suben bytes, no un `Blob`: con un `Blob`
-  ignora `contentType` y el depósito lo rechaza (así no se guardó ningún
-  crudo hasta el 2026-10-04).
-  Lo que leyó el modelo queda en `analysis_results.mensaje_al_modelo`.
-- Respaldo local en `research/` (fuera del repo, datos personales):
-  `novadata-raw/` = muestra fija de 389, no se pisa;
-  `novadata-raw-2026-09-25/` = cartera completa (ya subida a Storage) en
-  forma plana `{ cedula, capturadoEl, perfilId, raw }`;
-  `novadata-raw-2026-10-03/` = la reconsulta entera de ese día, el respaldo
-  vigente (los recálculos, con `--carpeta=`). La del 25/09 es el t0 del
-  ciclo simulado del Laboratorio: no se pisa. `casos-reales/` = el
-  registro de los casos que cita el código (ver "Cómo se trabaja"). Sumar:
-  `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta> --base-legal="<contrato>"`.
-- Reproducir un perfil: `buildStandardProfile(raw, cedula, corte)` con el
-  corte VIGENTE de ese día, no `fuente_corte`.
-- `scripts/recalcular-fuentes-ingreso.mjs`: sólo el último perfil, sólo
-  si el crudo es de ese perfil (`perfilId`), reloj en la fecha de captura
-  y claves ordenadas al comparar. Él y `recalcular-grupos.mjs` leen el crudo
-  de `--carpeta=` y, lo que la carpeta no tiene, del depósito
-  (`_comun/crudo-del-ultimo-perfil.mjs`): hasta el 2026-10-20 leían sólo la
-  carpeta y un recálculo dejaba atrás a quien se consultó después del respaldo.
-- `scripts/recalcular-grupos.mjs --grupos=a,b`. Si cambian estructura y
-  fuentes de ingreso a la vez: primero `recalcular-grupos.mjs ...
-  --ignorar=fuentesIngreso` (con `--bloqueo` si cambió el bloqueo),
-  después `recalcular-fuentes-ingreso.mjs`.
-- Las columnas copiadas del perfil se escriben sólo con
-  `columnasDelPerfil()`. Si cambia la regla de una columna sin cambiar el
-  perfil: `scripts/calcular-columnas-del-perfil.mjs` (`--seco` primero).
-- Para validar un cambio, comparar `process.ts` viejo contra nuevo sobre
-  `research/novadata-raw/` con el perfil entero (`reprocess-sample.mjs`, la
-  copia a mano, quedó atrás y se borró el 2026-10-13).
-
-**IESS, ingresos y fuentes de ingreso**
-- El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
-  con ≥20 clientes en 90 días. Quien trae un mes posterior usa el suyo.
-  Su condición sobre el perfil se repite en el índice parcial
-  `client_profiles_corte_iess` (121): sin él abría el perfil entero de cada
-  consulta de 90 días, 3,5 s antes de cada consulta. Si cambia la
-  condición, cambia el índice.
-- Empleo actual e ingresos leen el mismo registro: el empleo cae a los
-  aportes cuando el mecanizado no trae nada.
-- Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
-  2020-01..03, 05, 06, 08, 11) no cortan la continuidad. La antigüedad
-  sale de `fecIng`, no del primer aporte (`continuidadLaboral`).
-- Aportar por cuenta propia cuenta como trabajo sólo en meses con RUC
-  activo; el RISE siempre. La regla es `reglaDeTrabajo()`
-  (`fuentes-ingreso.ts`) y la usan la continuidad y, desde estructura-v14,
-  la antigüedad en el empleo actual: antes contaba cualquier afiliación y
-  salía más larga que la continuidad en 35 personas.
-- "Es su propio patrono": sólo `_shared/patrono.ts` (RUC = cédula +
-  001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
-  lo hace empleador.
-- "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
-  establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
-  `establecimientoAbierto()` es la única comparación (estructura-v13).
-- Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
-  `client_profiles.perfil_laboral`, fuera de `standard_profile`).
-- No se especula sobre el ingreso: un ingreso mayor sólo con
-  `indiciosDeIngresoMayor()`. Nunca se muestra "cómo puede fallar".
-- ISSFAC/ISSPOL listan familiares: militar o policía es sólo el titular
-  (`_shared/fuerzas-armadas-policia.ts`).
-- Parámetros anuales en `fuentes-ingreso.ts`: `SBU_POR_ANIO` y
-  `FRACCION_BASICA_RENTA`. Un año sin renta no da indicio; al agregarlo,
-  correr `calcular-columnas-del-perfil.mjs`.
-- Los nombres de pantalla de Fuentes de ingreso los decidió el negocio
-  (tabla arriba). No inventar otros.
-
-**Buró, Aval y Función Judicial**
-- Buró de Novadata: `riesgo` T/G/C separa lo propio de lo garantizado;
-  el atraso puede estar en `noDevengaInteres`; los tramos
-  `saldo0_1..mas_36` no son montos; "AL" es al día; no trae días de mora
-  ni cuota (la cuota sólo en cooperativas).
-- Aval mezcla filas de totales (`"-"`, `"TOTAL"`,
-  `sistemaCrediticio: "TOTAL"`): buscarlas antes de sumar un segmento.
-- El ambiente de prueba de Aval contesta por otra persona:
-  `consultas_aval.ambiente = 'prueba'` (derivado del host, default
-  `prueba`) no sirve para calificar a nadie.
-- Aval tarda ~0,9 s por consulta contra ~41 s de Novadata: las cuentas de
-  capacidad de Novadata no aplican.
-- **Cada consulta a Equifax se cobra y su proveedor no pone tope**
-  (negocio, 2026-10-12). Por eso:
-  - Lo que contestó se guarda entero y se reutiliza hasta el 17 de cada
-    mes; `forzar` (volver a pagar) es sólo de admin.
-  - El tope diario es nuestro: `EQUIFAX_TOPE_DIARIO` (30 por defecto). Si
-    no se puede medir el consumo, no se consulta.
-  - Un timeout **no se reintenta**: el pedido salió y pudo cobrarse. Sólo
-    se repite lo que no llegó a procesarse (401 con token nuevo; 429, 502,
-    503 y 504).
-  - El guion local **simula por defecto**; para cobrar, `--ejecutar`. Más
-    de 2 personas por corrida exige `--autorizo=<n>`. Sin responsable y
-    sin base legal no corre.
-  - No se envían datos del cónyuge (decisión del negocio): el pedido no
-    tiene dónde ponerlos.
-  - Una respuesta por **otra persona** no se guarda: se compara el
-    documento que trae Equifax (`identificacion_consultada`) con el
-    pedido (`documentoDeLaRespuesta()`). Se cobró, así que cuenta para el
-    tope y queda en la auditoría sin el documento ajeno.
-  - **La deuda sale de `reporteCrediticio`.** `interconnectResponse` trae la
-    misma deuda en otra forma y **no cuadra** (bancos: coincide en 9 de 22
-    personas; el «riesgo directo» de Equifax no coincide con ninguna suma).
-    Nunca se suman dos bloques: es la «fila fantasma» de Aval otra vez.
-    Evidencia: `scripts/conciliar-equifax.mjs`.
-  - El rol viene como `TITULAR` y como `Titular`: se normaliza antes de
-    separar al titular del codeudor o garante (15 de 22 personas tienen
-    operaciones donde no son titulares).
-  - **Un guion que imprime valores filtra por el contenido, no por el nombre
-    del campo.** El inventario (`inventariar-equifax.mjs`) no lista números ni
-    valores con 6 o más dígitos seguidos: el teléfono de la persona viene
-    dentro de `sujeto_al_dia.institucion` y el filtro por nombre no lo veía.
-  - El camino es JSON → tablas → estructura: la estructura se calcula desde
-    las tablas, no desde el JSON (`docs/propuesta-estructura-equifax.md`).
-  - **Lo medido al construir las tablas (2026-10-13), sobre las 22 respuestas:**
-    - **El resumen por sistema, los impagos, las morosidades y la cuota
-      estimada de Equifax cuentan también al codeudor y al garante.** La suma
-      del detalle de todos los roles reproduce el resumen (bancos 22/22, y 62/62
-      con el lote del 2026-10-16); la
-      del titular solo, no. `conciliaConElResumen` compara todos los roles, y
-      lo del titular sale de las operaciones.
-    - **Los `CODEUDOR` de la lista de «garantías personales» de Equifax son la
-      misma deuda que las operaciones de rol codeudor** (62/62): es una
-      comprobación, nunca un sumando. **Los `GARANTE` no**: la lista y el detalle
-      no coinciden en ninguna de las 6 personas con alguno (2026-10-17; pregunta
-      en el pedido de diccionario, 3.8). Se compara por tipo, nunca la lista
-      entera. **«Garantía» en Ecuador es el colateral** (auto, casa, pagaré):
-      lo de codeudor y garante no se llama así (tabla `equifax_codeudor_garante`).
-    - **Una operación no se puede seguir de un mes al siguiente**: las listas no
-      traen su número y ninguna combinación de campos la identifica (788 pares
-      de filas de un mismo mes comparten institución y apertura; el cupo cambia
-      entre meses en 191 grupos). Una «huella» inventada contaba como varias a
-      una misma operación. La conducta de pago se cuenta **por mes**.
-    - **Un nombre de Equifax puede prometer lo que el dato no cumple**:
-      `score_min`/`score_max` son la banda de la persona (no el rango del
-      score); `porcentaje_uso_tarjeta` es el saldo promedio de 6 meses sobre el
-      cupo, no el de hoy, y pasa de 100. Se mide antes de nombrar, y lo dudoso
-      va a `docs/equifax-pedido-de-diccionario.md`.
-    - Los tramos de mora se reparten por **días de mora** (hasta 30, 60, 90, 180,
-      270, 360, 720 y 1.080): reproducen los de Equifax en bancos (20/22).
-    - **La primera fila de `entidades_consultados` es el encabezado** con los
-      doce meses; NovaCredit (dos grafías) no cuenta como entidad que evalúa a
-      la persona. `protestos` viene siempre vacío: `null` (no medido), no cero.
-    - `probar_conexion` desde las Edge Functions contesta ok (2026-10-13): el
-      token se pide bien desde Supabase. Desde la pantalla (2026-10-17) la
-      función rechaza una cédula inválida y reutiliza una vigente; una consulta
-      PAGA desde las funciones todavía no se hizo (la primera, con una persona
-      que autorice el negocio).
-  - Los parámetros de la decisión (producto 1, monto, plazo) son de
-    relleno: sólo interesa lo que el buró trae de la persona.
-  - La clave y el token no salen en ningún mensaje (`sanitizar()`); el
-    token vive en memoria. Las credenciales que se pegaron en un chat se
-    rotan al terminar el desarrollo.
-- Denuncias: decide el papel de la persona y sólo cuenta con su cédula
-  (`_shared/denuncias.ts`). Delitos de seguridad: lista única en
-  `_shared/delitos-seguridad.ts`.
-- Demandas por categoría (`_shared/demandas.ts`): normalizar tildes
-  rotas, espacios y artículos; archivo o trámite no penaliza; si el tipo
-  no dice el tema, decide quién demanda (institución financiera = cobro).
-- Palabras clave como palabras completas (MORAL contiene MORA); los
-  plurales se agregan a mano, sin S opcional.
-
-**El modelo**
-- El modelo lee SOLO el perfil del modelo (`armarPerfilDelModelo()` /
-  `mensajeParaElModelo()`). Todo camino nuevo pasa por ahí; cambiar lo
-  que arma es versión nueva del marco con su fila en
-  `scoring_rules_versions`. De `fuentesIngreso.detalle` va sólo un
-  resumen; la renta nunca.
-- **El perfil del modelo no lleva identificadores y sí los atributos de la
-  persona** (E27, cerrado el 2026-10-20; el detalle está en `auditoria/` y en
-  `docs/cumplimiento/ficha-del-modelo.md`, fuera de git).
-  - marco-v29 saca la cédula, el nombre y los empleadores (cada empleo llega
-    con su tipo). Las listas viven en `perfil-del-modelo.ts`:
-    `IDENTIFICADORES_QUE_NO_LLEGAN` (fijos) y `ATRIBUTOS_PROTEGIDOS` (sexo,
-    estado civil, origen, familia, edad: `true` = llega). **El negocio decidió
-    el 2026-10-20 que llegan** (bloque B): son parte del análisis cualitativo
-    y no tienen conflicto legal. El marco los lee como contexto y dice que no
-    pesan en el score (grupo 12, desde v11); cambiar eso, o pasar uno a
-    `false`, es versión nueva del marco.
-  - Desde marco-v30 cada empleo y cada aporte dicen de quién son
-    (`esSuPropioPatrono`, `posibleNegocioFamiliar`), calculados con el nombre
-    antes de borrarlo con `relacionConEmpleador()` (`patrono.ts`, la misma
-    que usa `process.ts`). El modelo no infiere parentescos de nombres: dejó
-    de hacerlo solo en v8, por eso se calcula en el código desde v17.
-  - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
-    nombre de campo no ve una cédula escrita en el cargo. Y todo número
-    llega entero (v29, decisión del negocio): el modelo copia los números
-    tal cual y en crédito los centavos no deciden nada.
-  - Los documentos afirman sólo lo medido: sin cédula, nombre ni
-    empleadores, y con los atributos de la persona. Antes de v29 siete
-    documentos afirmaban una minimización que no existía.
-  - Una afirmación sobre lo que lee el modelo se mide en
-    `analysis_results.mensaje_al_modelo`, no en el código: lo mide
-    `auditar-seguridad.mjs` (el último mensaje) y, sin llamar al modelo,
-    `scripts/validar-perfil-del-modelo.mjs` (regla 13, todos los perfiles).
-- Escribe Sonnet 5.5 desde marco-v28 (sin cascada con Haiku desde v24).
-  El mismo perfil analizado dos veces mueve el score ~40 puntos y cambia 1
-  de cada 13 recomendaciones: una diferencia menor que eso no se atribuye
-  a un cambio. La respuesta la garantiza un esquema JSON.
-- Para analizar muchos clientes: `scripts/analizar-en-lote.mjs` (API de
-  lotes, mitad de precio, marco cacheado, `llm_llamadas.tarifa = lote`).
-- Lo caro es el razonamiento, no el marco. `max_tokens` es también techo
-  de tiempo: Supabase corta a 150 s y Sonnet escribe ~85-90 tokens/s.
-  Sin caché del marco (nunca se leyó). Comparar configuraciones:
-  `scripts/comparar-razonamiento.mjs`.
-
-**Laboratorio**
-- Las variables salen siempre del perfil del día del análisis (t0,
-  rearmado desde su crudo), nunca de la reconsulta: el buró de hoy ya trae
-  la mora y cualquier variable "acierta".
-- Dos consultas de la misma persona difieren aunque no le haya pasado nada:
-  el buró cambia de corte, hay entidades que empiezan a reportar, el IESS
-  completa el último mes después y el SRI corrige ceses viejos. Comparar dos
-  fotos va por `eventos-entre-consultas.ts`, que lo separa.
-- Con ~300 créditos hay ~20 malos: la prueba sólo con lo desembolsado es
-  ruido (AUC 0,63 con intervalo 0,51-0,75 en la simulación). Lo que da
-  poder es reconsultar a todas las solicitudes (211 malos).
-- Una simulación puede fabricar su propio problema: antes de culpar al
-  cálculo, mirar si lo plantado es realista.
-- Reconsultar la cartera entera tarda ~2 h 10 min (concurrencia 20) y una
-  tarea en segundo plano se corta a las 2 h: `consultar-lote.mjs` retoma.
-- "¿El modelo ya lo tenía?" se decide por cuánto efecto sobrevive dentro de
-  cada recomendación, no por una segunda prueba de significancia: esa
-  segunda prueba, sin casos suficientes, borraba la señal plantada.
-- Unos tramos por posición (ntile) parten los empates y fabrican IV: un
-  valor nunca va en dos tramos (106).
-- Una curva de cosechas sin la fecha del impago de una parte de los malos
-  dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.
-
-**Interfaz** (revisión del 2026-10-10, `docs/revision-ux.md`)
-- Una pantalla que espera la sesión no es una pantalla sin sesión:
-  `App.jsx` espera `loading`; si no, un enlace directo cae en
-  `*` → /login → "/" y el expediente no sobrevive a una recarga.
-- El perfil de acceso se pide una vez (`useProfile`). Una guardia de ruta no
-  devuelve `null` mientras carga: una pantalla de administración quedaba en
-  blanco de 4 a 10 s.
-- Una franja de totales suma, y una barra mide lo que dice su título.
-- Un texto que la clasificación guardó con formato de JavaScript ("el corte
-  2026-08", "$1084") se muestra con `humanizarTexto()`; no se reescriben
-  miles de perfiles por un problema de presentación.
-- Las pantallas que documentan reglas (Reglas de clasificación) se desfasan
-  en silencio: la nuestra decía fuentes-v9 con el código en v10.
-- Vite puede servir un módulo viejo tras ediciones seguidas del mismo archivo
-  (`Link is not defined` con el import presente): `touch` y recargar.
-- Una pantalla que pide varias cosas pesadas no depende de la más lenta: lo
-  liviano decide si se dibuja, lo pesado llega después y cada tarjeta dice qué
-  le falta (Laboratorio › Inicio, `lab_centro_de_datos`: unos 6 s sola
-  hasta la 121, 28 ms desde la 125).
-- El tamaño de la aplicación se mide con el `.env`: sin las variables de
-  Supabase, `supabaseClient.js` exporta `null` y el compilador deja afuera el
-  cliente (~200 KB). Una carpeta sin `.env` (un worktree) y la integración
-  continua miden 273 KB donde lo publicado pesa 476 KB.
-- Debajo de 860 px las tarjetas desplazan lo que les sobra (`overflow-x: auto`)
-  y recortan lo que sale de ellas: `InfoTooltip` dibuja la burbuja en el body,
-  con posición fija. Hasta el 2026-10-17, en una tableta o un teléfono no se
-  leía ninguna ayuda de la pestaña Equifax. Algo que flota (menú, aviso) va igual.
-- `.oxlintrc.json` activa `no-undef` en `src/` (2026-10-17): ni el lint sin
-  configuración ni el build ven una variable sin definir, y una que quedó suelta
-  tras un renombre tumbó el reporte de Equifax en producción con los cuatro
-  controles en verde.
 
 **Publicación**
 - La aplicación se publica en GitHub Pages desde `.github/workflows/deploy.yml`
@@ -941,8 +292,43 @@ antes de tocar esa área.
   Al cambiar de dominio, sumarlo a la secret `ORIGENES_PERMITIDOS` de las
   funciones (`_shared/cors.ts`) y a las URL de Auth de Supabase.
 - **El repositorio es público desde el 2026-10-04** (decisión del negocio),
-  hasta que termine la mudanza. `docs/` y el historial ya tienen cédulas
-  reales; no se suman más (ver "Cómo se trabaja").
+  hasta que termine la mudanza. El historial de commits tiene cédulas
+  reales (el árbol se limpió el 2026-10-09); no se suman más (ver «Cómo se
+  trabaja»).
+
+## Lo que vale en todo el repositorio
+
+Cada una salió de un error real; no revivirlas. Las de un área están en el
+CLAUDE.md de su carpeta, y el caso, la fecha y los números de cada una, en
+`docs/lecciones.md`. Una lección nueva va con su regla, en una o dos líneas,
+al CLAUDE.md que le corresponde, y con su caso a `docs/lecciones.md`.
+
+- PostgREST corta en 1.000 filas sin avisar: agregar en la base (función
+  `security invoker`), listar con `traerTodas()`.
+- Una actualización bloqueada por RLS devuelve 0 filas, no error:
+  `.select()` y contar.
+- Un error de PostgREST es un objeto plano: leer
+  `message`/`details`/`hint`/`code`, no `String(err)`.
+- Al reclamar trabajo concurrente, usar las filas que DEVOLVIÓ la
+  actualización.
+- Lo que no pasa por `lint` ni `build` se rompe en silencio: los scripts
+  sueltos llevan su propio aviso adentro.
+- Un reemplazo de texto en un archivo con comentarios se ancla a la línea.
+  El 2026-10-09 el sello del despliegue reemplazó una palabra en un
+  comentario y el despliegue "salió bien" sin sellar. Sólo lo vio la
+  comprobación posterior.
+- **Personas sintéticas** (118): `clients.es_sintetico` marca las 240 de
+  Aval.
+  - Los totales de la base las excluyen.
+  - La bandeja las trae con la marca, y las listas de la pantalla filtran
+    `es_sintetico = false`.
+  - Un total nuevo sobre la cartera las filtra igual, también si lee
+    `bandeja_solicitudes`: la vista las conserva. La franja de la bandeja
+    (`bandeja_conteos`) las contó hasta la 120 (2.812 contra 2.572 de la
+    lista), porque la 118 buscó a los lectores de las tablas y no a los de
+    la vista.
+- Ecuador es UTC-5 sin horario de verano: a las 20:00 de Ecuador la fecha
+  UTC ya es la de mañana. Las fechas se formatean sólo con `src/lib/fechas.js`.
 
 ## Cómo se trabaja
 

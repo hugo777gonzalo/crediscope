@@ -178,3 +178,99 @@ Se movió acá desde `docs/pendientes.md` (2026-10-20). El detalle de las fases 
 - `n_malos` queda vacío cuando el resultado no trae un número de malos arriba
   (`tamanoDe()` en `resultadosDelCorte.js`; en Discriminación `malos` es la distribución):
   pasarlo explícito desde cada pestaña que guarda sola.
+
+## Cómo está construido
+
+Lo técnico: dónde vive cada cálculo, cómo se prueba y lo que costó caro
+aprender. Vivía en CLAUDE.md hasta el 2026-10-20.
+
+- `src/lib/laboratorio.js` y las funciones SQL `lab_*` — el Laboratorio
+  de Inteligencia de Negocio, que reemplazó a Retroalimentación. Esta guía
+  (los grupos, el plan por pasos y las reglas) se pone al día al terminar
+  cada sesión. **Sin pantallas nuevas del
+  Laboratorio hasta el paso 4 de la guía** (decisión del negocio del
+  2026-10-07: se venía construyendo sin guía clara). El diseño completo, en
+  `docs/laboratorio-de-riesgo.md`. Los "ajustes del criterio" (texto
+  sumado al marco sin versión nueva) se retiraron el 2026-10-07 (112): todo
+  cambio a lo que lee el modelo es una versión nueva del marco. La cartera
+  sintética la arma `scripts/generar-cartera-sintetica.mjs` (señal
+  plantada: un cálculo nuevo se valida contra ella). **La estadística vive
+  sólo en `src/lib/estadistica.js`** (111): la base congela, vincula y cuenta
+  (`lab_contar_*`); `resultadosDelCorte.js` arma con ella el desempeño, las
+  variables, la estabilidad y los intervalos, y `calculosDelCorte.js` guarda.
+  Todo lo calculado queda en `lab_resultados` con su huella (corte, tipo,
+  población, parámetros y versión del cálculo: `VERSION_DEL_CALCULO`, que se
+  sube al cambiar un cálculo); las pestañas guardan solas
+  (`useGuardarResultado`) y sin filas ni cédulas (`RESUMEN`).
+  - El **explorador del crudo** (14.11 del diseño) es un guion, no una
+    función: `scripts/explorar-crudo.mjs --corte=<id>` (`--seco` primero,
+    `--buscar=` para el puesto de un campo). Guarda en `lab_resultados`
+    (tipo `crudo`) y la pestaña del corte sólo lo muestra.
+  - El **ciclo de un año** (sección 14 del diseño, 098-104): solicitudes,
+    reconsultas y eventos; la verdad plantada vive aparte
+    (`lab_simulacion_verdad`) y sólo la lee `lab_contar_calificacion()`.
+    Simular: `scripts/simular-un-anio.mjs` (`--seco` primero). Procesar
+    (simulación y real): `scripts/procesar-reconsultas.mjs --carga=<id>`.
+    El detector de eventos es `_shared/eventos-entre-consultas.ts`: una
+    fuente cuenta sólo si contestó en t0 y en t1 (antes inventaba eventos);
+    se prueba con `scripts/probar-detector.mjs`.
+  - **El impago es un parámetro** (110), no código: la definición (más de N
+    días, categorías de bancos, retail con deuda de más de USD X, lista de
+    observación desde N días) y la tabla de calificación (categoría → días,
+    versionada) se cambian en Datos y cartera › Configuración. Vigente desde
+    el 2026-10-06: más de 90 días (Basilea), bancos D o E, retail con deuda de
+    más de USD 500, observación desde 15 días; revisar = no impago. «D o E» se
+    aplica sólo a la operación que trae calificación (Novadata); la que trae
+    días se juzga por días, así que la del buró de la institución (Equifax no
+    trae calificación) no pide cambiar la definición. Traer el resultado del
+    buró en el t1 sí falta (`docs/propuesta-dias-de-mora-con-buro.md`,
+    sección 3). Una
+    solicitud tiene dos resultados: `malo` (archivo para lo desembolsado,
+    buró para el resto: cuadrantes y motivos) y `malo_buro` (el buró para
+    todos: lo usa todo cálculo que junta las dos poblaciones).
+  - Las **pantallas pedidas por el negocio** están todas construidas
+    (fases A-F y módulos 1-3, 100-109; mapa y estados en
+    `docs/laboratorio-pantallas.md`, método en la sección 15 del diseño).
+    Los módulos de análisis usan `ModuloDelCorte` (corte y pestaña en la
+    dirección). La estadística del navegador es `src/lib/estadistica.js`
+    (jStat sólo para las distribuciones) y los cálculos de cada pestaña,
+    `src/lib/analisis{Retrospectivo,Estadistico,Profundo}.js`, sin React:
+    **se prueban en Node** con `scripts/probar-estadistica.mjs` y
+    `scripts/probar-pantallas-laboratorio.mjs` (correrlos después de tocar
+    cualquiera). Lo pesado, `scripts/analisis-pesado.mjs` (bosque con
+    SHAP, K-medias, PCA; Node porque no hay Python).
+  - **Hallazgos** (decisión del negocio del 2026-10-06, reemplaza a la del
+    04/10): los resultados de los análisis estadísticos, descriptivos,
+    inferenciales y exploratorios sobre los que el modelo dio por buenos
+    (aprobar o revisar) y cayeron; van al Informe de Desempeño del Modelo
+    (`informeLaboratorio.js`). Las decisiones del 2026-10-06 y el plan en
+    cuatro fases: `docs/propuesta-revision-del-laboratorio.md`, 10 a 12.
+  - La forma de una fila del corte vive en `src/lib/filasDelCorte.js` (sin
+    el cliente de Supabase, para que la importen los guiones). Las funciones
+    de la base que calculaban estadística (`lab_auc`, `lab_calcular_*`,
+    `lab_estabilidad`, `lab_calificar_simulacion`) se borraron en la 112: lo
+    que guardaron (origen `base`) es la referencia de las pruebas.
+
+### Lo que costó caro aprender
+
+- Las variables salen siempre del perfil del día del análisis (t0,
+  rearmado desde su crudo), nunca de la reconsulta: el buró de hoy ya trae
+  la mora y cualquier variable "acierta".
+- Dos consultas de la misma persona difieren aunque no le haya pasado nada:
+  el buró cambia de corte, hay entidades que empiezan a reportar, el IESS
+  completa el último mes después y el SRI corrige ceses viejos. Comparar dos
+  fotos va por `eventos-entre-consultas.ts`, que lo separa.
+- Con ~300 créditos hay ~20 malos: la prueba sólo con lo desembolsado es
+  ruido (AUC 0,63 con intervalo 0,51-0,75 en la simulación). Lo que da
+  poder es reconsultar a todas las solicitudes (211 malos).
+- Una simulación puede fabricar su propio problema: antes de culpar al
+  cálculo, mirar si lo plantado es realista.
+- Reconsultar la cartera entera tarda ~2 h 10 min (concurrencia 20) y una
+  tarea en segundo plano se corta a las 2 h: `consultar-lote.mjs` retoma.
+- "¿El modelo ya lo tenía?" se decide por cuánto efecto sobrevive dentro de
+  cada recomendación, no por una segunda prueba de significancia: esa
+  segunda prueba, sin casos suficientes, borraba la señal plantada.
+- Unos tramos por posición (ntile) parten los empates y fabrican IV: un
+  valor nunca va en dos tramos (106).
+- Una curva de cosechas sin la fecha del impago de una parte de los malos
+  dibuja una caída falsa: sin fecha para más del 10%, no se dibuja.

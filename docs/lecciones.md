@@ -1,8 +1,20 @@
 # Lecciones
 
-El detalle de "Lo que costó caro aprender" de `CLAUDE.md`: qué pasó, cuándo
-y con qué números. `CLAUDE.md` tiene la regla en una o dos líneas; acá
-está el porqué. Una lección nueva va en los dos lugares.
+El detalle de las lecciones de los CLAUDE.md (el de la raíz, `supabase/`,
+`src/` y `scripts/`) y de las guías de Equifax y del Laboratorio: qué pasó,
+cuándo y con qué números. El CLAUDE.md de cada área tiene la regla en una o
+dos líneas; acá está el caso. Una lección nueva va con su regla al CLAUDE.md
+que le corresponde y con su caso acá.
+
+- **Una prueba con la hora fija no puede mezclarse con la hora real.** La
+  base simulada de `equifax-persistencia.test.ts` usaba por referencia la
+  lista que recibía, y la prueba del freno armaba dos bases con la misma
+  lista de auditoría: el fallo que insertaba la primera, con
+  `new Date()`, lo veía la segunda. Mientras la hora real fue anterior a
+  `AHORA` menos 10 minutos, el fallo quedaba viejo y la prueba pasaba; desde
+  las 14:50 UTC del 2026-10-20 quedó después de `AHORA`, cerró el freno y el
+  control `funciones` salió en rojo en todo PR, incluido uno que sólo tocaba
+  documentos (#72). `baseFalsa()` copia ahora lo que recibe (#73).
 
 - **La regla del tercer dígito de la cédula es falsa.** "De 0 a 5 es
   persona natural" se repite en todos lados y no resiste los datos: hay
