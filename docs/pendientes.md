@@ -5,7 +5,7 @@ con los bloques de la auditoría externa y de seguridad puestos al día el
 2026-10-09 (sección 2, primeros puntos) y el de la revisión de UX el
 2026-10-12 (sección 1, primer punto). La última migración aplicada es la
 **135** (los datos de la API en la solicitud, 2026-10-19; la 131 es la fila de
-marco-v31). Las funciones desplegadas llevan el sello `f4d80e0296ea` (10 de 10);
+marco-v31). Las funciones desplegadas llevan el sello `2dacfcfbddd9` (10 de 10);
 desde la 116 se aplican con el corredor, y el número se toma al aplicarla,
 no se reserva (regla 1 de CLAUDE.md). Las versiones vigentes son las de E27
 (ver la sección 2, punto 1) con Claude Sonnet 5.5, estructura-v13,
@@ -42,7 +42,7 @@ aceptada.
     se dibujan.
 - **Demo para una IFI (al 2026-10-19). Empezar por `docs/plan-demo-ifi.md`**
   (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **135**,
-  funciones con el sello `f4d80e0296ea` (10 de 10, desplegadas el 2026-10-19 con
+  funciones con el sello `2dacfcfbddd9` (10 de 10, desplegadas el 2026-10-19 con el freno de Equifax,
   los límites del producto y los 3 intentos a Equifax). El control de seguridad
   71 de 71 es del 2026-10-18; el 2026-10-19 sólo se comprobó la versión desplegada
   (desde un worktree, el resto de sus puntos falla por el enlace a la base). Hecho y en producción: simulador (#39), capacidad de pago
@@ -156,7 +156,7 @@ aceptada.
        espera creciente y sólo para lo que no llegó a procesarse (429, 502, 503, 504;
        un 401 con token nuevo). Un timeout no se reintenta solo, y un paso de la
        solicitud que pudo dejar algo en vuelo no se reintenta hasta 3 minutos después.
-       **El freno** (construido el 2026-10-19, sin desplegar): tras 3 fallos seguidos
+       **El freno** (construido y desplegado el 2026-10-19, 2dacfcf): tras 3 fallos seguidos
        de Equifax (no llegó, 5xx, credenciales rechazadas o respuesta incomprensible; no
        cuentan los de una persona), `consultar-equifax` contesta 503 con el motivo
        `equifax_no_responde` sin llamar ni cobrar, hasta 10 minutos después del último
