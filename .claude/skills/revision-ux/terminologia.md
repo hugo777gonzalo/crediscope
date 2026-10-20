@@ -72,12 +72,10 @@ El resto de pantallas, pestañas y botones, en oración: «Personas por segmento
 Se conservan, con el aviso «(retirado)», los nombres de procesos que tienen historial
 en Costos (`analizar-feedback`, `proponer-ajustes`, `correr-backtest`).
 
-### Decididos el 2026-10-18, todavía sin aplicar en pantalla
+### Decididos el 2026-10-18 y aplicados ese día (#52)
 
-El negocio los decidió; **no se renombra ningún texto hasta que la sesión que construye
-los estados de la persona lo haga** (con `scripts/renombrar-textos.mjs`, primero en seco,
-y una regla nueva en el control). Mientras tanto, la revisión no los marca como error ni
-revierte lo que la pantalla dice hoy.
+El control corta con «Perfil del Cliente» en un texto de pantalla; en un comentario del
+código no molesta.
 
 | Hoy | Decidido | Quién y cuándo |
 |---|---|---|
@@ -127,9 +125,9 @@ revierte lo que la pantalla dice hoy.
 de JavaScript dentro de miles de perfiles. Cuando se arme bien en origen (próxima
 versión de fuentes) se retira.
 
-## 5. Nombres decididos sin aplicar y nombres que quedan por decidir
+## 5. Nombres que quedan por decidir
 
-**Decididos el 2026-10-18 (sin aplicar en pantalla; ver la tabla de la sección 2):**
+**Decididos el 2026-10-18 y aplicados (ver la tabla de la sección 2):**
 el segundo estado de la persona es **En proceso**; quien fue rechazado o desistió está en
 **No aprobado**; la decisión de la institución la marca el analista en la solicitud; y
 «Perfil del Cliente» pasa a **Perfil de la Persona**. El detalle, en
