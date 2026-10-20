@@ -155,6 +155,28 @@ aceptada.
        botón de administración y una solicitud Plus) se pueden pagar las dos:
        `procesarConsultaEquifax()` reutiliza lo guardado, no lo que está en vuelo.
        Pide un candado en la base por persona.
+     - **Límites del producto de consumo (2026-10-19, PR #56, sin desplegar):**
+       monto de USD 1.000 a 120.000 y plazo de 6 a 120 meses (`PRODUCTO_CONSUMO.limites`,
+       simulador-v3). Las funciones los recogen al desplegarse con el corredor. Una
+       solicitud guardada fuera de esos rangos falla en el paso de capacidad (no se
+       midió si hay alguna).
+     - **Para decidir: cuántos intentos a Equifax.** Hoy son 2 en total
+       (`EQUIFAX_MAX_INTENTOS`, 1,5 s de espera) y sólo para lo que no llegó a
+       procesarse (429, 502, 503, 504; un 401 con token nuevo). Un timeout no se
+       reintenta solo, y un paso de la solicitud que pudo dejar algo en vuelo no se
+       reintenta hasta 3 minutos después. Recomendación: subir a 3 intentos
+       (`EQUIFAX_MAX_INTENTOS=3`, sin código) sólo para esos errores rápidos, con un
+       presupuesto de tiempo total (cada intento puede esperar 60 s y la función
+       corta a los 150 s); ninguno automático tras un timeout; y un freno: tras 3
+       fallos seguidos en 10 minutos, `consultar-equifax` dice «Equifax no responde»
+       sin llamar, para que cada analista no lo vuelva a golpear. El freno no está
+       construido.
+     - **Duda del negocio: la cuota de 200 de Equifax.** El pedido a Equifax lleva
+       `tipoProducto` 1, `monto` 5.000, `plazo` 12 y `restaGastoFinanciero` 0
+       (`PARAMETROS_DE_RELLENO`); no tiene un campo de cuota. El negocio dijo que
+       Equifax «va con cuota 200 por defecto» y después dudó si se confundió. Antes de
+       tocar la trama hay que confirmar contra el diccionario de Equifax
+       (`docs/equifax-pedido-de-diccionario.md`) si existe ese campo.
   3. **El predictor de ingresos**: lo lleva otra sesión
      (`docs/investigacion-predictor-de-ingresos.md`).
   4. **El marco y el modelo, al final** (decisión del negocio): que lea la
