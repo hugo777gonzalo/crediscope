@@ -27,8 +27,14 @@
 // hallazgo que no sea ese tiene que salir idéntico al guardado; si no, la
 // fila entera no se toca.
 //
+// El crudo se lee de la carpeta local y, para el último perfil que la
+// carpeta no tiene, del depósito crudo-novadata (crudo_ruta). Hasta el
+// 2026-10-20 sólo leía la carpeta: estructura-v14 dejó en v13 a 12 personas
+// consultadas después del respaldo del 03/10, con el crudo guardado en Storage.
+//
 // Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
 import fs from "node:fs";
+import zlib from "node:zlib";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
@@ -75,7 +81,7 @@ const ultimoPorCliente = new Map();
   let total = null;
   for (let desde = 0; total === null || desde < total; desde += 1000) {
     const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at&order=id&limit=1000&offset=${desde}`,
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
       { headers: { Prefer: "count=exact" } },
     );
     if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
@@ -92,6 +98,17 @@ for (const a of fs.readdirSync(CARPETA).filter((x) => x.endsWith(".json"))) {
   const archivo = path.join(CARPETA, a);
   const perfilId = /"perfilId"\s*:\s*"([^"]+)"/.exec(fs.readFileSync(archivo, "utf8").slice(0, 400))?.[1];
   if (perfilId && ultimosIds.has(perfilId)) candidatos.push({ archivo, perfilId });
+}
+const enLaCarpeta = new Set(candidatos.map((c) => c.perfilId));
+let delDeposito = 0;
+for (const p of ultimoPorCliente.values()) {
+  if (p.crudo_ruta && !enLaCarpeta.has(p.id)) { candidatos.push({ ruta: p.crudo_ruta, perfilId: p.id }); delDeposito++; }
+}
+async function leerCrudo({ archivo, ruta }) {
+  if (archivo) return JSON.parse(fs.readFileSync(archivo, "utf8"));
+  const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-novadata/${ruta}`, { headers: { apikey: cabeceras.apikey, Authorization: cabeceras.Authorization } });
+  if (!r.ok) throw new Error(`Storage ${r.status} al leer el crudo`);
+  return JSON.parse(zlib.gunzipSync(Buffer.from(await r.arrayBuffer())).toString("utf8"));
 }
 
 function armarEnFecha(instante, fn) {
@@ -135,17 +152,21 @@ for (let i = 0; i < candidatos.length; i += 50) {
     `${env.SUPABASE_URL}/rest/v1/client_profiles?id=in.(${lote.map((c) => c.perfilId).join(",")})&select=id,structure_version,standard_profile,control_bloqueo`,
   );
   const porId = new Map(filas.map((f) => [f.id, f]));
-  for (const { archivo, perfilId } of lote) {
+  for (const candidato of lote) {
+    const { perfilId } = candidato;
     const fila = porId.get(perfilId);
     const guardado = fila?.standard_profile;
     if (!guardado) continue;
     if (fila.structure_version === PROCESS_VERSION && !FORZAR) { yaEnVersion++; continue; }
-    const { cedula, capturadoEl, raw } = JSON.parse(fs.readFileSync(archivo, "utf8"));
+    const crudo = await leerCrudo(candidato);
+    // Un crudo de otra consulta no reproduce este perfil.
+    if (crudo.perfilId !== perfilId) { noReproducen.push(`p-${perfilId.slice(0, 8)}: el crudo es de otro perfil`); continue; }
+    const { cedula, capturadoEl, raw } = crudo;
     const f = guardado.fuentesIngreso;
     const corte = f?.corteIessUsado ? (f.corteDesactualizado ? mesMenos(f.corteIessUsado) : f.corteIessUsado) : undefined;
     const nuevo = armarEnFecha(capturadoEl, () => buildStandardProfile(raw, cedula, corte).profile);
     const otras = rutasDistintas(guardado, nuevo).filter((r) => !ESPERADAS.some((e) => r === e || r.startsWith(`${e}.`)));
-    if (otras.length) { noReproducen.push(`${cedula}: ${otras.slice(0, 3).join(", ")}`); continue; }
+    if (otras.length) { noReproducen.push(`p-${perfilId.slice(0, 8)}: ${otras.slice(0, 3).join(", ")}`); continue; }
     const perfil = { ...guardado };
     for (const g of GRUPOS) perfil[g] = nuevo[g];
     const escritura = { id: perfilId, standard_profile: perfil };
@@ -155,7 +176,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
       if (!anterior) cambiosDeBloqueo.sinBloqueoGuardado++;
       else if (sinElQueCambia(anterior) !== sinElQueCambia(bloqueo)) {
         cambiosDeBloqueo.otroMotivo++;
-        noReproducen.push(`${cedula}: control_bloqueo difiere en otro hallazgo`);
+        noReproducen.push(`p-${perfilId.slice(0, 8)}: control_bloqueo difiere en otro hallazgo`);
         continue;
       }
       if (anterior?.bloqueado && !bloqueo.bloqueado) cambiosDeBloqueo.desbloqueados.push(cedula);
@@ -165,7 +186,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
     escrituras.push(escritura);
   }
 }
-console.log(`candidatos: ${candidatos.length} | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
+console.log(`candidatos: ${candidatos.length} (del depósito: ${delDeposito}) | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
 if (noReproducen.length) console.log("no reproducen (no se tocan):", noReproducen.slice(0, 10));
 if (BLOQUEO) {
   console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);
