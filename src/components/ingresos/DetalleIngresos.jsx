@@ -90,6 +90,14 @@ export default function DetalleIngresos({ perfil }) {
   const tributario = perfil.tributario ?? {};
   const social = perfil.seguridadSocial ?? {};
   const empleos = empleosActuales(laboral);
+  // El sueldo de un empleo vigente ya está en la tabla de empleos (y arriba,
+  // en los aportes). El mecanizado es otro registro y casi siempre dice lo
+  // mismo: con el SBU la cifra salía tres veces al abrir el detalle
+  // (2026-10-19). Cuando coincide se dice con palabras -- que los dos
+  // registros coincidan también es un dato -- y la cifra queda en la ayuda.
+  const centavos = (n) => Math.round(Number(n) * 100);
+  const sueldosVigentes = new Set((d?.vinculos ?? []).filter((v) => v.vigenteAlCorte && v.ultimoSalario).map((v) => centavos(v.ultimoSalario)));
+  const esUnSueldoVigente = (n) => Boolean(n) && sueldosVigentes.has(centavos(n));
 
   return (
     <>
@@ -110,7 +118,13 @@ export default function DetalleIngresos({ perfil }) {
                     {e.empleador ?? "Empleador sin nombre"}
                     {e.cargo ? ` · ${e.cargo}` : ""}
                   </span>
-                  <strong style={{ whiteSpace: "nowrap" }}>{e.salarioAprox ? formatearValorAval(e.salarioAprox, "dinero") : "—"}</strong>
+                  {esUnSueldoVigente(e.salarioAprox) ? (
+                    <strong style={{ whiteSpace: "nowrap" }} title={formatearValorAval(e.salarioAprox, "dinero")}>
+                      Igual que en los aportes
+                    </strong>
+                  ) : (
+                    <strong style={{ whiteSpace: "nowrap" }}>{e.salarioAprox ? formatearValorAval(e.salarioAprox, "dinero") : "—"}</strong>
+                  )}
                 </li>
               ))}
             </ul>
@@ -121,7 +135,11 @@ export default function DetalleIngresos({ perfil }) {
             <FilaCampo etiqueta="Tipo de compañía" valor={laboral.empleadorVigenteTipoCompania} tipo="texto" />
             <FilaCampo etiqueta="Años de constituido el empleador" valor={laboral.empleadorVigenteAntiguedadAnios} tipo="entero" />
             <FilaCampo etiqueta="Empleos registrados en total" valor={laboral.historialEmpleosRegistrados} tipo="entero" />
-            <FilaCampo etiqueta="Sueldo más alto registrado" valor={laboral.salarioMasAltoRegistrado} tipo="dinero" />
+            {esUnSueldoVigente(laboral.salarioMasAltoRegistrado) ? (
+              <FilaCampo etiqueta="Sueldo más alto registrado" valor="El de un empleo vigente" tipo="texto" />
+            ) : (
+              <FilaCampo etiqueta="Sueldo más alto registrado" valor={laboral.salarioMasAltoRegistrado} tipo="dinero" />
+            )}
           </ul>
           {/* Medido el 2026-09-24: en 359 perfiles la clasificación ve un
               aporte vigente y esta fuente no ve empleo. Son dos registros

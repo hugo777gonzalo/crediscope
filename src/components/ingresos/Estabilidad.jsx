@@ -123,7 +123,13 @@ export default function Estabilidad({ f, laboral }) {
         >
           {duracionLegible(laboral?.antiguedadEmpleoActualMeses)}
         </Cifra>
-        <Cifra etiqueta="Empleo más largo registrado">{duracionLegible(laboral?.duracionEmpleoMasLargoMeses)}</Cifra>
+        {/* Cuando el empleo más largo es el actual, las dos cifras de al lado
+            eran la misma duración. */}
+        <Cifra etiqueta="Empleo más largo registrado">
+          {laboral?.duracionEmpleoMasLargoMeses != null && laboral.duracionEmpleoMasLargoMeses === laboral.antiguedadEmpleoActualMeses
+            ? "El actual"
+            : duracionLegible(laboral?.duracionEmpleoMasLargoMeses)}
+        </Cifra>
         <Cifra etiqueta="Empleadores en 2 años">
           {entero(laboral?.numeroEmpleadoresUltimos24Meses)}
         </Cifra>
