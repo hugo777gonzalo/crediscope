@@ -378,7 +378,9 @@ Romper cualquiera de estas rompe algo real.
   - La ficha del modelo, en `docs/cumplimiento/ficha-del-modelo.md`.
   - El diseño de la tarjeta de puntaje, en `docs/tarjeta-de-puntaje.md`.
 - **API única para IFI** (propuesta del 2026-10-09; Fase 0 cerrada el 10/10).
-  - **El contrato es `api/openapi.yaml`**, en OpenAPI 3.1, y es la única
+  - **El «contrato» de la API es `api/openapi.yaml`** (su especificación
+    técnica; con el negocio se dice «especificación de la API», porque
+    «contrato» a secas es el comercial con la institución), en OpenAPI 3.1, y es la única
     fuente: de ahí salen la validación, las pruebas y el sandbox.
   - Se valida con
     `npx --yes @redocly/cli@latest lint api/openapi.yaml --extends=recommended-strict`.

@@ -13,6 +13,11 @@ info:
   version: 1.0.0-borrador
   summary: Evaluación crediticia de una persona con fuentes de Ecuador y un modelo de lenguaje.
   description: |
+    Este documento es la especificación técnica de la API (lo que se manda, lo
+    que se recibe y cómo). No es el contrato comercial entre CrediScope y la
+    IFI, que se firma aparte: en él la IFI declara que tiene la autorización
+    de cada persona para consultarla.
+
     La IFI pide la evaluación de una persona y CrediScope:
 
     1. valida la identificación y la autorización del titular;
@@ -23,7 +28,7 @@ info:
     4. le pide el análisis al modelo con el marco interpretativo vigente;
     5. en las modalidades `pro` y `plus`, calcula la cuota del crédito pedido y
        si entra en el ingreso de la persona;
-    6. entrega el resultado completo, firmado.
+    6. entrega el resultado completo.
 
     ## Modalidades
 
@@ -149,7 +154,7 @@ tags:
   - name: Capacidad de pago
     description: Si la cuota de un crédito entra en el ingreso de una persona.
   - name: Servicio
-    description: Estado del servicio y claves públicas para verificar firmas.
+    description: Estado del servicio.
 
 paths:
   /oauth/token:
@@ -568,8 +573,11 @@ paths:
         para consumo, que la IFI puede bajar; si pasa, 400). El seguro de
         desgravamen es, si no se indica otro, 0,6% anual sobre el saldo de cada
         mes. Cada valor se redondea al centavo en su mes y la última cuota
-        ajusta la diferencia. Las tasas y fracciones (`tasaMensual`,
-        `tasaEfectivaAnual`) llegan sin redondear: se redondean al mostrarlas.
+        ajusta la diferencia. Los importes van en dólares con dos decimales, que es
+        lo que cobra una institución. Las tasas y fracciones (`tasaMensual`,
+        `tasaEfectivaAnual`, las cargas de la capacidad) llegan con la
+        precisión completa del cálculo (más de 8 decimales) y sin redondear:
+        se redondean sólo al mostrarlas.
 
         El producto de referencia es el de consumo: para otros productos la
         tasa máxima no aplica y todavía no hay parámetros.
@@ -883,6 +891,8 @@ paths:
           $ref: '#/components/responses/LimiteExcedido'
         '500':
           $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
 
   /salud:
     get:
@@ -918,36 +928,6 @@ paths:
               example:
                 estado: no_disponible
                 version: 1.0.0
-        '429':
-          $ref: '#/components/responses/LimiteExcedido'
-
-  /.well-known/jwks.json:
-    servers:
-      - url: https://api.crediscope.example
-      - url: https://sandbox.crediscope.example
-    get:
-      tags: [Servicio]
-      operationId: verClavesPublicas
-      summary: Claves públicas para verificar la firma de los resultados
-      description: |
-        El campo `firma` de una evaluación es una firma JWS separada del
-        cuerpo (RFC 7515, apéndice F). Se verifica con la clave de esta lista
-        cuyo `kid` coincide. Las claves rotan con aviso; las retiradas siguen
-        publicadas un año para verificar resultados viejos.
-      security: []
-      responses:
-        '200':
-          description: Conjunto de claves (RFC 7517).
-          headers:
-            Cache-Control:
-              description: Se puede guardar hasta un día.
-              schema:
-                type: string
-                example: public, max-age=86400
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConjuntoDeClaves'
         '429':
           $ref: '#/components/responses/LimiteExcedido'
 
@@ -1416,13 +1396,6 @@ components:
         variabilidadDeclarada:
           type: string
           example: El mismo perfil analizado dos veces puede variar unos 40 puntos.
-        firma:
-          type: string
-          description: |
-            Firma JWS separada del cuerpo (RFC 7515, apéndice F), calculada
-            sobre la evaluación sin este campo, serializada con JCS (RFC 8785).
-            Sólo en estados finales.
-
     Resultado:
       type: object
       required: [veredictoOrigen, requiereRevisionHumana, controlesDeBloqueo]
@@ -2000,36 +1973,6 @@ components:
         version:
           type: string
 
-    ConjuntoDeClaves:
-      type: object
-      required: [keys]
-      properties:
-        keys:
-          type: array
-          items:
-            type: object
-            required: [kty, kid, use, alg]
-            properties:
-              kty:
-                type: string
-                example: EC
-              kid:
-                type: string
-                example: cs-2026-10
-              use:
-                type: string
-                const: sig
-              alg:
-                type: string
-                example: ES256
-              crv:
-                type: string
-                example: P-256
-              x:
-                type: string
-              y:
-                type: string
-
     Problema:
       type: object
       required: [type, title, status, codigo, idPedido]
@@ -2350,7 +2293,6 @@ components:
           analisisReutilizado: false
           huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b
         variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
-        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
     EvaluacionCompletadaPro:
       summary: Completada en Pro, con la recomendación del modelo y, aparte, la capacidad de pago
       value:
@@ -2457,7 +2399,6 @@ components:
           analisisReutilizado: false
           huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b
         variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
-        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
     EvaluacionSinVeredicto:
       summary: Completada sin veredicto, porque el modelo no estuvo disponible
       value:
@@ -2499,7 +2440,6 @@ components:
           analisisReutilizado: false
           huellaDelPedidoAlModelo: null
         variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
-        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
     EvaluacionFallida:
       summary: Fallida, porque las fuentes no respondieron dentro del plazo
       value:
@@ -2512,4 +2452,3 @@ components:
         fallo:
           codigo: fuentes_no_disponibles
           detalle: Ninguna fuente respondió dentro del plazo. No se guardó ningún perfil.
-        firma: eyJhbGciOiJFUzI1NiIsImtpZCI6ImNzLTIwMjYtMTAifQ..ZmlybWEtZGUtZWplbXBsbw
