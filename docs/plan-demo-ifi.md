@@ -343,3 +343,70 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
 
 La investigación de soluciones existentes (2.5 del plan) puede correr ya, en
 otra sesión, porque sólo lee: sirve para el paso 6, no para los anteriores.
+
+## 8. Lo hecho y decidido al 2026-10-20
+
+Se movió acá desde `docs/pendientes.md` (2026-10-20). Lo que sigue abierto está en
+esa lista; lo decidido con el negocio, en la sección 0.1.
+
+- **Hecho y en producción:** simulador (#39), capacidad de pago con el Ingreso declarado
+  (#42, #45), solicitud y orquestador Básico / Pro / Plus (#46, 133), la revisión integral
+  (#48 a #51), los estados de la persona con la decisión de la institución (#52, 134), los
+  datos de la API en la solicitud (#59, 135) y la supresión de una solicitud sin persona
+  (136). Las tres modalidades se probaron de punta a punta el 2026-10-18 con una persona
+  real; Plus pagó una consulta de Equifax, autorizada por el negocio.
+- **Estados de la persona (2026-10-18):** el analista marca Aprobado, Rechazado o Desistió
+  en `/solicitud/:id`, con motivo (vale la última; todas quedan en `decisiones`); el estado
+  se calcula con `estadoDeLaPersona()`. Con Revisar o Negar la persona sigue En proceso hasta
+  que decide el analista, y manda la última solicitud: lo resolvió Claude sin palabra del
+  negocio. La API admite además `aprobado_con_condiciones`, monto y plazo aprobados
+  (`POST /evaluaciones/{id}/decision`); la pantalla, no.
+- **Revisión integral (2026-10-18) y respuestas del negocio (2026-10-19)**, con la
+  numeración del informe de esa revisión: 1, 2, 4 y 7 cerrados (#59; migración 135 y
+  funciones desplegadas con el corredor, 10 de 10; el control de seguridad dio 73 de 73).
+  3 (estados y etapas) se hace cuando los flujos estén afinados. 6: **sin firma**; se sacaron
+  del contrato el campo `firma` y `/.well-known/jwks.json`; quedan la firma de los avisos
+  (`webhook-signature`, que protege a la institución de un aviso falso) y la de la ficha de
+  acceso (OAuth), que no son lo mismo. 10: los importes van con dos decimales y las tasas y
+  fracciones con toda la precisión del cálculo (más de 8 decimales), sin redondear.
+- **Funciones y base (2026-10-18, 516dc33):** `evaluar-solicitud` ya no copia en la
+  solicitud el mensaje de la función llamada (podía traer el de Novadata, Equifax, el modelo
+  o la base: `falloDeUnPaso()`); un paso que pudo dejar algo en vuelo (el buró, sobre todo)
+  no se reintenta hasta 3 minutos después; dos solicitudes de la misma persona no consultan
+  Equifax a la vez (`pasoEnCurso()`); Plus ya no calcula con Novadata cuando la consulta de
+  Equifax no tiene estructura; un fallo queda en `audit_log` (`solicitud.paso_fallido`).
+  `capacidad-de-pago` lee la misma consulta de Equifax que la pantalla y rechaza una cuota
+  que no es número.
+- **136 (supresión sin persona, pedida por el negocio el 2026-10-19):** si el primer paso
+  no llega a crear a la persona en `clients`, la solicitud queda sólo con la identificación y
+  `suprimir_titular()` exigía la fila en `clients`. La 136 la recrea desde su definición viva:
+  sin persona borra lo que hay por la identificación, y sólo si no hay nada contesta «No hay
+  ningún registro». `derechos-del-titular.mjs` lista, exporta y suprime también sin persona.
+  Medido el 2026-10-18: ninguna fila así.
+- **Sin candado para dos consultas a Equifax a la vez** (decisión del negocio, 2026-10-19):
+  que dos usuarios consulten a la misma persona al mismo tiempo por caminos distintos (el
+  botón de administración y una solicitud Plus) es muy poco probable, y con unos 40 s de
+  diferencia la segunda ya encuentra la consulta vigente y la reutiliza. No se construye.
+- **Tasa máxima y Tasa mínima (2026-10-19, simulador-v4):** de 0% (financiamiento sin
+  interés) a 15,6% (era 15%). Sin tasa se evalúa y se guarda la máxima; con una tasa, se pide
+  una menor; nunca negativa ni mayor que la máxima. Cada error de las condiciones trae un
+  código fijo (`erroresDelPedido()`; `detalles` en el 400 de `simular-credito` y
+  `capacidad-de-pago`; `ErrorDeCondiciones` en `api/openapi.yaml`, con la tabla).
+- **Intentos a Equifax: 3 en total desde el 2026-10-19** (decisión del negocio;
+  `EQUIFAX_MAX_INTENTOS`), con 1,5 s de espera creciente y sólo para lo que no llegó a
+  procesarse (429, 502, 503, 504; un 401 con token nuevo). **El freno** (2dacfcf): tras 3
+  fallos seguidos de Equifax (no llegó, 5xx, credenciales rechazadas o respuesta
+  incomprensible; no cuentan los de una persona), `consultar-equifax` contesta 503 con el
+  motivo `equifax_no_responde` sin llamar ni cobrar, hasta 10 minutos después del último
+  fallo; pasado ese tiempo sale UNA consulta de prueba (si falla se cierra de nuevo, si sirve
+  se reinicia). Vive en `frenoDeEquifax()` de `equifax-persistencia.ts`: lo comparten la
+  función y el guion local. Si la auditoría no se puede leer, no frena (el tope diario es el
+  que protege la plata). En la solicitud, el paso del buró queda fallido con el código
+  `buro_no_disponible` y sin espera.
+- **Cuota de 200 de Equifax: era un error de interpretación del negocio (2026-10-19).** El
+  pedido no tiene campo de cuota (`tipoProducto` 1, `monto` 5.000, `plazo` 12,
+  `restaGastoFinanciero` 0).
+- **Hallazgo que pesa en la demo:** con sólo el IESS, 55 de las 62 personas con Equifax ya
+  pagan más que su ingreso neto (la cuota de Equifax sí es mensual). Por eso existe el
+  Ingreso declarado.
+- Las pruebas con sesión van en el puerto 5184 (origen permitido por CORS).
