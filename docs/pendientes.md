@@ -35,13 +35,11 @@ aceptada.
     modalidades. Sin hallazgos del verificador salvo texto de 11 px en la bandeja.
   - **El resumen fijo de la cuota** (pantallas chicas) quedaba pegado encima de la
     tarjeta grande, con la misma cuota dos veces y el reparto tapado, a 768 y 414
-    px. Desde el 2026-10-20 se oculta mientras se ve alguna parte del resultado;
-    visto a 414 en el simulador. **Falta verlo en Capacidad de pago** con la sesión
-    (la sesión de QA se cerró a mitad de la revisión).
-  - Por decidir con el negocio: la lista de «Solicitudes recientes» muestra la
-    cédula completa de cada persona (es la bandeja del analista, pero conviene
-    confirmarlo); y ya trae el veredicto y la recomendación de cada una, que no
-    se dibujan.
+    px. Desde el 2026-10-20 se oculta mientras se ve alguna parte del resultado
+    (#68); visto en el simulador a 414 y en Capacidad de pago a 768.
+  - **Decidido por el negocio el 2026-10-20:** la lista de «Solicitudes recientes»
+    muestra la cédula completa (es la bandeja del analista). No queda nada por
+    decidir de esta revisión.
 - **Demo para una IFI (al 2026-10-19). Empezar por `docs/plan-demo-ifi.md`**
   (sección 0.1: decisiones del negocio; sección 7: el orden). Base en la **135**,
   funciones con el sello `2dacfcfbddd9` (10 de 10, desplegadas el 2026-10-19 con el freno de Equifax,
