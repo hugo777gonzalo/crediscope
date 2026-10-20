@@ -102,6 +102,24 @@ export interface PedidoDeSimulacion {
   tasaNominalMaximaPorcentaje?: number;
 }
 
+// Las condiciones del crédito tal como llegan de afuera (la pantalla, la IFI
+// por la API): sólo los campos del pedido, nunca `tasaNominalMaximaPorcentaje`.
+// Ese campo existe para que la función pura pueda probarse con otro tope, pero
+// el tope del producto sale de PRODUCTO_CONSUMO (o de la configuración de la
+// institución cuando exista): si se deja pasar del cuerpo, quien lo manda sube
+// el 15% a lo que quiera (revisión integral del 2026-10-18). Toda función que
+// atiende pedidos externos arma las condiciones con esta.
+export function condicionesDelPedidoExterno(v: unknown): PedidoDeSimulacion {
+  const c = (v && typeof v === "object" && !Array.isArray(v) ? v : {}) as Record<string, unknown>;
+  return {
+    monto: c.monto,
+    plazoMeses: c.plazoMeses,
+    tasaNominalAnualPorcentaje: c.tasaNominalAnualPorcentaje,
+    sistema: c.sistema,
+    desgravamen: c.desgravamen,
+  } as PedidoDeSimulacion;
+}
+
 export interface FilaDeAmortizacion {
   mes: number;
   saldoInicial: number;

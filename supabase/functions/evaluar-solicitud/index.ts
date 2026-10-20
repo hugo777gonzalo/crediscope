@@ -26,8 +26,15 @@
 //
 // Acciones (body):
 //   { "accion": "crear", "cedula": "...", "modalidad": "pro",
-//     "solicitud": { "monto": 5000, "plazoMeses": 36, "tasaNominalAnualPorcentaje": 15 },
-//     "ingresoDeclarado": 1800 }
+//     "solicitudDeCredito": { "monto": 5000, "plazoMeses": 36, "tasaNominalAnualPorcentaje": 15,
+//                             "ingresoDeclarado": 1800 },
+//     "autorizacion": {...}, "referencia": "...", "operador": {...},
+//     "prioridad": "interactiva", "reemplazaA": "<uuid>" }
+// Los nombres son los de PedidoDeEvaluacion en api/openapi.yaml. Autorización,
+// referencia, operador, prioridad y reemplazaA son opcionales acá (la pantalla
+// del analista no los manda) y los guarda la solicitud (135); los exige la
+// puerta de la API de la Fase 1. De la autorización se guarda la huella del
+// documento, nunca el documento (datos-de-la-solicitud.ts).
 //   { "accion": "avanzar", "id": "<uuid>" }
 //   { "accion": "reintentar", "id": "<uuid>" }
 //   { "accion": "decidir", "id": "<uuid>", "decision": "aprobado", "motivo": "..." }
@@ -47,6 +54,7 @@ import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-in
 import { montoMaximoParaCuota, simularCredito } from "../_shared/simulador-credito.ts";
 import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "../_shared/capacidad-de-pago.ts";
 import {
+  type CodigoDeFallo,
   falloDeUnPaso,
   marcarFallido,
   marcarPaso,
@@ -80,8 +88,15 @@ const BASE_LEGAL_EQUIFAX =
 type Fila = Record<string, any>;
 
 // `esperarMs`: cuánto esperar antes de dejar reintentar el paso (modalidades.ts).
+// `codigo`: el Fallo.codigo de la especificación de la API; el que no se
+// aclara es un error nuestro.
 class PasoFallido extends Error {
-  constructor(mensaje: string, readonly esperarMs = 0, readonly http: number | null = null) {
+  constructor(
+    mensaje: string,
+    readonly esperarMs = 0,
+    readonly http: number | null = null,
+    readonly codigo: CodigoDeFallo = "error_interno",
+  ) {
     super(mensaje);
   }
 }
@@ -90,8 +105,8 @@ class PasoFallido extends Error {
 // analista: su `error` puede traer el mensaje de Novadata, de Equifax, del
 // modelo o de la base. Se leen el estado y, de consultar-equifax, el motivo.
 function fallo(paso: Paso, r: { status: number; datos: Fila | null }): PasoFallido {
-  const { detalle, esperarMs } = falloDeUnPaso(paso, r.status, r.datos?.motivo ?? null);
-  return new PasoFallido(detalle, esperarMs, r.status);
+  const { detalle, esperarMs, codigo } = falloDeUnPaso(paso, r.status, r.datos?.motivo ?? null);
+  return new PasoFallido(detalle, esperarMs, r.status, codigo);
 }
 
 async function llamarFuncion(nombre: string, cuerpo: unknown, autorizacion: string): Promise<{ status: number; datos: Fila | null }> {
@@ -164,7 +179,7 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
       .neq("id", s.id);
     if (errorOtras) throw new Error("no se pudieron leer las otras solicitudes");
     if ((otras ?? []).some((o: Fila) => pasoEnCurso(o.pasos, "buro"))) {
-      throw new PasoFallido("Otra solicitud de esta persona está consultando Equifax en este momento. Se puede reintentar en unos minutos: si esa consulta quedó guardada, se reutiliza.", PASO_CAIDO_MS);
+      throw new PasoFallido("Otra solicitud de esta persona está consultando Equifax en este momento. Se puede reintentar en unos minutos: si esa consulta quedó guardada, se reutiliza.", PASO_CAIDO_MS, null, "buro_no_disponible");
     }
     const r = await llamarFuncion("consultar-equifax", { identificacion: s.identificacion, baseLegal: BASE_LEGAL_EQUIFAX }, autorizacion);
     if (r.status !== 200 || !r.datos?.id) throw fallo("buro", r);
@@ -174,7 +189,7 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     // Plus caía sin avisar a las cuotas de Novadata.
     const usable = await consultaVigenteDeEquifax(serviceClient, s.client_id);
     if (!usable || usable.consultaId !== r.datos.id) {
-      throw new PasoFallido("La consulta de Equifax quedó guardada pero todavía no se puede leer (falta calcular su estructura). Se rehace desde lo guardado, sin volver a pagar; reintentar tampoco la cobra otra vez.");
+      throw new PasoFallido("La consulta de Equifax quedó guardada pero todavía no se puede leer (falta calcular su estructura). Se rehace desde lo guardado, sin volver a pagar; reintentar tampoco la cobra otra vez.", 0, null, "buro_no_disponible");
     }
     return {
       cambios: { consulta_equifax_id: usable.consultaId },
@@ -255,11 +270,21 @@ Deno.serve(async (req) => {
     if (!ident.consultable) return responder({ error: ident.mensaje }, 400);
     const validado = validarPedidoDeSolicitud(cuerpo);
     if (!validado.ok) return responder({ error: "La solicitud no es válida.", errores: validado.errores }, 400);
-    const { modalidad, condiciones, ingresoDeclarado } = validado.pedido;
+    const { modalidad, condiciones, ingresoDeclarado, datos } = validado.pedido;
     if (modalidad === "plus" && (await buroDeLaBase(serviceClient)) !== "equifax") {
       return responder({ error: "La modalidad Plus usa Equifax, y el buró de esta institución no es Equifax (Configuración › Buró)." }, 400);
     }
     const cedula = ident.cedula as string;
+    // Reemplazar es pedir de nuevo la evaluación de la misma persona. Una id que
+    // no existe o es de otra persona se rechaza igual, sin decir cuál de las dos:
+    // no se confirma que la solicitud de otra persona existe.
+    if (datos.reemplazaA) {
+      const { data: anterior, error: errorAnterior } = await serviceClient.from("solicitudes").select("identificacion").eq("id", datos.reemplazaA).maybeSingle();
+      if (errorAnterior) return responder({ error: "No se pudo leer la solicitud que se reemplaza." }, 500);
+      if (!anterior || anterior.identificacion !== cedula) {
+        return responder({ error: "La solicitud no es válida.", errores: ["reemplazaA tiene que ser una solicitud de la misma persona."] }, 400);
+      }
+    }
     const { data: cliente } = await serviceClient.from("clients").select("id").eq("cedula", cedula).maybeSingle();
     const { data: creada, error } = await serviceClient
       .from("solicitudes")
@@ -274,17 +299,41 @@ Deno.serve(async (req) => {
         sistema: condiciones?.sistema ?? null,
         desgravamen: condiciones?.desgravamen ?? null,
         ingreso_declarado: ingresoDeclarado,
+        autorizacion_id: datos.autorizacion?.id ?? null,
+        autorizacion_otorgada_el: datos.autorizacion?.otorgadaEl ?? null,
+        autorizacion_vigente_hasta: datos.autorizacion?.vigenteHasta ?? null,
+        autorizacion_canal: datos.autorizacion?.canal ?? null,
+        autorizacion_finalidad: datos.autorizacion?.finalidad ?? null,
+        autorizacion_huella: datos.autorizacion?.huellaDelDocumento ?? null,
+        referencia: datos.referencia,
+        operador_id: datos.operador?.id ?? null,
+        operador_agencia: datos.operador?.agencia ?? null,
+        prioridad: datos.prioridad,
+        reemplaza_a: datos.reemplazaA,
         pasos: pasosIniciales(modalidad),
         resultado: { version: MODALIDADES_VERSION },
       })
       .select("*")
       .single();
+    // La referencia es única en la base (una base por institución): repetirla es
+    // un conflicto, no un error nuestro. La IFI que reintenta con la misma
+    // referencia lo sabe por acá; devolverle la solicitud ya creada (idempotencia)
+    // es de la puerta de la API.
+    if (error?.code === "23505" && datos.referencia) return responder({ error: "Ya existe una solicitud con esa referencia." }, 409);
     if (error || !creada) return responder({ error: "No se pudo guardar la solicitud." }, 500);
     await serviceClient.from("audit_log").insert({
       actor: actor!.id,
       action: "solicitud.crear",
       client_id: cliente?.id ?? null,
-      meta: { solicitud_id: creada.id, modalidad },
+      // El operador y la autorización responden «¿quién vio mis datos y con qué
+      // permiso?»; la huella del documento no se copia acá.
+      meta: {
+        solicitud_id: creada.id,
+        modalidad,
+        ...(datos.operador ? { operador_id: datos.operador.id } : {}),
+        ...(datos.autorizacion ? { autorizacion_id: datos.autorizacion.id } : {}),
+        ...(datos.referencia ? { referencia: datos.referencia } : {}),
+      },
     });
     return responder(creada);
   }
@@ -394,10 +443,11 @@ Deno.serve(async (req) => {
     const detalle = propio ? err.message : "Algo falló en este paso.";
     // Un error nuestro a mitad del paso del buró puede llegar después de pagar.
     const esperarMs = propio ? err.esperarMs : paso === "buro" ? PASO_CAIDO_MS : 0;
+    const codigo: CodigoDeFallo = propio ? err.codigo : "error_interno";
     if (!propio) console.error("evaluar-solicitud:", paso, (err as Error)?.name);
     const { data } = await serviceClient
       .from("solicitudes")
-      .update({ pasos: marcarFallido(tomada.pasos, paso, detalle, esperarMs), estado: "fallida", actualizada_el: new Date().toISOString() })
+      .update({ pasos: marcarFallido(tomada.pasos, paso, detalle, codigo, esperarMs), estado: "fallida", actualizada_el: new Date().toISOString() })
       .eq("id", s.id)
       .select("*")
       .single();
@@ -406,7 +456,7 @@ Deno.serve(async (req) => {
       actor: actor!.id,
       action: "solicitud.paso_fallido",
       client_id: tomada.client_id ?? null,
-      meta: { solicitud_id: s.id, paso, http: propio ? err.http : null },
+      meta: { solicitud_id: s.id, paso, codigo, http: propio ? err.http : null },
     });
     return data ? responder(data) : responder({ error: "El paso falló y no se pudo anotar en la solicitud. Se retoma solo en unos minutos." }, 500);
   }

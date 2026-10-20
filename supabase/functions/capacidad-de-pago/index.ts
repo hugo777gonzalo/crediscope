@@ -27,7 +27,7 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
-import { montoMaximoParaCuota, type PedidoDeSimulacion, simularCredito } from "../_shared/simulador-credito.ts";
+import { condicionesDelPedidoExterno, montoMaximoParaCuota, simularCredito } from "../_shared/simulador-credito.ts";
 import {
   conIngresoDeclarado,
   type DatosDeCapacidad,
@@ -81,7 +81,8 @@ Deno.serve(async (req) => {
   }
   if (!cuerpo || typeof cuerpo !== "object" || Array.isArray(cuerpo)) return responder({ error: "El cuerpo tiene que ser un objeto." }, 400);
 
-  const solicitud = (cuerpo.solicitud ?? {}) as PedidoDeSimulacion;
+  // Sin la tasa máxima del cuerpo: el tope es del producto (condicionesDelPedidoExterno).
+  const solicitud = condicionesDelPedidoExterno(cuerpo.solicitud);
   const simulacion = simularCredito(solicitud);
   if (!simulacion.ok) return responder({ error: "Las condiciones del crédito no son válidas.", errores: simulacion.errores }, 400);
   const parametros = parametrosDelCuerpo(cuerpo.parametros);

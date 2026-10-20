@@ -11,6 +11,7 @@
 // las pruebas.
 
 import { MONTO_MAXIMO, type PedidoDeSimulacion, validarPedido, PRODUCTO_CONSUMO } from "./simulador-credito.ts";
+import { type DatosDeLaSolicitud, validarDatosDeLaSolicitud } from "./datos-de-la-solicitud.ts";
 
 export const MODALIDADES_VERSION = "modalidades-v1";
 
@@ -59,6 +60,19 @@ export const NOMBRE_DEL_PASO: Record<Paso, string> = {
 
 export type EstadoDelPaso = "pendiente" | "en_curso" | "hecho" | "fallido";
 
+// Por qué falló un paso, en el vocabulario de `Fallo.codigo` de la
+// especificación de la API (api/openapi.yaml). El texto (`detalle`) es para el
+// analista; el código es para quien programa contra la API y no puede leer
+// castellano para decidir si reintenta. `plazo_vencido` no está acá: es de la
+// cola de la API (Fase 1), no de un paso.
+export type CodigoDeFallo =
+  | "fuentes_no_disponibles"
+  | "buro_requiere_consulta_previa"
+  | "tope_diario_agotado"
+  | "buro_no_disponible"
+  | "identificacion_no_encontrada"
+  | "error_interno";
+
 export interface RegistroDePaso {
   paso: Paso;
   estado: EstadoDelPaso;
@@ -68,6 +82,8 @@ export interface RegistroDePaso {
   detalle?: string;
   /** Un paso fallido que pudo haber dejado algo corriendo (o cobrado) no se reintenta antes de esto (ISO). */
   reintentarDesde?: string;
+  /** Sólo en un paso fallido: por qué falló, para máquinas. Reintentar lo borra con el resto. */
+  codigo?: CodigoDeFallo;
 }
 
 export function esModalidad(v: unknown): v is Modalidad {
@@ -108,11 +124,18 @@ export function marcarPaso(pasos: RegistroDePaso[], paso: Paso, estado: EstadoDe
 }
 
 // Un paso fallido, con la espera antes de poder reintentarlo.
-export function marcarFallido(pasos: RegistroDePaso[], paso: Paso, detalle: string, esperarMs = 0, ahora: Date = new Date()): RegistroDePaso[] {
-  const marcados = marcarPaso(pasos, paso, "fallido", detalle, ahora);
-  if (esperarMs <= 0) return marcados;
-  const desde = new Date(ahora.getTime() + esperarMs).toISOString();
-  return marcados.map((p) => (p.paso === paso ? { ...p, reintentarDesde: desde } : p));
+export function marcarFallido(
+  pasos: RegistroDePaso[],
+  paso: Paso,
+  detalle: string,
+  codigo: CodigoDeFallo,
+  esperarMs = 0,
+  ahora: Date = new Date(),
+): RegistroDePaso[] {
+  const desde = esperarMs > 0 ? new Date(ahora.getTime() + esperarMs).toISOString() : null;
+  return marcarPaso(pasos, paso, "fallido", detalle, ahora).map((p) =>
+    p.paso === paso ? { ...p, codigo, ...(desde ? { reintentarDesde: desde } : {}) } : p
+  );
 }
 
 // Reintentar: el paso fallido vuelve a pendiente; lo hecho no se repite. Un
@@ -140,28 +163,41 @@ export function pasoEnCurso(pasos: RegistroDePaso[] | null | undefined, paso: Pa
 // Lo que se anota cuando la función de un paso no contestó bien. El mensaje
 // es siempre nuestro: el de la función llamada puede traer el de un tercero
 // (Novadata, Equifax, el modelo) o el de la base, y la solicitud la lee todo
-// analista. `status` 0 = no llegó la respuesta (se cortó la espera o no se
-// pudo llamar); `motivo` es el que devuelve consultar-equifax al rechazar.
-export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null): { detalle: string; esperarMs: number } {
+// analista. El código también: sale del estado y del motivo, nunca del texto
+// de quien contestó. `status` 0 = no llegó la respuesta (se cortó la espera o
+// no se pudo llamar); `motivo` es el que devuelve consultar-equifax al rechazar.
+export interface FalloDeUnPaso {
+  detalle: string;
+  codigo: CodigoDeFallo;
+  esperarMs: number;
+}
+
+export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null): FalloDeUnPaso {
   const sinRespuesta = "No llegó la respuesta a tiempo; el servicio pudo haber seguido trabajando.";
   const enUnosMinutos = " Se puede reintentar en unos minutos.";
-  if (status === 401) return { detalle: "La sesión no es válida: volvé a ingresar y reintentá.", esperarMs: 0 };
+  // Una sesión vencida no es un fallo de la evaluación: pasa sólo con la pantalla
+  // del analista, y la API de la institución no tiene sesión que se venza.
+  if (status === 401) return { detalle: "La sesión no es válida: volvé a ingresar y reintentá.", codigo: "error_interno", esperarMs: 0 };
 
   if (paso === "buro") {
     if (status === 403) {
       return {
         detalle: "La persona no tiene una consulta de Equifax vigente, y consultar Equifax se cobra: lo hace un administrador. Pedile que la consulte o usá la modalidad Pro.",
+        codigo: "buro_requiere_consulta_previa",
         esperarMs: 0,
       };
     }
-    if (status === 400) return { detalle: "Equifax no acepta esta identificación. No se consultó.", esperarMs: 0 };
-    if (motivo === "tope_diario") return { detalle: "Se llegó al tope diario de consultas a Equifax (cada una se cobra). Se puede reintentar mañana.", esperarMs: 0 };
+    if (status === 400) return { detalle: "Equifax no acepta esta identificación. No se consultó.", codigo: "identificacion_no_encontrada", esperarMs: 0 };
+    if (motivo === "tope_diario") {
+      return { detalle: "Se llegó al tope diario de consultas a Equifax (cada una se cobra). Se puede reintentar mañana.", codigo: "tope_diario_agotado", esperarMs: 0 };
+    }
     if (motivo === "proveedor_apagado" || motivo === "consumo_no_medible") {
-      return { detalle: "Equifax no está disponible para consultar (está apagado o no se pudo medir el consumo del día). No se consultó.", esperarMs: 0 };
+      return { detalle: "Equifax no está disponible para consultar (está apagado o no se pudo medir el consumo del día). No se consultó.", codigo: "buro_no_disponible", esperarMs: 0 };
     }
     if (motivo === "otra_persona") {
       return {
         detalle: "Equifax contestó por otra identificación: la consulta se cobró y no se guardó. Revisalo con administración antes de reintentar, porque reintentar vuelve a cobrar.",
+        codigo: "buro_no_disponible",
         esperarMs: PASO_CAIDO_MS,
       };
     }
@@ -169,19 +205,32 @@ export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null
     // quedó guardada, el reintento la reutiliza sin volver a pagar.
     return {
       detalle: `${status === 0 ? sinRespuesta : "Equifax no completó la consulta."} La consulta pudo haberse cobrado: si quedó guardada, al reintentar se reutiliza.${enUnosMinutos}`,
+      codigo: "buro_no_disponible",
       esperarMs: PASO_CAIDO_MS,
     };
   }
 
-  if (status === 0) return { detalle: sinRespuesta + enUnosMinutos, esperarMs: PASO_CAIDO_MS };
-  if (status === 403) return { detalle: "Tu rol no puede correr este paso.", esperarMs: 0 };
-  if (paso === "perfil") {
-    if (status === 404) return { detalle: "La fuente no encuentra a ninguna persona con esa cédula: puede ser un dígito cambiado o una cédula que la fuente todavía no tiene.", esperarMs: 0 };
-    if (status === 503) return { detalle: "Las fuentes de datos no respondieron y no se guardó nada. Volvé a intentar en unos minutos.", esperarMs: 0 };
-    if (status === 400) return { detalle: "La identificación no se puede consultar.", esperarMs: 0 };
-    return { detalle: "No se pudo consultar a la persona.", esperarMs: 0 };
+  if (status === 0) {
+    return { detalle: sinRespuesta + enUnosMinutos, codigo: paso === "perfil" ? "fuentes_no_disponibles" : "error_interno", esperarMs: PASO_CAIDO_MS };
   }
-  return { detalle: "El modelo no pudo analizar a la persona.", esperarMs: 0 };
+  if (status === 403) return { detalle: "Tu rol no puede correr este paso.", codigo: "error_interno", esperarMs: 0 };
+  if (paso === "perfil") {
+    if (status === 404) {
+      return {
+        detalle: "La fuente no encuentra a ninguna persona con esa cédula: puede ser un dígito cambiado o una cédula que la fuente todavía no tiene.",
+        codigo: "identificacion_no_encontrada",
+        esperarMs: 0,
+      };
+    }
+    if (status === 503) {
+      return { detalle: "Las fuentes de datos no respondieron y no se guardó nada. Volvé a intentar en unos minutos.", codigo: "fuentes_no_disponibles", esperarMs: 0 };
+    }
+    // La cédula ya pasó la validación al crear la solicitud: que la función la
+    // rechace es un desacuerdo entre las dos, no un dato de la persona.
+    if (status === 400) return { detalle: "La identificación no se puede consultar.", codigo: "error_interno", esperarMs: 0 };
+    return { detalle: "No se pudo consultar a la persona.", codigo: "error_interno", esperarMs: 0 };
+  }
+  return { detalle: "El modelo no pudo analizar a la persona.", codigo: "error_interno", esperarMs: 0 };
 }
 
 export function todosHechos(pasos: RegistroDePaso[]): boolean {
@@ -192,19 +241,35 @@ export interface PedidoDeSolicitud {
   modalidad: Modalidad;
   condiciones: PedidoDeSimulacion | null;
   ingresoDeclarado: number | null;
+  /** Autorización, referencia, operador, prioridad y reemplazaA: todos opcionales acá. */
+  datos: DatosDeLaSolicitud;
 }
 
 // Lo que exige cada modalidad, antes de crear nada. Los mensajes van tal cual
 // a la pantalla y a la API.
-export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok: true; pedido: PedidoDeSolicitud } | { ok: false; errores: string[] } {
+//
+// Las condiciones del crédito y el Ingreso declarado vienen juntos en
+// `solicitudDeCredito`, como en PedidoDeEvaluacion de la especificación de la
+// API (negocio, 2026-10-19). Antes las condiciones iban en `solicitud` y el
+// Ingreso declarado en la raíz del cuerpo: lo que mandaba la IFI según la
+// especificación no coincidía con lo que leía la función.
+export function validarPedidoDeSolicitud(
+  cuerpo: Record<string, unknown>,
+  ahora: Date = new Date(),
+): { ok: true; pedido: PedidoDeSolicitud } | { ok: false; errores: string[] } {
   const errores: string[] = [];
   const modalidad = cuerpo?.modalidad;
   if (!esModalidad(modalidad)) return { ok: false, errores: ["La modalidad es «basico», «pro» o «plus»."] };
 
+  const solicitudDeCredito = cuerpo.solicitudDeCredito;
+  const sc = solicitudDeCredito && typeof solicitudDeCredito === "object" && !Array.isArray(solicitudDeCredito)
+    ? (solicitudDeCredito as Record<string, unknown>)
+    : null;
+
   let condiciones: PedidoDeSimulacion | null = null;
   if (MODALIDADES[modalidad].exigeCondiciones) {
-    const c = (cuerpo.solicitud ?? null) as PedidoDeSimulacion | null;
-    if (!c || typeof c !== "object") {
+    const c = sc as PedidoDeSimulacion | null;
+    if (!c) {
       errores.push(`La modalidad ${MODALIDADES[modalidad].nombre} necesita las condiciones del crédito: monto, plazo y tasa.`);
     } else {
       // Se valida lo que se va a guardar, no lo que llegó: la solicitud no guarda
@@ -221,7 +286,7 @@ export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok:
     }
   }
 
-  const declarado = cuerpo.ingresoDeclarado;
+  const declarado = sc?.ingresoDeclarado;
   let ingresoDeclarado: number | null = null;
   if (declarado !== undefined && declarado !== null && declarado !== "") {
     if (typeof declarado !== "number" || !Number.isFinite(declarado) || declarado < 0) errores.push("El Ingreso declarado va en dólares por mes, como número.");
@@ -233,7 +298,10 @@ export function validarPedidoDeSolicitud(cuerpo: Record<string, unknown>): { ok:
     }
   }
 
-  return errores.length ? { ok: false, errores } : { ok: true, pedido: { modalidad, condiciones, ingresoDeclarado } };
+  const datos = validarDatosDeLaSolicitud(cuerpo, ahora);
+  if (!datos.ok) errores.push(...datos.errores);
+
+  return errores.length || !datos.ok ? { ok: false, errores } : { ok: true, pedido: { modalidad, condiciones, ingresoDeclarado, datos: datos.datos } };
 }
 
 // Lo que se guarda del análisis del modelo en el resultado de la solicitud:

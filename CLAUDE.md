@@ -318,6 +318,14 @@ Romper cualquiera de estas rompe algo real.
   esta función todavía no hace está en `docs/pendientes.md`, sección 1. Una tabla nueva con
   datos de la persona: `suprimir_titular()` la borra y está en
   `derechos-del-titular.mjs` y `auditar-seguridad.mjs`.
+  El cuerpo de `crear` usa los nombres de `PedidoDeEvaluacion` de la
+  especificación: las condiciones y el Ingreso declarado van juntos en
+  `solicitudDeCredito`; `autorizacion`, `referencia`, `operador`, `prioridad` y
+  `reemplazaA` son opcionales y se guardan (135, `datos-de-la-solicitud.ts`; de la
+  autorización, la huella y nunca el documento). Un paso fallido guarda su
+  `Fallo.codigo` (`falloDeUnPaso()`). Las condiciones que llegan de afuera pasan
+  por `condicionesDelPedidoExterno()`: el tope de la tasa es del producto, nunca
+  del cuerpo.
   La decisión de la institución (Aprobado / Rechazado / Desistió) la marca el
   analista en la solicitud, con motivo (acción `decidir`, `decidir_solicitud()`,
   134): vale la última y todas quedan en `decisiones`.
