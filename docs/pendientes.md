@@ -156,15 +156,19 @@ aceptada.
        espera creciente y sólo para lo que no llegó a procesarse (429, 502, 503, 504;
        un 401 con token nuevo). Un timeout no se reintenta solo, y un paso de la
        solicitud que pudo dejar algo en vuelo no se reintenta hasta 3 minutos después.
-       **Falta el freno** (no construido): tras 3 fallos seguidos en 10 minutos,
-       `consultar-equifax` diría «Equifax no responde» sin llamar, para que cada
-       analista no lo vuelva a golpear.
-     - **Duda del negocio: la cuota de 200 de Equifax.** El pedido a Equifax lleva
-       `tipoProducto` 1, `monto` 5.000, `plazo` 12 y `restaGastoFinanciero` 0
-       (`PARAMETROS_DE_RELLENO`); no tiene un campo de cuota. El negocio dijo que
-       Equifax «va con cuota 200 por defecto» y después dudó si se confundió. Antes de
-       tocar la trama hay que confirmar contra el diccionario de Equifax
-       (`docs/equifax-pedido-de-diccionario.md`) si existe ese campo.
+       **El freno** (construido el 2026-10-19, sin desplegar): tras 3 fallos seguidos
+       de Equifax (no llegó, 5xx, credenciales rechazadas o respuesta incomprensible; no
+       cuentan los de una persona), `consultar-equifax` contesta 503 con el motivo
+       `equifax_no_responde` sin llamar ni cobrar, hasta 10 minutos después del último
+       fallo; pasado ese tiempo sale UNA consulta de prueba (si falla se cierra de nuevo,
+       si sirve se reinicia). Vive en `frenoDeEquifax()` de `equifax-persistencia.ts`,
+       así que lo comparten la función y el guion local; lo reutilizado y la
+       simulación no lo tocan. En la solicitud, el paso del buró queda fallido con el
+       código `buro_no_disponible` y sin espera. Si la auditoría no se puede leer, no
+       frena (el tope diario es el que protege la plata).
+     - **Cuota de 200 de Equifax: aclarado, era un error de interpretación del
+       negocio (2026-10-19).** El pedido no tiene campo de cuota (`tipoProducto` 1,
+       `monto` 5.000, `plazo` 12, `restaGastoFinanciero` 0) y no hay nada que cambiar.
   3. **El predictor de ingresos**: lo lleva otra sesión
      (`docs/investigacion-predictor-de-ingresos.md`).
   4. **El marco y el modelo, al final** (decisión del negocio): que lea la

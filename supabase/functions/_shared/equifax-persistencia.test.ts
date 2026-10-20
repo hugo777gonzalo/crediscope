@@ -6,7 +6,14 @@
 // deno test --allow-env supabase/functions/
 
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { guardarTablasDeLaConsulta, identidadDeLaConsulta, inicioDelDiaEcuador, procesarConsultaEquifax } from "./equifax-persistencia.ts";
+import {
+  FRENO_ESPERA_MS,
+  frenoDeEquifax,
+  guardarTablasDeLaConsulta,
+  identidadDeLaConsulta,
+  inicioDelDiaEcuador,
+  procesarConsultaEquifax,
+} from "./equifax-persistencia.ts";
 import type { RespuestaEquifax } from "./equifax-client.ts";
 import { CEDULA_DE_PRUEBA, respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
 
@@ -37,6 +44,7 @@ function baseFalsa(
     const filtros: Array<(f: Fila) => boolean> = [];
     let cuenta = false;
     let insertar: Fila | null = null;
+    let limite = Infinity;
     const filas = () => tablas[tabla].filter((f) => filtros.every((p) => p(f))).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
     const ejecutar = (modo: "uno" | "muchos" | "cuenta") => {
       if (insertar) {
@@ -49,6 +57,8 @@ function baseFalsa(
         return { data: fila, error: null };
       }
       if (modo === "cuenta") return { count: filas().length, error: null };
+      // Una lista (se espera la consulta sin maybeSingle ni single) trae las filas hasta el límite.
+      if (modo === "muchos") return { data: filas().slice(0, limite), error: null };
       return { data: filas()[0] ?? null, error: null };
     };
     // deno-lint-ignore no-explicit-any
@@ -56,13 +66,14 @@ function baseFalsa(
       select: (_c?: string, o?: { count?: string; head?: boolean }) => { if (o?.count) cuenta = true; return b; },
       eq: (c: string, v: unknown) => { filtros.push((f) => f[c] === v); return b; },
       gte: (c: string, v: string) => { filtros.push((f) => String(f[c]) >= v); return b; },
+      in: (c: string, valores: unknown[]) => { filtros.push((f) => valores.includes(f[c])); return b; },
       filter: (c: string, _op: string, v: string) => {
         const [col, campo] = c.split("->>");
         filtros.push((f) => String(f[col]?.[campo]) === v);
         return b;
       },
       order: () => b,
-      limit: () => b,
+      limit: (n: number) => { limite = n; return b; },
       insert: (fila: Fila) => { insertar = fila; return b; },
       maybeSingle: () => Promise.resolve(ejecutar("uno")),
       single: () => Promise.resolve(ejecutar("uno")),
@@ -400,4 +411,83 @@ Deno.test("el día del tope empieza a las 00:00 de Ecuador, no de UTC", () => {
   assertEquals(inicioDelDiaEcuador(new Date("2026-10-20T03:00:00Z")).toISOString(), "2026-10-19T05:00:00.000Z");
   assertEquals(inicioDelDiaEcuador(new Date("2026-10-20T05:00:00Z")).toISOString(), "2026-10-20T05:00:00.000Z");
   assertFalse(inicioDelDiaEcuador(AHORA).toISOString() === "2026-10-20T00:00:00.000Z");
+});
+
+// --- El freno (2026-10-19) ---------------------------------------------------
+
+const hace = (minutos: number) => new Date(AHORA.getTime() - minutos * 60_000).toISOString();
+const fallo = (minutos: number, familia: string) => ({ action: "equifax.consulta.fallo", created_at: hace(minutos), meta: { familia, puede_haber_cobrado: false } });
+const sirvio = (minutos: number) => ({ action: "equifax.consulta", created_at: hace(minutos), meta: {} });
+
+Deno.test("tres fallos seguidos de Equifax abren el freno: no se llama, no se cobra y se dice por qué", async () => {
+  const db = baseFalsa({ audit_log: [fallo(9, "sin_respuesta"), fallo(5, "transitorio"), fallo(2, "transitorio")] });
+  const { cuenta, consultar } = llamadas();
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar, ahora: AHORA });
+  assert(r.resultado === "rechazada" && r.motivo === "equifax_no_responde");
+  assertEquals(r.http, 503);
+  assertEquals(cuenta.n, 0, "no se llamó a Equifax");
+  assertEquals(db.tablas.consultas_equifax.length, 0);
+  assertEquals(db.tablas.audit_log.length, 3, "el rechazo del freno no suma otro fallo: la espera termina a los 10 minutos del último");
+  assert(r.error.includes("3 fallos seguidos") && r.error.includes("No se consultó ni se cobró"));
+});
+
+Deno.test("con menos de tres, o con una consulta que sirvió entre medio o después, el freno no se abre", async () => {
+  for (const audit_log of [
+    [fallo(5, "transitorio"), fallo(2, "transitorio")],
+    [fallo(9, "transitorio"), sirvio(5), fallo(2, "transitorio")],
+    [fallo(9, "transitorio"), fallo(5, "transitorio"), sirvio(2)],
+    [fallo(30, "transitorio"), fallo(25, "sin_respuesta"), fallo(2, "transitorio"), sirvio(1)],
+  ]) {
+    const { cuenta, consultar } = llamadas();
+    const r = await procesarConsultaEquifax({ ...BASE, db: baseFalsa({ audit_log }), consultar, ahora: AHORA });
+    assertEquals(r.resultado, "consultada", JSON.stringify(audit_log.map((f) => f.action + f.created_at)));
+    assertEquals(cuenta.n, 1);
+  }
+});
+
+Deno.test("un fallo de la persona (identificación, pedido mal armado) no cuenta: no es que Equifax no responda", async () => {
+  const db = baseFalsa({ audit_log: [fallo(9, "identificacion"), fallo(5, "solicitud"), fallo(2, "identificacion")] });
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: llamadas().consultar, ahora: AHORA });
+  assertEquals(r.resultado, "consultada");
+  // Ni una respuesta de otra persona, que Equifax sí contestó.
+  const otra = baseFalsa({ audit_log: [fallo(9, "otra_persona"), fallo(5, "transitorio"), fallo(2, "transitorio")] });
+  assertEquals((await procesarConsultaEquifax({ ...BASE, db: otra, consultar: llamadas().consultar, ahora: AHORA })).resultado, "consultada");
+});
+
+Deno.test("pasados diez minutos del último fallo sale UNA consulta de prueba: si falla se cierra, si sirve se reinicia", async () => {
+  const antes = [fallo(40, "sin_respuesta"), fallo(30, "transitorio")];
+  const minutosDeEspera = FRENO_ESPERA_MS / 60000;
+  assertEquals((await frenoDeEquifax(baseFalsa({ audit_log: [...antes, fallo(minutosDeEspera, "transitorio")] }), AHORA)).abierto, false, "a los 10 minutos justos ya se prueba");
+  assertEquals((await frenoDeEquifax(baseFalsa({ audit_log: [...antes, fallo(minutosDeEspera - 0.1, "transitorio")] }), AHORA)).abierto, true);
+
+  const caida = [...antes, fallo(11, "transitorio")];
+  // La prueba falla: el fallo nuevo queda en la auditoría y el freno se cierra otra vez.
+  const db = baseFalsa({ audit_log: caida });
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar: () => Promise.resolve({ ...respuestaTimeout(), puedeHaberCobrado: false }), ahora: AHORA });
+  assert(r.resultado === "rechazada" && r.motivo === "fallo");
+  assertEquals(db.tablas.audit_log.filter((f) => f.action === "equifax.consulta.fallo").length, 4, "el fallo de la prueba queda anotado");
+  assertEquals((await frenoDeEquifax(baseFalsa({ audit_log: [...caida, fallo(0, "sin_respuesta")] }), AHORA)).abierto, true, "con ese fallo se cierra otra vez");
+
+  // La prueba sirve: se reinicia.
+  const bien = baseFalsa({ audit_log: caida });
+  const { cuenta, consultar } = llamadas();
+  const ok = await procesarConsultaEquifax({ ...BASE, db: bien, consultar, ahora: AHORA });
+  assertEquals(ok.resultado, "consultada");
+  assertEquals(cuenta.n, 1);
+  assert(bien.tablas.audit_log.some((f) => f.action === "equifax.consulta"));
+  assertEquals((await frenoDeEquifax(baseFalsa({ audit_log: [...caida, sirvio(0)] }), AHORA)).abierto, false, "con una que sirve se reinicia");
+});
+
+Deno.test("el freno no impide reutilizar una consulta vigente, ni cuenta cuando se simula", async () => {
+  const caida = [fallo(9, "sin_respuesta"), fallo(5, "transitorio"), fallo(2, "transitorio")];
+  const vigente = baseFalsa({ audit_log: caida, consultas_equifax: [{ id: "previa", identificacion: "0102030405", tipo_identificacion: "C", created_at: "2026-10-19T12:00:00Z" }] });
+  const r = await procesarConsultaEquifax({ ...BASE, db: vigente, consultar: llamadas().consultar, ahora: AHORA });
+  assertEquals(r.resultado, "reutilizada", "lo guardado no necesita a Equifax");
+  const simulada = await procesarConsultaEquifax({ ...BASE, db: baseFalsa({ audit_log: caida }), consultar: llamadas().consultar, simular: true, ahora: AHORA });
+  assertEquals(simulada.resultado, "simulada");
+});
+
+Deno.test("si no se puede leer la auditoría, el freno no se cierra solo", async () => {
+  const mal = { from: () => ({ select: () => ({ in: () => ({ order: () => ({ limit: () => Promise.resolve({ data: null, error: { message: "sin conexión", code: "XX000" } }) }) }) }) }) };
+  assertEquals((await frenoDeEquifax(mal, AHORA)).abierto, false);
 });

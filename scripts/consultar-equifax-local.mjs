@@ -215,7 +215,7 @@ for (const persona of personas) {
       console.log(`[${persona.etiqueta}] RECHAZADA (${r.motivo}) | HTTP ${r.http} | ${r.error}${r.respuesta?.puedeHaberCobrado ? " | PUDO HABERSE COBRADO" : ""}`);
       if (archivoCrudo) console.log(`  lo recibido quedó en disco: ${path.relative(path.dirname(carpetaCrudo), archivoCrudo)}`);
       // Una falla que pudo cobrarse corta la corrida: seguir con la siguiente persona sólo suma gasto sin entender.
-      if (r.respuesta?.puedeHaberCobrado || r.motivo === "tope_diario" || r.motivo === "proveedor_apagado") {
+      if (r.respuesta?.puedeHaberCobrado || r.motivo === "tope_diario" || r.motivo === "proveedor_apagado" || r.motivo === "equifax_no_responde") {
         console.log("Se corta la corrida: no se sigue consultando hasta entender qué pasó.");
         break;
       }
