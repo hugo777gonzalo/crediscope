@@ -170,7 +170,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     se exige, la cuenta de QA deja de servirle a Claude) y los plazos de retención
     (`docs/cumplimiento/lopdp.md`). Confirmar que la fila `client.structure` del 2026-09-04 de
     `audit_log`, con un actor que no es de ningún usuario, era una cuenta de prueba borrada.
-17. **Extracciones de la base de AWS: compartirlas y usarlas.** Hay dos CSV con identificación
+17. **Extracciones de la base de AWS: compartirlas y usarlas.** Hay cinco archivos con identificación
     y montos reales en `research/ingresos-aws/` (`docs/base-aws-originacion.md`, sección 4). Antes de
     sacarlos de este equipo hay que decidir si se seudonimizan (la investigación del predictor
     propone un hash de la cédula con una clave única). Y falta decidir con el negocio qué
@@ -222,8 +222,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     `analisis_credito_sector_financiero`, si las tres tablas de deuda se solapan, qué es «SD» en la
     respuesta comercial y «verificado» en los lotes masivos, y si el contrato permite entrenar un
     modelo propio con las salidas de Equifax. También si el usuario de la base es de solo lectura
-    (hoy toda consulta lo fuerza con `begin read only`). Lista completa en
-    `docs/base-aws-originacion.md`, sección 5.
+    (hoy toda consulta lo fuerza con `begin read only`), **dónde queda guardado el predictor
+    «corregido» que el negocio aplica desde abril de 2026** (lo guardado es idéntico al crudo) y qué
+    cambió en Equifax en enero y marzo. Lista completa en `docs/base-aws-originacion.md`, sección 5.
 
 ## 4. Con fecha
 

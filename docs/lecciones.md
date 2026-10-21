@@ -616,6 +616,11 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   IESS salieron 100% vacías en 389.012 filas y ningún error lo avisó. Se vio al revisar la
   cobertura por columna antes de entregar. Unificar las claves con `String()` y medir el
   porcentaje de vacíos de cada columna antes de dar un archivo por bueno.
+- **Un resumen por año esconde los cambios de comportamiento.** El 2026-10-20 se escribió
+  «el máximo del predictor de Equifax es 20.000 en todos los años» y se concluyó que no había
+  cambiado el techo; la otra sesión midió por fecha y encontró cinco regímenes en 2026 (el tope
+  bajó a 10.000 del 2 de marzo al 12 de abril). Antes de afirmar que algo no cambió, partir por
+  fecha de consulta y mirar la distribución y los valores repetidos, no solo el máximo.
 - **Un valor con nombre parecido en otra tabla no es el mismo dato.** En la base de AWS hay
   dos «predictores de ingreso» (`resultado_segmentacion.income_predicator`, que es el
   `IncomePredictor` crudo de Equifax, e `indicador_covid.income_predictor`, un estimador por
