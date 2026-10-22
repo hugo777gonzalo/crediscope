@@ -10,15 +10,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { type Actor, clavesIguales, exigirRol, identificarActor } from "../_shared/autorizacion.ts";
-import { consultarTodasLasFuentes, duracionesPorFuente, personaNoExiste } from "../_shared/novadata-client.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
-import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
-import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
-import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
-import { guardarCrudoNovadata } from "../_shared/crudo-novadata.ts";
-import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
-import { loadDisabledResources, loadCorteIess } from "../_shared/runtime-config.ts";
-import { estadoPorFuente, cuantasFuentesContestaron, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
+import { consultarYGuardarPerfil } from "../_shared/consulta-de-perfil.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -147,142 +140,33 @@ Deno.serve(async (req) => {
   const actorId: string = actor ? actor.id : (actorDeclarado as string);
 
   try {
-    // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
-    //    Recursos deshabilitados en novadata_resource_config se saltan
-    //    (ver _shared/runtime-config.ts).
-    const disabledResources = await loadDisabledResources(serviceClient);
-    const inicioIngesta = Date.now();
-    const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
-
-    // 2. ¿La fuente contestó algo?
+    // Los pasos 1 a 8 (ingesta, estructura, persistencia y auditoría) viven
+    // en _shared/consulta-de-perfil.ts, para que el trabajador de la API los
+    // llame sin pasar por HTTP. Acá quedan quién llama y la forma de la
+    // respuesta.
     //
-    // Esto va ANTES de mirar si la persona existe, porque si ninguna
-    // fuente respondió tampoco sabemos si existe. El 2026-09-15 una
-    // caída de una hora dejó 373 perfiles en blanco guardados como si
-    // fueran personas sin historial, y clasificados como "informal o sin
-    // actividad". Ver _shared/calidad-de-la-consulta.ts.
-    //
-    // 503 y no 500: el problema es de la fuente y es pasajero. El
-    // trabajador de lotes usa ese código para reintentar en vez de dar
-    // la cédula por perdida.
-    const estadoDeCadaFuente = estadoPorFuente(raw);
-    if (!laConsultaSirve(estadoDeCadaFuente)) {
-      return new Response(
-        JSON.stringify({
-          error: porQueNoSirve(estadoDeCadaFuente),
-          tipoIdentificacion: "fuente_sin_respuesta",
-          ingresado,
-          cedula,
-          fuentes: estadoDeCadaFuente,
-        }),
-        { status: 503, headers: { ...corsHeaders, "content-type": "application/json" } }
-      );
-    }
-
-    // 3. ¿Existe esta persona?
-    //
-    // La fuente responde HTTP 200 aunque no exista: lo dice adentro del
-    // cuerpo. Sin esta comprobación se guardaba un Perfil del Cliente
-    // completo y en blanco, que desde afuera se ve igual que el de
-    // alguien sin historial. Un analista podía leerlo como "esta
-    // persona no tiene deudas" cuando en realidad esa persona no
-    // existe.
-    const noExiste = personaNoExiste(raw.general);
-    if (noExiste) {
-      const esRuc = ident.tipo === "ruc_persona_natural";
-      return new Response(
-        JSON.stringify({
-          error: esRuc
-            ? `La fuente no encuentra a la persona con cédula ${cedula}, que son los 10 primeros dígitos del RUC ${ingresado}. Si ese RUC es de una empresa, hay que buscar al representante por su cédula.`
-            : `La fuente no encuentra a ninguna persona con la cédula ${cedula}. El número es válido en su forma, así que puede ser un dígito cambiado o una cédula que la fuente todavía no tiene.`,
-          tipoIdentificacion: "no_existe",
-          ingresado,
-          cedula,
-        }),
-        { status: 404, headers: { ...corsHeaders, "content-type": "application/json" } }
-      );
-    }
-
-    // 4. Cliente: obtener o crear.
-    //
-    // Recién acá, y no al principio. Dar de alta al cliente antes de
-    // consultar dejaba una fila por cada número tecleado: quien escribía
-    // una cédula que la fuente no conoce se llevaba un 404 y dejaba el
-    // cliente creado. `clients` terminaba siendo la lista de lo que se
-    // escribió, no la de las personas consultadas.
-    let { data: client } = await serviceClient.from("clients").select("id").eq("cedula", cedula).maybeSingle();
-    if (!client) {
-      const { data: created, error: createError } = await serviceClient
-        .from("clients")
-        .insert({ cedula })
-        .select("id")
-        .single();
-      if (createError) throw createError;
-      client = created;
-    }
-
-    // 5. Estructura estandarizada
-    const corteIess = await loadCorteIess(serviceClient, CORTE_IESS_CONOCIDO);
-    const { profile, duracionFuentesMs } = buildStandardProfile(raw, cedula, corteIess);
-    const duracionMs = Date.now() - inicioIngesta;
-
-    // 6. Controles de bloqueo — determinísticos, no dependen del LLM.
-    //     Perfil del Cliente necesita saber si hay un bloqueo activo
-    //     para mostrar el aviso, aunque todavía no se corrió el
-    //     Análisis con IA.
-    const controlBloqueo = evaluarControlesBloqueo(raw, cedula);
-
-    // 7. Persistir
-    const { data: saved, error: saveError } = await serviceClient
-      .from("client_profiles")
-      .insert({
-        client_id: client.id,
-        standard_profile: profile,
-        // Segmento, perfil laboral e indicios, copiados para que la base
-        // cuente y filtre sin bajar el perfil entero. El JSON sigue siendo
-        // la fuente de verdad.
-        ...columnasDelPerfil(profile),
-        duracion_fuentes_ms: duracionFuentesMs,
-        control_bloqueo: controlBloqueo,
-
-        // Qué contestó cada fuente. Se guarda plano (fuentes_ok) además
-        // del detalle para poder excluir consultas vacías sin abrir el
-        // JSON de cada perfil -- ver 065, 068 y 078. `ejes_ok` ya no se
-        // escribe: contaba los nueve bloques, que exageraban.
-        estado_por_fuente: estadoDeCadaFuente,
-        fuentes_ok: cuantasFuentesContestaron(estadoDeCadaFuente),
-        fuentes_totales: Object.keys(estadoDeCadaFuente).length,
-        structure_version: PROCESS_VERSION,
-        requested_by: actorId,
-        duracion_ms: duracionMs,
-        duracion_por_fuente_ms: duracionesPorFuente(raw),
-      })
-      .select("*")
-      .single();
-    if (saveError) throw saveError;
-    saved.crudo_ruta = await guardarCrudoNovadata(serviceClient, client.id, saved.id, cedula, raw);
-
-    // 8. Auditoría (mismo patrón que analyze-client)
-    await serviceClient.from("audit_log").insert({
-      actor: actorId,
-      action: "client.structure",
-      client_id: client.id,
+    // Sólo un guion con la clave de guiones (la máquina del negocio, nunca la
+    // pantalla) puede pedir el crudo: ya tiene la clave de servicio y con ella
+    // acceso a todo, así que esto no abre nada que no estuviera abierto.
+    const conCrudo = devolverCrudo && desdeUnGuion;
+    const resultado = await consultarYGuardarPerfil({
+      db: serviceClient,
+      cedula,
+      ingresado,
+      tipoIdentificacion: ident.tipo,
+      actorId,
       // "guion" desde el 2026-10-09 (E4); las anteriores de ese día dicen
       // "clave_de_servicio" y son lo mismo.
-      meta: desdeUnGuion
-        ? { client_profile_id: saved.id, origen: "guion", base_legal: baseLegal }
-        : { client_profile_id: saved.id },
+      metaDeAuditoria: desdeUnGuion ? { origen: "guion", base_legal: baseLegal } : undefined,
+      devolverCrudo: conCrudo,
     });
-
-    // Desde la 090 el crudo queda en Storage (crudo-novadata.ts). Antes se
-    // descartaba, y sin crudo una regla nueva no se puede aplicar a los
-    // perfiles guardados: el 2026-09-25 hubo que reconsultar la cartera para
-    // eso. Devolverlo en la respuesta sigue sirviendo al guion de lotes, que
-    // arma el respaldo local de research/. Sólo lo pide un guion con la
-    // clave de guiones (la máquina del negocio, nunca la pantalla), que ya
-    // tiene la clave de servicio y con ella acceso a todo: esto no abre
-    // nada que no estuviera abierto.
-    const respuesta = devolverCrudo && desdeUnGuion ? { ...saved, crudo: raw } : saved;
+    if (!resultado.ok) {
+      return new Response(JSON.stringify(resultado.cuerpo), {
+        status: resultado.status,
+        headers: { ...corsHeaders, "content-type": "application/json" },
+      });
+    }
+    const respuesta = conCrudo ? { ...resultado.guardado, crudo: resultado.crudo } : resultado.guardado;
     return new Response(JSON.stringify(respuesta), {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });

@@ -51,8 +51,7 @@ import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { validarDecision } from "../_shared/estado-de-la-persona.ts";
 import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-institucion.ts";
-import { montoMaximoParaCuota, simularCredito } from "../_shared/simulador-credito.ts";
-import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "../_shared/capacidad-de-pago.ts";
+import { pasoCapacidad } from "../_shared/pasos-de-evaluacion.ts";
 import {
   type CodigoDeFallo,
   falloDeUnPaso,
@@ -209,36 +208,11 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     };
   }
 
-  // capacidad
-  const { data: perfil } = await serviceClient.from("client_profiles").select("standard_profile").eq("id", s.client_profile_id).maybeSingle();
-  if (!perfil) throw new PasoFallido("No se encontró el perfil de la persona.");
-  let estructura: Record<string, unknown> | null = null;
-  if (s.modalidad === "plus" && s.consulta_equifax_id) {
-    const { data } = await serviceClient.from("consultas_equifax").select("estructura").eq("id", s.consulta_equifax_id).maybeSingle();
-    estructura = data?.estructura ?? null;
-  }
-  if (s.modalidad === "plus" && !estructura) throw new PasoFallido("Falta la consulta de Equifax de la persona: Plus calcula la capacidad con las cuotas del buró.");
-  const condiciones = { plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen };
-  const simulacion = simularCredito({ ...condiciones, monto: Number(s.monto) });
-  if (!simulacion.ok) throw new PasoFallido(simulacion.errores.join(" "));
-  const datosIess = datosDeCapacidad(perfil.standard_profile, estructura);
-  const datos = conIngresoDeclarado(datosIess, s.ingreso_declarado === null ? null : Number(s.ingreso_declarado));
-  const cuotaNueva = simulacion.simulacion.cuotaPrimerMes;
-  const capacidad = evaluarCapacidad({ ...datos, cuotaNueva });
-  const { tabla: _tabla, ...resumenSimulacion } = simulacion.simulacion;
-  return {
-    cambios: {},
-    detalle: "Se calcularon la cuota y la capacidad de pago.",
-    resultado: {
-      capacidad: {
-        simulacion: resumenSimulacion,
-        capacidad,
-        montoMaximo: montoMaximoParaCuota(capacidad.cuotaMaximaAdmisible, condiciones),
-        capacidadSoloIess: datos !== datosIess ? evaluarCapacidad({ ...datosIess, cuotaNueva }) : null,
-        datos,
-      },
-    },
-  };
+  // capacidad: el mismo cálculo que corre el trabajador de la API
+  // (pasos-de-evaluacion.ts), una sola implementación.
+  const r = await pasoCapacidad(s, serviceClient);
+  if (!r.ok) throw new PasoFallido(r.fallo.detalle, r.fallo.esperarMs, null, r.fallo.codigo);
+  return { cambios: r.cambios, detalle: r.detalle, resultado: r.resultado };
 }
 
 Deno.serve(async (req) => {
@@ -365,6 +339,12 @@ Deno.serve(async (req) => {
     });
     return responder(decidida);
   }
+
+  // Una evaluación de la API la hace avanzar el trabajador, con sus reintentos y su
+  // plazo (137). La pantalla sólo la lee y anota la decisión (arriba): si tomara
+  // pasos, un analista que no es admin fallaría el del buró, y reabrir una
+  // `fallida` cambiaría un estado que para la API es final.
+  if (s.origen === "api") return responder({ error: "Esta evaluación la hace avanzar el trabajador de la API: acá sólo se lee y se anota la decisión." }, 409);
 
   // Quien desistió no sigue: los pasos que faltan pueden consultar fuentes o cobrarse.
   if (s.decision === "desistido") return responder(s);
