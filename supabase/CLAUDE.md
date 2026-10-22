@@ -175,6 +175,10 @@ su guía: `docs/equifax.md`.
     toma el número libre al aplicarse (regla 1).
 
 **Base y procesos**
+- **Una cola con un paso que se cobra cuenta el intento al tomarlo**, no al fallar, y un
+  fallo cobrado y no guardado no se reintenta (`noReintentar`). Dos evaluaciones de la
+  misma persona no se ceden a la vez: cede la que empezó después. Una evaluación de la
+  API la hace avanzar sólo su trabajador (`evaluar-solicitud` la rechaza con 409).
 - Reencolar ítems de un lote `terminado` no lo reabre.
 - pg_net está en el esquema `net`. Una tarea programada se verifica en
   `cron.job_run_details`, no en `cron.job`.

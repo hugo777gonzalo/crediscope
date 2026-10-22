@@ -243,6 +243,29 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
     sólo de ése: 0,18 s, con las mismas filas (123).
   - Es la misma falla que la del corte del IESS, en otro lugar. Apareció al
     medir todas las funciones de la pantalla, no leyendo el SQL.
+- **En una cola con un paso que se cobra, el intento se cuenta al TOMAR el paso, no
+  al fallar.** La cola de la API (137) contaba sólo los fallos que el paso anotaba. Un
+  trabajador que muere a los 150 s no anota nada: el reclamo vencía, el paso se
+  retomaba y el buró se pagaba otra vez, hasta el plazo (24 h en una diferida). La
+  revisión adversaria del 2026-10-21 lo encontró leyendo el código, no con una
+  prueba. Ahora el trabajador suma el intento antes de correr el paso, el buró tiene
+  3 intentos (el resto, 5) y un paso «en curso» ya tomado todas las veces cierra la
+  evaluación en vez de retomarse (`despuesDeUnPasoCortadoDemasiadasVeces`).
+- **Una consulta cobrada que no quedó guardada no se reintenta.** Equifax contestó
+  por otra identificación, o se cobró y falló el guardado: el reintento no reutiliza
+  nada (no hay nada guardado) y paga de nuevo. El detalle del propio paso decía
+  «reintentar vuelve a cobrar» y la cola lo reintentaba igual hasta 3 veces. Un fallo
+  lleva `noReintentar` cuando reintentar sólo gasta plata (`FalloDeUnPaso`).
+- **Dos evaluaciones de la misma persona a la vez no pueden cederse la una a la otra.**
+  Cada una marcaba su buró «en curso» antes de mirar a la otra, así que cada una veía a
+  la otra y volvía con la misma espera: se reclamaban juntas de nuevo y a los 6 o 9
+  minutos las dos fallaban sin haber consultado a nadie. Cede la que empezó después
+  (o, a igual hora, la de id mayor).
+- **Un índice único puede contradecir lo que el contrato promete.** La 135 hizo única
+  la referencia de la institución y el 409 decía «usá `reemplazaA`», pero un reemplazo
+  vuelve a mandar la misma referencia y chocaba con el mismo índice. El contrato (un
+  reanálisis deja varias evaluaciones con esa referencia) y la base no se habían
+  puesto a prueba juntos hasta la 137: el índice es único sólo donde `reemplaza_a` es nulo.
 
 ### Crudo de Novadata
 

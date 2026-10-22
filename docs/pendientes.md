@@ -99,7 +99,30 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    informe (`auditoria/2026-10-09-auditoria-externa-integral.md`, fuera de git) no se
    revisaron una por una: **no se midió cuáles quedaron hechas**. Falta ese recuento y sacar
    de ahí lo que siga abierto. Lo hace Claude leyendo el informe contra el código y la base.
-9. **Deuda técnica sin urgencia** (la hace Claude cuando toque el área):
+9. **Respaldo local de las consultas crudas de Equifax de la base de AWS** (pedido del
+   negocio el 2026-10-22, para poder reconstruir después todas las tablas derivadas; el
+   negocio ya avisó a quien administra la base). Orden decidido: **primero los JSON, después
+   los XML**, unas 20.000 por día en lotes de 500, de solo lectura y con pausa. El guion
+   `extraer_crudo_equifax.mjs` está escrito pero **no se probó ni se corrió**: el modo
+   automático bloqueó todo lo que toca ese flujo (lectura del archivo de credenciales,
+   revisión de sintaxis y el sondeo), y la regla de permiso la tiene que agregar el
+   negocio. Mañana: (1) regla `Bash(node extraer_crudo_equifax.mjs:*)` en
+   `.claude/settings.local.json`; (2) `--sondeo` (solo metadatos: columnas, clave primaria,
+   tamaño y una muestra de 0,1%); (3) si el tamaño cierra, `--extraer --formato=json
+   --max=20000` y `--verificar`. Estimación sin medir: 30 a 40 GB sin comprimir (93 KB por
+   respuesta en la muestra de 5.001). Falta revisar si el contrato con Equifax permite
+   conservar y reutilizar sus respuestas (punto abierto de `docs/base-aws-originacion.md`).
+   La salida va a `research/ingresos-aws/crudo-equifax/` (fuera de git: tiene cédulas).
+   Alternativa sin cargar la base: un export de snapshot de RDS a S3 pedido a quien la administra.
+10. **El marco y el JSON del modelo, en paralelo a la API** (decisión del 2026-10-21: el
+    modelo sigue leyendo solo el perfil en la primera entrega de la API). Se lanzó un
+    agente con Opus en su propio worktree (`.claude/worktrees/agent-a2c7577caaf0cb832`, rama
+    `worktree-agent-a2c7577caaf0cb832`) que cortó por el límite de uso sin avanzar (un solo
+    archivo tocado, `nombres-ingresos.ts`, sin commitear). Se retoma con el mismo brief:
+    diseño del JSON de envío (solicitud, cuota, capacidad con `cumple`, Equifax), afinar el
+    texto del marco con `docs/observaciones-del-negocio.md`, versión nueva apagada, sin llamar
+    al modelo ni a Equifax sin autorización con la cifra.
+11. **Deuda técnica sin urgencia** (la hace Claude cuando toque el área):
    - retirar `humanizarTexto()` con una versión nueva de fuentes que guarde meses y dólares
      con el formato de la casa, y recalcular;
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
