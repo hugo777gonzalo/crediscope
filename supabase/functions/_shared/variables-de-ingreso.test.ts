@@ -160,12 +160,13 @@ Deno.test("el nivel 2: las diez variables del análisis de crédito pasan tal cu
   assertEquals(v.variables.deuda_3m, 7100);
 });
 
-Deno.test("un crédito posterior a la consulta se anula, pero sólo el mayor aprobado: así se entrenó el modelo", () => {
-  assertEquals(CREDITOS_POSTERIORES_QUE_SE_ANULAN, ["cred_mayor"]);
-  const posterior = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "10/09/2026", CMAMontoOriginal: 8000, CMAFecConcesion: "05/09/2026" } } });
+Deno.test("un crédito concedido después de la consulta se anula: puede ser el que se está pidiendo", () => {
+  assertEquals(CREDITOS_POSTERIORES_QUE_SE_ANULAN, ["cred_mayor", "cred_12m", "cred_24m"]);
+  const posterior = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "10/09/2026", CMRMontoOriginal: 5000.456, CMRFecConcesion: "10/02/2026", CMAMontoOriginal: 8000, CMAFecConcesion: "05/09/2026" } } });
   const v = vectorDeNivel2(perfil(), posterior, { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.cred_mayor, null, "concedido después de la consulta: puede ser el que se pide");
-  assertEquals(v.variables.cred_24m, 8000, "el entrenamiento no anuló el crédito actual aunque su fecha sea posterior");
+  assertEquals(v.variables.cred_24m, null, "el crédito actual concedido el 5 de septiembre tampoco se usa");
+  assertEquals(v.variables.cred_12m, 5000.46, "el reciente es de febrero: se usa");
   const mismoDia = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "31/08/2026" } } });
   assertEquals(vectorDeNivel2(perfil(), mismoDia, { ahora: AHORA, consultadoEl: CONSULTA }).variables.cred_mayor, 9000, "el mismo día no es posterior");
   const sinFecha = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000 } } });

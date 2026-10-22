@@ -304,8 +304,30 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 
 ## 9. Pruebas de aceptación
 
-1. **Paridad de las variables de Equifax**: sobre las 5.001 respuestas crudas (`muestra_respuestas_equifax.jsonl`), las diez variables de `AnalisisCreditoSectorFinanciero` coinciden con las del entrenamiento (hecho: 100% en 4.499 respuestas, 12.22) y la cuota del buró coincide con `cuota_estimada_mensual_usd` en las 5.001.
-   **Falta**: el mismo cotejo pasando la muestra por `derivarTablas` (Deno) para las cuotas por tipo, el historial y las operaciones.
+1. **Paridad de las variables de Equifax** (medida el 2026-10-22 con `scripts/probar-paridad-variables-de-ingreso.mjs`): las 5.001 respuestas crudas (`muestra_respuestas_equifax.jsonl`) pasan por `derivarTablas` y por `variables-de-ingreso.ts`, y lo que sale se compara con el extracto de AWS con el que se entrenó el modelo.
+   Corre igual en Node y en Deno (salidas idénticas) y sale con 1 si una paridad baja de su umbral; se repite al cambiar una regla de `equifax-tablas.ts` o de `variables-de-ingreso.ts`, o la respuesta de Equifax (sección 7).
+   - **Coincide**: las diez variables de `AnalisisCreditoSectorFinanciero` (4.499 de 4.499; en las otras 502 la respuesta trae el bloque vacío y la tabla guarda una fila de nulos) y la fecha de concesión del mayor crédito; la cuota estimada y `cuota_fin`, el historial (`h12`, `h6`, `hact` y las proyecciones a +6 y +12) y los cocientes `g6` y `g12`, 5.001 de 5.001 (los cocientes, hasta el redondeo a centavos de las cuotas: diferencia máxima de 0,003);
+     el SRI de la respuesta (RUC, estado, clase, obligado, CIIU y las dos fechas), 5.001 de 5.001.
+   - **No coincide: las cuotas, los saldos y los conteos de las operaciones.** El extracto de AWS no salió de `reporteCrediticio.detalle_deuda_actual_*` (de donde sale `equifax_operaciones`, como decía 4.2) sino de las listas `DetalleDeudaActualReportadaRFRSBS`, `...SICOMSBS` y `...SBSSBS_Educativo` de `interconnectResponse`. Medido por consulta (de 5.001; los totales, de las 4.783 que los tienen):
+
+     | Variable | Desde `equifax_operaciones` | Desde las listas de `interconnectResponse` (medido, no construido) |
+     |---|---|---|
+     | `c_consumo`, `c_tarjeta` | 48,7%, 50,4% | 74,5%, 80,2% |
+     | `c_micro`, `c_vivienda`, `c_comercial`, `c_educativo` | 88,2%, 91,9%, 98,3%, 100% | 94,2%, 97,3%, 99,6%, 100% |
+     | `s_consumo`, `s_tarjeta`, `s_micro`, `s_vivienda` | 78,6%, 94,7%, 98,9%, 99,5% | 75,7%, 80,2%, 94,8%, 97,5% |
+     | `n_consumo`, `n_tarjeta`, `n_micro`, `n_vivienda` | 65,1%, 94,1%, 98,8%, 99,5% | 78,0%, 80,2%, 95,1%, 97,5% |
+     | `c_codeudor`, `max_dias_t` | 92,9%, 87,6% | 97,1%, 89,0% |
+     | `n_oper`, `saldo`, `max_mora` | 65,6%, 84,4%, 88,8% | 85,9%, 93,5%, 91,4% |
+
+     Tampoco las listas de `interconnectResponse` reproducen el extracto: en 610 consultas traen más filas que AWS (en 63, menos); en 503 la diferencia es de una sola fila y en 410 esa fila es de ceros del sector comercial (un titular, tipo consumo, saldo 0), pero descartar todas las filas de saldo 0 de ese sector baja los conteos iguales de 4.110 a 2.960 de 4.783: no se encontró la regla.
+     **Hasta resolverlo, el nivel 2 recibe en estas 19 variables algo distinto de lo que aprendió el modelo.** `variables-de-ingreso.ts` las arma de `equifax_operaciones` (lo que dice 4.2) y lo declara en `pendientes`; decidir entre entrenar con las variables que arma este módulo sobre las respuestas JSON crudas (una sola implementación: lo recomendado) o extraer también las listas de `interconnectResponse`, que es otra tabla y vuelve a poner dos fuentes de la misma deuda.
+   - **Correcciones a esta especificación**:
+     `max_mora` es el máximo de `dias_morosidad` de todas las operaciones, no `factores_maximo_dias_vencido` (coincide en 4.086 de 4.602 contra 1.508);
+     en 4.1, «no contestó» es `fuentesNoMedidas` (o no figurar), no `fuentesSinDatos`: esa lista es «contestó y no había nada» (`process.ts`), o sea sin RUC;
+     `meses_aporte` y `n_empleos` del extracto cuentan todo el historial del IESS (hasta 93 meses y 18 empleos) y el perfil sólo guarda 24 meses de detalle, así que el módulo los arma de las filas mensuales de `trabajoHistoricosMecanizado` que le pase quien lo llame, con una definición sin confirmar contra AWS;
+     el perfil no trae provincia ni cantón de domicilio y de trabajo ni el «obligado a llevar contabilidad» de Novadata, y las categorías de AWS (sexo, estado civil, provincia y cantón) no se cotejaron con las de Novadata: el mapeo es una interfaz (`MapeoDeCategorias`) con `MAPEO_PENDIENTE`, que deja esas seis variables sin dato.
+   - **Corrección a 12.22**: la «concesión posterior a la consulta» no existe. Con las fechas leídas como vienen (dd/mm/yyyy) hay 0 de 4.499 en los tres créditos mayores; el −8,7 meses salía de leerlas como mes/día. Y en el entrenamiento la regla del crédito posterior nunca corrió: `try_cast` de DuckDB dio nulas las 116.673 fechas.
+     `variables-de-ingreso.ts` la aplica a los tres créditos (hoy no cambia ningún valor), y sirve el modelo igual que se entrenó, que fue sin anular nada.
 2. **Prueba de oro del evaluador**: 200 casos, diferencia menor que 0,001 en el logaritmo de cada cuantil.
 3. **Cobertura**: sobre OK FACTURAR y condicionado, con la validación por fecha, el real supera el mínimo del 90% entre el 88% y el 95%. Hoy se entrena hasta junio de 2026 y se prueba de julio a octubre, porque el SRI solo existe desde diciembre de 2025:
    94,9% en el nivel 1 y 94,3% en el 2 (1.613 casos). Sobre todos los casos baja a 88,1% y 87,5% (12.24).

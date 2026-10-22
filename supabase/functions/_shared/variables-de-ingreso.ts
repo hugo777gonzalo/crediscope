@@ -18,9 +18,12 @@
 //     decía «no contestó (`fuentesSinDatos`)», al revés. No contestó es
 //     `fuentesNoMedidas` o no figurar.
 //   - Un crédito con fecha de concesión posterior a la consulta puede ser el que
-//     se está pidiendo: se anula. El entrenamiento anuló SÓLO el mayor crédito
-//     aprobado (`cred_mayor`; el extracto de AWS traía únicamente su fecha), y el
-//     modelo se sirve igual que se entrenó: CREDITOS_POSTERIORES_QUE_SE_ANULAN.
+//     se está pidiendo: se anula (los tres créditos mayores). Medido el 2026-10-22
+//     con las fechas bien leídas (dd/mm/yyyy), no hay ninguna en 4.499 respuestas;
+//     la «concesión posterior» que vio la investigación (12.22) era una fecha leída
+//     al revés (mes/día), y en el entrenamiento la regla nunca corrió: el
+//     `try_cast` de DuckDB dio nulas las 116.673 fechas. La regla es una guarda
+//     para lo que no se midió; hoy no cambia ningún valor.
 //   - Un grupo sin filas es nulo, no cero: en el entrenamiento la suma de nada
 //     era un faltante, y el modelo lo trata como tal.
 //
@@ -71,9 +74,9 @@ export const VARIABLES_CATEGORICAS = [
 ] as const;
 
 // De los tres créditos mayores del buró, los que se anulan si su fecha de concesión es posterior a la
-// consulta. El entrenamiento sólo anuló el mayor aprobado: ver el encabezado.
+// consulta: ver el encabezado.
 export type CreditoDelBuro = "cred_mayor" | "cred_12m" | "cred_24m";
-export const CREDITOS_POSTERIORES_QUE_SE_ANULAN: readonly CreditoDelBuro[] = ["cred_mayor"];
+export const CREDITOS_POSTERIORES_QUE_SE_ANULAN: readonly CreditoDelBuro[] = ["cred_mayor", "cred_12m", "cred_24m"];
 
 // ---------------------------------------------------------------------------
 // Lo que entra y lo que sale
