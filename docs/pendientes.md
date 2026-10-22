@@ -170,6 +170,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     se exige, la cuenta de QA deja de servirle a Claude) y los plazos de retención
     (`docs/cumplimiento/lopdp.md`). Confirmar que la fila `client.structure` del 2026-09-04 de
     `audit_log`, con un actor que no es de ningún usuario, era una cuenta de prueba borrada.
+17. **Extracciones de la base de AWS: compartirlas y usarlas.** Hay cinco archivos con identificación
+    y montos reales en `research/ingresos-aws/` (`docs/base-aws-originacion.md`, sección 4). Antes de
+    sacarlos de este equipo hay que decidir si se seudonimizan (la investigación del predictor
+    propone un hash de la cédula con una clave única). Y falta decidir con el negocio qué
+    requerimiento se toma cuando una persona tiene varios (el último, el más antiguo o todos) y si
+    las variantes SD entran al entrenamiento. El predictor ya se midió contra el IESS y contra el
+    ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
+    espera el dato de la institución.
 
 ## 3. Espera a terceros
 
@@ -209,6 +217,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     indicio de ingreso mayor. «Declaraciones de IVA de los últimos 6 meses» no existe para los
     negocios populares del RIMPE y es semestral para los emprendedores: hoy se pide a 956 personas
     (cifra del 2026-09-29, sin remedir).
+11. **Base de originación en AWS: definiciones y contrato.** Quien administra esa base (y el
+    contrato con Equifax) tiene que confirmar: qué miden los campos de
+    `analisis_credito_sector_financiero`, si las tres tablas de deuda se solapan, qué es «SD» en la
+    respuesta comercial y «verificado» en los lotes masivos, y si el contrato permite entrenar un
+    modelo propio con las salidas de Equifax. También si el usuario de la base es de solo lectura
+    (hoy toda consulta lo fuerza con `begin read only`), **dónde queda guardado el predictor
+    «corregido» que el negocio aplica desde abril de 2026** (lo guardado es idéntico al crudo) y qué
+    cambió en Equifax en enero y marzo. Lista completa en `docs/base-aws-originacion.md`, sección 5.
 
 ## 4. Con fecha
 

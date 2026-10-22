@@ -15,6 +15,11 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   controles tienen que ser de ese commit); el 2026-10-20 se borró la rama
   del #65 sin confirmar MERGED y el PR quedó cerrado. Confirmar el estado
   del PR antes de borrar la rama.
+- **Un archivo de secretos guardado desde el Bloc de notas queda como `.env.txt` y git
+  no lo ignora.** El 2026-10-20 las credenciales de la base de AWS aparecieron como archivo
+  nuevo, sin ignorar, en `clientes/` de un repositorio público (la regla es `clientes/*.env`).
+  Un `git add -A` las habría subido. Antes de leer un archivo de secretos, `git check-ignore -v
+  <archivo>` y renombrarlo si no sale ignorado.
 - **PostgREST corta en 1.000 filas y no avisa.** Un `.limit(5000)`
   devuelve 1.000 sin error. El panorama de Fuentes de ingreso contó así
   ~840 clientes de 2.807 hasta la 081 (decía 290 dependientes privados
@@ -604,6 +609,23 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   constancia de un guion al salir, el aviso a la base sale por un proceso
   hijo sincrónico, con la clave pasada por el entorno y no en la línea de
   comandos.
+- **Al cruzar dos consultas a Postgres en memoria, la misma clave puede salir como
+  número en una y como texto en la otra.** `node-pg` devuelve `integer` como número y
+  `numeric` o `bigint` como texto. El 2026-10-20, en la extracción del predictor de
+  Equifax, un `Map` por `id_persona_requerimiento` no calzó nunca: las seis columnas del
+  IESS salieron 100% vacías en 389.012 filas y ningún error lo avisó. Se vio al revisar la
+  cobertura por columna antes de entregar. Unificar las claves con `String()` y medir el
+  porcentaje de vacíos de cada columna antes de dar un archivo por bueno.
+- **Un resumen por año esconde los cambios de comportamiento.** El 2026-10-20 se escribió
+  «el máximo del predictor de Equifax es 20.000 en todos los años» y se concluyó que no había
+  cambiado el techo; la otra sesión midió por fecha y encontró cinco regímenes en 2026 (el tope
+  bajó a 10.000 del 2 de marzo al 12 de abril). Antes de afirmar que algo no cambió, partir por
+  fecha de consulta y mirar la distribución y los valores repetidos, no solo el máximo.
+- **Un valor con nombre parecido en otra tabla no es el mismo dato.** En la base de AWS hay
+  dos «predictores de ingreso» (`resultado_segmentacion.income_predicator`, que es el
+  `IncomePredictor` crudo de Equifax, e `indicador_covid.income_predictor`, un estimador por
+  escenarios que solo coincide en el 76%). Se confirmó cuál es cuál comparando con la
+  respuesta cruda en 10.000 consultas. Ver `docs/base-aws-originacion.md`.
 
 ## Equifax
 
