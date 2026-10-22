@@ -208,6 +208,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     las variantes SD entran al entrenamiento. El predictor ya se midió contra el IESS y contra el
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
+18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
+    (borrador del 2026-10-22; nada construido). Lo que falta decidir o conseguir está en su sección
+    10: leer `informacion_sri` (actividad y fecha de inicio del SRI) de las respuestas de Equifax
+    guardadas en AWS para reentrenar (lo autoriza el negocio; sin eso el nivel 1 queda en R² de
+    0,087); qué datos internos trae la solicitud (define el nivel 3); casos con ingreso verificado de
+    cada institución para calibrar; la base de 3,9 millones del proveedor; y los códigos de
+    afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC). El primer paso de
+    construcción es extraer `AnalisisCreditoSectorFinanciero` en `equifax-tablas.ts` (sus campos son
+    las variables más pesadas del nivel con buró y hoy no se derivan).
 
 ## 3. Espera a terceros
 
@@ -247,16 +256,18 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     indicio de ingreso mayor. «Declaraciones de IVA de los últimos 6 meses» no existe para los
     negocios populares del RIMPE y es semestral para los emprendedores: hoy se pide a 956 personas
     (cifra del 2026-09-29, sin remedir).
-11. **Base de originación en AWS: definiciones y contrato.** Quien administra esa base (y el
-    contrato con Equifax) tiene que confirmar: qué miden los campos de
-    `analisis_credito_sector_financiero`, si las tres tablas de deuda se solapan, qué es «SD» en la
-    respuesta comercial y «verificado» en los lotes masivos, y si el contrato permite entrenar un
-    modelo propio con las salidas de Equifax. También si el usuario de la base es de solo lectura
-    (hoy toda consulta lo fuerza con `begin read only`), **dónde queda guardado el predictor
-    «corregido» que el negocio aplica desde abril de 2026** (lo guardado es idéntico al crudo) y qué
-    cambió en Equifax en enero y marzo, qué significan «consumo» en el catálogo de respuestas y
-    FINALIZADO en el estado del requerimiento, y cómo se arma el `total_ingresos` de la vista de BI
-    (si suma al cónyuge). Lista completa en `docs/base-aws-originacion.md`, sección 5.
+11. **Base de originación en AWS: definiciones.** Quien administra esa base tiene que confirmar:
+    si las tres tablas de deuda se solapan, qué es «SD» en la respuesta comercial y «verificado» en
+    los lotes masivos, si el usuario de la base es de solo lectura (hoy toda consulta lo fuerza con
+    `begin read only`), qué cambió en Equifax en enero y marzo, qué significan «consumo» en el
+    catálogo de respuestas y FINALIZADO en el estado del requerimiento, cómo se arma el
+    `total_ingresos` de la vista de BI (si suma al cónyuge) y **quién fijó la rentabilidad por
+    macroactividad** (no tiene autor ni fecha, y define el ingreso calculado de cuentas e IVA). Lista
+    completa en `docs/base-aws-originacion.md`, sección 5. **Resuelto el 2026-10-22**
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.20 a 12.23): los campos de
+    `analisis_credito_sector_financiero` son campos de la respuesta de Equifax; entrenar con las
+    salidas de Equifax no necesita contrato (decisión del negocio); el predictor «corregido» ya viene
+    en los datos guardados.
 
 ## 4. Con fecha
 
