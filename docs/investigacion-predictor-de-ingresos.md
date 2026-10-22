@@ -1305,7 +1305,7 @@ parroquia del censo (`I03`): las dos codificaciones **no se compararon**.
 ### 12.4 Variables de la ENEMDU que también están en nuestro lado
 
 `ingrl` (ingreso laboral), `p63` (ingreso de patronos y cuenta propia), `p66` (ingreso
-de asalariados), `p42` (categoría de ocupación), `p05a` (afiliación), `grupo1`
+de dependientes), `p42` (categoría de ocupación), `p05a` (afiliación), `grupo1`
 (ocupación CIUO-08 a un dígito), `rama1` (actividad CIIU 4 a un dígito), `prov`,
 `area`, `p02` (sexo), `p03` (edad), `nnivins` (nivel de instrucción) y `secemp`
 (formal, informal, doméstico). La variable `estrato` de la base **es un estrato
@@ -1328,6 +1328,920 @@ encuesta: **confirmar con el cuestionario de la ENEMDU**.
    predicho para los afiliados voluntarios debería parecerse a la distribución de
    12.1 (P25 300, mediana 480, P75 730, P90 1.200 en la ENEMDU). Si no se parece, el
    modelo está mal calibrado en ese grupo.
+
+### 12.6 Previa de ingreso por sector censal (calculada el 2026-10-18)
+
+**Qué se hizo.** Modelo de cuantiles (LightGBM, 15 niveles de 2% a 99,5%) entrenado con
+142.836 ocupados de la ENEMDU 2024 con ingreso mayor que cero, y aplicado a los 6.557.334
+ocupados de 15 años o más del censo 2022. Cada persona del censo recibe una distribución
+de ingreso; el sector (53.352 con ocupados) es el promedio de sus personas. Guion:
+`scripts/sae_3_modelo.py`; salida: `resultados/sae_prior_por_sector.csv`.
+
+**Variables.** Provincia, área, sexo, edad, escolaridad (5 niveles), grupo de ocupación
+y rama. **No entra la categoría de ocupación**: no se pudieron confirmar los códigos de
+`p42` (ENEMDU) ni de `P29` (censo), y sus distribuciones nacionales no calzan una a una
+(por ejemplo, el código 6 es 36% de la ENEMDU y 25% del censo). Tampoco entra la
+afiliación al IESS, por la misma razón (64% sin aporte en la ENEMDU, 45% en el censo).
+Son dos variables que el modelo de autoafiliados sí necesita.
+
+**Armonización de la escolaridad.** La ENEMDU trae 5 niveles y el censo, años. Se
+cortaron los años para igualar proporciones: 0-2 años = ninguno, 3-12 = básica, 13-15 =
+bachillerato, 16 o más = superior. Es una aproximación: en los cortes de 13 a 15 la
+diferencia contra la ENEMDU es de 1 a 2 puntos. El grupo de ocupación 0 del censo se
+tomó como el 10 de la ENEMDU; 11% de los ocupados del censo no trae grupo (99) y se
+predicen con un modelo sin ese dato (12,9% de los ocupados usan un modelo con menos
+variables).
+
+**Validación (6 grupos de provincias; se entrena sin la provincia que se evalúa).**
+
+| Medida | Resultado |
+|---|---|
+| R² del logaritmo (mediana) | 0,40 |
+| Cobertura del cuantil 90% | 85,0% (debería ser 90) |
+| Cobertura del cuantil 99% | 97,9% (debería ser 99) |
+| % menor a USD 1.000: previsto / observado | 92,3% / 91,7% |
+| % de USD 2.000 o menos: previsto / observado | 98,9% / 98,4% |
+| % de USD 460 o menos: previsto / observado | 64,2% / 59,1% |
+| Error medio absoluto por provincia (log) | 0,15 |
+| Peor provincia | Galápagos, -0,82 (el modelo predice 56% de lo observado) |
+
+**Lectura.**
+- El modelo es mejor para ordenar sectores que para fijar niveles: el R² de 0,40 sale de
+  variables demográficas y de ocupación, no del ingreso.
+- Subestima la cola alta (cuantiles de 90% y 99% quedan cortos): las colas altas no se
+  deben leer de este modelo. Eso confirma que el tramo de más de USD 2.000 va por la
+  cuota y no por una previa.
+- Una provincia que el modelo no vio (Galápagos) sale 56% por debajo. El modelo final sí
+  la ve (está en la ENEMDU), pero el resultado dice que el efecto de un lugar se
+  aprende de la encuesta y no se infiere de las demás provincias; con pocos casos
+  en una provincia (Galápagos tiene 1.660 en la muestra) la previa es débil.
+- **Aplicado al censo**, la previa da 52,8% con USD 460 o menos y 2,1% con USD 2.000 o
+  más, contra 59,1% y 1,6% de la ENEMDU directa. El censo tiene más escolaridad y menos
+  ocupados (6,56 millones contra 7,0 en la ENEMDU): el modelo es coherente con la
+  diferencia de composición, pero no se pudo separar de un sesgo del propio modelo.
+- Los sectores con menos de 30 ocupados son 3.719; su promedio es ruidoso y no debe
+  usarse solo.
+- **Sin intervalo todavía**: el valor por sector es un promedio de distribuciones
+  individuales y no incluye el error de estimación del modelo (EBP o Fay-Herriot lo
+  darían). No presentarlo como estimación con error conocido.
+
+### 12.7 Con la categoría de ocupación (v2, 2026-10-18)
+
+**Cómo se emparejaron los códigos.** El diccionario de la ENEMDU (abril 2023, depositado en
+`research/`) trae solo nombres de variables, sin las etiquetas de los códigos. Se dedujeron
+de los datos:
+- **ENEMDU `p42`:** `p63` es ingreso de patronos y cuenta propia, y `p66` es ingreso de
+  dependientes. Los códigos 1, 2, 4 y 10 tienen 100% `p66` (dependientes); 5 y 6 tienen
+  99-100% `p63` (independientes); 7, 8 y 9 no tienen ninguno (no remunerados). Con la
+  mediana y el aporte: 1 público (mediana 1.000), 2 privado (510), 4 jornalero (250),
+  10 doméstico (326), 5 patrono (760), 6 cuenta propia (250).
+- **Censo `P29`**, por el perfil de cada código: 2 = público (48% en administración
+  pública, 24% en educación, 100% aporta, 17 años de escolaridad); 1 = privado; 3 =
+  jornalero (58% agro, 1,5% aporta, 8 años); 5 = patrono; 6 = cuenta propia; 4 = doméstico
+  (probable: 80% en ocupaciones elementales); 7, 8 y 9 no se pudieron identificar y quedan
+  como «otro». **Es una deducción, no una etiqueta oficial**: confirmar con el diccionario
+  del censo.
+
+**Resultado (mismo método de 12.6, con la categoría).**
+
+| Medida | Sin categoría | Con categoría |
+|---|---|---|
+| R² del logaritmo (mediana) | 0,40 | 0,48 |
+| Error medio absoluto por provincia (log) | 0,150 | 0,140 |
+| % de USD 460 o menos: previsto / observado | 64,2 / 59,1 | 63,5 / 59,1 |
+| Censo: % de USD 2.000 o más | 2,06 | 1,91 (ENEMDU directa 1,58) |
+| Censo: % de USD 460 o menos | 52,8 | 52,8 (ENEMDU directa 59,1) |
+
+La categoría sube el R² ocho puntos y mejora el orden de los sectores; no corrige el
+desfase contra la ENEMDU directa (52,8% contra 59,1% con USD 460 o menos), que queda sin
+explicar. Galápagos sigue en -0,77 y la provincia 03 (Cañar) en -0,46 cuando no se
+entrenan. La afiliación al IESS no se agregó: el censo declara más aporte que la
+ENEMDU (cuenta propia: 16,7% contra 9,4%), y entraría como un sesgo hacia arriba.
+Salida: `resultados/sae_v2_prior_por_sector.csv`; guion `scripts/sae_6_modelo_v2.py`.
+
+### 12.8 Cruce de la residencia de Novadata con el censo (2026-10-18)
+
+**Qué se probó.** Con las 2.567 personas del crudo del 2026-10-03: la residencia de la primera
+dirección con lugar (`direcciones[].direccion.lugar`) se cruzó con el código del censo
+(provincia + cantón + parroquia, `I01 I02 I03`). Guion `scripts/geo_2_cruce.py`; tabla del cruce en
+`resultados/geo_cruce_novadata_dpa.csv`; previa por parroquia en
+`resultados/sae_v2_prior_por_parroquia.csv`.
+
+**Hallazgos.**
+- **Los ids de Novadata son propios**, no los del INEC: cantón 75 es Guayaquil y parroquia 474
+  es Tarqui. El único camino es el **nombre**. Se usó la lista de nombres de la División
+  Político Administrativa 2012 (capa pública de ArcGIS, 1.040 parroquias, consultada solo por
+  atributos); es de 2012, así que las parroquias creadas después no están.
+- **El censo por sector no separa las parroquias urbanas**: todo Guayaquil urbano es la
+  parroquia `50` (1,05 millones de ocupados) y todo Quito urbano también (0,85 millones). Una
+  parroquia de Novadata como Tarqui, Iñaquito o Cotocollao solo se puede ubicar a nivel de
+  cantón urbano.
+- **Resultado del cruce** (1.173 personas con residencia, 45,7% de las 2.567):
+
+| Nivel al que se llega | Personas | Porcentaje |
+|---|---|---|
+| Parroquia (rural y las pocas urbanas con código propio) | 264 | 22,5% |
+| Cantón urbano (parroquia `50`) | 908 | 77,4% |
+| Sin cruce (Yantzaza escrito con dos grafías) | 1 | 0,1% |
+
+  El código resultante existe en el censo para el 99,9%.
+- **Lo que esto significa**: para tres de cada cuatro personas con residencia, la previa es la
+  de su ciudad entera. Esa previa casi no distingue: Quito urbano da una mediana prevista de
+  524 y Guayaquil urbano 444, y la mediana de las 221 cabeceras va de 218 a 890. La parroquia
+  rural sí cambia el resultado (mediana de las rurales 297 contra 404 de las cabeceras).
+- **Casos particulares resueltos**: la DPA 2012 trae «RUMIÐAHUI»; «El Empalme» figura como
+  «Empalme»; La Concordia pasó de Esmeraldas (0808) a Santo Domingo de los Tsáchilas (2302) y
+  el censo 2022 usa el segundo.
+- **Para refinar las ciudades hace falta otro dato**: el censo trae la zona (`I04`) y el sector
+  (`I05`), pero Novadata solo trae el nombre del barrio o parroquia urbana. Con la dirección
+  completa o las coordenadas (que Equifax sí trae en el crudo) se podría llegar al sector.
+  Es una pregunta para el proveedor: si las coordenadas vienen en la base de 3,9 millones.
+
+### 12.9 La ENIGHUR 2024-2025 (revisada el 2026-10-20)
+
+**Qué es.** Encuesta de ingresos y gastos de los hogares del INEC, de diciembre de 2024 a
+noviembre de 2025: 35.398 hogares y 117.758 personas, con el marco del censo 2022. Cubre el país,
+las 24 provincias, los cantones Cuenca, Loja, Quito y Ambato, y las zonas urbanas de Guayaquil,
+Machala, Esmeraldas, Santo Domingo y Manta. Las bases son públicas (licencia CC BY 4.0);
+se bajaron el diccionario, la guía de uso, los tabulados y la base en CSV (259 MB comprimida;
+resultados en 12.10). Presentación y página de publicación:
+`ecuadorencifras.gob.ec/encuesta-nacional-de-ingresos-y-gastos-de-los-hogares-urbanos-y-rurales/`.
+
+**Cifras de la presentación (por hogar, no por persona).** Ingreso mensual promedio de USD 1.135
+(urbano 1.247, rural 793); 35,7% de los hogares con menos de un salario básico (USD 470),
+33,2% con uno a dos y 31,1% con dos o más; 1,8 personas que reciben ingreso por hogar; 28,8% de los
+hogares gasta más de lo que ingresa. **No se comparan con las cifras personales de 12.1**: un hogar
+suma varios ingresos.
+
+**Por qué importa más que la ENEMDU.** El diccionario (`ENIGHUR2025_PERSONAS_INGRESOS`, 347
+variables) trae **por persona**:
+- ingreso con detalle: remuneración mensual, horas extras, fondo de reserva, comisiones,
+  décimos y utilidades; deducciones por aporte al seguro social e impuesto; ingreso neto;
+- de patronos, socios y cuenta propia: ventas brutas, gastos del negocio (sueldos, insumos,
+  impuestos, alquileres) e ingreso neto del negocio;
+- **deuda**: pago de préstamos de bancos y cooperativas, pago de cuotas por compras a crédito y
+  recibo de préstamos en los últimos 12 meses (`i1901003`, `i1901005`, `i1801002`);
+- **tarjetas de crédito** bancaria y comercial, y cuántas (`PA52A`, `PA52B`);
+- **afiliación** al seguro social, tipo de contrato, **RUC o RISE/RIMPE del negocio** (`PA26`),
+  cuántas personas trabajan en la empresa, categoría, grupo de ocupación, rama, horas, sexo,
+  edad, estado civil e instrucción.
+
+Son casi las mismas variables que el modelo usaría con Novadata y el IESS, medidas junto con el
+ingreso real y las deudas de la misma persona. Sirve para: (a) calibrar la relación entre cuota e
+ingreso con datos públicos, mientras llega la proporción de los bancos; (b) validar la previa
+de 12.6-12.8 con una medición más completa, sobre todo para independientes; (c) ver cuánto
+ingreso tienen los independientes afiliados al IESS.
+
+**Límites.** Pocos hogares para zonas pequeñas: solo sirve para provincias y las ciudades
+nombradas. Período distinto del de la ENEMDU 2024 (salario básico de 470 y no de 460). No se
+comprobó todavía el contenido de los datos: ni si las variables de deuda traen el monto o solo
+el sí/no, ni los códigos de cada categoría. Las cifras de ingreso que declara una encuesta son
+de la persona y no están verificadas, y los pagos de deuda son de los últimos 12 meses, no
+la cuota de hoy.
+
+### 12.10 Resultados con la base de personas de la ENIGHUR (calculados el 2026-10-20)
+
+Base `ENIGHUR2025_PERSONAS_INGRESOS` (117.758 personas; 44.331 con ingreso laboral, 7,08 millones
+expandidos), ponderada con `Fexp`. Guion `scripts/enighur_2_ingresos.py`. El ingreso laboral es el
+neto de dependientes (`i1703099`) o el neto del negocio de independientes (`i1706099`), mensual.
+Los códigos de afiliación (`P06_1`) y de ocupación (`PA23`) no se confirmaron con una etiqueta oficial:
+se identificaron por tipo de ingreso y por parecido con la ENEMDU.
+
+**Confirma lo medido con la ENEMDU.**
+
+| Medida | ENEMDU 2024 | ENIGHUR 2024-2025 |
+|---|---|---|
+| Mediana del ingreso laboral | 400 | 426 |
+| Ocupados con USD 2.000 o más | 1,7% | **1,7%** |
+| Independientes: mediana | 230 (cuenta propia) | 263 |
+| Voluntarios: mediana | 480 | 480 (código 2) |
+
+La coincidencia de la cola alta (1,7%) con una encuesta más detallada indica que la ENEMDU no
+subestima el tramo de más de USD 2.000 de forma importante.
+
+**Independientes afiliados al seguro social (código 1 o 2 de `P06_1`).** Son unos 303.000
+(la ENEMDU daba 275.000) y su ingreso real es muy disperso: mediana 446, **52% por debajo de
+USD 470**, P90 de 1.656 y **7,8% con USD 2.000 o más**. Los independientes sin seguro: mediana 249,
+5,9% con 940 o más y 1,0% con 2.000 o más. Es la distribución que el modelo de autoafiliados tiene
+que reproducir (reemplaza la referencia de 12.5, punto 3).
+
+**Deuda por tramo de ingreso laboral (personas con ingreso).**
+
+| Tramo | Pagan préstamos | Pago medio de quienes pagan | Mediana del pago sobre el ingreso | Con tarjeta de crédito |
+|---|---|---|---|---|
+| Menos de 470 | 17,4% | USD 160 | 38% | 6,1% |
+| 470 a 940 | 38,9% | USD 238 | 28% | 21,0% |
+| 940 a 2.000 | 59,1% | USD 447 | 29% | 54,2% |
+| 2.000 o más | 66,1% | USD 1.103 | 30% | 67,5% |
+
+- Entre quienes pagan préstamos, la relación pago/ingreso tiene mediana de 31%, P75 de 55% y P90
+  de 92%; en los tramos de 470 en adelante son 28-30%, P75 de 47-49% y P90 de 71-74%. **El 0,40
+  que se usó como ejemplo en este documento cae entre la mediana y el P75 de lo que la gente
+  paga**, pero no es el máximo que aprueban los bancos: el dato que se pidió al negocio.
+- La relación es estable (28-30%) en los tramos de 470 en adelante y no crece con el ingreso. Eso
+  apoya usar la cuota para acotar el ingreso hacia arriba, con un margen amplio: una misma cuota
+  corresponde a ingresos muy distintos (P25 de 15% y P90 de 92%).
+- **Duda sobre la unidad**: no se confirmó si el monto es mensual o un promedio de los últimos 12
+  meses. Los montos de otras preguntas de la misma sección (préstamos recibidos) son múltiplos
+  de un doceavo, lo que apunta a un monto mensual equivalente. También incluye cualquier prestamista,
+  no solo bancos.
+
+**Pendiente.** Confirmar la unidad del pago de préstamos y los códigos con el formulario
+(`formularios.zip`, sin bajar); repetir el análisis por ocupación y provincia, y usar estas personas
+como segunda validación del modelo de tres tramos.
+
+### 12.11 La base de AWS con el predictor de Equifax (medido el 2026-10-20)
+
+Otra sesión extrajo de la base de AWS 389.012 consultas con `IncomePredictor` de 278.504 personas
+(2021-03-04 a 2026-10-20), en `research/ingresos-aws/` (fuera de git, con identificación en claro;
+diccionario en `LEEME-predictor-equifax.md`). Lo que se reverificó aquí con `scripts/aws_*.py`:
+
+**El techo del predictor sí cambió en 2026** (el LEEME de esa sesión dice que no se ve; midió el
+máximo de todos los años juntos, y hasta febrero el 20.000 sigue apareciendo):
+- Hasta la semana del 2026-02-23 hay valores exactos en 20.000 (1,3% a 2,7% de las consultas por semestre, de
+  2021 a 2025).
+- **Desde la semana del 2026-03-02 el máximo es 10.000** y ya no hay valores en 20.000 ni entre 10.001 y
+  19.998 hasta el 2026-04-06.
+- **Desde la semana del 2026-04-13 reaparecen valores sobre 10.000** (hasta 15.275, repetido), así que el
+  nuevo comportamiento no es un tope en 10.000 sino otra regla, no confirmada.
+- **Cuatro regímenes en 2026** (por `fecha_consulta_equifax`; medidos con `scripts/aws_7_regimenes.py`):
+
+| Período | Cómo son los valores | Mediana |
+|---|---|---|
+| Hasta 2026-01-13 | Continuos (p. ej. 630,22); tope 20.000 | 1.378 |
+| 2026-01-14 y 15 | Hueco, con muchos ceros | — |
+| 2026-01-16 a 2026-03-01 | Discretos: 599 (1.936 veces), 437 (1.054), 0 (783); aún aparece el 20.000 | 926 |
+| 2026-03-02 a 2026-04-12 | Tope 10.000; repetidos 1.051, 2.051, 1.501, 701, 2.551, 3.001, 4.001 | 1.188 |
+| Desde 2026-04-14 | Sobre 10.000 (hasta 15.275); repetidos 490 y 698 | 1.369 |
+
+- **Versiones del predictor, según el negocio** (aclaración del usuario del 2026-10-20; los cortes de fecha son
+  los medidos arriba): V0, tope de 20.000; V1, el cambio de modelo de Equifax, con tope de 10.000 desde febrero o
+  marzo; V2, una corrección de Equifax que daba valores muy específicos (los repetidos 1.051, 2.051, 1.501) y que el negocio
+  considera mal hecha; **V3, la corrección del negocio, vigente desde abril**: se segmenta el valor del
+  modelo de Equifax en 15 rangos y a cada rango se le aplica un factor que se multiplica por el valor original
+  (la tabla del negocio muestra los topes de cada rango: 350 pasa a 396, 1.200 a 1.433, 2.300 a 2.879, 10.000 a
+  15.276). **Se aplica a todo lo que se guarda y los datos recibidos ya lo traen**: la sesión de AWS comprobó que el valor
+  guardado es idéntico al del crudo de la respuesta en todas las semanas desde octubre de 2025, así que lo que se
+  ve posterior a abril es el valor corregido (el 15.275 es el 10.000 corregido) y el valor original de Equifax no
+  está en la base. **La fórmula es una potencia, no un producto** (Excel del negocio: `=EXP(F*LN(E))`, es decir, nuevo = valor
+  original elevado al factor del rango del valor original): 350 elevado a 1,021 da 396. Reproduce los 15 topes
+  de la tabla sin error (`scripts/aws_10_invertir.py`), así que **se puede deshacer**: valor original = nuevo elevado a
+  1/factor, probando cada rango. Es ambigua solo en los bordes de rango (la función salta: 350 da 396 y 351 da 392).
+  **Al deshacerla se ve que la discretización de Equifax sigue dentro de V3**: los valores guardados más repetidos
+  desde abril, 490 y 698, vuelven a ser 437 y 599, los mismos valores de enero y febrero (1.051 es 893, 2.051 es 1.678,
+  1.501 es 1.238).
+- **Qué parte de cada régimen está discretizada** (consultas cuyo valor original, ya sin la corrección, se repite 30 veces o
+  más) y qué tanto informa (correlación de logaritmos con el salario del IESS del último mes, solo para ver si sigue
+  midiendo algo):
+
+| Régimen | Consultas | En valores repetidos | Correlación con el IESS |
+|---|---|---|---|
+| Hasta el 13 de enero | 30.560 | 11,1% | 0,29 |
+| 16 de enero al 1 de marzo | 14.694 | 26,8% | 0,31 |
+| 2 de marzo al 12 de abril | 13.006 | 56,6% | 0,31 |
+| Desde el 13 de abril (sin la corrección) | 67.708 | 63,4% | 0,36 |
+
+- **Decisión del negocio (2026-10-21)**: la fórmula de Equifax fue «poner el promedio de cada rango que ellos definieron», por
+  lo que de esos valores no se puede inferir nada, y se descartan los datos de ese período por ser pocos. Los cortes de fecha
+  de arriba están confirmados. **Observación**: los períodos del 16 de enero al 12 de abril suman 27.700 consultas,
+  pero la discretización sigue en el 63% de lo posterior a abril (67.708 consultas) y no pierde correlación con el IESS.
+  Falta decidir si también se descarta lo posterior a abril o se usa como un nivel por rangos; el modelo de ingresos
+  no necesita el predictor como entrada (4.9), sirve de comparación y de tope.
+  Un modelo que lo use hay que probarlo por versión.
+
+**Unidad.** Es mensual en USD (mediana 1.343). Contra el salario del IESS (131.236 consultas con salario
+del último mes, 102.075 personas) la correlación de los logaritmos es 0,31, igual a lo anotado en 9.7.
+
+**Esta población no es la del país.** Son personas que pidieron crédito. Con ingreso real calculado de
+CrediScope (146.212 personas):
+
+| Tipo | Personas | Mediana | USD 2.000 o más | USD 5.000 o más |
+|---|---|---|---|---|
+| Independiente | 65.755 | 2.500 | 62,6% | 22,9% |
+| Dependiente | 51.174 | 1.226 | 27,9% | 4,9% |
+| Público | 12.383 | 1.486 | 29,6% | 1,5% |
+| Todos | 146.212 | 1.737 | 44,7% | 13,3% |
+
+Contra el 1,7% de la ENEMDU y la ENIGHUR para todo el país (12.1 y 12.10). **Para quien pide crédito, el
+tramo de más de USD 2.000 no es el 10% de la hipótesis del negocio sino cerca de la mitad**, así que
+el tramo que se iba a resolver por la cuota pesa más que el de hasta USD 2.000. La previa pública
+del país (12.6 a 12.8) no sirve tal cual para esta población, y el modelo de los tramos necesita
+datos de personas que piden crédito.
+
+**Dudas que esto abre.**
+- El «ingreso real calculado» de un independiente es la suma de movimientos de cuentas o de ventas
+  declaradas: no es un ingreso neto. La ENIGHUR mide una mediana de 263 para los independientes del país y
+  aquí es 2.500; la diferencia es de selección (quien pide crédito gana más) y también de qué se mide.
+  Sin separar las dos, no se puede entrenar con ese número como si fuera la verdad.
+- La cuota reportada sobre el ingreso validado tiene mediana de 0,59 (P75 de 1,13), imposible como relación de
+  pago de una persona; viene de sumar todas las operaciones sin separar el rol de titular, codeudor o
+  garante y sin comprobar que una operación no esté en dos tablas. Mientras no se limpie, no sirve
+  para calibrar el cociente cuota/ingreso (usar el de 12.10 o el que dé el negocio).
+- El contrato con Equifax y el uso de sus salidas para entrenar un modelo: sin revisar (ver 4.9).
+
+**Revisión de la extracción (2026-10-20).**
+- **Quién está en la base**: 117.259 consultas son automotrices y 466 de consumo; las 271.287 restantes no
+  traen tipo (hasta 2024). 88.639 son del cónyuge y 1.547 de codeudor o garante: para entrenar se toman
+  solo titulares y se parte por persona (209.166 personas tienen una sola consulta, 69.338 tienen dos o más).
+  Pichincha y Guayas concentran la mayoría. Quien pide crédito en un concesionario no representa al país.
+- **El ingreso de un independiente parece escrito a mano, no calculado**: el 49,2% es un múltiplo exacto
+  de 100 y el 24,0% de 1.000, contra 2,3% y 0,5% en un empleado público (cuyo dato viene del IESS). Los valores
+  más repetidos son 2.000, 3.000, 1.500, 2.500 y 1.200. Un cálculo sobre movimientos de cuenta no
+  se amontona así. Hay que preguntar cómo lo arma el analista antes de usarlo como objetivo.
+- **El aporte al IESS de un independiente casi no informa su ingreso**: de los independientes con aporte
+  (28.040 consultas, 22.876 personas), el 39,7% aporta el salario básico (±5%), la mediana del aporte es 554
+  contra 3.000 de ingreso calculado, y la correlación de los logaritmos es 0,21. Confirma la regla del
+  Ingreso Mínimo SBU, con datos de personas que piden crédito. Solo el 33,0% de los independientes
+  tiene historial de IESS (60,4% de los dependientes, 90,7% de los públicos).
+- **En dependientes, el ingreso calculado y el salario del IESS difieren**: mediana de la razón
+  de 1,11, y solo el 2% coincide al 2%. Son meses distintos (el calculado es el del requerimiento) o hay
+  más de un empleador, pero así no se puede decir que sea el mismo dato.
+
+### 12.12 Lo que respondió la sesión de AWS y lo que se verificó aquí (2026-10-20)
+
+Archivos nuevos en `research/ingresos-aws/` (fuera de git): `credito_por_requerimiento.csv` (44.582
+requerimientos con respuesta OK FACTURAR, con y sin condicionado), `iess_mismo_mes.csv` (79.153 consultas de
+dependientes y públicos) y `muestra_respuestas_equifax.jsonl` (5.001 respuestas crudas de titulares, 1.667 por
+régimen: hasta el 13 de enero, del 16 de enero al 12 de abril y desde el 14 de abril). Resumen y conteos de esa
+sesión en su `docs/base-aws-originacion.md` (rama `claude/postgres-aws-data-review-66a14e`, PR sin fusionar).
+
+**Informado por esa sesión y no verificado aquí: cómo se arma el ingreso de un independiente.**
+- De 121.499 flujos de independientes, el 83,5% es solo «ingreso declarado» (tipo 4, redondeado a 100 en el
+  79,7% y a 1.000 en el 37,9%); el 15,1% es solo movimientos bancarios, el 1,1% solo declaración de IVA y el 0,3% mezcla.
+  54.437 flujos llevan la observación «INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS»: lo declarado llega del concesionario.
+- Un ingreso bancario o de IVA es el promedio mensual de ventas o depósitos (mediana de 3 meses) **multiplicado por una
+  rentabilidad fija por macroactividad**: 0,30 en comercio y servicios generales, 0,40 en fabricación, agricultura,
+  construcción y transporte, 0,70 en servicios profesionales y 1,00 en arriendos. No hay un campo que diga depósito o neto.
+- Unos 6.400 flujos dicen «predictor» o «ajuste predictor»: en independientes el ingreso es el predictor más o menos
+  USD 1 en el 41% y el 52% de ellos. Circular: no son verdad.
+- **Conclusión**: la verdad más defendible para un independiente es el 16,5% basado en cuentas o IVA (unos 20.000
+  flujos), y aun ahí es una estimación de utilidad con un margen fijo por actividad. El resto es lo que declara
+  el concesionario o el predictor mismo.
+
+**Verificado aquí: el ingreso de un dependiente trae un descuento del 10%.** El ingreso calculado de un dependiente con
+fuente IESS es el 90,0% del «promedio de Novadata» en el 75,5% de 50.472 casos (mediana de la razón 0,900;
+solo el 0,3% es igual). No es el salario del último mes ni un promedio de 6 o 12 meses. Para usarlo como
+verdad del IESS hay que dividir por 0,9, o pedir el promedio de Novadata directamente (viene en `iess_mismo_mes.csv`).
+La sesión de AWS también halló que el mes del requerimiento casi nunca existe en el historial (20 de 52.475): el
+IESS llega con uno o dos meses de retraso.
+
+**Verificado aquí: la cuota de la solicitud depende poco del ingreso** (41.917 solicitudes con cuota e ingreso del
+titular; la cuota es la del simulador del requerimiento, `simulador.cuota_pagar`, y los canales son concesionarios, crédito directo y patios con convenio):
+
+| Ingreso del titular | Solicitudes | Cuota mediana | Cuota sobre el ingreso (mediana) | Con la cuota como mínimo del ingreso (relación 0,40), el mínimo llega a USD 2.000 o más |
+|---|---|---|---|---|
+| Menos de 1.000 | 3.236 | 354 | 0,44 | 2,6% |
+| 1.000 a 1.999 | 12.011 | 405 | 0,28 | 3,0% |
+| 2.000 a 4.999 | 17.078 | 495 | 0,17 | 12,7% |
+| 5.000 o más | 9.592 | 660 | 0,08 | 36,6% |
+
+La correlación entre el logaritmo de la cuota y el del ingreso es de 0,46. En dependientes, que son el dato menos
+dudoso, la cuota mediana es de 388 con menos de USD 2.000 y de 507 con USD 2.000 o más (razón de 0,31 y 0,15).
+**Consecuencia para el diseño de los tres tramos**: con una relación de 0,40, el mínimo que sale de la cuota se queda
+cerca del ingreso real (a menos de 20%) en el 85% de los de menos de 1.000, pero solo en el 7% de los de 2.000 a 4.999 y
+en el 1% de los de 5.000 o más. **La cuota sirve para descartar ingresos bajos y no para identificar los altos.** La
+razón probable: aquí la cuota sale del simulador de la solicitud (precio del bien y plazo) y no de la capacidad de pago de la persona (es una hipótesis, no se comprobó). Lo que serviría es la
+cuota máxima que cada institución aprueba, que no está en esta base. Esto cambia la hipótesis de 8.1, que contaba
+con la cuota para resolver el tramo de más de USD 2.000.
+
+**Decisión del negocio sobre la cuota (2026-10-21).** Varias instituciones tienen un límite de cuota sobre el ingreso, pero
+no siempre se cumple (se pasan por excepción), así que **no se usa** la relación cuota/ingreso por institución. La
+cuota queda como una pista para acotar ingresos bajos, sin una relación fija.
+
+**Pendiente.** Pasar las 5.001 respuestas crudas por `derivarTablas` para separar rol y duplicados en la cuota de
+Equifax; decidir qué se hace con el predictor posterior al 13 de abril (ver 12.11).
+
+### 12.13 Piloto con dependientes de AWS (2026-10-21)
+
+**Decisiones del negocio que lo definen (2026-10-21).**
+- **Qué estima**: el salario bruto del IESS (promedio de Novadata, que es verdad verificada para un dependiente); el
+  descuento se aplica al final. El sistema hoy resta un 10% fijo (el 75,5% de los casos da exactamente 0,900), no el 9,38%
+  de ley, y en una minoría de personas no hay descuento porque el empleador lo asume.
+- **Tres versiones por datos de entrada**: 1) Novadata; 2) Novadata más buró (Equifax o Aval); 3) Novadata más datos internos
+  más buró (pendiente). Entrenar con salidas de Equifax no necesita contrato: son datos ya obtenidos y pagados (decisión del negocio,
+  que reemplaza la duda de 4.9 para este uso).
+- **Cómo se entrega**: tramo con probabilidad y valor central con rango; los tramos son sobre el ingreso neto (menos de 470,
+  470 a 939, 940 a 1.999, 2.000 o más).
+- **Con qué datos**: AWS como piloto, reentrenar con los 3,9 millones cuando lleguen.
+
+**Cómo se hizo** (`scripts/modelo_dep_1.py`). 31.223 titulares dependientes con salario de Novadata (una consulta por persona, la más
+reciente; mediana bruta de 1.200). Modelo de cuantiles (13 niveles) y probabilidad de cada tramo. Entradas de la versión 1: edad,
+género, estado civil, provincia y cantón de trabajo y de domicilio, meses con aporte, número de empleos y de empleadores, fecha. La versión 2
+suma 12 variables del buró (crédito mayor aprobado, deuda total y de hace 3 meses, instituciones con deuda, créditos, saldos,
+mora máxima y operaciones). Un crédito posterior a la consulta no se usa. No entra el predictor de Equifax. Validación cruzada por persona (5 grupos)
+y otra por fecha (se entrena con lo anterior a 2026 y se prueba con lo posterior).
+
+| Medida | Versión 1 (Novadata) | Versión 2 (Novadata más buró) | Referencia |
+|---|---|---|---|
+| R² del logaritmo | 0,22 | 0,40 | — |
+| Error absoluto mediano | 37% | 31% | — |
+| Acierta el tramo exacto | 45,5% | 52,7% | 36,7% si se dice siempre el más frecuente |
+| Acierta el tramo o uno vecino | 91,6% | 94,6% | — |
+| El valor real cae en el rango de 10% a 90% | 78,2% | 77,7% | debería ser 80% |
+| Prueba por fecha (entrena antes de 2026): R² y tramo exacto | 0,11 y 43,4% | 0,32 y 50,7% | — |
+
+El predictor de Equifax hasta el 13 de enero (continuo, sin corrección) acierta el tramo en el 47,6% de 18.680 consultas y su
+correlación de logaritmos con el salario de Novadata es 0,55 (con el salario del último mes era 0,31).
+
+**Lectura.**
+- El buró es lo que más aporta: pasa de 0,22 a 0,40 en R² y de 45,5% a 52,7% en el tramo. Importancia en la versión 2: crédito mayor
+  aprobado 32%, deuda de hace 3 meses 15%, edad 12%, valor de los créditos 6%.
+- Con datos de Novadata solos el modelo ordena (acierta el tramo o uno vecino 9 de cada 10 veces) pero no distingue bien dentro del
+  rango de 470 a 2.000. Tampoco es mucho mejor que decir siempre el tramo más frecuente (45,5% contra 36,7%).
+- **El tramo de 2.000 o más se confunde con el de 940 a 1.999**: de 6.278 personas con 2.000 o más netos, 3.021 se reconocen y 2.848 se clasifican
+  en 940 a 1.999. Los de menos de 470 casi no se reconocen (128 de 3.227) porque son pocos y se parecen a los de 470 a 939.
+- **Cae con el tiempo**: probar con lo posterior a 2026 baja el R² (0,22 a 0,11 y 0,40 a 0,32). Hay deriva (sueldos, tipo de persona que pide crédito) y el modelo
+  tiene que reentrenarse y vigilarse.
+- **Quien no tiene crédito no tiene estas variables**: la población de AWS son personas con buró (86% con crédito mayor aprobado). La versión 2 no se
+  puede evaluar en quien nunca pidió crédito, que es justo a quien más habría que estimar.
+- **Todavía no se probó en independientes**, que es la pregunta de fondo. Falta saber cuáles de sus ingresos vienen de cuentas o IVA y cuáles son declarados.
+
+**Lo que falta para mejorarlo.** Datos del empleador (identificador, sector, tamaño; hoy la extracción solo tiene cuántos empleadores), que son la
+señal más fuerte para un dependiente; la marca de qué independientes tienen ingreso de cuentas o IVA; y una prueba con la población general
+(los 3,9 millones).
+
+### 12.14 Los segmentos sin ingreso del IESS (2026-10-21)
+
+**Lo que dijo el negocio el 2026-10-21.**
+- Meta: **85% a 90% de asertividad**. Falta definir qué cuenta como acierto.
+- Los dependientes que no son su propio patrono ni afiliados voluntarios no se afinan: su ingreso del IESS ya está validado.
+- Lo difícil: el ingreso adicional de dependientes con otra actividad; independientes; jubilados y pensionistas (arriendos,
+  rendimientos financieros, remesas u otras actividades); personas sin actividad económica formal.
+- Datos: Novadata; la cuota financiera de Equifax (total de la cuota mensual que paga la persona) como pista principal, sobre todo en
+  independientes; el predictor de Equifax solo como contraste; el ingreso calculado a mano que sale de AWS como la verdad más válida.
+- Los tramos altos (más de 2.000) se afinan aunque sean pocos.
+
+**Quiénes son en AWS** (116.673 titulares con ingreso calculado, una consulta por persona, la más reciente; `scripts/nodep_1_descripcion.py`).
+
+| Segmento | Personas | Mediana | 2.000 o más | Menos de 470 | Múltiplo exacto de 100 | Con otra actividad |
+|---|---|---|---|---|---|---|
+| Independiente | 57.484 | 2.500 | 63,0% | 1,3% | 50,0% | 30,3% |
+| Dependiente (IESS) | 42.020 | 1.295 | 28,0% | 6,6% | 9,5% | 24,7% |
+| Sin clasificar | 11.212 | 1.847 | 47,4% | 4,6% | 31,4% | 21,3% |
+| Jubilado o pensionista | 3.032 | 1.641 | 39,0% | 2,0% | 57,9% | 24,0% |
+| Dependiente (otra fuente) | 2.499 | 1.883 | 46,9% | 3,4% | 37,9% | 53,2% |
+| Sin actividad formal | 426 | 1.256 | 30,8% | 17,4% | 35,2% | 21,1% |
+
+(La tabla separa primero a los jubilados; el modelo de independientes usa a todos los de relación «independiente», 58.451, por eso la diferencia de cifras.)
+
+**La respuesta comercial cambia lo que significa el número** (independientes). Múltiplo exacto de 100: OK FACTURAR 16,9%, OK FACTURAR
+CONDICIONADO 42,7%, APROBADO 66,2%, APROBADO CONDICIONADO 66,6%, RECHAZADO 32,2%, sin respuesta 65,3%. Medianas: 3.890, 3.500, 3.000, 3.400, 1.564 y 2.200.
+Lo confiable de OK FACTURAR parece ser un cálculo y el resto números escritos, y los rechazados ganan menos: **un modelo entrenado solo con lo
+aprobado no ve a quien se rechaza** (sesgo de selección).
+
+**La cuota financiera de Equifax** (5.001 respuestas crudas; `scripts/eqx_*.py`).
+- `indicador_impacto_economico[].cuota_financiera` es igual a `cuota_estimada_mensual.pago` en las 5.001 y a la suma de las cuotas por operación
+  (`detalle_deuda_actual_*`) en el 95,5%: la columna `cuota_mensual_total_reportada` de la extracción de AWS es esa cifra.
+- Trae un histórico de tres puntos (actual, hace 6 meses y hace 12 meses) y un `indicador_impacto_economico[].ingreso` con su escenario: otro
+  estimador de Equifax, distinto del `IncomePredictor` (coincide en el 15,5% de las respuestas).
+- Casi toda es del titular (25.697 de 26.755 operaciones); quitar codeudor y garante casi no cambia la relación con el ingreso (correlación de
+  logaritmos de 0,45 a 0,46 en independientes y de 0,46 a 0,48 en dependientes).
+- **Como cifra absoluta no es una cuota real**: sobre el ingreso verificado de dependientes del IESS tiene mediana de 0,60 y pasa de 1 en más
+  del 25%. Incluye una cuota estimada de las tarjetas (36% de la cuota total en la mediana).
+- Informa igual en independientes que en dependientes (correlación de 0,45 a 0,47). **Separada por tipo de crédito informa más**: R² del logaritmo
+  del ingreso de 0,21 (independientes) y 0,26 (dependientes) contra 0,16 y 0,17 con la cuota total; vivienda (0,47) y microcrédito (0,46) son las
+  más informativas en independientes, consumo (0,37) y tarjeta (0,36) las menos.
+
+**Independientes: qué tan cerca se llega** (58.451 personas; tramos de ingreso: menos de 470, 470 a 939, 940 a 1.999, 2.000 a 3.999 y 4.000 o más;
+validación cruzada por persona; `scripts/nodep_2_modelo.py`). El «acierto» se mide de varias formas porque no está definido.
+
+| Entradas | Tramo exacto | Tramo o vecino | Dentro de ±25% | Dentro de ±50% |
+|---|---|---|---|---|
+| Siempre el tramo más frecuente | 33,4% | — | — | — |
+| A. Novadata | 41,5% | 85,0% | 28,8% | 54,8% |
+| B. Novadata más buró | 52,0% | 91,9% | 36,2% | 65,5% |
+| C. B más la cuota de Equifax | 53,5% | 92,3% | 37,9% | 67,0% |
+| C solo con las solicitudes OK FACTURAR (9.883) | 64,1% | 95,6% | 43,2% | 74,2% |
+| Prueba por fecha de C (entrena antes de 2026) | 47,8% | 90,9% | 34,4% | 65,9% |
+| Contraste: predictor de Equifax (hasta el 13 de enero), tal cual | 45,9% | 83,8% | 33,9% | 59,4% |
+| Contraste: predictor de Equifax calibrado | 48,9% | 93,6% | 32,8% | 60,9% |
+| C sobre las mismas consultas del contraste | 54,0% | 92,4% | 37,8% | 67,3% |
+
+- **La cuota es la variable más pesada del modelo (57% de la ganancia) pero suma poco** (de 52,0% a 53,5%): las demás variables del buró (saldos,
+  deuda actual, operaciones) ya traen casi lo mismo. Lo que sí mejora es separarla por tipo de crédito (ver arriba), que esta corrida todavía no usa.
+- El modelo supera al predictor de Equifax por unos 5 puntos en tramo exacto; en tramo o vecino están parejos.
+- **Casi nunca predice los tramos bajos** (16 aciertos en 3.650 personas de 470 a 939): la población de AWS es de personas que piden crédito y
+  casi no hay ingresos bajos (7,5% menos de 940). No sirve para reconocer al independiente típico del país (el 73% gana menos de 470 según la ENIGHUR).
+- **Si solo responde cuando está seguro**: con una probabilidad de al menos 0,6 responde el 21,4% y acierta el tramo en 77,5%; con 0,7, el 13,1%
+  y 85,9%; con 0,8, el 9,2% y 90,6%. Con solo OK FACTURAR: con 0,6 responde el 36,0% y acierta 87,2%; con 0,7, el 26,8% y 92,8%.
+
+**El techo de la etiqueta** (la misma persona calculada dos veces; `scripts/nodep_4_estabilidad.py`). Entre dos solicitudes de un independiente con una mediana
+de 10 días de diferencia el ingreso queda igual en el 47,0% de los casos, dentro de ±10% en 65,9% y dentro de ±25% en 77,0%; cae en el mismo tramo
+el 87,9% de las veces (tramo o vecino 98,9%). En dependientes 90,3% y en públicos 94,2%. Con más de 180 días solo el 31,3% queda dentro de ±25%.
+**Ningún modelo puede acertar contra esta etiqueta mucho más de lo que ella se repite a sí misma**: unos 88% en tramo exacto y 77% dentro de ±25%.
+Con el 53,5% actual hay mucho margen que no es ruido: falta información.
+
+**Cómo se llega hoy al 85% o 90%** (independientes, validación cruzada; `scripts/nodep_7_conjuntos2.py` y `nodep_8_umbrales.py`). Con los datos actuales el tramo exacto no
+llega a esa meta para todos (53,5%). Hay tres formas de entregar un resultado que sí la alcance, cada una con su costo:
+
+1. **Un rango de tramos vecinos de ancho variable.** El modelo entrega el rango más angosto cuya probabilidad suma un nivel; se calibra el nivel para que el tramo real
+   caiga dentro del rango el 85% o el 90% de las veces (tramos: menos de 470, 470 a 939, 940 a 1.999, 2.000 a 3.999, 4.000 o más).
+
+| Entradas | Cobertura buscada | Se pide al modelo | Cobertura real | Tramos promedio del rango | Un tramo | Dos tramos | Tres o más |
+|---|---|---|---|---|---|---|---|
+| A. Novadata | 85% | 0,75 | 88,6% | 2,69 | 1,8% | 27,7% | 70,5% |
+| B. Novadata más buró | 85% | 0,75 | 85,2% | 2,14 | 9,5% | 67,4% | 23,1% |
+| C. B más la cuota de Equifax | 85% | 0,75 | 85,0% | 2,09 | 11,0% | 68,8% | 20,2% |
+| C. B más la cuota de Equifax | 90% | 0,85 | 92,6% | 2,61 | 7,0% | 26,3% | 66,7% |
+| C, solo OK FACTURAR | 85% | 0,65 | 86,6% | 1,71 | 30,2% | 69,2% | 0,7% |
+| C, solo OK FACTURAR | 90% | 0,75 | 90,4% | 1,89 | 23,5% | 63,7% | 12,8% |
+
+   Es decir: con lo que hay, el rango típico abarca dos tramos (por ejemplo «de 940 a 3.999»), y tres o más cuando el modelo duda.
+
+2. **Certificar un mínimo («gana al menos X»).** Es el dato que decide una cuota. Con el modelo C, la precisión es la proporción de los certificados que de verdad ganan eso:
+
+| Mínimo | Precisión buscada | Umbral de probabilidad | Se certifica del total | Precisión real | Se capta de los que de verdad ganan eso |
+|---|---|---|---|---|---|
+| 940 | 90% | (la base ya es 92,5%) | 75,0% con 0,90 | 96,6% | 78,3% |
+| 2.000 | 85% | 0,62 | 47,4% | 85,5% | 64,4% |
+| 2.000 | 90% | 0,73 | 36,3% | 90,2% | 52,0% |
+| 4.000 | 85% | 0,66 | 14,2% | 85,1% | 41,0% |
+| 4.000 | 90% | 0,79 | 9,5% | 90,1% | 29,1% |
+
+   En esta población el 62,9% gana 2.000 o más y el 29,5% gana 4.000 o más. **No se puede certificar el sentido contrario** (que alguien gana menos de 470 o menos de 940 o menos de 2.000):
+   con una seguridad de 0,8 el modelo no certifica a nadie para menos de 470 ni de 940 y al 1% para menos de 2.000, porque en AWS casi no hay ingresos bajos.
+3. **Responder solo cuando está seguro** (arriba): tramo exacto con 85% a 90% de acierto, pero solo para el 13% a 27% de las personas.
+
+**Dependientes con ingreso adicional** (42.020 dependientes del IESS con ingreso calculado; `scripts/nodep_3_otros.py`).
+- Tomar solo el ingreso principal (el del IESS) acierta el tramo del total en el 85,7% (tramo o vecino 99,5%). El adicional cambia el tramo en el 58% de
+  quienes lo tienen (24,7% de los dependientes; mediana de 500, el 35% del total).
+- **Saber quién lo tiene y cuánto es casi imposible con estos datos**: AUC de 0,72 para saber si tiene otra actividad y R² de 0,11 para el monto
+  (error mediano de 47%). Sumarlo al total solo sube el acierto de 85,7% a 86,1%.
+- **En AWS el adicional es mucho más común que en el país**: ENIGHUR, ocupación secundaria entre quienes trabajan: 4,5% de los dependientes y 6,3% de los
+  independientes, contra 24,7% y 30,3% en AWS. Lo más probable es que sea lo que declara quien pide un crédito, no lo que hay.
+
+**Ingresos adicionales en el país, de la ENIGHUR** (personas de 15 años o más, ponderado; montos mensuales equivalentes; `scripts/enighur_3_adicionales.py`).
+
+| Tipo de persona | Población (miles) | Pensión de seguridad social | Arriendos | Remesas del exterior | Ayuda de personas del país | Rendimientos financieros | Otra ocupación | Alguno de estos |
+|---|---|---|---|---|---|---|---|---|
+| Dependiente | 4.949 | 0,8% (307) | 1,3% (150) | 1,4% (63) | 7,2% (80) | 2,9% (1) | 1,1% (64) | 6,9% |
+| Independiente | 2.122 | 3,9% (370) | 2,9% (200) | 2,7% (83) | 14,1% (79) | 2,6% (1) | 1,7% (83) | 12,5% |
+| Sin ingreso laboral ni pensión | 5.814 | — | 1,1% (200) | 1,8% (104) | 10,6% (80) | 0,9% (0) | 8,0% (88) | 11,1% |
+| Sin ingreso laboral, con pensión | 801 | 100% (450) | 8,0% (233) | 2,7% (100) | 11,2% (83) | 4,5% (7) | 2,7% (78) | 100% |
+
+(Entre paréntesis, la mediana en dólares entre quienes lo reciben.) **Los ingresos adicionales son poco frecuentes y pequeños**: la mediana de un arriendo
+es 200 y la de una remesa 100; en un independiente que tiene alguno, el adicional equivale en mediana al 53% de su ingreso laboral y en un dependiente al 12%.
+Sin datos de propiedades o del exterior no hay forma de saber quién los tiene.
+
+**Jubilados y pensionistas** (3.032 en AWS; `scripts/nodep_3_otros.py`). R² de 0,21; tramo exacto 54,9% contra 47,7% si siempre se dice el más frecuente; tramo o vecino
+96,0%; dentro de ±25% 47,7%. En el país la prestación de seguridad social tiene mediana de 430, el 53% está por debajo de 470 y solo el 2,4% llega a 2.000 (ENIGHUR);
+en AWS la mediana es 1.641 y el 39% llega a 2.000: **los jubilados de AWS no representan a los del país**, y el 57,9% de sus montos son múltiplos exactos de 100
+(escritos a mano).
+
+**Criterio de acierto elegido por el negocio (2026-10-21): error del monto de ±10%, en el 85% al 90% de los casos.** Medido (`scripts/nodep_9_error10.py`, `nodep_10_dep10.py`):
+
+| Caso | Dentro de ±10% del monto |
+|---|---|
+| Independientes, modelo C, todas las respuestas | 15,8% (±25%: 37,9%) |
+| Independientes, modelo C, solo OK FACTURAR | 18,6% (±25%: 43,2%) |
+| El 2% de independientes donde el modelo está más seguro | 23,8% |
+| La misma persona calculada dos veces (menos de 60 días), independiente | 65,9% |
+| La misma persona calculada dos veces, las dos OK FACTURAR | 59,6% |
+| Dependientes del IESS, total estimado solo con el ingreso del IESS | 77,3% (el 8,0% entre quienes declaran otra actividad) |
+
+**No es alcanzable para un ingreso estimado de un independiente con los datos que existen**: el modelo queda en 16% a 19% y, aunque fuera perfecto, la etiqueta misma solo se repite dentro de ±10% el 60% al 66%
+de las veces. El 85% al 90% sí se puede cumplir donde el ingreso es verificable (dependientes del IESS, y jubilados si Novadata trae el monto de la pensión) o con otra definición del acierto (mínimo certificado o rango, más arriba).
+Otras decisiones del mismo día: entrenar con todas las respuestas y medir el acierto solo con OK FACTURAR; partir el tramo alto en 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más; no consultar Novadata para una muestra de AWS
+hasta saber qué datos guarda AWS.
+
+**Decisión del negocio sobre el criterio (2026-10-21): ±10% solo donde el ingreso es verificable; para los estimados, un mínimo certificado y un rango.** El monto exacto de un estimado se
+confirma con documentos. Medido para independientes con los tramos nuevos (menos de 470, 470 a 939, 940 a 1.999, 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más), modelo C entrenado con todas las
+respuestas y medido con todas y con OK FACTURAR (`scripts/nodep_11_minimo.py` y `nodep_12_rango_usd.py`):
+
+- **Mínimo certificado**: el monto que el ingreso real supera con una seguridad dada (cuantil bajo del modelo).
+
+| Seguridad | El real lo supera (todas / OK FACTURAR) | Mínimo sobre el ingreso real (mediana, todas) | Mediana del mínimo (todas / OK FACTURAR) |
+|---|---|---|---|
+| 95% | 94,3% / 97,9% | 0,43 | 1.000 / 1.282 |
+| 90% | 89,3% / 95,0% | 0,53 | 1.196 / 1.591 |
+| 85% | 84,3% / 91,3% | 0,60 | 1.346 / 1.838 |
+
+  Cumple la seguridad pedida, pero **es conservador**: el mínimo del 90% es en mediana la mitad del ingreso calculado y solo en el 30% de las personas llega al 70% del real.
+- **«Gana al menos X» con el mínimo del 90%** (a cuántos se certifica, qué precisión tiene y cuántos de los que de verdad ganan eso se captan): al menos 940, 74,9% de todos con 96,6% de precisión
+  y 78,3% captados; al menos 2.000, 19,8% con 95,9% y 30,2%; al menos 3.000, 9,7% con 94,8% y 21,7%; al menos 5.000, 2,7% con 94,1% y 11,7%. Solo con OK FACTURAR: 2.000, 37,9% con 99,1% y 46,2%;
+  3.000, 21,5% con 98,2% y 33,8%; 5.000, 6,6% con 97,5% y 16,8%. Con la seguridad del 85% se certifica a más: 2.000, 24,9% de todos y 45,0% de OK FACTURAR.
+- **Tramo exacto con 6 tramos**: 46,4% (todas) y 54,2% (OK FACTURAR), contra 29,5% y 38,0% si siempre se dice el más frecuente; tramo o vecino 81,0% y 85,9%.
+- **Rango en dólares**: entre el cuantil 5 y el 95 cubre al real el 88,6% (90,2% en OK FACTURAR), pero es muy ancho: el techo es en mediana 6,4 veces el mínimo (de 1.000 a 6.179). Entre el 10 y el 90, 78,6% y de 1.196 a 4.723.
+  **Un rango de dos lados con esa cobertura no sirve para decidir**: lo útil para una cuota es el mínimo.
+
+**Qué falta para ganar resolución** (pedido a la sesión de AWS el 2026-10-21).
+- Definiciones de la extracción: catálogos de respuesta comercial (OK FACTURAR, condicionado, SD, aprobado, rechazado, pendiente), de perfil final y de actividad; el orden
+  de los eventos (si el ingreso se calcula antes o después de consultar a Equifax y si se edita después), el historial de ediciones, el motivo de rechazo y de condición, y
+  el significado de «forma parte del análisis».
+- La composición del ingreso de cada independiente (declarado, cuentas, IVA), con las actividades secundarias y la observación categorizada.
+- La cuota financiera de Equifax por tipo de crédito y por rol, con su histórico de 6 y 12 meses, y el otro estimador de Equifax con su escenario.
+- Si la base de AWS guarda otros datos de Novadata o del SRI (RUC y actividad, impuesto a la renta, establecimientos, vehículos, inmuebles, nómina, pensión con monto).
+- Cómo se arma el monto de jubilados y pensionistas.
+- Para la parte baja de ingresos, que AWS casi no tiene, hacen falta los 3,9 millones del proveedor y los datos públicos (ENEMDU, ENIGHUR).
+
+### 12.15 Segunda ronda de AWS: definiciones y lo que implican (2026-10-21)
+
+Respuesta de la sesión de AWS (detalle en su `docs/base-aws-originacion.md`, puntos 12 a 19) y lo que se verificó aquí con los archivos nuevos de `research/ingresos-aws/`
+(`ingresos_por_actividad.csv`, `equifax_cuota_por_consulta.csv`, `equifax_deuda_por_tipo.csv`, `datos_por_persona_requerimiento.csv`).
+
+**Límite previo.** El flujo de efectivo solo tiene fecha de creación y auditoría desde el 2026-03-08 (62.528 de 329.791 flujos); el ingreso de independientes no tiene fechas ni
+auditoría; la tabla de macroactividad no dice quién fijó la rentabilidad ni si cambió. Todo lo de tiempos y ediciones vale solo para requerimientos desde esa fecha.
+
+**Catálogos.**
+- Respuesta comercial: 2 APROBADO, 3 APROBADO CONDICIONADO, 4 OK FACTURAR, 5 OK FACTURAR CONDICIONADO, 6 OK FACTURAR SD, 7 SD CONDICIONADO, 8 PENDIENTE y 9 RECHAZADO (activas todas menos 6 y 7).
+  **La familia APROBADO es el flujo de consumo y la familia OK FACTURAR es la automotriz**: parte de la diferencia entre respuestas es de producto y no de calidad del dato.
+- Perfil final (AAA PLUS, AAA, AA PLUS, AA, A, B, C, E) con ingreso mínimo de 1.200 (AA y AAA), 1.500 (A y B) y 1.700 (C y E).
+- Tipos de ingreso de un independiente: IVA, banco principal, banco secundaria, ingreso declarado e IVA semestral. Tipos de actividad: principal y secundaria. Documentos: básicos, de ingresos y de patrimonio.
+
+**El orden de los eventos (requerimientos desde el 2026-03-08).** La consulta a Equifax ocurre al crear el requerimiento (mediana de 0 días). El flujo de ingreso se crea después de esa consulta en el 98% al 100% de los casos
+(mediana de 0 a 50 minutos; el 10% más lento, de 1 a 6 días) y se edita después en el 99%. **El ingreso se calcula después de ver el predictor de Equifax y se edita después**: la comparación del predictor
+contra el ingreso calculado favorece al predictor, y cualquier dato que el analista veía (predictor, cuota, capacidad) puede ser un ancla de la etiqueta.
+
+**Ediciones.** El 64% al 78% de los flujos tiene más de una versión. El monto cambia entre la primera y la última versión en el 24,8% de OK FACTURAR, 32,1% de OK FACTURAR CONDICIONADO, 27,8% de APROBADO y de APROBADO
+CONDICIONADO y 33,7% de RECHAZADO; la razón última sobre primera es en mediana 1,00, 1,00, 0,93, 1,20 y 0,47: **en los rechazados el ingreso se baja**, es decir, su valor final es consecuencia de la decisión. El 4,5% de los OK FACTURAR
+y el 3,3% de los condicionados terminaron con observación de predictor.
+
+**Independientes por respuesta** (porcentaje de flujos activos; medianas por flujo, por eso no coinciden con las de personas):
+
+| Respuesta | Solo declarado | Solo bancario | Múltiplo de 100 | Con detalle mensual | Con archivo de ingresos | Marcado predictor |
+|---|---|---|---|---|---|---|
+| OK FACTURAR | 49,3% | 46,3% | 24,6% | 50,8% | 52,7% | 15,9% |
+| OK FACTURAR CONDICIONADO | 69,4% | 28,4% | 56,6% | 30,7% | 35,9% | 9,1% |
+| APROBADO | 91,7% | 7,5% | 85,9% | 8,6% | 19,0% | 1,2% |
+| APROBADO CONDICIONADO | 91,8% | 7,6% | 85,9% | 8,4% | 33,6% | 1,9% |
+| RECHAZADO | 68,4% | 29,4% | 42,3% | 31,8% | 38,6% | 1,4% |
+| Sin respuesta | 98,1% | 1,7% | 89,9% | 1,9% | 1,9% | 0,2% |
+
+Las dos variantes SD tienen 113 independientes cada una: no sirven. La mediana de meses con movimientos es 3 en todas. Documento de ingresos adjunto: 78% en OK FACTURAR, 72% en condicionados, 50% en APROBADO.
+
+**Motivos.** De 42.860 rechazos, el 7,5% no tiene motivo; sin capacidad de pago 31.450, fuera de política 23.606, sin estabilidad 7.327, irregular récord de pagos 4.923, zona 4.060 y no se justifican ingresos 1.620; el 75,1% tiene algún
+motivo de ingreso, capacidad o informal. **Los condicionados no guardan motivo y sus condiciones incumplidas nunca son de ingreso** (tasa, entrada, garantía, monto, seguro): por ingreso solo hay rechazo, no condición.
+El indicador de que una persona forma parte del análisis es verdadero en todos los titulares y en el 97,7% de los cónyuges; no se pudo confirmar si el ingreso del cónyuge se suma al del titular en alguna decisión.
+
+**La cuota de Equifax.** En las 100.536 consultas con respuesta en JSON, `cuota_estimada_mensual.pago` es igual a `cuota_financiera` y al punto «actual» del historial. **El historial tiene cinco puntos** (hace 12 meses, hace 6, actual, +6 y +12; los dos últimos
+parecen proyecciones por su etiqueta, no está documentado) **y solo existe en JSON**; en las 288.969 respuestas en XML no hay historial y la cuota financiera es numérica en el 83,2% (32.994 dicen «No tiene deuda» y 15.644 «-»). En el detalle de deuda por
+tipo, las filas «OTRO sin dato» son totales por sistema y duplican si se suman.
+
+**Otros datos que guarda AWS.** No guarda la respuesta cruda de Novadata (275 filas), ni datos del SRI (RUC, establecimientos, impuesto a la renta), ni inmuebles, nómina, jubilación o pensión como tablas. Sí guarda por persona del requerimiento el patrimonio declarado
+(vivienda en el 26%, vehículo en el 15%, muebles en el 78%; pasivos del buró en el 98%), los egresos (gasto familiar 79%, gasto financiero 99,9%, arriendo 10%), el ingreso declarado y recuperado de Novadata, y la conducta interna con Novacredit.
+**El monto de un jubilado es declarado, no recuperado de Novadata** (solo el 2,3% de 7.269 flujos); su mediana es 1.250 y más de la mitad son múltiplos de 100.
+
+**Verificado aquí** (`scripts/r2_*.py`).
+- El ingreso es la suma de los montos por tipo en el 99,9% de los 138.655 flujos con algún monto, y para banco e IVA el ingreso sobre las ventas es la rentabilidad de la macroactividad en el 81,9% de 24.707 flujos
+  (0,30 comercio y servicios generales; 0,40 fabricación, agricultura, construcción y transporte; 0,70 servicios profesionales; 1,00 arriendos).
+- **Corrección a la otra sesión**: las observaciones «RECUPERADO NOVADATA MENOS IESS» y parecidas no son ingresos adicionales de dependientes: 1.178 de 1.496 son flujos de actividad principal (y 318 de secundaria). Son el salario recuperado de Novadata al que el
+  analista le restó el aporte al IESS, es decir un salario neto. No se pueden contrastar con el IESS de la consulta: ninguna de esas personas trae promedio de Novadata ni salario del último mes.
+- **Origen del ingreso de los 57.487 independientes**: solo declarado 82,3%, solo cuentas o IVA 13,8%, mixto 3,9%; con marca de predictor 1,6%; con marca de integración de concesionario 42,2%. **El subconjunto «cuentas o IVA sin predictor» tiene 7.903 personas**
+  (3.191 OK FACTURAR o condicionado y 3.498 RECHAZADO); su mediana es 2.441 contra 2.500 del declarado.
+- El ingreso declarado de la actividad principal de independientes (65.222 flujos entre 500 y 4.000) se amontona en 1.000, 1.200, 1.500, 2.000, 2.500 y 3.000 (de 4.157 a 7.573 flujos, contra 600 a 1.000 en los valores vecinos), pero no en 1.700 (647): es redondeo
+  de números escritos, sin evidencia clara de que se ajusten a los mínimos por perfil.
+- Entre los datos internos, `persona_ingreso_declarado` es la propia etiqueta (su razón con el ingreso es exactamente 1,000 en el 45% de los casos) y se excluye; los demás (patrimonio, egresos, mora interna) no se calculan a partir del ingreso.
+- Antigüedad de la actividad de los independientes (años desde la fecha de inicio): mediana de 4,9; correlación de logaritmos con el ingreso de 0,26.
+
+### 12.16 Independientes con los datos de la segunda ronda (2026-10-21)
+
+Independientes de AWS (57.340 personas, una solicitud por persona), validación cruzada por persona, entrenado con todas las respuestas (`scripts/r2_4_preparar.py` y `r2_5_modelo.py`).
+Tramos: menos de 470, 470 a 939, 940 a 1.999, 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más. «Mínimo 90%» es el monto que el ingreso real debería superar el 90% de las veces; «certifica 2.000» es a cuántos
+se les puede asegurar que ganan al menos 2.000 con ese mínimo.
+
+| Entradas | Medido con | R² | Tramo exacto | ±10% | ±25% | El real supera el mínimo 90% | Mínimo sobre real (mediana) | Certifica 2.000 (% del total, precisión, capta) |
+|---|---|---|---|---|---|---|---|---|
+| M0 Novadata, buró y cuota total (lo anterior) | todas | 0,343 | 46,4% | 15,5% | 37,7% | 89,2% | 0,53 | 19,6%, 95,9%, 29,9% |
+| M1 más cuota por tipo e historial | todas | 0,352 | 46,9% | 15,7% | 38,0% | 89,2% | 0,54 | 21,0%, 96,1%, 32,1% |
+| M2 más actividad y antigüedad | todas | 0,364 | 47,4% | 15,8% | 38,6% | 89,1% | 0,55 | 21,7%, 96,1%, 33,1% |
+| M3 más datos internos | todas | 0,382 | 48,2% | 16,6% | 40,1% | 88,9% | 0,56 | 22,6%, 96,4%, 34,6% |
+| M0 | OK FACTURAR (9.692) | 0,447 | 54,0% | 17,7% | 43,0% | 95,2% | 0,47 | 37,6%, 99,1%, 45,9% |
+| M3 | OK FACTURAR | 0,481 | 56,3% | 19,3% | 45,1% | 93,7% | 0,53 | 45,0%, 99,0%, 54,9% |
+| M0 | solo cuentas o IVA sin predictor (7.842) | 0,323 | 38,9% | 11,0% | 26,8% | 76,5% | 0,55 | 22,3%, 90,9%, 35,6% |
+| M3 | solo cuentas o IVA sin predictor | 0,379 | 39,9% | 11,6% | 28,2% | 76,8% | 0,58 | 26,5%, 92,0%, 42,8% |
+
+- **Los datos nuevos suben poco el acierto**: de 46,4% a 48,2% en tramo exacto y de 15,5% a 16,6% dentro de ±10%. Lo que más se nota es el mínimo certificado para 2.000 o más: de 19,6% a 22,6% de todos, y de 37,6% a 45,0% en OK FACTURAR.
+  La cuota por tipo y su historial aportan lo menos (R² de 0,343 a 0,352); la antigüedad y la actividad, y los datos internos, un poco más. La cuota de Equifax ya estaba en las demás variables del buró.
+- **`egreso_gasto_financiero` no es un dato interno independiente**: es igual a la cuota de Equifax del propio titular (sin codeudor ni garante) en el 94,5% de los casos y su correlación con la cuota es 0,95. Es la variable más pesada de M3 (34% de la ganancia)
+  junto con la cuota de Equifax (16,9%); entre las dos son la señal de la cuota. Sigue: actividad CIIU (7,5%), entrada del crédito declarada (5,2%) y crédito mayor aprobado (4,0%).
+- **El ingreso calculado depende del resultado de la solicitud.** Real sobre lo previsto por el modelo (mediana): RECHAZADO 0,75, sin respuesta 1,02, OK FACTURAR CONDICIONADO 1,03, OK FACTURAR 1,06, PENDIENTE 1,13, APROBADO 1,18 y APROBADO CONDICIONADO 1,22.
+  Por eso el mínimo del 90% cubre al 76,4% de los rechazados, al 93,5% de los OK FACTURAR y al 97,6% de los aprobados de consumo. Se puede leer de dos modos que aquí no se pueden separar: se rechaza a quien gana poco, o al rechazar se baja el ingreso (la sesión de AWS midió que en los
+  rechazos se baja, con razón última sobre primera de 0,47). Con el mismo origen del ingreso las diferencias persisten: en OK FACTURAR, «solo cuentas o IVA» 1,28 y «solo declarado» 0,95.
+- **Con qué respuestas entrenar** (siempre medido sobre OK FACTURAR y condicionado, 9.692 personas, con M3):
+
+| Entrenado con | R² | Tramo exacto | El real supera el mínimo 90% en OK FACTURAR | Mínimo sobre real | Certifica 2.000 en OK FACTURAR | Cobertura en RECHAZADO |
+|---|---|---|---|---|---|---|
+| Todas las respuestas | 0,481 | 56,3% | 93,7% | 0,53 | 45,0% (99,0%) | 76,4% |
+| Todas menos RECHAZADO | 0,514 | 57,1% | 87,6% | 0,64 | 56,1% (97,7%) | 47,7% |
+| Solo OK FACTURAR y condicionado | 0,521 | 58,1% | 87,2% | 0,65 | 55,4% (98,1%) | 45,5% |
+| Solo cuentas o IVA sin predictor | 0,407 | 49,7% | 96,9% | 0,38 | 33,8% (99,3%) | 89,3% |
+
+  Quitar a los rechazados de la muestra hace más apretado el mínimo para los aprobados, pero **el mínimo deja de ser seguro para quien se rechaza** (cobertura de 76% a 46%). Como el modelo se aplicará antes de decidir, a todos los solicitantes, se entrena con todas las respuestas
+  y se mide con OK FACTURAR (decisión del negocio del 2026-10-21): da una cobertura del 89% en conjunto, aunque la de cada respuesta es distinta.
+- **El predictor de Equifax como contraste** (independientes, hasta el 13 de enero): correlación de logaritmos de 0,93 con el ingreso cuando el flujo está marcado como predictor (n = 466, circular), 0,59 mixto, 0,50 solo declarado y 0,49 solo cuentas o IVA: sin las marcas no se ve un ancla fuerte.
+
+**Qué falta para mejorar.** Una etiqueta que no dependa de la decisión: el historial de cada flujo (primera y última versión, quién la editó y cuándo) y si la persona tiene documento de ingresos adjunto. Sin eso el techo de lo que se puede medir queda en los números de arriba.
+
+### 12.17 Qué es el ingreso adicional en AWS, y el objetivo pasa a ser solo lo no verificado (2026-10-21)
+
+**Las actividades secundarias** (35.019 flujos de 32.318 titulares; `scripts/r2_8_secundarias.py`):
+
+| Persona | Con actividad secundaria | Mediana del adicional | Sobre el ingreso principal (mediana) | Recuperado de Novadata | Declarado | Cuentas o IVA | Actividad más común |
+|---|---|---|---|---|---|---|---|
+| Dependiente | 25,5% de 37.707 | 500 | 0,52 | 50,1% | 42,3% | 7,6% | comercio 29,0% (arriendos 1,4%) |
+| Independiente | 30,3% de 57.487 | 509 | 0,30 | 84,7% | 15,1% | 0,2% | comercio 14,9% |
+| Público | 28,5% de 9.375 | 600 | 0,53 | 40,2% | 55,2% | 4,6% | comercio 33,6% |
+
+(«Recuperado de Novadata u otro» es el flujo sin monto por tipo: el salario recuperado del IESS.) **La mayor parte del ingreso adicional de un independiente es un salario del IESS ya verificado** (una persona que además trabaja como dependiente), y la mitad del de un
+dependiente también. Lo que de verdad hay que estimar es el resto: comercio declarado y actividad propia. Los arriendos son el 1,4% o menos del adicional.
+
+**Se separa lo verificado de lo no verificado.** El ingreso recuperado de Novadata (observación «RECUPERADO NOVADATA…») se trata como verificado y el resto como no verificado (`unver` en `resultados/r2_personas.parquet`):
+- Independientes: el 24,7% tiene algún ingreso recuperado de Novadata y pesa en mediana el 22% de su total; solo el 0,5% no tiene nada por estimar. La mediana baja de 2.500 (total) a 2.300 (no verificado).
+- Dependientes: el 79,4% tiene ingreso recuperado y el 59,7% solo tiene eso (nada por estimar). Públicos: 96,9% y 72,0%.
+
+**Independientes, objetivo «ingreso no verificado»** (57.061 personas; mismos tramos y validación; `scripts/r2_9_unver.py`):
+
+| Entradas | Medido con | R² | Tramo exacto | ±10% | ±25% | El real supera el mínimo 90% | Mínimo sobre real | Certifica 2.000 |
+|---|---|---|---|---|---|---|---|---|
+| M0 (lo anterior) | todas | 0,331 | 45,0% | 14,7% | 35,8% | 89,2% | 0,50 | 15,5% (95,8%) |
+| M3 (cuota por tipo, actividad, datos internos) | todas | 0,370 | 46,6% | 15,6% | 37,8% | 89,1% | 0,53 | 18,2% (96,1%) |
+| M3 | OK FACTURAR (9.631) | 0,463 | 53,8% | 18,1% | 42,5% | 93,6% | 0,49 | 38,5% (98,7%) |
+| M3 más el ingreso verificado como entrada | OK FACTURAR | 0,473 | 54,7% | 18,1% | 42,8% | 93,8% | 0,51 | 38,9% (98,8%) |
+| M3 sin el aporte al IESS | todas | 0,369 | 46,4% | 15,6% | 37,7% | 89,0% | 0,53 | 18,1% (96,1%) |
+
+Con el total como objetivo M3 daba 0,382, 48,2% y 22,6% de «certifica 2.000»: separar lo verificado baja un poco las medidas porque el total incluía una parte ya conocida. **Quitar el aporte al IESS de las entradas no cambia nada** (0,369 contra 0,370): no había filtración
+por ahí. **Resultado para el producto**: lo verificado (salario del IESS) se muestra aparte con ±10% por construcción, y lo no verificado se entrega con el mínimo certificado.
+
+### 12.18 Referencia nacional para ingresos bajos y personas sin buró (ENIGHUR, 2026-10-21)
+
+Decisiones del negocio del mismo día: lo declarado en OK FACTURAR lo valida el analista con documentos, así que **todo OK FACTURAR cuenta como verdad**; la base de 3,9 millones **no trae el monto de la pensión de los jubilados**, que quedan como estimados;
+lo siguiente es una referencia nacional para ingresos bajos y para personas sin buró, con la ENIGHUR y la ENEMDU.
+
+**Independientes en el país** (`scripts/ref_1_enighur.py` y `ref_2_tablas.py`). 13.958 personas de la ENIGHUR con ingreso neto del negocio mayor que cero (2,26 millones de personas; ponderado): mediana 252; el 10% gana menos de 48, el 25% menos de 115, el 75% menos de 480 y el 90% menos de 855.
+Modelo con variables que Novadata también tiene (edad, sexo, estado civil, instrucción, provincia, zona, afiliación, RUC o RISE, tamaño del negocio, ocupación y actividad de 4 dígitos), validación cruzada agrupada por hogar:
+
+| Entradas | R² | Tramo exacto | ±10% | ±25% | El real supera el mínimo 90% | Mínimo sobre real | Mediana del mínimo | Certifica al menos 200 (% de la población, precisión, capta) |
+|---|---|---|---|---|---|---|---|---|
+| E0 Novadata | 0,375 | 75,7% | 10,1% | 25,9% | 87,7% | 0,32 | 80 | 13,0%, 93,7%, 20,3% |
+| E1 más tarjeta y cuenta | 0,384 | 75,4% | 10,4% | 26,4% | 87,8% | 0,33 | 81 | 13,8%, 93,2%, 21,5% |
+| E2 más pago de préstamos (la cuota) | 0,400 | 76,1% | 11,0% | 27,2% | 87,9% | 0,34 | 82 | 15,4%, 94,0%, 24,1% |
+
+- **El tramo exacto casi no supera el punto de partida**: el 73,5% de los independientes del país gana menos de 470, así que decir siempre «menos de 470» acierta 73,5%.
+- **Sin más información solo se puede certificar un ingreso muy bajo**: el mínimo del 90% es en mediana USD 80 (un tercio del ingreso real); se puede certificar «al menos 200» para el 13% (2,4% para «al menos 300») y a nadie para «al menos 470». **Para un independiente
+  sin historial de crédito, ningún dato de Novadata alcanza para certificar un ingreso del orden del salario básico: hay que pedir documentos.**
+- **La ENEMDU 2024 lo confirma con más gente** (61.286 patronos y cuenta propia, 3,0 millones en el país; edad, sexo, instrucción, provincia, zona, afiliación, categoría y ocupación y rama de 1 dígito; `scripts/ref_3_enemdu.py`): R² de 0,409; ±10% 11,7%; ±25% 29,0%;
+  el real supera el mínimo del 90% el 88,9% de las veces; mínimo en mediana 82 (0,38 del real). Certifica «al menos 100» al 44,4% de la población (precisión 96,9%), «al menos 200» al 17,6% (95,6%), «al menos 300» al 6,7% y «al menos 470» al 1,2% (89,9%). El 75,4% gana menos de 470.
+- **La cuota también informa poco en la población general**: R² de 0,375 a 0,400 al sumar el pago de préstamos (7,4% de la importancia); coincide con lo medido en AWS.
+- **Una tabla de celdas rinde mucho menos que el modelo** (R² de 0,10 a 0,14 contra 0,375; mínimo del 90% de USD 47 a 50): las ocupaciones y actividades de 4 dígitos y sus interacciones llevan la señal. Se dejó la tabla igual para quien necesite una referencia legible
+  (`resultados/ref_2_independientes_celdas.csv`, 115 celdas con al menos 60 personas): por ejemplo, con afiliación al IESS y RUC o RISE (2.039 personas de la muestra, 340 mil en el país) la mediana es 207, el 90% gana menos de 1.599 y el 54% menos de 470; sin afiliación y con RUC
+  (10.829; 1,74 millones) la mediana es 138 y el 78% gana menos de 470; con seguro campesino (378; 56 mil) la mediana es 76 y el 91% gana menos de 470.
+
+**Jubilados y pensionistas en el país** (prestación de seguridad social; 5.505 personas, 922 mil en el país). Aquí una tabla sí sirve: por afiliación, sexo, edad y zona tiene R² de 0,438, acierta el tramo exacto el 54,3%, el real supera el mínimo del 90% el 87,4% de las veces, el mínimo es en mediana 220 (0,56 del real)
+y se puede certificar «al menos 200» al 52,2% con 96,2% de precisión (`resultados/ref_2_pensiones_celdas.csv`).
+
+| Afiliación (códigos deducidos, no confirmados) | Muestra | En el país (miles) | P10 | P30 | Mediana | P70 | P90 | Menos de 470 | Además trabaja |
+|---|---|---|---|---|---|---|---|---|---|
+| Aporta al IESS (general o voluntario) | 3.737 | 678 | 215 | 325 | 470 | 689 | 1.100 | 48,2% | 12,7% |
+| Otro seguro (probable ISSFA o ISSPOL) | 421 | 66 | 480 | 750 | 870 | 1.170 | 1.520 | 9,7% | 25,5% |
+| Seguro campesino | 1.118 | 133 | 100 | 106 | 119 | 120 | 120 | 99,6% | 9,5% |
+| Ninguno | 229 | 44 | 120 | 270 | 400 | 600 | 2.000 | 52,5% | 11,9% |
+| Todos | 5.505 | 922 | 120 | 270 | 430 | 667 | 1.150 | 53,1% | 13,1% |
+
+La pensión del seguro campesino es casi fija (alrededor de 120) y la de otros seguros es el doble que la del IESS: **conocer el tipo de afiliación que ya trae Novadata permite estimar la pensión con una precisión útil**, mucho mejor que para un independiente.
+En AWS, en cambio, el monto de un jubilado es declarado (mediana de 1.250 a 1.641): es una población que pide crédito, no la del país.
+
+### 12.19 Mínimo de medio salario básico y población de solicitantes (2026-10-21)
+
+**Decisiones del negocio.** Cuando lo único certificable es muy bajo, **se muestra igual un valor mínimo, pero no menor a la mitad del salario básico**: es improbable que quien gana menos esté buscando un crédito de cualquier tipo. Es un supuesto sobre quien solicita, no sobre la población.
+**No hay consultas de Aval con ingreso calculado, solo de Equifax**: la versión con buró se entrena solo con Equifax; con Aval se usa la versión de Novadata.
+
+**Se midió el supuesto con los solicitantes de AWS** (independientes, ingreso no verificado; `scripts/r2_10_piso.py`, el nombre del guion es anterior a este cambio de término). Ganan menos que la mitad del salario básico del año (de 200 a 241) el 0,56% de todos, el 0,22% de OK FACTURAR y el 1,73% de los rechazados; menos que el salario básico entero, el 1,37% y el 0,44%.
+El supuesto se cumple en los datos. **El límite de medio salario básico nunca llega a aplicarse** con un modelo entrenado con solicitantes: ningún mínimo del modelo queda por debajo de la mitad del salario básico.
+
+| Entradas (modelo entrenado con solicitantes) | Medido con | Mínimo | El real lo supera | Mediana del mínimo | Mínimo sobre real | Certifica 2.000 (% del total, precisión) |
+|---|---|---|---|---|---|---|
+| V1 Novadata (edad, sexo, zona, aporte IESS, actividad y antigüedad) | todas | 90% | 89,3% | 1.013 | 0,45 | 2,4%, 93,1% |
+| V1 | todas | 85% | 84,3% | 1.150 | 0,51 | 5,5%, 90,6% |
+| V1 | OK FACTURAR | 90% | 94,9% | 1.150 | 0,33 | 6,7%, 93,4% |
+| V2 Novadata más buró y cuota | todas | 90% | 89,1% | 1.113 | 0,53 | 18,2%, 96,1% |
+| V2 | todas | 85% | 84,1% | 1.251 | 0,61 | 22,9%, 94,7% |
+| V2 | OK FACTURAR | 90% | 93,6% | 1.599 | 0,49 | 38,5%, 98,7% |
+| V2 | OK FACTURAR | 85% | 89,7% | 1.832 | 0,57 | 45,1%, 98,0% |
+
+**Lo que implica.** Para quien solicita, aun sin buró (V1) el mínimo certificado es de unos USD 1.000 (contra 80 en la población nacional, 12.18): la diferencia es el hecho de estar pidiendo un crédito. El resultado depende de **qué producto y qué institución**: AWS es financiamiento de vehículos y consumo
+(mediana de 2.300 entre independientes); la mezcla de una institución de microcrédito o una cooperativa tendría ingresos más bajos, y el mínimo de un modelo entrenado con AWS no valdría tal cual. **El modelo de solicitantes hay que calibrarlo con la población de cada institución o producto**, y la referencia nacional
+queda para donde no se pueda suponer que la persona solicita crédito.
+
+### 12.20 Lo que falta y lo que sigue sin confirmar (2026-10-22)
+
+**La tercera ronda de AWS** (historial de cada flujo, documentos de ingresos por persona y secuencias de estados de la respuesta comercial) **no la hizo la sesión que leía la base**, que se cerró el 2026-10-22; **la hizo esta sesión el mismo día con la autorización expresa del negocio**,
+solo con esas tres consultas, en transacción de solo lectura (`research/ingresos-aws/scripts/extraer_ronda3.mjs`; usa `clientes/aws-ingresos.env`, fuera de git). Sus resultados están en 12.21. Cualquier consulta nueva a esa base la autoriza el negocio. El documento de la otra sesión, `docs/base-aws-originacion.md` (puntos 1 a 19), ya está en `main`.
+
+**Resuelto.**
+- Contrato con Equifax para entrenar con sus salidas: no hace falta, son datos ya pagados (decisión del negocio del 2026-10-21).
+- Dónde queda el predictor corregido desde abril: los datos recibidos ya traen la corrección (el valor guardado es idéntico al crudo en todas las semanas desde octubre de 2025).
+- Las observaciones «RECUPERADO NOVADATA MENOS IESS»: son un salario neto, no un ingreso adicional (12.15).
+- Lo declarado en OK FACTURAR: lo valida el analista con documentos (decisión del negocio del 2026-10-21).
+
+**Sin confirmar.** Se dicen como inferencias y no se usan como dato.
+1. Qué significa «SD» en OK FACTURAR SD y SD CONDICIONADO (113 independientes en cada una: no sirven).
+2. Si la marca de «consumo» de la respuesta comercial separa de verdad consumo de automotriz (lo supone 12.15).
+3. Si el estado FINALIZADO del requerimiento significa que se facturó.
+4. Quién fijó la rentabilidad por macroactividad (0,30, 0,40, 0,70 y 1,00) y si cambió: la tabla no tiene autor ni fecha, y esa rentabilidad define el ingreso de cuentas e IVA.
+5. Cómo se arma el total de ingresos de la vista de reportes y si suma al cónyuge.
+6. Cómo arma Novadata el promedio del IESS: el ingreso de un dependiente con fuente IESS es el 90,0% de ese promedio en el 75,5% de los casos (un descuento fijo del 10%, no el 9,38% de ley).
+7. Que los dos últimos puntos del historial de cuota de Equifax (+6 y +12 meses) sean proyecciones: se dedujo de la etiqueta.
+8. Los códigos de afiliación, de categoría de ocupación y de nivel de instrucción de la ENIGHUR, la ENEMDU y el censo: se deducieron de los datos y no de una etiqueta oficial.
+9. Quién editó cada versión de un flujo: la auditoría solo existe desde el 2026-03-08 y, para el 46% al 53% de las versiones, el usuario no coincide con ningún analista registrado, así que el rol solo se puede leer en parte (12.21: se distingue por comportamiento, automático o manual).
+
+### 12.21 Tercera ronda: historial por flujo, documentos y secuencias (2026-10-22)
+
+Tres extracciones de solo lectura, autorizadas por el negocio el 2026-10-22: `flujos_historial.csv` (96.909 flujos con auditoría, desde el 2026-03-09), `documentos_por_persona.csv` (92.472 personas) y `secuencias_respuesta.csv` (agregado), en `research/ingresos-aws/` (fuera de git).
+Guiones: `scripts/extraer_ronda3.mjs` (lectura), `scripts/r3_*.py` (análisis). No se exportaron nombres de usuario: cada versión se clasifica por el **rol** del usuario en la tabla de analistas y por su **comportamiento**.
+
+**Quién escribe y quién corrige.**
+- Diez usuarios, con el 43% de las versiones, hacen casi todas sus ediciones (80% o más) a menos de 2 minutos de crear el requerimiento: son **automáticos** (integración o cálculo del sistema; cuatro de ellos con el rol «NEGADO/APELADO»). Otros 54 usuarios las hacen después: **manuales**. No hay casos intermedios.
+- El rol de la tabla de analistas no coincide con el usuario en el 46% de las primeras versiones y en el 53% de las últimas («sin coincidencia»), por eso el comportamiento es la clasificación útil.
+- La primera versión de un flujo es automática en el 53% y la última es manual en el 54%.
+
+**Independientes (actividad principal de titulares, flujos activos con auditoría), según la respuesta final.**
+
+| Respuesta | Flujos | Primera versión automática | Tocado por un autor manual | Monto sin cambio | Baja | Sube | Razón mediana si cambia | Con cuentas o IVA |
+|---|---|---|---|---|---|---|---|---|
+| Sin respuesta | 10.277 | 95% | 5% | 97% | 1% | 2% | 1,07 | 1% |
+| RECHAZADO | 4.854 | 15% | 97% | 24% | 55% | 21% | 0,46 | 32% |
+| APROBADO CONDICIONADO | 3.551 | 19% | 98% | 49% | 18% | 32% | 1,20 | 6% |
+| OK FACTURAR | 3.455 | 14% | 99% | 25% | 37% | 38% | 0,98 | 39% |
+| OK FACTURAR CONDICIONADO | 1.115 | 19% | 97% | 30% | 33% | 37% | 0,94 | 24% |
+| PENDIENTE | 849 | 19% | 95% | 46% | 23% | 31% | 1,00 | 21% |
+| APROBADO | 679 | 18% | 97% | 45% | 26% | 29% | 0,91 | 19% |
+
+- **En un OK FACTURAR el monto lo trabaja una persona**: el 99% de los flujos lo tocó un autor manual, el monto cambia en el 75% y lo hace casi parejo hacia arriba y hacia abajo (razón mediana de 0,98). Coincide con lo dicho por el negocio (el analista contrasta y valida), y es distinto de los «sin respuesta»,
+  que son montos del concesionario que nadie tocó (97% sin cambio, 5% tocado por una persona). En los rechazados el monto baja (55%, razón de 0,46 cuando cambia).
+- Entre los OK FACTURAR o condicionados, la primera versión suele ser manual: 3.688 de 4.570 flujos; la primera automática y la última manual son 625; los que quedaron en una sola versión, 188.
+
+**Las secuencias de la respuesta comercial.** Casi todos los requerimientos tienen una sola respuesta: OK FACTURAR 18.481 de 35.046 (53%), RECHAZADO 57.016 de 63.390 (90%). Pasos que se repiten: PENDIENTE a OK FACTURAR (1.050), OK FACTURAR CONDICIONADO a OK FACTURAR (702; mediana de 27,7 horas),
+APROBADO CONDICIONADO a OK FACTURAR CONDICIONADO (233) y APROBADO CONDICIONADO a RECHAZADO (571; 22 horas): **una aprobación condicionada puede terminar rechazada**.
+
+**Los documentos de ingresos** (57.487 independientes; documento cargado = tiene al menos un archivo que no fue eliminado).
+
+| Respuesta | Con registro de documentos | Algún documento de ingresos | Movimientos bancarios | Declaraciones de IVA | RUC o RIMPE | Impuesto a la renta | Certificado bancario |
+|---|---|---|---|---|---|---|---|
+| Sin respuesta | 4% | 1% | 0% | 0% | 0% | 0% | 0% |
+| RECHAZADO | 69% | 37% | 23% | 5% | 8% | 3% | 2% |
+| OK FACTURAR | 80% | 54% | 33% | 8% | 13% | 3% | 13% |
+| OK FACTURAR CONDICIONADO | 73% | 34% | 12% | 4% | 6% | 2% | 2% |
+| APROBADO CONDICIONADO | 78% | 32% | 6% | 2% | 6% | 2% | 1% |
+| APROBADO | 47% | 15% | 4% | 1% | 4% | 1% | 0% |
+
+Entre los OK FACTURAR y condicionados: **solo declarado** (4.662): 42% tiene algún documento de ingresos cargado y 9% movimientos bancarios; **solo cuentas o IVA** (3.191): 55% y 51%. **El «el analista lo contrasta con documentos» se ve cargado en el sistema solo en el 42% de lo declarado** (los documentos pueden estar fuera de la base).
+
+**Comprobaciones con el modelo M3 (objetivo: ingreso no verificado; OK FACTURAR y condicionado).**
+- «Solo declarado» con documento de ingresos contra sin documento: R² de 0,513 y 0,518; tramo exacto 59,2% y 57,5%; real sobre previsto 0,96 y 0,99. **El documento cargado no cambia qué tan predecible es el monto ni su nivel**: no hay una etiqueta más limpia por ahí, y se mantiene la decisión de tratar todo OK FACTURAR como verdad.
+- Los «solo cuentas o IVA» son menos predecibles que los declarados (R² de 0,31 a 0,34 contra 0,51; real sobre previsto de 1,22 a 1,38: el modelo los subestima).
+- Entrenar sin los «sin respuesta» (38% de la muestra, montos del concesionario sin revisar) casi no cambia lo medido en OK FACTURAR: R² de 0,463 a 0,468; tramo exacto de 53,8% a 54,6%; el real supera el mínimo del 90% el 93,2% contra 93,6%; certifica 2.000 al 39,5% contra 38,5%. Se mantiene entrenar con todas las respuestas.
+
+**Qué queda del límite de la etiqueta.** Confirmado que en los casos decididos hay un cálculo humano y que el monto depende del resultado (en rechazos baja). No se pudo separar lo que corrige un analista de lo que escribe un concesionario más allá de automático y manual, y el rol de los usuarios manuales no se conoce en casi la mitad de las versiones.
+
+### 12.22 Las variables del buró y los tres niveles con el mismo objetivo (2026-10-22)
+
+**Las columnas de «crédito» del extracto de AWS son campos de la respuesta cruda de Equifax.** Se cotejaron las 5.001 respuestas de `muestra_respuestas_equifax.jsonl` con las columnas del extracto (`scripts/r3_5_paridad_buro.py`): igualdad exacta (±0,011) en 4.499 de 4.499 respuestas con dato, en las diez:
+`credito_mayor_aprobado_monto` = `MCAMontoOriginal`; `credito_mayor_12m_monto` = `CMRMontoOriginal`; `credito_mayor_24m_monto` = `CMAMontoOriginal`; `deuda_total_adeudada` = `PCTotalAdeudado`; `n_instituciones_con_deuda` = `PCNumIfisActuales`;
+`n_creditos_aprobados` = `RECACreditosAprobados`; `valor_creditos_aprobados` = `RECAValCreditosAprobados`; `valor_saldos_vigentes` = `RECAValSaldosVigentes`; `deuda_actual_total` = `TDeudaActual`; `deuda_hace_3_meses` = `TDeudaHace3Meses`.
+Todos de `interconnectResponse` → `AnalisisCreditoSectorFinanciero`. Esto cierra la duda de la otra sesión sobre qué miden «mca, cmr, cma y reca».
+
+**Qué ventana de tiempo cubre cada crédito mayor** (meses entre la fecha de concesión y la consulta): el mayor crédito aprobado (`MCA`) tiene mediana de 24,9 (P10 4,1; P90 81; máximo 360,8); el «reciente» (`CMR`) mediana de 11,7 (P90 44,5) y el «actual» (`CMA`) mediana de 37,9 (P90 96,0).
+**No son ventanas estrictas de 12 y 24 meses**, aunque la columna del extracto se llame `12m` y `24m`. El mínimo de los tres es −8,7 meses: **hay créditos con fecha de concesión posterior a la consulta**, y por eso en el entrenamiento se anula el crédito mayor cuando su fecha es posterior (puede ser el crédito que se pide). El 90% de los casos cumple `CMR ≤ MCA` y `CMA ≤ MCA`.
+
+**CrediScope no extrae hoy estos campos**: `derivarTablas` toma de `interconnectResponse` solo dos cálculos de Equifax, porque la deuda de ese bloque no cuadra con la de `reporteCrediticio`. Las variables más pesadas del nivel 2 (el mayor crédito aprobado, 32% de la ganancia, y la deuda de hace 3 meses, 15%) salen de ese bloque:
+se usan como señal, no como saldo, y hay que extraerlas a una tabla nueva (`docs/especificacion-predictor-de-ingresos.md`, 4.2).
+
+**Los tres niveles con el mismo objetivo, con la actividad y la antigüedad que trae AWS** (referencia: **no se pueden reproducir en CrediScope**, ver 12.23; ingreso no verificado de 57.061 independientes; entre paréntesis, solo OK FACTURAR y condicionado, 9.631; `scripts/r3_6_niveles.py`):
+
+| Nivel | R² | Tramo exacto | ±10% | ±25% | El real supera el mínimo 90% | Mínimo sobre real | Mediana del mínimo 90% | Certifica 940 | Certifica 2.000 | Certifica 3.000 | Certifica 5.000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 Novadata | 0,135 (0,018) | 36,4% (36,1%) | 10,9% (10,0%) | 27,8% (26,2%) | 89,3% (94,9%) | 0,45 (0,33) | 1.013 (1.150) | 64,6% (75,3%) | 2,4% (6,7%) | 0,1% (0,3%) | 0,0% |
+| 2 Novadata y buró | 0,351 (0,438) | 45,8% (52,4%) | 15,1% (17,4%) | 36,5% (41,1%) | 89,1% (94,5%) | 0,52 (0,47) | 1.104 (1.515) | 67,6% (84,0%) | 17,3% (35,7%) | 8,0% (18,6%) | 2,1% (4,9%) |
+| 3 Con datos internos | 0,370 (0,463) | 46,6% (53,8%) | 15,6% (18,1%) | 37,8% (42,5%) | 89,1% (93,6%) | 0,53 (0,49) | 1.113 (1.599) | 67,5% (85,0%) | 18,2% (38,5%) | 8,8% (21,5%) | 2,3% (6,1%) |
+
+La precisión de lo certificado es de 93% a 99% en todos los casos con certificación. **El nivel 1 casi no distingue a una persona de otra**: en OK FACTURAR su R² es de 0,018, y su mínimo es en la práctica el límite inferior de la población de solicitantes (unos 1.000).
+**El salto está en el buró** (de 0,135 a 0,351 en R²), y los datos internos suman poco (de 0,351 a 0,370).
+
+### 12.23 El catálogo CIIU, la actividad de AWS y los niveles que sí se pueden servir (2026-10-22)
+
+**Catálogo CIIU de AWS** (leído con autorización del negocio, solo esa tabla; `research/ingresos-aws/ciiu_catalogo.csv`): 6.172 códigos en 7 niveles (21 secciones de una letra, 88 divisiones, 238 grupos, 419 clases y códigos más finos del SRI, hasta 11 caracteres).
+Los 57.029 independientes con actividad (99,9%) tienen un id con código en el catálogo; el 95% apunta al nivel más fino (códigos como `N8230.00.01`). Son 1.714 actividades distintas, 22 secciones y 86 divisiones.
+
+**La actividad casi no aporta y agruparla no pierde nada** (Nivel 2, `scripts/r3_8_ciiu.py`, todas / OK FACTURAR): R² de 0,351 / 0,438 con las 1.714 categorías; 0,352 / 0,438 con la división; 0,352 / 0,439 con la sección (una letra); 0,347 / 0,446 sin actividad (solo la antigüedad).
+En el Nivel 1 (`scripts/r3_9_ciiu_nivel1.py`) pesa un poco más: R² de 0,070 solo con datos de la persona; 0,087 con el aporte al IESS; 0,116 con la antigüedad de la actividad; 0,129 con la sección; 0,135 con las 1.714 categorías. En OK FACTURAR el Nivel 1 queda alrededor de cero en todas las variantes.
+
+**La actividad y la fecha de inicio de AWS no son las del SRI** (`scripts/r3_10_paridad_sri.py`, 1.368 casos con las dos fuentes): la sección CIIU coincide en el 58,0%, la división en el 57,5% y la clase a 5 caracteres en el 57,3%; la fecha de inicio es idéntica en el 19,4%, dentro de 31 días en el 32,7% y dentro de un año en el 45,5%.
+En AWS salen del flujo de ingreso (declaradas o escritas por el analista); la de Equifax es el registro del SRI (`informacion_sri`: RUC, estado, clase, obligado a llevar contabilidad, fecha de inicio y código CIIU; el 76% de las respuestas tiene RUC). **Servir con el SRI un modelo entrenado con lo declarado metería ruido.**
+
+**Los tres niveles solo con variables que CrediScope puede armar igual** (sin actividad ni antigüedad de AWS; `scripts/r3_11_niveles_servibles.py`; entre paréntesis, solo OK FACTURAR y condicionado):
+
+| Nivel | R² | Tramo exacto | ±10% | ±25% | El real supera el mínimo 90% | Mínimo sobre real | Mediana del mínimo 90% | Certifica 940 | Certifica 2.000 | Certifica 3.000 | Certifica 5.000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 Novadata | 0,087 (−0,071) | 34,7% (32,1%) | 11,0% (10,2%) | 26,9% (25,3%) | 89,5% (95,9%) | 0,43 (0,31) | 991 (1.042) | 64,9% (78,5%) | 1,6% (4,3%) | 0,0% (0,1%) | 0,0% |
+| 2 Novadata y buró | 0,341 (0,445) | 45,5% (52,3%) | 14,8% (17,5%) | 36,3% (41,6%) | 89,1% (94,9%) | 0,51 (0,46) | 1.088 (1.457) | 65,4% (84,7%) | 16,9% (34,0%) | 7,9% (17,6%) | 2,3% (5,0%) |
+| 3 Con datos internos | 0,359 (0,472) | 46,3% (54,5%) | 15,5% (18,2%) | 37,2% (42,8%) | 89,1% (93,8%) | 0,53 (0,50) | 1.098 (1.586) | 66,0% (85,1%) | 17,9% (37,8%) | 8,9% (21,4%) | 2,6% (6,8%) |
+
+La precisión de lo certificado (a 940: 93% a 99%; a 2.000: 95% a 99%; a 3.000: 95% a 100%) se mantiene. **Estas son las cifras que valen para el producto** (`docs/especificacion-predictor-de-ingresos.md`). El nivel 1 queda sin poder para distinguir a una persona (R² de 0,087 y negativo en OK FACTURAR) y solo da el límite
+inferior de la población de solicitantes; el buró es el que aporta (R² de 0,341).
+
+**Para recuperar la actividad y la antigüedad**: extraer `informacion_sri` de las respuestas de Equifax guardadas en AWS (JSON desde diciembre de 2025 y XML antes) y reentrenar con ellas; es otra consulta a AWS y la autoriza el negocio. Se espera recuperar unos 0,04 de R² en el nivel 1 y nada en el nivel 2 (no medido con el SRI).
+
+**Decisiones del negocio del 2026-10-22**: los dos primeros tramos siguen al salario básico del año (1 y 2 salarios) y los demás son dólares fijos (2.000, 3.000 y 5.000); se abre un PR con la investigación y la especificación, sin fusionar hasta que lo pida el negocio.
 
 ## 13. Registro de verificación
 

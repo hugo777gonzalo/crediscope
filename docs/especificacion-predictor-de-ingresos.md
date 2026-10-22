@@ -1,0 +1,277 @@
+# Especificación técnica del predictor de ingresos
+
+Borrador del 2026-10-22, para decidir antes de construir. **Nada de esto está construido en el producto.** El análisis que lo sustenta, con todas las mediciones, está en
+`docs/investigacion-predictor-de-ingresos.md` (las secciones 12.x); acá se cita el número de cada una. No lleva datos de personas: las extracciones y los guiones de entrenamiento
+viven fuera de git (`research/ingresos-aws/` y `C:\datos\ingresos\`).
+
+## 0. En una página
+
+**Qué hace.** Para una persona cuyo ingreso no lo verifica un tercero (independientes, jubilados, personas sin actividad formal e ingreso adicional de dependientes), devuelve un
+**ingreso mínimo certificado** (el monto que el ingreso real supera con 90% o 85% de seguridad), la **probabilidad de cada tramo** y un valor central. El ingreso que sí verifica un tercero
+(el salario que reporta el IESS) se muestra aparte, tal cual, y no se estima.
+
+**Lo que garantiza y lo que no.** La seguridad del mínimo se midió contra el ingreso calculado de personas que pidieron crédito (AWS): el real lo supera el 89% de las veces con el mínimo del 90%.
+**No garantiza el monto**: acertar el monto dentro de ±10% se logra en el 15% al 19% de los casos y la propia etiqueta no se repite mejor que el 60% al 66% (12.13 y 12.14). Por eso el ±10% se promete
+solo donde el ingreso es verificable, y para lo estimado se promete un mínimo.
+
+**Cuatro niveles según los datos que haya** (decisión del negocio del 2026-10-21): verificado (IESS), estimado con Novadata, estimado con Novadata y buró, y estimado con Novadata, buró y datos internos
+(este último pendiente). Más dos referencias que no son una estimación de la persona: la pensión por tipo de afiliación y la distribución nacional de su tipo.
+
+**Qué hay que construir**: un evaluador del modelo en `_shared`, un módulo que arme las variables desde el perfil y Equifax, una función con su operación en la API, dos tablas, la integración con la capacidad de pago y una tarjeta en la pantalla.
+**Lo que falta decidir o conseguir** está en la sección 10.
+
+## 1. Decisiones del negocio que lo definen
+
+| Fecha | Decisión |
+|---|---|
+| 2026-10-17 | Cada módulo tiene su propia puerta: una función y una operación propia en `api/openapi.yaml`. El marco y el modelo de lenguaje se tocan al final. |
+| 2026-10-21 | El predictor estima **el ingreso no verificado**; el salario bruto del IESS es la verdad de un dependiente y no se afina; el descuento al empleado se aplica al final. |
+| 2026-10-21 | Tres versiones por datos de entrada: Novadata; Novadata más buró (Equifax o Aval); Novadata más datos internos más buró (pendiente). Entrenar con salidas de Equifax no necesita contrato: son datos ya pagados. |
+| 2026-10-21 | El resultado es un tramo con probabilidad y un valor central con rango. Los tramos del tramo alto: 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más. |
+| 2026-10-21 | El predictor de Equifax es solo contraste, no entrada. La cuota financiera de Equifax es la pista principal. No se usan los límites de cuota por institución (se incumplen por excepción). |
+| 2026-10-21 | AWS es el piloto y se reentrena con los 3,9 millones del proveedor cuando lleguen. Se entrena con todas las respuestas comerciales y se mide con OK FACTURAR (con condicionado), que cuenta como verdad: lo declarado lo valida el analista con documentos. |
+| 2026-10-21 | ±10% del monto solo donde el ingreso es verificable; para lo estimado, **mínimo certificado más rango**, y el monto exacto se confirma con documentos. |
+| 2026-10-21 | Se muestra siempre un valor mínimo, **no menor a la mitad del salario básico**: es improbable que quien gana menos pida un crédito. Aval no tiene consultas con ingreso calculado: la versión con buró es solo Equifax. |
+| 2026-10-21 | La base de 3,9 millones no trae el monto de la pensión: los jubilados quedan como estimados. |
+| 2026-10-22 | Los dos primeros tramos siguen al salario básico del año; los demás son dólares fijos. Se autorizó leer el catálogo CIIU de AWS y se abrirá un PR con la investigación y esta especificación, sin fusionar hasta que lo pida el negocio. |
+
+## 2. Qué devuelve
+
+### 2.1 La respuesta
+
+Una respuesta por persona y por pedido, con la versión del modelo y de las variables. Los montos son mensuales, en dólares, y los nombres siguen los de `api/openapi.yaml` (castellano, sin anglicismos).
+Los números del ejemplo son inventados.
+
+```json
+{
+  "version": "ingreso-v1",
+  "nivel": 2,
+  "verificado": {
+    "origen": "IESS",
+    "salarioReportado": 1250.00,
+    "aportePersonal": 118.13,
+    "ingresoNeto": 1131.87,
+    "mes": "2026-08"
+  },
+  "estimado": {
+    "aplica": true,
+    "rotulo": "Ingreso estimado, sin verificar",
+    "minimoCertificado": { "seguridad": 0.90, "monto": 1180.00, "limiteDeMedioSbuAplicado": false },
+    "minimoAlternativo": { "seguridad": 0.85, "monto": 1330.00 },
+    "valorCentral": 2310.00,
+    "tramos": [
+      { "desde": 0, "hasta": 470, "probabilidad": 0.01 },
+      { "desde": 470, "hasta": 940, "probabilidad": 0.04 },
+      { "desde": 940, "hasta": 2000, "probabilidad": 0.38 },
+      { "desde": 2000, "hasta": 3000, "probabilidad": 0.27 },
+      { "desde": 3000, "hasta": 5000, "probabilidad": 0.20 },
+      { "desde": 5000, "hasta": null, "probabilidad": 0.10 }
+    ],
+    "certificaAlMenos": [940]
+  },
+  "referencia": null,
+  "calidad": { "variablesUsadas": 41, "variablesSinDato": 6, "avisos": ["Sin historial de tarjetas en el buró."] },
+  "modelo": { "poblacion": "solicitantes de crédito de vehículos y consumo", "calibradoPara": null, "entrenadoEl": "2026-10-22" }
+}
+```
+
+### 2.2 Reglas de lectura
+
+1. **`verificado` y `estimado` son bloques separados** y nunca se suman en el servidor. Un dependiente trae `verificado` y `estimado.aplica: false`; un independiente sin IESS trae solo `estimado`.
+   Un independiente que además tiene un salario del IESS trae los dos: el salario es verificado y el modelo estima solo lo no verificado.
+2. **El mínimo mostrado es el mayor entre el mínimo del modelo y la mitad del salario básico del año** (`SBU_POR_ANIO` de `fuentes-ingreso.ts`). Con un modelo entrenado con solicitantes ese límite nunca se aplicó (12.19);
+   el campo `limiteDeMedioSbuAplicado` dice cuándo sí.
+3. **El mínimo no es el ingreso.** En mediana es entre un 45% y un 55% del ingreso calculado entre solicitantes (12.16, 12.17 y 12.19; en la población nacional, un tercio, 12.18); en pantalla y en la API se rotula como mínimo, nunca como ingreso de la persona. El valor central es la mediana del modelo.
+4. **Los tramos**: decisión del negocio del 2026-10-22: los dos primeros siguen al salario básico del año (menos de 1 salario, de 1 a menos de 2 salarios) y los demás son fijos: 2 salarios básicos a 1.999, 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más.
+   Con el salario de 2026 (482) los cortes son 482 y 964; con el de 2025 eran 470 y 940. Los cortes se aplican al responder, no al entrenar: el modelo entrega cuantiles y la probabilidad de cada tramo sale de la distribución con los cortes del año. Las medidas de este documento usan 470 y 940.
+5. **`certificaAlMenos`** lista los umbrales (940, 2.000, 3.000, 5.000) que el mínimo del 90% alcanza. Con buró (nivel 2), certificar «al menos 2.000» acierta el 95,7% de las veces entre quienes se certifica, y el 98,9% si solo se miran los OK FACTURAR (12.23).
+6. **Una variable sin dato no corta la estimación**: baja la precisión y se dice en `calidad`. Una persona sin consulta de buró no usa el nivel 2.
+
+### 2.3 El neto de lo verificado
+
+El ingreso neto de un salario del IESS usa el aporte personal de `PARAMETROS_CAPACIDAD.aportePersonalIess` (9,45%), igual que `capacidad-de-pago.ts`. El ingreso calculado de AWS resta un 10% fijo en el 75,5% de los dependientes (12.12 y 12.13):
+**es una diferencia conocida**, y por eso el predictor no se entrena con el neto de un dependiente.
+
+## 3. Niveles y selector
+
+### 3.1 Qué se mide en cada nivel
+
+Independientes de AWS, ingreso no verificado, validación cruzada por persona; entre paréntesis, solo OK FACTURAR y condicionado (12.22, 12.23 y `scripts/r3_11_niveles_servibles.py`). **Solo con variables que CrediScope puede armar igual que en el entrenamiento**
+(sin la actividad ni la antigüedad que trae AWS: son declaradas y no coinciden con las del SRI, 4.1).
+
+| Nivel | Entradas | R² | Tramo exacto | El real supera el mínimo del 90% | Mediana del mínimo del 90% | Certifica «al menos 2.000» (% del total, precisión) |
+|---|---|---|---|---|---|---|
+| 0 Verificado | Salario del IESS (Novadata) | — | — | — | — | — |
+| 1 Novadata | Edad, sexo, zona, aporte al IESS, meses con aporte y número de empleos | 0,087 (−0,071) | 34,7% (32,1%) | 89,5% (95,9%) | 991 (1.042) | 1,6%, 95,4% (4,3%, 96,9%) |
+| 2 Novadata y buró | Lo anterior más deuda, crédito y cuota de Equifax | 0,341 (0,445) | 45,5% (52,3%) | 89,1% (94,9%) | 1.088 (1.457) | 16,9%, 95,7% (34,0%, 98,9%) |
+| 3 Más datos internos | Lo anterior más patrimonio y gastos declarados en la solicitud | 0,359 (0,472) | 46,3% (54,5%) | 89,1% (93,8%) | 1.098 (1.586) | 17,9%, 96,2% (37,8%, 98,8%) |
+
+**El nivel 1 no distingue a una persona de otra** (R² de 0,087 y negativo en OK FACTURAR): su mínimo es en la práctica el límite inferior de la población de solicitantes, unos USD 1.000. Se muestra con la etiqueta
+«referencia de solicitantes», no como estimación de la persona. **El salto está en el buró**: con él, la cuota y la deuda explican un tercio de la variación.
+
+### 3.2 Cuándo se usa cada uno
+
+El selector corre en este orden y toma el primero que aplica. Los segmentos son los de `fuentes-ingreso.ts` (`Segmento`).
+
+1. **Nivel 0, verificado**: los segmentos `publico`, `diplomatico`, `dependiente_privado` y `empleo_domestico` con ingreso del IESS. Se muestra el salario y su neto; el ingreso adicional no verificado **no se estima** (no se puede predecir:
+   AUC de 0,72 para saber si lo tiene y R² de 0,11 para el monto, 12.14) y se dice «puede tener ingresos que no constan».
+2. **Pensión por tipo de afiliación**: los segmentos `jubilado` y `jubilado_con_ingreso_adicional`. Se entrega la referencia de la sección 3.3, rotulada como referencia.
+3. **Nivel 3**, si la solicitud trae datos internos; **nivel 2**, si la institución tiene a Equifax como buró y la persona tiene una consulta vigente; **nivel 1**, en los demás casos: los segmentos `independiente`, `ingresos_mixtos`, `agricola`, `trabajo_hogar` e `informal_o_sin_actividad`.
+4. **`sin_datos` y `no_clasificado`: no se estima.** Es la ausencia de la consulta, no un juicio sobre la persona.
+5. **Referencia nacional**, solo si la institución lo pide para una población que no es de solicitantes (microcrédito o inclusión): distribución del ingreso de su tipo en el país (3.4).
+
+Con Aval como buró de la institución se usa el nivel 1: no hay datos de Aval con ingreso calculado para entrenar (decisión del 2026-10-21).
+
+### 3.3 Pensión por tipo de afiliación (ENIGHUR 2024-2025; 12.18)
+
+Tabla por afiliación, sexo, edad y zona, con respaldo jerárquico cuando la celda tiene menos de 40 personas. R² de 0,438; el real supera el mínimo del 90% el 87,4% de las veces; mínimo en mediana de 220; certifica «al menos 200» al 52,2% con 96,2% de precisión.
+Mediana de la pensión: aporta al IESS 470 (P10 215, P90 1.100), otro seguro (probable ISSFA o ISSPOL) 870, seguro campesino 119 (casi fija), sin afiliación 400. **Los códigos de afiliación de la encuesta se dedujeron, no están confirmados** (sección 10).
+El archivo es `resultados/ref_2_pensiones_celdas.csv`; en CrediScope sería una tabla de referencia versionada.
+
+### 3.4 Referencia nacional (ENIGHUR y ENEMDU; 12.18)
+
+Para independientes sin información de crédito en el país el mínimo del 90% es en mediana USD 80 (un tercio del ingreso real) y el 75% gana menos de 470. El modelo distingue más que una tabla de celdas (R² de 0,375 contra 0,10 a 0,14), pero el mínimo certificable sigue siendo
+bajo: sirve para decir qué es lo normal en su tipo y para decidir cuándo pedir documentos, no para estimar a la persona.
+`resultados/ref_2_independientes_celdas.csv` (115 celdas) y el modelo E0 de `scripts/ref_1_enighur.py`.
+
+## 4. Variables y de dónde salen en CrediScope
+
+El modelo se entrenó con variables del extracto de AWS; en CrediScope hay que armarlas desde el perfil y desde Equifax. La paridad se comprobó donde se pudo (sección 9).
+
+### 4.1 Nivel 1: Novadata
+
+| Variable del modelo | Qué es | Fuente en CrediScope |
+|---|---|---|
+| `edad`, `genero`, `estado_civil` | Datos de la persona | Perfil, grupo de identidad (Registro Civil vía Novadata) |
+| `prov_dom`, `cant_dom`, `prov_trab`, `cant_trab` | Provincia y cantón de domicilio y de trabajo | Perfil, direcciones y empleo actual |
+| `aporte`, `meses_aporte`, `n_empleos` | Aporte al IESS del último mes, meses con aporte, número de empleos | Perfil, IESS y continuidad laboral (`ContinuidadLaboral`, `VinculoIess`) |
+| `anio_mes` | Fecha de la consulta, en años con fracción | Reloj del servidor |
+
+**La actividad y la antigüedad de la actividad no entran por ahora.** En AWS salen del flujo de ingreso (declaradas o escritas por el analista), no del SRI: cotejadas con la actividad que trae Equifax del SRI (`informacion_sri`), la **sección coincide en el 58%** de 1.368 casos y la **fecha de inicio es idéntica en el 19%**
+(dentro de un año en el 45%). Servir con el SRI un modelo entrenado con lo declarado metería ruido. Costo de dejarlas fuera: ninguno en el nivel 2 (R² de 0,347 sin actividad y 0,351 con las 1.714 categorías) y unos 0,04 de R² en el nivel 1 (0,129 con sección y antigüedad de AWS contra 0,087 sin ellas, 12.23).
+**Para recuperarlas**: extraer `informacion_sri` (código CIIU, fecha de inicio, estado y RUC) de las respuestas de Equifax guardadas en AWS y reentrenar con la actividad y la antigüedad del SRI; es una consulta más a AWS y la autoriza el negocio (sección 10).
+Con la sección del CIIU (una letra, 22 valores) basta: no hace falta la actividad fina. El catálogo CIIU de AWS (6.172 códigos en 7 niveles, `research/ingresos-aws/ciiu_catalogo.csv`) ya se leyó y todos los id usados tienen código.
+
+### 4.2 Nivel 2: buró de Equifax
+
+Las diez variables de `AnalisisCreditoSectorFinanciero` son **campos de la respuesta cruda** de Equifax, con igualdad exacta en 4.499 de 4.499 respuestas (12.22). **Hoy `derivarTablas` no las extrae**: toma de `interconnectResponse` solo dos cálculos de Equifax,
+porque la deuda de ese bloque no cuadra con la de `reporteCrediticio` (`docs/equifax.md`). Para el modelo se usan como **señal**, no como saldo, y hay que extraerlas a una tabla nueva (`equifax_analisis_credito`) con una versión nueva de las tablas (`EQUIFAX_TABLAS_VERSION`) y reconstruir las consultas guardadas con `cargar-tablas-equifax.mjs`, sin volver a pagar.
+
+| Variable del modelo | Campo de Equifax | Qué es |
+|---|---|---|
+| `cred_mayor` | `MCAMontoOriginal` | Monto original del mayor crédito aprobado (la fecha, `MCAFecConcesion`, tiene mediana de 25 meses antes de la consulta) |
+| `cred_12m`, `cred_24m` | `CMRMontoOriginal`, `CMAMontoOriginal` | Mayor crédito «reciente» (mediana de 12 meses) y «actual» (mediana de 38 meses) |
+| `deuda_total`, `n_inst` | `PCTotalAdeudado`, `PCNumIfisActuales` | Total adeudado y número de instituciones con deuda |
+| `n_creditos`, `valor_creditos`, `saldos_vig` | `RECACreditosAprobados`, `RECAValCreditosAprobados`, `RECAValSaldosVigentes` | Créditos aprobados, su valor y los saldos vigentes |
+| `deuda_actual`, `deuda_3m` | `TDeudaActual`, `TDeudaHace3Meses` | Deuda actual y de hace 3 meses |
+
+Un crédito con fecha de concesión **posterior a la consulta** no se usa como señal (en el entrenamiento se anula): puede ser el crédito que se está pidiendo.
+
+Las demás variables del nivel 2 salen de las tablas que ya existen (`docs/equifax.md`):
+
+| Variable del modelo | Fuente en CrediScope |
+|---|---|
+| `cuota_fin` | `equifax_resumen.impacto_economico_cuota_financiera_usd` (igual a `cuota_estimada_mensual_usd` en las 5.001 respuestas medidas) |
+| `h12`, `h6`, `hact`, `g6`, `g12` | `equifax_indicadores_por_periodo` (origen `historico_cuota_estimada`, retroactivo de −12, −6 y 0 meses) y sus cocientes; **el historial existe solo en el JSON** (desde diciembre de 2025) y falta en el 69% de las consultas del entrenamiento |
+| `c_consumo`, `c_tarjeta`, `c_micro`, `c_vivienda`, `c_comercial`, `c_educativo`, `s_*`, `n_*` | `equifax_operaciones`, solo rol titular, sumando `cuota_mensual_usd` y `saldo_deuda_usd` por `tipo_credito` |
+| `c_codeudor` | `equifax_operaciones` con rol codeudor o garante |
+| `max_dias_t`, `max_mora` | máximo de `dias_morosidad` del titular y `factores_maximo_dias_vencido` |
+| `saldo`, `n_oper` | Saldo total y número de operaciones del detalle |
+
+### 4.3 Nivel 3: datos internos (pendiente)
+
+Patrimonio declarado (vivienda, terreno, vehículo, muebles, entrada, inventario, maquinaria), pasivos del buró y egresos declarados (gasto familiar, arriendo, pensión alimenticia), de la solicitud. **Hoy CrediScope no tiene estos campos**: la solicitud trae las condiciones del crédito y el Ingreso declarado.
+`egreso_gasto_financiero` no cuenta como dato interno: es la cuota de Equifax del titular (igual en el 94,5% de los casos). **No entra** `persona_ingreso_declarado`: es la propia etiqueta.
+
+### 4.4 Lo que no es entrada
+
+El predictor de Equifax (`IncomePredictor` y el ingreso del indicador de impacto económico), las salidas de la segmentación de Equifax (capacidad de pago, cuota del monto aprobado) y todo lo que el analista veía y fijaba después (decisión, respuesta comercial, perfil final).
+La respuesta comercial y la marca de cómo se armó el ingreso solo se usan para medir.
+
+## 5. El modelo
+
+**Algoritmo.** Regresión de cuantiles con árboles de gradiente (LightGBM), un modelo por cuantil: 0,05; 0,10; 0,15; 0,20; 0,30; 0,40; 0,50; 0,60; 0,70; 0,80; 0,90 y 0,95, de 170 árboles y 15 hojas, sobre el **logaritmo** del ingreso. Un modelo por nivel.
+Las variables de texto (provincia, cantón, actividad, sexo, estado civil) entran como categorías. Los cuantiles se ordenan para que no se crucen.
+
+**Objetivo.** Ingreso no verificado: el total calculado menos lo recuperado de Novadata (el salario del IESS). Independientes con ingreso no verificado mayor que cero.
+
+**Población y etiqueta.** Solicitantes de AWS (vehículos y consumo; una solicitud por persona, la más reciente), todas las respuestas comerciales; medido con OK FACTURAR y condicionado. Se mantiene este entrenamiento (12.21: sin los «sin respuesta» casi no cambia).
+
+**De los cuantiles a la respuesta.**
+- Mínimo certificado: cuantil 0,10 (seguridad del 90%) y cuantil 0,15 (85%).
+- Valor central: cuantil 0,50.
+- Probabilidad de cada tramo: se interpola la función de distribución entre los cuantiles (`cdf`) y se resta; se ajustan los extremos para que sumen uno.
+- Límite de medio salario básico: `max(mínimo, SBU del año / 2)`.
+
+**Calibración por institución.** El modelo es de solicitantes de vehículos y consumo; una institución con otro producto tiene otros ingresos (12.19). Con al menos 500 casos de esa institución con ingreso verificado se desplaza el mínimo con el método de la calibración conforme de cuantiles
+(Romano, Patterson y Candès, 2019): se calcula, para esos casos, `cuantil0,10 − ingreso real`, y al mínimo se le resta el cuantil `(1 − 0,10)(1 + 1/n)` de esas diferencias. Sin esos casos, el campo `calibradoPara` queda vacío y la respuesta lo dice.
+
+**Reproducibilidad.** Semilla fija, versiones de las bibliotecas y la huella del archivo de entrenamiento quedan en la fila del modelo (sección 6.4). Los datos de entrenamiento no entran al repositorio.
+
+## 6. Cómo se construye en CrediScope
+
+El orden respeta la regla de que un módulo nuevo tiene su propia puerta y que el marco y el modelo de lenguaje se tocan al final.
+
+1. **Variables** (`_shared/variables-de-ingreso.ts`): arma el vector de entrada de cada nivel desde el perfil y desde Equifax, con la regla del crédito posterior a la consulta. Una sola implementación; se prueba con respuestas inventadas (`equifax-respuesta-de-prueba.ts`).
+2. **Evaluador** (`_shared/predictor-ingresos.ts`): lee el modelo exportado de LightGBM (`dump_model` en JSON), con divisiones numéricas, categóricas (conjunto de categorías) y valores faltantes con su dirección por defecto. Devuelve los doce cuantiles.
+   **Prueba de oro**: 200 casos fijos con la salida del modelo en Python, que el evaluador reproduce con una diferencia menor que 0,001 en el logaritmo.
+   **Tamaño medido**: cada nivel son 12 modelos y 2.040 árboles (28.560 divisiones); el `dump_model` pesa unos 13 MB sin comprimir y 2,2 MB comprimido. Las divisiones son de dos tipos: numéricas (`<=`) y por categoría (`==`, con la lista de categorías separada por `||`),
+   y cada una con su regla para el valor faltante (hacia la izquierda o la derecha). Conviene exportar a un formato compacto propio en vez de cargar el JSON entero. Los cantones tienen unas 215 categorías (y la provincia 24); la actividad no entra por ahora (4.1).
+3. **Extraer `AnalisisCreditoSectorFinanciero`** en `equifax-tablas.ts` (tabla nueva, versión nueva, migración); reconstruir con `cargar-tablas-equifax.mjs --seco` primero.
+4. **Base**: `modelos_de_ingreso` (versión, nivel, estado, huella, fecha, población, métricas, ruta del archivo en Storage privado) y `estimaciones_de_ingreso` (persona, solicitud, nivel, versión, variables usadas sin identificadores, salidas, calibración, fecha). RLS por rol y privilegios por defecto sin rol anónimo.
+   La tabla nueva con datos de la persona se suma a `suprimir_titular()`, a `scripts/derechos-del-titular.mjs` y a `scripts/auditar-seguridad.mjs`. Cada versión nueva del modelo necesita su fila. La migración toma el número libre al aplicarse, con el corredor.
+5. **Puerta propia**: función `estimar-ingreso` (con `exigirRol()` antes de leer el cuerpo y el límite de la sesión) y la operación `POST /estimaciones-de-ingreso` en `api/openapi.yaml`, con ejemplos calculados con el propio código y sin nada con forma de JWT; se valida con `redocly lint`.
+6. **Capacidad de pago** (`capacidad-de-pago.ts`): un tipo de ingreso nuevo `estimado` junto a `sueldo`, `aporte_propio` y `declarado`. Se mide con el **mínimo certificado**, nunca con el valor central, y el resultado se rotula «ingreso estimado, sin verificar», como el Ingreso declarado.
+7. **Pantalla**: una tarjeta de ingreso con tres líneas posibles (verificado, estimado, referencia), con las etiquetas propias de CrediScope y sin explicar conceptos de crédito (pantallas para personal capacitado). **Los nombres los decide el negocio**; propuesta, a decidir: «Ingreso verificado», «Ingreso mínimo estimado» y «Referencia de su tipo».
+8. **Entrenamiento** (`scripts/predictor-ingresos/`, en Python, sin datos): reproduce las medidas de esta especificación y exporta el modelo. Hoy los guiones viven en `C:\datos\ingresos\scripts`.
+
+Un paso por PR, de abajo hacia arriba: 1 y 3 (variables y tabla de Equifax), 2 (evaluador con su prueba de oro), 4 (base), 5 (puerta), 6 (capacidad) y 7 (pantalla).
+
+## 7. Vigilancia y reentrenamiento
+
+Lo que se mide cada mes, con los casos en que después aparece un ingreso verificado (un empleo en el IESS, documentos, una solicitud decidida con ingreso validado):
+
+| Medida | Objetivo | Se revisa si |
+|---|---|---|
+| El real supera el mínimo del 90% | de 88% a 95% | baja de 85% o sube de 97% dos meses seguidos |
+| Tramo exacto, y tramo o vecino | los de la sección 3.1 | caen más de 5 puntos |
+| Cambio de la distribución de cada variable de entrada (índice de estabilidad de la población) | menor que 0,10 | mayor que 0,25 en una variable |
+| Personas con variables sin dato | las del entrenamiento | sube más de 10 puntos |
+| Cobertura por institución y por producto | igual que la general | difiere en más de 8 puntos |
+
+**Disparadores de reentrenamiento**: cada trimestre; al llegar los 3,9 millones del proveedor; al cambiar el salario básico (cada año: la fecha entra como variable y los tramos de 470 y 940 se mueven); al cambiar una institución o un producto; o ante cualquiera de las alertas de arriba.
+**Un modelo nuevo no pasa a vigente sin compararlo con el vigente sobre los mismos casos** y sin su fila. Cualquier cambio en la respuesta de Equifax (una versión nueva de `EQUIFAX_TABLAS_VERSION`) vuelve a correr la prueba de paridad de la sección 9. La fecha como variable hace que el modelo no
+extrapole: más allá del último mes entrenado se comporta como en ese mes.
+
+## 8. Límites que el producto debe decir
+
+1. **Es una estimación sin verificar.** El mínimo certificado es en mediana la mitad del ingreso calculado; no es el ingreso.
+2. **Está calibrado con solicitantes de vehículos y consumo** (AWS). Para una institución de microcrédito o cooperativa, sin calibrar, su cobertura no está medida.
+3. **La etiqueta no es verdad absoluta**: el ingreso calculado se hizo después de ver el predictor de Equifax, se edita (en el 75% de los OK FACTURAR) y en los rechazos baja (razón de 0,46). El mismo cálculo repetido cae en el mismo tramo el 88% de las veces.
+4. **Con Novadata solo la persona casi no se distingue de la población** (R² de 0,135).
+5. **No estima el ingreso adicional de un dependiente** ni el de un jubilado más allá de la referencia por afiliación.
+6. **Los ingresos bajos no se pueden certificar** con este modelo: AWS casi no los tiene. El 0,56% de los solicitantes ganan menos de medio salario básico.
+7. Aval, sin consultas con ingreso calculado, usa el nivel 1.
+
+## 9. Pruebas de aceptación
+
+1. **Paridad de las variables de Equifax**: sobre las 5.001 respuestas crudas (`muestra_respuestas_equifax.jsonl`), las diez variables de `AnalisisCreditoSectorFinanciero` coinciden con las del entrenamiento (hecho: 100% en 4.499 respuestas, 12.22) y la cuota del buró coincide con `cuota_estimada_mensual_usd` en las 5.001.
+   **Falta**: el mismo cotejo pasando la muestra por `derivarTablas` (Deno) para las cuotas por tipo, el historial y las operaciones.
+2. **Prueba de oro del evaluador**: 200 casos, diferencia menor que 0,001 en el logaritmo de cada cuantil.
+3. **Cobertura**: sobre OK FACTURAR y condicionado, con la validación por fecha (entrenar antes de 2026, probar desde 2026), el real supera el mínimo del 90% entre el 88% y el 95%.
+4. **Sin regresión**: un modelo nuevo no baja el R² ni la cobertura del vigente en los mismos casos.
+5. **Privacidad**: la respuesta y las tablas no llevan identificaciones; el control `auditar-seguridad.mjs` y `derechos-del-titular.mjs` cubren la tabla nueva.
+6. **Lenguaje**: `scripts/revisar-textos.mjs` sin términos retirados (no se dice «piso» en ingresos).
+
+## 10. Lo que falta decidir o conseguir
+
+| Qué | De quién | Por qué importa |
+|---|---|---|
+| La actividad y la fecha de inicio del SRI de las respuestas de Equifax guardadas en AWS (`informacion_sri`: código CIIU, fecha de inicio, estado y RUC) | Negocio (autoriza una consulta más a AWS) | Sin ella el nivel 1 queda en R² de 0,087 en vez de 0,13, y las variables de actividad y antigüedad no se pueden servir igual que se entrenaron (58% de coincidencia de la sección con lo de AWS) |
+| Qué datos internos trae la solicitud (patrimonio, gastos) | Negocio | Define si existe el nivel 3 |
+| Casos con ingreso verificado de cada institución | Cada institución | Calibración por institución (sección 5) |
+| La base de 3,9 millones | Proveedor | Reentrenar con una población menos sesgada hacia quien pide crédito |
+| Confirmar los códigos de afiliación, de categoría y de instrucción de la ENIGHUR, la ENEMDU y el censo | INEC (diccionario) | La tabla de pensiones y las referencias se apoyan en códigos deducidos |
+| Los nombres de pantalla (propuesta en 6.7) | Negocio | Los nombres los decide el negocio |
+| Quién fijó las rentabilidades por actividad (0,30, 0,40, 0,70 y 1,00) y si cambian | Negocio | Definen el ingreso calculado de cuentas e IVA, que es parte de la etiqueta |
+| Si la mezcla de AWS (vehículos y consumo) representa a las instituciones que usarán el modelo | Negocio | Fija si hace falta calibrar antes de publicar |
