@@ -1718,7 +1718,8 @@ Equifax; decidir qué se hace con el predictor posterior al 13 de abril (ver 12.
   descuento se aplica al final. El sistema hoy resta un 10% fijo (el 75,5% de los casos da exactamente 0,900), no el 9,38%
   de ley, y en una minoría de personas no hay descuento porque el empleador lo asume.
 - **Tres versiones por datos de entrada**: 1) Novadata; 2) Novadata más buró (Equifax o Aval); 3) Novadata más datos internos
-  más buró (pendiente). Entrenar con salidas de Equifax no necesita contrato: son datos ya obtenidos y pagados (decisión del negocio,
+  más buró (pendiente; **el mismo día el negocio decidió que el patrimonio solo se solicita a petición de un analista y no es una entrada inicial**, así que la 3 es una reestimación, 12.24).
+  Entrenar con salidas de Equifax no necesita contrato: son datos ya obtenidos y pagados (decisión del negocio,
   que reemplaza la duda de 4.9 para este uso).
 - **Cómo se entrega**: tramo con probabilidad y valor central con rango; los tramos son sobre el ingreso neto (menos de 470,
   470 a 939, 940 a 1.999, 2.000 o más).
@@ -2122,9 +2123,9 @@ El supuesto se cumple en los datos. **El límite de medio salario básico nunca 
 (mediana de 2.300 entre independientes); la mezcla de una institución de microcrédito o una cooperativa tendría ingresos más bajos, y el mínimo de un modelo entrenado con AWS no valdría tal cual. **El modelo de solicitantes hay que calibrarlo con la población de cada institución o producto**, y la referencia nacional
 queda para donde no se pueda suponer que la persona solicita crédito.
 
-### 12.20 Lo que falta y lo que sigue sin confirmar (2026-10-22)
+### 12.20 Lo que falta y lo que sigue sin confirmar (2026-10-21)
 
-**La tercera ronda de AWS** (historial de cada flujo, documentos de ingresos por persona y secuencias de estados de la respuesta comercial) **no la hizo la sesión que leía la base**, que se cerró el 2026-10-22; **la hizo esta sesión el mismo día con la autorización expresa del negocio**,
+**La tercera ronda de AWS** (historial de cada flujo, documentos de ingresos por persona y secuencias de estados de la respuesta comercial) **no la hizo la sesión que leía la base**, que se cerró el 2026-10-21; **la hizo esta sesión el mismo día con la autorización expresa del negocio**,
 solo con esas tres consultas, en transacción de solo lectura (`research/ingresos-aws/scripts/extraer_ronda3.mjs`; usa `clientes/aws-ingresos.env`, fuera de git). Sus resultados están en 12.21. Cualquier consulta nueva a esa base la autoriza el negocio. El documento de la otra sesión, `docs/base-aws-originacion.md` (puntos 1 a 19), ya está en `main`.
 
 **Resuelto.**
@@ -2132,6 +2133,8 @@ solo con esas tres consultas, en transacción de solo lectura (`research/ingreso
 - Dónde queda el predictor corregido desde abril: los datos recibidos ya traen la corrección (el valor guardado es idéntico al crudo en todas las semanas desde octubre de 2025).
 - Las observaciones «RECUPERADO NOVADATA MENOS IESS»: son un salario neto, no un ingreso adicional (12.15).
 - Lo declarado en OK FACTURAR: lo valida el analista con documentos (decisión del negocio del 2026-10-21).
+- El SRI de las respuestas de Equifax guardadas en AWS: se extrajo con la autorización del negocio («Autorizo AWS», 2026-10-21) y solo existe en las respuestas JSON de 2026 (12.24).
+- El patrimonio: solo se solicita a petición de un analista, no es una entrada inicial (decisión del negocio del 2026-10-21; 12.24).
 
 **Sin confirmar.** Se dicen como inferencias y no se usan como dato.
 1. Qué significa «SD» en OK FACTURAR SD y SD CONDICIONADO (113 independientes en cada una: no sirven).
@@ -2143,10 +2146,11 @@ solo con esas tres consultas, en transacción de solo lectura (`research/ingreso
 7. Que los dos últimos puntos del historial de cuota de Equifax (+6 y +12 meses) sean proyecciones: se dedujo de la etiqueta.
 8. Los códigos de afiliación, de categoría de ocupación y de nivel de instrucción de la ENIGHUR, la ENEMDU y el censo: se deducieron de los datos y no de una etiqueta oficial.
 9. Quién editó cada versión de un flujo: la auditoría solo existe desde el 2026-03-08 y, para el 46% al 53% de las versiones, el usuario no coincide con ningún analista registrado, así que el rol solo se puede leer en parte (12.21: se distingue por comportamiento, automático o manual).
+10. Si el `obligado` que trae Novadata coincide con el de Equifax, y si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se puede llevar a un CIIU (12.24). Lo demás del SRI de Novadata se cotejó con Equifax en 87 personas.
 
-### 12.21 Tercera ronda: historial por flujo, documentos y secuencias (2026-10-22)
+### 12.21 Tercera ronda: historial por flujo, documentos y secuencias (2026-10-21)
 
-Tres extracciones de solo lectura, autorizadas por el negocio el 2026-10-22: `flujos_historial.csv` (96.909 flujos con auditoría, desde el 2026-03-09), `documentos_por_persona.csv` (92.472 personas) y `secuencias_respuesta.csv` (agregado), en `research/ingresos-aws/` (fuera de git).
+Tres extracciones de solo lectura, autorizadas por el negocio el 2026-10-21: `flujos_historial.csv` (96.909 flujos con auditoría, desde el 2026-03-09), `documentos_por_persona.csv` (92.472 personas) y `secuencias_respuesta.csv` (agregado), en `research/ingresos-aws/` (fuera de git).
 Guiones: `scripts/extraer_ronda3.mjs` (lectura), `scripts/r3_*.py` (análisis). No se exportaron nombres de usuario: cada versión se clasifica por el **rol** del usuario en la tabla de analistas y por su **comportamiento**.
 
 **Quién escribe y quién corrige.**
@@ -2193,7 +2197,7 @@ Entre los OK FACTURAR y condicionados: **solo declarado** (4.662): 42% tiene alg
 
 **Qué queda del límite de la etiqueta.** Confirmado que en los casos decididos hay un cálculo humano y que el monto depende del resultado (en rechazos baja). No se pudo separar lo que corrige un analista de lo que escribe un concesionario más allá de automático y manual, y el rol de los usuarios manuales no se conoce en casi la mitad de las versiones.
 
-### 12.22 Las variables del buró y los tres niveles con el mismo objetivo (2026-10-22)
+### 12.22 Las variables del buró y los tres niveles con el mismo objetivo (2026-10-21)
 
 **Las columnas de «crédito» del extracto de AWS son campos de la respuesta cruda de Equifax.** Se cotejaron las 5.001 respuestas de `muestra_respuestas_equifax.jsonl` con las columnas del extracto (`scripts/r3_5_paridad_buro.py`): igualdad exacta (±0,011) en 4.499 de 4.499 respuestas con dato, en las diez:
 `credito_mayor_aprobado_monto` = `MCAMontoOriginal`; `credito_mayor_12m_monto` = `CMRMontoOriginal`; `credito_mayor_24m_monto` = `CMAMontoOriginal`; `deuda_total_adeudada` = `PCTotalAdeudado`; `n_instituciones_con_deuda` = `PCNumIfisActuales`;
@@ -2217,7 +2221,7 @@ se usan como señal, no como saldo, y hay que extraerlas a una tabla nueva (`doc
 La precisión de lo certificado es de 93% a 99% en todos los casos con certificación. **El nivel 1 casi no distingue a una persona de otra**: en OK FACTURAR su R² es de 0,018, y su mínimo es en la práctica el límite inferior de la población de solicitantes (unos 1.000).
 **El salto está en el buró** (de 0,135 a 0,351 en R²), y los datos internos suman poco (de 0,351 a 0,370).
 
-### 12.23 El catálogo CIIU, la actividad de AWS y los niveles que sí se pueden servir (2026-10-22)
+### 12.23 El catálogo CIIU, la actividad de AWS y los niveles que sí se pueden servir (2026-10-21)
 
 **Catálogo CIIU de AWS** (leído con autorización del negocio, solo esa tabla; `research/ingresos-aws/ciiu_catalogo.csv`): 6.172 códigos en 7 niveles (21 secciones de una letra, 88 divisiones, 238 grupos, 419 clases y códigos más finos del SRI, hasta 11 caracteres).
 Los 57.029 independientes con actividad (99,9%) tienen un id con código en el catálogo; el 95% apunta al nivel más fino (códigos como `N8230.00.01`). Son 1.714 actividades distintas, 22 secciones y 86 divisiones.
@@ -2236,12 +2240,105 @@ En AWS salen del flujo de ingreso (declaradas o escritas por el analista); la de
 | 2 Novadata y buró | 0,341 (0,445) | 45,5% (52,3%) | 14,8% (17,5%) | 36,3% (41,6%) | 89,1% (94,9%) | 0,51 (0,46) | 1.088 (1.457) | 65,4% (84,7%) | 16,9% (34,0%) | 7,9% (17,6%) | 2,3% (5,0%) |
 | 3 Con datos internos | 0,359 (0,472) | 46,3% (54,5%) | 15,5% (18,2%) | 37,2% (42,8%) | 89,1% (93,8%) | 0,53 (0,50) | 1.098 (1.586) | 66,0% (85,1%) | 17,9% (37,8%) | 8,9% (21,4%) | 2,6% (6,8%) |
 
-La precisión de lo certificado (a 940: 93% a 99%; a 2.000: 95% a 99%; a 3.000: 95% a 100%) se mantiene. **Estas son las cifras que valen para el producto** (`docs/especificacion-predictor-de-ingresos.md`). El nivel 1 queda sin poder para distinguir a una persona (R² de 0,087 y negativo en OK FACTURAR) y solo da el límite
+La precisión de lo certificado (a 940: 93% a 99%; a 2.000: 95% a 99%; a 3.000: 95% a 100%) se mantiene. **Estas son las cifras sin el SRI**; las que valen para el producto, con el SRI que sí se puede servir, están en 12.24. Sin el SRI el nivel 1 no distingue a una persona (R² de 0,087 y negativo en OK FACTURAR) y solo da el límite
 inferior de la población de solicitantes; el buró es el que aporta (R² de 0,341).
 
-**Para recuperar la actividad y la antigüedad**: extraer `informacion_sri` de las respuestas de Equifax guardadas en AWS (JSON desde diciembre de 2025 y XML antes) y reentrenar con ellas; es otra consulta a AWS y la autoriza el negocio. Se espera recuperar unos 0,04 de R² en el nivel 1 y nada en el nivel 2 (no medido con el SRI).
+**La actividad y la antigüedad del SRI** se extrajeron después, con la autorización del negocio (12.24). Contra lo que se esperaba aquí (unos 0,04 de R² en el nivel 1), el SRI suma el doble, y solo existe en las respuestas JSON de Equifax (desde diciembre de 2025): las XML, que son las de 2021 a 2025, no lo traen.
 
-**Decisiones del negocio del 2026-10-22**: los dos primeros tramos siguen al salario básico del año (1 y 2 salarios) y los demás son dólares fijos (2.000, 3.000 y 5.000); se abre un PR con la investigación y la especificación, sin fusionar hasta que lo pida el negocio.
+**Decisiones del negocio del 2026-10-21**: los dos primeros tramos siguen al salario básico del año (1 y 2 salarios) y los demás son dólares fijos (2.000, 3.000 y 5.000); se abre un PR con la investigación y la especificación, sin fusionar hasta que lo pida el negocio.
+
+### 12.24 El SRI de las respuestas de Equifax y lo que suma cada dato interno (2026-10-21)
+
+**Cuarta extracción de AWS, autorizada por el negocio el 2026-10-21 («Autorizo AWS»).** Solo lectura (`begin read only`) y una sola consulta, con una prueba de 200 filas antes (`research/ingresos-aws/scripts/extraer_sri.mjs`; usa `clientes/aws-ingresos.env`, fuera de git).
+Lee el bloque `informacion_sri` de `consulta_equifax.response_json` y **solo** los campos que CrediScope ya deriva en `equifax_resumen` (`equifax-tablas.ts`): si tiene RUC, estado, clase, obligado a contabilidad, fecha de inicio, fecha de suspensión definitiva y código CIIU.
+**No se exportó el RUC, el nombre, la dirección ni el nombre comercial.** Salida: `sri_por_consulta.csv` (105.070 filas en 167 s; fuera de git). Cualquier consulta nueva a esa base la autoriza el negocio.
+
+**El SRI solo existe en las respuestas JSON.** La tabla de consultas tiene 415.836 filas: 309.346 con la respuesta solo en XML (2021 a 2025), 105.070 con JSON (284 de 2025 y 104.786 de 2026) y 1.420 sin respuesta. En una muestra de 2.060 respuestas XML repartidas en los cinco años (238, 228, 339, 484 y 771, de 2021 a 2025; una de cada 150) no hay ninguna con CIIU, contribuyente, actividad ni fecha de inicio
+(y el `IncomePredictor` sí está en 1.967 de ellas, como control de que la búsqueda lee el texto). Esto corrige 12.23, que daba por hecho que el SRI estaba también en las XML. De las 105.070 JSON, 100.930 traen el bloque (en las primeras no está: es dato ausente, no «sin RUC») y 76.340 tienen RUC.
+Consecuencia: **todo lo medido con el SRI es de 2026**: 36.773 de las 116.673 personas de la tabla, 21.260 de los 57.061 independientes con ingreso no verificado (el 87,3% con RUC) y 3.538 de ellos en OK FACTURAR y condicionado.
+
+**La forma del dato.** Una lista de uno o ningún elemento por respuesta (78.198 con uno, 22.732 vacías): estado ACTIVO 54.389, SUSPENDIDO 23.791 y PASIVO 18; clase OTROS 52.683, RIMPE 25.471, ESPECIAL 42 y RISE 2; obligado a llevar contabilidad, 2.495 sí contra 75.703 no; código CIIU de siete caracteres (una letra y seis dígitos).
+En la muestra de 5.001 respuestas, las 3.785 que traen RUC lo traen de la persona consultada (los diez primeros dígitos son su cédula).
+
+**Qué trae Novadata del mismo SRI.** El catálogo de campos de Novadata (`docs/novadata-fields-catalog.md`) muestra que `datosContribuyente` trae el RUC, la fecha de inicio, el cese, el reinicio, la suspensión definitiva y `obligado`, y que los establecimientos traen la actividad como texto (`act_economica`);
+**no trae el CIIU ni la clase del contribuyente**. Cotejo en la base de CrediScope, en las 87 personas que tienen una consulta de Equifax y un perfil de Novadata (solo conteos):
+
+| Dato | Coincide |
+|---|---|
+| Tiene RUC (en las dos fuentes o en ninguna) | 87 de 87 (83 con RUC y 4 sin RUC) |
+| Fecha de inicio de actividades idéntica | 83 de 83 |
+| Estado: «ACTIVO» de Equifax y «activa» de Novadata | 74 de 76 |
+| Estado: «SUSPENDIDO» de Equifax e «inactiva» de Novadata | 7 de 7 |
+
+Las dos diferencias son personas que Equifax da por activas y Novadata por inactivas (una nunca reactivada y otra tras una reactivación): Novadata resuelve el estado por las fechas de cese y de reinicio (`ruc.ts`) y Equifax trae `estado_contribuyente`. Es una muestra chica, y el `obligado` de Novadata no se comparó.
+
+**Cuánto suma el SRI.** Independientes de 2026 con el bloque (21.260); entre paréntesis, solo OK FACTURAR y condicionado (3.538); validación cruzada por persona (`scripts r4_5, r4_7 y r4_10`).
+«SRI de Novadata» es lo que Novadata puede dar (RUC, estado, antigüedad, suspensión y obligado); «clase y CIIU» solo lo trae Equifax.
+
+| Nivel y entradas | R² | Tramo exacto | El real supera el mínimo 90% | Mediana del mínimo 90% | Certifica 2.000 (% del total y precisión) |
+|---|---|---|---|---|---|
+| 1 Novadata, sin SRI | 0,091 (−0,044) | 35,1% (31,2%) | 89,0% (96,2%) | 978 (1.031) | 1,5% y 94,6% (3,5% y 96,8%) |
+| 1 con el SRI de Novadata | 0,172 (0,098) | 36,9% (34,6%) | 88,9% (94,9%) | 1.001 (1.173) | 4,1% y 93,9% (9,4% y 97,0%) |
+| 1 con el SRI, la clase y el CIIU | 0,192 (0,134) | 37,4% (35,6%) | 88,8% (94,6%) | 1.012 (1.216) | 4,2% y 93,8% (9,8% y 95,7%) |
+| 2 Novadata y buró, sin SRI | 0,339 (0,443) | 45,6% (52,4%) | 88,4% (94,8%) | 1.070 (1.429) | 16,2% y 95,4% (32,2% y 98,5%) |
+| 2 con el SRI de Novadata | 0,352 (0,458) | 46,1% (52,8%) | 88,4% (94,2%) | 1.082 (1.487) | 16,9% y 95,6% (34,4% y 98,3%) |
+| 2 con el SRI, la clase y el CIIU | 0,355 (0,460) | 46,2% (53,2%) | 88,2% (94,0%) | 1.093 (1.516) | 17,0% y 95,5% (34,6% y 98,4%) |
+
+- **En el nivel 1 el SRI suma el doble de lo previsto en 12.23** (que esperaba unos 0,04): +0,082 de R² con lo que da Novadata (intervalo del 95%: 0,072 a 0,091; en OK FACTURAR, +0,143) y +0,101 con la clase y el CIIU. Supera a la actividad y la antigüedad declaradas de AWS (0,146 sobre los mismos casos):
+  el SRI completo, con la clase y el CIIU, queda 0,044 por encima (0,034 a 0,054) y, en OK FACTURAR, 0,092 por encima. La clase y el CIIU suman al nivel 1 +0,020 (0,016 a 0,024).
+- **En el nivel 2 suma poco**: +0,013 (0,010 a 0,016) con el SRI de Novadata, y la clase y el CIIU solo +0,003 (0,001 a 0,004; en OK FACTURAR, no se distingue de cero). Por eso el nivel 1 no necesita el CIIU de Novadata.
+- **Lo que cambia es cuánto se puede certificar, no la seguridad del mínimo**: en el nivel 1 «al menos 2.000» pasa de certificarse al 1,5% al 4,1% de los casos (del 3,5% al 9,4% en OK FACTURAR), con la misma precisión (94%).
+- **Qué dice el SRI del ingreso** (mediana del ingreso no verificado): con RUC 2.500 contra 1.400 sin RUC; RUC activo 2.500 contra 1.600 suspendido; clase OTROS 2.500 y RIMPE 2.100. En el nivel 2 pesan, en porcentaje de la ganancia: la división del CIIU 3,9%, el estado 2,7%, la antigüedad 2,3%, la sección 2,2%, obligado 1,0% y la suspensión 0,7%.
+
+**Se sostiene hacia adelante.** Entrenando con diciembre a junio (12.604 independientes) y midiendo de julio a octubre (8.656; 1.613 en OK FACTURAR y condicionado), el R² del nivel 1 pasa de 0,097 a 0,187 con el SRI de Novadata (+0,091; 0,072 a 0,107) y el del nivel 2 de 0,355 a 0,370 (+0,014; 0,010 a 0,018).
+**El real supera el mínimo del 90% el 88,1% de las veces en el nivel 1 y el 87,5% en el 2** (94,9% y 94,3% en OK FACTURAR): hacia adelante cubre dos y dos puntos y medio menos que el 90% nominal, el desvío que corrige la calibración conforme de la especificación (sección 5).
+
+**La cobertura es pareja entre los grupos que separa el SRI** (el real supera el mínimo del 90%; nivel 1 y nivel 2; `scripts r4_11`):
+
+| Grupo | Casos | Nivel 1 | Nivel 2 |
+|---|---|---|---|
+| Con RUC / sin RUC | 18.565 / 2.695 | 88,9% / 88,6% | 88,3% / 87,7% |
+| RUC activo / suspendido | 17.175 / 1.735 | 89,1% / 87,5% | 88,6% / 86,0% |
+| Antigüedad de menos de 2 años / 10 años o más | 1.642 / 9.469 | 88,7% / 89,2% | 87,0% / 88,6% |
+| Clase RIMPE / OTROS | 7.525 / 11.380 | 87,0% / 90,3% | 87,9% / 88,6% |
+| OK FACTURAR y condicionado | 3.538 | 94,9% | 94,0% |
+| RECHAZADO | 4.755 | 71,5% | 70,7% |
+
+Entre los grupos del SRI la cobertura va de 86,0% a 90,6%; **lo que la separa es el tipo de respuesta**: en los rechazados el analista baja el ingreso (razón de 0,46, 12.21) y el mínimo del modelo, hecho con la mayoría que no se rechaza, queda por encima del ingreso calculado en el 29% de ellos. No es un problema del SRI.
+
+**Datos internos: qué suma cada bloque al nivel 2.** Todo AWS (57.061 independientes, sin SRI); entre las dos últimas columnas, el R² y la diferencia en OK FACTURAR y condicionado (9.631); intervalos del 95% por remuestreo de filas (`scripts r4_6, r4_9, r4_12 y r4_13`).
+
+| Se suma al nivel 2 | R² | Diferencia (intervalo) | En OK FACTURAR: R² y diferencia |
+|---|---|---|---|
+| Nada: el nivel 2 | 0,341 | — | 0,445 |
+| Patrimonio propio (vivienda, terreno, vehículo, muebles, inventario, maquinaria y otros) | 0,346 | +0,005 (0,004 a 0,006) | 0,456; +0,011 (0,008 a 0,014) |
+| Solo la entrada del crédito | 0,351 | +0,010 (0,008 a 0,012) | 0,460; +0,014 (0,009 a 0,020) |
+| Patrimonio propio y entrada (los «activos declarados» de 12.22) | 0,354 | +0,014 (0,012 a 0,015) | 0,466; +0,020 (0,014 a 0,027) |
+| Egresos declarados (gasto familiar, arriendo, hipotecario, pensión alimenticia y otros) | 0,344 | +0,003 (0,002 a 0,004) | 0,454; +0,008 (0,006 a 0,011) |
+| Pasivos del buró | 0,341 | 0,000 (−0,001 a 0,001) | 0,448; +0,002 (0,000 a 0,005) |
+| Conducta con la propia institución | 0,340 | 0,000 (−0,001 a 0,000) | 0,446; +0,001 (0,000 a 0,003) |
+| Todo lo interno (el nivel 3 de 12.22 y 12.23) | 0,359 | +0,019 (0,016 a 0,021) | 0,472; +0,027 (0,021 a 0,033) |
+
+- **La entrada no es patrimonio.** AWS la guarda como un rubro más de `persona_patrimonio` («Entrada»), pero es la entrada del crédito que se pide, una condición de la operación (en 12.16 ya aparecía como «entrada del crédito declarada», con el 5,2% de la ganancia). La declara el 98,3% de los independientes
+  y en el modelo de activos pesa el 5,5% de la ganancia, más que todos los demás rubros juntos. **La entrada sola suma +0,010 y el patrimonio propio solo +0,005; juntos, +0,014** (comparten información, por eso no se suman).
+- **El patrimonio propio suma poco, pero es evidencia aparte y se sostiene.** No es la misma persona declarando ingreso y bienes: donde la etiqueta es de cuentas o IVA (evidencia independiente de lo declarado) suma más que donde es declarada, +0,011 contra +0,004 en todos los casos
+  y, en OK FACTURAR, +0,024 (0,019 a 0,030) contra +0,005 (0,001 a 0,008). Por año de la consulta: 2023 +0,006, 2024 +0,005, 2025 +0,003 y 2026 +0,007. Solo el 41% declara vivienda, terreno o vehículo (vivienda 27%, vehículo 20%, terreno 3%); el resto declara muebles y enseres, inventario u otros.
+- **Los egresos declarados suman poco y solo en 2026**: por año de la consulta, 2023 −0,000, 2024 +0,001, 2025 0,000 y 2026 +0,008; y por tipo de etiqueta el aporte está en OK FACTURAR declarado (+0,012; 0,009 a 0,015), no en OK FACTURAR con cuentas o IVA (+0,002; −0,002 a 0,007).
+  Es lo que se vería si quien declara el ingreso declara también los gastos y los dos son consistentes entre sí, que no es evidencia aparte (no se pudo probar). Con estas cifras no justifican pedirlos; la decisión es del negocio.
+- **Los pasivos del buró y la conducta con la propia institución no suman**: los pasivos de AWS son los del buró (SBS, SEPS, INFOCOM), que el nivel 2 ya trae; la conducta interna es de la propia institución y CrediScope no la tiene.
+- **Con el SRI** (21.260 de 2026), el patrimonio propio sube el nivel 2 de 0,355 a 0,360 (+0,006; 0,004 a 0,008; en OK FACTURAR, de 0,460 a 0,467) y «al menos 2.000» se certifica en el 17,4% de los casos en vez del 17,0% (en OK FACTURAR, 36,8% en vez de 34,6%, con precisión de 98%).
+  Con la entrada también, 0,367 (+0,012).
+
+**Decisión del negocio (2026-10-21): el patrimonio solo se solicita a petición de un analista; no es una entrada inicial.** Lo que cuesta no tenerlo desde el inicio es poco: +0,006 de R² (+0,008 en OK FACTURAR). El nivel 3 deja de ser un nivel que se elige solo y pasa a ser una reestimación que el analista pide (`docs/especificacion-predictor-de-ingresos.md`, 3.5).
+**Queda sin decidir** qué se hace con los gastos declarados y con la entrada del crédito: la entrada suma +0,010 por sí sola, pero es una condición de la operación pedida y no un dato de la persona; usarla como entrada del ingreso es una decisión aparte, porque la capacidad de pago compara la cuota con ese ingreso.
+
+**Qué cambia en la especificación.** El nivel 1 pasa de R² de 0,087 a 0,172 con el SRI de Novadata; el nivel 2, de 0,341 a 0,355; el nivel 3 (patrimonio propio, a petición) queda en 0,360. Las tres cifras son del subconjunto con SRI (2026): no son comparables una a una con las de 12.23 (todo AWS), pero la dirección y los intervalos son claros.
+
+**Lo que sigue sin medirse.**
+1. El SRI de Novadata contra el de Equifax en más de 87 personas, el `obligado` de Novadata y si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se puede llevar a un CIIU (con la clase y el CIIU el nivel 1 ganaría 0,020 más de R²).
+2. El SRI de 2021 a 2025: las respuestas XML no lo traen, así que el modelo con SRI se entrena solo con 2026 hasta que lleguen los 3,9 millones.
+3. El comportamiento de quien no tiene RUC ni aporte al IESS: el 87,3% de los independientes de AWS tiene RUC y los que no, son la minoría que igual pidió crédito.
+4. El patrimonio de los casos en que un analista lo pida: el modelo se midió con el patrimonio de todos los solicitantes (el 98% lo declara en AWS), y los casos que se pidan serán los dudosos.
 
 ## 13. Registro de verificación
 
