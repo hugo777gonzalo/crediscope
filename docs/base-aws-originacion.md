@@ -237,5 +237,16 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
   desde 2025-10-01. Y qué cambió en la salida de Equifax el 2026-01-14 y el 2026-03-02.
 - Si el valor de «INGRESO DECLARADO» lo escribe la persona, el asesor o la integración con el concesionario
   (54.437 flujos dicen «INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS»).
+- Si la marca `consumo` de `respuesta_comercial` quiere decir que la familia APROBADO es el flujo de
+  consumo y la familia OK FACTURAR el automotriz (es lo que sugiere el catálogo, no se confirmó), y si
+  `estado_requerimiento` FINALIZADO significa facturado.
+- Si las observaciones «RECUPERADO NOVADATA MENOS IESS» (unos 1.165 flujos) son los ingresos adicionales
+  de dependientes: es una inferencia por el texto. Y si los puntos +6 y +12 meses del historial de cuota
+  son proyecciones (también por la etiqueta).
+- Por qué el 17% de los movimientos bancarios y de IVA no cumple ingreso = ventas × rentabilidad (razones
+  de 0,05 a 0,07, que parecen la declaración de IVA semestral).
+- Cómo se arma el `total_ingresos` de la vista de BI (`v_reporte_bi`) y si el ingreso del cónyuge se suma
+  al del titular en alguna decisión.
+- Quién fijó `macroactividad.rentabilidad` y si cambió: la tabla no tiene autor ni fecha.
 - **Si el contrato con Equifax permite entrenar un modelo propio con sus salidas.** No se revisó.
 - Si el usuario de la base es de solo lectura.
