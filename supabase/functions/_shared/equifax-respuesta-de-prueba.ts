@@ -194,6 +194,12 @@ export function respuestaDePrueba(cambios: { reporteCrediticio?: Registro; inter
     personalInformation: { monto: 5000, numeroDocumento: CEDULA_DE_PRUEBA, plazo: 12, restaGastoFinanciero: 0, tipoDocumento: "C", tipoProducto: "1" },
     ResultadoSegmentacion: { DecisionFinal: "ANALISTA", SegmentacionTitular: "ANALISTA", IncomePredictor: 1500.5, ScoreV4: "640", ModeloUtilizado: "BANCARIZADO DIRTY" },
     ESTADO_CARTERA: { Codigo: 17, Descripcion: "ESTA EN MORA 30", Interpretacion: "Tarjeta u operación en mora con un vencido de hasta 30 días." },
+    // Los campos que usa el predictor de ingresos (valores inventados; las fechas vienen dd/mm/yyyy y la de CMA es posterior a una consulta del 2026-08-31).
+    AnalisisCreditoSectorFinanciero: {
+      MCAMontoOriginal: 12000, MCAFecConcesion: "15/03/2024", CMRMontoOriginal: 5000.456, CMRFecConcesion: "10/02/2026", CMAMontoOriginal: 8000, CMAFecConcesion: "05/09/2026",
+      PCTotalAdeudado: 6500.5, PCNumIfisActuales: 3, RECACreditosAprobados: 7, RECAValCreditosAprobados: 43000, RECAValSaldosVigentes: 6400.25,
+      TDeudaActual: 6500.5, TDeudaHace3Meses: 7100, CMAAEntidad: "BANCO DE PRUEBA UNO", CMAADeudaTotal: 999999, MMRMontoMora: 55,
+    },
     // Lo que NO debe sumarse con reporteCrediticio: la misma deuda en otra forma.
     DetalleDeudaActualReportadaSBSSBS_Educativo: [{ Sistema: "SFR", Institucion: "BANCO DE PRUEBA UNO", Saldo_Deuda: 777777, Tipo_Riesgo: "TITULAR" }],
     ...cambios.interconnectResponse,

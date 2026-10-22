@@ -35,7 +35,7 @@
 // sintaxis que se pueda borrar (nada de enum, namespace ni propiedades de
 // parámetro).
 
-export const EQUIFAX_TABLAS_VERSION = "equifax-tablas-v1";
+export const EQUIFAX_TABLAS_VERSION = "equifax-tablas-v2";
 
 export type Sistema = "bancos" | "cooperativas" | "comercial";
 export const SISTEMAS: readonly Sistema[] = ["bancos", "cooperativas", "comercial"];
@@ -133,6 +133,17 @@ export const ESPECIFICACION_DE_TABLAS = {
     estado_de_cartera_codigo: "entero", estado_de_cartera_descripcion: "texto", estado_de_cartera_interpretacion: "texto",
     ingreso_estimado_usd: "numero",
   },
+  // interconnectResponse.AnalisisCreditoSectorFinanciero (v2): una sola fila por consulta. Sus montos NO son
+  // saldos (la deuda de ese bloque no cuadra con la de reporteCrediticio, docs/equifax.md): son la señal que usa
+  // el predictor de ingresos (docs/especificacion-predictor-de-ingresos.md, 4.2).
+  equifax_analisis_credito: {
+    mayor_credito_aprobado_monto_usd: "numero", mayor_credito_aprobado_fecha_concesion: "fecha",
+    mayor_credito_reciente_monto_usd: "numero", mayor_credito_reciente_fecha_concesion: "fecha",
+    mayor_credito_actual_monto_usd: "numero", mayor_credito_actual_fecha_concesion: "fecha",
+    deuda_total_adeudada_usd: "numero", instituciones_con_deuda_numero: "entero",
+    creditos_aprobados_numero: "entero", creditos_aprobados_valor_usd: "numero", saldos_vigentes_usd: "numero",
+    deuda_actual_usd: "numero", deuda_hace_3_meses_usd: "numero",
+  },
 } as const satisfies Record<string, Record<string, Tipo>>;
 
 export type NombreDeTabla = keyof typeof ESPECIFICACION_DE_TABLAS;
@@ -149,6 +160,7 @@ export type FilaScore = FilaDeTabla<"equifax_scores">;
 export type FilaIndicador = FilaDeTabla<"equifax_indicadores_por_periodo">;
 export type FilaCodeudorGarante = FilaDeTabla<"equifax_codeudor_garante">;
 export type FilaResumen = FilaDeTabla<"equifax_resumen">;
+export type FilaAnalisisCredito = FilaDeTabla<"equifax_analisis_credito">;
 
 export interface TablasEquifax {
   equifax_operaciones: FilaOperacion[];
@@ -162,6 +174,7 @@ export interface TablasEquifax {
   equifax_indicadores_por_periodo: FilaIndicador[];
   equifax_codeudor_garante: FilaCodeudorGarante[];
   equifax_resumen: FilaResumen[]; // una sola fila (vacía de valores si la respuesta no trae nada)
+  equifax_analisis_credito: FilaAnalisisCredito[]; // una fila si la respuesta trae el bloque; ninguna si no vino
 }
 
 export interface ResultadoDeTablas {
@@ -642,7 +655,7 @@ export function derivarTablas(cuerpo: unknown): ResultadoDeTablas {
   const sujetos = lista("sujeto_al_dia");
   if (cobertura["sujeto_al_dia"] !== null) resumen.sujetos_al_dia_numero = sujetos.length;
 
-  // De interconnectResponse sólo dos cálculos de Equifax, rotulados como tales.
+  // De interconnectResponse, además del bloque de abajo, sólo dos cálculos de Equifax, rotulados como tales.
   const estado = ir.ESTADO_CARTERA;
   if (esRegistro(estado) && Object.keys(estado).length > 0) {
     resumen.estado_de_cartera_codigo = entero(estado.Codigo);
@@ -651,6 +664,28 @@ export function derivarTablas(cuerpo: unknown): ResultadoDeTablas {
   }
   const segmentacion = ir.ResultadoSegmentacion;
   if (esRegistro(segmentacion)) resumen.ingreso_estimado_usd = dinero(segmentacion.IncomePredictor);
+
+  // AnalisisCreditoSectorFinanciero (v2). Un bloque que no vino no es un bloque vacío: sin bloque no hay fila (cobertura
+  // null); con el bloque pero sin los campos (502 de 5.001 respuestas medidas el 2026-10-22) sale una fila de nulos.
+  const analisis = ir.AnalisisCreditoSectorFinanciero;
+  const filasDeAnalisis: FilaAnalisisCredito[] = [];
+  if (analisis === undefined || analisis === null) {
+    cobertura["AnalisisCreditoSectorFinanciero"] = null;
+  } else if (!esRegistro(analisis)) {
+    cobertura["AnalisisCreditoSectorFinanciero"] = null;
+    avisos.push("AnalisisCreditoSectorFinanciero: no es un objeto; no se extrajo.");
+  } else {
+    cobertura["AnalisisCreditoSectorFinanciero"] = 1;
+    filasDeAnalisis.push(nuevaFila("equifax_analisis_credito", {
+      mayor_credito_aprobado_monto_usd: dinero(analisis.MCAMontoOriginal), mayor_credito_aprobado_fecha_concesion: fechaISO(analisis.MCAFecConcesion),
+      mayor_credito_reciente_monto_usd: dinero(analisis.CMRMontoOriginal), mayor_credito_reciente_fecha_concesion: fechaISO(analisis.CMRFecConcesion),
+      mayor_credito_actual_monto_usd: dinero(analisis.CMAMontoOriginal), mayor_credito_actual_fecha_concesion: fechaISO(analisis.CMAFecConcesion),
+      deuda_total_adeudada_usd: dinero(analisis.PCTotalAdeudado), instituciones_con_deuda_numero: entero(analisis.PCNumIfisActuales),
+      creditos_aprobados_numero: entero(analisis.RECACreditosAprobados), creditos_aprobados_valor_usd: dinero(analisis.RECAValCreditosAprobados),
+      saldos_vigentes_usd: dinero(analisis.RECAValSaldosVigentes),
+      deuda_actual_usd: dinero(analisis.TDeudaActual), deuda_hace_3_meses_usd: dinero(analisis.TDeudaHace3Meses),
+    }));
+  }
 
   // Una lista que Equifax no entrega y ninguna tabla usa tampoco se pierde: sigue en el crudo.
   // Un cambio de forma (una lista nueva) no rompe nada; lo que sí se avisa es lo omitido.
@@ -670,6 +705,7 @@ export function derivarTablas(cuerpo: unknown): ResultadoDeTablas {
       equifax_indicadores_por_periodo: indicadores,
       equifax_codeudor_garante: codeudorGarante,
       equifax_resumen: [nuevaFila("equifax_resumen", resumen)],
+      equifax_analisis_credito: filasDeAnalisis,
     },
     cobertura,
     avisos,

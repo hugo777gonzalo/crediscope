@@ -85,6 +85,12 @@ su guía: `docs/equifax.md`.
   sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
   proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
   el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
+- `variables-de-ingreso.ts` — el vector de entrada del predictor de ingresos (niveles 1 y 2)
+  desde el perfil y las tablas de Equifax (`equifax_analisis_credito`, desde la 138). Una sola
+  implementación: lo que no coincide con el extracto de AWS con el que se entrenará el modelo
+  queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
+  se mide con `node scripts/probar-paridad-variables-de-ingreso.mjs` (necesita `research/`).
+  Sin RUC es un dato; sin respuesta de la fuente no lo es.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de

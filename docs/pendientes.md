@@ -189,9 +189,23 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     de 87 personas (y si el texto de la actividad de los establecimientos de Novadata da un CIIU);
     casos con ingreso verificado de cada institución para calibrar; la base de 3,9 millones del
     proveedor; y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC).
-    El primer paso de construcción es extraer `AnalisisCreditoSectorFinanciero` en
-    `equifax-tablas.ts` (sus campos son las variables más pesadas del nivel con buró y hoy no se
-    derivan).
+    **Paso 1 construido (PR de la rama `claude/predictor-paso-1-8d35f4`, sin fusionar):** la tabla
+    `equifax_analisis_credito` (`equifax-tablas-v2`, migración 138) y `_shared/variables-de-ingreso.ts`,
+    con su paridad medida contra AWS en la sección 9, punto 1, de la especificación. Para cerrarlo,
+    en este orden:
+    1. Fusionar. La migración se llama 138 porque la 137 es la del PR 82 (la cola de la API): si ese
+       PR no entra antes, renombrar a 137 antes de aplicar; un número salteado no se aplica nunca.
+    2. Aplicarla con el corredor (`migrar-clientes.mjs --seco` y `--aplicar`) y después desplegar
+       (`--funciones`): `ESQUEMA_MINIMO` sube a 138 y, con la base atrasada, las funciones contestan 503.
+    3. `node scripts/cargar-tablas-equifax.mjs --seco`, y sin `--seco` sólo con el sí del usuario: rehace
+       desde el crudo las consultas con `equifax-tablas-v1` (sin volver a pagar).
+    Lo que quedó abierto del paso: las cuotas, saldos y conteos por tipo de las operaciones (19 variables
+    del nivel 2) no reproducen el extracto de AWS, que salió de las listas de `interconnectResponse` y no
+    de `reporteCrediticio`; hay que decidir si el modelo se entrena con las variables de este módulo sobre
+    las respuestas JSON crudas (lo recomendado) o se extraen también esas listas. Sin eso el nivel 2 no
+    sirve con fidelidad. Faltan además el mapeo de las categorías de AWS a las de Novadata, derivar
+    provincia y cantón de domicilio y trabajo y el «obligado» al perfil, y las filas mensuales del IESS
+    (`trabajoHistoricosMecanizado`) que pide el módulo; todo está en la sección 9 de la especificación.
 
 ## 3. Espera a terceros
 
