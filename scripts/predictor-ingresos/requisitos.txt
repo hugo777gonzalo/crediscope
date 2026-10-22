@@ -1,0 +1,8 @@
+# Versiones con las que se midió (C:\datos\ingresos\entorno). Cada modelo guarda en su manifiesto las que usó para entrenarse.
+lightgbm==4.7.0
+scikit-learn==1.9.1
+numpy==2.5.4
+pandas==3.0.6
+scipy==1.18.1
+pyarrow==26.0.0
+duckdb==2.0.0.dev2610162032

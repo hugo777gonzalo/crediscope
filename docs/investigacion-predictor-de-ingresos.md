@@ -2340,6 +2340,65 @@ Entre los grupos del SRI la cobertura va de 86,0% a 90,6%; **lo que la separa es
 3. El comportamiento de quien no tiene RUC ni aporte al IESS: el 87,3% de los independientes de AWS tiene RUC y los que no, son la minoría que igual pidió crédito.
 4. El patrimonio de los casos en que un analista lo pida: el modelo se midió con el patrimonio de todos los solicitantes (el 98% lo declara en AWS), y los casos que se pidan serán los dudosos.
 
+### 12.26 El entrenamiento, reproducible (2026-10-22)
+
+**Qué se hizo.** El entrenamiento y la medición de los niveles 1 y 2 salieron de los guiones sueltos de `C:\datos\ingresos\scripts` (que se llamaban entre sí con `exec`) a `scripts/predictor-ingresos/` (`LEEME.md`):
+`preparar.py` arma la tabla por persona, `entrenar.py` entrena los doce cuantiles de cada nivel y `medir.py` reproduce las tablas de la especificación (3.1) y de 12.24, con intervalos del 95% por remuestreo de personas (1.000 veces)
+y la cobertura por grupo y por tipo de respuesta. Sin datos ni identificaciones en el repositorio: las entradas siguen en `research/ingresos-aws/` y las tablas y los modelos se escriben en `C:\datos\ingresos\resultados\predictor-ingresos\` y `C:\datos\ingresos\modelos\`.
+No hubo ninguna consulta a AWS: los guiones leen las extracciones que ya estaban en disco.
+
+**Los números coinciden con los guiones viejos.** `medir.py` cotea cada número contra los resultados de `r4_7` (validación cruzada, seis variantes), `r4_8` (por fecha) y `r4_11` (cobertura por grupo): **264 números comparados, 0 distintos**
+(tolerancia: una décima de punto en los porcentajes, 0,0015 en el R² y 1 dólar en las medianas). La tabla por persona que arma `preparar.py` es idéntica, columna por columna y en el mismo orden de filas, a la de `r4_personas_sri.parquet`
+(57.061 independientes, las mismas 21.260 con el bloque del SRI). Dos corridas seguidas dan cuantiles idénticos (diferencia máxima 0), y el modelo que guarda `entrenar.py` predice igual que el entrenado dentro de `medir.py` (0,00).
+Dos cosas que se hicieron distinto sin cambiar un número: las semillas de LightGBM, que los guiones viejos no fijaban, se fijan explícitas en los valores que LightGBM usa por omisión (`bagging_seed` 3, `feature_fraction_seed` 2 y `data_random_seed` 1), y en la prueba por fecha
+las categorías (provincia, cantón, estado del RUC...) salen del entrenamiento (de antes de julio) y no de toda la tabla: una categoría que el modelo no vio llega como dato faltante, como lo hará el evaluador. Con eso los números por fecha coinciden igual.
+
+**Qué entra y qué no.** La tabla trae solo las variables de los niveles 1 y 2 (especificación, 4.1 y 4.2), el objetivo (`unver`, el ingreso no verificado de los independientes entre 0 y 60.000) y unas columnas `med_*` que solo sirven para medir (la respuesta comercial y la etiqueta «solo cuentas o IVA»).
+`comun.verificar_entradas()` corta si una variable `activo_*`, `egreso_*`, `pasivo_*`, `incumplimiento_*`, el predictor de Equifax o la respuesta comercial llega a una matriz de entrenamiento, y `preparar.py` ni siquiera lee la tabla de datos internos.
+Embudo: 146.693 consultas de titulares con solicitud e ingreso validado, 116.673 personas (la consulta más reciente de cada una), 57.061 independientes con ingreso no verificado, **21.260 con el bloque del SRI** (los que entrenan), 18.565 con RUC y 3.538 en OK FACTURAR y condicionado.
+
+**Las tablas de la especificación, con intervalos** (validación cruzada por persona; intervalo del 95% entre paréntesis; entre corchetes, solo OK FACTURAR y condicionado, 3.538):
+
+| Nivel | R² | Tramo exacto | El real supera el mínimo del 90% | Mediana del mínimo del 90% | Certifica «al menos 2.000» (% del total y precisión) |
+|---|---|---|---|---|---|
+| 1 Novadata, sin SRI | 0,091 (0,080 a 0,102) [−0,044] | 35,1% [31,2%] | 89,0% (88,6 a 89,4) [96,2%] | 978 [1.031] | 1,5% y 94,6% [3,5% y 96,8%] |
+| 1 con el SRI de Novadata (el de la especificación) | 0,172 (0,157 a 0,188) [0,098 (0,067 a 0,129)] | 36,9% [34,6%] | 88,9% (88,5 a 89,3) [94,9% (94,2 a 95,6)] | 1.001 [1.173] | 4,1% y 93,9% [9,4% y 97,0%] |
+| 1 con el SRI, la clase y el CIIU | 0,192 (0,176 a 0,209) [0,134] | 37,4% [35,6%] | 88,8% (88,4 a 89,3) [94,6%] | 1.012 [1.216] | 4,2% y 93,8% [9,8% y 95,7%] |
+| 2 Novadata y buró, sin SRI | 0,339 (0,310 a 0,368) [0,443] | 45,6% [52,4%] | 88,4% (88,0 a 88,9) [94,8%] | 1.070 [1.429] | 16,2% y 95,4% [32,2% y 98,5%] |
+| 2 con el SRI de Novadata | 0,352 (0,322 a 0,381) [0,458] | 46,1% [52,8%] | 88,4% (88,0 a 88,9) [94,2%] | 1.082 [1.487] | 16,9% y 95,6% [34,4% y 98,3%] |
+| 2 con el SRI, la clase y el CIIU (el de la especificación) | 0,355 (0,325 a 0,383) [0,460 (0,399 a 0,526)] | 46,2% [53,2%] | 88,2% (87,7 a 88,7) [94,0% (93,2 a 94,7)] | 1.093 [1.516] | 17,0% y 95,5% [34,6% y 98,4%] |
+
+Diferencias de R² con intervalo (1.000 remuestreos): el SRI de Novadata suma +0,082 (0,072 a 0,091) al nivel 1 y la clase y el CIIU +0,020 (0,016 a 0,024) más; al nivel 2 suma +0,013 (0,010 a 0,016) y la clase y el CIIU +0,002 (0,000 a 0,004);
+el buró suma +0,182 (0,163 a 0,200) del nivel 1 al 2.
+
+**Hacia adelante** (entrenado hasta junio con 12.604 personas, probado de julio a octubre con 8.656; entre corchetes, OK FACTURAR y condicionado, 1.613):
+
+| Nivel | R² | El real supera el mínimo del 90% | Mediana del mínimo del 90% | Certifica «al menos 2.000» |
+|---|---|---|---|---|
+| 1 con el SRI de Novadata | 0,187 (0,162 a 0,215) [0,125] | 88,1% (87,4 a 88,8) [94,9% (93,7 a 95,9)] | 1.029 [1.152] | 4,5% y 93,8% [8,7% y 95,7%] |
+| 2 con el SRI de Novadata | 0,370 (0,318 a 0,422) [0,545] | 87,5% (86,8 a 88,2) [94,3% (93,1 a 95,4)] | 1.130 [1.499] | 20,1% y 94,8% [34,2% y 97,8%] |
+| 2 con el SRI, la clase y el CIIU (el de la especificación) | 0,372 (0,319 a 0,425) [0,546] | 87,4% (86,6 a 88,0) [93,3% (92,1 a 94,5)] | 1.138 [1.521] | 20,4% y 94,8% [35,4% y 97,7%] |
+
+La especificación (3.1 y la sección 8, punto 8) dice 87,5% para el nivel 2 hacia adelante: es el nivel 2 con el SRI de Novadata; con la clase y el CIIU, que es el que se exporta, es 87,4%. La diferencia no es de método. **La cobertura queda entre 87,4% y 88,1%, a un punto o dos y medio del 90% nominal**, y el intervalo no llega a 89%: es un desvío real, y la calibración conforme de la especificación (sección 5) es la que debería corregirlo.
+
+**La cobertura por grupo, validación cruzada y por fecha** (el real supera el mínimo del 90%, nivel 1 / nivel 2; intervalos del 95% de 500 remuestreos de personas en la salida de `medir.py`). Los números por grupo de 12.24 se reproducen; lo que agrega la prueba por fecha:
+
+| Grupo | Validación cruzada (casos) | Por fecha (casos) |
+|---|---|---|
+| Con RUC | 88,9% / 88,3% (18.565) | 88,4% / 87,8% (7.870) |
+| **Sin RUC** | 88,6% / 87,7% (2.695) | **85,1% / 83,1%** (786; 82,2 a 87,5 y 79,9 a 85,5) |
+| RUC activo / suspendido | 89,1% / 88,6% y 87,5% / 86,0% | 88,6% / 87,9% y 86,7% / 86,7% |
+| Antigüedad de menos de 2 años | 88,7% / 87,0% (1.642) | 87,6% / 86,1% (676) |
+| Antigüedad de 10 años o más | 89,2% / 88,6% (9.469) | 88,8% / 88,0% (4.073) |
+| Clase RIMPE / OTROS | 87,0% / 87,9% y 90,3% / 88,6% | 86,5% / 87,9% y 89,7% / 87,8% |
+| OK FACTURAR y condicionado | 94,9% / 94,0% (3.538) | 94,9% / 93,3% (1.613) |
+| Sin respuesta | 92,9% / 91,7% (8.804) | 91,7% / 89,8% (3.225) |
+| Rechazado | 71,5% / 70,7% (4.755) | 71,1% / 71,7% (2.016) |
+
+- **Los que menos cubren hacia adelante son quienes no tienen RUC** (85,1% en el nivel 1 y 83,1% en el 2, 786 casos), y por tipo de respuesta, los rechazados (71%). Hacia adelante, los sin RUC bajan tres puntos y medio contra la validación cruzada (88,6% y 87,7%): es parte de lo que 12.24 dejaba sin medir (el comportamiento de quien no tiene RUC) y ahora tiene un número, con un intervalo ancho (de 82 a 88% en el nivel 1).
+  Los demás grupos del SRI quedan entre 86,1% y 89,7% (los obligados a llevar contabilidad, 339 casos, cubren más: 91,7% y 94,4%), salvo la etiqueta «solo cuentas o IVA, sin marca de predictor» (79,8% y 75,6%), que es una etiqueta distinta (el analista no la tocó) y no un grupo de personas.
+- Los rechazados no son un problema del SRI: en ellos el analista baja el ingreso (razón de 0,46, 12.21), y el mínimo, hecho con la mayoría que no se rechaza, queda por encima del ingreso calculado en el 29% de los casos.
+
 ## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,
