@@ -24,7 +24,7 @@ const registro = (respuesta: Record<string, unknown>) => respuesta.reporteCredit
 Deno.test("la estructura lleva su versión, la de las tablas y los datos de la consulta", () => {
   const e = estructuraDe();
   assertEquals(e.version, EQUIFAX_ESTRUCTURA_VERSION);
-  assertEquals(e.tablasVersion, "equifax-tablas-v1");
+  assertEquals(e.tablasVersion, "equifax-tablas-v2");
   assertEquals(e.consulta, { consultadoEl: CONTEXTO.consultadoEl, ambiente: "produccion", identidadVerificada: true, version: EQUIFAX_ESTRUCTURA_VERSION });
 });
 
