@@ -174,8 +174,11 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
     APROBADO CONDICIONADO y 40% de los OK FACTURAR CONDICIONADO, de `requerimiento_condicion_credito`),
     después entrada, garantía, monto y seguro: ninguna es de ingreso.
 15. **Lo que la base no guarda:** la respuesta cruda de Novadata (solo 275 filas de
-    `control_servicio_novadata`), datos del SRI (RUC, establecimientos, impuesto a la renta),
-    inmuebles, nómina y jubilación o pensión como tablas. **Lo que sí guarda por persona del
+    `control_servicio_novadata`), datos del SRI como tablas propias (RUC, establecimientos, impuesto a la renta),
+    inmuebles, nómina y jubilación o pensión como tablas. **El SRI que trae Equifax sí está**, dentro de
+    `consulta_equifax.response_json` (`informacion_sri`: estado, clase, obligado, fecha de inicio, suspensión y CIIU), pero solo en las
+    105.070 respuestas JSON (desde diciembre de 2025); las 309.346 respuestas XML de 2021 a 2025 no lo traen (medido el 2026-10-21;
+    `docs/investigacion-predictor-de-ingresos.md`, 12.24). **Lo que sí guarda por persona del
     requerimiento:** `persona_patrimonio` (activos declarados: vivienda en el 26% de las personas,
     vehículo 15%, muebles 78%; pasivos del buró 98%), `persona_egreso` (gasto familiar 79%, gasto
     financiero 99,9%, arriendo 10%), `persona_ingreso` (salario recuperado de Novadata 25%, declarado
