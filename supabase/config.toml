@@ -58,3 +58,20 @@ verify_jwt = true
 # de leer el cuerpo.
 [functions.evaluar-solicitud]
 verify_jwt = true
+
+# La cola de la API (137). El trabajador lo despierta la agenda de la base y él
+# mismo, sin sesión de usuario: se autentica con VIGIA_CLAVE como el vigía y el
+# trabajador de lotes. Corre los pasos que cobran al buró y gastan modelo, por
+# eso no tiene otra puerta: la clave se compara en tiempo constante.
+[functions.procesar-evaluaciones]
+verify_jwt = false
+
+# La puerta de la API para instituciones. Sin JWT en el portón porque se
+# autentica ella misma, ANTES de leer el cuerpo (identificarActor + rol admin):
+# la especificación pide el 401 en formato RFC 9457 y `/salud` sin ficha, y el
+# portón de Supabase contesta con su propio formato. En este núcleo sólo entra la
+# sesión de un administrador (apagada para terceros hasta que exista el ambiente
+# de prueba, E3); con OAuth y private_key_jwt la ficha deja de ser una sesión de
+# Supabase y la autenticación cambia de lugar sin tocar este valor.
+[functions.api-v1]
+verify_jwt = false

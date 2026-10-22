@@ -736,8 +736,9 @@ paths:
                   summary: Respuesta al pedido con los datos de la IFI
                   value:
                     capacidad:
-                      version: capacidad-v3
+                      version: capacidad-v4
                       veredicto: alcanza
+                      cumple: true
                       ingresoReportado: 1200
                       aportePersonal: 113.4
                       ingresoNeto: 1086.6
@@ -795,8 +796,9 @@ paths:
                   summary: Respuesta al pedido con una persona y su Ingreso declarado (las cuotas, de Equifax)
                   value:
                     capacidad:
-                      version: capacidad-v3
+                      version: capacidad-v4
                       veredicto: alcanza
+                      cumple: true
                       ingresoReportado: 1800
                       aportePersonal: 0
                       ingresoNeto: 1800
@@ -839,8 +841,9 @@ paths:
                       totalPagado: 6289.37
                     montoMaximo: 8531.14
                     capacidadSoloIess:
-                      version: capacidad-v3
+                      version: capacidad-v4
                       veredicto: no_alcanza
+                      cumple: false
                       ingresoReportado: 1200
                       aportePersonal: 113.4
                       ingresoNeto: 1086.6
@@ -1015,7 +1018,7 @@ components:
       required: true
       description: |
         Clave única por pedido, generada por la IFI (se recomienda un UUID).
-        Se guarda 48 horas. Para reintentar, se repite la misma clave.
+        Se conserva mientras exista la evaluación que creó. Para reintentar, se repite la misma clave.
       schema:
         type: string
         minLength: 8
@@ -1365,8 +1368,11 @@ components:
           description: La modalidad con la que se evaluó. En `basico`, `resultado.capacidadDePago` es `null`.
         etapa:
           type: string
-          enum: [fuentes, perfil, modelo, entrega]
-          description: Sólo mientras está `en_proceso`.
+          enum: [perfil, buro, analisis, capacidad]
+          description: |
+            El paso que corre, sólo mientras está `en_proceso`. Son los pasos de
+            la modalidad: `perfil` (las fuentes y el perfil de ingresos), `buro`
+            (sólo `plus`), `analisis` (el modelo) y `capacidad` (sólo `pro` y `plus`).
         referencia:
           $ref: '#/components/schemas/Referencia'
         recibidaEl:
@@ -1514,7 +1520,7 @@ components:
         | `fuentes_no_disponibles` | Las fuentes de datos no respondieron. No se guardó ningún perfil. | Reintentar más tarde. |
         | `plazo_vencido` | La evaluación no terminó dentro de su plazo. | Pedirla de nuevo. |
         | `identificacion_no_encontrada` | La fuente no conoce la identificación, o el buró no la acepta. No se consultó nada más. | Revisar la identificación; reintentar no cambia nada. |
-        | `buro_requiere_consulta_previa` | Modalidad `plus`: la persona no tiene una consulta vigente del buró de la IFI, y consultarla se cobra, así que la hace quien tenga ese permiso. | Pedir la consulta del buró o usar `pro`. |
+        | `buro_requiere_consulta_previa` | Reservado. En `plus`, si la persona no tiene una consulta vigente del buró de la IFI, la API la consulta (y se cobra, hasta el tope diario): hoy la API no produce este código. | — |
         | `tope_diario_agotado` | Se llegó al tope diario de consultas al buró (cada una se cobra). | Reintentar al día siguiente. |
         | `buro_no_disponible` | El buró no se pudo consultar (está apagado, no contestó o contestó por otra identificación). La consulta pudo haberse cobrado: si quedó guardada, al reintentar se reutiliza. | Reintentar en unos minutos; si se repite, avisar a CrediScope. |
         | `error_interno` | Falló algo de CrediScope. | Reintentar; si se repite, avisar a CrediScope. |
@@ -1541,17 +1547,17 @@ components:
           type: string
           example: 1.0.0
         marco:
-          type: string
+          type: [string, 'null']
           example: marco-v30
         estructura:
-          type: string
+          type: [string, 'null']
           example: estructura-v13
         fuentesIngreso:
-          type: string
+          type: [string, 'null']
           example: fuentes-v10
         modelo:
-          type: string
-          description: El modelo que contestó, que puede no ser el pedido si el proveedor reintentó en otro.
+          type: [string, 'null']
+          description: El modelo que contestó, que puede no ser el pedido si el proveedor reintentó en otro. `null` si no hubo análisis del modelo.
           example: claude-sonnet-5-5
 
     Trazabilidad:
@@ -1865,7 +1871,7 @@ components:
 
     Capacidad:
       type: object
-      required: [version, veredicto, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, ingresoDeclarado, avisos, parametros]
+      required: [version, veredicto, cumple, ingresoReportado, aportePersonal, ingresoNeto, obligacionesActuales, cuotaNueva, cargaActual, cargaConElCredito, cargaMaxima, cuotaMaximaAdmisible, holgura, disponibleDespues, obligacionesIncompletas, ingresoSoloSbu, ingresoDeclarado, avisos, parametros]
       properties:
         version:
           type: string
@@ -1873,6 +1879,14 @@ components:
           type: string
           enum: [alcanza, justo, no_alcanza, sin_ingreso]
           description: '`sin_ingreso`: no hay un ingreso con el que medir la cuota; no es un rechazo.'
+        cumple:
+          type: [boolean, 'null']
+          description: |
+            Si la cuota entra en el ingreso, sí o no. `true` con `alcanza` y `justo`
+            (la cuota está dentro del tope, aunque cerca), `false` con `no_alcanza`,
+            y `null` con `sin_ingreso`: no hay con qué medir y eso no es un rechazo.
+            Un `true` con `obligacionesIncompletas` es un sí sobre lo que se pudo
+            contar. Es un derivado del `veredicto`: no agrega criterio.
         ingresoReportado:
           type: number
         aportePersonal:
@@ -2025,6 +2039,7 @@ components:
             - sin-permiso
             - no-encontrada
             - clave-reutilizada
+            - referencia-reutilizada
             - estado-no-permite
             - cuerpo-demasiado-grande
             - tipo-no-soportado
@@ -2165,7 +2180,11 @@ components:
             codigo: no-encontrada
             idPedido: ped_8f3a2c1d9e
     ClaveReutilizada:
-      description: La misma clave de idempotencia ya se usó con otro cuerpo.
+      description: |
+        La misma clave de idempotencia ya se usó con otro cuerpo
+        (`clave-reutilizada`), o la referencia ya tiene una evaluación
+        (`referencia-reutilizada`; para pedir de nuevo el análisis de la misma
+        persona se usa `reemplazaA`).
       headers:
         X-Request-Id:
           $ref: '#/components/headers/XRequestId'
@@ -2304,7 +2323,7 @@ components:
       value:
         id: ev_01JABCD2EFGH3JKMN4PQRS5TVW
         estado: en_proceso
-        etapa: fuentes
+        etapa: perfil
         referencia: SOL-2026-55555
         recibidaEl: '2026-10-09T10:02:03-05:00'
         plazoHasta: '2026-10-09T10:17:03-05:00'
@@ -2384,8 +2403,9 @@ components:
             hallazgos: []
           capacidadDePago:
             capacidad:
-              version: capacidad-v3
+              version: capacidad-v4
               veredicto: alcanza
+              cumple: true
               ingresoReportado: 1200
               aportePersonal: 113.4
               ingresoNeto: 1086.6

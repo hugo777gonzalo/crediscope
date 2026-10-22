@@ -327,6 +327,9 @@ const cuerpos = {
   "simular-credito": { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 },
   "capacidad-de-pago": { cedula: "abc", solicitud: { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 } },
   "evaluar-solicitud": { accion: "avanzar", id: "00000000-0000-0000-0000-000000000000" },
+  // La puerta de la API (137): cada pedido crea una evaluación que, en Plus, puede
+  // cobrar al buró. Con la clave pública no hay sesión de administrador.
+  "api-v1": {},
 };
 for (const [fn, cuerpo] of Object.entries(cuerpos)) {
   const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, {
@@ -336,7 +339,7 @@ for (const [fn, cuerpo] of Object.entries(cuerpos)) {
   });
   anotar("Afuera", `${fn} rechaza la clave pública`, r.status === 401 || r.status === 403, `HTTP ${r.status}`);
 }
-for (const fn of ["vigia", "procesar-lote"]) {
+for (const fn of ["vigia", "procesar-lote", "procesar-evaluaciones"]) {
   const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-vigia-clave": "no-es-la-clave" },

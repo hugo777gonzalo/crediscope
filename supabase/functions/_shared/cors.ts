@@ -41,6 +41,16 @@ function estaPermitido(origen: string): boolean {
 // Todas las respuestas pasan por acá, así que también llevan qué cambio de
 // git está desplegado (version-despliegue.ts): el control de seguridad lo
 // compara contra el repositorio.
+// Para lo que no lo llama un navegador (la API de las instituciones, el trabajador
+// de la agenda): sin permisos de CORS, sólo el sello del despliegue y que
+// ningún intermediario guarde la respuesta (lleva datos de buró).
+export function cabecerasSinCors(): Record<string, string> {
+  return {
+    "x-crediscope-version": VERSION_DESPLIEGUE,
+    "Cache-Control": "no-store",
+  };
+}
+
 export function cabecerasCors(req: Request): Record<string, string> {
   const origen = req.headers.get("Origin") ?? "";
   return {

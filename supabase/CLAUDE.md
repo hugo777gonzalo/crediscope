@@ -85,6 +85,41 @@ su guía: `docs/equifax.md`.
   sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
   proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
   el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
+- **La API para instituciones (núcleo, 2026-10-21; todavía sin desplegar).** Una evaluación
+  de la API es una fila de `solicitudes` con `origen = 'api'` (137): los mismos pasos y
+  módulos que usa la pantalla, y la `modalidad` decide cuáles corren (un flujo nuevo es una
+  entrada más en `MODALIDADES`, no un camino aparte). Quien la hace avanzar es el trabajador,
+  no la pantalla:
+  - `api-v1` (función) valida, guarda y contesta enseguida (202, o 200 con `Prefer: wait=N`);
+    `GET /evaluaciones/{id}` lee el estado y el resultado. Hoy exige la sesión de un
+    administrador (apagada para terceros hasta tener OAuth y el ambiente de prueba).
+  - `procesar-evaluaciones` (función, sin JWT, clave `x-vigia-clave`) reclama con
+    `reclamar_evaluaciones()` (`for update skip locked`, tope de 8 en vuelo) y corre UN paso
+    por invocación; se despierta desde la agenda cada minuto, desde la puerta y desde sí mismo.
+  - Los pasos viven en `pasos-de-evaluacion.ts` y llaman a los módulos directamente
+    (`consulta-de-perfil.ts`, `analisis-de-la-persona.ts`, `equifax-persistencia.ts`), no a
+    las funciones por HTTP: así el trabajador es la única pieza con el poder de cobrar a
+    Equifax y de gastar modelo, sin una puerta más en esas funciones. `structure-client` y
+    `analyze-client` son envolturas de esos módulos; `evaluar-solicitud` (pantalla) sólo
+    comparte `pasoCapacidad` por ahora.
+  - `cola-de-evaluaciones.ts` decide, con funciones puras, qué se anota después de cada paso:
+    un fallo pasajero se reintenta con espera (30 s, 2, 5, 10, 20 min; tope de intentos por paso: perfil 5, buró 3, análisis 5, capacidad 3, contados al TOMAR el paso) y
+    uno definitivo (`identificacion_no_encontrada`, `tope_diario_agotado`) cierra la
+    evaluación. Para la API `fallida` es final: el trabajador nunca la deja ahí si queda algo
+    que reintentar; si el próximo intento caería fuera del plazo (15 min interactiva, 24 h
+    diferida) se cierra ya con `plazo_vencido`. El id público es `ev_` + el uuid en base32.
+  - `pedido-de-evaluacion-api.ts` valida el pedido (campos de más = error; persona,
+    autorización, referencia y operador obligatorios; `modalidad` sin decir es `basico`);
+    `evaluacion-de-la-api.ts` arma la `Evaluacion`. Con `completitud: parcial` (falta un
+    tema crítico) la recomendación nunca es «aprobar» (D6): la regla es de la entrega, el
+    análisis guardado no se toca. El mensaje que leyó el modelo no sale.
+  - En Plus, sin consulta de Equifax vigente, la API consulta y se cobra (negocio,
+    2026-10-21), con el tope diario de siempre. Pruebas de punta a punta: sólo con el
+    sandbox; nunca con personas reales en producción.
+  - Los errores son `application/problem+json` (`problema.ts`); `cuerpo-invalido` lleva el
+    puntero JSON de cada campo. Las funciones que no atiende un navegador usan
+    `cabecerasSinCors()`, que sí lleva el sello del despliegue (el corredor lo confirma con
+    OPTIONS).
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
@@ -140,6 +175,10 @@ su guía: `docs/equifax.md`.
     toma el número libre al aplicarse (regla 1).
 
 **Base y procesos**
+- **Una cola con un paso que se cobra cuenta el intento al tomarlo**, no al fallar, y un
+  fallo cobrado y no guardado no se reintenta (`noReintentar`). Dos evaluaciones de la
+  misma persona no se ceden a la vez: cede la que empezó después. Una evaluación de la
+  API la hace avanzar sólo su trabajador (`evaluar-solicitud` la rechaza con 409).
 - Reencolar ítems de un lote `terminado` no lo reabre.
 - pg_net está en el esquema `net`. Una tarea programada se verifica en
   `cron.job_run_details`, no en `cron.job`.

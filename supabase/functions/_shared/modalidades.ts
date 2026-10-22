@@ -10,8 +10,8 @@
 // Función pura: la usan la función, la pantalla (para dibujar los pasos) y
 // las pruebas.
 
-import { MONTO_MAXIMO, type PedidoDeSimulacion, PRODUCTO_CONSUMO, tasaDelPedido, validarPedido } from "./simulador-credito.ts";
-import { type DatosDeLaSolicitud, validarDatosDeLaSolicitud } from "./datos-de-la-solicitud.ts";
+import { erroresDelPedido, MONTO_MAXIMO, type PedidoDeSimulacion, PRODUCTO_CONSUMO, tasaDelPedido } from "./simulador-credito.ts";
+import { type DatosDeLaSolicitud, type ErrorDeCampo, validarDatosDeLaSolicitud } from "./datos-de-la-solicitud.ts";
 
 export const MODALIDADES_VERSION = "modalidades-v1";
 
@@ -63,9 +63,11 @@ export type EstadoDelPaso = "pendiente" | "en_curso" | "hecho" | "fallido";
 // Por qué falló un paso, en el vocabulario de `Fallo.codigo` de la
 // especificación de la API (api/openapi.yaml). El texto (`detalle`) es para el
 // analista; el código es para quien programa contra la API y no puede leer
-// castellano para decidir si reintenta. `plazo_vencido` no está acá: es de la
-// cola de la API (Fase 1), no de un paso.
+// castellano para decidir si reintenta. `plazo_vencido` no lo produce un paso
+// sino la cola de la API (cola-de-evaluaciones.ts): se anota en el paso que
+// quedaba sin hacer cuando se acabó el plazo.
 export type CodigoDeFallo =
+  | "plazo_vencido"
   | "fuentes_no_disponibles"
   | "buro_requiere_consulta_previa"
   | "tope_diario_agotado"
@@ -170,6 +172,13 @@ export interface FalloDeUnPaso {
   detalle: string;
   codigo: CodigoDeFallo;
   esperarMs: number;
+  /**
+   * Reintentar volvería a gastar plata sin traer nada nuevo: la consulta al buró
+   * se cobró y no quedó guardada (Equifax contestó por otra identificación, o no
+   * se pudo guardar lo que contestó). La cola de la API cierra la evaluación en
+   * vez de reintentar; la pantalla muestra el detalle y deja decidir a un administrador.
+   */
+  noReintentar?: boolean;
 }
 
 export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null): FalloDeUnPaso {
@@ -260,10 +269,16 @@ export interface PedidoDeSolicitud {
 export function validarPedidoDeSolicitud(
   cuerpo: Record<string, unknown>,
   ahora: Date = new Date(),
-): { ok: true; pedido: PedidoDeSolicitud } | { ok: false; errores: string[] } {
-  const errores: string[] = [];
+): { ok: true; pedido: PedidoDeSolicitud } | { ok: false; errores: string[]; detalle: ErrorDeCampo[] } {
+  // `detalle` dice a qué campo se refiere cada error (y el código de los de las
+  // condiciones): la API se lo devuelve a la institución; `errores` son los
+  // mismos motivos sueltos, para la pantalla.
+  const detalle: ErrorDeCampo[] = [];
   const modalidad = cuerpo?.modalidad;
-  if (!esModalidad(modalidad)) return { ok: false, errores: ["La modalidad es «basico», «pro» o «plus»."] };
+  if (!esModalidad(modalidad)) {
+    const motivo = "La modalidad es «basico», «pro» o «plus».";
+    return { ok: false, errores: [motivo], detalle: [{ campo: "/modalidad", motivo }] };
+  }
 
   const solicitudDeCredito = cuerpo.solicitudDeCredito;
   const sc = solicitudDeCredito && typeof solicitudDeCredito === "object" && !Array.isArray(solicitudDeCredito)
@@ -274,7 +289,11 @@ export function validarPedidoDeSolicitud(
   if (MODALIDADES[modalidad].exigeCondiciones) {
     const c = sc as PedidoDeSimulacion | null;
     if (!c) {
-      errores.push(`La modalidad ${MODALIDADES[modalidad].nombre} necesita las condiciones del crédito: monto y plazo.`);
+      detalle.push({
+        campo: "/solicitudDeCredito",
+        codigo: "faltan-condiciones",
+        motivo: `La modalidad ${MODALIDADES[modalidad].nombre} necesita las condiciones del crédito: monto y plazo.`,
+      });
     } else {
       // Se valida lo que se va a guardar, no lo que llegó: la solicitud no guarda
       // `tasaNominalMaximaPorcentaje`, así que una tasa de 50% con un máximo de
@@ -287,15 +306,16 @@ export function validarPedidoDeSolicitud(
         sistema: c.sistema ?? PRODUCTO_CONSUMO.sistema,
         desgravamen: c.desgravamen ?? PRODUCTO_CONSUMO.desgravamen,
       };
-      errores.push(...validarPedido(condiciones));
+      for (const e of erroresDelPedido(condiciones)) detalle.push({ campo: `/solicitudDeCredito${e.campo}`, codigo: e.codigo, motivo: e.motivo });
     }
   }
 
   const declarado = sc?.ingresoDeclarado;
   let ingresoDeclarado: number | null = null;
+  const campoDeclarado = "/solicitudDeCredito/ingresoDeclarado";
   if (declarado !== undefined && declarado !== null && declarado !== "") {
-    if (typeof declarado !== "number" || !Number.isFinite(declarado) || declarado < 0) errores.push("El Ingreso declarado va en dólares por mes, como número.");
-    else if (declarado > MONTO_MAXIMO) errores.push("El Ingreso declarado no puede pasar de 1.000.000.000 de dólares por mes.");
+    if (typeof declarado !== "number" || !Number.isFinite(declarado) || declarado < 0) detalle.push({ campo: campoDeclarado, motivo: "El Ingreso declarado va en dólares por mes, como número." });
+    else if (declarado > MONTO_MAXIMO) detalle.push({ campo: campoDeclarado, motivo: "El Ingreso declarado no puede pasar de 1.000.000.000 de dólares por mes." });
     else {
       // Menos de medio centavo queda en cero: es lo mismo que no declarar.
       const redondeado = Math.round(declarado * 100) / 100;
@@ -304,9 +324,11 @@ export function validarPedidoDeSolicitud(
   }
 
   const datos = validarDatosDeLaSolicitud(cuerpo, ahora);
-  if (!datos.ok) errores.push(...datos.errores);
+  if (!datos.ok) detalle.push(...datos.detalle);
 
-  return errores.length || !datos.ok ? { ok: false, errores } : { ok: true, pedido: { modalidad, condiciones, ingresoDeclarado, datos: datos.datos } };
+  return detalle.length || !datos.ok
+    ? { ok: false, errores: detalle.map((e) => e.motivo), detalle }
+    : { ok: true, pedido: { modalidad, condiciones, ingresoDeclarado, datos: datos.datos } };
 }
 
 // Lo que se guarda del análisis del modelo en el resultado de la solicitud:
