@@ -199,7 +199,8 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
 17. **Cuota de Equifax.** `cuota_estimada_mensual.pago` es idéntico a `cuota_financiera` en las 100.498
     consultas con JSON, y el punto «Actual» del historial también. **El historial tiene cinco
     puntos, no tres: −12, −6, actual, +6 y +12 meses (los dos últimos son proyecciones)** y solo
-    existe en el JSON (desde diciembre de 2025); en el XML anterior no está. `indicador_covid.cuota_financiera`
+    existe en el JSON (desde diciembre de 2025, 100.536 consultas); en el XML anterior (288.969) no
+    está, y allí `cuota_financiera` es numérica en el 83,2%. `indicador_covid.cuota_financiera`
     es texto: 48.638 valores son «No tiene deuda» o «-», y hay un máximo de 8,35 millones. En
     `detalle_deuda_actual_*` las filas sin tipo de crédito ni de riesgo (423.546) son **totales por
     sistema**: sumarlas con el detalle duplica (5% de coincidencia con la cuota financiera); solas
@@ -249,9 +250,15 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
 - Qué quiere decir la marca `consumo` de `respuesta_comercial`: **no separa el producto** (todas las familias
   son automotrices, 2026-10-26). `estado_requerimiento` FINALIZADO es que el requerimiento terminó todo el
   proceso con una respuesta final; **no significa facturado** (negocio, 2026-10-26).
-- Si las observaciones «RECUPERADO NOVADATA MENOS IESS» (unos 1.165 flujos) son los ingresos adicionales
-  de dependientes: es una inferencia por el texto. Y si los puntos +6 y +12 meses del historial de cuota
-  son proyecciones (también por la etiqueta).
+- Si los puntos +6 y +12 meses del historial de cuota son proyecciones (es por la etiqueta).
+- Resuelto: las observaciones «RECUPERADO NOVADATA MENOS IESS» **no** son ingresos adicionales de
+  dependientes. De los 1.496 flujos cuya observación nombra al IESS, 1.178 (79%) son de actividad
+  principal y 318 de secundaria (1.449 personas), casi todos de fuente IESS: es el salario recuperado
+  de Novadata al que el analista le restó el aporte personal al IESS (cerca de 9,45%), o sea un
+  salario neto. No se pueden contrastar con `iess_mismo_mes.csv`: ninguna de esas personas tiene
+  promedio de Novadata ni salario del último mes. Verificado también: ingreso = suma de montos por
+  tipo en el 99,9% de los flujos con algún monto, e ingreso / ventas = rentabilidad en el 81,9% de
+  los 24.707 con ventas (`docs/investigacion-predictor-de-ingresos.md`, 12.15).
 - Por qué el 17% de los movimientos bancarios y de IVA no cumple ingreso = ventas × rentabilidad (razones
   de 0,05 a 0,07, que parecen la declaración de IVA semestral).
 - Cómo se arma el `total_ingresos` de la vista de BI (`v_reporte_bi`). La pantalla de flujo de efectivo del
