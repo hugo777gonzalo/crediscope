@@ -179,19 +179,24 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-21: el **patrimonio solo se
-    solicita a petición de un analista** (no es una entrada inicial; el nivel 3 es una reestimación).
+    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-22: **no se piden patrimonio,
+    gastos ni entrada** (el patrimonio es de otro análisis, a cargo de un analista; la entrada no
+    aplica al crédito de consumo), así que el predictor tiene dos niveles (Novadata; Novadata y buró).
     El SRI de las respuestas de Equifax guardadas en AWS ya se extrajo (autorizado por el negocio) y
     sube el nivel 1 de R² 0,091 a 0,172: solo existe en las 105.070 respuestas JSON de 2026
-    (`docs/investigacion-predictor-de-ingresos.md`, 12.24). Lo que falta decidir o conseguir está en
-    la sección 10 de la especificación: qué se hace con los gastos declarados y con la entrada del
-    crédito; cómo se pide el patrimonio al titular; cotejar el SRI de Novadata con el de Equifax en más
-    de 87 personas (y si el texto de la actividad de los establecimientos de Novadata da un CIIU);
-    casos con ingreso verificado de cada institución para calibrar; la base de 3,9 millones del
-    proveedor; y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC).
-    El primer paso de construcción es extraer `AnalisisCreditoSectorFinanciero` en
-    `equifax-tablas.ts` (sus campos son las variables más pesadas del nivel con buró y hoy no se
-    derivan).
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.24 y 12.25). Lo que falta, en la sección 10 de
+    la especificación: **medir la paridad de los datos de la persona** (edad, sexo, estado civil,
+    provincia y cantón; aporte al IESS) entre AWS y Novadata (el cruce por huellas lo bloqueó el modo
+    automático por datos personales; la alternativa es reconsultar a Novadata una muestra de AWS, que
+    decide el negocio); cotejar el SRI de Novadata con el de Equifax en más de 87 personas (y si el
+    texto de la actividad de los establecimientos de Novadata da un CIIU); la base de 3,9 millones
+    (en proceso por el proveedor); y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y
+    el censo (el negocio no sabe dónde conseguirlos: se buscan en los diccionarios de las bases).
+    La construcción sigue la sección 6 de la especificación, un PR por paso; el primero es extraer
+    `AnalisisCreditoSectorFinanciero` en `equifax-tablas.ts` (sus campos son las variables más
+    pesadas del nivel con buró y hoy no se derivan) junto con las variables de ingreso y la prueba de
+    paridad de `derivarTablas`. El entrenamiento, hoy solo en `C:\datos\ingresos\scripts`, se lleva
+    al repositorio (`scripts/predictor-ingresos/`).
 
 ## 3. Espera a terceros
 
