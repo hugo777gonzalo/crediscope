@@ -100,20 +100,19 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    revisaron una por una: **no se midió cuáles quedaron hechas**. Falta ese recuento y sacar
    de ahí lo que siga abierto. Lo hace Claude leyendo el informe contra el código y la base.
 9. **Respaldo local de las consultas crudas de Equifax de la base de AWS** (pedido del
-   negocio el 2026-10-22, para poder reconstruir después todas las tablas derivadas; el
-   negocio ya avisó a quien administra la base). Orden decidido: **primero los JSON, después
-   los XML**, unas 20.000 por día en lotes de 500, de solo lectura y con pausa. El guion
-   `extraer_crudo_equifax.mjs` está escrito pero **no se probó ni se corrió**: el modo
-   automático bloqueó todo lo que toca ese flujo (lectura del archivo de credenciales,
-   revisión de sintaxis y el sondeo), y la regla de permiso la tiene que agregar el
-   negocio. Mañana: (1) regla `Bash(node extraer_crudo_equifax.mjs:*)` en
-   `.claude/settings.local.json`; (2) `--sondeo` (solo metadatos: columnas, clave primaria,
-   tamaño y una muestra de 0,1%); (3) si el tamaño cierra, `--extraer --formato=json
-   --max=20000` y `--verificar`. Estimación sin medir: 30 a 40 GB sin comprimir (93 KB por
-   respuesta en la muestra de 5.001). Falta revisar si el contrato con Equifax permite
-   conservar y reutilizar sus respuestas (punto abierto de `docs/base-aws-originacion.md`).
-   La salida va a `research/ingresos-aws/crudo-equifax/` (fuera de git: tiene cédulas).
-   Alternativa sin cargar la base: un export de snapshot de RDS a S3 pedido a quien la administra.
+   negocio el 2026-10-22; el negocio ya avisó a quien administra la base). **En curso:** el
+   2026-10-26 se bajaron y verificaron **20.000 JSON** (40 lotes de 500, 147 MB comprimidos,
+   cada lote contra su huella). El guion es `extraer_crudo_equifax.mjs`, en
+   `research/ingresos-aws/scripts/` (fuera de git). Medido: `consulta_equifax` tiene unas
+   418.000 filas y 6,1 GB en total; solo ~15% trae `response_json` (unas 62.000), así que
+   faltan ~42.000 JSON, dos o tres tandas más. Cada lote tardó 3 a 6 s, sin errores.
+   Mañana: `node extraer_crudo_equifax.mjs --extraer --formato=json --max=20000` (retoma solo
+   desde el último id) y `--verificar`. Después los XML: la columna se llama `response` (tipo
+   `xml`), así que va `--formato=xml --col-xml=response`; ese modo **no se probó** y las
+   respuestas XML pesan distinto. La salida va a `research/ingresos-aws/crudo-equifax/`
+   (manifiesto, estado por formato, un `.jsonl.gz` por lote). Falta revisar si el contrato con
+   Equifax permite conservar y reutilizar sus respuestas (punto abierto de
+   `docs/base-aws-originacion.md`).
 10. **El marco y el JSON del modelo, en paralelo a la API** (decisión del 2026-10-21: el
     modelo sigue leyendo solo el perfil en la primera entrega de la API). Se lanzó un
     agente con Opus en su propio worktree (`.claude/worktrees/agent-a2c7577caaf0cb832`, rama
