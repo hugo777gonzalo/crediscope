@@ -231,14 +231,19 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (borrador del 2026-10-22; nada construido). Lo que falta decidir o conseguir está en su sección
-    10: leer `informacion_sri` (actividad y fecha de inicio del SRI) de las respuestas de Equifax
-    guardadas en AWS para reentrenar (lo autoriza el negocio; sin eso el nivel 1 queda en R² de
-    0,087); qué datos internos trae la solicitud (define el nivel 3); casos con ingreso verificado de
-    cada institución para calibrar; la base de 3,9 millones del proveedor; y los códigos de
-    afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC). El primer paso de
-    construcción es extraer `AnalisisCreditoSectorFinanciero` en `equifax-tablas.ts` (sus campos son
-    las variables más pesadas del nivel con buró y hoy no se derivan).
+    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-21: el **patrimonio solo se
+    solicita a petición de un analista** (no es una entrada inicial; el nivel 3 es una reestimación).
+    El SRI de las respuestas de Equifax guardadas en AWS ya se extrajo (autorizado por el negocio) y
+    sube el nivel 1 de R² 0,091 a 0,172: solo existe en las 105.070 respuestas JSON de 2026
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.24). Lo que falta decidir o conseguir está en
+    la sección 10 de la especificación: qué se hace con los gastos declarados y con la entrada del
+    crédito; cómo se pide el patrimonio al titular; cotejar el SRI de Novadata con el de Equifax en más
+    de 87 personas (y si el texto de la actividad de los establecimientos de Novadata da un CIIU);
+    casos con ingreso verificado de cada institución para calibrar; la base de 3,9 millones del
+    proveedor; y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC).
+    El primer paso de construcción es extraer `AnalisisCreditoSectorFinanciero` en
+    `equifax-tablas.ts` (sus campos son las variables más pesadas del nivel con buró y hoy no se
+    derivan).
 
 ## 3. Espera a terceros
 
@@ -285,8 +290,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     catálogo de respuestas y FINALIZADO en el estado del requerimiento, cómo se arma el
     `total_ingresos` de la vista de BI (si suma al cónyuge) y **quién fijó la rentabilidad por
     macroactividad** (no tiene autor ni fecha, y define el ingreso calculado de cuentas e IVA). Lista
-    completa en `docs/base-aws-originacion.md`, sección 5. **Resuelto el 2026-10-22**
-    (`docs/investigacion-predictor-de-ingresos.md`, 12.20 a 12.23): los campos de
+    completa en `docs/base-aws-originacion.md`, sección 5. **Resuelto el 2026-10-21**
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.20 a 12.24): los campos de
     `analisis_credito_sector_financiero` son campos de la respuesta de Equifax; entrenar con las
     salidas de Equifax no necesita contrato (decisión del negocio); el predictor «corregido» ya viene
     en los datos guardados.
