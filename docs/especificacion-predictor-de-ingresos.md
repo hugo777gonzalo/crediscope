@@ -10,7 +10,8 @@ viven fuera de git (`research/ingresos-aws/` y `C:\datos\ingresos\`).
 **ingreso mínimo certificado** (el monto que el ingreso real supera con 90% o 85% de seguridad), la **probabilidad de cada tramo** y un valor central. El ingreso que sí verifica un tercero
 (el salario que reporta el IESS) se muestra aparte, tal cual, y no se estima.
 
-**Lo que garantiza y lo que no.** La seguridad del mínimo se midió contra el ingreso calculado de personas que pidieron crédito (AWS): el real lo supera el 89% de las veces con el mínimo del 90%.
+**Lo que garantiza y lo que no.** La seguridad del mínimo se midió contra el ingreso calculado de personas que pidieron crédito **automotriz** (AWS: el 96%; solo 68 de 57.061 son de consumo): el real lo supera el 89% de las veces con el mínimo del 90%.
+**En crédito de consumo, que es el producto de CrediScope, esa cobertura no está medida** (12.27).
 **No garantiza el monto**: acertar el monto dentro de ±10% se logra en el 15% al 19% de los casos y la propia etiqueta no se repite mejor que el 60% al 66% (12.13 y 12.14). Por eso el ±10% se promete
 solo donde el ingreso es verificable, y para lo estimado se promete un mínimo.
 
@@ -33,6 +34,8 @@ la pensión por tipo de afiliación y la distribución nacional de su tipo.
 | 2026-10-22 | **No se pide patrimonio, ni gastos, ni entrada.** El patrimonio es parte de otro análisis, a cargo de una persona (un analista); los gastos no se piden; la entrada no aplica porque el crédito de consumo no la tiene (es de los créditos hipotecario y automotriz). De Novadata ya se tiene el valor de todos los vehículos de la persona, que el modelo de score lee como colateral. Se retira el nivel 3. |
 | 2026-10-22 | Las rentabilidades por giro, «SD» (sin documentos) y las demás marcas de cómo se armó el ingreso en AWS **no son insumos del modelo**: solo sirven para aclarar los datos con que se entrena el predictor (4.4). |
 | 2026-10-22 | El ingreso verificado para entrenar y calibrar es el ingreso validado calculado de AWS (la pantalla «Flujo de efectivo» de la originación), incluido el recuperado de Novadata. |
+| 2026-10-26 | **Solo se trabaja crédito de consumo general**: sin crédito automotriz y, por lo tanto, sin entrada. AWS es crédito automotriz (96%): la consecuencia para el mínimo está propuesta en 5 y 8 (12.27). |
+| 2026-10-26 | Las rentabilidades por giro que dio el negocio eran aproximadas: son valores genéricos que no nacen de una metodología válida. No son entrada; la garantía aguanta que estén infladas hasta un 30% (12.27). |
 | 2026-10-21 | El resultado es un tramo con probabilidad y un valor central con rango. Los tramos del tramo alto: 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más. |
 | 2026-10-21 | El predictor de Equifax es solo contraste, no entrada. La cuota financiera de Equifax es la pista principal. No se usan los límites de cuota por institución (se incumplen por excepción). |
 | 2026-10-21 | AWS es el piloto y se reentrena con los 3,9 millones del proveedor cuando lleguen. Se entrena con todas las respuestas comerciales y se mide con OK FACTURAR (con condicionado), que cuenta como verdad: lo declarado lo valida el analista con documentos. |
@@ -77,7 +80,7 @@ Los números del ejemplo son inventados.
   },
   "referencia": null,
   "calidad": { "variablesUsadas": 41, "variablesSinDato": 6, "avisos": ["Sin historial de tarjetas en el buró."] },
-  "modelo": { "poblacion": "solicitantes de crédito de vehículos y consumo", "calibradoPara": null, "entrenadoEl": "2026-10-21" }
+  "modelo": { "poblacion": "solicitantes de crédito automotriz", "calibradoPara": null, "entrenadoEl": "2026-10-21" }
 }
 ```
 
@@ -133,8 +136,10 @@ Con Aval como buró de la institución se usa el nivel 1: no hay datos de Aval c
 ### 3.3 Pensión por tipo de afiliación (ENIGHUR 2024-2025; 12.18)
 
 Tabla por afiliación, sexo, edad y zona, con respaldo jerárquico cuando la celda tiene menos de 40 personas. R² de 0,438; el real supera el mínimo del 90% el 87,4% de las veces; mínimo en mediana de 220; certifica «al menos 200» al 52,2% con 96,2% de precisión.
-Mediana de la pensión: aporta al IESS 470 (P10 215, P90 1.100), otro seguro (probable ISSFA o ISSPOL) 870, seguro campesino 119 (casi fija), sin afiliación 400. **Los códigos de afiliación de la encuesta se dedujeron, no están confirmados** (sección 10).
-El archivo es `resultados/ref_2_pensiones_celdas.csv`; en CrediScope sería una tabla de referencia versionada.
+Mediana de la pensión: aporta al IESS 470 (P10 215, P90 1.100), otro seguro 870, seguro campesino 119 (casi fija), sin afiliación 400.
+**Los códigos de afiliación de la ENIGHUR se confirmaron el 2026-10-26 con el formulario oficial** (F1, p. 8: 1 IESS general, 2 IESS voluntario, 3 campesino, 4 ISSFA, 5 ISSPOL, 6 y 7 seguro privado, 8 IESS como trabajador no remunerado del hogar, 9 ninguno) y **el guion los agrupaba mal**: ponía el 8 (IESS) y el 6 y 7 (privados) en «otro seguro».
+Con el mapeo oficial «otro seguro» queda como ISSFA o ISSPOL (407 personas de la muestra, mediana 900) y «certifica al menos 200» baja a 51,9%; los seguros privados tienen 14 jubilados en la muestra y no forman celda (12.27).
+El archivo vigente es `resultados/ref_2_pensiones_celdas.csv` (mapeo anterior) y el corregido, `resultados/r5b_pensiones_celdas.csv`; en CrediScope sería una tabla de referencia versionada con el mapeo oficial.
 
 ### 3.4 Referencia nacional (ENIGHUR y ENEMDU; 12.18)
 
@@ -227,7 +232,7 @@ Las variables de texto (provincia, cantón, actividad, sexo, estado civil) entra
 
 **Objetivo.** Ingreso no verificado: el total calculado menos lo recuperado de Novadata (el salario del IESS). Independientes con ingreso no verificado mayor que cero.
 
-**Población y etiqueta.** Solicitantes de AWS (vehículos y consumo; una solicitud por persona, la más reciente), todas las respuestas comerciales; medido con OK FACTURAR y condicionado. Se mantiene este entrenamiento (12.21: sin los «sin respuesta» casi no cambia).
+**Población y etiqueta.** Solicitantes de crédito automotriz de AWS (el 96%; solo 68 de 57.061 son de consumo, 12.27; una solicitud por persona, la más reciente), todas las respuestas comerciales; medido con OK FACTURAR y condicionado. Se mantiene este entrenamiento (12.21: sin los «sin respuesta» casi no cambia).
 
 **De los cuantiles a la respuesta.**
 - Mínimo certificado: cuantil 0,10 (seguridad del 90%) y cuantil 0,15 (85%).
@@ -235,8 +240,9 @@ Las variables de texto (provincia, cantón, actividad, sexo, estado civil) entra
 - Probabilidad de cada tramo: se interpola la función de distribución entre los cuantiles (`cdf`) y se resta; se ajustan los extremos para que sumen uno.
 - Límite de medio salario básico: `max(mínimo, SBU del año / 2)`.
 
-**Calibración por institución.** El modelo es de solicitantes de vehículos y consumo; una institución con otro producto tiene otros ingresos (12.19). Con al menos 500 casos de esa institución con ingreso verificado se desplaza el mínimo con el método de la calibración conforme de cuantiles
+**Calibración por institución.** El modelo es de solicitantes de crédito automotriz y el producto de CrediScope es el de consumo general; una institución con otro producto tiene otros ingresos (12.19 y 12.27). Con al menos 500 casos de esa institución con ingreso verificado se desplaza el mínimo con el método de la calibración conforme de cuantiles
 (Romano, Patterson y Candès, 2019): se calcula, para esos casos, `cuantil0,10 − ingreso real`, y al mínimo se le resta el cuantil `(1 − 0,10)(1 + 1/n)` de esas diferencias. Sin esos casos, el campo `calibradoPara` queda vacío y la respuesta lo dice.
+**Propuesta, a decidir por el negocio:** para consumo, sin casos propios el mínimo se rotula «sin calibrar para consumo» y se muestra como referencia, no como certificado; la calibración con los primeros casos de consumo validados es el paso previo a certificar.
 
 **Reproducibilidad.** Semilla fija, versiones de las bibliotecas y la huella del archivo de entrenamiento quedan en la fila del modelo (sección 6.4). Los datos de entrenamiento no entran al repositorio.
 
@@ -278,7 +284,7 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 ## 8. Límites que el producto debe decir
 
 1. **Es una estimación sin verificar.** El mínimo certificado es en mediana la mitad del ingreso calculado; no es el ingreso.
-2. **Está calibrado con solicitantes de vehículos y consumo** (AWS). Para una institución de microcrédito o cooperativa, sin calibrar, su cobertura no está medida.
+2. **Está calibrado con solicitantes de crédito automotriz** (AWS: 54.906 de 57.061 independientes; 68 son de consumo). El producto es el crédito de consumo general: su cobertura no está medida, y para una institución de microcrédito o cooperativa tampoco (12.27).
 3. **La etiqueta no es verdad absoluta**: el ingreso calculado se hizo después de ver el predictor de Equifax, se edita (en el 75% de los OK FACTURAR) y en los rechazos baja (razón de 0,46). El mismo cálculo repetido cae en el mismo tramo el 88% de las veces.
 4. **Con Novadata solo la persona se distingue poco de la población** (R² de 0,172 con su SRI y de 0,091 sin él).
 5. **No estima el ingreso adicional de un dependiente** ni el de un jubilado más allá de la referencia por afiliación.
@@ -287,6 +293,9 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 8. **El SRI solo existe en las respuestas JSON de Equifax (desde diciembre de 2025)**: el modelo con SRI se entrena con 2026 (21.260 independientes) y no se probó con quien no tiene RUC ni aporte al IESS (el 87% de los independientes de AWS tiene RUC).
    Hacia adelante (entrenar hasta junio, medir de julio a octubre) el real supera el mínimo del 90% el 87,5% de las veces en el nivel 2 y el 88,1% en el 1 (94% y 95% en OK FACTURAR): dos puntos o dos y medio por debajo del 90% nominal hasta que se calibre (sección 5).
 9. **La paridad de los datos de la persona** (edad, sexo, estado civil, provincia y cantón, y el aporte al IESS) entre el extracto de AWS y Novadata **no se midió**. Solo se midió la del SRI y la de las variables de Equifax (sección 10).
+   Contra la respuesta cruda de Equifax (17.354 consultas, sin cruzar identificaciones): la edad coincide (fecha de nacimiento idéntica en el 88,8% y a un año en el 99,9%) y la zona no (provincia de domicilio 88,5%, cantón 75,2%; de trabajo, 80,0% y 70,0%); el sexo y el estado civil no se pudieron medir contra Equifax (solo trae 563 de 20.000 y ninguna está en el extracto), y AWS los tiene completos (12.27).
+   La sesión de entrenamiento recomienda el nivel 1 con edad, sexo, IESS y SRI, sin zona ni estado civil (cuesta 0,005 de R²): decisión del negocio, no aplicada.
+10. **No está medido en crédito de consumo**, que es el producto, ni con el ingreso verificado de otra institución (12.27).
 
 ## 9. Pruebas de aceptación
 
@@ -301,18 +310,17 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 7. **Paridad del SRI de Novadata con el de Equifax**: en las personas que tienen las dos fuentes, el RUC, la fecha de inicio y el estado que arma el módulo de variables desde Novadata coinciden con `equifax_resumen`. Hoy: tiene RUC, 87 de 87; fecha de inicio, 83 de 83; estado, 81 de 83.
    Se repite al crecer las consultas de Equifax en la base y no puede bajar de eso. Falta el `obligado`.
 8. **Paridad de los datos de la persona**: edad, sexo, estado civil, provincia y cantón de domicilio y de trabajo, y aporte, meses con aporte y empleos del IESS, que arma el módulo desde Novadata, coinciden con los del extracto de AWS en las personas que están en las dos fuentes.
-   Hoy no hay medida. Mientras no la haya, el nivel 1 se sirve sin las variables que no se hayan comprobado.
+   Contra Novadata no hay medida; contra Equifax se midió la edad (coincide) y la zona (no coincide), sección 8. Mientras no se mida contra Novadata, el nivel 1 se sirve sin las variables que no se hayan comprobado.
 
 ## 10. Lo que falta decidir o conseguir
 
 | Qué | De quién | Por qué importa |
 |---|---|---|
-| Paridad de los datos de la persona (edad, sexo, estado civil, provincia y cantón; aporte, meses y empleos del IESS) entre el extracto de AWS y Novadata | Claude, con permiso para cruzar por huella de la identificación a las personas que están en las dos bases (el modo automático lo bloqueó el 2026-10-22 por datos personales), o con la reconsulta de la fila siguiente | El nivel 1 aprende sobre todo de estas variables y solo se midió la paridad del SRI y la de Equifax |
+| Paridad de los datos de la persona (edad, sexo, estado civil, provincia y cantón; aporte, meses y empleos del IESS) entre el extracto de AWS y Novadata | Claude, con permiso para cruzar por huella de la identificación a las personas que están en las dos bases (el modo automático lo bloqueó el 2026-10-22 por datos personales), o con la reconsulta de la fila siguiente | El nivel 1 aprende sobre todo de estas variables. Contra Equifax (respaldo local de 20.000 respuestas) la edad coincide y la zona no (12.27); contra Novadata no se midió |
 | Reconsultar a Novadata una muestra de personas de AWS y entrenar con los datos tal como los arma CrediScope | Negocio: autoriza y declara la base legal del lote (unos 20.000 perfiles tardan unas 17 horas, a 20 por minuto) | Resuelve de raíz la paridad de la persona y permite probar el valor de los vehículos (4.1). Hoy AWS no guarda la respuesta de Novadata |
 | Cotejar el SRI de Novadata con el de Equifax en más de 87 personas, incluido el `obligado`, y ver si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se lleva a un CIIU | Claude, con la base de CrediScope (crecen con cada consulta de Equifax) | El nivel 1 depende de que Novadata dé el mismo SRI que se usó para entrenar; con la clase y el CIIU ganaría +0,020 de R² (4.1) |
-| Casos validados de otra institución o de otro producto | Cada institución | Calibración por institución (sección 5). El negocio indica que el ingreso verificado es el validado de AWS (2026-10-22): para otro producto hará falta su propia muestra |
+| Casos de crédito de consumo con ingreso validado (AWS es crédito automotriz: 68 de 57.061) | Negocio y la primera institución de consumo | Sin ellos el mínimo no se puede certificar para consumo (sección 5 y 12.27). El negocio indica que el ingreso verificado es el validado de AWS (2026-10-22): para otro producto hará falta su propia muestra |
 | La base de 3,9 millones | Proveedor (en proceso, 2026-10-22) | Reentrenar con una población menos sesgada hacia quien pide crédito |
-| Confirmar los códigos de afiliación, de categoría y de instrucción de la ENIGHUR, la ENEMDU y el censo | INEC (diccionario); el negocio no sabe dónde conseguirlos, así que se buscan en los diccionarios de las bases | La tabla de pensiones y las referencias se apoyan en códigos deducidos |
+| Confirmar `p42` (categoría de ocupación) y `nnivins` (instrucción) de la ENEMDU | INEC (el formulario o los tabulados con códigos; no están en los archivos revisados) | Los de la ENIGHUR y `p05a` de la ENEMDU se confirmaron el 2026-10-26; la selección de independientes de la ENEMDU coincide con la ruta del cuestionario, así que la cifra no cambia (12.27) |
 | Los nombres de pantalla (propuesta en 6.7) | Negocio | Los nombres los decide el negocio |
-| Si la mezcla de AWS (vehículos y consumo) representa a las instituciones que usarán el modelo | Negocio | Fija si hace falta calibrar antes de publicar |
-| Si la tabla de rentabilidades por giro de AWS es la vigente: el ejemplo del negocio (2026-10-22) es comercio 40% y construcción 30% y la tabla tiene comercio 0,30 y construcción 0,40 | Negocio | Define cómo se escala el ingreso calculado de cuentas e IVA, que es parte de la etiqueta (12.25) |
+| La tabla de rentabilidades por giro de AWS (comercio y servicios generales 0,30; fabricación, agricultura, construcción, transporte y telecomunicaciones 0,40; servicios profesionales 0,70; arriendos 1,00): el negocio dice que son valores genéricos que no nacen de una metodología válida | Negocio | Escalan el ingreso calculado de cuentas e IVA, el 32% de lo que se mide: la garantía aguanta que estén infladas hasta un 30%; si lo estuvieran más, la cobertura baja (12.27) |

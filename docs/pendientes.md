@@ -179,24 +179,22 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-22: **no se piden patrimonio,
-    gastos ni entrada** (el patrimonio es de otro análisis, a cargo de un analista; la entrada no
-    aplica al crédito de consumo), así que el predictor tiene dos niveles (Novadata; Novadata y buró).
-    El SRI de las respuestas de Equifax guardadas en AWS ya se extrajo (autorizado por el negocio) y
-    sube el nivel 1 de R² 0,091 a 0,172: solo existe en las 105.070 respuestas JSON de 2026
-    (`docs/investigacion-predictor-de-ingresos.md`, 12.24 y 12.25). Lo que falta, en la sección 10 de
-    la especificación: **medir la paridad de los datos de la persona** (edad, sexo, estado civil,
-    provincia y cantón; aporte al IESS) entre AWS y Novadata (el cruce por huellas lo bloqueó el modo
-    automático por datos personales; la alternativa es reconsultar a Novadata una muestra de AWS, que
-    decide el negocio); cotejar el SRI de Novadata con el de Equifax en más de 87 personas (y si el
-    texto de la actividad de los establecimientos de Novadata da un CIIU); la base de 3,9 millones
-    (en proceso por el proveedor); y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y
-    el censo (el negocio no sabe dónde conseguirlos: se buscan en los diccionarios de las bases).
-    La construcción sigue la sección 6 de la especificación, un PR por paso; el primero es extraer
-    `AnalisisCreditoSectorFinanciero` en `equifax-tablas.ts` (sus campos son las variables más
-    pesadas del nivel con buró y hoy no se derivan) junto con las variables de ingreso y la prueba de
-    paridad de `derivarTablas`. El entrenamiento, hoy solo en `C:\datos\ingresos\scripts`, se lleva
-    al repositorio (`scripts/predictor-ingresos/`).
+    (borrador del 2026-10-21; nada construido en el producto). Decidido el 2026-10-22: **no se piden
+    patrimonio, gastos ni entrada**, y el predictor tiene dos niveles (Novadata; Novadata y buró).
+    **Aclarado el 2026-10-26: el producto es el crédito de consumo general y AWS es crédito
+    automotriz** (54.906 de 57.061 independientes; 68 de consumo): el mínimo no está medido en
+    consumo y hay que calibrarlo con casos de consumo antes de certificarlo
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.27). El SRI de AWS (solo en las respuestas JSON
+    de 2026) sube el nivel 1 de R² 0,091 a 0,172 (12.24). Lo que falta, en la sección 10 de la
+    especificación: **casos de consumo con ingreso validado**; **la paridad de los datos de la persona
+    contra Novadata** (contra Equifax la edad coincide y la zona no; el cruce por huellas lo bloqueó el
+    modo automático por datos personales; la alternativa es reconsultar a Novadata una muestra de AWS,
+    que decide el negocio); **reentrenar el nivel 2 con las variables que arma
+    `variables-de-ingreso.ts` sobre las respuestas JSON crudas** (19 variables no coinciden con el
+    extracto; el respaldo local lleva 20.000 de las 105.070); cotejar el SRI de Novadata con el de
+    Equifax en más de 87 personas; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). La construcción sigue la
+    sección 6 de la especificación, un PR por paso.
 
 ## 3. Espera a terceros
 
