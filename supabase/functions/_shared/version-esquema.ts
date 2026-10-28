@@ -18,7 +18,9 @@
 // de una migración nueva: primero se migra, después se despliega.
 // 134: evaluar-solicitud anota la decisión (decidir_solicitud) y evaluada_el.
 // 135: evaluar-solicitud guarda autorización, referencia, operador, prioridad y reemplazaA.
-export const ESQUEMA_MINIMO = 135;
+// 138: la consulta de Equifax guarda equifax_analisis_credito (equifax-tablas-v2). Sin ella el código marcaría
+//      la consulta como derivada con la v2 y la tabla quedaría vacía sin que nada lo avisara.
+export const ESQUEMA_MINIMO = 138;
 
 let verificada: number | null = null;
 

@@ -383,10 +383,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   ingresos, 2026-10-26). Se dio por hecho que la base de AWS mezclaba crédito de
   vehículos y de consumo (lo sugería una marca del catálogo de respuestas), y se
   calibró el mínimo certificado con ella. El tipo de producto del extracto dice
-  que 54.906 de 57.061 independientes son crédito automotriz y 68 son de consumo,
-  y el producto de CrediScope es el de consumo general. Antes de entrenar o
-  calibrar, contar la población por producto con el campo que lo dice, no con
-  una marca que lo sugiere.
+  que 54.906 de 57.061 independientes son crédito automotriz y 68 son de consumo.
+  El negocio decidió el 2026-10-28 que automotriz y consumo son lo mismo (lo
+  comparable es el valor financiado: la entrada no se financia) y que no hay
+  calibración por producto; la propuesta de rotular el mínimo «sin calibrar para
+  consumo» se retiró. Antes de entrenar o calibrar, contar la población por
+  producto con el campo que lo dice, no con una marca que lo sugiere, y después
+  preguntar al negocio si el producto separa algo que importe.
 
 ### Buró, Aval y Función Judicial
 
@@ -746,6 +749,20 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
     llamó a `signOut()`, que en Supabase cierra por defecto todas las sesiones
     de la cuenta. Para probar un estado que depende de la fecha: datos que ya
     estén en ese estado o una prueba en Node, no el reloj de la página.
+  - **Una columna con el mismo nombre no es el mismo campo de la respuesta** (2026-10-22). Las
+    cuotas, saldos y conteos por tipo del extracto de AWS (`equifax_deuda_por_tipo`) salieron de
+    las listas `DetalleDeudaActualReportada*` de `interconnectResponse`, no de
+    `reporteCrediticio.detalle_deuda_actual_*`; la especificación del predictor suponía lo
+    segundo y sólo la prueba de paridad sobre las 5.001 respuestas crudas lo mostró: con las
+    operaciones de `reporteCrediticio` coinciden entre el 49% y el 100% de las consultas según la
+    variable. Antes de servir un modelo, armar sus variables con el código del producto sobre la
+    respuesta cruda y compararlas con las del entrenamiento (`scripts/probar-paridad-variables-de-ingreso.mjs`).
+  - **Una fecha dd/mm/yyyy leída como mes/día, o convertida con `try_cast`, no avisa**
+    (2026-10-22). La investigación del predictor (12.22) dio por hecho que había créditos con
+    concesión «posterior a la consulta» (mínimo de −8,7 meses): era una fecha leída al revés. Con
+    el formato correcto hay 0 de 4.499, y en el entrenamiento la regla del crédito posterior nunca
+    corrió porque `try_cast` de DuckDB dio nulas las 116.673 fechas. Una regla que filtra por
+    fecha se comprueba contando cuántas filas toca; si toca cero, o todas, la fecha está mal leída.
 
 ## Laboratorio
 

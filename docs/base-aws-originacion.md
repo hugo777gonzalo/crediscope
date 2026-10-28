@@ -167,7 +167,9 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
     que todas las familias de respuesta son automotrices, y de los 57.061 independientes del
     entrenamiento del predictor, 54.906 son automotrices, 68 de consumo y 2.087 sin tipo
     (`docs/investigacion-predictor-de-ingresos.md`, 12.27). **Casi toda la base es crédito
-    automotriz.** Las medianas de ingreso de esta tabla son por flujo; las de la otra sesión son por
+    automotriz.** El negocio decidió el 2026-10-28 que automotriz y consumo son lo mismo: lo que se
+    compara es el valor financiado (la entrada no se financia), así que no hay calibración por
+    producto (12.27). Las medianas de ingreso de esta tabla son por flujo; las de la otra sesión son por
     persona y no coinciden.
 14. **Motivos y condiciones.** De los 42.860 RECHAZADO, el 7,5% no guarda motivo; los más frecuentes
     (`motivos_respuesta` → `motivo_etapa` → `motivo`) son «Sin capacidad de pago» 31.450, «Fuera de
