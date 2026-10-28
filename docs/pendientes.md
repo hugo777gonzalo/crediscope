@@ -13,10 +13,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (medido el 2026-10-20)
 
-- **Base:** última migración aplicada, la **136** (2026-10-20); `ESQUEMA_MINIMO` está en 135.
-  Se midió en `esquema_version`.
-- **Funciones:** sello **`f09531e87adc`**, 10 de 10, desplegado el 2026-10-20 sobre el esquema
-  136 (`despliegues`; el anterior fue `da643d391546`).
+- **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
+  `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
+- **Funciones:** sello **`626bb6c04685`**, 10 de 10, desplegado el 2026-10-28 sobre el esquema
+  138 (`despliegues`; el anterior fue `f09531e87adc`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
   institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
   reales; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
@@ -200,12 +200,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
 
     **Lo que sigue, en este orden:**
-    1. Aplicar la migración 138 con el corredor (`migrar-clientes.mjs --seco` y `--aplicar`) y desplegar
-       (`--funciones`), con el sí del usuario: `ESQUEMA_MINIMO` sube a 138 y, con la base atrasada, las
-       funciones contestan 503. La 138 se llama así porque la 137 es la del PR 82 (la cola de la API):
-       si ese PR no entra antes, renombrarla a 137 antes de aplicar, porque un número salteado no se
-       aplica nunca. Después `cargar-tablas-equifax.mjs --seco` y, con el sí del usuario, sin `--seco`
-       (rehace desde el crudo las consultas con `equifax-tablas-v1`, sin volver a pagar).
+    1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
+       consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
+       **Si el PR 82 entra, su migración ya no puede ser la 137** (un número salteado no se aplica
+       nunca): renumerarla a 139 o más.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).
