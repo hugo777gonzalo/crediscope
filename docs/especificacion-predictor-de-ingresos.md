@@ -108,9 +108,9 @@ El ingreso neto de un salario del IESS usa el aporte personal de `PARAMETROS_CAP
 
 ### 3.1 Qué se mide en cada nivel
 
-Independientes de AWS de 2026 que traen el bloque del SRI de Equifax (21.260), ingreso no verificado, validación cruzada por persona; entre paréntesis, solo OK FACTURAR y condicionado (3.538) (12.24 y `scripts/r4_10_niveles_con_sri.py`).
+Independientes de AWS de 2026 que traen el bloque del SRI de Equifax (21.260), ingreso no verificado, validación cruzada por persona; entre paréntesis, solo OK FACTURAR y condicionado (3.538) (12.24 y 12.26; `scripts/predictor-ingresos/`, que reproduce estas tablas número a número con los guiones de la investigación).
 **Solo con variables que CrediScope puede armar igual que en el entrenamiento**: el SRI de Novadata en el nivel 1 y el de Equifax en el 2, sin la actividad ni la antigüedad que trae AWS (declaradas, no coinciden con las del SRI, 4.1).
-Sin el SRI y con todo AWS (57.061 independientes) eran 0,087 y 0,341 (12.23). La paridad de los datos de la persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata **no se midió** (sección 10): son lo que más pesa en el nivel 1.
+Sin el SRI y con todo AWS (57.061 independientes) eran 0,087 y 0,341 (12.23). La paridad de los datos de la persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata **no se midió** (sección 10), pero pesan poco en el nivel 1: sin la zona el R² baja 0,005 y sin ninguna de ellas, 0,011 (12.26); lo que pesa es el SRI (0,095).
 
 | Nivel | Entradas | R² | Tramo exacto | El real supera el mínimo del 90% | Mediana del mínimo del 90% | Certifica «al menos 2.000» (% del total, precisión) |
 |---|---|---|---|---|---|---|
@@ -121,6 +121,11 @@ Sin el SRI y con todo AWS (57.061 independientes) eran 0,087 y 0,341 (12.23). La
 **El nivel 1 distingue poco a una persona, aunque con el SRI ya algo** (R² de 0,172; sin el SRI, 0,091): su mínimo sigue siendo en la práctica el límite inferior de la población de solicitantes, unos USD 1.000, salvo para una minoría (el 4,1% certifica «al menos 2.000»).
 Se muestra con la etiqueta «referencia de solicitantes», no como estimación de la persona, mientras el mínimo no pase de unos USD 1.000. **El salto sigue estando en el buró**: de 0,172 a 0,355.
 Los datos internos (patrimonio, gastos, entrada) se midieron y no entran: sumaban entre 0,000 y 0,019 de R², según el bloque (4.3).
+
+**Con intervalos y hacia adelante** (12.26; intervalo del 95% por remuestreo de personas). R² del nivel 1: 0,172 (0,157 a 0,188); del nivel 2: 0,355 (0,325 a 0,383). Entrenado hasta junio y probado de julio a octubre (8.656 casos), el real supera el mínimo del 90% el **88,1%** de las veces en el nivel 1 (87,4 a 88,8)
+y el **87,4%** en el 2 (86,6 a 88,0; 87,5% con el SRI de Novadata sin la clase y el CIIU). Quienes no tienen RUC cubren menos: 85,1% y 83,1% (786 casos; intervalo ancho). Sin el SRI, el R² del nivel 1 baja 0,095 y, servido sin él, es negativo: **el nivel 1 depende de que Novadata dé el mismo SRI que se usó para entrenar**.
+**Qué variables de la persona conviene que entren al nivel 1** (12.26): la edad y el sexo, el aporte al IESS y el SRI (11 variables, R² de 0,167 y de 0,181 por fecha, cobertura de 89,1% y 88,7%), **sin la provincia ni el cantón ni el estado civil**: la zona cuesta 0,005 de R² (por fecha no se distingue de cero), su paridad entre AWS y Novadata no se midió y el modelo cubre peor
+(86,5%) si llega vacía. Es una recomendación, a decidir por el negocio; el modelo exportado es todavía el de esta tabla, con zona y estado civil. La edad debe calcularse como en AWS (`edad_a_la_consulta`: años cumplidos a la fecha de la consulta).
 
 ### 3.2 Cuándo se usa cada uno
 
@@ -246,6 +251,12 @@ Las variables de texto (provincia, cantón, actividad, sexo, estado civil) entra
 **Calibración por institución.** Por producto no se calibra: automotriz y consumo son lo mismo para el negocio (12.27). Pero una institución con otra clientela, como una de microcrédito o una cooperativa, tiene otros ingresos (12.19). Con al menos 500 casos de esa institución con ingreso verificado se desplaza el mínimo con el método de la calibración conforme de cuantiles
 (Romano, Patterson y Candès, 2019): se calcula, para esos casos, `cuantil0,10 − ingreso real`, y al mínimo se le resta el cuantil `(1 − 0,10)(1 + 1/n)` de esas diferencias. Sin esos casos, el campo `calibradoPara` queda vacío y la respuesta lo dice.
 
+**Calibración medida** (12.26, `scripts/predictor-ingresos/calibrar.py`; entrenado hasta junio, probado de julio a octubre). El método de arriba, con los casos de calibración en logaritmo (el desvío es `log(cuantil) − log(ingreso real)` y el mínimo se multiplica por `exp(−corrimiento)`; en dólares da casi lo mismo, 89,8% contra 89,9%, pero en logaritmo baja el mínimo en proporción y no puede dejarlo negativo).
+Los casos de calibración son las **predicciones fuera de muestra** (validación cruzada de cinco particiones) de los mismos casos con que se entrena, y el modelo que se sirve es el entrenado con todos: no se aparta ningún caso. Resultado: el real supera el mínimo del 90% el **89,9%** de las veces en el nivel 1 (89,3 a 90,6) y el **89,6%** en el 2 (88,9 a 90,2),
+contra 88,1% y 87,4% sin calibrar; el del 85% pasa a 84,7% en los dos. **Cuesta mínimo**: la mediana del mínimo del 90% baja 5,5% en el nivel 1 (de 1.029 a 973) y 6,4% en el 2 (de 1.138 a 1.065), y «al menos 2.000» se certifica en el 18,3% del total en el nivel 2 en vez del 20,4%, con 95,8% de precisión en vez de 94,8%. Los corrimientos medidos son 0,056 y 0,066.
+Calibrando solo con los dos últimos meses (mayo y junio) la cobertura queda en 88,9%: lo que no corrige del todo es la deriva en el tiempo. **Con pocos casos hay dispersión**: con 500 casos la cobertura va de 87,0% a 91,1% según cuáles toquen (entre el 5% y el 95% de los sorteos), con 1.000 de 87,4% a 90,5% y con 2.000 de 88,0% a 89,9%; el mínimo de 500 casos por institución basta para el promedio, no para estrechar el margen.
+El modelo exportado no está calibrado (`calibradoPara` queda vacío): el corrimiento se aplica cuando el negocio lo decida y se vuelve a medir con el modelo final. Un modelo calibrado se informa con la cobertura medida después de calibrar y su intervalo, no con la nominal.
+
 **Reproducibilidad.** Semilla fija, versiones de las bibliotecas y la huella del archivo de entrenamiento quedan en la fila del modelo (sección 6.4). Los datos de entrenamiento no entran al repositorio.
 
 ## 6. Cómo se construye en CrediScope
@@ -293,7 +304,7 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 6. **Los ingresos bajos no se pueden certificar** con este modelo: AWS casi no los tiene. El 0,56% de los solicitantes ganan menos de medio salario básico.
 7. Aval, sin consultas con ingreso calculado, usa el nivel 1.
 8. **El SRI solo existe en las respuestas JSON de Equifax (desde diciembre de 2025)**: el modelo con SRI se entrena con 2026 (21.260 independientes) y no se probó con quien no tiene RUC ni aporte al IESS (el 87% de los independientes de AWS tiene RUC).
-   Hacia adelante (entrenar hasta junio, medir de julio a octubre) el real supera el mínimo del 90% el 87,5% de las veces en el nivel 2 y el 88,1% en el 1 (94% y 95% en OK FACTURAR): dos puntos o dos y medio por debajo del 90% nominal hasta que se calibre (sección 5).
+   Hacia adelante (entrenar hasta junio, medir de julio a octubre) el real supera el mínimo del 90% el 87,4% de las veces en el nivel 2 y el 88,1% en el 1 (93% y 95% en OK FACTURAR): entre 1,9 y 2,6 puntos por debajo del 90% nominal hasta que se calibre (sección 5, que mide cuánto lo corrige). Quien no tiene RUC cubre 85,1% y 83,1% (12.26).
 9. **La paridad de los datos de la persona** (edad, sexo, estado civil, provincia y cantón, y el aporte al IESS) entre el extracto de AWS y Novadata **no se midió**. Solo se midió la del SRI y la de las variables de Equifax (sección 10).
    Contra la respuesta cruda de Equifax (17.354 consultas, sin cruzar identificaciones): la edad coincide (fecha de nacimiento idéntica en el 88,8% y a un año en el 99,9%) y la zona no (provincia de domicilio 88,5%, cantón 75,2%; de trabajo, 80,0% y 70,0%); el sexo y el estado civil no se pudieron medir contra Equifax (solo trae 563 de 20.000 y ninguna está en el extracto), y AWS los tiene completos (12.27).
    La sesión de entrenamiento recomienda el nivel 1 con edad, sexo, IESS y SRI, sin zona ni estado civil (cuesta 0,005 de R²). El negocio respondió el 2026-10-28 «decidir después de medir contra Novadata»: la recomendación queda como candidata, sin aplicar.
