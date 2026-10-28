@@ -379,6 +379,17 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata
   sigue sin medirse. El caso completo, en `docs/investigacion-predictor-de-ingresos.md`
   (12.23 a 12.25).
+- **La población de entrenamiento tiene que ser la del producto** (predictor de
+  ingresos, 2026-10-26). Se dio por hecho que la base de AWS mezclaba crédito de
+  vehículos y de consumo (lo sugería una marca del catálogo de respuestas), y se
+  calibró el mínimo certificado con ella. El tipo de producto del extracto dice
+  que 54.906 de 57.061 independientes son crédito automotriz y 68 son de consumo.
+  El negocio decidió el 2026-10-28 que automotriz y consumo son lo mismo (lo
+  comparable es el valor financiado: la entrada no se financia) y que no hay
+  calibración por producto; la propuesta de rotular el mínimo «sin calibrar para
+  consumo» se retiró. Antes de entrenar o calibrar, contar la población por
+  producto con el campo que lo dice, no con una marca que lo sugiere, y después
+  preguntar al negocio si el producto separa algo que importe.
 
 ### Buró, Aval y Función Judicial
 

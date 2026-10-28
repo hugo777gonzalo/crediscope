@@ -1643,7 +1643,7 @@ datos de personas que piden crédito.
 - **Quién está en la base**: 117.259 consultas son automotrices y 466 de consumo; las 271.287 restantes no
   traen tipo (hasta 2024). 88.639 son del cónyuge y 1.547 de codeudor o garante: para entrenar se toman
   solo titulares y se parte por persona (209.166 personas tienen una sola consulta, 69.338 tienen dos o más).
-  Pichincha y Guayas concentran la mayoría. Quien pide crédito en un concesionario no representa al país.
+  Pichincha y Guayas concentran la mayoría. Quien pide crédito en un concesionario no representa al país: entre los 57.061 independientes del entrenamiento, 54.906 son automotrices y 68 de consumo (12.27).
 - **El ingreso de un independiente parece escrito a mano, no calculado**: el 49,2% es un múltiplo exacto
   de 100 y el 24,0% de 1.000, contra 2,3% y 0,5% en un empleado público (cuyo dato viene del IESS). Los valores
   más repetidos son 2.000, 3.000, 1.500, 2.500 y 1.200. Un cálculo sobre movimientos de cuenta no
@@ -1945,7 +1945,7 @@ auditoría; la tabla de macroactividad no dice quién fijó la rentabilidad ni s
 
 **Catálogos.**
 - Respuesta comercial: 2 APROBADO, 3 APROBADO CONDICIONADO, 4 OK FACTURAR, 5 OK FACTURAR CONDICIONADO, 6 OK FACTURAR SD, 7 SD CONDICIONADO, 8 PENDIENTE y 9 RECHAZADO (activas todas menos 6 y 7).
-  **La familia APROBADO es el flujo de consumo y la familia OK FACTURAR es la automotriz**: parte de la diferencia entre respuestas es de producto y no de calidad del dato.
+  **Se supuso que la familia APROBADO era el flujo de consumo y la familia OK FACTURAR el automotriz; es falso**: el cruce con `tipo_producto` (2026-10-26, 12.27) muestra que todas las familias son automotrices, así que la diferencia entre respuestas no es de producto.
 - Perfil final (AAA PLUS, AAA, AA PLUS, AA, A, B, C, E) con ingreso mínimo de 1.200 (AA y AAA), 1.500 (A y B) y 1.700 (C y E).
 - Tipos de ingreso de un independiente: IVA, banco principal, banco secundaria, ingreso declarado e IVA semestral. Tipos de actividad: principal y secundaria. Documentos: básicos, de ingresos y de patrimonio.
 
@@ -2016,7 +2016,7 @@ se les puede asegurar que ganan al menos 2.000 con ese mínimo.
 - **`egreso_gasto_financiero` no es un dato interno independiente**: es igual a la cuota de Equifax del propio titular (sin codeudor ni garante) en el 94,5% de los casos y su correlación con la cuota es 0,95. Es la variable más pesada de M3 (34% de la ganancia)
   junto con la cuota de Equifax (16,9%); entre las dos son la señal de la cuota. Sigue: actividad CIIU (7,5%), entrada del crédito declarada (5,2%) y crédito mayor aprobado (4,0%).
 - **El ingreso calculado depende del resultado de la solicitud.** Real sobre lo previsto por el modelo (mediana): RECHAZADO 0,75, sin respuesta 1,02, OK FACTURAR CONDICIONADO 1,03, OK FACTURAR 1,06, PENDIENTE 1,13, APROBADO 1,18 y APROBADO CONDICIONADO 1,22.
-  Por eso el mínimo del 90% cubre al 76,4% de los rechazados, al 93,5% de los OK FACTURAR y al 97,6% de los aprobados de consumo. Se puede leer de dos modos que aquí no se pueden separar: se rechaza a quien gana poco, o al rechazar se baja el ingreso (la sesión de AWS midió que en los
+  Por eso el mínimo del 90% cubre al 76,4% de los rechazados, al 93,5% de los OK FACTURAR y al 97,6% de los aprobados (que no son de consumo: son automotrices, 12.27). Se puede leer de dos modos que aquí no se pueden separar: se rechaza a quien gana poco, o al rechazar se baja el ingreso (la sesión de AWS midió que en los
   rechazos se baja, con razón última sobre primera de 0,47). Con el mismo origen del ingreso las diferencias persisten: en OK FACTURAR, «solo cuentas o IVA» 1,28 y «solo declarado» 0,95.
 - **Con qué respuestas entrenar** (siempre medido sobre OK FACTURAR y condicionado, 9.692 personas, con M3):
 
@@ -2084,19 +2084,23 @@ Modelo con variables que Novadata también tiene (edad, sexo, estado civil, inst
   el real supera el mínimo del 90% el 88,9% de las veces; mínimo en mediana 82 (0,38 del real). Certifica «al menos 100» al 44,4% de la población (precisión 96,9%), «al menos 200» al 17,6% (95,6%), «al menos 300» al 6,7% y «al menos 470» al 1,2% (89,9%). El 75,4% gana menos de 470.
 - **La cuota también informa poco en la población general**: R² de 0,375 a 0,400 al sumar el pago de préstamos (7,4% de la importancia); coincide con lo medido en AWS.
 - **Una tabla de celdas rinde mucho menos que el modelo** (R² de 0,10 a 0,14 contra 0,375; mínimo del 90% de USD 47 a 50): las ocupaciones y actividades de 4 dígitos y sus interacciones llevan la señal. Se dejó la tabla igual para quien necesite una referencia legible
-  (`resultados/ref_2_independientes_celdas.csv`, 115 celdas con al menos 60 personas): por ejemplo, con afiliación al IESS y RUC o RISE (2.039 personas de la muestra, 340 mil en el país) la mediana es 207, el 90% gana menos de 1.599 y el 54% menos de 470; sin afiliación y con RUC
-  (10.829; 1,74 millones) la mediana es 138 y el 78% gana menos de 470; con seguro campesino (378; 56 mil) la mediana es 76 y el 91% gana menos de 470.
+  (`resultados/ref_2_independientes_celdas.csv`, 115 celdas con al menos 60 personas): por ejemplo, con afiliación al IESS y RUC o RISE (2.039 personas de la muestra, 340 mil en el país) la mediana es 410 (el percentil 30 es 207), el 90% gana menos de 1.599 y el 54% menos de 470; sin afiliación y con RUC
+  (10.829; 1,74 millones) la mediana es 242 (el percentil 30, 138) y el 78% gana menos de 470; con seguro campesino (378; 56 mil) la mediana es 143 (el percentil 30, 76) y el 91% gana menos de 470.
+  **Corregido el 2026-10-26**: este texto daba el percentil 30 como si fuera la mediana (207, 138 y 76); lo encontró la revisión de los códigos del INEC y se verificó contra la tabla (12.27).
 
 **Jubilados y pensionistas en el país** (prestación de seguridad social; 5.505 personas, 922 mil en el país). Aquí una tabla sí sirve: por afiliación, sexo, edad y zona tiene R² de 0,438, acierta el tramo exacto el 54,3%, el real supera el mínimo del 90% el 87,4% de las veces, el mínimo es en mediana 220 (0,56 del real)
 y se puede certificar «al menos 200» al 52,2% con 96,2% de precisión (`resultados/ref_2_pensiones_celdas.csv`).
 
-| Afiliación (códigos deducidos, no confirmados) | Muestra | En el país (miles) | P10 | P30 | Mediana | P70 | P90 | Menos de 470 | Además trabaja |
+| Afiliación (con el mapeo anterior; los códigos oficiales, abajo) | Muestra | En el país (miles) | P10 | P30 | Mediana | P70 | P90 | Menos de 470 | Además trabaja |
 |---|---|---|---|---|---|---|---|---|---|
 | Aporta al IESS (general o voluntario) | 3.737 | 678 | 215 | 325 | 470 | 689 | 1.100 | 48,2% | 12,7% |
-| Otro seguro (probable ISSFA o ISSPOL) | 421 | 66 | 480 | 750 | 870 | 1.170 | 1.520 | 9,7% | 25,5% |
+| Otro seguro (era «probable ISSFA o ISSPOL»; ver la nota) | 421 | 66 | 480 | 750 | 870 | 1.170 | 1.520 | 9,7% | 25,5% |
 | Seguro campesino | 1.118 | 133 | 100 | 106 | 119 | 120 | 120 | 99,6% | 9,5% |
 | Ninguno | 229 | 44 | 120 | 270 | 400 | 600 | 2.000 | 52,5% | 11,9% |
 | Todos | 5.505 | 922 | 120 | 270 | 430 | 667 | 1.150 | 53,1% | 13,1% |
+
+**Nota del 2026-10-26: los códigos de afiliación se confirmaron y el guion los agrupaba mal** (12.27). Con el formulario oficial de la ENIGHUR (F1, p. 8), el 8 es «IESS como trabajador no remunerado del hogar» (iba a «otro seguro») y el 6 y el 7 son seguros privados (también iban a «otro seguro»).
+Corregido, «otro seguro» es ISSFA o ISSPOL: 407 personas de la muestra, 63 mil en el país, mediana 900 y 7,5% con menos de 470; «certifica al menos 200» baja de 52,2% a 51,9%; lo demás no cambia. Los seguros privados tienen 14 jubilados en la muestra y no forman celda. La tabla corregida está en `resultados/r5b_pensiones_celdas.csv`.
 
 La pensión del seguro campesino es casi fija (alrededor de 120) y la de otros seguros es el doble que la del IESS: **conocer el tipo de afiliación que ya trae Novadata permite estimar la pensión con una precisión útil**, mucho mejor que para un independiente.
 En AWS, en cambio, el monto de un jubilado es declarado (mediana de 1.250 a 1.641): es una población que pide crédito, no la del país.
@@ -2119,7 +2123,7 @@ El supuesto se cumple en los datos. **El límite de medio salario básico nunca 
 | V2 | OK FACTURAR | 90% | 93,6% | 1.599 | 0,49 | 38,5%, 98,7% |
 | V2 | OK FACTURAR | 85% | 89,7% | 1.832 | 0,57 | 45,1%, 98,0% |
 
-**Lo que implica.** Para quien solicita, aun sin buró (V1) el mínimo certificado es de unos USD 1.000 (contra 80 en la población nacional, 12.18): la diferencia es el hecho de estar pidiendo un crédito. El resultado depende de **qué producto y qué institución**: AWS es financiamiento de vehículos y consumo
+**Lo que implica.** Para quien solicita, aun sin buró (V1) el mínimo certificado es de unos USD 1.000 (contra 80 en la población nacional, 12.18): la diferencia es el hecho de estar pidiendo un crédito. El resultado depende de **qué producto y qué institución**: AWS es financiamiento de vehículos (el 96% es crédito automotriz y solo 68 de 57.061 son de consumo, 12.27; para el negocio es lo mismo que consumo, porque el valor financiado es el mismo)
 (mediana de 2.300 entre independientes); la mezcla de una institución de microcrédito o una cooperativa tendría ingresos más bajos, y el mínimo de un modelo entrenado con AWS no valdría tal cual. **El modelo de solicitantes hay que calibrarlo con la población de cada institución o producto**, y la referencia nacional
 queda para donde no se pueda suponer que la persona solicita crédito.
 
@@ -2138,16 +2142,16 @@ solo con esas tres consultas, en transacción de solo lectura (`research/ingreso
 
 **Sin confirmar.** Se dicen como inferencias y no se usan como dato.
 1. **Resuelto el 2026-10-22 (12.25):** «SD» es «sin documentos»: el analista decide no pedirle al cliente respaldo de ingresos, patrimonio ni estabilidad (113 independientes en cada una de OK FACTURAR SD y SD CONDICIONADO: ya estaban fuera de la verdad con que se mide).
-2. Si la marca de «consumo» de la respuesta comercial separa de verdad consumo de automotriz (lo supone 12.15).
-3. Si el estado FINALIZADO del requerimiento significa que se facturó.
-4. **Resuelto el 2026-10-22 (12.25):** las rentabilidades las fija crédito sobre un flujo real de ingresos de la actividad (estados de cuenta y declaraciones de IVA) y dependen del giro del negocio. No son entrada del modelo: aclaran la etiqueta. El ejemplo que dio el negocio no coincide con la tabla de AWS (12.25).
+2. **Resuelto el 2026-10-26 (12.27):** la marca de «consumo» de la respuesta comercial no separa el producto. El cruce con `tipo_producto` muestra que todas las familias de respuesta son automotrices (54.906 de 57.061 independientes; 68 de consumo).
+3. **Resuelto el 2026-10-26 (12.27):** FINALIZADO quiere decir que el requerimiento terminó todo el proceso con una respuesta final; no significa que se facturó.
+4. **Resuelto el 2026-10-22 (12.25) y aclarado el 2026-10-26 (12.27):** las rentabilidades las fija crédito sobre un flujo real de ingresos de la actividad (estados de cuenta y declaraciones de IVA) y dependen del giro del negocio. No son entrada del modelo: aclaran la etiqueta. Los valores que dio el negocio (comercio 40%, construcción 30%) eran aproximados, y el negocio dice que son valores genéricos que no nacen de una metodología válida.
 5. Cómo se arma el total de ingresos de la vista de reportes. La pantalla de flujo de efectivo suma los ingresos del titular y del cónyuge (visto en una captura, 12.25); falta confirmar que la vista de reportes use el mismo total.
 6. Cómo arma Novadata el promedio del IESS: el ingreso de un dependiente con fuente IESS es el 90,0% de ese promedio en el 75,5% de los casos (un descuento fijo del 10%, no el 9,38% de ley).
 7. Que los dos últimos puntos del historial de cuota de Equifax (+6 y +12 meses) sean proyecciones: se dedujo de la etiqueta.
 8. Los códigos de afiliación, de categoría de ocupación y de nivel de instrucción de la ENIGHUR, la ENEMDU y el censo: se deducieron de los datos y no de una etiqueta oficial.
 9. Quién editó cada versión de un flujo: la auditoría solo existe desde el 2026-03-08 y, para el 46% al 53% de las versiones, el usuario no coincide con ningún analista registrado, así que el rol solo se puede leer en parte (12.21: se distingue por comportamiento, automático o manual).
 10. Si el `obligado` que trae Novadata coincide con el de Equifax, y si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se puede llevar a un CIIU (12.24). Lo demás del SRI de Novadata se cotejó con Equifax en 87 personas.
-11. Qué significan «alerta de ingreso» y «alerta de antigüedad» de la pantalla de flujo de efectivo de la originación (12.25), y si AWS las guarda.
+11. Qué significan «alerta de ingreso» y «alerta de antigüedad» de la pantalla de flujo de efectivo de la originación (12.25), y si AWS las guarda. El negocio cree (2026-10-26) que son alertas por falta de continuidad; no está confirmado.
 12. Si los datos de la persona que usa el entrenamiento (edad, sexo, estado civil, provincia y cantón; aporte, meses con aporte y empleos del IESS) son los mismos que arma CrediScope desde Novadata: no se midió (especificación, sección 10).
 
 ### 12.21 Tercera ronda: historial por flujo, documentos y secuencias (2026-10-21)
@@ -2348,7 +2352,7 @@ El negocio respondió punto por punto a los pendientes de 12.24 y compartió cua
 
 **Decisiones.**
 1. **No se piden gastos.**
-2. **La entrada no aplica**: el crédito de consumo no tiene entrada; es de los créditos hipotecario y automotriz. (En AWS, que mezcla vehículos y consumo, sí existe: de ahí su peso en 12.24.)
+2. **La entrada no aplica**: el crédito de consumo no tiene entrada; es de los créditos hipotecario y automotriz. (En AWS, que es casi todo crédito automotriz, sí existe: de ahí su peso en 12.24.)
 3. **No se pide patrimonio**: es parte de otro análisis, a cargo de una persona (un analista). Reemplaza la decisión del 2026-10-21 de pedirlo a petición. **Se retira el nivel 3**: el predictor queda en dos niveles (Novadata; Novadata y buró), más lo verificado y las dos referencias.
    De Novadata ya se tiene el valor de todos los vehículos de la persona, que el modelo de score lee como colateral.
 4. **El ingreso verificado es el ingreso validado calculado de AWS** (el que muestra la pantalla de flujo de efectivo), incluido el recuperado de Novadata. Con él se entrena y se mide; para calibrar a otro producto u otra institución haría falta su propia muestra validada (especificación, sección 10).
@@ -2491,6 +2495,80 @@ el evaluador de `_shared/` (paso 2 de la construcción) los tiene que reproducir
 5. **Los que no tienen RUC ni aporte al IESS** (los 786 sin RUC de la prueba por fecha cubren 85,1% y 83,1%): el grupo es chico y su intervalo ancho; sigue sin probarse el caso sin RUC y sin IESS a la vez.
 6. **El SRI de Novadata contra el de Equifax**: la paridad sigue en 87 personas (especificación, 4.1); el `obligado` de Novadata no se comparó.
 7. **La especificación**: el PR 84 (decisiones del 2026-10-22) sigue abierto, así que la especificación no se tocó. Lo que cambia en 3.1 y 5 (la calibración medida, la cobertura hacia adelante de 87,4% en el nivel 2 con clase y CIIU, y la recomendación de variables) queda acá hasta que el 84 esté en `main`.
+
+### 12.27 AWS es automotriz y para el negocio es lo mismo que consumo, y otras aclaraciones (2026-10-26 y 2026-10-28)
+
+**Casi todo AWS es crédito automotriz, y el negocio dice que es lo mismo que consumo.** El 2026-10-26 el negocio aclaró que solo se trabaja crédito de consumo general (sin automotriz y, por lo tanto, sin entrada). El cruce del tipo de producto del extracto con la tabla de entrenamiento (`scripts r5_2`) dice:
+- De los **57.061 independientes** con ingreso no verificado: **54.906 son crédito automotriz (96,2%)**, 68 de consumo prioritario (0,1%) y 2.087 sin tipo (3,7%). Los **9.631 casos de OK FACTURAR y condicionado** con que se mide: 9.362 automotrices y 269 sin tipo; **ninguno de consumo**. En el subconjunto con SRI (21.260): 19.117 automotrices, 56 de consumo y 2.087 sin tipo.
+- Los productos de AWS (NOVAVIP, NOVAPLUS, NOVAFERIA, NOVA PREMIUM y similares) son los de un originador de crédito automotriz.
+- **Corrige dos supuestos anteriores**: «AWS mezcla vehículos y consumo» (12.19, 12.20 y la especificación) y «la familia APROBADO es el flujo de consumo y la OK FACTURAR el automotriz» (12.15). Entre los automotrices están todas las respuestas: APROBADO 2.912, APROBADO CONDICIONADO 6.595, OK FACTURAR 6.766, OK FACTURAR CONDICIONADO 2.596 y RECHAZADO 13.111.
+  Donde 12.16 y 12.17 dicen «aprobados de consumo» hay que leer «aprobados».
+
+**Qué significa para el predictor: nada que calibrar por producto (decisión del negocio, 2026-10-28).** El 2026-10-26 esta sesión escribió que el mínimo certificado «no está medido en consumo» y propuso rotularlo «sin calibrar para consumo» hasta tener casos de consumo validados. El negocio lo corrigió el 2026-10-28:
+
+> «De AWS hay más créditos automotriz; es lo mismo que consumo salvo que el valor financiado disminuye en el crédito automotriz porque hay una entrada de por medio. Crédito Consumo = 20.000; Crédito Consumo (Automotriz) = 20.000 + 5.000 (entrada) = valor auto de 25.000, pero el valor financiado es el mismo, 20.000.»
+>
+> «No existe la calibración contra consumo o automotriz, los 2 créditos son lo mismo; lo que nos importa son los datos del predictor de Equifax, que es un predictor general.»
+
+**Esa propuesta se retira.** Se conserva el dato (54.906 de 57.061 independientes son automotrices y 68 de consumo; los 9.631 de OK FACTURAR y condicionado no incluyen consumo), con la nota de que lo comparable entre los dos productos es el **valor financiado**, no el valor del bien. La cobertura de alrededor del 89% que se midió con AWS vale entonces para el producto, y no se pide una muestra de consumo.
+Lo que sigue valiendo es la **calibración por institución** de la sección 5 de la especificación: otra institución, con otra clientela (una de microcrédito, una cooperativa), tiene otros ingresos, y eso no depende del producto.
+
+**Las rentabilidades.** El negocio aclaró que los valores que dio (comercio 40%, construcción 30%) eran aproximados y que no los tiene exactos: son valores genéricos que no nacen de una metodología válida. **No se usan como entrada.** Solo importan porque escalan la etiqueta: en los flujos de «cuentas o IVA» (3.103 de los 9.631 OK FACTURAR y condicionado, el 32,2%)
+el ingreso calculado es el promedio de ventas o depósitos por la rentabilidad del giro. **Sensibilidad medida** (`scripts r5_5`; nivel 2 sin SRI, validación cruzada): si el ingreso real de esos flujos fuera k veces el calculado, el mínimo del 90% cubre, en ese grupo y en todos los OK FACTURAR,
+
+| k (real sobre calculado) | Cobertura en «cuentas o IVA» | Cobertura en todos los OK FACTURAR | Certifica «al menos 2.000»: precisión en «cuentas o IVA» |
+|---|---|---|---|
+| 0,5 | 72,2% | 87,0% | 91,6% |
+| 0,6 | 82,3% | 90,3% | 96,1% |
+| 0,7 | 89,1% | 92,5% | 98,1% |
+| 0,8 | 92,7% | 93,6% | 98,8% |
+| 0,9 | 95,3% | 94,5% | 99,4% |
+| 1,0 (como está) | 96,5% | 94,9% | 99,5% |
+| 1,25 | 98,2% | 95,4% | 99,6% |
+
+**La garantía aguanta que esas rentabilidades estén infladas hasta un 30%** (k de 0,7); si el ingreso real fuera la mitad de lo calculado, la cobertura baja al 72% en ese grupo y al 87% en el total. Es una sensibilidad: no se conoce el error verdadero. Y si las rentabilidades estuvieran bajas, el mínimo cubre más.
+
+**Otras respuestas.**
+- **FINALIZADO** quiere decir que el requerimiento terminó todo el proceso con una respuesta final; no significa que se facturó. Resuelve el punto 3 de 12.20.
+- **«Alerta de ingreso» y «alerta de antigüedad»**: el negocio cree que son alertas por falta de continuidad (no lo confirma). La pantalla es la de «Flujo de efectivo» de la pestaña «Análisis Económico» del sistema de originación, no la de «Fuentes de ingreso» de CrediScope.
+
+**La paridad de los datos de la persona, contra Equifax** (`scripts r5_3`). El respaldo local de las consultas crudas de Equifax ya tiene 20.000 respuestas JSON (`research/ingresos-aws/crudo-equifax/`; de las 105.070 que hay). Traen datos demográficos, y se cruzaron con el extracto de AWS por número de consulta, **sin cruzar identificaciones** (17.354 consultas):
+- **Fecha de nacimiento** (Equifax la trae como texto, «12 de Mayo de 1985»): con las dos 15.365; **idéntica 88,8%**, a 31 días 99,8% y a un año 99,9%. **La edad coincide.**
+- **Provincia y cantón** (Equifax trae hasta cinco direcciones juntas, separadas por «|»): domicilio de AWS contra la primera de Equifax, provincia 88,5% y cantón 75,2% (en alguna de las cinco, 90,7% y 79,3%); trabajo, provincia 80,0% y cantón 70,0% (82,0% y 73,6%). **La zona no coincide**: AWS toma un domicilio declarado y Equifax uno del buró.
+- **Sexo y estado civil**: Equifax solo los trae en 563 de 20.000 respuestas (en `VariablesOfertaTotal`) y ninguna de ellas está en el extracto de AWS (0 de 513 revisadas): no se pudo medir. AWS sí los tiene completos (sexo 100%, estado civil 99,9% de los 57.061 independientes).
+- Esto respalda la recomendación de la sesión de entrenamiento: **nivel 1 con edad, sexo, IESS y SRI, sin zona ni estado civil**, que cuesta 0,005 de R². **El negocio respondió el 2026-10-28 «decidir después de medir contra Novadata»**: queda como candidata, sin aplicar, hasta medir la paridad contra Novadata (lo que se sirve), que sigue sin medirse.
+
+**Qué encontraron las sesiones de construcción** (PR 85, 86 y 87, fusionados el 2026-10-28):
+- **PR 85 (variables y tabla de Equifax)**: las diez variables de crédito, la cuota y su historial y el SRI coinciden con el extracto (4.499 de 4.499 y 5.001 de 5.001), pero **19 variables del nivel 2** (cuotas, saldos y conteos por tipo de operación) no: el extracto salió de las listas `DetalleDeudaActualReportada*` de `interconnectResponse` y CrediScope las arma de `reporteCrediticio`, y coinciden entre el 49% y el 100% según la variable.
+  El nivel 2 recibiría algo distinto de lo que aprendió el modelo. **Recomendación escrita: entrenar con las variables que arma `variables-de-ingreso.ts` sobre las respuestas JSON crudas**, que es lo que permite el respaldo local. También corrige 12.22: la «concesión posterior a la consulta» no existe (era una fecha leída mes/día).
+- **PR 86 y 87 (entrenamiento)**: el pipeline reproduce 264 números de los guiones anteriores sin diferencias; con calibración conforme el mínimo del 90% cubre 89,9% y 89,6% (niveles 1 y 2) hacia adelante; el nivel 1 sin zona pierde 0,005 de R²; el modelo exportado pesa 0,6 MB y su evaluador de referencia coincide con LightGBM a 3e-14. El modelo del nivel 2 que exporta usa esas 19 variables (las cuotas, saldos y conteos por tipo): no sirve para publicar hasta reentrenar con las del módulo.
+
+**Códigos del INEC** (informe de la sesión de códigos, `C:\datos\ingresos\resultados\r5_codigos_inec.md`, fuera de git):
+- **ENIGHUR `P06_1` (afiliación)**, formulario oficial F1, p. 8: 1 IESS general, 2 IESS voluntario, 3 campesino, 4 ISSFA, 5 ISSPOL, 6 seguro privado con hospitalización, 7 seguro privado sin hospitalización, 8 IESS como trabajador no remunerado del hogar, 9 ninguno. **El guion agrupaba mal** el 8 (IESS) y el 6 y 7 (privados) en «otro seguro»;
+  con el mapeo oficial las cifras cambian poco (nota en 12.18): en los independientes, «otro seguro» se separa en ISSFA o ISSPOL (mediana 300) y seguro privado (555).
+- **ENIGHUR `PA23` (categoría de ocupación) y `P19_1` (instrucción)**: confirmados (F1, p. 21; sintaxis oficial de los tabulados). Sin efecto en las cifras: el guion no los nombra.
+- **ENEMDU `p05a` (afiliación)**: confirmado con la guía de uso (tabla 2). **La numeración de la ENIGHUR no es la de la ENEMDU**: en una el «ninguno» es el 9 y el 8 es IESS; en la otra el «ninguno» es el 10 y el 8 es seguro municipal.
+- **ENEMDU `p42` (categoría de ocupación) y `nnivins` (instrucción)**: **sin confirmar**; el INEC no publica la tabla de códigos en los archivos revisados (haría falta el formulario o los tabulados con códigos). La selección de independientes de `ref_3` (5 y 6) coincide con la ruta del cuestionario, así que la cifra no cambia; hay que corregir la etiqueta «patronos» de su texto.
+- **Una corrección propia**: 12.18 daba como «mediana» tres cifras que eran el percentil 30 (207, 138 y 76); las medianas son 410, 242 y 143. Corregido en 12.18.
+
+### 12.28 La destilación del predictor de Equifax: qué mejora y qué no (2026-10-28)
+
+**Lo que dijo el negocio.** «Tenemos 400.000 consultas a Equifax con predictor en un periodo de 5 años, que nos debería servir para destilar nuestro modelo propio de predictor.» La idea es entrenar un modelo propio que reproduzca el predictor de Equifax. Se midió en `C:\datos\ingresos\scripts\r5_7_destilacion_viabilidad.py` (salida en `C:\datos\ingresos\resultados\r5_7_destilacion.log`, fuera de git).
+
+**Qué se midió.**
+1. **El predictor de Equifax explica poco el ingreso validado.** En los 56.776 independientes la correlación de los logaritmos es 0,50 (0,59 en OK FACTURAR y condicionado) y el R² con una recalibración lineal es 0,25 (−0,04 tal cual, sin recalibrar). En OK FACTURAR la mediana de predictor sobre ingreso validado es 1,00: el analista anclaba el ingreso en el predictor, así que esa cercanía es en parte suya.
+2. **Un modelo propio lo reproduce bien.** Con las variables del nivel 2, el R² contra el predictor es 0,79 (validación cruzada, 116.223 personas); dentro de ±10% queda el 43% y dentro de ±25% el 73%. Es parecido en cada régimen (0,78 a 0,80). Entrenado antes de abril y medido desde abril baja a 0,67.
+3. **Pero imitarlo no ayuda a predecir el ingreso validado.** R² contra el ingreso validado:
+
+| Entrada | Todos los independientes | OK FACTURAR y condicionado |
+|---|---|---|
+| Nivel 2 solo | 0,341 | 0,445 |
+| Nivel 2 con el modelo que imita al predictor | 0,342 | 0,447 |
+| Nivel 2 con el predictor de Equifax mismo | 0,349 | 0,469 (contaminado: el analista lo vio) |
+
+**Conclusión.** Destilar no mejora la predicción del ingreso validado: lo que le suma el predictor de Equifax a las variables del buró es casi nada (0,008 de R² en todos), y el modelo que lo imita suma 0,001. **Serviría para independizarse del predictor de Equifax** (dejar de depender de su respuesta, su precio o su versión), no para estimar mejor el ingreso.
+
+**Pregunta abierta al negocio:** qué quiere lograr con la destilación. Si es independizarse de Equifax, el modelo propio con las variables del buró ya lo logra con el ingreso validado y no hace falta imitar al predictor; si es reproducir su cifra, es posible con un R² de 0,79 y un error dentro de ±25% en el 73% de los casos.
 
 ## 13. Registro de verificación
 
