@@ -291,6 +291,7 @@ for (const tabla of [
   // Lo que Equifax dijo de cada persona, descompuesto en tablas (126).
   "equifax_operaciones", "equifax_historia_mensual", "equifax_deuda_por_sistema_y_mes", "equifax_vencimientos", "equifax_tarjetas", "equifax_creditos",
   "equifax_consultas_recibidas", "equifax_scores", "equifax_indicadores_por_periodo", "equifax_codeudor_garante", "equifax_resumen",
+  "equifax_analisis_credito",
   "audit_log", "profiles", "lotes", "lab_solicitudes",
   // Las solicitudes de crédito (133).
   "solicitudes",

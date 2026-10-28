@@ -340,9 +340,9 @@ Deno.test("una consulta nueva deriva las tablas y las guarda DESPUÉS de guardar
   assertEquals(llamada.nombre, "equifax_reemplazar_tablas");
   assertEquals(llamada.consultasGuardadas, 1, "el crudo ya estaba guardado cuando se derivaron las tablas");
   assertEquals(llamada.args.p_consulta, db.tablas.consultas_equifax[0].id);
-  assertEquals(llamada.args.p_version_tablas, "equifax-tablas-v1");
+  assertEquals(llamada.args.p_version_tablas, "equifax-tablas-v2");
   assertEquals(llamada.args.p_version_estructura, "equifax-estructura-v1");
-  assertEquals(Object.keys(llamada.args.p_tablas).length, 11);
+  assertEquals(Object.keys(llamada.args.p_tablas).length, 12);
   assertEquals(llamada.args.p_tablas.equifax_operaciones.length, 5);
   assertEquals(llamada.args.p_estructura.deudaActualTitular.bancos.conciliaConElResumen, "si");
   assertEquals(llamada.args.p_estructura.consulta.identidadVerificada, true);
