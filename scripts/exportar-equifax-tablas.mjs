@@ -46,6 +46,7 @@ const DE_DONDE_SALE = {
   equifax_scores: "score, score_inclusion, score_sobreendeudamiento e historico_score",
   equifax_indicadores_por_periodo: "los historico_* y identificador_perfil_riesgo_directo*, en forma larga",
   equifax_codeudor_garante: "garantias_personales_codeudores_*: operaciones de otras personas de las que es codeudora o garante (sin el nombre del titular)",
+  equifax_analisis_credito: "interconnectResponse.AnalisisCreditoSectorFinanciero: las diez variables de crédito del predictor de ingresos y las tres fechas de concesión, una sola fila",
   equifax_resumen: "los datos de una sola fila: impagos, morosidades, cuota estimada, inhabilitaciones, factores del score, SRI, estado de cartera e ingreso estimado de Equifax",
 };
 
@@ -111,7 +112,7 @@ const agregar = (nombre, filasHoja, columnas) => {
 
 const leame = [
   ["Qué es", `Lo que Equifax contestó de ${consultas.length} personas (la consulta más reciente de cada una), descompuesto en tablas: una hoja por tabla. La columna «persona» es el código c-xxxxxxxx (los 8 primeros caracteres del identificador interno); no hay nombres, cédulas, direcciones ni teléfonos.`],
-  ["De dónde sale", "Del JSON que contestó Equifax (consultas_equifax.respuesta_cruda), con la misma función que llena las tablas de la base (equifax-tablas-v1). Los montos son dólares; las fechas, AAAA-MM-DD."],
+  ["De dónde sale", "Del JSON que contestó Equifax (consultas_equifax.respuesta_cruda), con la misma función que llena las tablas de la base (equifax-tablas-v2). Los montos son dólares; las fechas, AAAA-MM-DD."],
   ["Cuidado", "Datos de buró de personas reales: fuera de git (research/), sólo para uso interno. Los importes de «resumen_informe», impagos, morosidades y la cuota estimada de Equifax cuentan también las operaciones donde la persona es codeudora o garante; el rol de cada operación está en la columna «rol»."],
   ["Hojas", ""],
   ...["Consultas", ...Object.keys(ESPECIFICACION_DE_TABLAS), "Estructura"].map((h) => [
