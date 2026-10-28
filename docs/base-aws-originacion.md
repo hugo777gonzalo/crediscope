@@ -162,9 +162,15 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
     El 93% de los independientes sin respuesta lleva «INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS».
     **El catálogo `respuesta_comercial` trae la marca `consumo`: verdadera para APROBADO, APROBADO
     CONDICIONADO, PENDIENTE y RECHAZADO; falsa para la familia OK FACTURAR (que lleva
-    `seguimiento`).** Parte de la diferencia por respuesta puede ser de producto (consumo contra
-    automotriz) y no de calidad del dato. Las medianas de ingreso de esta tabla son por flujo; las
-    de la otra sesión son por persona y no coinciden.
+    `seguimiento`).** Se pensó que parte de la diferencia por respuesta era de producto (consumo
+    contra automotriz); **no lo es** (negocio y datos, 2026-10-26): el cruce con `tipo_producto` da
+    que todas las familias de respuesta son automotrices, y de los 57.061 independientes del
+    entrenamiento del predictor, 54.906 son automotrices, 68 de consumo y 2.087 sin tipo
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.27). **Casi toda la base es crédito
+    automotriz.** El negocio decidió el 2026-10-28 que automotriz y consumo son lo mismo: lo que se
+    compara es el valor financiado (la entrada no se financia), así que no hay calibración por
+    producto (12.27). Las medianas de ingreso de esta tabla son por flujo; las de la otra sesión son por
+    persona y no coinciden.
 14. **Motivos y condiciones.** De los 42.860 RECHAZADO, el 7,5% no guarda motivo; los más frecuentes
     (`motivos_respuesta` → `motivo_etapa` → `motivo`) son «Sin capacidad de pago» 31.450, «Fuera de
     política interna» 23.606, «Sin estabilidad mínima requerida» 7.327, «Irregular récord de pagos»
@@ -240,9 +246,9 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
   desde 2025-10-01. Y qué cambió en la salida de Equifax el 2026-01-14 y el 2026-03-02.
 - Si el valor de «INGRESO DECLARADO» lo escribe la persona, el asesor o la integración con el concesionario
   (54.437 flujos dicen «INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS»).
-- Si la marca `consumo` de `respuesta_comercial` quiere decir que la familia APROBADO es el flujo de
-  consumo y la familia OK FACTURAR el automotriz (es lo que sugiere el catálogo, no se confirmó), y si
-  `estado_requerimiento` FINALIZADO significa facturado.
+- Qué quiere decir la marca `consumo` de `respuesta_comercial`: **no separa el producto** (todas las familias
+  son automotrices, 2026-10-26). `estado_requerimiento` FINALIZADO es que el requerimiento terminó todo el
+  proceso con una respuesta final; **no significa facturado** (negocio, 2026-10-26).
 - Si las observaciones «RECUPERADO NOVADATA MENOS IESS» (unos 1.165 flujos) son los ingresos adicionales
   de dependientes: es una inferencia por el texto. Y si los puntos +6 y +12 meses del historial de cuota
   son proyecciones (también por la etiqueta).
