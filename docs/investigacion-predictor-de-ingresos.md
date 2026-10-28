@@ -1718,7 +1718,7 @@ Equifax; decidir qué se hace con el predictor posterior al 13 de abril (ver 12.
   descuento se aplica al final. El sistema hoy resta un 10% fijo (el 75,5% de los casos da exactamente 0,900), no el 9,38%
   de ley, y en una minoría de personas no hay descuento porque el empleador lo asume.
 - **Tres versiones por datos de entrada**: 1) Novadata; 2) Novadata más buró (Equifax o Aval); 3) Novadata más datos internos
-  más buró (pendiente; **el mismo día el negocio decidió que el patrimonio solo se solicita a petición de un analista y no es una entrada inicial**, así que la 3 es una reestimación, 12.24).
+  más buró (pendiente; el mismo día el negocio decidió que el patrimonio solo se solicitaría a petición de un analista, 12.24; **el 2026-10-22 decidió que no se pide y la 3 se retiró, 12.25**).
   Entrenar con salidas de Equifax no necesita contrato: son datos ya obtenidos y pagados (decisión del negocio,
   que reemplaza la duda de 4.9 para este uso).
 - **Cómo se entrega**: tramo con probabilidad y valor central con rango; los tramos son sobre el ingreso neto (menos de 470,
@@ -2134,19 +2134,21 @@ solo con esas tres consultas, en transacción de solo lectura (`research/ingreso
 - Las observaciones «RECUPERADO NOVADATA MENOS IESS»: son un salario neto, no un ingreso adicional (12.15).
 - Lo declarado en OK FACTURAR: lo valida el analista con documentos (decisión del negocio del 2026-10-21).
 - El SRI de las respuestas de Equifax guardadas en AWS: se extrajo con la autorización del negocio («Autorizo AWS», 2026-10-21) y solo existe en las respuestas JSON de 2026 (12.24).
-- El patrimonio: solo se solicita a petición de un analista, no es una entrada inicial (decisión del negocio del 2026-10-21; 12.24).
+- El patrimonio: no se pide, ni a petición (decisión del negocio del 2026-10-22, que reemplaza la del 2026-10-21 de pedirlo a petición de un analista; 12.25). Tampoco se piden gastos, y la entrada no aplica al crédito de consumo.
 
 **Sin confirmar.** Se dicen como inferencias y no se usan como dato.
-1. Qué significa «SD» en OK FACTURAR SD y SD CONDICIONADO (113 independientes en cada una: no sirven).
+1. **Resuelto el 2026-10-22 (12.25):** «SD» es «sin documentos»: el analista decide no pedirle al cliente respaldo de ingresos, patrimonio ni estabilidad (113 independientes en cada una de OK FACTURAR SD y SD CONDICIONADO: ya estaban fuera de la verdad con que se mide).
 2. Si la marca de «consumo» de la respuesta comercial separa de verdad consumo de automotriz (lo supone 12.15).
 3. Si el estado FINALIZADO del requerimiento significa que se facturó.
-4. Quién fijó la rentabilidad por macroactividad (0,30, 0,40, 0,70 y 1,00) y si cambió: la tabla no tiene autor ni fecha, y esa rentabilidad define el ingreso de cuentas e IVA.
-5. Cómo se arma el total de ingresos de la vista de reportes y si suma al cónyuge.
+4. **Resuelto el 2026-10-22 (12.25):** las rentabilidades las fija crédito sobre un flujo real de ingresos de la actividad (estados de cuenta y declaraciones de IVA) y dependen del giro del negocio. No son entrada del modelo: aclaran la etiqueta. El ejemplo que dio el negocio no coincide con la tabla de AWS (12.25).
+5. Cómo se arma el total de ingresos de la vista de reportes. La pantalla de flujo de efectivo suma los ingresos del titular y del cónyuge (visto en una captura, 12.25); falta confirmar que la vista de reportes use el mismo total.
 6. Cómo arma Novadata el promedio del IESS: el ingreso de un dependiente con fuente IESS es el 90,0% de ese promedio en el 75,5% de los casos (un descuento fijo del 10%, no el 9,38% de ley).
 7. Que los dos últimos puntos del historial de cuota de Equifax (+6 y +12 meses) sean proyecciones: se dedujo de la etiqueta.
 8. Los códigos de afiliación, de categoría de ocupación y de nivel de instrucción de la ENIGHUR, la ENEMDU y el censo: se deducieron de los datos y no de una etiqueta oficial.
 9. Quién editó cada versión de un flujo: la auditoría solo existe desde el 2026-03-08 y, para el 46% al 53% de las versiones, el usuario no coincide con ningún analista registrado, así que el rol solo se puede leer en parte (12.21: se distingue por comportamiento, automático o manual).
 10. Si el `obligado` que trae Novadata coincide con el de Equifax, y si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se puede llevar a un CIIU (12.24). Lo demás del SRI de Novadata se cotejó con Equifax en 87 personas.
+11. Qué significan «alerta de ingreso» y «alerta de antigüedad» de la pantalla de flujo de efectivo de la originación (12.25), y si AWS las guarda.
+12. Si los datos de la persona que usa el entrenamiento (edad, sexo, estado civil, provincia y cantón; aporte, meses con aporte y empleos del IESS) son los mismos que arma CrediScope desde Novadata: no se midió (especificación, sección 10).
 
 ### 12.21 Tercera ronda: historial por flujo, documentos y secuencias (2026-10-21)
 
@@ -2329,16 +2331,44 @@ Entre los grupos del SRI la cobertura va de 86,0% a 90,6%; **lo que la separa es
 - **Con el SRI** (21.260 de 2026), el patrimonio propio sube el nivel 2 de 0,355 a 0,360 (+0,006; 0,004 a 0,008; en OK FACTURAR, de 0,460 a 0,467) y «al menos 2.000» se certifica en el 17,4% de los casos en vez del 17,0% (en OK FACTURAR, 36,8% en vez de 34,6%, con precisión de 98%).
   Con la entrada también, 0,367 (+0,012).
 
-**Decisión del negocio (2026-10-21): el patrimonio solo se solicita a petición de un analista; no es una entrada inicial.** Lo que cuesta no tenerlo desde el inicio es poco: +0,006 de R² (+0,008 en OK FACTURAR). El nivel 3 deja de ser un nivel que se elige solo y pasa a ser una reestimación que el analista pide (`docs/especificacion-predictor-de-ingresos.md`, 3.5).
-**Queda sin decidir** qué se hace con los gastos declarados y con la entrada del crédito: la entrada suma +0,010 por sí sola, pero es una condición de la operación pedida y no un dato de la persona; usarla como entrada del ingreso es una decisión aparte, porque la capacidad de pago compara la cuota con ese ingreso.
+**Decisión del negocio (2026-10-21), reemplazada al día siguiente (12.25): el patrimonio solo se solicitaría a petición de un analista, no como entrada inicial.** Lo que costaba no tenerlo desde el inicio era poco: +0,006 de R² (+0,008 en OK FACTURAR).
+El 2026-10-22 el negocio decidió que ni siquiera se pide, que los gastos no se piden y que la entrada no aplica (el crédito de consumo no la tiene; la entrada suma +0,010 por sí sola, pero es una condición de la operación pedida y no un dato de la persona). La especificación ya no tiene nivel 3.
 
-**Qué cambia en la especificación.** El nivel 1 pasa de R² de 0,087 a 0,172 con el SRI de Novadata; el nivel 2, de 0,341 a 0,355; el nivel 3 (patrimonio propio, a petición) queda en 0,360. Las tres cifras son del subconjunto con SRI (2026): no son comparables una a una con las de 12.23 (todo AWS), pero la dirección y los intervalos son claros.
+**Qué cambia en la especificación.** El nivel 1 pasa de R² de 0,087 a 0,172 con el SRI de Novadata y el nivel 2, de 0,341 a 0,355. El nivel 3 (patrimonio propio, 0,360) se retiró el 2026-10-22 (12.25). Las cifras son del subconjunto con SRI (2026): no son comparables una a una con las de 12.23 (todo AWS), pero la dirección y los intervalos son claros.
 
 **Lo que sigue sin medirse.**
 1. El SRI de Novadata contra el de Equifax en más de 87 personas, el `obligado` de Novadata y si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se puede llevar a un CIIU (con la clase y el CIIU el nivel 1 ganaría 0,020 más de R²).
 2. El SRI de 2021 a 2025: las respuestas XML no lo traen, así que el modelo con SRI se entrena solo con 2026 hasta que lleguen los 3,9 millones.
 3. El comportamiento de quien no tiene RUC ni aporte al IESS: el 87,3% de los independientes de AWS tiene RUC y los que no, son la minoría que igual pidió crédito.
-4. El patrimonio de los casos en que un analista lo pida: el modelo se midió con el patrimonio de todos los solicitantes (el 98% lo declara en AWS), y los casos que se pidan serán los dudosos.
+4. El valor de los vehículos de la persona (Novadata) como variable del predictor: no hay dato de entrenamiento, porque AWS no guarda la respuesta de Novadata (12.25).
+
+### 12.25 Decisiones y aclaraciones del negocio (2026-10-22)
+
+El negocio respondió punto por punto a los pendientes de 12.24 y compartió cuatro capturas de la pantalla «Flujo de efectivo» de la originación, de un caso real. **No se copian acá los datos de esa persona.**
+
+**Decisiones.**
+1. **No se piden gastos.**
+2. **La entrada no aplica**: el crédito de consumo no tiene entrada; es de los créditos hipotecario y automotriz. (En AWS, que mezcla vehículos y consumo, sí existe: de ahí su peso en 12.24.)
+3. **No se pide patrimonio**: es parte de otro análisis, a cargo de una persona (un analista). Reemplaza la decisión del 2026-10-21 de pedirlo a petición. **Se retira el nivel 3**: el predictor queda en dos niveles (Novadata; Novadata y buró), más lo verificado y las dos referencias.
+   De Novadata ya se tiene el valor de todos los vehículos de la persona, que el modelo de score lee como colateral.
+4. **El ingreso verificado es el ingreso validado calculado de AWS** (el que muestra la pantalla de flujo de efectivo), incluido el recuperado de Novadata. Con él se entrena y se mide; para calibrar a otro producto u otra institución haría falta su propia muestra validada (especificación, sección 10).
+5. **La base de 3,9 millones** sigue en proceso por el proveedor.
+6. **Los códigos del INEC** (afiliación, categoría de ocupación e instrucción): el negocio no sabe dónde conseguirlos. Se buscan en los diccionarios de las propias bases.
+7. **El respaldo de las consultas crudas de Equifax y su regla de permiso** quedan para la sesión de la API.
+
+**Cómo se arma el ingreso en AWS** (para entender la etiqueta; no son entradas del modelo):
+- **Rentabilidades**: las fija crédito. Sobre un flujo real de ingresos de la actividad (estados de cuenta y declaraciones de IVA) se aplica la rentabilidad que corresponde al giro del negocio. Resuelve el punto 4 de 12.20.
+  **Por confirmar:** el negocio dio como ejemplo comercio 40% y construcción 30%, y la tabla de AWS tiene comercio y servicios generales 0,30 y construcción 0,40 (12.15). Se tomó el del negocio como un ejemplo y no como el valor vigente. Si en verdad cambió la tabla o están al revés, el ingreso calculado de cuentas e IVA queda mal escalado en esos giros.
+- **«SD»** es «sin documentos»: el analista decide no pedirle al cliente respaldo de ingresos, patrimonio ni estabilidad. Resuelve el punto 1 de 12.20. Esos casos no tienen un ingreso contrastado con documentos y ya estaban fuera de la verdad con que se mide.
+- El negocio pidió que **nada de esto se use ni se piense como insumo recurrente del modelo**: es una fuente para aclarar los datos con que se entrena el predictor (la especificación lo anota en 4.4).
+
+**Lo que muestran las capturas** (sin copiar datos de la persona):
+- La pantalla separa **ingresos** y **egresos**. En ingresos, por persona (titular y cónyuge) y por actividad (principal y secundaria): tipo de actividad, **alerta de ingreso**, **alerta de antigüedad** e **ingreso validado calculado**. En egresos: gasto familiar y gasto financiero del titular y del cónyuge.
+- **El total de ingresos suma al titular y al cónyuge** (comprobado: es la suma de las cuatro actividades visibles). **El valor neto disponible es el total de ingresos menos el total de egresos** (comprobado con las cifras). **La cobertura del dividendo es el total de ingresos dividido por la suma del total de egresos y la cuota estimada mensual** (comprobado con las cifras; es un solo caso).
+- **El ingreso de un independiente** se arma con tipo de ingreso, actividad (el texto del CIIU), macroactividad, fecha de inicio, fuente (RUC) y movimientos, entre ellos «INGRESO DECLARADO»: es la etiqueta «solo declarado» de 12.16 y 12.21.
+- **El ingreso de un dependiente recuperado de Novadata** lleva fuente IESS, fecha de inicio, identificación y nombre del patrono y la observación «RECUPERADO NOVADATA» (12.15). En el caso visto, **el patrono del cónyuge es el propio titular**: el sueldo del cónyuge sale de la nómina del negocio del titular.
+  Inferencia, no medida: si el negocio del titular ya descuenta ese sueldo, sumar los dos ingresos contaría el mismo dinero dos veces.
+- Qué significan «alerta de ingreso» y «alerta de antigüedad» no se sabe: queda en «sin confirmar» (12.20, punto 11).
 
 ### 12.26 El entrenamiento reproducible, la calibración, la robustez del nivel 1 y la exportación (2026-10-22)
 

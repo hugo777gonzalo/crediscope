@@ -179,19 +179,37 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-21: el **patrimonio solo se
-    solicita a petición de un analista** (no es una entrada inicial; el nivel 3 es una reestimación).
+    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-22: **no se piden patrimonio,
+    gastos ni entrada** (el patrimonio es de otro análisis, a cargo de un analista; la entrada no
+    aplica al crédito de consumo), así que el predictor tiene dos niveles (Novadata; Novadata y buró).
     El SRI de las respuestas de Equifax guardadas en AWS ya se extrajo (autorizado por el negocio) y
     sube el nivel 1 de R² 0,091 a 0,172: solo existe en las 105.070 respuestas JSON de 2026
-    (`docs/investigacion-predictor-de-ingresos.md`, 12.24). Lo que falta decidir o conseguir está en
-    la sección 10 de la especificación: qué se hace con los gastos declarados y con la entrada del
-    crédito; cómo se pide el patrimonio al titular; cotejar el SRI de Novadata con el de Equifax en más
-    de 87 personas (y si el texto de la actividad de los establecimientos de Novadata da un CIIU);
-    casos con ingreso verificado de cada institución para calibrar; la base de 3,9 millones del
-    proveedor; y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC).
-    El primer paso de construcción es extraer `AnalisisCreditoSectorFinanciero` en
-    `equifax-tablas.ts` (sus campos son las variables más pesadas del nivel con buró y hoy no se
-    derivan).
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.24 y 12.25). Lo que falta, en la sección 10 de
+    la especificación: **medir la paridad de los datos de la persona** (edad, sexo, estado civil,
+    provincia y cantón; aporte al IESS) entre AWS y Novadata (el cruce por huellas lo bloqueó el modo
+    automático por datos personales; la alternativa es reconsultar a Novadata una muestra de AWS, que
+    decide el negocio); cotejar el SRI de Novadata con el de Equifax en más de 87 personas (y si el
+    texto de la actividad de los establecimientos de Novadata da un CIIU); la base de 3,9 millones
+    (en proceso por el proveedor); y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y
+    el censo (el negocio no sabe dónde conseguirlos: se buscan en los diccionarios de las bases).
+    La construcción sigue la sección 6 de la especificación, un PR por paso.
+    **Paso 1 construido (PR 85, rama `claude/predictor-paso-1-8d35f4`):** la tabla
+    `equifax_analisis_credito` (`equifax-tablas-v2`, migración 138) y `_shared/variables-de-ingreso.ts`,
+    con su paridad medida contra AWS en la sección 9, punto 1, de la especificación. Al fusionarlo
+    queda por hacer, en este orden:
+    1. La migración se llama 138 porque la 137 es la del PR 82 (la cola de la API): si ese PR no entra
+       antes, renombrar a 137 antes de aplicar; un número salteado no se aplica nunca.
+    2. Aplicarla con el corredor (`migrar-clientes.mjs --seco` y `--aplicar`) y después desplegar
+       (`--funciones`): `ESQUEMA_MINIMO` sube a 138 y, con la base atrasada, las funciones contestan 503.
+    3. `node scripts/cargar-tablas-equifax.mjs --seco`, y sin `--seco` sólo con el sí del usuario: rehace
+       desde el crudo las consultas con `equifax-tablas-v1` (sin volver a pagar).
+    Lo que quedó abierto del paso: las cuotas, saldos y conteos por tipo de las operaciones (19 variables
+    del nivel 2) no reproducen el extracto de AWS, que salió de las listas de `interconnectResponse` y no
+    de `reporteCrediticio`; hay que decidir si el modelo se entrena con las variables de este módulo sobre
+    las respuestas JSON crudas (lo recomendado) o se extraen también esas listas. Sin eso el nivel 2 no
+    sirve con fidelidad. Faltan además el mapeo de las categorías de AWS a las de Novadata, derivar
+    provincia y cantón de domicilio y trabajo y el «obligado» al perfil, y las filas mensuales del IESS
+    (`trabajoHistoricosMecanizado`) que pide el módulo; todo está en la sección 9 de la especificación.
 
 ## 3. Espera a terceros
 
