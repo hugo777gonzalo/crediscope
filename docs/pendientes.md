@@ -200,10 +200,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
 
     **Lo que sigue, en este orden:**
-    1. Rehacer las tablas de Equifax con `equifax-tablas-v2`: la migración 138 ya está aplicada y las
-       funciones desplegadas (2026-10-28), pero `equifax_analisis_credito` está vacía. En seco
-       (`cargar-tablas-equifax.mjs --seco`): 88 consultas se rehacen, 0 con error, 50.965 filas.
-       Falta correrlo sin `--seco`, con el sí del usuario (rehace desde el crudo, sin volver a pagar).
+    1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
+       consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
        **Si el PR 82 entra, su migración ya no puede ser la 137** (un número salteado no se aplica
        nunca): renumerarla a 139 o más.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
