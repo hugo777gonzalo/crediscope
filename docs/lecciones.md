@@ -139,6 +139,12 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   alcanzó: Pages seguía apagado (la API contestaba 404) y hubo que
   habilitarlo otra vez con el origen "GitHub Actions" y volver a correr el
   flujo.
+- **Un documento se fecha con la hora de Ecuador, no con la UTC** (2026-10-21).
+  La regla ya estaba («Ecuador es UTC-5»), y aun así la investigación del
+  predictor, su especificación y `docs/pendientes.md` salieron con 13 líneas
+  fechadas 2026-10-22: el trabajo de la noche ocurrió el 21, pero desde las
+  19:00 de Ecuador la fecha UTC ya es la del día siguiente. Se corrigieron en
+  el PR 83. Al fechar, mirar la hora local de la máquina (`date` sin `-u`).
 
 ## Funciones y base
 
@@ -361,6 +367,18 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   los dos en `fuentes-ingreso.ts`. Un año que falta en la tabla de renta
   no da indicio; hay que agregarlo cuando el SRI la publique, y después
   correr `scripts/calcular-columnas-del-perfil.mjs`.
+- **Una variable de entrenamiento sale de la misma función que la sirve, o se
+  mide su paridad antes de usarla** (predictor de ingresos, 2026-10-21 y 22).
+  AWS toma la actividad y la fecha de inicio del flujo de ingreso (declaradas
+  o escritas por el analista): la sección del CIIU coincidía con el SRI en el
+  58% de 1.368 casos y la fecha de inicio en el 19%, y servirlas con el SRI
+  habría metido ruido. Otros tres casos del mismo tema: el SRI de Equifax solo
+  está en las respuestas JSON (desde diciembre de 2025), no en las XML de 2021
+  a 2025; el «patrimonio» de AWS trae la entrada del crédito, que es una
+  condición de la operación y no un bien; y la paridad de los datos de la
+  persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata
+  sigue sin medirse. El caso completo, en `docs/investigacion-predictor-de-ingresos.md`
+  (12.23 a 12.25).
 
 ### Buró, Aval y Función Judicial
 

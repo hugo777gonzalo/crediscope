@@ -62,7 +62,7 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
    CONDICIONADO; APROBADO es opcional y menos confiable (puede que no se haya recogido todo el
    ingreso). Las variantes OK FACTURAR SD y SD CONDICIONADO están inactivas en el catálogo y sus
    titulares tienen ingreso con menos frecuencia (37% sin ingreso validado contra 6% en OK FACTURAR);
-   **qué significa «SD» no está confirmado.**
+   **«SD» es «sin documentos»** (el negocio, 2026-10-22): el analista decide no pedirle al cliente respaldo de ingresos, patrimonio ni estabilidad.
 4. **El `IncomePredictor` de Equifax es `resultado_segmentacion.income_predicator`.** Coincide con
    el campo `IncomePredictor` de la respuesta cruda (`consulta_equifax.response_json` desde 2025,
    `response` en XML antes) en 10.000 de 10.000 consultas muestreadas de 2021 a 2026.
@@ -234,7 +234,7 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
   sale del nombre de la columna.
 - Si las tres tablas `detalle_deuda_actual_*` se solapan (la cuota que se suma puede duplicar
   operaciones) y el rol (titular, codeudor, garante) de cada operación.
-- Qué es «SD», qué es «verificado» en los lotes y cómo se arma `trabajos_persona_requerimiento.promedio`.
+- Qué es «verificado» en los lotes y cómo se arma `trabajos_persona_requerimiento.promedio`. («SD» ya se respondió: sin documentos, 2026-10-22.)
 - Dónde queda guardado el predictor «corregido» desde abril de 2026 (tabla de factores del «Ingreso V3»):
   lo guardado en `resultado_segmentacion` es idéntico al crudo de `consulta_equifax` en todas las semanas
   desde 2025-10-01. Y qué cambió en la salida de Equifax el 2026-01-14 y el 2026-03-02.
@@ -248,8 +248,13 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
   son proyecciones (también por la etiqueta).
 - Por qué el 17% de los movimientos bancarios y de IVA no cumple ingreso = ventas × rentabilidad (razones
   de 0,05 a 0,07, que parecen la declaración de IVA semestral).
-- Cómo se arma el `total_ingresos` de la vista de BI (`v_reporte_bi`) y si el ingreso del cónyuge se suma
-  al del titular en alguna decisión.
-- Quién fijó `macroactividad.rentabilidad` y si cambió: la tabla no tiene autor ni fecha.
+- Cómo se arma el `total_ingresos` de la vista de BI (`v_reporte_bi`). La pantalla de flujo de efectivo del
+  sistema sí suma el ingreso del titular y el del cónyuge (visto en una captura del negocio, 2026-10-22);
+  falta confirmar que la vista de BI use el mismo total.
+- Si `macroactividad.rentabilidad` cambió: **las fija crédito** (el negocio, 2026-10-22), sobre un flujo real de
+  ingresos de la actividad (estados de cuenta y declaraciones de IVA) y según el giro del negocio; la tabla
+  no tiene autor ni fecha, así que un cambio no se vería. **Por confirmar:** el ejemplo que dio el negocio
+  (comercio 40% y construcción 30%) no coincide con la tabla (comercio y servicios generales 0,30; construcción 0,40).
+- Qué significan «alerta de ingreso» y «alerta de antigüedad» de la pantalla de flujo de efectivo y si la base las guarda.
 - **Si el contrato con Equifax permite entrenar un modelo propio con sus salidas.** No se revisó.
 - Si el usuario de la base es de solo lectura.

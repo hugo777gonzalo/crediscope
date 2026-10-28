@@ -14,8 +14,8 @@ viven fuera de git (`research/ingresos-aws/` y `C:\datos\ingresos\`).
 **No garantiza el monto**: acertar el monto dentro de ±10% se logra en el 15% al 19% de los casos y la propia etiqueta no se repite mejor que el 60% al 66% (12.13 y 12.14). Por eso el ±10% se promete
 solo donde el ingreso es verificable, y para lo estimado se promete un mínimo.
 
-**Tres niveles según los datos que haya y una reestimación a petición** (decisiones del negocio del 2026-10-21): verificado (IESS), estimado con Novadata, y estimado con Novadata y buró.
-**El patrimonio no es una entrada inicial**: solo se solicita cuando un analista lo pide, y con él se vuelve a estimar (nivel 3, sección 3.5). Más dos referencias que no son una estimación de la persona:
+**Tres niveles según los datos que haya** (decisión del negocio del 2026-10-21): verificado (IESS), estimado con Novadata, y estimado con Novadata y buró.
+**No se pide patrimonio, ni gastos, ni entrada** (decisión del 2026-10-22): el patrimonio es de otro análisis, a cargo de un analista, y el crédito de consumo no tiene entrada (4.3). Más dos referencias que no son una estimación de la persona:
 la pensión por tipo de afiliación y la distribución nacional de su tipo.
 
 **Qué hay que construir**: un evaluador del modelo en `_shared`, un módulo que arme las variables desde el perfil y Equifax, una función con su operación en la API, dos tablas, la integración con la capacidad de pago y una tarjeta en la pantalla.
@@ -27,9 +27,12 @@ la pensión por tipo de afiliación y la distribución nacional de su tipo.
 |---|---|
 | 2026-10-17 | Cada módulo tiene su propia puerta: una función y una operación propia en `api/openapi.yaml`. El marco y el modelo de lenguaje se tocan al final. |
 | 2026-10-21 | El predictor estima **el ingreso no verificado**; el salario bruto del IESS es la verdad de un dependiente y no se afina; el descuento al empleado se aplica al final. |
-| 2026-10-21 | Tres versiones por datos de entrada: Novadata; Novadata más buró (Equifax o Aval); Novadata más datos internos más buró. Entrenar con salidas de Equifax no necesita contrato: son datos ya pagados. |
-| 2026-10-21 | **El patrimonio solo se solicita a petición de un analista; no es una entrada inicial** de la estimación. El nivel 3 no se elige solo: es una reestimación que el analista pide (3.5). Los gastos declarados y la conducta con la propia institución siguen sin decidir (10). |
+| 2026-10-21 | Dos versiones por datos de entrada: Novadata; Novadata más buró (Equifax o Aval). La tercera, con datos internos, se retiró el 2026-10-22 (fila siguiente). Entrenar con salidas de Equifax no necesita contrato: son datos ya pagados. |
 | 2026-10-21 | El negocio autorizó una cuarta extracción de AWS, solo de lectura: el bloque `informacion_sri` de las respuestas JSON de Equifax, sin RUC, nombre ni dirección (12.24). |
+| 2026-10-21 | El patrimonio solo se pediría a petición de un analista, como una reestimación (nivel 3). **Reemplazada el 2026-10-22**: ya no se pide. |
+| 2026-10-22 | **No se pide patrimonio, ni gastos, ni entrada.** El patrimonio es parte de otro análisis, a cargo de una persona (un analista); los gastos no se piden; la entrada no aplica porque el crédito de consumo no la tiene (es de los créditos hipotecario y automotriz). De Novadata ya se tiene el valor de todos los vehículos de la persona, que el modelo de score lee como colateral. Se retira el nivel 3. |
+| 2026-10-22 | Las rentabilidades por giro, «SD» (sin documentos) y las demás marcas de cómo se armó el ingreso en AWS **no son insumos del modelo**: solo sirven para aclarar los datos con que se entrena el predictor (4.4). |
+| 2026-10-22 | El ingreso verificado para entrenar y calibrar es el ingreso validado calculado de AWS (la pantalla «Flujo de efectivo» de la originación), incluido el recuperado de Novadata. |
 | 2026-10-21 | El resultado es un tramo con probabilidad y un valor central con rango. Los tramos del tramo alto: 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más. |
 | 2026-10-21 | El predictor de Equifax es solo contraste, no entrada. La cuota financiera de Equifax es la pista principal. No se usan los límites de cuota por institución (se incumplen por excepción). |
 | 2026-10-21 | AWS es el piloto y se reentrena con los 3,9 millones del proveedor cuando lleguen. Se entrena con todas las respuestas comerciales y se mide con OK FACTURAR (con condicionado), que cuenta como verdad: lo declarado lo valida el analista con documentos. |
@@ -89,7 +92,6 @@ Los números del ejemplo son inventados.
    Con el salario de 2026 (482) los cortes son 482 y 964; con el de 2025 eran 470 y 940. Los cortes se aplican al responder, no al entrenar: el modelo entrega cuantiles y la probabilidad de cada tramo sale de la distribución con los cortes del año. Las medidas de este documento usan 470 y 940.
 5. **`certificaAlMenos`** lista los umbrales (940, 2.000, 3.000, 5.000) que el mínimo del 90% alcanza. Con buró (nivel 2), certificar «al menos 2.000» acierta el 95,5% de las veces entre quienes se certifica, y el 98,4% si solo se miran los OK FACTURAR (12.24).
 6. **Una variable sin dato no corta la estimación**: baja la precisión y se dice en `calidad`. Una persona sin consulta de buró no usa el nivel 2.
-7. **Una reestimación con patrimonio** (3.5) devuelve `nivel: 3` y el `estimacionInicialId` de la que parte; la estimación inicial no se borra ni se reemplaza, y las dos se muestran juntas.
 
 ### 2.3 El neto de lo verificado
 
@@ -100,20 +102,19 @@ El ingreso neto de un salario del IESS usa el aporte personal de `PARAMETROS_CAP
 
 ### 3.1 Qué se mide en cada nivel
 
-Independientes de AWS de 2026 que traen el bloque del SRI de Equifax (21.260), ingreso no verificado, validación cruzada por persona; entre paréntesis, solo OK FACTURAR y condicionado (3.538) (12.24 y `scripts/r4_10_niveles_con_sri.py` y `r4_14_nivel3_patrimonio_propio.py`).
+Independientes de AWS de 2026 que traen el bloque del SRI de Equifax (21.260), ingreso no verificado, validación cruzada por persona; entre paréntesis, solo OK FACTURAR y condicionado (3.538) (12.24 y `scripts/r4_10_niveles_con_sri.py`).
 **Solo con variables que CrediScope puede armar igual que en el entrenamiento**: el SRI de Novadata en el nivel 1 y el de Equifax en el 2, sin la actividad ni la antigüedad que trae AWS (declaradas, no coinciden con las del SRI, 4.1).
-Sin el SRI y con todo AWS (57.061 independientes) eran 0,087, 0,341 y 0,359 (12.23).
+Sin el SRI y con todo AWS (57.061 independientes) eran 0,087 y 0,341 (12.23). La paridad de los datos de la persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata **no se midió** (sección 10): son lo que más pesa en el nivel 1.
 
 | Nivel | Entradas | R² | Tramo exacto | El real supera el mínimo del 90% | Mediana del mínimo del 90% | Certifica «al menos 2.000» (% del total, precisión) |
 |---|---|---|---|---|---|---|
 | 0 Verificado | Salario del IESS (Novadata) | — | — | — | — | — |
 | 1 Novadata | Edad, sexo, zona, aporte al IESS, meses con aporte, número de empleos y, del RUC, si tiene, estado, antigüedad, suspensión y obligado a contabilidad | 0,172 (0,098) | 36,9% (34,6%) | 88,9% (94,9%) | 1.001 (1.173) | 4,1%, 93,9% (9,4%, 97,0%) |
 | 2 Novadata y buró | Lo anterior más deuda, crédito y cuota de Equifax, y la clase y el CIIU del SRI | 0,355 (0,460) | 46,2% (53,2%) | 88,2% (94,0%) | 1.093 (1.516) | 17,0%, 95,5% (34,6%, 98,4%) |
-| 3 Con patrimonio, a petición del analista | Lo anterior más el patrimonio propio declarado (vivienda, terreno, vehículo, muebles, inventario, maquinaria y otros) | 0,360 (0,467) | 46,1% (53,3%) | 88,2% (93,0%) | 1.090 (1.557) | 17,4%, 95,7% (36,8%, 98,2%) |
 
 **El nivel 1 distingue poco a una persona, aunque con el SRI ya algo** (R² de 0,172; sin el SRI, 0,091): su mínimo sigue siendo en la práctica el límite inferior de la población de solicitantes, unos USD 1.000, salvo para una minoría (el 4,1% certifica «al menos 2.000»).
 Se muestra con la etiqueta «referencia de solicitantes», no como estimación de la persona, mientras el mínimo no pase de unos USD 1.000. **El salto sigue estando en el buró**: de 0,172 a 0,355.
-**El patrimonio propio suma poco** (+0,006; +0,008 en OK FACTURAR). La entrada del crédito, que AWS guarda como patrimonio, no se cuenta como tal (4.3).
+Los datos internos (patrimonio, gastos, entrada) se midieron y no entran: sumaban entre 0,000 y 0,019 de R², según el bloque (4.3).
 
 ### 3.2 Cuándo se usa cada uno
 
@@ -123,7 +124,7 @@ El selector corre en este orden y toma el primero que aplica. Los segmentos son 
    AUC de 0,72 para saber si lo tiene y R² de 0,11 para el monto, 12.14) y se dice «puede tener ingresos que no constan».
 2. **Pensión por tipo de afiliación**: los segmentos `jubilado` y `jubilado_con_ingreso_adicional`. Se entrega la referencia de la sección 3.3, rotulada como referencia.
 3. **Nivel 2**, si la institución tiene a Equifax como buró y la persona tiene una consulta vigente; **nivel 1**, en los demás casos: los segmentos `independiente`, `ingresos_mixtos`, `agricola`, `trabajo_hogar` e `informal_o_sin_actividad`.
-   **El nivel 3 no se elige solo** (decisión del negocio del 2026-10-21): llega únicamente cuando un analista pide el patrimonio y se vuelve a estimar (3.5). Una solicitud que ya trae patrimonio en el primer pedido no sube de nivel.
+   No hay nivel 3: el patrimonio no se pide (decisión del negocio del 2026-10-22).
 4. **`sin_datos` y `no_clasificado`: no se estima.** Es la ausencia de la consulta, no un juicio sobre la persona.
 5. **Referencia nacional**, solo si la institución lo pide para una población que no es de solicitantes (microcrédito o inclusión): distribución del ingreso de su tipo en el país (3.4).
 
@@ -140,20 +141,6 @@ El archivo es `resultados/ref_2_pensiones_celdas.csv`; en CrediScope sería una 
 Para independientes sin información de crédito en el país el mínimo del 90% es en mediana USD 80 (un tercio del ingreso real) y el 75% gana menos de 470. El modelo distingue más que una tabla de celdas (R² de 0,375 contra 0,10 a 0,14), pero el mínimo certificable sigue siendo
 bajo: sirve para decir qué es lo normal en su tipo y para decidir cuándo pedir documentos, no para estimar a la persona.
 `resultados/ref_2_independientes_celdas.csv` (115 celdas) y el modelo E0 de `scripts/ref_1_enighur.py`.
-
-### 3.5 Reestimación con patrimonio, a petición del analista
-
-Decisión del negocio del 2026-10-21: **el patrimonio no es una entrada inicial**. La estimación inicial sale siempre sin él (nivel 1 o 2). Si el analista quiere afinarla, pide el patrimonio a la persona (a través de la institución), lo registra y la herramienta vuelve a estimar con el modelo del nivel 3.
-
-- **Qué se pide**: los siete rubros propios: vivienda, terreno, vehículo, muebles y enseres, inventario, maquinaria y otros, cada uno con su valor en dólares. **Un rubro que la persona no declara va vacío, no en cero** (en el entrenamiento un rubro sin fila es nulo).
-  No se piden los gastos ni la entrada del crédito (4.3).
-- **Qué responde**: la estimación de nivel 3 junto a la inicial, sin borrar ninguna; cada una dice su nivel y la versión del modelo. La inicial queda para ver cuánto movió el patrimonio.
-- **Cuánto se espera que aporte**: poco. +0,006 de R² en promedio y +0,008 en OK FACTURAR; «al menos 2.000» se certifica en el 36,8% de los OK FACTURAR en lugar del 34,6% (12.24). Es un refinamiento, no un cambio de la seguridad del mínimo.
-- **Lo que no se midió**: el modelo del nivel 3 se entrenó con el patrimonio de todos los solicitantes (el 98% lo declara en AWS). Los casos en que un analista lo pida serán los dudosos y su cobertura no se conoce hasta que existan:
-  **desde el primer día se guarda cada reestimación junto a la inicial** para medirla (sección 7), y mientras no se mida se rotula igual que el nivel 2.
-- **Privacidad**: el patrimonio es un dato de la persona. Va en su tabla (`patrimonios_declarados`), con RLS por rol; se suma a `suprimir_titular()`, a `derechos-del-titular.mjs` y a `auditar-seguridad.mjs`; y cada pedido queda en `audit_log` con `registrar_evento()` (quién, cuándo y de qué persona).
-  La base legal del dato la declara la institución, como la del resto.
-- **Quién lo pide y cómo llega** (sección 10): hoy CrediScope no tiene un campo ni una pantalla de patrimonio. Hay que decidir si lo digita el analista de la institución o el de CrediScope, y desde qué pantalla o campo de la API.
 
 ## 4. Variables y de dónde salen en CrediScope
 
@@ -181,6 +168,9 @@ El estado de Novadata se lleva a «activo» si es `activa_*` y a «suspendido» 
 
 **Sin RUC es un dato; sin respuesta no lo es.** `sri_ruc` vale 0 solo si la fuente contestó y la persona no tiene RUC. Si el contribuyente no contestó (`fuentesSinDatos`), todas las variables del SRI van nulas. En el entrenamiento se descartaron las 4.140 respuestas en que Equifax no traía el bloque.
 El 87,3% de los independientes de AWS tiene RUC: quien no lo tiene es la minoría que igual pidió crédito. Para quien no tiene RUC ni aporte al IESS el modelo no está probado (sección 8).
+
+**Variable posible, sin entrenar: el valor de los vehículos de la persona.** Novadata lo trae (el modelo de score lo lee como colateral) y podría decir algo del ingreso. No hay dato de entrenamiento: AWS no guarda la respuesta de Novadata, y lo que guarda de vehículos es el vehículo que se financia.
+Probarla exige reconsultar a Novadata una muestra de personas de AWS, que además resolvería de raíz la paridad de los datos de la persona (sección 10).
 
 ### 4.2 Nivel 2: buró de Equifax
 
@@ -210,24 +200,25 @@ Las demás variables del nivel 2 salen de las tablas que ya existen (`docs/equif
 | `sri_ruc`, `sri_estado`, `sri_antig`, `sri_susp`, `sri_obligado` | `equifax_resumen`: `sri_tiene_ruc`, `sri_estado_contribuyente`, `sri_fecha_inicio_actividades`, `sri_fecha_suspension_definitiva`, `sri_obligado_a_contabilidad`. **Ya se extraen hoy** (`equifax-tablas.ts`); en el nivel 2 se toman de acá, igual que en el entrenamiento, no del RUC de Novadata |
 | `sri_clase`, `sri_ciiu_secc`, `sri_ciiu_div` | `equifax_resumen.sri_clase_contribuyente` y `sri_codigo_ciiu` (sección: la primera letra; división: la letra y los dos dígitos siguientes). Solo en el nivel 2: Novadata no los trae |
 
-### 4.3 Nivel 3: patrimonio, a petición del analista
+### 4.3 Datos internos: no entran (decisión del negocio del 2026-10-22)
 
-El patrimonio propio declarado: vivienda, terreno, vehículo, muebles y enseres, inventario, maquinaria y otros (`activo_*` del extracto de AWS, de `persona_patrimonio`). **No es una entrada inicial** (decisión del negocio del 2026-10-21): llega solo en la reestimación (3.5).
-**Hoy CrediScope no tiene estos campos**: la solicitud trae las condiciones del crédito y el Ingreso declarado.
-
-Lo que **no** entra al nivel 3, y por qué (12.24):
-- **La entrada del crédito** (`activo_entrada`): AWS la guarda como patrimonio, pero es una condición de la operación pedida. Suma +0,010 de R² por sí sola, el doble que el patrimonio propio (+0,005). Usarla como entrada del ingreso es una decisión aparte, del negocio:
-  la capacidad de pago compara la cuota con ese ingreso, y una condición del propio crédito lo movería.
-- **Los pasivos del buró** (`pasivo_*`: SBS, SEPS, INFOCOM e hipotecario): son del buró y el nivel 2 ya los trae; suman 0,000.
-- **Los egresos declarados** (gasto familiar, arriendo, hipotecario, pensión alimenticia y otros): +0,003 de R², solo en 2026 y sobre todo en lo declarado (parece consistencia entre dos declaraciones de la misma persona, no evidencia aparte). Con esas cifras no justifican pedirlos; sin decidir (sección 10).
-  `egreso_gasto_financiero` no cuenta como dato interno: es la cuota de Equifax del titular (igual en el 94,5% de los casos).
-- **La conducta con la propia institución** (`incumplimiento_*`): suma 0,000 y CrediScope no la tiene.
+El extracto de AWS trae, además, datos que la persona o el analista declaran en la solicitud. Se midieron (12.24) y **ninguno entra al modelo ni se pide**: el patrimonio es parte de otro análisis, a cargo de una persona (un analista), los gastos no se piden y la entrada no aplica,
+porque el crédito de consumo no la tiene (es de los créditos hipotecario y automotriz). Lo medido, sobre el nivel 2 y en todo AWS:
+- **Patrimonio propio** (vivienda, terreno, vehículo, muebles y enseres, inventario, maquinaria y otros; `activo_*` de `persona_patrimonio`): +0,005 de R².
+- **La entrada del crédito** (`activo_entrada`), que AWS guarda como un rubro de patrimonio pero es una condición de la operación pedida (créditos automotriz e hipotecario): +0,010. No aplica al producto.
+- **Los egresos declarados** (gasto familiar, arriendo, hipotecario, pensión alimenticia y otros): +0,003, solo en 2026 y sobre todo en lo declarado (parece consistencia entre dos declaraciones de la misma persona, no evidencia aparte).
+  `egreso_gasto_financiero` tampoco cuenta: es la cuota de Equifax del titular (igual en el 94,5% de los casos).
+- **Los pasivos del buró** (`pasivo_*`: SBS, SEPS, INFOCOM e hipotecario) y **la conducta con la propia institución** (`incumplimiento_*`): +0,000. Los primeros ya los trae el nivel 2.
 - **No entra** `persona_ingreso_declarado`: es la propia etiqueta.
+
+Lo que sí tiene CrediScope del patrimonio es el valor de todos los vehículos de la persona (Novadata), que el modelo de score lee como colateral; para el predictor es una variable posible y sin entrenar (4.1).
 
 ### 4.4 Lo que no es entrada
 
 El predictor de Equifax (`IncomePredictor` y el ingreso del indicador de impacto económico), las salidas de la segmentación de Equifax (capacidad de pago, cuota del monto aprobado) y todo lo que el analista veía y fijaba después (decisión, respuesta comercial, perfil final).
 La respuesta comercial y la marca de cómo se armó el ingreso solo se usan para medir.
+Tampoco son entrada, por decisión del negocio del 2026-10-22, las rentabilidades por giro (las fija crédito, según el giro del negocio, sobre un flujo real de ingresos armado con estados de cuenta y declaraciones de IVA)
+ni «SD» (sin documentos: el analista decide no pedir respaldo de ingresos, patrimonio ni estabilidad): solo sirven para aclarar los datos con que se entrena.
 
 ## 5. El modelo
 
@@ -259,15 +250,11 @@ El orden respeta la regla de que un módulo nuevo tiene su propia puerta y que e
    **Tamaño medido**: cada nivel son 12 modelos y 2.040 árboles (28.560 divisiones); el `dump_model` pesa unos 13 MB sin comprimir y 2,2 MB comprimido. Las divisiones son de dos tipos: numéricas (`<=`) y por categoría (`==`, con la lista de categorías separada por `||`),
    y cada una con su regla para el valor faltante (hacia la izquierda o la derecha). Conviene exportar a un formato compacto propio en vez de cargar el JSON entero. Los cantones tienen unas 215 categorías (y la provincia 24); la actividad no entra por ahora (4.1).
 3. **Extraer `AnalisisCreditoSectorFinanciero`** en `equifax-tablas.ts` (tabla nueva, versión nueva, migración); reconstruir con `cargar-tablas-equifax.mjs --seco` primero.
-4. **Base**: `modelos_de_ingreso` (versión, nivel, estado, huella, fecha, población, métricas, ruta del archivo en Storage privado) y `estimaciones_de_ingreso` (persona, solicitud, nivel, versión, variables usadas sin identificadores, salidas, calibración, fecha y, en una reestimación, la estimación de la que parte).
-   El patrimonio que pide un analista va en su propia tabla, `patrimonios_declarados` (persona, estimación inicial, rubros, quién lo pidió y cuándo, de dónde salió): la estimación de nivel 3 apunta a esa fila y no lo copia. RLS por rol y privilegios por defecto sin rol anónimo.
+4. **Base**: `modelos_de_ingreso` (versión, nivel, estado, huella, fecha, población, métricas, ruta del archivo en Storage privado) y `estimaciones_de_ingreso` (persona, solicitud, nivel, versión, variables usadas sin identificadores, salidas, calibración, fecha). RLS por rol y privilegios por defecto sin rol anónimo.
    La tabla nueva con datos de la persona se suma a `suprimir_titular()`, a `scripts/derechos-del-titular.mjs` y a `scripts/auditar-seguridad.mjs`. Cada versión nueva del modelo necesita su fila. La migración toma el número libre al aplicarse, con el corredor.
-5. **Puerta propia**: función `estimar-ingreso` (con `exigirRol()` antes de leer el cuerpo y el límite de la sesión) y la operación `POST /estimaciones-de-ingreso` en `api/openapi.yaml`, con ejemplos calculados con el propio código y sin nada con forma de JWT; se valida con `redocly lint`.
-   **El primer pedido rechaza el patrimonio** (código `patrimonio_no_es_entrada_inicial`). La reestimación es una segunda operación sobre una estimación ya hecha (`POST /estimaciones-de-ingreso/{id}/reestimaciones`): esa sí recibe el patrimonio, registra quién lo pidió con `registrar_evento()` y devuelve el nivel 3.
-   Así la decisión del negocio queda en el contrato y no solo en la pantalla.
+5. **Puerta propia**: función `estimar-ingreso` (con `exigirRol()` antes de leer el cuerpo y el límite de la sesión) y la operación `POST /estimaciones-de-ingreso` en `api/openapi.yaml`, con ejemplos calculados con el propio código y sin nada con forma de JWT; se valida con `redocly lint`. El pedido no recibe patrimonio, gastos ni entrada: no son entradas del predictor (4.3).
 6. **Capacidad de pago** (`capacidad-de-pago.ts`): un tipo de ingreso nuevo `estimado` junto a `sueldo`, `aporte_propio` y `declarado`. Se mide con el **mínimo certificado**, nunca con el valor central, y el resultado se rotula «ingreso estimado, sin verificar», como el Ingreso declarado.
 7. **Pantalla**: una tarjeta de ingreso con tres líneas posibles (verificado, estimado, referencia), con las etiquetas propias de CrediScope y sin explicar conceptos de crédito (pantallas para personal capacitado). **Los nombres los decide el negocio**; propuesta, a decidir: «Ingreso verificado», «Ingreso mínimo estimado» y «Referencia de su tipo».
-   La tarjeta ofrece pedir el patrimonio (propuesta de nombre, a decidir: «Pedir patrimonio») solo a quien tiene el rol de analista, y muestra la estimación inicial y la reestimada una junto a la otra, con el nivel de cada una.
 8. **Entrenamiento** (`scripts/predictor-ingresos/`, en Python, sin datos): reproduce las medidas de esta especificación y exporta el modelo. Hoy los guiones viven en `C:\datos\ingresos\scripts`.
 
 Un paso por PR, de abajo hacia arriba: 1 y 3 (variables y tabla de Equifax), 2 (evaluador con su prueba de oro), 4 (base), 5 (puerta), 6 (capacidad) y 7 (pantalla).
@@ -283,7 +270,6 @@ Lo que se mide cada mes, con los casos en que después aparece un ingreso verifi
 | Cambio de la distribución de cada variable de entrada (índice de estabilidad de la población) | menor que 0,10 | mayor que 0,25 en una variable |
 | Personas con variables sin dato | las del entrenamiento | sube más de 10 puntos |
 | Cobertura por institución y por producto | igual que la general | difiere en más de 8 puntos |
-| Cobertura del nivel 3 en los casos reestimados con patrimonio, frente a la estimación inicial de los mismos casos | de 88% a 95% | baja de 85% (el patrimonio lo piden los casos dudosos y no se midió con ellos, 3.5) |
 
 **Disparadores de reentrenamiento**: cada trimestre; al llegar los 3,9 millones del proveedor; al cambiar el salario básico (cada año: la fecha entra como variable y los tramos de 470 y 940 se mueven); al cambiar una institución o un producto; o ante cualquiera de las alertas de arriba.
 **Un modelo nuevo no pasa a vigente sin compararlo con el vigente sobre los mismos casos** y sin su fila. Cualquier cambio en la respuesta de Equifax (una versión nueva de `EQUIFAX_TABLAS_VERSION`) vuelve a correr la prueba de paridad de la sección 9. La fecha como variable hace que el modelo no
@@ -300,7 +286,7 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 7. Aval, sin consultas con ingreso calculado, usa el nivel 1.
 8. **El SRI solo existe en las respuestas JSON de Equifax (desde diciembre de 2025)**: el modelo con SRI se entrena con 2026 (21.260 independientes) y no se probó con quien no tiene RUC ni aporte al IESS (el 87% de los independientes de AWS tiene RUC).
    Hacia adelante (entrenar hasta junio, medir de julio a octubre) el real supera el mínimo del 90% el 87,5% de las veces en el nivel 2 y el 88,1% en el 1 (94% y 95% en OK FACTURAR): dos puntos o dos y medio por debajo del 90% nominal hasta que se calibre (sección 5).
-9. **El patrimonio se midió con el de todos los solicitantes**, no con el de los casos en que un analista lo pediría (3.5).
+9. **La paridad de los datos de la persona** (edad, sexo, estado civil, provincia y cantón, y el aporte al IESS) entre el extracto de AWS y Novadata **no se midió**. Solo se midió la del SRI y la de las variables de Equifax (sección 10).
 
 ## 9. Pruebas de aceptación
 
@@ -334,20 +320,21 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 4. **Sin regresión**: un modelo nuevo no baja el R² ni la cobertura del vigente en los mismos casos.
 5. **Privacidad**: la respuesta y las tablas no llevan identificaciones; el control `auditar-seguridad.mjs` y `derechos-del-titular.mjs` cubren la tabla nueva.
 6. **Lenguaje**: `scripts/revisar-textos.mjs` sin términos retirados (no se dice «piso» en ingresos).
-7. **Patrimonio a petición**: un primer pedido con `patrimonio` se rechaza; la reestimación sobre una estimación existente lo acepta, queda registrada con quién la pidió y devuelve el nivel 3; el selector nunca devuelve el nivel 3 por sí solo.
-8. **Paridad del SRI de Novadata con el de Equifax**: en las personas que tienen las dos fuentes, el RUC, la fecha de inicio y el estado que arma el módulo de variables desde Novadata coinciden con `equifax_resumen`. Hoy: tiene RUC, 87 de 87; fecha de inicio, 83 de 83; estado, 81 de 83.
+7. **Paridad del SRI de Novadata con el de Equifax**: en las personas que tienen las dos fuentes, el RUC, la fecha de inicio y el estado que arma el módulo de variables desde Novadata coinciden con `equifax_resumen`. Hoy: tiene RUC, 87 de 87; fecha de inicio, 83 de 83; estado, 81 de 83.
    Se repite al crecer las consultas de Equifax en la base y no puede bajar de eso. Falta el `obligado`.
+8. **Paridad de los datos de la persona**: edad, sexo, estado civil, provincia y cantón de domicilio y de trabajo, y aporte, meses con aporte y empleos del IESS, que arma el módulo desde Novadata, coinciden con los del extracto de AWS en las personas que están en las dos fuentes.
+   Hoy no hay medida. Mientras no la haya, el nivel 1 se sirve sin las variables que no se hayan comprobado.
 
 ## 10. Lo que falta decidir o conseguir
 
 | Qué | De quién | Por qué importa |
 |---|---|---|
-| Qué se hace con los gastos declarados y con la entrada del crédito (el patrimonio ya está decidido: solo a petición del analista) | Negocio | Los gastos suman +0,003 de R² y la entrada +0,010, pero la entrada es una condición del crédito pedido, no un dato de la persona (3.5 y 4.3) |
-| Cómo se pide el patrimonio: quién lo digita (analista de la institución o de CrediScope), desde qué pantalla o campo de la API, y con qué base legal | Negocio y cumplimiento | Define la tabla `patrimonios_declarados` y la operación de reestimación (3.5 y 6) |
+| Paridad de los datos de la persona (edad, sexo, estado civil, provincia y cantón; aporte, meses y empleos del IESS) entre el extracto de AWS y Novadata | Claude, con permiso para cruzar por huella de la identificación a las personas que están en las dos bases (el modo automático lo bloqueó el 2026-10-22 por datos personales), o con la reconsulta de la fila siguiente | El nivel 1 aprende sobre todo de estas variables y solo se midió la paridad del SRI y la de Equifax |
+| Reconsultar a Novadata una muestra de personas de AWS y entrenar con los datos tal como los arma CrediScope | Negocio: autoriza y declara la base legal del lote (unos 20.000 perfiles tardan unas 17 horas, a 20 por minuto) | Resuelve de raíz la paridad de la persona y permite probar el valor de los vehículos (4.1). Hoy AWS no guarda la respuesta de Novadata |
 | Cotejar el SRI de Novadata con el de Equifax en más de 87 personas, incluido el `obligado`, y ver si el texto de la actividad de los establecimientos de Novadata (`act_economica`) se lleva a un CIIU | Claude, con la base de CrediScope (crecen con cada consulta de Equifax) | El nivel 1 depende de que Novadata dé el mismo SRI que se usó para entrenar; con la clase y el CIIU ganaría +0,020 de R² (4.1) |
-| Casos con ingreso verificado de cada institución | Cada institución | Calibración por institución (sección 5) |
-| La base de 3,9 millones | Proveedor | Reentrenar con una población menos sesgada hacia quien pide crédito |
-| Confirmar los códigos de afiliación, de categoría y de instrucción de la ENIGHUR, la ENEMDU y el censo | INEC (diccionario) | La tabla de pensiones y las referencias se apoyan en códigos deducidos |
+| Casos validados de otra institución o de otro producto | Cada institución | Calibración por institución (sección 5). El negocio indica que el ingreso verificado es el validado de AWS (2026-10-22): para otro producto hará falta su propia muestra |
+| La base de 3,9 millones | Proveedor (en proceso, 2026-10-22) | Reentrenar con una población menos sesgada hacia quien pide crédito |
+| Confirmar los códigos de afiliación, de categoría y de instrucción de la ENIGHUR, la ENEMDU y el censo | INEC (diccionario); el negocio no sabe dónde conseguirlos, así que se buscan en los diccionarios de las bases | La tabla de pensiones y las referencias se apoyan en códigos deducidos |
 | Los nombres de pantalla (propuesta en 6.7) | Negocio | Los nombres los decide el negocio |
-| Quién fijó las rentabilidades por actividad (0,30, 0,40, 0,70 y 1,00) y si cambian | Negocio | Definen el ingreso calculado de cuentas e IVA, que es parte de la etiqueta |
 | Si la mezcla de AWS (vehículos y consumo) representa a las instituciones que usarán el modelo | Negocio | Fija si hace falta calibrar antes de publicar |
+| Si la tabla de rentabilidades por giro de AWS es la vigente: el ejemplo del negocio (2026-10-22) es comercio 40% y construcción 30% y la tabla tiene comercio 0,30 y construcción 0,40 | Negocio | Define cómo se escala el ingreso calculado de cuentas e IVA, que es parte de la etiqueta (12.25) |

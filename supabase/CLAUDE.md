@@ -238,6 +238,11 @@ su guía: `docs/equifax.md`.
 - Parámetros anuales en `fuentes-ingreso.ts`: `SBU_POR_ANIO` y
   `FRACCION_BASICA_RENTA`. Un año sin renta no da indicio; al agregarlo,
   correr `calcular-columnas-del-perfil.mjs`.
+- **Predictor de ingresos** (`docs/especificacion-predictor-de-ingresos.md`):
+  una variable de entrenamiento sale de la misma función que la sirve, o se
+  mide su paridad antes de usarla. La actividad y la antigüedad declaradas de
+  AWS coincidían con el SRI en el 58% y el 19%; no se usaron
+  (`docs/lecciones.md`).
 
 **Buró, Aval y Función Judicial** (Equifax, en `docs/equifax.md`)
 - Buró de Novadata: `riesgo` T/G/C separa lo propio de lo garantizado;
