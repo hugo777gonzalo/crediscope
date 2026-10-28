@@ -91,6 +91,13 @@ su guía: `docs/equifax.md`.
   queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
   se mide con `node scripts/probar-paridad-variables-de-ingreso.mjs` (necesita `research/`).
   Sin RUC es un dato; sin respuesta de la fuente no lo es.
+- `predictor-ingresos.ts` — el evaluador del predictor de ingresos: lee el modelo exportado
+  (`crediscope-arboles-1`, `scripts/predictor-ingresos/FORMATO.md`), evalúa los doce cuantiles en
+  logaritmo y arma la respuesta (`estimarIngreso()`). El Python `evaluador_referencia.py` es la
+  definición: ante una duda manda él. La prueba de oro usa el modelo real (fuera de git) sólo si
+  existe `PREDICTOR_INGRESOS_MODELOS`; en la integración continua corre un modelo chico inventado.
+  Un modelo nuevo no cambia el formato. En Windows la prueba con el modelo real se corre desde
+  PowerShell: Git Bash cambia las rutas de `--allow-read`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de

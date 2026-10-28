@@ -193,8 +193,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
-    `scripts/predictor-ingresos/`) y PR 87 (calibración, robustez del nivel 1, exportación compacta y
-    casos de oro).
+    `scripts/predictor-ingresos/`), PR 87 (calibración, robustez del nivel 1, exportación compacta y
+    casos de oro) y PR 89 (el evaluador `_shared/predictor-ingresos.ts`, paso 2: lee el formato
+    `crediscope-arboles-1` sin dependencias, para Deno y el navegador; la prueba de oro dio diferencia 0
+    en el logaritmo en los 200 casos de cada nivel contra el modelo real, en local con
+    `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
 
     **Lo que sigue, en este orden:**
     1. Aplicar la migración 138 con el corredor (`migrar-clientes.mjs --seco` y `--aplicar`) y desplegar
@@ -203,9 +206,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        si ese PR no entra antes, renombrarla a 137 antes de aplicar, porque un número salteado no se
        aplica nunca. Después `cargar-tablas-equifax.mjs --seco` y, con el sí del usuario, sin `--seco`
        (rehace desde el crudo las consultas con `equifax-tablas-v1`, sin volver a pagar).
-    2. El evaluador en TypeScript (`supabase/functions/_shared/predictor-ingresos.ts`) con la prueba de
-       oro de `scripts/predictor-ingresos/casos-de-oro/` y su `FORMATO.md` (paso 2 de la sección 6 de
-       la especificación). No depende de lo demás.
+    2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
+       de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
+       paso 4 (punto 6).
     3. Medir la paridad de los datos de la persona contra Novadata (edad, sexo, estado civil, provincia y
        cantón; aporte, meses y empleos del IESS): reconsultar a Novadata una muestra de unas 2.000
        personas de AWS (unos 100 minutos a 20 por minuto), con el sí y la base legal del negocio. Define
