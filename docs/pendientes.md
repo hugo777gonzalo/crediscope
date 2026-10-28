@@ -210,6 +210,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     sirve con fidelidad. Faltan además el mapeo de las categorías de AWS a las de Novadata, derivar
     provincia y cantón de domicilio y trabajo y el «obligado» al perfil, y las filas mensuales del IESS
     (`trabajoHistoricosMecanizado`) que pide el módulo; todo está en la sección 9 de la especificación.
+    **Paso 2 construido (rama `claude/gracious-liskov-942f6a`):** el evaluador
+    `_shared/predictor-ingresos.ts` con su prueba. Lee el formato `crediscope-arboles-1` (sin dependencias,
+    para Deno y el navegador), evalúa los doce cuantiles y arma la respuesta (mínimos del 90% y 85%,
+    valor central, tramos con los cortes del año, límite de medio salario básico y `calibradoPara`).
+    La prueba de oro (200 casos por nivel) pasó en local contra el modelo real con diferencia 0 en el logaritmo
+    (`PREDICTOR_INGRESOS_MODELOS=<carpeta del modelo exportado>`); en la integración continua corre un modelo
+    chico inventado y la prueba con el modelo real se omite. Queda abierto: la calibración conforme es un
+    parámetro de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más); de dónde sale por institución
+    se decide en el paso 4 (base).
 
 ## 3. Espera a terceros
 
