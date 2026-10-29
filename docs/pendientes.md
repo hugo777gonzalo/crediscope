@@ -188,8 +188,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están el paso 1 y
-    el entrenamiento, y nada está desplegado). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
+    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están los pasos 1 y
+    2 y el entrenamiento, y el predictor no está desplegado: ninguna función usa `predictor-ingresos.ts`). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
     tiene dos niveles (1: Novadata con su SRI; 2: Novadata y buró de Equifax). **Aclarado el 2026-10-28
     (12.27): no hay calibración por producto.** AWS es crédito automotriz en su 96% (54.906 de 57.061
     independientes; 68 de consumo), pero el negocio dijo que automotriz y consumo son lo mismo: el
@@ -216,15 +216,18 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).
-    3. Medir la paridad de los datos de la persona contra Novadata (edad, sexo, estado civil, provincia y
-       cantón; aporte, meses y empleos del IESS): reconsultar a Novadata una muestra de unas 2.000
-       personas de AWS (unos 100 minutos a 20 por minuto), con el sí y la base legal del negocio. Define
-       las variables del nivel 1: el negocio respondió «decidir después de medir contra Novadata», y la
-       recomendación de la sesión de entrenamiento (edad, sexo, IESS y SRI, sin zona ni estado civil)
-       queda como candidata, sin aplicar.
+    3. La paridad de los datos de la persona contra Novadata **se midió con 542 independientes de 2023 a
+       2025, ninguno con RUC (12.29)**: edad y sexo 99,6%, estado civil 92,4%, domicilio 86% (provincia) y
+       71% (cantón) pero Novadata lo trae en el 37%, aporte al IESS 84%, empleos 67% y meses con aporte 0%.
+       Con eso el nivel 1 entra con la edad (a la fecha de la consulta), el sexo y el SRI, sin estado civil,
+       zona ni IESS de Novadata (el IESS entra solo si se reentrena con el suyo). Lo decide el negocio y
+       el modelo exportado no se cambió. Falta: completar el lote con menos hilos (1.620 de 2.162 sin
+       respuesta buena: 986 sin consultar y 634 con error o sin datos; primero la mitad con RUC de 2026,
+       que mide el SRI de Novadata), con el sí del negocio, y revisar los 553 perfiles que el HTTP 502
+       dejó guardados con la respuesta incompleta (el guion los contó como hechos).
     4. Reentrenar desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19 variables
-       del nivel 2 que no coinciden con el extracto) cuando termine el respaldo (20.000 de unas 105.070
-       respuestas JSON al 2026-10-26; se baja de la más nueva a la más vieja), con las variables de la
+       del nivel 2 que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
+       respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja), con las variables de la
        persona ya decididas; recalibrar y volver a exportar.
     5. Completar el módulo de variables: el mapeo de las categorías de AWS a las de Novadata, provincia y
        cantón de domicilio y trabajo y `obligado` en el perfil, y las filas mensuales del IESS
@@ -233,8 +236,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
     7. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
 
-    **Decisiones abiertas del negocio:** qué quiere lograr con la destilación; la reconsulta a Novadata
-    (punto 3); los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    **Decisiones abiertas del negocio:** qué quiere lograr con la destilación; el IESS y la zona de la persona
+    en el nivel 1 y completar la reconsulta a Novadata (punto 3); los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Novadata con el de Equifax en más de 87 personas.
 

@@ -229,6 +229,7 @@ Romper cualquiera de estas rompe algo real.
 | Guiones | `scripts/CLAUDE.md` (se carga solo) |
 | Equifax | `docs/equifax.md` |
 | La base de originación en AWS (requerimientos, ingresos, predictor) | `docs/base-aws-originacion.md` |
+| El predictor de ingresos (el de quien no lo tiene verificado) | `docs/especificacion-predictor-de-ingresos.md` (qué se construye y en qué orden), `docs/investigacion-predictor-de-ingresos.md` (por qué) y su estado, en el punto 18 de `docs/pendientes.md` |
 | El Laboratorio | `docs/laboratorio-guia.md`: el plan por pasos y, al final, cómo está construido |
 | Ponerle nombre a una pantalla o a una tabla | `docs/modelo-de-la-persona.md`: la persona, su árbol y sus estados |
 | La demo para una institución | `docs/plan-demo-ifi.md` |
