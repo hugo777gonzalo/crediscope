@@ -11,7 +11,7 @@ lotes) se corre sólo con su autorización explícita y el costo estimado. Una l
 suelta para comprobar un despliegue está aceptada. **Cada consulta a Equifax se
 cobra** (USD 0,40): no se corre ninguna sin autorización.
 
-## Estado vigente (medido el 2026-10-20)
+## Estado vigente (cada línea dice cuándo se midió)
 
 - **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
   `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
@@ -19,13 +19,19 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   138 (`despliegues`; el anterior fue `f09531e87adc`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
   institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
-  reales; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
+  reales al 2026-10-20; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
   capacidad-v3. Las dos primeras salen de la base (`structure_version`, `fuente_version`); el
   resto, del código de `main`.
-- **Datos:** 2.573 personas reales y 240 sintéticas; 207 análisis con marco-v28 y 8 con
-  marco-v30; 88 consultas de Equifax, de las que **sólo 1 está vigente** (el ciclo va del 18/10
-  al 17/11; las 87 anteriores caducaron). El modelo lleva **USD 9,63 de los 10** del
-  presupuesto de octubre.
+- **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
+  desde el 2026-10-21**, casi todas del lote de paridad del predictor del 2026-10-28 (1.176
+  independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
+  con crédito vigente»; `docs/investigacion-predictor-de-ingresos.md`, 12.29). Entran en los totales
+  de la cartera, la bandeja y Monitoreo como cualquier persona real, y 553 de sus perfiles quedaron
+  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). Falta decidir con el negocio si se
+  marcan aparte.
+- **Datos (2026-10-20, sin remedir):** 207 análisis con marco-v28 y 8 con marco-v30; 88 consultas de
+  Equifax, de las que **sólo 1 estaba vigente** (el ciclo va del 18/10 al 17/11; las 87 anteriores
+  caducaron). El modelo llevaba **USD 9,63 de los 10** del presupuesto de octubre.
 - **Control de seguridad:** 73 de 73 el 2026-10-19 (`auditar-seguridad.mjs`); desde un
   worktree no se puede repetir entero, y no se volvió a correr.
 
@@ -42,7 +48,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    Devuelve los datos completos de la persona según el contrato y la configuración de cada
    institución; lo que viene de una fuente depende de que el contrato con esa fuente permita
    entregarlo (Novadata: 3.3). Lo hace Claude (E27 ya no la frena; D5 a D15, 2.9). Se verifica
-   con el lint estricto de Redocly sobre `api/openapi.yaml` y pruebas.
+   con el lint estricto de Redocly sobre `api/openapi.yaml` y pruebas. **El núcleo está en el PR 82**
+   (flujo Plus, abierto y sin fusionar al 2026-10-28; carpeta `cranky-goodall-f18441`): choca con
+   `main` y **su migración tiene que pasar de 137 a 139 o más**, porque la 138 ya está aplicada y un
+   número salteado no se aplica nunca. El negocio lo dejó para después.
 3. **La puerta de la API: lo que la especificación dice y el código no hace.** Falta: las
    validaciones del esquema (`additionalProperties: false`, máximos de ingresos y deudas,
    `parametros` fuera de 0 a 1 que hoy se ignoran), errores `application/problem+json`, OAuth e
@@ -328,18 +337,20 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
 
 ## 6. Limpieza
 
-1. **Carpetas de trabajo** (`git worktree list`, 2026-10-20; no se borró nada):
-   - `cool-jemison-2a674d`: su commit ya está en `main`, sin cambios, y E27 ya no la usa: se
-     puede borrar. `xenodochial-albattani-950de3` ya no existe.
-   - `quirky-bhaskara-71c218`, `simulador-credito` y `siint-docs-lote`: sin cambios, pero sus
-     commits no son ancestros de `main` (squash): revisar antes de borrar.
-   - `reglas-pantallas`: 8 archivos sin commitear, la usa otra sesión.
-2. **Ramas locales:** hay 50, 16 con la rama remota ya borrada y sólo 6 son ancestros de
-   `main`. Borrar las que se fusionaron con squash lo hace el negocio o una sesión con permiso.
-3. **PR abiertos:** el #32 (documentación de E27 que dice que «quedan los atributos protegidos»)
-   quedó contra la decisión del 2026-10-20: cerrarlo o actualizarlo. El #55 es de Dependabot
-   (seis actualizaciones menores): revisar con los controles.
-4. **Cartera sintética del Laboratorio** (carga «Cartera sintética (semilla 1)»): se queda, es
+1. **Ordenado el 2026-10-28** (con el sí del negocio): se fusionaron el PR 91 (paridad, 12.29) y el
+   55 (Dependabot), y el 32 se cerró sin fusionar porque contradecía la decisión del 2026-10-20 sobre
+   E27 (su rama `claude/heuristic-noether-e0671c` se conserva). Se borraron 32 ramas remotas y 58
+   locales de PR ya fusionados, y 6 carpetas de trabajo. Antes de borrar cada rama se comprobó que su
+   punta estuviera dentro de la cabeza de su PR: los PR se fusionan con squash, así que «no es
+   ancestro de `main`» no dice si hay trabajo perdido. Así apareció un commit del 2026-10-21 que no
+   había entrado: entró con el PR que trae esta nota. Las 20 líneas sin commitear de la carpeta de un
+   agente (las etiquetas del veredicto de capacidad para un marco-v32 que no existe) quedaron en
+   `research/parches/`, fuera de git.
+2. **Quedan** las carpetas `cranky-goodall-f18441` (PR 82) y `suspicious-gagarin-e12f62` (la sesión
+   de la paridad), con sus ramas. `claude/postgres-aws-data-review-66a14e` y
+   `claude/cranky-goodall-f18441` son de PR fusionados (79 y 66), pero las nombra la sesión de la
+   API: se borran cuando se archive.
+3. **Cartera sintética del Laboratorio** (carga «Cartera sintética (semilla 1)»): se queda, es
    la que prueba los cálculos. Si se regenera, anular la anterior desde la pantalla.
 
 ## Para ubicar

@@ -339,6 +339,8 @@ al CLAUDE.md que le corresponde, y con su caso a `docs/lecciones.md`.
   UTC ya es la de mañana. Las fechas se formatean sólo con `src/lib/fechas.js`.
 - Un archivo de secretos guardado desde el Bloc de notas queda como `.env.txt` y git no
   lo ignora (la regla es `clientes/*.env`): `git check-ignore -v <archivo>` antes de leerlo.
+- Con squash, una rama fusionada nunca es ancestro de `main`. Antes de borrar una rama,
+  comparar su punta con la cabeza de su PR (`refs/pull/N/head`).
 
 ## Cómo se trabaja
 

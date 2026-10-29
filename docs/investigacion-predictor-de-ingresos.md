@@ -2570,6 +2570,49 @@ el ingreso calculado es el promedio de ventas o depósitos por la rentabilidad d
 
 **Pregunta abierta al negocio:** qué quiere lograr con la destilación. Si es independizarse de Equifax, el modelo propio con las variables del buró ya lo logra con el ingreso validado y no hace falta imitar al predictor; si es reproducir su cifra, es posible con un R² de 0,79 y un error dentro de ±25% en el 73% de los casos.
 
+### 12.29 Los datos de la persona: AWS contra lo que arma CrediScope desde Novadata (2026-10-28)
+
+Cierra el punto 12 de 12.20 y el pendiente de 12.26 (la paridad de la edad, el sexo, el estado civil, la zona y el IESS «no se midió»). El negocio autorizó la consulta (2026-10-28, base legal «Contrato NovaCredit: cartera con crédito vigente»). **Todo lo que sigue son tasas y conteos; los datos de las personas quedan en `research/medida-persona/` (fuera de git).**
+
+**Cómo se midió.** Muestra de 2.162 independientes de la tabla de AWS (sin las 448 cédulas de Aval), estratificada por año de consulta, con y sin RUC y respuesta comercial. Se consultó a Novadata con `consultar-lote.mjs` (20 en paralelo) y las variables se armaron con `variables-de-ingreso.ts` sin tocarlo, contra el crudo guardado, persona por persona. **El lote se cortó a pedido del negocio con 1.176 de 2.162 consultadas, y sólo 542 contestaron bien**: 553 recibieron HTTP 502 de Novadata (la saturación que el guion ya avisaba), 22 no contestaron en 120 s y 59 vinieron sin datos del Registro Civil. El guion los contó como «con perfil» y quedaron guardados sus perfiles con la respuesta incompleta; **hay que reconsultarlos con menos hilos** (en ese rango, a unos 11 perfiles por minuto con 20 hilos, la mitad falló). Las 542 son de 2023, 2024 y 2025 y **ninguna tiene RUC**: la mitad con RUC (consultas de 2026) no se alcanzó, así que lo que sigue **no dice nada de las variables del SRI**.
+
+**Dos cosas que cambian cómo se compara**: Novadata responde con la fecha de hoy y AWS con la de la consulta. La edad se calculó del nacimiento a la fecha de la consulta, y el IESS se recortó a los meses anteriores a ella.
+
+| Variable | Coincide | Detalle |
+|---|---|---|
+| Edad (a la fecha de la consulta) | 540 de 542 (99,6%) | Los 2 restantes difieren en 1 año. Con la edad **de hoy**, que es la que guarda el perfil, sólo coincide 2 de 542 (30% a ±1): el perfil trae la edad al día de la consulta, no a la de AWS, y por eso un perfil viejo **no sirve para comparar** contra el entrenamiento con `identidad.edad`. En producción la consulta es de hoy y no hay diferencia |
+| Sexo | 540 de 542 (99,6%) | Las mismas dos categorías; 2 cruzadas |
+| Estado civil | 501 de 542 (92,4%) | Los 41 que no coinciden son corrimientos reales (soltero que Novadata ve casado: 17; casado que ve divorciado: 8; soltero que ve divorciado: 5; el resto, menos de 5 cada uno). «Unión libre» de Novadata es «unión de hecho» de AWS (2 de 3 coinciden): el mapeo es por nombre |
+| Provincia de domicilio | 151 de 175 (86,3%) | **Novadata trae el lugar de domicilio sólo en 199 de 542 (36,7%)**; AWS lo trae en 461 |
+| Cantón de domicilio | 124 de 175 (70,9%) | Igual que Equifax contra Equifax en 12.26 (88% y 75%): la zona de Novadata y la de AWS no son la misma dirección |
+| Provincia y cantón de trabajo | **no se puede armar** | Novadata no trae el lugar de trabajo: sólo el de nacimiento (del titular, los padres, los hijos y los patronos, que no es el trabajo) y la provincia de la oficina de control del patrono. AWS trae `prov_trab` en 540 de 542 |
+| Aporte del último mes (con la historia recortada a la consulta) | 83 de 99 (83,8%) | Sólo cuentan las 99 personas con aporte en AWS y en Novadata (±1 dólar). Los 16 que difieren se separan por más de un dólar. Sin recortar la historia coincide 39 de 99 (39,4%): el recorte es obligatorio |
+| Número de empleos | 66 de 99 (66,7%) | AWS menos Novadata: 0 en 66, 1 en 10, 2 en 2, los 21 restantes difieren en más o en el otro sentido. Con el detalle de los 24 meses anteriores a la consulta, 64 de 99 |
+| Meses con aporte | **0 de 99** | Novadata trae, hasta la consulta, entre 45 meses menos y 20 más que AWS (mediana 30 menos, y en 77% menos o igual): no es la misma cuenta. Con la tabla interna `tiess` coinciden 5 de 99 |
+
+**El IESS tiene un problema de otra clase: quién trae dato.** De las 442 personas sin aporte en AWS (Equifax no lo trajo), **Novadata sí trae IESS anterior a la consulta en 244 (55%)**. De las 100 con aporte en AWS, a una sola le falta en Novadata. El modelo aprendió que «sin aporte» significa lo que AWS llama sin aporte, y el nivel 1 le entregaría el aporte de esas 244 personas, que nunca vio con ese valor. No es una diferencia de formato sino de población: el aporte y los meses de Novadata **no son el mismo dato** que el de AWS.
+
+**Recomendación para el nivel 1** (lo que entra de la persona):
+
+| Variable | Decisión | Por qué |
+|---|---|---|
+| Edad | **Entra** | 99,6%, y una vez calculada a la fecha de la consulta, sin desvío |
+| Sexo | **Entra** | 99,6% |
+| Estado civil | **No entra** | 92,4% con corrimientos hacia casado y divorciado; la robustez de 12.26 mostró que pesa poco |
+| Provincia y cantón de domicilio | **No entran** | Novadata los trae en 37% y coinciden 86% y 71%; el modelo cubre peor con ellos vacíos (12.26) |
+| Provincia y cantón de trabajo | **No entran** | Novadata no los trae |
+| Aporte, meses con aporte y empleos | **No entran con el dato de Novadata tal como está** | Coinciden 84%, 0% y 67%, y la población con dato no es la misma (55% de los «sin aporte» de AWS tienen IESS en Novadata). Entran sólo si se reentrena con el IESS de Novadata |
+| SRI de Novadata | **Sin medir** | La muestra no incluyó ninguna persona con RUC; la paridad del SRI contra Equifax sigue como en 12.24 |
+
+La candidata de la sesión de entrenamiento (edad, sexo, IESS y SRI, sin zona ni estado civil) **se confirma salvo el IESS**: el aporte, los meses y los empleos no pueden entrar con el dato de Novadata sin reentrenar.
+
+**Lo que queda abierto:**
+1. Completar el lote (1.620 sin respuesta buena: 986 sin consultar y 634 con error o sin datos) con menos hilos, en especial la mitad con RUC de 2026.
+2. Decidir el IESS: reentrenar el nivel 1 con el IESS de Novadata de personas consultadas en CrediScope (ahí la población es la de producción), o dejarlo fuera.
+3. Si el negocio quiere la zona, el domicilio de Novadata cubre 37%: se necesitaría otra fuente.
+4. Revisar los perfiles con la respuesta incompleta que dejó el 502 (553 personas) cuando se reconsulten.
+5. El módulo de variables no cambió: tal como está, `meses_aporte` usa todos los meses de Novadata y debería recortarse a la consulta si se compara contra el entrenamiento.
+
 ## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,
