@@ -16,7 +16,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 - **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
   `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
 - **Funciones:** sello **`626bb6c04685`**, 10 de 10, desplegado el 2026-10-28 sobre el esquema
-  138 (`despliegues`; el anterior fue `f09531e87adc`).
+  138 (`despliegues`; el anterior fue `f09531e87adc`). Desde entonces sólo entraron documentos y
+  dependencias de la pantalla: no hace falta volver a desplegar.
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
   institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
   reales al 2026-10-20; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
@@ -29,17 +30,25 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de la cartera, la bandeja y Monitoreo como cualquier persona real, y 553 de sus perfiles quedaron
   con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). Falta decidir con el negocio si se
   marcan aparte.
-- **Datos (2026-10-20, sin remedir):** 207 análisis con marco-v28 y 8 con marco-v30; 88 consultas de
-  Equifax, de las que **sólo 1 estaba vigente** (el ciclo va del 18/10 al 17/11; las 87 anteriores
-  caducaron). El modelo llevaba **USD 9,63 de los 10** del presupuesto de octubre.
-- **Control de seguridad:** 73 de 73 el 2026-10-19 (`auditar-seguridad.mjs`); desde un
-  worktree no se puede repetir entero, y no se volvió a correr.
+- **Análisis (2026-10-29, `analysis_results`):** 207 con marco-v28 (el último del 13/10) y 8 con
+  marco-v30 (el último del 18/10), todos de personas reales; **ninguno nuevo desde el 18/10**. Los 73
+  restantes son de versiones anteriores a la v28 (288 en total).
+- **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
+  87 anteriores caducaron).
+- **Modelo (2026-10-29, `gasto_del_mes`):** octubre lleva **USD 9,66 de los 10** del presupuesto
+  (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
+  vigía; no hubo análisis.
+- **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
+  carpeta principal), el primero después de la 138 y del despliegue del 2026-10-28. Sigue
+  marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
+  punto 2.15).
 
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
-   (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retoma la semana del
-   2026-10-19. Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
+   (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retomaba la semana del
+   2026-10-19, y esa semana pasó sin que entrara nada del Laboratorio a `main` (al 2026-10-29). Falta
+   que el negocio diga cuándo. Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
    Lo hace Claude en una sesión (`docs/laboratorio-guia.md`, paso 1; sin pantallas nuevas hasta
    el paso 4). Se verifica con los conteos por origen y por análisis; antes hay que decidir el
    t0 de los 200 del lote del 07/10, que se analizaron sobre la consulta del 03/10.
@@ -97,9 +106,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    encender el buró en lo que lee el modelo (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
-   Y octubre lleva USD 9,63 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
+   Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` está en 10 y octubre lleva
-   USD 9,63: pasó los avisos del 70 y el 85%. Confirmar el monto que quiere el negocio. El
+   USD 9,66 (2026-10-29): pasó los avisos del 70 y el 85%. Confirmar el monto que quiere el negocio. El
    límite de la consola de Anthropic es otro y manda: en septiembre cortó el 28 con USD 6,00
    medidos por nosotros, antes de nuestro aviso. Nuestro presupuesto tiene que ser el de la
    consola o menor. Se verifica comparando los dos límites.
