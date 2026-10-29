@@ -13,10 +13,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (medido el 2026-10-20)
 
-- **Base:** última migración aplicada, la **136** (2026-10-20); `ESQUEMA_MINIMO` está en 135.
-  Se midió en `esquema_version`.
-- **Funciones:** sello **`f09531e87adc`**, 10 de 10, desplegado el 2026-10-20 sobre el esquema
-  136 (`despliegues`; el anterior fue `da643d391546`).
+- **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
+  `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
+- **Funciones:** sello **`626bb6c04685`**, 10 de 10, desplegado el 2026-10-28 sobre el esquema
+  138 (`despliegues`; el anterior fue `f09531e87adc`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
   institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
   reales; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
@@ -179,19 +179,55 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-21: el **patrimonio solo se
-    solicita a petición de un analista** (no es una entrada inicial; el nivel 3 es una reestimación).
-    El SRI de las respuestas de Equifax guardadas en AWS ya se extrajo (autorizado por el negocio) y
-    sube el nivel 1 de R² 0,091 a 0,172: solo existe en las 105.070 respuestas JSON de 2026
-    (`docs/investigacion-predictor-de-ingresos.md`, 12.24). Lo que falta decidir o conseguir está en
-    la sección 10 de la especificación: qué se hace con los gastos declarados y con la entrada del
-    crédito; cómo se pide el patrimonio al titular; cotejar el SRI de Novadata con el de Equifax en más
-    de 87 personas (y si el texto de la actividad de los establecimientos de Novadata da un CIIU);
-    casos con ingreso verificado de cada institución para calibrar; la base de 3,9 millones del
-    proveedor; y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC).
-    El primer paso de construcción es extraer `AnalisisCreditoSectorFinanciero` en
-    `equifax-tablas.ts` (sus campos son las variables más pesadas del nivel con buró y hoy no se
-    derivan).
+    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están el paso 1 y
+    el entrenamiento, y nada está desplegado). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
+    tiene dos niveles (1: Novadata con su SRI; 2: Novadata y buró de Equifax). **Aclarado el 2026-10-28
+    (12.27): no hay calibración por producto.** AWS es crédito automotriz en su 96% (54.906 de 57.061
+    independientes; 68 de consumo), pero el negocio dijo que automotriz y consumo son lo mismo: el
+    valor financiado es el mismo (consumo 20.000; automotriz 20.000 más 5.000 de entrada, un auto de
+    25.000, con 20.000 financiados), y lo que importa es el predictor general de Equifax. Se conserva el
+    dato, no la propuesta de «sin calibrar para consumo». **Destilación (12.28):** hay 400.000
+    consultas a Equifax con predictor en cinco años; medido, destilar no mejora la predicción del
+    ingreso validado (R² 0,341 el nivel 2 solo; 0,349 con el predictor de Equifax mismo) y serviría para
+    independizarse de ese predictor. Está abierto qué quiere lograr el negocio con la destilación.
+
+    **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
+    `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
+    `scripts/predictor-ingresos/`), PR 87 (calibración, robustez del nivel 1, exportación compacta y
+    casos de oro) y PR 89 (el evaluador `_shared/predictor-ingresos.ts`, paso 2: lee el formato
+    `crediscope-arboles-1` sin dependencias, para Deno y el navegador; la prueba de oro dio diferencia 0
+    en el logaritmo en los 200 casos de cada nivel contra el modelo real, en local con
+    `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
+
+    **Lo que sigue, en este orden:**
+    1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
+       consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
+       **Si el PR 82 entra, su migración ya no puede ser la 137** (un número salteado no se aplica
+       nunca): renumerarla a 139 o más.
+    2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
+       de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
+       paso 4 (punto 6).
+    3. Medir la paridad de los datos de la persona contra Novadata (edad, sexo, estado civil, provincia y
+       cantón; aporte, meses y empleos del IESS): reconsultar a Novadata una muestra de unas 2.000
+       personas de AWS (unos 100 minutos a 20 por minuto), con el sí y la base legal del negocio. Define
+       las variables del nivel 1: el negocio respondió «decidir después de medir contra Novadata», y la
+       recomendación de la sesión de entrenamiento (edad, sexo, IESS y SRI, sin zona ni estado civil)
+       queda como candidata, sin aplicar.
+    4. Reentrenar desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19 variables
+       del nivel 2 que no coinciden con el extracto) cuando termine el respaldo (20.000 de unas 105.070
+       respuestas JSON al 2026-10-26; se baja de la más nueva a la más vieja), con las variables de la
+       persona ya decididas; recalibrar y volver a exportar.
+    5. Completar el módulo de variables: el mapeo de las categorías de AWS a las de Novadata, provincia y
+       cantón de domicilio y trabajo y `obligado` en el perfil, y las filas mensuales del IESS
+       (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
+    6. Las tablas, la función y la operación de la API (pasos 4 y 5 de la sección 6): `modelos_de_ingreso`,
+       `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
+    7. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
+
+    **Decisiones abiertas del negocio:** qué quiere lograr con la destilación; la reconsulta a Novadata
+    (punto 3); los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
+    Novadata con el de Equifax en más de 87 personas.
 
 ## 3. Espera a terceros
 

@@ -139,6 +139,12 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   alcanzó: Pages seguía apagado (la API contestaba 404) y hubo que
   habilitarlo otra vez con el origen "GitHub Actions" y volver a correr el
   flujo.
+- **Un documento se fecha con la hora de Ecuador, no con la UTC** (2026-10-21).
+  La regla ya estaba («Ecuador es UTC-5»), y aun así la investigación del
+  predictor, su especificación y `docs/pendientes.md` salieron con 13 líneas
+  fechadas 2026-10-22: el trabajo de la noche ocurrió el 21, pero desde las
+  19:00 de Ecuador la fecha UTC ya es la del día siguiente. Se corrigieron en
+  el PR 83. Al fechar, mirar la hora local de la máquina (`date` sin `-u`).
 
 ## Funciones y base
 
@@ -361,6 +367,29 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   los dos en `fuentes-ingreso.ts`. Un año que falta en la tabla de renta
   no da indicio; hay que agregarlo cuando el SRI la publique, y después
   correr `scripts/calcular-columnas-del-perfil.mjs`.
+- **Una variable de entrenamiento sale de la misma función que la sirve, o se
+  mide su paridad antes de usarla** (predictor de ingresos, 2026-10-21 y 22).
+  AWS toma la actividad y la fecha de inicio del flujo de ingreso (declaradas
+  o escritas por el analista): la sección del CIIU coincidía con el SRI en el
+  58% de 1.368 casos y la fecha de inicio en el 19%, y servirlas con el SRI
+  habría metido ruido. Otros tres casos del mismo tema: el SRI de Equifax solo
+  está en las respuestas JSON (desde diciembre de 2025), no en las XML de 2021
+  a 2025; el «patrimonio» de AWS trae la entrada del crédito, que es una
+  condición de la operación y no un bien; y la paridad de los datos de la
+  persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata
+  sigue sin medirse. El caso completo, en `docs/investigacion-predictor-de-ingresos.md`
+  (12.23 a 12.25).
+- **La población de entrenamiento tiene que ser la del producto** (predictor de
+  ingresos, 2026-10-26). Se dio por hecho que la base de AWS mezclaba crédito de
+  vehículos y de consumo (lo sugería una marca del catálogo de respuestas), y se
+  calibró el mínimo certificado con ella. El tipo de producto del extracto dice
+  que 54.906 de 57.061 independientes son crédito automotriz y 68 son de consumo.
+  El negocio decidió el 2026-10-28 que automotriz y consumo son lo mismo (lo
+  comparable es el valor financiado: la entrada no se financia) y que no hay
+  calibración por producto; la propuesta de rotular el mínimo «sin calibrar para
+  consumo» se retiró. Antes de entrenar o calibrar, contar la población por
+  producto con el campo que lo dice, no con una marca que lo sugiere, y después
+  preguntar al negocio si el producto separa algo que importe.
 
 ### Buró, Aval y Función Judicial
 
@@ -720,6 +749,20 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
     llamó a `signOut()`, que en Supabase cierra por defecto todas las sesiones
     de la cuenta. Para probar un estado que depende de la fecha: datos que ya
     estén en ese estado o una prueba en Node, no el reloj de la página.
+  - **Una columna con el mismo nombre no es el mismo campo de la respuesta** (2026-10-22). Las
+    cuotas, saldos y conteos por tipo del extracto de AWS (`equifax_deuda_por_tipo`) salieron de
+    las listas `DetalleDeudaActualReportada*` de `interconnectResponse`, no de
+    `reporteCrediticio.detalle_deuda_actual_*`; la especificación del predictor suponía lo
+    segundo y sólo la prueba de paridad sobre las 5.001 respuestas crudas lo mostró: con las
+    operaciones de `reporteCrediticio` coinciden entre el 49% y el 100% de las consultas según la
+    variable. Antes de servir un modelo, armar sus variables con el código del producto sobre la
+    respuesta cruda y compararlas con las del entrenamiento (`scripts/probar-paridad-variables-de-ingreso.mjs`).
+  - **Una fecha dd/mm/yyyy leída como mes/día, o convertida con `try_cast`, no avisa**
+    (2026-10-22). La investigación del predictor (12.22) dio por hecho que había créditos con
+    concesión «posterior a la consulta» (mínimo de −8,7 meses): era una fecha leída al revés. Con
+    el formato correcto hay 0 de 4.499, y en el entrenamiento la regla del crédito posterior nunca
+    corrió porque `try_cast` de DuckDB dio nulas las 116.673 fechas. Una regla que filtra por
+    fecha se comprueba contando cuántas filas toca; si toca cero, o todas, la fecha está mal leída.
 
 ## Laboratorio
 

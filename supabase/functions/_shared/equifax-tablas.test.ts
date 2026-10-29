@@ -86,7 +86,7 @@ Deno.test("texto y números: lo vacío es null y un texto con número se lee", (
   assertEquals(entero("abc"), null);
 });
 
-Deno.test("la respuesta inventada se descompone en las 11 tablas, con las filas esperadas", () => {
+Deno.test("la respuesta inventada se descompone en las 12 tablas, con las filas esperadas", () => {
   const r = derivarTablas(respuestaDePrueba());
   assertEquals(r.version, EQUIFAX_TABLAS_VERSION);
   assertEquals(r.avisos, []);
@@ -102,6 +102,7 @@ Deno.test("la respuesta inventada se descompone en las 11 tablas, con las filas 
   assertEquals(n("equifax_indicadores_por_periodo"), 3 + 5 + 3 + 3 + 3 + 3 + 3 + 3);
   assertEquals(n("equifax_codeudor_garante"), 1);
   assertEquals(n("equifax_resumen"), 1);
+  assertEquals(n("equifax_analisis_credito"), 1);
 });
 
 Deno.test("toda fila lleva exactamente las columnas de su tabla, ni una más ni una menos", () => {
@@ -115,7 +116,7 @@ Deno.test("toda fila lleva exactamente las columnas de su tabla, ni una más ni 
 Deno.test("las filas de cada tabla salen numeradas 1, 2, 3... (el orden es la clave junto a la consulta)", () => {
   const r = derivarTablas(respuestaDePrueba());
   for (const [tabla, filas] of Object.entries(r.tablas) as Array<[string, Array<{ orden: number | null }>]>) {
-    if (tabla === "equifax_resumen") continue;
+    if (tabla === "equifax_resumen" || tabla === "equifax_analisis_credito") continue; // sin `orden`: una sola fila
     assertEquals(filas.map((f) => f.orden), filas.map((_, i) => i + 1), tabla);
   }
 });
@@ -285,4 +286,41 @@ Deno.test("la especificación de las tablas no repite columnas y todas son nombr
     assert(nombres.every((c) => /^[a-z][a-z0-9_]*$/.test(c)), tabla);
   }
   assertThrows(() => columnasDeLaTabla("no_existe" as never));
+});
+
+Deno.test("el análisis de crédito: las diez variables del predictor y las tres fechas de concesión, con montos a centavos", () => {
+  const r = derivarTablas(respuestaDePrueba());
+  assertEquals(r.version, "equifax-tablas-v2");
+  assertEquals(r.cobertura["AnalisisCreditoSectorFinanciero"], 1);
+  assertEquals(r.tablas.equifax_analisis_credito, [{
+    mayor_credito_aprobado_monto_usd: 12000, mayor_credito_aprobado_fecha_concesion: "2024-03-15",
+    mayor_credito_reciente_monto_usd: 5000.46, mayor_credito_reciente_fecha_concesion: "2026-02-10",
+    mayor_credito_actual_monto_usd: 8000, mayor_credito_actual_fecha_concesion: "2026-09-05",
+    deuda_total_adeudada_usd: 6500.5, instituciones_con_deuda_numero: 3,
+    creditos_aprobados_numero: 7, creditos_aprobados_valor_usd: 43000, saldos_vigentes_usd: 6400.25,
+    deuda_actual_usd: 6500.5, deuda_hace_3_meses_usd: 7100,
+  }]);
+});
+
+Deno.test("el análisis de crédito no lleva la entidad ni los campos que no son de las diez variables", () => {
+  const fila = derivarTablas(respuestaDePrueba()).tablas.equifax_analisis_credito[0];
+  const texto = JSON.stringify(fila);
+  assertFalse(texto.includes("BANCO DE PRUEBA UNO"));
+  assertFalse(texto.includes("999999"), "la deuda de CMAADeudaTotal no es una de las diez variables");
+});
+
+Deno.test("sin el bloque no hay fila (y la cobertura dice null); con el bloque vacío, una fila de nulos", () => {
+  const sin = derivarTablas(respuestaDePrueba({ interconnectResponse: { AnalisisCreditoSectorFinanciero: undefined } }));
+  assertEquals(sin.tablas.equifax_analisis_credito, []);
+  assertEquals(sin.cobertura["AnalisisCreditoSectorFinanciero"], null);
+  const vacio = derivarTablas(respuestaDePrueba({ interconnectResponse: { AnalisisCreditoSectorFinanciero: {} } }));
+  assertEquals(vacio.cobertura["AnalisisCreditoSectorFinanciero"], 1);
+  assertEquals(vacio.tablas.equifax_analisis_credito.length, 1);
+  assert(Object.values(vacio.tablas.equifax_analisis_credito[0]).every((v) => v === null));
+});
+
+Deno.test("un bloque que no es un objeto no se inventa: sin fila y con aviso", () => {
+  const r = derivarTablas(respuestaDePrueba({ interconnectResponse: { AnalisisCreditoSectorFinanciero: "no" } }));
+  assertEquals(r.tablas.equifax_analisis_credito, []);
+  assert(r.avisos.some((a) => a.startsWith("AnalisisCreditoSectorFinanciero")));
 });
