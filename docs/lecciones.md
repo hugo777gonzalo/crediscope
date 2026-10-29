@@ -15,6 +15,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   controles tienen que ser de ese commit); el 2026-10-20 se borró la rama
   del #65 sin confirmar MERGED y el PR quedó cerrado. Confirmar el estado
   del PR antes de borrar la rama.
+- **Con squash, una rama fusionada nunca es ancestro de `main`, así que eso no dice si quedó
+  trabajo afuera.** El 2026-10-28 había más de 60 ramas locales y 34 remotas, todas «sin fusionar» para
+  git. Contra la cabeza de su PR (`git fetch origin refs/pull/N/head`, `merge-base --is-ancestor`)
+  casi todas estaban adentro. La excepción fue `claude/base-aws-segunda-ronda`, con un commit del
+  2026-10-21 posterior a su PR (#80): la aclaración de las observaciones «RECUPERADO NOVADATA MENOS
+  IESS» nunca había llegado a `docs/base-aws-originacion.md`. Borrar una rama sólo después de
+  compararla así.
 - **Un archivo de secretos guardado desde el Bloc de notas queda como `.env.txt` y git
   no lo ignora.** El 2026-10-20 las credenciales de la base de AWS aparecieron como archivo
   nuevo, sin ignorar, en `clientes/` de un repositorio público (la regla es `clientes/*.env`).
