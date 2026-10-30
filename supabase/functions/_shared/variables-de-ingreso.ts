@@ -62,7 +62,11 @@ export const VARIABLES_DE_LA_CUOTA = [
   "c_codeudor", "max_dias_t",
 ] as const;
 
-export const VARIABLES_DEL_NIVEL_1 = [...VARIABLES_DE_LA_PERSONA, ...VARIABLES_DEL_SRI] as const;
+// El nivel 1 es la edad, el sexo y el SRI de Novadata, más la fecha de la consulta (decisión del negocio del 2026-10-29;
+// comun.py, NIVELES). Reconsultados 542 independientes de AWS (investigación, 12.29), el estado civil, el domicilio y el IESS de
+// Novadata no son el dato con que aprende el modelo, y Novadata no trae el lugar de trabajo: el nivel 1 ya no los lleva.
+export const VARIABLES_DE_LA_PERSONA_DEL_NIVEL_1 = ["edad", "genero", "anio_mes"] as const;
+export const VARIABLES_DEL_NIVEL_1 = [...VARIABLES_DE_LA_PERSONA_DEL_NIVEL_1, ...VARIABLES_DEL_SRI] as const;
 export const VARIABLES_DEL_NIVEL_2 = [
   ...VARIABLES_DE_LA_PERSONA, ...VARIABLES_DEL_BURO, ...VARIABLES_DE_LA_CUOTA, ...VARIABLES_DEL_SRI, ...VARIABLES_DEL_SRI_DE_EQUIFAX,
 ] as const;
@@ -123,9 +127,9 @@ export interface Ubicaciones {
   cantonTrabajo: string | null;
 }
 
-// Las categorías del entrenamiento (sexo, estado civil, provincia y cantón) son las del extracto de AWS y su
-// paridad con las de Novadata no se midió: este mapeo es la interfaz, y MAPEO_PENDIENTE no inventa
-// equivalencias (devuelve null). Cuando se mida, se pasa un mapeo con `pendiente: false`.
+// Las categorías del entrenamiento (sexo, estado civil, provincia y cantón) son las del extracto de AWS. Este
+// mapeo es la interfaz, y MAPEO_DE_NOVADATA no inventa equivalencias: lo que no se midió devuelve null.
+// `pendiente` dice que el estado civil, la provincia y el cantón quedan sin mapeo (sólo los usa el nivel 2).
 export interface MapeoDeCategorias {
   pendiente: boolean;
   genero(valor: string | null): string | null;
@@ -133,9 +137,16 @@ export interface MapeoDeCategorias {
   provincia(valor: string | null): string | null;
   canton(valor: string | null): string | null;
 }
-export const MAPEO_PENDIENTE: MapeoDeCategorias = {
+// El sexo se midió el 2026-10-28 con 542 independientes reconsultados (investigación, 12.29): Novadata usa las mismas
+// dos categorías que el extracto de AWS y coinciden en 540. Una categoría distinta queda sin dato, no se adivina.
+const SEXOS_DEL_ENTRENAMIENTO = new Set(["FEMENINO", "MASCULINO"]);
+export function sexoParaIngreso(valor: string | null): string | null {
+  const t = mayusculas(valor);
+  return t !== null && SEXOS_DEL_ENTRENAMIENTO.has(t) ? t : null;
+}
+export const MAPEO_DE_NOVADATA: MapeoDeCategorias = {
   pendiente: true,
-  genero: () => null,
+  genero: sexoParaIngreso,
   estadoCivil: () => null,
   provincia: () => null,
   canton: () => null,
@@ -150,7 +161,9 @@ export interface OpcionesDelVector {
 }
 
 export interface OpcionesDelNivel1 extends OpcionesDelVector {
-  // El perfil no trae el «obligado a llevar contabilidad» del RUC (sí está en datosContribuyente de Novadata).
+  // El perfil todavía no trae el «obligado a llevar contabilidad» del RUC (está en datosContribuyente de Novadata). Sin él
+  // el nivel 1 pierde 0,027 de R² y no certifica «al menos 2.000» en ningún caso (12.30): el negocio decidió el 2026-10-29
+  // sumarlo al perfil. Mientras tanto lo pasa quien llama, y si no llega queda sin dato y pendiente.
   obligadoAContabilidad?: boolean | null;
 }
 
@@ -226,19 +239,24 @@ export function variablesDelIess(filas: FilaDeHistorialIess[] | null | undefined
   };
 }
 
+// Carga sólo las variables que el nivel tiene: el nivel 1 lleva la edad, el sexo y la fecha; el 2, además, el estado
+// civil, la zona y el IESS. Lo que se dice pendiente es de las variables que el nivel usa.
 function cargarLaPersona(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: OpcionesDelVector, ahora: Date): void {
-  const mapeo = o.mapeo ?? MAPEO_PENDIENTE;
+  const mapeo = o.mapeo ?? MAPEO_DE_NOVADATA;
   const x = v.variables;
   const edad = perfil.identidad?.edad;
   x.edad = typeof edad === "number" && Number.isFinite(edad) ? edad : null;
   x.genero = mapeo.genero(perfil.identidad?.genero ?? null);
+  x.anio_mes = anioMes(ahora);
+  if (!("estado_civil" in x)) return;
+
   x.estado_civil = mapeo.estadoCivil(perfil.identidad?.estadoCivil ?? null);
   const u = o.ubicaciones ?? null;
   x.prov_dom = mapeo.provincia(u?.provinciaDomicilio ?? null);
   x.cant_dom = mapeo.canton(u?.cantonDomicilio ?? null);
   x.prov_trab = mapeo.provincia(u?.provinciaTrabajo ?? null);
   x.cant_trab = mapeo.canton(u?.cantonTrabajo ?? null);
-  if (mapeo.pendiente) v.pendientes.push("categorias: sexo, estado civil, provincia y cantón son categorías del extracto de AWS y su paridad con las de Novadata no se midió; salen sin dato hasta tener el mapeo.");
+  if (mapeo.pendiente) v.pendientes.push("categorias: estado civil, provincia y cantón son categorías del extracto de AWS y no coinciden con las de Novadata (12.29); salen sin dato hasta tener el mapeo.");
   if (u === null) v.pendientes.push("ubicaciones: el perfil estandarizado no trae provincia ni cantón de domicilio y de trabajo (sólo cuenta direcciones); falta derivarlos de las direcciones y el empleo de Novadata.");
   const iess = variablesDelIess(o.historialIess);
   x.aporte = iess.aporte;
@@ -246,7 +264,6 @@ function cargarLaPersona(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: Opcio
   x.n_empleos = iess.n_empleos;
   v.pendientes.push("iess: aporte, meses_aporte y n_empleos se arman del historial mensual (último mes, meses distintos, empleadores distintos); su definición en AWS (trabajos_persona_requerimiento) no está confirmada.");
   if (o.historialIess === undefined || o.historialIess === null) v.avisos.push("Sin el historial del IESS: aporte, meses con aporte y número de empleos quedan sin dato.");
-  x.anio_mes = anioMes(ahora);
 }
 
 // ---------------------------------------------------------------------------

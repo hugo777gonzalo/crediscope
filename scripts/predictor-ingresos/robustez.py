@@ -25,7 +25,8 @@ def sin(cols, *quitar):
     return [x for x in cols if x not in q]
 
 
-N1 = c.NIVELES[1]
+# Lo que reproduce 12.26 es el nivel 1 de entonces: el vigente (2026-10-29) ya no tiene zona, estado civil ni IESS que quitar (12.30).
+N1 = c.NIVEL_1_ANTERIOR
 N2 = c.NIVELES[2]
 SRI1 = c.SRI_NOVADATA
 VARIANTES = {
@@ -89,7 +90,7 @@ def main():
     rng = np.random.default_rng(3)
     sens = []
     for nivel in (1, 2):
-        cols = c.NIVELES[nivel]
+        cols = N1 if nivel == 1 else N2
         modelos = c.entrenar_cuantiles(c.matriz(antes, cols, cat_tr), antes.y)
         rt = te.unver.values
         for variable, grupo in (("la zona (provincia y cantón de trabajo y de domicilio)", c.ZONA), ("la edad", ["edad"]), ("el sexo", ["genero"]), ("el estado civil", ["estado_civil"]), ("el SRI de Novadata", c.SRI_NOVADATA)):

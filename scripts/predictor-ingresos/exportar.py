@@ -3,7 +3,9 @@
 # en Python, sí van al repositorio (casos-de-oro/): el evaluador de `_shared/` los tiene que reproducir con una diferencia menor que 0,001 en el logaritmo.
 # Antes de escribir nada, el evaluador de referencia (Python puro) se prueba contra LightGBM: si no coinciden, no se exporta.
 #
-#   python -I scripts/predictor-ingresos/exportar.py
+#   python -I scripts/predictor-ingresos/exportar.py [--nivel=1|2]
+#
+# `--nivel` exporta uno solo: el archivo del otro y sus casos de oro no se tocan (el archivo lleva la fecha de exportación en `entrenado_el`).
 import datetime
 import gzip
 import json
@@ -149,7 +151,7 @@ def a_tabla(entradas, m):
 def main():
     DESTINO.mkdir(parents=True, exist_ok=True)
     CASOS.mkdir(parents=True, exist_ok=True)
-    for nivel in (1, 2):
+    for nivel in [int(a.split("=")[1]) for a in sys.argv[1:] if a.startswith("--nivel=")] or [1, 2]:
         carpeta = c.MODELOS / "completo" / f"nivel{nivel}"
         lgb_modelo = c.ModeloGuardado(carpeta)
         compacto = convertir(carpeta, nivel)

@@ -241,10 +241,10 @@ Deno.test("las probabilidades de los tramos suman uno, y ningún tramo es cero",
 // Las probabilidades que da comun.py (`probabilidades`, con los cortes 470 y 940 del salario básico de 2025) para seis de los
 // casos de oro. Se obtuvieron con el Python del repositorio (numpy), no con este código.
 const PROBABILIDADES_DE_PYTHON: { nivel: 1 | 2; caso: number; probabilidades: number[] }[] = [
-  { nivel: 1, caso: 0, probabilidades: [0.050576329201, 0.260195482129, 0.48967082054, 0.112045308636, 0.062512059494, 0.025] },
-  { nivel: 1, caso: 1, probabilidades: [0.088900435315, 0.220658491069, 0.340473044005, 0.166328262016, 0.115745216256, 0.067894551339] },
-  { nivel: 1, caso: 2, probabilidades: [0.02499750025, 9.9990001e-05, 0.128498568321, 0.232412984647, 0.171279802454, 0.442711154328] },
-  { nivel: 1, caso: 120, probabilidades: [0.02499750025, 9.9990001e-05, 0.078804758152, 0.082042327172, 0.314986780258, 0.499068644167] },
+  { nivel: 1, caso: 0, probabilidades: [0.082291847224, 0.192124080469, 0.486186252788, 0.132059113144, 0.082338706376, 0.025] },
+  { nivel: 1, caso: 1, probabilidades: [0.062153194218, 0.234092340451, 0.456664667905, 0.112314758879, 0.06294618307, 0.071828855477] },
+  { nivel: 1, caso: 2, probabilidades: [0.025, 0.068865785303, 0.441343710187, 0.082617505843, 0.084599738578, 0.297573260089] },
+  { nivel: 1, caso: 120, probabilidades: [0.02499750025, 9.9990001e-05, 0.036317808621, 0.060722951853, 0.141078969206, 0.736782780069] },
   { nivel: 2, caso: 2, probabilidades: [0.024992502249, 9.9970009e-05, 9.9970009e-05, 9.9970009e-05, 0.039511892069, 0.935195695655] },
   { nivel: 2, caso: 25, probabilidades: [0.025, 0.094536382286, 0.314270293746, 0.326934617303, 0.115290375579, 0.123968331086] },
 ];

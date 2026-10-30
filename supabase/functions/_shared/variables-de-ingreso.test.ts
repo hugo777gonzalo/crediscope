@@ -10,7 +10,8 @@ import { derivarTablas } from "./equifax-tablas.ts";
 import { respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
 import {
   CREDITOS_POSTERIORES_QUE_SE_ANULAN,
-  MAPEO_PENDIENTE,
+  MAPEO_DE_NOVADATA,
+  sexoParaIngreso,
   tipoDeCreditoParaIngreso,
   VARIABLES_CATEGORICAS,
   VARIABLES_DEL_NIVEL_1,
@@ -30,14 +31,14 @@ const tablas = (cambios: Parameters<typeof respuestaDePrueba>[0] = {}) => deriva
 // Un mapeo de prueba: NO es el de producción (esa equivalencia no se midió), sólo prueba que la interfaz se usa.
 const MAPEO_DE_PRUEBA: MapeoDeCategorias = {
   pendiente: false,
-  genero: (v) => (v === "MUJER" ? "F" : v === "HOMBRE" ? "M" : null),
+  genero: (v) => (v === "FEMENINO" ? "F" : v === "MASCULINO" ? "M" : null),
   estadoCivil: (v) => v,
   provincia: (v) => v,
   canton: (v) => v,
 };
 
 const perfil = (cambios: Partial<PerfilParaIngreso> = {}): PerfilParaIngreso => ({
-  identidad: { edad: 41, genero: "MUJER", estadoCivil: "CASADO" },
+  identidad: { edad: 41, genero: "FEMENINO", estadoCivil: "CASADO" },
   laboral: {
     estadoActividadEconomica: "activa_sin_interrupciones", fechaInicioActividadesRuc: "2020-09-10", fechaCeseActividadesRuc: null, tipoUltimoCeseRuc: null,
   },
@@ -53,7 +54,8 @@ const iess = [
 ];
 
 Deno.test("los niveles tienen las variables del entrenamiento, sin repetir y con las categorías incluidas", () => {
-  assertEquals(VARIABLES_DEL_NIVEL_1.length, 16);
+  assertEquals([...VARIABLES_DEL_NIVEL_1], ["edad", "genero", "anio_mes", "sri_ruc", "sri_estado", "sri_obligado", "sri_antig", "sri_susp"]);
+  for (const c of VARIABLES_DEL_NIVEL_1) assert((VARIABLES_DEL_NIVEL_2 as readonly string[]).includes(c), c);
   assertEquals(VARIABLES_DEL_NIVEL_2.length, 11 + 13 + 22 + 5 + 3);
   assertEquals(new Set(VARIABLES_DEL_NIVEL_2).size, VARIABLES_DEL_NIVEL_2.length);
   for (const c of VARIABLES_CATEGORICAS) assert((VARIABLES_DEL_NIVEL_2 as readonly string[]).includes(c), c);
@@ -66,31 +68,48 @@ Deno.test("el historial del IESS: el aporte es el total del último mes, los mes
   assertEquals(variablesDelIess([{ mes: "202607", empleador: "X", valor: 1 }]).aporte, null, "un mes mal escrito no cuenta");
 });
 
-Deno.test("el nivel 1 sin mapeo de categorías: sexo, estado civil, provincia y cantón salen sin dato y se dice pendiente", () => {
-  const v = vectorDeNivel1(perfil(), { ahora: AHORA, historialIess: iess });
+Deno.test("el nivel 1: la edad, el sexo de Novadata y la fecha; sin estado civil, zona ni IESS, aunque lleguen", () => {
+  const v = vectorDeNivel1(perfil(), {
+    ahora: AHORA, historialIess: iess,
+    ubicaciones: { provinciaDomicilio: "PROV A", cantonDomicilio: "CANTON A", provinciaTrabajo: "PROV B", cantonTrabajo: "CANTON B" },
+  });
   assertEquals(Object.keys(v.variables), [...VARIABLES_DEL_NIVEL_1]);
-  for (const c of ["genero", "estado_civil", "prov_trab", "cant_trab", "prov_dom", "cant_dom"]) assertEquals(v.variables[c], null, c);
-  assert(v.sinDato.includes("genero"));
-  assert(v.pendientes.some((p) => p.startsWith("categorias")));
-  assert(v.pendientes.some((p) => p.startsWith("ubicaciones")));
-  assertEquals(MAPEO_PENDIENTE.pendiente, true);
+  assertEquals(v.variables.edad, 41);
+  assertEquals(v.variables.genero, "FEMENINO");
+  assertAlmostEquals(v.variables.anio_mes as number, 2026 + 8 / 12, 1e-9);
+  for (const c of ["estado_civil", "prov_dom", "aporte", "meses_aporte", "n_empleos"]) assertFalse(c in v.variables, c);
+  assertFalse(v.pendientes.some((p) => p.startsWith("categorias") || p.startsWith("ubicaciones") || p.startsWith("iess")));
+  assertFalse(v.avisos.some((a) => a.includes("IESS")));
 });
 
-Deno.test("el nivel 1 con un mapeo y ubicaciones: las categorías pasan por el mapeo", () => {
-  const v = vectorDeNivel1(perfil(), {
-    ahora: AHORA, historialIess: iess, mapeo: MAPEO_DE_PRUEBA,
+Deno.test("el sexo: sólo las dos categorías del entrenamiento, que son las de Novadata; otra queda sin dato", () => {
+  assertEquals(sexoParaIngreso(" masculino "), "MASCULINO");
+  assertEquals(sexoParaIngreso("FEMENINO"), "FEMENINO");
+  for (const otro of ["MUJER", "M", "", null]) assertEquals(sexoParaIngreso(otro), null, String(otro));
+  const v = vectorDeNivel1(perfil({ identidad: { edad: 41, genero: "MUJER", estadoCivil: null } }), { ahora: AHORA });
+  assertEquals(v.variables.genero, null);
+  assert(v.sinDato.includes("genero"));
+  assertEquals(MAPEO_DE_NOVADATA.pendiente, true, "el estado civil, la provincia y el cantón siguen sin mapeo");
+});
+
+Deno.test("el nivel 2 sin mapeo de estado civil y zona: salen sin dato y se dice pendiente; con mapeo y ubicaciones, pasan", () => {
+  const sin = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
+  assertEquals(sin.variables.genero, "FEMENINO");
+  for (const c of ["estado_civil", "prov_trab", "cant_trab", "prov_dom", "cant_dom"]) assertEquals(sin.variables[c], null, c);
+  assert(sin.pendientes.some((p) => p.startsWith("categorias")));
+  assert(sin.pendientes.some((p) => p.startsWith("ubicaciones")));
+  const con = vectorDeNivel2(perfil(), tablas(), {
+    ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess, mapeo: MAPEO_DE_PRUEBA,
     ubicaciones: { provinciaDomicilio: "PROV A", cantonDomicilio: "CANTON A", provinciaTrabajo: null, cantonTrabajo: "CANTON B" },
   });
-  assertEquals(v.variables.genero, "F");
-  assertEquals(v.variables.estado_civil, "CASADO");
-  assertEquals(v.variables.prov_dom, "PROV A");
-  assertEquals(v.variables.prov_trab, null);
-  assertEquals(v.variables.cant_trab, "CANTON B");
-  assertEquals(v.variables.edad, 41);
-  assertEquals(v.variables.aporte, 1020);
-  assertAlmostEquals(v.variables.anio_mes as number, 2026 + 8 / 12, 1e-9);
-  assertFalse(v.pendientes.some((p) => p.startsWith("categorias")));
-  assertFalse(v.pendientes.some((p) => p.startsWith("ubicaciones")));
+  assertEquals(con.variables.genero, "F");
+  assertEquals(con.variables.estado_civil, "CASADO");
+  assertEquals(con.variables.prov_dom, "PROV A");
+  assertEquals(con.variables.prov_trab, null);
+  assertEquals(con.variables.cant_trab, "CANTON B");
+  assertEquals(con.variables.aporte, 1020);
+  assertFalse(con.pendientes.some((p) => p.startsWith("categorias")));
+  assertFalse(con.pendientes.some((p) => p.startsWith("ubicaciones")));
 });
 
 Deno.test("el año con fracción usa la fecha de Ecuador: a las 20:00 de Ecuador la fecha UTC ya es la de mañana", () => {
