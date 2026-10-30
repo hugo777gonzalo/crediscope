@@ -673,6 +673,35 @@ interface StandardClientProfile {
 >   reproduzca). Después: 0 descalces en v14; 10 últimos perfiles siguen en
 >   v13 (sin crudo local).
 
+> **estructura-v15 (2026-10-29)** — el «obligado a llevar contabilidad» en
+> `laboral`.
+> - **Por qué:** el nivel 1 del predictor de ingresos lo usa (`sri_obligado`)
+>   y el perfil no lo guardaba: sin él el nivel 1 pierde 0,027 de R² y no
+>   certifica «al menos 2.000» a nadie (investigación del predictor, 12.30).
+>   Decisión del negocio del 2026-10-29: va al perfil y el predictor lo lee
+>   de ahí, no de quien llama.
+> - **Qué es:** `laboral.obligadoALlevarContabilidadRuc`, de
+>   `contribuyente.data.datosContribuyente[].obligado` del mismo RUC de
+>   referencia que las fechas (el activo si hay uno, si no el primero). Lo lee
+>   `obligadoALlevarContabilidad()` de `ruc.ts`: «SI» y «S» son `true`, «NO» y
+>   «N» son `false`; sin RUC o con otro valor, `null` (no `false`). Novadata
+>   abrevia como con el estado de los establecimientos (estructura-v13): en el
+>   crudo del 2026-10-03, «NO» 2.063, «SI» 128, «N» 106 y «S» 4.
+> - **Paridad con Equifax** (`equifax_resumen.sri_obligado_a_contabilidad`), en
+>   las 87 personas que tienen las dos fuentes (consultas de producción, 13 días
+>   de mediana entre una y otra): coincide en las 83 con RUC (60 no obligadas,
+>   23 obligadas; las 4 «N» son «no» en Equifax) y las 4 sin RUC lo están en las
+>   dos. Ninguna trae «S»: esa lectura sigue sin cotejar.
+> - **Efecto** (código viejo contra nuevo, perfil entero, crudo del
+>   2026-10-03): en las 2.567 personas cambia sólo el campo nuevo (2.169
+>   `false`, 132 `true`, 266 `null`); nada más del perfil se mueve.
+> - **Lo que lee el modelo:** el obligado ya le llegaba, interpretado, en
+>   `fuentesIngreso` (el indicio de ingreso mayor y
+>   `tamanoDelNegocio.obligadoContabilidad`), leído sólo como «SI». Si el campo
+>   nuevo llega o no al modelo es una decisión del marco (ver
+>   `docs/pendientes.md`, punto 18.3).
+> - Sin desplegar ni recalcular al escribir esto.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

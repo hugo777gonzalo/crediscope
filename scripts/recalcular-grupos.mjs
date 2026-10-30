@@ -35,6 +35,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
+import { cargarEntorno, raizPrincipal } from "./_comun/entorno.mjs";
 import { candidatosDelUltimoPerfil, leerCrudo } from "./_comun/crudo-del-ultimo-perfil.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
@@ -46,7 +47,11 @@ const BLOQUEO = process.argv.includes("--bloqueo");
 const FORZAR = process.argv.includes("--forzar");
 const GRUPOS = (process.argv.find((a) => a.startsWith("--grupos="))?.slice(9) ?? "").split(",").filter(Boolean);
 const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10) ?? "").split(",").filter(Boolean);
-const CARPETA = path.join(RAIZ, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
+// Desde un worktree, research/ y .env.functions son los de la carpeta
+// principal (_comun/entorno.mjs): el guion los buscaba en su propia carpeta y
+// el recálculo de estructura-v15 fue el primero desde un worktree.
+const PRINCIPAL = raizPrincipal(RAIZ);
+const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
 if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
@@ -57,11 +62,8 @@ const { columnasDelPerfil } = await import(pathToFileURL(path.join(RAIZ, "supaba
 const HALLAZGO_QUE_CAMBIA = "delito_seguridad_ciudadana";
 
 // Los secretos se leen del archivo y no se imprimen.
-const env = Object.fromEntries(
-  fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
-    .filter((l) => l.includes("=") && !l.startsWith("#"))
-    .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }),
-);
+cargarEntorno(RAIZ);
+const env = { SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY };
 const cabeceras = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json" };
 // Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
 const ejecucion = await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "recalcular-grupos", seco: SECO });
@@ -174,9 +176,9 @@ if (BLOQUEO) {
   // Las cédulas quedan en un archivo local (research/ está fuera del
   // repositorio): son las personas cuyos análisis guardados salieron con
   // un bloqueo que ya no aplica.
-  const salida = path.join(RAIZ, "research", `cambios-de-bloqueo-${PROCESS_VERSION}.json`);
+  const salida = path.join(PRINCIPAL, "research", `cambios-de-bloqueo-${PROCESS_VERSION}.json`);
   fs.writeFileSync(salida, JSON.stringify(cambiosDeBloqueo, null, 1));
-  console.log(`detalle en ${path.relative(RAIZ, salida)}`);
+  console.log(`detalle en ${path.relative(PRINCIPAL, salida)}`);
 }
 if (SECO) process.exit(0);
 

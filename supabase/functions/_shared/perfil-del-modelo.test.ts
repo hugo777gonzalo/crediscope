@@ -6,7 +6,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { ATRIBUTOS_PROTEGIDOS, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN } from "./perfil-del-modelo.ts";
+import { ATRIBUTOS_PROTEGIDOS, CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN } from "./perfil-del-modelo.ts";
 
 const NOMBRES = ["ZZPRUEBA ZZINVENTADA ANA", "MINISTERIO INVENTADO", "ZZINVENTADO PEDRO", "EMPRESA SIN APORTE S.A.", "INSTITUCION INVENTADA"];
 
@@ -128,6 +128,15 @@ Deno.test("los atributos protegidos llegan o no según la lista", () => {
     if (enElPerfil) assertEquals(campo in pm[grupo], llega, ruta);
     assertEquals(RUTAS_QUE_NO_LLEGAN.includes(ruta), !llega, ruta);
   }
+});
+
+Deno.test("el obligado de estructura-v15 no llega: el mensaje es el mismo que sin él (marco-v30)", () => {
+  for (const obligado of [true, false, null]) {
+    const p = perfil();
+    (p.laboral as Record<string, unknown>).obligadoALlevarContabilidadRuc = obligado;
+    assertEquals(mensajeParaElModelo(p, []), mensajeParaElModelo(perfil(), []), String(obligado));
+  }
+  for (const ruta of CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN) assertEquals(RUTAS_QUE_NO_LLEGAN.includes(ruta), true, ruta);
 });
 
 Deno.test("un perfil sin laboral ni ingresos se arma igual", () => {

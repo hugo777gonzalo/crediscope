@@ -227,13 +227,27 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).
-    3. **El «obligado a llevar contabilidad» en el perfil** (decidido el 2026-10-29): sin él el nivel 1
-       pierde 0,027 de R² y no certifica «al menos 2.000» a nadie (12.30). Va en `laboral` desde
-       `datosContribuyente.obligado` («SI», «NO» o «N»), lo que pide estructura-v15, recalcular los
-       perfiles guardados (`recalcular-grupos.mjs`) y una versión nueva del marco (el modelo de lenguaje lee
-       `laboral` entero; su fila en `scoring_rules_versions`). Después, `variables-de-ingreso.ts` lo lee del
-       perfil en vez de recibirlo de quien llama, y se mide su paridad con el de Equifax (sección 9,
-       punto 7 de la especificación).
+    3. **El «obligado a llevar contabilidad» en el perfil: desplegar y recalcular** (construido el
+       2026-10-29 en el PR del obligado, sin fusionar al escribir esto; 12.31). estructura-v15 lo guarda en
+       `laboral.obligadoALlevarContabilidadRuc` («S» es sí, decisión del negocio), `variables-de-ingreso.ts`
+       lo lee del perfil, y su paridad con Equifax es 83 de 83. **No llega al modelo de lenguaje** (decisión
+       del negocio: ya le llega interpretado en `fuentesIngreso`), así que no hay marco nuevo ni migración: el
+       mensaje de las 2.567 personas del crudo del 03/10 sale idéntico. Falta, en este orden: fusionar (el PR
+       96 primero), desplegar con el corredor y **recién después** recalcular los perfiles guardados con
+       `node scripts/recalcular-grupos.mjs --grupos=laboral --carpeta=research/novadata-raw-2026-10-03`
+       (`--seco` primero; escribe en la base: con el sí del negocio). Al revés, el código desplegado de hoy
+       le pasaría el campo nuevo al modelo con el rótulo marco-v30. Después, repetir la prueba en sombra:
+       «a la consulta» tiene que dar lo mismo que «con el obligado».
+       - `fuentes-ingreso.ts` reconoce sólo «SI» para el indicio de ingreso mayor y el tamaño del negocio, y
+         no ve la «S» (4 de 2.567 en el crudo del 03/10): pasarlo a `obligadoALlevarContabilidad()` de
+         `ruc.ts` cambia lo que lee el modelo (fuentes-v nueva y marco nuevo). Va con la próxima versión del
+         marco.
+       - La «S» no está cotejada contra Equifax (ninguna de las 87 la trae).
+       - Visto de paso, anterior a v15: 5 de 2.567 personas del crudo del 03/10 tienen el RUC sin fecha de
+         inscripción y el perfil las da con la actividad `activa_sin_interrupciones` y a la vez
+         `tieneRucActivo = false`: `estadoActividadEconomica` (process.ts) mira sólo el número de RUC y
+         `rucActivo()` (ruc.ts) exige además la inscripción. El nivel 1 les pone `sri_estado = ACTIVO`.
+         Decidir cuál vale es una regla del RUC (estructura nueva).
     4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
        respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
        con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de

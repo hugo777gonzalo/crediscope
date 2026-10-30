@@ -81,3 +81,30 @@ export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boo
   if (!esRegistroDeRuc(c) || !fechasDelRuc(c).activoPorFechas) return false;
   return establecimientos.length === 0 || establecimientos.some(establecimientoAbierto);
 }
+
+// «Obligado a llevar contabilidad», del registro del RUC (estructura-v15, para
+// el nivel 1 del predictor de ingresos). Novadata lo abrevia igual que el estado
+// de los establecimientos: en los crudos del 2026-10-03 (2.553 registros con
+// RUC) vienen «NO» 2.063, «SI» 128, «N» 106 y «S» 4, y en los 1.176 de la
+// paridad de la persona (12.29), «S» 15 y «SI» 39. Contra Equifax coincide en
+// las 83 personas con RUC de las dos fuentes (las «N» incluidas; ninguna «S»).
+// Sin RUC no hay dato: null, no false (los 252 cascarones lo traen vacío). Un
+// valor que no es ninguno de los cuatro también es null: no se adivina.
+//
+// «Tiene RUC» es lo mismo que en estadoActividadEconomica (process.ts): que el
+// registro traiga el número, no esRegistroDeRuc(). En el crudo del 2026-10-03
+// 5 registros traen el RUC, el inicio y «N» sin fecha de inscripción; el perfil
+// los da con RUC y el nivel 1 del predictor les pone sri_ruc = 1, así que el
+// obligado tiene que venir también.
+//
+// OJO: fuentes-ingreso.ts compara sólo «SI» para el indicio de ingreso mayor y
+// el tamaño del negocio, y no ve la «S». Pasarlo a esta función cambia lo que
+// lee el modelo (fuentes-v nueva y marco nuevo): queda pendiente.
+const OBLIGADO_SI = new Set(["SI", "S"]);
+const OBLIGADO_NO = new Set(["NO", "N"]);
+
+export function obligadoALlevarContabilidad(c: AnyRecord | null | undefined): boolean | null {
+  if (!c?.ruc) return null;
+  const v = String(c.obligado ?? "").trim().toUpperCase();
+  return OBLIGADO_SI.has(v) ? true : OBLIGADO_NO.has(v) ? false : null;
+}

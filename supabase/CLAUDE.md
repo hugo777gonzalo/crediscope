@@ -296,6 +296,11 @@ su guía: `docs/equifax.md`.
     antes de borrarlo con `relacionConEmpleador()` (`patrono.ts`, la misma
     que usa `process.ts`). El modelo no infiere parentescos de nombres: dejó
     de hacerlo solo en v8, por eso se calcula en el código desde v17.
+  - Lo que el perfil guarda sólo para el predictor de ingresos no llega
+    (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`).
+    El obligado a llevar contabilidad (estructura-v15) ya le llega
+    interpretado en `fuentesIngreso`, y así el mensaje siguió siendo el de
+    marco-v30 (decisión del negocio del 2026-10-29).
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números

@@ -106,6 +106,7 @@ export interface PerfilParaIngreso {
     fechaInicioActividadesRuc?: string | null;
     fechaCeseActividadesRuc?: string | null;
     tipoUltimoCeseRuc?: string | null;
+    obligadoALlevarContabilidadRuc?: boolean | null; // desde estructura-v15
   } | null;
   metaConsulta?: { fuentesConDatos?: string[]; fuentesSinDatos?: string[]; fuentesNoMedidas?: string[] } | null;
 }
@@ -161,9 +162,10 @@ export interface OpcionesDelVector {
 }
 
 export interface OpcionesDelNivel1 extends OpcionesDelVector {
-  // El perfil todavía no trae el «obligado a llevar contabilidad» del RUC (está en datosContribuyente de Novadata). Sin él
-  // el nivel 1 pierde 0,027 de R² y no certifica «al menos 2.000» en ningún caso (12.30): el negocio decidió el 2026-10-29
-  // sumarlo al perfil. Mientras tanto lo pasa quien llama, y si no llega queda sin dato y pendiente.
+  // El «obligado a llevar contabilidad» sale del perfil desde estructura-v15 (laboral.obligadoALlevarContabilidadRuc). Sin
+  // él el nivel 1 pierde 0,027 de R² y no certifica «al menos 2.000» en ningún caso (12.30). Esta opción lo reemplaza: es
+  // para las pruebas y para la prueba en sombra, que comparan con y sin el dato sobre un mismo perfil. Un perfil anterior a
+  // v15 no lo trae y queda sin dato.
   obligadoAContabilidad?: boolean | null;
 }
 
@@ -290,9 +292,9 @@ function cargarElSriDeNovadata(v: VectorDeIngreso, perfil: PerfilParaIngreso, o:
   x.sri_antig = aniosDesde(perfil.laboral?.fechaInicioActividadesRuc ?? null, ahora);
   // El perfil guarda el cese más reciente (cancelación o suspensión) y su tipo: sólo la suspensión definitiva es sri_susp.
   x.sri_susp = perfil.laboral?.tipoUltimoCeseRuc === "suspension_definitiva" ? aniosDesde(perfil.laboral?.fechaCeseActividadesRuc ?? null, ahora) : null;
-  const obligado = o.obligadoAContabilidad;
+  const obligado = o.obligadoAContabilidad !== undefined ? o.obligadoAContabilidad : perfil.laboral?.obligadoALlevarContabilidadRuc;
   x.sri_obligado = obligado === true ? 1 : obligado === false ? 0 : null;
-  if (obligado === undefined || obligado === null) v.pendientes.push("sri_obligado: el perfil no trae el «obligado a llevar contabilidad» de Novadata y no se comparó con el de Equifax.");
+  if (obligado === undefined) v.avisos.push("El perfil es anterior a estructura-v15 y no trae el «obligado a llevar contabilidad»: queda sin dato.");
   v.pendientes.push("sri_susp: se toma del cese más reciente del perfil cuando es una suspensión definitiva; si hubo una cancelación posterior no se distingue de la fecha de suspensión de Equifax.");
 }
 
