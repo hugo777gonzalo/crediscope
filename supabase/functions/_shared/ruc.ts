@@ -77,20 +77,29 @@ export function esRegistroDeRuc(c: AnyRecord): boolean {
 // activos (estructura-v13). La comparación vivía copiada en process.ts y dos
 // veces en fuentes-ingreso.ts: ahora todas llaman a ésta.
 //
-// Sin estado (8 de 3.587 establecimientos en el crudo del 2026-10-03, 49 de
-// 1.718 en el lote de paridad), lo decide la fecha de cierre: abierto si no
-// la tiene o si reinició después (estructura-v15, la misma decisión que la de
-// esRegistroDeRuc). Con estado, manda el estado: en el crudo del 2026-10-03,
-// 603 «ABIERTO» traen fecha de cierre, así que la fecha sola no prueba que
-// cerró.
+// Desde estructura-v15 (decisiones del negocio del 2026-10-29: cerrado sólo
+// si una fecha lo respalda, y una reapertura posterior al cierre es que
+// reinició actividades), abierto es:
+//   - reabrió después del último cierre, diga lo que diga el estado: en el
+//     crudo del 2026-10-03, 285 «CERRADO» o «CER» traen el reinicio posterior
+//     al cierre. Cambia los establecimientos activos de 134 personas y deja con
+//     RUC activo a 6 que tenían el RUC reactivado;
+//   - o el estado lo dice, aunque no traiga la reapertura: de los 624 abiertos
+//     con fecha de cierre, 614 reabrieron después y 10 no traen esa fecha;
+//   - o no trae estado ni fecha de cierre (8 de 3.587 del 2026-10-03; 49 de
+//     1.718 en el lote de paridad, casi todos de las respuestas que el HTTP
+//     502 dejó incompletas): nada dice que cerró.
+// Un «CERRADO» sin ninguna fecha (282 en el 2026-10-03) sigue cerrado: lo
+// dice el estado y ninguna fecha lo contradice.
 const ESTADOS_ABIERTO = new Set(["ABIERTO", "ABI"]);
 
 export function establecimientoAbierto(e: AnyRecord): boolean {
-  const estado = String(e.estado_establecimiento ?? "").trim().toUpperCase();
-  if (estado !== "") return ESTADOS_ABIERTO.has(estado);
   const cierre = diaDeFecha(e.fech_cierre);
   const reinicio = diaDeFecha(e.fech_reinicio_actividades);
-  return !cierre || Boolean(reinicio && reinicio > cierre);
+  if (cierre && reinicio && reinicio > cierre) return true;
+  const estado = String(e.estado_establecimiento ?? "").trim().toUpperCase();
+  if (estado !== "") return ESTADOS_ABIERTO.has(estado);
+  return !cierre;
 }
 
 export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boolean {

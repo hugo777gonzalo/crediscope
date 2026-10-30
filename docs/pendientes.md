@@ -232,10 +232,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        - Qué hay: el perfil guarda `laboral.obligadoALlevarContabilidadRuc` («S» es sí, decisión del negocio),
          `variables-de-ingreso.ts` lo lee del perfil y su paridad con Equifax es 83 de 83. **No llega al modelo
          de lenguaje** (decisión del negocio: ya le llega interpretado en `fuentesIngreso`): no hay marco nuevo
-         ni migración. Y el RUC queda inactivo sólo si una fecha lo respalda (decisión del negocio): sin
-         fecha de inscripción cuenta, y un establecimiento sin estado está abierto salvo una fecha de cierre.
-         Eso cambia el RUC activo de 8 de 2.567 personas del crudo del 03/10 y de 49 de 1.176 del lote de
-         paridad, y el mensaje al modelo sólo de ellas.
+         ni migración. Y el RUC queda inactivo sólo si una fecha lo respalda (decisiones del negocio): sin
+         fecha de inscripción cuenta, un establecimiento que reabrió después de su último cierre está
+         abierto aunque el estado diga cerrado, y uno sin estado, salvo una fecha de cierre. En el crudo del
+         03/10, 14 de 2.567 personas pasan a RUC activo y 134 cambian sus establecimientos activos; en el
+         lote de paridad, 70 y 129 de 1.176. El mensaje al modelo cambia sólo para ellas.
        - Falta, en este orden: fusionar (el PR 96 primero), desplegar con el corredor y **recién después**
          recalcular, con el sí del negocio porque escribe en la base: `node scripts/recalcular-grupos.mjs
          --grupos=laboral --ignorar=fuentesIngreso --carpeta=research/novadata-raw-2026-10-03` y después
@@ -249,8 +250,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
          no ve la «S» (4 de 2.567 en el crudo del 03/10): pasarlo a `obligadoALlevarContabilidad()` de
          `ruc.ts` cambia lo que lee el modelo. Va con la próxima versión del marco (decisión del negocio).
        - La «S» no está cotejada contra Equifax (ninguna de las 87 la trae).
-       - 38 personas del lote pasan de «sin datos» a «independiente» por el RUC activo; son de las respuestas
-         que el HTTP 502 dejó incompletas (punto 4).
+       - 60 personas del lote pasan de «sin datos» a «independiente» por el RUC activo, 56 de ellas de las
+         respuestas que el HTTP 502 dejó incompletas (punto 4).
     4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
        respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
        con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de

@@ -695,34 +695,43 @@ interface StandardClientProfile {
 >   una y otra): coincide en las 83 con RUC (60 no obligadas, 23 obligadas; las
 >   4 «N» son «no» en Equifax) y las 4 sin RUC lo están en las dos. Ninguna
 >   trae «S»: esa lectura sigue sin cotejar.
-> - **El RUC activo** (decisión del negocio del 2026-10-29: «inactivo» tiene
->   que estar respaldado por una fecha de cese, reapertura o cierre). En el
->   crudo del 2026-10-03, 5 registros traían el número de RUC, el inicio (2019 a
+> - **El RUC activo** (decisiones del negocio del 2026-10-29: «inactivo» tiene
+>   que estar respaldado por una fecha de cese, reapertura o cierre, y una
+>   reapertura posterior al cierre es que reinició actividades). En el crudo
+>   del 2026-10-03, 5 registros traían el número de RUC, el inicio (2019 a
 >   2024) y un establecimiento, sin fecha de inscripción ni ninguna fecha de
 >   cese, y el perfil los daba con la actividad `activa_sin_interrupciones` y a
->   la vez `tieneRucActivo = false`. En `ruc.ts`: un registro con el número es
->   un RUC aunque no traiga la inscripción (el cascarón viene sin número), y un
->   establecimiento sin estado está abierto salvo una fecha de cierre sin
->   reinicio posterior. Con estado, manda el estado: 603 «ABIERTO» del
->   2026-10-03 traen fecha de cierre. El estado vacío es mucho más frecuente en
->   las respuestas que Novadata dejó incompletas el 2026-10-28 (HTTP 502): en el
->   lote de paridad, todos los establecimientos sin estado en 4 de 512 personas
->   con la respuesta entera, 33 de 543 sin Registro Civil y 12 de 56 sin la
->   fuente; ahí el hueco es de la fuente, no un cierre, y deciden las fechas
->   del RUC, que llegaron enteras.
+>   la vez `tieneRucActivo = false`. En `ruc.ts`, ahora:
+>   - un registro con el número es un RUC aunque no traiga la inscripción (el
+>     cascarón viene sin número);
+>   - un establecimiento que reabrió después de su último cierre está abierto
+>     aunque el estado diga cerrado: 285 «CERRADO» o «CER» traen el reinicio
+>     posterior al cierre;
+>   - si no, manda el estado: de los 624 abiertos con fecha de cierre, 614
+>     reabrieron después y 10 no traen la reapertura (siguen abiertos), y los
+>     282 «CERRADO» sin ninguna fecha siguen cerrados;
+>   - uno sin estado está abierto salvo una fecha de cierre. El estado vacío es
+>     mucho más frecuente en las respuestas que Novadata dejó incompletas el
+>     2026-10-28 (HTTP 502): en el lote de paridad, todos los establecimientos
+>     sin estado en 4 de 512 personas con la respuesta entera, 33 de 543 sin
+>     Registro Civil y 12 de 56 sin la fuente. Ahí el hueco es de la fuente, no
+>     un cierre, y deciden las fechas del RUC, que llegaron enteras.
 > - **Efecto** (código viejo contra nuevo, perfil entero): en las 2.567
 >   personas del crudo del 2026-10-03, el campo nuevo en todas (2.169 `false`,
->   132 `true`, 266 `null`), la versión de `fuentesIngreso` y, en 8, el RUC
->   activo (de no a sí) con lo que arrastra: establecimientos activos, fuentes,
->   tamaño del negocio y, en 3, el segmento. En las 1.176 del lote de paridad,
->   49 pasan a RUC activo y 45 cambian de segmento (41 de «sin datos» a
->   «independiente», 38 de ellas con la respuesta incompleta).
+>   132 `true`, 266 `null`) y la versión de `fuentesIngreso`; 14 pasan a RUC
+>   activo (8 por la inscripción o el estado vacío, 6 por la reapertura), 134
+>   cambian sus establecimientos activos (y el tamaño del negocio) y 4 su
+>   segmento (de «informal o sin actividad» a «independiente»). En las 1.176 del
+>   lote de paridad, 70 pasan a RUC activo, 129 cambian sus establecimientos y
+>   65 su segmento (60 de «sin datos» a «independiente»), 60 de esos 65 con la
+>   respuesta incompleta.
 > - **Lo que lee el modelo:** el obligado ya le llegaba, interpretado, en
 >   `fuentesIngreso` (el indicio de ingreso mayor y
 >   `tamanoDelNegocio.obligadoContabilidad`), leído sólo como «SI», y el campo
 >   nuevo no llega (decisión del negocio; `CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`
->   en `perfil-del-modelo.ts`). El mensaje sale idéntico en 2.559 de 2.567
->   personas; las 8 que cambian son las del RUC activo, un dato y no el marco.
+>   en `perfil-del-modelo.ts`). El mensaje sale idéntico en 2.433 de 2.567
+>   personas; las 134 que cambian son las del RUC activo y los establecimientos,
+>   un dato y no el marco.
 > - Sin desplegar ni recalcular al escribir esto. Se recalcula después de
 >   desplegar, nunca antes (el código desplegado de hoy le pasaría el campo
 >   al modelo), en dos pasos con `--carpeta=research/novadata-raw-2026-10-03`:

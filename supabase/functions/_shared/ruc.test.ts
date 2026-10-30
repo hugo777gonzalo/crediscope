@@ -34,9 +34,14 @@ Deno.test("un establecimiento sin estado está abierto salvo una fecha de cierre
   assertEquals(establecimientoAbierto({ estado_establecimiento: "", fech_cierre: "15/03/2024" }), false);
   assertEquals(establecimientoAbierto({ estado_establecimiento: null, fech_cierre: "15/03/2024", fech_reinicio_actividades: "01/06/2025" }), true);
   assertEquals(establecimientoAbierto({ estado_establecimiento: null, fech_cierre: "15/03/2024", fech_reinicio_actividades: "01/01/2020" }), false);
-  // Con estado, manda el estado: «ABIERTO» con fecha de cierre viene en 603 establecimientos del 2026-10-03.
+  // Abierto según el estado, aunque no traiga la fecha de reapertura.
   assertEquals(establecimientoAbierto({ estado_establecimiento: "ABIERTO", fech_cierre: "15/03/2024" }), true);
   assertEquals(establecimientoAbierto({ estado_establecimiento: "CER", fech_cierre: null }), false);
+  // Reabrió después del último cierre: reinició actividades, aunque el estado diga cerrado.
+  assertEquals(establecimientoAbierto({ estado_establecimiento: "CER", fech_cierre: "15/03/2024", fech_reinicio_actividades: "01/06/2025" }), true);
+  assertEquals(establecimientoAbierto({ estado_establecimiento: "CERRADO", fech_cierre: "15/03/2024", fech_reinicio_actividades: "01/01/2020" }), false);
+  // Cerrado sin ninguna fecha: lo dice el estado y nada lo contradice.
+  assertEquals(establecimientoAbierto({ estado_establecimiento: "CERRADO", fech_cierre: null, fech_reinicio_actividades: null }), false);
   const ruc = { ruc: "0000000000001", fecha_inscripcion_ruc: null, fecha_inicio_actividades: "2023/05/02" };
   assertEquals(rucActivo(ruc, [{ estado_establecimiento: null, fech_cierre: null }]), true);
   assertEquals(rucActivo(ruc, [{ estado_establecimiento: "CERRADO" }]), false);

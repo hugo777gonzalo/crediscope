@@ -367,9 +367,10 @@ export default function FuentesReglas() {
         </p>
         <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
           Desde la v11, un RUC queda inactivo sólo si una fecha lo respalda: un cese sin reactivación posterior, o el cierre de
-          todos sus establecimientos. Un RUC sin fecha de inscripción cuenta igual, y un establecimiento que llega sin estado
-          está abierto salvo que tenga fecha de cierre. Hasta la v10 cualquiera de los dos dejaba a la persona sin RUC activo:
-          8 de 2.567 personas de la cartera el 03/10/2026.
+          todos sus establecimientos. Un RUC sin fecha de inscripción cuenta igual. Un establecimiento que reabrió después de su
+          último cierre reinició actividades y está abierto, aunque el SRI lo muestre cerrado; uno que llega sin estado está
+          abierto salvo que tenga fecha de cierre. En la cartera del 03/10/2026, 14 de 2.567 personas pasaron a tener RUC
+          activo y 134 cambiaron la cantidad de establecimientos activos.
         </p>
       </Paso>
 
