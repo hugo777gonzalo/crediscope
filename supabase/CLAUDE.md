@@ -236,6 +236,10 @@ su guía: `docs/equifax.md`.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
   establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).
+  Inactivo sólo con una fecha que lo respalde (negocio, 2026-10-29,
+  estructura-v15): sin fecha de inscripción es un RUC, y un establecimiento
+  sin estado está abierto salvo una fecha de cierre. Con estado manda el
+  estado: «ABIERTO» con fecha de cierre es común.
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con

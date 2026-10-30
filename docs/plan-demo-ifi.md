@@ -81,7 +81,7 @@ El diagnóstico del 2026-10-16, con lo que cambió hasta el 18.
 | Ingesta de buró de la IFI (Equifax, Aval) | Existe | `consultar-equifax`, `consultar-aval` | Un buró por IFI (`proveedores.es_buro`). Equifax se cobra por consulta. |
 | Consultas por lote | Existe | `procesar-lote`, `scripts/consultar-lote.mjs` | |
 | Perfil estandarizado | Existe | `process.ts` → `buildStandardProfile` | ~145 campos en 17 grupos, versionado. |
-| Perfil de Ingresos | Existe | `fuentes-ingreso.ts` (fuentes-v10) | Segmento, perfil laboral, ingreso reportado al IESS, Ingreso Mínimo SBU, indicios de ingreso mayor, tamaño del negocio. **No estima montos.** |
+| Perfil de Ingresos | Existe | `fuentes-ingreso.ts` (fuentes-v11) | Segmento, perfil laboral, ingreso reportado al IESS, Ingreso Mínimo SBU, indicios de ingreso mayor, tamaño del negocio. **No estima montos.** |
 | Predictor de ingresos | **Falta** | — | Ver sección 3. |
 | Análisis de riesgo (score 1-999) | Existe | `analyze-client`, `marco-interpretativo.ts` (v30), `controles-bloqueo.ts` | Modelo de lenguaje + controles fijos. Recomienda aprobar / revisar / negar. |
 | Obligaciones mensuales | Existe (2026-10-17) | `capacidad-de-pago.ts` → `datosDeCapacidad()`; `equifax-estructura.ts` (`cuotaMensualUsd` del titular); Novadata sólo en cooperativas | Con Equifax hay cuota por operación; con Novadata sola, casi nunca: lo que no trae cuota se lista aparte (`deudasSinCuota`), nunca como cero. |

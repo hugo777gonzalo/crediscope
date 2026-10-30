@@ -18,7 +18,7 @@ import InfoTooltip from "../components/InfoTooltip.jsx";
 // eso ahora compara su versión con la del código y lo dice en pantalla si
 // no coinciden, en vez de depender de que alguien se acuerde.
 
-const VERSION_DOCUMENTADA = "fuentes-v10";
+const VERSION_DOCUMENTADA = "fuentes-v11";
 
 const CODIGOS = [
   ["Sector público", "9, 10, 12, 14, 16", "Función ejecutiva, legislativa y judicial; régimen seccional; entidades autónomas; educación superior; notarías y registradores"],
@@ -364,6 +364,12 @@ export default function FuentesReglas() {
           menos uno tiene que estar abierto. El SRI manda el estado de cada establecimiento a veces completo (&ldquo;ABIERTO&rdquo;) y a veces abreviado (&ldquo;ABI&rdquo;, desde octubre): los dos cuentan como abierto (desde la v10; antes, quien lo tenía abreviado salía sin RUC activo y sin actividad abierta). Hasta la v7 la clasificación de ingresos no miraba la reactivación: 77 personas con
           el RUC reactivado figuraban como &ldquo;informal o sin actividad&rdquo;. Ahora el perfil y la clasificación usan la
           misma regla.
+        </p>
+        <p className="crediscope-muted" style={{ marginBottom: 0, fontSize: 13 }}>
+          Desde la v11, un RUC queda inactivo sólo si una fecha lo respalda: un cese sin reactivación posterior, o el cierre de
+          todos sus establecimientos. Un RUC sin fecha de inscripción cuenta igual, y un establecimiento que llega sin estado
+          está abierto salvo que tenga fecha de cierre. Hasta la v10 cualquiera de los dos dejaba a la persona sin RUC activo:
+          8 de 2.567 personas de la cartera el 03/10/2026.
         </p>
       </Paso>
 

@@ -2668,7 +2668,10 @@ Se comparan con su ingreso validado de AWS. Quedan **532**, con el ingreso no ve
 ### 12.31 El obligado a llevar contabilidad en el perfil (estructura-v15, 2026-10-29)
 
 **Qué se hizo.** El perfil guarda `laboral.obligadoALlevarContabilidadRuc`, del mismo RUC de referencia que las fechas, y `variables-de-ingreso.ts` lo lee de ahí para `sri_obligado`; la opción `obligadoAContabilidad` queda para las pruebas y la sombra. La lectura es una sola, `obligadoALlevarContabilidad()` de `ruc.ts`: «SI» y «S» son sí, «NO» y «N» son no, y sin RUC o con otro valor no hay dato (no es «no»).
-En el crudo del 2026-10-03 (2.567 personas) vienen «NO» 2.063, «SI» 128, «N» 106 y **«S» 4**, una abreviatura que 12.30 no había visto en las 542; en el lote de paridad entero (1.176 crudos) hay 15. Que la «S» es «sí» lo decidió el negocio el 2026-10-29, como el «ABI» de los establecimientos (estructura-v13). «Tiene RUC» es lo mismo que para el estado de la actividad: 5 registros traen el RUC, el inicio y «N» sin fecha de inscripción, y como el nivel 1 les pone `sri_ruc = 1`, el obligado viene también.
+En el crudo del 2026-10-03 (2.567 personas) vienen «NO» 2.063, «SI» 128, «N» 106 y **«S» 4**, una abreviatura que 12.30 no había visto en las 542; en el lote de paridad entero (1.176 crudos) hay 15. Que la «S» es «sí» lo decidió el negocio el 2026-10-29, como el «ABI» de los establecimientos (estructura-v13).
+
+**El RUC activo, de paso.** 5 registros del crudo del 2026-10-03 traen el RUC, el inicio y «N» sin fecha de inscripción ni ninguna fecha de cese, y el perfil los daba con la actividad «activa» (el nivel 1 les pone `sri_ruc = 1` y `sri_estado = ACTIVO`) y a la vez sin RUC activo. El negocio decidió el 2026-10-29 que un RUC queda inactivo sólo si una fecha lo respalda: `ruc.ts` cuenta el RUC sin la inscripción, y un establecimiento sin estado está abierto salvo una fecha de cierre (estructura-v15 y fuentes-v11).
+Cambia el RUC activo de 8 de las 2.567 personas y de 49 de las 1.176 del lote, casi todas con la respuesta que el HTTP 502 dejó incompleta. Las variables del nivel 1 no cambian: salen de `estadoActividadEconomica`, que ya los daba activos.
 
 **Paridad con Equifax** (punto 7 de la sección 9 de la especificación), en las 87 personas de la base con una consulta de producción de Equifax con el bloque del SRI y un perfil de Novadata, con el crudo de su último perfil (13 días de mediana entre una consulta y la otra):
 
@@ -2681,14 +2684,14 @@ En el crudo del 2026-10-03 (2.567 personas) vienen «NO» 2.063, «SI» 128, «N
 Coincide en las 83 con RUC. Ninguna trae «S»: esa lectura sigue sin cotejar contra Equifax.
 
 **El modelo de lenguaje no lo lee** (decisión del negocio del 2026-10-29). Ya le llegaba el obligado, interpretado, en `fuentesIngreso` (el indicio de ingreso mayor y `tamanoDelNegocio.obligadoContabilidad`, con el marco diciendo que es escala y no ingreso), y en `laboral` sería el mismo dato dos veces. `perfil-del-modelo.ts` lo saca (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`, que miden `auditar-seguridad.mjs` y `validar-perfil-del-modelo.mjs`).
-Con el código viejo y el nuevo, el mensaje al modelo de las 2.567 personas del crudo del 2026-10-03 es idéntico byte a byte: **no hay versión nueva del marco**, al revés de lo que preveía 12.30. Lo que sí difiere: `fuentes-ingreso.ts` reconoce sólo «SI», así que en las 4 con «S» el modelo y la pantalla no ven el indicio (queda en `docs/pendientes.md`).
+Con el código viejo y el nuevo, el mensaje al modelo de las 2.567 personas del crudo del 2026-10-03 es idéntico byte a byte en 2.559; las 8 que cambian son las del RUC activo, un dato y no la forma del mensaje. **No hay versión nueva del marco**, al revés de lo que preveía 12.30. Lo que sí difiere: `fuentes-ingreso.ts` reconoce sólo «SI», así que en las 4 con «S» el modelo y la pantalla no ven el indicio (queda en `docs/pendientes.md`).
 
-**Efecto en el perfil**: código viejo contra nuevo, perfil entero, en las 2.567: cambia sólo el campo nuevo (2.169 no, 132 sí, 266 sin dato), nada más.
+**Efecto en el perfil**: código viejo contra nuevo, perfil entero, en las 2.567: el campo nuevo (2.169 no, 132 sí, 266 sin dato), la versión de `fuentesIngreso` y, en 8, el RUC activo con lo que arrastra (en 3, el segmento).
 
 **La prueba en sombra, repetida**: los perfiles guardados siguen en estructura-v14 hasta recalcularlos, así que «a la consulta» todavía no trae el obligado (0 de 542 perfiles con el campo). «Con el obligado» ya lo toma de `process.ts` (antes el guion tenía su propia copia) y da lo mismo que en 12.30: R² 0,187, el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y se certifica «al menos 2.000» a 16, con 14 aciertos.
 Al recalcular, «a la consulta» tiene que dar lo mismo que «con el obligado»: el guion cuenta los perfiles con el campo y cuántos difieren del crudo.
 
-**Lo que queda.** Desplegar y después recalcular los perfiles guardados (`recalcular-grupos.mjs --grupos=laboral`), en ese orden: un perfil en v15 leído por el código desplegado de hoy le pasaría el campo al modelo con el rótulo marco-v30. En seco da 3.764 perfiles a escribir y 0 que el crudo no reproduzca. Y repetir la sombra.
+**Lo que queda.** Desplegar y después recalcular los perfiles guardados (`recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso` y `recalcular-fuentes-ingreso.mjs`), en ese orden: un perfil en v15 leído por el código desplegado de hoy le pasaría el campo al modelo con el rótulo marco-v30. En seco, el primero da 3.764 perfiles a escribir y 0 que el crudo no reproduzca. Y repetir la sombra.
 
 ## 13. Registro de verificación
 

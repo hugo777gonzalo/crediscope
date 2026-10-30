@@ -58,10 +58,15 @@ export function fechasDelRuc(c: AnyRecord): FechasDelRuc {
   };
 }
 
-// Un registro "cascarón" (sin ruc o sin fecha de inscripción) es que nunca
-// tuvo RUC: Novadata a veces lo manda con todo en null.
+// Un registro "cascarón" (sin ruc) es que nunca tuvo RUC: Novadata a veces lo
+// manda con todo en null. Hasta estructura-v14 también lo era un registro sin
+// fecha de inscripción, y en el crudo del 2026-10-03 hay 5 con el número, el
+// inicio (2019 a 2024) y un establecimiento, sin la inscripción ni ninguna
+// fecha de cese: el perfil los daba con la actividad «activa» y sin RUC activo
+// a la vez. Decisión del negocio del 2026-10-29: inactivo sólo si una fecha
+// (cese, reapertura) lo respalda, así que la inscripción no hace falta.
 export function esRegistroDeRuc(c: AnyRecord): boolean {
-  return Boolean(c.ruc && c.fecha_inscripcion_ruc);
+  return Boolean(c.ruc);
 }
 
 // Novadata empezó a mandar el estado abreviado en algunos registros: en la
@@ -71,10 +76,21 @@ export function esRegistroDeRuc(c: AnyRecord): boolean {
 // establecimiento en "ABI" quedaba sin RUC activo y con 0 establecimientos
 // activos (estructura-v13). La comparación vivía copiada en process.ts y dos
 // veces en fuentes-ingreso.ts: ahora todas llaman a ésta.
+//
+// Sin estado (8 de 3.587 establecimientos en el crudo del 2026-10-03, 49 de
+// 1.718 en el lote de paridad), lo decide la fecha de cierre: abierto si no
+// la tiene o si reinició después (estructura-v15, la misma decisión que la de
+// esRegistroDeRuc). Con estado, manda el estado: en el crudo del 2026-10-03,
+// 603 «ABIERTO» traen fecha de cierre, así que la fecha sola no prueba que
+// cerró.
 const ESTADOS_ABIERTO = new Set(["ABIERTO", "ABI"]);
 
 export function establecimientoAbierto(e: AnyRecord): boolean {
-  return ESTADOS_ABIERTO.has(String(e.estado_establecimiento ?? "").trim().toUpperCase());
+  const estado = String(e.estado_establecimiento ?? "").trim().toUpperCase();
+  if (estado !== "") return ESTADOS_ABIERTO.has(estado);
+  const cierre = diaDeFecha(e.fech_cierre);
+  const reinicio = diaDeFecha(e.fech_reinicio_actividades);
+  return !cierre || Boolean(reinicio && reinicio > cierre);
 }
 
 export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boolean {
@@ -91,12 +107,6 @@ export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boo
 // Sin RUC no hay dato: null, no false (los 252 cascarones lo traen vacío). Un
 // valor que no es ninguno de los cuatro también es null: no se adivina.
 //
-// «Tiene RUC» es lo mismo que en estadoActividadEconomica (process.ts): que el
-// registro traiga el número, no esRegistroDeRuc(). En el crudo del 2026-10-03
-// 5 registros traen el RUC, el inicio y «N» sin fecha de inscripción; el perfil
-// los da con RUC y el nivel 1 del predictor les pone sri_ruc = 1, así que el
-// obligado tiene que venir también.
-//
 // OJO: fuentes-ingreso.ts compara sólo «SI» para el indicio de ingreso mayor y
 // el tamaño del negocio, y no ve la «S». Pasarlo a esta función cambia lo que
 // lee el modelo (fuentes-v nueva y marco nuevo): queda pendiente.
@@ -104,7 +114,7 @@ const OBLIGADO_SI = new Set(["SI", "S"]);
 const OBLIGADO_NO = new Set(["NO", "N"]);
 
 export function obligadoALlevarContabilidad(c: AnyRecord | null | undefined): boolean | null {
-  if (!c?.ruc) return null;
+  if (!c || !esRegistroDeRuc(c)) return null;
   const v = String(c.obligado ?? "").trim().toUpperCase();
   return OBLIGADO_SI.has(v) ? true : OBLIGADO_NO.has(v) ? false : null;
 }

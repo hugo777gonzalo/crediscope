@@ -130,7 +130,15 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 // Novadata manda desde octubre cuenta como abierto (ruc.ts). Sin eso, el RUC
 // activo, los establecimientos activos y la actividad abierta salían en
 // falso para quien tenía su establecimiento así.
-export const FUENTES_INGRESO_VERSION = "fuentes-v10";
+//
+// v11 (2026-10-29, con estructura-v15; decisión del negocio): el RUC queda
+// inactivo sólo si una fecha lo respalda (ruc.ts). Un registro con el número
+// y sin fecha de inscripción es un RUC, y un establecimiento sin estado está
+// abierto salvo una fecha de cierre sin reinicio posterior. En el crudo del
+// 2026-10-03 cambian 8 de 2.567 personas (segmento en 3); en el lote de
+// paridad, 49 de 1.176 (segmento en 45), casi todas de las respuestas que el
+// HTTP 502 dejó incompletas, donde el establecimiento llega sin estado.
+export const FUENTES_INGRESO_VERSION = "fuentes-v11";
 
 // Último corte conocido del mecanizado del IESS. PARÁMETRO OPERATIVO:
 // hay que actualizarlo cuando la fuente publique un corte nuevo (cada
