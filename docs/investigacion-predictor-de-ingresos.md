@@ -2688,7 +2688,7 @@ Con el código viejo y el nuevo, el mensaje al modelo de las 2.567 personas del 
 **La prueba en sombra, repetida**: los perfiles guardados siguen en estructura-v14 hasta recalcularlos, así que «a la consulta» todavía no trae el obligado (0 de 542 perfiles con el campo). «Con el obligado» ya lo toma de `process.ts` (antes el guion tenía su propia copia) y da lo mismo que en 12.30: R² 0,187, el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y se certifica «al menos 2.000» a 16, con 14 aciertos.
 Al recalcular, «a la consulta» tiene que dar lo mismo que «con el obligado»: el guion cuenta los perfiles con el campo y cuántos difieren del crudo.
 
-**Lo que queda.** Desplegar y después recalcular los perfiles guardados (`recalcular-grupos.mjs --grupos=laboral`), en ese orden: un perfil en v15 leído por el código desplegado de hoy le pasaría el campo al modelo con el rótulo marco-v30. Y repetir la sombra.
+**Lo que queda.** Desplegar y después recalcular los perfiles guardados (`recalcular-grupos.mjs --grupos=laboral`), en ese orden: un perfil en v15 leído por el código desplegado de hoy le pasaría el campo al modelo con el rótulo marco-v30. En seco da 3.764 perfiles a escribir y 0 que el crudo no reproduzca. Y repetir la sombra.
 
 ## 13. Registro de verificación
 

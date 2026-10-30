@@ -235,7 +235,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        mensaje de las 2.567 personas del crudo del 03/10 sale idéntico. Falta, en este orden: fusionar (el PR
        96 primero), desplegar con el corredor y **recién después** recalcular los perfiles guardados con
        `node scripts/recalcular-grupos.mjs --grupos=laboral --carpeta=research/novadata-raw-2026-10-03`
-       (`--seco` primero; escribe en la base: con el sí del negocio). Al revés, el código desplegado de hoy
+       (`--seco` primero; escribe en la base: con el sí del negocio; en seco el 2026-10-29, 3.764 a escribir
+       y 0 que el crudo no reproduzca, más las 240 sintéticas sin crudo). Al revés, el código desplegado de hoy
        le pasaría el campo nuevo al modelo con el rótulo marco-v30. Después, repetir la prueba en sombra:
        «a la consulta» tiene que dar lo mismo que «con el obligado».
        - `fuentes-ingreso.ts` reconoce sólo «SI» para el indicio de ingreso mayor y el tamaño del negocio, y

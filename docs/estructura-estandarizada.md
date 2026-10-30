@@ -700,7 +700,13 @@ interface StandardClientProfile {
 >   `tamanoDelNegocio.obligadoContabilidad`), leído sólo como «SI». Si el campo
 >   nuevo llega o no al modelo es una decisión del marco (ver
 >   `docs/pendientes.md`, punto 18.3).
-> - Sin desplegar ni recalcular al escribir esto.
+> - Sin desplegar ni recalcular al escribir esto. En seco (2026-10-29,
+>   `recalcular-grupos.mjs --grupos=laboral
+>   --carpeta=research/novadata-raw-2026-10-03`): 3.764 perfiles a escribir
+>   (2.559 con el crudo de la carpeta y 1.205 del depósito), 0 que el crudo no
+>   reproduzca y 240 sin crudo (las sintéticas). Se recalcula después de
+>   desplegar, nunca antes: el código desplegado de hoy le pasaría el campo al
+>   modelo.
 
 ## De dónde sale cada cálculo (trazabilidad)
 
