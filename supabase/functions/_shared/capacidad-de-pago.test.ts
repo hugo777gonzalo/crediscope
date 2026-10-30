@@ -37,6 +37,15 @@ Deno.test("el veredicto cambia en el tope y en el margen de cinco puntos", () =>
   assertEquals(con(362.21), "no_alcanza");
 });
 
+Deno.test("cumple es sí con alcanza y justo, no con no_alcanza, y nulo sin ingreso (no es un rechazo)", () => {
+  const con = (cuotaNueva: number, ingresos = [sueldo(1000)]) => evaluarCapacidad({ ingresos, obligaciones: [], deudasSinCuota: [], cuotaNueva });
+  // Tope de 362,20; «justo» desde 316,93 (ver la prueba de arriba).
+  assertEquals([con(300).veredicto, con(300).cumple], ["alcanza", true]);
+  assertEquals([con(362.2).veredicto, con(362.2).cumple], ["justo", true]);
+  assertEquals([con(362.21).veredicto, con(362.21).cumple], ["no_alcanza", false]);
+  assertEquals([con(100, []).veredicto, con(100, []).cumple], ["sin_ingreso", null]);
+});
+
 Deno.test("al aporte propio no se le descuenta el aporte personal", () => {
   const c = evaluarCapacidad({
     ingresos: [{ concepto: "Aporte propio", montoMensual: 800, tipo: "aporte_propio", origen: "IESS" }],

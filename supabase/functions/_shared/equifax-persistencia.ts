@@ -57,7 +57,7 @@ export interface OpcionesDeProceso {
   cedula: string;          // ya validada por quien llama
   actorId: string;         // quién se hace cargo: sale de la sesión o del guion, nunca del cuerpo de un pedido
   baseLegal: string;
-  origen: "consulta" | "lote";
+  origen: "consulta" | "lote" | "api"; // 'api': la modalidad Plus de la API (139)
   forzar?: boolean;        // salta la reutilización (vuelve a cobrar)
   simular?: boolean;       // recorre todo MENOS la llamada a Equifax
   transporte: Transporte;

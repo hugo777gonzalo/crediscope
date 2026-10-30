@@ -13,8 +13,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
-  `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
+- **Base:** última migración aplicada, la **138** (2026-10-28; no hay 137: la del PR 82 pasó a 139);
+  lo desplegado tiene `ESQUEMA_MINIMO` en 138. Se midió en `esquema_version`.
 - **Funciones:** sello **`dabb60be9f3c`**, 10 de 10, desplegado el 2026-10-30 a las 00:20 sobre el
   esquema 138 (`despliegues`; el anterior fue `626bb6c04685`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
@@ -51,21 +51,43 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    Lo hace Claude en una sesión (`docs/laboratorio-guia.md`, paso 1; sin pantallas nuevas hasta
    el paso 4). Se verifica con los conteos por origen y por análisis; antes hay que decidir el
    t0 de los 200 del lote del 07/10, que se analizaron sobre la consulta del 03/10.
-2. **API para la institución, Fase 1.** Falta el núcleo: recepción, cola asincrónica,
-   trabajador, topes y sandbox con simuladores (sin ambiente de prueba), apagado para terceros.
-   Devuelve los datos completos de la persona según el contrato y la configuración de cada
-   institución; lo que viene de una fuente depende de que el contrato con esa fuente permita
-   entregarlo (Novadata: 3.3). Lo hace Claude (E27 ya no la frena; D5 a D15, 2.9). Se verifica
-   con el lint estricto de Redocly sobre `api/openapi.yaml` y pruebas. **El núcleo está en el PR 82**
-   (flujo Plus, abierto y sin fusionar al 2026-10-28; carpeta `cranky-goodall-f18441`): choca con
-   `main` y **su migración tiene que pasar de 137 a 139 o más**, porque la 138 ya está aplicada y un
-   número salteado no se aplica nunca. El negocio lo dejó para después.
-3. **La puerta de la API: lo que la especificación dice y el código no hace.** Falta: las
-   validaciones del esquema (`additionalProperties: false`, máximos de ingresos y deudas,
-   `parametros` fuera de 0 a 1 que hoy se ignoran), errores `application/problem+json`, OAuth e
-   `Idempotency-Key`, `modalidad` con `basico` por omisión, `reemplazaA` que reutilice el perfil,
-   las condiciones de Básico guardadas y el resultado con positivos, negativos y razonamiento.
-   Importa: promete lo que hoy no se cumple. Lo hace Claude; una prueba por promesa.
+2. **API para la institución, Fase 1: lo que falta después del núcleo.** El núcleo del flujo
+   Plus está construido (2026-10-21, PR de la rama `claude/api-plus-nucleo`, sin desplegar):
+   la cola en `solicitudes` (139), el trabajador `procesar-evaluaciones` y la puerta `api-v1`
+   con `POST` y `GET /evaluaciones`, idempotencia, `Prefer: wait`, errores RFC 9457, resultado
+   con positivos, negativos y razonamiento, y `cumple` en la capacidad. **No está desplegado:**
+   la 139 se aplica recién fusionada y antes de `--funciones` (sube `ESQUEMA_MINIMO`), y el
+   número se toma al aplicarla. Falta:
+   - **OAuth con `private_key_jwt`** y la tabla de clientes de API con sus alcances: hoy la
+     puerta exige la sesión de un administrador (apagada para terceros);
+   - topes por minuto y por día con los encabezados `RateLimit`, y el 503 `capacidad-agotada`
+     por espera estimada (hoy sólo el tope de evaluaciones en curso);
+   - avisos firmados (`evaluacion.terminada`), `POST /evaluaciones/{id}/decision` y
+     `/cancelacion`, y las puertas sueltas `/simulaciones` y `/capacidades-de-pago`;
+   - el sandbox con simuladores (identificaciones `00…`) y su apagado para terceros;
+   - D5: al vencer el plazo con el modelo caído, entregar `sin_veredicto` con el perfil y la
+     capacidad en vez de `fallida` (hoy el paso del modelo se reintenta y, vencido el plazo,
+     la evaluación termina `fallida`/`plazo_vencido`);
+   - el perfil estandarizado opcional (`recibirPerfil`: hoy se valida y no se entrega);
+   - pasar `evaluar-solicitud` (la pantalla) a los pasos compartidos (`pasos-de-evaluacion.ts`),
+     que hoy sólo usa para la capacidad: "una sola puerta";
+   - lo que dejó la revisión de Opus del 2026-10-21 sin arreglar: (a) dos evaluaciones
+     simultáneas de la misma persona consultan Novadata y el modelo dos veces (sólo el buró
+     tiene el control de «en curso»); (b) si el trabajador puede vivir más de 180 s (plan pago:
+     400 s), un paso largo se retoma con el original vivo: hace falta un token por toma
+     comprobado al anotar; (c) `POR_INVOCACION = 4` pasos pesados en un proceso: medir CPU y
+     memoria; (d) `referencia`, `operador_id` y `autorizacion_id` van a `audit_log.meta` (como
+     en la pantalla desde la 135) y una institución puede poner ahí una cédula, que la supresión
+     no borra; (e) el trabajador se despierta recién al terminar la ronda entera.
+   Devuelve los datos completos de la persona según el contrato; lo que viene de una fuente
+   depende de que el contrato con esa fuente permita entregarlo (Novadata: 3.3). Lo hace Claude
+   (D6 a D15, 2.9). Se verifica con el lint estricto de Redocly y con `deno test`; de punta a
+   punta, sólo con el sandbox (una prueba en producción no consulta a personas).
+3. **La puerta de la API: lo que la especificación dice y el código no hace.** Quedan las
+   validaciones de `POST /capacidades-de-pago` (máximos de ingresos y deudas, `parametros`
+   fuera de 0 a 1 que hoy se ignoran), que no se pasaron a `api-v1` porque esa operación suelta
+   todavía no está en la puerta. La validación de `POST /evaluaciones` sí cumple
+   `additionalProperties: false`. Lo hace Claude; una prueba por promesa.
 4. **Antigüedad: `duracionEmpleoMasLargoMeses` sin la regla.** Cuenta el aporte propio desde
    la fecha de ingreso, no con `reglaDeTrabajo()` como la antigüedad desde estructura-v14, así
    que el empleo más largo puede ser el mismo empleo actual con más meses. Lo hace Claude:
@@ -91,7 +113,29 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    informe (`auditoria/2026-10-09-auditoria-externa-integral.md`, fuera de git) no se
    revisaron una por una: **no se midió cuáles quedaron hechas**. Falta ese recuento y sacar
    de ahí lo que siga abierto. Lo hace Claude leyendo el informe contra el código y la base.
-9. **Deuda técnica sin urgencia** (la hace Claude cuando toque el área):
+9. **Respaldo local de las consultas crudas de Equifax de la base de AWS** (pedido del
+   negocio el 2026-10-22; el negocio ya avisó a quien administra la base). **En curso:** el
+   2026-10-26 se bajaron y verificaron **20.000 JSON** (40 lotes de 500, 147 MB comprimidos,
+   cada lote contra su huella). El guion es `extraer_crudo_equifax.mjs`, en
+   `research/ingresos-aws/scripts/` (fuera de git). Medido: `consulta_equifax` tiene unas
+   418.000 filas y 6,1 GB en total; solo ~15% trae `response_json` (unas 62.000), así que
+   faltan ~42.000 JSON, dos o tres tandas más. Cada lote tardó 3 a 6 s, sin errores.
+   Mañana: `node extraer_crudo_equifax.mjs --extraer --formato=json --max=20000` (retoma solo
+   desde el último id) y `--verificar`. Después los XML: la columna se llama `response` (tipo
+   `xml`), así que va `--formato=xml --col-xml=response`; ese modo **no se probó** y las
+   respuestas XML pesan distinto. La salida va a `research/ingresos-aws/crudo-equifax/`
+   (manifiesto, estado por formato, un `.jsonl.gz` por lote). Falta revisar si el contrato con
+   Equifax permite conservar y reutilizar sus respuestas (punto abierto de
+   `docs/base-aws-originacion.md`).
+10. **El marco y el JSON del modelo, en paralelo a la API** (decisión del 2026-10-21: el
+    modelo sigue leyendo solo el perfil en la primera entrega de la API). Se lanzó un
+    agente con Opus en su propio worktree (`.claude/worktrees/agent-a2c7577caaf0cb832`, rama
+    `worktree-agent-a2c7577caaf0cb832`) que cortó por el límite de uso sin avanzar (un solo
+    archivo tocado, `nombres-ingresos.ts`, sin commitear). Se retoma con el mismo brief:
+    diseño del JSON de envío (solicitud, cuota, capacidad con `cumple`, Equifax), afinar el
+    texto del marco con `docs/observaciones-del-negocio.md`, versión nueva apagada, sin llamar
+    al modelo ni a Equifax sin autorización con la cifra.
+11. **Deuda técnica sin urgencia** (la hace Claude cuando toque el área):
    - retirar `humanizarTexto()` con una versión nueva de fuentes que guarde meses y dólares
      con el formato de la casa, y recalcular;
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
@@ -150,6 +194,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    decidirla y construirla (rol `lector`, `exigirRol()` en cada función, prueba en
    `auditar-seguridad.mjs`). «Descargas» ya es sólo de admin. Decidir también D5 a D15
    (`docs/cumplimiento/api/`) y si `datos`, `procedencia` y `aprobado_con_condiciones` quedan.
+   **Decidido el 2026-10-21:** en Plus por la API, si la persona no tiene una consulta de Equifax
+   vigente, la API la consulta y se cobra (USD 0,40), con el tope diario que ya existe
+   (`EQUIFAX_TOPE_DIARIO`, hoy 30 en toda la base). Falta decidir **quién paga** cada institución
+   y su tope propio, y qué pasa cuando el tope diario se agota a mitad de un día de campaña (hoy
+   la evaluación termina `fallida`/`tope_diario_agotado`, sin reintentar hasta mañana).
 10. **Estados de la persona en la bandeja, el Expediente y Monitoreo.** Se hace cuando se
     rehagan esos procesos (negocio, 2026-10-19). Para la bandeja conviene calcularlo en la base
     (`resumen_por_persona`): hoy la regla vive sólo en `estado-de-la-persona.ts` y las dos copias
@@ -234,8 +283,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     **Lo que sigue, en este orden:**
     1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
        consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
-       **Si el PR 82 entra, su migración ya no puede ser la 137** (un número salteado no se aplica
-       nunca): renumerarla a 139 o más.
+       La del PR 82 pasó de 137 a 139 el 2026-10-30 (una 137 no se habría aplicado nunca).
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).

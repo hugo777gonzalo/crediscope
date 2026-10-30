@@ -75,7 +75,9 @@ export default function Solicitud() {
         // Sin fila no es un error de red: la dirección está mal o la RLS no la deja ver.
         if (!fila) return setNoExiste(true);
         setS(fila);
-        if (fila.estado === "en_evaluacion") avanzar(fila);
+        // Una evaluación de la API la hace avanzar el trabajador (137): si la pantalla
+        // también tomara pasos, un analista que no es admin fallaría el del buró.
+        if (fila.estado === "en_evaluacion" && fila.origen !== "api") avanzar(fila);
         // Sin las otras, el estado de la persona no se muestra: mejor nada que uno equivocado.
         getSolicitudesDeLaPersona(fila.identificacion)
           .then((filas) => vigente.current && setOtras(filas))
@@ -197,10 +199,12 @@ export default function Solicitud() {
       {fallido ? (
         <Aviso tipo="peligro" titulo={`No se completó: ${NOMBRE_DEL_PASO[fallido.paso]}`}>
           <p style={{ margin: "0 0 10px" }}>{fallido.detalle}</p>
-          <button type="button" className="crediscope-btn" onClick={reintentar}>
-            <RotateCcw size={15} aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />
-            Reintentar
-          </button>
+          {s.origen !== "api" ? (
+            <button type="button" className="crediscope-btn" onClick={reintentar}>
+              <RotateCcw size={15} aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />
+              Reintentar
+            </button>
+          ) : null}
         </Aviso>
       ) : null}
       {error && s ? <AvisoDeError error={error} /> : null}

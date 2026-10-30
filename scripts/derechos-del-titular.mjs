@@ -109,7 +109,7 @@ const TABLAS = !id ? TABLAS_SIN_PERSONA : [
 const TABLAS_DE_EQUIFAX = [
   "equifax_operaciones", "equifax_historia_mensual", "equifax_deuda_por_sistema_y_mes", "equifax_vencimientos", "equifax_tarjetas",
   "equifax_creditos", "equifax_consultas_recibidas", "equifax_scores", "equifax_indicadores_por_periodo", "equifax_codeudor_garante", "equifax_resumen",
-  "equifax_analisis_credito", // desde la v2 de las tablas (137): una fila por consulta, como equifax_resumen
+  "equifax_analisis_credito", // desde la v2 de las tablas (138): una fila por consulta, como equifax_resumen
 ];
 async function leerTodas(tabla, filtro) {
   const filas = [];

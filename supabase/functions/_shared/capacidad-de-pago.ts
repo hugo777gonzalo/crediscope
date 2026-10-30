@@ -31,7 +31,9 @@ import { esIngresoMinimoSbu } from "./fuentes-ingreso.ts";
 
 // v2 (2026-10-17): el Ingreso declarado. v3 (2026-10-18): el veredicto se
 // decide en centavos enteros y las entradas inválidas se dicen o se rechazan.
-export const CAPACIDAD_VERSION = "capacidad-v3";
+// v4 (2026-10-21): `cumple`, el sí o no que pide la API para el flujo Plus; el
+// cálculo y el veredicto no cambian.
+export const CAPACIDAD_VERSION = "capacidad-v4";
 
 export interface ParametrosCapacidad {
   /** Fracción: 0.40 quiere decir que las cuotas no pasan del 40% del ingreso neto. */
@@ -92,6 +94,14 @@ export type Veredicto = "alcanza" | "justo" | "no_alcanza" | "sin_ingreso";
 export interface Capacidad {
   version: string;
   veredicto: Veredicto;
+  /**
+   * Si la cuota entra en el ingreso: sí con `alcanza` y `justo` (la cuota está
+   * dentro del tope, aunque cerca), no con `no_alcanza`, y null con
+   * `sin_ingreso` porque no hay con qué medir y eso no es un rechazo (negocio,
+   * 2026-10-21). Es un derivado del veredicto: no agrega criterio, y un `sí`
+   * con `obligacionesIncompletas` sigue siendo un sí sobre lo que se pudo contar.
+   */
+  cumple: boolean | null;
   ingresoReportado: number;
   aportePersonal: number;
   ingresoNeto: number;
@@ -209,6 +219,7 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
   return {
     version: CAPACIDAD_VERSION,
     veredicto,
+    cumple: veredicto === "sin_ingreso" ? null : veredicto !== "no_alcanza",
     ingresoReportado: dolares(reportadoC),
     aportePersonal: dolares(aporteC),
     ingresoNeto: dolares(netoC),
