@@ -129,10 +129,12 @@ export function decidirEstimacion(perfil: Record<string, unknown>): DecisionDeLa
   if (segmento !== null && SEGMENTOS_VERIFICADOS.has(segmento)) {
     return verificado ? { nivel: 0, motivo: "ingreso_verificado", verificado } : { nivel: null, motivo: "dependiente_sin_monto", verificado };
   }
-  if (segmento !== null && SEGMENTOS_DE_PENSION.has(segmento)) return { nivel: null, motivo: "jubilado", verificado };
+  // Sin estimación, el nivel dice si al menos hay algo verificado: un jubilado puede tener además un sueldo.
+  const nivelSinEstimar = verificado ? 0 : null;
+  if (segmento !== null && SEGMENTOS_DE_PENSION.has(segmento)) return { nivel: nivelSinEstimar, motivo: "jubilado", verificado };
   if (segmento !== null && SEGMENTOS_QUE_SE_ESTIMAN.has(segmento)) return { nivel: 1, motivo: null, verificado };
   // `sin_datos` y `no_clasificado`, o un perfil sin clasificar: es la ausencia de la consulta, no un juicio sobre la persona.
-  return { nivel: null, motivo: "sin_datos", verificado };
+  return { nivel: nivelSinEstimar, motivo: "sin_datos", verificado };
 }
 
 // ---------------------------------------------------------------- la respuesta y la fila

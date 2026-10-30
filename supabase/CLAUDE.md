@@ -133,6 +133,15 @@ su guía: `docs/equifax.md`.
   existe `PREDICTOR_INGRESOS_MODELOS`; en la integración continua corre un modelo chico inventado.
   Un modelo nuevo no cambia el formato. En Windows la prueba con el modelo real se corre desde
   PowerShell: Git Bash cambia las rutas de `--allow-read`.
+- `estimacion-de-ingreso.ts` y la función `estimar-ingreso` (140) — la estimación de una persona desde
+  su último perfil: el selector de la especificación, 3.2 (`decidirEstimacion()`), lo verificado (con
+  `datosDeCapacidad()`, el mismo descuento que la capacidad), y la respuesta y la fila
+  (`armarEstimacion()`). **El reloj es la fecha de la consulta** (`client_profiles.created_at`), no hoy:
+  el mismo perfil y el mismo modelo dan lo mismo. La fila no lleva cédula ni nombre, y los cuantiles
+  quedan en ella, no en la respuesta. El modelo está en el depósito privado `modelos-de-ingreso` de
+  cada base: `crearCargadorDeModelo()` lo baja sólo si cambió la huella de la fila vigente y se niega
+  a servir otro archivo. La calibración va en `modelos_de_ingreso.calibracion` (una base por
+  institución). Un modelo nuevo lleva versión nueva y `scripts/publicar-modelo-de-ingreso.mjs`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de

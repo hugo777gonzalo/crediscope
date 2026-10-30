@@ -685,6 +685,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   `IncomePredictor` crudo de Equifax, e `indicador_covid.income_predictor`, un estimador por
   escenarios que solo coincide en el 76%). Se confirmó cuál es cuál comparando con la
   respuesta cruda en 10.000 consultas. Ver `docs/base-aws-originacion.md`.
+- **PowerShell 5.1 lee UTF-8 sin BOM como ANSI** (2026-10-30). Para probar que
+  las pruebas detectaban una regla rota, un guion leyó un archivo con
+  `Get-Content -Raw`, lo cambió y lo volvió a escribir: 25 líneas quedaron con los
+  acentos rotos, y `git status` fue lo único que lo mostró. Se restauró con git.
+  El mismo día, un heredoc de 190 líneas con comillas y acentos no llegó a correr
+  en Git Bash. Un archivo se cambia con las herramientas de edición, o con un
+  guion que abra el archivo con `encoding="utf-8"` y `newline=""`.
 
 ## Equifax
 

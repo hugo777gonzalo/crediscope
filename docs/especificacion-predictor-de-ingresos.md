@@ -1,6 +1,6 @@
 # Especificación técnica del predictor de ingresos
 
-Borrador del 2026-10-21, para decidir antes de construir. **Nada de esto está construido en el producto.** El análisis que lo sustenta, con todas las mediciones, está en
+Escrita el 2026-10-21 para decidir antes de construir. **Construido para el nivel 1: las variables, el evaluador, las tablas y la función (sección 6). Cuánto de eso está aplicado y desplegado lo dice `docs/pendientes.md`, punto 18.** El análisis que lo sustenta, con todas las mediciones, está en
 `docs/investigacion-predictor-de-ingresos.md` (las secciones 12.x); acá se cita el número de cada una. No lleva datos de personas: las extracciones y los guiones de entrenamiento
 viven fuera de git (`research/ingresos-aws/` y `C:\datos\ingresos\`).
 
@@ -39,6 +39,7 @@ la pensión por tipo de afiliación y la distribución nacional de su tipo.
 | 2026-10-28 | **Las variables de la persona del nivel 1** (edad, sexo, estado civil, provincia y cantón): «decidir después de medir contra Novadata». La recomendación de la sesión de entrenamiento queda como candidata, sin aplicar (secciones 8 y 9). |
 | 2026-10-28 | **Destilación**: el negocio tiene 400.000 consultas a Equifax con predictor en cinco años y propone destilar un modelo propio. Medido (12.28): no mejora la predicción del ingreso validado; serviría para independizarse del predictor de Equifax. Queda abierto qué quiere lograr el negocio con ella. |
 | 2026-10-29 | **El nivel 1 es la edad, el sexo y el SRI de Novadata** (más la fecha de la consulta), sin estado civil, zona ni IESS (12.30). **El «obligado a llevar contabilidad» se queda y va al perfil**: sin él el nivel 1 pierde 0,027 de R² y no certifica «al menos 2.000» a nadie. Completar el lote de paridad queda para después. La destilación se quiere para mejorar la asertividad (lo medido en 12.28 dice que no la mejora). La próxima versión del marco se hará con los resultados del predictor. |
+| 2026-10-30 | **Cómo se sirve el nivel 1.** El modelo vive en un depósito privado de cada base, con una fila por modelo. La estimación usa la fecha de la consulta, no la de hoy, y una consulta de más de 90 días se estima igual, con un aviso. Sigue el selector de 3.2: dependientes, sólo lo verificado; jubilados, sin estimación hasta tener la tabla de pensiones. Arranca sin calibrar. El rótulo es «Referencia de solicitantes» hasta un mínimo de USD 1.000 inclusive. |
 | 2026-10-26 | Las rentabilidades por giro que dio el negocio eran aproximadas: son valores genéricos que no nacen de una metodología válida. No son entrada; la garantía aguanta que estén infladas hasta un 30% (12.27). |
 | 2026-10-21 | El resultado es un tramo con probabilidad y un valor central con rango. Los tramos del tramo alto: 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más. |
 | 2026-10-21 | El predictor de Equifax es solo contraste, no entrada. La cuota financiera de Equifax es la pista principal. No se usan los límites de cuota por institución (se incumplen por excepción). |
@@ -57,8 +58,10 @@ Los números del ejemplo son inventados.
 
 ```json
 {
+  "id": "5f2b7c1e-8a34-4d21-9c6f-1b7e0d3a4c55",
   "version": "ingreso-v1",
   "nivel": 2,
+  "consultadoEl": "2026-10-16T14:05:33Z",
   "verificado": {
     "origen": "IESS",
     "salarioReportado": 1250.00,
@@ -99,6 +102,8 @@ Los números del ejemplo son inventados.
    Con el salario de 2026 (482) los cortes son 482 y 964; con el de 2025 eran 470 y 940. Los cortes se aplican al responder, no al entrenar: el modelo entrega cuantiles y la probabilidad de cada tramo sale de la distribución con los cortes del año. Las medidas de este documento usan 470 y 940.
 5. **`certificaAlMenos`** lista los umbrales (940, 2.000, 3.000, 5.000) que el mínimo del 90% alcanza. Con buró (nivel 2), certificar «al menos 2.000» acierta el 95,5% de las veces entre quienes se certifica, y el 98,4% si solo se miran los OK FACTURAR (12.24).
 6. **Una variable sin dato no corta la estimación**: baja la precisión y se dice en `calidad`. Una persona sin consulta de buró no usa el nivel 2.
+7. **La estimación es a la fecha de la consulta** (`consultadoEl`): la edad, `anio_mes`, la antigüedad del RUC y el salario básico de los tramos son de ese día, no de hoy, y el mismo perfil con el mismo modelo da siempre lo mismo. Pasados 90 días la respuesta lo avisa (decisión del 2026-10-30).
+8. **Sin estimación, `estimado` trae `aplica: false` y `motivo`** (`ingreso_verificado`, `jubilado`, `dependiente_sin_monto` o `sin_datos`), e `id`, `version` y `modelo` van en `null`: no se evaluó el modelo y no queda fila. `nivel` es 0 con lo verificado y `null` si no hay ni verificado ni estimado.
 
 ### 2.3 El neto de lo verificado
 
@@ -120,7 +125,7 @@ Sin el SRI y con todo AWS (57.061 independientes) eran 0,087 y 0,341 (12.23). La
 | 2 Novadata y buró | Edad, sexo, estado civil, zona y IESS del extracto de AWS, el SRI, deuda, crédito y cuota de Equifax, y la clase y el CIIU del SRI | 0,355 (0,460) | 46,2% (53,2%) | 88,2% (94,0%) | 1.093 (1.516) | 17,0%, 95,5% (34,6%, 98,4%) |
 
 **El nivel 1 distingue poco a una persona, aunque con el SRI ya algo** (R² de 0,157; sin el SRI, con las variables del nivel anterior, 0,091): su mínimo sigue siendo en la práctica el límite inferior de la población de solicitantes, unos USD 1.000, salvo para una minoría (el 3,0% certifica «al menos 2.000»).
-Se muestra con la etiqueta «referencia de solicitantes», no como estimación de la persona, mientras el mínimo no pase de unos USD 1.000. **El salto sigue estando en el buró**: de 0,157 a 0,355.
+Se muestra con la etiqueta «Referencia de solicitantes», no como estimación de la persona, mientras el mínimo no pase de USD 1.000 (corte exacto, decidido el 2026-10-30; con una mediana de 995, rige para cerca de la mitad de las personas). **El salto sigue estando en el buró**: de 0,157 a 0,355.
 Los datos internos (patrimonio, gastos, entrada) se midieron y no entran: sumaban entre 0,000 y 0,019 de R², según el bloque (4.3).
 
 **Con intervalos y hacia adelante** (12.26 y 12.30; intervalo del 95% por remuestreo de personas). R² del nivel 1: 0,157 (0,143 a 0,172); del nivel 2: 0,355 (0,325 a 0,383). Entrenado hasta junio y probado de julio a octubre (8.656 casos), el real supera el mínimo del 90% el **89,1%** de las veces en el nivel 1 (88,5 a 89,8; el del 85%, 84,8%)
@@ -137,8 +142,9 @@ El selector corre en este orden y toma el primero que aplica. Los segmentos son 
 
 1. **Nivel 0, verificado**: los segmentos `publico`, `diplomatico`, `dependiente_privado` y `empleo_domestico` con ingreso del IESS. Se muestra el salario y su neto; el ingreso adicional no verificado **no se estima** (no se puede predecir:
    AUC de 0,72 para saber si lo tiene y R² de 0,11 para el monto, 12.14) y se dice «puede tener ingresos que no constan».
-2. **Pensión por tipo de afiliación**: los segmentos `jubilado` y `jubilado_con_ingreso_adicional`. Se entrega la referencia de la sección 3.3, rotulada como referencia.
+2. **Pensión por tipo de afiliación**: los segmentos `jubilado` y `jubilado_con_ingreso_adicional`. Se entrega la referencia de la sección 3.3, rotulada como referencia. **Todavía no está construida**: hoy la respuesta trae `estimado.aplica: false`, `motivo: jubilado` y un aviso.
 3. **Nivel 2**, si la institución tiene a Equifax como buró y la persona tiene una consulta vigente; **nivel 1**, en los demás casos: los segmentos `independiente`, `ingresos_mixtos`, `agricola`, `trabajo_hogar` e `informal_o_sin_actividad`.
+   El nivel 2 todavía no se sirve: hasta entonces, quien tiene Equifax usa el nivel 1.
    No hay nivel 3: el patrimonio no se pide (decisión del negocio del 2026-10-22).
 4. **`sin_datos` y `no_clasificado`: no se estima.** Es la ausencia de la consulta, no un juicio sobre la persona.
 5. **Referencia nacional**, solo si la institución lo pide para una población que no es de solicitantes (microcrédito o inclusión): distribución del ingreso de su tipo en el país (3.4).
@@ -262,7 +268,7 @@ Las variables de texto (provincia, cantón, actividad, sexo, estado civil) entra
 Los casos de calibración son las **predicciones fuera de muestra** (validación cruzada de cinco particiones) de los mismos casos con que se entrena, y el modelo que se sirve es el entrenado con todos: no se aparta ningún caso. Resultado: el real supera el mínimo del 90% el **90,4%** de las veces en el nivel 1 (89,8 a 91,1; el nivel de la decisión del 2026-10-29, 12.30) y el **89,6%** en el 2 (88,9 a 90,2),
 contra 89,1% y 87,4% sin calibrar; el del 85% pasa a 85,8% y 84,7%. **Cuesta mínimo**: la mediana del mínimo del 90% baja 3,9% en el nivel 1 (de 1.021 a 981) y 6,4% en el 2 (de 1.138 a 1.065), y «al menos 2.000» se certifica en el 18,3% del total en el nivel 2 en vez del 20,4%, con 95,8% de precisión en vez de 94,8%. Los corrimientos medidos son 0,040 y 0,066 (el nivel 1 anterior pedía 0,056).
 Calibrando solo con los dos últimos meses (mayo y junio) la cobertura queda en 89,3% en el nivel 1 (sin corrimiento) y 88,9% en el 2: lo que no corrige del todo es la deriva en el tiempo. **Con pocos casos hay dispersión**: en el nivel 2, con 500 casos la cobertura va de 87,3% a 91,3% según cuáles toquen (entre el 5% y el 95% de los sorteos), con 1.000 de 87,7% a 90,3% y con 2.000 de 88,3% a 89,7% (en el nivel 1, de 87,8% a 91,7%, de 88,3% a 90,8% y de 88,6% a 90,0%); el mínimo de 500 casos por institución basta para el promedio, no para estrechar el margen.
-El modelo exportado no está calibrado (`calibradoPara` queda vacío): el corrimiento se aplica cuando el negocio lo decida y se vuelve a medir con el modelo final. Un modelo calibrado se informa con la cobertura medida después de calibrar y su intervalo, no con la nominal.
+El modelo exportado no está calibrado (`calibradoPara` queda vacío): el corrimiento se aplica cuando el negocio lo decida y se vuelve a medir con el modelo final. Arranca sin calibrar (decisión del 2026-10-30). La calibración va en la fila de `modelos_de_ingreso`: hay una base por institución, así que esa fila ya es la de la institución, y encenderla no pide desplegar. Un modelo calibrado se informa con la cobertura medida después de calibrar y su intervalo, no con la nominal.
 
 **Reproducibilidad.** Semilla fija, versiones de las bibliotecas y la huella del archivo de entrenamiento quedan en la fila del modelo (sección 6.4). Los datos de entrenamiento no entran al repositorio.
 
@@ -279,6 +285,7 @@ El orden respeta la regla de que un módulo nuevo tiene su propia puerta y que e
 4. **Base**: `modelos_de_ingreso` (versión, nivel, estado, huella, fecha, población, métricas, ruta del archivo en Storage privado) y `estimaciones_de_ingreso` (persona, solicitud, nivel, versión, variables usadas sin identificadores, salidas, calibración, fecha). RLS por rol y privilegios por defecto sin rol anónimo.
    La tabla nueva con datos de la persona se suma a `suprimir_titular()`, a `scripts/derechos-del-titular.mjs` y a `scripts/auditar-seguridad.mjs`. Cada versión nueva del modelo necesita su fila. La migración toma el número libre al aplicarse, con el corredor.
 5. **Puerta propia**: función `estimar-ingreso` (con `exigirRol()` antes de leer el cuerpo y el límite de la sesión) y la operación `POST /estimaciones-de-ingreso` en `api/openapi.yaml`, con ejemplos calculados con el propio código y sin nada con forma de JWT; se valida con `redocly lint`. El pedido no recibe patrimonio, gastos ni entrada: no son entradas del predictor (4.3).
+   **Construido para el nivel 1** (migración 140): `_shared/estimacion-de-ingreso.ts` decide y arma, y la función sólo lee, guarda y contesta. El modelo vive en el depósito privado `modelos-de-ingreso` de cada base, con su fila, y lo publica `scripts/publicar-modelo-de-ingreso.mjs`. La función lee la fila en cada pedido y baja el archivo sólo si cambió la huella; medido en una PC, no en Supabase: 41 ms la primera carga y 0,19 ms por estimación. El «límite de la sesión» no se construyó: ninguna función lo tiene, y esta no llama a ninguna fuente ni al modelo de lenguaje. La especificación de la API recibe `evaluacion` y la función `solicitudId`: los traduce `api-v1` cuando conecte esta puerta.
 6. **Capacidad de pago** (`capacidad-de-pago.ts`): un tipo de ingreso nuevo `estimado` junto a `sueldo`, `aporte_propio` y `declarado`. Se mide con el **mínimo certificado**, nunca con el valor central, y el resultado se rotula «ingreso estimado, sin verificar», como el Ingreso declarado.
 7. **Pantalla**: una tarjeta de ingreso con tres líneas posibles (verificado, estimado, referencia), con las etiquetas propias de CrediScope y sin explicar conceptos de crédito (pantallas para personal capacitado). **Los nombres los decide el negocio**; propuesta, a decidir: «Ingreso verificado», «Ingreso mínimo estimado» y «Referencia de su tipo».
 8. **Entrenamiento** (`scripts/predictor-ingresos/`, en Python, sin datos): reproduce las medidas de esta especificación y exporta el modelo. Hoy los guiones viven en `C:\datos\ingresos\scripts`.
@@ -356,6 +363,7 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
    El nivel 2 todavía las tiene (del extracto de AWS) y se decide al reentrenarlo desde las respuestas crudas de Equifax. Se repite con el lote completo (1.620 de las 2.162 sin respuesta buena).
 9. **Prueba en sombra del nivel 1** (12.30; `node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`): las personas de AWS reconsultadas en Novadata, con las variables armadas desde su perfil de CrediScope y evaluadas con `predictor-ingresos.ts`, contra su ingreso validado.
    Medida el 2026-10-29 con 532: el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y el del 85%, el 85,0%; hacia adelante en AWS, 89,1% y 84,8%. Se repite al completar el lote y con cada modelo nuevo del nivel 1, y no debería quedar más de dos puntos por debajo de la prueba hacia adelante.
+10. **De punta a punta** (`_shared/estimacion-de-ingreso.test.ts`): ocho perfiles inventados pasan por el selector, las variables y el modelo. Las variables se comparan con las calculadas aparte en Python desde estas definiciones (`scripts/predictor-ingresos/casos_de_estimacion.py`), y los cuantiles y montos, con el evaluador de referencia, sólo donde esté el modelo real.
 
 ## 10. Lo que falta decidir o conseguir
 

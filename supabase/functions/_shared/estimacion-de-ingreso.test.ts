@@ -92,7 +92,8 @@ Deno.test("el selector: cada segmento cae donde dice la especificación (3.2)", 
     ["empleo_domestico", [500], 0, "ingreso_verificado"],
     ["dependiente_privado", [], null, "dependiente_sin_monto"],
     ["jubilado", [], null, "jubilado"],
-    ["jubilado_con_ingreso_adicional", [800], null, "jubilado"],
+    ["jubilado_con_ingreso_adicional", [], null, "jubilado"],
+    ["jubilado_con_ingreso_adicional", [800], 0, "jubilado"],
     ["independiente", [], 1, null],
     ["ingresos_mixtos", [600], 1, null],
     ["agricola", [], 1, null],
@@ -100,6 +101,7 @@ Deno.test("el selector: cada segmento cae donde dice la especificación (3.2)", 
     ["informal_o_sin_actividad", [], 1, null],
     ["sin_datos", [], null, "sin_datos"],
     ["no_clasificado", [], null, "sin_datos"],
+    ["no_clasificado", [700], 0, "sin_datos"],
   ];
   for (const [segmento, montos, nivel, motivo] of casos) {
     const d = decidirEstimacion(conSueldos(segmento, montos));
