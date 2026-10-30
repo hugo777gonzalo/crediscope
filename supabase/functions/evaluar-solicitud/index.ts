@@ -341,7 +341,7 @@ Deno.serve(async (req) => {
   }
 
   // Una evaluación de la API la hace avanzar el trabajador, con sus reintentos y su
-  // plazo (137). La pantalla sólo la lee y anota la decisión (arriba): si tomara
+  // plazo (139). La pantalla sólo la lee y anota la decisión (arriba): si tomara
   // pasos, un analista que no es admin fallaría el del buró, y reabrir una
   // `fallida` cambiaría un estado que para la API es final.
   if (s.origen === "api") return responder({ error: "Esta evaluación la hace avanzar el trabajador de la API: acá sólo se lee y se anota la decisión." }, 409);

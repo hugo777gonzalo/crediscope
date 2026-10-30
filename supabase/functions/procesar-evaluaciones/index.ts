@@ -1,7 +1,7 @@
 // El trabajador de las evaluaciones de la API: toma las que están listas y corre
 // UN paso de cada una (perfil, buró, análisis, capacidad).
 //
-// Lo despierta la agenda de la base cada minuto (137), la puerta al recibir un
+// Lo despierta la agenda de la base cada minuto (139), la puerta al recibir un
 // pedido, y él mismo al terminar un paso que deja otro listo. Así una
 // evaluación de Plus no espera el minuto de la agenda entre un paso y el
 // siguiente; la agenda queda como red de seguridad si alguno se corta.
@@ -20,7 +20,7 @@
 // evaluación (`creada_por`), que es lo que pregunta un auditor.
 //
 // El tope de evaluaciones reclamadas a la vez está medido, no supuesto
-// (reclamar_evaluaciones, 137): con 24 consultas en paralelo Novadata duplicó
+// (reclamar_evaluaciones, 139): con 24 consultas en paralelo Novadata duplicó
 // su mediana y el 28% necesitó reintento; con 8 va más rápido y sin fallas.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

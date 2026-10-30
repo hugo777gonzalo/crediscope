@@ -32,16 +32,18 @@
 // del recálculo anterior, que dice de dónde venían.
 //
 // Uso:  node scripts/recalcular-fuentes-ingreso.mjs [--seco] [--forzar] [--carpeta=research/novadata-raw-2026-09-25]
-import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 import { candidatosDelUltimoPerfil, leerCrudo } from "./_comun/crudo-del-ultimo-perfil.mjs";
+import { cargarEntorno, raizPrincipal } from "./_comun/entorno.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SECO = process.argv.includes("--seco");
 const FORZAR = process.argv.includes("--forzar");
-const CARPETA = path.join(RAIZ, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
+// Desde un worktree, research/ y .env.functions son los de la carpeta
+// principal (_comun/entorno.mjs), igual que en recalcular-grupos.mjs.
+const CARPETA = path.join(raizPrincipal(RAIZ), process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
 const HOY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date());
 
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
@@ -61,11 +63,8 @@ const CAMPOS_LABORAL = [
 ];
 
 // Los secretos se leen del archivo y no se imprimen.
-const env = Object.fromEntries(
-  fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
-    .filter((l) => l.includes("=") && !l.startsWith("#"))
-    .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }),
-);
+cargarEntorno(RAIZ);
+const env = { SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY };
 if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("Falta SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en .env.functions");
 const cabeceras = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json" };
 // Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.

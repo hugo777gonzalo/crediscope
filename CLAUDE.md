@@ -229,6 +229,7 @@ Romper cualquiera de estas rompe algo real.
 | Guiones | `scripts/CLAUDE.md` (se carga solo) |
 | Equifax | `docs/equifax.md` |
 | La base de originación en AWS (requerimientos, ingresos, predictor) | `docs/base-aws-originacion.md` |
+| El predictor de ingresos (el de quien no lo tiene verificado) | `docs/especificacion-predictor-de-ingresos.md` (qué se construye y en qué orden), `docs/investigacion-predictor-de-ingresos.md` (por qué) y su estado, en el punto 18 de `docs/pendientes.md` |
 | El Laboratorio | `docs/laboratorio-guia.md`: el plan por pasos y, al final, cómo está construido |
 | Ponerle nombre a una pantalla o a una tabla | `docs/modelo-de-la-persona.md`: la persona, su árbol y sus estados |
 | La demo para una institución | `docs/plan-demo-ifi.md` |
@@ -338,6 +339,8 @@ al CLAUDE.md que le corresponde, y con su caso a `docs/lecciones.md`.
   UTC ya es la de mañana. Las fechas se formatean sólo con `src/lib/fechas.js`.
 - Un archivo de secretos guardado desde el Bloc de notas queda como `.env.txt` y git no
   lo ignora (la regla es `clientes/*.env`): `git check-ignore -v <archivo>` antes de leerlo.
+- Con squash, una rama fusionada nunca es ancestro de `main`. Antes de borrar una rama,
+  comparar su punta con la cabeza de su PR (`refs/pull/N/head`).
 
 ## Cómo se trabaja
 

@@ -11,38 +11,52 @@ lotes) se corre sólo con su autorización explícita y el costo estimado. Una l
 suelta para comprobar un despliegue está aceptada. **Cada consulta a Equifax se
 cobra** (USD 0,40): no se corre ninguna sin autorización.
 
-## Estado vigente (medido el 2026-10-20)
+## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **136** (2026-10-20); `ESQUEMA_MINIMO` está en 135.
-  Se midió en `esquema_version`.
-- **Funciones:** sello **`f09531e87adc`**, 10 de 10, desplegado el 2026-10-20 sobre el esquema
-  136 (`despliegues`; el anterior fue `da643d391546`).
+- **Base:** última migración aplicada, la **138** (2026-10-28; no hay 137: la del PR 82 pasó a 139);
+  lo desplegado tiene `ESQUEMA_MINIMO` en 138. Se midió en `esquema_version`.
+- **Funciones:** sello **`dabb60be9f3c`**, 10 de 10, desplegado el 2026-10-30 a las 00:20 sobre el
+  esquema 138 (`despliegues`; el anterior fue `626bb6c04685`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
-  reales; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
-  capacidad-v3. Las dos primeras salen de la base (`structure_version`, `fuente_version`); el
-  resto, del código de `main`.
-- **Datos:** 2.573 personas reales y 240 sintéticas; 207 análisis con marco-v28 y 8 con
-  marco-v30; 88 consultas de Equifax, de las que **sólo 1 está vigente** (el ciclo va del 18/10
-  al 17/11; las 87 anteriores caducaron). El modelo lleva **USD 9,63 de los 10** del
-  presupuesto de octubre.
-- **Control de seguridad:** 73 de 73 el 2026-10-19 (`auditar-seguridad.mjs`); desde un
-  worktree no se puede repetir entero, y no se volvió a correr.
+  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
+  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
+  (`structure_version`, `fuente_version`); el resto, del código de `main`.
+- **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
+  desde el 2026-10-21**, casi todas del lote de paridad del predictor del 2026-10-28 (1.176
+  independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
+  con crédito vigente»; `docs/investigacion-predictor-de-ingresos.md`, 12.29). Entran en los totales
+  de la cartera, la bandeja y Monitoreo como cualquier persona real, y 553 de sus perfiles quedaron
+  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). **Son cartera: no se marcan
+  aparte** (negocio, 2026-10-29).
+- **Análisis (2026-10-29, `analysis_results`):** 207 con marco-v28 (el último del 13/10) y 8 con
+  marco-v30 (el último del 18/10), todos de personas reales; **ninguno nuevo desde el 18/10**. Los 73
+  restantes son de versiones anteriores a la v28 (288 en total).
+- **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
+  87 anteriores caducaron).
+- **Modelo (2026-10-29, `gasto_del_mes`):** octubre lleva **USD 9,66 de los 10** del presupuesto
+  (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
+  vigía; no hubo análisis.
+- **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
+  carpeta principal), el primero después de la 138 y del despliegue del 2026-10-28. Sigue
+  marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
+  punto 2.15).
 
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
-   (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retoma la semana del
-   2026-10-19. Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
+   (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retomaba la semana del
+   2026-10-19, y esa semana pasó sin que entrara nada del Laboratorio a `main`. **Queda sin fecha**
+   (negocio, 2026-10-29). Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
    Lo hace Claude en una sesión (`docs/laboratorio-guia.md`, paso 1; sin pantallas nuevas hasta
    el paso 4). Se verifica con los conteos por origen y por análisis; antes hay que decidir el
    t0 de los 200 del lote del 07/10, que se analizaron sobre la consulta del 03/10.
 2. **API para la institución, Fase 1: lo que falta después del núcleo.** El núcleo del flujo
    Plus está construido (2026-10-21, PR de la rama `claude/api-plus-nucleo`, sin desplegar):
-   la cola en `solicitudes` (137), el trabajador `procesar-evaluaciones` y la puerta `api-v1`
+   la cola en `solicitudes` (139), el trabajador `procesar-evaluaciones` y la puerta `api-v1`
    con `POST` y `GET /evaluaciones`, idempotencia, `Prefer: wait`, errores RFC 9457, resultado
    con positivos, negativos y razonamiento, y `cumple` en la capacidad. **No está desplegado:**
-   la 137 se aplica recién fusionada y antes de `--funciones` (sube `ESQUEMA_MINIMO`), y el
+   la 139 se aplica recién fusionada y antes de `--funciones` (sube `ESQUEMA_MINIMO`), y el
    número se toma al aplicarla. Falta:
    - **OAuth con `private_key_jwt`** y la tabla de clientes de API con sus alcances: hoy la
      puerta exige la sesión de un administrador (apagada para terceros);
@@ -135,19 +149,22 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    encender el buró en lo que lee el modelo (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
-   Y octubre lleva USD 9,63 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
-2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` está en 10 y octubre lleva
-   USD 9,63: pasó los avisos del 70 y el 85%. Confirmar el monto que quiere el negocio. El
-   límite de la consola de Anthropic es otro y manda: en septiembre cortó el 28 con USD 6,00
-   medidos por nosotros, antes de nuestro aviso. Nuestro presupuesto tiene que ser el de la
-   consola o menor. Se verifica comparando los dos límites.
+   Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
+   octubre lleva USD 9,66 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
+   antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
+   el negocio, porque Claude no ve la consola.
 3. **Marco por cliente y adelgazar el marco.** Hecho y apagado (`marcoPorCliente` en
    `CONFIG_LLM`): omite las secciones que el perfil no trae y baja el marco de ~12.050 a
    ~9.100 tokens (~USD 0,006 por análisis). Falta autorizar la validación
    (`comparar-razonamiento.mjs --configs=hoy,porCliente`, 14 casos, ~USD 2): tiene que quedar
    dentro del ruido (±40 de score, 1 de 13 recomendaciones). Después, una versión nueva con
    el número libre y su fila, y guardar qué secciones se omitieron.
-4. **El marco y el modelo, al final** (decisión del negocio). Que el modelo lea la solicitud,
+4. **El marco y el modelo, al final** (decisión del negocio). **La próxima versión del marco se
+   hace con los resultados del predictor de ingresos** (negocio, 2026-10-29): el ingreso estimado y
+   su rango (punto 2.18). Que el modelo lea la solicitud,
    la cuota y la capacidad (P3 del plan de la demo) es una versión nueva del marco. Se suman a
    esa versión: el texto de `antiguedadEmpleoActualMeses` null (desde v14 también significa
    «su afiliación vigente no es trabajo»: 37 de 2.567 perfiles) y, si el negocio lo pide,
@@ -231,19 +248,77 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (borrador del 2026-10-21; nada construido). Decidido el 2026-10-21: el **patrimonio solo se
-    solicita a petición de un analista** (no es una entrada inicial; el nivel 3 es una reestimación).
-    El SRI de las respuestas de Equifax guardadas en AWS ya se extrajo (autorizado por el negocio) y
-    sube el nivel 1 de R² 0,091 a 0,172: solo existe en las 105.070 respuestas JSON de 2026
-    (`docs/investigacion-predictor-de-ingresos.md`, 12.24). Lo que falta decidir o conseguir está en
-    la sección 10 de la especificación: qué se hace con los gastos declarados y con la entrada del
-    crédito; cómo se pide el patrimonio al titular; cotejar el SRI de Novadata con el de Equifax en más
-    de 87 personas (y si el texto de la actividad de los establecimientos de Novadata da un CIIU);
-    casos con ingreso verificado de cada institución para calibrar; la base de 3,9 millones del
-    proveedor; y los códigos de afiliación y categoría de la ENIGHUR, la ENEMDU y el censo (el INEC).
-    El primer paso de construcción es extraer `AnalisisCreditoSectorFinanciero` en
-    `equifax-tablas.ts` (sus campos son las variables más pesadas del nivel con buró y hoy no se
-    derivan).
+    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están los pasos 1 y
+    2 y el entrenamiento, y el predictor no está desplegado: ninguna función usa `predictor-ingresos.ts`). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
+    tiene dos niveles (1: Novadata con su SRI; 2: Novadata y buró de Equifax). **Aclarado el 2026-10-28
+    (12.27): no hay calibración por producto.** AWS es crédito automotriz en su 96% (54.906 de 57.061
+    independientes; 68 de consumo), pero el negocio dijo que automotriz y consumo son lo mismo: el
+    valor financiado es el mismo (consumo 20.000; automotriz 20.000 más 5.000 de entrada, un auto de
+    25.000, con 20.000 financiados), y lo que importa es el predictor general de Equifax. Se conserva el
+    dato, no la propuesta de «sin calibrar para consumo». **Destilación (12.28):** hay 400.000
+    consultas a Equifax con predictor en cinco años; medido, destilar no mejora la predicción del
+    ingreso validado (R² 0,341 el nivel 2 solo; 0,349 con el predictor de Equifax mismo) y serviría para
+    independizarse de ese predictor. El negocio dijo el 2026-10-29 que la quiere para mejorar la
+    asertividad, que es justo lo que lo medido no respalda (sumar el alumno al nivel 2 lleva el R² de
+    0,341 a 0,342): falta decidir si se hace igual.
+    **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Novadata (más la
+    fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
+    va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
+    con los resultados del predictor.
+
+    **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
+    `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
+    `scripts/predictor-ingresos/`), PR 87 (calibración, robustez del nivel 1, exportación compacta y
+    casos de oro) y PR 89 (el evaluador `_shared/predictor-ingresos.ts`, paso 2: lee el formato
+    `crediscope-arboles-1` sin dependencias, para Deno y el navegador; la prueba de oro dio diferencia 0
+    en el logaritmo en los 200 casos de cada nivel contra el modelo real, en local con
+    `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
+    **Fusionado el 2026-10-29 (PR 96):** el nivel 1 reentrenado con 8 variables
+    (R² de 0,157 contra 0,172 del anterior; hacia adelante el mínimo del 90% cubre 89,1% contra 88,1%, y
+    calibrado, 90,4%), exportado a `C:\datos\ingresos\modelos\exportado\` con sus casos de oro (prueba de
+    oro con diferencia 0), `variables-de-ingreso.ts` con el nivel nuevo y el sexo de Novadata, y la
+    prueba en sombra con el perfil de CrediScope de 532 personas de AWS: 89,1% (86,5 a 91,7), lo mismo
+    que hacia adelante en AWS.
+
+    **Lo que sigue, en este orden:**
+    1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
+       consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
+       La del PR 82 pasó de 137 a 139 el 2026-10-30 (una 137 no se habría aplicado nunca).
+    2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
+       de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
+       paso 4 (punto 6).
+    3. **Lo que quedó del obligado y del RUC activo** (estructura-v15 y fuentes-v11, PR 97, desplegado y
+       recalculado el 2026-10-30; 12.31). El perfil guarda el obligado, el nivel 1 lo lee de ahí y la prueba
+       en sombra «a la consulta» ya da lo mismo que «con el obligado» (R² 0,187; 89,1%).
+       - `fuentes-ingreso.ts` reconoce sólo «SI» para el indicio de ingreso mayor y el tamaño del negocio, y
+         no ve la «S» (4 de 2.567 en el crudo del 03/10): pasarlo a `obligadoALlevarContabilidad()` de
+         `ruc.ts` cambia lo que lee el modelo. Va con la próxima versión del marco (decisión del negocio).
+       - La «S» no está cotejada contra Equifax (ninguna de las 87 la trae).
+       - El recálculo pasó 60 personas del lote de «sin datos» a «independiente» por el RUC activo, 56 de
+         ellas de las respuestas que el HTTP 502 dejó incompletas: se revisan con ellas (punto 4).
+    4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
+       respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
+       con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de
+       Equifax; con el sí del negocio. Revisar además los 553 perfiles que el HTTP 502 dejó guardados con
+       la respuesta incompleta (el guion los contó como hechos). La prueba en sombra se repite tal cual
+       (`node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`).
+       Las 542 de 12.29 sí tienen RUC en Novadata (512): lo que no tienen es el SRI de Equifax.
+    5. Reentrenar el nivel 2 desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19
+       variables que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
+       respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja); recalibrar y volver a
+       exportar. Todavía lleva el estado civil, la zona y el IESS del extracto de AWS: decidir si se sacan
+       como en el nivel 1 (en 12.26 costaban 0,004 de R²).
+    6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
+       de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
+       (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
+    7. Las tablas, la función y la operación de la API (pasos 4 y 5 de la sección 6): `modelos_de_ingreso`,
+       `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
+    8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
+
+    **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
+    las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
+    Novadata con el de Equifax en más de 87 personas.
 
 ## 3. Espera a terceros
 
@@ -341,18 +416,20 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
 
 ## 6. Limpieza
 
-1. **Carpetas de trabajo** (`git worktree list`, 2026-10-20; no se borró nada):
-   - `cool-jemison-2a674d`: su commit ya está en `main`, sin cambios, y E27 ya no la usa: se
-     puede borrar. `xenodochial-albattani-950de3` ya no existe.
-   - `quirky-bhaskara-71c218`, `simulador-credito` y `siint-docs-lote`: sin cambios, pero sus
-     commits no son ancestros de `main` (squash): revisar antes de borrar.
-   - `reglas-pantallas`: 8 archivos sin commitear, la usa otra sesión.
-2. **Ramas locales:** hay 50, 16 con la rama remota ya borrada y sólo 6 son ancestros de
-   `main`. Borrar las que se fusionaron con squash lo hace el negocio o una sesión con permiso.
-3. **PR abiertos:** el #32 (documentación de E27 que dice que «quedan los atributos protegidos»)
-   quedó contra la decisión del 2026-10-20: cerrarlo o actualizarlo. El #55 es de Dependabot
-   (seis actualizaciones menores): revisar con los controles.
-4. **Cartera sintética del Laboratorio** (carga «Cartera sintética (semilla 1)»): se queda, es
+1. **Ordenado el 2026-10-28** (con el sí del negocio): se fusionaron el PR 91 (paridad, 12.29) y el
+   55 (Dependabot), y el 32 se cerró sin fusionar porque contradecía la decisión del 2026-10-20 sobre
+   E27 (su rama `claude/heuristic-noether-e0671c` se conserva). Se borraron 32 ramas remotas y 58
+   locales de PR ya fusionados, y 6 carpetas de trabajo. Antes de borrar cada rama se comprobó que su
+   punta estuviera dentro de la cabeza de su PR: los PR se fusionan con squash, así que «no es
+   ancestro de `main`» no dice si hay trabajo perdido. Así apareció un commit del 2026-10-21 que no
+   había entrado: entró con el PR que trae esta nota. Las 20 líneas sin commitear de la carpeta de un
+   agente (las etiquetas del veredicto de capacidad para un marco-v32 que no existe) quedaron en
+   `research/parches/`, fuera de git.
+2. **Quedan** las carpetas `cranky-goodall-f18441` (PR 82) y `suspicious-gagarin-e12f62` (la sesión
+   de la paridad), con sus ramas. `claude/postgres-aws-data-review-66a14e` y
+   `claude/cranky-goodall-f18441` son de PR fusionados (79 y 66), pero las nombra la sesión de la
+   API: se borran cuando se archive.
+3. **Cartera sintética del Laboratorio** (carga «Cartera sintética (semilla 1)»): se queda, es
    la que prueba los cálculos. Si se regenera, anular la anterior desde la pantalla.
 
 ## Para ubicar

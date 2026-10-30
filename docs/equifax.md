@@ -69,10 +69,12 @@ Lo abierto está en `docs/pendientes.md`; el diseño y lo medido, en
     El proveedor `equifax` nace apagado en `proveedores`.
   - **Del crudo a las tablas y a la estructura** (126, 2026-10-13; el
     diseño y lo medido, en `docs/propuesta-estructura-equifax.md`):
-    - `_shared/equifax-tablas.ts` → `derivarTablas()`: el crudo en 11 tablas
+    - `_shared/equifax-tablas.ts` → `derivarTablas()`: el crudo en 12 tablas
       `equifax_*` (operaciones, historia mensual, deuda por sistema y mes,
       vencimientos, tarjetas, créditos, consultas recibidas, scores,
-      indicadores por período, `equifax_codeudor_garante` y `equifax_resumen`).
+      indicadores por período, `equifax_codeudor_garante`, `equifax_resumen` y,
+      desde la v2 (138), `equifax_analisis_credito`: las diez variables de crédito
+      del predictor de ingresos, que son una señal y NO un saldo).
       Pura, determinista y versionada (`EQUIFAX_TABLAS_VERSION`). Sin datos
       personales: se quedan sólo en el crudo.
     - `_shared/equifax-estructura.ts` → `calcularEstructura()`: la estructura

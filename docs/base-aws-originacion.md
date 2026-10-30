@@ -62,7 +62,7 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
    CONDICIONADO; APROBADO es opcional y menos confiable (puede que no se haya recogido todo el
    ingreso). Las variantes OK FACTURAR SD y SD CONDICIONADO están inactivas en el catálogo y sus
    titulares tienen ingreso con menos frecuencia (37% sin ingreso validado contra 6% en OK FACTURAR);
-   **qué significa «SD» no está confirmado.**
+   **«SD» es «sin documentos»** (el negocio, 2026-10-22): el analista decide no pedirle al cliente respaldo de ingresos, patrimonio ni estabilidad.
 4. **El `IncomePredictor` de Equifax es `resultado_segmentacion.income_predicator`.** Coincide con
    el campo `IncomePredictor` de la respuesta cruda (`consulta_equifax.response_json` desde 2025,
    `response` en XML antes) en 10.000 de 10.000 consultas muestreadas de 2021 a 2026.
@@ -162,9 +162,15 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
     El 93% de los independientes sin respuesta lleva «INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS».
     **El catálogo `respuesta_comercial` trae la marca `consumo`: verdadera para APROBADO, APROBADO
     CONDICIONADO, PENDIENTE y RECHAZADO; falsa para la familia OK FACTURAR (que lleva
-    `seguimiento`).** Parte de la diferencia por respuesta puede ser de producto (consumo contra
-    automotriz) y no de calidad del dato. Las medianas de ingreso de esta tabla son por flujo; las
-    de la otra sesión son por persona y no coinciden.
+    `seguimiento`).** Se pensó que parte de la diferencia por respuesta era de producto (consumo
+    contra automotriz); **no lo es** (negocio y datos, 2026-10-26): el cruce con `tipo_producto` da
+    que todas las familias de respuesta son automotrices, y de los 57.061 independientes del
+    entrenamiento del predictor, 54.906 son automotrices, 68 de consumo y 2.087 sin tipo
+    (`docs/investigacion-predictor-de-ingresos.md`, 12.27). **Casi toda la base es crédito
+    automotriz.** El negocio decidió el 2026-10-28 que automotriz y consumo son lo mismo: lo que se
+    compara es el valor financiado (la entrada no se financia), así que no hay calibración por
+    producto (12.27). Las medianas de ingreso de esta tabla son por flujo; las de la otra sesión son por
+    persona y no coinciden.
 14. **Motivos y condiciones.** De los 42.860 RECHAZADO, el 7,5% no guarda motivo; los más frecuentes
     (`motivos_respuesta` → `motivo_etapa` → `motivo`) son «Sin capacidad de pago» 31.450, «Fuera de
     política interna» 23.606, «Sin estabilidad mínima requerida» 7.327, «Irregular récord de pagos»
@@ -193,7 +199,8 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
 17. **Cuota de Equifax.** `cuota_estimada_mensual.pago` es idéntico a `cuota_financiera` en las 100.498
     consultas con JSON, y el punto «Actual» del historial también. **El historial tiene cinco
     puntos, no tres: −12, −6, actual, +6 y +12 meses (los dos últimos son proyecciones)** y solo
-    existe en el JSON (desde diciembre de 2025); en el XML anterior no está. `indicador_covid.cuota_financiera`
+    existe en el JSON (desde diciembre de 2025, 100.536 consultas); en el XML anterior (288.969) no
+    está, y allí `cuota_financiera` es numérica en el 83,2%. `indicador_covid.cuota_financiera`
     es texto: 48.638 valores son «No tiene deuda» o «-», y hay un máximo de 8,35 millones. En
     `detalle_deuda_actual_*` las filas sin tipo de crédito ni de riesgo (423.546) son **totales por
     sistema**: sumarlas con el detalle duplica (5% de coincidencia con la cuota financiera); solas
@@ -234,22 +241,33 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
   sale del nombre de la columna.
 - Si las tres tablas `detalle_deuda_actual_*` se solapan (la cuota que se suma puede duplicar
   operaciones) y el rol (titular, codeudor, garante) de cada operación.
-- Qué es «SD», qué es «verificado» en los lotes y cómo se arma `trabajos_persona_requerimiento.promedio`.
+- Qué es «verificado» en los lotes y cómo se arma `trabajos_persona_requerimiento.promedio`. («SD» ya se respondió: sin documentos, 2026-10-22.)
 - Dónde queda guardado el predictor «corregido» desde abril de 2026 (tabla de factores del «Ingreso V3»):
   lo guardado en `resultado_segmentacion` es idéntico al crudo de `consulta_equifax` en todas las semanas
   desde 2025-10-01. Y qué cambió en la salida de Equifax el 2026-01-14 y el 2026-03-02.
 - Si el valor de «INGRESO DECLARADO» lo escribe la persona, el asesor o la integración con el concesionario
   (54.437 flujos dicen «INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS»).
-- Si la marca `consumo` de `respuesta_comercial` quiere decir que la familia APROBADO es el flujo de
-  consumo y la familia OK FACTURAR el automotriz (es lo que sugiere el catálogo, no se confirmó), y si
-  `estado_requerimiento` FINALIZADO significa facturado.
-- Si las observaciones «RECUPERADO NOVADATA MENOS IESS» (unos 1.165 flujos) son los ingresos adicionales
-  de dependientes: es una inferencia por el texto. Y si los puntos +6 y +12 meses del historial de cuota
-  son proyecciones (también por la etiqueta).
+- Qué quiere decir la marca `consumo` de `respuesta_comercial`: **no separa el producto** (todas las familias
+  son automotrices, 2026-10-26). `estado_requerimiento` FINALIZADO es que el requerimiento terminó todo el
+  proceso con una respuesta final; **no significa facturado** (negocio, 2026-10-26).
+- Si los puntos +6 y +12 meses del historial de cuota son proyecciones (es por la etiqueta).
+- Resuelto: las observaciones «RECUPERADO NOVADATA MENOS IESS» **no** son ingresos adicionales de
+  dependientes. De los 1.496 flujos cuya observación nombra al IESS, 1.178 (79%) son de actividad
+  principal y 318 de secundaria (1.449 personas), casi todos de fuente IESS: es el salario recuperado
+  de Novadata al que el analista le restó el aporte personal al IESS (cerca de 9,45%), o sea un
+  salario neto. No se pueden contrastar con `iess_mismo_mes.csv`: ninguna de esas personas tiene
+  promedio de Novadata ni salario del último mes. Verificado también: ingreso = suma de montos por
+  tipo en el 99,9% de los flujos con algún monto, e ingreso / ventas = rentabilidad en el 81,9% de
+  los 24.707 con ventas (`docs/investigacion-predictor-de-ingresos.md`, 12.15).
 - Por qué el 17% de los movimientos bancarios y de IVA no cumple ingreso = ventas × rentabilidad (razones
   de 0,05 a 0,07, que parecen la declaración de IVA semestral).
-- Cómo se arma el `total_ingresos` de la vista de BI (`v_reporte_bi`) y si el ingreso del cónyuge se suma
-  al del titular en alguna decisión.
-- Quién fijó `macroactividad.rentabilidad` y si cambió: la tabla no tiene autor ni fecha.
+- Cómo se arma el `total_ingresos` de la vista de BI (`v_reporte_bi`). La pantalla de flujo de efectivo del
+  sistema sí suma el ingreso del titular y el del cónyuge (visto en una captura del negocio, 2026-10-22);
+  falta confirmar que la vista de BI use el mismo total.
+- Si `macroactividad.rentabilidad` cambió: **las fija crédito** (el negocio, 2026-10-22), sobre un flujo real de
+  ingresos de la actividad (estados de cuenta y declaraciones de IVA) y según el giro del negocio; la tabla
+  no tiene autor ni fecha, así que un cambio no se vería. **Por confirmar:** el ejemplo que dio el negocio
+  (comercio 40% y construcción 30%) no coincide con la tabla (comercio y servicios generales 0,30; construcción 0,40).
+- Qué significan «alerta de ingreso» y «alerta de antigüedad» de la pantalla de flujo de efectivo y si la base las guarda.
 - **Si el contrato con Equifax permite entrenar un modelo propio con sus salidas.** No se revisó.
 - Si el usuario de la base es de solo lectura.

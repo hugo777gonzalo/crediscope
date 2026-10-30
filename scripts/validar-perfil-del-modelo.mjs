@@ -36,9 +36,9 @@
 //      algún perfil (si no, está mal escrito y nunca se sacaría).
 //
 // Uso:  node scripts/validar-perfil-del-modelo.mjs
-import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { cargarEntorno } from "./_comun/entorno.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
@@ -46,11 +46,9 @@ const { armarPerfilDelModelo, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN, ATRIBUTO
 const { clasificarPerfilLaboral } = await compartido("perfil-laboral.ts");
 
 // Los secretos se leen del archivo y no se imprimen.
-const env = Object.fromEntries(
-  fs.readFileSync(path.join(RAIZ, ".env.functions"), "utf8").split(/\r?\n/)
-    .filter((l) => l.includes("=") && !l.startsWith("#"))
-    .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }),
-);
+// Desde un worktree, .env.functions es el de la carpeta principal (_comun/entorno.mjs).
+cargarEntorno(RAIZ);
+const env = { SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY };
 const cabeceras = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
 async function pedir(url, extra = {}) {
   const r = await fetch(url, { headers: { ...cabeceras, ...extra } });

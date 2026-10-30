@@ -86,7 +86,7 @@ su guía: `docs/equifax.md`.
   proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
   el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
 - **La API para instituciones (núcleo, 2026-10-21; todavía sin desplegar).** Una evaluación
-  de la API es una fila de `solicitudes` con `origen = 'api'` (137): los mismos pasos y
+  de la API es una fila de `solicitudes` con `origen = 'api'` (139): los mismos pasos y
   módulos que usa la pantalla, y la `modalidad` decide cuáles corren (un flujo nuevo es una
   entrada más en `MODALIDADES`, no un camino aparte). Quien la hace avanzar es el trabajador,
   no la pantalla:
@@ -120,6 +120,19 @@ su guía: `docs/equifax.md`.
     puntero JSON de cada campo. Las funciones que no atiende un navegador usan
     `cabecerasSinCors()`, que sí lleva el sello del despliegue (el corredor lo confirma con
     OPTIONS).
+- `variables-de-ingreso.ts` — el vector de entrada del predictor de ingresos (niveles 1 y 2)
+  desde el perfil y las tablas de Equifax (`equifax_analisis_credito`, desde la 138). Una sola
+  implementación: lo que no coincide con el extracto de AWS con el que se entrenará el modelo
+  queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
+  se mide con `node scripts/probar-paridad-variables-de-ingreso.mjs` (necesita `research/`).
+  Sin RUC es un dato; sin respuesta de la fuente no lo es.
+- `predictor-ingresos.ts` — el evaluador del predictor de ingresos: lee el modelo exportado
+  (`crediscope-arboles-1`, `scripts/predictor-ingresos/FORMATO.md`), evalúa los doce cuantiles en
+  logaritmo y arma la respuesta (`estimarIngreso()`). El Python `evaluador_referencia.py` es la
+  definición: ante una duda manda él. La prueba de oro usa el modelo real (fuera de git) sólo si
+  existe `PREDICTOR_INGRESOS_MODELOS`; en la integración continua corre un modelo chico inventado.
+  Un modelo nuevo no cambia el formato. En Windows la prueba con el modelo real se corre desde
+  PowerShell: Git Bash cambia las rutas de `--allow-read`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
@@ -262,6 +275,11 @@ su guía: `docs/equifax.md`.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
   establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).
+  Inactivo sólo con una fecha que lo respalde (negocio, 2026-10-29,
+  estructura-v15): sin fecha de inscripción es un RUC; un establecimiento que
+  reabrió después de su último cierre está abierto aunque el estado diga
+  cerrado, y uno sin estado, salvo una fecha de cierre. Un «ABIERTO» sin la
+  fecha de reapertura sigue abierto, y un «CERRADO» sin fechas, cerrado.
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con
@@ -271,6 +289,11 @@ su guía: `docs/equifax.md`.
 - Parámetros anuales en `fuentes-ingreso.ts`: `SBU_POR_ANIO` y
   `FRACCION_BASICA_RENTA`. Un año sin renta no da indicio; al agregarlo,
   correr `calcular-columnas-del-perfil.mjs`.
+- **Predictor de ingresos** (`docs/especificacion-predictor-de-ingresos.md`):
+  una variable de entrenamiento sale de la misma función que la sirve, o se
+  mide su paridad antes de usarla. La actividad y la antigüedad declaradas de
+  AWS coincidían con el SRI en el 58% y el 19%; no se usaron
+  (`docs/lecciones.md`).
 
 **Buró, Aval y Función Judicial** (Equifax, en `docs/equifax.md`)
 - Buró de Novadata: `riesgo` T/G/C separa lo propio de lo garantizado;
@@ -317,6 +340,11 @@ su guía: `docs/equifax.md`.
     antes de borrarlo con `relacionConEmpleador()` (`patrono.ts`, la misma
     que usa `process.ts`). El modelo no infiere parentescos de nombres: dejó
     de hacerlo solo en v8, por eso se calcula en el código desde v17.
+  - Lo que el perfil guarda sólo para el predictor de ingresos no llega
+    (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`).
+    El obligado a llevar contabilidad (estructura-v15) ya le llega
+    interpretado en `fuentesIngreso`, y así el mensaje siguió siendo el de
+    marco-v30 (decisión del negocio del 2026-10-29).
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números

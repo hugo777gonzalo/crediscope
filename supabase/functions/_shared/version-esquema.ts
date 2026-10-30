@@ -18,10 +18,13 @@
 // de una migración nueva: primero se migra, después se despliega.
 // 134: evaluar-solicitud anota la decisión (decidir_solicitud) y evaluada_el.
 // 135: evaluar-solicitud guarda autorización, referencia, operador, prioridad y reemplazaA.
-// 137: api-v1 y procesar-evaluaciones usan la cola de las evaluaciones de la API
+// 138: la consulta de Equifax guarda equifax_analisis_credito (equifax-tablas-v2). Sin ella el código marcaría
+//      la consulta como derivada con la v2 y la tabla quedaría vacía sin que nada lo avisara.
+// 139: api-v1 y procesar-evaluaciones usan la cola de las evaluaciones de la API
 //      (origen, clave de idempotencia, plazo, reclamo, reclamar_evaluaciones) y el
-//      origen 'api' de las consultas de Equifax.
-export const ESQUEMA_MINIMO = 137;
+//      origen 'api' de las consultas de Equifax. Se escribió como 137 y pasó a 139
+//      porque la 138 se aplicó antes.
+export const ESQUEMA_MINIMO = 139;
 
 let verificada: number | null = null;
 

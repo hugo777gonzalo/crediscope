@@ -4,9 +4,10 @@
 -- ATENCIÓN AL APLICAR: este archivo lleva marcadores (<<PROYECTO_URL>>,
 -- <<VIGIA_CLAVE>>) en la tarea programada del final. El corredor
 -- (`node scripts/migrar-clientes.mjs`) los rellena desde el archivo de
--- secretos de cada base. El número 137 es el libre al escribirla (2026-10-21):
--- se toma al aplicarla, y si otra migración entró antes se renumera junto con
--- ESQUEMA_MINIMO (regla dura 1 de CLAUDE.md).
+-- secretos de cada base. Se escribió como 137 el 2026-10-21 y pasó a 139 el
+-- 2026-10-30, porque la 138 se aplicó antes: el corredor sólo aplica los números
+-- mayores que el último, y una 137 no se habría aplicado nunca. El número se
+-- toma al aplicarla, junto con ESQUEMA_MINIMO (regla dura 1 de CLAUDE.md).
 --
 -- QUÉ ES
 --
@@ -54,7 +55,7 @@ alter table solicitudes
   add column garantia            text check (garantia is null or length(garantia) <= 200);
 
 comment on column solicitudes.origen is
-  'pantalla = la evalúa un analista paso a paso (evaluar-solicitud); api = la hace avanzar el trabajador procesar-evaluaciones (137).';
+  'pantalla = la evalúa un analista paso a paso (evaluar-solicitud); api = la hace avanzar el trabajador procesar-evaluaciones (139).';
 comment on column solicitudes.reclamada_hasta is
   'El trabajador la tiene reclamada hasta esta hora. Si se corta a la mitad, el reclamo vence solo y otro la retoma; el paso que dejó en curso se da por caído a los 3 minutos (modalidades.ts).';
 comment on column solicitudes.proximo_intento_el is

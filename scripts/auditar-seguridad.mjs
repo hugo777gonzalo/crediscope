@@ -291,6 +291,7 @@ for (const tabla of [
   // Lo que Equifax dijo de cada persona, descompuesto en tablas (126).
   "equifax_operaciones", "equifax_historia_mensual", "equifax_deuda_por_sistema_y_mes", "equifax_vencimientos", "equifax_tarjetas", "equifax_creditos",
   "equifax_consultas_recibidas", "equifax_scores", "equifax_indicadores_por_periodo", "equifax_codeudor_garante", "equifax_resumen",
+  "equifax_analisis_credito",
   "audit_log", "profiles", "lotes", "lab_solicitudes",
   // Las solicitudes de crédito (133).
   "solicitudes",
@@ -327,7 +328,7 @@ const cuerpos = {
   "simular-credito": { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 },
   "capacidad-de-pago": { cedula: "abc", solicitud: { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 } },
   "evaluar-solicitud": { accion: "avanzar", id: "00000000-0000-0000-0000-000000000000" },
-  // La puerta de la API (137): cada pedido crea una evaluación que, en Plus, puede
+  // La puerta de la API (139): cada pedido crea una evaluación que, en Plus, puede
   // cobrar al buró. Con la clave pública no hay sesión de administrador.
   "api-v1": {},
 };
