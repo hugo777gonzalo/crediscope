@@ -6,7 +6,9 @@
 #                              (el SRI solo existe desde diciembre de 2025: partir por fecha es la prueba que se parece al uso real).
 #   completo/                  entrenado con todo 2026; el que se exporta (`exportar.py`).
 #
-#   python -I scripts/predictor-ingresos/entrenar.py [--solo=validacion|completo]
+#   python -I scripts/predictor-ingresos/entrenar.py [--solo=validacion|completo] [--nivel=1|2]
+#
+# `--nivel` reentrena uno solo: el otro conserva su carpeta y su manifiesto (el 2026-10-29 cambió solo el nivel 1).
 import sys
 import time
 from pathlib import Path
@@ -31,8 +33,9 @@ def entrenar(t, nivel, carpeta, motivo):
 
 def main():
     solo = next((a.split("=")[1] for a in sys.argv[1:] if a.startswith("--solo=")), None)
+    niveles = [int(a.split("=")[1]) for a in sys.argv[1:] if a.startswith("--nivel=")] or [1, 2]
     t = c.cargar_tabla()
-    for nivel in (1, 2):
+    for nivel in niveles:
         if solo in (None, "validacion"):
             entrenar(t[t.t < c.CORTE_FECHA], nivel, c.MODELOS / "validacion-hasta-2026-06" / f"nivel{nivel}", "validación por fecha: entrenado hasta junio de 2026")
         if solo in (None, "completo"):
