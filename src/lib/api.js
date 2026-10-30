@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 import { inicioDelDia, finDelDia, diaEcuador } from "./fechas.js";
 import { traerTodas } from "./paginar.js";
 import { errorDeFuncion } from "./errorDeFuncion.js";
+import { PREFIJO_DE_LA_IDENTIFICACION_SIMULADA } from "../../supabase/functions/_shared/identificacion.ts";
 
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
@@ -282,6 +283,8 @@ export async function getSolicitudesRecientes({ limite = 8 } = {}) {
   const { data, error } = await supabase
     .from("solicitudes")
     .select("id, identificacion, modalidad, monto, plazo_meses, estado, creada_el, decision, resultado->analisis->recomendacion, resultado->capacidad->capacidad->veredicto")
+    // Una prueba del sandbox de la API no es una solicitud de nadie.
+    .not("identificacion", "like", `${PREFIJO_DE_LA_IDENTIFICACION_SIMULADA}%`)
     .order("creada_el", { ascending: false })
     .limit(limite);
   if (error) throw error;
