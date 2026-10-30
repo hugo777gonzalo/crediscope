@@ -28,8 +28,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
   con crédito vigente»; `docs/investigacion-predictor-de-ingresos.md`, 12.29). Entran en los totales
   de la cartera, la bandeja y Monitoreo como cualquier persona real, y 553 de sus perfiles quedaron
-  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). Falta decidir con el negocio si se
-  marcan aparte.
+  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). **Son cartera: no se marcan
+  aparte** (negocio, 2026-10-29).
 - **Análisis (2026-10-29, `analysis_results`):** 207 con marco-v28 (el último del 13/10) y 8 con
   marco-v30 (el último del 18/10), todos de personas reales; **ninguno nuevo desde el 18/10**. Los 73
   restantes son de versiones anteriores a la v28 (288 en total).
@@ -47,8 +47,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
    (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retomaba la semana del
-   2026-10-19, y esa semana pasó sin que entrara nada del Laboratorio a `main` (al 2026-10-29). Falta
-   que el negocio diga cuándo. Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
+   2026-10-19, y esa semana pasó sin que entrara nada del Laboratorio a `main`. **Queda sin fecha**
+   (negocio, 2026-10-29). Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
    Lo hace Claude en una sesión (`docs/laboratorio-guia.md`, paso 1; sin pantallas nuevas hasta
    el paso 4). Se verifica con los conteos por origen y por análisis; antes hay que decidir el
    t0 de los 200 del lote del 07/10, que se analizaron sobre la consulta del 03/10.
@@ -107,18 +107,21 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
    Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
-2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` está en 10 y octubre lleva
-   USD 9,66 (2026-10-29): pasó los avisos del 70 y el 85%. Confirmar el monto que quiere el negocio. El
-   límite de la consola de Anthropic es otro y manda: en septiembre cortó el 28 con USD 6,00
-   medidos por nosotros, antes de nuestro aviso. Nuestro presupuesto tiene que ser el de la
-   consola o menor. Se verifica comparando los dos límites.
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
+   octubre lleva USD 9,66 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
+   antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
+   el negocio, porque Claude no ve la consola.
 3. **Marco por cliente y adelgazar el marco.** Hecho y apagado (`marcoPorCliente` en
    `CONFIG_LLM`): omite las secciones que el perfil no trae y baja el marco de ~12.050 a
    ~9.100 tokens (~USD 0,006 por análisis). Falta autorizar la validación
    (`comparar-razonamiento.mjs --configs=hoy,porCliente`, 14 casos, ~USD 2): tiene que quedar
    dentro del ruido (±40 de score, 1 de 13 recomendaciones). Después, una versión nueva con
    el número libre y su fila, y guardar qué secciones se omitieron.
-4. **El marco y el modelo, al final** (decisión del negocio). Que el modelo lea la solicitud,
+4. **El marco y el modelo, al final** (decisión del negocio). **La próxima versión del marco se
+   hace con los resultados del predictor de ingresos** (negocio, 2026-10-29): el ingreso estimado y
+   su rango (punto 2.18). Que el modelo lea la solicitud,
    la cuota y la capacidad (P3 del plan de la demo) es una versión nueva del marco. Se suman a
    esa versión: el texto de `antiguedadEmpleoActualMeses` null (desde v14 también significa
    «su afiliación vigente no es trabajo»: 37 de 2.567 perfiles) y, si el negocio lo pide,
@@ -207,7 +210,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     dato, no la propuesta de «sin calibrar para consumo». **Destilación (12.28):** hay 400.000
     consultas a Equifax con predictor en cinco años; medido, destilar no mejora la predicción del
     ingreso validado (R² 0,341 el nivel 2 solo; 0,349 con el predictor de Equifax mismo) y serviría para
-    independizarse de ese predictor. Está abierto qué quiere lograr el negocio con la destilación.
+    independizarse de ese predictor. **El negocio la quiere para mejorar la asertividad del predictor**
+    (2026-10-29). Lo medido dice que por sí sola no la mejora (sumar el alumno al nivel 2 lleva el R²
+    de 0,341 a 0,342), así que antes de construirla hay que proponer qué haría distinto.
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
@@ -229,11 +234,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        2025, ninguno con RUC (12.29)**: edad y sexo 99,6%, estado civil 92,4%, domicilio 86% (provincia) y
        71% (cantón) pero Novadata lo trae en el 37%, aporte al IESS 84%, empleos 67% y meses con aporte 0%.
        Con eso el nivel 1 entra con la edad (a la fecha de la consulta), el sexo y el SRI, sin estado civil,
-       zona ni IESS de Novadata (el IESS entra solo si se reentrena con el suyo). Lo decide el negocio y
-       el modelo exportado no se cambió. Falta: completar el lote con menos hilos (1.620 de 2.162 sin
-       respuesta buena: 986 sin consultar y 634 con error o sin datos; primero la mitad con RUC de 2026,
-       que mide el SRI de Novadata), con el sí del negocio, y revisar los 553 perfiles que el HTTP 502
-       dejó guardados con la respuesta incompleta (el guion los contó como hechos).
+       zona ni IESS de Novadata (el IESS entra solo si se reentrena con el suyo). **Decidido el
+       2026-10-29: el nivel 1 es edad, sexo y SRI.** El modelo exportado todavía es el anterior (con
+       estado civil, zona e IESS de AWS): hay que cambiar `NIVELES` en `comun.py`, entrenar, medir,
+       exportar y regenerar los casos de oro. Completar el lote (1.620 de 2.162 sin respuesta buena)
+       **queda para después** (negocio, 2026-10-29), así que el SRI de Novadata sigue sin medirse
+       contra AWS. Sí falta revisar los 553 perfiles que el HTTP 502 dejó guardados con la respuesta
+       incompleta (el guion los contó como hechos).
     4. Reentrenar desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19 variables
        del nivel 2 que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
        respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja), con las variables de la
@@ -245,8 +252,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
     7. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
 
-    **Decisiones abiertas del negocio:** qué quiere lograr con la destilación; el IESS y la zona de la persona
-    en el nivel 1 y completar la reconsulta a Novadata (punto 3); los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    **Decisiones abiertas del negocio:** con qué se mediría que la destilación mejora la asertividad;
+    los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Novadata con el de Equifax en más de 87 personas.
 
