@@ -2661,7 +2661,7 @@ Se comparan con su ingreso validado de AWS. Quedan **532**, con el ingreso no ve
 - **Las entradas, contra el entrenamiento**: edad mediana 37 y 37; masculino 56,4% y 59,4%; con RUC 94,4% y 87,3%; RUC activo 85,3% y 80,8%; con años de suspendido 26,1% y 27,0%; antigüedad mediana del RUC 8,8 y 10,0 años; obligado 3,6% y 3,5%; ingreso validado mediano 2.384 y 2.169.
 
 **Lo que queda abierto.**
-1. El obligado en el perfil (estructura-v15, recálculo de los perfiles guardados y versión nueva del marco) y su paridad con el de Equifax. Hecho en 12.31 salvo el recálculo, y sin versión nueva del marco.
+1. El obligado en el perfil (estructura-v15, recálculo de los perfiles guardados y versión nueva del marco) y su paridad con el de Equifax. Hecho en 12.31 (desplegado y recalculado el 2026-10-30), sin versión nueva del marco.
 2. Completar el lote de paridad (decisión del 2026-10-29: queda para después): la mitad con el SRI de Equifax en AWS (2026) es la única que mide el SRI de Novadata contra el de Equifax, y con ella la prueba en sombra se repite tal cual (`node scripts/sombra-predictor-ingresos.mjs` y `medir_sombra.py`).
 3. El nivel 2 sigue con el estado civil, la zona y el IESS del extracto de AWS: se decide al reentrenarlo desde las respuestas crudas de Equifax (punto 18.4 de `docs/pendientes.md`). En 12.26 sacarlos le costaba 0,004 de R².
 
@@ -2688,10 +2688,9 @@ Con el código viejo y el nuevo, el mensaje al modelo de las 2.567 personas del 
 
 **Efecto en el perfil**: código viejo contra nuevo, perfil entero, en las 2.567: el campo nuevo (2.169 no, 132 sí, 266 sin dato), la versión de `fuentesIngreso`, el RUC activo en 14, los establecimientos activos en 134 y el segmento en 4.
 
-**La prueba en sombra, repetida**: los perfiles guardados siguen en estructura-v14 hasta recalcularlos, así que «a la consulta» todavía no trae el obligado (0 de 542 perfiles con el campo). «Con el obligado» ya lo toma de `process.ts` (antes el guion tenía su propia copia) y da lo mismo que en 12.30: R² 0,187, el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y se certifica «al menos 2.000» a 16, con 14 aciertos.
-Al recalcular, «a la consulta» tiene que dar lo mismo que «con el obligado»: el guion cuenta los perfiles con el campo y cuántos difieren del crudo.
-
-**Lo que queda.** Desplegar y después recalcular los perfiles guardados (`recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso` y `recalcular-fuentes-ingreso.mjs`), en ese orden: un perfil en v15 leído por el código desplegado de hoy le pasaría el campo al modelo con el rótulo marco-v30. En seco, el primero da 3.764 perfiles a escribir y 0 que el crudo no reproduzca. Y repetir la sombra.
+**La prueba en sombra, repetida.** Antes del recálculo, «a la consulta» no traía el obligado (0 de 542 perfiles con el campo), y «con el obligado», que ya lo toma de `process.ts` (antes el guion tenía su propia copia), daba lo mismo que en 12.30.
+Desplegado (`dabb60be9f3c`, 2026-10-30) y recalculados los perfiles guardados (3.764 de 3.764), **«a la consulta» da lo mismo que «con el obligado»**: R² 0,187, el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y se certifica «al menos 2.000» al 3,0%, con 87,5% de precisión (16 personas, 14 aciertos).
+541 de los 542 perfiles traen el campo, y en ninguno difiere del crudo. El que falta es de una persona con dos perfiles del lote, creados con 3 segundos de diferencia: el recálculo toca sólo el último, que sí quedó en v15, y la sombra lee el del crudo, que es el anterior.
 
 ## 13. Registro de verificación
 

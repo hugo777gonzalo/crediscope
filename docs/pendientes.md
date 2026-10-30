@@ -15,13 +15,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 - **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
   `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
-- **Funciones:** sello **`626bb6c04685`**, 10 de 10, desplegado el 2026-10-28 sobre el esquema
-  138 (`despliegues`; el anterior fue `f09531e87adc`).
+- **Funciones:** sello **`dabb60be9f3c`**, 10 de 10, desplegado el 2026-10-30 a las 00:20 sobre el
+  esquema 138 (`despliegues`; el anterior fue `626bb6c04685`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
-  reales al 2026-10-20; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
-  capacidad-v3. Las dos primeras salen de la base (`structure_version`, `fuente_version`); el
-  resto, del código de `main`.
+  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
+  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
+  (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
   desde el 2026-10-21**, casi todas del lote de paridad del predictor del 2026-10-28 (1.176
   independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
@@ -212,7 +212,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     `crediscope-arboles-1` sin dependencias, para Deno y el navegador; la prueba de oro dio diferencia 0
     en el logaritmo en los 200 casos de cada nivel contra el modelo real, en local con
     `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
-    **En el PR del 2026-10-29 (sin fusionar al escribir esto):** el nivel 1 reentrenado con 8 variables
+    **Fusionado el 2026-10-29 (PR 96):** el nivel 1 reentrenado con 8 variables
     (R² de 0,157 contra 0,172 del anterior; hacia adelante el mínimo del 90% cubre 89,1% contra 88,1%, y
     calibrado, 90,4%), exportado a `C:\datos\ingresos\modelos\exportado\` con sus casos de oro (prueba de
     oro con diferencia 0), `variables-de-ingreso.ts` con el nivel nuevo y el sexo de Novadata, y la
@@ -227,31 +227,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).
-    3. **El «obligado a llevar contabilidad» y el RUC activo (estructura-v15 y fuentes-v11): desplegar y
-       recalcular** (construido el 2026-10-29 en el PR 97, sin fusionar al escribir esto; 12.31).
-       - Qué hay: el perfil guarda `laboral.obligadoALlevarContabilidadRuc` («S» es sí, decisión del negocio),
-         `variables-de-ingreso.ts` lo lee del perfil y su paridad con Equifax es 83 de 83. **No llega al modelo
-         de lenguaje** (decisión del negocio: ya le llega interpretado en `fuentesIngreso`): no hay marco nuevo
-         ni migración. Y el RUC queda inactivo sólo si una fecha lo respalda (decisiones del negocio): sin
-         fecha de inscripción cuenta, un establecimiento que reabrió después de su último cierre está
-         abierto aunque el estado diga cerrado, y uno sin estado, salvo una fecha de cierre. En el crudo del
-         03/10, 14 de 2.567 personas pasan a RUC activo y 134 cambian sus establecimientos activos; en el
-         lote de paridad, 70 y 129 de 1.176. El mensaje al modelo cambia sólo para ellas.
-       - Falta, en este orden: fusionar (el PR 96 primero), desplegar con el corredor y **recién después**
-         recalcular, con el sí del negocio porque escribe en la base: `node scripts/recalcular-grupos.mjs
-         --grupos=laboral --ignorar=fuentesIngreso --carpeta=research/novadata-raw-2026-10-03` y después
-         `node scripts/recalcular-fuentes-ingreso.mjs --carpeta=research/novadata-raw-2026-10-03`, cada uno
-         con `--seco` antes. Al revés, el código desplegado de hoy le pasaría el campo nuevo al modelo con el
-         rótulo marco-v30. En seco el 2026-10-29, el primero da 3.764 a escribir y 0 que el crudo no
-         reproduzca (más las 240 sintéticas sin crudo); el segundo sólo se puede medir con el primero
-         aplicado. Después, repetir la prueba en sombra: «a la consulta» tiene que dar lo mismo que «con el
-         obligado».
+    3. **Lo que quedó del obligado y del RUC activo** (estructura-v15 y fuentes-v11, PR 97, desplegado y
+       recalculado el 2026-10-30; 12.31). El perfil guarda el obligado, el nivel 1 lo lee de ahí y la prueba
+       en sombra «a la consulta» ya da lo mismo que «con el obligado» (R² 0,187; 89,1%).
        - `fuentes-ingreso.ts` reconoce sólo «SI» para el indicio de ingreso mayor y el tamaño del negocio, y
          no ve la «S» (4 de 2.567 en el crudo del 03/10): pasarlo a `obligadoALlevarContabilidad()` de
          `ruc.ts` cambia lo que lee el modelo. Va con la próxima versión del marco (decisión del negocio).
        - La «S» no está cotejada contra Equifax (ninguna de las 87 la trae).
-       - 60 personas del lote pasan de «sin datos» a «independiente» por el RUC activo, 56 de ellas de las
-         respuestas que el HTTP 502 dejó incompletas (punto 4).
+       - El recálculo pasó 60 personas del lote de «sin datos» a «independiente» por el RUC activo, 56 de
+         ellas de las respuestas que el HTTP 502 dejó incompletas: se revisan con ellas (punto 4).
     4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
        respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
        con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de
