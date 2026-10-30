@@ -732,13 +732,21 @@ interface StandardClientProfile {
 >   en `perfil-del-modelo.ts`). El mensaje sale idéntico en 2.433 de 2.567
 >   personas; las 134 que cambian son las del RUC activo y los establecimientos,
 >   un dato y no el marco.
-> - Sin desplegar ni recalcular al escribir esto. Se recalcula después de
->   desplegar, nunca antes (el código desplegado de hoy le pasaría el campo
->   al modelo), en dos pasos con `--carpeta=research/novadata-raw-2026-10-03`:
->   `recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso` y
->   después `recalcular-fuentes-ingreso.mjs`. En seco, el primero da 3.764
->   perfiles a escribir (2.559 con el crudo de la carpeta y 1.205 del
->   depósito), 0 que el crudo no reproduzca y 240 sin crudo (las sintéticas).
+> - **Desplegado** el 2026-10-30 a las 00:20 (`dabb60be9f3c`, 10 de 10) y
+>   **recién después recalculado**: al revés, el código desplegado de antes le
+>   habría pasado el campo nuevo al modelo con el rótulo marco-v30. Dos pasos,
+>   los dos con `--carpeta=research/novadata-raw-2026-10-03` y con el seco
+>   antes: `recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso`
+>   (3.764 de 3.764 escritos) y `recalcular-fuentes-ingreso.mjs` (3.764 de
+>   3.764; 69 cambian de segmento, todos a «independiente»: 60 desde «sin
+>   datos» y 9 desde «informal o sin actividad»). 0 perfiles que el crudo no
+>   reproduzca; las 240 sintéticas no tienen crudo y quedaron en v3. Después,
+>   en la base, el último perfil de las 3.764 personas reales está en
+>   estructura-v15 y fuentes-v11 y trae el obligado.
+>   `validar-perfil-del-modelo.mjs` da 0 fallas en las 13 reglas sobre 4.004
+>   perfiles (la 13: ninguna ruta de `RUTAS_QUE_NO_LLEGAN`, así que el obligado
+>   no llega al modelo), y `calcular-columnas-del-perfil.mjs --seco`, 0 por
+>   corregir en 9.812.
 
 ## De dónde sale cada cálculo (trazabilidad)
 
