@@ -162,10 +162,12 @@ su guía: `docs/equifax.md`.
 
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
-  - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions,api supabase/functions/`
-    (`api`: `sandbox.test.ts` valida cada respuesta contra `api/openapi.yaml`). Desde un
-    worktree, sumar `--node-modules-dir=none`: si no, Deno toma el `node_modules` de la carpeta
-    principal y falla con `npm:@types/node`.
+  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/`
+    (`api`: `sandbox.test.ts` valida cada respuesta contra `api/openapi.yaml`).
+
+    `--node-modules-dir=none` hace falta desde que una prueba alcanza los tipos de supabase-js
+    (`import type`): sin ella, `deno test` busca `npm:@types/node` en el `node_modules` de la
+    pantalla y falla antes de correr nada, con o sin esa carpeta. `deno check` no lo ve.
   - `npx --yes deno@2.9.6 check --no-lock supabase/functions/*/index.ts`
 
   Las corre también la integración continua. Una regla nueva en `_shared`

@@ -14,11 +14,10 @@
 // Cada respuesta se valida contra `api/openapi.yaml`: los esquemas de la
 // especificación, no una copia.
 //
-// deno test --no-lock --allow-env --allow-read=supabase/functions,api supabase/functions/
+// deno test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/
 
 import { assert, assertEquals, assertFalse, assertRejects, assertThrows } from "jsr:@std/assert@1";
 import { parse } from "jsr:@std/yaml@1";
-// Sin sus tipos (`no-dts`): piden los de Node, que este repositorio no instala para Deno.
 import Ajv2020 from "https://esm.sh/ajv@8.17.1/dist/2020?no-dts";
 import formatos from "https://esm.sh/ajv-formats@3.0.1?no-dts";
 import { cedulaBienFormada, clasificarIdentificacion, esIdentificacionSimulada } from "./identificacion.ts";
