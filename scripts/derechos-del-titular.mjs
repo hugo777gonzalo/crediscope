@@ -88,6 +88,8 @@ const TABLAS = !id ? TABLAS_SIN_PERSONA : [
   ["consultas_equifax", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
   // Las solicitudes de crédito y su evaluación (133): la persona puede no estar en clients al crearse.
   ["solicitudes", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
+  // Cada evaluación del predictor de ingresos (140): sólo existe de quien está en clients.
+  ["estimaciones_de_ingreso", `client_id=eq.${id}`],
   ["ingestion_runs", `client_id=eq.${id}`],
   ["llm_llamadas", `client_id=eq.${id}`],
   ["lote_items", `cedula=eq.${CEDULA}`],

@@ -24,7 +24,8 @@
 //      (origen, clave de idempotencia, plazo, reclamo, reclamar_evaluaciones) y el
 //      origen 'api' de las consultas de Equifax. Se escribió como 137 y pasó a 139
 //      porque la 138 se aplicó antes.
-export const ESQUEMA_MINIMO = 139;
+// 140: estimar-ingreso lee modelos_de_ingreso y guarda estimaciones_de_ingreso.
+export const ESQUEMA_MINIMO = 140;
 
 let verificada: number | null = null;
 

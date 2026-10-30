@@ -53,6 +53,12 @@ verify_jwt = true
 [functions.capacidad-de-pago]
 verify_jwt = true
 
+# El predictor de ingresos, con su propia puerta (140). Exige sesión y rol dentro
+# de la función, antes de leer el cuerpo. Lee el perfil guardado: no consulta a
+# ninguna fuente ni al modelo de lenguaje.
+[functions.estimar-ingreso]
+verify_jwt = true
+
 # El orquestador de las solicitudes (133): corre un paso por llamada y llama a
 # las otras funciones con la sesión de quien pidió. Exige sesión y rol antes
 # de leer el cuerpo.
