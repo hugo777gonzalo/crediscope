@@ -27,19 +27,27 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
   con crédito vigente»; `docs/investigacion-predictor-de-ingresos.md`, 12.29). Entran en los totales
   de la cartera, la bandeja y Monitoreo como cualquier persona real, y 553 de sus perfiles quedaron
-  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). Falta decidir con el negocio si se
-  marcan aparte.
-- **Datos (2026-10-20, sin remedir):** 207 análisis con marco-v28 y 8 con marco-v30; 88 consultas de
-  Equifax, de las que **sólo 1 estaba vigente** (el ciclo va del 18/10 al 17/11; las 87 anteriores
-  caducaron). El modelo llevaba **USD 9,63 de los 10** del presupuesto de octubre.
-- **Control de seguridad:** 73 de 73 el 2026-10-19 (`auditar-seguridad.mjs`); desde un
-  worktree no se puede repetir entero, y no se volvió a correr.
+  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). **Son cartera: no se marcan
+  aparte** (negocio, 2026-10-29).
+- **Análisis (2026-10-29, `analysis_results`):** 207 con marco-v28 (el último del 13/10) y 8 con
+  marco-v30 (el último del 18/10), todos de personas reales; **ninguno nuevo desde el 18/10**. Los 73
+  restantes son de versiones anteriores a la v28 (288 en total).
+- **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
+  87 anteriores caducaron).
+- **Modelo (2026-10-29, `gasto_del_mes`):** octubre lleva **USD 9,66 de los 10** del presupuesto
+  (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
+  vigía; no hubo análisis.
+- **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
+  carpeta principal), el primero después de la 138 y del despliegue del 2026-10-28. Sigue
+  marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
+  punto 2.15).
 
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
-   (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retoma la semana del
-   2026-10-19. Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
+   (cartera propia, sin institución); el negocio dijo el 2026-10-13 que se retomaba la semana del
+   2026-10-19, y esa semana pasó sin que entrara nada del Laboratorio a `main`. **Queda sin fecha**
+   (negocio, 2026-10-29). Importa porque sin él no hay punto de partida para la reconsulta del 25/12.
    Lo hace Claude en una sesión (`docs/laboratorio-guia.md`, paso 1; sin pantallas nuevas hasta
    el paso 4). Se verifica con los conteos por origen y por análisis; antes hay que decidir el
    t0 de los 200 del lote del 07/10, que se analizaron sobre la consulta del 03/10.
@@ -97,19 +105,22 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    encender el buró en lo que lee el modelo (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
-   Y octubre lleva USD 9,63 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
-2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` está en 10 y octubre lleva
-   USD 9,63: pasó los avisos del 70 y el 85%. Confirmar el monto que quiere el negocio. El
-   límite de la consola de Anthropic es otro y manda: en septiembre cortó el 28 con USD 6,00
-   medidos por nosotros, antes de nuestro aviso. Nuestro presupuesto tiene que ser el de la
-   consola o menor. Se verifica comparando los dos límites.
+   Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
+   octubre lleva USD 9,66 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
+   antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
+   el negocio, porque Claude no ve la consola.
 3. **Marco por cliente y adelgazar el marco.** Hecho y apagado (`marcoPorCliente` en
    `CONFIG_LLM`): omite las secciones que el perfil no trae y baja el marco de ~12.050 a
    ~9.100 tokens (~USD 0,006 por análisis). Falta autorizar la validación
    (`comparar-razonamiento.mjs --configs=hoy,porCliente`, 14 casos, ~USD 2): tiene que quedar
    dentro del ruido (±40 de score, 1 de 13 recomendaciones). Después, una versión nueva con
    el número libre y su fila, y guardar qué secciones se omitieron.
-4. **El marco y el modelo, al final** (decisión del negocio). Que el modelo lea la solicitud,
+4. **El marco y el modelo, al final** (decisión del negocio). **La próxima versión del marco se
+   hace con los resultados del predictor de ingresos** (negocio, 2026-10-29): el ingreso estimado y
+   su rango (punto 2.18). Que el modelo lea la solicitud,
    la cuota y la capacidad (P3 del plan de la demo) es una versión nueva del marco. Se suman a
    esa versión: el texto de `antiguedadEmpleoActualMeses` null (desde v14 también significa
    «su afiliación vigente no es trabajo»: 37 de 2.567 perfiles) y, si el negocio lo pide,
@@ -199,7 +210,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     consultas a Equifax con predictor en cinco años; medido, destilar no mejora la predicción del
     ingreso validado (R² 0,341 el nivel 2 solo; 0,349 con el predictor de Equifax mismo) y serviría para
     independizarse de ese predictor. El negocio dijo el 2026-10-29 que la quiere para mejorar la
-    asertividad, que es justo lo que lo medido no respalda: falta decidir si se hace igual.
+    asertividad, que es justo lo que lo medido no respalda (sumar el alumno al nivel 2 lleva el R² de
+    0,341 a 0,342): falta decidir si se hace igual.
     **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Novadata (más la
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
