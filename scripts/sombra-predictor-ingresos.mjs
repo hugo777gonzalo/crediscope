@@ -18,8 +18,10 @@
 // y Novadata contestó el 2026-10-28:
 //   hoy                   el perfil tal como está guardado y el reloj en el día de la consulta a Novadata;
 //   a_la_consulta         la edad y el reloj (fecha del modelo y antigüedad del RUC) en la fecha de la consulta de AWS;
-//   con_obligado          lo anterior más el «obligado a llevar contabilidad» del RUC, que el perfil todavía no guarda
-//                         (decisión del negocio del 2026-10-29: va al perfil). Se lee del crudo, como lo haría el perfil.
+//                         desde estructura-v15 el perfil trae el «obligado a llevar contabilidad» del RUC;
+//   con_obligado          lo anterior con el obligado que arma process.ts desde el crudo. Con los perfiles guardados
+//                         en v15 da lo mismo que a_la_consulta (se cuenta abajo); con uno anterior, es lo que traería
+//                         al recalcularlo. Hasta el 2026-10-29 el guion tenía su propia copia del lector.
 //
 // AVISO: este archivo no pasa por lint ni build.
 
@@ -27,6 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { cargarEntorno, raizPrincipal } from "./_comun/entorno.mjs";
 import { vectorDeNivel1 } from "../supabase/functions/_shared/variables-de-ingreso.ts";
+import { buildStandardProfile } from "../supabase/functions/_shared/process.ts";
 import { estimarIngreso, leerModeloComprimido } from "../supabase/functions/_shared/predictor-ingresos.ts";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
@@ -54,13 +57,9 @@ function aniosCumplidos(nacimiento, fecha) {
   return Number(f[1]) - Number(n[1]) - (cumplio ? 0 : 1);
 }
 
-// El obligado del RUC de Novadata viene como SI, NO o N (en las 542: 20, 466 y 26; vacío en las 30 sin RUC).
-function obligadoDelCrudo(raw) {
-  const datos = raw?.contribuyente?.data?.datosContribuyente;
-  const ruc = Array.isArray(datos) ? datos[0] : datos;
-  const v = String(ruc?.obligado ?? "").trim().toUpperCase();
-  return v === "SI" || v === "S" ? true : v === "NO" || v === "N" ? false : null;
-}
+// El obligado como lo guarda el perfil desde estructura-v15: del mismo RUC de referencia (process.ts) y con la lectura
+// de ruc.ts. No depende del corte del IESS ni del reloj.
+const obligadoDelCrudo = (raw, cedula) => buildStandardProfile(raw, cedula).profile.laboral.obligadoALlevarContabilidadRuc;
 
 // Un error de PostgREST es un objeto plano: se lee el cuerpo entero.
 async function pedir(ruta) {
@@ -70,7 +69,7 @@ async function pedir(ruta) {
   return JSON.parse(texto);
 }
 
-const cuenta = { crudos: 0, sinRegistroCivil: 0, sinFechaDeAws: 0, sinPerfilGuardado: 0, sinNacimiento: 0, evaluadas: 0 };
+const cuenta = { crudos: 0, sinRegistroCivil: 0, sinFechaDeAws: 0, sinPerfilGuardado: 0, sinNacimiento: 0, evaluadas: 0, perfilesConObligado: 0, obligadoDistintoDelCrudo: 0 };
 const personas = [];
 for (const archivo of fs.readdirSync(path.join(DATOS, "crudo")).filter((a) => a.endsWith(".json"))) {
   const j = JSON.parse(fs.readFileSync(path.join(DATOS, "crudo", archivo), "utf8"));
@@ -80,7 +79,7 @@ for (const archivo of fs.readdirSync(path.join(DATOS, "crudo")).filter((a) => a.
   const cedula = String(j.cedula).padStart(10, "0");
   if (!fechaDeConsulta[cedula]) { cuenta.sinFechaDeAws++; continue; }
   personas.push({ cedula, perfilId: j.perfilId, capturadoEl: j.capturadoEl, consultaAws: fechaDeConsulta[cedula],
-    nacimiento: j.raw.general.data?.personaNatural?.fechaNacimiento ?? null, obligado: obligadoDelCrudo(j.raw) });
+    nacimiento: j.raw.general.data?.personaNatural?.fechaNacimiento ?? null, obligado: obligadoDelCrudo(j.raw, cedula) });
 }
 
 const perfiles = new Map();
@@ -93,6 +92,11 @@ const salida = [];
 for (const p of personas) {
   const guardado = perfiles.get(p.perfilId);
   if (!guardado) { cuenta.sinPerfilGuardado++; continue; }
+  // Un perfil en v15 trae el obligado (aunque sea null); uno anterior no tiene la clave.
+  if (guardado.laboral && "obligadoALlevarContabilidadRuc" in guardado.laboral) {
+    cuenta.perfilesConObligado++;
+    if (guardado.laboral.obligadoALlevarContabilidadRuc !== p.obligado) cuenta.obligadoDistintoDelCrudo++;
+  }
   const edadALaConsulta = aniosCumplidos(p.nacimiento, p.consultaAws);
   if (edadALaConsulta === null) cuenta.sinNacimiento++;
   const base = { identidad: guardado.identidad, laboral: guardado.laboral, metaConsulta: guardado.metaConsulta };

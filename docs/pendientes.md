@@ -227,13 +227,31 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).
-    3. **El «obligado a llevar contabilidad» en el perfil** (decidido el 2026-10-29): sin él el nivel 1
-       pierde 0,027 de R² y no certifica «al menos 2.000» a nadie (12.30). Va en `laboral` desde
-       `datosContribuyente.obligado` («SI», «NO» o «N»), lo que pide estructura-v15, recalcular los
-       perfiles guardados (`recalcular-grupos.mjs`) y una versión nueva del marco (el modelo de lenguaje lee
-       `laboral` entero; su fila en `scoring_rules_versions`). Después, `variables-de-ingreso.ts` lo lee del
-       perfil en vez de recibirlo de quien llama, y se mide su paridad con el de Equifax (sección 9,
-       punto 7 de la especificación).
+    3. **El «obligado a llevar contabilidad» y el RUC activo (estructura-v15 y fuentes-v11): desplegar y
+       recalcular** (construido el 2026-10-29 en el PR 97, sin fusionar al escribir esto; 12.31).
+       - Qué hay: el perfil guarda `laboral.obligadoALlevarContabilidadRuc` («S» es sí, decisión del negocio),
+         `variables-de-ingreso.ts` lo lee del perfil y su paridad con Equifax es 83 de 83. **No llega al modelo
+         de lenguaje** (decisión del negocio: ya le llega interpretado en `fuentesIngreso`): no hay marco nuevo
+         ni migración. Y el RUC queda inactivo sólo si una fecha lo respalda (decisiones del negocio): sin
+         fecha de inscripción cuenta, un establecimiento que reabrió después de su último cierre está
+         abierto aunque el estado diga cerrado, y uno sin estado, salvo una fecha de cierre. En el crudo del
+         03/10, 14 de 2.567 personas pasan a RUC activo y 134 cambian sus establecimientos activos; en el
+         lote de paridad, 70 y 129 de 1.176. El mensaje al modelo cambia sólo para ellas.
+       - Falta, en este orden: fusionar (el PR 96 primero), desplegar con el corredor y **recién después**
+         recalcular, con el sí del negocio porque escribe en la base: `node scripts/recalcular-grupos.mjs
+         --grupos=laboral --ignorar=fuentesIngreso --carpeta=research/novadata-raw-2026-10-03` y después
+         `node scripts/recalcular-fuentes-ingreso.mjs --carpeta=research/novadata-raw-2026-10-03`, cada uno
+         con `--seco` antes. Al revés, el código desplegado de hoy le pasaría el campo nuevo al modelo con el
+         rótulo marco-v30. En seco el 2026-10-29, el primero da 3.764 a escribir y 0 que el crudo no
+         reproduzca (más las 240 sintéticas sin crudo); el segundo sólo se puede medir con el primero
+         aplicado. Después, repetir la prueba en sombra: «a la consulta» tiene que dar lo mismo que «con el
+         obligado».
+       - `fuentes-ingreso.ts` reconoce sólo «SI» para el indicio de ingreso mayor y el tamaño del negocio, y
+         no ve la «S» (4 de 2.567 en el crudo del 03/10): pasarlo a `obligadoALlevarContabilidad()` de
+         `ruc.ts` cambia lo que lee el modelo. Va con la próxima versión del marco (decisión del negocio).
+       - La «S» no está cotejada contra Equifax (ninguna de las 87 la trae).
+       - 60 personas del lote pasan de «sin datos» a «independiente» por el RUC activo, 56 de ellas de las
+         respuestas que el HTTP 502 dejó incompletas (punto 4).
     4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
        respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
        con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de

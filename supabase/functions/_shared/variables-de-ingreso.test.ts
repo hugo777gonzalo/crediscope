@@ -117,13 +117,23 @@ Deno.test("el año con fracción usa la fecha de Ecuador: a las 20:00 de Ecuador
   assertAlmostEquals(finDeMes.variables.anio_mes as number, 2026 + 8 / 12, 1e-9);
 });
 
-Deno.test("el SRI de Novadata: con RUC activo salen el estado, la antigüedad en años y el obligado que se pase", () => {
-  const v = vectorDeNivel1(perfil(), { ahora: AHORA, obligadoAContabilidad: false });
+Deno.test("el SRI de Novadata: con RUC activo salen el estado, la antigüedad en años y el obligado del perfil", () => {
+  const conRuc = (obligado: boolean | null) =>
+    perfil({ laboral: { estadoActividadEconomica: "activa_sin_interrupciones", fechaInicioActividadesRuc: "2020-09-10", fechaCeseActividadesRuc: null, tipoUltimoCeseRuc: null, obligadoALlevarContabilidadRuc: obligado } });
+  const v = vectorDeNivel1(conRuc(true), { ahora: AHORA });
   assertEquals(v.variables.sri_ruc, 1);
   assertEquals(v.variables.sri_estado, "ACTIVO");
   assertAlmostEquals(v.variables.sri_antig as number, 2191 / 365.25, 1e-9, "del 2020-09-10 al 2026-09-10: 2.191 días");
   assertEquals(v.variables.sri_susp, null);
-  assertEquals(v.variables.sri_obligado, 0);
+  assertEquals(v.variables.sri_obligado, 1);
+  assertEquals(vectorDeNivel1(conRuc(false), { ahora: AHORA }).variables.sri_obligado, 0);
+  // Un valor que ruc.ts no reconoció llega null: sin dato, sin aviso de perfil viejo.
+  const sinReconocer = vectorDeNivel1(conRuc(null), { ahora: AHORA });
+  assertEquals(sinReconocer.variables.sri_obligado, null);
+  assertFalse(sinReconocer.avisos.some((a) => a.includes("estructura-v15")));
+  // La opción reemplaza al perfil: la prueba en sombra mide con y sin el dato sobre el mismo perfil.
+  assertEquals(vectorDeNivel1(conRuc(true), { ahora: AHORA, obligadoAContabilidad: false }).variables.sri_obligado, 0);
+  assertEquals(vectorDeNivel1(conRuc(true), { ahora: AHORA, obligadoAContabilidad: null }).variables.sri_obligado, null);
 });
 
 Deno.test("el SRI de Novadata: un RUC inactivo es SUSPENDIDO y, si el cese fue una suspensión definitiva, trae sri_susp", () => {
@@ -133,8 +143,8 @@ Deno.test("el SRI de Novadata: un RUC inactivo es SUSPENDIDO y, si el cese fue u
   );
   assertEquals(v.variables.sri_estado, "SUSPENDIDO");
   assertAlmostEquals(v.variables.sri_susp as number, 730 / 365.25, 1e-9, "del 2024-09-10 al 2026-09-10");
-  assertEquals(v.variables.sri_obligado, null);
-  assert(v.pendientes.some((p) => p.startsWith("sri_obligado")));
+  assertEquals(v.variables.sri_obligado, null, "un perfil anterior a estructura-v15 no trae el obligado");
+  assert(v.avisos.some((a) => a.includes("estructura-v15")));
   const cancelado = vectorDeNivel1(
     perfil({ laboral: { estadoActividadEconomica: "inactiva_nunca_reactivada", fechaInicioActividadesRuc: "2010-01-01", fechaCeseActividadesRuc: "2024-09-10", tipoUltimoCeseRuc: "cancelacion" } }),
     { ahora: AHORA },

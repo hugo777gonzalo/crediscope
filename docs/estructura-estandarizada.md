@@ -673,6 +673,73 @@ interface StandardClientProfile {
 >   reproduzca). Después: 0 descalces en v14; 10 últimos perfiles siguen en
 >   v13 (sin crudo local).
 
+> **estructura-v15 y fuentes-v11 (2026-10-29)** — el «obligado a llevar
+> contabilidad» en `laboral`, y el RUC inactivo sólo con una fecha que lo
+> respalde.
+> - **El obligado, por qué:** el nivel 1 del predictor de ingresos lo usa
+>   (`sri_obligado`) y el perfil no lo guardaba: sin él el nivel 1 pierde 0,027
+>   de R² y no certifica «al menos 2.000» a nadie (investigación del
+>   predictor, 12.30). Decisión del negocio del 2026-10-29: va al perfil y el
+>   predictor lo lee de ahí, no de quien llama.
+> - **El obligado, qué es:** `laboral.obligadoALlevarContabilidadRuc`, de
+>   `contribuyente.data.datosContribuyente[].obligado` del mismo RUC de
+>   referencia que las fechas (el activo si hay uno, si no el primero). Lo lee
+>   `obligadoALlevarContabilidad()` de `ruc.ts`: «SI» y «S» son `true`, «NO» y
+>   «N» son `false`; sin RUC o con otro valor, `null` (no `false`). Novadata
+>   abrevia como con el estado de los establecimientos (estructura-v13): en el
+>   crudo del 2026-10-03, «NO» 2.063, «SI» 128, «N» 106 y «S» 4. Que la «S» es
+>   «sí» lo decidió el negocio.
+> - **Paridad del obligado con Equifax**
+>   (`equifax_resumen.sri_obligado_a_contabilidad`), en las 87 personas que
+>   tienen las dos fuentes (consultas de producción, 13 días de mediana entre
+>   una y otra): coincide en las 83 con RUC (60 no obligadas, 23 obligadas; las
+>   4 «N» son «no» en Equifax) y las 4 sin RUC lo están en las dos. Ninguna
+>   trae «S»: esa lectura sigue sin cotejar.
+> - **El RUC activo** (decisiones del negocio del 2026-10-29: «inactivo» tiene
+>   que estar respaldado por una fecha de cese, reapertura o cierre, y una
+>   reapertura posterior al cierre es que reinició actividades). En el crudo
+>   del 2026-10-03, 5 registros traían el número de RUC, el inicio (2019 a
+>   2024) y un establecimiento, sin fecha de inscripción ni ninguna fecha de
+>   cese, y el perfil los daba con la actividad `activa_sin_interrupciones` y a
+>   la vez `tieneRucActivo = false`. En `ruc.ts`, ahora:
+>   - un registro con el número es un RUC aunque no traiga la inscripción (el
+>     cascarón viene sin número);
+>   - un establecimiento que reabrió después de su último cierre está abierto
+>     aunque el estado diga cerrado: 285 «CERRADO» o «CER» traen el reinicio
+>     posterior al cierre;
+>   - si no, manda el estado: de los 624 abiertos con fecha de cierre, 614
+>     reabrieron después y 10 no traen la reapertura (siguen abiertos), y los
+>     282 «CERRADO» sin ninguna fecha siguen cerrados;
+>   - uno sin estado está abierto salvo una fecha de cierre. El estado vacío es
+>     mucho más frecuente en las respuestas que Novadata dejó incompletas el
+>     2026-10-28 (HTTP 502): en el lote de paridad, todos los establecimientos
+>     sin estado en 4 de 512 personas con la respuesta entera, 33 de 543 sin
+>     Registro Civil y 12 de 56 sin la fuente. Ahí el hueco es de la fuente, no
+>     un cierre, y deciden las fechas del RUC, que llegaron enteras.
+> - **Efecto** (código viejo contra nuevo, perfil entero): en las 2.567
+>   personas del crudo del 2026-10-03, el campo nuevo en todas (2.169 `false`,
+>   132 `true`, 266 `null`) y la versión de `fuentesIngreso`; 14 pasan a RUC
+>   activo (8 por la inscripción o el estado vacío, 6 por la reapertura), 134
+>   cambian sus establecimientos activos (y el tamaño del negocio) y 4 su
+>   segmento (de «informal o sin actividad» a «independiente»). En las 1.176 del
+>   lote de paridad, 70 pasan a RUC activo, 129 cambian sus establecimientos y
+>   65 su segmento (60 de «sin datos» a «independiente»), 60 de esos 65 con la
+>   respuesta incompleta.
+> - **Lo que lee el modelo:** el obligado ya le llegaba, interpretado, en
+>   `fuentesIngreso` (el indicio de ingreso mayor y
+>   `tamanoDelNegocio.obligadoContabilidad`), leído sólo como «SI», y el campo
+>   nuevo no llega (decisión del negocio; `CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`
+>   en `perfil-del-modelo.ts`). El mensaje sale idéntico en 2.433 de 2.567
+>   personas; las 134 que cambian son las del RUC activo y los establecimientos,
+>   un dato y no el marco.
+> - Sin desplegar ni recalcular al escribir esto. Se recalcula después de
+>   desplegar, nunca antes (el código desplegado de hoy le pasaría el campo
+>   al modelo), en dos pasos con `--carpeta=research/novadata-raw-2026-10-03`:
+>   `recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso` y
+>   después `recalcular-fuentes-ingreso.mjs`. En seco, el primero da 3.764
+>   perfiles a escribir (2.559 con el crudo de la carpeta y 1.205 del
+>   depósito), 0 que el crudo no reproduzca y 240 sin crudo (las sintéticas).
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |

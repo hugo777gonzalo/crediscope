@@ -47,7 +47,7 @@ agrupa en «Solicitudes»).
 |---|---|---|---|
 | `/fuentes` | `FuentesIngreso.jsx` | todos | Panorama: de qué vive la cartera, qué tan firme es cada clasificación, perfil laboral, indicios, quiénes necesitan respaldo |
 | `/fuentes/clientes` | `FuentesClientes.jsx` | todos | «Personas por segmento»: la lista por segmento / estado / indicio (filtros en la URL; las barras del Panorama enlazan acá) |
-| `/fuentes/reglas` | `FuentesReglas.jsx` | todos | **Documentación embebida** de la clasificación, escrita para Riesgos. Compara su versión con la del código y avisa si se desfasó (hoy `fuentes-v10`). Al cambiar una regla en `fuentes-ingreso.ts` hay que actualizarla acá |
+| `/fuentes/reglas` | `FuentesReglas.jsx` | todos | **Documentación embebida** de la clasificación, escrita para Riesgos. Compara su versión con la del código y avisa si se desfasó (hoy `fuentes-v11`). Al cambiar una regla en `fuentes-ingreso.ts` hay que actualizarla acá |
 | `/fuentes/parametros` | `FuentesParametros.jsx` | admin | Corte vigente del IESS, SBU y fracción básica; cuántas personas quedaron con un corte anterior |
 
 ## Monitoreo (antes Reportes; la ruta sigue siendo `/reportes`)
