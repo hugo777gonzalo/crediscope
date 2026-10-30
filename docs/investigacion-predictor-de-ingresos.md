@@ -2574,7 +2574,7 @@ el ingreso calculado es el promedio de ventas o depósitos por la rentabilidad d
 
 Cierra el punto 12 de 12.20 y el pendiente de 12.26 (la paridad de la edad, el sexo, el estado civil, la zona y el IESS «no se midió»). El negocio autorizó la consulta (2026-10-28, base legal «Contrato NovaCredit: cartera con crédito vigente»). **Todo lo que sigue son tasas y conteos; los datos de las personas quedan en `research/medida-persona/` (fuera de git).**
 
-**Cómo se midió.** Muestra de 2.162 independientes de la tabla de AWS (sin las 448 cédulas de Aval), estratificada por año de consulta, con y sin RUC y respuesta comercial. Se consultó a Novadata con `consultar-lote.mjs` (20 en paralelo) y las variables se armaron con `variables-de-ingreso.ts` sin tocarlo, contra el crudo guardado, persona por persona. **El lote se cortó a pedido del negocio con 1.176 de 2.162 consultadas, y sólo 542 contestaron bien**: 553 recibieron HTTP 502 de Novadata (la saturación que el guion ya avisaba), 22 no contestaron en 120 s y 59 vinieron sin datos del Registro Civil. El guion los contó como «con perfil» y quedaron guardados sus perfiles con la respuesta incompleta; **hay que reconsultarlos con menos hilos** (en ese rango, a unos 11 perfiles por minuto con 20 hilos, la mitad falló). Las 542 son de 2023, 2024 y 2025 y **ninguna tiene RUC**: la mitad con RUC (consultas de 2026) no se alcanzó, así que lo que sigue **no dice nada de las variables del SRI**.
+**Cómo se midió.** Muestra de 2.162 independientes de la tabla de AWS (sin las 448 cédulas de Aval), estratificada por año de consulta, con y sin RUC y respuesta comercial. Se consultó a Novadata con `consultar-lote.mjs` (20 en paralelo) y las variables se armaron con `variables-de-ingreso.ts` sin tocarlo, contra el crudo guardado, persona por persona. **El lote se cortó a pedido del negocio con 1.176 de 2.162 consultadas, y sólo 542 contestaron bien**: 553 recibieron HTTP 502 de Novadata (la saturación que el guion ya avisaba), 22 no contestaron en 120 s y 59 vinieron sin datos del Registro Civil. El guion los contó como «con perfil» y quedaron guardados sus perfiles con la respuesta incompleta; **hay que reconsultarlos con menos hilos** (en ese rango, a unos 11 perfiles por minuto con 20 hilos, la mitad falló). Las 542 son de 2023, 2024 y 2025 y **ninguna trae el SRI de Equifax en AWS** (el bloque existe desde diciembre de 2025): la mitad con ese bloque (consultas de 2026) no se alcanzó, así que lo que sigue **no mide la paridad del SRI de Novadata contra el de Equifax**. Corregido en 12.30: acá decía «ninguna tiene RUC», y Novadata da RUC para 512 de las 542 (la muestra se estratificó por tener el bloque del SRI en AWS, no por tener RUC).
 
 **Dos cosas que cambian cómo se compara**: Novadata responde con la fecha de hoy y AWS con la de la consulta. La edad se calculó del nacimiento a la fecha de la consulta, y el IESS se recortó a los meses anteriores a ella.
 
@@ -2602,7 +2602,7 @@ Cierra el punto 12 de 12.20 y el pendiente de 12.26 (la paridad de la edad, el s
 | Provincia y cantón de domicilio | **No entran** | Novadata los trae en 37% y coinciden 86% y 71%; el modelo cubre peor con ellos vacíos (12.26) |
 | Provincia y cantón de trabajo | **No entran** | Novadata no los trae |
 | Aporte, meses con aporte y empleos | **No entran con el dato de Novadata tal como está** | Coinciden 84%, 0% y 67%, y la población con dato no es la misma (55% de los «sin aporte» de AWS tienen IESS en Novadata). Entran sólo si se reentrena con el IESS de Novadata |
-| SRI de Novadata | **Sin medir** | La muestra no incluyó ninguna persona con RUC; la paridad del SRI contra Equifax sigue como en 12.24 |
+| SRI de Novadata | **Sin medir contra Equifax** | La muestra no trae el SRI de Equifax (es de 2023 a 2025); la paridad sigue como en 12.24. Novadata sí da RUC para 512 de 542 (12.30) |
 
 La candidata de la sesión de entrenamiento (edad, sexo, IESS y SRI, sin zona ni estado civil) **se confirma salvo el IESS**: el aporte, los meses y los empleos no pueden entrar con el dato de Novadata sin reentrenar.
 
@@ -2612,6 +2612,85 @@ La candidata de la sesión de entrenamiento (edad, sexo, IESS y SRI, sin zona ni
 3. Si el negocio quiere la zona, el domicilio de Novadata cubre 37%: se necesitaría otra fuente.
 4. Revisar los perfiles con la respuesta incompleta que dejó el 502 (553 personas) cuando se reconsulten.
 5. El módulo de variables no cambió: tal como está, `meses_aporte` usa todos los meses de Novadata y debería recortarse a la consulta si se compara contra el entrenamiento.
+
+### 12.30 El nivel 1 con la edad, el sexo y el SRI, y la prueba en sombra con el perfil de CrediScope (2026-10-29)
+
+**La decisión.** El negocio decidió el 2026-10-29 que el nivel 1 es la edad, el sexo y el SRI de Novadata (`sri_ruc`, `sri_estado`, `sri_obligado`, `sri_antig` y `sri_susp`), sin estado civil, zona ni IESS: la recomendación de 12.26 y 12.29.
+**La fecha de la consulta (`anio_mes`) se queda**: no sale de una fuente sino del reloj del servidor, así que no tiene problema de paridad, y es lo que hace que el modelo no extrapole más allá del último mes entrenado (especificación, sección 7). Medido abajo: en la validación cruzada no suma (sin ella el R² es 0,001 mayor) y hacia adelante suma 0,003 de R² (0,001 a 0,006) y 0,007 en OK FACTURAR.
+Se cambió `NIVELES[1]` en `scripts/predictor-ingresos/comun.py` y se corrieron `entrenar.py --nivel=1`, `medir.py`, `exportar.py --nivel=1` y `calibrar.py`. El nivel 2 no se tocó: `medir.py` vuelve a cotejar 264 números de 12.24 sin diferencias y el modelo guardado de cada nivel predice igual que el entrenado dentro de `medir.py` (diferencia 0).
+Sin datos de personas en el repositorio: las tablas por persona quedaron en `C:\datos\ingresos\resultados\predictor-ingresos\` y `research\medida-persona\`, y los modelos anteriores del nivel 1, en `C:\datos\ingresos\modelos\anterior-nivel1-2026-10-22\`.
+
+**El nivel 1 nuevo contra el anterior** (21.260 independientes de 2026; hacia adelante, entrenado hasta junio con 12.604 y probado de julio a octubre con 8.656; intervalo del 95% entre paréntesis; entre corchetes, OK FACTURAR y condicionado, 3.538 y 1.613):
+
+| Variables del nivel 1 | R² (cruzada) | R² hacia adelante | El real supera el mínimo del 90%, hacia adelante | Del 85%, hacia adelante | Mediana del mínimo del 90%, hacia adelante | Certifica «al menos 2.000», hacia adelante (% y precisión) |
+|---|---|---|---|---|---|---|
+| Anterior: estado civil, zona e IESS de AWS (16) | 0,172 (0,157 a 0,188) [0,098] | 0,187 (0,162 a 0,215) [0,125] | 88,1% (87,4 a 88,8) [94,9%] | 83,4% (82,6 a 84,1) [91,9%] | 1.029 [1.152] | 4,5% y 93,8% [8,7% y 95,7%] |
+| **Edad, sexo, fecha y SRI de Novadata (8; el vigente)** | **0,157 (0,143 a 0,172) [0,074]** | **0,175 (0,149 a 0,202) [0,106]** | **89,1% (88,5 a 89,8) [95,7%]** | **84,8% (84,0 a 85,5) [93,0%]** | 1.021 [1.158] | 3,5% y 95,1% [7,1% y 96,5%] |
+| Sin el obligado a llevar contabilidad (7) | 0,130 (0,118 a 0,142) [0,016] | 0,136 (0,117 a 0,156) [0,010] | 89,0% (88,4 a 89,7) [96,2%] | 84,4% (83,6 a 85,2) [93,0%] | 1.034 [1.163] | 0,0% [0,0%] |
+| Sin la fecha de la consulta (7) | 0,158 (0,144 a 0,173) [0,078] | 0,172 (0,146 a 0,199) [0,099] | 89,2% (88,6 a 89,9) [95,8%] | 84,5% (83,7 a 85,3) [92,3%] | 1.022 [1.142] | 3,5% y 95,4% [6,9% y 96,4%] |
+
+En la validación cruzada la cobertura del nivel nuevo es 89,1% y 84,2% (95,6% y 92,2% en OK FACTURAR), contra 88,9% y 83,9% del anterior; el tramo exacto, 36,2% contra 36,9%, y el valor central a ±10%, 11,7% contra 11,8%.
+
+- **Pierde poco R² y cubre mejor.** Contra el anterior, el R² baja 0,015 en la validación cruzada (0,011 a 0,020) y 0,012 hacia adelante (0,005 a 0,019); en OK FACTURAR, 0,024 (0,011 a 0,038) y 0,018 (−0,003 a 0,038, no se distingue de cero). Es la suma de lo que 12.26 midió por partes: la zona y los datos de la persona pesaban 0,011, y el resto es el IESS.
+  Hacia adelante el mínimo del 90% cubre **89,1%** contra 88,1% y el del 85%, 84,8% contra 83,4%; en OK FACTURAR, 95,7% y 93,0% contra 94,9% y 91,9%. **Quien no tiene RUC sube de 85,1% a 87,4%** (786 casos; 84,7 a 89,5), el grupo que peor cubría en 12.26. La mediana del mínimo casi no cambia (1.021 contra 1.029) y «al menos 2.000» se certifica en menos casos (3,5% contra 4,5%) con más precisión (95,1% contra 93,8%).
+- **`sri_obligado` no se puede sacar.** Sin él el R² baja 0,027 en la cruzada (0,022 a 0,033) y 0,040 hacia adelante (0,030 a 0,050), en OK FACTURAR queda en 0,016 y 0,010, y el modelo no certifica «al menos 2.000» a nadie: la cobertura no cambia, lo que se pierde es distinguir a las personas. Los obligados son el 3,5% de los independientes y ganan mucho más que el resto (en la prueba en sombra de abajo, mediana de 9.000 contra 2.384).
+  El perfil de CrediScope no lo guarda (punto 18.5 de `docs/pendientes.md`); en el crudo de Novadata está en `datosContribuyente.obligado` como «SI», «NO» o «N» (en las 542 de abajo: 20, 466 y 26; vacío en las 30 sin RUC). Se le planteó al negocio leerlo del crudo, sumarlo al perfil o entrenar sin él, y **decidió sumarlo al perfil**: pide una estructura nueva (estructura-v15), recalcular los perfiles guardados y una versión nueva del marco, porque el modelo de lenguaje lee `laboral` entero.
+  Queda como trabajo aparte; mientras tanto `variables-de-ingreso.ts` lo recibe de quien llama (`obligadoAContabilidad`) y, si no llega, lo deja sin dato y pendiente. Su paridad con el obligado de Equifax sigue sin medirse.
+- **Calibración conforme del nivel nuevo** (`calibrar.py`, la cruzada en logaritmo, hacia adelante): de 89,1% a **90,4%** (89,8 a 91,1) y el del 85%, de 84,8% a 85,8%, con un corrimiento de 0,040 (el anterior pedía 0,056) que baja la mediana del mínimo 3,9% (de 1.021 a 981; antes 5,5%). Calibrando con mayo y junio el corrimiento es 0 y la cobertura queda en 89,3%. El nivel 2 queda como en 12.26.
+- **Exportación**: `ingreso-v1-nivel1.json.gz` pesa 0,53 MB (antes 0,60; 28.560 divisiones y 30.600 hojas, como antes). El evaluador de referencia coincide con LightGBM a 2e-14 en 4.020 entradas inventadas, los 200 casos de oro se regeneraron, y la prueba de oro de `_shared/predictor-ingresos.ts` con el modelo real da diferencia 0 en los 200 casos de cada nivel. La versión sigue siendo `ingreso-v1`: nada está desplegado.
+- **El módulo de variables** (`variables-de-ingreso.ts`): `VARIABLES_DEL_NIVEL_1` pasa a las 8 del modelo, en su orden, y el nivel 1 ya no arma el estado civil, la zona ni el IESS (el 2 sí). El sexo pasa por un mapeo medido (`sexoParaIngreso`): Novadata usa las mismas dos categorías que AWS y coinciden en 540 de 542 (12.29); otra categoría queda sin dato.
+  Sin ese mapeo el sexo llegaba siempre vacío, cosa que el modelo no vio nunca (AWS lo trae completo). `MAPEO_PENDIENTE` pasa a ser `MAPEO_DE_NOVADATA`: el estado civil, la provincia y el cantón siguen sin mapeo, y solo los usa el nivel 2.
+
+**La prueba en sombra** (`scripts/sombra-predictor-ingresos.mjs` arma y evalúa; `scripts/predictor-ingresos/medir_sombra.py` mide). Para las 542 personas de 12.29 con respuesta buena de Novadata, las variables se armaron con `variables-de-ingreso.ts` desde el perfil que guardó CrediScope (leído de `client_profiles`; ninguna consulta a una fuente ni al modelo de lenguaje) y se evaluaron con `predictor-ingresos.ts` y el modelo exportado: lo que serviría la función.
+Se comparan con su ingreso validado de AWS. Quedan **532**, con el ingreso no verificado entre 0 y 60.000 como el entrenamiento (9 tienen 0 y una pasa de 60.000). Consultas de AWS de 2023 a 2025: ninguna está en el entrenamiento, que es de 2026.
+**Estas personas sí tienen RUC** (corrige 12.29): ninguna trae el SRI de Equifax en AWS, pero Novadata da RUC para 502 de las 532, así que la prueba ejercita el SRI de Novadata; lo que no puede medir es su paridad con el de Equifax. Tres maneras de servirlas, porque Novadata contestó el 2026-10-28 y el ingreso es de la fecha de la consulta de AWS:
+
+| Manera (532 personas; entre corchetes, las 82 de OK FACTURAR y condicionado) | R² | El real supera el mínimo del 90% | Del 85% | Tramo exacto | Valor central a ±10% | Mediana del mínimo del 90% | Certifica «al menos 2.000» |
+|---|---|---|---|---|---|---|---|
+| A la fecha de la consulta de AWS (edad y reloj), con el obligado del crudo | 0,187 (0,088 a 0,268) | **89,1% (86,5 a 91,7)** [93,9%] | **85,0% (82,1 a 88,0)** [92,7%] | 37,6% (33,5 a 41,2) | 11,5% | 1.056 | 3,0%: 16 personas, 14 aciertos |
+| Igual, sin el obligado (lo que da el perfil de hoy) | 0,167 (0,110 a 0,219) | 89,1% (86,5 a 91,7) [93,9%] | 85,0% (82,0 a 87,8) [92,7%] | 37,2% (33,3 a 41,0) | 9,8% | 1.056 | ninguna |
+| El perfil guardado tal cual, con el reloj del 2026-10-28 | 0,145 (0,091 a 0,194) | 87,2% (84,2 a 89,8) [92,7%] | 82,3% (79,3 a 85,3) [90,2%] | 36,5% (32,3 a 40,2) | 10,9% | 1.095 | ninguna |
+| Referencia: el mismo modelo hacia adelante en AWS (8.656) | 0,175 | 89,1% [95,7%] | 84,8% [93,0%] | 36,4% | 11,0% | 1.021 | 3,5%, precisión 95,1% |
+
+- **Con las entradas de producción el mínimo cubre lo mismo que con el extracto de AWS**: 89,1% contra 89,1% hacia adelante, y el del 85%, 85,0% contra 84,8%. El R² (0,187, con un intervalo ancho), el tramo exacto (37,6%) y el valor central quedan donde estaban: el error mediano del valor central es de 0,47 en logaritmo (un factor de 1,6) y su mediana sobre el real, 1,03.
+  Por respuesta: OK FACTURAR y condicionado 93,9% (82), rechazados 68,0% (125; en AWS hacia adelante, 73,0%) y las demás respuestas 96,0% (325). Los tramos: el más probable es «940 a 1.999» o «5.000 o más», como en AWS; de los 109 que ganan 5.000 o más, 75 caen en su tramo.
+- **El obligado decide la certificación**: sin él la cobertura es la misma y nadie se certifica «al menos 2.000»; con él se certifican 16 y 14 lo superan. En los 19 obligados de la muestra la mediana del mínimo del 90% pasa de 1.264 a 2.986 (su ingreso mediano es 9.000).
+- **«Hoy» cubre dos puntos menos** (87,2%) porque el perfil guarda la edad del día de la consulta a Novadata, y el reloj pone la fecha y la antigüedad del RUC de hoy, contra un ingreso de uno a tres años antes. En producción la consulta y la estimación son del mismo día; la fila mide lo que pasa con un perfil viejo, y dice que el predictor debe servirse con una consulta vigente.
+- **Lo que esta prueba no mide.** (1) La paridad del SRI de Novadata con el de Equifax: no hay SRI de Equifax de 2023 a 2025. (2) Novadata contesta con el RUC de hoy: 3 personas lo abrieron después de su consulta y 29 lo suspendieron después, estados que el modelo ve y que no tenían; sin ellas (470 con el RUC que ya existía y no cambió), 88,9% (86,2 a 91,7).
+  (3) El ingreso es de 2023 a 2025 y el modelo, de 2026: por año cubre 86,3% (2023, 182 personas), 98,4% (2024, 124) y 86,3% (2025, 226). (4) La muestra se estratificó por año y respuesta, así que «todas» no tiene la mezcla de la población. (5) Las 30 sin RUC cubren 90,0% (76,7 a 100): son muy pocas para decir algo.
+- **Las entradas, contra el entrenamiento**: edad mediana 37 y 37; masculino 56,4% y 59,4%; con RUC 94,4% y 87,3%; RUC activo 85,3% y 80,8%; con años de suspendido 26,1% y 27,0%; antigüedad mediana del RUC 8,8 y 10,0 años; obligado 3,6% y 3,5%; ingreso validado mediano 2.384 y 2.169.
+
+**Lo que queda abierto.**
+1. El obligado en el perfil (estructura-v15, recálculo de los perfiles guardados y versión nueva del marco) y su paridad con el de Equifax. Hecho en 12.31 (desplegado y recalculado el 2026-10-30), sin versión nueva del marco.
+2. Completar el lote de paridad (decisión del 2026-10-29: queda para después): la mitad con el SRI de Equifax en AWS (2026) es la única que mide el SRI de Novadata contra el de Equifax, y con ella la prueba en sombra se repite tal cual (`node scripts/sombra-predictor-ingresos.mjs` y `medir_sombra.py`).
+3. El nivel 2 sigue con el estado civil, la zona y el IESS del extracto de AWS: se decide al reentrenarlo desde las respuestas crudas de Equifax (punto 18.4 de `docs/pendientes.md`). En 12.26 sacarlos le costaba 0,004 de R².
+
+### 12.31 El obligado a llevar contabilidad en el perfil (estructura-v15, 2026-10-29)
+
+**Qué se hizo.** El perfil guarda `laboral.obligadoALlevarContabilidadRuc`, del mismo RUC de referencia que las fechas, y `variables-de-ingreso.ts` lo lee de ahí para `sri_obligado`; la opción `obligadoAContabilidad` queda para las pruebas y la sombra. La lectura es una sola, `obligadoALlevarContabilidad()` de `ruc.ts`: «SI» y «S» son sí, «NO» y «N» son no, y sin RUC o con otro valor no hay dato (no es «no»).
+En el crudo del 2026-10-03 (2.567 personas) vienen «NO» 2.063, «SI» 128, «N» 106 y **«S» 4**, una abreviatura que 12.30 no había visto en las 542; en el lote de paridad entero (1.176 crudos) hay 15. Que la «S» es «sí» lo decidió el negocio el 2026-10-29, como el «ABI» de los establecimientos (estructura-v13).
+
+**El RUC activo, de paso.** 5 registros del crudo del 2026-10-03 traen el RUC, el inicio y «N» sin fecha de inscripción ni ninguna fecha de cese, y el perfil los daba con la actividad «activa» (el nivel 1 les pone `sri_ruc = 1` y `sri_estado = ACTIVO`) y a la vez sin RUC activo. El negocio decidió el 2026-10-29 que un RUC queda inactivo sólo si una fecha lo respalda, y que una reapertura posterior al cierre es que reinició actividades: `ruc.ts` cuenta el RUC sin la inscripción, un establecimiento que reabrió después de su último cierre está abierto aunque el estado diga cerrado, y uno sin estado, salvo una fecha de cierre (estructura-v15 y fuentes-v11).
+Pasan a RUC activo 14 de las 2.567 personas y 70 de las 1.176 del lote (casi todas con la respuesta que el HTTP 502 dejó incompleta), y cambian los establecimientos activos de 134 y 129. Las variables del nivel 1 no cambian: salen de `estadoActividadEconomica`, que mira las fechas del RUC y no los establecimientos.
+
+**Paridad con Equifax** (punto 7 de la sección 9 de la especificación), en las 87 personas de la base con una consulta de producción de Equifax con el bloque del SRI y un perfil de Novadata, con el crudo de su último perfil (13 días de mediana entre una consulta y la otra):
+
+| Equifax \ Novadata | Obligado | No obligado | Sin RUC |
+|---|---|---|---|
+| Obligado | 23 | 0 | 0 |
+| No obligado | 0 | 60 (56 «NO» y 4 «N») | 0 |
+| Sin RUC | 0 | 0 | 4 |
+
+Coincide en las 83 con RUC. Ninguna trae «S»: esa lectura sigue sin cotejar contra Equifax.
+
+**El modelo de lenguaje no lo lee** (decisión del negocio del 2026-10-29). Ya le llegaba el obligado, interpretado, en `fuentesIngreso` (el indicio de ingreso mayor y `tamanoDelNegocio.obligadoContabilidad`, con el marco diciendo que es escala y no ingreso), y en `laboral` sería el mismo dato dos veces. `perfil-del-modelo.ts` lo saca (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`, que miden `auditar-seguridad.mjs` y `validar-perfil-del-modelo.mjs`).
+Con el código viejo y el nuevo, el mensaje al modelo de las 2.567 personas del crudo del 2026-10-03 es idéntico byte a byte en 2.433; las 134 que cambian son las del RUC activo y los establecimientos, un dato y no la forma del mensaje. **No hay versión nueva del marco**, al revés de lo que preveía 12.30. Lo que sí difiere: `fuentes-ingreso.ts` reconoce sólo «SI», así que en las 4 con «S» el modelo y la pantalla no ven el indicio (queda en `docs/pendientes.md`).
+
+**Efecto en el perfil**: código viejo contra nuevo, perfil entero, en las 2.567: el campo nuevo (2.169 no, 132 sí, 266 sin dato), la versión de `fuentesIngreso`, el RUC activo en 14, los establecimientos activos en 134 y el segmento en 4.
+
+**La prueba en sombra, repetida.** Antes del recálculo, «a la consulta» no traía el obligado (0 de 542 perfiles con el campo), y «con el obligado», que ya lo toma de `process.ts` (antes el guion tenía su propia copia), daba lo mismo que en 12.30.
+Desplegado (`dabb60be9f3c`, 2026-10-30) y recalculados los perfiles guardados (3.764 de 3.764), **«a la consulta» da lo mismo que «con el obligado»**: R² 0,187, el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y se certifica «al menos 2.000» al 3,0%, con 87,5% de precisión (16 personas, 14 aciertos).
+541 de los 542 perfiles traen el campo, y en ninguno difiere del crudo. El que falta es de una persona con dos perfiles del lote, creados con 3 segundos de diferencia: el recálculo toca sólo el último, que sí quedó en v15, y la sombra lee el del crudo, que es el anterior.
 
 ## 13. Registro de verificación
 

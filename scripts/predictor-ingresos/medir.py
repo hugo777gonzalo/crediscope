@@ -22,7 +22,10 @@ NOMBRE_VIEJO = {
     "1 Novadata, sin SRI": "N1 Novadata", "1 con el SRI de Novadata": "N1 + SRI de Novadata", "1 con el SRI, la clase y el CIIU": "N1 + SRI de Novadata + clase y CIIU",
     "2 Novadata y buró, sin SRI": "N2 Novadata y buro", "2 con el SRI de Novadata": "N2 + SRI de Novadata", "2 con el SRI, la clase y el CIIU": "N2 + SRI de Novadata + clase y CIIU",
 }
+# Los niveles de 12.24, con los que se cotea contra los guiones viejos: el nivel 1 de entonces es c.NIVEL_1_ANTERIOR.
 NIVEL_1, NIVEL_2 = "1 con el SRI de Novadata", "2 con el SRI, la clase y el CIIU"
+# El nivel 1 que se entrena y se exporta (c.NIVELES[1]), por su nombre en c.VARIANTES_NIVEL_1.
+NIVEL_1_VIGENTE = next(n for n, cols in c.VARIANTES_NIVEL_1.items() if cols == c.NIVELES[1])
 
 
 def coma(x, d=1):
@@ -41,11 +44,11 @@ def ic(f, k, d=1):
 
 
 # ---------------------------------------------------------------- cuantiles fuera de muestra
-def oof(t, cat, recalcular):
-    """Validación cruzada por persona de las seis variantes de 12.24, guardada en disco para no repetirla."""
+def oof(t, cat, recalcular, variantes=c.VARIANTES_SRI):
+    """Validación cruzada por persona de cada variante (las seis de 12.24 por omisión), guardada en disco para no repetirla."""
     SALIDA.mkdir(parents=True, exist_ok=True)
     Q = {}
-    for nombre, cols in c.VARIANTES_SRI.items():
+    for nombre, cols in variantes.items():
         # La clave del archivo es el contenido de las columnas, no su nombre: cambiar las variables de un nivel invalida la copia.
         ruta = SALIDA / ("oof-" + hashlib.sha1("|".join(cols).encode()).hexdigest()[:10] + ".npy")
         if ruta.exists() and not recalcular:
@@ -58,12 +61,12 @@ def oof(t, cat, recalcular):
     return Q
 
 
-def por_fecha(t, cat):
-    """Entrena con las consultas de antes de julio y predice las de julio a octubre, en las seis variantes."""
+def por_fecha(t, cat, variantes=c.VARIANTES_SRI):
+    """Entrena con las consultas de antes de julio y predice las de julio a octubre, en cada variante."""
     tr, te = t[t.t < c.CORTE_FECHA], t[t.t >= c.CORTE_FECHA].reset_index(drop=True)
     cat_tr = c.categorias_de(tr)
     Q = {}
-    for nombre, cols in c.VARIANTES_SRI.items():
+    for nombre, cols in variantes.items():
         modelos = c.entrenar_cuantiles(c.matriz(tr, cols, cat_tr), tr.y)
         Q[nombre] = c.predecir(modelos, c.matriz(te, cols, cat_tr))
     return te, Q
@@ -146,15 +149,17 @@ def main():
 
     # ============ 2) validación por fecha
     te, Qf = por_fecha(t, cat)
+    Q1 = oof(t, cat, recalcular, c.VARIANTES_NIVEL_1)
+    _, Qf1 = por_fecha(t, cat, c.VARIANTES_NIVEL_1)
     # El modelo guardado por `entrenar.py` tiene que dar lo mismo que el entrenado acá: si no, el guion y el modelo exportado se habrían separado.
-    for nivel, nombre in ((1, NIVEL_1), (2, NIVEL_2)):
+    for nivel, Qn in ((1, Qf1[NIVEL_1_VIGENTE]), (2, Qf[NIVEL_2])):
         ruta = c.MODELOS / "validacion-hasta-2026-06" / f"nivel{nivel}"
         if ruta.exists():
-            d = np.abs(c.ModeloGuardado(ruta).predecir(te) - Qf[nombre]).max()
+            d = np.abs(c.ModeloGuardado(ruta).predecir(te) - Qn).max()
             print(f"  modelo guardado del nivel {nivel} contra el entrenado acá: diferencia máxima {d:.2e} en logaritmo")
             if d > 1e-9:
                 distintas.append(("modelo guardado", f"nivel {nivel}", "predicción", float(d), 0.0))
-    np.save(SALIDA / "fecha-nivel1-cuantiles.npy", Qf[NIVEL_1])
+    np.save(SALIDA / "fecha-nivel1-cuantiles.npy", Qf1[NIVEL_1_VIGENTE])
     np.save(SALIDA / "fecha-nivel2-cuantiles.npy", Qf[NIVEL_2])
     Mf = {n: c.Medidas(q, te.unver.values) for n, q in Qf.items()}
     subf = subconjuntos(te)
@@ -170,15 +175,43 @@ def main():
     informe.append("### Diferencia de R² por fecha (intervalo del 95%)\n\n" + tabla_md(dif_f, [("A", lambda f: f["a"]), ("menos B", lambda f: f["b"]), ("Casos", lambda f: f["subconjunto"]),
                                                                                            ("Diferencia", lambda f: f"{coma(f['dif'], 3)} ({coma(f['bajo'], 3)} a {coma(f['alto'], 3)})")]))
 
+    # ============ 2b) el nivel 1 contra el anterior y sin cada variable discutida (12.30)
+    M1 = {n: c.Medidas(q, real) for n, q in Q1.items()}
+    Mf1 = {n: c.Medidas(q, te.unver.values) for n, q in Qf1.items()}
+    filas_1, dif_1 = [], []
+    for etiqueta, MM, ss in (("validación cruzada", M1, sub), ("por fecha", Mf1, subf)):
+        for n, m in MM.items():
+            for s, idx in ss.items():
+                filas_1.append({"validacion": etiqueta, "variante": n, "variables": len(c.VARIANTES_NIVEL_1[n]), "subconjunto": s, **m.con_intervalos(idx)})
+        for n in MM:
+            if n == NIVEL_1_VIGENTE:
+                continue
+            for s, idx in ss.items():
+                m, lo, hi = c.diferencia_r2(MM[n], MM[NIVEL_1_VIGENTE], idx)
+                dif_1.append({"validacion": etiqueta, "a": n, "subconjunto": s, "dif": m, "bajo": lo, "alto": hi})
+    pd.DataFrame(filas_1).to_csv(SALIDA / "nivel1-variantes.csv", index=False)
+    pd.DataFrame(dif_1).to_csv(SALIDA / "nivel1-diferencias.csv", index=False)
+    cols_1 = [("Variables del nivel 1", lambda f: f["variante"]), ("Cantidad", lambda f: str(f["variables"])), ("R²", lambda f: ic(f, "r2", 3)),
+              ("El real supera el mínimo del 90% (%)", lambda f: ic(f, "cobertura90")), ("El real supera el mínimo del 85% (%)", lambda f: ic(f, "cobertura85")),
+              ("Mediana del mínimo del 90%", lambda f: coma(f["mediana_min90"], 0)), ("Tramo exacto (%)", lambda f: coma(f["tramo_exacto"])),
+              ("Certifica «al menos 2.000» (% del total y precisión)", lambda f: f"{coma(f['cert2000_pct'])}% y {coma(f['cert2000_precision'])}%")]
+    for etiqueta, ss in (("validación cruzada", sub), ("por fecha", subf)):
+        for s in ss:
+            informe.append(f"### Nivel 1 del 2026-10-29 contra el anterior, {etiqueta}, {s} (n = {coma(ss[s].size, 0)})\n\n"
+                           + tabla_md([f for f in filas_1 if f["validacion"] == etiqueta and f["subconjunto"] == s], cols_1))
+    informe.append(f"### Diferencia de R² con «{NIVEL_1_VIGENTE}» (intervalo del 95%)\n\n" + tabla_md(dif_1, [
+        ("Validación", lambda f: f["validacion"]), ("Variante", lambda f: f["a"]), ("Casos", lambda f: f["subconjunto"]),
+        ("Diferencia", lambda f: f"{coma(f['dif'], 3)} ({coma(f['bajo'], 3)} a {coma(f['alto'], 3)})")]))
+
     # ============ 3) cobertura por grupo y por respuesta (validación cruzada y por fecha)
-    for etiqueta, tabla, MM, nom in (("validación cruzada", t, M, "grupos-validacion-cruzada"), ("validación por fecha", te, Mf, "grupos-por-fecha")):
+    for etiqueta, tabla, MM, nom in (("validación cruzada", t, M | M1, "grupos-validacion-cruzada"), ("validación por fecha", te, Mf | Mf1, "grupos-por-fecha")):
         g, filas_g = grupos(tabla), []
         for nombre_g, mask in g.items():
             idx = np.where(mask)[0]
             if len(idx) < 100:
                 continue
             f = {"grupo": nombre_g, "n": len(idx), "mediana_ingreso": float(np.median(tabla.unver.values[idx]))}
-            for k, v in (("n1", NIVEL_1), ("n2", NIVEL_2)):
+            for k, v in (("n1", NIVEL_1), ("n2", NIVEL_2), ("n1v", NIVEL_1_VIGENTE)):
                 r = MM[v].con_intervalos(idx, B=500)
                 f |= {f"{k}_cobertura90": r["cobertura90"], f"{k}_ic_bajo": r["cobertura90_ic_bajo"], f"{k}_ic_alto": r["cobertura90_ic_alto"],
                       f"{k}_cobertura85": r["cobertura85"], f"{k}_mediana_min90": r["mediana_min90"]}
@@ -186,8 +219,9 @@ def main():
         pd.DataFrame(filas_g).to_csv(SALIDA / f"{nom}.csv", index=False)
         informe.append(f"### Cobertura del mínimo del 90% por grupo, {etiqueta}\n\n" + tabla_md(filas_g, [
             ("Grupo", lambda f: f["grupo"]), ("Casos", lambda f: coma(f["n"], 0)), ("Mediana del ingreso", lambda f: coma(f["mediana_ingreso"], 0)),
-            ("Nivel 1: el real supera el mínimo del 90%", lambda f: f"{coma(f['n1_cobertura90'])} ({coma(f['n1_ic_bajo'])} a {coma(f['n1_ic_alto'])})"),
-            ("Nivel 2", lambda f: f"{coma(f['n2_cobertura90'])} ({coma(f['n2_ic_bajo'])} a {coma(f['n2_ic_alto'])})")]))
+            ("Nivel 1 anterior: el real supera el mínimo del 90%", lambda f: f"{coma(f['n1_cobertura90'])} ({coma(f['n1_ic_bajo'])} a {coma(f['n1_ic_alto'])})"),
+            ("Nivel 2", lambda f: f"{coma(f['n2_cobertura90'])} ({coma(f['n2_ic_bajo'])} a {coma(f['n2_ic_alto'])})"),
+            ("Nivel 1 vigente", lambda f: f"{coma(f['n1v_cobertura90'])} ({coma(f['n1v_ic_bajo'])} a {coma(f['n1v_ic_alto'])})")]))
         if etiqueta == "validación cruzada" and (VIEJOS / "r4_11_cobertura_por_grupo.csv").exists() and "--sin-cotejo" not in sys.argv:
             v = pd.read_csv(VIEJOS / "r4_11_cobertura_por_grupo.csv").set_index("grupo")
             mapa = {"antigüedad de menos de 2 años": "antiguedad < 2 anos", "antigüedad de 2 a 5": "antiguedad 2 a 5", "antigüedad de 5 a 10": "antiguedad 5 a 10", "antigüedad de 10 o más": "antiguedad 10 o mas",

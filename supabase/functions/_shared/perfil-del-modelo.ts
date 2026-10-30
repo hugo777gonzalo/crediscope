@@ -24,7 +24,8 @@
 // renta por año (decisión del negocio del 2026-09-25). Desde fuentes-v9 la
 // renta llega sólo como indicio de ingreso mayor, ya interpretado (decisión
 // del 2026-09-28). Tampoco van las marcas de auditoría (correccion,
-// recalculo).
+// recalculo), ni lo que el perfil guarda para el predictor de ingresos
+// (CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN, desde estructura-v15).
 //
 // Desde marco-v24 suma el bloque `endeudamiento` (la deuda propia en todo
 // el sistema, lo que está en atraso, lo garantizado y la cuota conocida) y
@@ -143,9 +144,23 @@ export const ATRIBUTOS_PROTEGIDOS: Record<string, boolean> = {
   "familia.padresFallecidos": true,
 };
 
+// ---- Lo que el perfil guarda para el predictor de ingresos ----
+//
+// laboral.obligadoALlevarContabilidadRuc (estructura-v15) lo lee el nivel 1
+// del predictor. El modelo ya recibe el obligado, interpretado, en
+// fuentesIngreso: el indicio de ingreso mayor y
+// tamanoDelNegocio.obligadoContabilidad, que el marco explica (escala, no
+// ingreso). En laboral sería el mismo dato dos veces sin texto del marco que
+// lo explique, y en 4 de 2.567 personas las dos lecturas se contradirían:
+// Novadata manda «S» y fuentes-ingreso.ts sólo reconoce «SI». Sin él el
+// mensaje sigue siendo el de marco-v30 (decisión del negocio del 2026-10-29:
+// la próxima versión del marco se arma con los resultados del predictor).
+export const CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN = ["laboral.obligadoALlevarContabilidadRuc"];
+
 export const RUTAS_QUE_NO_LLEGAN: string[] = [
   ...IDENTIFICADORES_QUE_NO_LLEGAN,
   ...Object.entries(ATRIBUTOS_PROTEGIDOS).filter(([, llega]) => !llega).map(([ruta]) => ruta),
+  ...CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN,
 ];
 
 function quitarRuta(nodo: unknown, partes: string[]): void {

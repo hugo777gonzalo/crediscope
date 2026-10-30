@@ -42,15 +42,31 @@ CUOTA = ["cuota_fin", "h12", "h6", "hact", "g6", "g12", "c_consumo", "c_tarjeta"
          "s_consumo", "s_tarjeta", "s_micro", "s_vivienda", "n_consumo", "n_tarjeta", "n_micro", "n_vivienda", "c_codeudor", "max_dias_t"]
 CATEGORICAS = ["genero", "estado_civil", "prov_trab", "cant_trab", "prov_dom", "cant_dom", "sri_estado", "sri_clase", "sri_ciiu_secc", "sri_ciiu_div"]
 
+# El nivel 1 es la edad, el sexo y el SRI de Novadata (decisión del negocio del 2026-10-29). Reconsultados 542 independientes de AWS (12.29), la edad
+# y el sexo de Novadata coinciden con los del extracto en el 99,6%; el estado civil (92,4%), el domicilio (Novadata lo trae en el 37%), el lugar de
+# trabajo (no lo trae) y el IESS (los meses con aporte no coinciden en ninguno de 99) no son el dato con que el modelo aprendió. `anio_mes` no sale de
+# una fuente sino del reloj del servidor, y se queda: es lo que hace que el modelo no extrapole más allá del último mes entrenado (especificación, 7).
+NIVEL_1_PERSONA = ["edad", "genero"]
+NIVEL_1_CANDIDATO = NIVEL_1_PERSONA + ["anio_mes"] + SRI_NOVADATA
+# El nivel 1 hasta el 2026-10-28, con el estado civil, la zona y el IESS del extracto de AWS: se mide para comparar (12.30) y reproduce 12.24 a 12.26.
+NIVEL_1_ANTERIOR = BASE + SRI_NOVADATA
+
 NIVELES = {
-    1: BASE + SRI_NOVADATA,
+    1: NIVEL_1_CANDIDATO,
     2: BASE + BURO + CUOTA + SRI_NOVADATA + SRI_EQUIFAX,
 }
-# Para reproducir las filas de 12.24 (con y sin SRI) sobre el mismo subconjunto.
+# El nivel 1 contra el anterior, y lo que pesa cada variable que se discutió al decidirlo (12.30).
+VARIANTES_NIVEL_1 = {
+    "anterior: con estado civil, zona e IESS de AWS": NIVEL_1_ANTERIOR,
+    "edad, sexo, fecha y SRI de Novadata": NIVEL_1_CANDIDATO,
+    "sin el obligado a llevar contabilidad": [x for x in NIVEL_1_CANDIDATO if x != "sri_obligado"],
+    "sin la fecha de la consulta": [x for x in NIVEL_1_CANDIDATO if x != "anio_mes"],
+}
+# Para reproducir las filas de 12.24 (con y sin SRI) sobre el mismo subconjunto: el nivel 1 de entonces.
 VARIANTES_SRI = {
     "1 Novadata, sin SRI": BASE,
-    "1 con el SRI de Novadata": NIVELES[1],
-    "1 con el SRI, la clase y el CIIU": NIVELES[1] + SRI_EQUIFAX,
+    "1 con el SRI de Novadata": NIVEL_1_ANTERIOR,
+    "1 con el SRI, la clase y el CIIU": NIVEL_1_ANTERIOR + SRI_EQUIFAX,
     "2 Novadata y buró, sin SRI": BASE + BURO + CUOTA,
     "2 con el SRI de Novadata": BASE + BURO + CUOTA + SRI_NOVADATA,
     "2 con el SRI, la clase y el CIIU": NIVELES[2],
@@ -68,7 +84,7 @@ def verificar_entradas(columnas):
         raise ValueError(f"Variables que no pueden ser entrada del predictor: {malas}")
 
 
-for _n, _c in {**{f"nivel {k}": v for k, v in NIVELES.items()}, **VARIANTES_SRI}.items():
+for _n, _c in {**{f"nivel {k}": v for k, v in NIVELES.items()}, **VARIANTES_SRI, **VARIANTES_NIVEL_1}.items():
     verificar_entradas(_c)
 
 # ---------------------------------------------------------------- modelo

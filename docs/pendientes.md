@@ -15,14 +15,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 - **Base:** última migración aplicada, la **138** (2026-10-28; la 137 es la del PR 82 y no existe en
   `main`); `ESQUEMA_MINIMO` está en 138. Se midió en `esquema_version`.
-- **Funciones:** sello **`626bb6c04685`**, 10 de 10, desplegado el 2026-10-28 sobre el esquema
-  138 (`despliegues`; el anterior fue `f09531e87adc`). Desde entonces sólo entraron documentos y
-  dependencias de la pantalla: no hace falta volver a desplegar.
+- **Funciones:** sello **`dabb60be9f3c`**, 10 de 10, desplegado el 2026-10-30 a las 00:20 sobre el
+  esquema 138 (`despliegues`; el anterior fue `626bb6c04685`).
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v14 (2.573 personas
-  reales al 2026-10-20; las 240 sintéticas quedaron en v3), fuentes-v10, perfil-laboral-v3, simulador-v4,
-  capacidad-v3. Las dos primeras salen de la base (`structure_version`, `fuente_version`); el
-  resto, del código de `main`.
+  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
+  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
+  (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
   desde el 2026-10-21**, casi todas del lote de paridad del predictor del 2026-10-28 (1.176
   independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
@@ -210,9 +209,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     dato, no la propuesta de «sin calibrar para consumo». **Destilación (12.28):** hay 400.000
     consultas a Equifax con predictor en cinco años; medido, destilar no mejora la predicción del
     ingreso validado (R² 0,341 el nivel 2 solo; 0,349 con el predictor de Equifax mismo) y serviría para
-    independizarse de ese predictor. **El negocio la quiere para mejorar la asertividad del predictor**
-    (2026-10-29). Lo medido dice que por sí sola no la mejora (sumar el alumno al nivel 2 lleva el R²
-    de 0,341 a 0,342), así que antes de construirla hay que proponer qué haría distinto.
+    independizarse de ese predictor. El negocio dijo el 2026-10-29 que la quiere para mejorar la
+    asertividad, que es justo lo que lo medido no respalda (sumar el alumno al nivel 2 lleva el R² de
+    0,341 a 0,342): falta decidir si se hace igual.
+    **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Novadata (más la
+    fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
+    va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
+    con los resultados del predictor.
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
@@ -221,6 +224,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     `crediscope-arboles-1` sin dependencias, para Deno y el navegador; la prueba de oro dio diferencia 0
     en el logaritmo en los 200 casos de cada nivel contra el modelo real, en local con
     `PREDICTOR_INGRESOS_MODELOS`, y en la integración continua corre con un modelo chico inventado).
+    **Fusionado el 2026-10-29 (PR 96):** el nivel 1 reentrenado con 8 variables
+    (R² de 0,157 contra 0,172 del anterior; hacia adelante el mínimo del 90% cubre 89,1% contra 88,1%, y
+    calibrado, 90,4%), exportado a `C:\datos\ingresos\modelos\exportado\` con sus casos de oro (prueba de
+    oro con diferencia 0), `variables-de-ingreso.ts` con el nivel nuevo y el sexo de Novadata, y la
+    prueba en sombra con el perfil de CrediScope de 532 personas de AWS: 89,1% (86,5 a 91,7), lo mismo
+    que hacia adelante en AWS.
 
     **Lo que sigue, en este orden:**
     1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
@@ -230,30 +239,36 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
        de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
        paso 4 (punto 6).
-    3. La paridad de los datos de la persona contra Novadata **se midió con 542 independientes de 2023 a
-       2025, ninguno con RUC (12.29)**: edad y sexo 99,6%, estado civil 92,4%, domicilio 86% (provincia) y
-       71% (cantón) pero Novadata lo trae en el 37%, aporte al IESS 84%, empleos 67% y meses con aporte 0%.
-       Con eso el nivel 1 entra con la edad (a la fecha de la consulta), el sexo y el SRI, sin estado civil,
-       zona ni IESS de Novadata (el IESS entra solo si se reentrena con el suyo). **Decidido el
-       2026-10-29: el nivel 1 es edad, sexo y SRI.** El modelo exportado todavía es el anterior (con
-       estado civil, zona e IESS de AWS): hay que cambiar `NIVELES` en `comun.py`, entrenar, medir,
-       exportar y regenerar los casos de oro. Completar el lote (1.620 de 2.162 sin respuesta buena)
-       **queda para después** (negocio, 2026-10-29), así que el SRI de Novadata sigue sin medirse
-       contra AWS. Sí falta revisar los 553 perfiles que el HTTP 502 dejó guardados con la respuesta
-       incompleta (el guion los contó como hechos).
-    4. Reentrenar desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19 variables
-       del nivel 2 que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
-       respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja), con las variables de la
-       persona ya decididas; recalibrar y volver a exportar.
-    5. Completar el módulo de variables: el mapeo de las categorías de AWS a las de Novadata, provincia y
-       cantón de domicilio y trabajo y `obligado` en el perfil, y las filas mensuales del IESS
+    3. **Lo que quedó del obligado y del RUC activo** (estructura-v15 y fuentes-v11, PR 97, desplegado y
+       recalculado el 2026-10-30; 12.31). El perfil guarda el obligado, el nivel 1 lo lee de ahí y la prueba
+       en sombra «a la consulta» ya da lo mismo que «con el obligado» (R² 0,187; 89,1%).
+       - `fuentes-ingreso.ts` reconoce sólo «SI» para el indicio de ingreso mayor y el tamaño del negocio, y
+         no ve la «S» (4 de 2.567 en el crudo del 03/10): pasarlo a `obligadoALlevarContabilidad()` de
+         `ruc.ts` cambia lo que lee el modelo. Va con la próxima versión del marco (decisión del negocio).
+       - La «S» no está cotejada contra Equifax (ninguna de las 87 la trae).
+       - El recálculo pasó 60 personas del lote de «sin datos» a «independiente» por el RUC activo, 56 de
+         ellas de las respuestas que el HTTP 502 dejó incompletas: se revisan con ellas (punto 4).
+    4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
+       respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
+       con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de
+       Equifax; con el sí del negocio. Revisar además los 553 perfiles que el HTTP 502 dejó guardados con
+       la respuesta incompleta (el guion los contó como hechos). La prueba en sombra se repite tal cual
+       (`node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`).
+       Las 542 de 12.29 sí tienen RUC en Novadata (512): lo que no tienen es el SRI de Equifax.
+    5. Reentrenar el nivel 2 desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19
+       variables que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
+       respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja); recalibrar y volver a
+       exportar. Todavía lleva el estado civil, la zona y el IESS del extracto de AWS: decidir si se sacan
+       como en el nivel 1 (en 12.26 costaban 0,004 de R²).
+    6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
+       de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
-    6. Las tablas, la función y la operación de la API (pasos 4 y 5 de la sección 6): `modelos_de_ingreso`,
+    7. Las tablas, la función y la operación de la API (pasos 4 y 5 de la sección 6): `modelos_de_ingreso`,
        `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
-    7. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
+    8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
 
-    **Decisiones abiertas del negocio:** con qué se mediría que la destilación mejora la asertividad;
-    los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
+    las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Novadata con el de Equifax en más de 87 personas.
 

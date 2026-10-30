@@ -58,10 +58,15 @@ export function fechasDelRuc(c: AnyRecord): FechasDelRuc {
   };
 }
 
-// Un registro "cascarón" (sin ruc o sin fecha de inscripción) es que nunca
-// tuvo RUC: Novadata a veces lo manda con todo en null.
+// Un registro "cascarón" (sin ruc) es que nunca tuvo RUC: Novadata a veces lo
+// manda con todo en null. Hasta estructura-v14 también lo era un registro sin
+// fecha de inscripción, y en el crudo del 2026-10-03 hay 5 con el número, el
+// inicio (2019 a 2024) y un establecimiento, sin la inscripción ni ninguna
+// fecha de cese: el perfil los daba con la actividad «activa» y sin RUC activo
+// a la vez. Decisión del negocio del 2026-10-29: inactivo sólo si una fecha
+// (cese, reapertura) lo respalda, así que la inscripción no hace falta.
 export function esRegistroDeRuc(c: AnyRecord): boolean {
-  return Boolean(c.ruc && c.fecha_inscripcion_ruc);
+  return Boolean(c.ruc);
 }
 
 // Novadata empezó a mandar el estado abreviado en algunos registros: en la
@@ -71,13 +76,54 @@ export function esRegistroDeRuc(c: AnyRecord): boolean {
 // establecimiento en "ABI" quedaba sin RUC activo y con 0 establecimientos
 // activos (estructura-v13). La comparación vivía copiada en process.ts y dos
 // veces en fuentes-ingreso.ts: ahora todas llaman a ésta.
+//
+// Desde estructura-v15 (decisiones del negocio del 2026-10-29: cerrado sólo
+// si una fecha lo respalda, y una reapertura posterior al cierre es que
+// reinició actividades), abierto es:
+//   - reabrió después del último cierre, diga lo que diga el estado: en el
+//     crudo del 2026-10-03, 285 «CERRADO» o «CER» traen el reinicio posterior
+//     al cierre. Cambia los establecimientos activos de 134 personas y deja con
+//     RUC activo a 6 que tenían el RUC reactivado;
+//   - o el estado lo dice, aunque no traiga la reapertura: de los 624 abiertos
+//     con fecha de cierre, 614 reabrieron después y 10 no traen esa fecha;
+//   - o no trae estado ni fecha de cierre (8 de 3.587 del 2026-10-03; 49 de
+//     1.718 en el lote de paridad, casi todos de las respuestas que el HTTP
+//     502 dejó incompletas): nada dice que cerró.
+// Un «CERRADO» sin ninguna fecha (282 en el 2026-10-03) sigue cerrado: lo
+// dice el estado y ninguna fecha lo contradice.
 const ESTADOS_ABIERTO = new Set(["ABIERTO", "ABI"]);
 
 export function establecimientoAbierto(e: AnyRecord): boolean {
-  return ESTADOS_ABIERTO.has(String(e.estado_establecimiento ?? "").trim().toUpperCase());
+  const cierre = diaDeFecha(e.fech_cierre);
+  const reinicio = diaDeFecha(e.fech_reinicio_actividades);
+  if (cierre && reinicio && reinicio > cierre) return true;
+  const estado = String(e.estado_establecimiento ?? "").trim().toUpperCase();
+  if (estado !== "") return ESTADOS_ABIERTO.has(estado);
+  return !cierre;
 }
 
 export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boolean {
   if (!esRegistroDeRuc(c) || !fechasDelRuc(c).activoPorFechas) return false;
   return establecimientos.length === 0 || establecimientos.some(establecimientoAbierto);
+}
+
+// «Obligado a llevar contabilidad», del registro del RUC (estructura-v15, para
+// el nivel 1 del predictor de ingresos). Novadata lo abrevia igual que el estado
+// de los establecimientos: en los crudos del 2026-10-03 (2.553 registros con
+// RUC) vienen «NO» 2.063, «SI» 128, «N» 106 y «S» 4, y en los 1.176 de la
+// paridad de la persona (12.29), «S» 15 y «SI» 39. Contra Equifax coincide en
+// las 83 personas con RUC de las dos fuentes (las «N» incluidas; ninguna «S»).
+// Sin RUC no hay dato: null, no false (los 252 cascarones lo traen vacío). Un
+// valor que no es ninguno de los cuatro también es null: no se adivina.
+//
+// OJO: fuentes-ingreso.ts compara sólo «SI» para el indicio de ingreso mayor y
+// el tamaño del negocio, y no ve la «S». Pasarlo a esta función cambia lo que
+// lee el modelo (fuentes-v nueva y marco nuevo): queda pendiente.
+const OBLIGADO_SI = new Set(["SI", "S"]);
+const OBLIGADO_NO = new Set(["NO", "N"]);
+
+export function obligadoALlevarContabilidad(c: AnyRecord | null | undefined): boolean | null {
+  if (!c || !esRegistroDeRuc(c)) return null;
+  const v = String(c.obligado ?? "").trim().toUpperCase();
+  return OBLIGADO_SI.has(v) ? true : OBLIGADO_NO.has(v) ? false : null;
 }

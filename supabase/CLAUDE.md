@@ -236,6 +236,11 @@ su guía: `docs/equifax.md`.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
   establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).
+  Inactivo sólo con una fecha que lo respalde (negocio, 2026-10-29,
+  estructura-v15): sin fecha de inscripción es un RUC; un establecimiento que
+  reabrió después de su último cierre está abierto aunque el estado diga
+  cerrado, y uno sin estado, salvo una fecha de cierre. Un «ABIERTO» sin la
+  fecha de reapertura sigue abierto, y un «CERRADO» sin fechas, cerrado.
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con
@@ -296,6 +301,11 @@ su guía: `docs/equifax.md`.
     antes de borrarlo con `relacionConEmpleador()` (`patrono.ts`, la misma
     que usa `process.ts`). El modelo no infiere parentescos de nombres: dejó
     de hacerlo solo en v8, por eso se calcula en el código desde v17.
+  - Lo que el perfil guarda sólo para el predictor de ingresos no llega
+    (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`).
+    El obligado a llevar contabilidad (estructura-v15) ya le llega
+    interpretado en `fuentesIngreso`, y así el mensaje siguió siendo el de
+    marco-v30 (decisión del negocio del 2026-10-29).
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números

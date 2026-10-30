@@ -14,7 +14,7 @@
 import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, establecimientoAbierto, fechasDelRuc, rucActivo } from "./ruc.ts";
+import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo } from "./ruc.ts";
 import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
@@ -335,7 +335,11 @@ function textoDe(v: unknown): string | null {
 // trabajo (reglaDeTrabajo, fuentes-ingreso.ts): el aporte propio desde que
 // abrió el RUC, y nada del aporte voluntario sin RUC, del hogar o de un
 // código desconocido. Cambia en 35 de 1.644 personas.
-export const PROCESS_VERSION = "estructura-v14"; // ver docs/estructura-estandarizada.md
+// estructura-v15 (2026-10-29, decisión del negocio): laboral suma
+// obligadoALlevarContabilidadRuc, del mismo RUC de referencia que las fechas
+// (ruc.ts). Lo pide el nivel 1 del predictor de ingresos: sin él pierde 0,027
+// de R² y no certifica «al menos 2.000» a nadie (investigación, 12.30).
+export const PROCESS_VERSION = "estructura-v15"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -859,6 +863,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     antiguedadUltimaEtapaActivaMeses,
     mesesInactivoActividadEconomica,
     tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
+    obligadoALlevarContabilidadRuc: obligadoALlevarContabilidad(rucReferencia),
     antiguedadEmpleoActualMeses,
     duracionEmpleoMasLargoMeses,
   };
