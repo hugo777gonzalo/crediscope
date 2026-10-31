@@ -53,7 +53,8 @@ su guía: `docs/equifax.md`.
   fórmula invertida (con el seguro y el redondeo, invertirla pasaba el tope).
 - `capacidad-de-pago.ts` → `datosDeCapacidad()` y `evaluarCapacidad()` — si la
   cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
-  Una deuda sin cuota se lista aparte, nunca como cero. La usan la pantalla
+  Una deuda sin cuota se lista aparte, nunca como cero, y una respuesta de Equifax
+  sin reporte no es «no debe» (`elBuroTraeDetalle()`). La usan la pantalla
   `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
   El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
