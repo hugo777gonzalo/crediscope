@@ -13,10 +13,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **138** (2026-10-28; no hay 137: la del PR 82 pasó a 139);
-  lo desplegado tiene `ESQUEMA_MINIMO` en 138. Se midió en `esquema_version`.
-- **Funciones:** sello **`dabb60be9f3c`**, 10 de 10, desplegado el 2026-10-30 a las 00:20 sobre el
-  esquema 138 (`despliegues`; el anterior fue `626bb6c04685`).
+- **Base:** última migración aplicada, la **139** (2026-10-30; no hay 137: la del PR 82 pasó a 139),
+  y `ESQUEMA_MINIMO` está en 139. Se midió en `esquema_version`. **La 140** saca de la agenda la
+  clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`36dbe4af0dde`**, 12 de 12, desplegado el 2026-10-30 a las 21:45 sobre el
+  esquema 139. `despliegues` anota 11 de 12 porque cada corrida falló en una función distinta al
+  subirla; el sello de las 12 se midió con OPTIONS y con `auditar-seguridad.mjs`. El anterior fue
+  `dabb60be9f3c`. El núcleo de la API está desplegado y apagado para terceros, y la consulta y el
+  análisis de la pantalla, que el PR 82 reescribió por dentro, **todavía no corrieron con este
+  código contra una persona**.
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
   institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
   perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
