@@ -429,7 +429,7 @@ noviembre, y compite con la comparación de marco-v31 (USD 2,3) y con adelgazar 
 
 ## 12. Orden de construcción
 
-Sin construir. Cada paso se puede fusionar solo:
+Cada paso se puede fusionar solo:
 
 1. Una sola tabla en `calidad-de-la-consulta.ts`, con el nivel y la forma de «no hay» de cada fuente, y
    `TEMAS_CRITICOS` deja de existir aparte. Se mide con estos mismos conteos.
@@ -443,6 +443,37 @@ Sin construir. Cada paso se puede fusionar solo:
 
 Cuando se decida, lo abierto pasa a `docs/pendientes.md` y cierra su punto 2.5: `suficienteParaPuntaje`
 es esto. La respuesta a su pregunta es que un caso no evaluable no se guarda como análisis.
+
+### Plan por sesiones (2026-10-31)
+
+**Decidido:** el negocio aceptó todas las recomendaciones de la sección 1 el 2026-10-31: 1d, 2b, 3b, 4a,
+5b, 6b, 7b, 8a, 9b, 10c (sin construir), 11b, 12b, 13a y 14c. `esPrueba` ya quedó cerrado (PR 109), y
+del paso 2 sólo falta Diners.
+
+**Antes de la primera sesión** entra lo que ya está en curso, para no rehacer trabajo:
+
+1. La sesión del marco (rama `claude/marco-correcciones-01aa09`).
+2. El renombre del proveedor: 177 archivos, 57 de ellos de funciones, y las migraciones 142 y 143. Toca
+   casi todo lo que sigue. Novadata está caída, así que su ventana no afecta a nadie.
+
+| Sesión | Pasos | Decisiones | Toca | Cuándo |
+|---|---|---|---|---|
+| 1. Freno: la lista de 21 | 1, 2 y 3 | 1 a 5 | `calidad-de-la-consulta.ts`, `evaluacion-de-la-api.ts` (`TEMAS_CRITICOS`), `capacidad-de-pago.ts`, `analisis-de-la-persona.ts`, `pasos-de-evaluacion.ts`, `evaluar-solicitud`, `AnalisisIA.jsx` | Primera y sola: las demás leen su tabla |
+| 2. Reintentos, lotes y API | 4 y 5 | 3, 6, 7 y 8 | `cola-de-evaluaciones.ts`, `trabajador-de-evaluaciones.ts`, `procesar-lote`, `api/openapi.yaml`, `sandbox-*` | Después de la 1 |
+| 3. Bandeja y análisis marcados | 6 | 9 y 13 | Migración nueva, `refrescar_resumen_por_persona()`, la bandeja, `terminologia.md` | Después de la 1 |
+| 4. Control de contenido | 7 | 12 | `vigia/index.ts` | Después del renombre: no depende de la 1 |
+| 5. Prueba con el modelo | | 14 | Guiones fuera de git; 280 pedidos, USD 5,0 | Noviembre, con la 1 desplegada y el marco fusionado |
+| 6. Lo que lee el modelo | 8 | 11 | El marco y `perfil-del-modelo.ts` | Con la versión del marco del predictor |
+
+**Para gastar poco:**
+
+- Cada sesión lee esta propuesta y el CLAUDE.md de su área. Las mediciones ya están: no se repiten.
+- La sesión 1 usa el mejor modelo, porque cambia la regla que decide quién llega al modelo. Lo que está
+  bien especificado (2, 3 y 4) puede ir con uno más barato.
+- Las sesiones 2, 3 y 4 no comparten archivos y pueden correr juntas.
+- Se despliega una vez por tanda, no por PR.
+- Fusionar y desplegar piden la autorización del negocio, nombrando el PR.
+- Lo que reconsulta a una persona (decisión 9) espera a que vuelva Novadata.
 
 ## 13. Qué quedó medido y qué no
 
