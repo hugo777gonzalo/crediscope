@@ -16,12 +16,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 - **Base:** última migración aplicada, la **141** (2026-10-31; no hay 137: la del PR 82 pasó a 139),
   y `ESQUEMA_MINIMO` está en 141. Se midió en `esquema_version`, y `auditar-seguridad.mjs` dio 81 de 81
   después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`2f30bffab7fd`**, 13 de 13, desplegado el 2026-10-31 a las 00:13 sobre el
-  esquema 141 (`despliegues`; el anterior fue `36dbe4af0dde`). El núcleo de la API y el sandbox están
-  desplegados y apagados para terceros. Con este sello, por la pantalla: la consulta corrió con
-  c-79e1ac23 y el análisis reutilizó el de c-38661efd. La llamada real al modelo se midió una hora
-  antes, con `36dbe4af0dde` (c-38661efd, marco-v30, USD 0,07), y **todavía no hubo una consulta
-  buena de Novadata seguida de su análisis con el código nuevo**.
+- **Funciones:** sello **`8a778f905f10`**, 13 de 13, desplegado el 2026-10-31 a las 11:44 sobre el
+  esquema 141 (`despliegues`; el anterior fue `5456b5583ca8`). El núcleo de la API está desplegado y
+  apagado para terceros, y `API_SANDBOX` ya está puesto, sin probar de punta a punta. Con
+  `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
+  c-38661efd. La llamada real al modelo se midió con `36dbe4af0dde` (c-38661efd, marco-v30, USD 0,07),
+  y **todavía no hubo una consulta buena de Novadata seguida de su análisis con el código nuevo**.
 - **Novadata (2026-10-31):** contesta HTTP 500 en 41 de 52 fuentes en las tres consultas de
   c-79e1ac23 del 30 y el 31. El 28/10 pasó en 494 de 1.215 perfiles y antes casi nunca (33 el 25/09).
   El negocio confirmó que es un problema general: **por ahora Novadata no se puede usar**.
