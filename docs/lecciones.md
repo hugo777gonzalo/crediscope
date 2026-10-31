@@ -166,6 +166,16 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   historial. El 2026-09-15 eso convirtió una caída de red de una hora en
   un juicio sobre 373 personas, que quedaron clasificadas como
   "informal o sin actividad" — la rama por defecto de la clasificación.
+- **Que una consulta sirva para guardarse no quiere decir que sirva para
+  calificar.** El 2026-10-31 Novadata contestó error 500 en 41 de 52 fuentes
+  para c-79e1ac23. Las seis que contestaron bastaron para guardar el perfil, y
+  el modelo dio un score leyendo menos de la cuarta parte de su deuda: el
+  hipotecario del BIESS estaba en una fuente caída. Desde ese día el modelo no
+  corre sin `FUENTES_QUE_DECIDEN` (identidad, aportes, préstamos del BIESS y
+  buró de bancos; negocio). El corte va en el paso del perfil y no en el del
+  análisis: en Plus el buró va en el medio y se cobra. Y un perfil incompleto
+  no se reutiliza, o reintentar lee siempre el mismo. Medido ese día: 670 de
+  3.765 últimos perfiles quedaban así, casi todos del lote de paridad.
 - **"La fuente dice que no hay" y "la fuente no contestó" son cosas
   distintas.** El catálogo tiene que poder decir las dos.
 - **Dos formas del mismo dato conviven.** Los perfiles anteriores a

@@ -49,6 +49,7 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
+import { elPerfilSePuedeAnalizar, porQueNoSePuedeAnalizar } from "../_shared/calidad-de-la-consulta.ts";
 import { validarDecision } from "../_shared/estado-de-la-persona.ts";
 import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-institucion.ts";
 import { pasoCapacidad } from "../_shared/pasos-de-evaluacion.ts";
@@ -135,12 +136,14 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     if (clientId) {
       const { data: ultimo } = await serviceClient
         .from("client_profiles")
-        .select("id, created_at, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
+        .select("id, created_at, estado_por_fuente, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (ultimo && Date.now() - Date.parse(ultimo.created_at) < VIGENCIA_DEL_PERFIL_DIAS * 86_400_000) {
+      // Uno que quedó incompleto no se reutiliza: reintentar leería siempre ese
+      // mismo perfil y nunca volvería a preguntarle a la fuente.
+      if (ultimo && elPerfilSePuedeAnalizar(ultimo.estado_por_fuente) && Date.now() - Date.parse(ultimo.created_at) < VIGENCIA_DEL_PERFIL_DIAS * 86_400_000) {
         return {
           cambios: { client_id: clientId, client_profile_id: ultimo.id },
           detalle: `Se reutilizó el perfil del ${fecha(ultimo.created_at)}.`,
@@ -150,6 +153,10 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     }
     const r = await llamarFuncion("structure-client", { cedula: s.identificacion }, autorizacion);
     if (r.status !== 200 || !r.datos?.id) throw fallo("perfil", r);
+    // Acá y no en el paso del análisis: en Plus el buró va en el medio y se cobra.
+    if (!elPerfilSePuedeAnalizar(r.datos.estado_por_fuente)) {
+      throw new PasoFallido(porQueNoSePuedeAnalizar(r.datos.estado_por_fuente), 0, null, "fuentes_no_disponibles");
+    }
     const f = r.datos.standard_profile?.fuentesIngreso ?? {};
     return {
       cambios: { client_id: r.datos.client_id, client_profile_id: r.datos.id },
