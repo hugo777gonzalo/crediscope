@@ -9,7 +9,7 @@
 -- (022) solo dejaba leer la fila propia. Se reemplaza por una policy
 -- que permite leer a cualquier autenticado, mismo criterio de
 -- confianza interna que el resto de las tablas de este proyecto
--- (novadata_resource_config, standard_profile_field_config, etc. ya
+-- (proveedor_info_1_resource_config, standard_profile_field_config, etc. ya
 -- son legibles por cualquier autenticado). No expone nada más sensible
 -- que nombre_corto/entidad/rol -- ya visibles en el header de cada
 -- analista.

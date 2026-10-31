@@ -16,7 +16,7 @@ Haiku, el modelo base de la cascada, y trajeron:
   deudas de tránsito");
 - contradicciones en la deuda.
 
-Revisado contra el crudo de Novadata, **la mayoría de los errores de
+Revisado contra el crudo de Proveedor_Info_1, **la mayoría de los errores de
 contenido son de nuestra estructura** (process.ts): el modelo leyó bien lo
 que le mandamos, y lo que le mandamos estaba incompleto. Todo medido sobre
 el crudo de los 2.567 clientes reales.
@@ -209,7 +209,7 @@ Costo: ~$0,04 por análisis en vez de ~$0,02. El marco sigue cacheado.
    - la fila `marco-v24`;
    - los campos nuevos en la configuración de campos.
 5. Recalcular los 2.567 perfiles desde el crudo local, sin consultar
-   Novadata. Hay que generalizar `recalcular-fuentes-ingreso.mjs` para
+   Proveedor_Info_1. Hay que generalizar `recalcular-fuentes-ingreso.mjs` para
    que reemplace los grupos que cambian.
 6. Validación sin el modelo, sobre la cartera:
    - las 56 personas con "no devenga" ahora muestran deuda en atraso;

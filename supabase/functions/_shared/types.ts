@@ -1,12 +1,12 @@
 // Tipos compartidos por las Edge Functions de CrediScope.
 //
 // Confirmado contra producción (2026-09) vía 2 HAR capturados de la
-// interfaz web de Novadata (uno de una persona "limpia", otro con
+// interfaz web de Proveedor_Info_1 (uno de una persona "limpia", otro con
 // historial real: demandas, mora bancaria, etc.): TODOS los recursos de
 // datos comparten el mismo sobre de respuesta ->
 // { estado: { codigo, mensaje }, <campoArray>: [...] }.
 // `estado.codigo !== "OK"` (o un HTTP != 200) es la señal de "sin datos",
-// ver isEstadoOk() en novadata-client.ts.
+// ver isEstadoOk() en proveedor-info-1-client.ts.
 //
 // Diseño: el score NO lo calcula una fórmula determinística. Un LLM
 // (llm-scoring.ts) recibe el StandardClientProfile (ver process.ts) y
@@ -17,12 +17,12 @@
 // de control/OFAC/PEP/lista negra) que NO deben quedar a criterio
 // aproximado del LLM — ver ResultadoControlBloqueo.
 //
-// BIESS: descartado — no corresponde a ningún dato real de Novadata
+// BIESS: descartado — no corresponde a ningún dato real de Proveedor_Info_1
 // (confirmado por el usuario, no es un endpoint que exista).
 
 // "deshabilitado" = la fuente no se consultó porque un admin la
-// desactivó en novadata_resource_config (ver runtime-config.ts) — a
-// propósito distinto de "faltante" (Novadata no tenía datos) o "error"
+// desactivó en proveedor_info_1_resource_config (ver runtime-config.ts) — a
+// propósito distinto de "faltante" (Proveedor_Info_1 no tenía datos) o "error"
 // (falló la consulta), para no confundir una decisión operativa con una
 // falla real de la fuente.
 export type EstadoFuente = "ok" | "faltante" | "error" | "deshabilitado";
@@ -64,7 +64,7 @@ export interface RawGeneral {
 
 // ---------- Sobre genérico confirmado para el resto de recursos ----------
 
-export interface NovadataEnvelope {
+export interface ProveedorInfo1Envelope {
   estado: { codigo: string; mensaje: string | null };
   // El nombre del campo array/objeto varía por recurso (personaVehiculo,
   // afiliacionIess, demandas, direcciones, datosSuper...) — se accede
@@ -73,19 +73,19 @@ export interface NovadataEnvelope {
 }
 
 // Una entrada por fuente consultada: nombre corto -> resultado de esa
-// llamada a Novadata. Plana, sin la capa intermedia de los nueve
+// llamada a Proveedor_Info_1. Plana, sin la capa intermedia de los nueve
 // bloques que existió hasta la migración 078.
 //
 // El nombre corto de cada fuente es único entre las 52 y por eso la
 // tabla puede ser plana: es la misma clave que usa
-// novadata_resource_config.recurso, así que lo que se lee acá y lo que
+// proveedor_info_1_resource_config.recurso, así que lo que se lee acá y lo que
 // se apaga desde la pantalla de configuración se llaman igual.
 //
 // `general` se declara aparte porque es la única con forma rica ya
 // tipada (RawGeneral); el resto comparte el sobre genérico.
-export type RespuestaNovadata = {
+export type RespuestaProveedorInfo1 = {
   general: ResultadoFuente<RawGeneral>;
-} & Record<string, ResultadoFuente<NovadataEnvelope> | ResultadoFuente<RawGeneral>>;
+} & Record<string, ResultadoFuente<ProveedorInfo1Envelope> | ResultadoFuente<RawGeneral>>;
 
 // ---------- Controles de bloqueo (determinísticos, no delegados al LLM) ----------
 
@@ -127,7 +127,7 @@ export interface ResultadoControlBloqueo {
 // — ver metaConsulta).
 //
 // Grupos según Cambios_Reagrupacion (usuario, v1): "comportamientoInterno"
-// es un grupo nuevo que separa el scoring propio de Novadata
+// es un grupo nuevo que separa el scoring propio de Proveedor_Info_1
 // (personasIncumplimientos) de comportamientoBancario, por su peso.
 
 import type { AnalisisFuentesIngreso } from "./fuentes-ingreso.ts";
@@ -200,7 +200,7 @@ export interface StandardClientProfile {
     // Empleadores con evidencia de actividad en algún momento de los
     // últimos 24 meses (fecSal, o si viene vacío, el último snapshot
     // (anio,mes) confirmado — NO se asume "activo hoy" solo porque
-    // Novadata nunca registró una salida, ver antiguedadEmpleoActualMeses).
+    // Proveedor_Info_1 nunca registró una salida, ver antiguedadEmpleoActualMeses).
     numeroEmpleadoresUltimos24Meses: number;
     ingresoPromedioUltimos6Meses: number | null;
     esEmpleadorOAdministrador: boolean;
@@ -233,7 +233,7 @@ export interface StandardClientProfile {
     // Fechas crudas del registro RUC (contribuyente) — del registro
     // activo si existe, si no del primero disponible. Para auditar
     // tieneRucActivo/tieneEstablecimientoActivo contra el SRI sin tener
-    // que ir a la data cruda de Novadata cada vez.
+    // que ir a la data cruda de Proveedor_Info_1 cada vez.
     fechaInicioActividadesRuc: string | null; // YYYY-MM-DD
     fechaCeseActividadesRuc: string | null; // más reciente entre cancelación y suspensión definitiva
     fechaReinicioActividadesRuc: string | null;
@@ -246,7 +246,7 @@ export interface StandardClientProfile {
     numeroEstablecimientosActivos: number;
     numeroEstablecimientosInactivos: number;
     tieneEstablecimientosRegistrados: boolean;
-    // Estado y antigüedad de la actividad económica — Novadata/SRI solo
+    // Estado y antigüedad de la actividad económica — Proveedor_Info_1/SRI solo
     // guardan la fecha del cese y del reinicio MÁS RECIENTES, no un
     // historial completo de ciclos, así que "años desde el inicio" solo
     // alcanza cuando nunca hubo cese. Ver los 5 casos documentados en
@@ -279,7 +279,7 @@ export interface StandardClientProfile {
     // levemente en el nombre del empleador). Solo se reporta si hay al
     // menos 3 snapshots mensuales confirmados para ese empleo Y el
     // último snapshot es reciente (≤3 meses) — fecSal vacío en tiess
-    // NO significa "sigue activo hoy", solo "Novadata nunca registró
+    // NO significa "sigue activo hoy", solo "Proveedor_Info_1 nunca registró
     // una salida" (caso real: cédula c-18fa16ee, único empleo con
     // último snapshot en 2021-11 y fecSal vacío — sin este chequeo daba
     // "6 años 5 meses de antigüedad actual" para un empleo sin
@@ -307,7 +307,7 @@ export interface StandardClientProfile {
   };
 
   seguridadSocial: {
-    // null si el recurso pn_afiliacion_iess no trajo datos (Novadata no
+    // null si el recurso pn_afiliacion_iess no trajo datos (Proveedor_Info_1 no
     // pudo consultarlo para esta persona) — DISTINTO de false (se
     // consultó bien y el estado real es "no afiliado"/inactivo). Hueco
     // de dato frecuente: 32 de 40 clientes de la muestra de auditoría
@@ -446,14 +446,14 @@ export interface StandardClientProfile {
   };
 
   // "Comportamiento Interno" (grupo 14, NUEVO) — el scoring propio de
-  // Novadata (basesInternas.personasIncumplimientos), separado del resto
+  // Proveedor_Info_1 (basesInternas.personasIncumplimientos), separado del resto
   // de comportamientoBancario por su peso.
   comportamientoInterno: {
-    novadataResultadoHabitoPago: string | null;
-    novadataPerfilInterno: string | null;
-    novadataDiasMoraMaxima: number | null;
-    novadataDiasMoraVigente: number | null;
-    novadataSaldoCapitalVigente: number | null;
+    proveedorInfo1ResultadoHabitoPago: string | null;
+    proveedorInfo1PerfilInterno: string | null;
+    proveedorInfo1DiasMoraMaxima: number | null;
+    proveedorInfo1DiasMoraVigente: number | null;
+    proveedorInfo1SaldoCapitalVigente: number | null;
     esClienteInterno: boolean;
   };
 
@@ -534,7 +534,7 @@ export interface StandardClientProfile {
 
   cumplimiento: {
     enListaControl: boolean;
-    // Homónimo: Novadata encontró a alguien más con el MISMO NOMBRE pero
+    // Homónimo: Proveedor_Info_1 encontró a alguien más con el MISMO NOMBRE pero
     // CÉDULA DISTINTA en una lista de control — no es el cliente. Dato
     // informativo, nunca descalifica (ver controles-bloqueo.ts, código
     // homonimo_en_lista_control: a propósito no bloqueante). Confirmado
@@ -551,7 +551,7 @@ export interface StandardClientProfile {
     // propósito no fuerza bloqueado=true.
     esPersonaExpuestaPoliticamente: boolean;
     // Detalle del registro PEP más reciente — confirmado con datos
-    // reales (cargo/empresa/sueldo/fecha vienen poblados en Novadata),
+    // reales (cargo/empresa/sueldo/fecha vienen poblados en Proveedor_Info_1),
     // antes se descartaba a un booleano sin contexto pese a que el
     // prompt del LLM ya asumía que existía este detalle.
     detallePep: {

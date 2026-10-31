@@ -177,7 +177,7 @@ const localesEnResearch = () => {
 if (bandera("exportar")) {
   const exportacion = { generado: new Date().toISOString(), titular: CEDULA, datos, crudo: [] };
   for (const ruta of crudos) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-novadata/${ruta}`, { headers: cabeceras });
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-proveedor-info-1/${ruta}`, { headers: cabeceras });
     if (!r.ok) {
       exportacion.crudo.push({ ruta, error: `HTTP ${r.status}` });
       continue;
@@ -211,7 +211,7 @@ if (bandera("suprimir")) {
 
   let borrados = 0;
   for (const ruta of resultado.crudos ?? []) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-novadata`, {
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-proveedor-info-1`, {
       method: "DELETE",
       headers: cabeceras,
       body: JSON.stringify({ prefixes: [ruta] }),

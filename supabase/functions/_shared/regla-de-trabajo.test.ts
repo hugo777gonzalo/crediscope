@@ -8,7 +8,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { reglaDeTrabajo } from "./fuentes-ingreso.ts";
-import type { RespuestaNovadata } from "./types.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 // Datos inventados: el repositorio es público.
 const CEDULA = "0000000000";
@@ -32,8 +32,8 @@ const conRuc = {
       ],
     },
   },
-} as unknown as RespuestaNovadata;
-const sinRuc = {} as unknown as RespuestaNovadata;
+} as unknown as RespuestaProveedorInfo1;
+const sinRuc = {} as unknown as RespuestaProveedorInfo1;
 
 Deno.test("con un empleador es trabajo desde su fecha de ingreso", () => {
   const regla = reglaDeTrabajo(sinRuc, CEDULA, null);

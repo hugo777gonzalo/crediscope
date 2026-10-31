@@ -1,4 +1,4 @@
-// El análisis de una persona, sin pasar por HTTP: ingesta Novadata (o el
+// El análisis de una persona, sin pasar por HTTP: ingesta Proveedor_Info_1 (o el
 // perfil que ya se guardó) -> controles de bloqueo duros -> scoring por el
 // modelo (o el análisis idéntico que ya se hizo) -> persiste en Supabase.
 //
@@ -13,19 +13,19 @@
 // profileId (opcional, usado por "Análisis con IA" en la web): id de un
 // client_profiles ya generado por structure-client. Si viene, se
 // reutiliza ese standard_profile/control_bloqueo tal cual — SIN volver
-// a consultar Novadata — para que el análisis explique exactamente lo
+// a consultar Proveedor_Info_1 — para que el análisis explique exactamente lo
 // que el analista vio en Perfil del Cliente (ventana de reutilización:
 // 7 días, decisión de la UI, no de este endpoint). Si no viene (uso
-// típico de sistemas externos vía API), se consulta Novadata en fresco
+// típico de sistemas externos vía API), se consulta Proveedor_Info_1 en fresco
 // y el perfil resultante SE GUARDA igual — el análisis siempre queda
 // atado a la data estructurada que lo produjo (ver 032).
 
 import type { ResultadoControlBloqueo, StandardClientProfile } from "./types.ts";
-import { consultarTodasLasFuentes, duracionesPorFuente } from "./novadata-client.ts";
+import { consultarTodasLasFuentes, duracionesPorFuente } from "./proveedor-info-1-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "./process.ts";
 import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
 import { columnasDelPerfil } from "./columnas-del-perfil.ts";
-import { guardarCrudoNovadata } from "./crudo-novadata.ts";
+import { guardarCrudoProveedorInfo1 } from "./crudo-proveedor-info-1.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import {
   cuantasFuentesContestaron,
@@ -50,7 +50,7 @@ export interface OpcionesDeAnalisis {
   db: any;
   // Ya normalizada por clasificarIdentificacion.
   cedula: string;
-  // Si viene, se reutiliza ese perfil sin consultar Novadata.
+  // Si viene, se reutiliza ese perfil sin consultar Proveedor_Info_1.
   profileId?: string;
   actorId: string | null;
   // Marca las corridas de verificación del equipo técnico para que su
@@ -129,9 +129,9 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
     duracionIngestaMs = null;
     clientProfileId = profileId;
   } else {
-    // Ingesta Novadata (las 52 fuentes en paralelo, ver
-    // _shared/novadata-client.ts). Las fuentes deshabilitadas en
-    // novadata_resource_config se saltan (ver _shared/runtime-config.ts)
+    // Ingesta Proveedor_Info_1 (las 52 fuentes en paralelo, ver
+    // _shared/proveedor-info-1-client.ts). Las fuentes deshabilitadas en
+    // proveedor_info_1_resource_config se saltan (ver _shared/runtime-config.ts)
     // — fuentes públicas/externas que pueden fallar o deshabilitarse.
     const disabledResources = await loadDisabledResources(db);
     const inicioIngesta = Date.now();
@@ -151,7 +151,7 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
     duracionIngestaMs = Date.now() - inicioIngesta;
 
     // Se persiste ANTES de llamar al LLM, a propósito: el crudo de
-    // Novadata se descarta y esta es la única copia de la información
+    // Proveedor_Info_1 se descarta y esta es la única copia de la información
     // con la que se evaluó al cliente. Si el LLM falla, el perfil
     // igual queda guardado (auditable, reprocesable, y analizable
     // después contra el resultado real del crédito). Ver 032.
@@ -181,13 +181,13 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
       .single();
     if (perfilError) throw perfilError;
     clientProfileId = guardado.id;
-    await guardarCrudoNovadata(db, client.id, guardado.id, cedula, raw);
+    await guardarCrudoProveedorInfo1(db, client.id, guardado.id, cedula, raw);
   }
 
   // Sin las fuentes que deciden no se llama al modelo: el perfil queda
   // guardado, pero un score sobre él afirma una deuda y un ingreso que nadie
   // leyó. Una llamada de prueba (esPrueba) sigue: existe para ejercitar la
-  // llamada, y el vigía no debe dar una alarma por una caída de Novadata.
+  // llamada, y el vigía no debe dar una alarma por una caída de Proveedor_Info_1.
   if (!esPrueba && !elPerfilSePuedeAnalizar(estadoDeCadaFuente)) {
     await db.from("ingestion_runs").update({ status: "fallido", completed_at: new Date().toISOString() }).eq("id", run.id);
     await db.from("audit_log").insert({

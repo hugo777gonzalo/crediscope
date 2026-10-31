@@ -39,10 +39,10 @@
 
 -- ---------- El proveedor, que hasta ahora estaba implícito ----------
 --
--- Todo el sistema asume Novadata en el nombre de las tablas, de los
+-- Todo el sistema asume Proveedor_Info_1 en el nombre de las tablas, de los
 -- recursos y de las funciones. Equifax está a la espera de credenciales
 -- y el día que entre no va a caber en los 9 bloques, que tienen forma
--- de Novadata. Esta tabla es donde va a caber.
+-- de Proveedor_Info_1. Esta tabla es donde va a caber.
 create table if not exists proveedores (
   clave       text primary key,
   nombre      text not null,
@@ -52,7 +52,7 @@ create table if not exists proveedores (
 );
 
 insert into proveedores (clave, nombre, notas) values
-  ('novadata', 'Novadata', 'Proveedor único hasta hoy. Se accede con credenciales de servicio; las de un usuario solo se usan en el Explorador de Fuentes.')
+  ('proveedor_info_1', 'Proveedor_Info_1', 'Proveedor único hasta hoy. Se accede con credenciales de servicio; las de un usuario solo se usan en el Explorador de Fuentes.')
 on conflict (clave) do nothing;
 
 alter table proveedores enable row level security;
@@ -64,23 +64,23 @@ create policy proveedores_lectura on proveedores for select using (auth.role() =
 -- Se agregan columnas a la tabla que ya existe en vez de crear una
 -- nueva: la pantalla de configuración escribe `enabled` acá y partirla
 -- en dos habría obligado a tocarla en el mismo paso.
-alter table novadata_resource_config add column if not exists proveedor text references proveedores(clave);
-alter table novadata_resource_config add column if not exists ruta text;
+alter table proveedor_info_1_resource_config add column if not exists proveedor text references proveedores(clave);
+alter table proveedor_info_1_resource_config add column if not exists ruta text;
 -- Si ningún código lee lo que devuelve, se consulta y se tira. Queda
 -- marcado para poder decidirlo con el dato a la vista.
-alter table novadata_resource_config add column if not exists la_lee_alguien boolean;
+alter table proveedor_info_1_resource_config add column if not exists la_lee_alguien boolean;
 
-comment on column novadata_resource_config.bloque is
+comment on column proveedor_info_1_resource_config.bloque is
   'Agrupación heredada de la primera integración. En retirada: la relación real entre fuentes y grupos del perfil es muchos a muchos y vive en fuente_grupo. Ver migración 067.';
-comment on column novadata_resource_config.la_lee_alguien is
+comment on column proveedor_info_1_resource_config.la_lee_alguien is
   'false = se consulta en cada corrida y ningún código usa la respuesta.';
 
--- Catálogo real, sacado de RECURSOS_POR_BLOQUE en novadata-client.ts.
+-- Catálogo real, sacado de RECURSOS_POR_BLOQUE en proveedor-info-1-client.ts.
 -- Las 52 filas ya existen: esto les pone proveedor, ruta y si alguien
 -- lee lo que devuelven. No se toca `enabled` ni `motivo`, que son
 -- decisiones de operación y no de esta migración.
-update novadata_resource_config f
-   set proveedor = 'novadata',
+update proveedor_info_1_resource_config f
+   set proveedor = 'proveedor_info_1',
        ruta = d.ruta,
        la_lee_alguien = d.la_lee_alguien
   from (values
@@ -123,7 +123,7 @@ update novadata_resource_config f
   ('listasControl', 'data-services/novacredit/pn_listas_control', true),
   ('padres', 'data-services/novacredit/pn_padres', true),
   ('pensionAlimenticia', 'data-services/novacredit/pn_supa', true),
-  ('pensionAlimenticiaNovadata', 'data-services/novacredit/pn_supa/novadata', true),
+  ('pensionAlimenticiaProveedorInfo1', '<<PROVEEDOR_INFO_1_RUTA_PENSION>>', true),
   ('pensionista', 'data-services/novacredit/pn_pensionista', true),
   ('polizas', 'data-services/novacredit/pn_polizas', false),
   ('retails', 'data-services/novacredit/pn_retails', true),
@@ -142,7 +142,7 @@ update novadata_resource_config f
 
 -- ---------- El mapa: qué fuente alimenta qué grupo ----------
 create table if not exists fuente_grupo (
-  fuente      text not null references novadata_resource_config(recurso) on delete cascade,
+  fuente      text not null references proveedor_info_1_resource_config(recurso) on delete cascade,
   grupo       text not null,
   created_at  timestamptz not null default now(),
   primary key (fuente, grupo)
@@ -214,9 +214,9 @@ insert into fuente_grupo (fuente, grupo) values
   ('pensionAlimenticia', 'fuentesIngreso'),
   ('pensionAlimenticia', 'riesgoJudicialCivil'),
   ('pensionAlimenticia', 'riesgoJudicialCrediticio'),
-  ('pensionAlimenticiaNovadata', 'fuentesIngreso'),
-  ('pensionAlimenticiaNovadata', 'riesgoJudicialCivil'),
-  ('pensionAlimenticiaNovadata', 'riesgoJudicialCrediticio'),
+  ('pensionAlimenticiaProveedorInfo1', 'fuentesIngreso'),
+  ('pensionAlimenticiaProveedorInfo1', 'riesgoJudicialCivil'),
+  ('pensionAlimenticiaProveedorInfo1', 'riesgoJudicialCrediticio'),
   ('pensionista', 'seguridadSocial'),
   ('retails', 'comportamientoBancario'),
   ('sercop', 'cumplimiento'),
@@ -247,7 +247,7 @@ select
     '{}'::text[]
   )                                           as alimenta_grupos,
   (select count(*) from fuente_grupo g where g.fuente = f.recurso) as cuantos_grupos
-from novadata_resource_config f;
+from proveedor_info_1_resource_config f;
 
 comment on view fuentes_de_consulta is
   'Las fuentes de consulta con su proveedor y los grupos del perfil que alimentan. Reemplaza la lectura por bloque.';

@@ -4,17 +4,17 @@
 -- aceptó los días de mora en su lugar (2026-10-16) y aprobó lo recomendado en
 -- docs/propuesta-dias-de-mora-con-buro.md, sección 4. Para la persona con una
 -- consulta vigente del buró de la institución, las dos marcas que Monitoreo
--- lee de resumen_por_persona (124) salen del buró y no de Novadata: un tema,
+-- lee de resumen_por_persona (124) salen del buró y no de Proveedor_Info_1: un tema,
 -- una fuente.
 -- - calificacion_baja: más de 90 días de mora en bancos como titular. Es el
 --   equivalente exacto de D o E: en la tabla de la Superintendencia para
 --   consumo (110), D empieza a los 91 días.
--- - tiene_mora: el mismo monto en atraso que con Novadata, en bancos o
+-- - tiene_mora: el mismo monto en atraso que con Proveedor_Info_1, en bancos o
 --   cooperativas como titular.
--- - consulta_buro_id: la consulta de la que salieron. null: Novadata.
+-- - consulta_buro_id: la consulta de la que salieron. null: Proveedor_Info_1.
 --
 -- Medido sin gasto sobre las 62 personas con consulta, con perfiles de
--- Novadata de 8 a 14 días antes. D o E: 2 y 2, las mismas personas. Mora: 7 y
+-- Proveedor_Info_1 de 8 a 14 días antes. D o E: 2 y 2, las mismas personas. Mora: 7 y
 -- 6; la diferencia es una persona en la que Equifax ve días de mora de 30 o
 -- menos, todavía sin monto vencido. Se repite con
 -- scripts/medir-dias-de-mora-con-buro.mjs.
@@ -24,7 +24,7 @@
 --
 -- La vigencia caduca sin que cambie nada en la base: el 18 a las 00:00 de
 -- Ecuador. La reconstrucción de cada noche (00:10, pg_cron
--- resumenes-crediscope, 124) devuelve esas personas a Novadata diez minutos
+-- resumenes-crediscope, 124) devuelve esas personas a Proveedor_Info_1 diez minutos
 -- después.
 --
 -- Al aplicarla, la bandeja y Monitoreo esperan unos segundos: el cambio de
@@ -128,7 +128,7 @@ alter table resumen_por_persona
   add column consulta_buro_id uuid references consultas_equifax(id) on delete set null;
 
 comment on column resumen_por_persona.consulta_buro_id is
-  'La consulta vigente del buró de la institución de la que salen calificacion_baja y tiene_mora (132). null: salen del último perfil de Novadata.';
+  'La consulta vigente del buró de la institución de la que salen calificacion_baja y tiene_mora (132). null: salen del último perfil de Proveedor_Info_1.';
 
 -- La de la 124 tomada de la base viva, con las dos marcas leídas del buró
 -- cuando hay una consulta vigente y la columna nueva.
@@ -196,17 +196,17 @@ begin
     -- Con una consulta vigente del buró (132): más de 90 días de mora en
     -- bancos como titular, que es D o E en la tabla de la Superintendencia
     -- para consumo (D empieza a los 91 días). Diners va dentro de bancos en
-    -- Equifax, como en Novadata. Un grupo que Equifax no trajo queda sin medir
+    -- Equifax, como en Proveedor_Info_1. Un grupo que Equifax no trajo queda sin medir
     -- (null), no en falso.
     case when b.id is not null then
       case when jsonb_typeof(b.estructura #> '{deudaActualTitular,bancos}') = 'object'
         then coalesce((b.estructura #>> '{deudaActualTitular,bancos,maximoDiasDeMora}')::numeric, 0) > 90 end
     else p.sp -> 'comportamientoBancario' ->> 'peorCalificacionRiesgo' in ('D', 'E') end,
-    -- Con buró, el mismo monto en atraso que con Novadata (vencido, no
+    -- Con buró, el mismo monto en atraso que con Proveedor_Info_1 (vencido, no
     -- devenga, demanda o castigo), en bancos o cooperativas como titular. No
     -- los días: Equifax marca días de mora sin monto hasta los 30 días (16 de
     -- las 62 personas con consulta el 2026-10-16), y la marca diría otra cosa
-    -- que con Novadata.
+    -- que con Proveedor_Info_1.
     case when b.id is not null then
       (select bool_or(coalesce((b.estructura #>> array['deudaActualTitular', sistema, campo])::numeric, 0) > 0)
          from unnest(array['bancos', 'cooperativas']) sistema,

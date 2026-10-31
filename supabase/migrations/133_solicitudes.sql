@@ -11,7 +11,7 @@
 --     Pro (más la cuota y la capacidad de pago) o Plus (más el buró de la
 --     institución);
 --   - la evaluación la arma el servidor por pasos (la función
---     `evaluar-solicitud`), porque consultar Novadata y el modelo juntos
+--     `evaluar-solicitud`), porque consultar Proveedor_Info_1 y el modelo juntos
 --     pasa los 150 s que una función puede correr seguidos. Cada paso queda
 --     anotado en `pasos`, con su referencia;
 --   - la recomendación del modelo y la capacidad de pago se guardan y se

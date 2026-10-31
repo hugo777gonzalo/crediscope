@@ -10,7 +10,7 @@ import { derivarTablas } from "./equifax-tablas.ts";
 import { respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
 import {
   CREDITOS_POSTERIORES_QUE_SE_ANULAN,
-  MAPEO_DE_NOVADATA,
+  MAPEO_DE_PROVEEDOR_INFO_1,
   sexoParaIngreso,
   tipoDeCreditoParaIngreso,
   VARIABLES_CATEGORICAS,
@@ -68,7 +68,7 @@ Deno.test("el historial del IESS: el aporte es el total del último mes, los mes
   assertEquals(variablesDelIess([{ mes: "202607", empleador: "X", valor: 1 }]).aporte, null, "un mes mal escrito no cuenta");
 });
 
-Deno.test("el nivel 1: la edad, el sexo de Novadata y la fecha; sin estado civil, zona ni IESS, aunque lleguen", () => {
+Deno.test("el nivel 1: la edad, el sexo de Proveedor_Info_1 y la fecha; sin estado civil, zona ni IESS, aunque lleguen", () => {
   const v = vectorDeNivel1(perfil(), {
     ahora: AHORA, historialIess: iess,
     ubicaciones: { provinciaDomicilio: "PROV A", cantonDomicilio: "CANTON A", provinciaTrabajo: "PROV B", cantonTrabajo: "CANTON B" },
@@ -82,14 +82,14 @@ Deno.test("el nivel 1: la edad, el sexo de Novadata y la fecha; sin estado civil
   assertFalse(v.avisos.some((a) => a.includes("IESS")));
 });
 
-Deno.test("el sexo: sólo las dos categorías del entrenamiento, que son las de Novadata; otra queda sin dato", () => {
+Deno.test("el sexo: sólo las dos categorías del entrenamiento, que son las de Proveedor_Info_1; otra queda sin dato", () => {
   assertEquals(sexoParaIngreso(" masculino "), "MASCULINO");
   assertEquals(sexoParaIngreso("FEMENINO"), "FEMENINO");
   for (const otro of ["MUJER", "M", "", null]) assertEquals(sexoParaIngreso(otro), null, String(otro));
   const v = vectorDeNivel1(perfil({ identidad: { edad: 41, genero: "MUJER", estadoCivil: null } }), { ahora: AHORA });
   assertEquals(v.variables.genero, null);
   assert(v.sinDato.includes("genero"));
-  assertEquals(MAPEO_DE_NOVADATA.pendiente, true, "el estado civil, la provincia y el cantón siguen sin mapeo");
+  assertEquals(MAPEO_DE_PROVEEDOR_INFO_1.pendiente, true, "el estado civil, la provincia y el cantón siguen sin mapeo");
 });
 
 Deno.test("el nivel 2 sin mapeo de estado civil y zona: salen sin dato y se dice pendiente; con mapeo y ubicaciones, pasan", () => {
@@ -117,7 +117,7 @@ Deno.test("el año con fracción usa la fecha de Ecuador: a las 20:00 de Ecuador
   assertAlmostEquals(finDeMes.variables.anio_mes as number, 2026 + 8 / 12, 1e-9);
 });
 
-Deno.test("el SRI de Novadata: con RUC activo salen el estado, la antigüedad en años y el obligado del perfil", () => {
+Deno.test("el SRI de Proveedor_Info_1: con RUC activo salen el estado, la antigüedad en años y el obligado del perfil", () => {
   const conRuc = (obligado: boolean | null) =>
     perfil({ laboral: { estadoActividadEconomica: "activa_sin_interrupciones", fechaInicioActividadesRuc: "2020-09-10", fechaCeseActividadesRuc: null, tipoUltimoCeseRuc: null, obligadoALlevarContabilidadRuc: obligado } });
   const v = vectorDeNivel1(conRuc(true), { ahora: AHORA });
@@ -136,7 +136,7 @@ Deno.test("el SRI de Novadata: con RUC activo salen el estado, la antigüedad en
   assertEquals(vectorDeNivel1(conRuc(true), { ahora: AHORA, obligadoAContabilidad: null }).variables.sri_obligado, null);
 });
 
-Deno.test("el SRI de Novadata: un RUC inactivo es SUSPENDIDO y, si el cese fue una suspensión definitiva, trae sri_susp", () => {
+Deno.test("el SRI de Proveedor_Info_1: un RUC inactivo es SUSPENDIDO y, si el cese fue una suspensión definitiva, trae sri_susp", () => {
   const v = vectorDeNivel1(
     perfil({ laboral: { estadoActividadEconomica: "inactiva_nunca_reactivada", fechaInicioActividadesRuc: "2010-01-01", fechaCeseActividadesRuc: "2024-09-10", tipoUltimoCeseRuc: "suspension_definitiva" } }),
     { ahora: AHORA },
@@ -280,7 +280,7 @@ Deno.test("el SRI de Equifax en el nivel 2: estado, clase, sección y división 
   assertEquals(v.variables.sri_susp, null);
 });
 
-Deno.test("el SRI en el nivel 2 sale de Equifax aunque Novadata diga otra cosa", () => {
+Deno.test("el SRI en el nivel 2 sale de Equifax aunque Proveedor_Info_1 diga otra cosa", () => {
   const v = vectorDeNivel2(perfil({ laboral: { estadoActividadEconomica: "sin_ruc" } }), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.sri_ruc, 1);
 });

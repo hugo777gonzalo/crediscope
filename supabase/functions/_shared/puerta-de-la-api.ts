@@ -60,7 +60,7 @@ const SONDEO_MS = 2_000;
 // valor de la institución, no de la plataforma: vive en config_operativa.
 const TOPE_EN_CURSO_POR_DEFECTO = 50;
 // Segundos que se estiman para terminar, según lo que corre cada modalidad
-// (Novadata ~60 s, Equifax unos segundos, el modelo ~25 s; docs de la propuesta, 2.1 a 2.4).
+// (Proveedor_Info_1 ~60 s, Equifax unos segundos, el modelo ~25 s; docs de la propuesta, 2.1 a 2.4).
 const ESPERA_BASE_S: Record<string, number> = { basico: 90, pro: 95, plus: 105 };
 
 export interface DependenciasDeLaPuerta {

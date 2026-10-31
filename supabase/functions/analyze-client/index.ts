@@ -1,4 +1,4 @@
-// Orquestador principal: ingesta Novadata -> Estructura Estandarizada ->
+// Orquestador principal: ingesta Proveedor_Info_1 -> Estructura Estandarizada ->
 // controles de bloqueo duros -> scoring aproximado por LLM -> persiste
 // en Supabase. Este mismo endpoint HTTP sirve tanto a la interfaz web
 // (via supabase.functions.invoke, con el JWT del analista) como a
@@ -10,10 +10,10 @@
 // profileId (opcional, usado por "Análisis con IA" en la web): id de un
 // client_profiles ya generado por structure-client. Si viene, se
 // reutiliza ese standard_profile/control_bloqueo tal cual — SIN volver
-// a consultar Novadata — para que el análisis explique exactamente lo
+// a consultar Proveedor_Info_1 — para que el análisis explique exactamente lo
 // que el analista vio en Perfil del Cliente (ventana de reutilización:
 // 7 días, decisión de la UI, no de este endpoint). Si no viene (uso
-// típico de sistemas externos vía API), se consulta Novadata en fresco
+// típico de sistemas externos vía API), se consulta Proveedor_Info_1 en fresco
 // y el perfil resultante SE GUARDA igual — el análisis siempre queda
 // atado a la data estructurada que lo produjo (ver 032).
 

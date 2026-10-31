@@ -130,7 +130,7 @@ export type ConfigRazonamiento = {
   // entero cacheado cuesta menos que uno recortado sin caché).
   marcoPorCliente?: boolean;
   // marco-v31: el buró de la institución en lugar del de bancos y
-  // cooperativas de Novadata, cuando la persona tiene una consulta vigente
+  // cooperativas de Proveedor_Info_1, cuando la persona tiene una consulta vigente
   // (perfil-del-modelo.ts, buro-de-la-institucion.ts). APAGADO hasta que el
   // negocio lo decida con la comparación con y sin Equifax (autorizada con
   // una cifra). Mientras esté apagado, el pedido es el de v30 byte a byte

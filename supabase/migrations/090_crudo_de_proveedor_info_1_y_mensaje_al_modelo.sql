@@ -1,4 +1,4 @@
--- El crudo de Novadata y lo que leyó el modelo, guardados (2026-10-03).
+-- El crudo de Proveedor_Info_1 y lo que leyó el modelo, guardados (2026-10-03).
 --
 -- Los dos son insumo del Laboratorio de Inteligencia de Negocio
 -- (docs/laboratorio-de-riesgo.md): para saber por qué el modelo aprobó a
@@ -17,7 +17,7 @@
 -- 2. client_profiles.crudo_ruta: dónde quedó el crudo de esa consulta en
 --    Storage. Null = no se guardó (perfiles anteriores a esta migración, o
 --    una subida que falló): el hueco se cuenta, no se supone.
--- 3. El depósito privado crudo-novadata. Va a Storage y no a una columna:
+-- 3. El depósito privado crudo-proveedor-info-1. Va a Storage y no a una columna:
 --    ~150 KB por persona sin comprimir (~11 KB con gzip), contra ~4 KB del
 --    perfil o del crudo de Aval. Medido el 2026-10-03: la base pesa 96 MB y
 --    las 6.018 consultas guardadas habrían sumado del orden de cien más.
@@ -29,11 +29,11 @@ alter table analysis_results add column mensaje_al_modelo jsonb;
 alter table client_profiles add column crudo_ruta text;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('crudo-novadata', 'crudo-novadata', false, 5242880, array['application/gzip'])
+values ('crudo-proveedor-info-1', 'crudo-proveedor-info-1', false, 5242880, array['application/gzip'])
 on conflict (id) do nothing;
 
-create policy crudo_novadata_lectura_admin on storage.objects for select
+create policy crudo_proveedor_info_1_lectura_admin on storage.objects for select
   using (
-    bucket_id = 'crudo-novadata'
+    bucket_id = 'crudo-proveedor-info-1'
     and exists (select 1 from profiles where id = auth.uid() and rol = 'admin')
   );

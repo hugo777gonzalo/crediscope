@@ -1,5 +1,5 @@
 # Robustez del nivel 1 frente a las variables de la persona que CrediScope arma con otra fuente que el entrenamiento.
-# En AWS la edad, el sexo, el estado civil, la provincia y el cantón salen de la solicitud; en CrediScope, de Novadata. La paridad entre las dos fuentes no se midió
+# En AWS la edad, el sexo, el estado civil, la provincia y el cantón salen de la solicitud; en CrediScope, de Proveedor_Info_1. La paridad entre las dos fuentes no se midió
 # (hacerlo exige cruzar identificaciones entre bases, y eso no se hace). Lo que sí se puede medir sin cruzar nada es cuánto pesa cada variable y qué pasa si
 # al servir llegan distintas o faltan:
 #   1) el nivel 1 (y el 2) sin la zona, sin el estado civil, etc., por validación cruzada y por fecha;
@@ -28,7 +28,7 @@ def sin(cols, *quitar):
 # Lo que reproduce 12.26 es el nivel 1 de entonces: el vigente (2026-10-29) ya no tiene zona, estado civil ni IESS que quitar (12.30).
 N1 = c.NIVEL_1_ANTERIOR
 N2 = c.NIVELES[2]
-SRI1 = c.SRI_NOVADATA
+SRI1 = c.SRI_PROVEEDOR_INFO_1
 VARIANTES = {
     1: {
         "completo (con zona)": N1,
@@ -93,7 +93,7 @@ def main():
         cols = N1 if nivel == 1 else N2
         modelos = c.entrenar_cuantiles(c.matriz(antes, cols, cat_tr), antes.y)
         rt = te.unver.values
-        for variable, grupo in (("la zona (provincia y cantón de trabajo y de domicilio)", c.ZONA), ("la edad", ["edad"]), ("el sexo", ["genero"]), ("el estado civil", ["estado_civil"]), ("el SRI de Novadata", c.SRI_NOVADATA)):
+        for variable, grupo in (("la zona (provincia y cantón de trabajo y de domicilio)", c.ZONA), ("la edad", ["edad"]), ("el sexo", ["genero"]), ("el estado civil", ["estado_civil"]), ("el SRI de Proveedor_Info_1", c.SRI_PROVEEDOR_INFO_1)):
             for modo, p in (("no llega", 1.0), ("otro valor en el 10% de los casos", 0.10), ("otro valor en el 30%", 0.30), ("otro valor en todos", 1.0)):
                 x = te.copy()
                 cols_g = [g for g in grupo if g in cols]

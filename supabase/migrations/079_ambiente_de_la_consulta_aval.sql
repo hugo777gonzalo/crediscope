@@ -16,7 +16,7 @@
 --   - 2 devolvieron OTRA PERSONA, y son justamente las dos únicas con datos
 --     financieros verosímiles:
 --       c-e27ab022 -> el nombre de OTRA persona, score 707
---                     (en Novadata esa cédula es TORRES TORRES PABLO VICENTE)
+--                     (en Proveedor_Info_1 esa cédula es TORRES TORRES PABLO VICENTE)
 --       0101154151 -> "DANIEL HUNT DEVIN JERRY", score 73, deuda 23.060,
 --                     292 consultas en 12 meses
 --

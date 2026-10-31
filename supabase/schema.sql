@@ -1,7 +1,7 @@
 -- ============================================================
 -- CrediScope — Esquema de base de datos (Supabase / Postgres)
 -- Guarda SOLO los resultados del análisis (score, resúmenes, estado por
--- bloque). Los datos crudos de Novadata NO se persisten aquí — se
+-- bloque). Los datos crudos de Proveedor_Info_1 NO se persisten aquí — se
 -- consultan en vivo desde la Edge Function `analyze-client` y se
 -- descartan tras normalizarlos y calcular el resultado.
 --
@@ -32,7 +32,7 @@ create table clients (
 -- Una fila por cada vez que se dispara un análisis.
 --
 -- Hasta la migración 078 había acá un block_status con el estado de los
--- nueve bloques de Novadata. Se retiró: los bloques agregaban el estado
+-- nueve bloques de Proveedor_Info_1. Se retiró: los bloques agregaban el estado
 -- de sus fuentes y lo que quedaba exageraba la cobertura. El detalle
 -- fuente por fuente vive en client_profiles.estado_por_fuente, que es
 -- donde hace falta -- una corrida de ingesta no necesita repetirlo.

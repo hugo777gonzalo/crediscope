@@ -5,7 +5,7 @@ import { TituloTarjeta } from "../reporte/Piezas.jsx";
 import { entero, plural, mesAnio } from "../../lib/formatos.js";
 import { NIVELES_DE_MORA } from "../../lib/equifaxPantalla.js";
 
-// Cómo pagó mes a mes, en una franja: lo que Novadata no trae y lo más
+// Cómo pagó mes a mes, en una franja: lo que Proveedor_Info_1 no trae y lo más
 // informativo de Equifax (docs/propuesta-marco-equifax.md, sección 3). Los
 // contadores salen de la estructura; la franja, de la historia mensual.
 //

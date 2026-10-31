@@ -35,4 +35,4 @@ create index analysis_results_reutiliza_idx on analysis_results (reutiliza_anali
 alter table client_profiles add column duracion_por_fuente_ms jsonb;
 
 comment on column client_profiles.duracion_por_fuente_ms is
-  'Cuánto tardó cada fuente de Novadata, {fuente: ms} (119). null en los perfiles anteriores y en los reutilizados.';
+  'Cuánto tardó cada fuente de Proveedor_Info_1, {fuente: ms} (119). null en los perfiles anteriores y en los reutilizados.';

@@ -128,7 +128,7 @@ Deno.test("un tema que no es crítico sin consultar no vuelve parcial la consult
   assert(d?.temasNoConsultados.includes("casas comerciales"));
 });
 
-Deno.test("con el buró de la institución, sus temas cuentan como consultados aunque Novadata no los trajera", () => {
+Deno.test("con el buró de la institución, sus temas cuentan como consultados aunque Proveedor_Info_1 no los trajera", () => {
   assertEquals(disponibilidadDeLaEvaluacion(perfil(["buroCreditoSuper", "buroCreditoCoop"]), false)?.completitud, "parcial");
   assertEquals(disponibilidadDeLaEvaluacion(perfil(["buroCreditoSuper", "buroCreditoCoop"]), true)?.completitud, "completa");
 });

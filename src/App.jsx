@@ -51,7 +51,7 @@ const LaboratorioEstadistica = lazy(() => import("./pages/LaboratorioEstadistica
 const LaboratorioProfundo = lazy(() => import("./pages/LaboratorioProfundo.jsx"));
 const LaboratorioCaso = lazy(() => import("./pages/LaboratorioCaso.jsx"));
 const LaboratorioInstituciones = lazy(() => import("./pages/LaboratorioInstituciones.jsx"));
-const NovadataExplorer = lazy(() => import("./pages/NovadataExplorer.jsx"));
+const ProveedorInfo1Explorer = lazy(() => import("./pages/ProveedorInfo1Explorer.jsx"));
 const ConfigFuentes = lazy(() => import("./pages/ConfigFuentes.jsx"));
 const ConfigFuentesAval = lazy(() => import("./pages/ConfigFuentesAval.jsx"));
 const ConfigFuentesEquifax = lazy(() => import("./pages/ConfigFuentesEquifax.jsx"));
@@ -208,7 +208,7 @@ export default function App() {
               valía, o peor, que se puede ver el sistema sin entrar.
               Quien ya entró y llega a /login va a donde iba. */}
           <Route path="/login" element={<Navigate to={destinoDeIngreso(state)} replace />} />
-          <Route path="/explorar" element={<RequireAdmin><NovadataExplorer /></RequireAdmin>} />
+          <Route path="/explorar" element={<RequireAdmin><ProveedorInfo1Explorer /></RequireAdmin>} />
           <Route path="/" element={<ClientSearch />} />
           <Route path="/perfil/:cedula" element={<PerfilCliente />} />
           <Route path="/analisis/:cedula" element={<AnalisisIA />} />
@@ -278,12 +278,12 @@ export default function App() {
           <Route path="/laboratorio/profundo" element={<RequireAdmin><LaboratorioProfundo /></RequireAdmin>} />
           <Route path="/laboratorio/caso" element={<RequireAdmin><LaboratorioCaso /></RequireAdmin>} />
           <Route path="/laboratorio/instituciones" element={<RequireAdmin><LaboratorioInstituciones /></RequireAdmin>} />
-          <Route path="/admin/fuentes" element={<Navigate to="/admin/fuentes/novadata" replace />} />
-          <Route path="/admin/fuentes/novadata" element={<RequireAdmin><ConfigFuentes /></RequireAdmin>} />
+          <Route path="/admin/fuentes" element={<Navigate to="/admin/fuentes/proveedor-info-1" replace />} />
+          <Route path="/admin/fuentes/proveedor-info-1" element={<RequireAdmin><ConfigFuentes /></RequireAdmin>} />
           <Route path="/admin/fuentes/aval" element={<RequireAdmin><ConfigFuentesAval /></RequireAdmin>} />
           <Route path="/admin/fuentes/equifax" element={<RequireAdmin><ConfigFuentesEquifax /></RequireAdmin>} />
-          <Route path="/admin/campos" element={<Navigate to="/admin/campos/novadata" replace />} />
-          <Route path="/admin/campos/novadata" element={<RequireAdmin><ConfigCampos /></RequireAdmin>} />
+          <Route path="/admin/campos" element={<Navigate to="/admin/campos/proveedor-info-1" replace />} />
+          <Route path="/admin/campos/proveedor-info-1" element={<RequireAdmin><ConfigCampos /></RequireAdmin>} />
           <Route path="/admin/campos/aval" element={<RequireAdmin><ConfigCamposAval /></RequireAdmin>} />
           {/* Tres pantallas y no una (ver MenuLateral.jsx): ocultar un
               segmento sólo cambia lo que se ve. */}

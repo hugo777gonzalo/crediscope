@@ -14,9 +14,9 @@ import { GraficoBarras, GraficoLineas } from "./Graficos.jsx";
 const cayo = (f) => f.contesto_mes_anterior !== null && f.contesto_ultima_semana !== null && f.consultas_ultima_semana >= 20 && f.contesto_mes_anterior - f.contesto_ultima_semana > 0.1;
 
 // ----------------------------------------------------------- centro de datos
-// Qué contesta cada una de las 52 fuentes de Novadata, por semana. Alerta:
+// Qué contesta cada una de las 52 fuentes de Proveedor_Info_1, por semana. Alerta:
 // en la última semana contesta 10 puntos menos que en el mes anterior (con
-// 20 consultas o más). El 2026-10-03 un cambio de formato de Novadata ("ABI")
+// 20 consultas o más). El 2026-10-03 un cambio de formato de Proveedor_Info_1 ("ABI")
 // no se vio hasta comparar dos consultas: esto lo hace visible antes.
 export function CentroDeDatos() {
   const [datos, setDatos] = useState(null);
@@ -314,7 +314,7 @@ export function ExploradorDeCartera({ cortes }) {
 }
 
 // --------------------------------------------------------- diccionario de datos
-// Los tres niveles en un lugar: el campo del crudo de Novadata (del último
+// Los tres niveles en un lugar: el campo del crudo de Proveedor_Info_1 (del último
 // explorador del crudo), el campo de la estructura (con su cobertura en el
 // último corte) y la variable del catálogo (lo que miden las pestañas).
 export function Diccionario({ cortes }) {
@@ -345,7 +345,7 @@ export function Diccionario({ cortes }) {
         <input className="crediscope-input" style={{ maxWidth: 320 }} placeholder="Buscar (licencia, ingreso, buró...)" value={texto} onChange={(e) => setTexto(e.target.value)} />
         <select className="crediscope-input" style={{ width: "auto" }} value={nivel} onChange={(e) => setNivel(e.target.value)}>
           <option value="todos">Los tres niveles</option>
-          <option value="crudo">Crudo de Novadata ({num(datos.filas.filter((f) => f.nivel === "crudo").length)})</option>
+          <option value="crudo">Crudo de Proveedor_Info_1 ({num(datos.filas.filter((f) => f.nivel === "crudo").length)})</option>
           <option value="estructura">Estructura ({num(datos.filas.filter((f) => f.nivel === "estructura").length)})</option>
           <option value="variable">Variables del catálogo ({num(datos.filas.filter((f) => f.nivel === "variable").length)})</option>
         </select>

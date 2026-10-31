@@ -3,7 +3,7 @@
 //
 // Cruza tres cosas que ya están guardadas: lo que escribió el modelo
 // (positivos, negativos, faltantes, resumen), lo que leyó
-// (analysis_results.mensaje_al_modelo) y el crudo de Novadata del día del
+// (analysis_results.mensaje_al_modelo) y el crudo de Proveedor_Info_1 del día del
 // análisis (la fecha de las demandas sólo está ahí). No llama al modelo: no
 // cuesta. Cada observación del negocio que se repite se vuelve un detector.
 //
@@ -81,7 +81,7 @@ async function bajarObjeto(bucket, ruta) {
   try { return JSON.parse(zlib.gunzipSync(buf).toString("utf8")); } catch { return JSON.parse(buf.toString("utf8")); }
 }
 const CARPETAS = fs.readdirSync(path.join(RAIZ, "research"), { withFileTypes: true })
-  .filter((d) => d.isDirectory() && d.name.startsWith("novadata-raw")).map((d) => path.join(RAIZ, "research", d.name));
+  .filter((d) => d.isDirectory() && d.name.startsWith("proveedor-info-1-raw")).map((d) => path.join(RAIZ, "research", d.name));
 // Un respaldo local sirve sólo si es el crudo de ESE perfil: el perfilId está
 // al principio del archivo y se lee eso antes de parsear 150 KB.
 function crudoLocal(cedula, perfilId) {
@@ -147,7 +147,7 @@ await enParalelo(casos, 8, async (c) => {
   c.perfil = perfiles.get(c.perfilId) ?? null;
   c.fecha ??= c.perfil?.created_at ?? null;
   if (c.perfil?.crudo_ruta) {
-    try { c.raw = (await bajarObjeto("crudo-novadata", c.perfil.crudo_ruta)).raw ?? null; crudosBajados++; } catch { /* cae al respaldo local */ }
+    try { c.raw = (await bajarObjeto("crudo-proveedor-info-1", c.perfil.crudo_ruta)).raw ?? null; crudosBajados++; } catch { /* cae al respaldo local */ }
   }
   if (!c.raw && c.perfilId) { c.raw = crudoLocal(c.cedula, c.perfilId); if (c.raw) crudosLocales++; }
 });
@@ -188,7 +188,7 @@ function enContra(pm) {
   if (cb.figuraEnRegistroDeudores) motivos.push("registro de deudores");
   if (n(cb.valorVencidoRetail) > 0 || n(cb.diasMoraMaximaRetail) > 0) motivos.push("mora en casas comerciales");
   if (n(co.diasMoraMaxima) > 0 || n(co.saldoEnMora) > 0) motivos.push("mora en cooperativas");
-  if (n(ci.novadataDiasMoraVigente) > 0) motivos.push("mora con Novadata");
+  if (n(ci.proveedorInfo1DiasMoraVigente) > 0) motivos.push("mora con Proveedor_Info_1");
   if (pm.riesgoJudicialCivil?.pensionAlimenticiaEnMora) motivos.push("pensión alimenticia en mora");
   if (pm.riesgoPenal?.tieneAntecedentesPenales || pm.riesgoSeguridadCiudadana?.tieneDelitoSeguridadCiudadana) motivos.push("antecedentes o delitos");
   if (pm.cumplimiento?.enListaControl || pm.cumplimiento?.enListaNegra || pm.cumplimiento?.impedimentoCargosPublicos) motivos.push("listas o impedimento");
@@ -271,7 +271,7 @@ const DETECTORES = [
         { patron: /BANC|BURO|CALIFICACI/, malo: CAL_ATRASO.has(cb.peorCalificacionRiesgo) || n(cb.deudaEnAtraso) > 0 || n(cb.operacionesEnAtrasoSinMonto) > 0, dato: `peor calificación ${cb.peorCalificacionRiesgo}, deuda en atraso ${plata(cb.deudaEnAtraso)}` },
         { patron: /COOPERATIV/, malo: n(co.diasMoraMaxima) > 0 || n(co.saldoEnMora) > 0, dato: `cooperativas: ${n(co.diasMoraMaxima)} días de mora, ${plata(co.saldoEnMora)} en mora` },
         { patron: /CASAS? COMERCIAL|RETAIL/, malo: n(cb.valorVencidoRetail) > 0 || n(cb.diasMoraMaximaRetail) > 0, dato: `casas comerciales: ${plata(cb.valorVencidoRetail)} vencido, ${n(cb.diasMoraMaximaRetail)} días` },
-        { patron: /NOVADATA|INTERNO/, malo: n(ci.novadataDiasMoraVigente) > 0, dato: `Novadata: ${n(ci.novadataDiasMoraVigente)} días de mora vigente` },
+        { patron: /PROVEEDOR_INFO_1|INTERNO/, malo: n(ci.proveedorInfo1DiasMoraVigente) > 0, dato: `Proveedor_Info_1: ${n(ci.proveedorInfo1DiasMoraVigente)} días de mora vigente` },
         // Sin esta fuente, "préstamos del BIESS sin días de mora" no nombraba
         // ninguna y se comparaba contra todas (contra la mora en casas
         // comerciales, en la primera prueba).
@@ -366,7 +366,7 @@ const DETECTORES = [
   {
     clave: "lista_negra_comportamiento", familia: "D. Bloqueos dudosos", tipo: "exacto", poblacion: "bloqueados",
     nombre: "Lista negra por mal pagador",
-    marca: "La lista negra de Novadata dice 'Mal Pagador': es mora con su financiera (Novacredit), no cumplimiento",
+    marca: "La lista negra de Proveedor_Info_1 dice 'Mal Pagador': es mora con su financiera (Novacredit), no cumplimiento",
     detectar: (c) => {
       if (!c.bloqueado) return null;
       if (!c.raw) return NO_MEDIDO;
@@ -416,11 +416,11 @@ const DETECTORES = [
   },
   {
     clave: "deuda_interna_duplicada", familia: "E. Datos raros del perfil", tipo: "a confirmar", poblacion: "analizados",
-    nombre: "Saldo con Novadata igual a otra deuda",
-    marca: "El saldo vigente con Novadata coincide (±2%) con una operación de banco o cooperativa: puede ser la misma deuda",
+    nombre: "Saldo con Proveedor_Info_1 igual a otra deuda",
+    marca: "El saldo vigente con Proveedor_Info_1 coincide (±2%) con una operación de banco o cooperativa: puede ser la misma deuda",
     detectar: (c) => {
       if (!c.pm) return null;
-      const interno = n(c.pm.comportamientoInterno?.novadataSaldoCapitalVigente);
+      const interno = n(c.pm.comportamientoInterno?.proveedorInfo1SaldoCapitalVigente);
       if (interno <= 0) return null;
       if (!c.raw) return NO_MEDIDO;
       const cerca = (v) => v > 0 && Math.abs(v - interno) <= interno * 0.02;
@@ -428,7 +428,7 @@ const DETECTORES = [
         ...operacionesBuro(c.raw).filter((o) => cerca(n(o.saldoVigente) + atrasoBuro(o))).map((o) => `${o.entnombre ?? "banco"} ${plata(n(o.saldoVigente) + atrasoBuro(o))}`),
         ...(c.raw.buroCreditoCoop?.data?.datosSuper ?? []).filter((o) => cerca(n(o.val_saldo_total))).map((o) => `${o.razon_social ?? "cooperativa"} ${plata(o.val_saldo_total)}`),
       ];
-      return iguales.length ? `Novadata ${plata(interno)} ≈ ${iguales.join(", ")}` : null;
+      return iguales.length ? `Proveedor_Info_1 ${plata(interno)} ≈ ${iguales.join(", ")}` : null;
     },
   },
   {

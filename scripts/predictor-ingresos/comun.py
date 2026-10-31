@@ -34,41 +34,41 @@ PERSONA = ["edad", "genero", "estado_civil"]
 ZONA = ["prov_trab", "cant_trab", "prov_dom", "cant_dom"]
 IESS = ["aporte", "meses_aporte", "n_empleos"]
 BASE = PERSONA + ZONA + IESS + ["anio_mes"]
-# El SRI que Novadata puede dar (datosContribuyente) y lo que solo trae Equifax: no se trae el CIIU ni la clase (4.1).
-SRI_NOVADATA = ["sri_ruc", "sri_estado", "sri_obligado", "sri_antig", "sri_susp"]
+# El SRI que Proveedor_Info_1 puede dar (datosContribuyente) y lo que solo trae Equifax: no se trae el CIIU ni la clase (4.1).
+SRI_PROVEEDOR_INFO_1 = ["sri_ruc", "sri_estado", "sri_obligado", "sri_antig", "sri_susp"]
 SRI_EQUIFAX = ["sri_clase", "sri_ciiu_secc", "sri_ciiu_div"]
 BURO = ["cred_mayor", "cred_12m", "cred_24m", "deuda_total", "n_inst", "n_creditos", "valor_creditos", "saldos_vig", "deuda_actual", "deuda_3m", "max_mora", "saldo", "n_oper"]
 CUOTA = ["cuota_fin", "h12", "h6", "hact", "g6", "g12", "c_consumo", "c_tarjeta", "c_micro", "c_vivienda", "c_comercial", "c_educativo",
          "s_consumo", "s_tarjeta", "s_micro", "s_vivienda", "n_consumo", "n_tarjeta", "n_micro", "n_vivienda", "c_codeudor", "max_dias_t"]
 CATEGORICAS = ["genero", "estado_civil", "prov_trab", "cant_trab", "prov_dom", "cant_dom", "sri_estado", "sri_clase", "sri_ciiu_secc", "sri_ciiu_div"]
 
-# El nivel 1 es la edad, el sexo y el SRI de Novadata (decisión del negocio del 2026-10-29). Reconsultados 542 independientes de AWS (12.29), la edad
-# y el sexo de Novadata coinciden con los del extracto en el 99,6%; el estado civil (92,4%), el domicilio (Novadata lo trae en el 37%), el lugar de
+# El nivel 1 es la edad, el sexo y el SRI de Proveedor_Info_1 (decisión del negocio del 2026-10-29). Reconsultados 542 independientes de AWS (12.29), la edad
+# y el sexo de Proveedor_Info_1 coinciden con los del extracto en el 99,6%; el estado civil (92,4%), el domicilio (Proveedor_Info_1 lo trae en el 37%), el lugar de
 # trabajo (no lo trae) y el IESS (los meses con aporte no coinciden en ninguno de 99) no son el dato con que el modelo aprendió. `anio_mes` no sale de
 # una fuente sino del reloj del servidor, y se queda: es lo que hace que el modelo no extrapole más allá del último mes entrenado (especificación, 7).
 NIVEL_1_PERSONA = ["edad", "genero"]
-NIVEL_1_CANDIDATO = NIVEL_1_PERSONA + ["anio_mes"] + SRI_NOVADATA
+NIVEL_1_CANDIDATO = NIVEL_1_PERSONA + ["anio_mes"] + SRI_PROVEEDOR_INFO_1
 # El nivel 1 hasta el 2026-10-28, con el estado civil, la zona y el IESS del extracto de AWS: se mide para comparar (12.30) y reproduce 12.24 a 12.26.
-NIVEL_1_ANTERIOR = BASE + SRI_NOVADATA
+NIVEL_1_ANTERIOR = BASE + SRI_PROVEEDOR_INFO_1
 
 NIVELES = {
     1: NIVEL_1_CANDIDATO,
-    2: BASE + BURO + CUOTA + SRI_NOVADATA + SRI_EQUIFAX,
+    2: BASE + BURO + CUOTA + SRI_PROVEEDOR_INFO_1 + SRI_EQUIFAX,
 }
 # El nivel 1 contra el anterior, y lo que pesa cada variable que se discutió al decidirlo (12.30).
 VARIANTES_NIVEL_1 = {
     "anterior: con estado civil, zona e IESS de AWS": NIVEL_1_ANTERIOR,
-    "edad, sexo, fecha y SRI de Novadata": NIVEL_1_CANDIDATO,
+    "edad, sexo, fecha y SRI de Proveedor_Info_1": NIVEL_1_CANDIDATO,
     "sin el obligado a llevar contabilidad": [x for x in NIVEL_1_CANDIDATO if x != "sri_obligado"],
     "sin la fecha de la consulta": [x for x in NIVEL_1_CANDIDATO if x != "anio_mes"],
 }
 # Para reproducir las filas de 12.24 (con y sin SRI) sobre el mismo subconjunto: el nivel 1 de entonces.
 VARIANTES_SRI = {
-    "1 Novadata, sin SRI": BASE,
-    "1 con el SRI de Novadata": NIVEL_1_ANTERIOR,
+    "1 Proveedor_Info_1, sin SRI": BASE,
+    "1 con el SRI de Proveedor_Info_1": NIVEL_1_ANTERIOR,
     "1 con el SRI, la clase y el CIIU": NIVEL_1_ANTERIOR + SRI_EQUIFAX,
-    "2 Novadata y buró, sin SRI": BASE + BURO + CUOTA,
-    "2 con el SRI de Novadata": BASE + BURO + CUOTA + SRI_NOVADATA,
+    "2 Proveedor_Info_1 y buró, sin SRI": BASE + BURO + CUOTA,
+    "2 con el SRI de Proveedor_Info_1": BASE + BURO + CUOTA + SRI_PROVEEDOR_INFO_1,
     "2 con el SRI, la clase y el CIIU": NIVELES[2],
 }
 

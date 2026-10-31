@@ -15,10 +15,10 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 ## Crudo y recálculo
 
 - Respaldo local en `research/` (fuera del repo, datos personales):
-  `novadata-raw/` = muestra fija de 389, no se pisa;
-  `novadata-raw-2026-09-25/` = cartera completa (ya subida a Storage) en
+  `proveedor-info-1-raw/` = muestra fija de 389, no se pisa;
+  `proveedor-info-1-raw-2026-09-25/` = cartera completa (ya subida a Storage) en
   forma plana `{ cedula, capturadoEl, perfilId, raw }`;
-  `novadata-raw-2026-10-03/` = la reconsulta entera de ese día, el respaldo
+  `proveedor-info-1-raw-2026-10-03/` = la reconsulta entera de ese día, el respaldo
   vigente (los recálculos, con `--carpeta=`). La del 25/09 es el t0 del
   ciclo simulado del Laboratorio: no se pisa. `casos-reales/` = el
   registro de los casos que cita el código (ver "Cómo se trabaja"). Sumar:
@@ -39,7 +39,7 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   `columnasDelPerfil()`. Si cambia la regla de una columna sin cambiar el
   perfil: `scripts/calcular-columnas-del-perfil.mjs` (`--seco` primero).
 - Para validar un cambio, comparar `process.ts` viejo contra nuevo sobre
-  `research/novadata-raw/` con el perfil entero (`reprocess-sample.mjs`, la
+  `research/proveedor-info-1-raw/` con el perfil entero (`reprocess-sample.mjs`, la
   copia a mano, quedó atrás y se borró el 2026-10-13).
 - Al cruzar dos consultas a Postgres en memoria, unificar las claves con `String()`:
   `node-pg` devuelve `integer` como número y `numeric` o `bigint` como texto, y un `Map`
@@ -63,7 +63,7 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   perfil guardado (sólo lectura) y evalúa con el modelo exportado; la mide
   `scripts/predictor-ingresos/medir_sombra.py`. Repetirla con cada modelo nuevo del nivel 1 y al completar
   el lote de paridad. La edad y el reloj van a la fecha de la consulta de AWS: el perfil guarda la edad del
-  día en que se consultó a Novadata, y con ella la cobertura bajó dos puntos.
+  día en que se consultó a Proveedor_Info_1, y con ella la cobertura bajó dos puntos.
 - `scripts/probar-paridad-variables-de-ingreso.mjs` pasa las respuestas crudas de Equifax por
   `variables-de-ingreso.ts` y las compara con el extracto de AWS con que se entrenó (necesita `research/`;
   sale con 1 si una paridad baja de su umbral). Repetirlo al tocar `equifax-tablas.ts`,

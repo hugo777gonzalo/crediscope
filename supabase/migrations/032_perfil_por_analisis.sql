@@ -7,7 +7,7 @@
 -- structure-client (el camino de la web). Llamado en fresco -- el
 -- camino de API, o un análisis directo -- calculaba los 124 campos en
 -- memoria, se los mandaba al LLM y los descartaba junto con el crudo de
--- Novadata. Ese análisis quedaba con score pero sin la información que
+-- Proveedor_Info_1. Ese análisis quedaba con score pero sin la información que
 -- lo explica: no se puede auditar, ni reprocesar, ni correlacionar
 -- contra el default.
 --

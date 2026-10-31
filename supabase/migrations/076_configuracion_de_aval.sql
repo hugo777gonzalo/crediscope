@@ -1,9 +1,9 @@
--- Configuración operativa para Aval, análoga a la de Novadata -- pero NO
+-- Configuración operativa para Aval, análoga a la de Proveedor_Info_1 -- pero NO
 -- calcada 1 a 1, porque Aval tiene otra forma.
 --
--- POR QUÉ NO HAY UN "novadata_resource_config" PARA AVAL
+-- POR QUÉ NO HAY UN "proveedor_info_1_resource_config" PARA AVAL
 --
--- ConfigFuentes ("Fuentes que consultamos") tiene sentido para Novadata
+-- ConfigFuentes ("Fuentes que consultamos") tiene sentido para Proveedor_Info_1
 -- porque son 52 endpoints INDEPENDIENTES: se puede apagar "vehiculos" sin
 -- tocar "trabajo". Aval es UNA sola llamada HTTP que devuelve sus 34
 -- segmentos de un tirón -- no hay nada que apagar a ese nivel; se consulta
@@ -20,7 +20,7 @@
 -- de cara al análisis. Eso es `aval_field_config` acá abajo.
 
 insert into proveedores (clave, nombre, notas) values
-  ('aval', 'Aval Buró', 'Buró de crédito de Ecuador. Una sola consulta HTTP por persona (no 52 endpoints como Novadata) -- el on/off acá es todo o nada, no por segmento.')
+  ('aval', 'Aval Buró', 'Buró de crédito de Ecuador. Una sola consulta HTTP por persona (no 52 endpoints como Proveedor_Info_1) -- el on/off acá es todo o nada, no por segmento.')
 on conflict (clave) do nothing;
 
 -- ---------- Campos de la estructura estandarizada de Aval ----------

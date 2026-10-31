@@ -3,7 +3,7 @@
 // (quién llama, el esquema, contestar enseguida); acá vive lo que hay que poder
 // probar de punta a punta sin levantar un servidor.
 //
-// Un paso por invocación, no la evaluación entera: Novadata y el modelo juntos
+// Un paso por invocación, no la evaluación entera: Proveedor_Info_1 y el modelo juntos
 // pasan los 150 s que vive una función, y un paso que se corta a la mitad se
 // retoma solo (el reclamo vence a los 3 minutos y el paso se da por caído).
 // El estado vive en `solicitudes`, no en memoria: no hay nada que perder entre
@@ -15,7 +15,7 @@
 // evaluación (`creada_por`), que es lo que pregunta un auditor.
 //
 // El tope de evaluaciones reclamadas a la vez está medido, no supuesto
-// (reclamar_evaluaciones, 139): con 24 consultas en paralelo Novadata duplicó
+// (reclamar_evaluaciones, 139): con 24 consultas en paralelo Proveedor_Info_1 duplicó
 // su mediana y el 28% necesitó reintento; con 8 va más rápido y sin fallas.
 
 import { despuesDeUnPaso, despuesDeUnPasoCortadoDemasiadasVeces, despuesDelPlazo, type FilaDeLaCola } from "./cola-de-evaluaciones.ts";

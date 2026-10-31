@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   // forzar vuelve a pagar una consulta que ya estaba pagada y vigente.
   const forzar = cuerpo?.forzar === true;
 
-  // La misma validación que Novadata y Aval: un RUC de persona natural se
+  // La misma validación que Proveedor_Info_1 y Aval: un RUC de persona natural se
   // reduce a su cédula, y lo que no es persona natural se rechaza antes de
   // gastar una consulta que se cobra.
   const ident = clasificarIdentificacion(identificacion);

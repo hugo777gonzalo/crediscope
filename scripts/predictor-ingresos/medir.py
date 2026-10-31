@@ -19,11 +19,11 @@ SALIDA = c.RESULTADOS / "medir"
 VIEJOS = c.RAIZ_DATOS / "resultados"
 # Los nombres de las variantes en los guiones viejos, para cotejar.
 NOMBRE_VIEJO = {
-    "1 Novadata, sin SRI": "N1 Novadata", "1 con el SRI de Novadata": "N1 + SRI de Novadata", "1 con el SRI, la clase y el CIIU": "N1 + SRI de Novadata + clase y CIIU",
-    "2 Novadata y buró, sin SRI": "N2 Novadata y buro", "2 con el SRI de Novadata": "N2 + SRI de Novadata", "2 con el SRI, la clase y el CIIU": "N2 + SRI de Novadata + clase y CIIU",
+    "1 Proveedor_Info_1, sin SRI": "N1 Proveedor_Info_1", "1 con el SRI de Proveedor_Info_1": "N1 + SRI de Proveedor_Info_1", "1 con el SRI, la clase y el CIIU": "N1 + SRI de Proveedor_Info_1 + clase y CIIU",
+    "2 Proveedor_Info_1 y buró, sin SRI": "N2 Proveedor_Info_1 y buro", "2 con el SRI de Proveedor_Info_1": "N2 + SRI de Proveedor_Info_1", "2 con el SRI, la clase y el CIIU": "N2 + SRI de Proveedor_Info_1 + clase y CIIU",
 }
 # Los niveles de 12.24, con los que se cotea contra los guiones viejos: el nivel 1 de entonces es c.NIVEL_1_ANTERIOR.
-NIVEL_1, NIVEL_2 = "1 con el SRI de Novadata", "2 con el SRI, la clase y el CIIU"
+NIVEL_1, NIVEL_2 = "1 con el SRI de Proveedor_Info_1", "2 con el SRI, la clase y el CIIU"
 # El nivel 1 que se entrena y se exporta (c.NIVELES[1]), por su nombre en c.VARIANTES_NIVEL_1.
 NIVEL_1_VIGENTE = next(n for n, cols in c.VARIANTES_NIVEL_1.items() if cols == c.NIVELES[1])
 
@@ -139,8 +139,8 @@ def main():
         informe.append(f"### Validación cruzada por persona, {s} (n = {coma(sub[s].size, 0)})\n\n" + tabla_md([f for f in filas if f["subconjunto"] == s], cols31))
 
     dif_filas = []
-    for a_, b_ in [(NIVEL_2, NIVEL_1), ("1 con el SRI de Novadata", "1 Novadata, sin SRI"), ("1 con el SRI, la clase y el CIIU", "1 con el SRI de Novadata"),
-                   ("2 con el SRI de Novadata", "2 Novadata y buró, sin SRI"), ("2 con el SRI, la clase y el CIIU", "2 con el SRI de Novadata")]:
+    for a_, b_ in [(NIVEL_2, NIVEL_1), ("1 con el SRI de Proveedor_Info_1", "1 Proveedor_Info_1, sin SRI"), ("1 con el SRI, la clase y el CIIU", "1 con el SRI de Proveedor_Info_1"),
+                   ("2 con el SRI de Proveedor_Info_1", "2 Proveedor_Info_1 y buró, sin SRI"), ("2 con el SRI, la clase y el CIIU", "2 con el SRI de Proveedor_Info_1")]:
         for s, idx in sub.items():
             m, lo, hi = c.diferencia_r2(M[a_], M[b_], idx)
             dif_filas.append({"a": a_, "b": b_, "subconjunto": s, "dif": m, "bajo": lo, "alto": hi})
@@ -168,7 +168,7 @@ def main():
     for s in subf:
         informe.append(f"### Validación por fecha (entrenado hasta junio, probado de julio a octubre), {s} (n = {coma(subf[s].size, 0)})\n\n" + tabla_md([f for f in filas_f if f["subconjunto"] == s], cols31))
     dif_f = []
-    for a_, b_ in [(NIVEL_1, "1 Novadata, sin SRI"), ("1 con el SRI, la clase y el CIIU", "1 Novadata, sin SRI"), ("2 con el SRI de Novadata", "2 Novadata y buró, sin SRI"), ("2 con el SRI, la clase y el CIIU", "2 Novadata y buró, sin SRI")]:
+    for a_, b_ in [(NIVEL_1, "1 Proveedor_Info_1, sin SRI"), ("1 con el SRI, la clase y el CIIU", "1 Proveedor_Info_1, sin SRI"), ("2 con el SRI de Proveedor_Info_1", "2 Proveedor_Info_1 y buró, sin SRI"), ("2 con el SRI, la clase y el CIIU", "2 Proveedor_Info_1 y buró, sin SRI")]:
         for s, idx in subf.items():
             m, lo, hi = c.diferencia_r2(Mf[a_], Mf[b_], idx)
             dif_f.append({"a": a_, "b": b_, "subconjunto": s, "dif": m, "bajo": lo, "alto": hi})
@@ -238,7 +238,7 @@ def main():
     if "--sin-cotejo" not in sys.argv:
         tol = [("r2", "r2_log", .0015), ("tramo_exacto", "tramo_exacto", .05), ("dentro_10", "dentro_10", .05), ("cobertura90", "min90_real_lo_supera", .05),
                ("mediana_min90", "mediana_min90", 1), ("cert2000_pct", "cert2000_pct", .05)]
-        for archivo, filas_n, etiqueta in (("r4_7_sri_novadata.csv", filas, "r4_7 (validación cruzada)"), ("r4_8_sri_por_fecha.csv", filas_f, "r4_8 (por fecha)")):
+        for archivo, filas_n, etiqueta in (("r4_7_sri_proveedor_info_1.csv", filas, "r4_7 (validación cruzada)"), ("r4_8_sri_por_fecha.csv", filas_f, "r4_8 (por fecha)")):
             if not (VIEJOS / archivo).exists():
                 print(f"  sin {archivo}: no se coteja")
                 continue
