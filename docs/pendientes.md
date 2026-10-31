@@ -13,16 +13,23 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **140** (2026-10-30; no hay 137: la del PR 82 pasó a 139),
-  y `ESQUEMA_MINIMO` está en 139. Se midió con el corredor, y `auditar-seguridad.mjs` dio 76 de 76
-  después de aplicarla. **La 140** saca de la agenda la
-  clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`36dbe4af0dde`**, 12 de 12, desplegado el 2026-10-30 a las 21:45 sobre el
-  esquema 139. `despliegues` anota 11 de 12 porque cada corrida falló en una función distinta al
-  subirla; el sello de las 12 se midió con OPTIONS y con `auditar-seguridad.mjs`. El anterior fue
-  `dabb60be9f3c`. El núcleo de la API está desplegado y apagado para terceros, y la consulta y el
-  análisis de la pantalla, que el PR 82 reescribió por dentro, **todavía no corrieron con este
-  código contra una persona**.
+- **Base:** última migración aplicada, la **141** (2026-10-31; no hay 137: la del PR 82 pasó a 139),
+  y `ESQUEMA_MINIMO` está en 141. Se midió en `esquema_version`, y `auditar-seguridad.mjs` dio 81 de 81
+  después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`2f30bffab7fd`**, 13 de 13, desplegado el 2026-10-31 a las 00:13 sobre el
+  esquema 141 (`despliegues`; el anterior fue `36dbe4af0dde`). El núcleo de la API y el sandbox están
+  desplegados y apagados para terceros. Con este sello, por la pantalla: la consulta corrió con
+  c-79e1ac23 y el análisis reutilizó el de c-38661efd. La llamada real al modelo se midió una hora
+  antes, con `36dbe4af0dde` (c-38661efd, marco-v30, USD 0,07), y **todavía no hubo una consulta
+  buena de Novadata seguida de su análisis con el código nuevo**.
+- **Novadata (2026-10-31):** contesta HTTP 500 en 41 de 52 fuentes en las tres consultas de
+  c-79e1ac23 del 30 y el 31. El 28/10 pasó en 494 de 1.215 perfiles y antes casi nunca (33 el 25/09).
+  Las tres son de la misma persona: no se sabe si la falla es general o suya. Hay que preguntarles.
+- **Base de prueba (2026-10-31):** 244 personas en `research/base-prueba-2026-11/`, con perfil de 19
+  fuentes buenas o más y Equifax de AWS, sin consultar a nadie. Pro y Plus ya están calculados con un
+  crédito de USD 5.000 a 36 meses: Plus cambia 111 veredictos, todos para peor (Pro ve las cuotas de
+  casi nadie). No es una base típica: cuota mediana de USD 2.857 contra USD 605 de todo AWS. Falta el
+  modelo: `analizar-en-lote.mjs enviar`, unos USD 4,4 autorizados, desde el 1 de noviembre.
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
   institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
   perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
@@ -40,7 +47,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   restantes son de versiones anteriores a la v28 (288 en total).
 - **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
   87 anteriores caducaron).
-- **Modelo (2026-10-29, `gasto_del_mes`):** octubre lleva **USD 9,66 de los 10** del presupuesto
+- **Modelo (2026-10-31, `gasto_del_mes`):** octubre lleva **USD 9,97 de los 10** del presupuesto
   (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
   vigía; no hubo análisis.
 - **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
@@ -71,7 +78,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - avisos firmados (`evaluacion.terminada`), `POST /evaluaciones/{id}/decision` y
       `/cancelacion`, y las puertas sueltas `/simulaciones`, `/capacidades-de-pago` y
       `/estimaciones-de-ingreso` (esta última traduce `evaluacion`, `ev_...`, a `solicitudId`);
-    - **el sandbox está construido y sin desplegar** (`supabase/CLAUDE.md`): falta desplegar y poner
+    - **el sandbox está desplegado y apagado** (`supabase/CLAUDE.md`): falta poner
       `API_SANDBOX=activo` para usarlo. Requisito de OAuth: una credencial de sandbox acepta sólo las
       identificaciones de prueba;
    - D5: al vencer el plazo con el modelo caído, entregar `sin_veredicto` con el perfil y la
@@ -161,7 +168,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
    **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
-   octubre lleva USD 9,66 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   octubre lleva USD 9,97 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
    antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
    el negocio, porque Claude no ve la consola.
@@ -320,18 +327,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
        de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
-    7. **Construidos para el nivel 1 y sin aplicar:** `modelos_de_ingreso`, `estimaciones_de_ingreso`
+    7. **Desplegados para el nivel 1 (2026-10-31):** `modelos_de_ingreso`, `estimaciones_de_ingreso`
        (migración 141), `estimar-ingreso` y `POST /estimaciones-de-ingreso`, con lo que el negocio decidió
-       el 2026-10-30 (especificación, sección 1). Falta, en este orden:
-       - aplicar la 141 con el corredor (`--seco` y `--aplicar`);
-       - publicar el modelo: `node scripts/publicar-modelo-de-ingreso.mjs --modelo=<archivo> --vigente`,
-         primero con `--seco` (sin la 141 aplicada, el guion valida el archivo y frena en la tabla);
-       - desplegar con `--funciones` desde una copia limpia de `origin/main` (`ESQUEMA_MINIMO` sube a 141:
-         sin la migración, todas las funciones contestan 503);
-       - correr `auditar-seguridad.mjs` y probar la función con una identificación inválida; una
-         estimación de verdad, sólo con una persona autorizada por el negocio.
-       La migración se probó en un Postgres en memoria, no contra la base. La función no se llamó
-       nunca. La referencia de pensión de los jubilados (sección 3.3) no está construida.
+       el 2026-10-30 (especificación, sección 1). `ingreso-v1` nivel 1 está vigente (huella
+       `b6bc58139cac`, 200 casos de oro iguales). La función rechaza una identificación inválida (400) y
+       sin sesión (401). **Falta una estimación de verdad**, con una persona autorizada por el negocio y
+       con un perfil bueno. La referencia de pensión de los jubilados (sección 3.3) no está construida.
     8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7). Antes de mostrar los tramos, revisar
        con el negocio la regla de `cdf` (`comun.py`): con un mínimo alto, el tramo de menos de un salario
        básico queda en 2,5% y los siguientes en 0,01%, porque por debajo del primer cuantil vale la mitad

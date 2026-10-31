@@ -211,6 +211,10 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### Base y procesos
 
+- **Un análisis corre aunque la consulta casi no haya traído nada.** El 2026-10-30 Novadata contestó
+  HTTP 500 en 41 de 52 fuentes para c-79e1ac23, y el modelo igual dio 560, «revisar», con el perfil en
+  «sin datos». La pantalla lo avisa, pero el score queda en el expediente como cualquier otro. Falta que
+  el negocio decida si un análisis así se hace.
 - **Una agenda nueva repitió lo que la 114 había sacado de las otras.** La 139 (2026-10-30)
   escribió la clave del vigía en texto plano en `cron.job`, y pg_cron la copió además en
   `cron.job_run_details` en cada corrida. Las 18 comprobaciones de la 139 en PGlite no tocaban la
