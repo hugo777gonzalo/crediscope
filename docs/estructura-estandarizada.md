@@ -748,6 +748,57 @@ interface StandardClientProfile {
 >   no llega al modelo), y `calcular-columnas-del-perfil.mjs --seco`, 0 por
 >   corregir en 9.812.
 
+> **estructura-v16 (2026-10-31)** — el historial de empleos, los préstamos del
+> IESS/BIESS y el corte del retail, de la revisión de casos reales del negocio.
+> - **Por qué:** varios campos leían una fuente vieja o incompleta y el modelo
+>   lo tomó por una contradicción (c-5ee429cc: «el cargo de pasante y el
+>   salario máximo chocan con el ingreso reportado»). `trabajoHistoricos`
+>   trae como mucho un registro, casi siempre viejo, y una salida en
+>   1900-01-01 es la fecha centinela de «sigue empleado».
+> - **`laboral`:** `salarioMasAltoRegistrado` es el máximo entre
+>   `trabajoHistoricos`, el mecanizado y los aportes; `historialEmpleosRegistrados`
+>   cuenta empleadores distintos de las tres fuentes (por RUC; un registro sin
+>   RUC se une al empleador de igual nombre comparable, sin tildes ni siglas
+>   societarias); `cargoVigente` es el del empleo actual (con dos, el mejor
+>   pagado) y `null` sin empleo actual; `empleadorVigenteSituacionLegal`,
+>   `...TipoCompania`, `...AntiguedadAnios` y `empleadoresJuridicos` salen de
+>   `trabajoHistoricos` sólo si ese registro es del mismo empleador que un
+>   empleo actual (RUC; la cédula de un patrono persona natural se compara como
+>   su RUC), y si no son `null`. `empleadoresJuridicos` pasa a `number | null`.
+> - **BIESS:** `tieneCreditoIessBiess` y `diasMoraCreditoIessBiess` leen también
+>   `creditoQuirografario` y `creditoHipotecario` (`data.prestamos`), sin contar
+>   dos veces una operación que esté en las dos fuentes (por número de
+>   operación, o por fecha de concesión y monto). El hipotecario de la base
+>   interna trae la mora en `srDiasmoraafi`, que no se leía. Campo nuevo:
+>   `saldoPrestamosIessBiess` (por vencer más vencido; `null` sin préstamos).
+>   Medido sobre 560 personas que tienen las dos fuentes: 1.428 operaciones de
+>   la base y 1.396 de los préstamos, y ninguna coincide en número ni en fecha y
+>   monto: son operaciones distintas, y la deduplicación es una protección.
+> - **Retail:** `fechaCorteRetail` (YYYY-MM-DD), la `fecha` de las filas de
+>   `retails` (`fechaActualizacion` es el día de la consulta y no sirve). Si
+>   las filas traen cortes distintos, el más antiguo. En las 490 personas con
+>   retail de la cartera es julio de 2025 en todas, y ninguna trae dos cortes.
+> - **Efecto** (código viejo contra nuevo, perfil entero, 3.765 personas reales,
+>   desde el crudo guardado; el código viejo reproduce el perfil guardado en las
+>   3.765): fuera de `laboral` y `comportamientoBancario` no cambia nada.
+>   El salario más alto estaba por debajo del sueldo de un empleo actual en
+>   1.068 de 1.682 (menos de la mitad en 359) y ahora en 0; el cargo vigente no
+>   era el de ningún empleo actual en 1.356 de 1.857 y estaba presente sin empleo
+>   actual en 408, ahora 0 y 0; el historial tenía menos empleadores que el IESS
+>   en 830 de 2.593, ahora 0; 308 de 918 con créditos formales figuraban sin
+>   crédito del IESS/BIESS, ahora 0 (la mora cambia en 345, y sube en 45); los
+>   datos del empleador vigente pasan de 1.239 a 536 personas (el empleador del
+>   historial es el del empleo actual).
+> - **Lo que lee el modelo:** los valores corregidos de los campos que ya
+>   existían llegan; `saldoPrestamosIessBiess` y `fechaCorteRetail` no
+>   (`CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`): el mensaje
+>   sigue siendo el de marco-v30, con esos valores corregidos. La sesión del
+>   marco los abre cuando tenga el texto que los explique.
+> - **Sin aplicar:** el perfil guardado sigue en estructura-v15 hasta recalcular
+>   (`recalcular-grupos.mjs --grupos=laboral,comportamientoBancario`, con el seco
+>   antes). Se despliega primero y se recalcula después, por el mismo motivo
+>   que en v15.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |
