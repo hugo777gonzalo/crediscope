@@ -86,6 +86,7 @@ código no molesta.
 | Operaciones propias en buró de crédito | **Líneas de deuda propias en buró de crédito** | Negocio, 2026-10-31. Novadata agrupa por entidad, tipo y calificación: cuenta filas, no operaciones. El control corta con el nombre viejo |
 | Empleos registrados en total · Empleos en el historial | **Empleadores registrados en el IESS** | Negocio, 2026-10-31. Desde estructura-v16 cuenta empleadores distintos. El control corta con los nombres viejos |
 | Corte del retail · Saldo de préstamos IESS/BIESS (provisorios) | Se quedan así | Negocio, 2026-10-31 |
+| Sueldo más alto registrado | **Salario más alto registrado** | Negocio, 2026-10-31. El mismo dato se llamaba distinto en Fuentes de Ingreso y en el Perfil de la Persona. El control corta con el nombre viejo |
 
 ## 3. Un concepto, un nombre
 

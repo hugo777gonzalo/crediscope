@@ -16,8 +16,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 - **Base:** última migración aplicada, la **141** (2026-10-31; no hay 137: la del PR 82 pasó a 139),
   y `ESQUEMA_MINIMO` está en 141. Se midió en `esquema_version`, y `auditar-seguridad.mjs` dio 81 de 81
   después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`8a778f905f10`**, 13 de 13, desplegado el 2026-10-31 a las 11:44 sobre el
-  esquema 141 (`despliegues`; el anterior fue `5456b5583ca8`). El núcleo de la API está desplegado y
+- **Funciones:** sello **`9b1c51fe42e8`**, desplegado el 2026-10-31 a las 12:41 sobre el esquema 141
+  (`despliegues`; el anterior fue `8a778f905f10`). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
@@ -62,7 +62,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   deciden (`FUENTES_QUE_DECIDEN`). Alcanza a 670 de los 3.765 últimos perfiles reales, que hay que
   reconsultar antes de analizarlos. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
   sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
-  fuentes; parece una caída de Novadata, sin confirmar.
+  fuentes; parece una caída de Novadata, sin confirmar. El 409 se probó en vivo con c-79e1ac23 el
+  2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
 
 ## 1. Lo que Claude puede hacer ya
 
@@ -212,8 +213,6 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
      BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
      cifra; no se tocó.
-   - **Sin verificar:** la pantalla en el navegador (a 1280, 768 y 414) con la sesión del negocio
-     (punto 2.13).
 
 ## 2. Espera una decisión del negocio
 
