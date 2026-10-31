@@ -158,6 +158,40 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
    - estilos en línea a clases (1.776 en 124 archivos); Excel de un lote en el servidor
      pasadas las mil personas; `comparar-razonamiento.mjs` que lea el buró.
+12. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** El PR está
+   abierto con los cuatro controles en verde. Queda, en este orden:
+   - **Fusionar el 105** y **desplegar con `--funciones`** desde una copia limpia de
+     `origin/main` (regla 1): primero se despliega y después se recalcula, o el perfil guardado
+     en v15 convive con código que ya escribe v16.
+   - **Recalcular:** `node scripts/recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
+     --carpeta=research/novadata-raw-2026-10-03`, **con `--seco` antes**. El seco del 2026-10-31
+     dio 3.765 a escribir, 0 que el crudo no reproduzca y 240 sintéticas sin crudo. No cambia
+     `fuentesIngreso`, así que `recalcular-fuentes-ingreso.mjs` no hace falta.
+   - **El recálculo estaba frenado por el guion**: `recalcular-grupos.mjs --seco` fallaba con
+     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`,
+     línea 85). El PR lo arregla (paginación por `id`, hasta una página vacía) en ese guion y en
+     `recalcular-fuentes-ingreso.mjs`, que tenía el mismo bloque. Probados sólo en seco. Siguen
+     con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
+     `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
+     `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
+   - **Nombres que decide el negocio** (el PR propone opciones y no cambió ninguno):
+     «Operaciones propias en buró de crédito» (`numeroOperacionesBuroCredito`) cuenta filas
+     agrupadas por entidad, tipo y calificación, no operaciones; «Empleos registrados en total» y
+     «Empleos en el historial» ahora cuentan empleadores distintos; y las etiquetas nuevas
+     «Corte del retail» y «Saldo de préstamos IESS/BIESS» son provisorias.
+   - **Lo que debe abrir la sesión del marco** (cada uno es una línea de
+     `CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`; hoy el mensaje sigue siendo el
+     de marco-v30): `comportamientoBancario.fechaCorteRetail` (las deudas retail son de ese corte,
+     julio de 2025 en toda la cartera) y `comportamientoBancario.saldoPrestamosIessBiess`. Los
+     valores corregidos de los campos que ya existían sí llegan, y el marco puede necesitar una
+     línea que diga que el empleador vigente es `null` cuando el historial no trae al del empleo
+     actual.
+   - **Efecto en la capacidad de pago:** `tieneCreditoIessBiess` pasa a verdadero en 308 de 918
+     personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
+     BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
+     cifra; no se tocó.
+   - **Sin verificar:** la pantalla en el navegador (a 1280, 768 y 414) con la sesión del negocio
+     (punto 2.13); el perfil guardado sigue mostrando lo de v15 hasta recalcular.
 
 ## 2. Espera una decisión del negocio
 

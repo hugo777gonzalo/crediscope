@@ -8,6 +8,8 @@
 // todos los campos del grupo, solo los que aportan valor de lectura
 // rápida a un analista.
 
+import { formatearDia } from "./fechas.js";
+
 export function get(obj, path) {
   return path.split(".").reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
 }
@@ -65,6 +67,9 @@ export function formatValor(valor, tipo) {
       return valor
         .map((g) => `${g.categoria}: ${g.cantidad}${g.tipos?.length ? ` (${g.tipos.join(", ")})` : ""}`)
         .join("; ");
+    // Una fecha sin hora ("2025-07-31"): formatearDia no la corre de día.
+    case "dia":
+      return formatearDia(valor);
     case "estado_actividad":
       return ETIQUETAS_ESTADO_ACTIVIDAD[valor] ?? valor;
     case "tipo_cese_ruc":
@@ -154,7 +159,7 @@ export const GRUPOS_CONFIG = {
       // Del historial de empleos: quién es el empleador, no solo cuánto
       // pagó. Para un dependiente, el riesgo de quedarse sin ingreso es
       // en buena medida el riesgo de quien le paga.
-      ["cargoVigente", "Cargo", "texto"],
+      // Sin fila de cargo: es el de un empleo de «Empleos vigentes», que ya lo trae.
       ["empleadorVigenteSituacionLegal", "Situación legal del empleador", "texto"],
       ["empleadorVigenteTipoCompania", "Tipo de compañía del empleador", "texto"],
       ["empleadorVigenteAntiguedadAnios", "Años del empleador", "numero"],
@@ -243,7 +248,11 @@ export const GRUPOS_CONFIG = {
       ["numeroDeudasRetail", "Deudas retail (casas comerciales)", "numero"],
       ["totalDeudaRetail", "Total deuda retail", "moneda"],
       ["valorVencidoRetail", "Deuda retail vencida", "moneda"],
+      // La fecha de las filas de retail (julio de 2025 en todas las de las
+      // personas con Equifax): la deuda no es de hoy.
+      ["fechaCorteRetail", "Corte del retail", "dia"],
       ["tieneCreditoIessBiess", "Crédito IESS/BIESS", "booleano_si_true"],
+      ["saldoPrestamosIessBiess", "Saldo de préstamos IESS/BIESS", "moneda"],
     ],
   },
   comportamientoCooperativas: {

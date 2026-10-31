@@ -210,21 +210,26 @@ export interface StandardClientProfile {
     numeroEmpleadosRegistrados: number;
     tipoEmpleador: string | null;
     obligacionesPatronalesEnMora: boolean | null; // null si no aplica (no es empleador)
-    // Del historial de empleos (pn_trabajo_historicos), que trae algo
-    // que el mecanizado no: QUIÉN es el empleador. El riesgo de un
-    // dependiente es en buena medida el riesgo de quien le paga.
+    // Desde estructura-v16, empleadores distintos (por RUC) entre el
+    // historial (pn_trabajo_historicos), el mecanizado y los aportes del IESS.
     historialEmpleosRegistrados: number;
-    // El techo de lo que esta persona ganó alguna vez. Complementa el
-    // piso que sale del IESS: los dos juntos acotan el ingreso real
-    // mucho mejor que cualquiera solo.
+    // El techo de lo que esta persona ganó alguna vez: el máximo entre el
+    // historial, el mecanizado y los aportes. Complementa el ingreso
+    // reportado al IESS: los dos juntos acotan el ingreso real mucho mejor
+    // que cualquiera solo.
     salarioMasAltoRegistrado: number | null;
+    // El cargo del empleo actual; null sin empleo actual.
     cargoVigente: string | null;
-    // ACTIVA, INDEFINIDA, DISOLUCION... Un empleador que no está activo
+    // De pn_trabajo_historicos, que trae QUIÉN es el empleador, y sólo si
+    // ese registro es del empleador de un empleo actual (mismo RUC); si no,
+    // null. ACTIVA, INDEFINIDA, DISOLUCION... Un empleador que no está activo
     // es un riesgo de continuidad del ingreso, no del cliente.
     empleadorVigenteSituacionLegal: string | null;
     empleadorVigenteTipoCompania: string | null;
     empleadorVigenteAntiguedadAnios: number | null;
-    empleadoresJuridicos: number;
+    // Empleadores que son empresa; mismo criterio, null si el historial no
+    // trae al empleador de un empleo actual.
+    empleadoresJuridicos: number | null;
     // Fechas crudas del registro RUC (contribuyente) — del registro
     // activo si existe, si no del primero disponible. Para auditar
     // tieneRucActivo/tieneEstablecimientoActivo contra el SRI sin tener
@@ -411,8 +416,15 @@ export interface StandardClientProfile {
     // Desde estructura-v8: lo vencido de la deuda retail. 85 personas
     // tienen retail vencido y el total solo se leía como "vigente".
     valorVencidoRetail?: number;
+    // Corte de las deudas retail (la `fecha` de cada fila, la más antigua de
+    // ellas, YYYY-MM-DD). No es el día de la consulta. Desde estructura-v16;
+    // null sin deudas retail.
+    fechaCorteRetail?: string | null;
     tieneCreditoIessBiess: boolean;
     diasMoraCreditoIessBiess: number | null;
+    // Desde estructura-v16: saldo (por vencer y vencido) de los préstamos
+    // del IESS/BIESS de las dos fuentes; null si no hay ninguno.
+    saldoPrestamosIessBiess?: number | null;
   };
 
   // "Comportamiento Cooperativas" (grupo 9)
