@@ -54,7 +54,7 @@ const { armarPedidoScoring, huellaDelPedido, interpretar, CONFIG_LLM, versionDel
 const { buroDeLaBase, consultaVigenteDeEquifax } = await compartido("buro-de-la-institucion.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
-const { elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
+const { elPerfilSePuedeAnalizar, elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
 const { filaDelAnalisis } = await compartido("fila-del-analisis.ts");
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -112,7 +112,7 @@ async function preparar() {
   const r = azar(Number(arg("semilla", "1")));
 
   const perfiles = await traerTodas(() => supabase.from("client_profiles")
-    .select("id, client_id, created_at, fuente_segmento, fuentes_ok, ejes_ok", { count: "exact" })
+    .select("id, client_id, created_at, fuente_segmento, fuentes_ok, ejes_ok, estado_por_fuente", { count: "exact" })
     .order("created_at", { ascending: true }).order("id", { ascending: true }));
   const ultimo = new Map();
   for (const p of perfiles) ultimo.set(p.client_id, p); // ordenados: queda el más reciente
@@ -122,7 +122,7 @@ async function preparar() {
   const { data: idsSinteticos, error: eSint } = await supabase.from("clients").select("id").in("cedula", [...sinteticas].slice(0, 300));
   if (eSint) throw new Error(motivo(eSint));
   const excluidos = new Set(idsSinteticos.map((c) => c.id));
-  const candidatos = [...ultimo.values()].filter((p) => elPerfilSirve(p) && !excluidos.has(p.client_id));
+  const candidatos = [...ultimo.values()].filter((p) => elPerfilSirve(p) && elPerfilSePuedeAnalizar(p.estado_por_fuente) && !excluidos.has(p.client_id));
   console.log(`Excluidas ${excluidos.size} personas sintéticas de ${sinteticas.size} en la lista`);
 
   // Por segmento, proporcional y con un mínimo de 5 donde alcance: los
