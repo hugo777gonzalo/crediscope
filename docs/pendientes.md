@@ -201,11 +201,6 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
      `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
      `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
-   - **Nombres que decide el negocio** (el PR propone opciones y no cambió ninguno):
-     «Operaciones propias en buró de crédito» (`numeroOperacionesBuroCredito`) cuenta filas
-     agrupadas por entidad, tipo y calificación, no operaciones; «Empleos registrados en total» y
-     «Empleos en el historial» ahora cuentan empleadores distintos; y las etiquetas nuevas
-     «Corte del retail» y «Saldo de préstamos IESS/BIESS» son provisorias.
    - **Lo que debe abrir la sesión del marco** (cada uno es una línea de
      `CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`; hoy el mensaje sigue siendo el
      de marco-v30): `comportamientoBancario.fechaCorteRetail` (las deudas retail son de ese corte,
