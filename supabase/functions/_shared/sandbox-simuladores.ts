@@ -1,5 +1,5 @@
 // Los simuladores del sandbox de la API (api/openapi.yaml, «Sandbox»): lo que
-// contestarían Novadata, Equifax y el modelo por cada identificación de prueba.
+// contestarían Proveedor_Info_1, Equifax y el modelo por cada identificación de prueba.
 //
 // Se simula la RESPUESTA de cada fuente y nada más: el perfil, los controles de
 // bloqueo, la disponibilidad, la estructura de Equifax, la capacidad y la regla
@@ -10,13 +10,13 @@
 // Un simulador se niega a contestar por una identificación real (`casoDe`). Todo lo
 // de acá es inventado y el repositorio es público: ni un dato de una persona.
 
-import { RUTAS_POR_FUENTE } from "./novadata-client.ts";
+import { RUTAS_POR_FUENTE } from "./proveedor-info-1-client.ts";
 import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
 import { calcularEstructura } from "./equifax-estructura.ts";
 import { derivarTablas } from "./equifax-tablas.ts";
 import { respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
 import { casoDe } from "./sandbox-casos.ts";
-import type { LlmScoringResult, RespuestaNovadata } from "./types.ts";
+import type { LlmScoringResult, RespuestaProveedorInfo1 } from "./types.ts";
 
 // Va donde una evaluación real dice con qué versión del marco y qué modelo se hizo:
 // la institución ve en la respuesta que no la escribió el modelo.
@@ -48,14 +48,14 @@ function aportesAlIess(): Record<string, unknown>[] {
   });
 }
 
-export function novadataSimulado(identificacion: string): RespuestaNovadata {
+export function proveedorInfo1Simulado(identificacion: string): RespuestaProveedorInfo1 {
   const caso = casoDe(identificacion);
   const fuentes = Object.keys(RUTAS_POR_FUENTE);
-  if (caso === "sin_fuentes") return Object.fromEntries(fuentes.map((f) => [f, noContesto()])) as unknown as RespuestaNovadata;
+  if (caso === "sin_fuentes") return Object.fromEntries(fuentes.map((f) => [f, noContesto()])) as unknown as RespuestaProveedorInfo1;
 
   const raw: Record<string, unknown> = Object.fromEntries(fuentes.map((f) => [f, contesto()]));
   if (caso === "no_encontrada") {
-    return { ...raw, general: { status: "faltante", data: null, errorMessage: "No existe la persona." } } as unknown as RespuestaNovadata;
+    return { ...raw, general: { status: "faltante", data: null, errorMessage: "No existe la persona." } } as unknown as RespuestaProveedorInfo1;
   }
   raw.general = contesto({
     personaNatural: {
@@ -72,7 +72,7 @@ export function novadataSimulado(identificacion: string): RespuestaNovadata {
   // cubre el buró, y con uno de esos la evaluación dejaría de ser parcial.
   if (caso === "parcial") raw.demandas = noContesto();
   if (caso === "bloqueada") raw.listasControl = contesto({ ofacsOpr: [{ nombre: "PERSONA SIMULADA" }] });
-  return raw as unknown as RespuestaNovadata;
+  return raw as unknown as RespuestaProveedorInfo1;
 }
 
 // La estructura que deja una consulta de Equifax, derivada con el código real de la

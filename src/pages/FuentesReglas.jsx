@@ -117,9 +117,9 @@ export default function FuentesReglas() {
           hace poco, y eso es una señal de riesgo distinta a llevar dos años sin aportar.
         </p>
         <p style={{ marginBottom: 0 }}>
-          Novadata actualiza el IESS más o menos cada dos meses. El corte vigente es el mes más reciente en el que aparecen al
+          Proveedor_Info_1 actualiza el IESS más o menos cada dos meses. El corte vigente es el mes más reciente en el que aparecen al
           menos <strong>20 personas</strong> consultadas en los últimos 90 días. Dos o tres aportes adelantados no lo mueven:
-          el 23 de septiembre dos aportes de agosto lo habían pasado a Ago 2026 cuando el corte de Novadata era Jul 2026, y todo
+          el 23 de septiembre dos aportes de agosto lo habían pasado a Ago 2026 cuando el corte de Proveedor_Info_1 era Jul 2026, y todo
           dependiente con su último aporte en julio habría quedado &ldquo;fuera del corte&rdquo;. Quien trae un mes más
           reciente que el vigente se clasifica con el suyo.
         </p>
@@ -285,7 +285,7 @@ export default function FuentesReglas() {
           cambian el segmento. Al análisis con IA (desde marco-v23) llega sólo un resumen: continuidad laboral, meses con aporte en
           el último año, promedio y variación contra hace un año. Los aportes mes a mes, la actividad económica y la renta de
           cada año <strong>no entran</strong>; de la renta se deduce sólo el indicio de ingreso mayor (desde la v9, ver más
-          abajo). Salen del dato crudo de Novadata: existen sólo en consultas hechas desde la v4.
+          abajo). Salen del dato crudo de Proveedor_Info_1: existen sólo en consultas hechas desde la v4.
         </p>
       </Paso>
 

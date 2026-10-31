@@ -1,5 +1,5 @@
 // Capas de parametrización operativa (ver supabase/migrations/006_runtime_config.sql):
-//   A. novadata_resource_config — qué recursos de ingesta consultar.
+//   A. proveedor_info_1_resource_config — qué recursos de ingesta consultar.
 //   B. standard_profile_field_config — qué campos de la Estructura
 //      Estandarizada se le mandan al LLM.
 //
@@ -11,7 +11,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Set de fuentes DESHABILITADAS (fuente -> ignorar en consultarTodasLasFuentes).
 export async function loadDisabledResources(client: SupabaseClient): Promise<Set<string>> {
-  const { data, error } = await client.from("novadata_resource_config").select("recurso").eq("enabled", false);
+  const { data, error } = await client.from("proveedor_info_1_resource_config").select("recurso").eq("enabled", false);
   if (error) throw error;
   return new Set((data ?? []).map((r) => r.recurso as string));
 }
@@ -40,7 +40,7 @@ export async function loadDisabledFields(client: SupabaseClient): Promise<Set<st
 // El proveedor no avisa que publicó un corte nuevo, así que el valor se
 // quedaba viejo hasta que alguien lo notaba.
 //
-// Los datos sí lo saben: cuando Novadata publica un corte nuevo, todos
+// Los datos sí lo saben: cuando Proveedor_Info_1 publica un corte nuevo, todos
 // los asalariados aparecen en el mes nuevo a la vez. La regla vive en la
 // base (corte_iess_vigente, migración 083): el mes más reciente en el que
 // aparecen al menos 20 clientes distintos consultados en los últimos 90
@@ -48,7 +48,7 @@ export async function loadDisabledFields(client: SupabaseClient): Promise<Set<st
 //
 // Hasta la 083 bastaba UN perfil: el mes más alto visto movía el corte
 // para todos. El 2026-09-23 dos aportes adelantados de agosto lo pasaron a
-// 2026-08 cuando el corte real de Novadata era 2026-07, y desde ahí todo
+// 2026-08 cuando el corte real de Proveedor_Info_1 era 2026-07, y desde ahí todo
 // asalariado con su último aporte en julio habría quedado "fuera del
 // último corte". Se corrigió antes de que pasara.
 export async function loadCorteIess(client: SupabaseClient, porDefecto: string): Promise<string> {

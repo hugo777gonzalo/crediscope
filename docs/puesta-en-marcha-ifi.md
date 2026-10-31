@@ -30,7 +30,7 @@ Se resuelve **antes** de la sesión: sin esto no hay nada que configurar.
 
 | # | Qué | Quién decide | Cómo se cambia hoy |
 |---|---|---|---|
-| 1.1 | Credenciales de Novadata: URL, usuario y contraseña | TI de la IFI | Código (variables de entorno) |
+| 1.1 | Credenciales de Proveedor_Info_1: URL, usuario y contraseña | TI de la IFI | Código (variables de entorno) |
 | 1.2 | Clave del proveedor de IA y espacio de trabajo separado para la IFI | Nosotros | Código (variables de entorno) |
 | 1.3 | **Tope de gasto mensual del proveedor de IA** | Nosotros + Finanzas | Consola del proveedor |
 | 1.4 | Proyecto de base de datos propio de la IFI o compartido | Nosotros + TI | Decisión de arquitectura |

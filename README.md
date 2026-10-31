@@ -1,7 +1,7 @@
 # CrediScope
 
 Análisis crediticio asistido por IA. Consulta la información de una
-persona en Novadata (52 fuentes), la procesa a una
+persona en Proveedor_Info_1 (52 fuentes), la procesa a una
 **Estructura Estandarizada** de 17 grupos, y un LLM (Claude) la evalúa
 guiado por un **marco interpretativo** en lenguaje natural para producir
 un **score aproximado** (1-999), una **recomendación de acción**
@@ -15,8 +15,8 @@ para analistas como vía API para otros sistemas.
 ## Estado (2026-09)
 
 En uso interno, sobre un proyecto Supabase real y con clientes reales.
-La ingesta de Novadata está cableada contra producción (confirmada con
-HAR reales y ~25 consultas de muestra, ver `docs/novadata-fields-catalog.md`).
+La ingesta de Proveedor_Info_1 está cableada contra producción (confirmada con
+HAR reales y ~25 consultas de muestra, ver `docs/proveedor-info-1-fields-catalog.md`).
 El frontend se despliega solo a GitHub Pages en cada push a `main`.
 Desde el 2026-10-09 `main` está protegida: los cambios entran por PR con
 los controles de `.github/workflows/controles.yml` en verde (lint,
@@ -50,10 +50,10 @@ Frontend (Vite/React, estático, GitHub Pages)
    v
 Edge Functions (Deno, en Supabase)
    |
-   |-- structure-client    Novadata -> Estructura Estandarizada -> client_profiles (Perfil del Cliente)
+   |-- structure-client    Proveedor_Info_1 -> Estructura Estandarizada -> client_profiles (Perfil del Cliente)
    |-- analyze-client      (lo anterior, o un perfil ya guardado) -> controles de bloqueo -> LLM -> analysis_results
    |                       (si consulta en fresco, guarda también el perfil: ningún análisis queda sin su data)
-   |-- explore-novadata    inspección cruda de la ingesta (solo admin)
+   |-- explore-proveedor-info-1    inspección cruda de la ingesta (solo admin)
    v
 Supabase Postgres (ver "Base de datos")
 ```
@@ -68,14 +68,14 @@ que más pesa en el costo es el razonamiento del modelo, no el marco ni
 la respuesta: `scripts/comparar-razonamiento.mjs` compara
 configuraciones sobre casos reales y arma un Excel.
 
-Las credenciales de Novadata, la API key de Anthropic y la
+Las credenciales de Proveedor_Info_1, la API key de Anthropic y la
 `service_role key` viven **solo** en las secrets de las Edge Functions —
 nunca llegan al navegador. El frontend solo tiene la `anon key`,
 limitada por RLS.
 
 ### El pipeline de evaluación
 
-1. **Ingesta** — `novadata-client.ts`. Las 52 fuentes en paralelo, sin
+1. **Ingesta** — `proveedor-info-1-client.ts`. Las 52 fuentes en paralelo, sin
    agrupar. Cada una reporta `ok` / `faltante` / `error` /
    `deshabilitado` por separado: eso es lo que permite después
    interpretar "información faltante" como señal de negocio y no como
@@ -258,15 +258,15 @@ Tablas principales:
   reutilizar un perfil reciente, auditar con qué información se evaluó a
   alguien, y analizar después contra el resultado real del crédito.
 - `profiles` — nombre corto, entidad financiera y rol de cada usuario.
-- `novadata_resource_config`, `standard_profile_field_config`,
+- `proveedor_info_1_resource_config`, `standard_profile_field_config`,
   `standard_profile_segment_config` — qué recursos/campos están activos,
   configurables desde la app sin desplegar.
 - `lab_*` (cargas, operaciones, cortes, resultados, propuestas, catálogo
   de variables, definiciones de impago) — el Laboratorio.
   `criterio_versiones` queda como historia del criterio retirado.
 
-El crudo de Novadata se guarda comprimido en el depósito privado
-`crudo-novadata` de Storage (desde la 090), y lo que leyó el modelo en
+El crudo de Proveedor_Info_1 se guarda comprimido en el depósito privado
+`crudo-proveedor-info-1` de Storage (desde la 090), y lo que leyó el modelo en
 `analysis_results.mensaje_al_modelo`. Toda consulta queda
 auditada en `audit_log`, y solo las Edge Functions (con `service_role
 key`) escriben resultados — el navegador nunca escribe directo.
@@ -313,19 +313,19 @@ Para probar antes de desplegar (requiere Docker corriendo):
 supabase functions serve analyze-client --env-file .env.functions
 ```
 
-Sin `NOVADATA_USERNAME`/`NOVADATA_PASSWORD`, cada fuente devuelve
+Sin `PROVEEDOR_INFO_1_USERNAME`/`PROVEEDOR_INFO_1_PASSWORD`, cada fuente devuelve
 `status: "error"` sin romper el pipeline — sirve para probar el flujo
 completo de punta a punta.
 
 ### Explorador de la fuente de datos
 
-`src/pages/NovadataExplorer.jsx` (`/explorar`, **solo admin**) consulta
+`src/pages/ProveedorInfo1Explorer.jsx` (`/explorar`, **solo admin**) consulta
 las 52 fuentes de una cédula y muestra el estado y el crudo de cada
 una, sin persistir nada. La contraseña que se ingresa
 ahí nunca se guarda: viaja en el body del POST, se usa una vez para
-pedir el token de Novadata y se descarta.
+pedir el token de Proveedor_Info_1 y se descarta.
 
-**Nota de seguridad:** la contraseña de Novadata es una credencial de
+**Nota de seguridad:** la contraseña de Proveedor_Info_1 es una credencial de
 Active Directory. Si en algún momento se escribió o pegó en un chat, una
 terminal compartida, o cualquier lugar fuera de las secrets de la Edge
 Function, rotarla. Nunca debe quedar en el código ni en un `.env`

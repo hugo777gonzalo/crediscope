@@ -45,7 +45,7 @@
 //
 // Desde marco-v31 (apagado: CONFIG_LLM.buroDeLaInstitucion), cuando la
 // persona tiene una consulta vigente del buró de la institución, llega
-// `buroEquifax` EN LUGAR del buró de bancos y de cooperativas de Novadata
+// `buroEquifax` EN LUGAR del buró de bancos y de cooperativas de Proveedor_Info_1
 // (un tema, una fuente: ver "El buró de la institución", más abajo). Sin
 // buró, el perfil sale idéntico al de marco-v30, byte a byte.
 //
@@ -152,7 +152,7 @@ export const ATRIBUTOS_PROTEGIDOS: Record<string, boolean> = {
 // tamanoDelNegocio.obligadoContabilidad, que el marco explica (escala, no
 // ingreso). En laboral sería el mismo dato dos veces sin texto del marco que
 // lo explique, y en 4 de 2.567 personas las dos lecturas se contradirían:
-// Novadata manda «S» y fuentes-ingreso.ts sólo reconoce «SI». Sin él el
+// Proveedor_Info_1 manda «S» y fuentes-ingreso.ts sólo reconoce «SI». Sin él el
 // mensaje sigue siendo el de marco-v30 (decisión del negocio del 2026-10-29:
 // la próxima versión del marco se arma con los resultados del predictor).
 export const CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN = ["laboral.obligadoALlevarContabilidadRuc"];
@@ -272,7 +272,7 @@ function tipoDeCadaEmpleo(perfil: AnyRecord, laboral: AnyRecord): void {
 //
 // Un tema cuenta como consultado sólo si respondieron TODAS sus fuentes.
 // basesInternas trae dos cosas (los aportes al IESS y el historial de pago
-// con Novadata) y está en los dos temas. "vacunados" no está en ninguno: no
+// con Proveedor_Info_1) y está en los dos temas. "vacunados" no está en ninguno: no
 // es parte del análisis de crédito.
 const TEMAS_DE_CONSULTA: Array<[tema: string, fuentes: string[]]> = [
   ["buró de crédito de bancos", ["buroCreditoSuper"]],
@@ -280,12 +280,12 @@ const TEMAS_DE_CONSULTA: Array<[tema: string, fuentes: string[]]> = [
   ["cooperativas", ["buroCreditoCoop"]],
   ["casas comerciales", ["retails"]],
   ["préstamos del IESS/BIESS", ["creditoHipotecario", "creditoQuirografario"]],
-  ["historial de pago con Novadata", ["basesInternas"]],
+  ["historial de pago con Proveedor_Info_1", ["basesInternas"]],
   ["registro de deudores", ["deudores"]],
   ["deudas con sentencia firme", ["deudasFirmes"]],
   ["demandas en su contra", ["demandas"]],
   ["demandas que presentó", ["demandasOfendido"]],
-  ["pensiones alimenticias", ["pensionAlimenticia", "pensionAlimenticiaNovadata"]],
+  ["pensiones alimenticias", ["pensionAlimenticia", "pensionAlimenticiaProveedorInfo1"]],
   ["denuncias en la Fiscalía", ["denuncias"]],
   ["antecedentes penales", ["antecedentesPenales"]],
   ["listas de control y sanciones", ["listasControl"]],
@@ -321,7 +321,7 @@ const TEMAS_DE_CONSULTA: Array<[tema: string, fuentes: string[]]> = [
 // no decir nada que declarar todo como no consultado.
 //
 // consultadosPorElBuro: los temas que trajo el buró de la institución
-// (marco-v31). Cuentan como consultados aunque la fuente de Novadata no haya
+// (marco-v31). Cuentan como consultados aunque la fuente de Proveedor_Info_1 no haya
 // contestado: el modelo los lee del buró.
 export function disponibilidadPorTema(perfil: AnyRecord | null | undefined, consultadosPorElBuro: readonly string[] = []): AnyRecord | null {
   const meta = perfil?.metaConsulta as AnyRecord | undefined;
@@ -475,10 +475,10 @@ export function endeudamientoDelPerfilDelModelo(perfil: AnyRecord): AnyRecord | 
 // Decisiones del negocio del 2026-10-13 y del 2026-10-16
 // (docs/propuesta-buro-de-la-institucion.md, secciones 0 y 2): cada IFI
 // trabaja con UN buró, y cuando la persona tiene una consulta vigente de ese
-// buró, la deuda de bancos y cooperativas se lee de ahí y no de Novadata. Un
+// buró, la deuda de bancos y cooperativas se lee de ahí y no de Proveedor_Info_1. Un
 // tema, una fuente: con las dos, la comparación con y sin Equifax mediría la
 // deuda dos veces (bancos coincide hasta 1% en 15 de 22 personas y
-// cooperativas en 8 de 11: es la misma cartera). Novadata se sigue
+// cooperativas en 8 de 11: es la misma cartera). Proveedor_Info_1 se sigue
 // consultando entera; lo que el buró repite sólo deja de llegar al modelo.
 //
 // Hoy el único buró con esta lectura es Equifax (buro-de-la-institucion.ts
@@ -497,12 +497,12 @@ export const TEMAS_QUE_CUBRE_EL_BURO = ["buró de crédito de bancos", "tarjetas
 // lo que el buró no cubre. Una lista de los que QUEDAN y no de los que se
 // van: un campo de buró con otro nombre en un perfil viejo no puede colarse.
 // - El registro de deudores es otra fuente (deudores).
-// - Los préstamos del IESS/BIESS se quedan en Novadata y no se suman:
+// - Los préstamos del IESS/BIESS se quedan en Proveedor_Info_1 y no se suman:
 //   Equifax trae los del BIESS dentro de bancos (las dos fuentes en 4 de 22).
-// - Las casas comerciales de Novadata y el sector comercial de Equifax son
+// - Las casas comerciales de Proveedor_Info_1 y el sector comercial de Equifax son
 //   otras empresas (5 de 33 en común): se suman (negocio, 2026-10-16:
 //   «veamos cómo nos va sumando»).
-export const QUEDAN_DE_NOVADATA_CON_BURO = [
+export const QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO = [
   "figuraEnRegistroDeudores",
   "numeroPrestamosIessBiess",
   "tieneCreditoIessBiess",
@@ -520,7 +520,7 @@ export const QUEDAN_DE_NOVADATA_CON_BURO = [
 // Los que se van, para que una prueba obligue a decidir sobre un campo nuevo
 // de comportamientoBancario (perfil-del-modelo-buro.test.ts). La calificación
 // A1 a E se va con ellos: Equifax no la trae, y la reemplazan los días de mora.
-export const CAMPOS_DEL_BURO_DE_NOVADATA = [
+export const CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1 = [
   "numeroOperacionesBuroCredito",
   "peorCalificacionRiesgo",
   "mejorCalificacionRiesgo",
@@ -568,7 +568,7 @@ const porSistema = (grupo: unknown, claves: readonly string[]): AnyRecord => {
 //   nombre;
 // - el material de control (el resumen de Equifax, la lista aparte de
 //   codeudores, las listas que no vinieron: un grupo que no vino llega null);
-// - la actividad económica del SRI, que Novadata trae con más detalle.
+// - la actividad económica del SRI, que Proveedor_Info_1 trae con más detalle.
 // La estructura no tiene datos personales por construcción
 // (equifax-tablas.ts); scripts/medir-bloque-equifax.mjs lo vuelve a buscar
 // sobre las consultas guardadas.
@@ -631,7 +631,7 @@ export function buroEquifaxDelPerfilDelModelo(estructura: AnyRecord): AnyRecord 
 
 // endeudamiento con el buró: bancos, cooperativas y sector comercial de
 // Equifax (como titular, con lo que está en atraso) más las casas comerciales
-// de Novadata. Las mismas reglas que sin buró: dólares enteros, el total es
+// de Proveedor_Info_1. Las mismas reglas que sin buró: dólares enteros, el total es
 // la suma de las partes ya redondeadas, y lo de codeudor o garante va aparte.
 // Una parte que Equifax no trajo es null, y entonces el total también: no se
 // sabe, no es cero.
@@ -667,7 +667,7 @@ export function endeudamientoConBuroEquifax(perfil: AnyRecord, buro: AnyRecord):
 // buró de bancos, para que el orden siga siendo el de importancia.
 function conElBuro(copia: Record<string, unknown>, bloque: AnyRecord): Record<string, unknown> {
   const bancario = comoObjeto(copia.comportamientoBancario);
-  const quedan = new Set<string>(QUEDAN_DE_NOVADATA_CON_BURO);
+  const quedan = new Set<string>(QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO);
   // En el orden en que venían: lo que queda se lee igual que sin buró.
   const reducido = bancario ? Object.fromEntries(Object.entries(bancario).filter(([k]) => quedan.has(k))) : null;
   delete copia.comportamientoCooperativas;

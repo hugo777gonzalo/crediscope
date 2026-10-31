@@ -18,7 +18,7 @@
 //     lab_simulacion_verdad, que ningún cálculo lee: sólo califica.
 //  4. La foto "un año después" de cada persona es su reconsulta REAL del
 //     2026-10-03 con doce meses de eventos escritos en el crudo, en el
-//     formato en que los manda Novadata. Va a Storage (lab-archivos,
+//     formato en que los manda Proveedor_Info_1. Va a Storage (lab-archivos,
 //     simulacion/); nunca es un client_profiles ni toca la ficha de nadie.
 //  5. Se escriben la carga (el archivo de la institución), las solicitudes,
 //     las reconsultas por procesar y la verdad.
@@ -54,8 +54,8 @@ const OTORGADOS = Number(arg("otorgados", "300"));
 const TASA = Number(arg("tasa", "0.12"));
 const SECO = process.argv.includes("--seco");
 const PARCIAL = process.argv.includes("--parcial");
-const CARPETA_T0 = path.join(RAIZ, arg("t0", "research/novadata-raw-2026-09-25"));
-const CARPETA_T1 = path.join(RAIZ, arg("t1", "research/novadata-raw-2026-10-03"));
+const CARPETA_T0 = path.join(RAIZ, arg("t0", "research/proveedor-info-1-raw-2026-09-25"));
+const CARPETA_T1 = path.join(RAIZ, arg("t1", "research/proveedor-info-1-raw-2026-10-03"));
 const ARCHIVO_CEDULAS = path.join(RAIZ, "research/cedulas_ciclo_simulado_2026-10-03.txt");
 
 // La reconsulta real empezó el 2026-10-03: todo perfil anterior a la
@@ -222,12 +222,12 @@ console.log(`${personas.length} personas con t0 y reconsulta${sinT0.length ? `; 
 
 const disponible = (raw, fuente) => raw?.[fuente]?.status === "ok" && raw[fuente].data && typeof raw[fuente].data === "object";
 // Fuentes que se caen en t1, con lo que se midió en la consulta de septiembre
-// de la misma cartera (research/novadata-raw-2026-09-25: error o faltante en
+// de la misma cartera (research/proveedor-info-1-raw-2026-09-25: error o faltante en
 // el 5 a 6% del IESS, las demandas, las denuncias, el retail y las pensiones).
 // El buró y el SRI no fallaron ese día; se tiran al 1% para que el camino
 // "buró sin contestar" también se pruebe.
 const CAIDA_EN_T1 = {
-  basesInternas: 0.053, demandas: 0.06, denuncias: 0.063, retails: 0.057, pensionAlimenticia: 0.055, pensionAlimenticiaNovadata: 0.055,
+  basesInternas: 0.053, demandas: 0.06, denuncias: 0.063, retails: 0.057, pensionAlimenticia: 0.055, pensionAlimenticiaProveedorInfo1: 0.055,
   contribuyente: 0.01, buroCreditoSuper: 0.01, buroCreditoCoop: 0.01,
 };
 const datosDe = (raw, fuente) => (fuente === "basesInternas" ? raw.basesInternas?.data?.data ?? raw.basesInternas?.data : raw[fuente]?.data) ?? {};
@@ -287,7 +287,7 @@ for (const p of personas) {
   // El crudo de t0: el respaldo local si es de ese perfil; si no, Storage.
   const local = path.join(CARPETA_T0, `${p.cedula}.json`);
   const deLocal = fs.existsSync(local) ? leerJson(local) : null;
-  const rawT0 = deLocal?.perfilId === p.t0.id ? deLocal.raw : (await bajarObjeto("crudo-novadata", p.t0.crudo_ruta)).raw;
+  const rawT0 = deLocal?.perfilId === p.t0.id ? deLocal.raw : (await bajarObjeto("crudo-proveedor-info-1", p.t0.crudo_ruta)).raw;
   const licencia = (() => { const l = rawT0?.licenciaConducir?.data?.licencia; return Array.isArray(l) ? l[0] : l ?? null; })();
   p.licenciaVencida = Boolean(licencia && Number.isFinite(Number(licencia.validezHasta)) && Number(licencia.validezHasta) < instante(p.t0Fecha));
   contarEntidades(rawT0);
@@ -299,7 +299,7 @@ for (const p of personas) {
   const enLasDos = (...fuentes) => fuentes.every((f) => disponible(rawT0, f) && disponible(raw, f) && !p.caidas.includes(f));
   p.puede = {
     iess: enLasDos("basesInternas"), sri: enLasDos("contribuyente", "establecimientoActEconomica"),
-    supa: enLasDos("pensionAlimenticia", "pensionAlimenticiaNovadata"), demandas: enLasDos("demandas"), fiscalia: enLasDos("denuncias"),
+    supa: enLasDos("pensionAlimenticia", "pensionAlimenticiaProveedorInfo1"), demandas: enLasDos("demandas"), fiscalia: enLasDos("denuncias"),
     buro: enLasDos("buroCreditoSuper", "buroCreditoCoop"), retail: enLasDos("retails"),
   };
   agregarAlPool(raw);
@@ -662,7 +662,7 @@ function armarT1(p, raw) {
   for (const e of ev("pension_alimenticia")) {
     const valor = entre(120, 380);
     const enMora = moraVisible && azar() < 0.5;
-    lista(raw, "pensionAlimenticiaNovadata", "supas").push({
+    lista(raw, "pensionAlimenticiaProveedorInfo1", "supas").push({
       numeroProceso: sim("SUPA"), dependenciaJurisdiccional: "UNIDAD JUDICIAL SIMULADA", codigoTarjeta: `${e.fecha.slice(0, 4)}-${String(entre(10000, 99999))}`,
       tipoPension: "ALIMENTOS", representanteLegal: "REPRESENTANTE SIMULADO", obligadoPrincipal: p.t0.nombre, valorMensual: valor,
       totalPagado: valor * Math.max(1, Math.floor(diasEntre(e.fecha, T1) / 30) - (enMora ? 3 : 0)), totalDeuda: enMora ? valor * 3 : 0, valorDeuda: null, estado: "ACTIVO",

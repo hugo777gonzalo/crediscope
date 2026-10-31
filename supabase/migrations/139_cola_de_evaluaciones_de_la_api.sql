@@ -88,7 +88,7 @@ alter table consultas_equifax add constraint consultas_equifax_origen_check chec
 -- trabajadores a la vez, cada uno recibe sólo las suyas.
 --
 -- p_tope_en_vuelo: cuántas puede haber reclamadas a la vez en toda la cola. La
--- capacidad de Novadata está medida (docs/propuesta-api-ifi.md, 2.2): con 24
+-- capacidad de Proveedor_Info_1 está medida (docs/propuesta-api-ifi.md, 2.2): con 24
 -- consultas en paralelo la mediana se duplicó y el 28% necesitó reintento; con
 -- 8 va más rápido y sin fallas. El candado asesor hace que dos reclamos no lean
 -- el mismo conteo y se pasen del tope.

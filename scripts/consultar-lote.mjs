@@ -64,7 +64,7 @@ import path from "node:path";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 // Posicionales + una opción: --crudo=<carpeta> guarda la respuesta cruda
-// de Novadata de cada cédula en <carpeta>/<cedula>.json. El crudo no vive
+// de Proveedor_Info_1 de cada cédula en <carpeta>/<cedula>.json. El crudo no vive
 // en la base; sin él, una regla nueva no se puede aplicar a los perfiles
 // guardados (el 2026-09-25 hubo que reconsultar la cartera por eso). La
 // carpeta tiene que estar dentro de research/, que está fuera del repo:
@@ -198,7 +198,7 @@ async function consultarUna(cedula) {
         const data = await res.json();
         const f = data?.standard_profile?.fuentesIngreso ?? null;
         // El crudo va a su archivo y no al registro de avance: son ~90 KB
-        // por persona. Misma forma que research/novadata-raw ({ raw }), así
+        // por persona. Misma forma que research/proveedor-info-1-raw ({ raw }), así
         // los guiones que leen aquella muestra leen también esta.
         let crudoGuardado = false;
         if (CARPETA_CRUDO && data?.crudo) {

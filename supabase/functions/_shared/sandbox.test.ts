@@ -29,7 +29,7 @@ import { validarPedidoDeLaApi } from "./pedido-de-evaluacion-api.ts";
 import { analizarPersona } from "./analisis-de-la-persona.ts";
 import { pasosIniciales } from "./modalidades.ts";
 import { casoDe, esCasoDelSandbox, IDENTIFICACIONES_DEL_SANDBOX } from "./sandbox-casos.ts";
-import { equifaxSimulado, modeloSimulado, novadataSimulado, VERSION_DEL_SIMULADOR } from "./sandbox-simuladores.ts";
+import { equifaxSimulado, modeloSimulado, proveedorInfo1Simulado, VERSION_DEL_SIMULADOR } from "./sandbox-simuladores.ts";
 import type { Actor } from "./autorizacion.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -285,7 +285,7 @@ Deno.test("básico no trae capacidad; pro la mide con el IESS; plus, con las cuo
   const conIess = pro.resultado.capacidadDePago;
   const conBuro = plus.resultado.capacidadDePago;
   assertEquals(conIess.datos.ingresos.map((i: Fila) => i.montoMensual), [1500]);
-  assertEquals(conIess.datos.fuenteDeLasCuotas, "novadata");
+  assertEquals(conIess.datos.fuenteDeLasCuotas, "proveedor_info_1");
   assertEquals(conIess.datos.obligaciones, []);
   assertEquals(conBuro.datos.fuenteDeLasCuotas, "equifax");
   // Del crudo inventado de Equifax: 200 de banco y 20 de comercio. Los 50 de codeudor no cuentan.
@@ -339,11 +339,11 @@ Deno.test("Prefer: wait entrega el resultado si termina a tiempo", async () => {
 const sinSanitizar = { sanitizeOps: false, sanitizeResources: false };
 
 Deno.test({
-  name: "el control: la trampa ve la salida de una identificación real a Novadata y a Equifax",
+  name: "el control: la trampa ve la salida de una identificación real a Proveedor_Info_1 y a Equifax",
   ...sinSanitizar,
   async fn() {
     // Sin esto, «cero salidas» podría querer decir sólo que el cliente no estaba configurado.
-    const { consultarTodasLasFuentes } = await import("./novadata-client.ts");
+    const { consultarTodasLasFuentes } = await import("./proveedor-info-1-client.ts");
     assert((await conTrampaEnLaRed(() => consultarTodasLasFuentes(CEDULA_INVENTADA, { username: "u", password: "c" }, new Set(), 50))).length > 0);
 
     const ENTORNO_DE_EQUIFAX: Record<string, string> = {
@@ -364,7 +364,7 @@ Deno.test({
   name: "si todo lo demás falla, las tres salidas se niegan a una identificación simulada",
   ...sinSanitizar,
   async fn() {
-    const { consultarTodasLasFuentes } = await import("./novadata-client.ts");
+    const { consultarTodasLasFuentes } = await import("./proveedor-info-1-client.ts");
     const { consultarEquifax } = await import("./equifax-client.ts");
     const db = baseEnMemoria();
     const salidas = await conTrampaEnLaRed(async () => {
@@ -382,7 +382,7 @@ Deno.test({
 Deno.test("un simulador se niega a contestar por una identificación real", () => {
   for (const id of [CEDULA_INVENTADA, "0000000099", "__proto__"]) {
     assertFalse(esCasoDelSandbox(id));
-    assertThrows(() => novadataSimulado(id));
+    assertThrows(() => proveedorInfo1Simulado(id));
     assertThrows(() => equifaxSimulado(id, new Date().toISOString()));
     assertThrows(() => modeloSimulado(id));
   }
@@ -395,7 +395,7 @@ Deno.test({
     const s = { id: "33333333-3333-4333-8333-333333333333", identificacion: CEDULA_INVENTADA, modalidad: "plus", pasos: pasosIniciales("plus"), creada_el: new Date().toISOString() };
     const db = baseEnMemoria();
     const resultado = await correrPaso("perfil", s, { db, actorId: ADMIN.id, puedeCobrarEquifax: false });
-    // Sin credenciales de Novadata en la prueba, el camino real termina en «no contestó».
+    // Sin credenciales de Proveedor_Info_1 en la prueba, el camino real termina en «no contestó».
     assert(!resultado.ok);
     assertEquals(resultado.fallo.codigo, "fuentes_no_disponibles");
   },

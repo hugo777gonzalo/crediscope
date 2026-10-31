@@ -46,8 +46,8 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
 
 1. **El ingreso de un requerimiento se suma por actividad.** En `flujo_efectivo`, `ingreso` es
    el ingreso de una actividad (`id_tipo_actividad_economica`: 1 principal, 2 secundaria). Para un
-   dependiente o público es el ingreso del IESS recuperado de Novadata (observación «RECUPERADO
-   NOVADATA»). El total de una persona es la suma de sus filas activas (`estado`) con monto mayor a
+   dependiente o público es el ingreso del IESS recuperado de Proveedor_Info_1 (observación «RECUPERADO
+   PROVEEDOR_INFO_1»). El total de una persona es la suma de sus filas activas (`estado`) con monto mayor a
    cero. Los montos tienen 3 decimales y la pantalla del analista los redondea a 2. Se comprobó
    contra tres capturas de pantalla de un requerimiento: coinciden la actividad principal, la
    secundaria y el total. **Cómo se arma el de un independiente está en el punto 9.**
@@ -118,11 +118,11 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
      (3.766 «predictor» y 426 «ajuste») el ingreso es el predictor ±1 USD en el 41% y el 52%, y
      dentro de 5% en el 49% y el 54%. En los dependientes el analista lo bajó: razón mediana de
      0,50 y 0,35. **Estos flujos no sirven como verdad para entrenar un predictor de ingresos.**
-10. **El ingreso validado de un dependiente con fuente IESS es el 90% del `promedio` de Novadata**
+10. **El ingreso validado de un dependiente con fuente IESS es el 90% del `promedio` de Proveedor_Info_1**
     (`trabajos_persona_requerimiento.promedio`): coincide con razón 0,900 en el 75,8% de los 50.472
     casos (72,9% de los dependientes y públicos con historial). **No** es el salario del último mes
     (coincide ±2% en el 1,8%), ni el promedio de 6 meses (2,4%) ni el de 12 (3,1%): cómo arma
-    Novadata ese `promedio` no está confirmado. Por eso, contra el último mes del IESS, la razón mediana
+    Proveedor_Info_1 ese `promedio` no está confirmado. Por eso, contra el último mes del IESS, la razón mediana
     es 0,90. Solo el 66% de los dependientes tiene historial. El IESS llega con 1 a 2 meses de retraso
     (mediana 2): el mes del requerimiento existe en 20 de 52.475 casos, así que «el IESS del mismo
     mes» casi nunca se puede medir. Un mes del historial coincide con el ingreso en solo el 1,3%.
@@ -179,22 +179,22 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
     condicionados no guardan ningún motivo.** La condición que más incumplen es la tasa (22% de los
     APROBADO CONDICIONADO y 40% de los OK FACTURAR CONDICIONADO, de `requerimiento_condicion_credito`),
     después entrada, garantía, monto y seguro: ninguna es de ingreso.
-15. **Lo que la base no guarda:** la respuesta cruda de Novadata (solo 275 filas de
-    `control_servicio_novadata`), datos del SRI como tablas propias (RUC, establecimientos, impuesto a la renta),
+15. **Lo que la base no guarda:** la respuesta cruda de Proveedor_Info_1 (solo 275 filas de
+    `control_servicio_proveedor_info_1`), datos del SRI como tablas propias (RUC, establecimientos, impuesto a la renta),
     inmuebles, nómina y jubilación o pensión como tablas. **El SRI que trae Equifax sí está**, dentro de
     `consulta_equifax.response_json` (`informacion_sri`: estado, clase, obligado, fecha de inicio, suspensión y CIIU), pero solo en las
     105.070 respuestas JSON (desde diciembre de 2025); las 309.346 respuestas XML de 2021 a 2025 no lo traen (medido el 2026-10-21 en una muestra de 2.060 de los cinco años;
     `docs/investigacion-predictor-de-ingresos.md`, 12.24). **Lo que sí guarda por persona del
     requerimiento:** `persona_patrimonio` (activos declarados: vivienda en el 26% de las personas,
     vehículo 15%, muebles 78%; pasivos del buró 98%), `persona_egreso` (gasto familiar 79%, gasto
-    financiero 99,9%, arriendo 10%), `persona_ingreso` (salario recuperado de Novadata 25%, declarado
+    financiero 99,9%, arriendo 10%), `persona_ingreso` (salario recuperado de Proveedor_Info_1 25%, declarado
     21%), `persona_incumplimiento` (conducta interna con Novacredit), `persona_relacion_laboral`,
     `documento_persona_requerimiento` (3 millones, tipos Básicos, Ingresos y Patrimonio) y
     `trabajos_persona_requerimiento` (IESS). `persona_actividad_economica` casi no se llena (1.857
     filas) y no cruza con los requerimientos.
 16. **Jubilados** (fuente `JUBILACION`, 7.269 flujos): el 85% con relación «dependiente» y sin
     movimientos; la mediana es 1.250 y más de la mitad es múltiplo de 100. **Solo el 2,3% de los
-    flujos tiene el valor recuperado de Novadata** (168 de 7.269); el 28% lleva «INGRESADO POR INTEGRACIÓN CON
+    flujos tiene el valor recuperado de Proveedor_Info_1** (168 de 7.269); el 28% lleva «INGRESADO POR INTEGRACIÓN CON
     CONCESIONARIOS», el 43% no tiene observación y 132 dicen «predictor». O sea, el monto es declarado.
 17. **Cuota de Equifax.** `cuota_estimada_mensual.pago` es idéntico a `cuota_financiera` en las 100.498
     consultas con JSON, y el punto «Actual» del historial también. **El historial tiene cinco
@@ -226,7 +226,7 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
 | `ingresos_por_persona_requerimiento.csv` | 82.417 filas, una por persona y requerimiento, con respuesta OK FACTURAR (con y sin condicionado y SD) o APROBADO: ingreso validado, actividad, geografía, `perfil_final`, fechas, predictor |
 | `predictor_equifax_por_consulta.csv` | 389.012 filas, una por consulta a Equifax con predictor: lo anterior más IESS, crédito y deuda de Equifax, demografía y lotes masivos |
 | `credito_por_requerimiento.csv` | 44.582 requerimientos OK FACTURAR (con y sin condicionado), un titular por requerimiento: monto, plazo, cuota, tasa, vehículo, concesionario, estado y el ingreso validado de titular y cónyuge |
-| `iess_mismo_mes.csv` | 79.153 consultas de dependientes y públicos: ingreso validado contra el último mes, los promedios de 6 y 12 meses y el promedio de Novadata, y el mes del IESS que coincide |
+| `iess_mismo_mes.csv` | 79.153 consultas de dependientes y públicos: ingreso validado contra el último mes, los promedios de 6 y 12 meses y el promedio de Proveedor_Info_1, y el mes del IESS que coincide |
 | `muestra_respuestas_equifax.jsonl` | 5.001 respuestas crudas de Equifax (467 MB), 1.667 titulares por tramo: hasta 2026-01-13, del 16 de enero al 12 de abril y desde el 14 de abril |
 | `ingresos_por_actividad.csv` | 328.117 flujos de titulares y cónyuges: tipo, monto por tipo de movimiento, meses usados, macroactividad y rentabilidad, observación categorizada (las de 50 o más casos), estado y fechas |
 | `equifax_cuota_por_consulta.csv` | 389.505 consultas: cuota financiera y cuota estimada, historial de cinco puntos (solo JSON) e indicador COVID |
@@ -251,12 +251,12 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
   son automotrices, 2026-10-26). `estado_requerimiento` FINALIZADO es que el requerimiento terminó todo el
   proceso con una respuesta final; **no significa facturado** (negocio, 2026-10-26).
 - Si los puntos +6 y +12 meses del historial de cuota son proyecciones (es por la etiqueta).
-- Resuelto: las observaciones «RECUPERADO NOVADATA MENOS IESS» **no** son ingresos adicionales de
+- Resuelto: las observaciones «RECUPERADO PROVEEDOR_INFO_1 MENOS IESS» **no** son ingresos adicionales de
   dependientes. De los 1.496 flujos cuya observación nombra al IESS, 1.178 (79%) son de actividad
   principal y 318 de secundaria (1.449 personas), casi todos de fuente IESS: es el salario recuperado
-  de Novadata al que el analista le restó el aporte personal al IESS (cerca de 9,45%), o sea un
+  de Proveedor_Info_1 al que el analista le restó el aporte personal al IESS (cerca de 9,45%), o sea un
   salario neto. No se pueden contrastar con `iess_mismo_mes.csv`: ninguna de esas personas tiene
-  promedio de Novadata ni salario del último mes. Verificado también: ingreso = suma de montos por
+  promedio de Proveedor_Info_1 ni salario del último mes. Verificado también: ingreso = suma de montos por
   tipo en el 99,9% de los flujos con algún monto, e ingreso / ventas = rentabilidad en el 81,9% de
   los 24.707 con ventas (`docs/investigacion-predictor-de-ingresos.md`, 12.15).
 - Por qué el 17% de los movimientos bancarios y de IVA no cumple ingreso = ventas × rentabilidad (razones

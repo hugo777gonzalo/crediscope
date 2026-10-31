@@ -33,6 +33,8 @@ const RAIZ = path.resolve(import.meta.dirname, "..");
 // El orden importa sólo para la lectura del informe.
 export const REGLAS = [
   // ---- Palabras que el negocio retiró (CLAUDE.md, "Cómo se escribe")
+  // El nombre anterior del proveedor se arma partido: el control no puede ser quien lo vuelva a escribir en el repositorio.
+  { id: "proveedor-anterior", nivel: "error", patron: new RegExp("nova" + "data", "i"), motivo: "El proveedor se llama Proveedor_Info_1 (contrato, 2026-10-31); el nombre anterior no vuelve a ninguna pantalla.", cambiar: "Proveedor_Info_1" },
   { id: "asalariado", nivel: "error", patron: /\basalariad[oa]s?\b/i, motivo: "En el negocio se dice «dependiente» (relación de dependencia). El negocio lo corrigió el 2026-09-25.", cambiar: "dependiente" },
   { id: "piso", nivel: "error", patron: /\bpisos?\b/i, motivo: "«Piso» no se usa en Ecuador. Es «ingreso reportado al IESS» y, si es el SBU o está a ±5%, «Ingreso Mínimo SBU» (esIngresoMinimoSbu).", cambiar: "ingreso reportado al IESS / mínimo" },
   { id: "retroalimentacion", nivel: "error", patron: /\bretroalimentaci[oó]n\b/i, permitir: /retirad[oa]|anterior/i, motivo: "El Laboratorio reemplazó a Retroalimentación el 2026-10-03.", cambiar: "Laboratorio / prueba retrospectiva" },

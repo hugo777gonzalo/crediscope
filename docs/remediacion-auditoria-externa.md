@@ -275,7 +275,7 @@ franja de la bandeja.
 
 - Para probar el plazo por fuente en producción se consultó, por el camino de
   los guiones, una de las 240 cédulas "sintéticas" de Aval. Se esperaba "no
-  existe": la memoria del proyecto decía que Novadata no las conoce.
+  existe": la memoria del proyecto decía que Proveedor_Info_1 no las conoce.
 - Contestó con nombre y 4 fuentes con contenido: **la cédula es de una
   persona real**.
 - Se guardaron un perfil y su crudo. La bitácora anotó la consulta a nombre
@@ -288,7 +288,7 @@ franja de la bandeja.
 - **Lección.**
   - "Sintética" quiere decir que **los datos que trajo Aval** son de prueba,
     no que el número no exista.
-  - Ninguna de esas 240 cédulas se usa para probar contra Novadata.
+  - Ninguna de esas 240 cédulas se usa para probar contra Proveedor_Info_1.
   - Una prueba en producción se hace con una identificación inválida (que la
     función rechaza antes de la fuente) o con la autorización del negocio
     para una persona concreta.

@@ -12,7 +12,7 @@
 // Reglas que costaron un caso:
 //   - Sin RUC es un dato (sri_ruc = 0); sin respuesta de la fuente no lo es:
 //     todas las variables del SRI van nulas. En el entrenamiento se descartaron
-//     las respuestas en que Equifax no traía el bloque. De Novadata, el
+//     las respuestas en que Equifax no traía el bloque. De Proveedor_Info_1, el
 //     contribuyente contestó si está en `fuentesConDatos` o en `fuentesSinDatos`
 //     (en esta última, «contestó y no había nada»: process.ts); la especificación
 //     decía «no contestó (`fuentesSinDatos`)», al revés. No contestó es
@@ -62,9 +62,9 @@ export const VARIABLES_DE_LA_CUOTA = [
   "c_codeudor", "max_dias_t",
 ] as const;
 
-// El nivel 1 es la edad, el sexo y el SRI de Novadata, más la fecha de la consulta (decisión del negocio del 2026-10-29;
+// El nivel 1 es la edad, el sexo y el SRI de Proveedor_Info_1, más la fecha de la consulta (decisión del negocio del 2026-10-29;
 // comun.py, NIVELES). Reconsultados 542 independientes de AWS (investigación, 12.29), el estado civil, el domicilio y el IESS de
-// Novadata no son el dato con que aprende el modelo, y Novadata no trae el lugar de trabajo: el nivel 1 ya no los lleva.
+// Proveedor_Info_1 no son el dato con que aprende el modelo, y Proveedor_Info_1 no trae el lugar de trabajo: el nivel 1 ya no los lleva.
 export const VARIABLES_DE_LA_PERSONA_DEL_NIVEL_1 = ["edad", "genero", "anio_mes"] as const;
 export const VARIABLES_DEL_NIVEL_1 = [...VARIABLES_DE_LA_PERSONA_DEL_NIVEL_1, ...VARIABLES_DEL_SRI] as const;
 export const VARIABLES_DEL_NIVEL_2 = [
@@ -129,7 +129,7 @@ export interface Ubicaciones {
 }
 
 // Las categorías del entrenamiento (sexo, estado civil, provincia y cantón) son las del extracto de AWS. Este
-// mapeo es la interfaz, y MAPEO_DE_NOVADATA no inventa equivalencias: lo que no se midió devuelve null.
+// mapeo es la interfaz, y MAPEO_DE_PROVEEDOR_INFO_1 no inventa equivalencias: lo que no se midió devuelve null.
 // `pendiente` dice que el estado civil, la provincia y el cantón quedan sin mapeo (sólo los usa el nivel 2).
 export interface MapeoDeCategorias {
   pendiente: boolean;
@@ -138,14 +138,14 @@ export interface MapeoDeCategorias {
   provincia(valor: string | null): string | null;
   canton(valor: string | null): string | null;
 }
-// El sexo se midió el 2026-10-28 con 542 independientes reconsultados (investigación, 12.29): Novadata usa las mismas
+// El sexo se midió el 2026-10-28 con 542 independientes reconsultados (investigación, 12.29): Proveedor_Info_1 usa las mismas
 // dos categorías que el extracto de AWS y coinciden en 540. Una categoría distinta queda sin dato, no se adivina.
 const SEXOS_DEL_ENTRENAMIENTO = new Set(["FEMENINO", "MASCULINO"]);
 export function sexoParaIngreso(valor: string | null): string | null {
   const t = mayusculas(valor);
   return t !== null && SEXOS_DEL_ENTRENAMIENTO.has(t) ? t : null;
 }
-export const MAPEO_DE_NOVADATA: MapeoDeCategorias = {
+export const MAPEO_DE_PROVEEDOR_INFO_1: MapeoDeCategorias = {
   pendiente: true,
   genero: sexoParaIngreso,
   estadoCivil: () => null,
@@ -244,7 +244,7 @@ export function variablesDelIess(filas: FilaDeHistorialIess[] | null | undefined
 // Carga sólo las variables que el nivel tiene: el nivel 1 lleva la edad, el sexo y la fecha; el 2, además, el estado
 // civil, la zona y el IESS. Lo que se dice pendiente es de las variables que el nivel usa.
 function cargarLaPersona(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: OpcionesDelVector, ahora: Date): void {
-  const mapeo = o.mapeo ?? MAPEO_DE_NOVADATA;
+  const mapeo = o.mapeo ?? MAPEO_DE_PROVEEDOR_INFO_1;
   const x = v.variables;
   const edad = perfil.identidad?.edad;
   x.edad = typeof edad === "number" && Number.isFinite(edad) ? edad : null;
@@ -258,8 +258,8 @@ function cargarLaPersona(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: Opcio
   x.cant_dom = mapeo.canton(u?.cantonDomicilio ?? null);
   x.prov_trab = mapeo.provincia(u?.provinciaTrabajo ?? null);
   x.cant_trab = mapeo.canton(u?.cantonTrabajo ?? null);
-  if (mapeo.pendiente) v.pendientes.push("categorias: estado civil, provincia y cantón son categorías del extracto de AWS y no coinciden con las de Novadata (12.29); salen sin dato hasta tener el mapeo.");
-  if (u === null) v.pendientes.push("ubicaciones: el perfil estandarizado no trae provincia ni cantón de domicilio y de trabajo (sólo cuenta direcciones); falta derivarlos de las direcciones y el empleo de Novadata.");
+  if (mapeo.pendiente) v.pendientes.push("categorias: estado civil, provincia y cantón son categorías del extracto de AWS y no coinciden con las de Proveedor_Info_1 (12.29); salen sin dato hasta tener el mapeo.");
+  if (u === null) v.pendientes.push("ubicaciones: el perfil estandarizado no trae provincia ni cantón de domicilio y de trabajo (sólo cuenta direcciones); falta derivarlos de las direcciones y el empleo de Proveedor_Info_1.");
   const iess = variablesDelIess(o.historialIess);
   x.aporte = iess.aporte;
   x.meses_aporte = iess.meses_aporte;
@@ -269,25 +269,25 @@ function cargarLaPersona(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: Opcio
 }
 
 // ---------------------------------------------------------------------------
-// El SRI: de Novadata (nivel 1) y de Equifax (nivel 2)
+// El SRI: de Proveedor_Info_1 (nivel 1) y de Equifax (nivel 2)
 // ---------------------------------------------------------------------------
-// ¿Contestó el contribuyente de Novadata? `fuentesSinDatos` es «contestó y no había nada» (process.ts): una persona
+// ¿Contestó el contribuyente de Proveedor_Info_1? `fuentesSinDatos` es «contestó y no había nada» (process.ts): una persona
 // sin RUC. `fuentesNoMedidas` (error o apagada) o no figurar es no haber contestado.
 function contribuyenteContesto(perfil: PerfilParaIngreso): boolean {
   const m = perfil.metaConsulta;
   return Boolean(m && ((m.fuentesConDatos ?? []).includes("contribuyente") || (m.fuentesSinDatos ?? []).includes("contribuyente")));
 }
 
-function cargarElSriDeNovadata(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: OpcionesDelNivel1, ahora: Date): void {
+function cargarElSriDeProveedorInfo1(v: VectorDeIngreso, perfil: PerfilParaIngreso, o: OpcionesDelNivel1, ahora: Date): void {
   const x = v.variables;
   const estado = perfil.laboral?.estadoActividadEconomica ?? null;
   if (!contribuyenteContesto(perfil) || estado === null) {
-    v.avisos.push("El contribuyente de Novadata no contestó: las variables del SRI quedan sin dato (no es lo mismo que no tener RUC).");
+    v.avisos.push("El contribuyente de Proveedor_Info_1 no contestó: las variables del SRI quedan sin dato (no es lo mismo que no tener RUC).");
     return;
   }
   if (estado === "sin_ruc") { x.sri_ruc = 0; return; }
   x.sri_ruc = 1;
-  // Novadata resuelve el estado por las fechas de cese y reinicio (ruc.ts); Equifax trae el estado del SRI.
+  // Proveedor_Info_1 resuelve el estado por las fechas de cese y reinicio (ruc.ts); Equifax trae el estado del SRI.
   x.sri_estado = estado.startsWith("activa") ? "ACTIVO" : estado.startsWith("inactiva") ? "SUSPENDIDO" : null;
   x.sri_antig = aniosDesde(perfil.laboral?.fechaInicioActividadesRuc ?? null, ahora);
   // El perfil guarda el cese más reciente (cancelación o suspensión) y su tipo: sólo la suspensión definitiva es sri_susp.
@@ -408,7 +408,7 @@ export function vectorDeNivel1(perfil: PerfilParaIngreso, o: OpcionesDelNivel1):
   const ahora = aFecha(o.ahora);
   const v = nuevoVector(1, VARIABLES_DEL_NIVEL_1);
   cargarLaPersona(v, perfil, o, ahora);
-  cargarElSriDeNovadata(v, perfil, o, ahora);
+  cargarElSriDeProveedorInfo1(v, perfil, o, ahora);
   return cerrar(v);
 }
 
@@ -416,7 +416,7 @@ export function vectorDeNivel2(perfil: PerfilParaIngreso, tablas: TablasParaIngr
   const ahora = aFecha(o.ahora);
   const v = nuevoVector(2, VARIABLES_DEL_NIVEL_2);
   cargarLaPersona(v, perfil, o, ahora);
-  // En el nivel 2 el SRI sale de Equifax, igual que en el entrenamiento; no del RUC de Novadata.
+  // En el nivel 2 el SRI sale de Equifax, igual que en el entrenamiento; no del RUC de Proveedor_Info_1.
   cargarElSriDeEquifax(v, tablas, ahora);
   cargarElBuro(v, tablas, aFecha(o.consultadoEl));
   return cerrar(v);

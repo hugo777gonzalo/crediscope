@@ -31,8 +31,8 @@ update standard_profile_field_config set campo = 'numeroOperacionesBuroCredito'
 insert into standard_profile_field_config (grupo, campo) values
   ('comportamientoBancario', 'mejorCalificacionRiesgo');
 
--- ---------- novadata_resource_config ----------
+-- ---------- proveedor_info_1_resource_config ----------
 
-update novadata_resource_config set recurso = 'buroCreditoSuper' where recurso = 'centralRiesgoSuper';
-update novadata_resource_config set recurso = 'buroCreditoDiners' where recurso = 'centralRiesgoDiners';
-update novadata_resource_config set recurso = 'buroCreditoCoop' where recurso = 'centralRiesgoCoop';
+update proveedor_info_1_resource_config set recurso = 'buroCreditoSuper' where recurso = 'centralRiesgoSuper';
+update proveedor_info_1_resource_config set recurso = 'buroCreditoDiners' where recurso = 'centralRiesgoDiners';
+update proveedor_info_1_resource_config set recurso = 'buroCreditoCoop' where recurso = 'centralRiesgoCoop';

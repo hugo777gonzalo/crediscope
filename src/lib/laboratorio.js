@@ -293,10 +293,10 @@ export async function getCamposDeshabilitados() {
   return new Set((data ?? []).map((f) => `${f.grupo}.${f.campo}`));
 }
 
-// El crudo de Novadata de un perfil (090), sólo para admin: el depósito lo
+// El crudo de Proveedor_Info_1 de un perfil (090), sólo para admin: el depósito lo
 // guarda en gzip y el navegador lo descomprime.
 export async function getCrudo(ruta) {
-  const { data, error } = await supabase.storage.from("crudo-novadata").download(ruta);
+  const { data, error } = await supabase.storage.from("crudo-proveedor-info-1").download(ruta);
   if (error) fallar(error);
   const texto = await new Response(data.stream().pipeThrough(new DecompressionStream("gzip"))).text();
   return JSON.parse(texto);

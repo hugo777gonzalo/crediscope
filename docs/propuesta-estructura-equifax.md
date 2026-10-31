@@ -50,7 +50,7 @@ de campos, listas y datos personales) y con `node scripts/conciliar-equifax.mjs`
   suma de las operaciones con el resumen de Equifax antes de calcular nada.
 
 **Por qué se conserva el crudo.** (a) Equifax puede cambiar la forma sin avisar
-(Novadata lo hizo, estructura-v13); (b) un error nuestro al descomponer se
+(Proveedor_Info_1 lo hizo, estructura-v13); (b) un error nuestro al descomponer se
 arregla **rehaciendo las tablas desde el crudo, sin volver a pagar** (la
 lección de `recalcular-fuentes-ingreso.mjs`); (c) el crudo es lo que se muestra
 ante un reclamo.
@@ -219,7 +219,7 @@ Reglas, para que un nombre no se pueda malinterpretar:
   `31/08/2026`, `2026 Ago`, `2026-08-31 00:00:00.000` y `Oct 2026`.
 - **«Vencido», «no devenga intereses», «demanda judicial» y «cartera
   castigada» son cuatro cosas distintas** y tienen cuatro campos. Es el mismo
-  criterio que Novadata (el atraso puede estar en `noDevengaInteres`).
+  criterio que Proveedor_Info_1 (el atraso puede estar en `noDevengaInteres`).
 - **«Score» a secas es el de CrediScope.** Los de Equifax son `scoreEquifax`,
   `scoreInclusionEquifax` y `scoreSobreendeudamientoEquifax`; en pantalla,
   «Score de Equifax».
@@ -250,7 +250,7 @@ propuesta están en negrita y se explican en las secciones 1.1 y 3.1.
 | **Créditos otorgados** | `numeroDeCreditosOtorgados`, `numeroDeCreditosRefinanciados`, `numeroDeCreditosReestructurados`, `numeroDeCreditosNovados`, `numeroDeCreditosCancelados`, `montoOriginalTotalUsd` y por tipo (consumo, vivienda, microcrédito, comercial) | `creditos_otorgados`, `operaciones_canceladas` | sí |
 | **Consultas recibidas** | `entidadesQueLaConsultaronEnLosUltimos12Meses`, `consultasEnLosUltimos12Meses`, `consultasPorMes` (12), `entidadesEnLosUltimos3Meses`, `consultasEnLosUltimos3Meses`, `consultasDeNovaCreditEnLosUltimos12Meses`; **sin contar a NovaCredit**. Una entidad se escribe de varias maneras: el número de entidades sobrecuenta y el de consultas no | `entidades_consultados` | sí |
 | ~~**Garantías dadas**~~ | **Ya no existe como grupo** (pedido del negocio, 2026-10-13: «garantía» es el colateral). Pasó a `deudaCodeudorGarante.listaAparteDeEquifax` | `garantias_personales_codeudores_*` | sí (sin nombres ni identificaciones de terceros) |
-| **Actividad económica (SRI)** | `tieneRuc`, `estadoDelRuc`, `claseDeContribuyente`, `obligadoALlevarContabilidad` | `informacion_sri` | no (Novadata ya lo trae) |
+| **Actividad económica (SRI)** | `tieneRuc`, `estadoDelRuc`, `claseDeContribuyente`, `obligadoALlevarContabilidad` | `informacion_sri` | no (Proveedor_Info_1 ya lo trae) |
 | **Estimaciones de Equifax** | `ingresoEstimadoUsd`, `cuotaFinancieraEstimadaUsd`, `indicadorDeImpactoEconomico` (y el ingreso del indicador, y la cuota estimada de todos los roles) | `indicador_impacto_economico`, `IncomePredictor` | **no** (ver 6) |
 | **Calidad de la respuesta** (nuevo) | `avisos` de la descomposición, `listasQueNoVinieron`, `operacionesConSaldoQueNoCuadra` (por vencer + vencido + no devenga + demanda + castigada contra el saldo: 18 de 476 operaciones), `operacionesConRolDesconocido`, `cortesDelDetalleActual` por sistema, `protestosMedidos` | todas | no |
 
@@ -337,7 +337,7 @@ importar el día en que se hizo. Las 87 de antes del 18/10 caducaron ese día
 consultar a cualquiera de ellas se cobra.
 
 **Lote del 16/10** (40 personas, autorizado por el negocio): reales, sin consulta
-previa y con la historia crediticia más larga de su último perfil de Novadata, con
+previa y con la historia crediticia más larga de su último perfil de Proveedor_Info_1, con
 11 o 12 operaciones. 17 tienen cooperativas, 17 retail y 24 son codeudoras o
 garantes. Se pagaron 40 de 40, todas HTTP 200, de la persona pedida y con su
 `client_id`; la auditoría no lleva la cédula. El tope se subió sólo para esa
@@ -347,32 +347,32 @@ interpretarlo) y `consultas_equifax.respuesta_cruda`. Lista y casos en
 `research/equifax/lotes/lote-2026-10-16*` (fuera de git).
 
 **Lote del 17/10** (25 personas poco bancarizadas, pedido por el negocio): reales,
-sin consulta previa, elegidas por lo poco que traía su último perfil de Novadata
+sin consulta previa, elegidas por lo poco que traía su último perfil de Proveedor_Info_1
 (5 sin operaciones, 9 con 1 o 2, 4 con mora y 7 con 3 a 9). Se pagaron 25 de 25, el
 tope del día quedó en 25 de 30. Bitácora en `corrida-2026-10-17.log` (fuera de git).
 
-- **Un expediente delgado no es uno vacío.** De las 5 sin operaciones en Novadata,
+- **Un expediente delgado no es uno vacío.** De las 5 sin operaciones en Proveedor_Info_1,
   4 traen deuda en Equifax. La quinta (`c-8b595446`) sí vino vacía: 6 KB, sin score
   ni historia. `c-e6db9ee9` y `c-c105874a` traen 14 y 22 meses de historia, y
   `c-0be1e991` no trae consultas recibidas y tiene 3 operaciones cuyo saldo no
   cuadra (`operacionesConSaldoQueNoCuadra`).
-- **Por qué Novadata no veía esa deuda** (reconsulta gratis del mismo día de 4
-  personas; crudo en `research/novadata-raw-2026-10-17/`): el resultado no cambió,
+- **Por qué Proveedor_Info_1 no veía esa deuda** (reconsulta gratis del mismo día de 4
+  personas; crudo en `research/proveedor-info-1-raw-2026-10-17/`): el resultado no cambió,
   así que reconsultar no la hace aparecer.
   - En dos de las tres con deuda bancaria (`c-b980f5b2`, `c-79f1a4ae`) el crédito
     se abrió el 16 y el 18 de septiembre, y el único corte de Super que se vio en
-    Novadata es el del **2026-08-31**: la deuda es posterior al corte. Se confirma
-    cuando Novadata publique el de septiembre (Equifax ya trae el del 30/09).
+    Proveedor_Info_1 es el del **2026-08-31**: la deuda es posterior al corte. Se confirma
+    cuando Proveedor_Info_1 publique el de septiembre (Equifax ya trae el del 30/09).
   - En la tercera (`c-23474215`) esa explicación no cabe: la operación de banco se
-    abrió el 9 de enero, su corte en Equifax es el 31/08 y Novadata contesta «OK»
+    abrió el 9 de enero, su corte en Equifax es el 31/08 y Proveedor_Info_1 contesta «OK»
     con la lista vacía. Es una diferencia real de cobertura, sin explicar.
-  - `c-79f1a4ae` sólo trae en Novadata una fila de riesgo `G` (garante) de otra
+  - `c-79f1a4ae` sólo trae en Proveedor_Info_1 una fila de riesgo `G` (garante) de otra
     deuda, no su crédito de titular.
   - `c-acdc2297`: Equifax trae una operación comercial con 2.149 días de mora y
-    Novadata nada. Es el comercial de Equifax, que no es el retail de Novadata
+    Proveedor_Info_1 nada. Es el comercial de Equifax, que no es el retail de Proveedor_Info_1
     (otras empresas).
   - Con 4 personas es un indicio, no una tasa. Medirla de verdad pide comparar las
-    87 contra su perfil de Novadata más reciente, por corte.
+    87 contra su perfil de Proveedor_Info_1 más reciente, por corte.
 
 **`probar-equifax-tablas.mjs` sobre las 62 del 16/10: todo ok** (2026-10-17). La
 lista de «garantías personales» coincidía con las operaciones de rol codeudor en

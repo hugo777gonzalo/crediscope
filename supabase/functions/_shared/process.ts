@@ -11,7 +11,7 @@
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).
 
-import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
+import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo } from "./ruc.ts";
@@ -99,7 +99,7 @@ function dentroUltimos3Meses(fecha: unknown): boolean {
 }
 
 // contribuyente/get_contribuyente_inf: un registro cuenta como "tuvo RUC"
-// solo si trae .ruc Y .fecha_inscripcion_ruc (Novadata a veces devuelve
+// solo si trae .ruc Y .fecha_inscripcion_ruc (Proveedor_Info_1 a veces devuelve
 // un registro "cascarón" con estado.codigo=OK pero todos los campos
 // null cuando la persona nunca tuvo RUC — ver c-636cb156).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
@@ -201,7 +201,7 @@ function obj(multi: AnyRecord | null | undefined, recurso: string, campo: string
 // La regla de cobro vive en demandas.ts desde estructura-v11, junto con
 // las categorías de las demás demandas.
 
-// pn_supa/pn_supa/novadata (pensión alimenticia): el nombre completo
+// pn_supa y su variante del proveedor (pensión alimenticia): el nombre completo
 // viene en 2 órdenes de palabras distintos según la fuente
 // (pn_inf_basica: "Apellido1 Apellido2 Nombre1 Nombre2"; pn_supa:
 // "Nombre1 Nombre2 Apellido1 Apellido2") — se compara por conjunto de
@@ -214,7 +214,7 @@ function mismoNombre(a: unknown, b: unknown): boolean {
   return na !== "" && na === nb;
 }
 
-// pn_supa/novadata trae representanteLegal (representa a quien RECIBE
+// La variante del proveedor de pn_supa trae representanteLegal (representa a quien RECIBE
 // la pensión) y obligadoPrincipal (quien DEBE pagarla) como 2 personas
 // DISTINTAS. BUG real encontrado auditando el reporte del usuario
 // (cédula c-18fa16ee): el código anterior marcaba pensionAlimenticiaEnMora
@@ -226,7 +226,7 @@ function mismoNombre(a: unknown, b: unknown): boolean {
 // clientes de la muestra: 6 de 12 casos con pensionAlimenticiaEnMora=true
 // eran en realidad este mismo error (cliente = representanteLegal, no
 // obligado) — no es un caso aislado.
-// pn_supa (sin /novadata) NO trae obligadoPrincipal, solo
+// pn_supa (sin /proveedor-info-1) NO trae obligadoPrincipal, solo
 // representanteLegal — si el cliente coincide con ese campo, por
 // eliminación NO es el obligado (son los únicos 2 roles del registro);
 // si no coincide con ninguno de los 2 campos conocidos, no se penaliza
@@ -388,7 +388,7 @@ function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]
   return salida;
 }
 
-// «31/07/25» o «31/07/2025» a «2025-07-31». Novadata escribe el corte del
+// «31/07/25» o «31/07/2025» a «2025-07-31». Proveedor_Info_1 escribe el corte del
 // retail con el año de dos cifras.
 function fechaDeCorte(v: unknown): string | null {
   const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
@@ -441,7 +441,7 @@ function fechaDeCorte(v: unknown): string | null {
 // tipo no dice el tema ("OTROS", "ESPECIAL"); la lesión enorme es de
 // propiedad y la aprehensión de un auto sin matrícula, de tránsito
 // (demandas.ts).
-// estructura-v13 (2026-10-03): Novadata manda el estado de algunos
+// estructura-v13 (2026-10-03): Proveedor_Info_1 manda el estado de algunos
 // establecimientos abreviado ("ABI", "CER"); quien tenía el suyo en "ABI"
 // quedaba sin RUC activo. Una sola comparación, en ruc.ts.
 // estructura-v14 (2026-10-20, decisión del negocio): la antigüedad en el
@@ -468,7 +468,7 @@ export const PROCESS_VERSION = "estructura-v16"; // ver docs/estructura-estandar
 // vez de estar fijo en el código: el proveedor no avisa cuándo publica
 // uno nuevo, pero el primer cliente que llega con datos más frescos lo
 // delata. Si no se pasa, se usa el último conocido.
-export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, corteIess?: string): { profile: StandardClientProfile; duracionFuentesMs: number } {
+export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: string, corteIess?: string): { profile: StandardClientProfile; duracionFuentesMs: number } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;
   // Una sola tabla de fuentes, sin la capa de bloques que había en el
@@ -603,9 +603,9 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // Registro RUC de referencia para las fechas expuestas: el activo si
   // hay uno, si no el primero disponible (persona natural normalmente
-  // tiene un solo registro, pero Novadata devuelve un array).
+  // tiene un solo registro, pero Proveedor_Info_1 devuelve un array).
   const rucReferencia = (contribuyenteRegistros.find(rucActivoHoy) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
-  // Estado y antigüedad de la actividad económica: Novadata/SRI solo
+  // Estado y antigüedad de la actividad económica: Proveedor_Info_1/SRI solo
   // guardan la fecha del cese MÁS RECIENTE y la del reinicio MÁS
   // RECIENTE, no un historial completo de ciclos — por eso "16 años
   // desde el inicio" puede ser engañoso si la persona reinició y volvió
@@ -758,7 +758,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // todavía, mejor no reportar un número que dé falsa confianza.
   //
   // "Último snapshot confirmado" por registro/grupo — tiess trae un
-  // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Novadata
+  // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Proveedor_Info_1
   // nunca vio una salida registrada", NO "sigue activo hoy" (mismo
   // hueco de dato que afiliacionIess/estadoAfiliacionIess más abajo).
   // BUG real corregido acá (cédula c-18fa16ee, validado contra el
@@ -1056,7 +1056,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
 
   // ---- seguridadSocial ----
   // BUG real (auditoría pedida por el usuario, cédulas c-ba4c16f0 y
-  // c-18fa16ee): pn_afiliacion_iess viene "faltante" (Novadata no pudo
+  // c-18fa16ee): pn_afiliacion_iess viene "faltante" (Proveedor_Info_1 no pudo
   // traer datos de ESE recurso puntual) en 32 de los 40 clientes de la
   // muestra -- incluyendo personas con historial laboral extenso y real
   // en tiess/mecanizado. afiliadoIessActivo devolvía `false` en todos
@@ -1114,7 +1114,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // valorColateralVehiculos: para colaterales importa el valor más
   // aproximado a mercado ACTUAL, tomando por cada vehículo el máximo
   // entre sus distintas fuentes de precio (auditoría pedida por el
-  // usuario — Novadata da varios precios por vehículo que no
+  // usuario — Proveedor_Info_1 da varios precios por vehículo que no
   // coinciden: valorAvaluo usa depreciación lineal SRI y castiga fuerte
   // vehículos viejos, ej. $82 en una moto 2016). A propósito NO incluye
   // precioVenta: para vehículos viejos ese campo parece ser el precio
@@ -1242,13 +1242,13 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     cuotaMensualTotal: redondear(coop.reduce((s, c) => s + (num(c.val_cuota_credito) ?? 0), 0)),
   };
 
-  // ---- comportamientoInterno (grupo nuevo — scoring propio Novadata) ----
+  // ---- comportamientoInterno (grupo nuevo — scoring propio Proveedor_Info_1) ----
   const comportamientoInterno: StandardClientProfile["comportamientoInterno"] = {
-    novadataResultadoHabitoPago: (personasIncump?.resultadoHabitoPago as string) ?? null,
-    novadataPerfilInterno: (personasIncump?.perfilInterno as string) ?? null,
-    novadataDiasMoraMaxima: num(personasIncump?.diasMoraMax),
-    novadataDiasMoraVigente: num(personasIncump?.diasMoraVigentes),
-    novadataSaldoCapitalVigente: num(personasIncump?.saldoCapital),
+    proveedorInfo1ResultadoHabitoPago: (personasIncump?.resultadoHabitoPago as string) ?? null,
+    proveedorInfo1PerfilInterno: (personasIncump?.perfilInterno as string) ?? null,
+    proveedorInfo1DiasMoraMaxima: num(personasIncump?.diasMoraMax),
+    proveedorInfo1DiasMoraVigente: num(personasIncump?.diasMoraVigentes),
+    proveedorInfo1SaldoCapitalVigente: num(personasIncump?.saldoCapital),
     esClienteInterno: Boolean(personasIncump?.identificacion),
   };
 
@@ -1297,7 +1297,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // (booleano) se reemplaza por este split — ya no existe como campo.
   const demandas = arr(fuentes, "demandas", "demandas");
   const demandasOfendido = arr(fuentes, "demandasOfendido", "demandas");
-  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaNovadata", "supas")];
+  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaProveedorInfo1", "supas")];
   // Solo cuenta como deuda/mora DEL CLIENTE la que le corresponde como
   // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
   // c-18fa16ee aparecía en mora por una deuda de otra persona).

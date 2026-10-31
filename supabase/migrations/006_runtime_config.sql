@@ -1,7 +1,7 @@
 -- ============================================================
 -- CrediScope — capas de parametrización operativa:
 --
--- A. novadata_resource_config: activar/desactivar recursos individuales
+-- A. proveedor_info_1_resource_config: activar/desactivar recursos individuales
 --    de ingesta (las fuentes son sistemas públicos/externos que pueden
 --    fallar, deshabilitarse o tener controles de acceso cambiantes).
 -- B. standard_profile_field_config: activar/desactivar campos de la
@@ -11,11 +11,11 @@
 -- Un recurso/campo deshabilitado NO se borra del catálogo — se marca
 -- enabled=false y se ignora en tiempo de consulta (ver
 -- _shared/runtime-config.ts). El catálogo es fijo (viene del código:
--- novadata-client.ts y types.ts), por eso solo se permite UPDATE de
+-- proveedor-info-1-client.ts y types.ts), por eso solo se permite UPDATE de
 -- enabled/motivo, no INSERT/DELETE desde la app.
 -- ============================================================
 
-create table novadata_resource_config (
+create table proveedor_info_1_resource_config (
   recurso     text primary key,
   bloque      text not null,
   enabled     boolean not null default true,
@@ -32,7 +32,7 @@ create table standard_profile_field_config (
   primary key (grupo, campo)
 );
 
-alter table novadata_resource_config enable row level security;
+alter table proveedor_info_1_resource_config enable row level security;
 alter table standard_profile_field_config enable row level security;
 
 -- Cualquier autenticado (analista interno) puede ver y togglear estas
@@ -41,9 +41,9 @@ alter table standard_profile_field_config enable row level security;
 -- confiable). Sin policy de insert/delete a propósito: el catálogo de
 -- filas lo define el código/las migraciones, la app solo actualiza
 -- enabled/motivo de filas existentes.
-create policy novadata_resource_config_read on novadata_resource_config for select
+create policy proveedor_info_1_resource_config_read on proveedor_info_1_resource_config for select
   using (auth.role() = 'authenticated');
-create policy novadata_resource_config_update on novadata_resource_config for update
+create policy proveedor_info_1_resource_config_update on proveedor_info_1_resource_config for update
   using (auth.role() = 'authenticated');
 
 create policy standard_profile_field_config_read on standard_profile_field_config for select
@@ -51,9 +51,9 @@ create policy standard_profile_field_config_read on standard_profile_field_confi
 create policy standard_profile_field_config_update on standard_profile_field_config for update
   using (auth.role() = 'authenticated');
 
--- ---------- Seed: recursos de ingesta (52, ver novadata-client.ts) ----------
+-- ---------- Seed: recursos de ingesta (52, ver proveedor-info-1-client.ts) ----------
 
-insert into novadata_resource_config (recurso, bloque) values
+insert into proveedor_info_1_resource_config (recurso, bloque) values
   ('general', 'general'),
   ('direcciones', 'sociodemografica'),
   ('telefonos', 'sociodemografica'),
@@ -87,7 +87,7 @@ insert into novadata_resource_config (recurso, bloque) values
   ('demandasOfendido', 'funcion_judicial'),
   ('impedimentoCargosPublicos', 'funcion_judicial'),
   ('pensionAlimenticia', 'funcion_judicial'),
-  ('pensionAlimenticiaNovadata', 'funcion_judicial'),
+  ('pensionAlimenticiaProveedorInfo1', 'funcion_judicial'),
   ('denuncias', 'fiscalia'),
   ('antecedentesPenales', 'fiscalia'),
   ('sercop', 'fiscalia'),
@@ -184,11 +184,11 @@ insert into standard_profile_field_config (grupo, campo) values
   ('comportamientoCooperativas', 'saldoTotal'),
   ('comportamientoCooperativas', 'tieneOperacionJudicializada'),
   ('comportamientoCooperativas', 'tieneOperacionCastigada'),
-  ('comportamientoInterno', 'novadataResultadoHabitoPago'),
-  ('comportamientoInterno', 'novadataPerfilInterno'),
-  ('comportamientoInterno', 'novadataDiasMoraMaxima'),
-  ('comportamientoInterno', 'novadataDiasMoraVigente'),
-  ('comportamientoInterno', 'novadataSaldoCapitalVigente'),
+  ('comportamientoInterno', 'proveedorInfo1ResultadoHabitoPago'),
+  ('comportamientoInterno', 'proveedorInfo1PerfilInterno'),
+  ('comportamientoInterno', 'proveedorInfo1DiasMoraMaxima'),
+  ('comportamientoInterno', 'proveedorInfo1DiasMoraVigente'),
+  ('comportamientoInterno', 'proveedorInfo1SaldoCapitalVigente'),
   ('comportamientoInterno', 'esClienteInterno'),
   ('transitoVehicular', 'tieneLicenciaVigente'),
   ('transitoVehicular', 'puntosLicencia'),

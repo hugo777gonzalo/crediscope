@@ -27,7 +27,7 @@ las otras tres siguen vigentes y son del predictor, que lleva otra sesión.
 3. **La solicitud no era una entidad** (`docs/modelo-de-la-persona.md`). Sin
    solicitud no hay flujo Pro ni Plus. *Hecho el 2026-10-17* (tabla
    `solicitudes`, 133; función `evaluar-solicitud`; Básico, Pro y Plus).
-4. **La línea IESS ya la tenemos en buena parte**: Novadata trae el ingreso
+4. **La línea IESS ya la tenemos en buena parte**: Proveedor_Info_1 trae el ingreso
    reportado al IESS de 1.713 de 2.573 personas (67%). Sirve de verdad para los
    dependientes, no para los independientes, que son justo quienes necesitan
    el predictor.
@@ -77,14 +77,14 @@ El diagnóstico del 2026-10-16, con lo que cambió hasta el 18.
 
 | Pieza | Estado | Dónde | Comentario |
 |---|---|---|---|
-| Ingesta de Novadata (52 fuentes) | Existe | `structure-client`, `novadata-client.ts` | Guarda el crudo (Storage) y distingue «no contestó» de «no hay» (`metaConsulta`). |
+| Ingesta de Proveedor_Info_1 (52 fuentes) | Existe | `structure-client`, `proveedor-info-1-client.ts` | Guarda el crudo (Storage) y distingue «no contestó» de «no hay» (`metaConsulta`). |
 | Ingesta de buró de la IFI (Equifax, Aval) | Existe | `consultar-equifax`, `consultar-aval` | Un buró por IFI (`proveedores.es_buro`). Equifax se cobra por consulta. |
 | Consultas por lote | Existe | `procesar-lote`, `scripts/consultar-lote.mjs` | |
 | Perfil estandarizado | Existe | `process.ts` → `buildStandardProfile` | ~145 campos en 17 grupos, versionado. |
 | Perfil de Ingresos | Existe | `fuentes-ingreso.ts` (fuentes-v11) | Segmento, perfil laboral, ingreso reportado al IESS, Ingreso Mínimo SBU, indicios de ingreso mayor, tamaño del negocio. **No estima montos.** |
 | Predictor de ingresos | **Falta** | — | Ver sección 3. |
 | Análisis de riesgo (score 1-999) | Existe | `analyze-client`, `marco-interpretativo.ts` (v30), `controles-bloqueo.ts` | Modelo de lenguaje + controles fijos. Recomienda aprobar / revisar / negar. |
-| Obligaciones mensuales | Existe (2026-10-17) | `capacidad-de-pago.ts` → `datosDeCapacidad()`; `equifax-estructura.ts` (`cuotaMensualUsd` del titular); Novadata sólo en cooperativas | Con Equifax hay cuota por operación; con Novadata sola, casi nunca: lo que no trae cuota se lista aparte (`deudasSinCuota`), nunca como cero. |
+| Obligaciones mensuales | Existe (2026-10-17) | `capacidad-de-pago.ts` → `datosDeCapacidad()`; `equifax-estructura.ts` (`cuotaMensualUsd` del titular); Proveedor_Info_1 sólo en cooperativas | Con Equifax hay cuota por operación; con Proveedor_Info_1 sola, casi nunca: lo que no trae cuota se lista aparte (`deudasSinCuota`), nunca como cero. |
 | Simulador de crédito | Existe (2026-10-17) | `simulador-credito.ts`, función `simular-credito`, pantalla `/simulador` | Francés y alemán, desgravamen sobre el saldo o el monto. Falta: comisiones. |
 | Capacidad de pago | Existe (2026-10-17) | `capacidad-de-pago.ts`, función `capacidad-de-pago`, pantalla `/capacidad/:cedula` | Es un cálculo, no una opinión del modelo: el marco la deja afuera a propósito (comentario en `marco-interpretativo.ts`, hacia la línea 285). Con Ingreso declarado opcional. |
 | Solicitud como entidad | Existe (2026-10-17) | tabla `solicitudes` (133), función `evaluar-solicitud`, pantallas `/solicitud/nueva` y `/solicitud/:id` | Falta lo que decide la institución (Aprobado / Rechazado) y el estado de la persona. |
@@ -144,7 +144,7 @@ tres líneas trae «el ingreso real»:
 | Línea | Qué sería la verdad | Sirve para | No sirve para |
 |---|---|---|---|
 | Equifax (20.000) | La estimación de un tercero | Aproximar a Equifax sin pagarle cada consulta | Saber si acertamos; sin saber la unidad, ni eso |
-| IESS (ya en Novadata) | Lo aportado | Dependientes (el aporte ≈ el sueldo) | Independientes y voluntarios: aportan sobre el SBU, es un mínimo |
+| IESS (ya en Proveedor_Info_1) | Lo aportado | Dependientes (el aporte ≈ el sueldo) | Independientes y voluntarios: aportan sobre el SBU, es un mínimo |
 | Endeudamiento | Ninguna | Una cota inferior del ingreso (ver 3.3) | Un monto por sí solo |
 
 Recomiendo diseñar el predictor como **varias estimaciones con su origen**, no
@@ -153,7 +153,7 @@ crédito otorgado, estimación de Equifax (rotulada), y una estimación propia
 cuando se pueda validar. La pantalla muestra cuál manda y por qué.
 
 **3.2 La base de 20.000 vale mucho más si trae cédula.** Con cédula se puede
-consultar Novadata para esas personas (hoy no cuesta; son unas 17 h con la
+consultar Proveedor_Info_1 para esas personas (hoy no cuesta; son unas 17 h con la
 concurrencia actual) y tener, para cada una, nuestras variables **y** la
 estimación de Equifax **y** el IESS. Eso permite tres cosas a la vez: entrenar
 un modelo con nuestras variables, medir el error de Equifax contra el IESS en
@@ -203,7 +203,7 @@ y cada uno se entrega por separado (sección 0.1).
 | | Básico | Pro | Plus |
 |---|---|---|---|
 | Entradas exigidas | Cédula | + solicitud (monto, plazo, producto, tasa) | + buró de la IFI |
-| Novadata, perfil, Perfil de Ingresos | Sí | Sí | Sí |
+| Proveedor_Info_1, perfil, Perfil de Ingresos | Sí | Sí | Sí |
 | Score del modelo | Sí (marco vigente) | Sí | Sí (con buró: marco-v31, hoy apagado) |
 | Simulador | — | Sí | Sí |
 | Obligaciones mensuales | — | Las que haya (cooperativas) | Las del buró, por operación |
@@ -252,13 +252,13 @@ tabla de amortización exportable, la revisión contractual del uso de Equifax.
 | Definición del `IncomePredictor` y del indicador de impacto económico (mensual o anual, método, error) | Interpretar 3.2 y la sección 2 | Respuesta escrita de Equifax | Indispensable | Equifax (ya está en el pedido de diccionario) | Predictor |
 | Tarifario de un producto de consumo real: tasa (nominal o efectiva), desgravamen (tasa y base), comisiones, redondeo | P7, simulador | Una hoja o una tabla de amortización de ejemplo | Indispensable | Vos (de una IFI) | Simulador |
 | Relación cuota/ingreso máxima que usan bancos y cooperativas | Cota por crédito otorgado (3.3) y regla de capacidad | Un número por tipo de entidad | Indispensable | Vos | Capacidad |
-| Base IESS del proveedor más allá de los consultados | Ampliar la muestra de dependientes | Campos disponibles y si es mensual o promedio | Conveniente (ya hay 1.713) | Novadata | Predictor |
+| Base IESS del proveedor más allá de los consultados | Ampliar la muestra de dependientes | Campos disponibles y si es mensual o promedio | Conveniente (ya hay 1.713) | Proveedor_Info_1 | Predictor |
 | Respuestas de P1 a P5 | Diseño de los flujos | Respuesta en el chat | Indispensable | Vos | Flujos |
 | Ejemplos de solicitudes reales de la IFI | Qué campos trae una solicitud | 3-5 formularios sin datos personales | Conveniente | Vos | Flujos |
 
 Lo que **no** hace falta pedir: documentación de la API y de los módulos, ejemplos
 del análisis de riesgo y del Perfil de Ingresos, y la estructura del
-endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
+endeudamiento de Equifax y Proveedor_Info_1: ya están en el repositorio y en la base.
 
 ## 7. Orden propuesto
 
@@ -308,7 +308,7 @@ endeudamiento de Equifax y Novadata: ya están en el repositorio y en la base.
    decisiones del negocio de ese día:
    - **El orquestador vive en el servidor y avanza por pasos**: la función
      `evaluar-solicitud` crea la solicitud (tabla `solicitudes`) y cada llamada
-     a `avanzar` corre un paso, porque Novadata y el modelo juntos pasan los
+     a `avanzar` corre un paso, porque Proveedor_Info_1 y el modelo juntos pasan los
      150 s de una función. Los pasos llaman a las funciones de cada módulo con
      la sesión de quien pidió (`structure-client`, `consultar-equifax`,
      `analyze-client`) y la capacidad se calcula ahí mismo. El perfil se
@@ -370,10 +370,10 @@ esa lista; lo decidido con el negocio, en la sección 0.1.
   acceso (OAuth), que no son lo mismo. 10: los importes van con dos decimales y las tasas y
   fracciones con toda la precisión del cálculo (más de 8 decimales), sin redondear.
 - **Funciones y base (2026-10-18, 516dc33):** `evaluar-solicitud` ya no copia en la
-  solicitud el mensaje de la función llamada (podía traer el de Novadata, Equifax, el modelo
+  solicitud el mensaje de la función llamada (podía traer el de Proveedor_Info_1, Equifax, el modelo
   o la base: `falloDeUnPaso()`); un paso que pudo dejar algo en vuelo (el buró, sobre todo)
   no se reintenta hasta 3 minutos después; dos solicitudes de la misma persona no consultan
-  Equifax a la vez (`pasoEnCurso()`); Plus ya no calcula con Novadata cuando la consulta de
+  Equifax a la vez (`pasoEnCurso()`); Plus ya no calcula con Proveedor_Info_1 cuando la consulta de
   Equifax no tiene estructura; un fallo queda en `audit_log` (`solicitud.paso_fallido`).
   `capacidad-de-pago` lee la misma consulta de Equifax que la pantalla y rechaza una cuota
   que no es número.

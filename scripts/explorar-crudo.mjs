@@ -1,6 +1,6 @@
 // El explorador del crudo del Laboratorio (fase E, docs/laboratorio-pantallas.md).
 //
-// El modelo lee el perfil del modelo, y el perfil sale del crudo de Novadata:
+// El modelo lee el perfil del modelo, y el perfil sale del crudo de Proveedor_Info_1:
 // lo que el crudo trae y la estructura no lee no lo ve nadie. Esto lo busca.
 // Recorre el crudo del DÍA DEL ANÁLISIS (t0) de cada persona del corte --
 // nunca una reconsulta, que ya trae la mora y hace "acertar" a cualquier
@@ -21,7 +21,7 @@
 //
 // Es un guion porque bajar 2.500 crudos desde el navegador es pesado. Lee
 // primero los respaldos de research/ (si el archivo es de ese perfil) y si
-// no, el depósito crudo-novadata.
+// no, el depósito crudo-proveedor-info-1.
 //
 // No lee la verdad plantada de una simulación: lab_contar_calificacion()
 // compara después lo que encontró.
@@ -131,7 +131,7 @@ for (const trozo of enTrozos([...new Set(filas.map((f) => f.perfilId).filter(Boo
 
 // ---------------------------------------------------------- acumuladores
 const CARPETAS = fs.readdirSync(path.join(RAIZ, "research"), { withFileTypes: true })
-  .filter((d) => d.isDirectory() && d.name.startsWith("novadata-raw")).map((d) => path.join(RAIZ, "research", d.name));
+  .filter((d) => d.isDirectory() && d.name.startsWith("proveedor-info-1-raw")).map((d) => path.join(RAIZ, "research", d.name));
 // El perfilId está al principio del archivo: se lee eso antes de parsear 150 KB.
 function crudoLocal(cedula, perfilId) {
   for (const carpeta of CARPETAS) {
@@ -233,7 +233,7 @@ await enParalelo(filas, 16, async (f, i) => {
   if (!perfil) { origen.sinPerfil++; return; }
   let raw = crudoLocal(f.cedula, perfil.id);
   if (raw) origen.local++;
-  else if (perfil.crudo_ruta) { raw = (await bajarObjeto("crudo-novadata", perfil.crudo_ruta)).raw; origen.deposito++; }
+  else if (perfil.crudo_ruta) { raw = (await bajarObjeto("crudo-proveedor-info-1", perfil.crudo_ruta)).raw; origen.deposito++; }
   if (!raw) { origen.sinCrudo++; return; }
   t0[i] = Date.parse(perfil.created_at);
   procesar(raw, i);

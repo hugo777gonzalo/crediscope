@@ -11,7 +11,7 @@
 --   - cumplimiento.detallePep (nuevo — cargo/empresa/sueldo/fecha del
 --     registro PEP más reciente).
 --   - comportamientoBancario.saldoEnMoraBuroCredito (nuevo — saldoVigente
---     no incluye lo que está en mora, son campos separados en Novadata).
+--     no incluye lo que está en mora, son campos separados en Proveedor_Info_1).
 --   - comportamientoCooperativas.saldoEnMora (nuevo, mismo motivo).
 --   - laboral.numeroEmpleadoresUltimos24Meses: redefinido (empleadores
 --     ACTIVOS en los últimos 24 meses, no solo los que iniciaron en ese

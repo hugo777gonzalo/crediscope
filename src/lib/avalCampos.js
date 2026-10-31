@@ -1,7 +1,7 @@
 // Formato de valores para la pantalla "Perfil Aval" del analista —
 // análogo a formatValor en perfilClienteCampos.js, pero con el
 // vocabulario de tipos de aval-estructura.ts (texto/entero/decimal/
-// dinero/fecha/booleano), que es distinto del de Novadata (moneda/lista/
+// dinero/fecha/booleano), que es distinto del de Proveedor_Info_1 (moneda/lista/
 // meses/...). Vive aparte para no mezclar dos vocabularios en un mismo
 // switch.
 

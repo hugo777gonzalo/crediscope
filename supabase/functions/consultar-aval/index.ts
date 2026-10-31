@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Para cédula usamos la misma validación que Novadata: un RUC de persona
+  // Para cédula usamos la misma validación que Proveedor_Info_1: un RUC de persona
   // natural se reduce a su cédula, y lo que no es persona natural se rechaza
   // antes de gastar una consulta (que en producción factura). Los otros
   // tipos (R/E/P/F) se mandan tal cual — hoy solo se usa C.
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
   if (sinEsquema) return sinEsquema;
 
   try {
-    // -1. ¿Aval está prendido como proveedor? A diferencia de Novadata, que
+    // -1. ¿Aval está prendido como proveedor? A diferencia de Proveedor_Info_1, que
     //     tiene 52 endpoints apagables uno por uno, Aval es una sola llamada
     //     atómica: el on/off es de todo o nada, y vive en `proveedores`
     //     (migración 067) -- creada para justo este caso. Se chequea ANTES
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
     const estructura = construirEstructuraAval(sobre);
 
     // 4. Enlace blando a la persona (solo cédula): buscar-o-crear el cliente
-    //    para que consultas_aval.client_id una esta fuente con Novadata y
+    //    para que consultas_aval.client_id una esta fuente con Proveedor_Info_1 y
     //    con las que vengan después. Los otros tipos quedan sin client_id.
     let clientId: string | null = null;
     if (tipoIdentificacion === "C") {

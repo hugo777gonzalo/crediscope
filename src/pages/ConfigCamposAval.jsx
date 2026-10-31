@@ -10,7 +10,7 @@ import Cargando from "../components/ui/Cargando.jsx";
 // Análogo a ConfigCampos.jsx pero para la estructura estandarizada de
 // Aval (aval-estructura.ts). Los grupos ya vienen en castellano legible
 // desde ESPEC (Score, Deuda actual, Deuda contingente...) -- a diferencia
-// de Novadata, que necesita ETIQUETAS_GRUPO para traducir claves internas
+// de Proveedor_Info_1, que necesita ETIQUETAS_GRUPO para traducir claves internas
 // como "comportamientoBancario".
 //
 // Identidad, clientesPeorScore, responseCode y transactionNumber no

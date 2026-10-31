@@ -76,7 +76,7 @@ select
   count(*) filter (where p.estado_por_fuente ->> f.recurso = 'faltante')  as veces_sin_dato,
   count(*) filter (where p.estado_por_fuente ->> f.recurso = 'error')     as veces_con_error,
   max(p.created_at) filter (where p.estado_por_fuente ->> f.recurso = 'ok') as ultima_vez_con_contenido
-from novadata_resource_config f
+from proveedor_info_1_resource_config f
 join client_profiles p on p.estado_por_fuente ? f.recurso
 where f.estado_del_recurso in ('no_responde', 'sin_contenido')
 group by f.recurso, f.estado_del_recurso;

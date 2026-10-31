@@ -174,9 +174,9 @@ el producto, y hay tres cosas sin resolver:
   desplegar el producto entero por cada ajuste de criterio de cualquier
   cliente. Lo que se pierde —el control del despliegue— se repone con
   versionado inmutable y aprobación explícita.
-- **~~No se guarda el crudo de Novadata.~~ Revertido**: se descartó el
+- **~~No se guarda el crudo de Proveedor_Info_1.~~ Revertido**: se descartó el
   2026-09-23, pero desde la 090 el crudo se guarda en Storage
-  (`crudo-novadata`), porque sin él una regla nueva no se puede aplicar a
+  (`crudo-proveedor-info-1`), porque sin él una regla nueva no se puede aplicar a
   los perfiles guardados (el 2026-09-25 hubo que reconsultar la cartera
   entera por eso). En una base por cliente, el crudo vive en el depósito
   de la base de ese cliente.

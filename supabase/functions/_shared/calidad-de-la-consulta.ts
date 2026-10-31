@@ -25,7 +25,7 @@
 // aplicar el mismo criterio. Dos copias de esta regla es exactamente
 // cómo volvería a pasar por una sola de las dos puertas.
 
-import type { RespuestaNovadata } from "./types.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 /**
  * El estado de cada FUENTE, una por una.
@@ -36,7 +36,7 @@ import type { RespuestaNovadata } from "./types.ts";
  * caídas. Medido sobre los perfiles del 2026-09-17, "9 de 9 ejes" quería
  * decir entre 14 y 25 de 52 fuentes.
  */
-export function estadoPorFuente(raw: RespuestaNovadata): Record<string, string> {
+export function estadoPorFuente(raw: RespuestaProveedorInfo1): Record<string, string> {
   const salida: Record<string, string> = {};
   for (const [fuente, resultado] of Object.entries(raw)) {
     if (!resultado || typeof resultado !== "object" || !("status" in resultado)) continue;
@@ -135,7 +135,7 @@ export function porQueNoSirve(estado: Record<string, string>): string {
  * responde (negocio, 2026-10-31).
  *
  * `laConsultaSirve` alcanza para guardar un perfil, no para calificar. El
- * 2026-10-31 Novadata contestó error 500 en 41 de 52 fuentes para c-79e1ac23,
+ * 2026-10-31 Proveedor_Info_1 contestó error 500 en 41 de 52 fuentes para c-79e1ac23,
  * las seis que contestaron bastaron para guardarlo, y el modelo dio un score
  * leyendo menos de la cuarta parte de su deuda: el hipotecario del BIESS, que
  * trae Equifax, estaba en una de las fuentes caídas.
@@ -195,7 +195,7 @@ export function porQueNoSePuedeAnalizar(estado: Record<string, string> | null | 
  * justo en el caso en que no se sabía. Ahora se pregunta por la fuente
  * que trae el dato.
  */
-export function sePuedeAfirmarQueNoAporta(raw: RespuestaNovadata): boolean {
+export function sePuedeAfirmarQueNoAporta(raw: RespuestaProveedorInfo1): boolean {
   return raw.basesInternas?.status === "ok";
 }
 
