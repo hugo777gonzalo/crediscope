@@ -69,9 +69,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - topes por minuto y por día con los encabezados `RateLimit`, y el 503 `capacidad-agotada`
      por espera estimada (hoy sólo el tope de evaluaciones en curso);
    - avisos firmados (`evaluacion.terminada`), `POST /evaluaciones/{id}/decision` y
-     `/cancelacion`, y las puertas sueltas `/simulaciones`, `/capacidades-de-pago` y
-     `/estimaciones-de-ingreso` (esta última traduce `evaluacion`, `ev_...`, a `solicitudId`);
-   - el sandbox con simuladores (identificaciones `00…`) y su apagado para terceros;
+      `/cancelacion`, y las puertas sueltas `/simulaciones`, `/capacidades-de-pago` y
+      `/estimaciones-de-ingreso` (esta última traduce `evaluacion`, `ev_...`, a `solicitudId`);
+    - **el sandbox está construido y sin desplegar** (`supabase/CLAUDE.md`): falta desplegar y poner
+      `API_SANDBOX=activo` para usarlo. Requisito de OAuth: una credencial de sandbox acepta sólo las
+      identificaciones de prueba;
    - D5: al vencer el plazo con el modelo caído, entregar `sin_veredicto` con el perfil y la
      capacidad en vez de `fallida` (hoy el paso del modelo se reintenta y, vencido el plazo,
      la evaluación termina `fallida`/`plazo_vencido`);

@@ -21,10 +21,12 @@ import { analizarPersona } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
 import { elPerfilSirve } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
-import { conIngresoDeclarado, datosDeCapacidad, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
-import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
+import { capacidadDeLaSolicitud } from "./capacidad-de-la-solicitud.ts";
+import { elBuroTraeDetalle } from "./capacidad-de-pago.ts";
+import { esIdentificacionSimulada } from "./identificacion.ts";
 import { type FalloDeUnPaso, falloDeUnPaso, type Paso, pasoEnCurso, type RegistroDePaso, resumenDelAnalisis } from "./modalidades.ts";
 import type { ResultadoDelPaso } from "./cola-de-evaluaciones.ts";
+import { correrPasoSimulado } from "./sandbox-pasos.ts";
 
 // deno-lint-ignore no-explicit-any
 type Fila = Record<string, any>;
@@ -40,6 +42,8 @@ export interface ContextoDeLosPasos {
    * quien evalúa es administrador.
    */
   puedeCobrarEquifax: boolean;
+  /** La hora del trabajador: sólo la mira el sandbox, para la evaluación que tarda. */
+  ahora?: Date;
 }
 
 const fecha = (iso: string) => new Date(iso).toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" });
@@ -57,6 +61,11 @@ async function diasDeValidezDelPerfil(db: Fila): Promise<number> {
 
 export async function correrPaso(paso: Paso, s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDelPaso> {
   try {
+    // Antes de mirar el paso y de tocar nada: una evaluación del sandbox no consulta,
+    // no cobra ni gasta modelo, y tampoco deja filas en las tablas de las personas.
+    // Las que se guardan cuentan para el tope diario de Equifax, para los costos y
+    // para los totales de la cartera.
+    if (esIdentificacionSimulada(s.identificacion)) return correrPasoSimulado(paso, s, ctx.ahora ?? new Date());
     if (paso === "perfil") return await pasoPerfil(s, ctx);
     if (paso === "buro") return await pasoBuro(s, ctx);
     if (paso === "analisis") return await pasoAnalisis(s, ctx);
@@ -239,26 +248,5 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
   if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) {
     return fallo("Equifax contestó sin reporte de crédito: Plus no puede calcular la capacidad sin las cuotas del buró.", "buro_no_disponible");
   }
-  const condiciones ={ plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen };
-  const simulacion = simularCredito({ ...condiciones, monto: Number(s.monto) });
-  if (!simulacion.ok) return fallo(simulacion.errores.join(" "), "error_interno");
-  const datosIess = datosDeCapacidad(perfil.standard_profile, estructura);
-  const datos = conIngresoDeclarado(datosIess, s.ingreso_declarado === null || s.ingreso_declarado === undefined ? null : Number(s.ingreso_declarado));
-  const cuotaNueva = simulacion.simulacion.cuotaPrimerMes;
-  const capacidad = evaluarCapacidad({ ...datos, cuotaNueva });
-  const { tabla: _tabla, ...resumenSimulacion } = simulacion.simulacion;
-  return {
-    ok: true,
-    cambios: {},
-    detalle: "Se calcularon la cuota y la capacidad de pago.",
-    resultado: {
-      capacidad: {
-        simulacion: resumenSimulacion,
-        capacidad,
-        montoMaximo: montoMaximoParaCuota(capacidad.cuotaMaximaAdmisible, condiciones),
-        capacidadSoloIess: datos !== datosIess ? evaluarCapacidad({ ...datosIess, cuotaNueva }) : null,
-        datos,
-      },
-    },
-  };
+  return capacidadDeLaSolicitud(s, perfil.standard_profile, estructura);
 }
