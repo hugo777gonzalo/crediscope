@@ -14,7 +14,7 @@
 import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo } from "./ruc.ts";
+import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo, rucDepuradoEnRelacionDeDependencia } from "./ruc.ts";
 import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
@@ -147,10 +147,12 @@ function redondear(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-// La escala de calificaciones del buró, de mejor a peor. La
-// Superintendencia la define por días de atraso.
+// La escala de calificaciones del buró, de mejor a peor. En consumo sale de
+// los días de atraso; en el comercial, no sólo de ellos.
 const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
-const CALIFICACIONES_EN_ATRASO = new Set(["B1", "B2", "C1", "C2", "D", "E"]);
+// A1 es la única sin atraso (estructura-v17, negocio, 2026-10-31). Sumar A2 y A3
+// no cambia a nadie hoy: de sus 647 operaciones propias, ninguna viene sin deuda.
+const CALIFICACIONES_EN_ATRASO = new Set(["A2", "A3", "B1", "B2", "C1", "C2", "D", "E"]);
 
 // La peor o la mejor calificación de un conjunto de operaciones. Hasta
 // estructura-v7 se ordenaban alfabéticamente, y "AL" -- fuera de la
@@ -461,7 +463,11 @@ function fechaDeCorte(v: unknown): string | null {
 // también de creditoQuirografario/creditoHipotecario, con su saldo
 // (saldoPrestamosIessBiess), y el retail guarda el corte de sus deudas
 // (fechaCorteRetail). Medido en la nota de cada helper y en el PR.
-export const PROCESS_VERSION = "estructura-v16"; // ver docs/estructura-estandarizada.md
+// estructura-v17 (2026-10-31, decisión del negocio): laboral suma
+// rucDepuradoEnRelacionDeDependencia (ruc.ts), porque el motivo de la baja del
+// RUC no estaba en el perfil y sin él el marco no puede dejarla neutra. Y A2 y
+// A3 cuentan como calificaciones en atraso en operacionesEnAtrasoSinMonto.
+export const PROCESS_VERSION = "estructura-v17"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1014,6 +1020,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     antiguedadUltimaEtapaActivaMeses,
     mesesInactivoActividadEconomica,
     tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
+    rucDepuradoEnRelacionDeDependencia: rucDepuradoEnRelacionDeDependencia(rucReferencia, establecimientos),
     obligadoALlevarContabilidadRuc: obligadoALlevarContabilidad(rucReferencia),
     antiguedadEmpleoActualMeses,
     duracionEmpleoMasLargoMeses,
