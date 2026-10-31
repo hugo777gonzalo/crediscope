@@ -34,8 +34,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
-  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  institución, construido y apagado: su fila está en la 131); estructura-v16 (el último perfil de las
+  3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -172,8 +172,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     (2026-10-31): la ventana sale del corte
     del reporte (`_shared/equifax-ventana.ts`, `equifax-estructura-v2`), el detalle actual del
     comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
-    «Suspensión definitiva» del RUC. Falta, en este orden:
-    - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (no hay migración).
+    «Suspensión definitiva» del RUC. Desplegado con `8a778f905f10`. Falta:
     - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
       condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
       desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
@@ -193,20 +192,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
       consultas recibidas, 61, 61 y 60 de 62): no son de este cambio y siguen abiertas. La
       paridad con AWS no bajó en ninguna variable (`s_consumo` y `saldo` subieron). Subir sus
       umbrales queda a criterio del negocio.
-13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Fusionado el
-   2026-10-31. Queda, en este orden:
-   - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (regla 1): primero
-     se despliega y después se recalcula, o el perfil guardado en v15 convive con código que ya
-     escribe v16.
-   - **Recalcular:** `node scripts/recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
-     --carpeta=research/novadata-raw-2026-10-03`, **con `--seco` antes**. El seco del 2026-10-31
-     dio 3.765 a escribir, 0 que el crudo no reproduzca y 240 sintéticas sin crudo. No cambia
-     `fuentesIngreso`, así que `recalcular-fuentes-ingreso.mjs` no hace falta.
-   - **El recálculo estaba frenado por el guion**: `recalcular-grupos.mjs --seco` fallaba con
-     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`,
-     línea 85). El PR lo arregla (paginación por `id`, hasta una página vacía) en ese guion y en
-     `recalcular-fuentes-ingreso.mjs`, que tenía el mismo bloque. Probados sólo en seco. Siguen
-     con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
+13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Desplegado con
+   `8a778f905f10` y recalculado el 2026-10-31: 3.765 de 3.765 escritos y un seco posterior que da 0
+   a escribir y 0 que el crudo no reproduzca. Queda:
+   - **`recalcular-fuentes-ingreso.mjs` estaba frenado igual**: `recalcular-grupos.mjs` fallaba con
+     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`). El PR lo
+     arregla (paginación por `id`, hasta una página vacía) en los dos, y el segundo está probado sólo
+     en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
      `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
      `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
    - **Nombres que decide el negocio** (el PR propone opciones y no cambió ninguno):
@@ -226,7 +218,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
      cifra; no se tocó.
    - **Sin verificar:** la pantalla en el navegador (a 1280, 768 y 414) con la sesión del negocio
-     (punto 2.13); el perfil guardado sigue mostrando lo de v15 hasta recalcular.
+     (punto 2.13).
 
 ## 2. Espera una decisión del negocio
 
