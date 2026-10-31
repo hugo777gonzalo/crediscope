@@ -319,12 +319,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
     7. **Construidos para el nivel 1 y sin aplicar:** `modelos_de_ingreso`, `estimaciones_de_ingreso`
-       (migración 140), `estimar-ingreso` y `POST /estimaciones-de-ingreso`, con lo que el negocio decidió
+       (migración 141), `estimar-ingreso` y `POST /estimaciones-de-ingreso`, con lo que el negocio decidió
        el 2026-10-30 (especificación, sección 1). Falta, en este orden:
-       - aplicar la 139 y la 140 con el corredor (`--seco` y `--aplicar`);
+       - aplicar la 141 con el corredor (`--seco` y `--aplicar`);
        - publicar el modelo: `node scripts/publicar-modelo-de-ingreso.mjs --modelo=<archivo> --vigente`,
-         primero con `--seco` (sin la 140 aplicada, el guion valida el archivo y frena en la tabla);
-       - desplegar con `--funciones` desde una copia limpia de `origin/main` (`ESQUEMA_MINIMO` sube a 140:
+         primero con `--seco` (sin la 141 aplicada, el guion valida el archivo y frena en la tabla);
+       - desplegar con `--funciones` desde una copia limpia de `origin/main` (`ESQUEMA_MINIMO` sube a 141:
          sin la migración, todas las funciones contestan 503);
        - correr `auditar-seguridad.mjs` y probar la función con una identificación inválida; una
          estimación de verdad, sólo con una persona autorizada por el negocio.

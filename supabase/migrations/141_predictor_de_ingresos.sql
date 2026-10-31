@@ -55,7 +55,7 @@ create table modelos_de_ingreso (
 );
 
 comment on table modelos_de_ingreso is
-  'Los modelos del predictor de ingresos (140). Una fila por modelo, un solo vigente por nivel. La escribe scripts/publicar-modelo-de-ingreso.mjs; el archivo está en el depósito modelos-de-ingreso.';
+  'Los modelos del predictor de ingresos (141). Una fila por modelo, un solo vigente por nivel. La escribe scripts/publicar-modelo-de-ingreso.mjs; el archivo está en el depósito modelos-de-ingreso.';
 
 create unique index modelos_de_ingreso_un_vigente_por_nivel on modelos_de_ingreso (nivel) where estado = 'vigente';
 
@@ -88,7 +88,7 @@ create table estimaciones_de_ingreso (
 );
 
 comment on table estimaciones_de_ingreso is
-  'Cada evaluación del predictor de ingresos (140). La escribe sólo la función estimar-ingreso (clave de servicio); la pantalla lee. Sin cédula ni nombre: la persona va por client_id.';
+  'Cada evaluación del predictor de ingresos (141). La escribe sólo la función estimar-ingreso (clave de servicio); la pantalla lee. Sin cédula ni nombre: la persona va por client_id.';
 
 create index estimaciones_de_ingreso_cliente_idx on estimaciones_de_ingreso (client_id, creada_el desc);
 create index estimaciones_de_ingreso_solicitud_idx on estimaciones_de_ingreso (solicitud_id) where solicitud_id is not null;

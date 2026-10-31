@@ -53,7 +53,7 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   `C:\datos\ingresos`). A git sólo van los casos de oro, con entradas inventadas, que lee la prueba de
   `_shared/predictor-ingresos.ts`; las extracciones de AWS, las tablas por persona y los modelos quedan
   fuera (son datos de personas).
-- `scripts/publicar-modelo-de-ingreso.mjs` sube un modelo a una base, depósito y fila (140), de a una base
+- `scripts/publicar-modelo-de-ingreso.mjs` sube un modelo a una base, depósito y fila (141), de a una base
   y con `--seco` primero. Antes de tocar la base comprueba la huella, el formato, los casos de oro y que
   existan sus métricas agregadas (`predictor-ingresos/metricas/<version>-nivel<n>.json`, que sí van a git).
   `--vigente` lo activa; un modelo nuevo se compara antes con el vigente (especificación, 7).

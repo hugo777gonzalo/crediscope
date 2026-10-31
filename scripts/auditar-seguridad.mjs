@@ -295,7 +295,7 @@ for (const tabla of [
   "audit_log", "profiles", "lotes", "lab_solicitudes",
   // Las solicitudes de crédito (133).
   "solicitudes",
-  // El predictor de ingresos (140).
+  // El predictor de ingresos (141).
   "modelos_de_ingreso", "estimaciones_de_ingreso",
 ]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/${tabla}?select=*&limit=1`, { headers: h });

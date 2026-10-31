@@ -1,6 +1,6 @@
 // Publica un modelo del predictor de ingresos en una base: sube el archivo al
 // depósito privado `modelos-de-ingreso` y crea su fila en `modelos_de_ingreso`
-// (140). Cada base tiene su copia: hay una base por institución y una base nueva
+// (141). Cada base tiene su copia: hay una base por institución y una base nueva
 // no trae ningún modelo. El archivo no va en git porque el repositorio es público
 // y el modelo sale de datos de personas reales.
 //
@@ -99,7 +99,7 @@ let filas;
 try {
   filas = await pedir(`/rest/v1/modelos_de_ingreso?version=eq.${encodeURIComponent(modelo.version)}&nivel=eq.${modelo.nivel}&select=id,estado,huella_sha256`);
 } catch (e) {
-  morir(`No se pudo leer modelos_de_ingreso en ${cliente.clave} (¿falta aplicar la 140?): ${e.message}`);
+  morir(`No se pudo leer modelos_de_ingreso en ${cliente.clave} (¿falta aplicar la 141?): ${e.message}`);
 }
 const existente = filas[0] ?? null;
 // Dos archivos con la misma versión: las estimaciones guardadas no dirían cuál las calculó.

@@ -134,7 +134,7 @@ su guía: `docs/equifax.md`.
   existe `PREDICTOR_INGRESOS_MODELOS`; en la integración continua corre un modelo chico inventado.
   Un modelo nuevo no cambia el formato. En Windows la prueba con el modelo real se corre desde
   PowerShell: Git Bash cambia las rutas de `--allow-read`.
-- `estimacion-de-ingreso.ts` y la función `estimar-ingreso` (140) — la estimación de una persona desde
+- `estimacion-de-ingreso.ts` y la función `estimar-ingreso` (141) — la estimación de una persona desde
   su último perfil: el selector de la especificación, 3.2 (`decidirEstimacion()`), lo verificado (con
   `datosDeCapacidad()`, el mismo descuento que la capacidad), y la respuesta y la fila
   (`armarEstimacion()`). **El reloj es la fecha de la consulta** (`client_profiles.created_at`), no hoy:
