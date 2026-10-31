@@ -164,7 +164,7 @@ export const GRUPOS_CONFIG = {
       ["empleadorVigenteTipoCompania", "Tipo de compañía del empleador", "texto"],
       ["empleadorVigenteAntiguedadAnios", "Años del empleador", "numero"],
       ["salarioMasAltoRegistrado", "Salario más alto registrado", "moneda"],
-      ["historialEmpleosRegistrados", "Empleos en el historial", "numero"],
+      ["historialEmpleosRegistrados", "Empleadores registrados en el IESS", "numero"],
       ["empleadoresJuridicos", "Empleadores que son empresa", "numero"],
       ["tieneEstablecimientoActivo", "Establecimiento activo", "booleano_si_true"],
       ["estadoActividadEconomica", "Estado de la actividad económica", "estado_actividad"],
@@ -229,7 +229,7 @@ export const GRUPOS_CONFIG = {
     // (antes se sumaba todo como deuda propia), y el atraso incluye la
     // cartera que no devenga intereses.
     campos: [
-      ["numeroOperacionesBuroCredito", "Operaciones propias en buró de crédito", "numero"],
+      ["numeroOperacionesBuroCredito", "Líneas de deuda propias en buró de crédito", "numero"],
       ["peorCalificacionRiesgo", "Peor calificación (propia)", "texto"],
       ["mejorCalificacionRiesgo", "Mejor calificación (propia)", "texto"],
       ["saldoTotalVigente", "Saldo por vencer", "moneda"],
