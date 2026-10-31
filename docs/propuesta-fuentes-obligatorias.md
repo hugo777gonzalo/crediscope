@@ -446,8 +446,9 @@ es esto. La respuesta a su pregunta es que un caso no evaluable no se guarda com
 
 ### Plan por sesiones (2026-10-31)
 
-**Decidido:** el negocio aceptó todas las recomendaciones de la sección 1 el 2026-10-31: 1d, 2b, 3b, 4a,
-5b, 6b, 7b, 8a, 9b, 10c (sin construir), 11b, 12b, 13a y 14c. `esPrueba` ya quedó cerrado (PR 109), y
+**Decidido:** el negocio aceptó las recomendaciones de la sección 1 el 2026-10-31: 1d, 2b, 3b, 4a, 5b, 6b,
+7b, 8a, 9b, 10c (sin construir), 11b, 12b y 13a. **La 14 no: queda en a.** No se prueba con el modelo
+hasta terminar los arreglos, así que el efecto en el score (sección 11) sigue sin medir. `esPrueba` ya quedó cerrado (PR 109), y
 del paso 2 sólo falta Diners.
 
 **Antes de la primera sesión** entra lo que ya está en curso, para no rehacer trabajo:
@@ -462,8 +463,7 @@ del paso 2 sólo falta Diners.
 | 2. Reintentos, lotes y API | 4 y 5 | 3, 6, 7 y 8 | `cola-de-evaluaciones.ts`, `trabajador-de-evaluaciones.ts`, `procesar-lote`, `api/openapi.yaml`, `sandbox-*` | Después de la 1 |
 | 3. Bandeja y análisis marcados | 6 | 9 y 13 | Migración nueva, `refrescar_resumen_por_persona()`, la bandeja, `terminologia.md` | Después de la 1 |
 | 4. Control de contenido | 7 | 12 | `vigia/index.ts` | Después del renombre: no depende de la 1 |
-| 5. Prueba con el modelo | | 14 | Guiones fuera de git; 280 pedidos, USD 5,0 | Noviembre, con la 1 desplegada y el marco fusionado |
-| 6. Lo que lee el modelo | 8 | 11 | El marco y `perfil-del-modelo.ts` | Con la versión del marco del predictor |
+| 5. Lo que lee el modelo | 8 | 11 | El marco y `perfil-del-modelo.ts` | Con la versión del marco del predictor |
 
 **Para gastar poco:**
 
