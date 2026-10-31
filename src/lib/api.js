@@ -364,6 +364,21 @@ export async function getHistoriaDePagosEquifax(consultaId) {
   return filas;
 }
 
+// Los cortes que trae la deuda por sistema (la evolución de 24 meses y la deuda histórica): fijan
+// hasta dónde llega el reporte, que no es el último mes con operaciones. Sólo las fechas, nunca los
+// montos: esa lista no se suma a la deuda (_shared/equifax-ventana.ts).
+export async function getCortesDelReporteEquifax(consultaId) {
+  const { filas } = await traerTodas((opciones) =>
+    supabase
+      .from("equifax_deuda_por_sistema_y_mes")
+      .select("orden, fecha_corte", opciones)
+      .eq("consulta_equifax_id", consultaId)
+      .neq("origen", "resumen_actual")
+      .order("orden"),
+  );
+  return filas.map((f) => f.fecha_corte);
+}
+
 // El buró de la institución (cuestionario, A2: uno solo por IFI): "equifax",
 // "aval" o null si no tiene. Antes de la migración 129 la columna no existe y
 // se sigue mostrando Aval, como hasta entonces: la página se publica en cuanto

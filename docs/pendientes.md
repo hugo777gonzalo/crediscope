@@ -158,11 +158,36 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
    - estilos en línea a clases (1.776 en 124 archivos); Excel de un lote en el servidor
      pasadas las mil personas; `comparar-razonamiento.mjs` que lea el buró.
-12. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** El PR está
-   abierto con los cuatro controles en verde. Queda, en este orden:
-   - **Fusionar el 105** y **desplegar con `--funciones`** desde una copia limpia de
-     `origin/main` (regla 1): primero se despliega y después se recalcula, o el perfil guardado
-     en v15 convive con código que ya escribe v16.
+12. **Equifax: la ventana de 24 meses y los saldos del comercial (PR 106).** El código está hecho
+    (2026-10-31): la ventana sale del corte
+    del reporte (`_shared/equifax-ventana.ts`, `equifax-estructura-v2`), el detalle actual del
+    comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
+    «Suspensión definitiva» del RUC. Falta, en este orden:
+    - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (no hay migración).
+    - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
+      condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
+      desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
+      `estructura-v1`, y las que entren después de reprocesar quedarían viejas; (b) el guion lista
+      las consultas sin paginar (`scripts/cargar-tablas-equifax.mjs:92`) y PostgREST corta en
+      1.000: dice «consultas guardadas: 1000» cuando hay más de 2.200, así que hay que paginarlo
+      (`traerTodas()`) antes o rehace sólo las más viejas.
+    - **La pantalla sale al fusionar**, así que hasta el reproceso la franja (nueva) y los
+      contadores de la estructura (vieja) pueden no coincidir, y el comercial seguirá mostrando
+      «no cuadra» con los saldos viejos.
+    - **La historia mensual del comercial queda sin conciliar**: ahí `saldo_deuda` se comporta como
+      en bancos y unos 2.000 meses no cuadran con `deuda_historica` por ninguna lectura. Va como
+      pregunta a Equifax (`docs/equifax-pedido-de-diccionario.md`, 3.1 a 3.3), igual que el
+      significado de `total_vencer` en el comercial y si el último mes de la evolución es siempre
+      el corte (en 13 consultas con detalle no viene).
+    - **`probar-equifax-tablas.mjs` conserva 3 fallas que ya estaban** (score, estado de cartera y
+      consultas recibidas, 61, 61 y 60 de 62): no son de este cambio y siguen abiertas. La
+      paridad con AWS no bajó en ninguna variable (`s_consumo` y `saldo` subieron). Subir sus
+      umbrales queda a criterio del negocio.
+13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Fusionado el
+   2026-10-31. Queda, en este orden:
+   - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (regla 1): primero
+     se despliega y después se recalcula, o el perfil guardado en v15 convive con código que ya
+     escribe v16.
    - **Recalcular:** `node scripts/recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
      --carpeta=research/novadata-raw-2026-10-03`, **con `--seco` antes**. El seco del 2026-10-31
      dio 3.765 a escribir, 0 que el crudo no reproduzca y 240 sintéticas sin crudo. No cambia

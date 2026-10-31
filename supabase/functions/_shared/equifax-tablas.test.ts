@@ -290,7 +290,7 @@ Deno.test("la especificación de las tablas no repite columnas y todas son nombr
 
 Deno.test("el análisis de crédito: las diez variables del predictor y las tres fechas de concesión, con montos a centavos", () => {
   const r = derivarTablas(respuestaDePrueba());
-  assertEquals(r.version, "equifax-tablas-v2");
+  assertEquals(r.version, "equifax-tablas-v3");
   assertEquals(r.cobertura["AnalisisCreditoSectorFinanciero"], 1);
   assertEquals(r.tablas.equifax_analisis_credito, [{
     mayor_credito_aprobado_monto_usd: 12000, mayor_credito_aprobado_fecha_concesion: "2024-03-15",
