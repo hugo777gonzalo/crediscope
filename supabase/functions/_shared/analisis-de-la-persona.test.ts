@@ -5,7 +5,9 @@ import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts
 import { correrPaso } from "./pasos-de-evaluacion.ts";
 import { FUENTES_QUE_DECIDEN } from "./calidad-de-la-consulta.ts";
 
-const CEDULA = "0000000000";
+// Provincia 99, que no existe: no es la cédula de nadie, y con 00 la evaluación
+// se iría al sandbox antes de llegar al freno.
+const CEDULA = "9900000000";
 const completo = (): Record<string, string> => Object.fromEntries(Object.keys(FUENTES_QUE_DECIDEN).map((f) => [f, "ok"]));
 
 type Escritura = { tabla: string; accion: string; fila: Record<string, unknown> };
