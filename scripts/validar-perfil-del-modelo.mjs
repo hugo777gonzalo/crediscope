@@ -83,9 +83,9 @@ const CAMPOS_VISTA = [
   "perfilLaboral", "tamanoDelNegocio", "indiciosIngresoMayor", "estabilidad", "documentosDeConfirmacion",
 ].sort().join(",");
 const CLAVES_QUE_NO_LLEGAN = /"(detalle|correccion|recalculo|pisoIngresoMensualReportado|senalesDeEscala|evidencia|paraConfirmar|motivoSegmento)"\s*:/;
-// Nombres de fuentes de Novadata que no son también nombres de campos del
+// Nombres de fuentes de Proveedor_Info_1 que no son también nombres de campos del
 // perfil (impedimentoCargosPublicos, por ejemplo, es las dos cosas).
-const NOMBRES_DE_FUENTES = /buroCredito(Super|Diners|Coop)|trabajoHistoricosMecanizado|bienesInmueble|pensionAlimenticiaNovadata|afiliacionIssfac|afiliacionSiisspol|sriImpuestoRenta|basesInternas|establecimientoActEconomica|deudas(Ant|Amt|Emov|Firmes)\b|listasControl|fuentes(ConDatos|SinDatos|NoMedidas)|metaConsulta/;
+const NOMBRES_DE_FUENTES = /buroCredito(Super|Diners|Coop)|trabajoHistoricosMecanizado|bienesInmueble|pensionAlimenticiaProveedorInfo1|afiliacionIssfac|afiliacionSiisspol|sriImpuestoRenta|basesInternas|establecimientoActEconomica|deudas(Ant|Amt|Emov|Firmes)\b|listasControl|fuentes(ConDatos|SinDatos|NoMedidas)|metaConsulta/;
 const PALABRAS_RETIRADAS = /\bpiso\b|autodeclarad|reportada_por_tercero|reportada por un tercero|se[nñ]ales de escala/i;
 
 // "a.b[].c": ¿existe alguna instancia de la ruta?

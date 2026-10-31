@@ -103,7 +103,7 @@ export function esIdentificacionSimulada(valor: unknown): boolean {
 }
 
 // El último control antes de una salida a una fuente, por si lo de antes falla:
-// consultar Novadata o Equifax con un número inventado se pide y se cobra igual.
+// consultar Proveedor_Info_1 o Equifax con un número inventado se pide y se cobra igual.
 // Lanza: quien llama lo ve como cualquier otro error nuestro y no sale nada.
 export function impedirLaSalidaDeUnaSimulada(identificacion: unknown, destino: string): void {
   if (esIdentificacionSimulada(identificacion)) throw new Error(`Una identificación del sandbox no sale a ${destino}.`);

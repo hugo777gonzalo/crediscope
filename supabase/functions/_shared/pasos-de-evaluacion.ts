@@ -14,7 +14,7 @@
 //
 // Cada paso devuelve su resultado o un fallo con el código de la especificación
 // (`falloDeUnPaso`); nunca copia lo que contestó un tercero, que podría traer su
-// mensaje (Novadata, Equifax, el modelo) o el de la base.
+// mensaje (Proveedor_Info_1, Equifax, el modelo) o el de la base.
 
 import { consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
 import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts";
@@ -133,7 +133,7 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
   return {
     ok: true,
     cambios: { client_id: g.client_id, client_profile_id: g.id },
-    detalle: "Se consultó a la persona en Novadata.",
+    detalle: "Se consultó a la persona en Proveedor_Info_1.",
     resultado: { perfil: { perfilId: g.id, perfilDel: g.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null } },
   };
 }
@@ -199,7 +199,7 @@ async function pasoBuro(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDelP
   // La misma regla que el camino de arriba y que el modelo. La consulta se
   // reutiliza aunque no tenga su estructura (las tablas pueden fallar después de
   // pagar), y sin estructura la capacidad de Plus caería sin avisar a las cuotas
-  // de Novadata. Una consulta vigente sin estructura se rehace acá desde su crudo,
+  // de Proveedor_Info_1. Una consulta vigente sin estructura se rehace acá desde su crudo,
   // sin volver a pagar: antes nada la rehacía y esa persona no podía hacer un Plus
   // hasta el corte del mes.
   let usable = await consultaVigenteDeEquifax(db, s.client_id);

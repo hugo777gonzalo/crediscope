@@ -1,6 +1,6 @@
 -- framework-v6 (ver supabase/functions/_shared/interpretive-framework.ts):
 -- nuevo campo patrimonio.valorColateralVehiculos (auditoría pedida por
--- el usuario sobre los distintos precios de vehículo que da Novadata,
+-- el usuario sobre los distintos precios de vehículo que da Proveedor_Info_1,
 -- para el tema de colaterales) — suma, por vehículo, el máximo entre
 -- valorAvaluo/precioPromedio/precioMinimo/precioMaximo/precioComercial/
 -- precioVentaPublico/precioVentaPromedio (NO precioVenta).

@@ -19,14 +19,14 @@
 --    tabla cambie. La definición del 2026-10-03 se completa con sus valores
 --    equivalentes (más de 89 = 90 o más; C1 a E; más de 1.999,99): su
 --    resultado no cambia.
---    Novadata no dice el tipo de crédito de las operaciones de bancos (el
+--    Proveedor_Info_1 no dice el tipo de crédito de las operaciones de bancos (el
 --    campo `tipo` vale "C" en las 8.980 de la reconsulta del 2026-10-03): la
 --    equivalencia de consumo es la única que se puede aplicar. Ni el monto de
 --    un crédito de retail: "retail grande" se mide sobre la deuda total con
 --    la casa comercial.
 -- 3. La lista de observación: quien llegó a 15 días de atraso o más dentro
 --    del primer año, aunque después se haya puesto al día (el negocio: "es
---    grave aunque no caiga en impago"). En cooperativas y retail Novadata da
+--    grave aunque no caiga en impago"). En cooperativas y retail Proveedor_Info_1 da
 --    los días; en bancos, la categoría: 15 días cae dentro de A3 (9 a 15), así
 --    que cuenta desde B1 (16 a 30), la primera que no incluye atrasos de
 --    menos de 15 días. El buró es una foto: quien se atrasó y se puso al día
@@ -169,7 +169,7 @@ alter table lab_definiciones_default
 
 comment on column lab_definiciones_default.dias_mora_mas_de is 'Impago: MÁS de estos días de mora (Basilea: más de 90).';
 comment on column lab_definiciones_default.calificaciones_impago is 'Categorías de los bancos que cuentan como impago: las que empiezan después de dias_mora_mas_de en la tabla de calificación.';
-comment on column lab_definiciones_default.retail_deuda_mas_de is 'Retail grande: deuda total con la casa comercial de MÁS de este monto (Novadata no trae el monto del crédito).';
+comment on column lab_definiciones_default.retail_deuda_mas_de is 'Retail grande: deuda total con la casa comercial de MÁS de este monto (Proveedor_Info_1 no trae el monto del crédito).';
 comment on column lab_definiciones_default.dias_observacion is 'Lista de observación: este número de días de mora o más dentro del primer año, aunque después se haya puesto al día. null: la definición no la tiene.';
 
 -- Crea una definición con los parámetros del negocio. Las categorías de los

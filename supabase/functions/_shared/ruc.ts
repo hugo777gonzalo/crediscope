@@ -13,7 +13,7 @@
 // más reciente y el reinicio más reciente -- no el historial completo.
 //   - Cese: el más reciente entre la cancelación, la suspensión definitiva
 //     y la solicitud de suspensión (el cese temporal). Pedido del negocio:
-//     el cese temporal también cuenta. Medido en research/novadata-raw: la
+//     el cese temporal también cuenta. Medido en research/proveedor-info-1-raw: la
 //     solicitud viene en 1 registro de 352 (y con cancelación); cancelación
 //     y suspensión definitiva vienen siempre juntas (153).
 //   - Activo por fechas: sin cese, o con un reinicio posterior al cese.
@@ -58,7 +58,7 @@ export function fechasDelRuc(c: AnyRecord): FechasDelRuc {
   };
 }
 
-// Un registro "cascarón" (sin ruc) es que nunca tuvo RUC: Novadata a veces lo
+// Un registro "cascarón" (sin ruc) es que nunca tuvo RUC: Proveedor_Info_1 a veces lo
 // manda con todo en null. Hasta estructura-v14 también lo era un registro sin
 // fecha de inscripción, y en el crudo del 2026-10-03 hay 5 con el número, el
 // inicio (2019 a 2024) y un establecimiento, sin la inscripción ni ninguna
@@ -69,7 +69,7 @@ export function esRegistroDeRuc(c: AnyRecord): boolean {
   return Boolean(c.ruc);
 }
 
-// Novadata empezó a mandar el estado abreviado en algunos registros: en la
+// Proveedor_Info_1 empezó a mandar el estado abreviado en algunos registros: en la
 // reconsulta de la cartera del 2026-10-03 conviven "ABIERTO" y "CERRADO" con
 // "ABI" y "CER" (27 y 22 de ~700 registros en las primeras 500 personas; en
 // la del 2026-09-25, ninguno). Leyendo sólo "ABIERTO", quien tenía su
@@ -108,7 +108,7 @@ export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boo
 }
 
 // «Obligado a llevar contabilidad», del registro del RUC (estructura-v15, para
-// el nivel 1 del predictor de ingresos). Novadata lo abrevia igual que el estado
+// el nivel 1 del predictor de ingresos). Proveedor_Info_1 lo abrevia igual que el estado
 // de los establecimientos: en los crudos del 2026-10-03 (2.553 registros con
 // RUC) vienen «NO» 2.063, «SI» 128, «N» 106 y «S» 4, y en los 1.176 de la
 // paridad de la persona (12.29), «S» 15 y «SI» 39. Contra Equifax coincide en

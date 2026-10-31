@@ -85,7 +85,7 @@ export function franjaDePagos(historia, cortesDelReporte = []) {
 // Lo que está en atraso de un bloque de deuda: vencido, lo que no devenga
 // intereses, lo que está en demanda judicial y lo castigado. Son cuatro
 // cosas distintas y la estructura las guarda separadas; sumadas son lo mismo
-// que `deudaEnAtraso` del buró de Novadata (process.ts).
+// que `deudaEnAtraso` del buró de Proveedor_Info_1 (process.ts).
 export function enAtraso(bloque) {
   if (!bloque) return null;
   return redondear(

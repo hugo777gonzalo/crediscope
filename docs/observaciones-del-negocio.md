@@ -115,7 +115,7 @@ podrían ir a revisar o incluso aprobar si el resto lo respalda.
 
 | Motivo bloqueante | Personas | Qué es en realidad |
 |---|---|---|
-| Lista negra interna de Novadata | 40 | La lista de malos pagadores de la financiera de Novadata (Novacredit), no una lista de cumplimiento. 39 dicen "Mal Pagador / Reportado por Legal" en etapa prejudicial, judicial o extrajudicial (3 de ellos con pagos o abonos registrados); 1 es fraude documental (IVA alterados). La cédula coincide en los 40. 39 son de 2026. |
+| Lista negra interna de Proveedor_Info_1 | 40 | La lista de malos pagadores de la financiera de Proveedor_Info_1 (Novacredit), no una lista de cumplimiento. 39 dicen "Mal Pagador / Reportado por Legal" en etapa prejudicial, judicial o extrajudicial (3 de ellos con pagos o abonos registrados); 1 es fraude documental (IVA alterados). La cédula coincide en los 40. 39 son de 2026. |
 | Delito de seguridad (denuncias como acusado) | 24 | Narcotráfico 8, extorsión 3, armas 3, lavado 2-3, asociación ilícita, delincuencia organizada, trata. |
 | Listas de control (OFAC / providencias) | 14 | **Los 40 registros OFAC (10 personas) no traen cédula**: la coincidencia es sólo por nombre, igual que un homónimo. Las providencias (5) son certificaciones o retenciones pedidas por Fiscalía en investigaciones (lavado, estafa, peculado). |
 | Listas internas de control | 5 | OFAC/CONSEP/providencias de las bases internas. |
@@ -218,14 +218,14 @@ dividendo no aparece separado, o un atraso reciente ya regularizado.
    B1-E sin monto en atraso, tenga o no saldo por vencer.
 2. Darle al marco la escala en días (A1 al día … E más de N días) para que
    la calificación pese por sí sola aunque el monto no venga.
-3. Preguntarle a Novadata qué significa una B2 con todo por vencer.
+3. Preguntarle a Proveedor_Info_1 qué significa una B2 con todo por vencer.
 
 ---
 
 ## O-5. Independiente con crédito previo: la capacidad ya la evaluó otro
 
 **Caso:** análisis `8b28ca58-403f-41a7-9af4-a0f895a861fd`, "revisar" (480).
-Banco A1, cooperativa al día, Excelente Pagador en Novadata. Pesan: una
+Banco A1, cooperativa al día, Excelente Pagador en Proveedor_Info_1. Pesan: una
 demanda de cobro de pagaré de 2024, deuda alta frente a un ingreso al IESS
 que es el Ingreso Mínimo SBU y que está Por confirmar (afiliación
 voluntaria).
@@ -240,7 +240,7 @@ casi nunca se aprueban). Dos cosas del caso para verificar en nuestros datos:
 - El modelo dice que el empleo actual como vendedora (8 meses) no concuerda
   con la afiliación voluntaria ni con la continuidad laboral no vigente. Hay
   que ver si es una inconsistencia real o una lectura nuestra del IESS.
-- El modelo sospecha que el crédito interno de Novadata y la operación del
+- El modelo sospecha que el crédito interno de Proveedor_Info_1 y la operación del
   banco son la misma deuda contada dos veces. Si pasa seguido, infla la
   deuda total de mucha gente.
 
@@ -279,7 +279,7 @@ crudo y contados como "no medido"):
 | D. Bloqueos dudosos | Providencia que es sólo certificación | a confirmar | 4 |
 | D. Bloqueos dudosos | **Bloqueo sólo por motivos dudosos** | exacto | **48 de 77** |
 | E. Datos raros | Calificación B1-E sin monto en atraso | exacto | 5 |
-| E. Datos raros | Saldo con Novadata igual a otra deuda | a confirmar | 69 |
+| E. Datos raros | Saldo con Proveedor_Info_1 igual a otra deuda | a confirmar | 69 |
 | E. Datos raros | Empleo actual y aporte sin RUC | a confirmar | 4 |
 
 222 de las 273 personas encienden al menos uno; 59 encienden tres o más (la
@@ -291,7 +291,7 @@ Lo que la corrida agregó a lo que ya se sabía:
   o es un redondeo declarado ("ronda los", "supera los"). La primera versión
   marcaba "$116 mil" como $116 y montos de renta que vienen dentro de un texto
   del perfil; corregido.
-- **El saldo con Novadata coincide con otra deuda en 69 personas, y en 68 es
+- **El saldo con Proveedor_Info_1 coincide con otra deuda en 69 personas, y en 68 es
   una operación del Banco Internacional.** Todo indica que el crédito de Novacredit se reporta en el
   buró como de ese banco: es la misma deuda vista dos veces. La deuda total
   del perfil no la suma dos veces (no incluye el saldo interno), pero el

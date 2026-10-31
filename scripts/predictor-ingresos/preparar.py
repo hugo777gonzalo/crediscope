@@ -27,10 +27,10 @@ def main():
     con = duckdb.connect()
     embudo = {}
 
-    # 1) Flujos de ingreso del titular. Lo recuperado de Novadata (el salario del IESS) es lo verificado; el resto, lo no verificado.
+    # 1) Flujos de ingreso del titular. Lo recuperado de Proveedor_Info_1 (el salario del IESS) es lo verificado; el resto, lo no verificado.
     flujos = con.execute(f"""select id_persona_requerimiento,
         sum(case when estado and ingreso>0 then ingreso else 0 end) tot_f,
-        sum(case when estado and ingreso>0 and upper(observacion_categoria) like 'RECUPERADO NOVADATA%' then ingreso else 0 end) ver_f,
+        sum(case when estado and ingreso>0 and upper(observacion_categoria) like 'RECUPERADO PROVEEDOR_INFO_1%' then ingreso else 0 end) ver_f,
         max(case when estado and upper(observacion_categoria) like '%PREDICTOR%' then 1 else 0 end) f_pred,
         sum(case when estado then coalesce(monto_banco_principal,0)+coalesce(monto_banco_secundaria,0) else 0 end) m_banco,
         sum(case when estado then coalesce(monto_iva,0)+coalesce(monto_iva_semestral,0) else 0 end) m_iva

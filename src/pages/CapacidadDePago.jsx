@@ -282,7 +282,7 @@ export default function CapacidadDePago() {
                     Sin consulta de Equifax: de los bancos se conoce el saldo, no la cuota. <Link to={`/equifax/${cedula}`}>Ver la pestaña Equifax</Link>.
                   </>
                 ) : (
-                  <>Cuotas de cooperativas según Novadata; los bancos no informan la cuota.</>
+                  <>Cuotas de cooperativas según Proveedor_Info_1; los bancos no informan la cuota.</>
                 )}
               </p>
             </section>

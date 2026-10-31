@@ -1,4 +1,4 @@
-// Explorador de Novadata: consulta las 52 fuentes para una cédula
+// Explorador de Proveedor_Info_1: consulta las 52 fuentes para una cédula
 // usando credenciales que el usuario ingresa en el momento (no las
 // secrets de servicio) y devuelve los datos crudos de cada una — para
 // inspeccionar la ingesta sin persistir nada ni tocar la base de datos.
@@ -7,7 +7,7 @@
 // local.
 //
 // Hasta la migración 078 devolvía además un "resumen curado por eje"
-// que armaba normalize.ts: una segunda forma de leer a Novadata, con
+// que armaba normalize.ts: una segunda forma de leer a Proveedor_Info_1, con
 // sus propias reglas, que había que mantener en sync con process.ts.
 // Para un inspector, el crudo de cada fuente dice más que un recorte, y
 // una sola implementación de cómo se lee la fuente es justamente lo que
@@ -15,7 +15,7 @@
 //
 // Body esperado: { "username": "...", "password": "...", "cedula": "..." }
 //
-// IMPORTANTE: esta función recibe la contraseña de Novadata del usuario
+// IMPORTANTE: esta función recibe la contraseña de Proveedor_Info_1 del usuario
 // en cada request. Nunca se loguea ni se persiste — se usa una sola vez
 // para pedir el token y se descarta. Exige sesión de admin (ver abajo y
 // supabase/config.toml).
@@ -23,7 +23,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
-import { consultarTodasLasFuentes } from "../_shared/novadata-client.ts";
+import { consultarTodasLasFuentes } from "../_shared/proveedor-info-1-client.ts";
 import { estadoPorFuente } from "../_shared/calidad-de-la-consulta.ts";
 import { evaluarControlesBloqueo } from "../_shared/controles-bloqueo.ts";
 
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   }
 
   // Sólo admin, con sesión. Hasta el 2026-10-09 corría sin JWT: cualquiera
-  // en internet podía usarla para probar usuarios y contraseñas de Novadata
+  // en internet podía usarla para probar usuarios y contraseñas de Proveedor_Info_1
   // por fuerza bruta, y quien tuviera unas válidas consultaba personas sin
   // dejar rastro en audit_log (auditoría de seguridad de ese día). La
   // pantalla ya era sólo de admin; ahora también lo es la función.

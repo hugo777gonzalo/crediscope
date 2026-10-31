@@ -33,6 +33,8 @@ const RAIZ = path.resolve(import.meta.dirname, "..");
 // El orden importa sólo para la lectura del informe.
 export const REGLAS = [
   // ---- Palabras que el negocio retiró (CLAUDE.md, "Cómo se escribe")
+  // El nombre anterior del proveedor se arma partido: el control no puede ser quien lo vuelva a escribir en el repositorio.
+  { id: "proveedor-anterior", nivel: "error", patron: new RegExp("nova" + "data", "i"), motivo: "El proveedor se llama Proveedor_Info_1 (contrato, 2026-10-31); el nombre anterior no vuelve a ninguna pantalla.", cambiar: "Proveedor_Info_1" },
   { id: "asalariado", nivel: "error", patron: /\basalariad[oa]s?\b/i, motivo: "En el negocio se dice «dependiente» (relación de dependencia). El negocio lo corrigió el 2026-09-25.", cambiar: "dependiente" },
   { id: "piso", nivel: "error", patron: /\bpisos?\b/i, motivo: "«Piso» no se usa en Ecuador. Es «ingreso reportado al IESS» y, si es el SBU o está a ±5%, «Ingreso Mínimo SBU» (esIngresoMinimoSbu).", cambiar: "ingreso reportado al IESS / mínimo" },
   { id: "retroalimentacion", nivel: "error", patron: /\bretroalimentaci[oó]n\b/i, permitir: /retirad[oa]|anterior/i, motivo: "El Laboratorio reemplazó a Retroalimentación el 2026-10-03.", cambiar: "Laboratorio / prueba retrospectiva" },
@@ -49,6 +51,7 @@ export const REGLAS = [
   { id: "explorador-de-fuentes", nivel: "error", patron: /\bExplorador de Fuentes\b/, motivo: "Se llama «Explorador de la fuente de datos» (2026-10-12): «fuentes» ya es de dónde viene el ingreso en otro módulo.", cambiar: "Explorador de la fuente de datos" },
   { id: "operaciones-propias-buro", nivel: "error", patron: /\bOperaciones propias en bur[oó] de cr[eé]dito\b/, motivo: "Cuenta filas agrupadas por entidad, tipo y calificación, no operaciones: 12 contra 15 en un caso con el mismo saldo (negocio, 2026-10-31).", cambiar: "Líneas de deuda propias en buró de crédito" },
   { id: "empleos-registrados", nivel: "error", patron: /\bEmpleos (registrados en total|en el historial)\b/, motivo: "Desde estructura-v16 cuenta empleadores distintos, no empleos (negocio, 2026-10-31).", cambiar: "Empleadores registrados en el IESS" },
+  { id: "sueldo-mas-alto", nivel: "error", patron: /\bSueldo m[aá]s alto\b/, motivo: "El mismo dato tenía dos nombres, uno por pantalla (negocio, 2026-10-31).", cambiar: "Salario más alto registrado" },
   { id: "reportes-menu", nivel: "error", patron: /^Reportes$/, motivo: "El menú «Reportes» pasó a «Monitoreo» el 2026-10-12.", cambiar: "Monitoreo" },
   { id: "inteligencia-de-negocios", nivel: "error", patron: /\bInteligencia de Negocios\b/, motivo: "Era la página de Reportes, hoy «Monitoreo › Panorama». «Inteligencia de Negocio» (singular) es del Laboratorio.", cambiar: "Monitoreo / Panorama" },
   { id: "cliente-generico", nivel: "aviso", patron: /(?<![Pp]erfil del )\b[Cc]lientes?\b(?! (activo|activa|cerrado|cerrada|interno)\b)/, motivo: "«Cliente» es quien tiene un crédito (Cliente activo, Cliente cerrado); antes es una persona (docs/modelo-de-la-persona.md, decisión del 2026-10-12).", cambiar: "persona" },

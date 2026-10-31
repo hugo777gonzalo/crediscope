@@ -216,7 +216,7 @@ const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // El token y el pedido en curso viven en el módulo. Con el pedido
 // compartido, varias consultas simultáneas con el token vencido hacen UN
-// inicio de sesión y no uno cada una (la lección de Novadata, E5: eran 52).
+// inicio de sesión y no uno cada una (la lección de Proveedor_Info_1, E5: eran 52).
 let tokenGuardado: { valor: string; venceEn: number } | null = null;
 let tokenEnCurso: Promise<string> | null = null;
 

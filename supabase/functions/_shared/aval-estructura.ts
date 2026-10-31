@@ -1,5 +1,5 @@
 // Estructura estandarizada de Aval — el análogo de buildStandardProfile de
-// Novadata, pero para el buró Aval. Toma el sobre de una consulta A200 y
+// Proveedor_Info_1, pero para el buró Aval. Toma el sobre de una consulta A200 y
 // deriva campos planos de valor + listas de deudas por entidad.
 //
 // v1 (2026-09-20) diseñada y validada contra ~510 consultas del ambiente de

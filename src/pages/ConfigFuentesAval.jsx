@@ -8,8 +8,8 @@ import SelectorDeBuro from "../components/SelectorDeBuro.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 
-// Análogo a ConfigFuentes.jsx (Novadata) pero para Aval -- y con otra
-// forma, a propósito. Novadata son 52 endpoints independientes, cada uno
+// Análogo a ConfigFuentes.jsx (Proveedor_Info_1) pero para Aval -- y con otra
+// forma, a propósito. Proveedor_Info_1 son 52 endpoints independientes, cada uno
 // apagable sin tocar los demás. Aval es UNA sola llamada HTTP que trae
 // sus 34 segmentos de un tirón: no hay "el recurso de tarjetas" que
 // desactivar sin desactivar todo. El on/off acá es de todo o nada, y vive
@@ -45,7 +45,7 @@ export default function ConfigFuentesAval() {
   }
 
   const descripcion =
-    "Aval es una sola consulta por persona, no 52 recursos independientes como Novadata: no hay nada que prender o apagar por segmento. Desactivarlo acá deja de consultar a Aval para cualquier persona nueva; no borra lo ya guardado.";
+    "Aval es una sola consulta por persona, no 52 recursos independientes como Proveedor_Info_1: no hay nada que prender o apagar por segmento. Desactivarlo acá deja de consultar a Aval para cualquier persona nueva; no borra lo ya guardado.";
 
   return (
     <div>

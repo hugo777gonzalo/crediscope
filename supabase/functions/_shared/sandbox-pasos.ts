@@ -21,7 +21,7 @@ import type { ResultadoDelPaso } from "./cola-de-evaluaciones.ts";
 import type { DatosDeLaEvaluacion } from "./evaluacion-de-la-api.ts";
 import type { ResultadoControlBloqueo } from "./types.ts";
 import { casoDe } from "./sandbox-casos.ts";
-import { equifaxSimulado, modeloSimulado, novadataSimulado, VERSION_DEL_SIMULADOR } from "./sandbox-simuladores.ts";
+import { equifaxSimulado, modeloSimulado, proveedorInfo1Simulado, VERSION_DEL_SIMULADOR } from "./sandbox-simuladores.ts";
 
 // deno-lint-ignore no-explicit-any
 type Fila = Record<string, any>;
@@ -32,7 +32,7 @@ type Fila = Record<string, any>;
 const DEMORA_MS = 120_000;
 
 function perfilSimulado(identificacion: string) {
-  const raw = novadataSimulado(identificacion);
+  const raw = proveedorInfo1Simulado(identificacion);
   return {
     raw,
     standard_profile: buildStandardProfile(raw, identificacion, CORTE_IESS_CONOCIDO).profile,

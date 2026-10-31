@@ -29,7 +29,7 @@ import { categoriaDeDemanda, CATEGORIA_COBRO } from "./demandas.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
 import { fechasDelRuc } from "./ruc.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import type { RespuestaNovadata } from "./types.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -181,7 +181,7 @@ const FUENTES_DEL_EVENTO: Partial<Record<TipoEvento, string[]>> = {
   demanda_civil: ["demandas"],
   proceso_fiscalia: ["denuncias"],
   // Las pensiones del perfil salen de las dos fuentes del SUPA (process.ts).
-  pension_alimenticia: ["pensionAlimenticia", "pensionAlimenticiaNovadata"],
+  pension_alimenticia: ["pensionAlimenticia", "pensionAlimenticiaProveedorInfo1"],
   perdida_trabajo: ["basesInternas"],
   trabajo_nuevo: ["basesInternas"],
   // El RUC activo mira el registro y sus establecimientos (ruc.ts).
@@ -189,7 +189,7 @@ const FUENTES_DEL_EVENTO: Partial<Record<TipoEvento, string[]>> = {
 };
 
 function quienContesto(raw: AnyRecord): Set<string> {
-  return new Set(Object.entries(estadoPorFuente(raw as unknown as RespuestaNovadata)).filter(([, e]) => CONTESTO.has(e)).map(([f]) => f));
+  return new Set(Object.entries(estadoPorFuente(raw as unknown as RespuestaProveedorInfo1)).filter(([, e]) => CONTESTO.has(e)).map(([f]) => f));
 }
 
 // ---------------------------------------------------------------- buró

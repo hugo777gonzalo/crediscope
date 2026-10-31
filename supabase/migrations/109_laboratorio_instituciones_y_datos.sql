@@ -8,7 +8,7 @@
 --    se inactivan o se cierran (sin política de borrado).
 --    Sigue abierta la pregunta de fondo: una instalación para varias
 --    instituciones o una por institución.
--- 2. El centro de datos: qué contestó cada fuente de Novadata, por semana,
+-- 2. El centro de datos: qué contestó cada fuente de Proveedor_Info_1, por semana,
 --    y si la proporción que contesta cayó en la última semana. El caso real
 --    del 2026-10-03 (el estado "ABI" de los establecimientos) no se vio
 --    hasta comparar dos consultas.

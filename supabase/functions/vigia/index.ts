@@ -43,7 +43,7 @@ import { clavesIguales } from "../_shared/autorizacion.ts";
 import { registrarLlamadaLlm } from "../_shared/llm-log.ts";
 import { MODELO } from "../_shared/llm-scoring.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
-import { probarFuenteDeDatos } from "../_shared/novadata-client.ts";
+import { probarFuenteDeDatos } from "../_shared/proveedor-info-1-client.ts";
 import { avisar, hayCanal } from "../_shared/notificador.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";

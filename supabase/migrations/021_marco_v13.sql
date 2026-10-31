@@ -8,7 +8,7 @@
 --     la muestra estaban mal marcados. No requiere cambio de config
 --     (mismos campos, el dato que calculan ahora es el correcto).
 --   - seguridadSocial.afiliadoIessActivo ahora puede ser null (antes
---     siempre false cuando Novadata no traía el recurso de afiliación
+--     siempre false cuando Proveedor_Info_1 no traía el recurso de afiliación
 --     IESS -- pasa en 32 de 40 clientes de la muestra).
 --   - laboral.antiguedadEmpleoActualMeses/numeroEmpleadoresUltimos24Meses/
 --     duracionEmpleoMasLargoMeses: ya no asumen "sigue activo hoy" solo
