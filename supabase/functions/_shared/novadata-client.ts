@@ -48,6 +48,7 @@
 // partes que les corresponden — no hace falta pedirlo de nuevo.
 
 import type { NovadataEnvelope, RespuestaNovadata, ResultadoFuente } from "./types.ts";
+import { impedirLaSalidaDeUnaSimulada } from "./identificacion.ts";
 
 const NOVADATA_BASE_URL = Deno.env.get("NOVADATA_BASE_URL") ?? "https://novadata.novascoring.com";
 const NOVADATA_USERNAME = Deno.env.get("NOVADATA_USERNAME") ?? "";
@@ -317,6 +318,7 @@ export async function consultarTodasLasFuentes(
   disabledResources: Set<string> = new Set(),
   plazoMs: number = PLAZO_POR_FUENTE_MS
 ): Promise<RespuestaNovadata> {
+  impedirLaSalidaDeUnaSimulada(cedula, "Novadata");
   const fuentes = Object.entries(RUTAS_POR_FUENTE);
 
   // Un token para toda la consulta. Si no se puede obtener, cada fuente

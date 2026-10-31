@@ -18,6 +18,7 @@ import { clasificarIdentificacion } from "./identificacion.ts";
 import { type ErrorDeCampo } from "./datos-de-la-solicitud.ts";
 import { type PedidoDeSolicitud, validarPedidoDeSolicitud } from "./modalidades.ts";
 import { uuidDeLaEvaluacion } from "./cola-de-evaluaciones.ts";
+import { esCasoDelSandbox } from "./sandbox-casos.ts";
 
 export interface PedidoDeLaApi extends PedidoDeSolicitud {
   /** La cédula con la que se consulta (un RUC de persona natural ya viene reducido). */
@@ -91,7 +92,9 @@ export async function huellaDelPedido(cuerpo: unknown): Promise<string> {
   return "sha256:" + [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export function validarPedidoDeLaApi(cuerpo: unknown, ahora: Date = new Date()): ResultadoDelPedido {
+// `sandbox`: si el interruptor de la puerta está encendido (API_SANDBOX). Apagado,
+// una identificación de prueba es inválida, como dice la especificación de producción.
+export function validarPedidoDeLaApi(cuerpo: unknown, ahora: Date = new Date(), opciones: { sandbox?: boolean } = {}): ResultadoDelPedido {
   if (!esObjeto(cuerpo)) {
     return { ok: false, codigo: "cuerpo-invalido", detalle: "El cuerpo tiene que ser un objeto JSON.", errores: [{ campo: "", motivo: "El cuerpo tiene que ser un objeto JSON." }] };
   }
@@ -125,6 +128,8 @@ export function validarPedidoDeLaApi(cuerpo: unknown, ahora: Date = new Date()):
       errores.push({ campo: "/persona/identificacion", motivo: "Una cédula tiene 10 dígitos." });
     } else if (tipo === "ruc" && numero.length !== 13) {
       errores.push({ campo: "/persona/identificacion", motivo: "Un RUC tiene 13 dígitos." });
+    } else if (tipo === "cedula" && opciones.sandbox === true && esCasoDelSandbox(numero)) {
+      identificacion = { tipo: "cedula", ingresado: numero, cedula: numero, consultable: true, mensaje: "" };
     } else if (tipo === "cedula" || tipo === "ruc") {
       identificacion = clasificarIdentificacion(numero);
     }

@@ -20,6 +20,7 @@ import { guardarCrudoNovadata } from "./crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import { loadCorteIess, loadDisabledResources } from "./runtime-config.ts";
 import { cuantasFuentesContestaron, estadoPorFuente, laConsultaSirve, porQueNoSirve } from "./calidad-de-la-consulta.ts";
+import type { RespuestaNovadata } from "./types.ts";
 
 export interface OpcionesDeConsultaDePerfil {
   // Cliente de servicio de supabase-js: escribe en clients, client_profiles,
@@ -50,17 +51,15 @@ export type ResultadoDeConsultaDePerfil =
   // `cuerpo` es el mismo JSON que devolvía la función.
   | { ok: false; status: 404 | 503; cuerpo: Record<string, unknown> };
 
-export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Promise<ResultadoDeConsultaDePerfil> {
-  const { db, cedula, ingresado, actorId } = o;
+// Qué dice lo que contestó la fuente, antes de guardar nada. Sale aparte para que
+// el sandbox (sandbox-pasos.ts) decida con la misma regla que una consulta real.
+export function leerLaConsulta(
+  raw: RespuestaNovadata,
+  o: Pick<OpcionesDeConsultaDePerfil, "cedula" | "ingresado" | "tipoIdentificacion">,
+): { ok: true; estadoDeCadaFuente: Record<string, string> } | { ok: false; status: 404 | 503; cuerpo: Record<string, unknown> } {
+  const { cedula, ingresado } = o;
 
-  // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
-  //    Recursos deshabilitados en novadata_resource_config se saltan
-  //    (ver _shared/runtime-config.ts).
-  const disabledResources = await loadDisabledResources(db);
-  const inicioIngesta = Date.now();
-  const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
-
-  // 2. ¿La fuente contestó algo?
+  // ¿La fuente contestó algo?
   //
   // Esto va ANTES de mirar si la persona existe, porque si ninguna
   // fuente respondió tampoco sabemos si existe. El 2026-09-15 una
@@ -86,7 +85,7 @@ export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Pr
     };
   }
 
-  // 3. ¿Existe esta persona?
+  // ¿Existe esta persona?
   //
   // La fuente responde HTTP 200 aunque no exista: lo dice adentro del
   // cuerpo. Sin esta comprobación se guardaba un Perfil del Cliente
@@ -110,6 +109,24 @@ export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Pr
       },
     };
   }
+
+  return { ok: true, estadoDeCadaFuente };
+}
+
+export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Promise<ResultadoDeConsultaDePerfil> {
+  const { db, cedula, actorId } = o;
+
+  // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
+  //    Recursos deshabilitados en novadata_resource_config se saltan
+  //    (ver _shared/runtime-config.ts).
+  const disabledResources = await loadDisabledResources(db);
+  const inicioIngesta = Date.now();
+  const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
+
+  // 2 y 3. ¿Contestó la fuente? ¿Existe la persona?
+  const lectura = leerLaConsulta(raw, o);
+  if (!lectura.ok) return lectura;
+  const { estadoDeCadaFuente } = lectura;
 
   // 4. Cliente: obtener o crear.
   //

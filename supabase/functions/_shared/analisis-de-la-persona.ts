@@ -33,6 +33,7 @@ import { buroVigenteDeLaPersona } from "./buro-de-la-institucion.ts";
 import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado } from "./fila-del-analisis.ts";
 import { loadCorteIess, loadDisabledFields, loadDisabledResources } from "./runtime-config.ts";
 import { registrarLlamadaLlm } from "./llm-log.ts";
+import { impedirLaSalidaDeUnaSimulada } from "./identificacion.ts";
 
 export interface OpcionesDeAnalisis {
   // Cliente con privilegios de servicio: es el único que puede escribir en
@@ -58,6 +59,9 @@ export interface OpcionesDeAnalisis {
 // deno-lint-ignore no-explicit-any
 export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<string, any>> {
   const { db, cedula, profileId, actorId } = o;
+  // Acá y no en `puntuarPedido`: el pedido al modelo ya no lleva la identificación
+  // (E27), así que es el último lugar donde todavía se la puede ver.
+  impedirLaSalidaDeUnaSimulada(cedula, "el modelo");
   const esPrueba = o.esPrueba === true;
 
   // 1. Cliente: obtener o crear

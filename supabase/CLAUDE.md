@@ -121,6 +121,21 @@ su guía: `docs/equifax.md`.
     puntero JSON de cada campo. Las funciones que no atiende un navegador usan
     `cabecerasSinCors()`, que sí lleva el sello del despliegue (el corredor lo confirma con
     OPTIONS).
+  - **El sandbox** (`sandbox-casos.ts`, `sandbox-simuladores.ts`, `sandbox-pasos.ts`; decisión
+    del negocio, 2026-10-30). Las identificaciones `0000000001` a `0000000007` de la
+    especificación corren por el trabajador con simuladores de Novadata, Equifax y el modelo:
+    `correrPaso()` las desvía antes de todo, y lo demás (perfil, controles, estructura,
+    capacidad, «parcial nunca aprueba») es el código real. Cuatro controles: la identificación
+    (`esIdentificacionSimulada()`, `00` es una provincia que no existe y
+    `clasificarIdentificacion()` la sigue rechazando), el bloqueo en las tres salidas
+    (`impedirLaSalidaDeUnaSimulada()`), el interruptor `API_SANDBOX=activo` de `api-v1`
+    (apagado por defecto: `identificacion-invalida`) y `sandbox.test.ts`, con una trampa en
+    `fetch`. Lo simulado queda sólo en `solicitudes` y `audit_log`: una fila en
+    `consultas_equifax` gastaría el tope diario y parecería un cobro, y una en `clients` entra
+    a los totales. Un total nuevo sobre `solicitudes` filtra el prefijo `00`.
+    **Cuando llegue OAuth, una credencial de sandbox acepta SÓLO estas identificaciones**: hoy
+    la puerta es de administradores, y con una credencial de prueba se consultaría a una
+    persona de verdad.
 - `variables-de-ingreso.ts` — el vector de entrada del predictor de ingresos (niveles 1 y 2)
   desde el perfil y las tablas de Equifax (`equifax_analisis_credito`, desde la 138). Una sola
   implementación: lo que no coincide con el extracto de AWS con el que se entrenará el modelo
@@ -148,7 +163,12 @@ su guía: `docs/equifax.md`.
 
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
-  - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`
+  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/`
+    (`api`: `sandbox.test.ts` valida cada respuesta contra `api/openapi.yaml`).
+
+    `--node-modules-dir=none` hace falta desde que una prueba alcanza los tipos de supabase-js
+    (`import type`): sin ella, `deno test` busca `npm:@types/node` en el `node_modules` de la
+    pantalla y falla antes de correr nada, con o sin esa carpeta. `deno check` no lo ve.
   - `npx --yes deno@2.9.6 check --no-lock supabase/functions/*/index.ts`
 
   Las corre también la integración continua. Una regla nueva en `_shared`

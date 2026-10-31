@@ -62,7 +62,10 @@ jobs:
       # El TypeScript de las funciones no lo verifica el despliegue: hasta
       # el 2026-10-09 nunca se había chequeado (dio cero errores).
       - run: deno check --no-lock supabase/functions/*/index.ts
-      - run: deno test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/
+      # --node-modules-dir=none: con el package.json de la raíz, deno test busca
+      # npm:@types/node (lo piden los tipos de supabase-js) en un node_modules que
+      # este control no instala y no llega a correr. deno check no lo ve.
+      - run: deno test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/
 
   guiones:
     name: guiones
