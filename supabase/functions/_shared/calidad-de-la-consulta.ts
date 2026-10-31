@@ -131,6 +131,56 @@ export function porQueNoSirve(estado: Record<string, string>): string {
 }
 
 /**
+ * Las fuentes sin las cuales el modelo no analiza, con el tema que cada una
+ * responde (negocio, 2026-10-31).
+ *
+ * `laConsultaSirve` alcanza para guardar un perfil, no para calificar. El
+ * 2026-10-31 Novadata contestó error 500 en 41 de 52 fuentes para c-79e1ac23,
+ * las seis que contestaron bastaron para guardarlo, y el modelo dio un score
+ * leyendo menos de la cuarta parte de su deuda: el hipotecario del BIESS, que
+ * trae Equifax, estaba en una de las fuentes caídas.
+ *
+ * Son pocas a propósito: no contestar `vehiculos` deja un hueco que el modelo
+ * sabe decir, y contestar estas define qué debe y de qué vive la persona. El
+ * mecanizado no está: el empleo cae a los aportes de `basesInternas`.
+ */
+export const FUENTES_QUE_DECIDEN: Readonly<Record<string, string>> = {
+  general: "la identidad",
+  basesInternas: "los aportes al IESS",
+  creditoHipotecario: "los préstamos del BIESS",
+  creditoQuirografario: "los préstamos del BIESS",
+  buroCreditoSuper: "el buró de bancos",
+};
+
+// "deshabilitado" la apagó quien administra la configuración: frenar por eso
+// dejaría sin análisis a toda la base por un ajuste, y no es que no contestó.
+const CONTESTO_O_SE_APAGO: ReadonlySet<string> = new Set(["ok", "ok_vacio", "deshabilitado"]);
+
+/**
+ * Las fuentes clave que no contestaron. Se lee `client_profiles.estado_por_fuente`
+ * o lo que devuelve `estadoPorFuente`. Sin ese detalle no hay nada que juzgar:
+ * el 2026-10-31 lo tienen los 3.765 últimos perfiles de personas reales.
+ */
+export function fuentesClaveSinRespuesta(estado: Record<string, string> | null | undefined): string[] {
+  if (!estado || Object.keys(estado).length === 0) return [];
+  return Object.keys(FUENTES_QUE_DECIDEN).filter((fuente) => !CONTESTO_O_SE_APAGO.has(estado[fuente]));
+}
+
+export function elPerfilSePuedeAnalizar(estado: Record<string, string> | null | undefined): boolean {
+  return fuentesClaveSinRespuesta(estado).length === 0;
+}
+
+/**
+ * El mensaje para quien pidió el análisis: nombra los temas y no las fuentes,
+ * y dice qué hacer. No lleva nada de lo que contestó la fuente.
+ */
+export function porQueNoSePuedeAnalizar(estado: Record<string, string> | null | undefined): string {
+  const temas = [...new Set(fuentesClaveSinRespuesta(estado).map((f) => FUENTES_QUE_DECIDEN[f]))];
+  const lista = temas.length > 1 ? `${temas.slice(0, -1).join(", ")} y ${temas[temas.length - 1]}` : temas[0];
+  return `La consulta quedó incompleta: no se pudo obtener ${lista}. El modelo no analizó a la persona. Reconsultala en unos minutos.`;
+}
+
+/**
  * ¿Se puede afirmar que esta persona NO aporta al IESS?
  *
  * Los aportes llegan en basesInternas (nova_bases_internas -> tiess). Si

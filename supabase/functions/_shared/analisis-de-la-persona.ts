@@ -27,7 +27,13 @@ import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
 import { columnasDelPerfil } from "./columnas-del-perfil.ts";
 import { guardarCrudoNovadata } from "./crudo-novadata.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
-import { cuantasFuentesContestaron, estadoPorFuente } from "./calidad-de-la-consulta.ts";
+import {
+  cuantasFuentesContestaron,
+  elPerfilSePuedeAnalizar,
+  estadoPorFuente,
+  fuentesClaveSinRespuesta,
+  porQueNoSePuedeAnalizar,
+} from "./calidad-de-la-consulta.ts";
 import { armarPedidoScoring, CONFIG_LLM, huellaDelPedido, puntuarPedido, versionDelMarco } from "./llm-scoring.ts";
 import { buroVigenteDeLaPersona } from "./buro-de-la-institucion.ts";
 import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado } from "./fila-del-analisis.ts";
@@ -53,6 +59,15 @@ export interface OpcionesDeAnalisis {
   // Se mezcla en el `contexto` de llm_llamadas y en audit_log.meta
   // ("client.analyze"). Las claves propias del análisis mandan sobre estas.
   contextoExtra?: Record<string, unknown>;
+}
+
+// El modelo no corrió porque faltan las fuentes que deciden. Quien llama la
+// separa de un error: el mensaje es para el analista y reconsultar lo resuelve.
+export class ConsultaIncompleta extends Error {
+  constructor(estado: Record<string, string>) {
+    super(porQueNoSePuedeAnalizar(estado));
+    this.name = "ConsultaIncompleta";
+  }
 }
 
 // Devuelve la fila de analysis_results (select *).
@@ -92,9 +107,8 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
   // null si se reutiliza un client_profiles existente (no hay ingesta
   // en esta corrida, ver duracion_ingesta_ms en la migración).
   let duracionIngestaMs: number | null;
-  // Qué contestó cada fuente. Sólo existe cuando hubo ingesta: al
-  // reutilizar un perfil, la calidad de esa consulta ya está guardada
-  // en su propia fila.
+  // Qué contestó cada fuente: el de esta ingesta o, al reutilizar un
+  // perfil, el que quedó guardado en su fila.
   let estadoDeCadaFuente: Record<string, string> = {};
   // Perfil al que queda atado este análisis. Siempre existe: si no se
   // reutiliza uno, se persiste el que se acaba de calcular (ver 032).
@@ -103,7 +117,7 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
   if (profileId) {
     const { data: reused, error: reusedError } = await db
       .from("client_profiles")
-      .select("standard_profile, control_bloqueo")
+      .select("standard_profile, control_bloqueo, estado_por_fuente")
       .eq("id", profileId)
       .eq("client_id", client.id)
       .maybeSingle();
@@ -111,6 +125,7 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
     if (!reused) throw new Error("No se encontró el perfil a reutilizar (profileId) para esta cédula");
     profile = reused.standard_profile;
     controlBloqueo = reused.control_bloqueo;
+    estadoDeCadaFuente = reused.estado_por_fuente ?? {};
     duracionIngestaMs = null;
     clientProfileId = profileId;
   } else {
@@ -167,6 +182,21 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
     if (perfilError) throw perfilError;
     clientProfileId = guardado.id;
     await guardarCrudoNovadata(db, client.id, guardado.id, cedula, raw);
+  }
+
+  // Sin las fuentes que deciden no se llama al modelo: el perfil queda
+  // guardado, pero un score sobre él afirma una deuda y un ingreso que nadie
+  // leyó. Una llamada de prueba (esPrueba) sigue: existe para ejercitar la
+  // llamada, y el vigía no debe dar una alarma por una caída de Novadata.
+  if (!esPrueba && !elPerfilSePuedeAnalizar(estadoDeCadaFuente)) {
+    await db.from("ingestion_runs").update({ status: "fallido", completed_at: new Date().toISOString() }).eq("id", run.id);
+    await db.from("audit_log").insert({
+      actor: actorId,
+      action: "client.analyze_frenado",
+      client_id: client.id,
+      meta: { ...o.contextoExtra, ingestion_run_id: run.id, client_profile_id: clientProfileId, fuentes: fuentesClaveSinRespuesta(estadoDeCadaFuente) },
+    });
+    throw new ConsultaIncompleta(estadoDeCadaFuente);
   }
 
   // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se

@@ -194,6 +194,10 @@ su guía: `docs/equifax.md`.
   dígito es falsa (hay personas reales con 6).
 - Una consulta que no contestó ninguna fuente no se guarda: sale una
   ficha en blanco igual a la de alguien sin historial.
+- El modelo no corre sin `FUENTES_QUE_DECIDEN` (`calidad-de-la-consulta.ts`,
+  negocio, 2026-10-31): `analizarPersona()` lanza `ConsultaIncompleta` antes de
+  llamarlo. Los pasos de las evaluaciones cortan ya en el perfil, antes del
+  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue.
 - "La fuente dice que no hay" ≠ "la fuente no contestó".
   `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
   `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.
