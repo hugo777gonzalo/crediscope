@@ -63,6 +63,12 @@ Lo abierto está en `docs/pendientes.md`; el diseño y lo medido, en
     reutilizar, tope diario, consultar, guardar, auditar). Lo usan la
     función `consultar-equifax` y `scripts/consultar-equifax-local.mjs`:
     una sola implementación.
+  - `scripts/importar-equifax-desde-aws.mjs`: carga en `consultas_equifax`
+    las respuestas crudas que Novacredit ya pagó (respaldo en
+    `research/ingresos-aws/crudo-equifax/`, ver `docs/base-aws-originacion.md`)
+    para reutilizarlas en vez de cobrar de nuevo. No llama a Equifax; en seco
+    por defecto; sólo las vigentes; sin personas nuevas. Sin correr todavía y
+    pendiente de confirmar el contrato.
   - `_shared/vigencia-mensual.ts`: una consulta vale hasta el 17 de cada
     mes; la comparte Aval (`aval-vigencia.ts`).
   - Tabla `consultas_equifax` (122): `respuesta_cruda` entera e inmutable.

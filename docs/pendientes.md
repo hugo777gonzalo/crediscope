@@ -127,6 +127,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    (manifiesto, estado por formato, un `.jsonl.gz` por lote). Falta revisar si el contrato con
    Equifax permite conservar y reutilizar sus respuestas (punto abierto de
    `docs/base-aws-originacion.md`).
+   **Estado al 2026-10-30:** 20.560 JSON respaldados (56 lotes, último id 400316), lejos de los
+   ~62.000. **Guion nuevo, sin correr:** `scripts/importar-equifax-desde-aws.mjs` carga ese respaldo
+   en `consultas_equifax` para que `consultaVigente()` lo sirva hasta el corte en vez de volver a
+   cobrar. Va en seco por defecto, trae sólo las vigentes, no crea personas en `clients` y no repite
+   (marca `parametros.aws_id_consulta_equifax`). Escribir exige `--aplicar --produccion`,
+   `--base-legal` y, pasando de 50 filas, `--autorizo=<n>`. No aplicarlo hasta confirmar que el
+   contrato con Equifax permite reutilizar sus respuestas.
 10. **El marco y el JSON del modelo, en paralelo a la API** (decisión del 2026-10-21: el
     modelo sigue leyendo solo el perfil en la primera entrega de la API). Se lanzó un
     agente con Opus en su propio worktree (`.claude/worktrees/agent-a2c7577caaf0cb832`, rama
