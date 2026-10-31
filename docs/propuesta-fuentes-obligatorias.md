@@ -23,7 +23,7 @@ propuesta no dice «poner un freno»: mide ese freno y dice qué le falta.
 4. **«No hay registros» no se puede leer del estado `faltante`.** Ahí caen también errores de la
    propia fuente: el 03/10, un día sin ningún error marcado, 62 personas figuraban sin denuncias por
    una falla, y 15 de ellas tenían denuncias ocho días antes. El modelo lo leyó como un hecho.
-5. **Novadata no falla por fuente.** Son dos servicios: uno no falló nunca en 6.519 perfiles, y el
+5. **Proveedor_Info_1 no falla por fuente.** Son dos servicios: uno no falló nunca en 6.519 perfiles, y el
    otro cae en bloque, por mitades exactas. **Equifax cubre justo lo que no se cae**: Plus no rescata
    ninguna consulta (0 de 6.519).
 6. **Hay una falla que ninguna lista ve**: una fuente que deja de traer contenido sin dar error.
@@ -40,12 +40,12 @@ propuesta no dice «poner un freno»: mide ese freno y dice qué le falta.
 | 1 | Qué fuentes son obligatorias | a) las 5 de hoy; b) 10: esas más los temas críticos de la API; c) 15; d) 21 | **d** | Es la única que no pierde nada si cae el resto, y cuesta casi lo mismo que 10 (sección 4) |
 | 2 | Cuándo una obligatoria «contestó» | a) `faltante` cuenta como contestó; b) no cuenta, salvo renta y antecedentes | **b** | El freno ya lo lee así. Renta y antecedentes fallan siempre en las mismas personas: frenarlas sería para siempre (sección 6) |
 | 3 | Un segundo nivel para 8 secundarias de peso | a) no; b) se analiza, y la entrega es `parcial`: nunca «aprobar» | **b** | Es la regla D6 que ya existe. Hoy `TEMAS_CRITICOS` y `FUENTES_QUE_DECIDEN` son dos listas que se contradicen |
-| 4 | Persona cuya falla no se va (6 de 2.567, 0,2%) | a) sin score y revisión manual; b) un administrador autoriza con motivo | **a** por ahora | Son casos de lista negra e identidad: mejor un humano que un score sin esos datos. Se revisa con la respuesta de Novadata |
+| 4 | Persona cuya falla no se va (6 de 2.567, 0,2%) | a) sin score y revisión manual; b) un administrador autoriza con motivo | **a** por ahora | Son casos de lista negra e identidad: mejor un humano que un score sin esos datos. Se revisa con la respuesta de Proveedor_Info_1 |
 | 5 | Un bloqueo encontrado en una consulta incompleta | a) frena igual; b) niega por control, sin modelo | **b** | Un hallazgo en una lista es un hecho, aunque falte otra fuente |
 | 6 | Reintentos | a) dejarlos como están; b) ampliar la evaluación diferida | **b** | Hoy se rinde a los 18 minutos con un plazo de 24 horas (sección 8) |
 | 7 | Lotes de consulta | a) una incompleta cuenta como hecha; b) vuelve a la cola | **b** | Así se contaron como buenas 553 consultas del 28/10 |
 | 8 | Código de la API | a) `fuentes_no_disponibles` con los temas que faltan; b) un código nuevo | **a** | Lo que hace la institución es lo mismo: reintentar más tarde |
-| 9 | Análisis ya hechos | a) dejarlos; b) marcarlos y no borrarlos; c) reanalizarlos ya | **b** | 1 sobre una consulta rota y 11 con un «no hay» falso. Se reconsultan cuando vuelva Novadata |
+| 9 | Análisis ya hechos | a) dejarlos; b) marcarlos y no borrarlos; c) reanalizarlos ya | **b** | 1 sobre una consulta rota y 11 con un «no hay» falso. Se reconsultan cuando vuelva Proveedor_Info_1 |
 | 10 | Lista por institución | a) una sola; b) cada una la suya; c) una sola, y cada una puede sumar, nunca quitar | **c**, sin construir hasta que alguien lo pida | Hoy hay una sola base (sección 9) |
 | 11 | Decirle al modelo que esas fuentes fallaron | a) ahora; b) con la versión del marco del predictor | **b** | Cambia el mensaje de casi todas las personas y pide versión nueva (sección 10) |
 | 12 | Control de contenido por fuente | a) no; b) sólo aviso; c) aviso y freno | **b** | La medida sale de un día y una población: primero ver si alarma en falso |
@@ -78,7 +78,7 @@ falla y la segunda como respuesta.
 
 ## 3. Lo medido que cambia la decisión
 
-### 3.1 Novadata son dos servicios, y uno cae por mitades
+### 3.1 Proveedor_Info_1 son dos servicios, y uno cae por mitades
 
 | Servicio | Fuentes activas | Qué pasó |
 |---|---|---|
@@ -99,8 +99,8 @@ Dentro de `data-services` ninguna fuente es más confiable que otra, porque caen
 | **Total** | **2.567** | **2.567** | **1.176** |
 
 Las dos mitades son exactamente los pedidos pares e impares de la lista, en los 44 pedidos. Lo que
-mejor lo explica es que Novadata reparte los pedidos por turnos entre dos servidores y uno cae. **Es
-una deducción: falta que Novadata la confirme.** De ahí salen dos reglas:
+mejor lo explica es que Proveedor_Info_1 reparte los pedidos por turnos entre dos servidores y uno cae. **Es
+una deducción: falta que Proveedor_Info_1 la confirme.** De ahí salen dos reglas:
 
 - **Una lista larga no frena más en una caída.** Lo que la detecta es tener fuentes de las dos mitades.
   Las 5 de hoy las tienen, y por eso aguantan.
@@ -242,10 +242,10 @@ en el anexo.
 | `buroCreditoSuper` | 94,6% lee algo de acá. 1.144 pierden su deuda bancaria en la capacidad. Nunca falló | Frena |
 | `creditoQuirografario` | 25,8% lee algo de acá | Frena |
 | `creditoHipotecario` | 11,3% lee algo de acá. Es el caso de `c-79e1ac23` | Frena |
-| `buroCreditoCoop` | **Es la única deuda de Novadata que informa la cuota**: 612 pierden una cuota y 74 mejoran su capacidad sin razón. Nunca falló | Nueva |
+| `buroCreditoCoop` | **Es la única deuda de Proveedor_Info_1 que informa la cuota**: 612 pierden una cuota y 74 mejoran su capacidad sin razón. Nunca falló | Nueva |
 | `buroCreditoDiners` | 51,9% lee algo de acá. 61 pierden una deuda, **y la capacidad no avisa**: falta en `FUENTES_DE_CUOTAS` | Nueva |
 | `retails` | 14,9% lee algo de acá y 383 pierden una deuda sin cuota | Nueva |
-| `pensionAlimenticiaNovadata` | 127 pierden una cuota y 19 mejoran su capacidad sin razón | Nueva |
+| `pensionAlimenticiaProveedorInfo1` | 127 pierden una cuota y 19 mejoran su capacidad sin razón | Nueva |
 
 Son 8 fuentes en una mitad, 8 en la otra y 5 en el servicio que no cae: cualquier mitad caída frena.
 
@@ -276,7 +276,7 @@ Cuatro no cambian nada de lo que lee el modelo: `sercop`, `deudores`, `afiliacio
 `pensionAlimenticia`. **`afiliacionIess` no puede ser obligatoria**: falla en 94,7% de las personas en un
 día sano. Quedan apagadas `vacunados`, `deudasFirmes` y `afiliacionIssfacFuerzaArmada`.
 
-La columna `la_lee_alguien` de `novadata_resource_config` no sirve para decidir esto: marca «no se lee»
+La columna `la_lee_alguien` de `proveedor_info_1_resource_config` no sirve para decidir esto: marca «no se lee»
 en fuentes que cambian lo que lee el modelo, como `trabajoHistoricos`, `titulos` y `afiliacionSiisspol`.
 
 ## 6. Qué cuenta como «contestó»
@@ -309,14 +309,14 @@ no calcula la capacidad, pero su recomendación es la que da el Preaprobado.
 | Dónde corta | Después del perfil | Después del perfil | Después del perfil, antes de pagar los USD 0,40 |
 | Las 21 obligatorias | Se exigen | Se exigen | Se exigen |
 
-**¿Equifax puede cubrir lo que Novadata no trajo?** Hoy no, por tres razones medidas:
+**¿Equifax puede cubrir lo que Proveedor_Info_1 no trajo?** Hoy no, por tres razones medidas:
 
 1. **El modelo no lee Equifax.** `marco-v31` está apagado (`CONFIG_LLM.buroDeLaInstitucion`). Equifax
    entra sólo en la capacidad. Si bancos fallara, el modelo no vería esa deuda aunque Equifax la tenga.
 2. **Lo que cubriría no se cae.** Bancos, cooperativas y Diners están en el servicio que dio 0 fallas: 0
    de 6.519 perfiles se habrían salvado.
 3. **Lo que se cae, Equifax no lo trae**: IESS, listas, demandas y denuncias. Su sector comercial tampoco
-   reemplaza a las casas comerciales de Novadata: son otras empresas (5 de 33 en común).
+   reemplaza a las casas comerciales de Proveedor_Info_1: son otras empresas (5 de 33 en común).
 
 Propongo que, al encender `marco-v31`, esas tres fuentes dejen de ser obligatorias sólo para quien
 tiene una consulta vigente **con detalle**. Los préstamos del BIESS no: Equifax los trae dentro de
@@ -331,7 +331,7 @@ Dos ajustes de paso:
 
 ## 8. Después de frenar
 
-**Reintentos.** Consultar Novadata no se cobra, así que reconsultar es sólo tiempo. De los perfiles que
+**Reintentos.** Consultar Proveedor_Info_1 no se cobra, así que reconsultar es sólo tiempo. De los perfiles que
 la lista frena, 287 personas pasaron a completas al reconsultar y 15 no. Dentro de la hora 12 de 14, y
 entre 1 y 24 horas 38 de 41. Esa historia es de caídas anteriores: **no dice cuánto va a durar la actual**.
 
@@ -344,7 +344,7 @@ entre 1 y 24 horas 38 de 41. Esa historia es de caídas anteriores: **no dice cu
 
 Cada intento guarda un perfil, porque cada consulta a la persona deja constancia. Ese costo se acepta.
 Un reintento por fuente, sin repetir las 52, podría resolver las mitades, pero **no se midió** y le suma
-carga a un proveedor saturado: queda para cuando Novadata vuelva.
+carga a un proveedor saturado: queda para cuando Proveedor_Info_1 vuelva.
 
 **Qué ve el analista.** Ya ve el motivo con los temas que faltan. Falta la bandeja: hoy una persona con
 consulta incompleta figura «Sin analizar», y `consulta_fallida` sólo aparece con cero fuentes. Son 769
@@ -451,18 +451,15 @@ es esto. La respuesta a su pregunta es que un caso no evaluable no se guarda com
 hasta terminar los arreglos, así que el efecto en el score (sección 11) sigue sin medir. `esPrueba` ya quedó cerrado (PR 109), y
 del paso 2 sólo falta Diners.
 
-**Antes de la primera sesión** entra lo que ya está en curso, para no rehacer trabajo:
-
-1. La sesión del marco (rama `claude/marco-correcciones-01aa09`).
-2. El renombre del proveedor: 177 archivos, 57 de ellos de funciones, y las migraciones 142 y 143. Toca
-   casi todo lo que sigue. Novadata está caída, así que su ventana no afecta a nadie.
+El renombre del proveedor ya entró (PR 111). La sesión del marco (PR 113) sigue abierta: toca el marco
+y el perfil del modelo, no los archivos de la sesión 1.
 
 | Sesión | Pasos | Decisiones | Toca | Cuándo |
 |---|---|---|---|---|
 | 1. Freno: la lista de 21 | 1, 2 y 3 | 1 a 5 | `calidad-de-la-consulta.ts`, `evaluacion-de-la-api.ts` (`TEMAS_CRITICOS`), `capacidad-de-pago.ts`, `analisis-de-la-persona.ts`, `pasos-de-evaluacion.ts`, `evaluar-solicitud`, `AnalisisIA.jsx` | Primera y sola: las demás leen su tabla |
 | 2. Reintentos, lotes y API | 4 y 5 | 3, 6, 7 y 8 | `cola-de-evaluaciones.ts`, `trabajador-de-evaluaciones.ts`, `procesar-lote`, `api/openapi.yaml`, `sandbox-*` | Después de la 1 |
 | 3. Bandeja y análisis marcados | 6 | 9 y 13 | Migración nueva, `refrescar_resumen_por_persona()`, la bandeja, `terminologia.md` | Después de la 1 |
-| 4. Control de contenido | 7 | 12 | `vigia/index.ts` | Después del renombre: no depende de la 1 |
+| 4. Control de contenido | 7 | 12 | `vigia/index.ts` | Cuando se quiera: no depende de la 1 |
 | 5. Lo que lee el modelo | 8 | 11 | El marco y `perfil-del-modelo.ts` | Con la versión del marco del predictor |
 
 **Para gastar poco:**
@@ -473,7 +470,7 @@ del paso 2 sólo falta Diners.
 - Las sesiones 2, 3 y 4 no comparten archivos y pueden correr juntas.
 - Se despliega una vez por tanda, no por PR.
 - Fusionar y desplegar piden la autorización del negocio, nombrando el PR.
-- Lo que reconsulta a una persona (decisión 9) espera a que vuelva Novadata.
+- Lo que reconsulta a una persona (decisión 9) espera a que vuelva Proveedor_Info_1.
 
 ## 13. Qué quedó medido y qué no
 
@@ -506,7 +503,7 @@ del paso 2 sólo falta Diners.
 - **El PR 105** cambia lo que se lee de `creditoHipotecario`, `creditoQuirografario` y `trabajoHistoricos`.
   Al fusionarlo hay que repetir la prueba: su peso debería subir.
 
-**Hay que pedirle por escrito a Novadata:**
+**Hay que pedirle por escrito a Proveedor_Info_1:**
 
 1. ¿Sus pedidos se reparten entre dos servidores? ¿Qué pasó el 28/10?
 2. ¿Qué significan «Consulta sin valor» y «ERROR EN LA EXTRACCION DE DATOS»? ¿Por qué se repiten en
@@ -545,7 +542,7 @@ personas cambian sus deudas sin cuota.
 | `retails` | O | par | 14,9% | 85,1% | 0,0% | 0,0% | 49,1% | 14,9% | 0 | 0 | 0 | 383 |
 | `creditoHipotecario` | O | impar | 11,3% | 88,7% | 0,0% | 0,0% | 46,9% | 11,3% | 0 | 0 | 0 | 0 |
 | `jubilados` | O | par | 8,1% | 91,9% | 0,0% | 0,0% | 49% | 8,1% | 206 | 0 | 0 | 0 |
-| `pensionAlimenticiaNovadata` | O | impar | 15,3% | 84,7% | 0,0% | 0,0% | 47,2% | 8,1% | 0 | 0 | 19 | 0 |
+| `pensionAlimenticiaProveedorInfo1` | O | impar | 15,3% | 84,7% | 0,0% | 0,0% | 47,2% | 8,1% | 0 | 0 | 19 | 0 |
 | `listasControl` | O | impar | 4,1% | 95,9% | 0,0% | 0,0% | 47,1% | 3,1% | 0 | 9 | 0 | 0 |
 | `listaNegra` | O | par | 1,6% | 98,2% | 0,2% | 0,0% | 49,1% | 1,6% | 0 | 38 | 0 | 0 |
 | `afiliacionIssfacCertMedico` | O | par | 1,9% | 98,1% | 0,0% | 0,0% | 49,1% | 1,5% | 36 | 0 | 0 | 0 |
