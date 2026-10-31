@@ -237,7 +237,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
    Octubre lleva USD 9,97 de 10 (punto 2.2), así que va desde noviembre. Se verifica con la
    comparación y su lectura.
-   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29), y
+   **no se prueba ningún marco nuevo hasta terminar todos los arreglos** (negocio, 2026-10-31): vale
+   para lotes, comparaciones y recálculos con el modelo sobre marco-v31 o cualquier versión nueva.
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
    octubre lleva USD 13,92 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
