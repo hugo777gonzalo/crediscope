@@ -24,7 +24,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   buena de Novadata seguida de su análisis con el código nuevo**.
 - **Novadata (2026-10-31):** contesta HTTP 500 en 41 de 52 fuentes en las tres consultas de
   c-79e1ac23 del 30 y el 31. El 28/10 pasó en 494 de 1.215 perfiles y antes casi nunca (33 el 25/09).
-  Las tres son de la misma persona: no se sabe si la falla es general o suya. Hay que preguntarles.
+  El negocio confirmó que es un problema general: **por ahora Novadata no se puede usar**.
 - **Base de prueba (2026-10-31):** 244 personas en `research/base-prueba-2026-11/`, con perfil de 19
   fuentes buenas o más y Equifax de AWS, sin consultar a nadie. Pro y Plus ya están calculados con un
   crédito de USD 5.000 a 36 meses: Plus cambia 111 veredictos, todos para peor (Pro ve las cuotas de
