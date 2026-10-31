@@ -75,21 +75,23 @@ async function pedir(url, opciones = {}) {
   return { cuerpo: texto ? JSON.parse(texto) : null, rango: r.headers.get("content-range") };
 }
 
-// El último perfil de cada cliente, paginando hasta el conteo.
+// El último perfil de cada cliente.
 const ultimoPorCliente = new Map();
 {
-  let total = null;
-  for (let desde = 0; total === null || desde < total; desde += 1000) {
-    const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
-      { headers: { Prefer: "count=exact" } },
+  // Por clave (id mayor al último leído) y hasta una página vacía: con
+  // `count=exact` más `offset` la consulta pasó el límite de la base
+  // (statement timeout, 2026-10-31) antes de traer nada.
+  let despues = null;
+  for (;;) {
+    const { cuerpo } = await pedir(
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000${despues ? `&id=gt.${despues}` : ""}`,
     );
-    if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
     for (const p of cuerpo) {
       const a = ultimoPorCliente.get(p.client_id);
       if (!a || p.created_at > a.created_at) ultimoPorCliente.set(p.client_id, p);
     }
     if (cuerpo.length === 0) break;
+    despues = cuerpo.at(-1).id;
   }
 }
 const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
