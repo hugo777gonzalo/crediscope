@@ -161,6 +161,20 @@ igual("destino: al ingresar se vuelve a recordar", (D.olvidarSalidaAProposito(),
   igual("equifax: más de 90 días", franja[0].nivel, "mas_de_90");
   igual("equifax: el mes se escribe como en el resto de la app", franja[23].texto, "Ago 2026");
   igual("equifax: sin historia, sin franja", E.franjaDePagos([]), []);
+  // Quien ya no debe: el detalle termina en 2025-08 pero el reporte llega a 2026-09 (la evolución de 24
+  // meses trae todos los meses, con total 0 al final). La ventana sale del corte del reporte, no de la
+  // última fila: el caso c-5ee429cc mostraba de sep 2023 a ago 2025 con 13 meses que Equifax nunca cubrió.
+  {
+    const terminoDePagar = [fila("2025-08-31", "titular", 20), fila("2025-07-31", "titular", 0), fila("2024-10-31", "titular", 0)];
+    const cortes = Array.from({ length: 24 }, (_, i) => `${i < 3 ? 2024 : i < 15 ? 2025 : 2026}-${String(((i + 9) % 12) + 1).padStart(2, "0")}-30`);
+    const f = E.franjaDePagos(terminoDePagar, cortes);
+    igual("equifax: la franja llega al corte del reporte aunque no haya filas", [f.length, f[0].mes, f[23].mes], [24, "2024-10", "2026-09"]);
+    igual("equifax: el último mes sin operaciones se dice sin deuda", f[23].nivel, "sin_deuda");
+    igual("equifax: los 13 meses posteriores al detalle son sin deuda", f.slice(11).map((m) => m.nivel), Array(13).fill("sin_deuda"));
+    igual("equifax: el último mes con operaciones queda en su lugar", [f[10].mes, f[10].nivel], ["2025-08", "hasta_30"]);
+    igual("equifax: sin cortes del reporte, la ventana termina en la última fila (como antes)", E.franjaDePagos(terminoDePagar)[23].mes, "2025-08");
+    igual("equifax: sólo con los cortes (sin historia) hay franja de 24 meses sin deuda", E.franjaDePagos([], cortes).every((m) => m.nivel === "sin_deuda"), true);
+  }
   igual(
     "equifax: el atraso suma vencido, no devenga, demanda y castigo",
     E.enAtraso({ saldoVencidoUsd: 10.1, saldoNoDevengaInteresesUsd: 0.2, saldoDemandaJudicialUsd: 5, saldoCarteraCastigadaUsd: 0 }),

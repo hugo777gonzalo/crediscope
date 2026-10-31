@@ -49,8 +49,9 @@ import {
   type Sistema,
   SISTEMAS,
 } from "./equifax-tablas.ts";
+import { corteDelReporte, mesDeLaFecha, mesesHastaElCorte } from "./equifax-ventana.ts";
 
-export const EQUIFAX_ESTRUCTURA_VERSION = "equifax-estructura-v1";
+export const EQUIFAX_ESTRUCTURA_VERSION = "equifax-estructura-v2";
 
 export interface ContextoDeLaEstructura {
   consultadoEl: string; // ISO: consultas_equifax.created_at
@@ -207,10 +208,18 @@ export function calcularEstructura(r: ResultadoDeTablas, ctx: ContextoDeLaEstruc
     maximoDeOperacionesEnMoraEnUnMes: number; maximoDeOperacionesConMoraDeMasDe90DiasEnUnMes: number;
   } | null = null;
   if (historiaMedida) {
-    const ultimoMes = historia.map((h: FilaHistoria) => mesDe(h.fecha_corte ?? "")).filter((m) => m !== "").sort().pop() ?? null;
-    const [anio, mes] = (ultimoMes ?? "0000-00").split("-").map(Number);
-    const primerMesDeLaVentana = ultimoMes === null ? null : new Date(Date.UTC(anio, mes - 1 - 23, 1)).toISOString().slice(0, 7);
+    // La ventana llega al corte del reporte, no a la última fila del detalle (equifax-ventana.ts): la
+    // evolución de 24 meses y la deuda histórica por sistema fijan el corte, y sólo para eso.
+    const fechasDelReporte = [
+      ...historia.map((h: FilaHistoria) => h.fecha_corte),
+      ...t.equifax_deuda_por_sistema_y_mes.filter((f) => f.origen !== "resumen_actual").map((f) => f.fecha_corte),
+    ];
+    const corte = corteDelReporte(fechasDelReporte);
+    const mesesDeLaConsulta = corte === null ? [] : mesesHastaElCorte(corte);
+    const primerMesDeLaVentana = mesesDeLaConsulta[0] ?? null;
     const enLaVentana = (h: FilaHistoria) => primerMesDeLaVentana !== null && mesDe(h.fecha_corte ?? "") >= primerMesDeLaVentana;
+    const mesesCubiertos = new Set(mesesDeLaConsulta);
+    const mesesConDatos = distintos(fechasDelReporte.map((f) => mesDeLaFecha(f)).filter((m) => mesesCubiertos.has(m)));
     const delTitular = historia.filter((h) => h.rol === "titular" && enLaVentana(h));
     const conMora = delTitular.filter((h) => (h.dias_morosidad ?? 0) > 0);
     const conMoraDeMasDe90 = delTitular.filter((h) => (h.dias_morosidad ?? 0) > 90);
@@ -221,7 +230,7 @@ export function calcularEstructura(r: ResultadoDeTablas, ctx: ContextoDeLaEstruc
       return Math.max(0, ...porMes.values());
     };
     conductaDePago = {
-      mesesObservados: distintos(historia.filter(enLaVentana).map((h) => mesDe(h.fecha_corte ?? ""))),
+      mesesObservados: mesesConDatos,
       mesesConMoraEnLosUltimos24: distintos(conMora.map((h) => mesDe(h.fecha_corte ?? ""))),
       mesesConMoraDeMasDe90Dias: distintos(conMoraDeMasDe90.map((h) => mesDe(h.fecha_corte ?? ""))),
       mesesConDeudaVencida: distintos(conVencido.map((h) => mesDe(h.fecha_corte ?? ""))),
