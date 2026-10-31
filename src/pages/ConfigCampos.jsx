@@ -74,7 +74,7 @@ export default function ConfigCampos() {
 
   return (
     <div>
-      <PestanasProveedor base="campos" activo="novadata" />
+      <PestanasProveedor base="campos" activo="proveedor_info_1" />
 
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>

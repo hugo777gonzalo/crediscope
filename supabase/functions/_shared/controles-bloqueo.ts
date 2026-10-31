@@ -22,7 +22,7 @@
 // El resto de la evaluación (laboral, judicial, financiero, patrimonio)
 // SÍ queda a criterio del LLM — ver llm-scoring.ts.
 
-import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaNovadata } from "./types.ts";
+import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaProveedorInfo1 } from "./types.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
 import { categoriasDelitoGraveSeguridad } from "./delitos-seguridad.ts";
 
@@ -32,7 +32,7 @@ function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdic
   return Boolean((persona.informacionAdicional as string | undefined)?.toUpperCase().includes("FALLEC"));
 }
 
-export function evaluarControlesBloqueo(raw: RespuestaNovadata, requestedCedula: string): ResultadoControlBloqueo {
+export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedCedula: string): ResultadoControlBloqueo {
   const hallazgos: HallazgoControlBloqueo[] = [];
 
   const persona = raw.general.data?.personaNatural;
@@ -40,7 +40,7 @@ export function evaluarControlesBloqueo(raw: RespuestaNovadata, requestedCedula:
   if (esFallecido(persona as { fechaDefuncion?: string | null; informacionAdicional?: string | null } | undefined)) {
     hallazgos.push({
       code: "fallecido",
-      message: "Novadata registra a esta persona como fallecida — posible suplantación de identidad",
+      message: "Proveedor_Info_1 registra a esta persona como fallecida — posible suplantación de identidad",
       bloqueante: true,
     });
   }
@@ -71,12 +71,12 @@ export function evaluarControlesBloqueo(raw: RespuestaNovadata, requestedCedula:
 
   const listaNegra = raw.listaNegra?.data?.listaNegra;
   if (listaNegra) {
-    hallazgos.push({ code: "lista_negra", message: "Aparece en la lista negra interna de Novadata", bloqueante: true });
+    hallazgos.push({ code: "lista_negra", message: "Aparece en la lista negra interna de Proveedor_Info_1", bloqueante: true });
   }
 
   const basesInternas = raw.basesInternas?.data as Record<string, unknown> | undefined;
   // homonimosOpr/tconsephomonimos excluidos a propósito de los totales
-  // bloqueantes de arriba/abajo: Novadata reporta que EXISTE alguien más
+  // bloqueantes de arriba/abajo: Proveedor_Info_1 reporta que EXISTE alguien más
   // con el mismo nombre en alguna lista — el registro trae una
   // identificación DISTINTA a la del cliente consultado (confirmado en
   // varios casos reales: nunca coincide la cédula). No es evidencia de

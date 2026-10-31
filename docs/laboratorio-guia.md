@@ -24,15 +24,15 @@ Nombres propuestos el 2026-10-07, a confirmar por el negocio.
 | **Universo** | Toda solicitud registrada: una persona en una fecha. Si la misma persona vuelve a pedir, es otra solicitud (sus condiciones pueden haber cambiado). | Su consulta del día de la solicitud es el punto de partida (t0). | 2.572: 2.567 de la cartera de septiembre y 5 nuevas de octubre |
 | **Universo analizado** | Las solicitudes del Universo con análisis IA (recomendación y puntaje). Sólo con ellas se prueba el modelo. | — | 205 personas con el marco vigente (marco-v28), 200 de ellas del lote del 2026-10-07; 215 con cualquier marco |
 | **Con crédito** | Solicitudes que la institución desembolsó. | **Reporte mensual de la institución**: días de mora, saldo y estado de cada crédito al cierre de cada mes. | 0: no hay institución todavía; el negocio va a simular los reportes |
-| **Sin crédito** | Solicitudes que no se desembolsaron (negadas, desistieron, en trámite). | **Reconsulta en Novadata cada 3 meses**: el impago en todo el sistema financiero. | 0 reconsultas reales; la primera ronda, desde el 25/12/2026 |
+| **Sin crédito** | Solicitudes que no se desembolsaron (negadas, desistieron, en trámite). | **Reconsulta en Proveedor_Info_1 cada 3 meses**: el impago en todo el sistema financiero. | 0 reconsultas reales; la primera ronda, desde el 25/12/2026 |
 
 Las palabras del tiempo: **t0** es el día de la solicitud; **mes 1, 2,
 3...** son los cierres del reporte mensual después del desembolso; la
-**ronda de 3, 6, 9 o 12 meses** es la reconsulta en Novadata a ese tiempo
+**ronda de 3, 6, 9 o 12 meses** es la reconsulta en Proveedor_Info_1 a ese tiempo
 de la solicitud.
 
 **Recomendación, a confirmar:** reconsultar cada 3 meses a todo el Universo,
-no sólo a los sin crédito. Novadata no cobra por ahora y es una sola lista.
+no sólo a los sin crédito. Proveedor_Info_1 no cobra por ahora y es una sola lista.
 A los con crédito no les cambia el resultado (lo da la institución), pero
 muestra por qué cayeron (otra institución les prestó, perdieron el trabajo);
 y a los que no tienen análisis los deja servir para buscar variables.
@@ -44,7 +44,7 @@ La definición vigente desde el 2026-10-06, que se cambia en Datos y cartera
 
 - Con crédito, por el reporte de la institución: más de 90 días de mora
   (Basilea), castigo, reestructuración o demanda judicial.
-- Sin crédito, por Novadata: más de 90 días en cualquier entidad, bancos en
+- Sin crédito, por Proveedor_Info_1: más de 90 días en cualquier entidad, bancos en
   D o E, retail con deuda de más de USD 500, castigo o demanda. «D o E» es para
   la operación que trae calificación. Si algún día el resultado viene del buró
   de la institución, que trae días y no calificación, la misma definición lo
@@ -220,7 +220,7 @@ aprender. Vivía en CLAUDE.md hasta el 2026-10-20.
     versionada) se cambian en Datos y cartera › Configuración. Vigente desde
     el 2026-10-06: más de 90 días (Basilea), bancos D o E, retail con deuda de
     más de USD 500, observación desde 15 días; revisar = no impago. «D o E» se
-    aplica sólo a la operación que trae calificación (Novadata); la que trae
+    aplica sólo a la operación que trae calificación (Proveedor_Info_1); la que trae
     días se juzga por días, así que la del buró de la institución (Equifax no
     trae calificación) no pide cambiar la definición. Traer el resultado del
     buró en el t1 sí falta (`docs/propuesta-dias-de-mora-con-buro.md`,

@@ -4,7 +4,7 @@
 // - una persona SIN buró da el perfil de marco-v30 byte a byte, y con el
 //   interruptor apagado el pedido es el de v30 aunque llegue un buró;
 // - con buró, la deuda de bancos y cooperativas sale de Equifax y la de
-//   Novadata no llega, ni en null.
+//   Proveedor_Info_1 no llega, ni en null.
 // Datos inventados (perfil-de-prueba.ts y equifax-respuesta-de-prueba.ts): el
 // repositorio es público.
 //
@@ -14,9 +14,9 @@ import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
   armarPerfilDelModelo,
   type BuroDeLaInstitucion,
-  CAMPOS_DEL_BURO_DE_NOVADATA,
+  CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1,
   mensajeParaElModelo,
-  QUEDAN_DE_NOVADATA_CON_BURO,
+  QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO,
 } from "./perfil-del-modelo.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 import { derivarTablas } from "./equifax-tablas.ts";
@@ -63,7 +63,7 @@ Deno.test("con el interruptor apagado, el pedido es el de v30 aunque llegue un b
 
 // ---- con buró: Equifax en lugar de bancos y cooperativas ----
 
-Deno.test("con buró no llegan el buró de bancos ni las cooperativas de Novadata, ni en null", () => {
+Deno.test("con buró no llegan el buró de bancos ni las cooperativas de Proveedor_Info_1, ni en null", () => {
   const pm = conBuro();
   assertEquals("comportamientoCooperativas" in pm, false);
   assertEquals(Object.keys(pm.comportamientoBancario), [
@@ -73,7 +73,7 @@ Deno.test("con buró no llegan el buró de bancos ni las cooperativas de Novadat
   const texto = JSON.stringify(pm);
   // endeudamiento.deudaComoGaranteOCodeudor sigue llamándose así, con la
   // cifra de Equifax (ver la prueba de endeudamiento).
-  for (const campo of CAMPOS_DEL_BURO_DE_NOVADATA.filter((c) => c !== "deudaComoGaranteOCodeudor")) {
+  for (const campo of CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1.filter((c) => c !== "deudaComoGaranteOCodeudor")) {
     assertEquals(texto.includes(`"${campo}"`), false, campo);
   }
   // La calificación A1 a E no llega por ningún lado: la reemplazan los días.
@@ -91,11 +91,11 @@ Deno.test("buroEquifax va donde estaba el buró de bancos, y el resto en su orde
 Deno.test("todo campo de comportamientoBancario está decidido: queda o se va con el buró", () => {
   const campos = Object.keys(buildStandardProfile({} as never, "0000000000", "2026-08").profile.comportamientoBancario)
     .map((c) => (c === "numeroCreditosFormales" ? "numeroPrestamosIessBiess" : c));
-  const decididos = new Set<string>([...QUEDAN_DE_NOVADATA_CON_BURO, ...CAMPOS_DEL_BURO_DE_NOVADATA]);
-  for (const c of campos) assert(decididos.has(c), `${c}: sumarlo a QUEDAN_DE_NOVADATA_CON_BURO o a CAMPOS_DEL_BURO_DE_NOVADATA`);
+  const decididos = new Set<string>([...QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO, ...CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1]);
+  for (const c of campos) assert(decididos.has(c), `${c}: sumarlo a QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO o a CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1`);
 });
 
-Deno.test("bancos, Diners y cooperativas cuentan como consultados con buró aunque Novadata no contestara", () => {
+Deno.test("bancos, Diners y cooperativas cuentan como consultados con buró aunque Proveedor_Info_1 no contestara", () => {
   const p = perfilDePrueba();
   const meta = p.metaConsulta as Record<string, string[]>;
   meta.fuentesConDatos = meta.fuentesConDatos.filter((f) => !["buroCreditoSuper", "buroCreditoDiners", "buroCreditoCoop"].includes(f));
@@ -114,10 +114,10 @@ Deno.test("bancos, Diners y cooperativas cuentan como consultados con buró aunq
   assertEquals([...con.temasConsultados].sort(), [...sin.temasConsultados, ...temas].sort());
 });
 
-Deno.test("endeudamiento suma el buró y las casas comerciales de Novadata, y lo ajeno va aparte", () => {
+Deno.test("endeudamiento suma el buró y las casas comerciales de Proveedor_Info_1, y lo ajeno va aparte", () => {
   // Equifax (equifax-respuesta-de-prueba.ts): bancos 4.000 como titular con 300
   // vencidos y cuota 200; cooperativas 0; comercial 200 con cuota 20; como
-  // codeudor 500 en bancos y como garante 100 en el comercial. Novadata
+  // codeudor 500 en bancos y como garante 100 en el comercial. Proveedor_Info_1
   // (perfil-de-prueba.ts): casas comerciales 640,5 con 80,2 vencidos.
   assertEquals(conBuro().endeudamiento, {
     deudaPropiaTotal: 4841,

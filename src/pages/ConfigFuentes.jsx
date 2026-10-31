@@ -25,7 +25,7 @@ import Cargando from "../components/ui/Cargando.jsx";
 //
 // GRUPO_SIN_USO es un bucket aparte para las fuentes que no alimentan
 // ningún grupo -- ninguna pantalla lee lo que devuelven (columna
-// `la_lee_alguien` de novadata_resource_config). Se consultan igual en
+// `la_lee_alguien` de proveedor_info_1_resource_config). Se consultan igual en
 // cada corrida; verlas juntas es lo que permite decidir con el dato a
 // la vista si vale la pena seguir pidiéndolas.
 const GRUPO_SIN_USO = "_sin_uso";
@@ -95,7 +95,7 @@ export default function ConfigFuentes() {
 
   return (
     <div>
-      <PestanasProveedor base="fuentes" activo="novadata" />
+      <PestanasProveedor base="fuentes" activo="proveedor_info_1" />
 
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>

@@ -16,7 +16,7 @@ export function get(obj, path) {
 
 const MONEDA = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
-// Novadata devuelve varios campos de texto en MAYÚSCULAS_CON_GUION_BAJO
+// Proveedor_Info_1 devuelve varios campos de texto en MAYÚSCULAS_CON_GUION_BAJO
 // (nivelEducacion, estadoCivil, genero, tipos de demanda, etc.) — se
 // normalizan a formato de lectura sin perder la palabra completa.
 function humanizarTexto(texto) {
@@ -354,16 +354,16 @@ export const GRUPOS_CONFIG = {
     mensajeVacio: "No es cliente interno de la fuente externa.",
     presencia: (p) => Boolean(p.comportamientoInterno?.esClienteInterno),
     campos: [
-      ["novadataResultadoHabitoPago", "Hábito de pago (fuente externa)", "texto"],
-      ["novadataPerfilInterno", "Perfil interno (fuente externa)", "texto"],
-      ["novadataDiasMoraMaxima", "Días mora máxima", "numero"],
-      ["novadataDiasMoraVigente", "Días mora vigente", "numero"],
-      ["novadataSaldoCapitalVigente", "Saldo capital vigente", "moneda"],
+      ["proveedorInfo1ResultadoHabitoPago", "Hábito de pago (fuente externa)", "texto"],
+      ["proveedorInfo1PerfilInterno", "Perfil interno (fuente externa)", "texto"],
+      ["proveedorInfo1DiasMoraMaxima", "Días mora máxima", "numero"],
+      ["proveedorInfo1DiasMoraVigente", "Días mora vigente", "numero"],
+      ["proveedorInfo1SaldoCapitalVigente", "Saldo capital vigente", "moneda"],
     ],
   },
 };
 
-// Novadata devuelve nombreCompleto como "APELLIDO1 APELLIDO2 NOMBRE1
+// Proveedor_Info_1 devuelve nombreCompleto como "APELLIDO1 APELLIDO2 NOMBRE1
 // NOMBRE2" (convención de registro civil ecuatoriano). Para un header
 // premium mostramos solo "Nombre1 Apellido1" — heurística de 4 tokens;
 // si no calza (compuestos, un solo nombre, etc.) se muestra el nombre

@@ -60,7 +60,7 @@ su guía: `docs/equifax.md`.
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
 - `modalidades.ts` y la función `evaluar-solicitud` (133) — la solicitud de
   crédito (tabla `solicitudes`) y su evaluación en Básico, Pro o Plus. Corre UN
-  paso por llamada (Novadata y el modelo juntos pasan los 150 s) y llama a las
+  paso por llamada (Proveedor_Info_1 y el modelo juntos pasan los 150 s) y llama a las
   funciones de cada módulo con la sesión de quien pidió; toma el paso con la
   fila que devolvió la actualización (un paso de Equifax se cobra, y la
   consulta que falta sólo la hace un admin). El modelo y la capacidad van por
@@ -123,7 +123,7 @@ su guía: `docs/equifax.md`.
     OPTIONS).
   - **El sandbox** (`sandbox-casos.ts`, `sandbox-simuladores.ts`, `sandbox-pasos.ts`; decisión
     del negocio, 2026-10-30). Las identificaciones `0000000001` a `0000000007` de la
-    especificación corren por el trabajador con simuladores de Novadata, Equifax y el modelo:
+    especificación corren por el trabajador con simuladores de Proveedor_Info_1, Equifax y el modelo:
     `correrPaso()` las desvía antes de todo, y lo demás (perfil, controles, estructura,
     capacidad, «parcial nunca aprueba») es el código real. Cuatro controles: la identificación
     (`esIdentificacionSimulada()`, `00` es una provincia que no existe y
@@ -209,7 +209,7 @@ su guía: `docs/equifax.md`.
 - Dos formas conviven: `laboral.empleoActual` (objeto, antes de
   marco-v20) y `empleosActuales` (arreglo). Leer las dos.
 
-- **Cada fuente de Novadata espera como mucho 120 s**
+- **Cada fuente de Proveedor_Info_1 espera como mucho 120 s**
   (`PLAZO_POR_FUENTE_MS`), y la consulta pide un solo token, compartido.
   Antes eran 52 inicios de sesión simultáneos con el token vencido (E5).
   - Medido el 2026-10-09: en el uso normal una consulta tarda menos de un
@@ -252,7 +252,7 @@ su guía: `docs/equifax.md`.
     un titular.
   - Cada noche la reconstruye `reconstruir_resumen_por_persona()` (pg_cron
     `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
-    También devuelve a Novadata a quien se le venció la consulta del buró el
+    También devuelve a Proveedor_Info_1 a quien se le venció la consulta del buró el
     18 a las 00:00: la vigencia vence sin que nada cambie en la base.
   - **Con una consulta vigente del buró de la institución (132), las marcas
     de Monitoreo salen del buró**: `calificacion_baja` es más de 90 días en
@@ -279,11 +279,11 @@ su guía: `docs/equifax.md`.
   2026-10-12): esa persona espera el cálculo entero, con una cartera grande
   vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
 
-**Crudo de Novadata**
-- El crudo de Novadata se guarda desde la 090 en el depósito privado
-  `crudo-novadata` de Storage (gzip, ~8 KB), con la ruta en
+**Crudo de Proveedor_Info_1**
+- El crudo de Proveedor_Info_1 se guarda desde la 090 en el depósito privado
+  `crudo-proveedor-info-1` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
-  `_shared/crudo-novadata.ts`, desde las tres puertas que guardan perfiles.
+  `_shared/crudo-proveedor-info-1.ts`, desde las tres puertas que guardan perfiles.
   A Storage con supabase-js se suben bytes, no un `Blob`: con un `Blob`
   ignora `contentType` y el depósito lo rechaza (así no se guardó ningún
   crudo hasta el 2026-10-04).
@@ -298,7 +298,7 @@ su guía: `docs/equifax.md`.
   condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
   aportes cuando el mecanizado no trae nada.
-- Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
+- Meses que Proveedor_Info_1 no publicó para nadie (2018-02, 2019-09..11,
   2020-01..03, 05, 06, 08, 11) no cortan la continuidad. La antigüedad
   sale de `fecIng`, no del primer aporte (`continuidadLaboral`).
 - Aportar por cuenta propia cuenta como trabajo sólo en meses con RUC
@@ -310,7 +310,7 @@ su guía: `docs/equifax.md`.
   001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
   lo hace empleador.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
-  establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
+  establecimiento abierto). Proveedor_Info_1 manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).
   Inactivo sólo con una fecha que lo respalde (negocio, 2026-10-29,
   estructura-v15): sin fecha de inscripción es un RUC; un establecimiento que
@@ -340,7 +340,7 @@ su guía: `docs/equifax.md`.
   (`docs/lecciones.md`).
 
 **Buró, Aval y Función Judicial** (Equifax, en `docs/equifax.md`)
-- Buró de Novadata: `riesgo` T/G/C separa lo propio de lo garantizado;
+- Buró de Proveedor_Info_1: `riesgo` T/G/C separa lo propio de lo garantizado;
   el atraso puede estar en `noDevengaInteres`; los tramos
   `saldo0_1..mas_36` no son montos; "AL" es al día; no trae días de mora
   ni cuota (la cuota sólo en cooperativas).
@@ -349,8 +349,8 @@ su guía: `docs/equifax.md`.
 - El ambiente de prueba de Aval contesta por otra persona:
   `consultas_aval.ambiente = 'prueba'` (derivado del host, default
   `prueba`) no sirve para calificar a nadie.
-- Aval tarda ~0,9 s por consulta contra ~41 s de Novadata: las cuentas de
-  capacidad de Novadata no aplican.
+- Aval tarda ~0,9 s por consulta contra ~41 s de Proveedor_Info_1: las cuentas de
+  capacidad de Proveedor_Info_1 no aplican.
 - Aval: las consultas de NOVACREDIT en su lista son nuestro propio tráfico;
   `consultas12m` y `entidadesDistintas12m` se cuentan sin esa entidad.
 - Denuncias: decide el papel de la persona y sólo cuenta con su cédula

@@ -13,7 +13,7 @@ cálculos de cada pantalla se probaron en Node contra los cortes reales;
 **falta verlas en el navegador con una sesión de admin**.
 
 Todo lo de las fases 1 a 6 se construye y se prueba **sin gastar en el
-modelo de lenguaje** (consultar Novadata no le cuesta al negocio por ahora).
+modelo de lenguaje** (consultar Proveedor_Info_1 no le cuesta al negocio por ahora).
 Lo único que cuesta está aislado en la fase 7 y se corre sólo con
 autorización del negocio.
 
@@ -41,13 +41,13 @@ Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
 
 | Punto | Decisión |
 |---|---|
-| Crudo de Novadata | Se guarda (090, Storage `crudo-novadata`), como el de Aval. |
+| Crudo de Proveedor_Info_1 | Se guarda (090, Storage `crudo-proveedor-info-1`), como el de Aval. |
 | Lo que leyó el modelo | Se guarda (090, `analysis_results.mensaje_al_modelo`). |
 | Archivo de la IFI | El de la sección 6.3. |
 | Ventana | 12 y 24 meses; 24 es la prueba más exigente (deja ver los impagos tardíos). |
 | Definición de default | 90 días de mora o más, o una calificación peor que B2 (C1, C2, D, E). En bancos, cooperativas, mutualistas y retail grande; el retail pequeño no cuenta. Falta definir "retail grande". **Reemplazada el 2026-10-06** (fila "Impago", abajo). |
-| Días de mora por operación | Cooperativas (Novadata), Aval y Equifax sí; bancos de Novadata no: ahí manda la calificación. |
-| Negados | Se juzgan reconsultando el buró a 12 y 24 meses (fase 6). Novadata no le cobra al negocio por ahora. |
+| Días de mora por operación | Cooperativas (Proveedor_Info_1), Aval y Equifax sí; bancos de Proveedor_Info_1 no: ahí manda la calificación. |
+| Negados | Se juzgan reconsultando el buró a 12 y 24 meses (fase 6). Proveedor_Info_1 no le cobra al negocio por ahora. |
 | Ciclo simulado | Se arma hoy el ciclo completo de la primera prueba retrospectiva, con el mismo código que la real (sección 14). |
 | Quién recibe crédito en la simulación | Según la recomendación: aprobar mucho más que revisar, negar casi nunca; ~300 en total. |
 | La foto "un año después" | La reconsulta real de toda la cartera, con doce meses de eventos sintéticos plantados encima. |
@@ -60,7 +60,7 @@ Negocio, con **Riesgo de Crédito** como primera área. En pantalla,
 | Pantallas, estadística, instituciones, calibración, archivo | Las cinco decisiones del 2026-10-03, en `docs/laboratorio-pantallas.md`: fases A a F en orden; lo interactivo en el navegador y lo pesado con guiones de Python locales; instituciones y proyectos como entidades del Laboratorio; calibración con la función puntaje → probabilidad estimada en una cohorte y probada en la siguiente; el archivo pide fecha del primer impago si cayó, canal y la decisión de la institución en lo no desembolsado. |
 | Impago (2026-10-06) | Con crédito de la institución: Basilea, más de 90 días con sus días de mora. Sin crédito: el buró, más de 90 días en cooperativas y retail; en bancos, D o E (lo equivalente a más de 90 días en consumo según la tabla de la Superintendencia); retail grande = deuda con la casa comercial de más de USD 500. Castigo, reestructuración y demanda judicial cuentan aunque no lleguen a 90 días. Es un parámetro (110): `lab_definiciones_default` y la tabla de calificación versionada `lab_tablas_calificacion`, en Datos y cartera › Configuración. Validación: `docs/propuesta-revision-del-laboratorio.md`, 10.2. |
 | Lista de observación (2026-10-06) | Quien llegó a 15 días de atraso o más dentro del primer año es grave aunque no caiga en impago, y queda en la lista aunque se haya puesto al día. En t3 se mide también el impago (puede pasar: 31 + 31 + 30 = 92 días). |
-| Cohortes (2026-10-06) | Las solicitudes se reconsultan en Novadata a los 3, 6, 9 y 12 meses para medir el resultado y actualizar la situación del cliente. Base legal: la autorización del cliente al presentar la solicitud. |
+| Cohortes (2026-10-06) | Las solicitudes se reconsultan en Proveedor_Info_1 a los 3, 6, 9 y 12 meses para medir el resultado y actualizar la situación del cliente. Base legal: la autorización del cliente al presentar la solicitud. |
 | Reporte de la institución (2026-10-06) | Mensual: confirma qué solicitudes recibieron crédito y trae el estado de cada crédito al cierre del mes. La prueba del modelo: aprobar y revisar = no impago; negar = impago. |
 | Hallazgos (2026-10-06) | Son los resultados de los análisis estadísticos, descriptivos, inferenciales y exploratorios sobre los que el modelo dio por buenos y cayeron; van al informe. Sin registro de textos por crédito. |
 | Candidatas (2026-10-06) | Se miden en t3, t6, t9 y t12 y se deciden al año si se repiten. |
@@ -516,8 +516,8 @@ Las fases 2 y 3 pueden ir en paralelo después de la 1.
 |---|---|
 | ¿Una instalación para varias IFI o una por IFI? | Abierta. Define cómo se separan los datos. Decidido el 2026-10-03: instituciones y proyectos como entidades del Laboratorio, sólo admin, sin esperar esta respuesta (construidas en la 109). |
 | Calibración | Decidida el 2026-10-03: el motor da puntaje, no probabilidad; se estima puntaje → probabilidad en una cohorte y se prueba en la siguiente. |
-| ¿Qué es "retail grande"? | Resuelta el 2026-10-06: deuda con la casa comercial de más de USD 2.000 (Novadata no trae el monto del crédito). |
-| Base legal para reconsultar a un negado | Resuelta el 2026-10-06: la autorización que el cliente firma al presentar la solicitud cubre fuentes internas y externas desde ese momento. Novadata no cobra por ahora. |
+| ¿Qué es "retail grande"? | Resuelta el 2026-10-06: deuda con la casa comercial de más de USD 2.000 (Proveedor_Info_1 no trae el monto del crédito). |
+| Base legal para reconsultar a un negado | Resuelta el 2026-10-06: la autorización que el cliente firma al presentar la solicitud cubre fuentes internas y externas desde ese momento. Proveedor_Info_1 no cobra por ahora. |
 | ¿Cuánto tiempo se conserva el crudo? | Abierta (LOPDP). |
 | La decisión de la IFI no se registra | Supuesto del negocio hasta que exista la solicitud (fábrica de crédito). |
 | Cartera vigente de la IFI con perfiles posteriores al desembolso | Riesgo de fuga: el vínculo la marca `consulta_posterior` y la excluye. |
@@ -539,7 +539,7 @@ año después" (hoy, reconsulta real más eventos plantados).
 |---|---|---|
 | t0, día del análisis ("hace un año") | La consulta guardada de cada persona de la cartera (crudo en Storage, septiembre de 2026) | La consulta del día de la solicitud |
 | Desembolso | Entre t0 y la reconsulta, para que el vínculo nunca tome la reconsulta como perfil del análisis | El del archivo |
-| t1, "un año después" | La reconsulta real del 2026-10-03 (2.567 personas, crudo en Storage y en `research/novadata-raw-2026-10-03/`) **con doce meses de eventos sintéticos encima**, fechados entre t0 y t0 + 12 meses | La reconsulta del día de la prueba |
+| t1, "un año después" | La reconsulta real del 2026-10-03 (2.567 personas, crudo en Storage y en `research/proveedor-info-1-raw-2026-10-03/`) **con doce meses de eventos sintéticos encima**, fechados entre t0 y t0 + 12 meses | La reconsulta del día de la prueba |
 | Fecha de corte del archivo | t0 + 12 meses (futura: sólo una carga sintética puede tenerla) | La del archivo |
 
 Primero a 12 meses; la de 24 es la misma máquina con otro horizonte. Los
@@ -666,8 +666,8 @@ de los eventos; las proporciones son inventadas y quedan en la bitácora.
 | Corte | `lab_congelar_corte` congela también las solicitudes | pantalla |
 
 Para la corrida real faltan dos piezas: armar las solicitudes desde los
-análisis del período, y reconsultar en Novadata enlazando cada consulta a su
-solicitud (`origen = 'novadata'`).
+análisis del período, y reconsultar en Proveedor_Info_1 enlazando cada consulta a su
+solicitud (`origen = 'proveedor_info_1'`).
 
 ### 14.9 Lo que enseñó armarlo (2026-10-03)
 
@@ -705,7 +705,7 @@ solicitud (`origen = 'novadata'`).
   no es un cierre en el año y el detector no lo cuenta.
 - **El buró es una foto.** Quien cayó y se puso al día antes de la
   reconsulta no se ve. La simulación lo planta a propósito para medirlo.
-- **Novadata cambió un formato sin avisar.** El estado de los
+- **Proveedor_Info_1 cambió un formato sin avisar.** El estado de los
   establecimientos llega a veces abreviado ("ABI"); el detector lo encontró
   como 19 negocios "cerrados" en una semana (estructura-v13, ver
   `docs/estructura-estandarizada.md`). Comparar dos consultas de la misma

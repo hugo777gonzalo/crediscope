@@ -1,6 +1,6 @@
 // Orquestador del flujo SIN LLM:
-//   Ingesta Novadata -> Estructura Estandarizada -> Persistencia -> Web.
-// Usa las credenciales de servicio de Novadata (secrets de la función,
+//   Ingesta Proveedor_Info_1 -> Estructura Estandarizada -> Persistencia -> Web.
+// Usa las credenciales de servicio de Proveedor_Info_1 (secrets de la función,
 // no las escribe el usuario) y requiere un usuario autenticado de
 // Supabase (igual que analyze-client) porque persiste en client_profiles.
 //

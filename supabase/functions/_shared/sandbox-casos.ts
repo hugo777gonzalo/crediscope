@@ -1,7 +1,7 @@
 // Las identificaciones de prueba del sandbox de la API: la tabla de la especificación
 // (api/openapi.yaml, «Sandbox»). Un archivo aparte de los simuladores porque también
 // lo lee la validación del pedido, que es pura y no tiene por qué importar un cliente
-// de Novadata.
+// de Proveedor_Info_1.
 //
 // Un `00…` que no esté acá se rechaza igual que en producción: que sea imposible para
 // una persona no lo vuelve un caso de prueba, y un número suelto no tendría respuesta

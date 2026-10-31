@@ -1,6 +1,6 @@
 // Builder del Perfil de Aval: toma el `result` crudo de la respuesta de
 // Aval y arma un perfil normalizado. Análogo a buildStandardProfile de
-// Novadata, pero para el sobre único de Aval (34 segmentos en persona
+// Proveedor_Info_1, pero para el sobre único de Aval (34 segmentos en persona
 // natural). Mapeado contra dos respuestas reales del ambiente de prueba
 // (2026-09-20): cédula 0101154151 (score 73) y 0100062181 (score 979).
 //

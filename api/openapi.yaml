@@ -21,7 +21,7 @@ info:
     La IFI pide la evaluación de una persona y CrediScope:
 
     1. valida la identificación y la autorización del titular;
-    2. consulta las fuentes contratadas (Novadata y, en la modalidad `plus`, el
+    2. consulta las fuentes contratadas (Proveedor_Info_1 y, en la modalidad `plus`, el
        buró de la IFI: Equifax);
     3. arma el perfil estandarizado y aplica los controles de bloqueo, que son
        reglas fijas y prevalecen sobre el modelo;
@@ -664,7 +664,7 @@ paths:
 
         - con `identificacion`: usa lo que CrediScope ya sabe de la persona (el
           ingreso reportado al IESS y las cuotas del buró de la IFI, o las de
-          cooperativas de Novadata si no hay buró). No consulta a ninguna
+          cooperativas de Proveedor_Info_1 si no hay buró). No consulta a ninguna
           fuente; si la persona no se consultó antes, responde 404. Si además
           vienen `ingresos` u `obligaciones`, se ignoran: manda la
           identificación;
@@ -792,7 +792,7 @@ paths:
                         - concepto: Tarjeta de crédito
                           montoMensual: 85
                       deudasSinCuota: []
-                      fuenteDeLasCuotas: novadata
+                      fuenteDeLasCuotas: proveedor_info_1
                       corteIess: null
                     procedencia:
                       modo: datos_del_pedido
@@ -881,7 +881,7 @@ paths:
                       deudasSinCuota:
                         - concepto: Casas comerciales
                           saldo: 650
-                          origen: Novadata
+                          origen: Proveedor_Info_1
                       fuenteDeLasCuotas: equifax
                       fuentesSinConsultar: []
                       corteIess: '2026-08'
@@ -1365,7 +1365,7 @@ components:
             y la capacidad de pago (exige `solicitudDeCredito` con monto, plazo y
             tasa, y por ahora sólo del producto de consumo). `plus`: además, el
             buró de la IFI: las cuotas de la capacidad salen de las operaciones
-            que trae Equifax en lugar de las de Novadata. Exige que el buró de la
+            que trae Equifax en lugar de las de Proveedor_Info_1. Exige que el buró de la
             IFI sea Equifax, y si la persona no tiene una consulta vigente, se
             consulta (y esa consulta se cobra). La recomendación del modelo y la
             capacidad de pago se entregan por separado: no se combinan en una
@@ -2311,8 +2311,8 @@ components:
             $ref: '#/components/schemas/DeudaSinCuota'
         fuenteDeLasCuotas:
           type: string
-          enum: [equifax, novadata]
-          description: De dónde salen las cuotas de las obligaciones. Con los datos de la IFI es `novadata` y no quiere decir nada.
+          enum: [equifax, proveedor_info_1]
+          description: De dónde salen las cuotas de las obligaciones. Con los datos de la IFI es `proveedor_info_1` y no quiere decir nada.
         corteIess:
           type: [string, 'null']
           pattern: '^[0-9]{4}-[0-9]{2}$'
@@ -2820,12 +2820,12 @@ components:
               obligaciones:
                 - concepto: Cooperativas
                   montoMensual: 85
-                  origen: Novadata
+                  origen: Proveedor_Info_1
               deudasSinCuota:
                 - concepto: Bancos
                   saldo: 2400
-                  origen: Novadata
-              fuenteDeLasCuotas: novadata
+                  origen: Proveedor_Info_1
+              fuenteDeLasCuotas: proveedor_info_1
               corteIess: '2026-08'
           requiereRevisionHumana: true
         disponibilidad:

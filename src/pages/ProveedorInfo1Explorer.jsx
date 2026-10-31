@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { exploreNovadata } from "../lib/api.js";
+import { exploreProveedorInfo1 } from "../lib/api.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
 
@@ -27,7 +27,7 @@ function FuenteCard({ fuente, status, raw }) {
   );
 }
 
-export default function NovadataExplorer() {
+export default function ProveedorInfo1Explorer() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [cedula, setCedula] = useState("");
@@ -40,7 +40,7 @@ export default function NovadataExplorer() {
     setLoading(true);
     setError(null);
     try {
-      const data = await exploreNovadata({ username, password, cedula });
+      const data = await exploreProveedorInfo1({ username, password, cedula });
       setResult(data);
     } catch (err) {
       setError(err.message);

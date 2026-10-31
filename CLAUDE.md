@@ -1,7 +1,7 @@
 # CrediScope
 
 Calificación crediticia para Ecuador. Una persona se consulta contra
-Novadata, se arma un Perfil de la Persona estandarizado, se clasifica su
+Proveedor_Info_1, se arma un Perfil de la Persona estandarizado, se clasifica su
 fuente de ingreso, y un modelo guiado por un marco interpretativo en
 lenguaje natural produce un score de 1 a 999 y una recomendación. Sobre eso
 están la solicitud de crédito (simulador, capacidad de pago y evaluación
@@ -258,7 +258,7 @@ Romper cualquiera de estas rompe algo real.
     familiar, perfil) según lo que habilite su configuración (negocio,
     2026-10-20): la IFI es la responsable del tratamiento. Lo que viene de
     una fuente se entrega si el contrato con esa fuente lo permite; el de
-    Novadata espera su respuesta por escrito.
+    Proveedor_Info_1 espera su respuesta por escrito.
   - E27 ya no frena la v1 (cerrado el 2026-10-20). Lo que falta está en
     `docs/pendientes.md`.
 - **Una base por institución** (`docs/plan-segundo-cliente.md`, construido el
@@ -375,7 +375,7 @@ al CLAUDE.md que le corresponde, y con su caso a `docs/lecciones.md`.
 - **Pruebas masivas con el modelo, sólo con autorización explícita** del
   negocio y con el costo estimado (comparaciones, lotes, recálculos con
   LLM): elegir opciones de un diseño no es autorizar el gasto. Una llamada
-  suelta para comprobar un despliegue está aceptada. Consultar Novadata no
+  suelta para comprobar un despliegue está aceptada. Consultar Proveedor_Info_1 no
   le cuesta al negocio por ahora (2026-10-03): reconsultar es sólo tiempo.
 - **Al terminar, decir** qué cambió, qué se decidió y por qué, qué se
   verificó (y qué no) y qué quedó pendiente.
@@ -396,7 +396,7 @@ al CLAUDE.md que le corresponde, y con su caso a `docs/lecciones.md`.
   - Va con una identificación inválida, que la función rechaza antes de la
     fuente, o con una persona concreta autorizada por el negocio.
   - Las 240 cédulas "sintéticas" de Aval no sirven: son datos de prueba de
-    Aval, no números inexistentes. Una trajo nombre en Novadata el
+    Aval, no números inexistentes. Una trajo nombre en Proveedor_Info_1 el
     2026-10-09.
 
 ## Para no quemar el límite de uso

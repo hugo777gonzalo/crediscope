@@ -47,7 +47,7 @@ Esta es la decisión de fondo del diseño.
 El modelo **no se entera** de qué fuentes existen, cuáles se
 consultaron, cuáles están apagadas ni por qué. Nada de eso es asunto
 suyo: son decisiones de negocio y de plomería. Si se apagan los bancos
-de Novadata porque Aval trae información más profunda del sistema
+de Proveedor_Info_1 porque Aval trae información más profunda del sistema
 financiero ecuatoriano, la dimensión *sigue cubierta* y el modelo solo
 necesita saber eso. Contarle el detalle sería invitarlo a razonar sobre
 una decisión comercial que no le compete.

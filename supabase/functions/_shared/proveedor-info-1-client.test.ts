@@ -1,4 +1,4 @@
-// El cliente de Novadata con el plazo por fuente y el token compartido
+// El cliente de Proveedor_Info_1 con el plazo por fuente y el token compartido
 // (auditoría externa del 2026-10-09, E5), contra un fetch falso: sin red y
 // sin datos de nadie.
 //
@@ -6,21 +6,21 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 
-Deno.env.set("NOVADATA_BASE_URL", "https://novadata.prueba");
-Deno.env.set("NOVADATA_USERNAME", "usuario");
-Deno.env.set("NOVADATA_PASSWORD", "clave");
+Deno.env.set("PROVEEDOR_INFO_1_BASE_URL", "https://proveedor-info-1.prueba");
+Deno.env.set("PROVEEDOR_INFO_1_USERNAME", "usuario");
+Deno.env.set("PROVEEDOR_INFO_1_PASSWORD", "clave");
 
 // Cada prueba importa su propia copia del módulo: el token se guarda en
 // memoria del módulo y una prueba no puede heredar el de otra.
 let copia = 0;
-const cliente = () => import(`./novadata-client.ts?copia=${++copia}`);
+const cliente = () => import(`./proveedor-info-1-client.ts?copia=${++copia}`);
 
 type Fetch = typeof globalThis.fetch;
 const fetchOriginal = globalThis.fetch;
 
-// Un Novadata falso: cuenta los pedidos de token y deja colgada la fuente
+// Un Proveedor_Info_1 falso: cuenta los pedidos de token y deja colgada la fuente
 // que se le diga hasta que el plazo la corte.
-function novadataFalso({ colgada = "", tokenFalla = false } = {}) {
+function proveedorInfo1Falso({ colgada = "", tokenFalla = false } = {}) {
   const cuenta = { tokens: 0, fuentes: 0 };
   const falso: Fetch = (entrada, init) => {
     const url = String(entrada);
@@ -50,7 +50,7 @@ Deno.test({
   name: "una consulta pide un solo token, no uno por fuente",
   ...opciones,
   async fn() {
-    const cuenta = novadataFalso();
+    const cuenta = proveedorInfo1Falso();
     try {
       const { consultarTodasLasFuentes, RUTAS_POR_FUENTE } = await cliente();
       await consultarTodasLasFuentes("sin-cedula-1");
@@ -66,7 +66,7 @@ Deno.test({
   name: "dos consultas simultáneas comparten el pedido de token",
   ...opciones,
   async fn() {
-    const cuenta = novadataFalso();
+    const cuenta = proveedorInfo1Falso();
     try {
       const { consultarTodasLasFuentes } = await cliente();
       await Promise.all([consultarTodasLasFuentes("sin-cedula-1"), consultarTodasLasFuentes("sin-cedula-2")]);
@@ -81,7 +81,7 @@ Deno.test({
   name: "una fuente colgada se corta en el plazo y las demás contestan",
   ...opciones,
   async fn() {
-    novadataFalso({ colgada: "pn_inf_basica" });
+    proveedorInfo1Falso({ colgada: "pn_inf_basica" });
     try {
       const { consultarTodasLasFuentes, duracionesPorFuente, fuentesQueAgotaronElPlazo, RUTAS_POR_FUENTE } = await cliente();
       const raw = await consultarTodasLasFuentes("sin-cedula-1", undefined, new Set(), 50);
@@ -100,7 +100,7 @@ Deno.test({
   name: "las fuentes apagadas no se piden ni tienen duración",
   ...opciones,
   async fn() {
-    const cuenta = novadataFalso();
+    const cuenta = proveedorInfo1Falso();
     try {
       const { consultarTodasLasFuentes, duracionesPorFuente, RUTAS_POR_FUENTE } = await cliente();
       const raw = await consultarTodasLasFuentes("sin-cedula-1", undefined, new Set(["hijos"]));
@@ -117,13 +117,13 @@ Deno.test({
   name: "sin token, todas las fuentes quedan en error con el motivo y no se pide ninguna",
   ...opciones,
   async fn() {
-    const cuenta = novadataFalso({ tokenFalla: true });
+    const cuenta = proveedorInfo1Falso({ tokenFalla: true });
     try {
       const { consultarTodasLasFuentes } = await cliente();
       const raw = await consultarTodasLasFuentes("sin-cedula-1");
       assertEquals(cuenta.fuentes, 0);
       assertEquals(raw.general.status, "error");
-      assertEquals(raw.general.errorMessage, "No se pudo autenticar con Novadata (HTTP 401)");
+      assertEquals(raw.general.errorMessage, "No se pudo autenticar con Proveedor_Info_1 (HTTP 401)");
     } finally {
       globalThis.fetch = fetchOriginal;
     }

@@ -6,7 +6,7 @@ import { Advertencias, Etiqueta, Kpi, ETIQUETA_RECOMENDACION, num, pct, dec } fr
 import InfoTooltip from "../InfoTooltip.jsx";
 
 // El explorador del crudo (fase E, docs/laboratorio-pantallas.md): qué trae
-// el crudo de Novadata del día del análisis, qué de eso se asocia al impago y
+// el crudo de Proveedor_Info_1 del día del análisis, qué de eso se asocia al impago y
 // qué no vio el modelo. Lo calcula scripts/explorar-crudo.mjs (recorrer 2.500
 // crudos desde el navegador es pesado); acá sólo se muestra. Ningún valor de
 // una persona: los valores frecuentes los comparten 10 personas o más.
@@ -137,9 +137,9 @@ function RegistrarCandidata({ h, corte }) {
     try {
       await crearCandidata({
         nombre: `${rutaLegible(h.ruta, h.fuente)} · ${condicion(h)}`,
-        definicion: `${condicion(h)} en ${h.fuente} › ${rutaLegible(h.ruta, h.fuente)} (crudo de Novadata del día del análisis)`,
+        definicion: `${condicion(h)} en ${h.fuente} › ${rutaLegible(h.ruta, h.fuente)} (crudo de Proveedor_Info_1 del día del análisis)`,
         origen: "crudo", ruta_crudo: h.ruta, derivacion: h.derivacion === "categoria" ? `categoria: ${h.categoria}` : h.derivacion,
-        fuente: `Novadata: ${h.fuente}`, corte_id: corte.id,
+        fuente: `Proveedor_Info_1: ${h.fuente}`, corte_id: corte.id,
         evidencia: { iv: h.iv, q: h.q, tasa_con: h.tasa_con, tasa_sin: h.tasa_sin, con: h.con, parte_no_explicada: h.parte_no_explicada, el_modelo: h.el_modelo, corte: corte.nombre, sintetico: corte.es_sintetico },
       });
       setEstado("listo");

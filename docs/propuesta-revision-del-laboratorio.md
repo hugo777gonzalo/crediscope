@@ -361,7 +361,7 @@ para empezar:
 
 - **La cohorte cero**: las 2.567 personas de la cartera, con t0 = la
   consulta del 2026-09-25 (crudo guardado, no se pisa).
-- **Reconsultarlas cada tres meses** (Novadata no cobra por ahora; la cartera
+- **Reconsultarlas cada tres meses** (Proveedor_Info_1 no cobra por ahora; la cartera
   entera tarda ~2 h 10 min y `consultar-lote.mjs` retoma). Cada ronda queda
   como su crudo en Storage y como una fila de reconsulta, igual que hoy.
 - **Resultado**: malo en el sistema con la misma regla para todos (1.2), con
@@ -515,7 +515,7 @@ estadístico da eso, y el Laboratorio no lo usa:
 |---|---|---|
 | Ahora | Arreglos 1 (disponibilidad), 2 (dos resultados), 4 ("lo vio" en tres), 5 (ajuste por puntaje) y 6 (alcance al modelo); rehacer el procesamiento y el corte del ciclo; `lab_hallazgos` | Sin modelo |
 | Ahora, con decisión del negocio | Base legal y frecuencia de la cohorte (5.1); definición de malo por tipo y "retail grande" (5.4.8); informe en dos partes (5.5); retirar el ajuste de criterio (5.6) | Sin modelo |
-| Primera ronda | Reconsulta trimestral de la cohorte (fines de diciembre de 2026, tres meses después de t0) | Sin costo de Novadata, por ahora |
+| Primera ronda | Reconsulta trimestral de la cohorte (fines de diciembre de 2026, tres meses después de t0) | Sin costo de Proveedor_Info_1, por ahora |
 | Con autorización de gasto | Banco de prueba y puntajes de la cohorte (5.2): una muestra para conocer la distribución real de recomendaciones; el resto cuando madure el resultado | USD 3-4 por cada 100 análisis por lote |
 | Con la primera institución | Institución en el análisis, solicitudes del período, reconsulta enlazada (2.2) | — |
 
@@ -580,12 +580,12 @@ segmentos, significancia y candidatas).
 
 Cada decisión con lo que se revisó para validarla (código, base, crudo
 local, norma) y lo que cambia. Los conteos del crudo son de la reconsulta
-del 2026-10-03 (`research/novadata-raw-2026-10-03/`, 2.567 personas): son la
+del 2026-10-03 (`research/proveedor-info-1-raw-2026-10-03/`, 2.567 personas): son la
 situación a esa fecha, no impagos nuevos.
 
 ### 10.1 Cohortes reconsultadas (pregunta 1)
 
-**Decidido:** se reconsultan en Novadata las solicitudes cada tres meses,
+**Decidido:** se reconsultan en Proveedor_Info_1 las solicitudes cada tres meses,
 para medir el resultado y actualizar la situación del cliente. La base legal
 es la autorización que el cliente firma al presentar la solicitud de
 crédito: cubre fuentes internas y externas desde ese momento.
@@ -593,7 +593,7 @@ crédito: cubre fuentes internas y externas desde ese momento.
 **Validación**
 
 - Se puede hacer con lo que hay: `consultar-lote.mjs` con `--crudo=` (retoma
-  si se corta; ~2 h 10 min la cartera entera; Novadata no cobra por ahora).
+  si se corta; ~2 h 10 min la cartera entera; Proveedor_Info_1 no cobra por ahora).
 - La base no lo admite todavía: una solicitud tiene una sola reconsulta
   (`lab_reconsultas.solicitud_id` es único, 098) y un corte sólo puede ser a
   12 o 24 meses (095). Hacen falta rondas (3, 6, 9, 12 y 24) y cortes a esos
@@ -648,13 +648,13 @@ después (hay resoluciones de 2024 y 2025 sobre calificación de cartera).
 - En bancos, "más de 90 días en consumo" es **D o E**. "Peor que B2", lo que
   usa hoy el código, empieza a los 46 días. Son dos reglas distintas y hay
   que quedarse con una: la decisión se lee como **D o E**.
-- Novadata no dice de qué tipo es una operación de bancos: el campo `tipo`
+- Proveedor_Info_1 no dice de qué tipo es una operación de bancos: el campo `tipo`
   vale "C" en las 8.980 operaciones propias de la reconsulta. No se pueden
   usar las tablas de productivo o vivienda; la de consumo es la única
   aplicable, y se aplica a todas.
-- En cooperativas Novadata trae los días (`num_dias_morosidad`): vale "más
+- En cooperativas Proveedor_Info_1 trae los días (`num_dias_morosidad`): vale "más
   de 90" directo, sin pasar por su calificación (que tiene otra tabla).
-- En retail Novadata no trae el monto del crédito. Una fila de retail tiene
+- En retail Proveedor_Info_1 no trae el monto del crédito. Una fila de retail tiene
   la casa comercial, la deuda total, lo vencido, los días de mora, lo
   castigado y lo judicial. "Crédito de más de USD 2.000" se aplica como
   **deuda total con esa casa comercial de más de USD 2.000**.
@@ -861,7 +861,7 @@ Ninguna fase usa el modelo de lenguaje ni agrega pantallas nuevas.
 ## 12. Confirmado por el negocio el 2026-10-06
 
 1. Bancos: **D o E** (equivalente a más de 90 días en consumo). Sí.
-2. Retail: la deuda total con la casa comercial (Novadata no trae el monto
+2. Retail: la deuda total con la casa comercial (Proveedor_Info_1 no trae el monto
    del crédito), **de más de USD 500**.
 3. Castigo, reestructuración y demanda judicial cuentan como impago aunque
    no lleguen a 90 días (Basilea). Sí.
@@ -1033,7 +1033,7 @@ modelo bien. Lo que guardan las pantallas sigue sin verse con sesión.
 > **Reemplazada por `docs/laboratorio-guia.md` el mismo día.** El negocio
 > contestó 15.7 alineando los conceptos: el Universo (toda solicitud), el
 > Universo analizado, los con crédito (reporte mensual de la institución) y
-> los sin crédito (Novadata cada 3 meses); todo es cartera propia mientras
+> los sin crédito (Proveedor_Info_1 cada 3 meses); todo es cartera propia mientras
 > dure el desarrollo; una solicitud nueva de una persona es otra solicitud
 > (no se juntan cada 90 días, como proponía el punto 3); no se analiza la
 > cartera entera, sino unos 300 casos con caché más adelante; y no se arman
@@ -1046,7 +1046,7 @@ modelo bien. Lo que guardan las pantallas sigue sin verse con sesión.
 - Todo el ciclo corre hoy sobre datos sintéticos: las tres cargas son
   sintéticas y las solicitudes y reconsultas sólo las crea el simulador.
   Faltan las dos piezas que anotaba el diseño (14.8): armar las solicitudes
-  reales y reconsultar en Novadata atando cada consulta a su solicitud.
+  reales y reconsultar en Proveedor_Info_1 atando cada consulta a su solicitud.
 - La cartera de septiembre: 2.565 personas con su consulta del 25 al 29 de
   septiembre (casi todas el 25 y el 26), que es su t0. **Sólo 33 tienen un
   análisis del modelo.**

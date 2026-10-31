@@ -27,7 +27,7 @@
 // lint ni build se rompe en silencio: correr primero con --seco.
 //
 // Uso: node scripts/procesar-reconsultas.mjs --carga=<uuid> [--seco] [--limite=N]
-//        [--t0=research/novadata-raw-2026-09-25] [--base-real=research/novadata-raw-2026-10-03]
+//        [--t0=research/proveedor-info-1-raw-2026-09-25] [--base-real=research/proveedor-info-1-raw-2026-10-03]
 
 import fs from "node:fs";
 import path from "node:path";
@@ -40,8 +40,8 @@ const arg = (n, d) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n
 const CARGA = arg("carga", null);
 const SECO = process.argv.includes("--seco");
 const LIMITE = Number(arg("limite", "0")) || Infinity;
-const CARPETA_T0 = path.join(RAIZ, arg("t0", "research/novadata-raw-2026-09-25"));
-const CARPETA_BASE = path.join(RAIZ, arg("base-real", "research/novadata-raw-2026-10-03"));
+const CARPETA_T0 = path.join(RAIZ, arg("t0", "research/proveedor-info-1-raw-2026-09-25"));
+const CARPETA_BASE = path.join(RAIZ, arg("base-real", "research/proveedor-info-1-raw-2026-10-03"));
 // Una entidad "empezó a reportar" si en t0 no tenía a nadie de la carga y en
 // t1 tiene por lo menos a tantos.
 const MINIMO_RECIEN_REPORTADA = 5;
@@ -139,11 +139,11 @@ await enParalelo(pendientes, 6, async (rec) => {
     if (!meta?.crudo_ruta) throw new Error("el perfil de t0 no tiene crudo");
     const local = path.join(CARPETA_T0, `${cedula}.json`);
     const deLocal = fs.existsSync(local) ? leerJson(local) : null;
-    const crudoT0 = deLocal?.perfilId === client_profile_id ? deLocal : await bajarObjeto("crudo-novadata", meta.crudo_ruta);
+    const crudoT0 = deLocal?.perfilId === client_profile_id ? deLocal : await bajarObjeto("crudo-proveedor-info-1", meta.crudo_ruta);
     const corteT0 = meta.corte ? (meta.desactualizado === "true" ? mesMenos(meta.corte) : meta.corte) : undefined;
     const t0 = { raw: crudoT0.raw, fecha: fecha_solicitud, perfil: armarEnFecha(crudoT0.capturadoEl, () => buildStandardProfile(crudoT0.raw, cedula, corteT0).profile) };
 
-    const crudoT1 = await bajarObjeto(rec.origen === "simulada" ? "lab-archivos" : "crudo-novadata", rec.crudo_ruta);
+    const crudoT1 = await bajarObjeto(rec.origen === "simulada" ? "lab-archivos" : "crudo-proveedor-info-1", rec.crudo_ruta);
     const t1 = { raw: crudoT1.raw, fecha: rec.fecha, perfil: armarEnFecha(crudoT1.capturadoEl, () => buildStandardProfile(crudoT1.raw, cedula, rec.corte_iess ?? undefined).profile) };
     const { eventos, buro, disponibilidad, entidades } = eventosEntreConsultas(t0, t1, { cedula, esDeLaInstitucion });
 

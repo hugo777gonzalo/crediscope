@@ -5,7 +5,7 @@
 -- trabaja con UN buró -- Equifax o Aval, no los dos ni en orden --, y cada
 -- uno tiene su propia pestaña. Hasta acá `proveedores.activo` decía sólo
 -- si una fuente de datos se puede consultar, y en esta base estaban las
--- tres prendidas (Novadata, Aval y Equifax): no había forma de saber cuál
+-- tres prendidas (Proveedor_Info_1, Aval y Equifax): no había forma de saber cuál
 -- era el buró de la institución. `es_buro` lo dice, y como cada
 -- institución tiene su propia base (clientes/directorio.json), es una
 -- propiedad de la base. El selector se llama «Buró» (negocio, 2026-10-16).

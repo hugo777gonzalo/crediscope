@@ -2,7 +2,7 @@
 -- (decisión del negocio del 2026-10-09, auditoría externa E3; antes M10 de
 -- la auditoría de seguridad).
 --
--- Son las cédulas de prueba del ambiente de Aval: Novadata no las conoce y
+-- Son las cédulas de prueba del ambiente de Aval: Proveedor_Info_1 no las conoce y
 -- no existen. Desde el 2026-09-29 se sabía que torcían todo total sobre la
 -- cartera (2.812 clientes = 2.572 reales + 240), pero quedaba decidir si se
 -- marcaban o se borraban. Se marcan: es reversible y no se pierde nada.
@@ -575,7 +575,7 @@ create or replace view public.fuentes_que_despertaron with (security_invoker = t
     count(*) FILTER (WHERE (p.estado_por_fuente ->> f.recurso) = 'faltante'::text) AS veces_sin_dato,
     count(*) FILTER (WHERE (p.estado_por_fuente ->> f.recurso) = 'error'::text) AS veces_con_error,
     max(p.created_at) FILTER (WHERE (p.estado_por_fuente ->> f.recurso) = 'ok'::text) AS ultima_vez_con_contenido
-   FROM novadata_resource_config f
+   FROM proveedor_info_1_resource_config f
      JOIN client_profiles p ON p.estado_por_fuente ? f.recurso
   WHERE f.estado_del_recurso = ANY (ARRAY['no_responde'::text, 'sin_contenido'::text])
     AND NOT (EXISTS ( SELECT 1 FROM clients c WHERE c.id = p.client_id AND c.es_sintetico))
