@@ -22,7 +22,7 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
-import { analizarPersona } from "../_shared/analisis-de-la-persona.ts";
+import { analizarPersona, ConsultaIncompleta } from "../_shared/analisis-de-la-persona.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -109,6 +109,12 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   } catch (err) {
+    if (err instanceof ConsultaIncompleta) {
+      return new Response(JSON.stringify({ error: err.message, motivo: "consulta_incompleta" }), {
+        status: 409,
+        headers: { ...corsHeaders, "content-type": "application/json" },
+      });
+    }
     const mensaje =
       err instanceof Error ? err.message : (err as { message?: string })?.message ?? JSON.stringify(err);
     return new Response(JSON.stringify({ error: mensaje }), {

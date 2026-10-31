@@ -1707,7 +1707,7 @@ components:
 
         | `codigo` | Qué pasó | Qué hacer |
         |---|---|---|
-        | `fuentes_no_disponibles` | Las fuentes de datos no respondieron. No se guardó ningún perfil. | Reintentar más tarde. |
+        | `fuentes_no_disponibles` | Las fuentes de datos no respondieron, o no respondieron las que definen la identidad, los aportes al IESS, los préstamos del BIESS o el buró de bancos. El modelo no analizó a la persona y no se consultó al buró de la IFI. | Reintentar más tarde. |
         | `plazo_vencido` | La evaluación no terminó dentro de su plazo. | Pedirla de nuevo. |
         | `identificacion_no_encontrada` | La fuente no conoce la identificación, o el buró no la acepta. No se consultó nada más. | Revisar la identificación; reintentar no cambia nada. |
         | `buro_requiere_consulta_previa` | Reservado. En `plus`, si la persona no tiene una consulta vigente del buró de la IFI, la API la consulta (y se cobra, hasta el tope diario): hoy la API no produce este código. | — |

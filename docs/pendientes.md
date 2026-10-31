@@ -48,6 +48,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
   punto 2.15).
 
+- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las fuentes que
+  deciden (`FUENTES_QUE_DECIDEN`). Alcanza a 670 de los 3.765 últimos perfiles reales, que hay que
+  reconsultar antes de analizarlos. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
+  sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
+  fuentes; parece una caída de Novadata, sin confirmar.
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
@@ -108,11 +114,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    (`consultar-equifax-local.mjs`) y el lote nuevo pisó a `persona-1` a `persona-25` del
    anterior, así que ya no prueba todas. Hay que ajustarlo y etiquetar los lotes por fecha.
    Lo hace Claude; se verifica corriéndolo sobre todo `research/equifax/crudo/` con todo en ok.
-6. **Cobertura de deuda de Novadata contra Equifax.** Con 4 personas se vio que Novadata no
-   trae deuda que Equifax sí (`docs/propuesta-estructura-equifax.md`, sección 9): es un
-   indicio, no una tasa. Falta comparar las consultas de Equifax con el perfil de Novadata más
-   reciente de cada persona, por corte de la Super. Sin costo (lee la base; parte de
-   `scripts/medir-solapamiento-equifax.mjs`). Importa: sostiene «un solo buró por institución».
+6. **Cobertura de deuda de Novadata contra Equifax.** Medido el 2026-10-31 sobre 91 personas con
+   las dos fuentes, con el crudo guardado: en bancos, con el mismo corte, 20 de 23 cuadran al dólar.
+   Las 3 restantes tienen atrasos y difieren entre 1,5% y 2,7%, sin explicar. Unas 60 tienen cortes
+   distintos y no se comparan sin reconsultar. Los 4 casos de la sección 9 de
+   `docs/propuesta-estructura-equifax.md` quedaron explicados: aperturas posteriores al corte, BIESS
+   (va en otra fuente de Novadata) y comercial. Las 63 filas de retail traen el corte de julio de 2025.
+   Importa: sostiene «un solo buró por institución».
 7. **Base de una institución nueva desde cero.** Falta la línea base del esquema (E15),
    parametrizar `auditar-seguridad.mjs` por base y probar el 503 de `exigirEsquema()` con la
    primera base atrasada. Importa: hoy hay una sola base y es requisito del primer cliente
