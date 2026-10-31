@@ -211,6 +211,11 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### Base y procesos
 
+- **Una agenda nueva repitió lo que la 114 había sacado de las otras.** La 139 (2026-10-30)
+  escribió la clave del vigía en texto plano en `cron.job`, y pg_cron la copió además en
+  `cron.job_run_details` en cada corrida. Las 18 comprobaciones de la 139 en PGlite no tocaban la
+  agenda, y `auditar-seguridad.mjs` lo marcó recién con la migración aplicada. Lo arregla la 140.
+  Las migraciones que crean una agenda se revisan contra la 114 antes de fusionar.
 - **Una lista de ids en `.in()` revienta la URL.** Medido: 350 uuid andan,
   400 (15,7 KB) fallan y 700 dan "Bad Request"; las cédulas, de 10
   caracteres, aguantan ~1.000. Las listas van en tandas de 200.
@@ -688,6 +693,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Equifax
 
+- **Una respuesta «completed» de Equifax puede no traer reporte de crédito** (2026-10-30). Al pasar
+  por nuestro código 20.560 respuestas de AWS, 585 de otro tipo de consulta (`id_tipo_consulta` 2,
+  con `personalInformation` y `VariablesOfertaTotal`) daban «alcanza», sin deudas y sin un aviso:
+  la estructura existía, sin ningún sistema medido, y `datosDeCapacidad()` la leía como «no debe».
+  Ninguna de las 97 consultas de CrediScope es así, y las 19.826 con reporte traen los tres sistemas.
+  Lo cierra `elBuroTraeDetalle()`: la capacidad sigue con Novadata y Plus falla con
+  `buro_no_disponible`.
 - **Equifax cobra cada consulta y no tiene tope: la protección es
   nuestra** (2026-10-12). El conector se diseñó desde ahí y no del patrón
   de Aval, que es gratis en prueba: un timeout no se repite (pudo

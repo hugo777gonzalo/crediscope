@@ -22,6 +22,7 @@ import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
 import { elPerfilSirve } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
 import { capacidadDeLaSolicitud } from "./capacidad-de-la-solicitud.ts";
+import { elBuroTraeDetalle } from "./capacidad-de-pago.ts";
 import { esIdentificacionSimulada } from "./identificacion.ts";
 import { type FalloDeUnPaso, falloDeUnPaso, type Paso, pasoEnCurso, type RegistroDePaso, resumenDelAnalisis } from "./modalidades.ts";
 import type { ResultadoDelPaso } from "./cola-de-evaluaciones.ts";
@@ -243,6 +244,9 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
   // se pueda leer es un problema del buró, no un cálculo mal pedido.
   if (s.modalidad === "plus" && !estructura) {
     return fallo("Falta la consulta de Equifax de la persona: Plus calcula la capacidad con las cuotas del buró.", "buro_no_disponible");
+  }
+  if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) {
+    return fallo("Equifax contestó sin reporte de crédito: Plus no puede calcular la capacidad sin las cuotas del buró.", "buro_no_disponible");
   }
   return capacidadDeLaSolicitud(s, perfil.standard_profile, estructura);
 }

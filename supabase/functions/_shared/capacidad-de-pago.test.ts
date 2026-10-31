@@ -5,7 +5,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals, assertThrows } from "jsr:@std/assert@1";
-import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import { conIngresoDeclarado, datosDeCapacidad, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 
@@ -302,6 +302,24 @@ Deno.test("datosDeCapacidad: perfiles sin fuentesIngreso, con la forma vieja o c
   // Fuentes indirectas, sin monto o en cero no son ingreso.
   const sinMonto = { fuentesIngreso: { fuentes: [{ evidencia: "indirecta", montoMensualReportado: null }, { evidencia: "reportada_por_tercero", montoMensualReportado: 0 }] } };
   assertEquals(datosDeCapacidad(sinMonto, null).ingresos, []);
+});
+
+Deno.test("una respuesta de Equifax sin reporte de crédito no es «no debe»: se sigue con Novadata", () => {
+  // La forma que deja una respuesta «completed» sin reporteCrediticio.
+  const sinReporte = {
+    deudaActualTitular: {
+      bancos: null,
+      cooperativas: null,
+      comercial: null,
+      total: { numeroDeOperaciones: 0, saldoDeudaUsd: 0, cuotaMensualUsd: 0 },
+    },
+  };
+  assertEquals(elBuroTraeDetalle(sinReporte), false);
+  assertEquals(elBuroTraeDetalle(null), false);
+  assertEquals(elBuroTraeDetalle({ deudaActualTitular: { bancos: { cuotaMensualUsd: 0 } } }), true);
+
+  const datos = datosDeCapacidad(perfilDePrueba(), sinReporte);
+  assertEquals(datos.fuenteDeLasCuotas, "novadata");
 });
 
 Deno.test("datosDeCapacidad con Equifax: una estructura sin deuda del titular no es Equifax; con saldo y sin cuota, es una deuda sin cuota", () => {
