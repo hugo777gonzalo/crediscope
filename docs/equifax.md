@@ -6,6 +6,23 @@ Lo abierto está en `docs/pendientes.md`; el diseño y lo medido, en
 `docs/propuesta-marco-equifax.md`. Este texto vivía en CLAUDE.md hasta el
 2026-10-20 y pasó acá para no cargarlo en cada sesión.
 
+## Autorización de Equifax para reutilizar sus consultas
+
+**Equifax autorizó reutilizar las consultas ya pagadas** (negocio, 2026-10-30), y de aquí en
+adelante consta así:
+
+- Las que hicimos nosotros directamente y las que Novacredit hizo y pagó (en la base de
+  originación de AWS, bajadas a JSON en `research/ingresos-aws/crudo-equifax/`) son consultas
+  pagadas y se reutilizan como el negocio decida: calificar, derivar tablas, alimentar el
+  predictor de ingresos.
+- Se migran a `consultas_equifax` con `node scripts/migrar-equifax-aws.mjs` como si las
+  hubiéramos hecho nosotros (`origen = 'lote'`, `ambiente = 'produccion'`, `created_at` = la
+  fecha original, procedencia en `parametros.migrada_de`). Idempotente. Una consulta migrada
+  vale hasta el 17 del mes de su fecha, como cualquier otra; las viejas no cuentan como vigentes.
+- **Esas personas no se consultan a Novadata por ahora** (negocio, 2026-10-30: el servicio
+  tiene intermitencias). Quedan con el buró y sin perfil de Novadata.
+- La autorización de cada titular sigue siendo de la IFI, por contrato.
+
 ## Dónde está cada cosa
 
 - **Equifax** (buró; en producción desde el 2026-10-12; credenciales y

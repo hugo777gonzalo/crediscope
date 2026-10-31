@@ -798,6 +798,17 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
     el formato correcto hay 0 de 4.499, y en el entrenamiento la regla del crédito posterior nunca
     corrió porque `try_cast` de DuckDB dio nulas las 116.673 fechas. Una regla que filtra por
     fecha se comprueba contando cuántas filas toca; si toca cero, o todas, la fecha está mal leída.
+- **El plan Free de Supabase tiene un techo de 500 MB y la base queda en solo lectura al
+  pasarlo** (2026-10-31). Migrar de una vez las consultas de AWS (15.700 crudos de ~20 KB y 4,7
+  millones de filas de tablas derivadas) llevó la base a 1.629 MB: sin espacio en disco, sin
+  escrituras y con el CLI sin poder entrar (crea su rol con un GRANT, que es una escritura). Se
+  recuperó desde el SQL Editor con `set transaction read write;` como primera sentencia (el
+  `set default_transaction_read_only` no afecta a la transacción ya abierta), vaciando las tablas
+  derivadas, borrando las filas migradas y compactando con `CLUSTER` (el editor no deja `VACUUM
+  FULL`). Reglas: medir el espacio libre y migrar una muestra de 500 antes del total; las tablas
+  derivadas (`equifax_*`) se derivan al evaluar a la persona, no se migran; un `TRUNCATE` sin
+  `CASCADE` es la protección (`solicitudes` referencia a `consultas_equifax`); las personas
+  creadas por error no se pueden borrar porque `audit_log` es inmutable y las referencia.
 
 ## Laboratorio
 
