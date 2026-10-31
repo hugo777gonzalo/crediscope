@@ -34,8 +34,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { carpetaDeResearch } from "./_comun/entorno.mjs";
 import { centinelas } from "./_comun/equifax-personales.mjs";
-import { derivarTablas, ESPECIFICACION_DE_TABLAS } from "../supabase/functions/_shared/equifax-tablas.ts";
+import { derivarTablas, ESPECIFICACION_DE_TABLAS, fechaISO } from "../supabase/functions/_shared/equifax-tablas.ts";
 import { calcularEstructura } from "../supabase/functions/_shared/equifax-estructura.ts";
+import { mesesHastaElCorte } from "../supabase/functions/_shared/equifax-ventana.ts";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
 const dir = carpetaDeResearch(RAIZ, "equifax", "crudo");
@@ -100,21 +101,26 @@ verifica("equifax_resumen = una sola fila", salidas.filter((s) => s.r.tablas.equ
 
 console.log("\n3. El detalle de TODOS los roles contra el resumen de Equifax (valor_deuda_3_sistemas)");
 const sistemas = [["bancos", "SB", "detalle_deuda_actual_sb"], ["cooperativas", "SEPS", "detalle_deuda_actual_seps"], ["comercial", "SICOM", "detalle_deuda_actual_sicom"]];
-const esperado = { bancos: 22, cooperativas: 21, comercial: 16 }; // medido sobre el JSON el 2026-10-12 (scripts/conciliar-equifax.mjs)
+const esperado = { bancos: 22, cooperativas: 21, comercial: 16 }; // medido sobre el JSON el 2026-10-12 (scripts/conciliar-equifax.mjs), con comercial leído como bancos: 22 de 22 al leerlo como abajo
+// En el detalle ACTUAL del sector comercial `saldo_deuda` es lo por vencer, no el total (2026-10-31): el
+// total es por vencer + vencido + no devenga intereses. Se lee del JSON a mano, sin pasar por el código.
+const totalDelJson = (sistema, filas) =>
+  sistema === "comercial" ? S(filas, "saldo_deuda") + S(filas, "total_vencido") + S(filas, "ndi") : S(filas, "saldo_deuda");
+const saldoDelJson = (sistema, filas) => totalDelJson(sistema, filas ?? []);
 for (const [sistema, sigla, nombre] of sistemas) {
   const sobreElJson = salidas.filter((s) => {
     const r = s.cuerpo.reporteCrediticio.valor_deuda_3_sistemas?.find((x) => x.institucion?.includes(sigla));
-    return r && igual(S(s.cuerpo.reporteCrediticio[nombre], "saldo_deuda"), r.total);
+    return r && igual(totalDelJson(sistema, s.cuerpo.reporteCrediticio[nombre]), r.total);
   }).length;
   const enLaEstructura = salidas.filter((s) => s.e.deudaActualTitular[sistema]?.conciliaConElResumen === "si").length;
   verifica(`${sistema}: la estructura concilia en tantas personas como el JSON`, enLaEstructura, sobreElJson);
   console.log(`      (${sistema}: el JSON concilia ${sobreElJson} de ${personas.length}; esperado el 2026-10-12: ${esperado[sistema]})`);
-  if (personas.length === 22 && sobreElJson !== esperado[sistema]) { fallas++; console.log(`FALLA ${sistema}: se esperaban ${esperado[sistema]}`); }
+  if (personas.length === 22 && sistema !== "comercial" && sobreElJson !== esperado[sistema]) { fallas++; console.log(`FALLA ${sistema}: se esperaban ${esperado[sistema]}`); }
 }
 
 console.log("\n4. Titular + codeudor/garante = todos los roles, y cada cifra contra el JSON");
 for (const [sistema, , nombre] of sistemas) {
-  verifica(`${sistema}: saldo del titular = Σ del JSON de las filas TITULAR`, salidas.filter((s) => igual(s.e.deudaActualTitular[sistema].saldoDeudaUsd, S((s.cuerpo.reporteCrediticio[nombre] ?? []).filter((f) => rolEs(f, "TITULAR")), "saldo_deuda"))).length);
+  verifica(`${sistema}: saldo del titular = Σ del JSON de las filas TITULAR`, salidas.filter((s) => igual(s.e.deudaActualTitular[sistema].saldoDeudaUsd, saldoDelJson(sistema, (s.cuerpo.reporteCrediticio[nombre] ?? []).filter((f) => rolEs(f, "TITULAR"))))).length);
   verifica(`${sistema}: titular + codeudor/garante = todos los roles`, salidas.filter((s) => igual(s.e.deudaActualTitular[sistema].saldoDeudaUsd + s.e.deudaCodeudorGarante[sistema].saldoDeudaUsd, s.e.deudaActualTitular[sistema].saldoTodosLosRolesUsd)).length);
   verifica(`${sistema}: nº de operaciones del titular = filas TITULAR del JSON`, salidas.filter((s) => s.e.deudaActualTitular[sistema].numeroDeOperaciones === (s.cuerpo.reporteCrediticio[nombre] ?? []).filter((f) => rolEs(f, "TITULAR")).length).length);
 }
@@ -123,7 +129,16 @@ verifica("la cuota mensual del titular = Σ cuota_mensual de las filas TITULAR d
 console.log("\n5. Mora");
 verifica("los tramos de mora suman el vencido del titular", salidas.filter((s) => igual(Object.entries(s.e.moraActual).filter(([k]) => k.startsWith("vencidoDe")).reduce((a, [, v]) => a + v, 0), s.e.moraActual.saldoVencidoUsd)).length);
 verifica("el vencido del titular = Σ total_vencido de las filas TITULAR del JSON", salidas.filter((s) => igual(s.e.moraActual.saldoVencidoUsd, sistemas.reduce((a, [, , n]) => a + S((s.cuerpo.reporteCrediticio[n] ?? []).filter((f) => rolEs(f, "TITULAR")), "total_vencido"), 0))).length);
-verifica("la conducta de pago mira 24 meses de historia", salidas.filter((s) => s.e.conductaDePago?.mesesObservados === 24).length);
+// La ventana llega al corte del reporte, que fija la evolución de 24 meses (equifax-ventana.ts), no el
+// último mes con filas. Se lee del JSON a mano: la última fecha de la evolución y sus 24 meses.
+const evolucionDelJson = (s) => s.cuerpo.reporteCrediticio.evolucion_deuda_sb_seps_sicom ?? [];
+const conEvolucion = salidas.filter((s) => evolucionDelJson(s).length > 0);
+verifica("la conducta de pago mira 24 meses: los de la evolución del reporte", conEvolucion.filter((s) => s.e.conductaDePago?.mesesObservados === 24).length, conEvolucion.length);
+verifica("la ventana termina en el último mes de la evolución, hayan o no operaciones ese mes", conEvolucion.filter((s) => {
+  const ultimo = evolucionDelJson(s).map((f) => String(fechaISO(f.fecha_corte)).slice(0, 7)).sort().pop();
+  const ventana = mesesHastaElCorte(ultimo);
+  return s.e.conductaDePago !== null && ventana.length === 24 && s.r.tablas.equifax_historia_mensual.every((h) => h.fecha_corte.slice(0, 7) <= ultimo);
+}).length, conEvolucion.length);
 verifica("meses con mora de más de 90 días <= meses con mora <= meses observados; meses con deuda vencida <= meses con mora", salidas.filter((s) => {
   const c = s.e.conductaDePago;
   return c.mesesConMoraDeMasDe90Dias <= c.mesesConMoraEnLosUltimos24 && c.mesesConMoraEnLosUltimos24 <= c.mesesObservados && c.mesesConDeudaVencida <= c.mesesConMoraEnLosUltimos24;

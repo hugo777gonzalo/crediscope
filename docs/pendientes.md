@@ -13,19 +13,29 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **140** (2026-10-30; no hay 137: la del PR 82 pasó a 139),
-  y `ESQUEMA_MINIMO` está en 139. Se midió con el corredor, y `auditar-seguridad.mjs` dio 76 de 76
-  después de aplicarla. **La 140** saca de la agenda la
-  clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`36dbe4af0dde`**, 12 de 12, desplegado el 2026-10-30 a las 21:45 sobre el
-  esquema 139. `despliegues` anota 11 de 12 porque cada corrida falló en una función distinta al
-  subirla; el sello de las 12 se midió con OPTIONS y con `auditar-seguridad.mjs`. El anterior fue
-  `dabb60be9f3c`. El núcleo de la API está desplegado y apagado para terceros, y la consulta y el
-  análisis de la pantalla, que el PR 82 reescribió por dentro, **todavía no corrieron con este
-  código contra una persona**.
+- **Base:** última migración aplicada, la **141** (2026-10-31; no hay 137: la del PR 82 pasó a 139),
+  y `ESQUEMA_MINIMO` está en 141. Se midió en `esquema_version`, y `auditar-seguridad.mjs` dio 81 de 81
+  después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`8a778f905f10`**, 13 de 13, desplegado el 2026-10-31 a las 11:44 sobre el
+  esquema 141 (`despliegues`; el anterior fue `5456b5583ca8`). El núcleo de la API está desplegado y
+  apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
+  2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
+  `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
+  c-38661efd. La llamada real al modelo se midió con `36dbe4af0dde` (c-38661efd, marco-v30, USD 0,07),
+  y **todavía no hubo una consulta buena de Novadata seguida de su análisis con el código nuevo**.
+- **Novadata (2026-10-31):** contesta HTTP 500 en 41 de 52 fuentes en las tres consultas de
+  c-79e1ac23 del 30 y el 31. El 28/10 pasó en 494 de 1.215 perfiles y antes casi nunca (33 el 25/09).
+  El negocio confirmó que es un problema general: **por ahora Novadata no se puede usar**.
+- **Base de prueba (2026-10-31):** 244 personas en `research/base-prueba-2026-11/`, con perfil de 19
+  fuentes buenas o más y Equifax de AWS, sin consultar a nadie. Pro y Plus ya están calculados con un
+  crédito de USD 5.000 a 36 meses: Plus cambia 111 veredictos, todos para peor (Pro ve las cuotas de
+  casi nadie). No es una base típica: cuota mediana de USD 2.857 contra USD 605 de todo AWS. El lote
+  corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
+  13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
+  de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
-  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  institución, construido y apagado: su fila está en la 131); estructura-v16 (el último perfil de las
+  3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -40,7 +50,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   restantes son de versiones anteriores a la v28 (288 en total).
 - **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
   87 anteriores caducaron).
-- **Modelo (2026-10-29, `gasto_del_mes`):** octubre lleva **USD 9,66 de los 10** del presupuesto
+- **Modelo (2026-10-31, `gasto_del_mes`):** octubre lleva **USD 13,92 de los 10**, por el lote autorizado de la base de prueba, del presupuesto
   (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
   vigía; no hubo análisis.
 - **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
@@ -77,7 +87,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - avisos firmados (`evaluacion.terminada`), `POST /evaluaciones/{id}/decision` y
       `/cancelacion`, y las puertas sueltas `/simulaciones`, `/capacidades-de-pago` y
       `/estimaciones-de-ingreso` (esta última traduce `evaluacion`, `ev_...`, a `solicitudId`);
-    - **el sandbox está construido y sin desplegar** (`supabase/CLAUDE.md`): falta desplegar y poner
+    - **el sandbox está desplegado y apagado** (`supabase/CLAUDE.md`): falta poner
       `API_SANDBOX=activo` para usarlo. Requisito de OAuth: una credencial de sandbox acepta sólo las
       identificaciones de prueba;
    - D5: al vencer el plazo con el modelo caído, entregar `sin_veredicto` con el perfil y la
@@ -158,6 +168,52 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
    - estilos en línea a clases (1.776 en 124 archivos); Excel de un lote en el servidor
      pasadas las mil personas; `comparar-razonamiento.mjs` que lea el buró.
+12. **Equifax: la ventana de 24 meses y los saldos del comercial (PR 106).** El código está hecho
+    (2026-10-31): la ventana sale del corte
+    del reporte (`_shared/equifax-ventana.ts`, `equifax-estructura-v2`), el detalle actual del
+    comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
+    «Suspensión definitiva» del RUC. Desplegado con `8a778f905f10`. Falta:
+    - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
+      condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
+      desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
+      `estructura-v1`, y las que entren después de reprocesar quedarían viejas; (b) el guion lista
+      las consultas sin paginar (`scripts/cargar-tablas-equifax.mjs:92`) y PostgREST corta en
+      1.000: dice «consultas guardadas: 1000» cuando hay más de 2.200, así que hay que paginarlo
+      (`traerTodas()`) antes o rehace sólo las más viejas.
+    - **La pantalla sale al fusionar**, así que hasta el reproceso la franja (nueva) y los
+      contadores de la estructura (vieja) pueden no coincidir, y el comercial seguirá mostrando
+      «no cuadra» con los saldos viejos.
+    - **La historia mensual del comercial queda sin conciliar**: ahí `saldo_deuda` se comporta como
+      en bancos y unos 2.000 meses no cuadran con `deuda_historica` por ninguna lectura. Va como
+      pregunta a Equifax (`docs/equifax-pedido-de-diccionario.md`, 3.1 a 3.3), igual que el
+      significado de `total_vencer` en el comercial y si el último mes de la evolución es siempre
+      el corte (en 13 consultas con detalle no viene).
+    - **`probar-equifax-tablas.mjs` conserva 3 fallas que ya estaban** (score, estado de cartera y
+      consultas recibidas, 61, 61 y 60 de 62): no son de este cambio y siguen abiertas. La
+      paridad con AWS no bajó en ninguna variable (`s_consumo` y `saldo` subieron). Subir sus
+      umbrales queda a criterio del negocio.
+13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Desplegado con
+   `8a778f905f10` y recalculado el 2026-10-31: 3.765 de 3.765 escritos y un seco posterior que da 0
+   a escribir y 0 que el crudo no reproduzca. Queda:
+   - **`recalcular-fuentes-ingreso.mjs` estaba frenado igual**: `recalcular-grupos.mjs` fallaba con
+     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`). El PR lo
+     arregla (paginación por `id`, hasta una página vacía) en los dos, y el segundo está probado sólo
+     en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
+     `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
+     `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
+   - **Lo que debe abrir la sesión del marco** (cada uno es una línea de
+     `CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`; hoy el mensaje sigue siendo el
+     de marco-v30): `comportamientoBancario.fechaCorteRetail` (las deudas retail son de ese corte,
+     julio de 2025 en toda la cartera) y `comportamientoBancario.saldoPrestamosIessBiess`. Los
+     valores corregidos de los campos que ya existían sí llegan, y el marco puede necesitar una
+     línea que diga que el empleador vigente es `null` cuando el historial no trae al del empleo
+     actual.
+   - **Efecto en la capacidad de pago:** `tieneCreditoIessBiess` pasa a verdadero en 308 de 918
+     personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
+     BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
+     cifra; no se tocó.
+   - **Sin verificar:** la pantalla en el navegador (a 1280, 768 y 414) con la sesión del negocio
+     (punto 2.13).
 
 ## 2. Espera una decisión del negocio
 
@@ -169,7 +225,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
    **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
-   octubre lleva USD 9,66 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   octubre lleva USD 13,92 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
    antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
    el negocio, porque Claude no ve la consola.
@@ -328,18 +384,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
        de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
-    7. **Construidos para el nivel 1 y sin aplicar:** `modelos_de_ingreso`, `estimaciones_de_ingreso`
+    7. **Desplegados para el nivel 1 (2026-10-31):** `modelos_de_ingreso`, `estimaciones_de_ingreso`
        (migración 141), `estimar-ingreso` y `POST /estimaciones-de-ingreso`, con lo que el negocio decidió
-       el 2026-10-30 (especificación, sección 1). Falta, en este orden:
-       - aplicar la 141 con el corredor (`--seco` y `--aplicar`);
-       - publicar el modelo: `node scripts/publicar-modelo-de-ingreso.mjs --modelo=<archivo> --vigente`,
-         primero con `--seco` (sin la 141 aplicada, el guion valida el archivo y frena en la tabla);
-       - desplegar con `--funciones` desde una copia limpia de `origin/main` (`ESQUEMA_MINIMO` sube a 141:
-         sin la migración, todas las funciones contestan 503);
-       - correr `auditar-seguridad.mjs` y probar la función con una identificación inválida; una
-         estimación de verdad, sólo con una persona autorizada por el negocio.
-       La migración se probó en un Postgres en memoria, no contra la base. La función no se llamó
-       nunca. La referencia de pensión de los jubilados (sección 3.3) no está construida.
+       el 2026-10-30 (especificación, sección 1). `ingreso-v1` nivel 1 está vigente (huella
+       `b6bc58139cac`, 200 casos de oro iguales). La función rechaza una identificación inválida (400) y
+       sin sesión (401). **Falta una estimación de verdad**, con una persona autorizada por el negocio y
+       con un perfil bueno. La referencia de pensión de los jubilados (sección 3.3) no está construida.
     8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7). Antes de mostrar los tramos, revisar
        con el negocio la regla de `cdf` (`comun.py`): con un mínimo alto, el tramo de menos de un salario
        básico queda en 2,5% y los siguientes en 0,01%, porque por debajo del primer cuantil vale la mitad

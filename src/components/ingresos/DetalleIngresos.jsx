@@ -130,25 +130,20 @@ export default function DetalleIngresos({ perfil }) {
             </ul>
           )}
           <ul className="crediscope-aval-filas">
-            <FilaCampo etiqueta="Cargo vigente" valor={laboral.cargoVigente} tipo="texto" />
+            {/* Sin fila de cargo: desde estructura-v16 el cargo vigente es el de
+                un empleo de la lista de arriba, que ya lo trae. */}
+            {/* Del historial de empleos, y sólo si es el empleador de un empleo
+                actual (mismo RUC): si no, estas tres filas no aparecen. */}
             <FilaCampo etiqueta="Situación legal del empleador" valor={laboral.empleadorVigenteSituacionLegal} tipo="texto" />
             <FilaCampo etiqueta="Tipo de compañía" valor={laboral.empleadorVigenteTipoCompania} tipo="texto" />
             <FilaCampo etiqueta="Años de constituido el empleador" valor={laboral.empleadorVigenteAntiguedadAnios} tipo="entero" />
-            <FilaCampo etiqueta="Empleos registrados en total" valor={laboral.historialEmpleosRegistrados} tipo="entero" />
+            <FilaCampo etiqueta="Empleadores registrados en el IESS" valor={laboral.historialEmpleosRegistrados} tipo="entero" />
             {esUnSueldoVigente(laboral.salarioMasAltoRegistrado) ? (
               <FilaCampo etiqueta="Sueldo más alto registrado" valor="El de un empleo vigente" tipo="texto" />
             ) : (
               <FilaCampo etiqueta="Sueldo más alto registrado" valor={laboral.salarioMasAltoRegistrado} tipo="dinero" />
             )}
           </ul>
-          {/* Medido el 2026-09-24: en 359 perfiles la clasificación ve un
-              aporte vigente y esta fuente no ve empleo. Son dos registros
-              del IESS con reglas de vigencia distintas; se dice para que
-              la diferencia no se lea como un error de la pantalla. */}
-          <p className="crediscope-aval-nota">
-            Es otro registro del IESS que el de los aportes, con otra regla de vigencia: puede no coincidir con las fuentes de
-            arriba.
-          </p>
         </div>
 
         <div className="crediscope-card">

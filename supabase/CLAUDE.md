@@ -86,7 +86,7 @@ su guía: `docs/equifax.md`.
   sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
   proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
   el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
-- **La API para instituciones (núcleo, 2026-10-21; todavía sin desplegar).** Una evaluación
+- **La API para instituciones (núcleo, 2026-10-21; desplegado y apagado para terceros).** Una evaluación
   de la API es una fila de `solicitudes` con `origen = 'api'` (139): los mismos pasos y
   módulos que usa la pantalla, y la `modalidad` decide cuáles corren (un flujo nuevo es una
   entrada más en `MODALIDADES`, no un camino aparte). Quien la hace avanzar es el trabajador,
@@ -197,7 +197,7 @@ su guía: `docs/equifax.md`.
 - El modelo no corre sin `FUENTES_QUE_DECIDEN` (`calidad-de-la-consulta.ts`,
   negocio, 2026-10-31): `analizarPersona()` lanza `ConsultaIncompleta` antes de
   llamarlo. Los pasos de las evaluaciones cortan ya en el perfil, antes del
-  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue.
+  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue, y sólo lo pide un administrador (`pidioUnaPrueba()`).
 - "La fuente dice que no hay" ≠ "la fuente no contestó".
   `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
   `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.
@@ -317,6 +317,13 @@ su guía: `docs/equifax.md`.
   reabrió después de su último cierre está abierto aunque el estado diga
   cerrado, y uno sin estado, salvo una fecha de cierre. Un «ABIERTO» sin la
   fecha de reapertura sigue abierto, y un «CERRADO» sin fechas, cerrado.
+- **El historial de empleos y los préstamos del IESS/BIESS se leen de todas sus
+  fuentes** (estructura-v16): el salario más alto y los empleadores registrados, de
+  `trabajoHistoricos`, el mecanizado y los aportes; el cargo vigente, del empleo
+  actual; los datos del empleador, de `trabajoHistoricos` sólo si es el de un empleo
+  actual (RUC); los préstamos, de la base interna y de `creditoQuirografario` /
+  `creditoHipotecario`, sin contar dos veces una operación. Un campo de un perfil que
+  sale de una sola fuente se mide contra las demás antes de dárselo al modelo.
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con

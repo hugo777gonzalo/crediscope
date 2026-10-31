@@ -20,7 +20,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
-import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
+import { exigirRol, identificarActor, pidioUnaPrueba } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { analizarPersona, ConsultaIncompleta } from "../_shared/analisis-de-la-persona.ts";
 
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     cedula = body?.cedula;
     profileId = body?.profileId;
-    esPrueba = body?.esPrueba === true;
+    esPrueba = pidioUnaPrueba(body?.esPrueba, actor!);
   } catch {
     // body inválido, se maneja abajo
   }

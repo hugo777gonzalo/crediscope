@@ -83,18 +83,20 @@ async function pedir(url, opciones = {}) {
 // corta (CLAUDE.md).
 const ultimoPorCliente = new Map();
 {
-  let total = null;
-  for (let desde = 0; total === null || desde < total; desde += 1000) {
-    const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
-      { headers: { Prefer: "count=exact" } },
+  // Por clave (id mayor al último leído) y hasta una página vacía: con
+  // `count=exact` más `offset` la consulta pasó el límite de la base
+  // (statement timeout, 2026-10-31) antes de traer nada.
+  let despues = null;
+  for (;;) {
+    const { cuerpo } = await pedir(
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000${despues ? `&id=gt.${despues}` : ""}`,
     );
-    if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
     for (const p of cuerpo) {
       const actual = ultimoPorCliente.get(p.client_id);
       if (!actual || p.created_at > actual.created_at) ultimoPorCliente.set(p.client_id, p);
     }
     if (cuerpo.length === 0) break;
+    despues = cuerpo.at(-1).id;
   }
 }
 

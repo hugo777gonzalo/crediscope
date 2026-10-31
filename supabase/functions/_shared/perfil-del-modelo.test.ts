@@ -6,7 +6,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { ATRIBUTOS_PROTEGIDOS, CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN } from "./perfil-del-modelo.ts";
+import { ATRIBUTOS_PROTEGIDOS, CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN, CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN } from "./perfil-del-modelo.ts";
 
 const NOMBRES = ["ZZPRUEBA ZZINVENTADA ANA", "MINISTERIO INVENTADO", "ZZINVENTADO PEDRO", "EMPRESA SIN APORTE S.A.", "INSTITUCION INVENTADA"];
 
@@ -137,6 +137,24 @@ Deno.test("el obligado de estructura-v15 no llega: el mensaje es el mismo que si
     assertEquals(mensajeParaElModelo(p, []), mensajeParaElModelo(perfil(), []), String(obligado));
   }
   for (const ruta of CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN) assertEquals(RUTAS_QUE_NO_LLEGAN.includes(ruta), true, ruta);
+});
+
+Deno.test("el saldo del BIESS y el corte del retail de estructura-v16 no llegan: el mensaje es el de marco-v30", () => {
+  const sin = perfil();
+  (sin as Record<string, unknown>).comportamientoBancario = { tieneCreditoIessBiess: true, diasMoraCreditoIessBiess: 0, totalDeudaRetail: 640 };
+  const con = perfil();
+  (con as Record<string, unknown>).comportamientoBancario = {
+    tieneCreditoIessBiess: true,
+    diasMoraCreditoIessBiess: 0,
+    totalDeudaRetail: 640,
+    saldoPrestamosIessBiess: 18983,
+    fechaCorteRetail: "2025-07-31",
+  };
+  assertEquals(mensajeParaElModelo(con, []), mensajeParaElModelo(sin, []));
+  for (const ruta of CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN) assertEquals(RUTAS_QUE_NO_LLEGAN.includes(ruta), true, ruta);
+  // Lo que ya existía, con el dato corregido, sí llega.
+  const pm = mensajeParaElModelo(con, []).perfilDelModelo as Record<string, Record<string, unknown>>;
+  assertEquals(pm.comportamientoBancario.tieneCreditoIessBiess, true);
 });
 
 Deno.test("un perfil sin laboral ni ingresos se arma igual", () => {

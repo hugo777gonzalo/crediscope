@@ -83,6 +83,9 @@ código no molesta.
 | (no existía: el que fue rechazado o desistió no tenía estado) | **No aprobado** | Negocio, 2026-10-18 |
 | Perfil del Cliente | **Perfil de la Persona** (menú, exportaciones, la hoja del Excel de lotes y unos 25 textos) | Negocio, 2026-10-18. Renombrado ese día (24 textos); el control corta con el nombre viejo |
 | (la decisión Aprobado / Rechazado no se puede marcar) | La marca **el analista en la solicitud**: Aprobado, Rechazado o Desistió, con motivo | Negocio, 2026-10-18; construido ese día (134) |
+| Operaciones propias en buró de crédito | **Líneas de deuda propias en buró de crédito** | Negocio, 2026-10-31. Novadata agrupa por entidad, tipo y calificación: cuenta filas, no operaciones. El control corta con el nombre viejo |
+| Empleos registrados en total · Empleos en el historial | **Empleadores registrados en el IESS** | Negocio, 2026-10-31. Desde estructura-v16 cuenta empleadores distintos. El control corta con los nombres viejos |
+| Corte del retail · Saldo de préstamos IESS/BIESS (provisorios) | Se quedan así | Negocio, 2026-10-31 |
 
 ## 3. Un concepto, un nombre
 

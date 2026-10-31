@@ -221,6 +221,10 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### Base y procesos
 
+- **Un análisis corre aunque la consulta casi no haya traído nada.** El 2026-10-30 Novadata contestó
+  HTTP 500 en 41 de 52 fuentes para c-79e1ac23, y el modelo igual dio 560, «revisar», con el perfil en
+  «sin datos». La pantalla lo avisa, pero el score queda en el expediente como cualquier otro. Falta que
+  el negocio decida si un análisis así se hace.
 - **Una agenda nueva repitió lo que la 114 había sacado de las otras.** La 139 (2026-10-30)
   escribió la clave del vigía en texto plano en `cron.job`, y pg_cron la copió además en
   `cron.job_run_details` en cada corrida. Las 18 comprobaciones de la 139 en PGlite no tocaban la
@@ -335,6 +339,20 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   después de desplegar**, no la respuesta.
 
 ### IESS, ingresos y fuentes de ingreso
+
+- **Un campo leído de una sola fuente se contradice con las otras y el modelo lo
+  toma por una inconsistencia.** El 2026-10-31, revisando casos reales, el negocio
+  vio que c-5ee429cc llegó al modelo con «cargo vigente PASANTE», «constituido hace
+  56 años» y un salario máximo bajo el ingreso reportado: `trabajoHistoricos` traía
+  una pasantía de 2019 con la salida en 1900-01-01 (fecha centinela de «sigue
+  empleado») y `sinFechaDeSalida()` la leía como vigente. En c-82cc2afc, un solo
+  empleo de 2018 contra 6 empleadores en el mecanizado y los aportes, y 9 préstamos
+  del BIESS vigentes con `tieneCreditoIessBiess: false` (se leía sólo la base
+  interna). Medido sobre 3.765 personas: el salario más alto bajo un sueldo ya
+  reportado en 1.068 de 1.682, el cargo vigente que no era el de ningún empleo actual
+  en 1.356 de 1.857 y 308 de 918 con créditos formales sin crédito del IESS/BIESS.
+  Regla: estructura-v16 lee las tres fuentes del IESS y las dos de los préstamos, y
+  usa el historial sólo para el empleador de un empleo actual (por RUC).
 
 - **El corte del IESS lo deciden 20 clientes, no uno.** Novadata
   actualiza el IESS más o menos cada dos meses y no avisa: el

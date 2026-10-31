@@ -24,7 +24,7 @@ const registro = (respuesta: Record<string, unknown>) => respuesta.reporteCredit
 Deno.test("la estructura lleva su versión, la de las tablas y los datos de la consulta", () => {
   const e = estructuraDe();
   assertEquals(e.version, EQUIFAX_ESTRUCTURA_VERSION);
-  assertEquals(e.tablasVersion, "equifax-tablas-v2");
+  assertEquals(e.tablasVersion, "equifax-tablas-v3");
   assertEquals(e.consulta, { consultadoEl: CONTEXTO.consultadoEl, ambiente: "produccion", identidadVerificada: true, version: EQUIFAX_ESTRUCTURA_VERSION });
 });
 
@@ -303,4 +303,77 @@ Deno.test("una respuesta vacía no rompe: casi todo queda sin medir", () => {
   assertEquals(e.deudaActualTitular.bancos, null);
   assertEquals(e.deudaActualTitular.total.conciliaConElResumen, "sin_detalle");
   assert(e.calidad.avisos.length >= 1);
+});
+
+// Una operación comercial inventada, en el orden de campos de Equifax.
+const filaComercial = (c: Record<string, unknown>) => ({
+  institucion: "COMERCIO DE PRUEBA", fecha_corte: "30/09/2026", tipo_riesgo: "TITULAR", tipo_credito: "Consumo", cupo_monto_original: 1000,
+  fecha_apertura: "15/01/2026", fecha_vencimiento: "15/01/2027", total_vencer: 0, ndi: 0, total_vencido: 0, dem_jud: 0, cart_cast: 0,
+  saldo_deuda: 0, cuota_mensual: 0, dias_morosidad: 0, ...c,
+});
+
+Deno.test("sector comercial, detalle actual: saldo_deuda es lo por vencer y el total es por vencer + vencido, aunque total_vencer no sea el total", () => {
+  const rc = {
+    ...registro(respuestaDePrueba()),
+    detalle_deuda_actual_sicom: [
+      // total_vencer trae el total (800 + 50)
+      filaComercial({ saldo_deuda: 800, total_vencer: 850, total_vencido: 50, dias_morosidad: 40 }),
+      // total_vencer trae sólo el vencido (se vio en 57 de 517 operaciones con vencido): no se lee
+      filaComercial({ institucion: "COMERCIO DE PRUEBA DOS", saldo_deuda: 200, total_vencer: 30, total_vencido: 30, dias_morosidad: 15 }),
+      // al día: los dos campos coinciden
+      filaComercial({ institucion: "COMERCIO DE PRUEBA TRES", saldo_deuda: 100, total_vencer: 100 }),
+    ],
+    valor_deuda_3_sistemas: [
+      ...registro(respuestaDePrueba()).valor_deuda_3_sistemas.slice(0, 2),
+      { institucion: "Sector Comercial SICOM", por_vencer: 1100, no_devenga_int: 0, vencido: 80, total: 1180, demanda_judicial: 0, cartera_castigada: 0 },
+    ],
+  };
+  const respuesta = respuestaDePrueba({ reporteCrediticio: rc });
+  const ops = derivarTablas(respuesta).tablas.equifax_operaciones.filter((o) => o.sistema === "comercial");
+  assertEquals(ops.map((o) => [o.por_vencer_usd, o.vencido_usd, o.saldo_deuda_usd]), [[800, 50, 850], [200, 30, 230], [100, 0, 100]]);
+  const c = estructuraDe(respuesta).deudaActualTitular.comercial!;
+  assertEquals([c.saldoDeudaUsd, c.saldoPorVencerUsd, c.saldoVencidoUsd], [1180, 1100, 80]);
+  assertEquals(c.conciliaConElResumen, "si", "con saldo_deuda como total daba «no» en 4 operaciones");
+});
+
+Deno.test("sector comercial: demanda judicial y cartera castigada no suman al saldo, y la historia mensual no cambia de significado", () => {
+  const rc = {
+    ...registro(respuestaDePrueba()),
+    detalle_deuda_actual_sicom: [filaComercial({ saldo_deuda: 0, total_vencer: 118.08, cart_cast: 118.08, dias_morosidad: 900 })],
+    detalle_deuda_historica_sicom: [filaComercial({ fecha_corte: "2026-08-31 00:00:00.000", saldo_deuda: 250, total_vencer: 200, total_vencido: 50, dias_morosidad: 10 })],
+  };
+  const t = derivarTablas(respuestaDePrueba({ reporteCrediticio: rc })).tablas;
+  const [o] = t.equifax_operaciones.filter((x) => x.sistema === "comercial");
+  assertEquals([o.por_vencer_usd, o.saldo_deuda_usd, o.cartera_castigada_usd], [0, 0, 118.08]);
+  const [h] = t.equifax_historia_mensual.filter((x) => x.sistema === "comercial");
+  assertEquals([h.por_vencer_usd, h.vencido_usd, h.saldo_deuda_usd], [200, 50, 250], "en la historia saldo_deuda sigue siendo el total, como en bancos");
+});
+
+Deno.test("la ventana de 24 meses llega al corte del reporte aunque el detalle termine antes", () => {
+  // Quien ya no debe: el detalle va hasta 2026-08 (como en la respuesta de prueba) y la evolución de 24
+  // meses sigue con total 0 hasta 2026-09. Antes la ventana terminaba en el último mes con filas.
+  const base = registro(respuestaDePrueba());
+  const respuesta = respuestaDePrueba({
+    reporteCrediticio: {
+      ...base,
+      evolucion_deuda_sb_seps_sicom: [...base.evolucion_deuda_sb_seps_sicom, { fecha_corte: "2026-09-30 00:00:00.000", total: 0, vencidos: 0, opcion: "SB" }],
+    },
+  });
+  const c = estructuraDe(respuesta).conductaDePago!;
+  assertEquals(c.mesesObservados, 4, "junio, julio y agosto con filas, y septiembre del corte");
+  assertEquals(c.mesesConMoraEnLosUltimos24, 2, "el mes sin deuda no cuenta como atraso");
+  assertEquals(c.fechaDeLaUltimaMora, "2026-08-31");
+});
+
+Deno.test("la ventana deja afuera lo que quedó antes de los 24 meses del corte", () => {
+  const base = registro(respuestaDePrueba());
+  const respuesta = respuestaDePrueba({
+    reporteCrediticio: {
+      ...base,
+      // el corte pasa a 2028-08: 24 meses atrás empieza en 2026-09, y todo lo de la historia queda afuera
+      evolucion_deuda_sb_seps_sicom: [{ fecha_corte: "2028-08-31 00:00:00.000", total: 0, vencidos: 0, opcion: "SB" }],
+    },
+  });
+  const c = estructuraDe(respuesta).conductaDePago!;
+  assertEquals([c.mesesObservados, c.mesesConMoraEnLosUltimos24, c.maximoDiasDeMoraEnLosUltimos24, c.fechaDeLaUltimaMora], [1, 0, null, null]);
 });
