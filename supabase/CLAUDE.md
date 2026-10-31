@@ -86,7 +86,7 @@ su guía: `docs/equifax.md`.
   sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
   proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
   el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
-- **La API para instituciones (núcleo, 2026-10-21; todavía sin desplegar).** Una evaluación
+- **La API para instituciones (núcleo, 2026-10-21; desplegado y apagado para terceros).** Una evaluación
   de la API es una fila de `solicitudes` con `origen = 'api'` (139): los mismos pasos y
   módulos que usa la pantalla, y la `modalidad` decide cuáles corren (un flujo nuevo es una
   entrada más en `MODALIDADES`, no un camino aparte). Quien la hace avanzar es el trabajador,
