@@ -130,7 +130,7 @@ export type ConfigRazonamiento = {
   // entero cacheado cuesta menos que uno recortado sin caché).
   marcoPorCliente?: boolean;
   // marco-v33: el buró de la institución en lugar del de bancos y
-  // cooperativas de Novadata, cuando la persona tiene una consulta vigente
+  // cooperativas de Proveedor_Info_1, cuando la persona tiene una consulta vigente
   // (perfil-del-modelo.ts, buro-de-la-institucion.ts). Es lo único que este
   // interruptor enciende: las correcciones de v32 van sin interruptor.
   // APAGADO hasta que el negocio lo diga (decidió encenderlo después de las

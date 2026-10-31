@@ -5,7 +5,7 @@ import { explorarSignificancia } from "../../lib/analisisEstadistico.js";
 import { MensajeError, Cargando, num } from "./Comunes.jsx";
 
 // El resumen del Descubrimiento profundo: el camino de un dato desde el
-// crudo de Novadata hasta el modelo, y en cada paso cuánto se pierde y
+// crudo de Proveedor_Info_1 hasta el modelo, y en cada paso cuánto se pierde y
 // cuánto de lo que se pierde anticipaba el impago.
 //   crudo (todo lo que contestan las 52 fuentes)
 //   → estructura (lo que lee process.ts: el perfil estandarizado)
@@ -52,7 +52,7 @@ export default function PestanaResumenProfundo({ corteId, poblacion, ultimo }) {
     <div>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", marginBottom: 12 }}>
         <Paso
-          titulo="1. El crudo de Novadata"
+          titulo="1. El crudo de Proveedor_Info_1"
           cifra={crudo ? num(camposCrudo.length) : "sin calcular"}
           detalle={crudo ? `campos en ${num(crudo.fuentes?.length)} fuentes, del día del análisis` : "Correr el explorador del crudo en este corte"}
           perdida={crudo ? `${num(noLeidos.length)} la estructura no los lee · ${num(noVistosCrudo.length)} de ellos anticipan el impago y el modelo no los tenía` : null}

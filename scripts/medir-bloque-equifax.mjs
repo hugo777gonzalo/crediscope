@@ -1,6 +1,6 @@
 // Mide el buró de la institución en lo que leería el modelo (marco-v33,
 // apagado) con las consultas de Equifax ya guardadas. NO gasta nada: lee
-// consultas_equifax y el último perfil de Novadata de cada persona, y no llama
+// consultas_equifax y el último perfil de Proveedor_Info_1 de cada persona, y no llama
 // al modelo ni a Equifax.
 //
 // El bloque y el perfil se arman con las MISMAS funciones que el análisis
@@ -10,11 +10,11 @@
 //
 // Qué mide, por persona:
 //   1. El tamaño del bloque buroEquifax y cuánto cambia el perfil del modelo
-//      entero con y sin buró (lo que sale de Novadata y lo que entra).
+//      entero con y sin buró (lo que sale de Proveedor_Info_1 y lo que entra).
 //   2. Que no lleve datos personales: los centinelas de la respuesta cruda
 //      (_comun/equifax-personales.mjs) no aparecen ni en el bloque ni en el
 //      perfil entero; ningún número de 10 dígitos o más, ninguno con decimales.
-//   3. Que no quede nada del buró de Novadata (bancos y cooperativas).
+//   3. Que no quede nada del buró de Proveedor_Info_1 (bancos y cooperativas).
 //   4. Qué cambia en la disponibilidad y en la deuda total, en tramos.
 //   5. Cuánto pesa el marco de v31 contra el de v30.
 //
@@ -36,7 +36,7 @@ const RAIZ = path.resolve(import.meta.dirname, "..");
 cargarEntorno(RAIZ);
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
-const { armarPerfilDelModelo, buroEquifaxDelPerfilDelModelo, CAMPOS_DEL_BURO_DE_NOVADATA } = await compartido("perfil-del-modelo.ts");
+const { armarPerfilDelModelo, buroEquifaxDelPerfilDelModelo, CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1 } = await compartido("perfil-del-modelo.ts");
 const { MARCO_INTERPRETATIVO, marcoConElBuro } = await compartido("marco-interpretativo.ts");
 const { estaVigenteHastaElCorte } = await compartido("vigencia-mensual.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
@@ -72,7 +72,7 @@ const conDecimales = (n) => (typeof n === "number" ? !Number.isInteger(n) : n &&
 
 const r = {
   bloque: [], sinBuro: [], conBuro: [], sinPerfil: 0, vigentes: 0, centinelas: 0,
-  personalEnElBloque: 0, personalEnElPerfil: 0, numeroLargo: 0, decimales: 0, quedaNovadata: 0, quedanCooperativas: 0,
+  personalEnElBloque: 0, personalEnElPerfil: 0, numeroLargo: 0, decimales: 0, quedaProveedorInfo1: 0, quedanCooperativas: 0,
   temasQueCambian: new Map(), deudaTotal: new Map(), noConcilia: new Map(), estadoDeCartera: new Map(),
 };
 
@@ -99,7 +99,7 @@ for (const [clientId, c] of porPersona) {
   if (NUMERO_LARGO.test(JSON.stringify(con.buroEquifax))) r.numeroLargo++;
   if (conDecimales(con)) r.decimales++;
   const bancario = con.comportamientoBancario ?? {};
-  if (CAMPOS_DEL_BURO_DE_NOVADATA.some((k) => k in bancario)) r.quedaNovadata++;
+  if (CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1.some((k) => k in bancario)) r.quedaProveedorInfo1++;
   if ("comportamientoCooperativas" in con) r.quedanCooperativas++;
 
   const antes = new Set(sin.disponibilidad?.temasSinRespuesta ?? []);
@@ -112,7 +112,7 @@ for (const [clientId, c] of porPersona) {
     : Math.abs(b - a) / Math.max(a, b) <= 0.01 ? "igual (hasta 1%)"
     : Math.abs(b - a) / Math.max(a, b) <= 0.1 ? "cerca (hasta 10%)"
     : Math.abs(b - a) / Math.max(a, b) <= 0.3 ? "distinta (hasta 30%)"
-    : `muy distinta, mayor con ${b > a ? "buró" : "Novadata"}`;
+    : `muy distinta, mayor con ${b > a ? "buró" : "Proveedor_Info_1"}`;
   contar(r.deudaTotal, tramo);
 
   for (const s of ["bancos", "cooperativas", "comercial"]) {
@@ -126,7 +126,7 @@ for (const [clientId, c] of porPersona) {
 
 const personas = porPersona.size;
 const conPerfil = personas - r.sinPerfil;
-console.log(`Consultas de producción con estructura: ${consultas.length}, de ${personas} personas (${r.vigentes} vigentes hoy). Con perfil de Novadata: ${conPerfil}.`);
+console.log(`Consultas de producción con estructura: ${consultas.length}, de ${personas} personas (${r.vigentes} vigentes hoy). Con perfil de Proveedor_Info_1: ${conPerfil}.`);
 console.log("\n1. Tamaño");
 console.log(`   bloque buroEquifax         : ${media(r.bloque)} caracteres en promedio (mín ${Math.min(...r.bloque)}, máx ${Math.max(...r.bloque)}), ~${tokens(media(r.bloque))} tokens (máx ~${tokens(Math.max(...r.bloque))})`);
 console.log(`   perfil del modelo sin buró : ${media(r.sinBuro)} caracteres en promedio`);
@@ -139,10 +139,10 @@ console.log(`   personas con alguno en el perfil con buró : ${r.personalEnElPer
 console.log(`   bloques con un número de 10 dígitos o más : ${r.numeroLargo}`);
 console.log(`   perfiles con un número con decimales      : ${r.decimales}`);
 console.log("\n3. Lo que el buró reemplaza");
-console.log(`   perfiles con algún campo de buró de Novadata en comportamientoBancario: ${r.quedaNovadata}`);
+console.log(`   perfiles con algún campo de buró de Proveedor_Info_1 en comportamientoBancario: ${r.quedaProveedorInfo1}`);
 console.log(`   perfiles con comportamientoCooperativas: ${r.quedanCooperativas}`);
 console.log("\n4. Qué cambia");
-console.log("   temas que Novadata no había contestado y pasan a consultados:", ver(r.temasQueCambian));
+console.log("   temas que Proveedor_Info_1 no había contestado y pasan a consultados:", ver(r.temasQueCambian));
 console.log("   deuda propia total con buró contra sin buró:", ver(r.deudaTotal));
 console.log("   el detalle no concilia con el resumen de Equifax en:", ver(r.noConcilia));
 console.log("   estado de cartera según Equifax:", ver(r.estadoDeCartera));

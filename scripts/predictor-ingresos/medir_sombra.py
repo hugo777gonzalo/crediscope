@@ -35,7 +35,7 @@ def main():
     obligado = pd.Series([f["maneras"]["con_obligado"]["variables"]["sri_obligado"] for f in filas])
     print(f"{evaluadas} evaluadas, {len(filas)} con el ingreso no verificado entre 0 y 60.000 (como el entrenamiento); consultas de AWS de {a.t.min():%Y-%m} a {a.t.max():%Y-%m}")
 
-    # Los grupos se arman con lo que el modelo ve a la fecha de la consulta. Novadata contesta con el RUC de hoy: un RUC que empezó después de la
+    # Los grupos se arman con lo que el modelo ve a la fecha de la consulta. Proveedor_Info_1 contesta con el RUC de hoy: un RUC que empezó después de la
     # consulta llega con antigüedad 0, y una suspensión posterior llega con 0 años de suspendido; en AWS, a esa fecha, no existían.
     ruc, antig, susp, estado = v.sri_ruc, v.sri_antig, v.sri_susp, v.sri_estado
     sin_cambio = (ruc == 1) & (antig > 0) & ~((estado == "SUSPENDIDO") & (susp == 0))
@@ -44,11 +44,11 @@ def main():
         "OK FACTURAR y condicionado": a.resp.isin(c.OK_FACTURAR).values,
         "rechazado": (a.resp == "RECHAZADO").values,
         "las demás respuestas (aprobado, pendiente, sin respuesta)": ~a.resp.isin(c.OK_FACTURAR + ["RECHAZADO"]).values,
-        "con RUC en Novadata": (ruc == 1).values,
+        "con RUC en Proveedor_Info_1": (ruc == 1).values,
         "con RUC que ya existía a la consulta y no cambió después": sin_cambio.values,
         "RUC que empezó después de la consulta": ((ruc == 1) & (antig == 0)).values,
         "suspendido después de la consulta": ((estado == "SUSPENDIDO") & (susp == 0)).values,
-        "sin RUC en Novadata": (ruc == 0).values,
+        "sin RUC en Proveedor_Info_1": (ruc == 0).values,
         "RUC activo": (estado == "ACTIVO").values,
         "RUC suspendido": (estado == "SUSPENDIDO").values,
         "obligado a llevar contabilidad": (obligado == 1).values,

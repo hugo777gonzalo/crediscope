@@ -27,9 +27,9 @@
 // 140: la agenda de las evaluaciones lee la clave de Vault. Ninguna función depende de ella.
 // 141: estimar-ingreso lee modelos_de_ingreso y guarda estimaciones_de_ingreso. Se escribió
 //      como 140 y pasó a 141 porque la agenda se aplicó antes.
-// 142: las filas de marco-v32 y marco-v33. Sin ellas, todo análisis falla al guardarse
+// 144: las filas de marco-v32 y marco-v33. Sin ellas, todo análisis falla al guardarse
 //      por la clave foránea de analysis_results.rules_version.
-export const ESQUEMA_MINIMO = 142;
+export const ESQUEMA_MINIMO = 144;
 
 let verificada: number | null = null;
 

@@ -8,7 +8,7 @@
 -- Sin autogestión de perfil a propósito (decisión del usuario): el
 -- admin (Hugo) asigna manualmente nombre_corto/entidad/rol al dar de
 -- alta cada analista -- por eso no hay policy de insert/update desde
--- la app, mismo criterio que novadata_resource_config/
+-- la app, mismo criterio que proveedor_info_1_resource_config/
 -- standard_profile_field_config (solo se escribe con la service_role
 -- key). entidad es la entidad financiera del usuario (ej. "Banco X"),
 -- se muestra en el header arriba del nombre corto -- nullable porque
@@ -45,8 +45,8 @@ insert into profiles (id, nombre_corto, entidad, rol) values
 -- profiles funciona bajo RLS porque cada usuario solo necesita leer SU
 -- PROPIA fila (permitido por profiles_read_own arriba), no hace falta
 -- una función security definer.
-drop policy novadata_resource_config_update on novadata_resource_config;
-create policy novadata_resource_config_update on novadata_resource_config for update
+drop policy proveedor_info_1_resource_config_update on proveedor_info_1_resource_config;
+create policy proveedor_info_1_resource_config_update on proveedor_info_1_resource_config for update
   using (exists (select 1 from profiles where id = auth.uid() and rol = 'admin'));
 
 drop policy standard_profile_field_config_update on standard_profile_field_config;

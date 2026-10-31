@@ -1,7 +1,7 @@
 # Predictor de ingresos: entrenamiento, medición y exportación
 
 Reproduce lo que está en `docs/investigacion-predictor-de-ingresos.md` (12.24 a 12.26 y 12.30) y en `docs/especificacion-predictor-de-ingresos.md` (3.1, 5 y 6), solo con los niveles 1 y 2.
-El nivel 1 es la edad, el sexo, la fecha de la consulta y el SRI de Novadata desde el 2026-10-29 (`comun.NIVELES`); el anterior, con el estado civil, la zona y el IESS de AWS, sigue en `comun.NIVEL_1_ANTERIOR` para comparar y para reproducir 12.24 a 12.26.
+El nivel 1 es la edad, el sexo, la fecha de la consulta y el SRI de Proveedor_Info_1 desde el 2026-10-29 (`comun.NIVELES`); el anterior, con el estado civil, la zona y el IESS de AWS, sigue en `comun.NIVEL_1_ANTERIOR` para comparar y para reproducir 12.24 a 12.26.
 Reemplaza a los guiones sueltos de `C:\datos\ingresos\scripts` (`r2_4`, `r2_5`, `r4_4`, `r4_5`, `r4_7`, `r4_8`, `r4_10` y `r4_11`), que se llamaban entre sí con `exec`.
 
 **Nada de acá tiene datos ni identificaciones.** Las entradas están en `research/ingresos-aws/` (fuera de git, de la carpeta principal del repositorio); las tablas intermedias,

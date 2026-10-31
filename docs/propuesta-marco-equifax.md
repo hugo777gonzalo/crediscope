@@ -18,11 +18,11 @@ como se construyó ese día, y las mediciones de las secciones 5 y 7 son de ento
 **Cambió con las respuestas del negocio del 2026-10-13 y del 2026-10-16**
 (`docs/propuesta-buro-de-la-institucion.md`, secciones 0, 2 y 4): Equifax ya no es
 «una segunda lectura» de la deuda sino que **reemplaza** al buró de bancos y de
-cooperativas de Novadata cuando la persona lo tiene (un tema, una fuente); va **en
+cooperativas de Proveedor_Info_1 cuando la persona lo tiene (un tema, una fuente); va **en
 lugar de los grupos 3 y 4** del marco; la calificación A1 a E (que Equifax no trae)
-se lee en **días de mora**; las casas comerciales de Novadata **se suman** al sector
+se lee en **días de mora**; las casas comerciales de Proveedor_Info_1 **se suman** al sector
 comercial de Equifax («veamos cómo nos va sumando»); el rótulo «Garantías:» pasa a
-**«Deuda como codeudor o garante»**; y Novadata se sigue consultando entera. Las
+**«Deuda como codeudor o garante»**; y Proveedor_Info_1 se sigue consultando entera. Las
 secciones 2 a 8 de abajo dicen lo construido; donde el borrador del 2026-10-13 decía
 otra cosa, se aclara.
 
@@ -33,7 +33,7 @@ persona y sin datos personales.
 
 ## 1. Qué agrega Equifax que el modelo hoy no tiene
 
-| Hoy (Novadata) | Con Equifax |
+| Hoy (Proveedor_Info_1) | Con Equifax |
 |---|---|
 | Buró de bancos y Diners, cooperativas y retail como fuentes separadas, **a la fecha de la consulta** | Los tres sistemas (bancos, cooperativas y sector comercial) en una fuente, **con 24 meses de historia mensual por operación** |
 | La peor calificación de riesgo (A1 a E) como señal de mora | Días de mora de cada operación, mes a mes: cuántos meses con mora, cuántos de más de 90 días, cuándo fue la última |
@@ -52,7 +52,7 @@ la persona que sea de **producción**, con HTTP 200 y estructura, **la más reci
 anterior a la fecha del análisis** y **vigente hasta el 17 del mes**
 (`vigencia-mensual.ts`, la misma regla que decide si se vuelve a pagar). Una del
 ambiente de prueba no sirve para calificar a nadie (la lección de Aval). Si no se
-puede saber cuál es el buró, el análisis falla en vez de seguir con Novadata sin
+puede saber cuál es el buró, el análisis falla en vez de seguir con Proveedor_Info_1 sin
 avisar. Aval como buró todavía no tiene esta lectura.
 
 **Quién lo pide**: `analyze-client` y `scripts/analizar-en-lote.mjs`, sólo con el
@@ -72,17 +72,17 @@ auditoría (`consulta_equifax_id`), y lo que leyó el modelo en
   castigo, codeudor o garante). Se quedan sólo los que el buró no cubre: el registro
   de deudores, los préstamos del IESS/BIESS (sin sumarlos a la deuda: Equifax trae los
   del BIESS dentro de bancos) y las casas comerciales. La lista es de los que
-  **quedan** (`QUEDAN_DE_NOVADATA_CON_BURO`): un campo de buró con otro nombre en un
+  **quedan** (`QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO`): un campo de buró con otro nombre en un
   perfil viejo no puede colarse. Una prueba obliga a decidir sobre cualquier campo
   nuevo de `comportamientoBancario`.
-- **`endeudamiento` se calcula desde el buró más las casas comerciales de Novadata**
+- **`endeudamiento` se calcula desde el buró más las casas comerciales de Proveedor_Info_1**
   (`endeudamientoConBuroEquifax()`): bancos, cooperativas y sector comercial de
-  Equifax como titular (con lo que está en atraso) más el retail de Novadata, la deuda
+  Equifax como titular (con lo que está en atraso) más el retail de Proveedor_Info_1, la deuda
   en atraso igual, lo de codeudor o garante de los tres sistemas aparte, y la cuota de
   Equifax en los tres sistemas. Una parte que Equifax no trajo deja el total en
   `null`, no en un número menor.
 - **La disponibilidad**: «buró de crédito de bancos», «tarjetas Diners» y
-  «cooperativas» cuentan como consultados, aunque Novadata no haya contestado por
+  «cooperativas» cuentan como consultados, aunque Proveedor_Info_1 no haya contestado por
   ellos.
 - **Una persona sin buró da el perfil de `marco-v30` byte a byte.** Lo prueban
   `perfil-del-modelo-buro.test.ts` (contra `perfil-del-modelo-sin-buro.esperado.json`,
@@ -109,7 +109,7 @@ auditoría (`consulta_equifax_id`), y lo que leyó el modelo en
 | `tarjetas` | Sí | Vigentes, cupo, saldo, uso de hoy, uso promedio de 6 meses, con saldo mayor que el cupo y la más antigua. |
 | `creditosOtorgados` | Parcial | Otorgados, refinanciados, reestructurados y novados. **No van** los montos por tipo. |
 | `consultasRecibidas` | Sí | Entidades y consultas en 3 y 12 meses, sin NovaCredit y sin el detalle por mes. |
-| `actividadEconomica` | No | Novadata ya lo trae, con más detalle. |
+| `actividadEconomica` | No | Proveedor_Info_1 ya lo trae, con más detalle. |
 | `estimacionesDeEquifax` | **No** | El ingreso estimado es de un tercero y no se especula sobre el ingreso. |
 | `calidad` | **No** (el borrador llevaba las listas que no vinieron) | Los nombres de las listas son técnicos. Un grupo que Equifax no trajo llega en `null`, y el marco dice que eso no es un cero. En las 62 consultas no faltó ninguna lista. |
 
@@ -123,10 +123,10 @@ las diferencias. Son **dos textos de una misma versión**, como el marco por cli
 
 - **Con `buroEquifax`**: el grupo 3 pasa a ser el buró de Equifax (la fuente más
   directa de comportamiento de pago, todo «según Equifax» y a la fecha del reporte) y
-  el grupo 4 lo que queda de Novadata en `comportamientoBancario` (registro de
+  el grupo 4 lo que queda de Proveedor_Info_1 en `comportamientoBancario` (registro de
   deudores, préstamos del IESS/BIESS, casas comerciales) más `endeudamiento` con la
   suma nueva. Los grupos siguen siendo 15 y en el mismo orden (el marco cita por
-  número). Cambia también, en el resto: la intro («la información de Novadata y de
+  número). Cambia también, en el resto: la intro («la información de Proveedor_Info_1 y de
   Equifax»), el peso de las demandas de cobro («como un incumplimiento en el buró»),
   el de la persona cliente interna («como buroEquifax»), una línea en «QUÉ SE PUDO
   CONSULTAR» (bancos, Diners y cooperativas consultados porque los trajo Equifax) y
@@ -156,7 +156,7 @@ Lo que dice la sección del buró, contra el borrador del 2026-10-13:
 
 ## 5. Lo medido
 
-**Con las 22 personas del 2026-10-13** (el perfil de Novadata de 8 a 30 días anterior
+**Con las 22 personas del 2026-10-13** (el perfil de Proveedor_Info_1 de 8 a 30 días anterior
 a la consulta a Equifax; conteos, sin montos ni personas):
 
 | Qué | Resultado en las 22 |
@@ -166,21 +166,21 @@ a la consulta a Equifax; conteos, sin montos ni personas):
 | Número de operaciones en bancos (titular) | el mismo en 3; **Equifax trae más en 19** (cuenta cada tarjeta como una operación) |
 | Cartera castigada | ninguna de las dos en 21; **sólo Equifax en 1** |
 | Operación con demanda | ninguna de las dos en 20; **sólo Equifax en 2** |
-| Peor calificación de Novadata contra el máximo de días de mora de Equifax en bancos | **Dicen lo mismo en 19 de 22**; en 3 la calificación de Novadata es peor que lo que sugieren los días de Equifax |
+| Peor calificación de Proveedor_Info_1 contra el máximo de días de mora de Equifax en bancos | **Dicen lo mismo en 19 de 22**; en 3 la calificación de Proveedor_Info_1 es peor que lo que sugieren los días de Equifax |
 
 **Con las 62 consultas del 2026-10-16**, armando el bloque y el perfil del modelo con
 las mismas funciones que el análisis (`node scripts/medir-bloque-equifax.mjs`, sin
-gasto; las 62 personas tienen perfil de Novadata y su consulta vigente hasta el 17/10):
+gasto; las 62 personas tienen perfil de Proveedor_Info_1 y su consulta vigente hasta el 17/10):
 
 | Qué | Resultado |
 |---|---|
 | Tamaño del bloque `buroEquifax` | **3.267 caracteres en promedio** (de 3.205 a 3.450): **unos 2.000 tokens** (máximo unos 2.120) |
-| Perfil del modelo con buró contra sin buró | 10.461 contra 7.764 caracteres en promedio: **+2.697, unos 1.650 tokens** (sale el buró de Novadata, entra el bloque) |
+| Perfil del modelo con buró contra sin buró | 10.461 contra 7.764 caracteres en promedio: **+2.697, unos 1.650 tokens** (sale el buró de Proveedor_Info_1, entra el bloque) |
 | Sección del marco | **+3.798 caracteres, 1.602 tokens** (medido exacto: el texto del marco no es dato de nadie); sin buró, +56 caracteres (+21 tokens) |
 | Datos personales | se buscaron **1.588 valores personales** de las respuestas crudas (nombre, documento, RUC, dirección, teléfonos, operaciones, terceros): **0 personas** con alguno en el bloque, **0** en el perfil entero |
 | Números | ningún número de 10 dígitos o más en el bloque; ningún número con decimales en el perfil |
-| Lo que el buró reemplaza | **0 perfiles** con un campo de buró de Novadata en `comportamientoBancario`; **0** con `comportamientoCooperativas` |
-| Disponibilidad | en las 62, Novadata ya había contestado bancos, Diners y cooperativas: no cambia ningún tema |
+| Lo que el buró reemplaza | **0 perfiles** con un campo de buró de Proveedor_Info_1 en `comportamientoBancario`; **0** con `comportamientoCooperativas` |
+| Disponibilidad | en las 62, Proveedor_Info_1 ya había contestado bancos, Diners y cooperativas: no cambia ningún tema |
 | Deuda propia total con buró contra sin buró | igual (hasta 1%) en **21**, cerca (hasta 10%) en **25**, distinta (hasta 30%) en **12**, muy distinta en **4** (las 4, mayor con buró) |
 | El detalle no concilia con el resumen de Equifax | comercial en 13, cooperativas en 2, bancos en 0 |
 | Estado de cartera según Equifax | al día 44, en mora con días 7, mora con días al día 6, dudoso recaudo 3, cartera castigada 2 |
@@ -198,15 +198,15 @@ números y nombres de campo largos). El guion usa esas cifras.
   como una operación; con una sola fuente ya no hay que contrastarlas, pero el marco
   avisa que `numeroDeOperaciones` cuenta tarjetas.
 - **Equifax marca lo grave donde está.** En 2 de las 22 personas Equifax dice cartera
-  castigada o demanda judicial y los indicadores de buró de Novadata no lo decían
-  (Novadata lo mostraba por otro lado: el atraso en bancos y una demanda de cobro).
+  castigada o demanda judicial y los indicadores de buró de Proveedor_Info_1 no lo decían
+  (Proveedor_Info_1 lo mostraba por otro lado: el atraso en bancos y una demanda de cobro).
   Con el buró, esa marca llega en el sistema donde está.
 - **La mora cuenta casi lo mismo en las dos fuentes** (19 de 22): los días de mora se
   leen con los mismos criterios que la calificación, y lo nuevo de Equifax es la
   historia de 24 meses.
 - **La deuda total cambia poco en la mayoría** (46 de 62 dentro del 10%), y en 16 la
   diferencia es mayor: el sector comercial de Equifax (telefonía, De Prati...) que
-  Novadata no trae, el tiempo entre las dos consultas, y alguna casa comercial que
+  Proveedor_Info_1 no trae, el tiempo entre las dos consultas, y alguna casa comercial que
   figura en las dos fuentes y ahora se suma dos veces (la decisión del negocio fue
   sumar y ver).
 
@@ -233,7 +233,7 @@ con una cifra** («¿corro X por USD Y?»; elegir las opciones del diseño no es
 autorizar el gasto).
 
 1. **Sin gasto (hecho, sección 5).** El bloque de las 62 personas: tamaño, sin datos
-   personales, sin nada del buró de Novadata, y la persona sin buró igual a hoy.
+   personales, sin nada del buró de Proveedor_Info_1, y la persona sin buró igual a hoy.
 2. **Con autorización.** Analizar a las 62 personas con `marco-v30` y con `marco-v31`
    (ninguna tiene todavía un análisis con v29 o v30: 54 no tienen ninguno) y leer las
    respuestas contra los perfiles que recibieron. El ruido medido del modelo es de ±40
@@ -262,8 +262,8 @@ autorizar el gasto).
 ## 8. Qué cambió en el código (2026-10-16)
 
 - `_shared/perfil-del-modelo.ts`: `buroEquifaxDelPerfilDelModelo()`,
-  `endeudamientoConBuroEquifax()`, `QUEDAN_DE_NOVADATA_CON_BURO`,
-  `CAMPOS_DEL_BURO_DE_NOVADATA`, `TEMAS_QUE_CUBRE_EL_BURO` y el parámetro `buro` de
+  `endeudamientoConBuroEquifax()`, `QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO`,
+  `CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1`, `TEMAS_QUE_CUBRE_EL_BURO` y el parámetro `buro` de
   `armarPerfilDelModelo()` y `mensajeParaElModelo()`.
 - `_shared/buro-de-la-institucion.ts`: `buroDeLaBase()`, `consultaVigenteDeEquifax()` y
   `buroVigenteDeLaPersona()`.
@@ -283,7 +283,7 @@ autorizar el gasto).
   `perfil-de-prueba.ts` y la respuesta inventada de Equifax) y
   `buro-de-la-institucion.test.ts`. La medición: `scripts/medir-bloque-equifax.mjs`.
 
-**Para encenderlo** (cuando el negocio lo decida; antes, la 142 aplicada y v32 desplegada): poner
+**Para encenderlo** (cuando el negocio lo decida; antes, la 144 aplicada y v32 desplegada): poner
 `buroDeLaInstitucion: true`, desplegar con `--funciones` y hacer una llamada suelta de
 comprobación sobre una persona con consulta vigente (está aceptada).
 

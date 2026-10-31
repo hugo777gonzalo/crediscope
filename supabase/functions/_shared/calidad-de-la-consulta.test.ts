@@ -41,5 +41,5 @@ Deno.test("el mensaje nombra cada tema una vez, sin los nombres de las fuentes",
   const mensaje = porQueNoSePuedeAnalizar(estado);
   assertStringIncludes(mensaje, "no se pudo obtener la identidad y los préstamos del BIESS.");
   assertEquals(mensaje.match(/BIESS/g)?.length, 1);
-  assert(!/creditoHipotecario|general|Novadata/.test(mensaje));
+  assert(!/creditoHipotecario|general|Proveedor_Info_1/.test(mensaje));
 });

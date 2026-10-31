@@ -137,11 +137,11 @@ export default function DetalleIngresos({ perfil }) {
             <FilaCampo etiqueta="Situación legal del empleador" valor={laboral.empleadorVigenteSituacionLegal} tipo="texto" />
             <FilaCampo etiqueta="Tipo de compañía" valor={laboral.empleadorVigenteTipoCompania} tipo="texto" />
             <FilaCampo etiqueta="Años de constituido el empleador" valor={laboral.empleadorVigenteAntiguedadAnios} tipo="entero" />
-            <FilaCampo etiqueta="Empleos registrados en total" valor={laboral.historialEmpleosRegistrados} tipo="entero" />
+            <FilaCampo etiqueta="Empleadores registrados en el IESS" valor={laboral.historialEmpleosRegistrados} tipo="entero" />
             {esUnSueldoVigente(laboral.salarioMasAltoRegistrado) ? (
-              <FilaCampo etiqueta="Sueldo más alto registrado" valor="El de un empleo vigente" tipo="texto" />
+              <FilaCampo etiqueta="Salario más alto registrado" valor="El de un empleo vigente" tipo="texto" />
             ) : (
-              <FilaCampo etiqueta="Sueldo más alto registrado" valor={laboral.salarioMasAltoRegistrado} tipo="dinero" />
+              <FilaCampo etiqueta="Salario más alto registrado" valor={laboral.salarioMasAltoRegistrado} tipo="dinero" />
             )}
           </ul>
         </div>

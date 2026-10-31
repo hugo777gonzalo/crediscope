@@ -106,7 +106,7 @@ function versionDe(cliente) {
 function rellenar(sql, cliente, secretos) {
   const valores = { PROYECTO_URL: cliente.url, ...secretos };
   const faltan = [];
-  const lleno = sql.replace(/<<([A-Z_]+)>>/g, (m, nombre) => {
+  const lleno = sql.replace(/<<([A-Z0-9_]+)>>/g, (m, nombre) => {
     if (valores[nombre] === undefined || valores[nombre] === "") {
       faltan.push(nombre);
       return m;

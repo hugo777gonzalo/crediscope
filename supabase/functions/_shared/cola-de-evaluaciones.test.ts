@@ -104,7 +104,7 @@ Deno.test("la etapa es la del paso en curso o, si no, la del que sigue", () => {
 });
 
 Deno.test("un paso que termina bien deja la evaluación en proceso, con los intentos en cero y sin reclamo", () => {
-  const c = despuesDeUnPaso(fila({ intentos: 2, pasos: pasosIniciales("plus") }), "perfil", { ok: true, cambios: { client_id: "c1" }, detalle: "Se consultó a la persona en Novadata.", resultado: { perfil: { reutilizado: false } } }, AHORA);
+  const c = despuesDeUnPaso(fila({ intentos: 2, pasos: pasosIniciales("plus") }), "perfil", { ok: true, cambios: { client_id: "c1" }, detalle: "Se consultó a la persona en Proveedor_Info_1.", resultado: { perfil: { reutilizado: false } } }, AHORA);
   assertEquals(c.estado, "en_evaluacion");
   assertEquals(c.intentos, 0);
   assertEquals(c.reclamada_hasta, null);

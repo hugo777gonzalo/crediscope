@@ -111,7 +111,7 @@ Deno.test("un estado que no existe detiene la evaluación: no se saltea para cor
 Deno.test("sin pasos no hay siguiente ni está todo hecho; un paso pendiente detrás de uno fallido no corre", () => {
   assertEquals(siguientePaso([]), null);
   assertEquals(todosHechos([]), false);
-  const pasos = marcarPaso(pasosIniciales("plus"), "perfil", "fallido", "Novadata no contestó.");
+  const pasos = marcarPaso(pasosIniciales("plus"), "perfil", "fallido", "Proveedor_Info_1 no contestó.");
   assertEquals(siguientePaso(pasos), null);
   assertEquals(todosHechos(pasos), false);
 });
@@ -230,7 +230,7 @@ Deno.test("un fallo se anota con un mensaje propio, y el del buró que pudo cobr
     assert(/cobr/.test(f.detalle), f.detalle);
   }
   assert(/administrador/.test(falloDeUnPaso("buro", 403).detalle));
-  // Novadata y el modelo: un corte de la espera también espera; lo demás no.
+  // Proveedor_Info_1 y el modelo: un corte de la espera también espera; lo demás no.
   assertEquals(falloDeUnPaso("perfil", 0).esperarMs, PASO_CAIDO_MS);
   assertEquals(falloDeUnPaso("analisis", 0).esperarMs, PASO_CAIDO_MS);
   assertEquals(falloDeUnPaso("perfil", 503).esperarMs, 0);

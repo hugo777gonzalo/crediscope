@@ -33,7 +33,7 @@
 // sí en el anterior se desvinculó hace poco, y eso es una señal de
 // riesgo que hoy se estaba perdiendo.
 
-import type { RespuestaNovadata } from "./types.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, establecimientoAbierto, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
 import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
@@ -127,7 +127,7 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 //    se deduce sólo esto, y el detalle por año sigue sin ir al modelo).
 //
 // v10 (2026-10-03): el estado abreviado de los establecimientos ("ABI") que
-// Novadata manda desde octubre cuenta como abierto (ruc.ts). Sin eso, el RUC
+// Proveedor_Info_1 manda desde octubre cuenta como abierto (ruc.ts). Sin eso, el RUC
 // activo, los establecimientos activos y la actividad abierta salían en
 // falso para quien tenía su establecimiento así.
 //
@@ -411,9 +411,9 @@ function promedio(valores: number[]): number | null {
 }
 
 // Meses que el proveedor no tiene para NADIE: en las 315 historias con
-// aportes de research/novadata-raw, cero personas los traen, mientras los
+// aportes de research/proveedor-info-1-raw, cero personas los traen, mientras los
 // meses vecinos los traen cientos (medido el 2026-09-25). No son meses sin
-// trabajo de la persona, son meses que Novadata no publicó. Contarlos como
+// trabajo de la persona, son meses que Proveedor_Info_1 no publicó. Contarlos como
 // desempleo cortaba la continuidad de casi todos en 2019-2020. Son
 // históricos y no deberían cambiar; si aparece uno nuevo, se mide igual:
 // un mes que nadie tiene y que sus vecinos sí.
@@ -529,7 +529,7 @@ function reglaDeTrabajoCon(consultadas: AnyRecord, esPropio: EsPropio): ReglaDeT
 }
 
 // Para process.ts, que arma la antigüedad con las mismas filas del IESS.
-export function reglaDeTrabajo(raw: RespuestaNovadata, cedula: string | null, nombreCliente: string | null): ReglaDeTrabajo {
+export function reglaDeTrabajo(raw: RespuestaProveedorInfo1, cedula: string | null, nombreCliente: string | null): ReglaDeTrabajo {
   return reglaDeTrabajoCon(raw as unknown as AnyRecord, (a) => aporteDeSuPropioPatrono(a, cedula, nombreCliente));
 }
 
@@ -766,7 +766,7 @@ export function dejoDeAparecerEnElIess(f: Record<string, unknown> | null | undef
 // `cedula` desde fuentes-v8: sin ella no se puede reconocer el RUC propio
 // en los aportes y se cae al nombre (patrono.ts).
 export function analizarFuentesIngreso(
-  raw: RespuestaNovadata,
+  raw: RespuestaProveedorInfo1,
   nombreCliente: string | null,
   corteConocido: string = CORTE_IESS_CONOCIDO,
   cedula: string | null = null
@@ -774,7 +774,7 @@ export function analizarFuentesIngreso(
   const esPropio: EsPropio = (a) => aporteDeSuPropioPatrono(a, cedula, nombreCliente);
   // Las 52 fuentes consultadas, planas. Se llaman "consultadas" y no
   // "fuentes" porque en este archivo una fuente es de dónde sale la
-  // plata de alguien, no un endpoint de Novadata.
+  // plata de alguien, no un endpoint de Proveedor_Info_1.
   const consultadas = raw as unknown as AnyRecord;
 
   const basesInternas = (((consultadas.basesInternas as AnyRecord)?.data as AnyRecord)?.data ??
@@ -893,7 +893,7 @@ export function analizarFuentesIngreso(
   // que paga -- esa es un egreso y vive en riesgoJudicialCivil.
   const supas = [
     ...((((consultadas.pensionAlimenticia as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
-    ...((((consultadas.pensionAlimenticiaNovadata as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
+    ...((((consultadas.pensionAlimenticiaProveedorInfo1 as AnyRecord)?.data as AnyRecord)?.supas as AnyRecord[]) ?? []),
   ];
   if (supas.some((s) => mismoNombre(s.representanteLegal, nombreCliente))) {
     fuentes.push({

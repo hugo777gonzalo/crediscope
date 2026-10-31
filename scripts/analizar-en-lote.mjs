@@ -12,7 +12,7 @@
 // El pedido lo arma armarPedidoScoring() y la fila de analysis_results
 // filaDelAnalisis(): los mismos que usa analyze-client. Un análisis en lote
 // queda igual que uno de la pantalla, atado a su perfil y con lo que leyó el
-// modelo. Reutiliza perfiles guardados: no reconsulta Novadata. Con
+// modelo. Reutiliza perfiles guardados: no reconsulta Proveedor_Info_1. Con
 // CONFIG_LLM.buroDeLaInstitucion encendido (marco-v33) lee la consulta vigente
 // del buró de la institución igual que analyze-client
 // (buro-de-la-institucion.ts); nunca consulta a Equifax.
@@ -117,7 +117,7 @@ async function preparar() {
   const ultimo = new Map();
   for (const p of perfiles) ultimo.set(p.client_id, p); // ordenados: queda el más reciente
   // Las 240 cédulas sintéticas de prueba de Aval están en la cartera y
-  // Novadata no las conoce (docs/pendientes.md): no son clientes.
+  // Proveedor_Info_1 no las conoce (docs/pendientes.md): no son clientes.
   const sinteticas = new Set(fs.readFileSync(path.resolve(RAIZ, arg("excluir", "research/aval-pool-240.txt")), "utf8").match(/\d{10}/g) ?? []);
   const { data: idsSinteticos, error: eSint } = await supabase.from("clients").select("id").in("cedula", [...sinteticas].slice(0, 300));
   if (eSint) throw new Error(motivo(eSint));

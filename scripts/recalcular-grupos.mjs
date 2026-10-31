@@ -1,5 +1,5 @@
 // Recalcula GRUPOS ENTEROS del perfil guardado desde el crudo local, sin
-// volver a consultar Novadata. Nació con estructura-v8 (2026-09-27), que
+// volver a consultar Proveedor_Info_1. Nació con estructura-v8 (2026-09-27), que
 // corrigió cómo se leen el buró, las cooperativas, las demandas y las
 // pensiones: esos cuatro grupos se derivan enteros del crudo.
 //
@@ -30,7 +30,7 @@
 // El crudo se lee de la carpeta local y, para el último perfil que la
 // carpeta no tiene, del depósito (_comun/crudo-del-ultimo-perfil.mjs).
 //
-// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
+// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/proveedor-info-1-raw-2026-09-25]
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -51,7 +51,7 @@ const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10)
 // principal (_comun/entorno.mjs): el guion los buscaba en su propia carpeta y
 // el recálculo de estructura-v15 fue el primero desde un worktree.
 const PRINCIPAL = raizPrincipal(RAIZ);
-const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
+const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
 if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);

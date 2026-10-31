@@ -60,15 +60,15 @@ insert into fuente_grupo (fuente, grupo) values
   ('deudores', 'comportamientoBancario')
 on conflict do nothing;
 
-alter table novadata_resource_config add column if not exists estado_del_recurso text;
-comment on column novadata_resource_config.estado_del_recurso is
+alter table proveedor_info_1_resource_config add column if not exists estado_del_recurso text;
+comment on column proveedor_info_1_resource_config.estado_del_recurso is
   'Qué se sabe del recurso en sí: responde, no_responde (404 sistemático), sin_contenido (responde y nunca trae nada). Distinto de enabled, que es una decisión nuestra.';
 
-update novadata_resource_config set estado_del_recurso = 'no_responde'
+update proveedor_info_1_resource_config set estado_del_recurso = 'no_responde'
  where recurso in ('afiliacionIssfacFuerzaArmada', 'deudasFirmes');
-update novadata_resource_config set estado_del_recurso = 'sin_contenido'
+update proveedor_info_1_resource_config set estado_del_recurso = 'sin_contenido'
  where recurso = 'vacunados';
-update novadata_resource_config set estado_del_recurso = 'responde'
+update proveedor_info_1_resource_config set estado_del_recurso = 'responde'
  where estado_del_recurso is null;
 
 

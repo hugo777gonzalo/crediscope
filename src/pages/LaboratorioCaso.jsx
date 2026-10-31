@@ -14,7 +14,7 @@ import { Volver, MensajeError, Cargando, FranjaSintetica, Etiqueta, ETIQUETA_REC
 // decidió el motor, qué escribió el modelo, qué leyó el modelo (rearmado
 // desde el perfil con el código de hoy, y lo que guardó el análisis si es
 // posterior a la 090), la estructura del día del análisis y el crudo de
-// Novadata (sólo admin, a pedido: son los datos de una persona).
+// Proveedor_Info_1 (sólo admin, a pedido: son los datos de una persona).
 
 function Seccion({ titulo, children, abierta = true }) {
   return (
@@ -208,7 +208,7 @@ export default function LaboratorioCaso() {
         ) : <p className="crediscope-muted" style={{ margin: 0 }}>Sin perfil.</p>}
       </Seccion>
 
-      <Seccion titulo="5. El crudo de Novadata" abierta={false}>
+      <Seccion titulo="5. El crudo de Proveedor_Info_1" abierta={false}>
         {!perfil?.crudo_ruta ? (
           <p className="crediscope-muted" style={{ margin: 0 }}>Este perfil no tiene el crudo guardado.</p>
         ) : !crudo ? (

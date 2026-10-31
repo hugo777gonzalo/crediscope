@@ -3,11 +3,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { establecimientoAbierto, obligadoALlevarContabilidad, rucActivo, rucDepuradoEnRelacionDeDependencia } from "./ruc.ts";
 import { buildStandardProfile } from "./process.ts";
-import type { RespuestaNovadata } from "./types.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 const registro = (obligado: unknown) => ({ ruc: "0000000000001", fecha_inscripcion_ruc: "2020/01/10", fecha_inicio_actividades: "2020/01/10", obligado });
 
-Deno.test("el obligado: Novadata lo abrevia, «S» es «SI» y «N» es «NO»; otro valor queda sin dato", () => {
+Deno.test("el obligado: Proveedor_Info_1 lo abrevia, «S» es «SI» y «N» es «NO»; otro valor queda sin dato", () => {
   for (const v of ["SI", "S", "si", " S "]) assertEquals(obligadoALlevarContabilidad(registro(v)), true, v);
   for (const v of ["NO", "N", "no"]) assertEquals(obligadoALlevarContabilidad(registro(v)), false, v);
   for (const v of [null, undefined, "", "X", "SIN DATO"]) assertEquals(obligadoALlevarContabilidad(registro(v)), null, String(v));
@@ -46,9 +46,9 @@ Deno.test("process.ts pone el RUC depurado en laboral, del RUC de referencia", (
     general: { status: "ok", data: { personaNatural: { nombre: "ZZPRUEBA ZZINVENTADA ANA" } } },
     contribuyente: { status: "ok", data: { datosContribuyente: [RUC_DEPURADO] } },
     establecimientoActEconomica: { status: "ok", data: { datosEstablecimientoActEco: [EN_DEPENDENCIA] } },
-  } as unknown as RespuestaNovadata;
+  } as unknown as RespuestaProveedorInfo1;
   assertEquals(buildStandardProfile(raw, "0000000000").profile.laboral.rucDepuradoEnRelacionDeDependencia, true);
-  const sinRuc = { general: raw.general } as unknown as RespuestaNovadata;
+  const sinRuc = { general: raw.general } as unknown as RespuestaProveedorInfo1;
   assertEquals(buildStandardProfile(sinRuc, "0000000000").profile.laboral.rucDepuradoEnRelacionDeDependencia, null);
 });
 
@@ -79,7 +79,7 @@ Deno.test("un establecimiento sin estado está abierto salvo una fecha de cierre
 });
 
 const crudo = (datosContribuyente: unknown[]) =>
-  ({ contribuyente: { status: 200, data: { estado: { codigo: "OK" }, datosContribuyente } } }) as unknown as RespuestaNovadata;
+  ({ contribuyente: { status: 200, data: { estado: { codigo: "OK" }, datosContribuyente } } }) as unknown as RespuestaProveedorInfo1;
 
 Deno.test("el perfil lleva el obligado en laboral, del mismo RUC que las fechas", () => {
   const { profile } = buildStandardProfile(crudo([registro("S")]), "0000000000", "2026-08");

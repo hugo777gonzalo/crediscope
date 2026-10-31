@@ -6,8 +6,8 @@
 -- loadCorteIess (runtime-config.ts) tomaba como corte vigente el mes MÁS
 -- ALTO visto en los perfiles de los últimos 90 días. El 2026-09-23 dos
 -- dependientes llegaron con un aporte de agosto, y el corte pasó a 2026-08
--- para todas las consultas siguientes. Pero el corte que tiene Novadata es
--- 2026-07 (confirmado por el negocio el 2026-09-25): Novadata actualiza el
+-- para todas las consultas siguientes. Pero el corte que tiene Proveedor_Info_1 es
+-- 2026-07 (confirmado por el negocio el 2026-09-25): Proveedor_Info_1 actualiza el
 -- IESS más o menos cada dos meses, y el próximo corte (2026-09) recién se
 -- espera en octubre.
 --
@@ -24,7 +24,7 @@
 --
 -- Un mes es el corte vigente cuando al menos 20 clientes distintos
 -- consultados en los últimos 90 días APARECEN en él (tienen un aporte en
--- ese mes). Cuando Novadata publica un corte nuevo, todos los asalariados
+-- ese mes). Cuando Proveedor_Info_1 publica un corte nuevo, todos los asalariados
 -- saltan de mes a la vez, así que el umbral se cruza en las primeras
 -- consultas. Dos aportes adelantados no alcanzan. Mientras el mes nuevo no
 -- junta 20, quien trae un aporte más reciente se clasifica igual con el

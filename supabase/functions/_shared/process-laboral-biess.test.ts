@@ -6,7 +6,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { buildStandardProfile } from "./process.ts";
-import type { RespuestaNovadata } from "./types.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 const CEDULA = "0000000000";
 const ahora = new Date();
@@ -56,7 +56,7 @@ const aporte = (ruc: string | null, nombre: string, salario: number, anio: numbe
 });
 
 function perfilDe(fuentes: Record<string, unknown>) {
-  const raw = { general: { status: "ok", data: { personaNatural: { nombre: "ZZPRUEBA ZZINVENTADA ANA" } } }, ...fuentes } as unknown as RespuestaNovadata;
+  const raw = { general: { status: "ok", data: { personaNatural: { nombre: "ZZPRUEBA ZZINVENTADA ANA" } } }, ...fuentes } as unknown as RespuestaProveedorInfo1;
   return buildStandardProfile(raw, CEDULA).profile;
 }
 

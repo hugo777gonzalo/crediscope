@@ -4,11 +4,11 @@
 --
 -- La 058 decidió NO separar los perfiles por puerta de entrada: el perfil
 -- de una persona es el mismo venga de una consulta o de un lote, porque es
--- LA MISMA FUENTE (Novadata) mirada de dos maneras. Acá es distinto: Aval
+-- LA MISMA FUENTE (Proveedor_Info_1) mirada de dos maneras. Acá es distinto: Aval
 -- es OTRA fuente, con su propio esquema de respuesta (un sobre con 34
--- segmentos que no se parece en nada a los 9 bloques de Novadata) y su
+-- segmentos que no se parece en nada a los 9 bloques de Proveedor_Info_1) y su
 -- propia facturación. Mezclarla en client_profiles obligaría a deformar su
--- forma o a llenar de nulls la de Novadata. Fuente distinta, tabla distinta.
+-- forma o a llenar de nulls la de Proveedor_Info_1. Fuente distinta, tabla distinta.
 --
 -- QUÉ SE GUARDA
 --
@@ -79,7 +79,7 @@ create index consultas_aval_client_idx
   on consultas_aval (client_id, created_at desc) where client_id is not null;
 
 comment on table consultas_aval is
-  'Consultas al buró Aval (fuente independiente de Novadata). respuesta_cruda = sobre original de Aval sin tocar; perfil = normalización aval-perfil.ts. Solo se guardan consultas A200.';
+  'Consultas al buró Aval (fuente independiente de Proveedor_Info_1). respuesta_cruda = sobre original de Aval sin tocar; perfil = normalización aval-perfil.ts. Solo se guardan consultas A200.';
 comment on column consultas_aval.respuesta_cruda is
   'El sobre completo tal como lo devolvió Aval (responseCode, message, transactionNumber, time, result). Fuente de verdad.';
 

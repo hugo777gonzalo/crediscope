@@ -57,7 +57,7 @@
 //
 // v6: nuevo campo patrimonio.valorColateralVehiculos (auditoría pedida
 // por el usuario sobre los distintos precios de vehículo que da
-// Novadata) — suma, por vehículo, el máximo entre valorAvaluo/
+// Proveedor_Info_1) — suma, por vehículo, el máximo entre valorAvaluo/
 // precioPromedio/precioMinimo/precioMaximo/precioComercial/
 // precioVentaPublico/precioVentaPromedio (NO precioVenta, que parece
 // ser precio de lista cuando el vehículo era nuevo — ver process.ts).
@@ -114,7 +114,7 @@
 // - comportamientoBancario.saldoEnMoraBuroCredito /
 //   comportamientoCooperativas.saldoEnMora: nuevos — saldoVigente/
 //   saldoTotal NO incluyen lo que está en mora (son campos separados en
-//   Novadata). Caso real: cédula con 4 operaciones bancarias
+//   Proveedor_Info_1). Caso real: cédula con 4 operaciones bancarias
 //   calificación E, saldoVigente=0 en las 4, pero $11,812.67 reales en
 //   mora — saldoTotalVigente solo hubiera mostrado $0.
 // - laboral.numeroEmpleadoresUltimos24Meses: redefinido. Antes contaba
@@ -171,7 +171,7 @@
 // económica (laboral), a pedido del usuario, validados con caso real
 // (cédula c-ba4c16f0):
 // - estadoActividadEconomica/antiguedadUltimaEtapaActivaMeses/
-//   mesesInactivoActividadEconomica: Novadata/SRI solo guardan la fecha
+//   mesesInactivoActividadEconomica: Proveedor_Info_1/SRI solo guardan la fecha
 //   del cese y del reinicio MÁS RECIENTES, no un historial completo de
 //   ciclos — "años desde el inicio" puede ser muy engañoso. Caso real:
 //   inicio 2009, reinicio 2014, cese 2018 -> el reinicio es ANTERIOR al
@@ -439,7 +439,7 @@
 // decida, y hasta entonces todo análisis sigue siendo v30. Un tema, una
 // fuente: cuando la persona tiene una consulta vigente del buró de la
 // institución (Equifax), el perfil del modelo lleva buroEquifax en lugar del
-// buró de bancos y de cooperativas de Novadata, y el marco lleva su sección
+// buró de bancos y de cooperativas de Proveedor_Info_1, y el marco lleva su sección
 // en lugar de los grupos 3 y 4 (el lugar que eligió el negocio, A4). La
 // calificación A1 a E, que Equifax no trae, se lee en días de mora. Sin buró
 // el perfil es idéntico al de v30 y el marco cambia sólo el rótulo
@@ -458,7 +458,7 @@
 //    operaciones A2 y 0 de 222 A3, último perfil de 3.765 personas), así que
 //    deudaEnAtraso en 0 no lo desmentía: 365 personas tienen A2 o A3 de peor.
 //  - La calificación no se traduce a días: en el comercial no sale sólo de
-//    ellos, y el buró de Novadata no dice el tipo de crédito de cada operación.
+//    ellos, y el buró de Proveedor_Info_1 no dice el tipo de crédito de cada operación.
 //  - El retail es de su corte (fechaCorteRetail, julio de 2025 en las 490
 //    personas con retail): ni deuda de hoy ni prueba de que no haya una
 //    posterior. Llega también saldoPrestamosIessBiess.
@@ -495,7 +495,7 @@ const CORTE_DEL_RETAIL = `     fechaCorteRetail es la fecha de corte de esas deu
 export const MARCO_INTERPRETATIVO = `
 Sos un analista de riesgo crediticio senior. Vas a evaluar a una persona
 natural en Ecuador a partir de su perfil del modelo (perfilDelModelo): la
-única fuente que tenés que consultar, con la información de Novadata ya
+única fuente que tenés que consultar, con la información de Proveedor_Info_1 ya
 procesada y calculada (conteos, sumas, booleanos, "el más reciente") y
 organizada en grupos. Cuando este marco dice "el profile", es ese perfil.
 Tu objetivo es un score aproximado de 1 (peor) a 999 (mejor) que refleje
@@ -830,7 +830,7 @@ ${CORTE_DEL_RETAIL}
    - antiguedadEmpleoActualMeses es señal real de estabilidad: más meses en
      el mismo empleo es positivo. null significa que el empleo actual tiene
      menos de 3 meses confirmados, o que el último dato de ese empleo ya no
-     es reciente (Novadata no siempre registra la fecha de salida). En los
+     es reciente (Proveedor_Info_1 no siempre registra la fecha de salida). En los
      dos casos, incertidumbre, no negativo.
    - duracionEmpleoMasLargoMeses: trayectoria. Alguien con un empleo actual
      corto pero uno pasado largo (8 años o más) es más estable que alguien
@@ -894,8 +894,8 @@ ${CORTE_DEL_RETAIL}
     comportamiento de pago.
 
 15. comportamientoInterno: sólo llega cuando la persona es cliente interno
-    de Novadata. Si llega con datos (novadataResultadoHabitoPago,
-    novadataPerfilInterno), es el veredicto de otro motor de scoring sobre
+    de Proveedor_Info_1. Si llega con datos (proveedorInfo1ResultadoHabitoPago,
+    proveedorInfo1PerfilInterno), es el veredicto de otro motor de scoring sobre
     esta misma persona: pesa como comportamientoBancario o más. Si no
     llega, no es un hueco de información: no lo menciones.
 
@@ -926,7 +926,7 @@ De eso se sigue:
 - Un tema sin respuesta no se evaluó: no penalices a la persona por lo que
   no se pudo obtener.
 - Si varios temas clave (buró de bancos, cooperativas, historial de pago
-  con Novadata, aportes al IESS) están sin respuesta a la vez, acercá el
+  con Proveedor_Info_1, aportes al IESS) están sin respuesta a la vez, acercá el
   score al centro en vez de asumir lo mejor o lo peor.
 - Un campo null dentro de un tema consultado es un dato puntual que no
   aplica o no está disponible. No lo confundas con 0, que es un valor
@@ -1104,13 +1104,13 @@ export const MARCO_VERSION_CON_BURO = "marco-v33";
 // son, como los demás del marco, una propuesta a validar con el negocio
 // (docs/propuesta-marco-equifax.md, sección 4). Lo que cambió desde ese
 // borrador: Equifax ya no es "una segunda lectura" de la deuda sino LA lectura
-// (bancos y cooperativas de Novadata no llegan), la calificación se lee en
+// (bancos y cooperativas de Proveedor_Info_1 no llegan), la calificación se lee en
 // días de mora con los tramos que ya usa la institución (al día, 1 a 30, 31 a
 // 90, más de 90: la franja de la pestaña Equifax y la definición de impago,
-// 110), y las casas comerciales de Novadata se suman.
+// 110), y las casas comerciales de Proveedor_Info_1 se suman.
 const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la institución, Equifax. Es la fuente
    más directa de comportamiento de pago, y cuando llega reemplaza al buró
-   de bancos y de cooperativas de Novadata: la deuda, el atraso, las
+   de bancos y de cooperativas de Proveedor_Info_1: la deuda, el atraso, las
    demandas, la cartera castigada y lo que respalda como codeudora o
    garante, en bancos (también Diners), cooperativas y sector comercial,
    salen de acá. Por eso comportamientoCooperativas no llega, y
@@ -1190,7 +1190,7 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
    - Un grupo en null es información que Equifax no trajo: no es un cero ni
      un hecho de la persona.
 
-4. comportamientoBancario, cuando llega buroEquifax: lo de Novadata que el
+4. comportamientoBancario, cuando llega buroEquifax: lo de Proveedor_Info_1 que el
    buró no cubre.
    - figuraEnRegistroDeudores: figura en el registro de deudores.
    - numeroPrestamosIessBiess y diasMoraCreditoIessBiess son préstamos del
@@ -1199,7 +1199,7 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
      del buró: Equifax puede traer el mismo préstamo del BIESS dentro de
      bancos.
    - Retail (numeroDeudasRetail, totalDeudaRetail, valorVencidoRetail,
-     diasMoraMaximaRetail): deudas con casas comerciales según Novadata.
+     diasMoraMaximaRetail): deudas con casas comerciales según Proveedor_Info_1.
      Casi siempre son otras empresas que las del sector comercial de
      Equifax, y por eso se suman; alguna puede figurar en las dos fuentes.
      valorVencidoRetail es lo vencido; si es igual al total, toda esa deuda
@@ -1209,7 +1209,7 @@ ${CORTE_DEL_RETAIL}
    endeudamiento (bloque del perfil del modelo): la deuda sumada. Con
    buroEquifax, deudaPropiaBancos, deudaPropiaCooperativas y
    deudaPropiaSectorComercial son de Equifax (como titular, con lo que está
-   en atraso) y deudaPropiaRetail son las casas comerciales de Novadata, a
+   en atraso) y deudaPropiaRetail son las casas comerciales de Proveedor_Info_1, a
    la fecha de fechaCorteRetail: si pesa en la suma, aclaralo.
    deudaPropiaTotal las suma. deudaEnAtrasoTotal suma lo vencido, lo que no
    devenga intereses, lo que está en demanda y lo castigado.
@@ -1250,9 +1250,9 @@ function aplicarCortes(texto: string, cortes: Corte[]): string {
 
 const CORTES_CON_BURO: Corte[] = [
   {
-    desde: "la información de Novadata ya\nprocesada",
+    desde: "la información de Proveedor_Info_1 ya\nprocesada",
     hasta: "procesada y calculada",
-    nuevo: "la información de Novadata y de Equifax ya\n",
+    nuevo: "la información de Proveedor_Info_1 y de Equifax ya\n",
   },
   { desde: "3. comportamientoBancario: la fuente más directa", hasta: "5. riesgoJudicialCrediticio", nuevo: GRUPOS_DEL_BURO_EQUIFAX },
   {
@@ -1267,7 +1267,7 @@ const CORTES_CON_BURO: Corte[] = [
     nuevo: `
 - Con buroEquifax, "buró de crédito de bancos", "tarjetas Diners" y
   "cooperativas" están entre los consultados porque los trajo Equifax,
-  aunque Novadata no haya contestado por ellos.
+  aunque Proveedor_Info_1 no haya contestado por ellos.
 
 `,
   },

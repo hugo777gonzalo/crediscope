@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     // las cumpla daba otra cuota que la pantalla cuando la más nueva no tenía
     // estructura: la función tomaba una de un mes anterior.
     const { data: buro, error: errorBuro } = await serviceClient.from("proveedores").select("clave").eq("es_buro", true).maybeSingle();
-    // Sin saber cuál es el buró, las cuotas saldrían de Novadata sin que nadie se entere.
+    // Sin saber cuál es el buró, las cuotas saldrían de Proveedor_Info_1 sin que nadie se entere.
     if (errorBuro) return responder({ error: "No se pudo leer cuál es el buró de la institución." }, 500);
     let equifax: { id: string; created_at: string; estructura: Record<string, unknown> | null } | null = null;
     if (buro?.clave === "equifax") {
@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
       ingresos: comoLista(cuerpo.ingresos),
       obligaciones: comoLista(cuerpo.obligaciones),
       deudasSinCuota: comoLista(cuerpo.deudasSinCuota),
-      fuenteDeLasCuotas: "novadata",
+      fuenteDeLasCuotas: "proveedor_info_1",
       corteIess: null,
     } as DatosDeCapacidad;
     if (datos.ingresos.some((x) => typeof x?.montoMensual !== "number" || !["sueldo", "aporte_propio", "declarado"].includes(x.tipo))) {

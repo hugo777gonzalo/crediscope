@@ -1,22 +1,22 @@
 // La prueba en sombra del nivel 1 del predictor de ingresos (docs/investigacion-predictor-de-ingresos.md, 12.30):
-// para las personas de AWS que se reconsultaron en Novadata (12.29), arma las variables desde el perfil que guardó
+// para las personas de AWS que se reconsultaron en Proveedor_Info_1 (12.29), arma las variables desde el perfil que guardó
 // CrediScope, con variables-de-ingreso.ts, y las evalúa con predictor-ingresos.ts: lo mismo que serviría la función,
-// pero con las entradas de producción (Novadata) en vez del extracto de AWS con que se entrenó. La medida contra el
+// pero con las entradas de producción (Proveedor_Info_1) en vez del extracto de AWS con que se entrenó. La medida contra el
 // ingreso validado la hace scripts/predictor-ingresos/medir_sombra.py.
 //
 // No consulta a ninguna fuente ni al modelo de lenguaje: lee el perfil guardado (client_profiles, sólo lectura; por eso
 // no abre una ejecución, regla 11) y el crudo que dejó el lote.
 //
 // Datos (fuera de git, personas reales): research/medida-persona/ de la carpeta principal.
-//   crudo/*.json   { cedula, capturadoEl, perfilId, raw }: la respuesta de Novadata de cada persona del lote
+//   crudo/*.json   { cedula, capturadoEl, perfilId, raw }: la respuesta de Proveedor_Info_1 de cada persona del lote
 //   tmap.json      la fecha de la consulta de AWS de cada persona (de muestra.parquet)
 // Salida: research/medida-persona/sombra-nivel1.jsonl, una línea por persona. Por pantalla, sólo conteos.
 //
 //   node scripts/sombra-predictor-ingresos.mjs [--modelo=C:/datos/ingresos/modelos/exportado/ingreso-v1-nivel1.json.gz]
 //
 // Tres maneras de servir a cada persona, porque su ingreso validado es de la fecha de su consulta de AWS (2023 a 2025)
-// y Novadata contestó el 2026-10-28:
-//   hoy                   el perfil tal como está guardado y el reloj en el día de la consulta a Novadata;
+// y Proveedor_Info_1 contestó el 2026-10-28:
+//   hoy                   el perfil tal como está guardado y el reloj en el día de la consulta a Proveedor_Info_1;
 //   a_la_consulta         la edad y el reloj (fecha del modelo y antigüedad del RUC) en la fecha de la consulta de AWS;
 //                         desde estructura-v15 el perfil trae el «obligado a llevar contabilidad» del RUC;
 //   con_obligado          lo anterior con el obligado que arma process.ts desde el crudo. Con los perfiles guardados
@@ -74,7 +74,7 @@ const personas = [];
 for (const archivo of fs.readdirSync(path.join(DATOS, "crudo")).filter((a) => a.endsWith(".json"))) {
   const j = JSON.parse(fs.readFileSync(path.join(DATOS, "crudo", archivo), "utf8"));
   cuenta.crudos++;
-  // Las 634 que el 502 de Novadata dejó sin Registro Civil no tienen un perfil que sirva (12.29).
+  // Las 634 que el 502 de Proveedor_Info_1 dejó sin Registro Civil no tienen un perfil que sirva (12.29).
   if (j.raw?.general?.status !== "ok") { cuenta.sinRegistroCivil++; continue; }
   const cedula = String(j.cedula).padStart(10, "0");
   if (!fechaDeConsulta[cedula]) { cuenta.sinFechaDeAws++; continue; }
