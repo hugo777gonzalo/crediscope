@@ -96,7 +96,7 @@ Van en el marco interpretativo, fijas, una sola vez:
 2. Una dimensión en `sin_datos` **sí** es evidencia y se puede usar
    como tal.
 3. Una dimensión `no_medido` no se evaluó: el análisis lo declara y
-   **no penaliza a la persona** por algo que nadie miró.
+   **no penaliza a la persona** por lo que no se pudo obtener.
 4. Si la cobertura queda por debajo del mínimo evaluable, no se emite
    puntaje: se emite un informe que dice qué faltó.
 

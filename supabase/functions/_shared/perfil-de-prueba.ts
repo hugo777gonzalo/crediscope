@@ -5,8 +5,8 @@
 // No es un archivo de pruebas: lo importa perfil-del-modelo-buro.test.ts,
 // que compara lo que arma el perfil del modelo de una persona SIN buró contra
 // perfil-del-modelo-sin-buro.esperado.json. Ese archivo se generó con el
-// código de marco-v30, antes de sumar el buró de la institución: si cambia, el
-// modelo lee otra cosa y es una versión nueva del marco.
+// código de marco-v30 y se regeneró con el de marco-v32: si cambia, el modelo
+// lee otra cosa y es una versión nueva del marco.
 //
 // Trae deuda en bancos, cooperativas y casas comerciales, lo de codeudor o
 // garante, préstamos del IESS/BIESS y una fuente que no contestó, para que la
@@ -53,8 +53,10 @@ export function perfilDePrueba(): Record<string, unknown> {
       diasMoraMaximaRetail: 12,
       totalDeudaRetail: 640.5,
       valorVencidoRetail: 80.2,
+      fechaCorteRetail: "2025-07-31",
       tieneCreditoIessBiess: true,
       diasMoraCreditoIessBiess: 0,
+      saldoPrestamosIessBiess: 2300.4,
     },
     comportamientoCooperativas: {
       numeroOperaciones: 1,

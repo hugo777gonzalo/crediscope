@@ -13,7 +13,7 @@
 // filaDelAnalisis(): los mismos que usa analyze-client. Un análisis en lote
 // queda igual que uno de la pantalla, atado a su perfil y con lo que leyó el
 // modelo. Reutiliza perfiles guardados: no reconsulta Novadata. Con
-// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v31) lee la consulta vigente
+// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v33) lee la consulta vigente
 // del buró de la institución igual que analyze-client
 // (buro-de-la-institucion.ts); nunca consulta a Equifax.
 //
@@ -170,7 +170,7 @@ async function enviar() {
   if (!/^[0-9a-f-]{36}$/.test(responsable ?? "")) throw new Error("Falta --responsable=<uuid>: quién ordena el lote (auditoría)");
   const seleccion = leer("seleccion.json");
   const camposDeshabilitados = await loadDisabledFields(supabase);
-  // El buró de la institución (marco-v31), con la misma regla que
+  // El buró de la institución (marco-v33), con la misma regla que
   // analyze-client: sólo con el interruptor encendido, la consulta vigente a
   // la fecha del envío y nunca una consulta nueva a Equifax.
   const ahora = new Date();

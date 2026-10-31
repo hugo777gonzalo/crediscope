@@ -7,6 +7,14 @@ Nada de lo que lee el modelo cambió: la versión nueva vive detrás de
 cuando el negocio lo decida con la comparación con y sin Equifax, que se autoriza
 con una cifra (sección 7). Hasta entonces todo análisis sigue siendo `marco-v30`.
 
+**Actualización del 2026-10-31.** `marco-v31` no llegó a usarse (0 análisis). El buró pasa a
+**`marco-v33`**: el mismo armado sobre **`marco-v32`**, las correcciones de la revisión de casos
+reales. v32 entra con el despliegue, sin interruptor; `buroDeLaInstitucion` enciende sólo v33. Sin
+buró, el texto y el perfil de v33 son los de v32, y el rótulo A7 ya está en el texto de todos. El
+negocio decidió encender el buró después de las correcciones, y la comparación espera a la versión
+del predictor (`docs/pendientes.md`, puntos 2.0, 2.1 y 2.4). Lo de abajo dice `marco-v31` y `v30`
+como se construyó ese día, y las mediciones de las secciones 5 y 7 son de entonces.
+
 **Cambió con las respuestas del negocio del 2026-10-13 y del 2026-10-16**
 (`docs/propuesta-buro-de-la-institucion.md`, secciones 0, 2 y 4): Equifax ya no es
 «una segunda lectura» de la deuda sino que **reemplaza** al buró de bancos y de
@@ -275,8 +283,7 @@ autorizar el gasto).
   `perfil-de-prueba.ts` y la respuesta inventada de Equifax) y
   `buro-de-la-institucion.test.ts`. La medición: `scripts/medir-bloque-equifax.mjs`.
 
-**Para encenderlo** (cuando el negocio lo decida; la 131 ya está aplicada): subir
-`ESQUEMA_MINIMO` a 131, poner
+**Para encenderlo** (cuando el negocio lo decida; antes, la 142 aplicada y v32 desplegada): poner
 `buroDeLaInstitucion: true`, desplegar con `--funciones` y hacer una llamada suelta de
 comprobación sobre una persona con consulta vigente (está aceptada).
 

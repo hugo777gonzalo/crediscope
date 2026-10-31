@@ -33,6 +33,9 @@ su guía: `docs/equifax.md`.
     de esa misma persona se reutiliza en vez de volver a preguntar (E1).
   - La huella no cuenta `cache_control` ni `max_tokens`.
   - `puntuarPedido()` llama al modelo con un pedido ya armado.
+  `MARCO_VERSION` (marco-v32) entra con el despliegue, sin interruptor;
+  `MARCO_VERSION_CON_BURO` (marco-v33, v32 más el buró) la enciende
+  `CONFIG_LLM.buroDeLaInstitucion`, y es lo único que ese interruptor enciende.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
   de temas que el perfil no trae (toma el número de versión libre al
   encenderse; la v29 fue E27). Corta el marco vigente por marcas,
@@ -202,8 +205,9 @@ su guía: `docs/equifax.md`.
   `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
   `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.
 - "La fuente trajo datos" ≠ "la persona tiene registros" (antecedentes
-  "NO", SERCOP vacío). Al modelo le llega sólo consultado / no
-  consultado, por tema.
+  "NO", SERCOP vacío). Al modelo le llega sólo consultado / sin respuesta,
+  por tema (`temasConsultados`, `temasSinRespuesta`). El contrato de la API
+  sigue diciendo `temasNoConsultados`.
 - Los 9 bloques se retiraron (078); quedan 52 fuentes planas. `ejes_ok`
   ya no se escribe pero NO se borra. ¿Sirve el perfil? `elPerfilSirve()`.
 - Dos formas conviven: `laboral.empleoActual` (objeto, antes de
@@ -309,6 +313,13 @@ su guía: `docs/equifax.md`.
 - "Es su propio patrono": sólo `_shared/patrono.ts` (RUC = cédula +
   001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
   lo hace empleador.
+- Un RUC dado de baja por depuración del SRI con actividad en relación de
+  dependencia es neutro (negocio, 2026-10-31):
+  `rucDepuradoEnRelacionDeDependencia()` (`ruc.ts`, estructura-v17). El motivo
+  viene sólo en `observ_solicitud_suspension` y la actividad en
+  `establecimientoActEconomica`: de 1.276 personas con cese, 169 depuradas y 17
+  con esa actividad. Una regla sobre un dato que el perfil no guarda no se
+  resuelve con el marco: lleva estructura y recálculo.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
   establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).
@@ -387,8 +398,19 @@ su guía: `docs/equifax.md`.
   - Lo que el perfil guarda sólo para el predictor de ingresos no llega
     (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`).
     El obligado a llevar contabilidad (estructura-v15) ya le llega
-    interpretado en `fuentesIngreso`, y así el mensaje siguió siendo el de
-    marco-v30 (decisión del negocio del 2026-10-29).
+    interpretado en `fuentesIngreso` (decisión del negocio del 2026-10-29).
+  - **El nombre de un campo es parte de lo que escribe el modelo**: con
+    `temasNoConsultados` escribía «no se consultaron» y «nadie miró» de lo que
+    se intentó y falló (c-79e1ac23). Se dice «no se pudo obtener información, por
+    lo tanto no tenemos los sustentos suficientes», nunca como «la fuente dice que
+    no hay» (marco-v32).
+  - **A1 es la única de la escala sin atraso**: A2 y A3 casi nunca traen monto
+    (2 de 425 operaciones y 0 de 222), así que `deudaEnAtraso` en 0 no los
+    desmiente. La calificación no se traduce a días: en el comercial no sale
+    sólo de ellos, y el buró de Novadata no dice el tipo de crédito.
+  - **El retail es de su corte** (`fechaCorteRetail`, julio de 2025 en las 490
+    personas con retail): ni deuda de hoy ni prueba de que no haya una posterior.
+    Sin filas el corte llega `null`, y la advertencia vale igual.
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números

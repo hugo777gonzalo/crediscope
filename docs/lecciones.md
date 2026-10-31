@@ -907,3 +907,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   campos con 2.567 perfiles y abría el perfil entero 460 mil veces: la base
   cortó la consulta. Recorrer cada perfil una vez (`jsonb_each`) y juntar
   después tarda segundos.
+- **El nombre de un campo es parte de lo que escribe el modelo** (2026-10-31,
+  c-79e1ac23). Con 41 de 52 fuentes caídas, el análisis decía «no se consultaron»
+  y «no se aprueba por lo que nadie miró»: las dos frases salían de la lista
+  `temasNoConsultados` y del marco. Se intentó y falló, y el analista leía que
+  nadie había pedido el dato. El contrato de la API conserva el nombre; en el
+  mensaje al modelo la lista pasa a `temasSinRespuesta`.
+- **Un cero de monto no desmiente una calificación** (2026-10-31, c-82cc2afc). El
+  marco no definía A2 y el modelo escribía «A1 a A2, sin atraso»: en el buró, 2 de
+  425 operaciones A2 y 0 de 222 A3 traen monto vencido (A1, 0 de 11.097). Son 365
+  personas con A2 o A3 de peor calificación, de 3.530.

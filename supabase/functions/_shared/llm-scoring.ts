@@ -129,15 +129,16 @@ export type ConfigRazonamiento = {
   // contra el marco entero; no se combina con cachearMarco (en lote el marco
   // entero cacheado cuesta menos que uno recortado sin caché).
   marcoPorCliente?: boolean;
-  // marco-v31: el buró de la institución en lugar del de bancos y
+  // marco-v33: el buró de la institución en lugar del de bancos y
   // cooperativas de Novadata, cuando la persona tiene una consulta vigente
-  // (perfil-del-modelo.ts, buro-de-la-institucion.ts). APAGADO hasta que el
-  // negocio lo decida con la comparación con y sin Equifax (autorizada con
-  // una cifra). Mientras esté apagado, el pedido es el de v30 byte a byte
-  // aunque llegue un buró. Encenderlo pide antes la migración 131 (la fila de
-  // marco-v31) aplicada y ESQUEMA_MINIMO en 131: primero se migra, después
+  // (perfil-del-modelo.ts, buro-de-la-institucion.ts). Es lo único que este
+  // interruptor enciende: las correcciones de v32 van sin interruptor.
+  // APAGADO hasta que el negocio lo diga (decidió encenderlo después de las
+  // correcciones). Mientras esté apagado, el pedido es el de v32 byte a byte
+  // aunque llegue un buró. Encenderlo pide antes la migración de la fila de
+  // marco-v33 aplicada (ESQUEMA_MINIMO ya la exige): primero se migra, después
   // se despliega. Todavía no se combina con marcoPorCliente: sus marcas son
-  // del texto de v30.
+  // del texto sin buró.
   buroDeLaInstitucion?: boolean;
 };
 export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000, buroDeLaInstitucion: false };
@@ -399,7 +400,7 @@ export function armarPedidoScoring(
   buro: BuroDeLaInstitucion | null = null,
 ): Record<string, unknown> {
   if (config.buroDeLaInstitucion && config.marcoPorCliente) {
-    throw new Error("marcoPorCliente y buroDeLaInstitucion todavía no se combinan: las marcas del marco por cliente son del texto de v30");
+    throw new Error("marcoPorCliente y buroDeLaInstitucion todavía no se combinan: las marcas del marco por cliente son del texto sin buró");
   }
   // El marco va SIN caché desde el 2026-09-27. La caché dura 5 minutos y
   // la mediana entre dos análisis es de 26: en 12 escrituras desde el
