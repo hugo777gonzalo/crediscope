@@ -188,6 +188,9 @@ su guía: `docs/equifax.md`.
     toma el número libre al aplicarse (regla 1).
 
 **Base y procesos**
+- **Una agenda nueva lee la clave de Vault**
+  (`vault.decrypted_secrets`, como en la 114), nunca el marcador `<<VIGIA_CLAVE>>` en la
+  tarea: la clave quedaría en `cron.job` y, en cada corrida, en `cron.job_run_details`.
 - **Una cola con un paso que se cobra cuenta el intento al tomarlo**, no al fallar, y un
   fallo cobrado y no guardado no se reintenta (`noReintentar`). Dos evaluaciones de la
   misma persona no se ceden a la vez: cede la que empezó después. Una evaluación de la

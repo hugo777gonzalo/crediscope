@@ -5,6 +5,10 @@ registro con `abrirEjecucion()` y no corre sin constancia (regla dura 11 de
 la raíz). Los guiones de Equifax están en `docs/equifax.md` y los del
 Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 
+- `--funciones` puede fallar en una función distinta en cada corrida al subir los archivos, y
+  entonces anota 11 de 12 en `despliegues` (2026-10-30, dos corridas seguidas). Se repite, y lo que
+  manda es el sello de cada función (`auditar-seguridad.mjs`, u OPTIONS a cada una): si la que falló
+  ya tenía ese commit de la corrida anterior, está bien.
 - Desde un worktree, los guiones leen `.env.functions` y escriben en
   `research/` de la carpeta principal (`scripts/_comun/entorno.mjs`).
 

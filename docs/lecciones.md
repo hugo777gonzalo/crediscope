@@ -211,6 +211,11 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### Base y procesos
 
+- **Una agenda nueva repitió lo que la 114 había sacado de las otras.** La 139 (2026-10-30)
+  escribió la clave del vigía en texto plano en `cron.job`, y pg_cron la copió además en
+  `cron.job_run_details` en cada corrida. Las 18 comprobaciones de la 139 en PGlite no tocaban la
+  agenda, y `auditar-seguridad.mjs` lo marcó recién con la migración aplicada. Lo arregla la 140.
+  Las migraciones que crean una agenda se revisan contra la 114 antes de fusionar.
 - **Una lista de ids en `.in()` revienta la URL.** Medido: 350 uuid andan,
   400 (15,7 KB) fallan y 700 dan "Bad Request"; las cédulas, de 10
   caracteres, aguantan ~1.000. Las listas van en tandas de 200.
