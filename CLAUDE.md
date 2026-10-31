@@ -178,7 +178,8 @@ Romper cualquiera de estas rompe algo real.
    - Nunca confiar en un dato del token que no se verificó acá.
 7. **Windows + Git Bash.** Los heredocs mutilan el código con acentos y
    comillas: usar las herramientas de escritura y edición de archivos,
-   no `cat <<EOF`.
+   no `cat <<EOF`. En PowerShell 5.1, `Get-Content` lee UTF-8 sin BOM como
+   ANSI: volver a escribir eso rompe los acentos (`docs/lecciones.md`).
 8. **Si una migración borra una columna que el código desplegado
    escribe, desplegar PRIMERO y borrar después.** La base y las
    funciones se actualizan por caminos separados, así que entre los dos

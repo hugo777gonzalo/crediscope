@@ -69,10 +69,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - topes por minuto y por día con los encabezados `RateLimit`, y el 503 `capacidad-agotada`
      por espera estimada (hoy sólo el tope de evaluaciones en curso);
    - avisos firmados (`evaluacion.terminada`), `POST /evaluaciones/{id}/decision` y
-     `/cancelacion`, y las puertas sueltas `/simulaciones` y `/capacidades-de-pago`;
-   - **el sandbox está construido y sin desplegar** (`supabase/CLAUDE.md`): falta aplicar la 139,
-     desplegar y poner `API_SANDBOX=activo` para usarlo. Requisito de OAuth: una credencial de
-     sandbox acepta sólo las identificaciones de prueba;
+      `/cancelacion`, y las puertas sueltas `/simulaciones`, `/capacidades-de-pago` y
+      `/estimaciones-de-ingreso` (esta última traduce `evaluacion`, `ev_...`, a `solicitudId`);
+    - **el sandbox está construido y sin desplegar** (`supabase/CLAUDE.md`): falta desplegar y poner
+      `API_SANDBOX=activo` para usarlo. Requisito de OAuth: una credencial de sandbox acepta sólo las
+      identificaciones de prueba;
    - D5: al vencer el plazo con el modelo caído, entregar `sin_veredicto` con el perfil y la
      capacidad en vez de `fallida` (hoy el paso del modelo se reintenta y, vencido el plazo,
      la evaluación termina `fallida`/`plazo_vencido`);
@@ -256,8 +257,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están los pasos 1 y
-    2 y el entrenamiento, y el predictor no está desplegado: ninguna función usa `predictor-ingresos.ts`). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
+    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están los pasos 1, 2, 4 y
+    5 del nivel 1 y el entrenamiento, y el predictor no está desplegado: lo que falta para eso, en el punto 7 de abajo). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
     tiene dos niveles (1: Novadata con su SRI; 2: Novadata y buró de Equifax). **Aclarado el 2026-10-28
     (12.27): no hay calibración por producto.** AWS es crédito automotriz en su 96% (54.906 de 57.061
     independientes; 68 de consumo), pero el negocio dijo que automotriz y consumo son lo mismo: el
@@ -292,9 +293,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
        consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
        La del PR 82 pasó de 137 a 139 el 2026-10-30 (una 137 no se habría aplicado nunca).
-    2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
-       de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
-       paso 4 (punto 6).
+    2. La calibración conforme de cada institución va en `modelos_de_ingreso.calibracion` de su base
+       (`Calibracion`, en logaritmo, con 500 casos o más) y hoy está vacía (decisión del 2026-10-30). Se
+       enciende con esa fila, sin desplegar, cuando una institución traiga sus casos.
     3. **Lo que quedó del obligado y del RUC activo** (estructura-v15 y fuentes-v11, PR 97, desplegado y
        recalculado el 2026-10-30; 12.31). El perfil guarda el obligado, el nivel 1 lo lee de ahí y la prueba
        en sombra «a la consulta» ya da lo mismo que «con el obligado» (R² 0,187; 89,1%).
@@ -319,9 +320,22 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
        de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
-    7. Las tablas, la función y la operación de la API (pasos 4 y 5 de la sección 6): `modelos_de_ingreso`,
-       `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
-    8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
+    7. **Construidos para el nivel 1 y sin aplicar:** `modelos_de_ingreso`, `estimaciones_de_ingreso`
+       (migración 141), `estimar-ingreso` y `POST /estimaciones-de-ingreso`, con lo que el negocio decidió
+       el 2026-10-30 (especificación, sección 1). Falta, en este orden:
+       - aplicar la 141 con el corredor (`--seco` y `--aplicar`);
+       - publicar el modelo: `node scripts/publicar-modelo-de-ingreso.mjs --modelo=<archivo> --vigente`,
+         primero con `--seco` (sin la 141 aplicada, el guion valida el archivo y frena en la tabla);
+       - desplegar con `--funciones` desde una copia limpia de `origin/main` (`ESQUEMA_MINIMO` sube a 141:
+         sin la migración, todas las funciones contestan 503);
+       - correr `auditar-seguridad.mjs` y probar la función con una identificación inválida; una
+         estimación de verdad, sólo con una persona autorizada por el negocio.
+       La migración se probó en un Postgres en memoria, no contra la base. La función no se llamó
+       nunca. La referencia de pensión de los jubilados (sección 3.3) no está construida.
+    8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7). Antes de mostrar los tramos, revisar
+       con el negocio la regla de `cdf` (`comun.py`): con un mínimo alto, el tramo de menos de un salario
+       básico queda en 2,5% y los siguientes en 0,01%, porque por debajo del primer cuantil vale la mitad
+       de su nivel.
 
     **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y

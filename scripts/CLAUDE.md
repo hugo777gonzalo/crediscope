@@ -53,6 +53,12 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   `C:\datos\ingresos`). A git sólo van los casos de oro, con entradas inventadas, que lee la prueba de
   `_shared/predictor-ingresos.ts`; las extracciones de AWS, las tablas por persona y los modelos quedan
   fuera (son datos de personas).
+- `scripts/publicar-modelo-de-ingreso.mjs` sube un modelo a una base, depósito y fila (141), de a una base
+  y con `--seco` primero. Antes de tocar la base comprueba la huella, el formato, los casos de oro y que
+  existan sus métricas agregadas (`predictor-ingresos/metricas/<version>-nivel<n>.json`, que sí van a git).
+  `--vigente` lo activa; un modelo nuevo se compara antes con el vigente (especificación, 7).
+- `scripts/predictor-ingresos/casos_de_estimacion.py` regenera los casos de oro de punta a punta
+  (`casos-de-oro/estimaciones-nivel1.json`): correrlo después de exportar un nivel 1 nuevo.
 - `scripts/sombra-predictor-ingresos.mjs` es la prueba en sombra del nivel 1: arma las variables desde el
   perfil guardado (sólo lectura) y evalúa con el modelo exportado; la mide
   `scripts/predictor-ingresos/medir_sombra.py`. Repetirla con cada modelo nuevo del nivel 1 y al completar

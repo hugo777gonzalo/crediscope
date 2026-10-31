@@ -1,0 +1,463 @@
+{
+ "descripcion": "Casos de oro de la estimación de punta a punta: perfiles inventados (no salen de ninguna persona), las variables calculadas con las definiciones de la especificación y los cuantiles del evaluador de referencia.",
+ "modelo": "ingreso-v1-nivel1.json.gz",
+ "huella_entrenamiento_sha256": "9ae586c6e35bee442ae5d470bf14cd4644e8d9ab97df52271e79f275bfc6c885",
+ "tolerancia": 0.001,
+ "casos": [
+  {
+   "id": "con-ruc-activo",
+   "consultadoEl": "2026-10-15T17:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 41,
+     "genero": "Femenino"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "activa_sin_interrupciones",
+     "fechaInicioActividadesRuc": "2015-03-10",
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null,
+     "obligadoALlevarContabilidadRuc": false
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [
+      "contribuyente"
+     ],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 41,
+    "genero": "FEMENINO",
+    "anio_mes": 2026.75,
+    "sri_ruc": 1,
+    "sri_estado": "ACTIVO",
+    "sri_obligado": 0,
+    "sri_antig": 11.600273785078713,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    6.843144361487726,
+    7.115784933048494,
+    7.295141821650544,
+    7.39770749887486,
+    7.614556213184027,
+    7.87435684069437,
+    8.047032253724852,
+    8.199527273789283,
+    8.488020778164241,
+    8.741147735220148,
+    9.112671995291054,
+    9.23892799693333
+   ],
+   "minimo90": 1231.24,
+   "minimo85": 1473.12,
+   "valorCentral": 3124.51
+  },
+  {
+   "id": "obligado-a-contabilidad",
+   "consultadoEl": "2026-08-03T15:30:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 55,
+     "genero": "MASCULINO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "activa_reactivada",
+     "fechaInicioActividadesRuc": "2001-06-01",
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null,
+     "obligadoALlevarContabilidadRuc": true
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [
+      "contribuyente"
+     ],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 55,
+    "genero": "MASCULINO",
+    "anio_mes": 2026.5833333333333,
+    "sri_ruc": 1,
+    "sri_estado": "ACTIVO",
+    "sri_obligado": 1,
+    "sri_antig": 25.17180013689254,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    7.675414060010926,
+    8.010900029316087,
+    8.357990438585272,
+    8.565285800485722,
+    8.774804862772244,
+    8.959877697757257,
+    9.309931579662251,
+    9.440185722172389,
+    9.618503391369698,
+    9.876517941607252,
+    10.279825927846602,
+    10.582371030880912
+   ],
+   "minimo90": 3013.62,
+   "minimo85": 4264.11,
+   "valorCentral": 11047.19
+  },
+  {
+   "id": "sin-ruc",
+   "consultadoEl": "2026-09-20T20:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 29,
+     "genero": "MASCULINO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "sin_ruc",
+     "fechaInicioActividadesRuc": null,
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null,
+     "obligadoALlevarContabilidadRuc": null
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [],
+     "fuentesSinDatos": [
+      "contribuyente"
+     ],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 29,
+    "genero": "MASCULINO",
+    "anio_mes": 2026.6666666666667,
+    "sri_ruc": 0,
+    "sri_estado": null,
+    "sri_obligado": null,
+    "sri_antig": null,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    6.34301513936509,
+    6.667436824701404,
+    6.770118320701191,
+    6.837330164734836,
+    6.94802976303922,
+    7.093874441488301,
+    7.212019542679057,
+    7.31668655733101,
+    7.472585619887569,
+    7.6509486800132755,
+    7.937617818057326,
+    8.326426529093364
+   ],
+   "minimo90": 786.37,
+   "minimo85": 871.41,
+   "valorCentral": 1355.63
+  },
+  {
+   "id": "el-contribuyente-no-contesto",
+   "consultadoEl": "2026-09-20T20:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 36,
+     "genero": "FEMENINO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": null,
+     "fechaInicioActividadesRuc": null,
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null,
+     "obligadoALlevarContabilidadRuc": null
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": [
+      "contribuyente"
+     ]
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 36,
+    "genero": "FEMENINO",
+    "anio_mes": 2026.6666666666667,
+    "sri_ruc": null,
+    "sri_estado": null,
+    "sri_obligado": null,
+    "sri_antig": null,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    6.414543828863164,
+    6.675376511419178,
+    6.784777407835077,
+    6.900370105848578,
+    7.040314079133796,
+    7.132166845972731,
+    7.301956568927183,
+    7.419854684048959,
+    7.613124687121824,
+    7.787782828578453,
+    8.095585245507133,
+    8.474911346028607
+   ],
+   "minimo90": 792.64,
+   "minimo85": 884.28,
+   "valorCentral": 1483.2
+  },
+  {
+   "id": "ruc-suspendido",
+   "consultadoEl": "2026-07-07T14:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 63,
+     "genero": "MASCULINO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "inactiva_nunca_reactivada",
+     "fechaInicioActividadesRuc": "1998-11-23",
+     "fechaCeseActividadesRuc": "2024-02-20",
+     "tipoUltimoCeseRuc": "suspension_definitiva",
+     "obligadoALlevarContabilidadRuc": false
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [
+      "contribuyente"
+     ],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 63,
+    "genero": "MASCULINO",
+    "anio_mes": 2026.5,
+    "sri_ruc": 1,
+    "sri_estado": "SUSPENDIDO",
+    "sri_obligado": 0,
+    "sri_antig": 27.619438740588638,
+    "sri_susp": 2.3764544832306638
+   },
+   "cuantiles_log": [
+    6.5062604846172265,
+    6.624964728917211,
+    6.863572403773233,
+    6.880013011573001,
+    7.106621262861739,
+    7.26744980330128,
+    7.419718729162949,
+    7.640586013689925,
+    7.924089692096577,
+    8.119387271906154,
+    8.504751375489025,
+    8.716626435936801
+   ],
+   "minimo90": 753.67,
+   "minimo85": 956.77,
+   "valorCentral": 1668.56
+  },
+  {
+   "id": "perfil-anterior-a-v15",
+   "consultadoEl": "2026-05-04T16:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 47,
+     "genero": "FEMENINO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "activa_sin_interrupciones",
+     "fechaInicioActividadesRuc": "2019-01-15",
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [
+      "contribuyente"
+     ],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 47,
+    "genero": "FEMENINO",
+    "anio_mes": 2026.3333333333333,
+    "sri_ruc": 1,
+    "sri_estado": "ACTIVO",
+    "sri_obligado": null,
+    "sri_antig": 7.299110198494182,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    6.815383439403014,
+    6.966235523792987,
+    7.040463276591072,
+    7.181256193431777,
+    7.480326843660943,
+    7.638569230373146,
+    7.88283166438495,
+    8.04084014995466,
+    8.234884672312974,
+    8.508411022490701,
+    8.978630131759724,
+    9.371432448937494
+   ],
+   "minimo90": 1060.22,
+   "minimo85": 1141.91,
+   "valorCentral": 2651.37
+  },
+  {
+   "id": "fin-de-anio-en-ecuador",
+   "consultadoEl": "2026-01-01T03:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 38,
+     "genero": "MASCULINO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "activa_sin_interrupciones",
+     "fechaInicioActividadesRuc": "2020-12-31",
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null,
+     "obligadoALlevarContabilidadRuc": false
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [
+      "contribuyente"
+     ],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 38,
+    "genero": "MASCULINO",
+    "anio_mes": 2025.9166666666667,
+    "sri_ruc": 1,
+    "sri_estado": "ACTIVO",
+    "sri_obligado": 0,
+    "sri_antig": 4.999315537303217,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    6.740100634681293,
+    6.991405998055806,
+    7.101415595668054,
+    7.261013418826614,
+    7.432378702054718,
+    7.637654289752759,
+    7.823616194641634,
+    7.989736822163527,
+    8.168452246088082,
+    8.417366818333413,
+    8.757377695153265,
+    9.122703361104717
+   ],
+   "minimo90": 1087.24,
+   "minimo85": 1213.68,
+   "valorCentral": 2498.93
+  },
+  {
+   "id": "sexo-que-el-modelo-no-conoce",
+   "consultadoEl": "2026-10-15T17:00:00Z",
+   "perfil": {
+    "identidad": {
+     "nombreCompleto": "PERSONA INVENTADA",
+     "edad": 33,
+     "genero": "OTRO"
+    },
+    "laboral": {
+     "estadoActividadEconomica": "activa_sin_interrupciones",
+     "fechaInicioActividadesRuc": "2022-08-01",
+     "fechaCeseActividadesRuc": null,
+     "tipoUltimoCeseRuc": null,
+     "obligadoALlevarContabilidadRuc": false
+    },
+    "metaConsulta": {
+     "fuentesConDatos": [
+      "contribuyente"
+     ],
+     "fuentesSinDatos": [],
+     "fuentesNoMedidas": []
+    },
+    "fuentesIngreso": {
+     "segmento": "independiente",
+     "corteIessUsado": null,
+     "fuentes": []
+    }
+   },
+   "variables": {
+    "edad": 33,
+    "genero": null,
+    "anio_mes": 2026.75,
+    "sri_ruc": 1,
+    "sri_estado": "ACTIVO",
+    "sri_obligado": 0,
+    "sri_antig": 4.205338809034908,
+    "sri_susp": null
+   },
+   "cuantiles_log": [
+    6.575604143811902,
+    6.79477473130818,
+    7.002141265400745,
+    7.11878120979365,
+    7.298200008102884,
+    7.518193054877211,
+    7.648723038480745,
+    7.79614745597329,
+    8.003581910500577,
+    8.277335544202442,
+    8.672976891867352,
+    8.900245936930444
+   ],
+   "minimo90": 893.16,
+   "minimo85": 1098.98,
+   "valorCentral": 2097.96
+  }
+ ]
+}

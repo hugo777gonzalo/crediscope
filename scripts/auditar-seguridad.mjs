@@ -295,13 +295,15 @@ for (const tabla of [
   "audit_log", "profiles", "lotes", "lab_solicitudes",
   // Las solicitudes de crédito (133).
   "solicitudes",
+  // El predictor de ingresos (141).
+  "modelos_de_ingreso", "estimaciones_de_ingreso",
 ]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/${tabla}?select=*&limit=1`, { headers: h });
   const filasLeidas = Array.isArray(r.cuerpo) ? r.cuerpo.length : 0;
   anotar("Afuera", `Anónimo no lee ${tabla}`, filasLeidas === 0, `HTTP ${r.status}, ${filasLeidas} filas`);
 }
 
-for (const fn of ["metricas_gerenciales", "resumen_fuentes_ingreso", "lab_centro_de_datos", "crear_lote", "reconstruir_resumen_por_persona", "refrescar_consultas_por_dia", "equifax_reemplazar_tablas"]) {
+for (const fn of ["metricas_gerenciales", "resumen_fuentes_ingreso", "lab_centro_de_datos", "crear_lote", "reconstruir_resumen_por_persona", "refrescar_consultas_por_dia", "equifax_reemplazar_tablas", "activar_modelo_de_ingreso"]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/rpc/${fn}`, {
     method: "POST",
     headers: { ...h, "content-type": "application/json" },
@@ -328,6 +330,7 @@ const cuerpos = {
   "simular-credito": { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 },
   "capacidad-de-pago": { cedula: "abc", solicitud: { monto: 1000, plazoMeses: 12, tasaNominalAnualPorcentaje: 15 } },
   "evaluar-solicitud": { accion: "avanzar", id: "00000000-0000-0000-0000-000000000000" },
+  "estimar-ingreso": { identificacion: "abc" },
   // La puerta de la API (139): cada pedido crea una evaluación que, en Plus, puede
   // cobrar al buró. Con la clave pública no hay sesión de administrador.
   "api-v1": {},
@@ -414,7 +417,7 @@ try {
 {
   const head = execSync("git rev-parse --short=12 HEAD", { encoding: "utf8" }).trim();
   const versiones = {};
-  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "consultar-equifax", "explore-novadata", "vigia", "procesar-lote", "simular-credito", "capacidad-de-pago", "evaluar-solicitud"]) {
+  for (const fn of ["structure-client", "analyze-client", "consultar-aval", "consultar-equifax", "explore-novadata", "vigia", "procesar-lote", "simular-credito", "capacidad-de-pago", "evaluar-solicitud", "estimar-ingreso"]) {
     const r = await pedir(`${URL_SUPABASE}/functions/v1/${fn}`, { method: "OPTIONS" });
     versiones[fn] = r.headers?.get("x-crediscope-version") ?? "sin dato";
   }
@@ -445,7 +448,7 @@ const cors = await pedir(`${URL_SUPABASE}/functions/v1/structure-client`, {
 const permitido = cors.headers?.get("access-control-allow-origin") ?? "";
 anotar("Afuera", "Las funciones no aceptan pedidos de un sitio ajeno (CORS)", permitido !== "*" && permitido !== "https://sitio-ajeno.example", permitido);
 
-for (const deposito of ["crudo-novadata", "lab-archivos"]) {
+for (const deposito of ["crudo-novadata", "lab-archivos", "modelos-de-ingreso"]) {
   const r = await pedir(`${URL_SUPABASE}/storage/v1/object/list/${deposito}`, {
     method: "POST",
     headers: { ...h, "content-type": "application/json" },
