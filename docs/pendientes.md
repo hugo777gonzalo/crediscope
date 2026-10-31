@@ -13,8 +13,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **139** (2026-10-30; no hay 137: la del PR 82 pasó a 139),
-  y `ESQUEMA_MINIMO` está en 139. Se midió en `esquema_version`. **La 140** saca de la agenda la
+- **Base:** última migración aplicada, la **140** (2026-10-30; no hay 137: la del PR 82 pasó a 139),
+  y `ESQUEMA_MINIMO` está en 139. Se midió con el corredor, y `auditar-seguridad.mjs` dio 76 de 76
+  después de aplicarla. **La 140** saca de la agenda la
   clave que la 139 dejó en texto plano.
 - **Funciones:** sello **`36dbe4af0dde`**, 12 de 12, desplegado el 2026-10-30 a las 21:45 sobre el
   esquema 139. `despliegues` anota 11 de 12 porque cada corrida falló en una función distinta al

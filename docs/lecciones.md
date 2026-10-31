@@ -693,6 +693,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Equifax
 
+- **Una respuesta «completed» de Equifax puede no traer reporte de crédito** (2026-10-30). Al pasar
+  por nuestro código 20.560 respuestas de AWS, 585 de otro tipo de consulta (`id_tipo_consulta` 2,
+  con `personalInformation` y `VariablesOfertaTotal`) daban «alcanza», sin deudas y sin un aviso:
+  la estructura existía, sin ningún sistema medido, y `datosDeCapacidad()` la leía como «no debe».
+  Ninguna de las 97 consultas de CrediScope es así, y las 19.826 con reporte traen los tres sistemas.
+  Lo cierra `elBuroTraeDetalle()`: la capacidad sigue con Novadata y Plus falla con
+  `buro_no_disponible`.
 - **Equifax cobra cada consulta y no tiene tope: la protección es
   nuestra** (2026-10-12). El conector se diseñó desde ahí y no del patrón
   de Aval, que es gratis en prueba: un timeout no se repite (pudo
