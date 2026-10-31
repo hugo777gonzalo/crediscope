@@ -55,6 +55,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
   punto 2.15).
 
+- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las fuentes que
+  deciden (`FUENTES_QUE_DECIDEN`). Alcanza a 670 de los 3.765 últimos perfiles reales, que hay que
+  reconsultar antes de analizarlos. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
+  sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
+  fuentes; parece una caída de Novadata, sin confirmar.
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
@@ -115,11 +121,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    (`consultar-equifax-local.mjs`) y el lote nuevo pisó a `persona-1` a `persona-25` del
    anterior, así que ya no prueba todas. Hay que ajustarlo y etiquetar los lotes por fecha.
    Lo hace Claude; se verifica corriéndolo sobre todo `research/equifax/crudo/` con todo en ok.
-6. **Cobertura de deuda de Novadata contra Equifax.** Con 4 personas se vio que Novadata no
-   trae deuda que Equifax sí (`docs/propuesta-estructura-equifax.md`, sección 9): es un
-   indicio, no una tasa. Falta comparar las consultas de Equifax con el perfil de Novadata más
-   reciente de cada persona, por corte de la Super. Sin costo (lee la base; parte de
-   `scripts/medir-solapamiento-equifax.mjs`). Importa: sostiene «un solo buró por institución».
+6. **Cobertura de deuda de Novadata contra Equifax.** Medido el 2026-10-31 sobre 91 personas con
+   las dos fuentes, con el crudo guardado: en bancos, con el mismo corte, 20 de 23 cuadran al dólar.
+   Las 3 restantes tienen atrasos y difieren entre 1,5% y 2,7%, sin explicar. Unas 60 tienen cortes
+   distintos y no se comparan sin reconsultar. Los 4 casos de la sección 9 de
+   `docs/propuesta-estructura-equifax.md` quedaron explicados: aperturas posteriores al corte, BIESS
+   (va en otra fuente de Novadata) y comercial. Las 63 filas de retail traen el corte de julio de 2025.
+   Importa: sostiene «un solo buró por institución».
 7. **Base de una institución nueva desde cero.** Falta la línea base del esquema (E15),
    parametrizar `auditar-seguridad.mjs` por base y probar el 503 de `exigirEsquema()` con la
    primera base atrasada. Importa: hoy hay una sola base y es requisito del primer cliente
@@ -157,6 +165,65 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
    - estilos en línea a clases (1.776 en 124 archivos); Excel de un lote en el servidor
      pasadas las mil personas; `comparar-razonamiento.mjs` que lea el buró.
+12. **Equifax: la ventana de 24 meses y los saldos del comercial (PR 106).** El código está hecho
+    (2026-10-31): la ventana sale del corte
+    del reporte (`_shared/equifax-ventana.ts`, `equifax-estructura-v2`), el detalle actual del
+    comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
+    «Suspensión definitiva» del RUC. Falta, en este orden:
+    - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (no hay migración).
+    - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
+      condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
+      desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
+      `estructura-v1`, y las que entren después de reprocesar quedarían viejas; (b) el guion lista
+      las consultas sin paginar (`scripts/cargar-tablas-equifax.mjs:92`) y PostgREST corta en
+      1.000: dice «consultas guardadas: 1000» cuando hay más de 2.200, así que hay que paginarlo
+      (`traerTodas()`) antes o rehace sólo las más viejas.
+    - **La pantalla sale al fusionar**, así que hasta el reproceso la franja (nueva) y los
+      contadores de la estructura (vieja) pueden no coincidir, y el comercial seguirá mostrando
+      «no cuadra» con los saldos viejos.
+    - **La historia mensual del comercial queda sin conciliar**: ahí `saldo_deuda` se comporta como
+      en bancos y unos 2.000 meses no cuadran con `deuda_historica` por ninguna lectura. Va como
+      pregunta a Equifax (`docs/equifax-pedido-de-diccionario.md`, 3.1 a 3.3), igual que el
+      significado de `total_vencer` en el comercial y si el último mes de la evolución es siempre
+      el corte (en 13 consultas con detalle no viene).
+    - **`probar-equifax-tablas.mjs` conserva 3 fallas que ya estaban** (score, estado de cartera y
+      consultas recibidas, 61, 61 y 60 de 62): no son de este cambio y siguen abiertas. La
+      paridad con AWS no bajó en ninguna variable (`s_consumo` y `saldo` subieron). Subir sus
+      umbrales queda a criterio del negocio.
+13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Fusionado el
+   2026-10-31. Queda, en este orden:
+   - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (regla 1): primero
+     se despliega y después se recalcula, o el perfil guardado en v15 convive con código que ya
+     escribe v16.
+   - **Recalcular:** `node scripts/recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
+     --carpeta=research/novadata-raw-2026-10-03`, **con `--seco` antes**. El seco del 2026-10-31
+     dio 3.765 a escribir, 0 que el crudo no reproduzca y 240 sintéticas sin crudo. No cambia
+     `fuentesIngreso`, así que `recalcular-fuentes-ingreso.mjs` no hace falta.
+   - **El recálculo estaba frenado por el guion**: `recalcular-grupos.mjs --seco` fallaba con
+     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`,
+     línea 85). El PR lo arregla (paginación por `id`, hasta una página vacía) en ese guion y en
+     `recalcular-fuentes-ingreso.mjs`, que tenía el mismo bloque. Probados sólo en seco. Siguen
+     con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
+     `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
+     `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
+   - **Nombres que decide el negocio** (el PR propone opciones y no cambió ninguno):
+     «Operaciones propias en buró de crédito» (`numeroOperacionesBuroCredito`) cuenta filas
+     agrupadas por entidad, tipo y calificación, no operaciones; «Empleos registrados en total» y
+     «Empleos en el historial» ahora cuentan empleadores distintos; y las etiquetas nuevas
+     «Corte del retail» y «Saldo de préstamos IESS/BIESS» son provisorias.
+   - **Lo que debe abrir la sesión del marco** (cada uno es una línea de
+     `CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`; hoy el mensaje sigue siendo el
+     de marco-v30): `comportamientoBancario.fechaCorteRetail` (las deudas retail son de ese corte,
+     julio de 2025 en toda la cartera) y `comportamientoBancario.saldoPrestamosIessBiess`. Los
+     valores corregidos de los campos que ya existían sí llegan, y el marco puede necesitar una
+     línea que diga que el empleador vigente es `null` cuando el historial no trae al del empleo
+     actual.
+   - **Efecto en la capacidad de pago:** `tieneCreditoIessBiess` pasa a verdadero en 308 de 918
+     personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
+     BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
+     cifra; no se tocó.
+   - **Sin verificar:** la pantalla en el navegador (a 1280, 768 y 414) con la sesión del negocio
+     (punto 2.13); el perfil guardado sigue mostrando lo de v15 hasta recalcular.
 
 ## 2. Espera una decisión del negocio
 

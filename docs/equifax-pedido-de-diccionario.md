@@ -83,6 +83,7 @@ comercial). Tabla nuestra: `equifax_operaciones`.
 | `total_vencido` | Saldo vencido. | Confirmar. | Mora. | Alta |
 | `dem_jud`, `cart_cast` | Saldos en demanda judicial y en cartera castigada. | Confirmar y diferenciarlos de «vencido». | Mora. | Alta |
 | `saldo_deuda` | Debería ser la suma de los cinco anteriores. Cuadra en 458 de 476 filas. | ¿Cuál es la regla? ¿Por qué no cuadra en las otras 18? | Calidad. | Media |
+| `total_vencer` y `saldo_deuda` **en el sector comercial** (`_sicom`) | No significan lo mismo que en bancos y cooperativas. Medido el 2026-10-31 sobre las 2.197 consultas guardadas, sumando todos los roles de cada persona: la suma de `saldo_deuda` es el `por_vencer` del resumen (`valor_deuda_3_sistemas`) en las 2.197, y `saldo_deuda` + `total_vencido` + `ndi` es su `total` en las 2.197; leyendo `saldo_deuda` como el total sólo cuadra en 1.922. En 460 de las 517 operaciones con vencido, `total_vencer` trae el total (por vencer + vencido); en las otras 57 trae sólo el vencido. En las de demanda judicial o cartera castigada trae ese monto y `saldo_deuda` es 0. En bancos y cooperativas, `total_vencer` es lo por vencer y `saldo_deuda` es el total. | ¿Es intencional que en el comercial `saldo_deuda` sea lo por vencer? ¿Qué es `total_vencer` en cada caso (el total, el vencido o el castigado), y por qué cambia de una fila a otra? Hoy leemos el comercial como «por vencer = `saldo_deuda`, total = `saldo_deuda` + vencido + `ndi`» y no usamos `total_vencer`. | Que el saldo y lo por vencer del comercial cuadren con su resumen. | Alta |
 | `cuota_mensual` | Cuota del mes. Es cero en 9 de las 136 tarjetas. | Cómo se calcula en tarjetas y en crédito rotativo. | Capacidad de pago. | Media |
 | `dias_morosidad` | Días de atraso de la operación. Va de 0 a 1.554. | Desde cuándo se cuentan; qué pasa con un día de mora sin monto vencido (G7). | Mora. | Alta |
 
@@ -93,6 +94,7 @@ Tabla nuestra: `equifax_historia_mensual`.
 
 | Campo | Lo que entendemos hoy | Necesitamos | Para qué | Prior. |
 |---|---|---|---|---|
+| `total_vencer` y `saldo_deuda` en el comercial | En la historia mensual del comercial **no** vimos el cambio de la deuda actual: `saldo_deuda` es el total (por vencer + vencido + `ndi`) en la mayoría de los meses, como en bancos. Pero en cerca de una cuarta parte de los meses con vencido o `ndi`, la suma del detalle no coincide con la `deuda_historica` del comercial por ninguna de las dos lecturas, y en unos 280 coincide con la suma de `total_vencer`. Por eso no tocamos la historia. | ¿La historia del comercial usa el mismo significado que la deuda actual del comercial o el de bancos? ¿Por qué hay meses que no cuadran con `deuda_historica`? | Conducta de pago. | Media |
 | (todos) | Es la misma forma que la deuda actual, sin `cuota_mensual`. Su último mes coincide con la deuda actual en 20 de 22 en bancos. | ¿Por qué en 2 de 22 no coincide? ¿La historia es de 24 meses siempre? ¿Corta en el mismo mes que la deuda actual? | Conducta de pago. | Media |
 | `tipo_credito` | Distinto de la deuda actual (ver sección 2). | Equivalencias. | Agrupar. | Media |
 
@@ -107,6 +109,7 @@ Tabla nuestra: `equifax_deuda_por_sistema_y_mes`.
 | `deuda_historica.vencido_0_a_1` … `vencido_12_a_24` | Tramos del vencido por meses. | Cómo se asigna una operación a un tramo (¿por días de mora?). Nosotros usamos 30, 60, 90, 180, 270, 360 y 720 días y reproducimos los tramos de Equifax en 20 de 22 en bancos. | Mora por tramos del titular. | Alta |
 | `deuda_historica.vencido_24` y `vencido_36` | «De 24 a 36 meses» y «más de 36 meses». Siempre cero el primero. | Confirmar. | Idem. | Media |
 | `evolucion_deuda_sb_seps_sicom.total` y `vencidos` | Total y vencidos por mes y sistema (24 meses). | Por qué en el comercial el último mes no coincide con el resumen (4 de 22). | Evolución. | Media |
+| `evolucion_deuda_sb_seps_sicom.fecha_corte` | Trae siempre los 24 meses del reporte, contiguos, también cuando la persona ya no tiene deuda (con `total` 0 al final); su último mes es el corte del reporte (en 2.108 de 2.130 consultas, el mes anterior al de la consulta; en las otras 22, dos meses antes). Falta en las personas sin historial. El detalle histórico, en cambio, sólo trae los meses con operaciones. Con eso fijamos la ventana de 24 meses de la conducta de pago; la lista no se suma a la deuda. | Confirmar que el último mes de esta lista es el corte del reporte y que es contiguo siempre. Qué pasa cuando no viene (¿no hay historial o no se calculó?). ¿Por qué hay consultas con un corte dos meses atrás? | Hasta dónde llega el reporte. | Alta |
 
 ### 3.4 Vencimientos
 

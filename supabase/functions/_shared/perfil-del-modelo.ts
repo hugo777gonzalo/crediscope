@@ -157,10 +157,25 @@ export const ATRIBUTOS_PROTEGIDOS: Record<string, boolean> = {
 // la próxima versión del marco se arma con los resultados del predictor).
 export const CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN = ["laboral.obligadoALlevarContabilidadRuc"];
 
+// ---- Lo que estructura-v16 sumó al perfil y el marco todavía no explica ----
+//
+// - comportamientoBancario.saldoPrestamosIessBiess: el saldo de los préstamos
+//   del IESS/BIESS, que el marco no conoce (hoy sólo ve si hay y su mora).
+// - comportamientoBancario.fechaCorteRetail: el corte de las deudas retail
+//   (julio de 2025 en las 63 filas de las 91 personas con Equifax). El marco
+//   las lee como actuales.
+// Los valores corregidos de los campos que ya existían (el salario más alto, el
+// cargo, los empleadores, tieneCreditoIessBiess, diasMoraCreditoIessBiess) sí
+// llegan: son el mismo campo con el dato bien leído. Sin estos dos el mensaje
+// sigue siendo el de marco-v30; la sesión del marco los abre (cada uno es una
+// línea de esta lista) junto con el texto que los explique.
+export const CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN = ["comportamientoBancario.saldoPrestamosIessBiess", "comportamientoBancario.fechaCorteRetail"];
+
 export const RUTAS_QUE_NO_LLEGAN: string[] = [
   ...IDENTIFICADORES_QUE_NO_LLEGAN,
   ...Object.entries(ATRIBUTOS_PROTEGIDOS).filter(([, llega]) => !llega).map(([ruta]) => ruta),
   ...CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN,
+  ...CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN,
 ];
 
 function quitarRuta(nodo: unknown, partes: string[]): void {
@@ -492,10 +507,14 @@ export const QUEDAN_DE_NOVADATA_CON_BURO = [
   "numeroPrestamosIessBiess",
   "tieneCreditoIessBiess",
   "diasMoraCreditoIessBiess",
+  // Los dos de estructura-v16 son del IESS/BIESS y del retail, que se quedan:
+  // todavía no llegan al modelo (CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN, más abajo).
+  "saldoPrestamosIessBiess",
   "numeroDeudasRetail",
   "diasMoraMaximaRetail",
   "totalDeudaRetail",
   "valorVencidoRetail",
+  "fechaCorteRetail",
 ] as const;
 
 // Los que se van, para que una prueba obligue a decidir sobre un campo nuevo

@@ -17,9 +17,9 @@
 // mensaje (Novadata, Equifax, el modelo) o el de la base.
 
 import { consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
-import { analizarPersona } from "./analisis-de-la-persona.ts";
+import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
-import { elPerfilSirve } from "./calidad-de-la-consulta.ts";
+import { elPerfilSePuedeAnalizar, elPerfilSirve, porQueNoSePuedeAnalizar } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
 import { capacidadDeLaSolicitud } from "./capacidad-de-la-solicitud.ts";
 import { elBuroTraeDetalle } from "./capacidad-de-pago.ts";
@@ -71,6 +71,8 @@ export async function correrPaso(paso: Paso, s: Fila, ctx: ContextoDeLosPasos): 
     if (paso === "analisis") return await pasoAnalisis(s, ctx);
     return await pasoCapacidad(s, ctx.db);
   } catch (err) {
+    // Este mensaje es nuestro y sólo nombra temas: no trae nada de la fuente.
+    if (err instanceof ConsultaIncompleta) return fallo(err.message, "fuentes_no_disponibles");
     // Sin el mensaje: un error de la base o de una fuente puede traer datos.
     console.error("pasos-de-evaluacion:", paso, (err as Error)?.name);
     return fallido(paso, 500);
@@ -89,13 +91,15 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
     // días y uno vacío de ayer no se dan por vigente con el viejo). Y que sirva.
     const { data: ultimo } = await db
       .from("client_profiles")
-      .select("id, created_at, fuentes_ok, ejes_ok, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
+      .select("id, created_at, fuentes_ok, ejes_ok, estado_por_fuente, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     const dias = await diasDeValidezDelPerfil(db);
-    if (ultimo && elPerfilSirve(ultimo) && Date.now() - Date.parse(ultimo.created_at) < dias * 86_400_000) {
+    // Uno que quedó incompleto no se reutiliza: reintentar leería siempre ese
+    // mismo perfil y nunca volvería a preguntarle a la fuente.
+    if (ultimo && elPerfilSirve(ultimo) && elPerfilSePuedeAnalizar(ultimo.estado_por_fuente) && Date.now() - Date.parse(ultimo.created_at) < dias * 86_400_000) {
       // También se audita reutilizar: no se consultó a la fuente, pero los datos
       // de esa persona entran igual al resultado que se le entrega a la institución.
       await db.from("audit_log").insert({
@@ -122,6 +126,9 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
   });
   if (!r.ok) return fallido("perfil", r.status);
   const g = r.guardado;
+  // Acá y no en el paso del análisis: en Plus el buró va en el medio y se cobra.
+  // Sin este corte se pagaría a Equifax para que después el modelo no corra.
+  if (!elPerfilSePuedeAnalizar(g.estado_por_fuente)) return fallo(porQueNoSePuedeAnalizar(g.estado_por_fuente), "fuentes_no_disponibles");
   const f = g.standard_profile?.fuentesIngreso ?? {};
   return {
     ok: true,

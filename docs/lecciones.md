@@ -166,6 +166,16 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   historial. El 2026-09-15 eso convirtió una caída de red de una hora en
   un juicio sobre 373 personas, que quedaron clasificadas como
   "informal o sin actividad" — la rama por defecto de la clasificación.
+- **Que una consulta sirva para guardarse no quiere decir que sirva para
+  calificar.** El 2026-10-31 Novadata contestó error 500 en 41 de 52 fuentes
+  para c-79e1ac23. Las seis que contestaron bastaron para guardar el perfil, y
+  el modelo dio un score leyendo menos de la cuarta parte de su deuda: el
+  hipotecario del BIESS estaba en una fuente caída. Desde ese día el modelo no
+  corre sin `FUENTES_QUE_DECIDEN` (identidad, aportes, préstamos del BIESS y
+  buró de bancos; negocio). El corte va en el paso del perfil y no en el del
+  análisis: en Plus el buró va en el medio y se cobra. Y un perfil incompleto
+  no se reutiliza, o reintentar lee siempre el mismo. Medido ese día: 670 de
+  3.765 últimos perfiles quedaban así, casi todos del lote de paridad.
 - **"La fuente dice que no hay" y "la fuente no contestó" son cosas
   distintas.** El catálogo tiene que poder decir las dos.
 - **Dos formas del mismo dato conviven.** Los perfiles anteriores a
@@ -329,6 +339,20 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   después de desplegar**, no la respuesta.
 
 ### IESS, ingresos y fuentes de ingreso
+
+- **Un campo leído de una sola fuente se contradice con las otras y el modelo lo
+  toma por una inconsistencia.** El 2026-10-31, revisando casos reales, el negocio
+  vio que c-5ee429cc llegó al modelo con «cargo vigente PASANTE», «constituido hace
+  56 años» y un salario máximo bajo el ingreso reportado: `trabajoHistoricos` traía
+  una pasantía de 2019 con la salida en 1900-01-01 (fecha centinela de «sigue
+  empleado») y `sinFechaDeSalida()` la leía como vigente. En c-82cc2afc, un solo
+  empleo de 2018 contra 6 empleadores en el mecanizado y los aportes, y 9 préstamos
+  del BIESS vigentes con `tieneCreditoIessBiess: false` (se leía sólo la base
+  interna). Medido sobre 3.765 personas: el salario más alto bajo un sueldo ya
+  reportado en 1.068 de 1.682, el cargo vigente que no era el de ningún empleo actual
+  en 1.356 de 1.857 y 308 de 918 con créditos formales sin crédito del IESS/BIESS.
+  Regla: estructura-v16 lee las tres fuentes del IESS y las dos de los préstamos, y
+  usa el historial sólo para el empleador de un empleo actual (por RUC).
 
 - **El corte del IESS lo deciden 20 clientes, no uno.** Novadata
   actualiza el IESS más o menos cada dos meses y no avisa: el

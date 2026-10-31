@@ -235,6 +235,8 @@ Deno.test("un fallo se anota con un mensaje propio, y el del buró que pudo cobr
   assertEquals(falloDeUnPaso("analisis", 0).esperarMs, PASO_CAIDO_MS);
   assertEquals(falloDeUnPaso("perfil", 503).esperarMs, 0);
   assertEquals(falloDeUnPaso("analisis", 500).detalle, "El modelo no pudo analizar a la persona.");
+  // La consulta incompleta se reintenta: es una fuente caída, no un error nuestro.
+  assertEquals(falloDeUnPaso("analisis", 409).codigo, "fuentes_no_disponibles");
   // Nunca una cifra de la persona en el mensaje: no hay de dónde sacarla.
   for (const paso of ["perfil", "buro", "analisis"] as const) {
     for (const status of [0, 400, 401, 403, 404, 429, 500, 502, 503, 504]) assert(!/\d{6,}/.test(falloDeUnPaso(paso, status).detalle));

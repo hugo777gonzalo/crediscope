@@ -243,6 +243,9 @@ export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null
     if (status === 400) return { detalle: "La identificación no se puede consultar.", codigo: "error_interno", esperarMs: 0 };
     return { detalle: "No se pudo consultar a la persona.", codigo: "error_interno", esperarMs: 0 };
   }
+  if (status === 409) {
+    return { detalle: "La consulta de la persona quedó incompleta y el modelo no la analizó. Reconsultala en unos minutos.", codigo: "fuentes_no_disponibles", esperarMs: 0 };
+  }
   return { detalle: "El modelo no pudo analizar a la persona.", codigo: "error_interno", esperarMs: 0 };
 }
 

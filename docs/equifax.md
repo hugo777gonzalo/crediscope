@@ -174,6 +174,23 @@ Lo abierto está en `docs/pendientes.md`; el diseño y lo medido, en
       función rechaza una cédula inválida y reutiliza una vigente; una consulta
       PAGA desde las funciones todavía no se hizo (la primera, con una persona
       que autorice el negocio).
+  - **La ventana de 24 meses sale del corte del reporte, no de la última fila** (2026-10-31):
+    el detalle histórico sólo trae los meses con operaciones, así que quien ya no debe tenía la
+    ventana corrida hacia atrás (con meses «sin deuda» que Equifax nunca cubrió) y sin los meses
+    reales hasta hoy. El corte es el último mes de `evolucion_deuda_sb_seps_sicom` (24 meses
+    contiguos en las 2.130 consultas que la traen) y de `deuda_historica`; esas listas sólo fijan
+    el corte y **no se suman a la deuda**. Una sola regla (`_shared/equifax-ventana.ts`) para
+    `conductaDePago` y `franjaDePagos`; los meses sin operaciones son «Sin deuda como titular»,
+    y `mesesObservados` cuenta los meses de la ventana que el reporte cubrió. Sin evolución no hay
+    corte que inferir (el de la consulta cae 1 o 2 meses atrás): la ventana termina en la última fila.
+  - **En el detalle ACTUAL del sector comercial, `saldo_deuda` es lo por vencer y `total_vencer`
+    no se lee** (2026-10-31): el total es por vencer + vencido + no devenga intereses. Sobre todas
+    las consultas guardadas, esa suma reproduce el total del resumen en todas, y leer `saldo_deuda`
+    como total sólo cuadraba en el 87%. `total_vencer` unas veces trae el total, otras sólo el
+    vencido y otras el monto de demanda judicial o cartera castigada. **La historia mensual del
+    comercial no cambia de significado** (ahí `saldo_deuda` es el total, como en bancos) y queda sin
+    conciliar: pregunta en el pedido de diccionario. Una lectura de una lista de Equifax se mide
+    contra el resumen con todas las consultas guardadas antes de darla por buena, no con unas pocas.
   - Los parámetros de la decisión (producto 1, monto, plazo) son de
     relleno: sólo interesa lo que el buró trae de la persona.
   - La clave y el token no salen en ningún mensaje (`sanitizar()`); el
