@@ -20,7 +20,7 @@ cuentan lo mismo y dicen cosas distintas.
 | `/equifax/:cedula` | `PerfilEquifax.jsx`, `components/equifax/`, `lib/equifaxPantalla.js` | todos | Reporte de Equifax (buró): cuatro indicadores (Score de Equifax, deuda, atraso y cuota como titular, que son los totales), la deuda por sistema sin fila de total, 24 meses de pagos, operaciones separadas en «Como titular» y «Lo que respalda de otras personas»; el resto plegado, sin repetir lo de arriba (revisión del 2026-10-18); «Descargar reporte (PDF)» imprime la pantalla; «Consultar a Equifax» (sólo admin, sin consulta vigente, con confirmación porque se cobra; `ConsultarEquifax.jsx`). **No está en el Expediente** (F1). La pestaña aparece cuando el buró de la institución es Equifax | Aval |
 | `/buro/:cedula` | `BuroDeLaPersona.jsx` | todos | «Buró» del menú: lleva a la pestaña del buró de la institución (129), o dice que no hay uno elegido | — |
 | `/simulador` | `SimuladorCredito.jsx`, `_shared/simulador-credito.ts` | todos | Simulador de crédito: monto (con deslizador), plazo (12 a 60 de un toque), tasa (de 0% a 15,6%; vacía, la máxima), cómo se paga y el seguro plegado; la cuota grande con su reparto (capital, interés, seguro), los totales y la tabla plegada. No necesita una persona | Capacidad de pago y Solicitud (la misma cuota) |
-| `/capacidad/:cedula` | `CapacidadDePago.jsx`, `components/credito/`, `_shared/capacidad-de-pago.ts` | todos | Capacidad de pago: las mismas condiciones del simulador y el veredicto (Le alcanza / justo / No le alcanza / No se puede medir) con «de cada $100», el medidor y el tope; hasta cuánto le alcanza; el Ingreso declarado (opcional, sin verificar: reemplaza al IESS y muestra qué daría sólo el IESS); lo que recibe (IESS, menos el aporte personal) y lo que ya paga (Equifax o Novadata), con las deudas sin cuota aparte. No consulta fuentes | Simulador de crédito (la misma cuota); Fuentes de Ingreso (el mismo ingreso reportado) |
+| `/capacidad/:cedula` | `CapacidadDePago.jsx`, `components/credito/`, `_shared/capacidad-de-pago.ts` | todos | Capacidad de pago: las mismas condiciones del simulador y el veredicto (Le alcanza / justo / No le alcanza / No se puede medir) con «de cada $100», el medidor y el tope; hasta cuánto le alcanza; el Ingreso declarado (opcional, sin verificar: reemplaza al IESS y muestra qué daría sólo el IESS); lo que recibe (IESS, menos el aporte personal) y lo que ya paga (Equifax o Proveedor_Info_1), con las deudas sin cuota aparte. No consulta fuentes | Simulador de crédito (la misma cuota); Fuentes de Ingreso (el mismo ingreso reportado) |
 
 Las de la persona (Perfil de la Persona, Análisis con IA, Fuentes de Ingreso, Capacidad de
 pago y el buró) llevan la tira de pestañas `PestanasCliente.jsx` (la cédula es la del
@@ -96,10 +96,10 @@ Las direcciones viejas `/retroalimentacion/*` y `/laboratorio/criterio` redirige
 
 | Ruta | Archivo | Qué hace |
 |---|---|---|
-| `/admin/fuentes/novadata`, `/aval`, `/equifax` | `ConfigFuentes.jsx`, `ConfigFuentesAval.jsx`, `ConfigFuentesEquifax.jsx` (con el selector «Buró», `SelectorDeBuro.jsx`) | Qué fuentes se consultan (apagar una deja de consultar el dato) |
-| `/admin/campos/novadata`, `/aval` | `ConfigCampos.jsx`, `ConfigCamposAval.jsx` | Qué campos entran al Análisis con IA (apagar uno lo guarda pero lo saca del criterio) |
+| `/admin/fuentes/proveedor-info-1`, `/aval`, `/equifax` | `ConfigFuentes.jsx`, `ConfigFuentesAval.jsx`, `ConfigFuentesEquifax.jsx` (con el selector «Buró», `SelectorDeBuro.jsx`) | Qué fuentes se consultan (apagar una deja de consultar el dato) |
+| `/admin/campos/proveedor-info-1`, `/aval` | `ConfigCampos.jsx`, `ConfigCamposAval.jsx` | Qué campos entran al Análisis con IA (apagar uno lo guarda pero lo saca del criterio) |
 | `/admin/segmentos` | `ConfigSegmentos.jsx` | Qué segmentos ve el analista (ocultar sólo cambia lo que se ve) |
-| `/explorar` | `NovadataExplorer.jsx` | Consulta en vivo a las 52 fuentes, con usuario y contraseña de la fuente. No guarda nada |
+| `/explorar` | `ProveedorInfo1Explorer.jsx` | Consulta en vivo a las 52 fuentes, con usuario y contraseña de la fuente. No guarda nada |
 
 Los tres interruptores de Configuración son pantallas distintas **a propósito**: se
 parecen y tienen consecuencias distintas. No fundirlas.

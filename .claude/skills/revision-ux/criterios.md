@@ -140,7 +140,7 @@ más común (`cifra-repetida`: el mismo monto en tres lugares); el resto se mira
 
 ## 4 bis. Legibilidad de lo que trae un proveedor
 
-Equifax, Aval y Novadata mandan textos y cifras con su propia forma. Se adaptan en la
+Equifax, Aval y Proveedor_Info_1 mandan textos y cifras con su propia forma. Se adaptan en la
 pantalla con una función probada, nunca reescribiendo lo guardado (2026-10-18):
 
 - **Pares con barra se leen mal.** «Acreedores hoy / hace 12 meses: 8 / 7» obliga a emparejar
