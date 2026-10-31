@@ -527,3 +527,29 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
   `docs/remediacion-auditoria-externa.md` (sección 6, puntos 1 y 2: E27 está cerrado),
   `docs/plan-demo-ifi.md` (226 y 329) y `docs/propuesta-revision-del-laboratorio.md` (varias).
   Ninguna se tocó; las ajusta quien edite cada documento.
+
+## Cambio de nombre del proveedor a Proveedor_Info_1 (contrato, 2026-10-31)
+
+El negocio retiró el nombre anterior del proveedor de todo el producto. El repositorio, la
+memoria y las pantallas ya dicen **Proveedor_Info_1**; `revisar-textos.mjs` corta si el nombre
+vuelve (regla `proveedor-anterior`). Falta aplicarlo a producción, **en este orden**:
+
+1. **Secretos de las funciones** (nombres nuevos, mismos valores): `PROVEEDOR_INFO_1_BASE_URL`,
+   `_USERNAME`, `_PASSWORD`, `_CLIENT_ID` y `PROVEEDOR_INFO_1_RUTA_PENSION` (la ruta de la variante
+   de `pn_supa` del proveedor: sin ella la fuente de pensión consulta la ruta común). Sin el host
+   en el secreto, las funciones no consultan: ya no hay un valor por defecto en el código.
+2. **Migrar** con el corredor: la 142 renombra la tabla de recursos, el proveedor, el origen del
+   Laboratorio, comentarios y funciones, y crea el depósito `crudo-proveedor-info-1`; la 143 quita
+   la política del depósito anterior. Probadas con `rollback` contra la base viva el 2026-10-31.
+3. `node scripts/reescribir-historial-proveedor-info-1.mjs --seco` y después sin `--seco`
+   (38.621 filas en 26 columnas, por lotes): las claves de los perfiles guardados las lee el
+   código nuevo.
+4. `node scripts/mover-crudo-proveedor-info-1.mjs` (6.364 objetos, 45 MB) y repetirlo después de
+   desplegar, con `--borrar-viejo` la segunda vez.
+5. **Desplegar** con `--funciones` (la función `explore-proveedor-info-1` es nueva: borrar la
+   anterior del proyecto). `ESQUEMA_MINIMO` ya pide la 143.
+
+Entre el paso 2 y el 5 la pantalla y las funciones viejas fallan: hacerlo en una ventana corta.
+Lo que no se tocó: el **historial de git** (commits y PR pasados nombran el término; el
+repositorio es público; reescribirlo exige forzar `main`, que está protegida) y los archivos
+locales de `research/` (carpetas con el nombre anterior, que los guiones nuevos ya no buscan).
