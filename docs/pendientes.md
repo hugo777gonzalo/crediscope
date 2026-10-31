@@ -18,7 +18,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
 - **Funciones:** sello **`8a778f905f10`**, 13 de 13, desplegado el 2026-10-31 a las 11:44 sobre el
   esquema 141 (`despliegues`; el anterior fue `5456b5583ca8`). El núcleo de la API está desplegado y
-  apagado para terceros, y `API_SANDBOX` ya está puesto, sin probar de punta a punta. Con
+  apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
+  2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
   c-38661efd. La llamada real al modelo se midió con `36dbe4af0dde` (c-38661efd, marco-v30, USD 0,07),
   y **todavía no hubo una consulta buena de Proveedor_Info_1 seguida de su análisis con el código nuevo**.
@@ -28,11 +29,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 - **Base de prueba (2026-10-31):** 244 personas en `research/base-prueba-2026-11/`, con perfil de 19
   fuentes buenas o más y Equifax de AWS, sin consultar a nadie. Pro y Plus ya están calculados con un
   crédito de USD 5.000 a 36 meses: Plus cambia 111 veredictos, todos para peor (Pro ve las cuotas de
-  casi nadie). No es una base típica: cuota mediana de USD 2.857 contra USD 605 de todo AWS. Falta el
-  modelo: `analizar-en-lote.mjs enviar`, unos USD 4,4 autorizados, desde el 1 de noviembre.
+  casi nadie). No es una base típica: cuota mediana de USD 2.857 contra USD 605 de todo AWS. El lote
+  corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
+  13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
+  de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
 - **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
-  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  institución, construido y apagado: su fila está en la 131); estructura-v16 (el último perfil de las
+  3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -47,7 +50,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   restantes son de versiones anteriores a la v28 (288 en total).
 - **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
   87 anteriores caducaron).
-- **Modelo (2026-10-31, `gasto_del_mes`):** octubre lleva **USD 9,97 de los 10** del presupuesto
+- **Modelo (2026-10-31, `gasto_del_mes`):** octubre lleva **USD 13,92 de los 10**, por el lote autorizado de la base de prueba, del presupuesto
   (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
   vigía; no hubo análisis.
 - **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
@@ -169,8 +172,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     (2026-10-31): la ventana sale del corte
     del reporte (`_shared/equifax-ventana.ts`, `equifax-estructura-v2`), el detalle actual del
     comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
-    «Suspensión definitiva» del RUC. Falta, en este orden:
-    - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (no hay migración).
+    «Suspensión definitiva» del RUC. Desplegado con `8a778f905f10`. Falta:
     - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
       condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
       desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
@@ -190,20 +192,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
       consultas recibidas, 61, 61 y 60 de 62): no son de este cambio y siguen abiertas. La
       paridad con AWS no bajó en ninguna variable (`s_consumo` y `saldo` subieron). Subir sus
       umbrales queda a criterio del negocio.
-13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Fusionado el
-   2026-10-31. Queda, en este orden:
-   - **Desplegar con `--funciones`** desde una copia limpia de `origin/main` (regla 1): primero
-     se despliega y después se recalcula, o el perfil guardado en v15 convive con código que ya
-     escribe v16.
-   - **Recalcular:** `node scripts/recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
-     --carpeta=research/proveedor-info-1-raw-2026-10-03`, **con `--seco` antes**. El seco del 2026-10-31
-     dio 3.765 a escribir, 0 que el crudo no reproduzca y 240 sintéticas sin crudo. No cambia
-     `fuentesIngreso`, así que `recalcular-fuentes-ingreso.mjs` no hace falta.
-   - **El recálculo estaba frenado por el guion**: `recalcular-grupos.mjs --seco` fallaba con
-     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`,
-     línea 85). El PR lo arregla (paginación por `id`, hasta una página vacía) en ese guion y en
-     `recalcular-fuentes-ingreso.mjs`, que tenía el mismo bloque. Probados sólo en seco. Siguen
-     con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
+13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Desplegado con
+   `8a778f905f10` y recalculado el 2026-10-31: 3.765 de 3.765 escritos y un seco posterior que da 0
+   a escribir y 0 que el crudo no reproduzca. Queda:
+   - **`recalcular-fuentes-ingreso.mjs` estaba frenado igual**: `recalcular-grupos.mjs` fallaba con
+     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`). El PR lo
+     arregla (paginación por `id`, hasta una página vacía) en los dos, y el segundo está probado sólo
+     en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
      `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
      `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
    - **Nombres que decide el negocio** (el PR propone opciones y no cambió ninguno):
@@ -223,7 +218,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
      cifra; no se tocó.
    - **Sin verificar:** la pantalla en el navegador (a 1280, 768 y 414) con la sesión del negocio
-     (punto 2.13); el perfil guardado sigue mostrando lo de v15 hasta recalcular.
+     (punto 2.13).
 
 ## 2. Espera una decisión del negocio
 
@@ -235,7 +230,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
    **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
-   octubre lleva USD 9,97 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   octubre lleva USD 13,92 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
    antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
    el negocio, porque Claude no ve la consola.
