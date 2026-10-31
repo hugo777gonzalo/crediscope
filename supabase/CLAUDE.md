@@ -313,6 +313,13 @@ su guía: `docs/equifax.md`.
   reabrió después de su último cierre está abierto aunque el estado diga
   cerrado, y uno sin estado, salvo una fecha de cierre. Un «ABIERTO» sin la
   fecha de reapertura sigue abierto, y un «CERRADO» sin fechas, cerrado.
+- **El historial de empleos y los préstamos del IESS/BIESS se leen de todas sus
+  fuentes** (estructura-v16): el salario más alto y los empleadores registrados, de
+  `trabajoHistoricos`, el mecanizado y los aportes; el cargo vigente, del empleo
+  actual; los datos del empleador, de `trabajoHistoricos` sólo si es el de un empleo
+  actual (RUC); los préstamos, de la base interna y de `creditoQuirografario` /
+  `creditoHipotecario`, sin contar dos veces una operación. Un campo de un perfil que
+  sale de una sola fuente se mide contra las demás antes de dárselo al modelo.
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con
