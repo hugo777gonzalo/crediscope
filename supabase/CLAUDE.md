@@ -197,7 +197,7 @@ su guía: `docs/equifax.md`.
 - El modelo no corre sin `FUENTES_QUE_DECIDEN` (`calidad-de-la-consulta.ts`,
   negocio, 2026-10-31): `analizarPersona()` lanza `ConsultaIncompleta` antes de
   llamarlo. Los pasos de las evaluaciones cortan ya en el perfil, antes del
-  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue.
+  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue, y sólo lo pide un administrador (`pidioUnaPrueba()`).
 - "La fuente dice que no hay" ≠ "la fuente no contestó".
   `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
   `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.

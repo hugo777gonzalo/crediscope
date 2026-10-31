@@ -69,6 +69,14 @@ export function clavesIguales(recibida: string, esperada: string): boolean {
   return diferencia === 0;
 }
 
+// `esPrueba` saltea el freno por consulta incompleta y la reutilización. Viene en
+// el cuerpo, así que cualquier analista podía analizar una consulta rota mandando
+// una bandera (lo encontró la propuesta de fuentes obligatorias, 2026-10-31). Otro
+// rol la pierde sin error: el pedido sigue como uno normal, con el freno.
+export function pidioUnaPrueba(valor: unknown, actor: Actor): boolean {
+  return valor === true && actor.rol === "admin";
+}
+
 // Devuelve una respuesta de rechazo si el actor no alcanza, o null si
 // puede seguir. Se usa como guarda al principio de cada función.
 export function exigirRol(

@@ -4,7 +4,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { clavesIguales } from "./autorizacion.ts";
+import { clavesIguales, pidioUnaPrueba } from "./autorizacion.ts";
 
 Deno.test("claves iguales", () => {
   assertEquals(clavesIguales("una-clave-larga", "una-clave-larga"), true);
@@ -26,4 +26,11 @@ Deno.test("vacía contra algo", () => {
 Deno.test("con acentos se comparan los bytes", () => {
   assertEquals(clavesIguales("año", "año"), true);
   assertEquals(clavesIguales("año", "ano"), false);
+});
+
+Deno.test("esPrueba sólo vale para un administrador: un analista sigue con el freno", () => {
+  assertEquals(pidioUnaPrueba(true, { id: "a", rol: "admin" }), true);
+  assertEquals(pidioUnaPrueba(true, { id: "b", rol: "analista" }), false);
+  assertEquals(pidioUnaPrueba("true", { id: "a", rol: "admin" }), false);
+  assertEquals(pidioUnaPrueba(undefined, { id: "a", rol: "admin" }), false);
 });
