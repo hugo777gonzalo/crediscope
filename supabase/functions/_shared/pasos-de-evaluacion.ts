@@ -21,7 +21,7 @@ import { analizarPersona } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
 import { elPerfilSirve } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
-import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import { conIngresoDeclarado, datosDeCapacidad, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { type FalloDeUnPaso, falloDeUnPaso, type Paso, pasoEnCurso, type RegistroDePaso, resumenDelAnalisis } from "./modalidades.ts";
 import type { ResultadoDelPaso } from "./cola-de-evaluaciones.ts";
@@ -236,7 +236,10 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
   if (s.modalidad === "plus" && !estructura) {
     return fallo("Falta la consulta de Equifax de la persona: Plus calcula la capacidad con las cuotas del buró.", "buro_no_disponible");
   }
-  const condiciones = { plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen };
+  if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) {
+    return fallo("Equifax contestó sin reporte de crédito: Plus no puede calcular la capacidad sin las cuotas del buró.", "buro_no_disponible");
+  }
+  const condiciones ={ plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen };
   const simulacion = simularCredito({ ...condiciones, monto: Number(s.monto) });
   if (!simulacion.ok) return fallo(simulacion.errores.join(" "), "error_interno");
   const datosIess = datosDeCapacidad(perfil.standard_profile, estructura);

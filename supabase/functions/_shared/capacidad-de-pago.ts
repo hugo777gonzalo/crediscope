@@ -279,6 +279,15 @@ export interface DatosDeCapacidad {
   fuentesSinConsultar?: string[];
 }
 
+// Equifax puede contestar «completed» sin reporte de crédito: 585 de 20.560
+// respuestas de AWS, todas de otro tipo de consulta, y ninguna de las 97 de
+// CrediScope (2026-10-30). Queda una estructura sin ningún sistema medido, y
+// leerla como Equifax daba «alcanza», sin deudas y sin un aviso.
+export function elBuroTraeDetalle(estructuraEquifax: AnyRecord | null): boolean {
+  const titular = comoObjeto(estructuraEquifax?.deudaActualTitular);
+  return ["bancos", "cooperativas", "comercial"].some((sistema) => comoObjeto(titular?.[sistema]) !== null);
+}
+
 // Arma la entrada de evaluarCapacidad() desde el perfil estandarizado y, si
 // la hay, la estructura de Equifax. Con Equifax, las cuotas de bancos,
 // cooperativas y sector comercial salen de ahí (la cuota de cada operación
@@ -312,7 +321,7 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
   const deudasSinCuota: DeudaSinCuota[] = [];
   const bancario = comoObjeto(perfil?.comportamientoBancario);
   const cooperativas = comoObjeto(perfil?.comportamientoCooperativas);
-  const titular = comoObjeto(estructuraEquifax?.deudaActualTitular);
+  const titular = elBuroTraeDetalle(estructuraEquifax) ? comoObjeto(estructuraEquifax?.deudaActualTitular) : null;
 
   if (titular) {
     const SISTEMAS: Array<[string, string]> = [["bancos", "Bancos"], ["cooperativas", "Cooperativas"], ["comercial", "Sector comercial"]];
