@@ -61,17 +61,22 @@ try {
   const viejos = await listar(VIEJO);
   const nuevos = new Set(await listar(NUEVO));
   console.log(`En el depósito anterior: ${viejos.length}. Ya en el nuevo: ${nuevos.size}.`);
-  for (const ruta of viejos) {
-    if (nuevos.has(ruta)) { ya++; continue; }
-    if (seco) { ok++; continue; }
+  // En paralelo: de a uno tardaba más de una hora por mil objetos (2026-10-31).
+  const pendientes = viejos.filter((r) => { if (nuevos.has(r)) { ya++; return false; } return true; });
+  const copiar = async (ruta) => {
+    if (seco) { ok++; return; }
     const get = await fetch(`${url}/storage/v1/object/${VIEJO}/${ruta}`, { headers: cab });
-    if (!get.ok) { fallas++; console.error(`no se pudo leer ${ruta}: ${get.status}`); continue; }
+    if (!get.ok) { fallas++; console.error(`no se pudo leer ${ruta}: ${get.status}`); return; }
     const bytes = new Uint8Array(await get.arrayBuffer());
     const put = await fetch(`${url}/storage/v1/object/${NUEVO}/${ruta}`, {
       method: "POST", headers: { ...cab, "content-type": "application/gzip" }, body: bytes,
     });
     if (put.ok) ok++; else { fallas++; console.error(`no se pudo subir ${ruta}: ${put.status}`); }
-  }
+  };
+  let siguiente = 0;
+  await Promise.all(Array.from({ length: 16 }, async () => {
+    while (siguiente < pendientes.length) await copiar(pendientes[siguiente++]);
+  }));
   console.log(`${seco ? "Por copiar" : "Copiados"}: ${ok}. Ya estaban: ${ya}. Fallas: ${fallas}.`);
 
   if (borrarViejo && !seco) {
