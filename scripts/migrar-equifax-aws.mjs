@@ -1,7 +1,7 @@
 // Migra a nuestra base las consultas a Equifax que Novacredit hizo y pagó (la base de originación
 // en AWS), bajadas en JSON a research/ingresos-aws/crudo-equifax/. Quedan en consultas_equifax como si
 // la consulta la hubiéramos hecho nosotros: persona en clients, crudo inmutable, tablas equifax_* y
-// estructura derivadas, y constancia en audit_log. No llama a Equifax ni a Novadata y no cobra.
+// estructura derivadas, y constancia en audit_log. No llama a Equifax ni a Proveedor_Info_1 y no cobra.
 //
 // POR QUÉ SE PUEDE: Equifax autorizó reutilizar sus consultas (negocio, 2026-10-30), las de Novacredit
 // y las nuestras, ya pagadas. La autorización consta en docs/equifax.md.
