@@ -62,7 +62,7 @@ export function filaDelAnalisis(d: DatosDelAnalisis) {
     // Si el análisis falló, el resumen queda vacío: lo que había ahí era el
     // texto crudo del error de la API, y en pantalla se leía como si fuera
     // el criterio sobre el cliente.
-    narrative_summary: llmResult.fallo ? null : llmResult.reasoning,
+    narrative_summary: llmResult.fallo || !llmResult.reasoning ? null : llmResult.reasoning,
     fallo: llmResult.fallo ?? null,
     fallo_tipo: llmResult.fallo ? clasificarFallo(llmResult.fallo, llmResult.llmStopReason).tipo : null,
     // Quién decidió. Un control de bloqueo niega por una regla nuestra y
@@ -79,6 +79,25 @@ export function filaDelAnalisis(d: DatosDelAnalisis) {
     duracion_llm_ms: d.duracionLlmMs,
     huella_pedido: llmResult.huellaPedido ?? null,
     reutiliza_analisis_id: d.reutilizaAnalisisId ?? null,
+  };
+}
+
+// La negativa de un control con la consulta incompleta (negocio, 2026-10-31): no
+// hubo modelo. Sin resumen, porque en pantalla se leería como su criterio, y sin
+// indicadores: nadie miró el historial de pago de esta persona.
+export function resultadoSinModelo(controlBloqueo: ResultadoControlBloqueo, temasSinRespuesta: string[]): LlmScoringResult {
+  return {
+    score: 1,
+    recomendacion: "negar",
+    accionesSugeridas: ["Verificar el hallazgo del control antes de comunicar la negativa."],
+    indicadorRiesgo: null,
+    indicadorHistorial: null,
+    positives: [],
+    negatives: controlBloqueo.hallazgos.filter((h) => h.bloqueante).map((h) => h.message),
+    missingInfo: temasSinRespuesta.map((t) => `No se pudo obtener ${t}.`),
+    reasoning: "",
+    llmModel: null,
+    llamadas: [],
   };
 }
 

@@ -87,7 +87,11 @@ export default function AnalisisResultado({ result, ocultarListaControl = false,
         </div>
       ) : null}
 
-      <RecomendacionCard recomendacion={result.recomendacion} acciones={result.acciones_sugeridas || []} />
+      <RecomendacionCard
+        recomendacion={result.recomendacion}
+        acciones={result.acciones_sugeridas || []}
+        origen={result.veredicto_origen === "control_bloqueo" && !result.llm_model ? "Decidido por una regla de control, sin intervención del modelo." : null}
+      />
 
       <div className="crediscope-secciones">
         <SeccionDesplegable Icono={CircleCheck} titulo="Puntos positivos" cantidad={positivos.length} color="var(--good)">

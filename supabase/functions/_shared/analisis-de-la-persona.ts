@@ -28,15 +28,19 @@ import { columnasDelPerfil } from "./columnas-del-perfil.ts";
 import { guardarCrudoProveedorInfo1 } from "./crudo-proveedor-info-1.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import {
+  completitudDeLaConsulta,
   cuantasFuentesContestaron,
-  elPerfilSePuedeAnalizar,
+  decisionDeLaConsulta,
   estadoPorFuente,
-  fuentesClaveSinRespuesta,
+  LISTA_DE_FUENTES_VERSION,
+  obligatoriasSinRespuesta,
   porQueNoSePuedeAnalizar,
+  requiereRevisionManual,
+  temasSinRespuesta,
 } from "./calidad-de-la-consulta.ts";
 import { armarPedidoScoring, CONFIG_LLM, huellaDelPedido, puntuarPedido, versionDelMarco } from "./llm-scoring.ts";
 import { buroVigenteDeLaPersona } from "./buro-de-la-institucion.ts";
-import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado } from "./fila-del-analisis.ts";
+import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado, resultadoSinModelo } from "./fila-del-analisis.ts";
 import { loadCorteIess, loadDisabledFields, loadDisabledResources } from "./runtime-config.ts";
 import { registrarLlamadaLlm } from "./llm-log.ts";
 import { impedirLaSalidaDeUnaSimulada } from "./identificacion.ts";
@@ -61,16 +65,18 @@ export interface OpcionesDeAnalisis {
   contextoExtra?: Record<string, unknown>;
 }
 
-// El modelo no corrió porque faltan las fuentes que deciden. Quien llama la
-// separa de un error: el mensaje es para el analista y reconsultar lo resuelve.
+// El modelo no corrió porque faltan fuentes obligatorias. Quien llama la separa de
+// un error: el mensaje es para el analista. Reconsultar lo resuelve, salvo con
+// `revisionManual`.
 export class ConsultaIncompleta extends Error {
-  constructor(estado: Record<string, string>) {
-    super(porQueNoSePuedeAnalizar(estado));
+  constructor(estado: Record<string, string>, readonly revisionManual = false) {
+    super(porQueNoSePuedeAnalizar(estado, revisionManual));
     this.name = "ConsultaIncompleta";
   }
 }
 
-// Devuelve la fila de analysis_results (select *).
+// Devuelve la fila de analysis_results (select *) y `completitud`, que no es una
+// columna: la entrega la calcula desde el perfil que se analizó.
 // deno-lint-ignore no-explicit-any
 export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<string, any>> {
   const { db, cedula, profileId, actorId } = o;
@@ -184,19 +190,64 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
     await guardarCrudoProveedorInfo1(db, client.id, guardado.id, cedula, raw);
   }
 
-  // Sin las fuentes que deciden no se llama al modelo: el perfil queda
-  // guardado, pero un score sobre él afirma una deuda y un ingreso que nadie
-  // leyó. Una llamada de prueba (esPrueba) sigue: existe para ejercitar la
-  // llamada, y el vigía no debe dar una alarma por una caída de Proveedor_Info_1.
-  if (!esPrueba && !elPerfilSePuedeAnalizar(estadoDeCadaFuente)) {
+  // Sin las obligatorias no se llama al modelo: el perfil queda guardado, pero
+  // un score sobre él afirma una deuda y un ingreso que nadie leyó. Una llamada
+  // de prueba (esPrueba) sigue: existe para ejercitar la llamada, y el vigía no
+  // debe dar una alarma por una caída de Proveedor_Info_1.
+  const decision = esPrueba ? "analizar" : decisionDeLaConsulta(estadoDeCadaFuente, controlBloqueo);
+  const fuentesSinRespuesta = obligatoriasSinRespuesta(estadoDeCadaFuente);
+  if (decision === "frenar") {
+    const revisionManual = await requiereRevisionManual(db, client.id);
     await db.from("ingestion_runs").update({ status: "fallido", completed_at: new Date().toISOString() }).eq("id", run.id);
     await db.from("audit_log").insert({
       actor: actorId,
       action: "client.analyze_frenado",
       client_id: client.id,
-      meta: { ...o.contextoExtra, ingestion_run_id: run.id, client_profile_id: clientProfileId, fuentes: fuentesClaveSinRespuesta(estadoDeCadaFuente) },
+      meta: {
+        ...o.contextoExtra,
+        ingestion_run_id: run.id,
+        client_profile_id: clientProfileId,
+        fuentes: fuentesSinRespuesta,
+        lista: LISTA_DE_FUENTES_VERSION,
+        revision_manual: revisionManual,
+      },
     });
-    throw new ConsultaIncompleta(estadoDeCadaFuente);
+    throw new ConsultaIncompleta(estadoDeCadaFuente, revisionManual);
+  }
+  if (decision === "negar_por_control") {
+    const { data: negativa, error: negativaError } = await db
+      .from("analysis_results")
+      .insert(filaDelAnalisis({
+        runId: run.id,
+        clientId: client.id,
+        clientProfileId,
+        marcoVersion: versionDelMarco(CONFIG_LLM),
+        llmResult: resultadoSinModelo(controlBloqueo, temasSinRespuesta(estadoDeCadaFuente)),
+        controlBloqueo,
+        duracionIngestaMs,
+        duracionLlmMs: null,
+      }))
+      .select("*")
+      .single();
+    if (negativaError) throw negativaError;
+    await db.from("ingestion_runs").update({ status: "completado", completed_at: new Date().toISOString() }).eq("id", run.id);
+    await db.from("audit_log").insert({
+      actor: actorId,
+      action: "client.analyze",
+      client_id: client.id,
+      meta: {
+        ...o.contextoExtra,
+        ingestion_run_id: run.id,
+        client_profile_id: clientProfileId,
+        crediscope_score: negativa.crediscope_score,
+        recomendacion: negativa.recomendacion,
+        control_bloqueado: true,
+        sin_modelo: true,
+        fuentes: fuentesSinRespuesta,
+        lista: LISTA_DE_FUENTES_VERSION,
+      },
+    });
+    return { ...negativa, completitud: completitudDeLaConsulta(estadoDeCadaFuente) };
   }
 
   // 6. Scoring aproximado por LLM (ver _shared/llm-scoring.ts). Se
@@ -336,5 +387,5 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
     },
   });
 
-  return analysis;
+  return { ...analysis, completitud: completitudDeLaConsulta(estadoDeCadaFuente) };
 }

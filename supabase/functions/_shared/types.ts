@@ -656,7 +656,8 @@ export interface LlmScoringResult {
   // supabase/migrations/001_llm_metadata.sql). stopReason "max_tokens"
   // significa que la respuesta se cortó a medias — señal de que hay que
   // subir el presupuesto de tokens.
-  llmModel: string;
+  // null en una negativa por control sin modelo (resultadoSinModelo).
+  llmModel: string | null;
   llmStopReason?: string;
   llmUsage?: Record<string, unknown>;
   llmRequestId?: string;

@@ -49,10 +49,11 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
-import { elPerfilSePuedeAnalizar, porQueNoSePuedeAnalizar } from "../_shared/calidad-de-la-consulta.ts";
+import { decisionDeLaConsulta } from "../_shared/calidad-de-la-consulta.ts";
 import { validarDecision } from "../_shared/estado-de-la-persona.ts";
 import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-institucion.ts";
-import { pasoCapacidad } from "../_shared/pasos-de-evaluacion.ts";
+import { elBuroTraeDetalle } from "../_shared/capacidad-de-pago.ts";
+import { EQUIFAX_SIN_REPORTE, falloDeConsultaIncompleta, PASO_QUE_NO_HACE_FALTA, pasoCapacidad, seNiegaPorControl } from "../_shared/pasos-de-evaluacion.ts";
 import {
   type CodigoDeFallo,
   falloDeUnPaso,
@@ -136,38 +137,43 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     if (clientId) {
       const { data: ultimo } = await serviceClient
         .from("client_profiles")
-        .select("id, created_at, estado_por_fuente, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
+        .select("id, created_at, estado_por_fuente, control_bloqueo, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       // Uno que quedó incompleto no se reutiliza: reintentar leería siempre ese
       // mismo perfil y nunca volvería a preguntarle a la fuente.
-      if (ultimo && elPerfilSePuedeAnalizar(ultimo.estado_por_fuente) && Date.now() - Date.parse(ultimo.created_at) < VIGENCIA_DEL_PERFIL_DIAS * 86_400_000) {
+      const decision = ultimo ? decisionDeLaConsulta(ultimo.estado_por_fuente, ultimo.control_bloqueo) : "frenar";
+      if (ultimo && decision !== "frenar" && Date.now() - Date.parse(ultimo.created_at) < VIGENCIA_DEL_PERFIL_DIAS * 86_400_000) {
         return {
           cambios: { client_id: clientId, client_profile_id: ultimo.id },
           detalle: `Se reutilizó el perfil del ${fecha(ultimo.created_at)}.`,
-          resultado: { perfil: { perfilId: ultimo.id, perfilDel: ultimo.created_at, reutilizado: true, segmento: ultimo.segmento ?? null, ingresoReportadoIess: ultimo.pisoIngresoMensualReportado ?? null } },
+          resultado: { perfil: { perfilId: ultimo.id, perfilDel: ultimo.created_at, reutilizado: true, segmento: ultimo.segmento ?? null, ingresoReportadoIess: ultimo.pisoIngresoMensualReportado ?? null, negadaPorControl: decision === "negar_por_control" } },
         };
       }
     }
     const r = await llamarFuncion("structure-client", { cedula: s.identificacion }, autorizacion);
     if (r.status !== 200 || !r.datos?.id) throw fallo("perfil", r);
     // Acá y no en el paso del análisis: en Plus el buró va en el medio y se cobra.
-    if (!elPerfilSePuedeAnalizar(r.datos.estado_por_fuente)) {
-      throw new PasoFallido(porQueNoSePuedeAnalizar(r.datos.estado_por_fuente), 0, null, "fuentes_no_disponibles");
+    const decision = decisionDeLaConsulta(r.datos.estado_por_fuente, r.datos.control_bloqueo);
+    if (decision === "frenar") {
+      const { detalle, esperarMs, codigo } = await falloDeConsultaIncompleta(serviceClient, r.datos.client_id, r.datos.estado_por_fuente);
+      throw new PasoFallido(detalle, esperarMs, null, codigo);
     }
     const f = r.datos.standard_profile?.fuentesIngreso ?? {};
     return {
       cambios: { client_id: r.datos.client_id, client_profile_id: r.datos.id },
       detalle: "Se consultó a la persona en Proveedor_Info_1.",
-      resultado: { perfil: { perfilId: r.datos.id, perfilDel: r.datos.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null } },
+      resultado: { perfil: { perfilId: r.datos.id, perfilDel: r.datos.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null, negadaPorControl: decision === "negar_por_control" } },
     };
   }
 
   if (paso === "buro") {
+    if (seNiegaPorControl(s)) return PASO_QUE_NO_HACE_FALTA;
     const vigente = await consultaVigenteDeEquifax(serviceClient, s.client_id);
     if (vigente) {
+      if (!elBuroTraeDetalle(vigente.estructura)) throw new PasoFallido(EQUIFAX_SIN_REPORTE, 0, null, "buro_no_disponible");
       return {
         cambios: { consulta_equifax_id: vigente.consultaId },
         detalle: `Se reutilizó la consulta de Equifax del ${fecha(vigente.consultadoEl)}, vigente hasta el 17.`,
@@ -197,6 +203,7 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     if (!usable || usable.consultaId !== r.datos.id) {
       throw new PasoFallido("La consulta de Equifax quedó guardada pero todavía no se puede leer (falta calcular su estructura). Se rehace desde lo guardado, sin volver a pagar; reintentar tampoco la cobra otra vez.", 0, null, "buro_no_disponible");
     }
+    if (!elBuroTraeDetalle(usable.estructura)) throw new PasoFallido(EQUIFAX_SIN_REPORTE, 0, null, "buro_no_disponible");
     return {
       cambios: { consulta_equifax_id: usable.consultaId },
       detalle: r.datos.reutilizada ? "Se reutilizó la consulta de Equifax vigente." : "Se consultó Equifax (la consulta se cobró).",

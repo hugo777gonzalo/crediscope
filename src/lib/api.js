@@ -3,6 +3,7 @@ import { inicioDelDia, finDelDia, diaEcuador } from "./fechas.js";
 import { traerTodas } from "./paginar.js";
 import { errorDeFuncion } from "./errorDeFuncion.js";
 import { PREFIJO_DE_LA_IDENTIFICACION_SIMULADA } from "../../supabase/functions/_shared/identificacion.ts";
+import { requiereRevisionManual } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
@@ -47,6 +48,11 @@ export async function structureClient(cedula) {
   return data;
 }
 
+// ¿La falla de esta persona no se va? Con la misma regla que usan las funciones.
+export function revisionManualDeLaPersona(clientId) {
+  return requiereRevisionManual(supabase, clientId);
+}
+
 export async function getLatestProfile(cedula) {
   const { data: client, error: clientError } = await supabase
     .from("clients")
@@ -76,9 +82,11 @@ export async function getLatestAnalysis(cedula) {
   if (clientError) throw clientError;
   if (!client) return null;
 
+  // El estado de su perfil dice si la consulta fue parcial, y ese perfil puede no
+  // ser el último: la persona se pudo reconsultar después.
   const { data: result, error: resultError } = await supabase
     .from("analysis_results")
-    .select("*")
+    .select("*, client_profiles(estado_por_fuente)")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false })
     .limit(1)

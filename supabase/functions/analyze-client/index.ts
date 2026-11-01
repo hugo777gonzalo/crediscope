@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     if (err instanceof ConsultaIncompleta) {
-      return new Response(JSON.stringify({ error: err.message, motivo: "consulta_incompleta" }), {
+      return new Response(JSON.stringify({ error: err.message, motivo: err.revisionManual ? "revision_manual" : "consulta_incompleta" }), {
         status: 409,
         headers: { ...corsHeaders, "content-type": "application/json" },
       });
