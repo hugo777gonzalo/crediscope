@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Sparkles, RefreshCw } from "lucide-react";
-import { analyzeClient, getLatestAnalysis, getLatestProfile, structureClient, getSegmentConfig } from "../lib/api.js";
+import { analyzeClient, getLatestAnalysis, getLatestProfile, revisionManualDeLaPersona, structureClient, getSegmentConfig } from "../lib/api.js";
 import { setUltimaCedula } from "../lib/ultimaCedula.js";
 import { nombreCorto } from "../lib/perfilClienteCampos.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
@@ -11,11 +11,18 @@ import RecomendacionBadge from "../components/RecomendacionBadge.jsx";
 import ScoreGauge from "../components/ScoreGauge.jsx";
 import IndicadoresAnalisis from "../components/IndicadoresAnalisis.jsx";
 import ListaControlPanel from "../components/ListaControlPanel.jsx";
+import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import { plural } from "../lib/formatos.js";
 import { useBuro, NOMBRE_DEL_BURO } from "../lib/useBuro.js";
-import { elPerfilSePuedeAnalizar, porQueNoSePuedeAnalizar } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
+import {
+  completitudDeLaConsulta,
+  decisionDeLaConsulta,
+  porQueEsParcial,
+  porQueNoSePuedeAnalizar,
+  recomendacionDeLaEntrega,
+} from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 
 // "Análisis con IA" — nombre comercial del scoring por LLM. Antes de
 // correrlo, decide si reutiliza el Perfil del Cliente ya consultado
@@ -34,6 +41,8 @@ function diasDesde(fechaIso) {
   return (Date.now() - new Date(fechaIso).getTime()) / (1000 * 60 * 60 * 24);
 }
 
+const quedaFrenada = (perfil) => decisionDeLaConsulta(perfil.estado_por_fuente, perfil.control_bloqueo) === "frenar";
+
 export default function AnalisisIA() {
   const { cedula } = useParams();
   const { buro } = useBuro();
@@ -41,6 +50,7 @@ export default function AnalisisIA() {
   const [result, setResult] = useState(null);
   const [profile, setProfile] = useState(null);
   const [segmentConfig, setSegmentConfig] = useState(null);
+  const [revisionManual, setRevisionManual] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
@@ -57,6 +67,7 @@ export default function AnalisisIA() {
       setResult(latestAnalysis);
       setProfile(latestProfile);
       setSegmentConfig(segments);
+      setRevisionManual(latestProfile && quedaFrenada(latestProfile) ? await revisionManualDeLaPersona(latestProfile.client_id) : false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -92,10 +103,13 @@ export default function AnalisisIA() {
       const freshProfile = await structureClient(cedula);
       setProfile(freshProfile);
       // La función también lo frena: acá se evita pedirle algo que va a rechazar.
-      if (!elPerfilSePuedeAnalizar(freshProfile.estado_por_fuente)) {
-        setError(porQueNoSePuedeAnalizar(freshProfile.estado_por_fuente));
+      if (quedaFrenada(freshProfile)) {
+        const manual = await revisionManualDeLaPersona(freshProfile.client_id);
+        setRevisionManual(manual);
+        setError(porQueNoSePuedeAnalizar(freshProfile.estado_por_fuente, manual));
         return;
       }
+      setRevisionManual(false);
       const fresh = await analyzeClient(cedula, { profileId: freshProfile.id });
       setResult(fresh);
     } catch (err) {
@@ -106,17 +120,34 @@ export default function AnalisisIA() {
   }
 
   const profileReciente = profile && diasDesde(profile.created_at) <= VENTANA_REUTILIZACION_DIAS;
-  const consultaIncompleta = Boolean(profile) && !elPerfilSePuedeAnalizar(profile.estado_por_fuente);
+  const decision = profile ? decisionDeLaConsulta(profile.estado_por_fuente, profile.control_bloqueo) : null;
+  const consultaIncompleta = decision === "frenar";
   const sePuedeReutilizar = profileReciente && !consultaIncompleta;
   const nombre = nombreCorto(profile?.standard_profile?.identidad?.nombreCompleto);
 
   const avisoReutilizacion = !profile
     ? "Sin Perfil de la Persona todavía — hace falta consultar la fuente de datos antes de analizar."
     : consultaIncompleta
-      ? porQueNoSePuedeAnalizar(profile.estado_por_fuente)
-      : profileReciente
-        ? `Perfil de la Persona consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
-        : `Perfil de la Persona tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`;
+      ? porQueNoSePuedeAnalizar(profile.estado_por_fuente, revisionManual)
+      : decision === "negar_por_control"
+        ? "La consulta quedó incompleta, pero un control de bloqueo ya niega a la persona: se registra sin llamar al modelo."
+        : profileReciente
+          ? `Perfil de la Persona consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
+          : `Perfil de la Persona tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`;
+
+  const etiquetaDeLaConsulta = !profile
+    ? "Sin consulta previa"
+    : consultaIncompleta
+      ? revisionManual ? "Revisión manual: reconsultar no lo resolvió" : "La última consulta quedó incompleta"
+      : decision === "negar_por_control"
+        ? "Consulta incompleta con un bloqueo"
+        : profileReciente ? "Usa la última consulta guardada" : "Requiere reconsultar la fuente";
+
+  // Lo que se entrega, igual que en la API y en la solicitud. El análisis puede ser
+  // de un perfil anterior al último, y uno recién hecho viene sin el suyo.
+  const estadoDelAnalisis = result?.client_profiles?.estado_por_fuente ?? (result?.client_profile_id === profile?.id ? profile?.estado_por_fuente : null);
+  const consultaParcial = result?.veredicto_origen === "modelo" && completitudDeLaConsulta(estadoDelAnalisis) === "parcial";
+  const entregado = consultaParcial ? { ...result, recomendacion: recomendacionDeLaEntrega(result.recomendacion, "parcial") } : result;
 
   return (
     <div>
@@ -152,8 +183,8 @@ export default function AnalisisIA() {
                 {nombre ? <p className="crediscope-cliente-nombre">{nombre}</p> : null}
                 <p className="crediscope-cliente-cedula">{cedula}</p>
               </div>
-              {result?.recomendacion && !result?.fallo ? (
-                <RecomendacionBadge recomendacion={result.recomendacion} size="small" />
+              {entregado?.recomendacion && !entregado?.fallo ? (
+                <RecomendacionBadge recomendacion={entregado.recomendacion} size="small" />
               ) : null}
             </div>
 
@@ -178,9 +209,7 @@ export default function AnalisisIA() {
               {!loading ? (
                 <p className="crediscope-cliente-aviso">
                   <InfoTooltip texto={avisoReutilizacion} />
-                  <span className="crediscope-muted">
-                    {!profile ? "Sin consulta previa" : consultaIncompleta ? "La última consulta quedó incompleta" : profileReciente ? "Usa la última consulta guardada" : "Requiere reconsultar la fuente"}
-                  </span>
+                  <span className="crediscope-muted">{etiquetaDeLaConsulta}</span>
                 </p>
               ) : null}
             </div>
@@ -200,7 +229,8 @@ export default function AnalisisIA() {
               </p>
             </div>
           ) : null}
-          <AnalisisResultado result={result} ocultarListaControl perfil={profile} cedula={cedula} />
+          {consultaParcial ? <Aviso>{porQueEsParcial(estadoDelAnalisis)}</Aviso> : null}
+          <AnalisisResultado result={entregado} ocultarListaControl perfil={profile} cedula={cedula} />
         </div>
       </div>
 

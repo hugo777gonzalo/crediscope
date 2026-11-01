@@ -260,6 +260,7 @@ const QUIEN_DECLARA: Record<string, string> = {
 const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cubre_el_buro" | "no_lo_cubre"]> = [
   ["buroCreditoSuper", "buró de bancos", "lo_cubre_el_buro"],
   ["buroCreditoCoop", "cooperativas", "lo_cubre_el_buro"],
+  ["buroCreditoDiners", "tarjetas Diners", "lo_cubre_el_buro"],
   ["retails", "casas comerciales", "no_lo_cubre"],
   ["creditoHipotecario", "préstamos del IESS o BIESS", "no_lo_cubre"],
   ["creditoQuirografario", "préstamos del IESS o BIESS", "no_lo_cubre"],
