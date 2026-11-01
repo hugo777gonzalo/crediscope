@@ -23,12 +23,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **143** (medido con el corredor el 2026-10-31; no hay 137: la
-  del PR 82 pasó a 139). En `main`, `ESQUEMA_MINIMO` ya está en 144: una función desplegada desde ahí
-  contesta 503 hasta aplicar la 144 (punto 2.0). Con la 141, `auditar-seguridad.mjs` dio 81 de 81
-  después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`9b1c51fe42e8`**, desplegado el 2026-10-31 a las 12:41 sobre el esquema 141
-  (`despliegues`; el anterior fue `8a778f905f10`). El núcleo de la API está desplegado y
+- **Base:** última migración aplicada, la **144** (medido con el corredor el 2026-10-31; no hay 137: la
+  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144. `auditar-seguridad.mjs` dio 79 de 79 después
+  de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`59f5ef0466c9`**, 13 de 13, desplegado el 2026-10-31 a las 23:00 sobre el
+  esquema 144 (`despliegues`; el anterior fue `aedc9aa014c3`). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
@@ -44,9 +43,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v32 y marco-v33 están en `main`,
-  sin aplicar: punto 2.0; marco-v31 no llegó a usarse, 0 análisis); estructura-v16 (el último perfil de las
-  3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+- **Versiones en producción:** marco-v32 con Claude Sonnet 5.5, desplegada el 2026-10-31 y sin ningún
+  análisis todavía (marco-v33, el buró, sigue apagada: punto 2.0; marco-v31 no llegó a usarse, 0
+  análisis). El código arma estructura-v17, y los perfiles guardados siguen en estructura-v16 hasta
+  recalcular (el último de las 3.765 personas reales, 2026-10-31); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -220,16 +220,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## 2. Espera una decisión del negocio
 
-0. **marco-v32 y marco-v33 (PR 113, fusionado el 2026-10-31, sin aplicar).** Las correcciones de la
-   revisión de casos del 2026-10-31 y, sobre ellas, el buró. Están en `main`, pero no se aplicó ni
-   se desplegó nada: producción sigue en marco-v30 y estructura-v16, y la base en la 143. Queda:
-   - **Aplicarlo**, cuando el negocio lo diga. Desde el despliegue v32 entra a todos los análisis
-     nuevos, sin interruptor. Orden: `migrar-clientes.mjs --seco` y `--aplicar` (144: sin ella la
-     función contesta 503), `--funciones`, y `recalcular-grupos.mjs
-     --grupos=laboral,comportamientoBancario`, `--seco` primero (estructura-v17). Se verifica con
+0. **marco-v32 y marco-v33 (PR 113).** Las correcciones de la revisión de casos del 2026-10-31 y,
+   sobre ellas, el buró. La 144 está aplicada y v32 desplegada: entra a todos los análisis nuevos.
+   Queda:
+   - **Recalcular a estructura-v17:** `recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
+     --carpeta=research/proveedor-info-1-raw-2026-10-03`. El seco, con la lectura del crudo
+     arreglada, dio 3.765 a escribir y 0 que el crudo no reproduzca. Se verifica con
      `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
-   - **Los USD 4,4 de la base de prueba:** ¿siguen en pie? Se autorizaron antes de la decisión de no
-     probar un marco nuevo hasta terminar los arreglos. El lote lee el código de la copia desde
+   - **Los USD 4,4 de la base de prueba:** `analizar-en-lote enviar` corrió el 2026-10-31 a las 12:06,
+     antes del PR 113, con autorización del negocio. Un envío nuevo lee el código de la copia desde
      donde corre, y `main` ya dice v32.
    - **La regla del RUC depurado alcanza a 17 de 169** por decir «relación de dependencia». 77 de
      las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», y 130 trabajan para un tercero: ¿se extiende

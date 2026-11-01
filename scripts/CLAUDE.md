@@ -24,7 +24,8 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   registro de los casos que cita el código (ver "Cómo se trabaja"). Sumar:
   `node scripts/consultar-lote.mjs <archivo> <uuid-responsable> 20 --crudo=research/<carpeta> --base-legal="<contrato>"`.
 - Reproducir un perfil: `buildStandardProfile(raw, cedula, corte)` con el
-  corte VIGENTE de ese día, no `fuente_corte`.
+  corte VIGENTE de ese día, no `fuente_corte`. El crudo se lee con `leerCrudo()`:
+  traduce la clave de una fuente que el respaldo conserva con el nombre anterior.
 - `scripts/recalcular-fuentes-ingreso.mjs`: sólo el último perfil, sólo
   si el crudo es de ese perfil (`perfilId`), reloj en la fecha de captura
   y claves ordenadas al comparar. Él y `recalcular-grupos.mjs` leen el crudo

@@ -662,6 +662,12 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Guiones
 
+- **Renombrar lo guardado no renombra el crudo** (2026-10-31). El cambio de nombre
+  del proveedor reescribió las claves de los perfiles, pero el respaldo sigue con la
+  clave anterior de una fuente de pensión alimenticia. El seco de estructura-v17 frenó
+  los 3.765 perfiles, y `--forzar` le habría borrado esa pensión a quien la tiene. El
+  freno de `recalcular-grupos.mjs` hizo su trabajo. `leerCrudo()` traduce la clave al
+  leer, conservando su posición, y el crudo no se toca.
 - **Un guion que consulta a nombre del usuario pasa su `actorId`, y
   `audit_log` no se corrige después.** La cuenta del usuario en CrediScope
   usa un correo distinto del de Claude, así que buscarla por el de Claude no
