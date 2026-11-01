@@ -13,6 +13,16 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
+- **Espacio de la base (2026-10-31): 443 MB de 500 MB del plan Free** (57 MB de margen); se midió
+  con `pg_database_size`. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
+  a Pro, o guardar el crudo de Equifax en Storage como el de Proveedor_Info_1, es la salida de fondo
+  (cambia el esquema de `consultas_equifax`: decisión aparte).
+- **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
+  27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11; pasada
+  esa fecha se pueden quitar. Equifax autorizó reutilizarlas (`docs/equifax.md`). Faltan las
+  anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
+  creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
+  en los totales de personas reales: medirlo antes de dar un total.
 - **Base:** última migración aplicada, la **143** (medido con el corredor el 2026-10-31; no hay 137: la
   del PR 82 pasó a 139). En `main`, `ESQUEMA_MINIMO` ya está en 144: una función desplegada desde ahí
   contesta 503 hasta aplicar la 144 (punto 2.0). Con la 141, `auditar-seguridad.mjs` dio 81 de 81
