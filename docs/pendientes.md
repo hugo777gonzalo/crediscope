@@ -13,8 +13,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **141** (2026-10-31; no hay 137: la del PR 82 pasó a 139),
-  y `ESQUEMA_MINIMO` está en 141. Se midió en `esquema_version`, y `auditar-seguridad.mjs` dio 81 de 81
+- **Base:** última migración aplicada, la **143** (medido con el corredor el 2026-10-31; no hay 137: la
+  del PR 82 pasó a 139). En `main`, `ESQUEMA_MINIMO` ya está en 144: una función desplegada desde ahí
+  contesta 503 hasta aplicar la 144 (punto 2.0). Con la 141, `auditar-seguridad.mjs` dio 81 de 81
   después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
 - **Funciones:** sello **`9b1c51fe42e8`**, desplegado el 2026-10-31 a las 12:41 sobre el esquema 141
   (`despliegues`; el anterior fue `8a778f905f10`). El núcleo de la API está desplegado y
@@ -33,8 +34,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v32 y marco-v33, en un PR sin
-  fusionar: punto 2.0; marco-v31 no llegó a usarse, 0 análisis); estructura-v16 (el último perfil de las
+- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v32 y marco-v33 están en `main`,
+  sin aplicar: punto 2.0; marco-v31 no llegó a usarse, 0 análisis); estructura-v16 (el último perfil de las
   3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
@@ -209,14 +210,17 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## 2. Espera una decisión del negocio
 
-0. **marco-v32 y marco-v33 (PR de la rama `claude/marco-correcciones-01aa09`, sin fusionar).** Las
-   correcciones de la revisión de casos del 2026-10-31 y, sobre ellas, el buró. No se aplicó ni se
-   desplegó nada: producción sigue en marco-v30 y estructura-v16. El negocio decide:
-   - **Fusionar**, y con eso entra v32 a todos los análisis nuevos en el próximo despliegue, sin
-     interruptor. Orden: `migrar-clientes.mjs --seco` y `--aplicar` (144, sube `ESQUEMA_MINIMO`:
-     sin ella la función contesta 503), `--funciones`, y `recalcular-grupos.mjs
+0. **marco-v32 y marco-v33 (PR 113, fusionado el 2026-10-31, sin aplicar).** Las correcciones de la
+   revisión de casos del 2026-10-31 y, sobre ellas, el buró. Están en `main`, pero no se aplicó ni
+   se desplegó nada: producción sigue en marco-v30 y estructura-v16, y la base en la 143. Queda:
+   - **Aplicarlo**, cuando el negocio lo diga. Desde el despliegue v32 entra a todos los análisis
+     nuevos, sin interruptor. Orden: `migrar-clientes.mjs --seco` y `--aplicar` (144: sin ella la
+     función contesta 503), `--funciones`, y `recalcular-grupos.mjs
      --grupos=laboral,comportamientoBancario`, `--seco` primero (estructura-v17). Se verifica con
      `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
+   - **Los USD 4,4 de la base de prueba:** ¿siguen en pie? Se autorizaron antes de la decisión de no
+     probar un marco nuevo hasta terminar los arreglos. El lote lee el código de la copia desde
+     donde corre, y `main` ya dice v32.
    - **La regla del RUC depurado alcanza a 17 de 169** por decir «relación de dependencia». 77 de
      las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», y 130 trabajan para un tercero: ¿se extiende
      a todas las depuradas? Cambiarlo es un cambio de estructura con su recálculo.
