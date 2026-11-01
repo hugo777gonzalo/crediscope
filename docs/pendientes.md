@@ -33,8 +33,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v16 (el último perfil de las
+- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v32 y marco-v33, en un PR sin
+  fusionar: punto 2.0; marco-v31 no llegó a usarse, 0 análisis); estructura-v16 (el último perfil de las
   3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
@@ -202,13 +202,6 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
      `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
      `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
-   - **Lo que debe abrir la sesión del marco** (cada uno es una línea de
-     `CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`; hoy el mensaje sigue siendo el
-     de marco-v30): `comportamientoBancario.fechaCorteRetail` (las deudas retail son de ese corte,
-     julio de 2025 en toda la cartera) y `comportamientoBancario.saldoPrestamosIessBiess`. Los
-     valores corregidos de los campos que ya existían sí llegan, y el marco puede necesitar una
-     línea que diga que el empleador vigente es `null` cuando el historial no trae al del empleo
-     actual.
    - **Efecto en la capacidad de pago:** `tieneCreditoIessBiess` pasa a verdadero en 308 de 918
      personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
      BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
@@ -216,13 +209,37 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## 2. Espera una decisión del negocio
 
-1. **La comparación de marco-v31 con y sin Equifax.** Falta autorizarla con una cifra:
-   62 personas con v30 y con v31, unos USD 2,3 en lote (estimado, no medido). Importa para poder
-   encender el buró en lo que lee el modelo (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
+0. **marco-v32 y marco-v33 (PR de la rama `claude/marco-correcciones-01aa09`, sin fusionar).** Las
+   correcciones de la revisión de casos del 2026-10-31 y, sobre ellas, el buró. No se aplicó ni se
+   desplegó nada: producción sigue en marco-v30 y estructura-v16. El negocio decide:
+   - **Fusionar**, y con eso entra v32 a todos los análisis nuevos en el próximo despliegue, sin
+     interruptor. Orden: `migrar-clientes.mjs --seco` y `--aplicar` (144, sube `ESQUEMA_MINIMO`:
+     sin ella la función contesta 503), `--funciones`, y `recalcular-grupos.mjs
+     --grupos=laboral,comportamientoBancario`, `--seco` primero (estructura-v17). Se verifica con
+     `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
+   - **La regla del RUC depurado alcanza a 17 de 169** por decir «relación de dependencia». 77 de
+     las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», y 130 trabajan para un tercero: ¿se extiende
+     a todas las depuradas? Cambiarlo es un cambio de estructura con su recálculo.
+   - **Encender el buró:** `buroDeLaInstitucion: true` y `--funciones`, después de v32. Importa saber
+     que una consulta sólo cuenta si está vigente hasta el 17 del mes.
+   - **Sin medir, porque hace falta el modelo:** si deja de escribir «sin atraso» con A2 y «nadie
+     miró», y cuánto mueven el score estas correcciones (punto 2.1).
+   - **Sin tocar, a revisar:** `eventos-entre-consultas.ts` no cuenta como deterioro pasar de A1 a
+     A2; es del Laboratorio, no de lo que lee el modelo. Y la medición de A2 en el retail que trajo
+     la revisión (7 de 8 filas, A1 en 0 de 116) no se pudo repetir: ni `retails` de Proveedor_Info_1 ni el
+     crudo guardado de Equifax traen calificación; salió de otra lectura.
+1. **La comparación de marco-v30, v32 y v33.** Falta autorizarla con una cifra: 62 personas con las
+   tres versiones, unos USD 3,5 en lote (estimado, no medido: USD 0,0178 por análisis de v30, medido
+   con v28; v32 suma unos USD 0,0001 con el marco en caché y v33, USD 0,0019). Sin el brazo de v30,
+   USD 2,4. Importa para saber cuánto mueven las correcciones y el buró
+   (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
-   Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
-   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+   Octubre lleva USD 9,97 de 10 (punto 2.2), así que va desde noviembre. Se verifica con la
+   comparación y su lectura.
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29), y
+   **no se prueba ningún marco nuevo hasta terminar todos los arreglos** (negocio, 2026-10-31): vale
+   para lotes, comparaciones y recálculos con el modelo sobre marco-v31 o cualquier versión nueva.
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
    octubre lleva USD 13,92 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,

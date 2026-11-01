@@ -34,6 +34,8 @@
 //      empleador, ni un número de 10 dígitos, ni una ruta de
 //      RUTAS_QUE_NO_LLEGAN; y cada atributo protegido de la lista existe en
 //      algún perfil (si no, está mal escrito y nunca se sacaría).
+//  14. (marco-v32) Con deudas retail llega su fecha de corte, y llega el saldo
+//      de los préstamos del IESS/BIESS.
 //
 // Uso:  node scripts/validar-perfil-del-modelo.mjs
 import path from "node:path";
@@ -214,9 +216,17 @@ for (let i = 0; i < ids.length; i += 100) {
     if (Object.keys(pm)[0] !== "disponibilidad") fallar("9. la disponibilidad no llega primera", caso);
     if (sp.metaConsulta && !di) fallar("9. hay metaConsulta y no llega la disponibilidad", caso);
     if (di) {
-      const temas = [...di.temasConsultados, ...di.temasNoConsultados];
+      const temas = [...di.temasConsultados, ...di.temasSinRespuesta];
       if (new Set(temas).size !== temas.length) fallar("9. un tema está en las dos listas", caso);
-      if (di.temasNoConsultados.length) conTemasSinConsultar++;
+      if (di.temasSinRespuesta.length) conTemasSinConsultar++;
+    }
+    if ("temasNoConsultados" in (di ?? {})) fallar("9. la lista de temas llega con el nombre que el modelo copiaba", caso);
+
+    // 14. Desde marco-v32: con deudas retail llega su corte, y el saldo del
+    // IESS/BIESS con sus préstamos. Un perfil anterior a estructura-v16 no los trae.
+    if (Object.hasOwn(sp.comportamientoBancario ?? {}, "fechaCorteRetail")) {
+      if (b?.numeroDeudasRetail > 0 && !b.fechaCorteRetail) fallar("14. hay deudas retail sin su fecha de corte", caso);
+      if (b && !("saldoPrestamosIessBiess" in b)) fallar("14. no llega el saldo de los préstamos del IESS/BIESS", caso);
     }
     if (NOMBRES_DE_FUENTES.test(JSON.stringify(pm))) fallar("9. llega un nombre técnico de fuente", caso);
 
@@ -261,7 +271,7 @@ console.log(`  empleos actuales: ${empleos}, sin tipo de empleador: ${empleosSin
 console.log(`  personas con la marca de familiar: ${personasFamiliar}, sin ningún empleo marcado: ${familiarSinEmpleo}`);
 console.log(`  mensaje al modelo (caracteres): antes mediana ${mediana(tamanos.antes)} p90 ${p90(tamanos.antes)} | ahora mediana ${mediana(tamanos.despues)} p90 ${p90(tamanos.despues)}`);
 if (fallas.size === 0) {
-  console.log("VALIDACIÓN OK: 0 fallas en las 13 reglas.");
+  console.log("VALIDACIÓN OK: 0 fallas en las 14 reglas.");
 } else {
   console.log("FALLAS:");
   for (const [regla, casos] of fallas) console.log(`  ${regla}: ${casos.length} (ej. ${casos.slice(0, 5).join(", ")})`);

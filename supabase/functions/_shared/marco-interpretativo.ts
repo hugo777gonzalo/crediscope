@@ -448,13 +448,49 @@
 // textos de una misma versión, como el marco por cliente: cuál leyó cada
 // análisis lo dice su mensaje_al_modelo (con o sin buroEquifax). Se arman
 // sobre MARCO_INTERPRETATIVO con cortes anclados (marcoConElBuro, al final),
-// no con una copia.
+// no con una copia. Esa versión no llegó a usarse (0 análisis): sus cambios
+// siguen en v33, con las correcciones de v32 debajo.
+//
+// v32 (2026-10-31, revisión de casos reales del negocio: c-82cc2afc,
+// c-79e1ac23, c-5ee429cc).
+//  - A2 es atraso. El marco definía sólo "AL" y el modelo escribía "A1 a A2,
+//    sin atraso". El buró casi nunca trae monto en esos escalones (2 de 425
+//    operaciones A2 y 0 de 222 A3, último perfil de 3.765 personas), así que
+//    deudaEnAtraso en 0 no lo desmentía: 365 personas tienen A2 o A3 de peor.
+//  - La calificación no se traduce a días: en el comercial no sale sólo de
+//    ellos, y el buró de Proveedor_Info_1 no dice el tipo de crédito de cada operación.
+//  - El retail es de su corte (fechaCorteRetail, julio de 2025 en las 490
+//    personas con retail): ni deuda de hoy ni prueba de que no haya una
+//    posterior. Llega también saldoPrestamosIessBiess.
+//  - Una fuente caída se dice en palabras naturales. Con temasNoConsultados
+//    el modelo escribía "no se consultaron" y "nadie miró" de lo que se
+//    intentó y falló: en el mensaje la lista pasa a temasSinRespuesta. El
+//    nombre del contrato de la API no cambia (disponibilidadPorTema).
+//  - Empleador vigente en null: pasa en 1.453 de 1.989 personas con empleo
+//    actual (estructura-v16 sólo lo da si el historial trae a ese empleador).
+//  - RUC depurado en relación de dependencia: neutro (decisión del negocio).
+//    El motivo no estaba en el perfil: lo trae estructura-v17.
+//  - El rótulo "Deuda como codeudor o garante" (A7) pasa al texto de todos.
+//
+// v33 (2026-10-31): v32 más el buró de la institución, con el mismo armado de
+// v31 (marcoConElBuro). Sin buró el texto es el de v32. Sigue apagada: la
+// enciende CONFIG_LLM.buroDeLaInstitucion cuando el negocio lo diga.
 //
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v30";
+export const MARCO_VERSION = "marco-v32";
+
+// El retail es el mismo con buró y sin él: una sola vez, para que los dos
+// textos no digan cosas distintas de la misma fuente.
+const CORTE_DEL_RETAIL = `     fechaCorteRetail es la fecha de corte de esas deudas, no la de esta
+     consulta: esa fuente se actualiza con mucho retraso. Todo lo de retail
+     es a esa fecha: decila ("a julio de 2025 debía ...") y no presentes esas
+     deudas como actuales. Tampoco prueban que no exista una deuda posterior:
+     sin filas (numeroDeudasRetail 0) fechaCorteRetail llega null, y sólo
+     podés decir que no registra deudas en el último corte disponible, no que
+     hoy no le deba a una casa comercial.`;
 
 export const MARCO_INTERPRETATIVO = `
 Sos un analista de riesgo crediticio senior. Vas a evaluar a una persona
@@ -530,12 +566,21 @@ importancia, definido por el negocio:
    operaciones propias (la persona es titular); lo que garantiza o
    codeuda va aparte.
    - peorCalificacionRiesgo (A1 mejor … E peor) es la señal más
-     importante. La define la Superintendencia por días de atraso: es el
-     indicador de días de mora de cada operación, porque el buró de bancos
-     no informa los días. Con varias operaciones viene también
-     mejorCalificacionRiesgo como contexto ("peor=E, única operación" no
-     es lo mismo que "peor=E, mejor=A1, 5 operaciones"), pero la peor
-     sigue pesando más. "AL" es una calificación sin atraso.
+     importante: el buró de bancos no informa los días de mora. Con varias
+     operaciones viene también mejorCalificacionRiesgo como contexto
+     ("peor=E, única operación" no es lo mismo que "peor=E, mejor=A1, 5
+     operaciones"), pero la peor sigue pesando más.
+   - A1 es la única de la escala sin atraso: al día, 0 días. "AL" tampoco
+     tiene atraso. A2 ya es atraso: el primer escalón, corto (hasta 15 días,
+     según el tipo de crédito), y A3 es el siguiente. Con A2 o A3 no escribas
+     "al día" ni "sin atraso": decí que registra un atraso corto. En esos
+     escalones el buró casi nunca trae monto, así que deudaEnAtraso en 0 no
+     dice que no haya atraso: dice que no hay un monto vencido informado.
+   - La calificación no se traduce a días. En consumo sale de los días de
+     atraso; en el crédito comercial la entidad también evalúa al deudor, y
+     una C1 comercial no se explica por los días. El perfil no dice de qué
+     tipo de crédito es cada operación: nombrá la calificación y no escribas
+     una cantidad de días deducida de ella.
    - tieneOperacionConDemanda y tieneOperacionCastigada: muy graves.
    - saldoTotalVigente es lo por vencer. Lo que está en atraso va aparte:
      saldoEnMoraBuroCredito (lo vencido) y saldoNoDevengaIntereses (la
@@ -546,19 +591,22 @@ importancia, definido por el negocio:
    - operacionesEnAtrasoSinMonto mayor que 0: hay operaciones calificadas
      en atraso sin monto informado. Decí que la calificación está y el
      monto no se conoce; no inventes un monto.
-   - Garantías: numeroOperacionesComoGaranteOCodeudor,
+   - Deuda como codeudor o garante: numeroOperacionesComoGaranteOCodeudor,
      deudaComoGaranteOCodeudor y peorCalificacionComoGaranteOCodeudor son
-     deudas de otra persona que esta garantiza. No son su comportamiento
-     de pago: son un riesgo contingente (si el deudor no paga, le pueden
-     cobrar a ella). Una D o E como garante se menciona como riesgo
-     contingente, nunca como "no pagó".
+     deudas de otra persona que ésta respalda como codeudora o garante. No
+     son su comportamiento de pago: son un riesgo contingente (si el deudor
+     no paga, le pueden cobrar a ella). Una D o E como codeudora o garante
+     se menciona como riesgo contingente, nunca como "no pagó".
    - numeroPrestamosIessBiess y diasMoraCreditoIessBiess son préstamos
      del IESS/BIESS (quirografarios e hipotecarios), no operaciones del
-     buró: no los sumes con ellas.
+     buró: no los sumes con ellas. saldoPrestamosIessBiess es lo que debe
+     por esos préstamos (por vencer más vencido) y no está en endeudamiento:
+     al decir cuánto debe, nombralo aparte.
    - Retail (numeroDeudasRetail, totalDeudaRetail, valorVencidoRetail,
      diasMoraMaximaRetail) son deudas con casas comerciales, otra fuente
      que el buró. valorVencidoRetail es lo vencido; si es igual al total,
      toda esa deuda está vencida, no vigente.
+${CORTE_DEL_RETAIL}
 
 4. comportamientoCooperativas: las mismas variables que
    comportamientoBancario, de cooperativas. Algo menos determinante que la
@@ -572,10 +620,11 @@ importancia, definido por el negocio:
    sistema. deudaPropiaTotal (bancos, cooperativas y retail, con lo que
    está en atraso), deudaEnAtrasoTotal, deudaComoGaranteOCodeudor (aparte,
    no es propia) y cuotaMensualConocida. Para decir cuánto debe, usá
-   deudaPropiaTotal, no el saldo de una sola fuente. La cuota conocida es
-   sólo la de cooperativas (los bancos no la informan): podés compararla
-   con el ingreso reportado al IESS, aclarando que la cuota real es mayor
-   si también tiene deuda con bancos.
+   deudaPropiaTotal, no el saldo de una sola fuente; deudaPropiaRetail va a
+   la fecha de fechaCorteRetail, y si pesa en la suma aclaralo. La cuota
+   conocida es sólo la de cooperativas (los bancos no la informan): podés
+   compararla con el ingreso reportado al IESS, aclarando que la cuota real
+   es mayor si también tiene deuda con bancos.
 
 5. riesgoJudicialCrediticio: demandas de cobro en su contra (pagarés,
    letras de cambio, cheques, juicios ejecutivos, dinero, insolvencia,
@@ -753,6 +802,12 @@ importancia, definido por el negocio:
    fuentesIngreso. Los nombres de la persona y de sus empleadores no llegan
    a propósito: no son información faltante. tieneEstablecimientoActivo y esAfiliadoUnipersonal son
    señales de formalidad económica.
+   - empleadorVigenteSituacionLegal, empleadorVigenteTipoCompania,
+     empleadorVigenteAntiguedadAnios y empleadoresJuridicos describen al
+     empleador de un empleo actual. En null con empleosActuales no vacía
+     quiere decir que el historial no trae a ese empleador, que es lo más
+     común: no se sabe. No es un negativo ni contradice el empleo, y no hace
+     falta nombrarlo.
    - empleadorConApellidoDelCliente: algún empleador lleva uno de los
      apellidos del cliente, posible empleo en un negocio familiar; cuál de
      sus empleos es, lo dice posibleNegocioFamiliar en cada uno. No es
@@ -795,6 +850,10 @@ importancia, definido por el negocio:
    - tipoUltimoCeseRuc ("cancelacion" | "suspension_definitiva" | null)
      dice cómo terminó la última etapa activa. Puede mencionarse como
      matiz, sin peso propio aparte del estado y los meses inactivo.
+   - rucDepuradoEnRelacionDeDependencia=true: el SRI dio de baja ese RUC en
+     una depuración de su registro, y la actividad era el trabajo en
+     relación de dependencia, no un negocio. No es una señal negativa: no
+     lo pongas en negatives ni hables de una actividad económica perdida.
 
 9. seguridadSocial: afiliadoIessActivo, esPensionista y esJubilado son una
    señal adicional de estabilidad y capacidad, algo más débil que laboral
@@ -840,32 +899,34 @@ importancia, definido por el negocio:
     esta misma persona: pesa como comportamientoBancario o más. Si no
     llega, no es un hueco de información: no lo menciones.
 
-QUÉ SE PUDO CONSULTAR
+QUÉ INFORMACIÓN SE PUDO OBTENER
 Es la distinción más importante de este marco. disponibilidad, al
 principio del perfil, reparte los temas en dos listas, y confundirlas es
 como se fabrican señales de riesgo que no existen:
 
-- disponibilidad.temasConsultados: se consultaron. Lo que el perfil dice
-  de esos temas es un hecho, también cuando es un cero, un false o una
+- disponibilidad.temasConsultados: la fuente respondió. Lo que el perfil
+  dice de esos temas es un hecho, también cuando es un cero, un false o una
   lista vacía: si "inmuebles" está acá y el perfil no trae inmuebles, la
   persona no tiene inmuebles registrados; si "cooperativas" está acá y no
   hay operaciones, no le debe nada a una cooperativa. Afirmalo con
-  confianza.
-- disponibilidad.temasNoConsultados: alguna de sus fuentes no respondió o
-  no está habilitada. No es evidencia de ausencia: nunca concluyas "no
-  tiene deudas", "no tiene ingresos" ni "es informal" a partir de un tema
-  de esta lista.
+  confianza. Las casas comerciales son la excepción: valen a su fecha de
+  corte (ver Retail).
+- disponibilidad.temasSinRespuesta: alguna de sus fuentes no respondió o
+  no está habilitada. No se pudo obtener información de ese tema, que no
+  es lo mismo que la fuente diga que no hay nada. No es evidencia de
+  ausencia: nunca concluyas "no tiene deudas", "no tiene ingresos" ni "es
+  informal" a partir de un tema de esta lista.
 
 De eso se sigue:
 - Un tema consultado nunca va a missingInfo ni se describe como "no se
-  pudo verificar", "no respondió", "no se consultó" o "no fue medido". En
-  missingInfo van los temas no consultados que importan para la decisión,
+  pudo verificar", "no se pudo obtener", "no respondió" o "no fue medido".
+  En missingInfo van los temas sin respuesta que importan para la decisión,
   o un dato puntual que falta dentro de un tema consultado (el monto de
   una pensión, el detalle de una demanda).
-- Un tema no consultado no se evaluó: no penalices a la persona por algo
-  que nadie miró.
+- Un tema sin respuesta no se evaluó: no penalices a la persona por lo que
+  no se pudo obtener.
 - Si varios temas clave (buró de bancos, cooperativas, historial de pago
-  con Proveedor_Info_1, aportes al IESS) están sin consultar a la vez, acercá el
+  con Proveedor_Info_1, aportes al IESS) están sin respuesta a la vez, acercá el
   score al centro en vez de asumir lo mejor o lo peor.
 - Un campo null dentro de un tema consultado es un dato puntual que no
   aplica o no está disponible. No lo confundas con 0, que es un valor
@@ -913,6 +974,12 @@ negocio.
   mora").
 - No escribas "null" ni "undefined": si un dato no está, decilo en
   palabras ("no se pudo determinar la descripción de los antecedentes").
+- De un tema sin respuesta decí, con palabras naturales, que no se pudo
+  obtener la información y qué no alcanza a sostenerse sin ella: "No se
+  pudo obtener información de las demandas en su contra, por lo tanto no
+  tenemos los sustentos suficientes para descartarlas." Se intentó y la
+  fuente falló: no lo cuentes como algo que se dejó de mirar o de pedir, ni
+  como si la fuente hubiera dicho que no hay.
 - Números y fechas como los diría un analista ("lleva 2 años 1 mes en su
   última etapa activa"), no como el valor crudo
   ("antiguedadUltimaEtapaActivaMeses: 25").
@@ -945,11 +1012,11 @@ uno de la otra. Una de estas tres:
     negativas presentes pero no concluyentes, o tensión entre capacidad y
     comportamiento (buen comportamiento de pago pero ingreso apenas
     suficiente, por ejemplo).
-  · Falta información para decidir bien: faltan datos clave (temas no
-    consultados, sin empleo ni ingreso verificable, sin ningún historial
+  · Falta información para decidir bien: faltan datos clave (temas sin
+    respuesta, sin empleo ni ingreso verificable, sin ningún historial
     crediticio) y con ellos la decisión podría cambiar en cualquier
     dirección. No es un rechazo: no niegues por lo que no se sabe ni
-    apruebes por lo que nadie miró. En este caso missingInfo dice
+    apruebes sin los sustentos suficientes. En este caso missingInfo dice
     concretamente qué dato falta y por qué cambia la decisión, y
     accionesSugeridas qué pedirle o verificarle al cliente para
     conseguirlo.
@@ -1028,10 +1095,10 @@ positives, negatives, missingInfo y reasoning.
 `.trim();
 
 // ---------------------------------------------------------------------------
-// marco-v31: el buró de la institución (apagado; ver la nota v31 arriba)
+// marco-v33: el buró de la institución (apagado; ver las notas v31 y v33 arriba)
 // ---------------------------------------------------------------------------
 
-export const MARCO_VERSION_CON_BURO = "marco-v31";
+export const MARCO_VERSION_CON_BURO = "marco-v33";
 
 // Los grupos 3 y 4 cuando llega buroEquifax. Los criterios dentro del grupo
 // son, como los demás del marco, una propuesta a validar con el negocio
@@ -1051,12 +1118,12 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
    es según Equifax y a la fecha de su reporte (fechaDelReporte): decilo
    así.
    - Equifax no da la calificación de la Superintendencia (A1 a E): el
-     atraso se lee en días de mora, que es lo que esa calificación mide. Hoy,
-     maximoDiasDeMora de cada sistema; en los últimos 24 meses,
-     conductaDePago. Al día (0 días) es lo mejor; de 1 a 30 días, un atraso
-     leve; de 31 a 90, un atraso relevante; más de 90, un incumplimiento
-     grave (es la definición de impago de la institución). No escribas una
-     calificación que Equifax no da.
+     atraso se lee en días de mora. Hoy, maximoDiasDeMora de cada sistema;
+     en los últimos 24 meses, conductaDePago. Al día (0 días) es lo mejor;
+     de 1 a 30 días, un atraso leve; de 31 a 90, un atraso relevante; más de
+     90, un incumplimiento grave (es la definición de impago de la
+     institución). No escribas una calificación que Equifax no da ni la
+     deduzcas de los días: en el crédito comercial no sale sólo de ellos.
    - deudaActualTitular: lo que debe como titular, por sistema (bancos,
      cooperativas, comercial) y en total: saldo, por vencer, vencido, lo que
      no devenga intereses, en demanda judicial y castigado, la cuota mensual
@@ -1127,19 +1194,23 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
    buró no cubre.
    - figuraEnRegistroDeudores: figura en el registro de deudores.
    - numeroPrestamosIessBiess y diasMoraCreditoIessBiess son préstamos del
-     IESS/BIESS (quirografarios e hipotecarios). No los sumes a la deuda del
-     buró: Equifax puede traer el mismo préstamo del BIESS dentro de bancos.
+     IESS/BIESS (quirografarios e hipotecarios), y saldoPrestamosIessBiess
+     lo que debe por ellos (por vencer más vencido). No los sumes a la deuda
+     del buró: Equifax puede traer el mismo préstamo del BIESS dentro de
+     bancos.
    - Retail (numeroDeudasRetail, totalDeudaRetail, valorVencidoRetail,
      diasMoraMaximaRetail): deudas con casas comerciales según Proveedor_Info_1.
      Casi siempre son otras empresas que las del sector comercial de
      Equifax, y por eso se suman; alguna puede figurar en las dos fuentes.
      valorVencidoRetail es lo vencido; si es igual al total, toda esa deuda
      está vencida, no vigente.
+${CORTE_DEL_RETAIL}
 
    endeudamiento (bloque del perfil del modelo): la deuda sumada. Con
    buroEquifax, deudaPropiaBancos, deudaPropiaCooperativas y
    deudaPropiaSectorComercial son de Equifax (como titular, con lo que está
-   en atraso) y deudaPropiaRetail son las casas comerciales de Proveedor_Info_1;
+   en atraso) y deudaPropiaRetail son las casas comerciales de Proveedor_Info_1, a
+   la fecha de fechaCorteRetail: si pesa en la suma, aclaralo.
    deudaPropiaTotal las suma. deudaEnAtrasoTotal suma lo vencido, lo que no
    devenga intereses, lo que está en demanda y lo castigado.
    deudaComoGaranteOCodeudor va aparte: no es propia. Para decir cuánto
@@ -1148,17 +1219,6 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
    podés compararla con el ingreso reportado al IESS, aclarando que las
    casas comerciales no informan su cuota.
 
-`;
-
-// A7 (negocio, 2026-10-13): «Garantías:» pasa a «Deuda como codeudor o
-// garante». Con buró, el grupo 3 de Proveedor_Info_1 no llega y el rótulo vive en la
-// sección del buró; sin buró, es el único cambio contra v30.
-const DEUDA_COMO_CODEUDOR_EN_PROVEEDOR_INFO_1 = `   - Deuda como codeudor o garante: numeroOperacionesComoGaranteOCodeudor,
-     deudaComoGaranteOCodeudor y peorCalificacionComoGaranteOCodeudor son
-     deudas de otra persona que ésta respalda como codeudora o garante. No
-     son su comportamiento de pago: son un riesgo contingente (si el deudor
-     no paga, le pueden cobrar a ella). Una D o E como codeudora o garante
-     se menciona como riesgo contingente, nunca como "no pagó".
 `;
 
 interface Corte {
@@ -1176,23 +1236,17 @@ function aplicarCortes(texto: string, cortes: Corte[]): string {
     const unaVez = (marca: string, desde = 0) => {
       const i = salida.indexOf(marca, desde);
       if (i < 0 || salida.indexOf(marca, i + 1) >= 0) {
-        throw new Error(`marco-v31: la marca no está, o está más de una vez: ${JSON.stringify(marca.slice(0, 50))}`);
+        throw new Error(`marco con buró: la marca no está, o está más de una vez: ${JSON.stringify(marca.slice(0, 50))}`);
       }
       return i;
     };
     const inicio = unaVez(c.desde);
     const fin = unaVez(c.hasta);
-    if (fin < inicio) throw new Error(`marco-v31: ${JSON.stringify(c.desde.slice(0, 50))} termina antes de empezar`);
+    if (fin < inicio) throw new Error(`marco con buró: ${JSON.stringify(c.desde.slice(0, 50))} termina antes de empezar`);
     salida = salida.slice(0, inicio) + c.nuevo + salida.slice(fin);
   }
   return salida;
 }
-
-const CORTE_DEL_ROTULO: Corte = {
-  desde: "   - Garantías: numeroOperacionesComoGaranteOCodeudor,",
-  hasta: "   - numeroPrestamosIessBiess",
-  nuevo: DEUDA_COMO_CODEUDOR_EN_PROVEEDOR_INFO_1,
-};
 
 const CORTES_CON_BURO: Corte[] = [
   {
@@ -1224,17 +1278,14 @@ const CORTES_CON_BURO: Corte[] = [
   },
 ];
 
-const marcosV31 = new Map<boolean, string>();
+let marcoConSeccionDelBuro: string | null = null;
 
-// El texto de marco-v31 para una persona: con la sección del buró si su
-// perfil del modelo trae buroEquifax, y si no, el de v30 con el rótulo
-// nuevo. Se arma la primera vez que se pide: con el interruptor apagado,
-// nada de esto corre en producción.
+// El texto de marco-v33 para una persona: con la sección del buró si su
+// perfil del modelo trae buroEquifax, y si no, el de v32 tal cual. Se arma la
+// primera vez que se pide: con el interruptor apagado, nada de esto corre en
+// producción.
 export function marcoConElBuro(conBuroEquifax: boolean): string {
-  let texto = marcosV31.get(conBuroEquifax);
-  if (texto === undefined) {
-    texto = aplicarCortes(MARCO_INTERPRETATIVO, conBuroEquifax ? CORTES_CON_BURO : [CORTE_DEL_ROTULO]);
-    marcosV31.set(conBuroEquifax, texto);
-  }
-  return texto;
+  if (!conBuroEquifax) return MARCO_INTERPRETATIVO;
+  marcoConSeccionDelBuro ??= aplicarCortes(MARCO_INTERPRETATIVO, CORTES_CON_BURO);
+  return marcoConSeccionDelBuro;
 }

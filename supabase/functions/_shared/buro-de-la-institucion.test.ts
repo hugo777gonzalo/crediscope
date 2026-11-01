@@ -1,4 +1,4 @@
-// Qué consulta del buró lee un análisis (marco-v31). Si esto falla, el modelo
+// Qué consulta del buró lee un análisis (marco-v33). Si esto falla, el modelo
 // lee una consulta del ambiente de prueba (que contesta por otra persona),
 // una vencida, o el buró de una base que eligió otro.
 //

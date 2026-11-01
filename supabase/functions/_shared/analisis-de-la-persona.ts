@@ -208,7 +208,7 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
   // Desde el 2026-10-06 no hay "ajustes del criterio": todo cambio a lo que
   // lee el modelo es una versión nueva del marco (decisión del negocio).
   const disabledFields = await loadDisabledFields(db);
-  // El buró de la institución (marco-v31): con el interruptor apagado no se
+  // El buró de la institución (marco-v33): con el interruptor apagado no se
   // lee nada y el pedido es el de v30. Encendido, la deuda de bancos y
   // cooperativas sale de la consulta vigente del buró, si la persona la
   // tiene; nunca se consulta a Equifax desde acá (cada consulta se cobra).
@@ -292,7 +292,7 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
           // ver en Costos que el gasto sube con cada marco nuevo y no
           // con el volumen.
           marco: marcoVersion,
-          // Qué consulta del buró leyó (marco-v31). El id, nunca la cédula.
+          // Qué consulta del buró leyó (marco-v33). El id, nunca la cédula.
           ...(buro ? { consultaBuro: buro.consultaId } : {}),
         },
         esPrueba,

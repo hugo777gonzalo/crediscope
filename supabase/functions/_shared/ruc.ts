@@ -107,6 +107,25 @@ export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boo
   return establecimientos.length === 0 || establecimientos.some(establecimientoAbierto);
 }
 
+// ¿El SRI dio de baja este RUC en una depuración de su registro, y la actividad
+// era el trabajo en relación de dependencia? (estructura-v17, decisión del
+// negocio del 2026-10-31: no es una señal negativa.) El modelo leía a esa gente
+// como una actividad económica suspendida (c-79e1ac23), y el motivo sólo
+// viene en observ_solicitud_suspension. Medido en el último perfil de las 3.765
+// personas reales: de 1.276 con fecha de cese, 169 son «DEPURACION» (las demás,
+// «CESE DE ACTIVIDADES» 387, «FALLECIMIENTO» 7 y vacío 713), y de ellas 17 con
+// esta actividad; 77 de las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», que
+// quedan afuera hasta que el negocio decida. El RUC del establecimiento se
+// compara si viene: una persona puede tener más de un registro. Sin RUC, null.
+const ACTIVIDAD_EN_RELACION_DE_DEPENDENCIA = /RELACION DE DEPENDENCIA/;
+const sinTildes = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toUpperCase();
+
+export function rucDepuradoEnRelacionDeDependencia(c: AnyRecord | null | undefined, establecimientos: AnyRecord[] = []): boolean | null {
+  if (!c || !esRegistroDeRuc(c)) return null;
+  if (sinTildes(c.observ_solicitud_suspension) !== "DEPURACION") return false;
+  return establecimientos.some((e) => (!e.ruc || e.ruc === c.ruc) && ACTIVIDAD_EN_RELACION_DE_DEPENDENCIA.test(sinTildes(e.act_economica)));
+}
+
 // «Obligado a llevar contabilidad», del registro del RUC (estructura-v15, para
 // el nivel 1 del predictor de ingresos). Proveedor_Info_1 lo abrevia igual que el estado
 // de los establecimientos: en los crudos del 2026-10-03 (2.553 registros con

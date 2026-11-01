@@ -43,11 +43,15 @@
 // (RUTAS_QUE_NO_LLEGAN, más abajo), y todo número llega entero
 // (limpiarValores).
 //
-// Desde marco-v31 (apagado: CONFIG_LLM.buroDeLaInstitucion), cuando la
-// persona tiene una consulta vigente del buró de la institución, llega
-// `buroEquifax` EN LUGAR del buró de bancos y de cooperativas de Proveedor_Info_1
-// (un tema, una fuente: ver "El buró de la institución", más abajo). Sin
-// buró, el perfil sale idéntico al de marco-v30, byte a byte.
+// Desde marco-v32 llegan el corte del retail y el saldo de los préstamos del
+// IESS/BIESS, y la lista de temas de los que no se pudo obtener información
+// se llama temasSinRespuesta (disponibilidadDelModelo).
+//
+// Con marco-v33 (apagado: CONFIG_LLM.buroDeLaInstitucion), cuando la persona
+// tiene una consulta vigente del buró de la institución, llega `buroEquifax`
+// EN LUGAR del buró de bancos y de cooperativas de Proveedor_Info_1 (un tema, una
+// fuente: ver "El buró de la institución", más abajo). Sin buró, el perfil
+// sale idéntico al de marco-v32, byte a byte.
 //
 // Un cambio en lo que arma este archivo cambia lo que lee el modelo: es
 // una versión nueva del marco (MARCO_VERSION), con su fila en
@@ -157,25 +161,10 @@ export const ATRIBUTOS_PROTEGIDOS: Record<string, boolean> = {
 // la próxima versión del marco se arma con los resultados del predictor).
 export const CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN = ["laboral.obligadoALlevarContabilidadRuc"];
 
-// ---- Lo que estructura-v16 sumó al perfil y el marco todavía no explica ----
-//
-// - comportamientoBancario.saldoPrestamosIessBiess: el saldo de los préstamos
-//   del IESS/BIESS, que el marco no conoce (hoy sólo ve si hay y su mora).
-// - comportamientoBancario.fechaCorteRetail: el corte de las deudas retail
-//   (julio de 2025 en las 63 filas de las 91 personas con Equifax). El marco
-//   las lee como actuales.
-// Los valores corregidos de los campos que ya existían (el salario más alto, el
-// cargo, los empleadores, tieneCreditoIessBiess, diasMoraCreditoIessBiess) sí
-// llegan: son el mismo campo con el dato bien leído. Sin estos dos el mensaje
-// sigue siendo el de marco-v30; la sesión del marco los abre (cada uno es una
-// línea de esta lista) junto con el texto que los explique.
-export const CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN = ["comportamientoBancario.saldoPrestamosIessBiess", "comportamientoBancario.fechaCorteRetail"];
-
 export const RUTAS_QUE_NO_LLEGAN: string[] = [
   ...IDENTIFICADORES_QUE_NO_LLEGAN,
   ...Object.entries(ATRIBUTOS_PROTEGIDOS).filter(([, llega]) => !llega).map(([ruta]) => ruta),
   ...CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN,
-  ...CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN,
 ];
 
 function quitarRuta(nodo: unknown, partes: string[]): void {
@@ -261,8 +250,8 @@ function tipoDeCadaEmpleo(perfil: AnyRecord, laboral: AnyRecord): void {
 // Ahora recibe temas en palabras del negocio y DOS estados, no tres:
 //   - consultado: lo que el perfil dice de ese tema es un hecho, también un
 //     cero, un false o una lista vacía;
-//   - no consultado: alguna de sus fuentes no respondió o está apagada;
-//     no autoriza ninguna conclusión.
+//   - sin respuesta: alguna de sus fuentes no respondió o está apagada; no
+//     se pudo obtener esa información y no autoriza ninguna conclusión.
 // El diseño original tenía tres (con datos / sin datos / no medido). Se
 // dejó en dos porque "con datos" dice que la fuente respondió algo, no que
 // la persona tenga registros: el certificado de antecedentes penales
@@ -321,7 +310,7 @@ const TEMAS_DE_CONSULTA: Array<[tema: string, fuentes: string[]]> = [
 // no decir nada que declarar todo como no consultado.
 //
 // consultadosPorElBuro: los temas que trajo el buró de la institución
-// (marco-v31). Cuentan como consultados aunque la fuente de Proveedor_Info_1 no haya
+// (marco-v33). Cuentan como consultados aunque la fuente de Proveedor_Info_1 no haya
 // contestado: el modelo los lee del buró.
 export function disponibilidadPorTema(perfil: AnyRecord | null | undefined, consultadosPorElBuro: readonly string[] = []): AnyRecord | null {
   const meta = perfil?.metaConsulta as AnyRecord | undefined;
@@ -336,6 +325,14 @@ export function disponibilidadPorTema(perfil: AnyRecord | null | undefined, cons
     (consultadosPorElBuro.includes(tema) || fuentes.every((f) => respondieron.has(f)) ? temasConsultados : temasNoConsultados).push(tema);
   }
   return { temasConsultados, temasNoConsultados };
+}
+
+// Lo mismo, como lo lee el modelo (desde marco-v32). Con el nombre de la API el
+// modelo escribía "no se consultaron" y "nadie miró" de lo que se intentó y
+// falló (c-79e1ac23); temasNoConsultados sigue en el contrato de la API.
+function disponibilidadDelModelo(perfil: AnyRecord, consultadosPorElBuro: readonly string[] = []): AnyRecord | null {
+  const d = disponibilidadPorTema(perfil, consultadosPorElBuro);
+  return d ? { temasConsultados: d.temasConsultados, temasSinRespuesta: d.temasNoConsultados } : null;
 }
 
 // Las fuentes sin monto que ya se dicen en otro lado del perfil del modelo:
@@ -470,7 +467,7 @@ export function endeudamientoDelPerfilDelModelo(perfil: AnyRecord): AnyRecord | 
   };
 }
 
-// ---- El buró de la institución (marco-v31, apagado) ----
+// ---- El buró de la institución (marco-v33, apagado) ----
 //
 // Decisiones del negocio del 2026-10-13 y del 2026-10-16
 // (docs/propuesta-buro-de-la-institucion.md, secciones 0 y 2): cada IFI
@@ -507,8 +504,6 @@ export const QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO = [
   "numeroPrestamosIessBiess",
   "tieneCreditoIessBiess",
   "diasMoraCreditoIessBiess",
-  // Los dos de estructura-v16 son del IESS/BIESS y del retail, que se quedan:
-  // todavía no llegan al modelo (CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN, más abajo).
   "saldoPrestamosIessBiess",
   "numeroDeudasRetail",
   "diasMoraMaximaRetail",
@@ -754,9 +749,9 @@ export function armarPerfilDelModelo(
   // datos) y reemplaza a metaConsulta, que nombraba fuentes.
   delete copia.metaConsulta;
   if (bloqueDelBuro) {
-    return limpiarValores({ disponibilidad: disponibilidadPorTema(perfil, TEMAS_QUE_CUBRE_EL_BURO), ...conElBuro(copia, bloqueDelBuro) }) as AnyRecord;
+    return limpiarValores({ disponibilidad: disponibilidadDelModelo(perfil, TEMAS_QUE_CUBRE_EL_BURO), ...conElBuro(copia, bloqueDelBuro) }) as AnyRecord;
   }
-  return limpiarValores({ disponibilidad: disponibilidadPorTema(perfil), ...copia }) as AnyRecord;
+  return limpiarValores({ disponibilidad: disponibilidadDelModelo(perfil), ...copia }) as AnyRecord;
 }
 
 // El mensaje completo que recibe el modelo. Lo usan el análisis
