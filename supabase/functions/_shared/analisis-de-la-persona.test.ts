@@ -109,7 +109,7 @@ Deno.test("una persona cuya falla no se va queda sin score y a revisión manual"
     assertEquals((error as ConsultaIncompleta).revisionManual, true);
     assertEquals(llamadas(), 0);
     const constancia = db.escrito.find((e) => e.tabla === "audit_log");
-    assertEquals((constancia?.fila.meta as { revision_manual: boolean }).revision_manual, true);
+    assertEquals(constancia?.fila.meta, { ingestion_run_id: "corrida", client_profile_id: "perfil", fuentes: ["listaNegra"], lista: "fuentes-obligatorias-v1", revision_manual: true });
     assert(!db.escrito.some((e) => e.tabla === "analysis_results"));
 
     // En la API no se reintenta: la evaluación se cierra con el motivo.
@@ -133,7 +133,16 @@ Deno.test("un bloqueo con la consulta incompleta niega por control, sin modelo",
     assert(db.escrito.some((e) => e.tabla === "ingestion_runs" && e.fila.status === "completado"));
     const constancia = db.escrito.find((e) => e.tabla === "audit_log");
     assertEquals(constancia?.fila.action, "client.analyze");
-    assertEquals((constancia?.fila.meta as { sin_modelo: boolean }).sin_modelo, true);
+    assertEquals(constancia?.fila.meta, {
+      ingestion_run_id: "corrida",
+      client_profile_id: "perfil",
+      crediscope_score: 1,
+      recomendacion: "negar",
+      control_bloqueado: true,
+      sin_modelo: true,
+      fuentes: ["denuncias"],
+      lista: "fuentes-obligatorias-v1",
+    });
   });
 });
 

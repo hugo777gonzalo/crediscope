@@ -333,9 +333,11 @@ export async function requiereRevisionManual(db: any, clientId: string): Promise
   return !error && obligatoriasQueNoSeVan(data ?? []).length > 0;
 }
 
+const temasDe = (fuentes: string[]) => [...new Set(fuentes.map((f) => FUENTES[f].tema as string))];
+
 // Se nombran hasta seis, como en `porQueNoSirve`: con una caída faltan las 21.
 function listaDeTemas(fuentes: string[]): string {
-  const temas = [...new Set(fuentes.map((f) => FUENTES[f].tema as string))];
+  const temas = temasDe(fuentes);
   const nombrados = temas.slice(0, 6);
   const resto = temas.length - nombrados.length;
   if (resto > 0) return `${nombrados.join(", ")} y ${resto} ${resto === 1 ? "tema" : "temas"} más`;
@@ -344,7 +346,7 @@ function listaDeTemas(fuentes: string[]): string {
 
 /** Los temas que faltan, en palabras del analista y sin repetir. */
 export function temasSinRespuesta(estado: EstadoDeLaConsulta): string[] {
-  return [...new Set(obligatoriasSinRespuesta(estado).map((f) => FUENTES[f].tema as string))];
+  return temasDe(obligatoriasSinRespuesta(estado));
 }
 
 /**

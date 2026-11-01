@@ -171,13 +171,22 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   para c-79e1ac23. Las seis que contestaron bastaron para guardar el perfil, y
   el modelo dio un score leyendo menos de la cuarta parte de su deuda: el
   hipotecario del BIESS estaba en una fuente caída. Desde ese día el modelo no
-  corre sin `FUENTES_QUE_DECIDEN` (identidad, aportes, préstamos del BIESS y
-  buró de bancos; negocio). El corte va en el paso del perfil y no en el del
-  análisis: en Plus el buró va en el medio y se cobra. Y un perfil incompleto
-  no se reutiliza, o reintentar lee siempre el mismo. Medido ese día: 670 de
-  3.765 últimos perfiles quedaban así, casi todos del lote de paridad.
+  corre sin las fuentes obligatorias (`FUENTES`; negocio). El corte va en el
+  paso del perfil y no en el del análisis: en Plus el buró va en el medio y se
+  cobra. Y un perfil incompleto no se reutiliza, o reintentar lee siempre el
+  mismo.
+- **Una lista que frena se mide contra lo que puede esconder, no contra cuántas
+  consultas frena.** Las 5 primeras fuentes frenaban bien una caída, pero si
+  contestaban sólo ellas se perdían 68 de 73 bloqueos: no miraban lista negra,
+  listas de control, demandas ni denuncias. Con 21 no se pierde ninguno, y en un
+  día sano frenan 67 de 2.567 consultas (2,6%), 62 de ellas por denuncias. Y
+  había dos listas: `FUENTES_QUE_DECIDEN` frenaba y `TEMAS_CRITICOS` sólo impedía
+  «aprobar», con `faltante` leído al revés en cada una. Quedó una sola tabla.
 - **"La fuente dice que no hay" y "la fuente no contestó" son cosas
-  distintas.** El catálogo tiene que poder decir las dos.
+  distintas.** El catálogo tiene que poder decir las dos. `faltante` junta las
+  dos: el 2026-10-03, sin un error marcado, 62 personas figuraban sin denuncias
+  por una falla de la fuente, y 15 de ellas tenían denuncias ocho días antes. La
+  forma de decir «no hay» es de cada fuente: se mide cuáles nunca contestan vacío.
 - **Dos formas del mismo dato conviven.** Los perfiles anteriores a
   marco-v20 traen `laboral.empleoActual` (objeto); los nuevos,
   `empleosActuales` (arreglo). Leer solo una forma cuenta de menos y no

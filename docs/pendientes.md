@@ -58,9 +58,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
   punto 2.15).
 
-- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las fuentes que
-  deciden (`FUENTES_QUE_DECIDEN`). Alcanza a 670 de los 3.765 últimos perfiles reales, que hay que
-  reconsultar antes de analizarlos. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
+- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las 21 fuentes
+  obligatorias (`FUENTES`, `calidad-de-la-consulta.ts`). Alcanza a 769 de los 3.765 últimos perfiles
+  reales, que hay que reconsultar antes de analizarlos, y 12 personas quedan a revisión manual. Falta
+  verlo en la bandeja, que hoy las muestra «Sin analizar», y en los lotes de consulta y la API: son las
+  sesiones 2 y 3 de `docs/propuesta-fuentes-obligatorias.md`, sección 12. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
   sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
   fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
   el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
@@ -241,12 +243,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    esa versión: el texto de `antiguedadEmpleoActualMeses` null (desde v14 también significa
    «su afiliación vigente no es trabajo»: 37 de 2.567 perfiles) y, si el negocio lo pide,
    sacar los atributos de la persona (hoy llegan como contexto sin peso en el score, grupo 12).
-5. **Declaración de disponibilidad completa.** Faltan `cobertura` y `suficienteParaPuntaje`
-   (no emitir score cuando la consulta no alcanza el mínimo evaluable;
-   `docs/declaracion-de-disponibilidad.md`). Con un mínimo de seis temas quedaban 40 de 2.567
-   (1,6%) por debajo, medido el 2026-10-03. Preguntas: ¿esos seis temas?, y ¿un caso no
-   evaluable sólo se avisa o se guarda como análisis sin score (exige score nulo en la base y
-   en las pantallas)?
+5. **Declaración de disponibilidad completa.** Falta `cobertura`
+   (`docs/declaracion-de-disponibilidad.md`). `suficienteParaPuntaje` quedó resuelto con las
+   fuentes obligatorias (`FUENTES`, negocio, 2026-10-31): un caso que no se puede evaluar no se
+   guarda como análisis, salvo la negativa de un control.
 6. **Observaciones sobre los análisis de marco-v28** (en pausa desde el 2026-10-09): la regla de
    capacidad, bloqueos que no son de cumplimiento (48 de 77), demandas viejas que pesan (56),
    calificaciones sin monto en atraso, saldo de Proveedor_Info_1 repetido con otro banco (68), y que el

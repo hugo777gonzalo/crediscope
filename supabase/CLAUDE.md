@@ -54,7 +54,8 @@ su guía: `docs/equifax.md`.
 - `capacidad-de-pago.ts` → `datosDeCapacidad()` y `evaluarCapacidad()` — si la
   cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
   Una deuda sin cuota se lista aparte, nunca como cero, y una respuesta de Equifax
-  sin reporte no es «no debe» (`elBuroTraeDetalle()`). La usan la pantalla
+  sin reporte no es «no debe» (`elBuroTraeDetalle()`): Plus corta al terminar el
+  paso del buró, antes de pagar el modelo. La usan la pantalla
   `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
   El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
@@ -111,9 +112,9 @@ su guía: `docs/equifax.md`.
     diferida) se cierra ya con `plazo_vencido`. El id público es `ev_` + el uuid en base32.
   - `pedido-de-evaluacion-api.ts` valida el pedido (campos de más = error; persona,
     autorización, referencia y operador obligatorios; `modalidad` sin decir es `basico`);
-    `evaluacion-de-la-api.ts` arma la `Evaluacion`. Con `completitud: parcial` (falta un
-    tema crítico) la recomendación nunca es «aprobar» (D6): la regla es de la entrega, el
-    análisis guardado no se toca. El mensaje que leyó el modelo no sale.
+    `evaluacion-de-la-api.ts` arma la `Evaluacion`. Con `completitud: parcial` (faltó una
+    secundaria de peso; ver `FUENTES`) la recomendación nunca es «aprobar» (D6): la regla es
+    de la entrega, el análisis guardado no se toca. El mensaje que leyó el modelo no sale.
   - En Plus, sin consulta de Equifax vigente, la API consulta y se cobra (negocio,
     2026-10-21), con el tope diario de siempre. Pruebas de punta a punta: sólo con el
     sandbox; nunca con personas reales en producción.
@@ -194,10 +195,24 @@ su guía: `docs/equifax.md`.
   dígito es falsa (hay personas reales con 6).
 - Una consulta que no contestó ninguna fuente no se guarda: sale una
   ficha en blanco igual a la de alguien sin historial.
-- El modelo no corre sin `FUENTES_QUE_DECIDEN` (`calidad-de-la-consulta.ts`,
-  negocio, 2026-10-31): `analizarPersona()` lanza `ConsultaIncompleta` antes de
-  llamarlo. Los pasos de las evaluaciones cortan ya en el perfil, antes del
-  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue, y sólo lo pide un administrador (`pidioUnaPrueba()`).
+- **La lista de fuentes es una sola: `FUENTES`** (`calidad-de-la-consulta.ts`,
+  negocio, 2026-10-31): 21 obligatorias, 8 secundarias de peso y el resto, cada una
+  con su forma de «no hay». `decisionDeLaConsulta()` dice qué pasa antes del modelo,
+  y la leen `analizarPersona()`, los pasos de las evaluaciones y «Análisis con IA»;
+  el lote usa `elPerfilSePuedeAnalizar()`.
+  - Falta una obligatoria: el modelo no corre (`ConsultaIncompleta`). `faltante` no
+    cuenta como respuesta, salvo renta y antecedentes. Los pasos cortan ya en el
+    perfil, antes del buró que se cobra, y no reutilizan un perfil incompleto.
+  - Falta y hay un bloqueo: niega por control, sin modelo (`resultadoSinModelo()`,
+    `llm_model` nulo), y el buró y la capacidad de esa evaluación no corren
+    (`seNiegaPorControl()`).
+  - La falla no se va (`obligatoriasQueNoSeVan()`: el mismo `faltante` un día antes,
+    sin haber contestado en el medio): sin score y a revisión manual, sin un
+    administrador que autorice. Un `error` no cuenta: una caída lo repite en todos.
+  - Falta una secundaria de peso: se analiza, y la entrega es `parcial` y nunca
+    «aprobar» (`recomendacionDeLaEntrega()`: API, solicitud y «Análisis con IA»; el
+    análisis guardado no se toca). `esPrueba` sigue, y sólo lo pide un administrador
+    (`pidioUnaPrueba()`).
 - "La fuente dice que no hay" ≠ "la fuente no contestó".
   `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
   `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.
