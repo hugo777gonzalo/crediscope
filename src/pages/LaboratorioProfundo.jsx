@@ -11,7 +11,7 @@ import PestanaCandidatas from "../components/laboratorio/PestanaCandidatas.jsx";
 import { PestanaImportancia } from "../components/laboratorio/PestanasPesadas.jsx";
 
 // Módulo 6 del negocio: Descubrimiento profundo de variables. ¿Qué no vio el
-// modelo? Del crudo de Novadata a la estructura, a lo que leyó el modelo y a
+// modelo? Del crudo de Proveedor_Info_1 a la estructura, a lo que leyó el modelo y a
 // lo que pasó con el crédito; los casos donde se equivocó; y el camino de
 // una variable nueva hasta una propuesta.
 

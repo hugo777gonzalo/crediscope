@@ -88,6 +88,8 @@ const TABLAS = !id ? TABLAS_SIN_PERSONA : [
   ["consultas_equifax", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
   // Las solicitudes de crédito y su evaluación (133): la persona puede no estar en clients al crearse.
   ["solicitudes", `or=(client_id.eq.${id},identificacion.eq.${CEDULA})`],
+  // Cada evaluación del predictor de ingresos (141): sólo existe de quien está en clients.
+  ["estimaciones_de_ingreso", `client_id=eq.${id}`],
   ["ingestion_runs", `client_id=eq.${id}`],
   ["llm_llamadas", `client_id=eq.${id}`],
   ["lote_items", `cedula=eq.${CEDULA}`],
@@ -175,7 +177,7 @@ const localesEnResearch = () => {
 if (bandera("exportar")) {
   const exportacion = { generado: new Date().toISOString(), titular: CEDULA, datos, crudo: [] };
   for (const ruta of crudos) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-novadata/${ruta}`, { headers: cabeceras });
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-proveedor-info-1/${ruta}`, { headers: cabeceras });
     if (!r.ok) {
       exportacion.crudo.push({ ruta, error: `HTTP ${r.status}` });
       continue;
@@ -209,7 +211,7 @@ if (bandera("suprimir")) {
 
   let borrados = 0;
   for (const ruta of resultado.crudos ?? []) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-novadata`, {
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-proveedor-info-1`, {
       method: "DELETE",
       headers: cabeceras,
       body: JSON.stringify({ prefixes: [ruta] }),

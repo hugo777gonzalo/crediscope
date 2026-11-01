@@ -1,6 +1,6 @@
 // Recalcula la clasificación de ingresos de los perfiles guardados desde el
 // crudo (la carpeta local y, lo que no tiene, el depósito), sin volver a
-// consultar Novadata.
+// consultar Proveedor_Info_1.
 //
 // Nació con fuentes-v8 / estructura-v7 (2026-09-26): el aporte bajo el propio
 // RUC pasó a ser cuenta propia y la nómina dejó de contar a la propia
@@ -10,7 +10,7 @@
 // QUÉ TOCA Y QUÉ NO
 //
 // Sólo el ÚLTIMO perfil de cada cliente, y sólo si el crudo es de ESE
-// perfil (research/novadata-raw-2026-09-25 guarda el perfilId): un crudo de
+// perfil (research/proveedor-info-1-raw-2026-09-25 guarda el perfilId): un crudo de
 // otro día reescribiría el perfil con datos viejos. Del perfil reemplaza
 // fuentesIngreso y los cuatro campos de laboral que cambiaron en
 // estructura-v7; todo lo demás queda byte a byte como estaba. Las columnas
@@ -31,7 +31,7 @@
 // que cambió sin subir la versión, antes de commitearla) y conserva la nota
 // del recálculo anterior, que dice de dónde venían.
 //
-// Uso:  node scripts/recalcular-fuentes-ingreso.mjs [--seco] [--forzar] [--carpeta=research/novadata-raw-2026-09-25]
+// Uso:  node scripts/recalcular-fuentes-ingreso.mjs [--seco] [--forzar] [--carpeta=research/proveedor-info-1-raw-2026-09-25]
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
@@ -43,7 +43,7 @@ const SECO = process.argv.includes("--seco");
 const FORZAR = process.argv.includes("--forzar");
 // Desde un worktree, research/ y .env.functions son los de la carpeta
 // principal (_comun/entorno.mjs), igual que en recalcular-grupos.mjs.
-const CARPETA = path.join(raizPrincipal(RAIZ), process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
+const CARPETA = path.join(raizPrincipal(RAIZ), process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
 const HOY = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date());
 
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
@@ -83,18 +83,20 @@ async function pedir(url, opciones = {}) {
 // corta (CLAUDE.md).
 const ultimoPorCliente = new Map();
 {
-  let total = null;
-  for (let desde = 0; total === null || desde < total; desde += 1000) {
-    const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
-      { headers: { Prefer: "count=exact" } },
+  // Por clave (id mayor al último leído) y hasta una página vacía: con
+  // `count=exact` más `offset` la consulta pasó el límite de la base
+  // (statement timeout, 2026-10-31) antes de traer nada.
+  let despues = null;
+  for (;;) {
+    const { cuerpo } = await pedir(
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000${despues ? `&id=gt.${despues}` : ""}`,
     );
-    if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
     for (const p of cuerpo) {
       const actual = ultimoPorCliente.get(p.client_id);
       if (!actual || p.created_at > actual.created_at) ultimoPorCliente.set(p.client_id, p);
     }
     if (cuerpo.length === 0) break;
+    despues = cuerpo.at(-1).id;
   }
 }
 

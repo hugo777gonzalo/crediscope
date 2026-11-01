@@ -19,7 +19,7 @@
 -- El catálogo de segmentos es fijo (viene de ORDEN_GRUPOS en
 -- classify.ts), por eso solo se permite UPDATE de modo/motivo, no
 -- INSERT/DELETE desde la app — mismo criterio que
--- novadata_resource_config/standard_profile_field_config.
+-- proveedor_info_1_resource_config/standard_profile_field_config.
 
 create table standard_profile_segment_config (
   grupo       text primary key,

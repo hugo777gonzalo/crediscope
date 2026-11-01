@@ -1,4 +1,4 @@
-// La consulta de una persona a Novadata y su Perfil estandarizado guardado,
+// La consulta de una persona a Proveedor_Info_1 y su Perfil estandarizado guardado,
 // sin pasar por HTTP: ingesta -> estructura estandarizada -> persistencia.
 //
 // Antes vivía entera en el handler de `structure-client`. Se sacó acá para
@@ -12,14 +12,15 @@
 // DEVUELVEN con su status y su cuerpo; los errores inesperados se dejan
 // lanzar, y quien llama los convierte en su 500.
 
-import { consultarTodasLasFuentes, duracionesPorFuente, personaNoExiste } from "./novadata-client.ts";
+import { consultarTodasLasFuentes, duracionesPorFuente, personaNoExiste } from "./proveedor-info-1-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "./process.ts";
 import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
 import { columnasDelPerfil } from "./columnas-del-perfil.ts";
-import { guardarCrudoNovadata } from "./crudo-novadata.ts";
+import { guardarCrudoProveedorInfo1 } from "./crudo-proveedor-info-1.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import { loadCorteIess, loadDisabledResources } from "./runtime-config.ts";
 import { cuantasFuentesContestaron, estadoPorFuente, laConsultaSirve, porQueNoSirve } from "./calidad-de-la-consulta.ts";
+import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 export interface OpcionesDeConsultaDePerfil {
   // Cliente de servicio de supabase-js: escribe en clients, client_profiles,
@@ -38,7 +39,7 @@ export interface OpcionesDeConsultaDePerfil {
   // Se mezcla en audit_log.meta junto a client_profile_id. Desde un guion,
   // { origen: "guion", base_legal }; desde la pantalla, nada.
   metaDeAuditoria?: Record<string, unknown>;
-  // Devuelve también el crudo de Novadata. Sólo lo pide un guion con la clave
+  // Devuelve también el crudo de Proveedor_Info_1. Sólo lo pide un guion con la clave
   // de guiones: quien llama decide si lo honra (ver structure-client).
   devolverCrudo?: boolean;
 }
@@ -50,17 +51,15 @@ export type ResultadoDeConsultaDePerfil =
   // `cuerpo` es el mismo JSON que devolvía la función.
   | { ok: false; status: 404 | 503; cuerpo: Record<string, unknown> };
 
-export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Promise<ResultadoDeConsultaDePerfil> {
-  const { db, cedula, ingresado, actorId } = o;
+// Qué dice lo que contestó la fuente, antes de guardar nada. Sale aparte para que
+// el sandbox (sandbox-pasos.ts) decida con la misma regla que una consulta real.
+export function leerLaConsulta(
+  raw: RespuestaProveedorInfo1,
+  o: Pick<OpcionesDeConsultaDePerfil, "cedula" | "ingresado" | "tipoIdentificacion">,
+): { ok: true; estadoDeCadaFuente: Record<string, string> } | { ok: false; status: 404 | 503; cuerpo: Record<string, unknown> } {
+  const { cedula, ingresado } = o;
 
-  // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
-  //    Recursos deshabilitados en novadata_resource_config se saltan
-  //    (ver _shared/runtime-config.ts).
-  const disabledResources = await loadDisabledResources(db);
-  const inicioIngesta = Date.now();
-  const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
-
-  // 2. ¿La fuente contestó algo?
+  // ¿La fuente contestó algo?
   //
   // Esto va ANTES de mirar si la persona existe, porque si ninguna
   // fuente respondió tampoco sabemos si existe. El 2026-09-15 una
@@ -86,7 +85,7 @@ export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Pr
     };
   }
 
-  // 3. ¿Existe esta persona?
+  // ¿Existe esta persona?
   //
   // La fuente responde HTTP 200 aunque no exista: lo dice adentro del
   // cuerpo. Sin esta comprobación se guardaba un Perfil del Cliente
@@ -110,6 +109,24 @@ export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Pr
       },
     };
   }
+
+  return { ok: true, estadoDeCadaFuente };
+}
+
+export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Promise<ResultadoDeConsultaDePerfil> {
+  const { db, cedula, actorId } = o;
+
+  // 1. Ingesta (con credenciales de servicio — sin pedirle nada al usuario)
+  //    Recursos deshabilitados en proveedor_info_1_resource_config se saltan
+  //    (ver _shared/runtime-config.ts).
+  const disabledResources = await loadDisabledResources(db);
+  const inicioIngesta = Date.now();
+  const raw = await consultarTodasLasFuentes(cedula, undefined, disabledResources);
+
+  // 2 y 3. ¿Contestó la fuente? ¿Existe la persona?
+  const lectura = leerLaConsulta(raw, o);
+  if (!lectura.ok) return lectura;
+  const { estadoDeCadaFuente } = lectura;
 
   // 4. Cliente: obtener o crear.
   //
@@ -168,7 +185,7 @@ export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Pr
     .select("*")
     .single();
   if (saveError) throw saveError;
-  saved.crudo_ruta = await guardarCrudoNovadata(db, client.id, saved.id, cedula, raw);
+  saved.crudo_ruta = await guardarCrudoProveedorInfo1(db, client.id, saved.id, cedula, raw);
 
   // 8. Auditoría (mismo patrón que analyze-client)
   await db.from("audit_log").insert({
@@ -181,7 +198,7 @@ export async function consultarYGuardarPerfil(o: OpcionesDeConsultaDePerfil): Pr
     meta: { ...o.metaDeAuditoria, client_profile_id: saved.id },
   });
 
-  // Desde la 090 el crudo queda en Storage (crudo-novadata.ts). Antes se
+  // Desde la 090 el crudo queda en Storage (crudo-proveedor-info-1.ts). Antes se
   // descartaba, y sin crudo una regla nueva no se puede aplicar a los
   // perfiles guardados: el 2026-09-25 hubo que reconsultar la cartera para
   // eso. Devolverlo en la respuesta sigue sirviendo al guion de lotes, que

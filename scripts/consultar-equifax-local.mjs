@@ -2,7 +2,7 @@
 // hace la función desplegada (consultar-equifax).
 //
 // CADA CONSULTA SE COBRA y Equifax no pone tope (negocio, 2026-10-12). Por eso
-// este guion se comporta distinto de los de Novadata y Aval:
+// este guion se comporta distinto de los de Proveedor_Info_1 y Aval:
 //
 //   - POR DEFECTO SOLO SIMULA: valida, mira si hay una consulta vigente que se
 //     reutilizaría, mide el consumo del día contra el tope... y no llama a

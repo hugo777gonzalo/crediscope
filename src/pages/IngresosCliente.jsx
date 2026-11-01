@@ -22,7 +22,7 @@ import Cargando from "../components/ui/Cargando.jsx";
 // es, cuánto se reporta, qué tan sostenido y qué pedir), y el resto detrás
 // de "Ver detalle completo". Lo largo se pliega en cada tarjeta.
 //
-// Lee el perfil guardado: el crudo de Novadata no se guarda, así que no hay
+// Lee el perfil guardado: el crudo de Proveedor_Info_1 no se guarda, así que no hay
 // nada que recalcular acá. Un perfil anterior a fuentes-v4 no tiene el
 // detalle (historial mes a mes, actividad, renta por año) y la pantalla lo
 // dice en vez de mostrar esas secciones vacías. Reconsultar es gratis y lo

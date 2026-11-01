@@ -1,4 +1,4 @@
-// Sube a Storage el crudo de Novadata guardado en research/ (090).
+// Sube a Storage el crudo de Proveedor_Info_1 guardado en research/ (090).
 //
 // Hasta el 2026-10-03 el crudo se descartaba y sólo existía el respaldo
 // local de la reconsulta de la cartera. Con esto, los perfiles que tienen
@@ -9,8 +9,8 @@
 // la misma persona. Sube el archivo tal cual (con su capturadoEl original).
 //
 // Uso:
-//   node scripts/subir-crudo-guardado.mjs research/novadata-raw-2026-09-25 --seco
-//   node scripts/subir-crudo-guardado.mjs research/novadata-raw-2026-09-25 [--limite=N]
+//   node scripts/subir-crudo-guardado.mjs research/proveedor-info-1-raw-2026-09-25 --seco
+//   node scripts/subir-crudo-guardado.mjs research/proveedor-info-1-raw-2026-09-25 [--limite=N]
 
 import fs from "node:fs";
 import path from "node:path";
@@ -19,8 +19,8 @@ import { pathToFileURL } from "node:url";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
-const { BUCKET_CRUDO_NOVADATA, rutaDelCrudo } = await import(
-  pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/crudo-novadata.ts")).href
+const { BUCKET_CRUDO_PROVEEDOR_INFO_1, rutaDelCrudo } = await import(
+  pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/crudo-proveedor-info-1.ts")).href
 );
 
 const env = Object.fromEntries(
@@ -32,7 +32,7 @@ if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("Falta 
 const auth = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
 
 const carpeta = process.argv[2];
-if (!carpeta) throw new Error("Falta la carpeta del crudo (ej. research/novadata-raw-2026-09-25)");
+if (!carpeta) throw new Error("Falta la carpeta del crudo (ej. research/proveedor-info-1-raw-2026-09-25)");
 const seco = process.argv.includes("--seco");
 // Constancia de la corrida (ejecuciones_operativas, 117): sin ella no se toca la base.
 await abrirEjecucion({ url: env.SUPABASE_URL, clave: env.SUPABASE_SERVICE_ROLE_KEY, guion: "subir-crudo-guardado", seco: seco });
@@ -68,7 +68,7 @@ async function trabajar() {
     const ruta = rutaDelCrudo(p.client_id, p.id);
     try {
       const cuerpo = zlib.gzipSync(fs.readFileSync(path.join(carpeta, porPerfil.get(p.id))));
-      const s = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET_CRUDO_NOVADATA}/${ruta}`, {
+      const s = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${BUCKET_CRUDO_PROVEEDOR_INFO_1}/${ruta}`, {
         method: "POST",
         headers: { ...auth, "content-type": "application/gzip", "x-upsert": "false" },
         body: cuerpo,

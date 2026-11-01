@@ -11,10 +11,10 @@
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).
 
-import type { RespuestaNovadata, StandardClientProfile } from "./types.ts";
+import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo } from "./ruc.ts";
+import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo, rucDepuradoEnRelacionDeDependencia } from "./ruc.ts";
 import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
@@ -99,7 +99,7 @@ function dentroUltimos3Meses(fecha: unknown): boolean {
 }
 
 // contribuyente/get_contribuyente_inf: un registro cuenta como "tuvo RUC"
-// solo si trae .ruc Y .fecha_inscripcion_ruc (Novadata a veces devuelve
+// solo si trae .ruc Y .fecha_inscripcion_ruc (Proveedor_Info_1 a veces devuelve
 // un registro "cascarón" con estado.codigo=OK pero todos los campos
 // null cuando la persona nunca tuvo RUC — ver c-636cb156).
 // ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
@@ -147,10 +147,12 @@ function redondear(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-// La escala de calificaciones del buró, de mejor a peor. La
-// Superintendencia la define por días de atraso.
+// La escala de calificaciones del buró, de mejor a peor. En consumo sale de
+// los días de atraso; en el comercial, no sólo de ellos.
 const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
-const CALIFICACIONES_EN_ATRASO = new Set(["B1", "B2", "C1", "C2", "D", "E"]);
+// A1 es la única sin atraso (estructura-v17, negocio, 2026-10-31). Sumar A2 y A3
+// no cambia a nadie hoy: de sus 647 operaciones propias, ninguna viene sin deuda.
+const CALIFICACIONES_EN_ATRASO = new Set(["A2", "A3", "B1", "B2", "C1", "C2", "D", "E"]);
 
 // La peor o la mejor calificación de un conjunto de operaciones. Hasta
 // estructura-v7 se ordenaban alfabéticamente, y "AL" -- fuera de la
@@ -201,7 +203,7 @@ function obj(multi: AnyRecord | null | undefined, recurso: string, campo: string
 // La regla de cobro vive en demandas.ts desde estructura-v11, junto con
 // las categorías de las demás demandas.
 
-// pn_supa/pn_supa/novadata (pensión alimenticia): el nombre completo
+// pn_supa y su variante del proveedor (pensión alimenticia): el nombre completo
 // viene en 2 órdenes de palabras distintos según la fuente
 // (pn_inf_basica: "Apellido1 Apellido2 Nombre1 Nombre2"; pn_supa:
 // "Nombre1 Nombre2 Apellido1 Apellido2") — se compara por conjunto de
@@ -214,7 +216,7 @@ function mismoNombre(a: unknown, b: unknown): boolean {
   return na !== "" && na === nb;
 }
 
-// pn_supa/novadata trae representanteLegal (representa a quien RECIBE
+// La variante del proveedor de pn_supa trae representanteLegal (representa a quien RECIBE
 // la pensión) y obligadoPrincipal (quien DEBE pagarla) como 2 personas
 // DISTINTAS. BUG real encontrado auditando el reporte del usuario
 // (cédula c-18fa16ee): el código anterior marcaba pensionAlimenticiaEnMora
@@ -226,7 +228,7 @@ function mismoNombre(a: unknown, b: unknown): boolean {
 // clientes de la muestra: 6 de 12 casos con pensionAlimenticiaEnMora=true
 // eran en realidad este mismo error (cliente = representanteLegal, no
 // obligado) — no es un caso aislado.
-// pn_supa (sin /novadata) NO trae obligadoPrincipal, solo
+// pn_supa (sin /proveedor-info-1) NO trae obligadoPrincipal, solo
 // representanteLegal — si el cliente coincide con ese campo, por
 // eliminación NO es el obligado (son los únicos 2 roles del registro);
 // si no coincide con ninguno de los 2 campos conocidos, no se penaliza
@@ -263,15 +265,7 @@ function esClienteObligadoSupa(p: AnyRecord, nombreCliente: string | null): bool
 // cuenta lo que hay. Contar es lo único afirmable sin inventar una
 // estructura que nadie vio.
 
-// Novadata marca "sigue empleado" con una fecha centinela de 1900 en
-// vez de dejar el campo vacío. Sin esto, todo empleo histórico parecía
-// terminado.
 const ANTES_DE_1950 = new Date("1950-01-01").getTime();
-function sinFechaDeSalida(v: unknown): boolean {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return true;
-  return n < ANTES_DE_1950 || n > Date.now();
-}
 
 function aniosDesdeMs(v: unknown): number | null {
   const n = Number(v);
@@ -283,6 +277,128 @@ function aniosDesdeMs(v: unknown): number | null {
 function textoDe(v: unknown): string | null {
   const t = String(v ?? "").trim();
   return t === "" ? null : t;
+}
+
+// ---- Empleadores y préstamos del IESS que vienen de más de una fuente ----
+//
+// estructura-v16 (2026-10-31). Los campos del historial de empleos salían de
+// trabajoHistoricos, que trae como mucho un registro y casi siempre viejo:
+// en c-82cc2afc, un solo empleo de 2018 mientras el mecanizado y los aportes
+// traen 6 empleadores y un sueldo máximo casi nueve veces mayor; en
+// c-5ee429cc, una pasantía de 2019 con la salida en 1900-01-01 (la fecha
+// centinela de «sigue empleado») que figuraba como cargo vigente, y de ahí el
+// «constituido hace 56 años» y un sueldo que chocaba con el ingreso reportado.
+// El modelo lo leyó como una contradicción y pidió revisar. Medido sobre 3.765
+// personas, el salario más alto quedaba por debajo de un sueldo ya reportado
+// en 1.068 de 1.682 y el cargo vigente no era el de ningún empleo actual en
+// 1.356 de 1.857.
+
+// El RUC como se compara: sólo dígitos, y la cédula de un patrono persona
+// natural es su RUC sin el 001 (trabajoHistoricos la trae a veces así y el
+// IESS con el 001). Cualquier otra longitud no es un RUC.
+function rucComparable(v: unknown): string | null {
+  const d = String(v ?? "").replace(/\D/g, "");
+  if (d.length === 10) return `${d}001`;
+  return d.length === 13 ? d : null;
+}
+
+// Siglas de la forma societaria que cada fuente escribe a su manera
+// («S. A.», «S.A.», «SA», «CIA. LTDA.»).
+const SIGLAS_SOCIETARIAS = new Set(["S", "A", "SA", "CIA", "LTDA", "CA", "C", "L"]);
+
+function nombreComparable(v: unknown): string {
+  return String(v ?? "")
+    .toUpperCase()
+    .replace(/Ã‘/g, "N")
+    .replace(/[?�]/g, "N")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Z0-9]+/g, " ")
+    .split(" ")
+    .filter((p) => p !== "" && !SIGLAS_SOCIETARIAS.has(p))
+    .join(" ");
+}
+
+// Cuántos empleadores distintos hay entre los registros de varias fuentes. El
+// RUC manda; un registro sin RUC se une al empleador de igual nombre que sí lo
+// trae, y si no hay ninguno cuenta por su nombre. Un mismo empleador llega con
+// grafías distintas según la fuente, y por eso no se cuenta por el texto.
+function empleadoresDistintos(registros: { ruc: string | null; nombre: string | null }[]): number {
+  const rucPorNombre = new Map<string, string>();
+  for (const r of registros) {
+    const nombre = nombreComparable(r.nombre);
+    if (r.ruc && nombre && !rucPorNombre.has(nombre)) rucPorNombre.set(nombre, r.ruc);
+  }
+  const claves = new Set<string>();
+  for (const r of registros) {
+    const nombre = nombreComparable(r.nombre);
+    const ruc = r.ruc ?? (nombre ? rucPorNombre.get(nombre) ?? null : null);
+    if (ruc) claves.add(`r:${ruc}`);
+    else if (nombre) claves.add(`n:${nombre}`);
+  }
+  return claves.size;
+}
+
+// Los préstamos del IESS/BIESS vienen por dos caminos con identificadores
+// distintos: los de la base interna (tcredQuirografarios/tcredHipotecarios) y
+// los de creditoQuirografario/creditoHipotecario (data.prestamos). Cada uno
+// trae operaciones que el otro no ve: medido sobre 560 personas con las dos
+// fuentes, 1.428 operaciones de la base contra 1.396 de los préstamos y ninguna
+// con el mismo número de operación ni la misma fecha y monto. Hasta
+// estructura-v15 sólo se leía la base interna y en c-82cc2afc, con 9 préstamos
+// vigentes, el perfil decía que no tenía crédito del IESS/BIESS (308 de 918
+// personas con créditos formales quedaban así).
+//
+// Una operación que esté en las dos se cuenta una vez, por su número o, si no
+// coincide, por su fecha de concesión y monto. Manda la de la base interna, con
+// los días de mora más altos de las dos.
+type OperacionIess = { numero: string; concesion: string; monto: number | null; saldo: number; diasMora: number };
+
+function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]): OperacionIess[] {
+  const sinCeros = (v: unknown) => String(v ?? "").trim().replace(/^0+/, "");
+  const base: OperacionIess[] = deLaBase.map((r) => ({
+    // Los hipotecarios llevan otros nombres de campo (sr...), y su mora no se
+    // leía: diasMoraAfi no existe en ellos.
+    numero: sinCeros(r.numeroOperacion ?? r.srNrooperaciongaf),
+    concesion: String(r.fechaConsesion ?? r.srFecprimerdesembolso ?? "").trim(),
+    monto: num(r.montoTransferido ?? r.srMontofinanciado),
+    saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
+    diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
+  }));
+  const porNumero = new Map<string, OperacionIess>();
+  const porFechaYMonto = new Map<string, OperacionIess>();
+  const clave = (o: OperacionIess) => (o.concesion && o.monto !== null ? `${o.concesion}|${Math.round(o.monto)}` : null);
+  for (const o of base) {
+    if (o.numero) porNumero.set(o.numero, o);
+    const k = clave(o);
+    if (k) porFechaYMonto.set(k, o);
+  }
+  const salida = [...base];
+  for (const r of deLosPrestamos) {
+    const o: OperacionIess = {
+      numero: sinCeros(r.nroOperacion),
+      concesion: String(r.fechaConcesion ?? "").trim(),
+      monto: num(r.valorPrestamo),
+      saldo: (num(r.valorPorVencer) ?? 0) + (num(r.valorVencido) ?? 0),
+      diasMora: num(r.diasMora) ?? 0,
+    };
+    const k = clave(o);
+    const repetida = (o.numero ? porNumero.get(o.numero) : undefined) ?? (k ? porFechaYMonto.get(k) : undefined);
+    if (repetida) repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
+    else salida.push(o);
+  }
+  return salida;
+}
+
+// «31/07/25» o «31/07/2025» a «2025-07-31». Proveedor_Info_1 escribe el corte del
+// retail con el año de dos cifras.
+function fechaDeCorte(v: unknown): string | null {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (!m) return null;
+  const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  const d = new Date(Date.UTC(anio, Number(m[2]) - 1, Number(m[1])));
+  if (d.getUTCFullYear() !== anio || d.getUTCMonth() !== Number(m[2]) - 1 || d.getUTCDate() !== Number(m[1])) return null;
+  return d.toISOString().slice(0, 10);
 }
 
 // v3: metaConsulta pasa de contar nueve bloques a nombrar las 52
@@ -327,7 +443,7 @@ function textoDe(v: unknown): string | null {
 // tipo no dice el tema ("OTROS", "ESPECIAL"); la lesión enorme es de
 // propiedad y la aprehensión de un auto sin matrícula, de tránsito
 // (demandas.ts).
-// estructura-v13 (2026-10-03): Novadata manda el estado de algunos
+// estructura-v13 (2026-10-03): Proveedor_Info_1 manda el estado de algunos
 // establecimientos abreviado ("ABI", "CER"); quien tenía el suyo en "ABI"
 // quedaba sin RUC activo. Una sola comparación, en ruc.ts.
 // estructura-v14 (2026-10-20, decisión del negocio): la antigüedad en el
@@ -339,14 +455,26 @@ function textoDe(v: unknown): string | null {
 // obligadoALlevarContabilidadRuc, del mismo RUC de referencia que las fechas
 // (ruc.ts). Lo pide el nivel 1 del predictor de ingresos: sin él pierde 0,027
 // de R² y no certifica «al menos 2.000» a nadie (investigación, 12.30).
-export const PROCESS_VERSION = "estructura-v15"; // ver docs/estructura-estandarizada.md
+// estructura-v16 (2026-10-31, de la revisión de casos reales del negocio): los
+// campos del historial de empleos leen las tres fuentes del IESS y no sólo
+// trabajoHistoricos (salario más alto, empleadores registrados), el cargo es el
+// del empleo actual y los datos del empleador vigente sólo salen si es el
+// empleador de un empleo actual (por RUC); los préstamos del IESS/BIESS se leen
+// también de creditoQuirografario/creditoHipotecario, con su saldo
+// (saldoPrestamosIessBiess), y el retail guarda el corte de sus deudas
+// (fechaCorteRetail). Medido en la nota de cada helper y en el PR.
+// estructura-v17 (2026-10-31, decisión del negocio): laboral suma
+// rucDepuradoEnRelacionDeDependencia (ruc.ts), porque el motivo de la baja del
+// RUC no estaba en el perfil y sin él el marco no puede dejarla neutra. Y A2 y
+// A3 cuentan como calificaciones en atraso en operacionesEnAtrasoSinMonto.
+export const PROCESS_VERSION = "estructura-v17"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
 // vez de estar fijo en el código: el proveedor no avisa cuándo publica
 // uno nuevo, pero el primer cliente que llega con datos más frescos lo
 // delata. Si no se pasa, se usa el último conocido.
-export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, corteIess?: string): { profile: StandardClientProfile; duracionFuentesMs: number } {
+export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: string, corteIess?: string): { profile: StandardClientProfile; duracionFuentesMs: number } {
   const g = raw.general?.data as AnyRecord | undefined;
   const persona = g?.personaNatural as AnyRecord | undefined;
   // Una sola tabla de fuentes, sin la capa de bloques que había en el
@@ -481,9 +609,9 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
   // Registro RUC de referencia para las fechas expuestas: el activo si
   // hay uno, si no el primero disponible (persona natural normalmente
-  // tiene un solo registro, pero Novadata devuelve un array).
+  // tiene un solo registro, pero Proveedor_Info_1 devuelve un array).
   const rucReferencia = (contribuyenteRegistros.find(rucActivoHoy) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
-  // Estado y antigüedad de la actividad económica: Novadata/SRI solo
+  // Estado y antigüedad de la actividad económica: Proveedor_Info_1/SRI solo
   // guardan la fecha del cese MÁS RECIENTE y la del reinicio MÁS
   // RECIENTE, no un historial completo de ciclos — por eso "16 años
   // desde el inicio" puede ser engañoso si la persona reinició y volvió
@@ -636,7 +764,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // todavía, mejor no reportar un número que dé falsa confianza.
   //
   // "Último snapshot confirmado" por registro/grupo — tiess trae un
-  // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Novadata
+  // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Proveedor_Info_1
   // nunca vio una salida registrada", NO "sigue activo hoy" (mismo
   // hueco de dato que afiliacionIess/estadoAfiliacionIess más abajo).
   // BUG real corregido acá (cédula c-18fa16ee, validado contra el
@@ -820,37 +948,66 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
       // quien le paga. Un empleador constituido hace treinta años y
       // ACTIVA no es lo mismo que uno de situación INDEFINIDA, y hasta
       // hoy el análisis no veía ninguna de las dos cosas.
+      //
+      // Desde estructura-v16 sólo se usa cuando es el empleador de un empleo
+      // actual (mismo RUC): la fuente trae como mucho un registro, casi
+      // siempre viejo, y leerlo como «el vigente» daba el cargo, la
+      // antigüedad del empleador y el sueldo de un empleo de hace años (ver
+      // la nota de empleadoresDistintos, arriba).
       const historial = arr(fuentes, "trabajoHistoricos", "trabajosHistoricos");
       const registros = historial.map((h) => {
         const t = (h.personaTrabajo as AnyRecord | undefined) ?? {};
         const patrono = (t.personaPatrono as AnyRecord | undefined) ?? {};
         return {
-          vigente: sinFechaDeSalida(t.fechaAfiliacionHasta),
           ingreso: Number(t.fechaIngreso ?? 0),
           salario: num((t.personaIngreso as AnyRecord | undefined)?.valor),
-          cargo: textoDe((t.cargo as AnyRecord | undefined)?.nombre),
           esJuridica: String(patrono.tipoPersona ?? "").toUpperCase() === "JURIDICA",
           situacion: textoDe((patrono.situacionLegal as AnyRecord | undefined)?.nombre),
           tipoCompania: textoDe((patrono.tipoCompania as AnyRecord | undefined)?.nombre),
           antiguedadEmpleador: aniosDesdeMs(patrono.fechaConstitucion),
-          patronoId: textoDe(patrono.identificacion),
+          ruc: rucComparable(patrono.identificacion),
+          nombre: textoDe(patrono.nombre) ?? textoDe(patrono.nombreComercial),
         };
       });
 
-      // El vigente más reciente. Si ninguno figura sin fecha de salida,
-      // no se inventa uno: los campos quedan en null y eso se lee como
-      // "no hay empleo vigente registrado acá", que es la verdad.
-      const vigente = registros.filter((r) => r.vigente).sort((a, b) => b.ingreso - a.ingreso)[0] ?? null;
-      const salarios = registros.map((r) => r.salario).filter((v): v is number => typeof v === "number" && v > 0);
+      // Las tres fuentes del IESS: el historial, el mecanizado (un registro
+      // por mes y empleo) y los aportes. El techo de lo que ganó y los
+      // empleadores que tuvo salen de las tres juntas.
+      const delMecanizado = mecanizado.map((r) => {
+        const patrono = (r.personaPatrono as AnyRecord | undefined) ?? {};
+        return {
+          ruc: rucComparable(r.rucEmpresa ?? patrono.identificacion),
+          nombre: textoDe(r.nombreEmpresa) ?? textoDe(patrono.nombre) ?? textoDe(patrono.nombreComercial),
+          salario: num((r.personaIngreso as AnyRecord | undefined)?.valor),
+        };
+      });
+      const delosAportes = tiess.map((t) => ({ ruc: rucComparable(t.rucEmp), nombre: textoDe(t.nomEmp), salario: num(t.salario) }));
+      const salarios = [...registros, ...delMecanizado, ...delosAportes]
+        .map((r) => r.salario)
+        .filter((v): v is number => typeof v === "number" && v > 0);
+
+      // El cargo es el del empleo actual (el del mecanizado o, sin él, el de
+      // los aportes del corte). Con dos empleos, el mejor pagado. Sin empleo
+      // actual no hay cargo vigente: antes salía de un registro histórico.
+      const cargoVigente =
+        [...empleosActuales]
+          .filter((e) => textoDe(e.cargo) !== null)
+          .sort((a, b) => (b.salarioAprox ?? -1) - (a.salarioAprox ?? -1))[0]?.cargo ?? null;
+
+      // El empleador del historial sirve sólo si es el de un empleo actual,
+      // comparado por RUC.
+      const rucsActuales = new Set(rucesDelEmpleoActual.map(rucComparable).filter((r): r is string => r !== null));
+      const delEmpleoActual = registros.filter((r) => r.ruc !== null && rucsActuales.has(r.ruc));
+      const vigente = [...delEmpleoActual].sort((a, b) => b.ingreso - a.ingreso)[0] ?? null;
 
       return {
-        historialEmpleosRegistrados: registros.length,
+        historialEmpleosRegistrados: empleadoresDistintos([...registros, ...delMecanizado, ...delosAportes]),
         salarioMasAltoRegistrado: salarios.length > 0 ? Math.max(...salarios) : null,
-        cargoVigente: vigente?.cargo ?? null,
+        cargoVigente: textoDe(cargoVigente),
         empleadorVigenteSituacionLegal: vigente?.situacion ?? null,
         empleadorVigenteTipoCompania: vigente?.tipoCompania ?? null,
         empleadorVigenteAntiguedadAnios: vigente?.antiguedadEmpleador ?? null,
-        empleadoresJuridicos: new Set(registros.filter((r) => r.esJuridica && r.patronoId).map((r) => r.patronoId)).size,
+        empleadoresJuridicos: delEmpleoActual.length > 0 ? new Set(delEmpleoActual.filter((r) => r.esJuridica).map((r) => r.ruc)).size : null,
       };
     })(),
     fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
@@ -863,6 +1020,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     antiguedadUltimaEtapaActivaMeses,
     mesesInactivoActividadEconomica,
     tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
+    rucDepuradoEnRelacionDeDependencia: rucDepuradoEnRelacionDeDependencia(rucReferencia, establecimientos),
     obligadoALlevarContabilidadRuc: obligadoALlevarContabilidad(rucReferencia),
     antiguedadEmpleoActualMeses,
     duracionEmpleoMasLargoMeses,
@@ -905,7 +1063,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
 
   // ---- seguridadSocial ----
   // BUG real (auditoría pedida por el usuario, cédulas c-ba4c16f0 y
-  // c-18fa16ee): pn_afiliacion_iess viene "faltante" (Novadata no pudo
+  // c-18fa16ee): pn_afiliacion_iess viene "faltante" (Proveedor_Info_1 no pudo
   // traer datos de ESE recurso puntual) en 32 de los 40 clientes de la
   // muestra -- incluyendo personas con historial laboral extenso y real
   // en tiess/mecanizado. afiliadoIessActivo devolvía `false` en todos
@@ -963,7 +1121,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // valorColateralVehiculos: para colaterales importa el valor más
   // aproximado a mercado ACTUAL, tomando por cada vehículo el máximo
   // entre sus distintas fuentes de precio (auditoría pedida por el
-  // usuario — Novadata da varios precios por vehículo que no
+  // usuario — Proveedor_Info_1 da varios precios por vehículo que no
   // coinciden: valorAvaluo usa depreciación lineal SRI y castiga fuerte
   // vehículos viejos, ej. $82 en una moto 2016). A propósito NO incluye
   // precioVenta: para vehículos viejos ese campo parece ser el precio
@@ -1023,7 +1181,18 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   const propias = buroCredito.filter((r) => !esGarantia(r));
   const garantias = buroCredito.filter(esGarantia);
   const retails = arr(fuentes, "retails", "retails");
-  const creditosIess = [...tcredQ, ...tcredH];
+  // Los préstamos del IESS/BIESS de las dos fuentes, sin contar dos veces una
+  // operación que esté en ambas (estructura-v16, ver operacionesIessBiess).
+  const creditosIess = operacionesIessBiess(
+    [...tcredQ, ...tcredH],
+    [...arr(fuentes, "creditoQuirografario", "prestamos"), ...arr(fuentes, "creditoHipotecario", "prestamos")],
+  );
+  // La fecha de `retails` es el corte de la casa comercial, no del día de la
+  // consulta (fechaActualizacion): las 63 filas de las 91 personas con
+  // Equifax traen julio de 2025, y la pantalla presentaba esa deuda como
+  // actual. Si las filas traen cortes distintos, el perfil guarda el más
+  // antiguo: la deuda no es más reciente que eso.
+  const cortesRetail = retails.map((r) => fechaDeCorte(r.fecha)).filter((f): f is string => f !== null).sort();
   const vencido = (r: AnyRecord) => {
     const saldomora = num(r.saldomora) ?? 0;
     return saldomora > 0 ? saldomora : num(r.mora) ?? 0;
@@ -1053,8 +1222,10 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
     totalDeudaRetail: redondear(retails.reduce((s, r) => s + (num(r.totalDeuda) ?? 0), 0)),
     valorVencidoRetail: redondear(retails.reduce((s, r) => s + (num(r.valorVencido) ?? 0), 0)),
+    fechaCorteRetail: cortesRetail[0] ?? null,
     tieneCreditoIessBiess: creditosIess.length > 0,
-    diasMoraCreditoIessBiess: creditosIess.length ? Math.max(...creditosIess.map((c) => num(c.diasMoraAfi) ?? 0)) : null,
+    diasMoraCreditoIessBiess: creditosIess.length ? Math.max(...creditosIess.map((c) => c.diasMora)) : null,
+    saldoPrestamosIessBiess: creditosIess.length ? redondear(creditosIess.reduce((s, c) => s + c.saldo, 0)) : null,
   };
 
   // ---- comportamientoCooperativas ----
@@ -1078,13 +1249,13 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
     cuotaMensualTotal: redondear(coop.reduce((s, c) => s + (num(c.val_cuota_credito) ?? 0), 0)),
   };
 
-  // ---- comportamientoInterno (grupo nuevo — scoring propio Novadata) ----
+  // ---- comportamientoInterno (grupo nuevo — scoring propio Proveedor_Info_1) ----
   const comportamientoInterno: StandardClientProfile["comportamientoInterno"] = {
-    novadataResultadoHabitoPago: (personasIncump?.resultadoHabitoPago as string) ?? null,
-    novadataPerfilInterno: (personasIncump?.perfilInterno as string) ?? null,
-    novadataDiasMoraMaxima: num(personasIncump?.diasMoraMax),
-    novadataDiasMoraVigente: num(personasIncump?.diasMoraVigentes),
-    novadataSaldoCapitalVigente: num(personasIncump?.saldoCapital),
+    proveedorInfo1ResultadoHabitoPago: (personasIncump?.resultadoHabitoPago as string) ?? null,
+    proveedorInfo1PerfilInterno: (personasIncump?.perfilInterno as string) ?? null,
+    proveedorInfo1DiasMoraMaxima: num(personasIncump?.diasMoraMax),
+    proveedorInfo1DiasMoraVigente: num(personasIncump?.diasMoraVigentes),
+    proveedorInfo1SaldoCapitalVigente: num(personasIncump?.saldoCapital),
     esClienteInterno: Boolean(personasIncump?.identificacion),
   };
 
@@ -1133,7 +1304,7 @@ export function buildStandardProfile(raw: RespuestaNovadata, cedula: string, cor
   // (booleano) se reemplaza por este split — ya no existe como campo.
   const demandas = arr(fuentes, "demandas", "demandas");
   const demandasOfendido = arr(fuentes, "demandasOfendido", "demandas");
-  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaNovadata", "supas")];
+  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaProveedorInfo1", "supas")];
   // Solo cuenta como deuda/mora DEL CLIENTE la que le corresponde como
   // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
   // c-18fa16ee aparecía en mora por una deuda de otra persona).

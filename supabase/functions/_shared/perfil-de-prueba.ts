@@ -5,8 +5,8 @@
 // No es un archivo de pruebas: lo importa perfil-del-modelo-buro.test.ts,
 // que compara lo que arma el perfil del modelo de una persona SIN buró contra
 // perfil-del-modelo-sin-buro.esperado.json. Ese archivo se generó con el
-// código de marco-v30, antes de sumar el buró de la institución: si cambia, el
-// modelo lee otra cosa y es una versión nueva del marco.
+// código de marco-v30 y se regeneró con el de marco-v32: si cambia, el modelo
+// lee otra cosa y es una versión nueva del marco.
 //
 // Trae deuda en bancos, cooperativas y casas comerciales, lo de codeudor o
 // garante, préstamos del IESS/BIESS y una fuente que no contestó, para que la
@@ -53,8 +53,10 @@ export function perfilDePrueba(): Record<string, unknown> {
       diasMoraMaximaRetail: 12,
       totalDeudaRetail: 640.5,
       valorVencidoRetail: 80.2,
+      fechaCorteRetail: "2025-07-31",
       tieneCreditoIessBiess: true,
       diasMoraCreditoIessBiess: 0,
+      saldoPrestamosIessBiess: 2300.4,
     },
     comportamientoCooperativas: {
       numeroOperaciones: 1,
@@ -101,11 +103,11 @@ export function perfilDePrueba(): Record<string, unknown> {
     contacto: { numeroDireccionesUltimos12Meses: 1, numeroTelefonosUltimos12Meses: 1 },
     transitoVehicular: { tieneLicenciaVigente: true, puntosLicencia: 30, numeroMultas: 0, valorAdeudadoTransito: 0 },
     comportamientoInterno: {
-      novadataResultadoHabitoPago: null,
-      novadataPerfilInterno: null,
-      novadataDiasMoraMaxima: null,
-      novadataDiasMoraVigente: null,
-      novadataSaldoCapitalVigente: null,
+      proveedorInfo1ResultadoHabitoPago: null,
+      proveedorInfo1PerfilInterno: null,
+      proveedorInfo1DiasMoraMaxima: null,
+      proveedorInfo1DiasMoraVigente: null,
+      proveedorInfo1SaldoCapitalVigente: null,
       esClienteInterno: false,
     },
     metaConsulta: {
@@ -117,7 +119,7 @@ export function perfilDePrueba(): Record<string, unknown> {
         "vehiculos", "general", "direcciones", "telefonos", "correo", "licenciaConducir",
       ],
       fuentesSinDatos: [
-        "deudores", "deudasFirmes", "demandasOfendido", "pensionAlimenticia", "pensionAlimenticiaNovadata", "denuncias",
+        "deudores", "deudasFirmes", "demandasOfendido", "pensionAlimenticia", "pensionAlimenticiaProveedorInfo1", "denuncias",
         "antecedentesPenales", "listasControl", "listaNegra", "impedimentoCargosPublicos", "sercop", "empleados",
         "cumplimientoPatronal", "jubilados", "pensionista", "afiliacionIssfacCertMedico", "afiliacionIssfacFuerzaArmada",
         "afiliacionIsspol", "afiliacionSiisspol", "contribuyente", "establecimientoActEconomica", "sriImpuestoRenta",

@@ -83,6 +83,10 @@ código no molesta.
 | (no existía: el que fue rechazado o desistió no tenía estado) | **No aprobado** | Negocio, 2026-10-18 |
 | Perfil del Cliente | **Perfil de la Persona** (menú, exportaciones, la hoja del Excel de lotes y unos 25 textos) | Negocio, 2026-10-18. Renombrado ese día (24 textos); el control corta con el nombre viejo |
 | (la decisión Aprobado / Rechazado no se puede marcar) | La marca **el analista en la solicitud**: Aprobado, Rechazado o Desistió, con motivo | Negocio, 2026-10-18; construido ese día (134) |
+| Operaciones propias en buró de crédito | **Líneas de deuda propias en buró de crédito** | Negocio, 2026-10-31. Proveedor_Info_1 agrupa por entidad, tipo y calificación: cuenta filas, no operaciones. El control corta con el nombre viejo |
+| Empleos registrados en total · Empleos en el historial | **Empleadores registrados en el IESS** | Negocio, 2026-10-31. Desde estructura-v16 cuenta empleadores distintos. El control corta con los nombres viejos |
+| Corte del retail · Saldo de préstamos IESS/BIESS (provisorios) | Se quedan así | Negocio, 2026-10-31 |
+| Sueldo más alto registrado | **Salario más alto registrado** | Negocio, 2026-10-31. El mismo dato se llamaba distinto en Fuentes de Ingreso y en el Perfil de la Persona. El control corta con el nombre viejo |
 
 ## 3. Un concepto, un nombre
 
@@ -95,7 +99,7 @@ código no molesta.
 | La persona evaluada | **persona**. **Cliente** sólo es quien tiene un crédito (estados Cliente activo y Cliente cerrado). «Perfil del Cliente» sigue siendo el nombre de producto en pantalla hasta que se aplique «Perfil de la Persona» (decidido el 2026-10-18) | «Titular», «sujeto» (sólo en derechos del titular); «cliente» para quien no tiene crédito | Decidido el 2026-10-12 con el árbol de la persona (`docs/modelo-de-la-persona.md`). El control avisa de cada «cliente» suelto. |
 | Los estados de la persona | **Prospecto · En proceso · Preaprobado · Aprobado · No aprobado · Cliente activo · Cliente cerrado** (decididos; el nombre de pantalla se aplica con los estados) | llamar «Estado» a los dos estados en una pantalla; «Solicitante» | El **estado de la persona** no es el **estado del análisis** (Analizado, Sin analizar, No se completó, La consulta falló) ni el **estado de la evaluación** de la API (`en_proceso`, `completada`...). Hoy sólo existe el del análisis. |
 | Lo que cuelga de la persona | **Solicitudes · Direcciones · Empleos · Referencias · Documentos · Scores · Créditos** | «historial» para una de ellas | Los nombres del árbol del negocio; una pantalla nueva usa éstos. |
-| Qué se consulta | **fuente de datos** (Novadata, Aval) | «proveedor» a secas, «servicio» | «Fuentes de ingreso» ≠ «fuentes de datos»: son dos cosas. Sólo la segunda es una fuente que se consulta. |
+| Qué se consulta | **fuente de datos** (Proveedor_Info_1, Aval) | «proveedor» a secas, «servicio» | «Fuentes de ingreso» ≠ «fuentes de datos»: son dos cosas. Sólo la segunda es una fuente que se consulta. |
 | Un conjunto de cédulas consultadas de una vez | **lote** (Consultas por lote) | «corrida» para esto | «Corrida» es una acción que dispara muchas llamadas al modelo (Costos). |
 | Los resultados de crédito que sube la institución | **carga** (Laboratorio) | «lote» | Un lote consulta; una carga trae resultados. |
 | Congelado de una cartera para analizarla | **corte** (Laboratorio) | | No confundir con el «corte del IESS»: son dos cosas. |

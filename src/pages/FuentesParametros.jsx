@@ -11,7 +11,7 @@ import { plural } from "../lib/formatos.js";
 // Parámetros operativos del módulo.
 //
 // El corte del IESS ya no se edita: lo deducen los propios datos
-// (corte_iess_vigente en la base, migración 083). Novadata no avisa
+// (corte_iess_vigente en la base, migración 083). Proveedor_Info_1 no avisa
 // cuando actualiza el IESS (más o menos cada dos meses); el mes nuevo se
 // vuelve vigente cuando lo respaldan 20 clientes consultados. Esta
 // pantalla decía que había que cambiar una constante y desplegar, y
@@ -54,7 +54,7 @@ export default function FuentesParametros() {
         <h3>
           Corte del registro del IESS
           <InfoTooltip etiqueta="Cómo se deduce el corte">
-            Novadata actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
+            Proveedor_Info_1 actualiza el registro del IESS más o menos cada dos meses y no avisa cuando lo hace. Todas las reglas de
             vigencia se miden contra ese corte, no contra la fecha de hoy. El corte se deduce sólo: es el mes más reciente en
             el que aparecen al menos 20 personas consultadas en los últimos 90 días. Quien trae un mes posterior se clasifica
             con el suyo, sin mover el corte de todos.

@@ -45,10 +45,10 @@ create table lab_reconsultas (
   id                 uuid primary key default gen_random_uuid(),
   solicitud_id       uuid not null unique references lab_solicitudes(id) on delete cascade,
   carga_id           uuid not null references lab_cargas(id) on delete cascade,
-  origen             text not null check (origen in ('novadata', 'simulada')),
+  origen             text not null check (origen in ('proveedor_info_1', 'simulada')),
   fecha              date not null,
   corte_iess         text check (corte_iess ~ '^[0-9]{4}-[0-9]{2}$'),
-  -- novadata: depósito crudo-novadata (la reconsulta real es un perfil más,
+  -- proveedor_info_1: depósito crudo-proveedor-info-1 (la reconsulta real es un perfil más,
   -- client_profile_id). simulada: depósito lab-archivos, bajo simulacion/;
   -- nunca es un client_profiles ni toca la ficha de nadie.
   crudo_ruta         text not null,

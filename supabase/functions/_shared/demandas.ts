@@ -24,7 +24,7 @@ type AnyRecord = Record<string, unknown>;
 
 // ---- Texto ----
 //
-// Novadata manda algunas letras acentuadas rotas: cada una llega como dos
+// Proveedor_Info_1 manda algunas letras acentuadas rotas: cada una llega como dos
 // caracteres de reemplazo (U+FFFD), y la letra original se perdió
 // ("TR��NSITO"). En la cartera son 22 demandas y 11 palabras, todas
 // conocidas: casi todas terminan en "-CIÓN", y hay cuatro sueltas.

@@ -114,7 +114,7 @@ el motivo y la lista de documentos.
   Los emprendedores (hasta USD 300.000) presentan **dos declaraciones
   semestrales**. "Declaraciones de IVA de los últimos 6 meses" sólo existe en
   el régimen general. Hoy no sabemos el régimen de cada cliente (pendiente
-  con Novadata: ¿expone el RIMPE?).
+  con Proveedor_Info_1: ¿expone el RIMPE?).
 
 ### Marco oficial
 
@@ -150,7 +150,7 @@ el motivo y la lista de documentos.
    reciente y quienes tienen un indicio de ingreso mayor. El resto de la
    cartera, plegado.
 3. **El documento según el régimen tributario y el tipo de crédito.**
-   Necesita saber si Novadata expone el RIMPE y las respuestas de la
+   Necesita saber si Proveedor_Info_1 expone el RIMPE y las respuestas de la
    sección 3.
 4. **Arreglos de la regla, que no dependen del diseño:**
    - sacar a las sintéticas;

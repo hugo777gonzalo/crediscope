@@ -15,6 +15,7 @@ import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
 import { plural } from "../lib/formatos.js";
 import { useBuro, NOMBRE_DEL_BURO } from "../lib/useBuro.js";
+import { elPerfilSePuedeAnalizar, porQueNoSePuedeAnalizar } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 
 // "Análisis con IA" — nombre comercial del scoring por LLM. Antes de
 // correrlo, decide si reutiliza el Perfil del Cliente ya consultado
@@ -90,6 +91,11 @@ export default function AnalisisIA() {
     try {
       const freshProfile = await structureClient(cedula);
       setProfile(freshProfile);
+      // La función también lo frena: acá se evita pedirle algo que va a rechazar.
+      if (!elPerfilSePuedeAnalizar(freshProfile.estado_por_fuente)) {
+        setError(porQueNoSePuedeAnalizar(freshProfile.estado_por_fuente));
+        return;
+      }
       const fresh = await analyzeClient(cedula, { profileId: freshProfile.id });
       setResult(fresh);
     } catch (err) {
@@ -100,13 +106,17 @@ export default function AnalisisIA() {
   }
 
   const profileReciente = profile && diasDesde(profile.created_at) <= VENTANA_REUTILIZACION_DIAS;
+  const consultaIncompleta = Boolean(profile) && !elPerfilSePuedeAnalizar(profile.estado_por_fuente);
+  const sePuedeReutilizar = profileReciente && !consultaIncompleta;
   const nombre = nombreCorto(profile?.standard_profile?.identidad?.nombreCompleto);
 
-  const avisoReutilizacion = profile
-    ? profileReciente
-      ? `Perfil de la Persona consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
-      : `Perfil de la Persona tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`
-    : "Sin Perfil de la Persona todavía — hace falta consultar la fuente de datos antes de analizar.";
+  const avisoReutilizacion = !profile
+    ? "Sin Perfil de la Persona todavía — hace falta consultar la fuente de datos antes de analizar."
+    : consultaIncompleta
+      ? porQueNoSePuedeAnalizar(profile.estado_por_fuente)
+      : profileReciente
+        ? `Perfil de la Persona consultado ${Math.floor(diasDesde(profile.created_at)) === 0 ? "hoy" : `hace ${plural(Math.floor(diasDesde(profile.created_at)), "día")}`} — se reutiliza sin volver a consultar la fuente de datos.`
+        : `Perfil de la Persona tiene más de ${VENTANA_REUTILIZACION_DIAS} días — hace falta reconsultar la fuente de datos antes de analizar.`;
 
   return (
     <div>
@@ -153,7 +163,7 @@ export default function AnalisisIA() {
             <ScoreGauge score={result?.fallo ? null : result?.crediscope_score} />
 
             <div className="crediscope-cliente-acciones">
-              {!loading && profileReciente ? (
+              {!loading && sePuedeReutilizar ? (
                 <button className="crediscope-btn" onClick={handleAnalyzeReuse} disabled={analyzing}>
                   <Sparkles size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
                   {analyzing ? "Analizando..." : "Analizar"}
@@ -162,14 +172,14 @@ export default function AnalisisIA() {
               {!loading ? (
                 <button className="crediscope-btn crediscope-btn-ghost" onClick={handleReconsultAndAnalyze} disabled={analyzing}>
                   <RefreshCw size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
-                  {analyzing ? "Analizando..." : profileReciente ? "Reconsultar y analizar" : "Consultar y analizar"}
+                  {analyzing ? "Analizando..." : profile ? "Reconsultar y analizar" : "Consultar y analizar"}
                 </button>
               ) : null}
               {!loading ? (
                 <p className="crediscope-cliente-aviso">
                   <InfoTooltip texto={avisoReutilizacion} />
                   <span className="crediscope-muted">
-                    {profile ? (profileReciente ? "Usa la última consulta guardada" : "Requiere reconsultar la fuente") : "Sin consulta previa"}
+                    {!profile ? "Sin consulta previa" : consultaIncompleta ? "La última consulta quedó incompleta" : profileReciente ? "Usa la última consulta guardada" : "Requiere reconsultar la fuente"}
                   </span>
                 </p>
               ) : null}

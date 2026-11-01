@@ -229,6 +229,7 @@ export default function ReporteCompletoEquifax({ estructura }) {
         <Fila etiqueta="Clase de contribuyente">{textoDeEquifaxLegible(a?.claseDeContribuyente) ?? "—"}</Fila>
         <Fila etiqueta="Lleva contabilidad">{siNo(a?.obligadoALlevarContabilidad)}</Fila>
         <Fila etiqueta="Inicio de actividades">{formatearDia(a?.fechaDeInicioDeActividades)}</Fila>
+        <Fila etiqueta="Suspensión definitiva">{formatearDia(a?.fechaDeSuspensionDefinitiva)}</Fila>
       </Seccion>
 
       <Seccion

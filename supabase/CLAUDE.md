@@ -33,6 +33,9 @@ su guía: `docs/equifax.md`.
     de esa misma persona se reutiliza en vez de volver a preguntar (E1).
   - La huella no cuenta `cache_control` ni `max_tokens`.
   - `puntuarPedido()` llama al modelo con un pedido ya armado.
+  `MARCO_VERSION` (marco-v32) entra con el despliegue, sin interruptor;
+  `MARCO_VERSION_CON_BURO` (marco-v33, v32 más el buró) la enciende
+  `CONFIG_LLM.buroDeLaInstitucion`, y es lo único que ese interruptor enciende.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
   de temas que el perfil no trae (toma el número de versión libre al
   encenderse; la v29 fue E27). Corta el marco vigente por marcas,
@@ -53,13 +56,14 @@ su guía: `docs/equifax.md`.
   fórmula invertida (con el seguro y el redondeo, invertirla pasaba el tope).
 - `capacidad-de-pago.ts` → `datosDeCapacidad()` y `evaluarCapacidad()` — si la
   cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
-  Una deuda sin cuota se lista aparte, nunca como cero. La usan la pantalla
+  Una deuda sin cuota se lista aparte, nunca como cero, y una respuesta de Equifax
+  sin reporte no es «no debe» (`elBuroTraeDetalle()`). La usan la pantalla
   `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
   El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
 - `modalidades.ts` y la función `evaluar-solicitud` (133) — la solicitud de
   crédito (tabla `solicitudes`) y su evaluación en Básico, Pro o Plus. Corre UN
-  paso por llamada (Novadata y el modelo juntos pasan los 150 s) y llama a las
+  paso por llamada (Proveedor_Info_1 y el modelo juntos pasan los 150 s) y llama a las
   funciones de cada módulo con la sesión de quien pidió; toma el paso con la
   fila que devolvió la actualización (un paso de Equifax se cobra, y la
   consulta que falta sólo la hace un admin). El modelo y la capacidad van por
@@ -85,7 +89,7 @@ su guía: `docs/equifax.md`.
   sólo con la evaluación terminada y el modelo en Aprobar. El código de «En
   proceso» es `con_solicitud`: `en_proceso` ya es un estado de la evaluación en
   el contrato. Cliente activo y Cliente cerrado esperan a que existan los créditos.
-- **La API para instituciones (núcleo, 2026-10-21; todavía sin desplegar).** Una evaluación
+- **La API para instituciones (núcleo, 2026-10-21; desplegado y apagado para terceros).** Una evaluación
   de la API es una fila de `solicitudes` con `origen = 'api'` (139): los mismos pasos y
   módulos que usa la pantalla, y la `modalidad` decide cuáles corren (un flujo nuevo es una
   entrada más en `MODALIDADES`, no un camino aparte). Quien la hace avanzar es el trabajador,
@@ -120,6 +124,21 @@ su guía: `docs/equifax.md`.
     puntero JSON de cada campo. Las funciones que no atiende un navegador usan
     `cabecerasSinCors()`, que sí lleva el sello del despliegue (el corredor lo confirma con
     OPTIONS).
+  - **El sandbox** (`sandbox-casos.ts`, `sandbox-simuladores.ts`, `sandbox-pasos.ts`; decisión
+    del negocio, 2026-10-30). Las identificaciones `0000000001` a `0000000007` de la
+    especificación corren por el trabajador con simuladores de Proveedor_Info_1, Equifax y el modelo:
+    `correrPaso()` las desvía antes de todo, y lo demás (perfil, controles, estructura,
+    capacidad, «parcial nunca aprueba») es el código real. Cuatro controles: la identificación
+    (`esIdentificacionSimulada()`, `00` es una provincia que no existe y
+    `clasificarIdentificacion()` la sigue rechazando), el bloqueo en las tres salidas
+    (`impedirLaSalidaDeUnaSimulada()`), el interruptor `API_SANDBOX=activo` de `api-v1`
+    (apagado por defecto: `identificacion-invalida`) y `sandbox.test.ts`, con una trampa en
+    `fetch`. Lo simulado queda sólo en `solicitudes` y `audit_log`: una fila en
+    `consultas_equifax` gastaría el tope diario y parecería un cobro, y una en `clients` entra
+    a los totales. Un total nuevo sobre `solicitudes` filtra el prefijo `00`.
+    **Cuando llegue OAuth, una credencial de sandbox acepta SÓLO estas identificaciones**: hoy
+    la puerta es de administradores, y con una credencial de prueba se consultaría a una
+    persona de verdad.
 - `variables-de-ingreso.ts` — el vector de entrada del predictor de ingresos (niveles 1 y 2)
   desde el perfil y las tablas de Equifax (`equifax_analisis_credito`, desde la 138). Una sola
   implementación: lo que no coincide con el extracto de AWS con el que se entrenará el modelo
@@ -133,6 +152,15 @@ su guía: `docs/equifax.md`.
   existe `PREDICTOR_INGRESOS_MODELOS`; en la integración continua corre un modelo chico inventado.
   Un modelo nuevo no cambia el formato. En Windows la prueba con el modelo real se corre desde
   PowerShell: Git Bash cambia las rutas de `--allow-read`.
+- `estimacion-de-ingreso.ts` y la función `estimar-ingreso` (141) — la estimación de una persona desde
+  su último perfil: el selector de la especificación, 3.2 (`decidirEstimacion()`), lo verificado (con
+  `datosDeCapacidad()`, el mismo descuento que la capacidad), y la respuesta y la fila
+  (`armarEstimacion()`). **El reloj es la fecha de la consulta** (`client_profiles.created_at`), no hoy:
+  el mismo perfil y el mismo modelo dan lo mismo. La fila no lleva cédula ni nombre, y los cuantiles
+  quedan en ella, no en la respuesta. El modelo está en el depósito privado `modelos-de-ingreso` de
+  cada base: `crearCargadorDeModelo()` lo baja sólo si cambió la huella de la fila vigente y se niega
+  a servir otro archivo. La calibración va en `modelos_de_ingreso.calibracion` (una base por
+  institución). Un modelo nuevo lleva versión nueva y `scripts/publicar-modelo-de-ingreso.mjs`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
@@ -147,7 +175,12 @@ su guía: `docs/equifax.md`.
 
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
-  - `npx --yes deno@2.9.6 test --no-lock --allow-env --allow-read=supabase/functions supabase/functions/`
+  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/`
+    (`api`: `sandbox.test.ts` valida cada respuesta contra `api/openapi.yaml`).
+
+    `--node-modules-dir=none` hace falta desde que una prueba alcanza los tipos de supabase-js
+    (`import type`): sin ella, `deno test` busca `npm:@types/node` en el `node_modules` de la
+    pantalla y falla antes de correr nada, con o sin esa carpeta. `deno check` no lo ve.
   - `npx --yes deno@2.9.6 check --no-lock supabase/functions/*/index.ts`
 
   Las corre también la integración continua. Una regla nueva en `_shared`
@@ -164,18 +197,23 @@ su guía: `docs/equifax.md`.
   dígito es falsa (hay personas reales con 6).
 - Una consulta que no contestó ninguna fuente no se guarda: sale una
   ficha en blanco igual a la de alguien sin historial.
+- El modelo no corre sin `FUENTES_QUE_DECIDEN` (`calidad-de-la-consulta.ts`,
+  negocio, 2026-10-31): `analizarPersona()` lanza `ConsultaIncompleta` antes de
+  llamarlo. Los pasos de las evaluaciones cortan ya en el perfil, antes del
+  buró que se cobra, y no reutilizan un perfil incompleto. `esPrueba` sigue, y sólo lo pide un administrador (`pidioUnaPrueba()`).
 - "La fuente dice que no hay" ≠ "la fuente no contestó".
   `metaConsulta`: `fuentesConDatos` / `fuentesSinDatos` /
   `fuentesNoMedidas`. Ver `docs/declaracion-de-disponibilidad.md`.
 - "La fuente trajo datos" ≠ "la persona tiene registros" (antecedentes
-  "NO", SERCOP vacío). Al modelo le llega sólo consultado / no
-  consultado, por tema.
+  "NO", SERCOP vacío). Al modelo le llega sólo consultado / sin respuesta,
+  por tema (`temasConsultados`, `temasSinRespuesta`). El contrato de la API
+  sigue diciendo `temasNoConsultados`.
 - Los 9 bloques se retiraron (078); quedan 52 fuentes planas. `ejes_ok`
   ya no se escribe pero NO se borra. ¿Sirve el perfil? `elPerfilSirve()`.
 - Dos formas conviven: `laboral.empleoActual` (objeto, antes de
   marco-v20) y `empleosActuales` (arreglo). Leer las dos.
 
-- **Cada fuente de Novadata espera como mucho 120 s**
+- **Cada fuente de Proveedor_Info_1 espera como mucho 120 s**
   (`PLAZO_POR_FUENTE_MS`), y la consulta pide un solo token, compartido.
   Antes eran 52 inicios de sesión simultáneos con el token vencido (E5).
   - Medido el 2026-10-09: en el uso normal una consulta tarda menos de un
@@ -218,7 +256,7 @@ su guía: `docs/equifax.md`.
     un titular.
   - Cada noche la reconstruye `reconstruir_resumen_por_persona()` (pg_cron
     `resumenes-crediscope`, 00:10 de Ecuador), por si un disparador falló.
-    También devuelve a Novadata a quien se le venció la consulta del buró el
+    También devuelve a Proveedor_Info_1 a quien se le venció la consulta del buró el
     18 a las 00:00: la vigencia vence sin que nada cambie en la base.
   - **Con una consulta vigente del buró de la institución (132), las marcas
     de Monitoreo salen del buró**: `calificacion_baja` es más de 90 días en
@@ -245,11 +283,11 @@ su guía: `docs/equifax.md`.
   2026-10-12): esa persona espera el cálculo entero, con una cartera grande
   vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
 
-**Crudo de Novadata**
-- El crudo de Novadata se guarda desde la 090 en el depósito privado
-  `crudo-novadata` de Storage (gzip, ~8 KB), con la ruta en
+**Crudo de Proveedor_Info_1**
+- El crudo de Proveedor_Info_1 se guarda desde la 090 en el depósito privado
+  `crudo-proveedor-info-1` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
-  `_shared/crudo-novadata.ts`, desde las tres puertas que guardan perfiles.
+  `_shared/crudo-proveedor-info-1.ts`, desde las tres puertas que guardan perfiles.
   A Storage con supabase-js se suben bytes, no un `Blob`: con un `Blob`
   ignora `contentType` y el depósito lo rechaza (así no se guardó ningún
   crudo hasta el 2026-10-04).
@@ -264,7 +302,7 @@ su guía: `docs/equifax.md`.
   condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
   aportes cuando el mecanizado no trae nada.
-- Meses que Novadata no publicó para nadie (2018-02, 2019-09..11,
+- Meses que Proveedor_Info_1 no publicó para nadie (2018-02, 2019-09..11,
   2020-01..03, 05, 06, 08, 11) no cortan la continuidad. La antigüedad
   sale de `fecIng`, no del primer aporte (`continuidadLaboral`).
 - Aportar por cuenta propia cuenta como trabajo sólo en meses con RUC
@@ -275,14 +313,28 @@ su guía: `docs/equifax.md`.
 - "Es su propio patrono": sólo `_shared/patrono.ts` (RUC = cédula +
   001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
   lo hace empleador.
+- Un RUC dado de baja por depuración del SRI con actividad en relación de
+  dependencia es neutro (negocio, 2026-10-31):
+  `rucDepuradoEnRelacionDeDependencia()` (`ruc.ts`, estructura-v17). El motivo
+  viene sólo en `observ_solicitud_suspension` y la actividad en
+  `establecimientoActEconomica`: de 1.276 personas con cese, 169 depuradas y 17
+  con esa actividad. Una regla sobre un dato que el perfil no guarda no se
+  resuelve con el marco: lleva estructura y recálculo.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
-  establecimiento abierto). Novadata manda el estado "ABIERTO" o "ABI":
+  establecimiento abierto). Proveedor_Info_1 manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).
   Inactivo sólo con una fecha que lo respalde (negocio, 2026-10-29,
   estructura-v15): sin fecha de inscripción es un RUC; un establecimiento que
   reabrió después de su último cierre está abierto aunque el estado diga
   cerrado, y uno sin estado, salvo una fecha de cierre. Un «ABIERTO» sin la
   fecha de reapertura sigue abierto, y un «CERRADO» sin fechas, cerrado.
+- **El historial de empleos y los préstamos del IESS/BIESS se leen de todas sus
+  fuentes** (estructura-v16): el salario más alto y los empleadores registrados, de
+  `trabajoHistoricos`, el mecanizado y los aportes; el cargo vigente, del empleo
+  actual; los datos del empleador, de `trabajoHistoricos` sólo si es el de un empleo
+  actual (RUC); los préstamos, de la base interna y de `creditoQuirografario` /
+  `creditoHipotecario`, sin contar dos veces una operación. Un campo de un perfil que
+  sale de una sola fuente se mide contra las demás antes de dárselo al modelo.
 - Segmento ≠ perfil laboral (`_shared/perfil-laboral.ts`, columna
   `client_profiles.perfil_laboral`, fuera de `standard_profile`).
 - No se especula sobre el ingreso: un ingreso mayor sólo con
@@ -299,7 +351,7 @@ su guía: `docs/equifax.md`.
   (`docs/lecciones.md`).
 
 **Buró, Aval y Función Judicial** (Equifax, en `docs/equifax.md`)
-- Buró de Novadata: `riesgo` T/G/C separa lo propio de lo garantizado;
+- Buró de Proveedor_Info_1: `riesgo` T/G/C separa lo propio de lo garantizado;
   el atraso puede estar en `noDevengaInteres`; los tramos
   `saldo0_1..mas_36` no son montos; "AL" es al día; no trae días de mora
   ni cuota (la cuota sólo en cooperativas).
@@ -308,8 +360,8 @@ su guía: `docs/equifax.md`.
 - El ambiente de prueba de Aval contesta por otra persona:
   `consultas_aval.ambiente = 'prueba'` (derivado del host, default
   `prueba`) no sirve para calificar a nadie.
-- Aval tarda ~0,9 s por consulta contra ~41 s de Novadata: las cuentas de
-  capacidad de Novadata no aplican.
+- Aval tarda ~0,9 s por consulta contra ~41 s de Proveedor_Info_1: las cuentas de
+  capacidad de Proveedor_Info_1 no aplican.
 - Aval: las consultas de NOVACREDIT en su lista son nuestro propio tráfico;
   `consultas12m` y `entidadesDistintas12m` se cuentan sin esa entidad.
 - Denuncias: decide el papel de la persona y sólo cuenta con su cédula
@@ -346,8 +398,19 @@ su guía: `docs/equifax.md`.
   - Lo que el perfil guarda sólo para el predictor de ingresos no llega
     (`CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN`, dentro de `RUTAS_QUE_NO_LLEGAN`).
     El obligado a llevar contabilidad (estructura-v15) ya le llega
-    interpretado en `fuentesIngreso`, y así el mensaje siguió siendo el de
-    marco-v30 (decisión del negocio del 2026-10-29).
+    interpretado en `fuentesIngreso` (decisión del negocio del 2026-10-29).
+  - **El nombre de un campo es parte de lo que escribe el modelo**: con
+    `temasNoConsultados` escribía «no se consultaron» y «nadie miró» de lo que
+    se intentó y falló (c-79e1ac23). Se dice «no se pudo obtener información, por
+    lo tanto no tenemos los sustentos suficientes», nunca como «la fuente dice que
+    no hay» (marco-v32).
+  - **A1 es la única de la escala sin atraso**: A2 y A3 casi nunca traen monto
+    (2 de 425 operaciones y 0 de 222), así que `deudaEnAtraso` en 0 no los
+    desmiente. La calificación no se traduce a días: en el comercial no sale
+    sólo de ellos, y el buró de Proveedor_Info_1 no dice el tipo de crédito.
+  - **El retail es de su corte** (`fechaCorteRetail`, julio de 2025 en las 490
+    personas con retail): ni deuda de hoy ni prueba de que no haya una posterior.
+    Sin filas el corte llega `null`, y la advertencia vale igual.
   - Un número de 10 dígitos o más en cualquier texto se tapa: el filtro por
     nombre de campo no ve una cédula escrita en el cargo. Y todo número
     llega entero (v29, decisión del negocio): el modelo copia los números

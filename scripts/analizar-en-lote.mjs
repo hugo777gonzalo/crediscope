@@ -12,8 +12,8 @@
 // El pedido lo arma armarPedidoScoring() y la fila de analysis_results
 // filaDelAnalisis(): los mismos que usa analyze-client. Un análisis en lote
 // queda igual que uno de la pantalla, atado a su perfil y con lo que leyó el
-// modelo. Reutiliza perfiles guardados: no reconsulta Novadata. Con
-// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v31) lee la consulta vigente
+// modelo. Reutiliza perfiles guardados: no reconsulta Proveedor_Info_1. Con
+// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v33) lee la consulta vigente
 // del buró de la institución igual que analyze-client
 // (buro-de-la-institucion.ts); nunca consulta a Equifax.
 //
@@ -54,7 +54,7 @@ const { armarPedidoScoring, huellaDelPedido, interpretar, CONFIG_LLM, versionDel
 const { buroDeLaBase, consultaVigenteDeEquifax } = await compartido("buro-de-la-institucion.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
-const { elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
+const { elPerfilSePuedeAnalizar, elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
 const { filaDelAnalisis } = await compartido("fila-del-analisis.ts");
 
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -112,17 +112,17 @@ async function preparar() {
   const r = azar(Number(arg("semilla", "1")));
 
   const perfiles = await traerTodas(() => supabase.from("client_profiles")
-    .select("id, client_id, created_at, fuente_segmento, fuentes_ok, ejes_ok", { count: "exact" })
+    .select("id, client_id, created_at, fuente_segmento, fuentes_ok, ejes_ok, estado_por_fuente", { count: "exact" })
     .order("created_at", { ascending: true }).order("id", { ascending: true }));
   const ultimo = new Map();
   for (const p of perfiles) ultimo.set(p.client_id, p); // ordenados: queda el más reciente
   // Las 240 cédulas sintéticas de prueba de Aval están en la cartera y
-  // Novadata no las conoce (docs/pendientes.md): no son clientes.
+  // Proveedor_Info_1 no las conoce (docs/pendientes.md): no son clientes.
   const sinteticas = new Set(fs.readFileSync(path.resolve(RAIZ, arg("excluir", "research/aval-pool-240.txt")), "utf8").match(/\d{10}/g) ?? []);
   const { data: idsSinteticos, error: eSint } = await supabase.from("clients").select("id").in("cedula", [...sinteticas].slice(0, 300));
   if (eSint) throw new Error(motivo(eSint));
   const excluidos = new Set(idsSinteticos.map((c) => c.id));
-  const candidatos = [...ultimo.values()].filter((p) => elPerfilSirve(p) && !excluidos.has(p.client_id));
+  const candidatos = [...ultimo.values()].filter((p) => elPerfilSirve(p) && elPerfilSePuedeAnalizar(p.estado_por_fuente) && !excluidos.has(p.client_id));
   console.log(`Excluidas ${excluidos.size} personas sintéticas de ${sinteticas.size} en la lista`);
 
   // Por segmento, proporcional y con un mínimo de 5 donde alcance: los
@@ -170,7 +170,7 @@ async function enviar() {
   if (!/^[0-9a-f-]{36}$/.test(responsable ?? "")) throw new Error("Falta --responsable=<uuid>: quién ordena el lote (auditoría)");
   const seleccion = leer("seleccion.json");
   const camposDeshabilitados = await loadDisabledFields(supabase);
-  // El buró de la institución (marco-v31), con la misma regla que
+  // El buró de la institución (marco-v33), con la misma regla que
   // analyze-client: sólo con el interruptor encendido, la consulta vigente a
   // la fecha del envío y nunca una consulta nueva a Equifax.
   const ahora = new Date();

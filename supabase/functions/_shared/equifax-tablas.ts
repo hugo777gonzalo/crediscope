@@ -35,7 +35,7 @@
 // sintaxis que se pueda borrar (nada de enum, namespace ni propiedades de
 // parámetro).
 
-export const EQUIFAX_TABLAS_VERSION = "equifax-tablas-v2";
+export const EQUIFAX_TABLAS_VERSION = "equifax-tablas-v3";
 
 export type Sistema = "bancos" | "cooperativas" | "comercial";
 export const SISTEMAS: readonly Sistema[] = ["bancos", "cooperativas", "comercial"];
@@ -320,6 +320,23 @@ function esFilaDeTotales(institucion: string | null, tipo: string | null): boole
   return i === "TOTAL" || i === "-" || (tipo ?? "").toUpperCase() === "TOTAL";
 }
 
+// En bancos y cooperativas `total_vencer` es lo por vencer y `saldo_deuda` es el total (por vencer +
+// vencido + no devenga intereses). En el detalle ACTUAL del sector comercial los campos no significan
+// lo mismo: `saldo_deuda` es lo por vencer y `total_vencer` suele ser el total, pero no siempre (en 57 de
+// 517 operaciones con vencido traía sólo el vencido, y en las de demanda judicial o cartera castigada
+// ese monto, con `saldo_deuda` en 0). Medido el 2026-10-31 sobre las 2.197 consultas guardadas, sumando
+// todos los roles de cada persona: Σ saldo_deuda = `por_vencer` del resumen en 2.197 y Σ total_vencido =
+// `vencido` en 2.197; Σ (saldo_deuda + total_vencido + ndi) = `total` en 2.197, contra 1.922 leyendo
+// `saldo_deuda` como el total. Por eso para el comercial no se lee `total_vencer`. La historia mensual
+// del comercial NO se corrige: ahí `saldo_deuda` es el total, como en bancos (pregunta en
+// docs/equifax-pedido-de-diccionario.md, 3.1 y 3.2).
+function saldosDeLaOperacionActual(sistema: Sistema, f: Registro): { porVencer: number | null; saldo: number | null } {
+  if (sistema !== "comercial") return { porVencer: dinero(f.total_vencer), saldo: dinero(f.saldo_deuda) };
+  const porVencer = dinero(f.saldo_deuda);
+  if (porVencer === null) return { porVencer: null, saldo: null };
+  return { porVencer, saldo: Math.round((porVencer + (dinero(f.total_vencido) ?? 0) + (dinero(f.ndi) ?? 0)) * 100) / 100 };
+}
+
 function esRegistro(x: unknown): x is Registro {
   return x !== null && typeof x === "object" && !Array.isArray(x);
 }
@@ -357,11 +374,12 @@ export function derivarTablas(cuerpo: unknown): ResultadoDeTablas {
       const apertura = fechaISO(f.fecha_apertura);
       const vencimiento = fechaISO(f.fecha_vencimiento);
       const cupo = dinero(f.cupo_monto_original);
+      const { porVencer, saldo } = saldosDeLaOperacionActual(sistema, f);
       operaciones.push(nuevaFila("equifax_operaciones", {
         orden: operaciones.length + 1, sistema, institucion, fecha_corte: fechaISO(f.fecha_corte), rol, rol_original: original,
         tipo_credito: tipo, cupo_monto_original_usd: cupo, fecha_apertura: apertura, fecha_vencimiento: vencimiento,
-        por_vencer_usd: dinero(f.total_vencer), no_devenga_intereses_usd: dinero(f.ndi), vencido_usd: dinero(f.total_vencido),
-        demanda_judicial_usd: dinero(f.dem_jud), cartera_castigada_usd: dinero(f.cart_cast), saldo_deuda_usd: dinero(f.saldo_deuda),
+        por_vencer_usd: porVencer, no_devenga_intereses_usd: dinero(f.ndi), vencido_usd: dinero(f.total_vencido),
+        demanda_judicial_usd: dinero(f.dem_jud), cartera_castigada_usd: dinero(f.cart_cast), saldo_deuda_usd: saldo,
         cuota_mensual_usd: dinero(f.cuota_mensual), dias_morosidad: entero(f.dias_morosidad),
       }));
     }

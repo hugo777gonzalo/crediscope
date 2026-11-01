@@ -2,7 +2,7 @@
 // del 2026-10-17: el orquestador vive en el servidor y sirve igual a la
 // pantalla y a la API).
 //
-// Por qué por pasos: consultar Novadata (hasta ~2 min) y el modelo (hasta
+// Por qué por pasos: consultar Proveedor_Info_1 (hasta ~2 min) y el modelo (hasta
 // ~2 min) juntos pasan los 150 s que una función puede correr seguidos. Cada
 // llamada a `avanzar` corre UN paso y lo anota en la solicitud; quien llama
 // (la pantalla, o la IFI por la API) vuelve a llamar hasta que no quede
@@ -10,7 +10,7 @@
 //
 // Los pasos usan los módulos que ya existen, cada uno por su propia puerta:
 //   - perfil:    reutiliza el último perfil si tiene menos de 7 días; si no,
-//                llama a `structure-client` (consulta Novadata).
+//                llama a `structure-client` (consulta Proveedor_Info_1).
 //   - buro:      reutiliza la consulta de Equifax vigente; si no hay, llama a
 //                `consultar-equifax`, que SE COBRA y es sólo de admin (negocio,
 //                2026-10-17). Quien no es admin recibe el paso fallido con el
@@ -49,6 +49,7 @@ import { cabecerasCors } from "../_shared/cors.ts";
 import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
+import { elPerfilSePuedeAnalizar, porQueNoSePuedeAnalizar } from "../_shared/calidad-de-la-consulta.ts";
 import { validarDecision } from "../_shared/estado-de-la-persona.ts";
 import { buroDeLaBase, consultaVigenteDeEquifax } from "../_shared/buro-de-la-institucion.ts";
 import { pasoCapacidad } from "../_shared/pasos-de-evaluacion.ts";
@@ -101,7 +102,7 @@ class PasoFallido extends Error {
 }
 
 // La respuesta de la otra función no se copia en la solicitud, que lee todo
-// analista: su `error` puede traer el mensaje de Novadata, de Equifax, del
+// analista: su `error` puede traer el mensaje de Proveedor_Info_1, de Equifax, del
 // modelo o de la base. Se leen el estado y, de consultar-equifax, el motivo.
 function fallo(paso: Paso, r: { status: number; datos: Fila | null }): PasoFallido {
   const { detalle, esperarMs, codigo } = falloDeUnPaso(paso, r.status, r.datos?.motivo ?? null);
@@ -135,12 +136,14 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     if (clientId) {
       const { data: ultimo } = await serviceClient
         .from("client_profiles")
-        .select("id, created_at, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
+        .select("id, created_at, estado_por_fuente, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (ultimo && Date.now() - Date.parse(ultimo.created_at) < VIGENCIA_DEL_PERFIL_DIAS * 86_400_000) {
+      // Uno que quedó incompleto no se reutiliza: reintentar leería siempre ese
+      // mismo perfil y nunca volvería a preguntarle a la fuente.
+      if (ultimo && elPerfilSePuedeAnalizar(ultimo.estado_por_fuente) && Date.now() - Date.parse(ultimo.created_at) < VIGENCIA_DEL_PERFIL_DIAS * 86_400_000) {
         return {
           cambios: { client_id: clientId, client_profile_id: ultimo.id },
           detalle: `Se reutilizó el perfil del ${fecha(ultimo.created_at)}.`,
@@ -150,10 +153,14 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     }
     const r = await llamarFuncion("structure-client", { cedula: s.identificacion }, autorizacion);
     if (r.status !== 200 || !r.datos?.id) throw fallo("perfil", r);
+    // Acá y no en el paso del análisis: en Plus el buró va en el medio y se cobra.
+    if (!elPerfilSePuedeAnalizar(r.datos.estado_por_fuente)) {
+      throw new PasoFallido(porQueNoSePuedeAnalizar(r.datos.estado_por_fuente), 0, null, "fuentes_no_disponibles");
+    }
     const f = r.datos.standard_profile?.fuentesIngreso ?? {};
     return {
       cambios: { client_id: r.datos.client_id, client_profile_id: r.datos.id },
-      detalle: "Se consultó a la persona en Novadata.",
+      detalle: "Se consultó a la persona en Proveedor_Info_1.",
       resultado: { perfil: { perfilId: r.datos.id, perfilDel: r.datos.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null } },
     };
   }
@@ -185,7 +192,7 @@ async function correrPaso(paso: Paso, s: Fila, autorizacion: string): Promise<{ 
     // La misma regla que el camino de arriba y que el modelo. consultar-equifax
     // reutiliza la última consulta del mes aunque no tenga su estructura (las
     // tablas pueden fallar después de pagar), y sin estructura la capacidad de
-    // Plus caía sin avisar a las cuotas de Novadata.
+    // Plus caía sin avisar a las cuotas de Proveedor_Info_1.
     const usable = await consultaVigenteDeEquifax(serviceClient, s.client_id);
     if (!usable || usable.consultaId !== r.datos.id) {
       throw new PasoFallido("La consulta de Equifax quedó guardada pero todavía no se puede leer (falta calcular su estructura). Se rehace desde lo guardado, sin volver a pagar; reintentar tampoco la cobra otra vez.", 0, null, "buro_no_disponible");

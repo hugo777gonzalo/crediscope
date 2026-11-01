@@ -1,5 +1,5 @@
 // Recalcula GRUPOS ENTEROS del perfil guardado desde el crudo local, sin
-// volver a consultar Novadata. Nació con estructura-v8 (2026-09-27), que
+// volver a consultar Proveedor_Info_1. Nació con estructura-v8 (2026-09-27), que
 // corrigió cómo se leen el buró, las cooperativas, las demandas y las
 // pensiones: esos cuatro grupos se derivan enteros del crudo.
 //
@@ -30,7 +30,7 @@
 // El crudo se lee de la carpeta local y, para el último perfil que la
 // carpeta no tiene, del depósito (_comun/crudo-del-ultimo-perfil.mjs).
 //
-// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/novadata-raw-2026-09-25]
+// Uso:  node scripts/recalcular-grupos.mjs --grupos=a,b,c [--ignorar=d] [--bloqueo] [--forzar] [--seco] [--carpeta=research/proveedor-info-1-raw-2026-09-25]
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -51,7 +51,7 @@ const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10)
 // principal (_comun/entorno.mjs): el guion los buscaba en su propia carpeta y
 // el recálculo de estructura-v15 fue el primero desde un worktree.
 const PRINCIPAL = raizPrincipal(RAIZ);
-const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/novadata-raw-2026-09-25");
+const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
 if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
@@ -75,21 +75,23 @@ async function pedir(url, opciones = {}) {
   return { cuerpo: texto ? JSON.parse(texto) : null, rango: r.headers.get("content-range") };
 }
 
-// El último perfil de cada cliente, paginando hasta el conteo.
+// El último perfil de cada cliente.
 const ultimoPorCliente = new Map();
 {
-  let total = null;
-  for (let desde = 0; total === null || desde < total; desde += 1000) {
-    const { cuerpo, rango } = await pedir(
-      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000&offset=${desde}`,
-      { headers: { Prefer: "count=exact" } },
+  // Por clave (id mayor al último leído) y hasta una página vacía: con
+  // `count=exact` más `offset` la consulta pasó el límite de la base
+  // (statement timeout, 2026-10-31) antes de traer nada.
+  let despues = null;
+  for (;;) {
+    const { cuerpo } = await pedir(
+      `${env.SUPABASE_URL}/rest/v1/client_profiles?select=id,client_id,created_at,crudo_ruta&order=id&limit=1000${despues ? `&id=gt.${despues}` : ""}`,
     );
-    if (total === null) total = Number(rango?.split("/")[1] ?? cuerpo.length);
     for (const p of cuerpo) {
       const a = ultimoPorCliente.get(p.client_id);
       if (!a || p.created_at > a.created_at) ultimoPorCliente.set(p.client_id, p);
     }
     if (cuerpo.length === 0) break;
+    despues = cuerpo.at(-1).id;
   }
 }
 const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);

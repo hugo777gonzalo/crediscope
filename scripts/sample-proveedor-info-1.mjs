@@ -1,18 +1,18 @@
-// RETIRADO el 2026-10-09: explore-novadata exige ahora la sesión de un
-// admin, y este guion no la tiene. La muestra fija de research/novadata-raw/
+// RETIRADO el 2026-10-09: explore-proveedor-info-1 exige ahora la sesión de un
+// admin, y este guion no la tiene. La muestra fija de research/proveedor-info-1-raw/
 // no se pisa; para sumar cédulas con su crudo, consultar-lote.mjs --crudo.
 //
-// Consulta explore-novadata para una lista de cédulas y CACHEA cada
-// respuesta en research/novadata-raw/<cedula>.json — para poder ir
+// Consulta explore-proveedor-info-1 para una lista de cédulas y CACHEA cada
+// respuesta en research/proveedor-info-1-raw/<cedula>.json — para poder ir
 // enriqueciendo la muestra de diseño (estructura estandarizada) sin
-// re-consultar Novadata cada vez que se agregan cédulas nuevas.
+// re-consultar Proveedor_Info_1 cada vez que se agregan cédulas nuevas.
 //
 // Uso:
-//   NOVADATA_USERNAME=<usuario> NOVADATA_PASSWORD=<contraseña> \
-//     node scripts/sample-novadata.mjs research/cedulas.txt
+//   PROVEEDOR_INFO_1_USERNAME=<usuario> PROVEEDOR_INFO_1_PASSWORD=<contraseña> \
+//     node scripts/sample-proveedor-info-1.mjs research/cedulas.txt
 //
 // research/cedulas.txt: una cédula por línea. Las que ya tengan un JSON
-// cacheado en research/novadata-raw/ se saltan automáticamente — pasa
+// cacheado en research/proveedor-info-1-raw/ se saltan automáticamente — pasa
 // --force para re-consultarlas todas igual.
 //
 // research/ está en .gitignore completo (son datos reales de clientes).
@@ -22,10 +22,10 @@ import path from "node:path";
 
 const FUNCTIONS_URL =
   process.env.CREDISCOPE_FUNCTIONS_URL ?? "https://ibrptvrjyclpmqbjdxyq.supabase.co/functions/v1";
-const OUT_DIR = path.resolve("research/novadata-raw");
+const OUT_DIR = path.resolve("research/proveedor-info-1-raw");
 const FORCE = process.argv.includes("--force");
 // Cuántas cédulas se consultan a la vez. Cada cédula dispara ~50
-// recursos EN PARALELO dentro de explore-novadata, así que la carga
+// recursos EN PARALELO dentro de explore-proveedor-info-1, así que la carga
 // real contra la fuente es concurrencia x 50 peticiones simultáneas.
 // El default queda en 1 y subirlo es una decisión consciente.
 const CONCURRENCIA = Math.max(
@@ -35,14 +35,14 @@ const CONCURRENCIA = Math.max(
 const listFile = process.argv.find((a) => !a.startsWith("--") && a.endsWith(".txt"));
 
 if (!listFile) {
-  console.error("Uso: node scripts/sample-novadata.mjs <archivo-de-cedulas.txt> [--force]");
+  console.error("Uso: node scripts/sample-proveedor-info-1.mjs <archivo-de-cedulas.txt> [--force]");
   process.exit(1);
 }
 
-const username = process.env.NOVADATA_USERNAME;
-const password = process.env.NOVADATA_PASSWORD;
+const username = process.env.PROVEEDOR_INFO_1_USERNAME;
+const password = process.env.PROVEEDOR_INFO_1_PASSWORD;
 if (!username || !password) {
-  console.error("Faltan NOVADATA_USERNAME / NOVADATA_PASSWORD en el entorno.");
+  console.error("Faltan PROVEEDOR_INFO_1_USERNAME / PROVEEDOR_INFO_1_PASSWORD en el entorno.");
   process.exit(1);
 }
 
@@ -69,7 +69,7 @@ async function consultarUna(cedula) {
     return;
   }
   try {
-    const res = await fetch(`${FUNCTIONS_URL}/explore-novadata`, {
+    const res = await fetch(`${FUNCTIONS_URL}/explore-proveedor-info-1`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password, cedula }),

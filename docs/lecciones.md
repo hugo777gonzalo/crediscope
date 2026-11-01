@@ -19,7 +19,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   trabajo afuera.** El 2026-10-28 había más de 60 ramas locales y 34 remotas, todas «sin fusionar» para
   git. Contra la cabeza de su PR (`git fetch origin refs/pull/N/head`, `merge-base --is-ancestor`)
   casi todas estaban adentro. La excepción fue `claude/base-aws-segunda-ronda`, con un commit del
-  2026-10-21 posterior a su PR (#80): la aclaración de las observaciones «RECUPERADO NOVADATA MENOS
+  2026-10-21 posterior a su PR (#80): la aclaración de las observaciones «RECUPERADO PROVEEDOR_INFO_1 MENOS
   IESS» nunca había llegado a `docs/base-aws-originacion.md`. Borrar una rama sólo después de
   compararla así.
 - **Un archivo de secretos guardado desde el Bloc de notas queda como `.env.txt` y git
@@ -98,7 +98,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
     reprodujo paso a paso.
 - **Una cédula "sintética" de Aval era de una persona real.**
   - Para probar el plazo por fuente en producción se consultó una de las
-    240. La memoria del proyecto decía que Novadata no las conocía, y trajo
+    240. La memoria del proyecto decía que Proveedor_Info_1 no las conocía, y trajo
     nombre y 4 fuentes con datos.
   - Se borraron el perfil y el crudo con constancia, por decisión del
     negocio.
@@ -166,6 +166,16 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   historial. El 2026-09-15 eso convirtió una caída de red de una hora en
   un juicio sobre 373 personas, que quedaron clasificadas como
   "informal o sin actividad" — la rama por defecto de la clasificación.
+- **Que una consulta sirva para guardarse no quiere decir que sirva para
+  calificar.** El 2026-10-31 Proveedor_Info_1 contestó error 500 en 41 de 52 fuentes
+  para c-79e1ac23. Las seis que contestaron bastaron para guardar el perfil, y
+  el modelo dio un score leyendo menos de la cuarta parte de su deuda: el
+  hipotecario del BIESS estaba en una fuente caída. Desde ese día el modelo no
+  corre sin `FUENTES_QUE_DECIDEN` (identidad, aportes, préstamos del BIESS y
+  buró de bancos; negocio). El corte va en el paso del perfil y no en el del
+  análisis: en Plus el buró va en el medio y se cobra. Y un perfil incompleto
+  no se reutiliza, o reintentar lee siempre el mismo. Medido ese día: 670 de
+  3.765 últimos perfiles quedaban así, casi todos del lote de paridad.
 - **"La fuente dice que no hay" y "la fuente no contestó" son cosas
   distintas.** El catálogo tiene que poder decir las dos.
 - **Dos formas del mismo dato conviven.** Los perfiles anteriores a
@@ -188,7 +198,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   certificado de antecedentes penales responde "NO" y figura con datos,
   igual que SERCOP vacío. Por eso la disponibilidad que lee el modelo
   (marco-v25) dice sólo consultado / no consultado, por tema.
-- **Novadata cambia formatos sin avisar** (2026-10-03, estructura-v13). En
+- **Proveedor_Info_1 cambia formatos sin avisar** (2026-10-03, estructura-v13). En
   la reconsulta de la cartera el estado de algunos establecimientos del SRI
   llegó abreviado ("ABI", "CER") y mezclado con el de siempre. La regla
   buscaba "ABIERTO" exacto: 67 de 2.567 personas tenían mal el perfil, con
@@ -197,7 +207,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   vio en las pantallas: lo encontró el detector de eventos del Laboratorio
   como "19 negocios cerrados en una semana". Comparar dos consultas de la
   misma persona es un control de calidad de la fuente; una comparación de
-  texto con un valor de Novadata va en una sola función
+  texto con un valor de Proveedor_Info_1 va en una sola función
   (`establecimientoAbierto()` en `ruc.ts`).
 - **La cola larga de la ingesta no es la del uso normal.**
   - En los días de uso normal el p95 diario fue de 11 a 57 s. El 15/09, en
@@ -211,6 +221,10 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### Base y procesos
 
+- **Un análisis corre aunque la consulta casi no haya traído nada.** El 2026-10-30 Proveedor_Info_1 contestó
+  HTTP 500 en 41 de 52 fuentes para c-79e1ac23, y el modelo igual dio 560, «revisar», con el perfil en
+  «sin datos». La pantalla lo avisa, pero el score queda en el expediente como cualquier otro. Falta que
+  el negocio decida si un análisis así se hace.
 - **Una agenda nueva repitió lo que la 114 había sacado de las otras.** La 139 (2026-10-30)
   escribió la clave del vigía en texto plano en `cron.job`, y pg_cron la copió además en
   `cron.job_run_details` en cada corrida. Las 18 comprobaciones de la 139 en PGlite no tocaban la
@@ -285,14 +299,14 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   reanálisis deja varias evaluaciones con esa referencia) y la base no se habían
   puesto a prueba juntos hasta la 137: el índice es único sólo donde `reemplaza_a` es nulo.
 
-### Crudo de Novadata
+### Crudo de Proveedor_Info_1
 
-- **El crudo de Novadata no se guarda en la base, pero hay respaldo
+- **El crudo de Proveedor_Info_1 no se guarda en la base, pero hay respaldo
   local.** En la base va el perfil estandarizado. El crudo está en
   `research/` (fuera del repo, datos personales):
-  `novadata-raw/` = 389 personas en la forma vieja de 9 bloques, la
+  `proveedor-info-1-raw/` = 389 personas en la forma vieja de 9 bloques, la
   muestra fija para comparar reglas (no se pisa);
-  `novadata-raw-2026-09-25/` = la cartera real completa (2.567 al
+  `proveedor-info-1-raw-2026-09-25/` = la cartera real completa (2.567 al
   2026-09-26, incluidas las 389 de la muestra reconsultadas), en la forma
   plana de 52 fuentes, `{ cedula, capturadoEl, perfilId, raw }`. Con el
   crudo del último perfil de cada cliente, una regla nueva se aplica a
@@ -326,7 +340,21 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### IESS, ingresos y fuentes de ingreso
 
-- **El corte del IESS lo deciden 20 clientes, no uno.** Novadata
+- **Un campo leído de una sola fuente se contradice con las otras y el modelo lo
+  toma por una inconsistencia.** El 2026-10-31, revisando casos reales, el negocio
+  vio que c-5ee429cc llegó al modelo con «cargo vigente PASANTE», «constituido hace
+  56 años» y un salario máximo bajo el ingreso reportado: `trabajoHistoricos` traía
+  una pasantía de 2019 con la salida en 1900-01-01 (fecha centinela de «sigue
+  empleado») y `sinFechaDeSalida()` la leía como vigente. En c-82cc2afc, un solo
+  empleo de 2018 contra 6 empleadores en el mecanizado y los aportes, y 9 préstamos
+  del BIESS vigentes con `tieneCreditoIessBiess: false` (se leía sólo la base
+  interna). Medido sobre 3.765 personas: el salario más alto bajo un sueldo ya
+  reportado en 1.068 de 1.682, el cargo vigente que no era el de ningún empleo actual
+  en 1.356 de 1.857 y 308 de 918 con créditos formales sin crédito del IESS/BIESS.
+  Regla: estructura-v16 lee las tres fuentes del IESS y las dos de los préstamos, y
+  usa el historial sólo para el empleador de un empleo actual (por RUC).
+
+- **El corte del IESS lo deciden 20 clientes, no uno.** Proveedor_Info_1
   actualiza el IESS más o menos cada dos meses y no avisa: el
   2026-09-25 se esperaba que siguiera en 2026-07 y durante la
   reconsulta de la cartera publicó 2026-08 (403 clientes con aporte de
@@ -343,7 +371,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   perfiles tenían aporte vigente y "sin empleo actual". Ahora el empleo
   cae a los aportes cuando el mecanizado no trae nada, y los guardados
   se corrigieron con `scripts/corregir-empleo-actual.mjs`.
-- **El historial del IESS tiene meses que Novadata no publicó para
+- **El historial del IESS tiene meses que Proveedor_Info_1 no publicó para
   nadie**: 2018-02, 2019-09 a 2019-11, 2020-01 a 2020-03, 2020-05,
   2020-06, 2020-08 y 2020-11 (0 de 315 historias los traen). No son
   meses sin trabajo: contarlos cortaba la continuidad de casi todos en
@@ -411,7 +439,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   está en las respuestas JSON (desde diciembre de 2025), no en las XML de 2021
   a 2025; el «patrimonio» de AWS trae la entrada del crédito, que es una
   condición de la operación y no un bien; y la paridad de los datos de la
-  persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Novadata
+  persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Proveedor_Info_1
   sigue sin medirse. El caso completo, en `docs/investigacion-predictor-de-ingresos.md`
   (12.23 a 12.25).
 - **La población de entrenamiento tiene que ser la del producto** (predictor de
@@ -451,7 +479,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   tuvo los cuatro totales de deuda de la estructura al doble en 129 de
   129 personas hasta aval-estructura-v4 (2026-09-24). Antes de sumar un
   segmento de Aval nuevo, buscarle la fila de totales.
-- **El buró de Novadata mezcla roles y esconde el atraso** (estructura-v8,
+- **El buró de Proveedor_Info_1 mezcla roles y esconde el atraso** (estructura-v8,
   2026-09-27).
   - **Roles:** la columna `riesgo` dice si la persona es titular (T),
     garante (G) o codeudora (C). Sumado todo como propio, 319 personas
@@ -477,7 +505,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   partes con su cédula. Hasta v8 el bloqueo por delitos de seguridad
   ciudadana no miraba el papel: 42 de 59 bloqueados eran quienes habían
   denunciado o sufrido una extorsión, testigos, un policía, un abogado.
-  Y una denuncia sin la cédula de la persona no es suya: Novadata asocia
+  Y una denuncia sin la cédula de la persona no es suya: Proveedor_Info_1 asocia
   por nombre, y en una el homónimo era el fallecido. Toda lectura nueva de
   denuncias usa esa regla.
 - **Las demandas se leen por categoría** (`_shared/demandas.ts`,
@@ -494,11 +522,11 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   (`_shared/delitos-seguridad.ts`). Hasta estructura-v10 estaba copiada en
   el perfil y en el bloqueo; agregar una palabra en una sola habría dejado
   al perfil diciendo una cosa y al bloqueo otra.
-- **Aval es dos órdenes de magnitud más rápido que Novadata.** Una
+- **Aval es dos órdenes de magnitud más rápido que Proveedor_Info_1.** Una
   consulta a Aval tarda 890 ms de mediana (p95 1,3 s) contra los 41 s de
-  Novadata: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por
+  Proveedor_Info_1: es UNA llamada, no 52. Las 200 salieron en 1 minuto a 197 por
   minuto con concurrencia 6, sin un solo reintento. Las cuentas de
-  capacidad que se hicieron pensando en Novadata no aplican acá.
+  capacidad que se hicieron pensando en Proveedor_Info_1 no aplican acá.
 
 ### El modelo
 
@@ -552,7 +580,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 - **La reutilización del análisis por huella vale sólo dentro de una misma
   consulta** (2026-10-13, E1). Se intentó con c-a1b2684a y no reutilizó, y no
   podía: su análisis anterior era del lote del 07/10, anterior a la 119 y sin
-  huella, y el de ese día salió de una consulta nueva a Novadata. La fecha de
+  huella, y el de ese día salió de una consulta nueva a Proveedor_Info_1. La fecha de
   consulta (`perfilDelModelo.consultadoEn`) va en lo que lee el modelo, así que
   una consulta nueva siempre da otra huella aunque los datos sean iguales, y esa
   vez además un tema no contestó. La prueba que vale es volver a analizar sobre
@@ -648,7 +676,7 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 - **`reprocess-sample.mjs` quedó atrás de `process.ts`** (sigue en la
   forma vieja de `empleoActual`). `process.ts` corre directo bajo Node:
   para validar un cambio del perfil, comparar la versión vieja contra la
-  nueva de `process.ts` sobre `research/novadata-raw/` con el perfil
+  nueva de `process.ts` sobre `research/proveedor-info-1-raw/` con el perfil
   entero, no contra el espejo.
 - **Para recalcular grupos enteros desde el crudo:**
   `scripts/recalcular-grupos.mjs --grupos=a,b`. Tiene las mismas
@@ -690,9 +718,23 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   `IncomePredictor` crudo de Equifax, e `indicador_covid.income_predictor`, un estimador por
   escenarios que solo coincide en el 76%). Se confirmó cuál es cuál comparando con la
   respuesta cruda en 10.000 consultas. Ver `docs/base-aws-originacion.md`.
+- **PowerShell 5.1 lee UTF-8 sin BOM como ANSI** (2026-10-30). Para probar que
+  las pruebas detectaban una regla rota, un guion leyó un archivo con
+  `Get-Content -Raw`, lo cambió y lo volvió a escribir: 25 líneas quedaron con los
+  acentos rotos, y `git status` fue lo único que lo mostró. Se restauró con git.
+  El mismo día, un heredoc de 190 líneas con comillas y acentos no llegó a correr
+  en Git Bash. Un archivo se cambia con las herramientas de edición, o con un
+  guion que abra el archivo con `encoding="utf-8"` y `newline=""`.
 
 ## Equifax
 
+- **Una respuesta «completed» de Equifax puede no traer reporte de crédito** (2026-10-30). Al pasar
+  por nuestro código 20.560 respuestas de AWS, 585 de otro tipo de consulta (`id_tipo_consulta` 2,
+  con `personalInformation` y `VariablesOfertaTotal`) daban «alcanza», sin deudas y sin un aviso:
+  la estructura existía, sin ningún sistema medido, y `datosDeCapacidad()` la leía como «no debe».
+  Ninguna de las 97 consultas de CrediScope es así, y las 19.826 con reporte traen los tres sistemas.
+  Lo cierra `elBuroTraeDetalle()`: la capacidad sigue con Proveedor_Info_1 y Plus falla con
+  `buro_no_disponible`.
 - **Equifax cobra cada consulta y no tiene tope: la protección es
   nuestra** (2026-10-12). El conector se diseñó desde ahí y no del patrón
   de Aval, que es gratis en prueba: un timeout no se repite (pudo
@@ -876,3 +918,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   campos con 2.567 perfiles y abría el perfil entero 460 mil veces: la base
   cortó la consulta. Recorrer cada perfil una vez (`jsonb_each`) y juntar
   después tarda segundos.
+- **El nombre de un campo es parte de lo que escribe el modelo** (2026-10-31,
+  c-79e1ac23). Con 41 de 52 fuentes caídas, el análisis decía «no se consultaron»
+  y «no se aprueba por lo que nadie miró»: las dos frases salían de la lista
+  `temasNoConsultados` y del marco. Se intentó y falló, y el analista leía que
+  nadie había pedido el dato. El contrato de la API conserva el nombre; en el
+  mensaje al modelo la lista pasa a `temasSinRespuesta`.
+- **Un cero de monto no desmiente una calificación** (2026-10-31, c-82cc2afc). El
+  marco no definía A2 y el modelo escribía «A1 a A2, sin atraso»: en el buró, 2 de
+  425 operaciones A2 y 0 de 222 A3 traen monto vencido (A1, 0 de 11.097). Son 365
+  personas con A2 o A3 de peor calificación, de 3.530.

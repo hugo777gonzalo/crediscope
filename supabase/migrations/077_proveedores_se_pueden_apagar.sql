@@ -8,7 +8,7 @@
 -- ("una actualización bloqueada por RLS devuelve 0 filas, no un error") y
 -- se colo igual por no haber probado la pantalla con sesión real.
 --
--- Mismo criterio que novadata_resource_config_update y
+-- Mismo criterio que proveedor_info_1_resource_config_update y
 -- aval_field_config_update: cualquier autenticado puede togglear (la
 -- pantalla ya está detrás de RequireAdmin). No se agrega insert/delete: el
 -- catálogo de proveedores lo define una migración, no la app.

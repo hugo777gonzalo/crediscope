@@ -1,4 +1,4 @@
-# Propuesta de reagrupación de las consultas de Novadata
+# Propuesta de reagrupación de las consultas de Proveedor_Info_1
 
 > **v1 (aprobada, con ajustes del usuario)** — ver `Cambios Reagrupacion - Estructura_Estandarizada v1.xlsx`,
 > hoja `Cambios_Reagrupacion`. Cambios aplicados: grupo 1 renombrado a
@@ -11,11 +11,11 @@
 > es el ROL de la persona ("DEMANDADO", constante), no el tipo de caso —
 > el tipo de caso real vive en `demanda.delito`.
 
-Basada en los datos reales de 25 personas consultadas (ver [novadata-fields-catalog.md](../novadata-fields-catalog.md)). Los 9 bloques originales (Información general, Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función Judicial, Fiscalía, Bancos, Cooperativas) eran una traducción directa de las pestañas de la interfaz web de Novadata — agrupan por **de dónde viene el dato en la UI**, no por **qué significa el dato para crédito**. Con datos reales en mano aparecieron 2 errores de categorización concretos y varios recursos que encajan mejor en otro lado.
+Basada en los datos reales de 25 personas consultadas (ver [proveedor-info-1-fields-catalog.md](../proveedor-info-1-fields-catalog.md)). Los 9 bloques originales (Información general, Sociodemográfica, Trabajo, Aportes IESS, Vehículos, Función Judicial, Fiscalía, Bancos, Cooperativas) eran una traducción directa de las pestañas de la interfaz web de Proveedor_Info_1 — agrupan por **de dónde viene el dato en la UI**, no por **qué significa el dato para crédito**. Con datos reales en mano aparecieron 2 errores de categorización concretos y varios recursos que encajan mejor en otro lado.
 
 ## Errores de categorización encontrados y corregidos
 
-1. **`pn_supa` / `pn_supa/novadata`** estaban en "Vehículos" — en realidad son juicios de **pensión alimenticia** (campos `tipoPension`, `obligadoPrincipal`, `valorMensual`, `totalPagado`, `totalDeuda`). Nada que ver con tránsito. Van a Riesgo judicial.
+1. **`pn_supa` / su variante del proveedor** estaban en "Vehículos" — en realidad son juicios de **pensión alimenticia** (campos `tipoPension`, `obligadoPrincipal`, `valorMensual`, `totalPagado`, `totalDeuda`). Nada que ver con tránsito. Van a Riesgo judicial.
 2. **`pn_deudas_ant`, `pn_deudas_amt`, `pn_deudas_emov`** estaban en "Bancos" — en realidad son **multas de tránsito** (ANT = Agencia Nacional de Tránsito, AMT/EMOV = agencias metropolitanas de tránsito de Quito): campos `multa`, `sancion`, `articulo`, `placa`, `citacion`, `infraccion`. No son deuda financiera. Van a Tránsito vehicular.
 3. **`pn_retails`** estaba en "Trabajo" — trae `valorVencido`, `totalDeuda`, `diasMora` — es deuda de crédito comercial/retail. Va a Comportamiento de pago.
 
@@ -36,16 +36,16 @@ Basada en los datos reales de 25 personas consultadas (ver [novadata-fields-cata
 | 11 | **Riesgo Judicial / Civil** | demandas (demandado vs. ofendido — **distinguir siempre**), pensión alimenticia | Alta si es demandado; casi nula si es ofendido |
 | 12 | **Riesgo penal / Fiscalía** | denuncias, antecedentes penales | Alta si hay antecedentes reales (no "NO") |
 | 13 | **Compliance y listas de control** | OFAC/homónimos/providencias/PEP, lista negra, SERCOP/Contraloría, impedimento cargos públicos, listas internas (`basesInternas.tpeps/tofac/tconsep...`) | **Crítica pero binaria** — no es "aproximable", son guardrails duros |
-| 14 | **Comportamiento Interno ★ (nuevo)** | `basesInternas.personasIncumplimientos` (resultadoHabitoPago, perfilInterno, diasMora, saldoCapital) | **La más alta** — scoring propio de Novadata, separado del grupo 8 por su peso |
+| 14 | **Comportamiento Interno ★ (nuevo)** | `basesInternas.personasIncumplimientos` (resultadoHabitoPago, perfilInterno, diasMora, saldoCapital) | **La más alta** — scoring propio de Proveedor_Info_1, separado del grupo 8 por su peso |
 | 15 | **Otros** | vacunados, títulos | Muy baja — casi sin relación con crédito, mantener solo como metadata |
 
 ## El hallazgo más importante: `personasIncumplimientos`
 
-Dentro de `nova_bases_internas` (que hoy vive escondido como un sub-campo de "Bancos") hay un recurso, `personasIncumplimientos`, que es **el scoring de comportamiento de pago propio de Novadata**: trae literalmente `resultadoHabitoPago` ("Mal pagador"/"Buen pagador"), `perfilInterno` ("MALO"/"BUENO"), días de mora máxima y vigente, cuotas vencidas/canceladas, saldo capital. Poblado en 19 de 25 personas de la muestra.
+Dentro de `nova_bases_internas` (que hoy vive escondido como un sub-campo de "Bancos") hay un recurso, `personasIncumplimientos`, que es **el scoring de comportamiento de pago propio de Proveedor_Info_1**: trae literalmente `resultadoHabitoPago` ("Mal pagador"/"Buen pagador"), `perfilInterno` ("MALO"/"BUENO"), días de mora máxima y vigente, cuotas vencidas/canceladas, saldo capital. Poblado en 19 de 25 personas de la muestra.
 
 Esto debería ser la señal **más pesada** de todo el sistema — es literalmente el veredicto de otro motor de credit-scoring ya construido, no un dato crudo a interpretar. **v1: aplicado** — ahora vive en su propio grupo 14 "Comportamiento Interno" y su propia sección `comportamientoInterno` en la estructura estandarizada, en vez de enterrado dentro de `comportamientoBancario`.
 
 ## Qué implica esto para el código
 
-- `novadata-client.ts`: mover `pensionAlimenticia`/`pensionAlimenticiaNovadata` de `vehiculos` a `funcion_judicial` (ya estaban ahí, correcto); mover `deudasAnt`/`deudasAmt`/`deudasEmov` de `bancos` a `vehiculos`; mover `retails` ya está en `bancos` (correcto, no moverlo — la corrección ya se había hecho antes de esta consulta).
+- `proveedor-info-1-client.ts`: mover `pensionAlimenticia`/`pensionAlimenticiaProveedorInfo1` de `vehiculos` a `funcion_judicial` (ya estaban ahí, correcto); mover `deudasAnt`/`deudasAmt`/`deudasEmov` de `bancos` a `vehiculos`; mover `retails` ya está en `bancos` (correcto, no moverlo — la corrección ya se había hecho antes de esta consulta).
 - La estructura estandarizada (ver [estructura-estandarizada.md](../estructura-estandarizada.md)) usa estos 14 grupos como base, pero los colapsa donde tiene sentido para el LLM (ver siguiente documento).

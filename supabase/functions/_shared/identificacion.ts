@@ -89,6 +89,26 @@ export function cedulaBienFormada(valor: string): boolean {
   return verificador === Number(valor[9]);
 }
 
+// Las identificaciones del sandbox de la API (api/openapi.yaml, «Sandbox»): empiezan
+// con 00, una provincia que no existe, así que ninguna puede ser de una persona.
+//
+// `clasificarIdentificacion` las sigue rechazando a propósito: la pantalla, los
+// guiones y las funciones de cada módulo no conocen el sandbox. Sólo la puerta de
+// la API las acepta, con el interruptor encendido (`validarPedidoDeLaApi`).
+export const PREFIJO_DE_LA_IDENTIFICACION_SIMULADA = "00";
+
+export function esIdentificacionSimulada(valor: unknown): boolean {
+  const numero = String(valor ?? "").trim().replace(/[\s.-]/g, "");
+  return /^\d+$/.test(numero) && numero.startsWith(PREFIJO_DE_LA_IDENTIFICACION_SIMULADA);
+}
+
+// El último control antes de una salida a una fuente, por si lo de antes falla:
+// consultar Proveedor_Info_1 o Equifax con un número inventado se pide y se cobra igual.
+// Lanza: quien llama lo ve como cualquier otro error nuestro y no sale nada.
+export function impedirLaSalidaDeUnaSimulada(identificacion: unknown, destino: string): void {
+  if (esIdentificacionSimulada(identificacion)) throw new Error(`Una identificación del sandbox no sale a ${destino}.`);
+}
+
 const SOLO_NUMEROS = /^\d+$/;
 
 export function clasificarIdentificacion(valorCrudo: string | null | undefined): Identificacion {

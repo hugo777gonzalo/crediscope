@@ -43,7 +43,7 @@ function crudo(cambios = {}) {
     demandas: ok({ demandas: [] }),
     denuncias: ok({ denuncias: [] }),
     pensionAlimenticia: ok({ supas: [] }),
-    pensionAlimenticiaNovadata: ok({ supas: [] }),
+    pensionAlimenticiaProveedorInfo1: ok({ supas: [] }),
     ...cambios,
   };
 }

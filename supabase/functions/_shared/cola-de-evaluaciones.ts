@@ -139,7 +139,7 @@ export function etapaDeLaApi(s: Pick<FilaDeLaCola, "pasos">, ahora: Date = new D
 }
 
 // Cuándo conviene volver a preguntar (Retry-After), según lo que se está
-// haciendo: Novadata tarda del orden de un minuto, el modelo unos 20 segundos y
+// haciendo: Proveedor_Info_1 tarda del orden de un minuto, el modelo unos 20 segundos y
 // la capacidad es un cálculo.
 export function segundosParaVolver(etapa: Paso | null): number {
   return etapa === "perfil" ? 15 : etapa === "buro" ? 10 : etapa === "analisis" ? 10 : 2;

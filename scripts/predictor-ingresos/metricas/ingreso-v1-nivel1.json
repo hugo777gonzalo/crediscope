@@ -1,0 +1,43 @@
+{
+  "poblacion": "solicitantes de crédito (en AWS, el 96% automotriz)",
+  "medido_el": "2026-10-29",
+  "fuente": "docs/especificacion-predictor-de-ingresos.md, secciones 3.1, 5 y 8; docs/investigacion-predictor-de-ingresos.md, 12.30",
+  "variables": 8,
+  "validacion_cruzada": {
+    "casos": 21260,
+    "r2": 0.157,
+    "r2_intervalo": [0.143, 0.172],
+    "tramo_exacto": 0.362,
+    "real_supera_minimo_90": 0.891,
+    "mediana_minimo_90": 995,
+    "certifica_2000": { "del_total": 0.030, "precision": 0.945 }
+  },
+  "ok_facturar_y_condicionado": {
+    "casos": 3538,
+    "r2": 0.074,
+    "tramo_exacto": 0.338,
+    "real_supera_minimo_90": 0.956,
+    "mediana_minimo_90": 1157,
+    "certifica_2000": { "del_total": 0.067, "precision": 0.975 }
+  },
+  "hacia_adelante": {
+    "descripcion": "Entrenado hasta junio, probado de julio a octubre de 2026.",
+    "casos": 8656,
+    "real_supera_minimo_90": 0.891,
+    "real_supera_minimo_90_intervalo": [0.885, 0.898],
+    "real_supera_minimo_85": 0.848
+  },
+  "prueba_en_sombra": {
+    "descripcion": "Con las entradas de producción: el perfil de CrediScope y predictor-ingresos.ts.",
+    "casos": 532,
+    "real_supera_minimo_90": 0.891,
+    "real_supera_minimo_90_intervalo": [0.865, 0.917],
+    "real_supera_minimo_85": 0.850
+  },
+  "calibracion_medida_sin_aplicar": {
+    "real_supera_minimo_90": 0.904,
+    "real_supera_minimo_90_intervalo": [0.898, 0.911],
+    "corrimiento_log": 0.040,
+    "baja_la_mediana_del_minimo_90": 0.039
+  }
+}

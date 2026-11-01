@@ -5,7 +5,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals, assertThrows } from "jsr:@std/assert@1";
-import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import { conIngresoDeclarado, datosDeCapacidad, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 
@@ -69,7 +69,7 @@ Deno.test("una deuda sin cuota no se cuenta como cero: queda marcada", () => {
   const c = evaluarCapacidad({
     ingresos: [sueldo(1000)],
     obligaciones: [],
-    deudasSinCuota: [{ concepto: "Casas comerciales", saldo: 640.5, origen: "Novadata" }],
+    deudasSinCuota: [{ concepto: "Casas comerciales", saldo: 640.5, origen: "Proveedor_Info_1" }],
     cuotaNueva: 100,
   });
   assertEquals(c.obligacionesIncompletas, true);
@@ -86,9 +86,9 @@ Deno.test("la carga máxima es de la institución", () => {
 
 Deno.test("sin buró: el sueldo del IESS, la cuota de cooperativas y los bancos y casas comerciales sin cuota", () => {
   const d = datosDeCapacidad(perfilDePrueba(), null);
-  assertEquals(d.fuenteDeLasCuotas, "novadata");
+  assertEquals(d.fuenteDeLasCuotas, "proveedor_info_1");
   assertEquals(d.ingresos, [{ concepto: "Sueldo reportado al IESS · Empleador privado", montoMensual: 1200, tipo: "sueldo", origen: "IESS" }]);
-  assertEquals(d.obligaciones, [{ concepto: "Cooperativas", montoMensual: 145.35, origen: "Novadata" }]);
+  assertEquals(d.obligaciones, [{ concepto: "Cooperativas", montoMensual: 145.35, origen: "Proveedor_Info_1" }]);
   assertEquals(d.deudasSinCuota.map((x) => x.concepto), ["Bancos", "Casas comerciales", "Préstamo del IESS o BIESS"]);
   assertEquals(d.deudasSinCuota[0].saldo, 5510.65);
 });
@@ -272,7 +272,7 @@ Deno.test("una deuda sin cuota no cuenta como cero tampoco cuando no tiene saldo
   const c = evaluarCapacidad({
     ingresos: [sueldo(1000)],
     obligaciones: [],
-    deudasSinCuota: [{ concepto: "Préstamo del IESS o BIESS", saldo: null, origen: "Novadata" }],
+    deudasSinCuota: [{ concepto: "Préstamo del IESS o BIESS", saldo: null, origen: "Proveedor_Info_1" }],
     cuotaNueva: 100,
   });
   assertEquals(c.obligacionesIncompletas, true);
@@ -297,17 +297,35 @@ Deno.test("datosDeCapacidad: perfiles sin fuentesIngreso, con la forma vieja o c
     assertEquals(d.ingresos, [], JSON.stringify(perfil));
     assertEquals(d.obligaciones, [], JSON.stringify(perfil));
     assertEquals(d.deudasSinCuota, [], JSON.stringify(perfil));
-    assertEquals(d.fuenteDeLasCuotas, "novadata");
+    assertEquals(d.fuenteDeLasCuotas, "proveedor_info_1");
   }
   // Fuentes indirectas, sin monto o en cero no son ingreso.
   const sinMonto = { fuentesIngreso: { fuentes: [{ evidencia: "indirecta", montoMensualReportado: null }, { evidencia: "reportada_por_tercero", montoMensualReportado: 0 }] } };
   assertEquals(datosDeCapacidad(sinMonto, null).ingresos, []);
 });
 
+Deno.test("una respuesta de Equifax sin reporte de crédito no es «no debe»: se sigue con Proveedor_Info_1", () => {
+  // La forma que deja una respuesta «completed» sin reporteCrediticio.
+  const sinReporte = {
+    deudaActualTitular: {
+      bancos: null,
+      cooperativas: null,
+      comercial: null,
+      total: { numeroDeOperaciones: 0, saldoDeudaUsd: 0, cuotaMensualUsd: 0 },
+    },
+  };
+  assertEquals(elBuroTraeDetalle(sinReporte), false);
+  assertEquals(elBuroTraeDetalle(null), false);
+  assertEquals(elBuroTraeDetalle({ deudaActualTitular: { bancos: { cuotaMensualUsd: 0 } } }), true);
+
+  const datos = datosDeCapacidad(perfilDePrueba(), sinReporte);
+  assertEquals(datos.fuenteDeLasCuotas, "proveedor_info_1");
+});
+
 Deno.test("datosDeCapacidad con Equifax: una estructura sin deuda del titular no es Equifax; con saldo y sin cuota, es una deuda sin cuota", () => {
-  // {} o sin deudaActualTitular: no hay estructura que usar, se sigue con Novadata.
-  assertEquals(datosDeCapacidad(perfilDePrueba(), {}).fuenteDeLasCuotas, "novadata");
-  assertEquals(datosDeCapacidad(perfilDePrueba(), { deudaActualTitular: null }).fuenteDeLasCuotas, "novadata");
+  // {} o sin deudaActualTitular: no hay estructura que usar, se sigue con Proveedor_Info_1.
+  assertEquals(datosDeCapacidad(perfilDePrueba(), {}).fuenteDeLasCuotas, "proveedor_info_1");
+  assertEquals(datosDeCapacidad(perfilDePrueba(), { deudaActualTitular: null }).fuenteDeLasCuotas, "proveedor_info_1");
 
   const estructura = {
     deudaActualTitular: {
@@ -321,8 +339,8 @@ Deno.test("datosDeCapacidad con Equifax: una estructura sin deuda del titular no
   assertEquals(d.obligaciones, [{ concepto: "Sector comercial", montoMensual: 25, origen: "Equifax" }]);
   // Los bancos de Equifax tienen saldo y cuota cero: no se cuentan como cero.
   assertEquals(d.deudasSinCuota[0], { concepto: "Bancos", saldo: 8200, origen: "Equifax" });
-  // Con Equifax no se mezclan los bancos de Novadata.
-  assert(!d.deudasSinCuota.some((x) => x.origen === "Novadata" && x.concepto === "Bancos"));
+  // Con Equifax no se mezclan los bancos de Proveedor_Info_1.
+  assert(!d.deudasSinCuota.some((x) => x.origen === "Proveedor_Info_1" && x.concepto === "Bancos"));
   const c = evaluarCapacidad({ ...d, cuotaNueva: 100 });
   assertEquals(c.obligacionesIncompletas, true);
 });
@@ -335,7 +353,7 @@ Deno.test("una fuente que no contestó se dice: no es una persona sin deudas", (
   const c = evaluarCapacidad({ ...sinBuro, cuotaNueva: 100 });
   assertEquals(c.obligacionesIncompletas, true);
   assert(c.avisos.some((a) => a.includes("No se pudo consultar: buró de bancos, casas comerciales, pensiones alimenticias")));
-  // Con Equifax, los bancos salen de ahí y su fuente de Novadata no importa.
+  // Con Equifax, los bancos salen de ahí y su fuente de Proveedor_Info_1 no importa.
   const conBuro = datosDeCapacidad(perfil, { deudaActualTitular: { bancos: { cuotaMensualUsd: 100 } } });
   assertEquals(conBuro.fuentesSinConsultar, ["casas comerciales", "pensiones alimenticias"]);
   // Y con todo contestado no hay nada que avisar.

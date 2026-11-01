@@ -1,10 +1,10 @@
-// El buró de la institución en el perfil del modelo (marco-v31, apagado):
+// El buró de la institución en el perfil del modelo (marco-v33, apagado):
 // un tema, una fuente. Dos promesas, y si cualquiera falla el modelo lee
 // otra cosa que la decidida:
-// - una persona SIN buró da el perfil de marco-v30 byte a byte, y con el
-//   interruptor apagado el pedido es el de v30 aunque llegue un buró;
+// - una persona SIN buró da el perfil de marco-v32 byte a byte, y con el
+//   interruptor apagado el pedido es el de v32 aunque llegue un buró;
 // - con buró, la deuda de bancos y cooperativas sale de Equifax y la de
-//   Novadata no llega, ni en null.
+//   Proveedor_Info_1 no llega, ni en null.
 // Datos inventados (perfil-de-prueba.ts y equifax-respuesta-de-prueba.ts): el
 // repositorio es público.
 //
@@ -14,9 +14,9 @@ import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
   armarPerfilDelModelo,
   type BuroDeLaInstitucion,
-  CAMPOS_DEL_BURO_DE_NOVADATA,
+  CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1,
   mensajeParaElModelo,
-  QUEDAN_DE_NOVADATA_CON_BURO,
+  QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO,
 } from "./perfil-del-modelo.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 import { derivarTablas } from "./equifax-tablas.ts";
@@ -43,7 +43,7 @@ const sistema = (pedido: Record<string, unknown>) => (pedido.system as Array<{ t
 
 // ---- sin buró: lo de hoy, byte a byte ----
 
-Deno.test("sin buró, el perfil del modelo es el de marco-v30, byte a byte", async () => {
+Deno.test("sin buró, el perfil del modelo es el de marco-v32, byte a byte", async () => {
   const esperado = await Deno.readTextFile(new URL("./perfil-del-modelo-sin-buro.esperado.json", import.meta.url));
   const comoSeGuardo = (pm: unknown) => JSON.stringify(pm, null, 2) + "\n";
   assertEquals(comoSeGuardo(armarPerfilDelModelo(perfilDePrueba())), esperado.replace(/\r\n/g, "\n"));
@@ -51,9 +51,9 @@ Deno.test("sin buró, el perfil del modelo es el de marco-v30, byte a byte", asy
   assertEquals(comoSeGuardo(mensajeParaElModelo(perfilDePrueba(), [], new Set(), null).perfilDelModelo), esperado.replace(/\r\n/g, "\n"));
 });
 
-Deno.test("con el interruptor apagado, el pedido es el de v30 aunque llegue un buró", async () => {
+Deno.test("con el interruptor apagado, el pedido es el de v32 aunque llegue un buró", async () => {
   assertEquals(CONFIG_LLM.buroDeLaInstitucion, false);
-  assertEquals(versionDelMarco(CONFIG_LLM), "marco-v30");
+  assertEquals(versionDelMarco(CONFIG_LLM), "marco-v32");
   const hoy = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set());
   const conUnBuro = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), CONFIG_LLM, buro());
   assertEquals(conUnBuro, hoy);
@@ -63,17 +63,17 @@ Deno.test("con el interruptor apagado, el pedido es el de v30 aunque llegue un b
 
 // ---- con buró: Equifax en lugar de bancos y cooperativas ----
 
-Deno.test("con buró no llegan el buró de bancos ni las cooperativas de Novadata, ni en null", () => {
+Deno.test("con buró no llegan el buró de bancos ni las cooperativas de Proveedor_Info_1, ni en null", () => {
   const pm = conBuro();
   assertEquals("comportamientoCooperativas" in pm, false);
   assertEquals(Object.keys(pm.comportamientoBancario), [
-    "figuraEnRegistroDeudores", "numeroDeudasRetail", "diasMoraMaximaRetail", "totalDeudaRetail", "valorVencidoRetail",
-    "tieneCreditoIessBiess", "diasMoraCreditoIessBiess", "numeroPrestamosIessBiess",
+    "figuraEnRegistroDeudores", "numeroDeudasRetail", "diasMoraMaximaRetail", "totalDeudaRetail", "valorVencidoRetail", "fechaCorteRetail",
+    "tieneCreditoIessBiess", "diasMoraCreditoIessBiess", "saldoPrestamosIessBiess", "numeroPrestamosIessBiess",
   ]);
   const texto = JSON.stringify(pm);
   // endeudamiento.deudaComoGaranteOCodeudor sigue llamándose así, con la
   // cifra de Equifax (ver la prueba de endeudamiento).
-  for (const campo of CAMPOS_DEL_BURO_DE_NOVADATA.filter((c) => c !== "deudaComoGaranteOCodeudor")) {
+  for (const campo of CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1.filter((c) => c !== "deudaComoGaranteOCodeudor")) {
     assertEquals(texto.includes(`"${campo}"`), false, campo);
   }
   // La calificación A1 a E no llega por ningún lado: la reemplazan los días.
@@ -91,11 +91,11 @@ Deno.test("buroEquifax va donde estaba el buró de bancos, y el resto en su orde
 Deno.test("todo campo de comportamientoBancario está decidido: queda o se va con el buró", () => {
   const campos = Object.keys(buildStandardProfile({} as never, "0000000000", "2026-08").profile.comportamientoBancario)
     .map((c) => (c === "numeroCreditosFormales" ? "numeroPrestamosIessBiess" : c));
-  const decididos = new Set<string>([...QUEDAN_DE_NOVADATA_CON_BURO, ...CAMPOS_DEL_BURO_DE_NOVADATA]);
-  for (const c of campos) assert(decididos.has(c), `${c}: sumarlo a QUEDAN_DE_NOVADATA_CON_BURO o a CAMPOS_DEL_BURO_DE_NOVADATA`);
+  const decididos = new Set<string>([...QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO, ...CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1]);
+  for (const c of campos) assert(decididos.has(c), `${c}: sumarlo a QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO o a CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1`);
 });
 
-Deno.test("bancos, Diners y cooperativas cuentan como consultados con buró aunque Novadata no contestara", () => {
+Deno.test("bancos, Diners y cooperativas cuentan como consultados con buró aunque Proveedor_Info_1 no contestara", () => {
   const p = perfilDePrueba();
   const meta = p.metaConsulta as Record<string, string[]>;
   meta.fuentesConDatos = meta.fuentesConDatos.filter((f) => !["buroCreditoSuper", "buroCreditoDiners", "buroCreditoCoop"].includes(f));
@@ -105,19 +105,19 @@ Deno.test("bancos, Diners y cooperativas cuentan como consultados con buró aunq
   const con = conBuro(p).disponibilidad;
   const temas = ["buró de crédito de bancos", "tarjetas Diners", "cooperativas"];
   for (const t of temas) {
-    assert(sin.temasNoConsultados.includes(t), t);
+    assert(sin.temasSinRespuesta.includes(t), t);
     assert(con.temasConsultados.includes(t), t);
-    assertEquals(con.temasNoConsultados.includes(t), false, t);
+    assertEquals(con.temasSinRespuesta.includes(t), false, t);
   }
   // Lo demás no cambia, y sigue en el orden de siempre.
-  assertEquals(con.temasNoConsultados, ["inversiones"]);
+  assertEquals(con.temasSinRespuesta, ["inversiones"]);
   assertEquals([...con.temasConsultados].sort(), [...sin.temasConsultados, ...temas].sort());
 });
 
-Deno.test("endeudamiento suma el buró y las casas comerciales de Novadata, y lo ajeno va aparte", () => {
+Deno.test("endeudamiento suma el buró y las casas comerciales de Proveedor_Info_1, y lo ajeno va aparte", () => {
   // Equifax (equifax-respuesta-de-prueba.ts): bancos 4.000 como titular con 300
   // vencidos y cuota 200; cooperativas 0; comercial 200 con cuota 20; como
-  // codeudor 500 en bancos y como garante 100 en el comercial. Novadata
+  // codeudor 500 en bancos y como garante 100 en el comercial. Proveedor_Info_1
   // (perfil-de-prueba.ts): casas comerciales 640,5 con 80,2 vencidos.
   assertEquals(conBuro().endeudamiento, {
     deudaPropiaTotal: 4841,
@@ -173,7 +173,7 @@ Deno.test("con buró no llega ningún dato personal, y todo número llega entero
   assertEquals(/\d\.\d/.test(texto.replace(/"[^"]*"/g, "")), false);
 });
 
-// ---- el marco de v31 ----
+// ---- el marco de v33 ----
 
 Deno.test("con buró, el marco lleva la sección del buró en lugar de los grupos 3 y 4", () => {
   const texto = marcoConElBuro(true);
@@ -193,18 +193,53 @@ Deno.test("con buró, el marco lleva la sección del buró en lugar de los grupo
   assert(texto.includes("juzgado sólo con buroEquifax"));
 });
 
-Deno.test("sin buró, el marco de v31 es el de v30 con el rótulo nuevo y nada más", () => {
-  const v31 = marcoConElBuro(false);
-  const antes = MARCO_INTERPRETATIVO.indexOf("   - Garantías:");
-  const despues = MARCO_INTERPRETATIVO.indexOf("   - numeroPrestamosIessBiess");
-  assertEquals(v31.slice(0, antes), MARCO_INTERPRETATIVO.slice(0, antes));
-  assertEquals(v31.slice(v31.indexOf("   - numeroPrestamosIessBiess")), MARCO_INTERPRETATIVO.slice(despues));
-  assert(v31.slice(antes).startsWith("   - Deuda como codeudor o garante: numeroOperacionesComoGaranteOCodeudor,"));
-  assertEquals(v31.includes("Garantías:"), false);
+Deno.test("sin buró, el marco de v33 es el de v32 tal cual", () => {
+  assertEquals(marcoConElBuro(false), MARCO_INTERPRETATIVO);
+  assertEquals(MARCO_INTERPRETATIVO.includes("Garantías:"), false);
+  assert(MARCO_INTERPRETATIVO.includes("   - Deuda como codeudor o garante: numeroOperacionesComoGaranteOCodeudor,"));
 });
 
-Deno.test("encendido: v31, con la sección del buró sólo para quien lo tiene", () => {
-  assertEquals(versionDelMarco(ENCENDIDO), "marco-v31");
+// ---- las correcciones de v32, en los dos textos ----
+
+const LOS_DOS_TEXTOS = [marcoConElBuro(false), marcoConElBuro(true)];
+
+Deno.test("los temas de una fuente caída se dicen con palabras naturales", () => {
+  for (const texto of LOS_DOS_TEXTOS) {
+    assertEquals(/nadie miró|no se consultaron|no se consultó|temasNoConsultados|temas no consultados|sin consultar/i.test(texto), false);
+    assert(texto.includes("disponibilidad.temasSinRespuesta"));
+    assert(texto.includes("tenemos los sustentos suficientes"));
+    assert(texto.includes("que la fuente diga que no hay nada"));
+  }
+});
+
+Deno.test("el retail vale a su fecha de corte, con buró y sin él", () => {
+  for (const texto of LOS_DOS_TEXTOS) {
+    assert(texto.includes("fechaCorteRetail es la fecha de corte de esas deudas"));
+    assert(texto.includes("Tampoco prueban que no exista una deuda posterior"));
+    assert(texto.includes("saldoPrestamosIessBiess"));
+  }
+});
+
+Deno.test("A2 es atraso, y la calificación no se traduce a días", () => {
+  const sinBuro = marcoConElBuro(false);
+  assert(sinBuro.includes("A1 es la única de la escala sin atraso"));
+  assert(sinBuro.includes("A2 ya es atraso"));
+  assert(sinBuro.includes("una C1 comercial no se explica por los días"));
+  assertEquals(sinBuro.includes("La define la Superintendencia por días de atraso"), false);
+  const conBuro = marcoConElBuro(true);
+  assertEquals(conBuro.includes("que es lo que esa calificación mide"), false);
+  assert(conBuro.includes("en el crédito comercial no sale sólo de ellos"));
+});
+
+Deno.test("el empleador vigente en null y el RUC depurado están explicados en los dos textos", () => {
+  for (const texto of LOS_DOS_TEXTOS) {
+    assert(texto.includes("empleadorVigenteSituacionLegal"));
+    assert(texto.includes("rucDepuradoEnRelacionDeDependencia=true"));
+  }
+});
+
+Deno.test("encendido: v33, con la sección del buró sólo para quien lo tiene", () => {
+  assertEquals(versionDelMarco(ENCENDIDO), "marco-v33");
   const con = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, buro());
   const sin = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, null);
   assertEquals(sistema(con), marcoConElBuro(true));

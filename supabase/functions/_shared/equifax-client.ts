@@ -30,6 +30,8 @@
 // El User-Agent es propio y simple: el WAF de Aval rechazó el de Deno con 403
 // y la lección se aplica acá antes de que cueste una tarde.
 
+import { impedirLaSalidaDeUnaSimulada } from "./identificacion.ts";
+
 const BASE_POR_DEFECTO = "https://api.latam.equifax.com";
 const ALCANCE_POR_DEFECTO = "https://api.latam.equifax.com/business/interconnect/v1/decision-orchestrations";
 const RUTA_TOKEN = "/v2/oauth/token";
@@ -214,7 +216,7 @@ const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // El token y el pedido en curso viven en el módulo. Con el pedido
 // compartido, varias consultas simultáneas con el token vencido hacen UN
-// inicio de sesión y no uno cada una (la lección de Novadata, E5: eran 52).
+// inicio de sesión y no uno cada una (la lección de Proveedor_Info_1, E5: eran 52).
 let tokenGuardado: { valor: string; venceEn: number } | null = null;
 let tokenEnCurso: Promise<string> | null = null;
 
@@ -394,6 +396,7 @@ export async function consultarEquifax(
   identificacion: string,
   opciones: { tipo?: TipoIdentificacionEquifax; parametros?: Partial<ParametrosDeDecision> } = {},
 ): Promise<RespuestaEquifax> {
+  impedirLaSalidaDeUnaSimulada(identificacion, "Equifax");
   const inicio = Date.now();
   const tipo = opciones.tipo ?? "C";
   const parametros: ParametrosDeDecision = { ...PARAMETROS_DE_RELLENO, ...opciones.parametros };

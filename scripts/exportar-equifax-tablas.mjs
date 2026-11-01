@@ -112,13 +112,13 @@ const agregar = (nombre, filasHoja, columnas) => {
 
 const leame = [
   ["Qué es", `Lo que Equifax contestó de ${consultas.length} personas (la consulta más reciente de cada una), descompuesto en tablas: una hoja por tabla. La columna «persona» es el código c-xxxxxxxx (los 8 primeros caracteres del identificador interno); no hay nombres, cédulas, direcciones ni teléfonos.`],
-  ["De dónde sale", "Del JSON que contestó Equifax (consultas_equifax.respuesta_cruda), con la misma función que llena las tablas de la base (equifax-tablas-v2). Los montos son dólares; las fechas, AAAA-MM-DD."],
+  ["De dónde sale", "Del JSON que contestó Equifax (consultas_equifax.respuesta_cruda), con la misma función que llena las tablas de la base (equifax-tablas-v3). Los montos son dólares; las fechas, AAAA-MM-DD."],
   ["Cuidado", "Datos de buró de personas reales: fuera de git (research/), sólo para uso interno. Los importes de «resumen_informe», impagos, morosidades y la cuota estimada de Equifax cuentan también las operaciones donde la persona es codeudora o garante; el rol de cada operación está en la columna «rol»."],
   ["Hojas", ""],
   ...["Consultas", ...Object.keys(ESPECIFICACION_DE_TABLAS), "Estructura"].map((h) => [
     h,
     h === "Consultas" ? "Una fila por persona: cuándo se consultó y con qué versiones"
-      : h === "Estructura" ? "La estructura estandarizada (equifax-estructura-v1), una fila por persona, con los campos aplanados con puntos"
+      : h === "Estructura" ? "La estructura estandarizada (equifax-estructura-v2), una fila por persona, con los campos aplanados con puntos"
       : `${hojas[h].length} filas · de ${DE_DONDE_SALE[h]}`,
   ]),
 ];

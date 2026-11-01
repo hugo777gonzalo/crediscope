@@ -1,9 +1,9 @@
 # Config del Supabase CLI para este proyecto (Edge Functions locales/deploy).
 
-[functions.explore-novadata]
+[functions.explore-proveedor-info-1]
 # Hasta el 2026-10-09 iba sin JWT ("se usa antes de tener una sesión"):
 # eso la dejaba abierta a cualquiera para probar credenciales de
-# Novadata y consultar personas sin rastro. La pantalla ya era sólo de
+# Proveedor_Info_1 y consultar personas sin rastro. La pantalla ya era sólo de
 # admin; ahora la función exige sesión y rol admin (ver su index.ts).
 verify_jwt = true
 
@@ -51,6 +51,12 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.capacidad-de-pago]
+verify_jwt = true
+
+# El predictor de ingresos, con su propia puerta (141). Exige sesión y rol dentro
+# de la función, antes de leer el cuerpo. Lee el perfil guardado: no consulta a
+# ninguna fuente ni al modelo de lenguaje.
+[functions.estimar-ingreso]
 verify_jwt = true
 
 # El orquestador de las solicitudes (133): corre un paso por llamada y llama a

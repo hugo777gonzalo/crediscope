@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "./supabaseClient.js";
 import { inicioDelDia, finDelDia, diaEcuador } from "./fechas.js";
 import { traerTodas } from "./paginar.js";
 import { errorDeFuncion } from "./errorDeFuncion.js";
+import { PREFIJO_DE_LA_IDENTIFICACION_SIMULADA } from "../../supabase/functions/_shared/identificacion.ts";
 
 // Base de las Edge Functions. Si Supabase está configurado, se calcula
 // de VITE_SUPABASE_URL; si no, se puede fijar VITE_FUNCTIONS_URL a mano
@@ -18,7 +19,7 @@ const FUNCTIONS_URL =
 // supabase/functions/analyze-client/index.ts). `profileId` (opcional):
 // id de un client_profiles ya generado por structureClient — si viene,
 // se reutiliza ese Perfil del Cliente en vez de volver a consultar
-// Novadata (ver "Análisis con IA").
+// Proveedor_Info_1 (ver "Análisis con IA").
 export async function analyzeClient(cedula, { profileId } = {}) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no está configurado.");
@@ -32,8 +33,8 @@ export async function analyzeClient(cedula, { profileId } = {}) {
 
 // Llama a la Edge Function `structure-client`: ingesta -> estructura
 // estandarizada -> persiste en client_profiles. NO pasa por el LLM.
-// Usa las credenciales de Novadata de las secrets de la función (el
-// usuario no las escribe acá) — a diferencia de explore-novadata, esto
+// Usa las credenciales de Proveedor_Info_1 de las secrets de la función (el
+// usuario no las escribe acá) — a diferencia de explore-proveedor-info-1, esto
 // sí requiere sesión y sí persiste.
 export async function structureClient(cedula) {
   if (!isSupabaseConfigured) {
@@ -135,7 +136,7 @@ export async function getResourceConfig() {
 
 export async function updateResourceConfig(recurso, { enabled, motivo }) {
   const { error } = await supabase
-    .from("novadata_resource_config")
+    .from("proveedor_info_1_resource_config")
     .update({ enabled, motivo: motivo || null, updated_at: new Date().toISOString() })
     .eq("recurso", recurso);
   if (error) throw error;
@@ -157,7 +158,7 @@ export async function updateFieldConfig(grupo, campo, { enabled, motivo }) {
 }
 
 // ---------- Configuración de Aval ----------
-// Aval no tiene 52 endpoints apagables como Novadata (una sola llamada
+// Aval no tiene 52 endpoints apagables como Proveedor_Info_1 (una sola llamada
 // atómica por persona), así que el análogo real de ConfigFuentes es un
 // único on/off en `proveedores` (migración 067/076); el análogo de
 // ConfigCampos es aval_field_config, mismo esquema que
@@ -189,7 +190,7 @@ export async function updateProveedor(clave, { activo, notas }) {
 // Última consulta de Aval guardada para esta cédula, tal como la deja
 // consultar-aval (respuesta_cruda + perfil + estructura + columnas
 // planas). null si nunca se consultó. No llama a Aval -- es una lectura
-// simple, sin costo, igual que getLatestProfile con Novadata.
+// simple, sin costo, igual que getLatestProfile con Proveedor_Info_1.
 export async function getLatestAvalConsulta(cedula) {
   const { data, error } = await supabase
     .from("consultas_aval")
@@ -261,7 +262,7 @@ export async function consultarEquifax(cedula) {
 
 // Las solicitudes de crédito (133). La función `evaluar-solicitud` crea la
 // solicitud y la evalúa por pasos: `avanzar` corre uno por llamada (consultar
-// Novadata y el modelo juntos pasan los 150 s de una función). La pantalla
+// Proveedor_Info_1 y el modelo juntos pasan los 150 s de una función). La pantalla
 // llama hasta que no quede ninguno.
 export async function evaluarSolicitud(cuerpo) {
   if (!isSupabaseConfigured) {
@@ -282,6 +283,8 @@ export async function getSolicitudesRecientes({ limite = 8 } = {}) {
   const { data, error } = await supabase
     .from("solicitudes")
     .select("id, identificacion, modalidad, monto, plazo_meses, estado, creada_el, decision, resultado->analisis->recomendacion, resultado->capacidad->capacidad->veredicto")
+    // Una prueba del sandbox de la API no es una solicitud de nadie.
+    .not("identificacion", "like", `${PREFIJO_DE_LA_IDENTIFICACION_SIMULADA}%`)
     .order("creada_el", { ascending: false })
     .limit(limite);
   if (error) throw error;
@@ -361,6 +364,21 @@ export async function getHistoriaDePagosEquifax(consultaId) {
   return filas;
 }
 
+// Los cortes que trae la deuda por sistema (la evolución de 24 meses y la deuda histórica): fijan
+// hasta dónde llega el reporte, que no es el último mes con operaciones. Sólo las fechas, nunca los
+// montos: esa lista no se suma a la deuda (_shared/equifax-ventana.ts).
+export async function getCortesDelReporteEquifax(consultaId) {
+  const { filas } = await traerTodas((opciones) =>
+    supabase
+      .from("equifax_deuda_por_sistema_y_mes")
+      .select("orden, fecha_corte", opciones)
+      .eq("consulta_equifax_id", consultaId)
+      .neq("origen", "resumen_actual")
+      .order("orden"),
+  );
+  return filas.map((f) => f.fecha_corte);
+}
+
 // El buró de la institución (cuestionario, A2: uno solo por IFI): "equifax",
 // "aval" o null si no tiene. Antes de la migración 129 la columna no existe y
 // se sigue mostrando Aval, como hasta entonces: la página se publica en cuanto
@@ -415,16 +433,16 @@ export async function updateSegmentConfig(grupo, { modo, motivo }) {
   if (error) throw error;
 }
 
-// Llama a la Edge Function `explore-novadata` con credenciales de
-// Novadata que el usuario ingresa en el momento (no las secrets de
+// Llama a la Edge Function `explore-proveedor-info-1` con credenciales de
+// Proveedor_Info_1 que el usuario ingresa en el momento (no las secrets de
 // servicio). No persiste nada — solo para inspeccionar la ingesta. Desde
 // el 2026-10-09 exige la sesión de un admin: sin ella la función quedaba
-// abierta a cualquiera. Ver supabase/functions/explore-novadata/index.ts.
-export async function exploreNovadata({ username, password, cedula }) {
+// abierta a cualquiera. Ver supabase/functions/explore-proveedor-info-1/index.ts.
+export async function exploreProveedorInfo1({ username, password, cedula }) {
   const { data: sesion } = await supabase.auth.getSession();
   const token = sesion?.session?.access_token;
   if (!token) throw new Error("La sesión venció: volvé a ingresar.");
-  const res = await fetch(`${FUNCTIONS_URL}/explore-novadata`, {
+  const res = await fetch(`${FUNCTIONS_URL}/explore-proveedor-info-1`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -435,7 +453,7 @@ export async function exploreNovadata({ username, password, cedula }) {
   });
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.error || `Error consultando Novadata (HTTP ${res.status})`);
+    throw new Error(data?.error || `Error consultando Proveedor_Info_1 (HTTP ${res.status})`);
   }
   return data;
 }

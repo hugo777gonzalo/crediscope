@@ -19,8 +19,8 @@ adelante consta así:
   hubiéramos hecho nosotros (`origen = 'lote'`, `ambiente = 'produccion'`, `created_at` = la
   fecha original, procedencia en `parametros.migrada_de`). Idempotente. Una consulta migrada
   vale hasta el 17 del mes de su fecha, como cualquier otra; las viejas no cuentan como vigentes.
-- **Esas personas no se consultan a Novadata por ahora** (negocio, 2026-10-30: el servicio
-  tiene intermitencias). Quedan con el buró y sin perfil de Novadata.
+- **Esas personas no se consultan a Proveedor_Info_1 por ahora** (negocio, 2026-10-30: el servicio
+  tiene intermitencias). Quedan con el buró y sin perfil de Proveedor_Info_1.
 - La autorización de cada titular sigue siendo de la IFI, por contrato.
 
 ## Dónde está cada cosa
@@ -34,23 +34,23 @@ adelante consta así:
   modelo):
   - **Un solo buró por IFI** (negocio, 2026-10-13: Equifax o Aval, no los dos
     ni en orden). Cuando la persona lo tiene, reemplaza a la deuda de bancos y
-    cooperativas de Novadata: «un tema, una fuente», propuesto en
+    cooperativas de Proveedor_Info_1: «un tema, una fuente», propuesto en
     `docs/propuesta-buro-de-la-institucion.md` (sin construir). Medido con
     `scripts/medir-solapamiento-equifax.mjs`: **el comercial de Equifax y las
-    casas comerciales de Novadata son otras empresas** (no se apagan) y **Equifax
-    no trae la calificación A1 a E** (se lee en días de mora). **Novadata se
+    casas comerciales de Proveedor_Info_1 son otras empresas** (no se apagan) y **Equifax
+    no trae la calificación A1 a E** (se lee en días de mora). **Proveedor_Info_1 se
     sigue consultando entera** (negocio, 2026-10-16): lo repetido sólo deja de
     ir al modelo.
   - **El buró de la base** es `proveedores.es_buro` (129, a lo sumo uno): lo
     elige el selector «Buró» de Configuración y decide la pestaña de cada
     persona; el menú dice «Buró» y `/buro/:cedula` lleva a la que corresponde.
     `activo` sigue diciendo sólo si se puede consultar.
-  - **El buró en lo que lee el modelo es `marco-v31`, APAGADO**
+  - **El buró en lo que lee el modelo es `marco-v33`, APAGADO**
     (`CONFIG_LLM.buroDeLaInstitucion`): `_shared/buro-de-la-institucion.ts` busca
     la consulta vigente y `armarPerfilDelModelo(perfil, campos, buro)` pone
-    `buroEquifax` en lugar de bancos y cooperativas de Novadata;
-    `marcoConElBuro()` arma los dos textos de v31 sobre el de v30. Sin buró, el
-    perfil es el de v30 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).
+    `buroEquifax` en lugar de bancos y cooperativas de Proveedor_Info_1;
+    `marcoConElBuro()` arma el texto con buró sobre el de v32. Sin buró, el perfil
+    es el de v32 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).
     Cómo encenderlo: `docs/propuesta-marco-equifax.md`, sección 8.
   - **Los tokens de un JSON se miden, no se estiman** (2026-10-16): con 3,2
     caracteres por token el bloque del buró salía en 1.050 y pesa 2.000 (1,63:
@@ -191,6 +191,23 @@ adelante consta así:
       función rechaza una cédula inválida y reutiliza una vigente; una consulta
       PAGA desde las funciones todavía no se hizo (la primera, con una persona
       que autorice el negocio).
+  - **La ventana de 24 meses sale del corte del reporte, no de la última fila** (2026-10-31):
+    el detalle histórico sólo trae los meses con operaciones, así que quien ya no debe tenía la
+    ventana corrida hacia atrás (con meses «sin deuda» que Equifax nunca cubrió) y sin los meses
+    reales hasta hoy. El corte es el último mes de `evolucion_deuda_sb_seps_sicom` (24 meses
+    contiguos en las 2.130 consultas que la traen) y de `deuda_historica`; esas listas sólo fijan
+    el corte y **no se suman a la deuda**. Una sola regla (`_shared/equifax-ventana.ts`) para
+    `conductaDePago` y `franjaDePagos`; los meses sin operaciones son «Sin deuda como titular»,
+    y `mesesObservados` cuenta los meses de la ventana que el reporte cubrió. Sin evolución no hay
+    corte que inferir (el de la consulta cae 1 o 2 meses atrás): la ventana termina en la última fila.
+  - **En el detalle ACTUAL del sector comercial, `saldo_deuda` es lo por vencer y `total_vencer`
+    no se lee** (2026-10-31): el total es por vencer + vencido + no devenga intereses. Sobre todas
+    las consultas guardadas, esa suma reproduce el total del resumen en todas, y leer `saldo_deuda`
+    como total sólo cuadraba en el 87%. `total_vencer` unas veces trae el total, otras sólo el
+    vencido y otras el monto de demanda judicial o cartera castigada. **La historia mensual del
+    comercial no cambia de significado** (ahí `saldo_deuda` es el total, como en bancos) y queda sin
+    conciliar: pregunta en el pedido de diccionario. Una lectura de una lista de Equifax se mide
+    contra el resumen con todas las consultas guardadas antes de darla por buena, no con unas pocas.
   - Los parámetros de la decisión (producto 1, monto, plazo) son de
     relleno: sólo interesa lo que el buró trae de la persona.
   - La clave y el token no salen en ningún mensaje (`sanitizar()`); el

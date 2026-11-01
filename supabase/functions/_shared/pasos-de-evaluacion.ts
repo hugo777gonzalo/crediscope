@@ -14,17 +14,19 @@
 //
 // Cada paso devuelve su resultado o un fallo con el código de la especificación
 // (`falloDeUnPaso`); nunca copia lo que contestó un tercero, que podría traer su
-// mensaje (Novadata, Equifax, el modelo) o el de la base.
+// mensaje (Proveedor_Info_1, Equifax, el modelo) o el de la base.
 
 import { consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
-import { analizarPersona } from "./analisis-de-la-persona.ts";
+import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
-import { elPerfilSirve } from "./calidad-de-la-consulta.ts";
+import { elPerfilSePuedeAnalizar, elPerfilSirve, porQueNoSePuedeAnalizar } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
-import { conIngresoDeclarado, datosDeCapacidad, evaluarCapacidad } from "./capacidad-de-pago.ts";
-import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
+import { capacidadDeLaSolicitud } from "./capacidad-de-la-solicitud.ts";
+import { elBuroTraeDetalle } from "./capacidad-de-pago.ts";
+import { esIdentificacionSimulada } from "./identificacion.ts";
 import { type FalloDeUnPaso, falloDeUnPaso, type Paso, pasoEnCurso, type RegistroDePaso, resumenDelAnalisis } from "./modalidades.ts";
 import type { ResultadoDelPaso } from "./cola-de-evaluaciones.ts";
+import { correrPasoSimulado } from "./sandbox-pasos.ts";
 
 // deno-lint-ignore no-explicit-any
 type Fila = Record<string, any>;
@@ -40,6 +42,8 @@ export interface ContextoDeLosPasos {
    * quien evalúa es administrador.
    */
   puedeCobrarEquifax: boolean;
+  /** La hora del trabajador: sólo la mira el sandbox, para la evaluación que tarda. */
+  ahora?: Date;
 }
 
 const fecha = (iso: string) => new Date(iso).toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" });
@@ -57,11 +61,18 @@ async function diasDeValidezDelPerfil(db: Fila): Promise<number> {
 
 export async function correrPaso(paso: Paso, s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDelPaso> {
   try {
+    // Antes de mirar el paso y de tocar nada: una evaluación del sandbox no consulta,
+    // no cobra ni gasta modelo, y tampoco deja filas en las tablas de las personas.
+    // Las que se guardan cuentan para el tope diario de Equifax, para los costos y
+    // para los totales de la cartera.
+    if (esIdentificacionSimulada(s.identificacion)) return correrPasoSimulado(paso, s, ctx.ahora ?? new Date());
     if (paso === "perfil") return await pasoPerfil(s, ctx);
     if (paso === "buro") return await pasoBuro(s, ctx);
     if (paso === "analisis") return await pasoAnalisis(s, ctx);
     return await pasoCapacidad(s, ctx.db);
   } catch (err) {
+    // Este mensaje es nuestro y sólo nombra temas: no trae nada de la fuente.
+    if (err instanceof ConsultaIncompleta) return fallo(err.message, "fuentes_no_disponibles");
     // Sin el mensaje: un error de la base o de una fuente puede traer datos.
     console.error("pasos-de-evaluacion:", paso, (err as Error)?.name);
     return fallido(paso, 500);
@@ -80,13 +91,15 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
     // días y uno vacío de ayer no se dan por vigente con el viejo). Y que sirva.
     const { data: ultimo } = await db
       .from("client_profiles")
-      .select("id, created_at, fuentes_ok, ejes_ok, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
+      .select("id, created_at, fuentes_ok, ejes_ok, estado_por_fuente, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     const dias = await diasDeValidezDelPerfil(db);
-    if (ultimo && elPerfilSirve(ultimo) && Date.now() - Date.parse(ultimo.created_at) < dias * 86_400_000) {
+    // Uno que quedó incompleto no se reutiliza: reintentar leería siempre ese
+    // mismo perfil y nunca volvería a preguntarle a la fuente.
+    if (ultimo && elPerfilSirve(ultimo) && elPerfilSePuedeAnalizar(ultimo.estado_por_fuente) && Date.now() - Date.parse(ultimo.created_at) < dias * 86_400_000) {
       // También se audita reutilizar: no se consultó a la fuente, pero los datos
       // de esa persona entran igual al resultado que se le entrega a la institución.
       await db.from("audit_log").insert({
@@ -113,11 +126,14 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
   });
   if (!r.ok) return fallido("perfil", r.status);
   const g = r.guardado;
+  // Acá y no en el paso del análisis: en Plus el buró va en el medio y se cobra.
+  // Sin este corte se pagaría a Equifax para que después el modelo no corra.
+  if (!elPerfilSePuedeAnalizar(g.estado_por_fuente)) return fallo(porQueNoSePuedeAnalizar(g.estado_por_fuente), "fuentes_no_disponibles");
   const f = g.standard_profile?.fuentesIngreso ?? {};
   return {
     ok: true,
     cambios: { client_id: g.client_id, client_profile_id: g.id },
-    detalle: "Se consultó a la persona en Novadata.",
+    detalle: "Se consultó a la persona en Proveedor_Info_1.",
     resultado: { perfil: { perfilId: g.id, perfilDel: g.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null } },
   };
 }
@@ -183,7 +199,7 @@ async function pasoBuro(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDelP
   // La misma regla que el camino de arriba y que el modelo. La consulta se
   // reutiliza aunque no tenga su estructura (las tablas pueden fallar después de
   // pagar), y sin estructura la capacidad de Plus caería sin avisar a las cuotas
-  // de Novadata. Una consulta vigente sin estructura se rehace acá desde su crudo,
+  // de Proveedor_Info_1. Una consulta vigente sin estructura se rehace acá desde su crudo,
   // sin volver a pagar: antes nada la rehacía y esa persona no podía hacer un Plus
   // hasta el corte del mes.
   let usable = await consultaVigenteDeEquifax(db, s.client_id);
@@ -236,26 +252,8 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
   if (s.modalidad === "plus" && !estructura) {
     return fallo("Falta la consulta de Equifax de la persona: Plus calcula la capacidad con las cuotas del buró.", "buro_no_disponible");
   }
-  const condiciones = { plazoMeses: s.plazo_meses, tasaNominalAnualPorcentaje: Number(s.tasa_nominal_anual), sistema: s.sistema, desgravamen: s.desgravamen };
-  const simulacion = simularCredito({ ...condiciones, monto: Number(s.monto) });
-  if (!simulacion.ok) return fallo(simulacion.errores.join(" "), "error_interno");
-  const datosIess = datosDeCapacidad(perfil.standard_profile, estructura);
-  const datos = conIngresoDeclarado(datosIess, s.ingreso_declarado === null || s.ingreso_declarado === undefined ? null : Number(s.ingreso_declarado));
-  const cuotaNueva = simulacion.simulacion.cuotaPrimerMes;
-  const capacidad = evaluarCapacidad({ ...datos, cuotaNueva });
-  const { tabla: _tabla, ...resumenSimulacion } = simulacion.simulacion;
-  return {
-    ok: true,
-    cambios: {},
-    detalle: "Se calcularon la cuota y la capacidad de pago.",
-    resultado: {
-      capacidad: {
-        simulacion: resumenSimulacion,
-        capacidad,
-        montoMaximo: montoMaximoParaCuota(capacidad.cuotaMaximaAdmisible, condiciones),
-        capacidadSoloIess: datos !== datosIess ? evaluarCapacidad({ ...datosIess, cuotaNueva }) : null,
-        datos,
-      },
-    },
-  };
+  if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) {
+    return fallo("Equifax contestó sin reporte de crédito: Plus no puede calcular la capacidad sin las cuotas del buró.", "buro_no_disponible");
+  }
+  return capacidadDeLaSolicitud(s, perfil.standard_profile, estructura);
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { getUltimaConsultaEquifax, getOperacionesEquifax, getHistoriaDePagosEquifax, registrarEvento } from "../lib/api.js";
+import { getUltimaConsultaEquifax, getOperacionesEquifax, getHistoriaDePagosEquifax, getCortesDelReporteEquifax, registrarEvento } from "../lib/api.js";
 import { estaVigenteHastaElCorte, finDeLaVigencia } from "../../supabase/functions/_shared/vigencia-mensual.ts";
 import { formatearFecha, formatearFechaHora } from "../lib/fechas.js";
 import { franjaDePagos } from "../lib/equifaxPantalla.js";
@@ -42,6 +42,7 @@ export default function PerfilEquifax() {
   const [consulta, setConsulta] = useState(null);
   const [operaciones, setOperaciones] = useState([]);
   const [historia, setHistoria] = useState([]);
+  const [cortes, setCortes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [reporteAbierto, setReporteAbierto] = useState(false);
@@ -55,12 +56,18 @@ export default function PerfilEquifax() {
       const c = await getUltimaConsultaEquifax(cedula);
       setConsulta(c);
       if (c) {
-        const [ops, hist] = await Promise.all([getOperacionesEquifax(c.id), getHistoriaDePagosEquifax(c.id)]);
+        const [ops, hist, cortesDelReporte] = await Promise.all([
+          getOperacionesEquifax(c.id),
+          getHistoriaDePagosEquifax(c.id),
+          getCortesDelReporteEquifax(c.id),
+        ]);
         setOperaciones(ops);
         setHistoria(hist);
+        setCortes(cortesDelReporte);
       } else {
         setOperaciones([]);
         setHistoria([]);
+        setCortes([]);
       }
     } catch (err) {
       setError(err);
@@ -106,7 +113,7 @@ export default function PerfilEquifax() {
   }
 
   const estructura = consulta?.estructura ?? null;
-  const franja = useMemo(() => franjaDePagos(historia), [historia]);
+  const franja = useMemo(() => franjaDePagos(historia, cortes), [historia, cortes]);
   const vigente = consulta ? estaVigenteHastaElCorte(consulta.created_at) : false;
   // Vencida, dice cuándo venció: «volver a consultar se cobra» repetía lo que
   // ya dicen la ayuda de al lado y el cuadro del botón (revisión del 2026-10-18).

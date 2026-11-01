@@ -13,7 +13,7 @@
 >   `establecimientoActEconomica`.
 > - `tributario.esAfiliadoUnipersonal`: misma fuente (`contribuyente`);
 >   un registro "cascarón" con `estado.codigo=OK` pero todos los campos
->   `null` (Novadata lo hace cuando la persona nunca tuvo RUC — ver
+>   `null` (Proveedor_Info_1 lo hace cuando la persona nunca tuvo RUC — ver
 >   cédula c-636cb156) ahora da `false`, no `null`.
 > - `laboral.empleoActual` (empleador/cargo/salarioAprox): la fuente
 >   correcta es `trabajoHistoricosMecanizado` (trae `baseDate`
@@ -51,8 +51,8 @@
 > `fechaInicioActividadesRuc`, `fechaCeseActividadesRuc`,
 > `fechaReinicioActividadesRuc` (fechas crudas del registro RUC activo,
 > o el primero disponible) — para poder validar estos booleanos contra
-> el SRI sin ir a la data cruda de Novadata cada vez. Nota: el SRI
-> también muestra una "fecha de actualización" que **Novadata no
+> el SRI sin ir a la data cruda de Proveedor_Info_1 cada vez. Nota: el SRI
+> también muestra una "fecha de actualización" que **Proveedor_Info_1 no
 > provee** en este recurso — no se puede exponer.
 >
 > El usuario señaló que el estado del RUC (a nivel de contribuyente) es
@@ -119,7 +119,7 @@
 >
 > **v8 — auditoría de valuación de vehículos, pedida por el usuario
 > ("para el tema de colaterales, es importante llegar al valor más
-> aproximado").** Novadata trae hasta 8 campos de precio distintos por
+> aproximado").** Proveedor_Info_1 trae hasta 8 campos de precio distintos por
 > vehículo que NO coinciden entre sí: `valorAvaluo` (avalúo fiscal SRI,
 > depreciación lineal — castiga fuerte vehículos viejos, ej. $82 en una
 > moto 2016 o $1,200 en un camión 1984), `precioPromedio`/
@@ -216,7 +216,7 @@
 > - `comportamientoBancario.saldoEnMoraBuroCredito` /
 >   `comportamientoCooperativas.saldoEnMora` (nuevos) — `saldoVigente`/
 >   `saldoTotal` NO incluyen lo que está en mora (campos separados en
->   Novadata). Caso real (cédula c-c861d3f1): 4 operaciones bancarias
+>   Proveedor_Info_1). Caso real (cédula c-c861d3f1): 4 operaciones bancarias
 >   calificación E, `saldoVigente = 0` en las 4, pero **$11,812.67**
 >   reales en mora (`saldomora`) — `saldoTotalVigente` solo hubiera
 >   mostrado $0, ocultando un default severo.
@@ -229,12 +229,12 @@
 >   empleo sigue activo hoy) — caso real cédula c-5515c4b7 (empleo
 >   estable desde 2018): pasó de 0 a 1.
 > - Se refrescó la caché local de los 25 clientes originales
->   (`research/novadata-raw/`, gitignored) con `--force`, porque
+>   (`research/proveedor-info-1-raw/`, gitignored) con `--force`, porque
 >   guardaban datos de buró de crédito con las claves de recurso viejas
 >   (`centralRiesgo*`, previas al rename a `buroCredito*` de `marco-v8`)
 >   — el refresco reveló el caso real de mora de arriba, que antes
 >   quedaba oculto en la muestra local (no afectaba producción, que
->   siempre consulta Novadata en vivo).
+>   siempre consulta Proveedor_Info_1 en vivo).
 > `marco-v9`.
 >
 > **v12 — nuevo grupo `riesgoSeguridadCiudadana`**, mismo nivel que
@@ -289,7 +289,7 @@
 Este es el objetivo del paso **3 (Creación de una estructura de información más estándar)** del flujo:
 
 ```
-1. Ingesta Novadata → 2. Procesamiento → 3. Estructura estándar → 4. Scoring LLM → 5. Persistencia → 6. Web pública
+1. Ingesta Proveedor_Info_1 → 2. Procesamiento → 3. Estructura estándar → 4. Scoring LLM → 5. Persistencia → 6. Web pública
 ```
 
 ## Principio de diseño
@@ -300,7 +300,7 @@ La estructura de abajo reemplaza eso por campos **ya calculados**: números, boo
 
 - **Se calcula** (número/booleano) todo lo que es agregable sin perder matiz: conteos, máximos, sumas, "¿existe X?".
 - **Se deja como texto corto** (lista de strings, no de objetos) lo que el LLM necesita para su juicio *cualitativo* — ej. el tipo de demanda o la descripción de un antecedente penal — porque ahí SÍ hace falta el matiz que un número no captura. Pero se recorta a lo esencial (no se manda `judicatura`, `numeroProceso`, `juez` — eso es ruido para el score, útil solo para auditoría, y ya vive en el `raw` guardado aparte si hace falta consultarlo).
-- **Se corrige** antes de llegar al LLM: valores numéricos que Novadata entrega como string (`"360.00"` → `360`), certificados negativos que Novadata redacta como oración (`"No tiene afiliaciones registradas"` → `false`), y duplicados entre fuentes que dicen lo mismo (ej. `pensionAlimenticia` y `pensionAlimenticiaNovadata` se combinan en un solo resultado).
+- **Se corrige** antes de llegar al LLM: valores numéricos que Proveedor_Info_1 entrega como string (`"360.00"` → `360`), certificados negativos que Proveedor_Info_1 redacta como oración (`"No tiene afiliaciones registradas"` → `false`), y duplicados entre fuentes que dicen lo mismo (ej. `pensionAlimenticia` y `pensionAlimenticiaProveedorInfo1` se combinan en un solo resultado).
 
 ## Estructura propuesta (`StandardClientProfile`)
 
@@ -357,11 +357,11 @@ interface StandardClientProfile {
   // La sección más importante para el score — ver hallazgo de
   // personasIncumplimientos en docs/historico/reagrupacion-propuesta.md
   comportamientoPagoFormal: {
-    novadataResultadoHabitoPago: "Mal pagador" | "Buen pagador" | null; // veredicto propio de Novadata
-    novadataPerfilInterno: "MALO" | "BUENO" | null;
-    novadataDiasMoraMaxima: number | null;
-    novadataDiasMoraVigente: number | null;
-    novadataSaldoCapitalVigente: number | null;
+    proveedorInfo1ResultadoHabitoPago: "Mal pagador" | "Buen pagador" | null; // veredicto propio de Proveedor_Info_1
+    proveedorInfo1PerfilInterno: "MALO" | "BUENO" | null;
+    proveedorInfo1DiasMoraMaxima: number | null;
+    proveedorInfo1DiasMoraVigente: number | null;
+    proveedorInfo1SaldoCapitalVigente: number | null;
 
     numeroOperacionesCentralRiesgo: number;
     peorCalificacionRiesgo: string | null; // ej. "A1".."E", la peor entre todas las operaciones
@@ -576,7 +576,7 @@ interface StandardClientProfile {
 > - **Tipos legibles** (los dos grupos judiciales):
 >   - sin el número de artículo del COIP ni "ART.", "INC.", "NUM."
 >     (también entre paréntesis);
->   - con las tildes rotas reparadas (Novadata manda "TR��NSITO");
+>   - con las tildes rotas reparadas (Proveedor_Info_1 manda "TR��NSITO");
 >   - sin los espacios dobles que a veces trae la fuente, que impedían
 >     coincidir.
 > - **La regla de cobro** se mudó a `demandas.ts` (`esDemandaDeCobro`).
@@ -623,7 +623,7 @@ interface StandardClientProfile {
 > Dos correcciones de la limpieza, dentro de la misma versión, se
 > reescribieron con `--forzar`.
 
-> **estructura-v13 y fuentes-v10 (2026-10-03)** — Novadata cambió el formato.
+> **estructura-v13 y fuentes-v10 (2026-10-03)** — Proveedor_Info_1 cambió el formato.
 > - **Qué pasó:** en la reconsulta de la cartera del 2026-10-03 el estado de
 >   algunos establecimientos del SRI llega abreviado ("ABI", "CER") y convive
 >   con el de siempre ("ABIERTO", "CERRADO"). En el crudo del 2026-09-25 no
@@ -643,7 +643,7 @@ interface StandardClientProfile {
 >   de ese día anteriores al despliegue se recalcularon desde su crudo con
 >   `recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso` y
 >   `recalcular-fuentes-ingreso.mjs`, ambos con
->   `--carpeta=research/novadata-raw-2026-10-03` (530 de 530, 0 que el crudo no
+>   `--carpeta=research/proveedor-info-1-raw-2026-10-03` (530 de 530, 0 que el crudo no
 >   reproduzca); `calcular-columnas-del-perfil.mjs --seco` da 0 por corregir
 >   en 8.482 perfiles. Los 2.587 perfiles de ese día quedaron en v13.
 
@@ -669,7 +669,7 @@ interface StandardClientProfile {
 >   no lo dice todavía (`docs/pendientes.md`).
 > - Desplegado el 2026-10-20 (f09531e) y recalculados 2.561 perfiles con
 >   `recalcular-grupos.mjs --grupos=laboral
->   --carpeta=research/novadata-raw-2026-10-03` (0 que el crudo no
+>   --carpeta=research/proveedor-info-1-raw-2026-10-03` (0 que el crudo no
 >   reproduzca). Después: 0 descalces en v14; 10 últimos perfiles siguen en
 >   v13 (sin crudo local).
 
@@ -685,7 +685,7 @@ interface StandardClientProfile {
 >   `contribuyente.data.datosContribuyente[].obligado` del mismo RUC de
 >   referencia que las fechas (el activo si hay uno, si no el primero). Lo lee
 >   `obligadoALlevarContabilidad()` de `ruc.ts`: «SI» y «S» son `true`, «NO» y
->   «N» son `false`; sin RUC o con otro valor, `null` (no `false`). Novadata
+>   «N» son `false`; sin RUC o con otro valor, `null` (no `false`). Proveedor_Info_1
 >   abrevia como con el estado de los establecimientos (estructura-v13): en el
 >   crudo del 2026-10-03, «NO» 2.063, «SI» 128, «N» 106 y «S» 4. Que la «S» es
 >   «sí» lo decidió el negocio.
@@ -711,7 +711,7 @@ interface StandardClientProfile {
 >     reabrieron después y 10 no traen la reapertura (siguen abiertos), y los
 >     282 «CERRADO» sin ninguna fecha siguen cerrados;
 >   - uno sin estado está abierto salvo una fecha de cierre. El estado vacío es
->     mucho más frecuente en las respuestas que Novadata dejó incompletas el
+>     mucho más frecuente en las respuestas que Proveedor_Info_1 dejó incompletas el
 >     2026-10-28 (HTTP 502): en el lote de paridad, todos los establecimientos
 >     sin estado en 4 de 512 personas con la respuesta entera, 33 de 543 sin
 >     Registro Civil y 12 de 56 sin la fuente. Ahí el hueco es de la fuente, no
@@ -735,7 +735,7 @@ interface StandardClientProfile {
 > - **Desplegado** el 2026-10-30 a las 00:20 (`dabb60be9f3c`, 10 de 10) y
 >   **recién después recalculado**: al revés, el código desplegado de antes le
 >   habría pasado el campo nuevo al modelo con el rótulo marco-v30. Dos pasos,
->   los dos con `--carpeta=research/novadata-raw-2026-10-03` y con el seco
+>   los dos con `--carpeta=research/proveedor-info-1-raw-2026-10-03` y con el seco
 >   antes: `recalcular-grupos.mjs --grupos=laboral --ignorar=fuentesIngreso`
 >   (3.764 de 3.764 escritos) y `recalcular-fuentes-ingreso.mjs` (3.764 de
 >   3.764; 69 cambian de segmento, todos a «independiente»: 60 desde «sin
@@ -748,19 +748,85 @@ interface StandardClientProfile {
 >   no llega al modelo), y `calcular-columnas-del-perfil.mjs --seco`, 0 por
 >   corregir en 9.812.
 
+> **estructura-v16 (2026-10-31)** — el historial de empleos, los préstamos del
+> IESS/BIESS y el corte del retail, de la revisión de casos reales del negocio.
+> - **Por qué:** varios campos leían una fuente vieja o incompleta y el modelo
+>   lo tomó por una contradicción (c-5ee429cc: «el cargo de pasante y el
+>   salario máximo chocan con el ingreso reportado»). `trabajoHistoricos`
+>   trae como mucho un registro, casi siempre viejo, y una salida en
+>   1900-01-01 es la fecha centinela de «sigue empleado».
+> - **`laboral`:** `salarioMasAltoRegistrado` es el máximo entre
+>   `trabajoHistoricos`, el mecanizado y los aportes; `historialEmpleosRegistrados`
+>   cuenta empleadores distintos de las tres fuentes (por RUC; un registro sin
+>   RUC se une al empleador de igual nombre comparable, sin tildes ni siglas
+>   societarias); `cargoVigente` es el del empleo actual (con dos, el mejor
+>   pagado) y `null` sin empleo actual; `empleadorVigenteSituacionLegal`,
+>   `...TipoCompania`, `...AntiguedadAnios` y `empleadoresJuridicos` salen de
+>   `trabajoHistoricos` sólo si ese registro es del mismo empleador que un
+>   empleo actual (RUC; la cédula de un patrono persona natural se compara como
+>   su RUC), y si no son `null`. `empleadoresJuridicos` pasa a `number | null`.
+> - **BIESS:** `tieneCreditoIessBiess` y `diasMoraCreditoIessBiess` leen también
+>   `creditoQuirografario` y `creditoHipotecario` (`data.prestamos`), sin contar
+>   dos veces una operación que esté en las dos fuentes (por número de
+>   operación, o por fecha de concesión y monto). El hipotecario de la base
+>   interna trae la mora en `srDiasmoraafi`, que no se leía. Campo nuevo:
+>   `saldoPrestamosIessBiess` (por vencer más vencido; `null` sin préstamos).
+>   Medido sobre 560 personas que tienen las dos fuentes: 1.428 operaciones de
+>   la base y 1.396 de los préstamos, y ninguna coincide en número ni en fecha y
+>   monto: son operaciones distintas, y la deduplicación es una protección.
+> - **Retail:** `fechaCorteRetail` (YYYY-MM-DD), la `fecha` de las filas de
+>   `retails` (`fechaActualizacion` es el día de la consulta y no sirve). Si
+>   las filas traen cortes distintos, el más antiguo. En las 490 personas con
+>   retail de la cartera es julio de 2025 en todas, y ninguna trae dos cortes.
+> - **Efecto** (código viejo contra nuevo, perfil entero, 3.765 personas reales,
+>   desde el crudo guardado; el código viejo reproduce el perfil guardado en las
+>   3.765): fuera de `laboral` y `comportamientoBancario` no cambia nada.
+>   El salario más alto estaba por debajo del sueldo de un empleo actual en
+>   1.068 de 1.682 (menos de la mitad en 359) y ahora en 0; el cargo vigente no
+>   era el de ningún empleo actual en 1.356 de 1.857 y estaba presente sin empleo
+>   actual en 408, ahora 0 y 0; el historial tenía menos empleadores que el IESS
+>   en 830 de 2.593, ahora 0; 308 de 918 con créditos formales figuraban sin
+>   crédito del IESS/BIESS, ahora 0 (la mora cambia en 345, y sube en 45); los
+>   datos del empleador vigente pasan de 1.239 a 536 personas (el empleador del
+>   historial es el del empleo actual).
+> - **Lo que lee el modelo:** los valores corregidos de los campos que ya
+>   existían llegan; `saldoPrestamosIessBiess` y `fechaCorteRetail` no
+>   (`CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`): el mensaje
+>   sigue siendo el de marco-v30, con esos valores corregidos. La sesión del
+>   marco los abre cuando tenga el texto que los explique.
+> - **Sin aplicar:** el perfil guardado sigue en estructura-v15 hasta recalcular
+>   (`recalcular-grupos.mjs --grupos=laboral,comportamientoBancario`, con el seco
+>   antes). Se despliega primero y se recalcula después, por el mismo motivo
+>   que en v15.
+
+> **estructura-v17 (2026-10-31, decisión del negocio)** — `laboral` suma
+> `rucDepuradoEnRelacionDeDependencia` (`ruc.ts`): `true` si el RUC de referencia
+> trae «DEPURACION» en `observ_solicitud_suspension` y uno de sus establecimientos
+> tiene una actividad «RELACION DE DEPENDENCIA»; `false` si no; `null` sin RUC.
+> Lo pide marco-v32 para dejar neutra esa baja: el motivo no estaba en el perfil.
+> `CALIFICACIONES_EN_ATRASO` suma A2 y A3 (`operacionesEnAtrasoSinMonto`).
+> - **Efecto** (código viejo contra nuevo, perfil entero, desde el crudo de las
+>   3.765 personas reales): sólo se suma ese campo, `true` en 17 y `null` en 335.
+>   `operacionesEnAtrasoSinMonto` no cambia en nadie: de las 647 operaciones
+>   propias A2 y A3, ninguna viene sin deuda.
+> - **Sin aplicar:** se despliega primero y se recalcula después
+>   (`recalcular-grupos.mjs --grupos=laboral,comportamientoBancario`, `--seco`
+>   antes). Sin el recálculo el campo no llega y el análisis sigue como hasta ahora
+>   para esa persona. No se muestra en pantalla: el nombre lo decide el negocio.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
-| Campo calculado | Fuente(s) Novadata | Cómo se calcula/corrige |
+| Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |
 |---|---|---|
 | `laboral.empleoActual` | `basesInternas.tiess` (prioridad) o `trabajoHistoricos` | El registro más reciente sin `fechaSalida`, o el de fecha más reciente si todos tienen salida |
 | `laboral.ingresoPromedioUltimos6Meses` | `basesInternas.tiess` | Promedio de `salario` (parseado a número) de los últimos 6 registros mensuales |
-| `comportamientoPagoFormal.novadata*` | `basesInternas.personasIncumplimientos` | Lectura directa (ya viene calculado por Novadata), solo se parsean strings numéricos a number |
+| `comportamientoPagoFormal.proveedor_info_1*` | `basesInternas.personasIncumplimientos` | Lectura directa (ya viene calculado por Proveedor_Info_1), solo se parsean strings numéricos a number |
 | `peorCalificacionRiesgo` | `centralRiesgoSuper` + `centralRiesgoDiners` | La calificación de peor letra entre todas las operaciones de ambas fuentes |
 | `tieneOperacionJudicializada/Castigada` | mismos + `personasIncumplimientos` | `true` si algún registro tiene `judicial`/`castigo` ≠ "0"/vacío |
 | `numeroMultas` / `valorAdeudadoTransito` | `deudasAnt` + `deudasAmt` + `deudasEmov` | Suma de registros y de `valorAdeudado` de las 3 fuentes (recategorizadas a tránsito) |
 | `tiposDemandasComoDemandado` | `demandas` | `[...new Set(demandas.map(d => d.tipoDemanda.descripcion))]` — únicos, sin el resto del objeto |
-| `pensionAlimenticiaEnMora` / `deudaPensionAlimenticia` | `pensionAlimenticia` + `pensionAlimenticiaNovadata` (combinadas) | `true` si `totalDeuda > 0` en cualquiera de las 2 fuentes; deuda = la mayor de las 2 si se solapan |
-| `tieneAntecedentesPenales` | `antecedentesPenales` | `descripcion !== "NO"` (corrección: Novadata certifica "NO" en vez de campo vacío) |
+| `pensionAlimenticiaEnMora` / `deudaPensionAlimenticia` | `pensionAlimenticia` + `pensionAlimenticiaProveedorInfo1` (combinadas) | `true` si `totalDeuda > 0` en cualquiera de las 2 fuentes; deuda = la mayor de las 2 si se solapan |
+| `tieneAntecedentesPenales` | `antecedentesPenales` | `descripcion !== "NO"` (corrección: Proveedor_Info_1 certifica "NO" en vez de campo vacío) |
 | `enListaControl` | `listasControl` (4 sub-arrays) + `basesInternas` (tpeps/tofac/tofac2/tconsepvinculados/tconsephomonimos/tprovidencias) | `true` si algún array tiene longitud > 0 |
 
 ## Impacto esperado en tamaño
@@ -770,9 +836,9 @@ Con una persona "rica" en datos (como la del ejemplo de mora/demandas que probam
 ## Siguiente paso
 
 Si apruebas esta estructura, implemento:
-1. `supabase/functions/_shared/process.ts` — nueva capa que toma `RawNovadataResponse` y produce `StandardClientProfile` (reemplaza/extiende `normalize.ts`, que hoy hace un mapeo mucho más liviano).
+1. `supabase/functions/_shared/process.ts` — nueva capa que toma `RawProveedorInfo1Response` y produce `StandardClientProfile` (reemplaza/extiende `normalize.ts`, que hoy hace un mapeo mucho más liviano).
 2. Actualizar `llm-scoring.ts` para recibir `StandardClientProfile` en vez de `ClientContext`.
 3. Actualizar `analyze-client/index.ts` para el nuevo orden: ingesta → procesamiento → estructura estándar → guardrails → (scoring LLM, sin probarlo todavía) → persistencia.
-4. Mover `deudasAnt/Amt/Emov` a `vehiculos` en `novadata-client.ts` (la única recategorización de recursos que falta aplicar en código).
+4. Mover `deudasAnt/Amt/Emov` a `vehiculos` en `proveedor-info-1-client.ts` (la única recategorización de recursos que falta aplicar en código).
 
 No voy a llamar al LLM para probar nada de esto hasta que me confirmes, como pediste.

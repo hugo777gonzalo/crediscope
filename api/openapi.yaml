@@ -21,7 +21,7 @@ info:
     La IFI pide la evaluación de una persona y CrediScope:
 
     1. valida la identificación y la autorización del titular;
-    2. consulta las fuentes contratadas (Novadata y, en la modalidad `plus`, el
+    2. consulta las fuentes contratadas (Proveedor_Info_1 y, en la modalidad `plus`, el
        buró de la IFI: Equifax);
     3. arma el perfil estandarizado y aplica los controles de bloqueo, que son
        reglas fijas y prevalecen sobre el modelo;
@@ -52,6 +52,8 @@ info:
     sin consultar a nadie, y `POST /capacidades-de-pago` mide si esa cuota entra
     en el ingreso, con lo que CrediScope ya sabe de la persona o con los datos
     que manda la IFI. Es el mismo cálculo que corre dentro de `pro` y `plus`.
+    `POST /estimaciones-de-ingreso` devuelve el ingreso verificado y, para quien
+    no lo tiene, un mínimo estimado, con lo que CrediScope ya sabe de la persona.
 
     ## Asincrónica, con espera opcional
 
@@ -153,6 +155,8 @@ tags:
     description: La cuota de un crédito de consumo con el seguro de desgravamen, sin consultar a nadie.
   - name: Capacidad de pago
     description: Si la cuota de un crédito entra en el ingreso de una persona.
+  - name: Estimación de ingreso
+    description: El ingreso que reporta un tercero y, para quien no lo tiene, un mínimo estimado sin verificar.
   - name: Servicio
     description: Estado del servicio.
 
@@ -660,7 +664,7 @@ paths:
 
         - con `identificacion`: usa lo que CrediScope ya sabe de la persona (el
           ingreso reportado al IESS y las cuotas del buró de la IFI, o las de
-          cooperativas de Novadata si no hay buró). No consulta a ninguna
+          cooperativas de Proveedor_Info_1 si no hay buró). No consulta a ninguna
           fuente; si la persona no se consultó antes, responde 404. Si además
           vienen `ingresos` u `obligaciones`, se ignoran: manda la
           identificación;
@@ -788,7 +792,7 @@ paths:
                         - concepto: Tarjeta de crédito
                           montoMensual: 85
                       deudasSinCuota: []
-                      fuenteDeLasCuotas: novadata
+                      fuenteDeLasCuotas: proveedor_info_1
                       corteIess: null
                     procedencia:
                       modo: datos_del_pedido
@@ -877,7 +881,7 @@ paths:
                       deudasSinCuota:
                         - concepto: Casas comerciales
                           saldo: 650
-                          origen: Novadata
+                          origen: Proveedor_Info_1
                       fuenteDeLasCuotas: equifax
                       fuentesSinConsultar: []
                       corteIess: '2026-08'
@@ -886,6 +890,191 @@ paths:
                       perfilDel: '2026-10-16T14:05:33.412Z'
                       buroDeLaInstitucion: equifax
                       equifaxDel: '2026-10-16T14:07:10.906Z'
+        '400':
+          $ref: '#/components/responses/PedidoInvalido'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '403':
+          $ref: '#/components/responses/SinPermiso'
+        '404':
+          $ref: '#/components/responses/NoEncontrada'
+        '429':
+          $ref: '#/components/responses/LimiteExcedido'
+        '500':
+          $ref: '#/components/responses/ErrorInterno'
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+
+  /estimaciones-de-ingreso:
+    post:
+      tags: [Estimación de ingreso]
+      operationId: estimarIngreso
+      summary: Estimar el ingreso de quien no lo tiene verificado
+      description: |
+        Devuelve por separado el ingreso que reporta un tercero al IESS
+        (`verificado`) y, para quien no lo tiene, un mínimo estimado sin verificar
+        (`estimado`). Los dos bloques nunca se suman. Usa la última consulta de la
+        persona: no consulta a ninguna fuente y, si la persona no se consultó
+        antes, responde 404.
+
+        El mínimo no es el ingreso de la persona: es el monto que el ingreso real
+        supera con la seguridad que dice cada `minimo`. La estimación es a la fecha
+        de la consulta (`consultadoEl`); pasados 90 días, `calidad.avisos` lo dice.
+        Con el mismo modelo, la misma consulta da siempre el mismo resultado.
+
+        `nivel` dice con qué se respondió: `0` sólo con lo verificado y `1` con los
+        datos de la persona y su SRI. El `2`, con el buró, todavía no se entrega.
+        Si no se estima, `estimado.aplica` es `false` y `estimado.motivo` dice por
+        qué. Es `null` cuando no hay ninguno de los dos: un jubilado, cuya
+        referencia de pensión todavía no se entrega, o una consulta sin datos.
+      security:
+        - oauth2: [estimaciones:crear]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeEstimacion'
+            example:
+              identificacion: '0000000001'
+      responses:
+        '200':
+          description: Lo verificado y lo estimado de la persona, cada uno en su bloque.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            x-crediscope-version:
+              $ref: '#/components/headers/XCrediscopeVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstimacionDeIngreso'
+              examples:
+                independiente:
+                  summary: Un independiente con RUC
+                  value:
+                    id: '5f2b7c1e-8a34-4d21-9c6f-1b7e0d3a4c55'
+                    version: 'ingreso-v1'
+                    nivel: 1
+                    consultadoEl: '2026-10-16T14:05:33.412Z'
+                    verificado: null
+                    estimado:
+                      aplica: true
+                      rotulo: 'Ingreso estimado, sin verificar'
+                      minimoCertificado:
+                        seguridad: 0.9
+                        monto: 1247.12
+                        limiteDeMedioSbuAplicado: false
+                      minimoAlternativo:
+                        seguridad: 0.85
+                        monto: 1486.69
+                        limiteDeMedioSbuAplicado: false
+                      valorCentral: 3378.37
+                      tramos:
+                        - desde: 0
+                          hasta: 482
+                          probabilidad: 0.024997500249975005
+                        - desde: 482
+                          hasta: 964
+                          probabilidad: 9.999000099990002e-05
+                        - desde: 964
+                          hasta: 2000
+                          probabilidad: 0.2318052178175904
+                        - desde: 2000
+                          hasta: 3000
+                          probabilidad: 0.17345644457926285
+                        - desde: 3000
+                          hasta: 5000
+                          probabilidad: 0.26390325132556935
+                        - desde: 5000
+                          hasta: null
+                          probabilidad: 0.3057375960266025
+                      certificaAlMenos:
+                        - 964
+                    referencia: null
+                    calidad:
+                      variablesUsadas: 7
+                      variablesSinDato: 1
+                      avisos: []
+                    modelo:
+                      poblacion: 'solicitantes de crédito (en AWS, el 96% automotriz)'
+                      calibradoPara: null
+                      entrenadoEl: '2026-10-29'
+                referencia:
+                  summary: Con un mínimo de hasta 1.000 se rotula como referencia
+                  value:
+                    id: '5f2b7c1e-8a34-4d21-9c6f-1b7e0d3a4c55'
+                    version: 'ingreso-v1'
+                    nivel: 1
+                    consultadoEl: '2026-10-16T14:05:33.412Z'
+                    verificado: null
+                    estimado:
+                      aplica: true
+                      rotulo: 'Referencia de solicitantes'
+                      minimoCertificado:
+                        seguridad: 0.9
+                        monto: 976.47
+                        limiteDeMedioSbuAplicado: false
+                      minimoAlternativo:
+                        seguridad: 0.85
+                        monto: 1108.05
+                        limiteDeMedioSbuAplicado: false
+                      valorCentral: 2174.88
+                      tramos:
+                        - desde: 0
+                          hasta: 482
+                          probabilidad: 0.025
+                        - desde: 482
+                          hasta: 964
+                          probabilidad: 0.07302379699788916
+                        - desde: 964
+                          hasta: 2000
+                          probabilidad: 0.35831852360728617
+                        - desde: 2000
+                          hasta: 3000
+                          probabilidad: 0.22282069373177582
+                        - desde: 3000
+                          hasta: 5000
+                          probabilidad: 0.2335205711655417
+                        - desde: 5000
+                          hasta: null
+                          probabilidad: 0.08731641449750716
+                      certificaAlMenos:
+                        - 964
+                    referencia: null
+                    calidad:
+                      variablesUsadas: 7
+                      variablesSinDato: 1
+                      avisos: []
+                    modelo:
+                      poblacion: 'solicitantes de crédito (en AWS, el 96% automotriz)'
+                      calibradoPara: null
+                      entrenadoEl: '2026-10-29'
+                dependiente:
+                  summary: Un dependiente, sólo con lo verificado
+                  value:
+                    id: null
+                    version: null
+                    nivel: 0
+                    consultadoEl: '2026-10-16T14:05:33.412Z'
+                    verificado:
+                      origen: 'IESS'
+                      salarioReportado: 1250
+                      aportePersonal: 118.13
+                      ingresoNeto: 1131.87
+                      mes: '2026-08'
+                    estimado:
+                      aplica: false
+                      motivo: 'ingreso_verificado'
+                    referencia: null
+                    calidad:
+                      variablesUsadas: 0
+                      variablesSinDato: 0
+                      avisos:
+                        - 'Puede tener ingresos que no constan.'
+                    modelo: null
         '400':
           $ref: '#/components/responses/PedidoInvalido'
         '401':
@@ -1010,6 +1199,7 @@ components:
             decisiones:escribir: Informar la decisión humana.
             simulaciones:crear: Simular la cuota de un crédito.
             capacidades:crear: Medir la capacidad de pago de una persona.
+            estimaciones:crear: Estimar el ingreso de una persona.
 
   parameters:
     IdempotencyKey:
@@ -1175,7 +1365,7 @@ components:
             y la capacidad de pago (exige `solicitudDeCredito` con monto, plazo y
             tasa, y por ahora sólo del producto de consumo). `plus`: además, el
             buró de la IFI: las cuotas de la capacidad salen de las operaciones
-            que trae Equifax en lugar de las de Novadata. Exige que el buró de la
+            que trae Equifax en lugar de las de Proveedor_Info_1. Exige que el buró de la
             IFI sea Equifax, y si la persona no tiene una consulta vigente, se
             consulta (y esa consulta se cobra). La recomendación del modelo y la
             capacidad de pago se entregan por separado: no se combinan en una
@@ -1517,7 +1707,7 @@ components:
 
         | `codigo` | Qué pasó | Qué hacer |
         |---|---|---|
-        | `fuentes_no_disponibles` | Las fuentes de datos no respondieron. No se guardó ningún perfil. | Reintentar más tarde. |
+        | `fuentes_no_disponibles` | Las fuentes de datos no respondieron, o no respondieron las que definen la identidad, los aportes al IESS, los préstamos del BIESS o el buró de bancos. El modelo no analizó a la persona y no se consultó al buró de la IFI. | Reintentar más tarde. |
         | `plazo_vencido` | La evaluación no terminó dentro de su plazo. | Pedirla de nuevo. |
         | `identificacion_no_encontrada` | La fuente no conoce la identificación, o el buró no la acepta. No se consultó nada más. | Revisar la identificación; reintentar no cambia nada. |
         | `buro_requiere_consulta_previa` | Reservado. En `plus`, si la persona no tiene una consulta vigente del buró de la IFI, la API la consulta (y se cobra, hasta el tope diario): hoy la API no produce este código. | — |
@@ -1760,6 +1950,180 @@ components:
         simulacion:
           $ref: '#/components/schemas/Simulacion'
 
+    PedidoDeEstimacion:
+      type: object
+      additionalProperties: false
+      required: [identificacion]
+      properties:
+        identificacion:
+          type: string
+          pattern: '^[0-9]{10}([0-9]{3})?$'
+          description: Cédula o RUC de persona natural de alguien ya consultado. Se valida el dígito verificador.
+        evaluacion:
+          $ref: '#/components/schemas/IdEvaluacion'
+          description: La evaluación de esa misma persona a la que pertenece la estimación, si la hay.
+
+    IngresoVerificado:
+      type: object
+      additionalProperties: false
+      required: [origen, salarioReportado, aportePersonal, ingresoNeto, mes]
+      properties:
+        origen:
+          type: string
+          const: IESS
+        salarioReportado:
+          type: number
+          description: Lo que reporta un tercero al IESS por mes, en dólares.
+        aportePersonal:
+          type: number
+          description: El aporte personal al IESS que se descuenta del salario.
+        ingresoNeto:
+          type: number
+          description: El salario menos el aporte personal.
+        mes:
+          type: [string, 'null']
+          description: Mes del corte del IESS, `AAAA-MM`.
+
+    MinimoDeIngreso:
+      type: object
+      additionalProperties: false
+      required: [seguridad, monto, limiteDeMedioSbuAplicado]
+      properties:
+        seguridad:
+          type: number
+          description: Con qué seguridad el ingreso real supera este monto, como fracción.
+        monto:
+          type: number
+          description: En dólares por mes.
+        limiteDeMedioSbuAplicado:
+          type: boolean
+          description: Si el monto es la mitad del salario básico del año porque el modelo dio menos.
+
+    TramoDeIngreso:
+      type: object
+      additionalProperties: false
+      required: [desde, hasta, probabilidad]
+      properties:
+        desde:
+          type: number
+        hasta:
+          type: [number, 'null']
+          description: '`null` en el último tramo, que no tiene tope.'
+        probabilidad:
+          type: number
+          description: Como fracción. Las de todos los tramos suman uno.
+
+    IngresoEstimado:
+      type: object
+      additionalProperties: false
+      required: [aplica, rotulo, minimoCertificado, minimoAlternativo, valorCentral, tramos, certificaAlMenos]
+      properties:
+        aplica:
+          type: boolean
+          const: true
+        rotulo:
+          type: string
+          enum: ['Ingreso estimado, sin verificar', 'Referencia de solicitantes']
+          description: Hasta un mínimo de USD 1.000, el resultado distingue poco a la persona de los solicitantes y se rotula como referencia.
+        minimoCertificado:
+          $ref: '#/components/schemas/MinimoDeIngreso'
+          description: El mínimo con 90% de seguridad.
+        minimoAlternativo:
+          $ref: '#/components/schemas/MinimoDeIngreso'
+          description: El mínimo con 85% de seguridad.
+        valorCentral:
+          type: number
+          description: La mediana del modelo. No se usa para medir la capacidad de pago.
+        tramos:
+          type: array
+          description: La probabilidad de cada tramo. Los dos primeros cortes siguen al salario básico del año de la consulta.
+          items:
+            $ref: '#/components/schemas/TramoDeIngreso'
+        certificaAlMenos:
+          type: array
+          description: Los umbrales que alcanza el mínimo certificado.
+          items:
+            type: number
+
+    IngresoSinEstimar:
+      type: object
+      additionalProperties: false
+      required: [aplica, motivo]
+      properties:
+        aplica:
+          type: boolean
+          const: false
+        motivo:
+          type: string
+          enum: [ingreso_verificado, jubilado, dependiente_sin_monto, sin_datos]
+          description: |
+            - `ingreso_verificado`: un tercero lo reporta y no se estima.
+            - `jubilado`: la referencia de pensión todavía no se entrega.
+            - `dependiente_sin_monto`: trabaja para un tercero y el IESS no trae el monto.
+            - `sin_datos`: la consulta no alcanza para clasificar de qué vive la persona.
+
+    EstimacionDeIngreso:
+      type: object
+      additionalProperties: false
+      required: [id, version, nivel, consultadoEl, verificado, estimado, referencia, calidad, modelo]
+      properties:
+        id:
+          type: [string, 'null']
+          format: uuid
+          description: La estimación guardada. `null` si no se evaluó el modelo.
+        version:
+          type: [string, 'null']
+          description: Versión del modelo. `null` si no se evaluó.
+        nivel:
+          type: [integer, 'null']
+          enum: [0, 1, 2, null]
+          description: Con qué se respondió. `null` si no hay ni verificado ni estimado.
+        consultadoEl:
+          type: string
+          format: date-time
+          description: La fecha de la consulta con que se respondió.
+        verificado:
+          oneOf:
+            - $ref: '#/components/schemas/IngresoVerificado'
+            - type: 'null'
+        estimado:
+          oneOf:
+            - $ref: '#/components/schemas/IngresoEstimado'
+            - $ref: '#/components/schemas/IngresoSinEstimar'
+        referencia:
+          type: 'null'
+          description: Reservado para la referencia de pensión, que todavía no se entrega.
+        calidad:
+          type: object
+          additionalProperties: false
+          required: [variablesUsadas, variablesSinDato, avisos]
+          properties:
+            variablesUsadas:
+              type: integer
+            variablesSinDato:
+              type: integer
+              description: Una variable sin dato no corta la estimación, pero baja la precisión.
+            avisos:
+              type: array
+              items:
+                type: string
+        modelo:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [poblacion, calibradoPara, entrenadoEl]
+              properties:
+                poblacion:
+                  type: string
+                  description: Con quién se entrenó el modelo.
+                calibradoPara:
+                  type: [string, 'null']
+                  description: La institución con cuyos casos se calibró el mínimo. `null` si no se calibró.
+                entrenadoEl:
+                  type: string
+                  format: date
+            - type: 'null'
+
     PedidoDeCapacidad:
       type: object
       additionalProperties: false
@@ -1947,8 +2311,8 @@ components:
             $ref: '#/components/schemas/DeudaSinCuota'
         fuenteDeLasCuotas:
           type: string
-          enum: [equifax, novadata]
-          description: De dónde salen las cuotas de las obligaciones. Con los datos de la IFI es `novadata` y no quiere decir nada.
+          enum: [equifax, proveedor_info_1]
+          description: De dónde salen las cuotas de las obligaciones. Con los datos de la IFI es `proveedor_info_1` y no quiere decir nada.
         corteIess:
           type: [string, 'null']
           pattern: '^[0-9]{4}-[0-9]{2}$'
@@ -2456,12 +2820,12 @@ components:
               obligaciones:
                 - concepto: Cooperativas
                   montoMensual: 85
-                  origen: Novadata
+                  origen: Proveedor_Info_1
               deudasSinCuota:
                 - concepto: Bancos
                   saldo: 2400
-                  origen: Novadata
-              fuenteDeLasCuotas: novadata
+                  origen: Proveedor_Info_1
+              fuenteDeLasCuotas: proveedor_info_1
               corteIess: '2026-08'
           requiereRevisionHumana: true
         disponibilidad:

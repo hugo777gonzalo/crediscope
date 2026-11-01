@@ -15,7 +15,7 @@
 //     "Aprehendida" (detenida en flagrancia) también: es la misma acusación
 //     en su primera etapa.
 //   - Si su cédula no figura entre las partes, la denuncia no es de ella:
-//     Novadata la asocia por el nombre, y en una de ellas quien se llama
+//     Proveedor_Info_1 la asocia por el nombre, y en una de ellas quien se llama
 //     igual es el fallecido. No cuenta para nada, ni como aviso de posible
 //     homónimo. Pasa con 232 de 1.780 denuncias.
 //

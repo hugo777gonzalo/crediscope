@@ -1,8 +1,8 @@
-# Catálogo de campos de Novadata
+# Catálogo de campos de Proveedor_Info_1
 
-Generado a partir de 25 consultas reales (ver lista de cédulas en el chat), vía la Edge Function `explore-novadata`, el 2026-09-03.
+Generado a partir de 25 consultas reales (ver lista de cédulas en el chat), vía la Edge Function `explore-proveedor-info-1`, el 2026-09-03.
 
-**Cómo leer esto:** cada recurso trae `{ estado: {codigo, mensaje}, <campo>: [...] }`. "Consultas OK" = Novadata respondió con `estado.codigo === "OK"` (no necesariamente con datos). "Con datos" = cuántas de las 25 personas tuvieron ese campo con contenido real (no vacío/null).
+**Cómo leer esto:** cada recurso trae `{ estado: {codigo, mensaje}, <campo>: [...] }`. "Consultas OK" = Proveedor_Info_1 respondió con `estado.codigo === "OK"` (no necesariamente con datos). "Con datos" = cuántas de las 25 personas tuvieron ese campo con contenido real (no vacío/null).
 
 No se incluyen valores reales de personas — solo nombres de campo, tipos, y tasa de llenado, para no exponer PII de las 25 personas consultadas en este documento.
 
@@ -1066,9 +1066,9 @@ No se incluyen valores reales de personas — solo nombres de campo, tipos, y ta
 | `supas[].pensionActual` | string/null | 7 |
 | `supas[].representanteLegal` | string | 8 |
 
-### `pensionAlimenticiaNovadata` — Pensión alimenticia, variante con más detalle: valorMensual, totalPagado, totalDeuda, estado.
+### `pensionAlimenticiaProveedorInfo1` — Pensión alimenticia, variante con más detalle: valorMensual, totalPagado, totalDeuda, estado.
 
-- **Ruta real:** `pn_supa/novadata`
+- **Ruta real:** su variante del proveedor de `pn_supa` (secreto `PROVEEDOR_INFO_1_RUTA_PENSION`)
 - **Grupo propuesto:** 11. Riesgo judicial civil
 - **Consultas OK:** 23/25
 
@@ -1343,7 +1343,7 @@ No se incluyen valores reales de personas — solo nombres de campo, tipos, y ta
 | `personaPublicasOpr[].observaciones` | null | 0 |
 | `personaPublicasOpr[].nombreConyugue` | null | 0 |
 
-### `listaNegra` — Lista negra interna Novadata. Nunca poblada en la muestra (0/25) — infrecuente pero crítica cuando aparece.
+### `listaNegra` — Lista negra interna Proveedor_Info_1. Nunca poblada en la muestra (0/25) — infrecuente pero crítica cuando aparece.
 
 - **Ruta real:** `pn_lista_negra`
 - **Grupo propuesto:** 13. Compliance y listas de control
@@ -1594,7 +1594,7 @@ No se incluyen valores reales de personas — solo nombres de campo, tipos, y ta
 
 | Sub-recurso | Descripción | Con datos (de 25) |
 |---|---|---|
-| `personasIncumplimientos` | ⭐⭐⭐ EL HALLAZGO MÁS IMPORTANTE: el scoring de comportamiento de pago PROPIO de Novadata. Trae resultadoHabitoPago ('Mal pagador'/'Buen pagador'), perfilInterno ('MALO'/'BUENO'), moraMaxima, moraVigente, diasMoraMax, diasMoraVigentes, saldoCapital, cuotasVencidas/Canceladas/Activadas, estadoOperacion, historialCliente. Poblado en 19/25 personas. | 19 |
+| `personasIncumplimientos` | ⭐⭐⭐ EL HALLAZGO MÁS IMPORTANTE: el scoring de comportamiento de pago PROPIO de Proveedor_Info_1. Trae resultadoHabitoPago ('Mal pagador'/'Buen pagador'), perfilInterno ('MALO'/'BUENO'), moraMaxima, moraVigente, diasMoraMax, diasMoraVigentes, saldoCapital, cuotasVencidas/Canceladas/Activadas, estadoOperacion, historialCliente. Poblado en 19/25 personas. | 19 |
 | `tiess` | Histórico laboral IESS mes a mes CON SALARIO real (nomEmp, ocupacion, salario, fecIng, fecSal, anio, mes). Poblado en 22/25 — la fuente más confiable de ingresos. | 22 |
 | `tiessemp` | Variante de tiess del lado empleador. Poblado en 5/25. | 5 |
 | `tcredQuirografarios` | Créditos quirografarios afiliados IESS/BIESS (montoTransferido, saldoTotalCredito, diasMoraAfi, estadoOperacion). Poblado en 8/25. | 8 |

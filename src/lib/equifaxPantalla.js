@@ -7,6 +7,7 @@
 // que la estructura resume en contadores y el analista necesita ver mes a mes.
 
 import { mesLegible } from "./ingresosCampos.js";
+import { corteDelReporte, mesDeLaFecha, mesesHastaElCorte } from "../../supabase/functions/_shared/equifax-ventana.ts";
 
 export const SISTEMAS = [
   ["bancos", "Bancos"],
@@ -44,22 +45,18 @@ export function nivelDeMora(dias) {
   return "mas_de_90";
 }
 
-const mesDe = (fecha) => String(fecha ?? "").slice(0, 7);
+const mesDe = mesDeLaFecha;
 
-function restarMeses(mes, n) {
-  const [anio, m] = mes.split("-").map(Number);
-  const d = new Date(Date.UTC(anio, m - 1 - n, 1));
-  return d.toISOString().slice(0, 7);
-}
-
-// Los 24 meses que terminan en el último corte de la historia: la misma
-// ventana que `conductaDePago` de la estructura (el último mes se toma de
-// todas las filas, no sólo de las del titular). Un mes sin operaciones como
-// titular no es un mes al día: se dice aparte.
-export function franjaDePagos(historia) {
+// Los 24 meses que terminan en el CORTE DEL REPORTE, no en el último mes con filas: la
+// misma ventana que `conductaDePago` de la estructura, con la misma regla
+// (_shared/equifax-ventana.ts). `cortesDelReporte` son las fechas de la evolución de 24 meses y de la
+// deuda histórica por sistema (sólo fechas: esas listas no se suman a la deuda). Un mes sin
+// operaciones como titular no es un mes al día: se dice aparte («Sin deuda como titular»), y
+// quien terminó de pagar hace un año ve sus 12 meses sin deuda al final de la franja.
+export function franjaDePagos(historia, cortesDelReporte = []) {
   const filas = Array.isArray(historia) ? historia : [];
-  const ultimo = filas.map((h) => mesDe(h.fecha_corte)).filter((m) => m !== "").sort().pop();
-  if (!ultimo) return [];
+  const corte = corteDelReporte([...filas.map((h) => h.fecha_corte), ...(Array.isArray(cortesDelReporte) ? cortesDelReporte : [])]);
+  if (!corte) return [];
   const porMes = new Map();
   for (const h of filas) {
     if (h.rol !== "titular") continue;
@@ -72,26 +69,23 @@ export function franjaDePagos(historia) {
       enMora: previo.enMora + (dias > 0 ? 1 : 0),
     });
   }
-  const meses = [];
-  for (let i = 23; i >= 0; i--) {
-    const mes = restarMeses(ultimo, i);
+  return mesesHastaElCorte(corte).map((mes) => {
     const dato = porMes.get(mes) ?? null;
-    meses.push({
+    return {
       mes,
       texto: mesLegible(mes),
       peorDias: dato ? dato.peorDias : null,
       operaciones: dato ? dato.operaciones : 0,
       enMora: dato ? dato.enMora : 0,
       nivel: nivelDeMora(dato ? dato.peorDias : null),
-    });
-  }
-  return meses;
+    };
+  });
 }
 
 // Lo que está en atraso de un bloque de deuda: vencido, lo que no devenga
 // intereses, lo que está en demanda judicial y lo castigado. Son cuatro
 // cosas distintas y la estructura las guarda separadas; sumadas son lo mismo
-// que `deudaEnAtraso` del buró de Novadata (process.ts).
+// que `deudaEnAtraso` del buró de Proveedor_Info_1 (process.ts).
 export function enAtraso(bloque) {
   if (!bloque) return null;
   return redondear(

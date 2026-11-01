@@ -14,48 +14,67 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 ## Estado vigente (cada línea dice cuándo se midió)
 
 - **Espacio de la base (2026-10-31): 443 MB de 500 MB del plan Free** (57 MB de margen); se midió
-  con `pg_database_size`. Con ese techo una reconsulta masiva de Novadata la vuelve a llenar. Pasar
-  a Pro, o guardar el crudo de Equifax en Storage como el de Novadata, es la salida de fondo
+  con `pg_database_size`. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
+  a Pro, o guardar el crudo de Equifax en Storage como el de Proveedor_Info_1, es la salida de fondo
   (cambia el esquema de `consultas_equifax`: decisión aparte).
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
   27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11; pasada
   esa fecha se pueden quitar. Equifax autorizó reutilizarlas (`docs/equifax.md`). Faltan las
-  anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Las 18.000 personas que
-  creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas).
-
-- **Base:** última migración aplicada, la **139** (2026-10-30; no hay 137: la del PR 82 pasó a 139),
-  y `ESQUEMA_MINIMO` está en 139. Se midió en `esquema_version`. **La 140** saca de la agenda la
-  clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`36dbe4af0dde`**, 12 de 12, desplegado el 2026-10-30 a las 21:45 sobre el
-  esquema 139. `despliegues` anota 11 de 12 porque cada corrida falló en una función distinta al
-  subirla; el sello de las 12 se midió con OPTIONS y con `auditar-seguridad.mjs`. El anterior fue
-  `dabb60be9f3c`. El núcleo de la API está desplegado y apagado para terceros, y la consulta y el
-  análisis de la pantalla, que el PR 82 reescribió por dentro, **todavía no corrieron con este
-  código contra una persona**.
-- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v15 y fuentes-v11 (el último
-  perfil de las 3.764 personas reales, recalculado el 2026-10-30; las 240 sintéticas quedaron en v3),
+  anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
+  creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
+  en los totales de personas reales: medirlo antes de dar un total.
+- **Base:** última migración aplicada, la **143** (medido con el corredor el 2026-10-31; no hay 137: la
+  del PR 82 pasó a 139). En `main`, `ESQUEMA_MINIMO` ya está en 144: una función desplegada desde ahí
+  contesta 503 hasta aplicar la 144 (punto 2.0). Con la 141, `auditar-seguridad.mjs` dio 81 de 81
+  después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`9b1c51fe42e8`**, desplegado el 2026-10-31 a las 12:41 sobre el esquema 141
+  (`despliegues`; el anterior fue `8a778f905f10`). El núcleo de la API está desplegado y
+  apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
+  2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
+  `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
+  c-38661efd. La llamada real al modelo se midió con `36dbe4af0dde` (c-38661efd, marco-v30, USD 0,07),
+  y **todavía no hubo una consulta buena de Proveedor_Info_1 seguida de su análisis con el código nuevo**.
+- **Proveedor_Info_1 (2026-10-31):** contesta HTTP 500 en 41 de 52 fuentes en las tres consultas de
+  c-79e1ac23 del 30 y el 31. El 28/10 pasó en 494 de 1.215 perfiles y antes casi nunca (33 el 25/09).
+  El negocio confirmó que es un problema general: **por ahora Proveedor_Info_1 no se puede usar**.
+- **Base de prueba (2026-10-31):** 244 personas en `research/base-prueba-2026-11/`, con perfil de 19
+  fuentes buenas o más y Equifax de AWS, sin consultar a nadie. Pro y Plus ya están calculados con un
+  crédito de USD 5.000 a 36 meses: Plus cambia 111 veredictos, todos para peor (Pro ve las cuotas de
+  casi nadie). No es una base típica: cuota mediana de USD 2.857 contra USD 605 de todo AWS. El lote
+  corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
+  13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
+  de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
+- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v32 y marco-v33 están en `main`,
+  sin aplicar: punto 2.0; marco-v31 no llegó a usarse, 0 análisis); estructura-v16 (el último perfil de las
+  3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
   desde el 2026-10-21**, casi todas del lote de paridad del predictor del 2026-10-28 (1.176
-  independientes de la base de AWS consultados a Novadata, base legal «Contrato NovaCredit: cartera
+  independientes de la base de AWS consultados a Proveedor_Info_1, base legal «Contrato NovaCredit: cartera
   con crédito vigente»; `docs/investigacion-predictor-de-ingresos.md`, 12.29). Entran en los totales
   de la cartera, la bandeja y Monitoreo como cualquier persona real, y 553 de sus perfiles quedaron
-  con la respuesta incompleta de Novadata (HTTP 502; punto 2.18). **Son cartera: no se marcan
+  con la respuesta incompleta de Proveedor_Info_1 (HTTP 502; punto 2.18). **Son cartera: no se marcan
   aparte** (negocio, 2026-10-29).
 - **Análisis (2026-10-29, `analysis_results`):** 207 con marco-v28 (el último del 13/10) y 8 con
   marco-v30 (el último del 18/10), todos de personas reales; **ninguno nuevo desde el 18/10**. Los 73
   restantes son de versiones anteriores a la v28 (288 en total).
 - **Equifax (2026-10-29):** 88 consultas, y **sólo 1 del ciclo vigente** (va del 18/10 al 17/11; las
   87 anteriores caducaron).
-- **Modelo (2026-10-29, `gasto_del_mes`):** octubre lleva **USD 9,66 de los 10** del presupuesto
+- **Modelo (2026-10-31, `gasto_del_mes`):** octubre lleva **USD 13,92 de los 10**, por el lote autorizado de la base de prueba, del presupuesto
   (3.037 llamadas, ninguna sin medir). Desde el 2026-10-20 las 940 llamadas son todas pruebas del
   vigía; no hubo análisis.
 - **Control de seguridad:** 74 de 74 en orden el 2026-10-29 (`auditar-seguridad.mjs`, desde la
   carpeta principal), el primero después de la 138 y del despliegue del 2026-10-28. Sigue
   marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
   punto 2.15).
+
+- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las fuentes que
+  deciden (`FUENTES_QUE_DECIDEN`). Alcanza a 670 de los 3.765 últimos perfiles reales, que hay que
+  reconsultar antes de analizarlos. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
+  sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
+  fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
+  el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
 
 ## 1. Lo que Claude puede hacer ya
 
@@ -78,8 +97,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - topes por minuto y por día con los encabezados `RateLimit`, y el 503 `capacidad-agotada`
      por espera estimada (hoy sólo el tope de evaluaciones en curso);
    - avisos firmados (`evaluacion.terminada`), `POST /evaluaciones/{id}/decision` y
-     `/cancelacion`, y las puertas sueltas `/simulaciones` y `/capacidades-de-pago`;
-   - el sandbox con simuladores (identificaciones `00…`) y su apagado para terceros;
+      `/cancelacion`, y las puertas sueltas `/simulaciones`, `/capacidades-de-pago` y
+      `/estimaciones-de-ingreso` (esta última traduce `evaluacion`, `ev_...`, a `solicitudId`);
+    - **el sandbox está desplegado y apagado** (`supabase/CLAUDE.md`): falta poner
+      `API_SANDBOX=activo` para usarlo. Requisito de OAuth: una credencial de sandbox acepta sólo las
+      identificaciones de prueba;
    - D5: al vencer el plazo con el modelo caído, entregar `sin_veredicto` con el perfil y la
      capacidad en vez de `fallida` (hoy el paso del modelo se reintenta y, vencido el plazo,
      la evaluación termina `fallida`/`plazo_vencido`);
@@ -87,7 +109,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - pasar `evaluar-solicitud` (la pantalla) a los pasos compartidos (`pasos-de-evaluacion.ts`),
      que hoy sólo usa para la capacidad: "una sola puerta";
    - lo que dejó la revisión de Opus del 2026-10-21 sin arreglar: (a) dos evaluaciones
-     simultáneas de la misma persona consultan Novadata y el modelo dos veces (sólo el buró
+     simultáneas de la misma persona consultan Proveedor_Info_1 y el modelo dos veces (sólo el buró
      tiene el control de «en curso»); (b) si el trabajador puede vivir más de 180 s (plan pago:
      400 s), un paso largo se retoma con el original vivo: hace falta un token por toma
      comprobado al anotar; (c) `POR_INVOCACION = 4` pasos pesados en un proceso: medir CPU y
@@ -95,7 +117,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      en la pantalla desde la 135) y una institución puede poner ahí una cédula, que la supresión
      no borra; (e) el trabajador se despierta recién al terminar la ronda entera.
    Devuelve los datos completos de la persona según el contrato; lo que viene de una fuente
-   depende de que el contrato con esa fuente permita entregarlo (Novadata: 3.3). Lo hace Claude
+   depende de que el contrato con esa fuente permita entregarlo (Proveedor_Info_1: 3.3). Lo hace Claude
    (D6 a D15, 2.9). Se verifica con el lint estricto de Redocly y con `deno test`; de punta a
    punta, sólo con el sandbox (una prueba en producción no consulta a personas).
 3. **La puerta de la API: lo que la especificación dice y el código no hace.** Quedan las
@@ -114,11 +136,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    (`consultar-equifax-local.mjs`) y el lote nuevo pisó a `persona-1` a `persona-25` del
    anterior, así que ya no prueba todas. Hay que ajustarlo y etiquetar los lotes por fecha.
    Lo hace Claude; se verifica corriéndolo sobre todo `research/equifax/crudo/` con todo en ok.
-6. **Cobertura de deuda de Novadata contra Equifax.** Con 4 personas se vio que Novadata no
-   trae deuda que Equifax sí (`docs/propuesta-estructura-equifax.md`, sección 9): es un
-   indicio, no una tasa. Falta comparar las consultas de Equifax con el perfil de Novadata más
-   reciente de cada persona, por corte de la Super. Sin costo (lee la base; parte de
-   `scripts/medir-solapamiento-equifax.mjs`). Importa: sostiene «un solo buró por institución».
+6. **Cobertura de deuda de Proveedor_Info_1 contra Equifax.** Medido el 2026-10-31 sobre 91 personas con
+   las dos fuentes, con el crudo guardado: en bancos, con el mismo corte, 20 de 23 cuadran al dólar.
+   Las 3 restantes tienen atrasos y difieren entre 1,5% y 2,7%, sin explicar. Unas 60 tienen cortes
+   distintos y no se comparan sin reconsultar. Los 4 casos de la sección 9 de
+   `docs/propuesta-estructura-equifax.md` quedaron explicados: aperturas posteriores al corte, BIESS
+   (va en otra fuente de Proveedor_Info_1) y comercial. Las 63 filas de retail traen el corte de julio de 2025.
+   Importa: sostiene «un solo buró por institución».
 7. **Base de una institución nueva desde cero.** Falta la línea base del esquema (E15),
    parametrizar `auditar-seguridad.mjs` por base y probar el 503 de `exigirEsquema()` con la
    primera base atrasada. Importa: hoy hay una sola base y es requisito del primer cliente
@@ -156,18 +180,82 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - volver generadas por la base las cinco columnas `fuente_*` (regla 8 de CLAUDE.md);
    - estilos en línea a clases (1.776 en 124 archivos); Excel de un lote en el servidor
      pasadas las mil personas; `comparar-razonamiento.mjs` que lea el buró.
+12. **Equifax: la ventana de 24 meses y los saldos del comercial (PR 106).** El código está hecho
+    (2026-10-31): la ventana sale del corte
+    del reporte (`_shared/equifax-ventana.ts`, `equifax-estructura-v2`), el detalle actual del
+    comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
+    «Suspensión definitiva» del RUC. Desplegado con `8a778f905f10`. Falta:
+    - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
+      condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
+      desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
+      `estructura-v1`, y las que entren después de reprocesar quedarían viejas; (b) el guion lista
+      las consultas sin paginar (`scripts/cargar-tablas-equifax.mjs:92`) y PostgREST corta en
+      1.000: dice «consultas guardadas: 1000» cuando hay más de 2.200, así que hay que paginarlo
+      (`traerTodas()`) antes o rehace sólo las más viejas.
+    - **La pantalla sale al fusionar**, así que hasta el reproceso la franja (nueva) y los
+      contadores de la estructura (vieja) pueden no coincidir, y el comercial seguirá mostrando
+      «no cuadra» con los saldos viejos.
+    - **La historia mensual del comercial queda sin conciliar**: ahí `saldo_deuda` se comporta como
+      en bancos y unos 2.000 meses no cuadran con `deuda_historica` por ninguna lectura. Va como
+      pregunta a Equifax (`docs/equifax-pedido-de-diccionario.md`, 3.1 a 3.3), igual que el
+      significado de `total_vencer` en el comercial y si el último mes de la evolución es siempre
+      el corte (en 13 consultas con detalle no viene).
+    - **`probar-equifax-tablas.mjs` conserva 3 fallas que ya estaban** (score, estado de cartera y
+      consultas recibidas, 61, 61 y 60 de 62): no son de este cambio y siguen abiertas. La
+      paridad con AWS no bajó en ninguna variable (`s_consumo` y `saldo` subieron). Subir sus
+      umbrales queda a criterio del negocio.
+13. **estructura-v16 (PR 105): historial de empleos, BIESS y corte del retail.** Desplegado con
+   `8a778f905f10` y recalculado el 2026-10-31: 3.765 de 3.765 escritos y un seco posterior que da 0
+   a escribir y 0 que el crudo no reproduzca. Queda:
+   - **`recalcular-fuentes-ingreso.mjs` estaba frenado igual**: `recalcular-grupos.mjs` fallaba con
+     `statement timeout` en la paginación de `client_profiles` (`count=exact` con `offset`). El PR lo
+     arregla (paginación por `id`, hasta una página vacía) en los dos, y el segundo está probado sólo
+     en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
+     `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
+     `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
+   - **Efecto en la capacidad de pago:** `tieneCreditoIessBiess` pasa a verdadero en 308 de 918
+     personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
+     BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
+     cifra; no se tocó.
 
 ## 2. Espera una decisión del negocio
 
-1. **La comparación de marco-v31 con y sin Equifax.** Falta autorizarla con una cifra:
-   62 personas con v30 y con v31, unos USD 2,3 en lote (estimado, no medido). Importa para poder
-   encender el buró en lo que lee el modelo (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
+0. **marco-v32 y marco-v33 (PR 113, fusionado el 2026-10-31, sin aplicar).** Las correcciones de la
+   revisión de casos del 2026-10-31 y, sobre ellas, el buró. Están en `main`, pero no se aplicó ni
+   se desplegó nada: producción sigue en marco-v30 y estructura-v16, y la base en la 143. Queda:
+   - **Aplicarlo**, cuando el negocio lo diga. Desde el despliegue v32 entra a todos los análisis
+     nuevos, sin interruptor. Orden: `migrar-clientes.mjs --seco` y `--aplicar` (144: sin ella la
+     función contesta 503), `--funciones`, y `recalcular-grupos.mjs
+     --grupos=laboral,comportamientoBancario`, `--seco` primero (estructura-v17). Se verifica con
+     `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
+   - **Los USD 4,4 de la base de prueba:** ¿siguen en pie? Se autorizaron antes de la decisión de no
+     probar un marco nuevo hasta terminar los arreglos. El lote lee el código de la copia desde
+     donde corre, y `main` ya dice v32.
+   - **La regla del RUC depurado alcanza a 17 de 169** por decir «relación de dependencia». 77 de
+     las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», y 130 trabajan para un tercero: ¿se extiende
+     a todas las depuradas? Cambiarlo es un cambio de estructura con su recálculo.
+   - **Encender el buró:** `buroDeLaInstitucion: true` y `--funciones`, después de v32. Importa saber
+     que una consulta sólo cuenta si está vigente hasta el 17 del mes.
+   - **Sin medir, porque hace falta el modelo:** si deja de escribir «sin atraso» con A2 y «nadie
+     miró», y cuánto mueven el score estas correcciones (punto 2.1).
+   - **Sin tocar, a revisar:** `eventos-entre-consultas.ts` no cuenta como deterioro pasar de A1 a
+     A2; es del Laboratorio, no de lo que lee el modelo. Y la medición de A2 en el retail que trajo
+     la revisión (7 de 8 filas, A1 en 0 de 116) no se pudo repetir: ni `retails` de Proveedor_Info_1 ni el
+     crudo guardado de Equifax traen calificación; salió de otra lectura.
+1. **La comparación de marco-v30, v32 y v33.** Falta autorizarla con una cifra: 62 personas con las
+   tres versiones, unos USD 3,5 en lote (estimado, no medido: USD 0,0178 por análisis de v30, medido
+   con v28; v32 suma unos USD 0,0001 con el marco en caché y v33, USD 0,0019). Sin el brazo de v30,
+   USD 2,4. Importa para saber cuánto mueven las correcciones y el buró
+   (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
-   Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
-   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+   Octubre lleva USD 9,97 de 10 (punto 2.2), así que va desde noviembre. Se verifica con la
+   comparación y su lectura.
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29), y
+   **no se prueba ningún marco nuevo hasta terminar todos los arreglos** (negocio, 2026-10-31): vale
+   para lotes, comparaciones y recálculos con el modelo sobre marco-v31 o cualquier versión nueva.
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
-   octubre lleva USD 9,66 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
+   octubre lleva USD 13,92 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
    antes de nuestro aviso), y nuestro presupuesto tiene que ser el de la consola o menor. Lo compara
    el negocio, porque Claude no ve la consola.
@@ -192,7 +280,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    en las pantallas)?
 6. **Observaciones sobre los análisis de marco-v28** (en pausa desde el 2026-10-09): la regla de
    capacidad, bloqueos que no son de cumplimiento (48 de 77), demandas viejas que pesan (56),
-   calificaciones sin monto en atraso, saldo de Novadata repetido con otro banco (68), y que el
+   calificaciones sin monto en atraso, saldo de Proveedor_Info_1 repetido con otro banco (68), y que el
    modelo manda demasiados casos a revisar (143 de 200 en el lote del 07/10). Todo medido en
    `docs/observaciones-del-negocio.md`; se decide con el cuadro completo.
 7. **Validar los criterios dentro de cada grupo del marco** (qué campo pesa cuánto). El orden de
@@ -202,7 +290,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    llena `research/laboratorio/simulacion-institucion-2026-10-v2.xlsx` para el paso 2. Decide:
    qué son los «comentarios institucionales» (hoy la institución no entra), si hay una
    instalación para varias instituciones o una por institución, cuánto se conserva el crudo de
-   Novadata (LOPDP) y cómo medir una propuesta ya aplicada (`docs/laboratorio-guia.md`).
+   Proveedor_Info_1 (LOPDP) y cómo medir una propuesta ya aplicada (`docs/laboratorio-guia.md`).
 9. **La API: niveles de acceso, quién paga Equifax y D5 a D15.** Propuesta del negocio del
    2026-10-19: dueño, administrador de la institución, usuario A (consulta y evalúa) y usuario B
    (sólo ve); la cuenta de Equifax es del dueño y la institución la autoriza con su tope. Falta
@@ -248,7 +336,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     Pro (sin él, un repositorio privado pierde la protección de ramas). Después Claude suma el
     dominio a `ORIGENES_PERMITIDOS`, corre el control con `--sitio=<url>` y, con confirmación,
     vuelve privado el repositorio y retira `deploy.yml`. Cierra el riesgo 5.2.
-16. **Cuentas y credenciales.** Cambiar la contraseña de Novadata (el usuario estuvo en el
+16. **Cuentas y credenciales.** Cambiar la contraseña de Proveedor_Info_1 (el usuario estuvo en el
     repositorio público; **no se verificó si ya se cambió**) y cargarla con
     `npx --yes supabase@latest secrets set --env-file <temporal>`. Decidir el doble factor (si
     se exige, la cuenta de QA deja de servirle a Claude) y los plazos de retención
@@ -263,9 +351,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     ingreso validado calculado; lo que sigue (comparar con el ingreso verificado de una institución)
     espera el dato de la institución.
 18. **Predictor de ingresos: construirlo según la especificación.** `docs/especificacion-predictor-de-ingresos.md`
-    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están los pasos 1 y
-    2 y el entrenamiento, y el predictor no está desplegado: ninguna función usa `predictor-ingresos.ts`). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
-    tiene dos niveles (1: Novadata con su SRI; 2: Novadata y buró de Equifax). **Aclarado el 2026-10-28
+    (la investigación está en `docs/investigacion-predictor-de-ingresos.md`; en `main` están los pasos 1, 2, 4 y
+    5 del nivel 1 y el entrenamiento, y el predictor no está desplegado: lo que falta para eso, en el punto 7 de abajo). **Decidido el 2026-10-22:** no se piden patrimonio, gastos ni entrada, y el predictor
+    tiene dos niveles (1: Proveedor_Info_1 con su SRI; 2: Proveedor_Info_1 y buró de Equifax). **Aclarado el 2026-10-28
     (12.27): no hay calibración por producto.** AWS es crédito automotriz en su 96% (54.906 de 57.061
     independientes; 68 de consumo), pero el negocio dijo que automotriz y consumo son lo mismo: el
     valor financiado es el mismo (consumo 20.000; automotriz 20.000 más 5.000 de entrada, un auto de
@@ -276,7 +364,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     independizarse de ese predictor. El negocio dijo el 2026-10-29 que la quiere para mejorar la
     asertividad, que es justo lo que lo medido no respalda (sumar el alumno al nivel 2 lleva el R² de
     0,341 a 0,342): falta decidir si se hace igual.
-    **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Novadata (más la
+    **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Proveedor_Info_1 (más la
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
     con los resultados del predictor.
@@ -291,7 +379,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     **Fusionado el 2026-10-29 (PR 96):** el nivel 1 reentrenado con 8 variables
     (R² de 0,157 contra 0,172 del anterior; hacia adelante el mínimo del 90% cubre 89,1% contra 88,1%, y
     calibrado, 90,4%), exportado a `C:\datos\ingresos\modelos\exportado\` con sus casos de oro (prueba de
-    oro con diferencia 0), `variables-de-ingreso.ts` con el nivel nuevo y el sexo de Novadata, y la
+    oro con diferencia 0), `variables-de-ingreso.ts` con el nivel nuevo y el sexo de Proveedor_Info_1, y la
     prueba en sombra con el perfil de CrediScope de 532 personas de AWS: 89,1% (86,5 a 91,7), lo mismo
     que hacia adelante en AWS.
 
@@ -299,9 +387,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     1. Mantener el orden de las migraciones: las tablas de Equifax ya están en `equifax-tablas-v2` (88
        consultas rehechas el 2026-10-28, 0 con error, `equifax_analisis_credito` con sus filas).
        La del PR 82 pasó de 137 a 139 el 2026-10-30 (una 137 no se habría aplicado nunca).
-    2. De dónde sale la calibración conforme de cada institución: el evaluador la recibe como parámetro
-       de la respuesta (`Calibracion`, en logaritmo, con 500 casos o más). Se decide con las tablas del
-       paso 4 (punto 6).
+    2. La calibración conforme de cada institución va en `modelos_de_ingreso.calibracion` de su base
+       (`Calibracion`, en logaritmo, con 500 casos o más) y hoy está vacía (decisión del 2026-10-30). Se
+       enciende con esa fila, sin desplegar, cuando una institución traiga sus casos.
     3. **Lo que quedó del obligado y del RUC activo** (estructura-v15 y fuentes-v11, PR 97, desplegado y
        recalculado el 2026-10-30; 12.31). El perfil guarda el obligado, el nivel 1 lo lee de ahí y la prueba
        en sombra «a la consulta» ya da lo mismo que «con el obligado» (R² 0,187; 89,1%).
@@ -313,27 +401,34 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
          ellas de las respuestas que el HTTP 502 dejó incompletas: se revisan con ellas (punto 4).
     4. Completar el lote de paridad (queda para después, decisión del 2026-10-29): 1.620 de 2.162 sin
        respuesta buena (986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad
-       con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Novadata contra el de
+       con el SRI de Equifax en AWS (2026), que es la única que mide el SRI de Proveedor_Info_1 contra el de
        Equifax; con el sí del negocio. Revisar además los 553 perfiles que el HTTP 502 dejó guardados con
        la respuesta incompleta (el guion los contó como hechos). La prueba en sombra se repite tal cual
        (`node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`).
-       Las 542 de 12.29 sí tienen RUC en Novadata (512): lo que no tienen es el SRI de Equifax.
+       Las 542 de 12.29 sí tienen RUC en Proveedor_Info_1 (512): lo que no tienen es el SRI de Equifax.
     5. Reentrenar el nivel 2 desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19
        variables que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
        respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja); recalibrar y volver a
        exportar. Todavía lleva el estado civil, la zona y el IESS del extracto de AWS: decidir si se sacan
        como en el nivel 1 (en 12.26 costaban 0,004 de R²).
     6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
-       de AWS a Novadata (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
+       de AWS a Proveedor_Info_1 (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
-    7. Las tablas, la función y la operación de la API (pasos 4 y 5 de la sección 6): `modelos_de_ingreso`,
-       `estimaciones_de_ingreso`, `estimar-ingreso` y `POST /estimaciones-de-ingreso`.
-    8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7).
+    7. **Desplegados para el nivel 1 (2026-10-31):** `modelos_de_ingreso`, `estimaciones_de_ingreso`
+       (migración 141), `estimar-ingreso` y `POST /estimaciones-de-ingreso`, con lo que el negocio decidió
+       el 2026-10-30 (especificación, sección 1). `ingreso-v1` nivel 1 está vigente (huella
+       `b6bc58139cac`, 200 casos de oro iguales). La función rechaza una identificación inválida (400) y
+       sin sesión (401). **Falta una estimación de verdad**, con una persona autorizada por el negocio y
+       con un perfil bueno. La referencia de pensión de los jubilados (sección 3.3) no está construida.
+    8. La capacidad de pago y la tarjeta de pantalla (pasos 6 y 7). Antes de mostrar los tramos, revisar
+       con el negocio la regla de `cdf` (`comun.py`): con un mínimo alto, el tramo de menos de un salario
+       básico queda en 2,5% y los siguientes en 0,01%, porque por debajo del primer cuantil vale la mitad
+       de su nivel.
 
     **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
-    Novadata con el de Equifax en más de 87 personas.
+    Proveedor_Info_1 con el de Equifax en más de 87 personas.
 
 ## 3. Espera a terceros
 
@@ -346,11 +441,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 2. **Equifax: aprobación y fichas de cumplimiento.** Equifax está en proceso de aprobación
    (negocio, 2026-10-13). Cuando termine, sumarlo como encargado y destinatario en
    `docs/cumplimiento/` (fuera de git). Lo destraba Equifax; lo hace Claude.
-3. **Novadata, por escrito: capacidad y contrato.** Si una cuenta sostiene 60 perfiles por
+3. **Proveedor_Info_1, por escrito: capacidad y contrato.** Si una cuenta sostiene 60 perfiles por
    minuto (hoy se satura cerca de 20) y si el contrato permite entregar sus datos a la
    institución, que es lo que necesitan la API y el perfil opcional. Mientras no conteste, la
-   API no entrega lo que viene de Novadata. Se verifica con la respuesta escrita archivada.
-4. **Novadata: lo que falta saber.** ¿Expone el régimen RIMPE? ¿Funciona el recurso
+   API no entrega lo que viene de Proveedor_Info_1. Se verifica con la respuesta escrita archivada.
+4. **Proveedor_Info_1: lo que falta saber.** ¿Expone el régimen RIMPE? ¿Funciona el recurso
    `pensionista` (devolvía `estado=false` en las 389 de la muestra)? Además, el corte de
    septiembre de la Super: cuando lo publique, reconsultar a `c-b980f5b2` y `c-79f1a4ae` (su
    deuda es de septiembre); `c-23474215` tiene una diferencia de cobertura sin explicar.
@@ -391,7 +486,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 1. **2026-12-25: la primera reconsulta de la cartera** (ronda de 3 meses). Antes tienen que
    estar los pasos 1 a 3 de `docs/laboratorio-guia.md` (punto 1.1). Reconsultar la cartera
    entera tarda unas 2 h 10 min (concurrencia 20) y una tarea en segundo plano se corta a las
-   2 h: `consultar-lote.mjs` retoma. Novadata no cobra. Se verifica con los conteos de la ronda.
+   2 h: `consultar-lote.mjs` retoma. Proveedor_Info_1 no cobra. Se verifica con los conteos de la ronda.
 2. **Después de esa reconsulta:** mirar `client_profiles.duracion_por_fuente_ms` para ajustar
    `PLAZO_POR_FUENTE_MS` y construir el disyuntor por fuente que alimenta el vigía (E5).
 3. **Desde el 2026-12-25, con impagos reales:** la tarjeta de puntaje (E1,
@@ -421,7 +516,7 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
    2026-12-15 o al abrir la primera institución externa, lo que ocurra primero.
 4. **Un solo ambiente (E3):** el negocio decidió esperar al ambiente de prueba. Las pruebas de
    la API van con simuladores. Revisar al abrir la primera institución externa.
-5. **Demandas de un homónimo.** Novadata asocia las demandas por nombre y no trae la cédula de
+5. **Demandas de un homónimo.** Proveedor_Info_1 asocia las demandas por nombre y no trae la cédula de
    las partes: 31 de 4.602 (0,7%) no tienen el nombre de la persona entre los demandados y 331
    tienen ese campo vacío (cifras de septiembre, sin remedir). Las denuncias sí se filtran por
    cédula. Revisar el 2026-12-25, con la reconsulta.
@@ -457,3 +552,29 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
   `docs/remediacion-auditoria-externa.md` (sección 6, puntos 1 y 2: E27 está cerrado),
   `docs/plan-demo-ifi.md` (226 y 329) y `docs/propuesta-revision-del-laboratorio.md` (varias).
   Ninguna se tocó; las ajusta quien edite cada documento.
+
+## Cambio de nombre del proveedor a Proveedor_Info_1 (contrato, 2026-10-31)
+
+El negocio retiró el nombre anterior del proveedor de todo el producto. El repositorio, la
+memoria y las pantallas ya dicen **Proveedor_Info_1**; `revisar-textos.mjs` corta si el nombre
+vuelve (regla `proveedor-anterior`). Falta aplicarlo a producción, **en este orden**:
+
+1. **Secretos de las funciones** (nombres nuevos, mismos valores): `PROVEEDOR_INFO_1_BASE_URL`,
+   `_USERNAME`, `_PASSWORD`, `_CLIENT_ID` y `PROVEEDOR_INFO_1_RUTA_PENSION` (la ruta de la variante
+   de `pn_supa` del proveedor: sin ella la fuente de pensión consulta la ruta común). Sin el host
+   en el secreto, las funciones no consultan: ya no hay un valor por defecto en el código.
+2. **Migrar** con el corredor: la 142 renombra la tabla de recursos, el proveedor, el origen del
+   Laboratorio, comentarios y funciones, y crea el depósito `crudo-proveedor-info-1`; la 143 quita
+   la política del depósito anterior. Probadas con `rollback` contra la base viva el 2026-10-31.
+3. `node scripts/reescribir-historial-proveedor-info-1.mjs --seco` y después sin `--seco`
+   (38.621 filas en 26 columnas, por lotes): las claves de los perfiles guardados las lee el
+   código nuevo.
+4. `node scripts/mover-crudo-proveedor-info-1.mjs` (6.364 objetos, 45 MB) y repetirlo después de
+   desplegar, con `--borrar-viejo` la segunda vez.
+5. **Desplegar** con `--funciones` (la función `explore-proveedor-info-1` es nueva: borrar la
+   anterior del proyecto). `ESQUEMA_MINIMO` ya pide la 143.
+
+Entre el paso 2 y el 5 la pantalla y las funciones viejas fallan: hacerlo en una ventana corta.
+Lo que no se tocó: el **historial de git** (commits y PR pasados nombran el término; el
+repositorio es público; reescribirlo exige forzar `main`, que está protegida) y los archivos
+locales de `research/` (carpetas con el nombre anterior, que los guiones nuevos ya no buscan).

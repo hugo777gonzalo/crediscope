@@ -1,7 +1,7 @@
 // El buró de la institución de una persona: cuál es el buró de la base y,
 // si es Equifax, la consulta vigente de esa persona. Lo único que
 // armarPerfilDelModelo() necesita para leer la deuda del buró en lugar de la
-// de Novadata (marco-v31, apagado: CONFIG_LLM.buroDeLaInstitucion).
+// de Proveedor_Info_1 (marco-v33, apagado: CONFIG_LLM.buroDeLaInstitucion).
 //
 // Una sola implementación para analyze-client y scripts/analizar-en-lote.mjs:
 // dos copias de "cuál es la consulta vigente" es como un análisis en lote lee
@@ -27,7 +27,7 @@ export interface ConsultaVigenteDelBuro extends BuroDeLaInstitucion {
 // deno-lint-ignore no-explicit-any
 export async function buroDeLaBase(db: any): Promise<"equifax" | "aval" | null> {
   const { data, error } = await db.from("proveedores").select("clave").eq("es_buro", true).maybeSingle();
-  // Sin saber cuál es el buró no se analiza: seguir con Novadata sería leer
+  // Sin saber cuál es el buró no se analiza: seguir con Proveedor_Info_1 sería leer
   // otra fuente que la que la institución eligió, sin que nadie se entere.
   if (error) throw new Error(`no se pudo leer cuál es el buró de la institución: ${error.message}`);
   return data?.clave === "equifax" || data?.clave === "aval" ? data.clave : null;
@@ -67,7 +67,7 @@ export async function consultaVigenteDeEquifax(db: any, clientId: string, ahora:
 
 // Las dos cosas juntas, para quien analiza de a una persona. Aval como buró
 // todavía no tiene esta lectura: su perfil del modelo sigue siendo el de
-// Novadata hasta que se construya (y su consulta de producción todavía no
+// Proveedor_Info_1 hasta que se construya (y su consulta de producción todavía no
 // existe: las 240 de la base son del ambiente de prueba).
 // deno-lint-ignore no-explicit-any
 export async function buroVigenteDeLaPersona(db: any, clientId: string, ahora: Date = new Date()): Promise<ConsultaVigenteDelBuro | null> {

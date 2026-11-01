@@ -80,7 +80,7 @@ export interface RegistroDePaso {
   estado: EstadoDelPaso;
   /** Cuándo cambió de estado por última vez (ISO). */
   el?: string;
-  /** Lo que pasó, dicho para el analista: «Se reutilizó el perfil del 15/10», «Novadata no contestó». */
+  /** Lo que pasó, dicho para el analista: «Se reutilizó el perfil del 15/10», «Proveedor_Info_1 no contestó». */
   detalle?: string;
   /** Un paso fallido que pudo haber dejado algo corriendo (o cobrado) no se reintenta antes de esto (ISO). */
   reintentarDesde?: string;
@@ -164,7 +164,7 @@ export function pasoEnCurso(pasos: RegistroDePaso[] | null | undefined, paso: Pa
 
 // Lo que se anota cuando la función de un paso no contestó bien. El mensaje
 // es siempre nuestro: el de la función llamada puede traer el de un tercero
-// (Novadata, Equifax, el modelo) o el de la base, y la solicitud la lee todo
+// (Proveedor_Info_1, Equifax, el modelo) o el de la base, y la solicitud la lee todo
 // analista. El código también: sale del estado y del motivo, nunca del texto
 // de quien contestó. `status` 0 = no llegó la respuesta (se cortó la espera o
 // no se pudo llamar); `motivo` es el que devuelve consultar-equifax al rechazar.
@@ -242,6 +242,9 @@ export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null
     // rechace es un desacuerdo entre las dos, no un dato de la persona.
     if (status === 400) return { detalle: "La identificación no se puede consultar.", codigo: "error_interno", esperarMs: 0 };
     return { detalle: "No se pudo consultar a la persona.", codigo: "error_interno", esperarMs: 0 };
+  }
+  if (status === 409) {
+    return { detalle: "La consulta de la persona quedó incompleta y el modelo no la analizó. Reconsultala en unos minutos.", codigo: "fuentes_no_disponibles", esperarMs: 0 };
   }
   return { detalle: "El modelo no pudo analizar a la persona.", codigo: "error_interno", esperarMs: 0 };
 }

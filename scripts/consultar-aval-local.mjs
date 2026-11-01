@@ -166,7 +166,7 @@ function leerHechas() {
 async function unaIdentificacion(ingresado) {
   const t0 = Date.now();
 
-  // Misma validación que Novadata: un RUC de persona natural se reduce a su
+  // Misma validación que Proveedor_Info_1: un RUC de persona natural se reduce a su
   // cédula, y lo que no es persona natural se rechaza antes de gastar una
   // consulta (en producción, factura).
   const ident = clasificarIdentificacion(ingresado);

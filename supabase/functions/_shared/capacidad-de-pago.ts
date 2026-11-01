@@ -255,7 +255,7 @@ const QUIEN_DECLARA: Record<string, string> = {
   diplomatico: "Empleador diplomático",
 };
 
-// De qué fuente de Novadata sale cada tema que pesa en lo que la persona paga
+// De qué fuente de Proveedor_Info_1 sale cada tema que pesa en lo que la persona paga
 // por mes. Los nombres de las fuentes son los de `metaConsulta`.
 const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cubre_el_buro" | "no_lo_cubre"]> = [
   ["buroCreditoSuper", "buró de bancos", "lo_cubre_el_buro"],
@@ -264,26 +264,35 @@ const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cub
   ["creditoHipotecario", "préstamos del IESS o BIESS", "no_lo_cubre"],
   ["creditoQuirografario", "préstamos del IESS o BIESS", "no_lo_cubre"],
   ["pensionAlimenticia", "pensiones alimenticias", "no_lo_cubre"],
-  ["pensionAlimenticiaNovadata", "pensiones alimenticias", "no_lo_cubre"],
+  ["pensionAlimenticiaProveedorInfo1", "pensiones alimenticias", "no_lo_cubre"],
 ];
 
 export interface DatosDeCapacidad {
   ingresos: IngresoMensual[];
   obligaciones: ObligacionMensual[];
   deudasSinCuota: DeudaSinCuota[];
-  /** De dónde salen las cuotas: el buró de la institución o, sin él, Novadata. */
-  fuenteDeLasCuotas: "equifax" | "novadata";
+  /** De dónde salen las cuotas: el buró de la institución o, sin él, Proveedor_Info_1. */
+  fuenteDeLasCuotas: "equifax" | "proveedor_info_1";
   /** El mes del IESS con el que se clasificó el ingreso (yyyy-mm). */
   corteIess: string | null;
   /** Lo que no contestó (error o apagada) y alimenta las cuotas: «no hay» no es «no se pudo ver». */
   fuentesSinConsultar?: string[];
 }
 
+// Equifax puede contestar «completed» sin reporte de crédito: 585 de 20.560
+// respuestas de AWS, todas de otro tipo de consulta, y ninguna de las 97 de
+// CrediScope (2026-10-30). Queda una estructura sin ningún sistema medido, y
+// leerla como Equifax daba «alcanza», sin deudas y sin un aviso.
+export function elBuroTraeDetalle(estructuraEquifax: AnyRecord | null): boolean {
+  const titular = comoObjeto(estructuraEquifax?.deudaActualTitular);
+  return ["bancos", "cooperativas", "comercial"].some((sistema) => comoObjeto(titular?.[sistema]) !== null);
+}
+
 // Arma la entrada de evaluarCapacidad() desde el perfil estandarizado y, si
 // la hay, la estructura de Equifax. Con Equifax, las cuotas de bancos,
 // cooperativas y sector comercial salen de ahí (la cuota de cada operación
 // del titular); lo de codeudor o garante no se cuenta, porque no la paga él
-// mientras el deudor pague. Las casas comerciales de Novadata son otras
+// mientras el deudor pague. Las casas comerciales de Proveedor_Info_1 son otras
 // empresas (medido el 2026-10-13) y no informan la cuota.
 export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: AnyRecord | null): DatosDeCapacidad {
   const fuentesIngreso = comoObjeto(perfil?.fuentesIngreso);
@@ -312,7 +321,7 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
   const deudasSinCuota: DeudaSinCuota[] = [];
   const bancario = comoObjeto(perfil?.comportamientoBancario);
   const cooperativas = comoObjeto(perfil?.comportamientoCooperativas);
-  const titular = comoObjeto(estructuraEquifax?.deudaActualTitular);
+  const titular = elBuroTraeDetalle(estructuraEquifax) ? comoObjeto(estructuraEquifax?.deudaActualTitular) : null;
 
   if (titular) {
     const SISTEMAS: Array<[string, string]> = [["bancos", "Bancos"], ["cooperativas", "Cooperativas"], ["comercial", "Sector comercial"]];
@@ -326,10 +335,10 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
     }
   } else {
     const cuotaCoop = numero(cooperativas?.cuotaMensualTotal);
-    if (cuotaCoop !== null && cuotaCoop > 0) obligaciones.push({ concepto: "Cooperativas", montoMensual: cuotaCoop, origen: "Novadata" });
-    // Sin buró, Novadata trae el saldo de los bancos pero no la cuota.
+    if (cuotaCoop !== null && cuotaCoop > 0) obligaciones.push({ concepto: "Cooperativas", montoMensual: cuotaCoop, origen: "Proveedor_Info_1" });
+    // Sin buró, Proveedor_Info_1 trae el saldo de los bancos pero no la cuota.
     const saldoBancos = (numero(bancario?.saldoTotalVigente) ?? 0) + (numero(bancario?.deudaEnAtraso) ?? numero(bancario?.saldoEnMoraBuroCredito) ?? 0);
-    if (saldoBancos > 0) deudasSinCuota.push({ concepto: "Bancos", saldo: Math.round(saldoBancos * 100) / 100, origen: "Novadata" });
+    if (saldoBancos > 0) deudasSinCuota.push({ concepto: "Bancos", saldo: Math.round(saldoBancos * 100) / 100, origen: "Proveedor_Info_1" });
   }
 
   // Una fuente que no contestó (error o apagada) no es una fuente sin deuda: el
@@ -344,13 +353,13 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
   }
 
   const retail = numero(bancario?.totalDeudaRetail);
-  if (retail !== null && retail > 0) deudasSinCuota.push({ concepto: "Casas comerciales", saldo: retail, origen: "Novadata" });
-  if (bancario?.tieneCreditoIessBiess === true) deudasSinCuota.push({ concepto: "Préstamo del IESS o BIESS", saldo: null, origen: "Novadata" });
+  if (retail !== null && retail > 0) deudasSinCuota.push({ concepto: "Casas comerciales", saldo: retail, origen: "Proveedor_Info_1" });
+  if (bancario?.tieneCreditoIessBiess === true) deudasSinCuota.push({ concepto: "Préstamo del IESS o BIESS", saldo: null, origen: "Proveedor_Info_1" });
 
   const pension = numero(comoObjeto(perfil?.riesgoJudicialCivil)?.valorMensualPensiones);
   if (pension !== null && pension > 0) obligaciones.push({ concepto: "Pensión alimenticia que paga", montoMensual: pension, origen: "Función Judicial" });
 
-  return { ingresos, obligaciones, deudasSinCuota, fuenteDeLasCuotas: titular ? "equifax" : "novadata", corteIess, fuentesSinConsultar };
+  return { ingresos, obligaciones, deudasSinCuota, fuenteDeLasCuotas: titular ? "equifax" : "proveedor_info_1", corteIess, fuentesSinConsultar };
 }
 
 // El Ingreso declarado reemplaza al del IESS (ver el encabezado). Sin un

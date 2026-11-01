@@ -12,8 +12,8 @@
 //
 // Cómo: una sección se omite cuando el perfil del modelo no trae nada de
 // ese tema, sea porque la persona no tiene registros o porque la fuente no
-// contestó. Lo segundo lo cubre "QUÉ SE PUDO CONSULTAR", que va siempre: no
-// se concluye ni se penaliza por lo que nadie miró.
+// contestó. Lo segundo lo cubre "QUÉ INFORMACIÓN SE PUDO OBTENER", que va
+// siempre: no se concluye ni se penaliza por lo que no se pudo obtener.
 //
 // Las secciones se marcan por dónde empiezan y dónde termina el texto que
 // se corta, sobre MARCO_INTERPRETATIVO tal cual: el marco sigue siendo uno
@@ -71,7 +71,7 @@ const SECCIONES: Seccion[] = [
   },
   {
     id: "garantias",
-    desde: "   - Garantías: numeroOperacionesComoGaranteOCodeudor",
+    desde: "   - Deuda como codeudor o garante: numeroOperacionesComoGaranteOCodeudor",
     hasta: "   - numeroPrestamosIessBiess",
     aplica: (p) => {
       const b = g(p, "comportamientoBancario");
@@ -91,7 +91,12 @@ const SECCIONES: Seccion[] = [
     id: "retail",
     desde: "   - Retail (",
     hasta: "\n4. comportamientoCooperativas",
-    aplica: (p) => n(g(p, "comportamientoBancario").numeroDeudasRetail) > 0,
+    // Sin deudas también aplica si el tema se consultó: el marco dice que el
+    // cero vale a la fecha de corte de esa fuente (desde v32).
+    aplica: (p) => {
+      const consultados = g(p, "disponibilidad").temasConsultados;
+      return n(g(p, "comportamientoBancario").numeroDeudasRetail) > 0 || (Array.isArray(consultados) && consultados.includes("casas comerciales"));
+    },
   },
   {
     id: "cooperativas",
@@ -204,7 +209,7 @@ const SECCIONES: Seccion[] = [
   {
     id: "cliente-interno",
     desde: "15. comportamientoInterno:",
-    hasta: "QUÉ SE PUDO CONSULTAR",
+    hasta: "QUÉ INFORMACIÓN SE PUDO OBTENER",
     aplica: (p) => "comportamientoInterno" in (p ?? {}),
   },
 ];
