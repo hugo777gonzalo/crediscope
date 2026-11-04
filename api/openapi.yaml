@@ -123,12 +123,13 @@ info:
     | Identificación | Resultado en el sandbox |
     |---|---|
     | `0000000001` | `completada`: "aprobar", por el modelo |
-    | `0000000002` | `completada`: "revisar", con `completitud: parcial` |
+    | `0000000002` | `completada`: "revisar", con `completitud: parcial` (faltó una secundaria de peso) |
     | `0000000003` | `completada`: "negar", por un control de bloqueo |
     | `0000000004` | `completada`: `sin_veredicto` (el modelo no estuvo disponible) |
     | `0000000005` | `persona_no_encontrada` |
     | `0000000006` | `fallida`: `fuentes_no_disponibles` |
     | `0000000007` | Tarda 120 segundos en terminar, para probar la espera y los avisos |
+    | `0000000008` | `fallida`: `fuentes_no_disponibles`, con `temasNoConsultados` (faltó una fuente obligatoria) |
   contact:
     name: CrediScope
   license:
@@ -1690,7 +1691,7 @@ components:
         completitud:
           type: string
           enum: [completa, parcial]
-          description: '`parcial`: faltó al menos un tema crítico después de reintentar las fuentes que fallaron.'
+          description: '`parcial`: se analizó, pero faltó una fuente secundaria de peso después de reintentar las que fallaron. Si faltó una obligatoria no hay análisis: la evaluación queda `fallida` con `fuentes_no_disponibles`.'
         temasNoConsultados:
           type: array
           description: Temas cuya fuente no respondió. Nada de lo que no se consultó se presenta como "no tiene".
@@ -1707,7 +1708,7 @@ components:
 
         | `codigo` | Qué pasó | Qué hacer |
         |---|---|---|
-        | `fuentes_no_disponibles` | Las fuentes de datos no respondieron, o no respondieron las que definen la identidad, los aportes al IESS, los préstamos del BIESS o el buró de bancos. El modelo no analizó a la persona y no se consultó al buró de la IFI. | Reintentar más tarde. |
+        | `fuentes_no_disponibles` | Las fuentes de datos no respondieron, o faltó alguna de las obligatorias (identidad, listas de control, aportes al IESS, deudas, entre otras). `temasNoConsultados` dice cuáles. El modelo no analizó a la persona y no se consultó al buró de la IFI. En una evaluación diferida, CrediScope reintenta hasta el plazo antes de dar este fallo. | Reintentar más tarde. |
         | `plazo_vencido` | La evaluación no terminó dentro de su plazo. | Pedirla de nuevo. |
         | `identificacion_no_encontrada` | La fuente no conoce la identificación, o el buró no la acepta. No se consultó nada más. | Revisar la identificación; reintentar no cambia nada. |
         | `buro_requiere_consulta_previa` | Reservado. En `plus`, si la persona no tiene una consulta vigente del buró de la IFI, la API la consulta (y se cobra, hasta el tope diario): hoy la API no produce este código. | — |
@@ -1727,6 +1728,12 @@ components:
             - error_interno
         detalle:
           type: string
+        temasNoConsultados:
+          type: array
+          description: 'Sólo con `fuentes_no_disponibles`: los temas cuya fuente obligatoria no respondió, en palabras de una persona. Puede venir vacío si no se pudo determinar.'
+          items:
+            type: string
+          example: [las demandas]
 
     Versiones:
       type: object
@@ -2896,4 +2903,5 @@ components:
         plazoHasta: '2026-10-09T10:22:00-05:00'
         fallo:
           codigo: fuentes_no_disponibles
-          detalle: Ninguna fuente respondió dentro del plazo. No se guardó ningún perfil.
+          detalle: 'La consulta quedó incompleta: no se pudo obtener las demandas. El modelo no analizó a la persona. Reconsultala en unos minutos.'
+          temasNoConsultados: [las demandas]
