@@ -194,6 +194,20 @@ Deno.test("del análisis se guarda el score, la recomendación y la versión del
   assertEquals(r, { analisisId: "a1", score: 640, recomendacion: "revisar", veredictoOrigen: "modelo", indicadorRiesgo: "moderado", marco: "marco-v30" });
 });
 
+Deno.test("con una consulta parcial la solicitud guarda «revisar»: esa recomendación da el Preaprobado", () => {
+  const fila = { id: "a1", crediscope_score: 700, recomendacion: "aprobar", veredicto_origen: "modelo", completitud: "parcial" };
+  assertEquals(resumenDelAnalisis(fila).recomendacion, "revisar");
+  assertEquals(resumenDelAnalisis(fila).completitud, "parcial");
+  assertEquals(resumenDelAnalisis({ ...fila, completitud: "completa" }).recomendacion, "aprobar");
+});
+
+Deno.test("la función del análisis dice si la persona pasó a revisión manual, y eso no se reintenta", () => {
+  const f = falloDeUnPaso("analisis", 409, "revision_manual");
+  assertEquals([f.codigo, f.noReintentar], ["fuentes_no_disponibles", true]);
+  assert(/revisión manual/.test(f.detalle), f.detalle);
+  assertEquals(falloDeUnPaso("analisis", 409, "consulta_incompleta").noReintentar, undefined);
+});
+
 Deno.test("un paso que pudo dejar algo en vuelo no se reintenta hasta que pasó la espera", () => {
   const ahora = new Date("2026-10-18T12:00:00Z");
   let pasos = marcarPaso(pasosIniciales("plus"), "perfil", "hecho", undefined, ahora);

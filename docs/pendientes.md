@@ -45,8 +45,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
 - **Versiones en producción:** marco-v32 con Claude Sonnet 5.5, desplegada el 2026-10-31 y sin ningún
   análisis todavía (marco-v33, el buró, sigue apagada: punto 2.0; marco-v31 no llegó a usarse, 0
-  análisis). El código arma estructura-v17, y los perfiles guardados siguen en estructura-v16 hasta
-  recalcular (el último de las 3.765 personas reales, 2026-10-31); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+  análisis). estructura-v17 (el último perfil de las 3.765 personas reales, recalculado el 2026-10-31
+  y medido el 2026-11-04); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -69,9 +69,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   marcando como «INFO» que GitHub Pages no manda las cabeceras de seguridad (las trae la mudanza,
   punto 2.15).
 
-- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las fuentes que
-  deciden (`FUENTES_QUE_DECIDEN`). Alcanza a 670 de los 3.765 últimos perfiles reales, que hay que
-  reconsultar antes de analizarlos. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
+- **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las 21 fuentes
+  obligatorias (`FUENTES`, `calidad-de-la-consulta.ts`). Alcanza a 769 de los 3.765 últimos perfiles
+  reales, que hay que reconsultar antes de analizarlos, y 12 personas quedan a revisión manual. Falta
+  verlo en la bandeja, que hoy las muestra «Sin analizar», y en los lotes de consulta y la API: son las
+  sesiones 2 y 3 de `docs/propuesta-fuentes-obligatorias.md`, sección 12. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
   sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
   fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
   el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
@@ -221,12 +223,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 ## 2. Espera una decisión del negocio
 
 0. **marco-v32 y marco-v33 (PR 113).** Las correcciones de la revisión de casos del 2026-10-31 y,
-   sobre ellas, el buró. La 144 está aplicada y v32 desplegada: entra a todos los análisis nuevos.
-   Queda:
-   - **Recalcular a estructura-v17:** `recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
-     --carpeta=research/proveedor-info-1-raw-2026-10-03`. El seco, con la lectura del crudo
-     arreglada, dio 3.765 a escribir y 0 que el crudo no reproduzca. Se verifica con
-     `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
+   sobre ellas, el buró. La 144 está aplicada, v32 desplegada (entra a todos los análisis nuevos) y
+   los 3.765 perfiles reales recalculados a estructura-v17: un seco posterior da 0 a escribir,
+   `validar-perfil-del-modelo.mjs` da 0 fallas en las 14 reglas y 17 personas tienen
+   `rucDepuradoEnRelacionDeDependencia` (335 sin RUC que evaluar). Queda:
    - **Los USD 4,4 de la base de prueba:** `analizar-en-lote enviar` corrió el 2026-10-31 a las 12:06,
      antes del PR 113, con autorización del negocio. Un envío nuevo lee el código de la copia desde
      donde corre, y `main` ya dice v32.
@@ -271,12 +271,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    esa versión: el texto de `antiguedadEmpleoActualMeses` null (desde v14 también significa
    «su afiliación vigente no es trabajo»: 37 de 2.567 perfiles) y, si el negocio lo pide,
    sacar los atributos de la persona (hoy llegan como contexto sin peso en el score, grupo 12).
-5. **Declaración de disponibilidad completa.** Faltan `cobertura` y `suficienteParaPuntaje`
-   (no emitir score cuando la consulta no alcanza el mínimo evaluable;
-   `docs/declaracion-de-disponibilidad.md`). Con un mínimo de seis temas quedaban 40 de 2.567
-   (1,6%) por debajo, medido el 2026-10-03. Preguntas: ¿esos seis temas?, y ¿un caso no
-   evaluable sólo se avisa o se guarda como análisis sin score (exige score nulo en la base y
-   en las pantallas)?
+5. **Declaración de disponibilidad completa.** Falta `cobertura`
+   (`docs/declaracion-de-disponibilidad.md`). `suficienteParaPuntaje` quedó resuelto con las
+   fuentes obligatorias (`FUENTES`, negocio, 2026-10-31): un caso que no se puede evaluar no se
+   guarda como análisis, salvo la negativa de un control.
 6. **Observaciones sobre los análisis de marco-v28** (en pausa desde el 2026-10-09): la regla de
    capacidad, bloqueos que no son de cumplimiento (48 de 77), demandas viejas que pesan (56),
    calificaciones sin monto en atraso, saldo de Proveedor_Info_1 repetido con otro banco (68), y que el

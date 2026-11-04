@@ -7,10 +7,10 @@
 //   no está en `Resultado` no sale, aunque la fila lo tenga: la fila guarda el
 //   mensaje que leyó el modelo (que puede traer datos de la persona) y no se
 //   entrega.
-// - Con la consulta incompleta (`completitud: parcial`: faltó un tema crítico),
-//   la recomendación nunca es «aprobar», como mucho «revisar» (decisión D6 de la
-//   propuesta de la API). El análisis guardado no se toca: la regla es de la
-//   entrega, y la pantalla del analista sigue mostrando lo que dijo el modelo.
+// - Con la consulta parcial (`completitud: parcial`: faltó una secundaria de peso,
+//   `calidad-de-la-consulta.ts`), la recomendación nunca es «aprobar», como mucho
+//   «revisar» (decisión D6 de la propuesta de la API). El análisis guardado no se
+//   toca: la regla es de la entrega.
 // - `sin_veredicto` (el modelo no estuvo disponible) devuelve score y
 //   recomendación `null`; nunca un valor por defecto (CLAUDE.md: los huecos se
 //   dicen, no se disimulan).
@@ -18,6 +18,7 @@
 //   caracteres por frase, 20.000 el razonamiento), para que una respuesta larga
 //   no rompa a quien valida contra el contrato.
 
+import { completitudDeLaConsulta, recomendacionDeLaEntrega } from "./calidad-de-la-consulta.ts";
 import { disponibilidadPorTema, TEMAS_QUE_CUBRE_EL_BURO } from "./perfil-del-modelo.ts";
 import { estadoDeLaApi, etapaDeLaApi, type FilaDeLaCola, idDeLaEvaluacion, segundosParaVolver } from "./cola-de-evaluaciones.ts";
 import { type CodigoDeFallo, MODALIDADES_VERSION } from "./modalidades.ts";
@@ -26,19 +27,6 @@ import { type CodigoDeFallo, MODALIDADES_VERSION } from "./modalidades.ts";
 type Fila = Record<string, any>;
 
 export const VERSION_DE_LA_API = "1.0.0";
-
-// Los temas sin los que no se aprueba (propuesta de la API, 5.4): con cualquiera
-// de ellos sin consultar, la entrega es «parcial».
-export const TEMAS_CRITICOS = [
-  "identidad",
-  "buró de crédito de bancos",
-  "cooperativas",
-  "aportes al IESS",
-  "demandas en su contra",
-  "denuncias en la Fiscalía",
-  "listas de control y sanciones",
-  "lista negra",
-] as const;
 
 const VARIABILIDAD_DECLARADA = "El mismo perfil analizado dos veces puede variar unos 40 puntos.";
 
@@ -53,7 +41,7 @@ const enLista = (v: unknown, lista: string[]): string | null => (typeof v === "s
 export interface DatosDeLaEvaluacion {
   solicitud: Fila;
   analisis: Fila | null;
-  /** client_profiles: created_at, structure_version, standard_profile, control_bloqueo. */
+  /** client_profiles: created_at, structure_version, standard_profile, control_bloqueo, estado_por_fuente. */
   perfil: Fila | null;
   /** Si la evaluación usó el buró de la institución: sus temas cuentan como consultados. */
   conBuro: boolean;
@@ -63,18 +51,15 @@ export interface DatosDeLaEvaluacion {
 export function disponibilidadDeLaEvaluacion(perfil: Fila | null, conBuro: boolean) {
   const d = disponibilidadPorTema(perfil?.standard_profile ?? null, conBuro ? TEMAS_QUE_CUBRE_EL_BURO : []) as { temasNoConsultados: string[] } | null;
   if (!d) return null;
-  const faltan = d.temasNoConsultados;
-  return {
-    completitud: faltan.some((t) => (TEMAS_CRITICOS as readonly string[]).includes(t)) ? "parcial" : "completa",
-    temasNoConsultados: faltan,
-  };
+  // De la tabla de fuentes y no de los temas: el modelo no lee Equifax con el
+  // interruptor apagado, y un tema que el buró cubre decía «completa» sin serlo.
+  return { completitud: completitudDeLaConsulta(perfil?.estado_por_fuente), temasNoConsultados: d.temasNoConsultados };
 }
 
 function resultadoDelAnalisis(d: DatosDeLaEvaluacion, completitud: string | null) {
   const { solicitud: s, analisis: a, perfil } = d;
   const sinVeredicto = !a || a.veredicto_origen === "sin_veredicto";
-  let recomendacion = sinVeredicto ? null : enLista(a.recomendacion, RECOMENDACIONES);
-  if (recomendacion === "aprobar" && completitud === "parcial") recomendacion = "revisar";
+  const recomendacion = recomendacionDeLaEntrega(sinVeredicto ? null : enLista(a.recomendacion, RECOMENDACIONES), completitud);
   const control = perfil?.control_bloqueo ?? null;
   return {
     score: sinVeredicto || !Number.isInteger(a.crediscope_score) ? null : a.crediscope_score,

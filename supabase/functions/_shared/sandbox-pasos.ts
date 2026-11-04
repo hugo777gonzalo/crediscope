@@ -12,6 +12,7 @@
 
 import { buildStandardProfile, PROCESS_VERSION } from "./process.ts";
 import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
+import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import { leerLaConsulta } from "./consulta-de-perfil.ts";
 import { filaDelAnalisis } from "./fila-del-analisis.ts";
@@ -37,6 +38,7 @@ function perfilSimulado(identificacion: string) {
     raw,
     standard_profile: buildStandardProfile(raw, identificacion, CORTE_IESS_CONOCIDO).profile,
     control_bloqueo: evaluarControlesBloqueo(raw, identificacion),
+    estado_por_fuente: estadoPorFuente(raw),
     structure_version: PROCESS_VERSION,
   };
 }
@@ -96,12 +98,12 @@ export function correrPasoSimulado(paso: Paso, s: Fila, ahora: Date): ResultadoD
 export function datosDeLaEvaluacionSimulada(s: Fila): DatosDeLaEvaluacion {
   const id = s.identificacion as string;
   if (!s.resultado?.perfil) return { solicitud: s, analisis: null, perfil: null, conBuro: false };
-  const { standard_profile, control_bloqueo, structure_version } = perfilSimulado(id);
+  const { standard_profile, control_bloqueo, estado_por_fuente, structure_version } = perfilSimulado(id);
   const paso = (s.pasos as RegistroDePaso[]).find((p) => p.paso === "analisis");
   return {
     solicitud: s,
     analisis: s.resultado.analisis ? { ...analisisSimulado(id, control_bloqueo), created_at: paso?.el ?? null } : null,
-    perfil: { created_at: s.resultado.perfil.perfilDel, structure_version, control_bloqueo, standard_profile },
+    perfil: { created_at: s.resultado.perfil.perfilDel, structure_version, control_bloqueo, estado_por_fuente, standard_profile },
     conBuro: Boolean(s.resultado.buro),
   };
 }

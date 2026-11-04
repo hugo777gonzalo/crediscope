@@ -179,7 +179,7 @@ async function enviar() {
   const datos = new Map();
   for (let i = 0; i < seleccion.length; i += 100) {
     const ids = seleccion.slice(i, i + 100).map((s) => s.perfilId);
-    const { data, error } = await supabase.from("client_profiles").select("id, standard_profile, control_bloqueo").in("id", ids);
+    const { data, error } = await supabase.from("client_profiles").select("id, standard_profile, control_bloqueo, estado_por_fuente").in("id", ids);
     if (error) throw new Error(motivo(error));
     for (const d of data) datos.set(d.id, d);
   }
@@ -187,9 +187,12 @@ async function enviar() {
   const requests = [];
   const meta = {};
   let yaAnalizados = 0;
+  let incompletos = 0;
   for (const s of seleccion) {
     const d = datos.get(s.perfilId);
     if (!d) { console.log(`${s.cedula}: el perfil ya no existe, se salta`); continue; }
+    // Una selección puede ser de antes de que cambiara la lista de obligatorias.
+    if (!elPerfilSePuedeAnalizar(d.estado_por_fuente)) { incompletos++; continue; }
     const control = d.control_bloqueo ?? { bloqueado: false, hallazgos: [] };
     const buro = conBuro ? await consultaVigenteDeEquifax(supabase, s.clientId, ahora) : null;
     const params = armarPedidoScoring(d.standard_profile, control, camposDeshabilitados, CONFIG_LOTE, buro);
@@ -211,6 +214,7 @@ async function enviar() {
     // los necesita filaDelAnalisis al recoger.
     meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control, huellaPedido, consultaBuro: buro?.consultaId ?? null };
   }
+  if (incompletos) console.log(`${incompletos} tienen la consulta incompleta: no se mandan.`);
   if (yaAnalizados) console.log(`${yaAnalizados} ya tenían un análisis con este mismo pedido: no se mandan.`);
   if (requests.length === 0) {
     console.log("No queda nada que mandar.");

@@ -10,6 +10,7 @@
 // Función pura: la usan la función, la pantalla (para dibujar los pasos) y
 // las pruebas.
 
+import { recomendacionDeLaEntrega } from "./calidad-de-la-consulta.ts";
 import { erroresDelPedido, MONTO_MAXIMO, type PedidoDeSimulacion, PRODUCTO_CONSUMO, tasaDelPedido } from "./simulador-credito.ts";
 import { type DatosDeLaSolicitud, type ErrorDeCampo, validarDatosDeLaSolicitud } from "./datos-de-la-solicitud.ts";
 
@@ -244,6 +245,9 @@ export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null
     return { detalle: "No se pudo consultar a la persona.", codigo: "error_interno", esperarMs: 0 };
   }
   if (status === 409) {
+    if (motivo === "revision_manual") {
+      return { detalle: "La consulta de la persona sigue incompleta después de reconsultarla: queda sin score y pasa a revisión manual.", codigo: "fuentes_no_disponibles", esperarMs: 0, noReintentar: true };
+    }
     return { detalle: "La consulta de la persona quedó incompleta y el modelo no la analizó. Reconsultala en unos minutos.", codigo: "fuentes_no_disponibles", esperarMs: 0 };
   }
   return { detalle: "El modelo no pudo analizar a la persona.", codigo: "error_interno", esperarMs: 0 };
@@ -337,13 +341,17 @@ export function validarPedidoDeSolicitud(
 // Lo que se guarda del análisis del modelo en el resultado de la solicitud:
 // el score, la recomendación y de dónde salió, con la versión del marco. El
 // razonamiento completo se lee del análisis (analysis_results), no se copia.
+//
+// La recomendación es la que se entrega y no la guardada: esta es la que da el
+// Preaprobado, y con una consulta parcial nunca es «aprobar».
 export function resumenDelAnalisis(fila: Record<string, unknown>) {
   return {
     analisisId: fila.id ?? null,
     score: fila.crediscope_score ?? null,
-    recomendacion: fila.recomendacion ?? null,
+    recomendacion: recomendacionDeLaEntrega(fila.recomendacion ?? null, fila.completitud as string | undefined),
     veredictoOrigen: fila.veredicto_origen ?? null,
     indicadorRiesgo: fila.indicador_riesgo ?? null,
     marco: fila.rules_version ?? null,
+    ...(fila.completitud ? { completitud: fila.completitud } : {}),
   };
 }

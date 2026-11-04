@@ -19,7 +19,7 @@
 import { consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
 import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
-import { elPerfilSePuedeAnalizar, elPerfilSirve, porQueNoSePuedeAnalizar } from "./calidad-de-la-consulta.ts";
+import { decisionDeLaConsulta, elPerfilSirve, porQueNoSePuedeAnalizar, requiereRevisionManual } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
 import { capacidadDeLaSolicitud } from "./capacidad-de-la-solicitud.ts";
 import { elBuroTraeDetalle } from "./capacidad-de-pago.ts";
@@ -51,6 +51,22 @@ const fecha = (iso: string) => new Date(iso).toLocaleDateString("es-EC", { timeZ
 const fallido = (paso: Paso, status: number, motivo?: string | null): ResultadoDelPaso => ({ ok: false, fallo: falloDeUnPaso(paso, status, motivo) });
 const fallo = (detalle: string, codigo: FalloDeUnPaso["codigo"], esperarMs = 0): ResultadoDelPaso => ({ ok: false, fallo: { detalle, codigo, esperarMs } });
 
+// La evaluación de la pantalla tiene su propia copia de los pasos y comparte estas
+// reglas: `evaluar-solicitud` importa lo de abajo.
+
+// Reintentar no cambia nada: la misma consulta se reutiliza hasta el corte del mes.
+export const EQUIFAX_SIN_REPORTE = "Equifax contestó sin reporte de crédito: Plus no puede calcular la capacidad sin las cuotas del buró.";
+
+// Un control ya niega a la persona y a su consulta le falta una obligatoria: el buró
+// se cobraría para nada y la capacidad saldría de una deuda a medias, que parece menor.
+export const seNiegaPorControl = (s: Fila) => s.resultado?.perfil?.negadaPorControl === true;
+export const PASO_QUE_NO_HACE_FALTA = { ok: true as const, cambios: {}, detalle: "No hizo falta: un control de bloqueo ya niega a la persona.", resultado: {} };
+
+export async function falloDeConsultaIncompleta(db: Fila, clientId: string, estado: Record<string, string>): Promise<FalloDeUnPaso> {
+  const revisionManual = await requiereRevisionManual(db, clientId);
+  return { detalle: porQueNoSePuedeAnalizar(estado, revisionManual), codigo: "fuentes_no_disponibles", esperarMs: 0, ...(revisionManual ? { noReintentar: true } : {}) };
+}
+
 // Cuántos días vale un perfil antes de volver a preguntarle a las fuentes: un
 // parámetro del negocio que vive en la base (61), el mismo del lote.
 async function diasDeValidezDelPerfil(db: Fila): Promise<number> {
@@ -72,7 +88,9 @@ export async function correrPaso(paso: Paso, s: Fila, ctx: ContextoDeLosPasos): 
     return await pasoCapacidad(s, ctx.db);
   } catch (err) {
     // Este mensaje es nuestro y sólo nombra temas: no trae nada de la fuente.
-    if (err instanceof ConsultaIncompleta) return fallo(err.message, "fuentes_no_disponibles");
+    if (err instanceof ConsultaIncompleta) {
+      return { ok: false, fallo: { detalle: err.message, codigo: "fuentes_no_disponibles", esperarMs: 0, ...(err.revisionManual ? { noReintentar: true } : {}) } };
+    }
     // Sin el mensaje: un error de la base o de una fuente puede traer datos.
     console.error("pasos-de-evaluacion:", paso, (err as Error)?.name);
     return fallido(paso, 500);
@@ -91,7 +109,7 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
     // días y uno vacío de ayer no se dan por vigente con el viejo). Y que sirva.
     const { data: ultimo } = await db
       .from("client_profiles")
-      .select("id, created_at, fuentes_ok, ejes_ok, estado_por_fuente, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
+      .select("id, created_at, fuentes_ok, ejes_ok, estado_por_fuente, control_bloqueo, standard_profile->fuentesIngreso->segmento, standard_profile->fuentesIngreso->pisoIngresoMensualReportado")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -99,7 +117,8 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
     const dias = await diasDeValidezDelPerfil(db);
     // Uno que quedó incompleto no se reutiliza: reintentar leería siempre ese
     // mismo perfil y nunca volvería a preguntarle a la fuente.
-    if (ultimo && elPerfilSirve(ultimo) && elPerfilSePuedeAnalizar(ultimo.estado_por_fuente) && Date.now() - Date.parse(ultimo.created_at) < dias * 86_400_000) {
+    const decision = ultimo ? decisionDeLaConsulta(ultimo.estado_por_fuente, ultimo.control_bloqueo) : "frenar";
+    if (ultimo && elPerfilSirve(ultimo) && decision !== "frenar" && Date.now() - Date.parse(ultimo.created_at) < dias * 86_400_000) {
       // También se audita reutilizar: no se consultó a la fuente, pero los datos
       // de esa persona entran igual al resultado que se le entrega a la institución.
       await db.from("audit_log").insert({
@@ -112,7 +131,7 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
         ok: true,
         cambios: { client_id: clientId, client_profile_id: ultimo.id },
         detalle: `Se reutilizó el perfil del ${fecha(ultimo.created_at)}.`,
-        resultado: { perfil: { perfilId: ultimo.id, perfilDel: ultimo.created_at, reutilizado: true, segmento: ultimo.segmento ?? null, ingresoReportadoIess: ultimo.pisoIngresoMensualReportado ?? null } },
+        resultado: { perfil: { perfilId: ultimo.id, perfilDel: ultimo.created_at, reutilizado: true, segmento: ultimo.segmento ?? null, ingresoReportadoIess: ultimo.pisoIngresoMensualReportado ?? null, negadaPorControl: decision === "negar_por_control" } },
       };
     }
   }
@@ -128,21 +147,27 @@ async function pasoPerfil(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDe
   const g = r.guardado;
   // Acá y no en el paso del análisis: en Plus el buró va en el medio y se cobra.
   // Sin este corte se pagaría a Equifax para que después el modelo no corra.
-  if (!elPerfilSePuedeAnalizar(g.estado_por_fuente)) return fallo(porQueNoSePuedeAnalizar(g.estado_por_fuente), "fuentes_no_disponibles");
+  const decision = decisionDeLaConsulta(g.estado_por_fuente, g.control_bloqueo);
+  if (decision === "frenar") return { ok: false, fallo: await falloDeConsultaIncompleta(db, g.client_id, g.estado_por_fuente) };
   const f = g.standard_profile?.fuentesIngreso ?? {};
   return {
     ok: true,
     cambios: { client_id: g.client_id, client_profile_id: g.id },
     detalle: "Se consultó a la persona en Proveedor_Info_1.",
-    resultado: { perfil: { perfilId: g.id, perfilDel: g.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null } },
+    resultado: { perfil: { perfilId: g.id, perfilDel: g.created_at, reutilizado: false, segmento: f.segmento ?? null, ingresoReportadoIess: f.pisoIngresoMensualReportado ?? null, negadaPorControl: decision === "negar_por_control" } },
   };
 }
 
+// Acá y no en la capacidad: el modelo corre en el medio y se paga.
+const sinReporteDeEquifax = (): ResultadoDelPaso => ({ ok: false, fallo: { detalle: EQUIFAX_SIN_REPORTE, codigo: "buro_no_disponible", esperarMs: 0, noReintentar: true } });
+
 async function pasoBuro(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDelPaso> {
   const { db } = ctx;
+  if (seNiegaPorControl(s)) return PASO_QUE_NO_HACE_FALTA;
   if (!s.client_id) return fallo("Falta la persona: el buró se consulta después del perfil.", "error_interno");
   const vigente = await consultaVigenteDeEquifax(db, s.client_id);
   if (vigente) {
+    if (!elBuroTraeDetalle(vigente.estructura)) return sinReporteDeEquifax();
     return {
       ok: true,
       cambios: { consulta_equifax_id: vigente.consultaId },
@@ -212,6 +237,7 @@ async function pasoBuro(s: Fila, ctx: ContextoDeLosPasos): Promise<ResultadoDelP
     // la persona): reintentar no cambia nada, y la consulta ya está pagada.
     return { ok: false, fallo: { ...falloDeUnPaso("buro", 500), detalle: "La consulta de Equifax de esta persona está guardada pero no se pudo leer. Reintentar no cambia nada: hay que revisarla con administración.", codigo: "buro_no_disponible", esperarMs: 0, noReintentar: true } };
   }
+  if (!elBuroTraeDetalle(usable.estructura)) return sinReporteDeEquifax();
   return {
     ok: true,
     cambios: { consulta_equifax_id: usable.consultaId },
@@ -240,6 +266,7 @@ async function pasoAnalisis(s: Fila, ctx: ContextoDeLosPasos): Promise<Resultado
 
 // La cuota y la capacidad son cálculos: los usan la API y la pantalla.
 export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso> {
+  if (seNiegaPorControl(s)) return PASO_QUE_NO_HACE_FALTA;
   const { data: perfil } = await db.from("client_profiles").select("standard_profile").eq("id", s.client_profile_id).maybeSingle();
   if (!perfil) return fallo("No se encontró el perfil de la persona.", "error_interno");
   let estructura: Record<string, unknown> | null = null;
@@ -252,8 +279,7 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
   if (s.modalidad === "plus" && !estructura) {
     return fallo("Falta la consulta de Equifax de la persona: Plus calcula la capacidad con las cuotas del buró.", "buro_no_disponible");
   }
-  if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) {
-    return fallo("Equifax contestó sin reporte de crédito: Plus no puede calcular la capacidad sin las cuotas del buró.", "buro_no_disponible");
-  }
+  // El paso del buró ya lo corta: esto queda para una evaluación que llegó acá antes.
+  if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) return fallo(EQUIFAX_SIN_REPORTE, "buro_no_disponible");
   return capacidadDeLaSolicitud(s, perfil.standard_profile, estructura);
 }
