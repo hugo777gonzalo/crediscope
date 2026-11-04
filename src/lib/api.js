@@ -107,7 +107,7 @@ export async function getPerfilPorId(id) {
 // referencia el perfil con el que se hizo (client_profile_id); el visor
 // de Historial todavía muestra solo el resultado, sin los segmentos.
 export async function getAnalisisPorId(id) {
-  const { data, error } = await supabase.from("analysis_results").select("*, clients(cedula)").eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("analysis_results").select("*, clients(cedula), client_profiles(estado_por_fuente)").eq("id", id).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -1058,7 +1058,7 @@ export async function getExpediente(cedula) {
   const [perfiles, analisis, auditoria, cabecera, perfilCompleto, analisisCompleto] = await Promise.all([
     supabase
       .from("client_profiles")
-      .select("id, created_at, structure_version, origen, lote_id, fuente_segmento, fuente_piso_ingreso, fuente_estado, fuente_corte, duracion_ms")
+      .select("id, created_at, structure_version, origen, lote_id, fuente_segmento, fuente_piso_ingreso, fuente_estado, fuente_corte, duracion_ms, estado_por_fuente")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false }),
     supabase
