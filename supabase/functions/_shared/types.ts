@@ -269,6 +269,9 @@ export interface StandardClientProfile {
     // observ_solicitud_suspension="CESE DE ACTIVIDADES"). Informativo,
     // no cambia estadoActividadEconomica ni el score por sí solo.
     tipoUltimoCeseRuc: "cancelacion" | "suspension_definitiva" | "suspension_temporal" | null;
+    // El SRI lo dio de baja por depuración y era trabajo en relación de
+    // dependencia (estructura-v17, ruc.ts). null: sin RUC.
+    rucDepuradoEnRelacionDeDependencia?: boolean | null;
     // «Obligado a llevar contabilidad» del mismo registro RUC que las
     // fechas (desde estructura-v15; ruc.ts lo lee: «SI»/«S» y «NO»/«N»).
     // null = sin RUC o un valor que no se reconoce. Lo lee el nivel 1 del

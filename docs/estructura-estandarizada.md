@@ -799,6 +799,21 @@ interface StandardClientProfile {
 >   antes). Se despliega primero y se recalcula después, por el mismo motivo
 >   que en v15.
 
+> **estructura-v17 (2026-10-31, decisión del negocio)** — `laboral` suma
+> `rucDepuradoEnRelacionDeDependencia` (`ruc.ts`): `true` si el RUC de referencia
+> trae «DEPURACION» en `observ_solicitud_suspension` y uno de sus establecimientos
+> tiene una actividad «RELACION DE DEPENDENCIA»; `false` si no; `null` sin RUC.
+> Lo pide marco-v32 para dejar neutra esa baja: el motivo no estaba en el perfil.
+> `CALIFICACIONES_EN_ATRASO` suma A2 y A3 (`operacionesEnAtrasoSinMonto`).
+> - **Efecto** (código viejo contra nuevo, perfil entero, desde el crudo de las
+>   3.765 personas reales): sólo se suma ese campo, `true` en 17 y `null` en 335.
+>   `operacionesEnAtrasoSinMonto` no cambia en nadie: de las 647 operaciones
+>   propias A2 y A3, ninguna viene sin deuda.
+> - **Sin aplicar:** se despliega primero y se recalcula después
+>   (`recalcular-grupos.mjs --grupos=laboral,comportamientoBancario`, `--seco`
+>   antes). Sin el recálculo el campo no llega y el análisis sigue como hasta ahora
+>   para esa persona. No se muestra en pantalla: el nombre lo decide el negocio.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |

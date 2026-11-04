@@ -13,11 +13,21 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Base:** última migración aplicada, la **141** (2026-10-31; no hay 137: la del PR 82 pasó a 139),
-  y `ESQUEMA_MINIMO` está en 141. Se midió en `esquema_version`, y `auditar-seguridad.mjs` dio 81 de 81
-  después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`9b1c51fe42e8`**, desplegado el 2026-10-31 a las 12:41 sobre el esquema 141
-  (`despliegues`; el anterior fue `8a778f905f10`). El núcleo de la API está desplegado y
+- **Espacio de la base (2026-10-31): 443 MB de 500 MB del plan Free** (57 MB de margen); se midió
+  con `pg_database_size`. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
+  a Pro, o guardar el crudo de Equifax en Storage como el de Proveedor_Info_1, es la salida de fondo
+  (cambia el esquema de `consultas_equifax`: decisión aparte).
+- **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
+  27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11; pasada
+  esa fecha se pueden quitar. Equifax autorizó reutilizarlas (`docs/equifax.md`). Faltan las
+  anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
+  creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
+  en los totales de personas reales: medirlo antes de dar un total.
+- **Base:** última migración aplicada, la **144** (medido con el corredor el 2026-10-31; no hay 137: la
+  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144. `auditar-seguridad.mjs` dio 79 de 79 después
+  de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`59f5ef0466c9`**, 13 de 13, desplegado el 2026-10-31 a las 23:00 sobre el
+  esquema 144 (`despliegues`; el anterior fue `aedc9aa014c3`). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
@@ -33,9 +43,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v30 con Claude Sonnet 5.5 (marco-v31, el buró de la
-  institución, construido y apagado: su fila está en la 131); estructura-v16 (el último perfil de las
-  3.765 personas reales, recalculado el 2026-10-31) y fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+- **Versiones en producción:** marco-v32 con Claude Sonnet 5.5, desplegada el 2026-10-31 y sin ningún
+  análisis todavía (marco-v33, el buró, sigue apagada: punto 2.0; marco-v31 no llegó a usarse, 0
+  análisis). El código arma estructura-v17, y los perfiles guardados siguen en estructura-v16 hasta
+  recalcular (el último de las 3.765 personas reales, 2026-10-31); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -204,13 +215,6 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      en seco. Siguen con `count=exact` y `offset`, sin arreglar, `validar-perfil-del-modelo.mjs`,
      `detectar-atipicos.mjs`, `explorar-crudo.mjs`, `procesar-reconsultas.mjs` y
      `simular-un-anio.mjs`: si fallan igual, el mismo arreglo.
-   - **Lo que debe abrir la sesión del marco** (cada uno es una línea de
-     `CAMPOS_NUEVOS_QUE_AUN_NO_LLEGAN` en `perfil-del-modelo.ts`; hoy el mensaje sigue siendo el
-     de marco-v30): `comportamientoBancario.fechaCorteRetail` (las deudas retail son de ese corte,
-     julio de 2025 en toda la cartera) y `comportamientoBancario.saldoPrestamosIessBiess`. Los
-     valores corregidos de los campos que ya existían sí llegan, y el marco puede necesitar una
-     línea que diga que el empleador vigente es `null` cuando el historial no trae al del empleo
-     actual.
    - **Efecto en la capacidad de pago:** `tieneCreditoIessBiess` pasa a verdadero en 308 de 918
      personas con créditos formales, y `capacidad-de-pago.ts` suma entonces «Préstamo del IESS o
      BIESS» a las deudas sin cuota en esas personas. Con el saldo nuevo podría mostrarse la
@@ -218,13 +222,39 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## 2. Espera una decisión del negocio
 
-1. **La comparación de marco-v31 con y sin Equifax.** Falta autorizarla con una cifra:
-   62 personas con v30 y con v31, unos USD 2,3 en lote (estimado, no medido). Importa para poder
-   encender el buró en lo que lee el modelo (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
+0. **marco-v32 y marco-v33 (PR 113).** Las correcciones de la revisión de casos del 2026-10-31 y,
+   sobre ellas, el buró. La 144 está aplicada y v32 desplegada: entra a todos los análisis nuevos.
+   Queda:
+   - **Recalcular a estructura-v17:** `recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
+     --carpeta=research/proveedor-info-1-raw-2026-10-03`. El seco, con la lectura del crudo
+     arreglada, dio 3.765 a escribir y 0 que el crudo no reproduzca. Se verifica con
+     `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
+   - **Los USD 4,4 de la base de prueba:** `analizar-en-lote enviar` corrió el 2026-10-31 a las 12:06,
+     antes del PR 113, con autorización del negocio. Un envío nuevo lee el código de la copia desde
+     donde corre, y `main` ya dice v32.
+   - **La regla del RUC depurado alcanza a 17 de 169** por decir «relación de dependencia». 77 de
+     las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», y 130 trabajan para un tercero: ¿se extiende
+     a todas las depuradas? Cambiarlo es un cambio de estructura con su recálculo.
+   - **Encender el buró:** `buroDeLaInstitucion: true` y `--funciones`, después de v32. Importa saber
+     que una consulta sólo cuenta si está vigente hasta el 17 del mes.
+   - **Sin medir, porque hace falta el modelo:** si deja de escribir «sin atraso» con A2 y «nadie
+     miró», y cuánto mueven el score estas correcciones (punto 2.1).
+   - **Sin tocar, a revisar:** `eventos-entre-consultas.ts` no cuenta como deterioro pasar de A1 a
+     A2; es del Laboratorio, no de lo que lee el modelo. Y la medición de A2 en el retail que trajo
+     la revisión (7 de 8 filas, A1 en 0 de 116) no se pudo repetir: ni `retails` de Proveedor_Info_1 ni el
+     crudo guardado de Equifax traen calificación; salió de otra lectura.
+1. **La comparación de marco-v30, v32 y v33.** Falta autorizarla con una cifra: 62 personas con las
+   tres versiones, unos USD 3,5 en lote (estimado, no medido: USD 0,0178 por análisis de v30, medido
+   con v28; v32 suma unos USD 0,0001 con el marco en caché y v33, USD 0,0019). Sin el brazo de v30,
+   USD 2,4. Importa para saber cuánto mueven las correcciones y el buró
+   (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
    autoriza aparte) o el lote acepta una fecha de análisis anterior al corte (un cambio chico).
-   Y octubre lleva USD 9,66 de 10 (punto 2.2). Se verifica con la comparación y su lectura.
-   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29).
+   Octubre lleva USD 9,97 de 10 (punto 2.2), así que va desde noviembre. Se verifica con la
+   comparación y su lectura.
+   **Espera a la versión del marco con el predictor de ingresos** (punto 2.4, negocio, 2026-10-29), y
+   **no se prueba ningún marco nuevo hasta terminar todos los arreglos** (negocio, 2026-10-31): vale
+   para lotes, comparaciones y recálculos con el modelo sobre marco-v31 o cualquier versión nueva.
 2. **El presupuesto del modelo.** `presupuesto_llm_mensual_usd` queda en 10 (negocio, 2026-10-29);
    octubre lleva USD 13,92 y pasó los avisos del 70 y el 85%. Lo que sigue abierto: el límite de la
    consola de Anthropic es otro y manda (en septiembre cortó el 28 con USD 6,00 medidos por nosotros,
@@ -524,26 +554,8 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
 
 ## Cambio de nombre del proveedor a Proveedor_Info_1 (contrato, 2026-10-31)
 
-El negocio retiró el nombre anterior del proveedor de todo el producto. El repositorio, la
-memoria y las pantallas ya dicen **Proveedor_Info_1**; `revisar-textos.mjs` corta si el nombre
-vuelve (regla `proveedor-anterior`). Falta aplicarlo a producción, **en este orden**:
-
-1. **Secretos de las funciones** (nombres nuevos, mismos valores): `PROVEEDOR_INFO_1_BASE_URL`,
-   `_USERNAME`, `_PASSWORD`, `_CLIENT_ID` y `PROVEEDOR_INFO_1_RUTA_PENSION` (la ruta de la variante
-   de `pn_supa` del proveedor: sin ella la fuente de pensión consulta la ruta común). Sin el host
-   en el secreto, las funciones no consultan: ya no hay un valor por defecto en el código.
-2. **Migrar** con el corredor: la 142 renombra la tabla de recursos, el proveedor, el origen del
-   Laboratorio, comentarios y funciones, y crea el depósito `crudo-proveedor-info-1`; la 143 quita
-   la política del depósito anterior. Probadas con `rollback` contra la base viva el 2026-10-31.
-3. `node scripts/reescribir-historial-proveedor-info-1.mjs --seco` y después sin `--seco`
-   (38.621 filas en 26 columnas, por lotes): las claves de los perfiles guardados las lee el
-   código nuevo.
-4. `node scripts/mover-crudo-proveedor-info-1.mjs` (6.364 objetos, 45 MB) y repetirlo después de
-   desplegar, con `--borrar-viejo` la segunda vez.
-5. **Desplegar** con `--funciones` (la función `explore-proveedor-info-1` es nueva: borrar la
-   anterior del proyecto). `ESQUEMA_MINIMO` ya pide la 143.
-
-Entre el paso 2 y el 5 la pantalla y las funciones viejas fallan: hacerlo en una ventana corta.
-Lo que no se tocó: el **historial de git** (commits y PR pasados nombran el término; el
-repositorio es público; reescribirlo exige forzar `main`, que está protegida) y los archivos
-locales de `research/` (carpetas con el nombre anterior, que los guiones nuevos ya no buscan).
+**Hecho el 2026-10-31.** Repositorio, memoria y pantallas; secretos `PROVEEDOR_INFO_1_*` (los anteriores borrados);
+migraciones 142 y 143; 24.807 filas de historial reescritas; 6.364 objetos del depósito de crudo copiados y el
+anterior borrado; funciones desplegadas (sello `aedc9aa014c3`) y la `explore` anterior borrada.
+`revisar-textos.mjs` corta si el nombre anterior vuelve. Queda fuera: el **historial de git** (commits y PR
+pasados lo nombran; reescribirlo exige forzar `main`, protegida).

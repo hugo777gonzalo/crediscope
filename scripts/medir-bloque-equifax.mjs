@@ -1,4 +1,4 @@
-// Mide el buró de la institución en lo que leería el modelo (marco-v31,
+// Mide el buró de la institución en lo que leería el modelo (marco-v33,
 // apagado) con las consultas de Equifax ya guardadas. NO gasta nada: lee
 // consultas_equifax y el último perfil de Proveedor_Info_1 de cada persona, y no llama
 // al modelo ni a Equifax.
@@ -102,7 +102,7 @@ for (const [clientId, c] of porPersona) {
   if (CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1.some((k) => k in bancario)) r.quedaProveedorInfo1++;
   if ("comportamientoCooperativas" in con) r.quedanCooperativas++;
 
-  const antes = new Set(sin.disponibilidad?.temasNoConsultados ?? []);
+  const antes = new Set(sin.disponibilidad?.temasSinRespuesta ?? []);
   for (const t of con.disponibilidad?.temasConsultados ?? []) if (antes.has(t)) contar(r.temasQueCambian, t);
 
   const a = sin.endeudamiento?.deudaPropiaTotal;
@@ -150,6 +150,6 @@ console.log("\n5. Marco");
 const v30 = MARCO_INTERPRETATIVO.length;
 const conB = marcoConElBuro(true).length;
 const sinB = marcoConElBuro(false).length;
-console.log(`   marco-v30                 : ${v30} caracteres`);
-console.log(`   marco-v31 con buroEquifax : ${conB} caracteres (${conB - v30 >= 0 ? "+" : ""}${conB - v30}, ~${tokens(conB - v30, CARACTERES_POR_TOKEN_MARCO)} tokens)`);
-console.log(`   marco-v31 sin buró        : ${sinB} caracteres (${sinB - v30 >= 0 ? "+" : ""}${sinB - v30})`);
+console.log(`   marco-v32                 : ${v30} caracteres`);
+console.log(`   marco-v33 con buroEquifax : ${conB} caracteres (${conB - v30 >= 0 ? "+" : ""}${conB - v30}, ~${tokens(conB - v30, CARACTERES_POR_TOKEN_MARCO)} tokens)`);
+console.log(`   marco-v33 sin buró        : ${sinB} caracteres (${sinB - v30 >= 0 ? "+" : ""}${sinB - v30})`);

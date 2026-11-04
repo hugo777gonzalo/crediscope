@@ -228,7 +228,7 @@ Romper cualquiera de estas rompe algo real.
 | Funciones, `_shared/`, migraciones y base | `supabase/CLAUDE.md` (se carga solo) |
 | Pantallas | `src/CLAUDE.md` (se carga solo) y la habilidad `revision-ux` |
 | Guiones | `scripts/CLAUDE.md` (se carga solo) |
-| Equifax | `docs/equifax.md` |
+| Equifax (incluye la autorización de Equifax para reutilizar sus consultas pagadas, 2026-10-30) | `docs/equifax.md` |
 | La base de originación en AWS (requerimientos, ingresos, predictor) | `docs/base-aws-originacion.md` |
 | El predictor de ingresos (el de quien no lo tiene verificado) | `docs/especificacion-predictor-de-ingresos.md` (qué se construye y en qué orden), `docs/investigacion-predictor-de-ingresos.md` (por qué) y su estado, en el punto 18 de `docs/pendientes.md` |
 | El Laboratorio | `docs/laboratorio-guia.md`: el plan por pasos y, al final, cómo está construido |

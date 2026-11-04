@@ -40,7 +40,7 @@
       "títulos académicos",
       "datos de contacto"
     ],
-    "temasNoConsultados": [
+    "temasSinRespuesta": [
       "inversiones"
     ]
   },
@@ -83,8 +83,10 @@
     "diasMoraMaximaRetail": 12,
     "totalDeudaRetail": 641,
     "valorVencidoRetail": 80,
+    "fechaCorteRetail": "2025-07-31",
     "tieneCreditoIessBiess": true,
     "diasMoraCreditoIessBiess": 0,
+    "saldoPrestamosIessBiess": 2300,
     "numeroPrestamosIessBiess": 1
   },
   "comportamientoCooperativas": {

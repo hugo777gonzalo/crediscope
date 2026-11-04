@@ -6,6 +6,23 @@ Lo abierto está en `docs/pendientes.md`; el diseño y lo medido, en
 `docs/propuesta-marco-equifax.md`. Este texto vivía en CLAUDE.md hasta el
 2026-10-20 y pasó acá para no cargarlo en cada sesión.
 
+## Autorización de Equifax para reutilizar sus consultas
+
+**Equifax autorizó reutilizar las consultas ya pagadas** (negocio, 2026-10-30), y de aquí en
+adelante consta así:
+
+- Las que hicimos nosotros directamente y las que Novacredit hizo y pagó (en la base de
+  originación de AWS, bajadas a JSON en `research/ingresos-aws/crudo-equifax/`) son consultas
+  pagadas y se reutilizan como el negocio decida: calificar, derivar tablas, alimentar el
+  predictor de ingresos.
+- Se migran a `consultas_equifax` con `node scripts/migrar-equifax-aws.mjs` como si las
+  hubiéramos hecho nosotros (`origen = 'lote'`, `ambiente = 'produccion'`, `created_at` = la
+  fecha original, procedencia en `parametros.migrada_de`). Idempotente. Una consulta migrada
+  vale hasta el 17 del mes de su fecha, como cualquier otra; las viejas no cuentan como vigentes.
+- **Esas personas no se consultan a Proveedor_Info_1 por ahora** (negocio, 2026-10-30: el servicio
+  tiene intermitencias). Quedan con el buró y sin perfil de Proveedor_Info_1.
+- La autorización de cada titular sigue siendo de la IFI, por contrato.
+
 ## Dónde está cada cosa
 
 - **Equifax** (buró; en producción desde el 2026-10-12; credenciales y
@@ -28,12 +45,12 @@ Lo abierto está en `docs/pendientes.md`; el diseño y lo medido, en
     elige el selector «Buró» de Configuración y decide la pestaña de cada
     persona; el menú dice «Buró» y `/buro/:cedula` lleva a la que corresponde.
     `activo` sigue diciendo sólo si se puede consultar.
-  - **El buró en lo que lee el modelo es `marco-v31`, APAGADO**
+  - **El buró en lo que lee el modelo es `marco-v33`, APAGADO**
     (`CONFIG_LLM.buroDeLaInstitucion`): `_shared/buro-de-la-institucion.ts` busca
     la consulta vigente y `armarPerfilDelModelo(perfil, campos, buro)` pone
     `buroEquifax` en lugar de bancos y cooperativas de Proveedor_Info_1;
-    `marcoConElBuro()` arma los dos textos de v31 sobre el de v30. Sin buró, el
-    perfil es el de v30 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).
+    `marcoConElBuro()` arma el texto con buró sobre el de v32. Sin buró, el perfil
+    es el de v32 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).
     Cómo encenderlo: `docs/propuesta-marco-equifax.md`, sección 8.
   - **Los tokens de un JSON se miden, no se estiman** (2026-10-16): con 3,2
     caracteres por token el bloque del buró salía en 1.050 y pesa 2.000 (1,63:
