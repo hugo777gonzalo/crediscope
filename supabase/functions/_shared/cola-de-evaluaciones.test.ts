@@ -6,6 +6,8 @@
 import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import {
   despuesDeUnPaso,
+  ESPERA_MAX_DIFERIDA_MS,
+  ESPERA_MIN_DIFERIDA_MS,
   despuesDeUnPasoCortadoDemasiadasVeces,
   despuesDelPlazo,
   conElPlazoAplicado,
@@ -236,4 +238,45 @@ Deno.test("un fallo marcado noReintentar cierra la evaluación aunque el código
 Deno.test("una evaluación ya hecha no vence", () => {
   const pasos: RegistroDePaso[] = pasosIniciales("basico").map((p) => ({ ...p, estado: "hecho" }));
   assertEquals(despuesDelPlazo(fila({ pasos, plazo_hasta: en(-1000).toISOString() }), AHORA), null);
+});
+
+const diferida = (cambios: Partial<FilaDeLaCola> = {}) => fila({ prioridad: "diferida", plazo_hasta: en(PLAZO_DIFERIDA_MS).toISOString(), ...cambios });
+
+Deno.test("diferida: fuentes_no_disponibles reintenta con esperas crecientes y no gasta el tope de intentos", () => {
+  const f = { ...fallo("fuentes_no_disponibles"), temas: ["las demandas"] };
+  const primera = despuesDeUnPaso(diferida({ intentos: 1 }), "perfil", { ok: false, fallo: f }, AHORA);
+  assertEquals(primera.estado, "en_evaluacion");
+  assertEquals(primera.proximo_intento_el, en(ESPERA_MIN_DIFERIDA_MS).toISOString());
+  assertEquals((primera.pasos as Array<Record<string, unknown>>)[0].temas, ["las demandas"]);
+  // Con muchos intentos y horas transcurridas: sigue, y la espera creció hasta el tope.
+  const tarde = en(10 * 3_600_000);
+  const c = despuesDeUnPaso(diferida({ intentos: 30 }), "perfil", { ok: false, fallo: f }, tarde);
+  assertEquals(c.estado, "en_evaluacion");
+  assertEquals(c.proximo_intento_el, new Date(tarde.getTime() + ESPERA_MAX_DIFERIDA_MS).toISOString());
+  // A la hora, la espera es de media hora.
+  const aLaHora = despuesDeUnPaso(diferida({ intentos: 6 }), "perfil", { ok: false, fallo: f }, en(3_600_000));
+  assertEquals(aLaHora.proximo_intento_el, en(3_600_000 + 1_800_000).toISOString());
+});
+
+Deno.test("diferida: cierra con fuentes_no_disponibles y sus temas cuando el próximo intento caería fuera del plazo", () => {
+  const f = { ...fallo("fuentes_no_disponibles"), temas: ["las demandas"] };
+  const casi = en(PLAZO_DIFERIDA_MS - 60_000);
+  const c = despuesDeUnPaso(diferida(), "perfil", { ok: false, fallo: f }, casi);
+  assertEquals(c.estado, "fallida");
+  assertEquals(c.fallo_codigo, "fuentes_no_disponibles");
+  assertEquals((c.pasos as Array<Record<string, unknown>>)[0].temas, ["las demandas"]);
+});
+
+Deno.test("diferida: otros fallos siguen con su tope, y la revisión manual cierra enseguida; la interactiva no cambia", () => {
+  assertEquals(despuesDeUnPaso(diferida({ intentos: MAX_INTENTOS.analisis }), "analisis", { ok: false, fallo: fallo("error_interno") }, AHORA).estado, "fallida");
+  assertEquals(despuesDeUnPaso(diferida({ intentos: 1 }), "perfil", { ok: false, fallo: { ...fallo("fuentes_no_disponibles"), noReintentar: true } }, AHORA).estado, "fallida");
+  assertEquals(despuesDeUnPaso(fila({ intentos: MAX_INTENTOS.perfil }), "perfil", { ok: false, fallo: fallo("fuentes_no_disponibles") }, AHORA).estado, "fallida");
+});
+
+Deno.test("el plazo vencido conserva los temas del último fallo", () => {
+  const pasos = pasosIniciales("plus");
+  pasos[0] = { paso: "perfil", estado: "pendiente", detalle: "x", codigo: "fuentes_no_disponibles", temas: ["las demandas"] };
+  const c = despuesDelPlazo(diferida({ pasos, plazo_hasta: en(-1000).toISOString(), intentos: 3 }), AHORA);
+  assertEquals(c?.fallo_codigo, "fuentes_no_disponibles");
+  assertEquals((c?.pasos as Array<Record<string, unknown>>)[0].temas, ["las demandas"]);
 });

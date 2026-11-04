@@ -19,7 +19,7 @@
 import { consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
 import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
-import { decisionDeLaConsulta, elPerfilSirve, porQueNoSePuedeAnalizar, requiereRevisionManual } from "./calidad-de-la-consulta.ts";
+import { decisionDeLaConsulta, elPerfilSirve, porQueNoSePuedeAnalizar, requiereRevisionManual, temasSinRespuesta } from "./calidad-de-la-consulta.ts";
 import { guardarTablasDeLaConsulta, procesarConsultaEquifax } from "./equifax-persistencia.ts";
 import { capacidadDeLaSolicitud } from "./capacidad-de-la-solicitud.ts";
 import { elBuroTraeDetalle } from "./capacidad-de-pago.ts";
@@ -64,7 +64,7 @@ export const PASO_QUE_NO_HACE_FALTA = { ok: true as const, cambios: {}, detalle:
 
 export async function falloDeConsultaIncompleta(db: Fila, clientId: string, estado: Record<string, string>): Promise<FalloDeUnPaso> {
   const revisionManual = await requiereRevisionManual(db, clientId);
-  return { detalle: porQueNoSePuedeAnalizar(estado, revisionManual), codigo: "fuentes_no_disponibles", esperarMs: 0, ...(revisionManual ? { noReintentar: true } : {}) };
+  return { detalle: porQueNoSePuedeAnalizar(estado, revisionManual), codigo: "fuentes_no_disponibles", esperarMs: 0, temas: temasSinRespuesta(estado), ...(revisionManual ? { noReintentar: true } : {}) };
 }
 
 // Cuántos días vale un perfil antes de volver a preguntarle a las fuentes: un
@@ -89,7 +89,7 @@ export async function correrPaso(paso: Paso, s: Fila, ctx: ContextoDeLosPasos): 
   } catch (err) {
     // Este mensaje es nuestro y sólo nombra temas: no trae nada de la fuente.
     if (err instanceof ConsultaIncompleta) {
-      return { ok: false, fallo: { detalle: err.message, codigo: "fuentes_no_disponibles", esperarMs: 0, ...(err.revisionManual ? { noReintentar: true } : {}) } };
+      return { ok: false, fallo: { detalle: err.message, codigo: "fuentes_no_disponibles", esperarMs: 0, temas: err.temas, ...(err.revisionManual ? { noReintentar: true } : {}) } };
     }
     // Sin el mensaje: un error de la base o de una fuente puede traer datos.
     console.error("pasos-de-evaluacion:", paso, (err as Error)?.name);

@@ -69,9 +69,11 @@ export interface OpcionesDeAnalisis {
 // un error: el mensaje es para el analista. Reconsultar lo resuelve, salvo con
 // `revisionManual`.
 export class ConsultaIncompleta extends Error {
+  readonly temas: string[];
   constructor(estado: Record<string, string>, readonly revisionManual = false) {
     super(porQueNoSePuedeAnalizar(estado, revisionManual));
     this.name = "ConsultaIncompleta";
+    this.temas = temasSinRespuesta(estado);
   }
 }
 

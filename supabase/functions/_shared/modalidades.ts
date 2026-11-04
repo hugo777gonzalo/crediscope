@@ -87,6 +87,8 @@ export interface RegistroDePaso {
   reintentarDesde?: string;
   /** Sólo en un paso fallido: por qué falló, para máquinas. Reintentar lo borra con el resto. */
   codigo?: CodigoDeFallo;
+  /** Sólo con `fuentes_no_disponibles`: los temas que no contestaron, para `Fallo.temasNoConsultados`. */
+  temas?: string[];
 }
 
 export function esModalidad(v: unknown): v is Modalidad {
@@ -134,10 +136,11 @@ export function marcarFallido(
   codigo: CodigoDeFallo,
   esperarMs = 0,
   ahora: Date = new Date(),
+  temas?: string[],
 ): RegistroDePaso[] {
   const desde = esperarMs > 0 ? new Date(ahora.getTime() + esperarMs).toISOString() : null;
   return marcarPaso(pasos, paso, "fallido", detalle, ahora).map((p) =>
-    p.paso === paso ? { ...p, codigo, ...(desde ? { reintentarDesde: desde } : {}) } : p
+    p.paso === paso ? { ...p, codigo, ...(desde ? { reintentarDesde: desde } : {}), ...(temas?.length ? { temas } : {}) } : p
   );
 }
 
@@ -180,6 +183,8 @@ export interface FalloDeUnPaso {
    * vez de reintentar; la pantalla muestra el detalle y deja decidir a un administrador.
    */
   noReintentar?: boolean;
+  /** Con `fuentes_no_disponibles`: los temas que faltan, en palabras del analista. */
+  temas?: string[];
 }
 
 export function falloDeUnPaso(paso: Paso, status: number, motivo?: string | null): FalloDeUnPaso {

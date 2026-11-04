@@ -198,7 +198,7 @@ Deno.test("la puerta, si nadie le dice nada, tiene el interruptor apagado", asyn
 
 Deno.test("con el interruptor encendido sólo valen las identificaciones de la especificación", async () => {
   const e = entorno();
-  for (const id of ["0000000000", "0000000008", "0012345678"]) {
+  for (const id of ["0000000000", "0000000009", "0012345678"]) {
     const respuesta = await e.pedir(e.pedido(id, "basico"));
     assertEquals((await respuesta.json()).codigo, "identificacion-invalida", id);
   }
@@ -236,7 +236,7 @@ for (const modalidad of ["basico", "pro", "plus"]) {
       assertEquals(s.analysis_result_id, undefined);
     }
 
-    const [aprobada, parcial, bloqueada, sinVeredicto, noEncontrada, sinFuentes, demorada] = evaluaciones;
+    const [aprobada, parcial, bloqueada, sinVeredicto, noEncontrada, sinFuentes, demorada, obligatoriaFaltante] = evaluaciones;
 
     assertEquals(aprobada.estado, "completada");
     assertEquals(aprobada.resultado.recomendacion, "aprobar");
@@ -250,7 +250,7 @@ for (const modalidad of ["basico", "pro", "plus"]) {
     assertEquals(parcial.estado, "completada");
     assertEquals(parcial.resultado.recomendacion, "revisar");
     assertEquals(parcial.disponibilidad.completitud, "parcial");
-    assert(parcial.disponibilidad.temasNoConsultados.includes("demandas en su contra"));
+    assert(parcial.disponibilidad.temasNoConsultados.includes("demandas que presentó"));
 
     assertEquals(bloqueada.estado, "completada");
     assertEquals(bloqueada.resultado.recomendacion, "negar");
@@ -270,6 +270,13 @@ for (const modalidad of ["basico", "pro", "plus"]) {
 
     assertEquals(sinFuentes.estado, "fallida");
     assertEquals(sinFuentes.fallo.codigo, "fuentes_no_disponibles");
+    assert(sinFuentes.fallo.temasNoConsultados.length > 10);
+
+    // Una obligatoria sin respuesta: el modelo no corre y la API dice qué faltó.
+    assertEquals(obligatoriaFaltante.estado, "fallida");
+    assertEquals(obligatoriaFaltante.fallo.codigo, "fuentes_no_disponibles");
+    assertEquals(obligatoriaFaltante.fallo.temasNoConsultados, ["las demandas"]);
+    assertEquals(obligatoriaFaltante.resultado, undefined);
 
     assertEquals(demorada.estado, "completada");
     assertEquals(demorada.resultado.recomendacion, "aprobar");

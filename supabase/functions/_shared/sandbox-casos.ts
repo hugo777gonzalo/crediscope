@@ -7,7 +7,7 @@
 // una persona no lo vuelve un caso de prueba, y un número suelto no tendría respuesta
 // definida.
 
-export type CasoDelSandbox = "aprobada" | "parcial" | "bloqueada" | "sin_veredicto" | "no_encontrada" | "sin_fuentes" | "demorada";
+export type CasoDelSandbox = "aprobada" | "parcial" | "bloqueada" | "sin_veredicto" | "no_encontrada" | "sin_fuentes" | "demorada" | "obligatoria_faltante";
 
 const CASOS: ReadonlyMap<string, CasoDelSandbox> = new Map([
   ["0000000001", "aprobada"],
@@ -17,6 +17,7 @@ const CASOS: ReadonlyMap<string, CasoDelSandbox> = new Map([
   ["0000000005", "no_encontrada"],
   ["0000000006", "sin_fuentes"],
   ["0000000007", "demorada"],
+  ["0000000008", "obligatoria_faltante"],
 ]);
 
 export const IDENTIFICACIONES_DEL_SANDBOX: readonly string[] = [...CASOS.keys()];
