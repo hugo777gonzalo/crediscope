@@ -4,7 +4,8 @@
 // deno test --allow-env supabase/functions/
 
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { armarEvaluacion, disponibilidadDeLaEvaluacion, TEMAS_CRITICOS } from "./evaluacion-de-la-api.ts";
+import { armarEvaluacion, disponibilidadDeLaEvaluacion } from "./evaluacion-de-la-api.ts";
+import { FUENTES } from "./calidad-de-la-consulta.ts";
 import { idDeLaEvaluacion } from "./cola-de-evaluaciones.ts";
 import { pasosIniciales, type RegistroDePaso } from "./modalidades.ts";
 import { rutaDeLaApi } from "./ruta-de-la-api.ts";
@@ -20,6 +21,7 @@ const perfil = (sinContestar: string[] = []) => ({
   created_at: "2026-10-21T14:50:00.000Z",
   structure_version: "estructura-v14",
   control_bloqueo: { bloqueado: false, hallazgos: [{ code: "pep", message: "Persona expuesta políticamente.", bloqueante: false }] },
+  estado_por_fuente: Object.fromEntries(Object.keys(FUENTES).map((f) => [f, sinContestar.includes(f) ? "error" : "ok"])),
   standard_profile: { metaConsulta: { fuentesConDatos: TODAS.filter((f) => !sinContestar.includes(f)), fuentesSinDatos: [] }, fuentesIngreso: { version: "fuentes-v10" } },
 });
 
@@ -112,32 +114,42 @@ Deno.test("un control de bloqueo conserva su score y su recomendación y dice de
   assertEquals([r.score, r.recomendacion, r.veredictoOrigen, r.controlesDeBloqueo.bloqueado], [1, "negar", "control_bloqueo", true]);
 });
 
-Deno.test("con la consulta incompleta (falta un tema crítico) nunca se entrega «aprobar»", () => {
-  const e = armarEvaluacion({ solicitud: solicitud({ consulta_equifax_id: null }), analisis: analisis(), perfil: perfil(["demandas"]), conBuro: false, ahora: AHORA });
+Deno.test("con una secundaria de peso sin consultar se analiza, pero nunca se entrega «aprobar»", () => {
+  const e = armarEvaluacion({ solicitud: solicitud({ consulta_equifax_id: null }), analisis: analisis(), perfil: perfil(["demandasOfendido"]), conBuro: false, ahora: AHORA });
   assertEquals(e.disponibilidad.completitud, "parcial");
-  assert(e.disponibilidad.temasNoConsultados.includes("demandas en su contra"));
+  assert(e.disponibilidad.temasNoConsultados.includes("demandas que presentó"));
   assertEquals(e.resultado.recomendacion, "revisar");
   // «negar» y «revisar» no se tocan.
-  const n = armarEvaluacion({ solicitud: solicitud({ consulta_equifax_id: null }), analisis: analisis({ recomendacion: "negar" }), perfil: perfil(["demandas"]), conBuro: false, ahora: AHORA });
+  const n = armarEvaluacion({ solicitud: solicitud({ consulta_equifax_id: null }), analisis: analisis({ recomendacion: "negar" }), perfil: perfil(["demandasOfendido"]), conBuro: false, ahora: AHORA });
   assertEquals(n.resultado.recomendacion, "negar");
 });
 
-Deno.test("un tema que no es crítico sin consultar no vuelve parcial la consulta", () => {
-  const d = disponibilidadDeLaEvaluacion(perfil(["retails"]), false);
+Deno.test("una secundaria sin consultar se dice y no vuelve parcial la consulta", () => {
+  const d = disponibilidadDeLaEvaluacion(perfil(["deudores"]), false);
   assertEquals(d?.completitud, "completa");
-  assert(d?.temasNoConsultados.includes("casas comerciales"));
+  assert(d?.temasNoConsultados.includes("registro de deudores"));
 });
 
-Deno.test("con el buró de la institución, sus temas cuentan como consultados aunque Proveedor_Info_1 no los trajera", () => {
-  assertEquals(disponibilidadDeLaEvaluacion(perfil(["buroCreditoSuper", "buroCreditoCoop"]), false)?.completitud, "parcial");
-  assertEquals(disponibilidadDeLaEvaluacion(perfil(["buroCreditoSuper", "buroCreditoCoop"]), true)?.completitud, "completa");
+Deno.test("una negativa por control con la consulta incompleta se entrega como parcial", () => {
+  const e = armarEvaluacion({
+    solicitud: solicitud({ consulta_equifax_id: null }),
+    analisis: analisis({ veredicto_origen: "control_bloqueo", crediscope_score: 1, recomendacion: "negar", llm_model: null, narrative_summary: null, huella_pedido: null, indicador_riesgo: null, indicador_historial: null }),
+    perfil: { ...perfil(["denuncias"]), control_bloqueo: { bloqueado: true, hallazgos: [{ code: "lista_negra", message: "En la lista negra.", bloqueante: true }] } },
+    conBuro: false,
+    ahora: AHORA,
+  });
+  const r = e.resultado;
+  assertEquals([r.score, r.recomendacion, r.veredictoOrigen, r.razonamiento, r.indicadorRiesgo], [1, "negar", "control_bloqueo", null, null]);
+  assertEquals(e.disponibilidad.completitud, "parcial");
+  assertEquals(e.versiones.modelo, null);
 });
 
-Deno.test("la lista de temas críticos son nombres que existen en el perfil del modelo", () => {
-  // Si un nombre se escribe distinto, el tema nunca se vería faltar y la regla de «parcial» no se aplicaría.
-  // Contesta una sola fuente que no es crítica: todas las críticas faltan.
-  const d = disponibilidadDeLaEvaluacion(perfil(TODAS.filter((f) => f !== "retails")), false);
-  for (const t of TEMAS_CRITICOS) assert(d?.temasNoConsultados.includes(t), t);
+Deno.test("el buró de la institución no vuelve completa una consulta: el modelo no lo lee", () => {
+  const conBuro = disponibilidadDeLaEvaluacion(perfil(["buroCreditoSuper", "buroCreditoCoop"]), true);
+  assertEquals(conBuro?.completitud, "parcial");
+  // Sus temas sí cuentan como consultados en lo que se le dice a la institución.
+  assert(!conBuro?.temasNoConsultados.includes("buró de crédito de bancos"));
+  assert(disponibilidadDeLaEvaluacion(perfil(["buroCreditoSuper"]), false)?.temasNoConsultados.includes("buró de crédito de bancos"));
 });
 
 Deno.test("una evaluación en proceso no trae resultado y dice en qué etapa va", () => {

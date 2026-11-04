@@ -356,6 +356,10 @@ Deno.test("una fuente que no contestó se dice: no es una persona sin deudas", (
   // Con Equifax, los bancos salen de ahí y su fuente de Proveedor_Info_1 no importa.
   const conBuro = datosDeCapacidad(perfil, { deudaActualTitular: { bancos: { cuotaMensualUsd: 100 } } });
   assertEquals(conBuro.fuentesSinConsultar, ["casas comerciales", "pensiones alimenticias"]);
+  // Diners: 61 de 2.566 personas perdían una deuda y la capacidad no lo decía.
+  perfil.metaConsulta.fuentesNoMedidas = ["buroCreditoDiners"];
+  assertEquals(datosDeCapacidad(perfil, null).fuentesSinConsultar, ["tarjetas Diners"]);
+  assertEquals(datosDeCapacidad(perfil, { deudaActualTitular: { bancos: { cuotaMensualUsd: 100 } } }).fuentesSinConsultar, []);
   // Y con todo contestado no hay nada que avisar.
   assertEquals(datosDeCapacidad(perfilDePrueba(), null).fuentesSinConsultar, []);
   assertEquals(evaluarCapacidad({ ...datosDeCapacidad(perfilDePrueba(), null), cuotaNueva: 100 }).avisos.some((a) => a.includes("No se pudo consultar")), false);

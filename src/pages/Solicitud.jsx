@@ -231,6 +231,8 @@ export default function Solicitud() {
             )}
             {r.analisis.veredictoOrigen === "control_bloqueo" ? (
               <p className="crediscope-credito-ayuda">Lo negó un control fijo (por ejemplo, una lista de control), no el modelo.</p>
+            ) : r.analisis.completitud === "parcial" ? (
+              <p className="crediscope-credito-ayuda">Consulta parcial: faltó una fuente de peso y la recomendación no pasa de Revisar.</p>
             ) : null}
             <p className="crediscope-capacidad-origen">
               Es una recomendación: la decisión la toma una persona de la institución.{" "}

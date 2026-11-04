@@ -101,7 +101,7 @@ export function crearPuertaDeLaApi({ db, identificar, despertar, sandboxActivo =
         // No se trae el perfil entero: de él sólo hacen falta qué temas se consultaron y la versión de las fuentes de ingreso.
         const { data } = await db
           .from("client_profiles")
-          .select("created_at, structure_version, control_bloqueo, metaConsulta:standard_profile->metaConsulta, fuentesVersion:standard_profile->fuentesIngreso->version")
+          .select("created_at, structure_version, control_bloqueo, estado_por_fuente, metaConsulta:standard_profile->metaConsulta, fuentesVersion:standard_profile->fuentesIngreso->version")
           .eq("id", s.client_profile_id)
           .maybeSingle();
         if (data) {
@@ -109,6 +109,7 @@ export function crearPuertaDeLaApi({ db, identificar, despertar, sandboxActivo =
             created_at: data.created_at,
             structure_version: data.structure_version,
             control_bloqueo: data.control_bloqueo,
+            estado_por_fuente: data.estado_por_fuente,
             standard_profile: { metaConsulta: data.metaConsulta, fuentesIngreso: { version: data.fuentesVersion } },
           };
         }
