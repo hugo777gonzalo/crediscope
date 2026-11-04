@@ -176,7 +176,7 @@ su guía: `docs/equifax.md`.
 
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
-  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/`
+  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,supabase/migrations,api supabase/functions/`
     (`api`: `sandbox.test.ts` valida cada respuesta contra `api/openapi.yaml`).
 
     `--node-modules-dir=none` hace falta desde que una prueba alcanza los tipos de supabase-js
