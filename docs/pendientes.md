@@ -45,8 +45,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
 - **Versiones en producción:** marco-v32 con Claude Sonnet 5.5, desplegada el 2026-10-31 y sin ningún
   análisis todavía (marco-v33, el buró, sigue apagada: punto 2.0; marco-v31 no llegó a usarse, 0
-  análisis). El código arma estructura-v17, y los perfiles guardados siguen en estructura-v16 hasta
-  recalcular (el último de las 3.765 personas reales, 2026-10-31); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+  análisis). estructura-v17 (el último perfil de las 3.765 personas reales, recalculado el 2026-10-31
+  y medido el 2026-11-04); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -223,12 +223,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 ## 2. Espera una decisión del negocio
 
 0. **marco-v32 y marco-v33 (PR 113).** Las correcciones de la revisión de casos del 2026-10-31 y,
-   sobre ellas, el buró. La 144 está aplicada y v32 desplegada: entra a todos los análisis nuevos.
-   Queda:
-   - **Recalcular a estructura-v17:** `recalcular-grupos.mjs --grupos=laboral,comportamientoBancario
-     --carpeta=research/proveedor-info-1-raw-2026-10-03`. El seco, con la lectura del crudo
-     arreglada, dio 3.765 a escribir y 0 que el crudo no reproduzca. Se verifica con
-     `validar-perfil-del-modelo.mjs` y 17 personas con el RUC depurado.
+   sobre ellas, el buró. La 144 está aplicada, v32 desplegada (entra a todos los análisis nuevos) y
+   los 3.765 perfiles reales recalculados a estructura-v17: un seco posterior da 0 a escribir,
+   `validar-perfil-del-modelo.mjs` da 0 fallas en las 14 reglas y 17 personas tienen
+   `rucDepuradoEnRelacionDeDependencia` (335 sin RUC que evaluar). Queda:
    - **Los USD 4,4 de la base de prueba:** `analizar-en-lote enviar` corrió el 2026-10-31 a las 12:06,
      antes del PR 113, con autorización del negocio. Un envío nuevo lee el código de la copia desde
      donde corre, y `main` ya dice v32.
