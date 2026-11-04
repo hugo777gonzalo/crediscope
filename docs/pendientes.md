@@ -13,8 +13,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Espacio de la base (2026-10-31): 443 MB de 500 MB del plan Free** (57 MB de margen); se midió
-  con `pg_database_size`. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
+- **Espacio de la base (2026-11-04): 477 MB de 500 MB del plan Free** (23 MB de margen; el 31/10,
+  tras la migración, eran 443); se midió con `pg_database_size`. Otras sesiones escriben (perfiles,
+  laboratorio): **no cargar nada grande sin medir**. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
   a Pro, o guardar el crudo de Equifax en Storage como el de Proveedor_Info_1, es la salida de fondo
   (cambia el esquema de `consultas_equifax`: decisión aparte).
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
@@ -188,9 +189,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     comercial lee `saldo_deuda` como lo por vencer (`equifax-tablas-v3`) y la pantalla suma la fila
     «Suspensión definitiva» del RUC. Desplegado con `8a778f905f10`. Falta:
     - **Rehacer lo guardado con `node scripts/cargar-tablas-equifax.mjs`, `--seco` antes.** Dos
-      condiciones: (a) **espera a que termine `migrar-equifax-aws`** (corrida `e80f630c`, en curso
-      desde el 2026-10-31 con el commit `f4c1029`): sigue cargando filas con `tablas-v2` y
-      `estructura-v1`, y las que entren después de reprocesar quedarían viejas; (b) el guion lista
+      condiciones: (a) **`migrar-equifax-aws` ya terminó** (2026-10-31: 3.542 crudos migrados, todos
+      sin tablas). **Cuidado:** esas 3.542 cuentan como «sin tablas», y `cargar-tablas-equifax.mjs`
+      sin filtro les derivaría ~300 filas a cada una (más de un millón de filas, cientos de MB) y
+      volvería a llenar la base de 500 MB: usar `--consulta=<uuid>`, o excluirlas con un filtro
+      nuevo, antes de correrlo; (b) el guion lista
       las consultas sin paginar (`scripts/cargar-tablas-equifax.mjs:92`) y PostgREST corta en
       1.000: dice «consultas guardadas: 1000» cuando hay más de 2.200, así que hay que paginarlo
       (`traerTodas()`) antes o rehace sólo las más viejas.

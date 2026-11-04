@@ -47,6 +47,11 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   no calza sin error (seis columnas salieron 100% vacías el 2026-10-20). Medir el
   porcentaje de vacíos de cada columna antes de dar un archivo por bueno.
 
+- `scripts/migrar-equifax-aws.mjs` lleva a `consultas_equifax` los JSON de AWS bajados a `research/` (`docs/equifax.md`,
+  autorización de Equifax). Medir el espacio ANTES (plan Free: 500 MB): 15.700 crudos con sus tablas llenaron el disco el
+  2026-10-31. Va con `--seco`, `--desde`, `--una-por-persona` y `--sin-tablas`; las tablas se derivan al evaluar a la persona,
+  y `cargar-tablas-equifax.mjs` sin filtro las derivaría todas (`docs/pendientes.md`, punto 12).
+
 ## Predictor de ingresos
 
 - `scripts/predictor-ingresos/` es Python (entrenamiento, calibración, exportación y medición), no Node,
