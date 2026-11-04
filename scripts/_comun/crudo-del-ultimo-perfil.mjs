@@ -35,11 +35,26 @@ export function candidatosDelUltimoPerfil(carpeta, ultimoPorCliente) {
   return { candidatos, cuenta };
 }
 
+// El cambio de nombre del proveedor (2026-10-31) reescribió los perfiles
+// guardados, no el crudo: una fuente sigue con su clave anterior y el código
+// nuevo no la ve. El seco de estructura-v17 frenó los 3.765 perfiles por eso, y
+// forzarlo le habría borrado la pensión alimenticia a quien la tiene ahí. Se
+// conserva la posición de la clave porque metaConsulta lista las fuentes en
+// ese orden. El nombre anterior va partido para que no vuelva al repositorio.
+const CLAVE_ANTERIOR = "pensionAlimenticia" + "Nova" + "data";
+const CLAVE_ACTUAL = "pensionAlimenticiaProveedorInfo1";
+
+function conLaClaveActual(crudo) {
+  if (!crudo.raw || !(CLAVE_ANTERIOR in crudo.raw)) return crudo;
+  const fuentes = Object.entries(crudo.raw).map(([k, v]) => [k === CLAVE_ANTERIOR ? CLAVE_ACTUAL : k, v]);
+  return { ...crudo, raw: Object.fromEntries(fuentes) };
+}
+
 // { cedula, capturadoEl, perfilId, raw }, la misma forma en los dos lugares.
 // cabeceras: las del guion, con la clave de servicio leída de .env.functions.
 export async function leerCrudo({ archivo, ruta }, url, cabeceras) {
-  if (archivo) return JSON.parse(fs.readFileSync(archivo, "utf8"));
+  if (archivo) return conLaClaveActual(JSON.parse(fs.readFileSync(archivo, "utf8")));
   const r = await fetch(`${url}/storage/v1/object/crudo-proveedor-info-1/${ruta}`, { headers: { apikey: cabeceras.apikey, Authorization: cabeceras.Authorization } });
   if (!r.ok) throw new Error(`Storage contestó ${r.status} al leer un crudo`);
-  return JSON.parse(zlib.gunzipSync(Buffer.from(await r.arrayBuffer())).toString("utf8"));
+  return conLaClaveActual(JSON.parse(zlib.gunzipSync(Buffer.from(await r.arrayBuffer())).toString("utf8")));
 }

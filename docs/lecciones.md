@@ -662,6 +662,12 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Guiones
 
+- **Renombrar lo guardado no renombra el crudo** (2026-10-31). El cambio de nombre
+  del proveedor reescribió las claves de los perfiles, pero el respaldo sigue con la
+  clave anterior de una fuente de pensión alimenticia. El seco de estructura-v17 frenó
+  los 3.765 perfiles, y `--forzar` le habría borrado esa pensión a quien la tiene. El
+  freno de `recalcular-grupos.mjs` hizo su trabajo. `leerCrudo()` traduce la clave al
+  leer, conservando su posición, y el crudo no se toca.
 - **Un guion que consulta a nombre del usuario pasa su `actorId`, y
   `audit_log` no se corrige después.** La cuenta del usuario en CrediScope
   usa un correo distinto del de Claude, así que buscarla por el de Claude no
@@ -840,6 +846,17 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
     el formato correcto hay 0 de 4.499, y en el entrenamiento la regla del crédito posterior nunca
     corrió porque `try_cast` de DuckDB dio nulas las 116.673 fechas. Una regla que filtra por
     fecha se comprueba contando cuántas filas toca; si toca cero, o todas, la fecha está mal leída.
+- **El plan Free de Supabase tiene un techo de 500 MB y la base queda en solo lectura al
+  pasarlo** (2026-10-31). Migrar de una vez las consultas de AWS (15.700 crudos de ~20 KB y 4,7
+  millones de filas de tablas derivadas) llevó la base a 1.629 MB: sin espacio en disco, sin
+  escrituras y con el CLI sin poder entrar (crea su rol con un GRANT, que es una escritura). Se
+  recuperó desde el SQL Editor con `set transaction read write;` como primera sentencia (el
+  `set default_transaction_read_only` no afecta a la transacción ya abierta), vaciando las tablas
+  derivadas, borrando las filas migradas y compactando con `CLUSTER` (el editor no deja `VACUUM
+  FULL`). Reglas: medir el espacio libre y migrar una muestra de 500 antes del total; las tablas
+  derivadas (`equifax_*`) se derivan al evaluar a la persona, no se migran; un `TRUNCATE` sin
+  `CASCADE` es la protección (`solicitudes` referencia a `consultas_equifax`); las personas
+  creadas por error no se pueden borrar porque `audit_log` es inmutable y las referencia.
 
 ## Laboratorio
 
@@ -907,3 +924,13 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   campos con 2.567 perfiles y abría el perfil entero 460 mil veces: la base
   cortó la consulta. Recorrer cada perfil una vez (`jsonb_each`) y juntar
   después tarda segundos.
+- **El nombre de un campo es parte de lo que escribe el modelo** (2026-10-31,
+  c-79e1ac23). Con 41 de 52 fuentes caídas, el análisis decía «no se consultaron»
+  y «no se aprueba por lo que nadie miró»: las dos frases salían de la lista
+  `temasNoConsultados` y del marco. Se intentó y falló, y el analista leía que
+  nadie había pedido el dato. El contrato de la API conserva el nombre; en el
+  mensaje al modelo la lista pasa a `temasSinRespuesta`.
+- **Un cero de monto no desmiente una calificación** (2026-10-31, c-82cc2afc). El
+  marco no definía A2 y el modelo escribía «A1 a A2, sin atraso»: en el buró, 2 de
+  425 operaciones A2 y 0 de 222 A3 traen monto vencido (A1, 0 de 11.097). Son 365
+  personas con A2 o A3 de peor calificación, de 3.530.

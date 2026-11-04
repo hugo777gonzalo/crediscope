@@ -1,7 +1,7 @@
 // El buró de la institución de una persona: cuál es el buró de la base y,
 // si es Equifax, la consulta vigente de esa persona. Lo único que
 // armarPerfilDelModelo() necesita para leer la deuda del buró en lugar de la
-// de Proveedor_Info_1 (marco-v31, apagado: CONFIG_LLM.buroDeLaInstitucion).
+// de Proveedor_Info_1 (marco-v33, apagado: CONFIG_LLM.buroDeLaInstitucion).
 //
 // Una sola implementación para analyze-client y scripts/analizar-en-lote.mjs:
 // dos copias de "cuál es la consulta vigente" es como un análisis en lote lee

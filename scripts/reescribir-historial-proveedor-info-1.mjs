@@ -72,7 +72,20 @@ function leerEnv(archivo) {
   );
 }
 
+// El rol temporal de la CLI se rehace en cada llamada: otra sesión consultando a la vez lo
+// rompe ("password authentication failed for user cli_login_postgres", 2026-10-31). Se reintenta.
 function correr(proyecto, sql) {
+  for (let intento = 1; ; intento++) {
+    try {
+      return correrUna(proyecto, sql);
+    } catch (e) {
+      if (intento >= 6 || !/cli_login_postgres|temp role|timeout|ECONN/i.test(String(e.stderr || e.message))) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000 * intento);
+    }
+  }
+}
+
+function correrUna(proyecto, sql) {
   const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "historial-"));
   const archivo = path.join(carpeta, "consulta.sql");
   fs.writeFileSync(archivo, sql);
