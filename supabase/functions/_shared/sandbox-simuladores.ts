@@ -68,9 +68,12 @@ export function proveedorInfo1Simulado(identificacion: string): RespuestaProveed
     },
   });
   raw.basesInternas = contesto({ tiess: aportesAlIess() });
-  // Las demandas y no un tema del buró: Plus cuenta como consultados los temas que
-  // cubre el buró, y con uno de esos la evaluación dejaría de ser parcial.
-  if (caso === "parcial") raw.demandas = noContesto();
+  // Una secundaria de peso (decisión 3, 2026-10-31) y no un tema del buró: Plus
+  // cuenta como consultados los temas que cubre el buró, y con uno de esos la
+  // evaluación dejaría de ser parcial. Antes fallaba `demandas`, que hoy es obligatoria.
+  if (caso === "parcial") raw.demandasOfendido = noContesto();
+  // Una obligatoria: la consulta no sirve y el modelo no corre.
+  if (caso === "obligatoria_faltante") raw.demandas = noContesto();
   if (caso === "bloqueada") raw.listasControl = contesto({ ofacsOpr: [{ nombre: "PERSONA SIMULADA" }] });
   return raw as unknown as RespuestaProveedorInfo1;
 }

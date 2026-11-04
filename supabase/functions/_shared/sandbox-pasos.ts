@@ -12,7 +12,7 @@
 
 import { buildStandardProfile, PROCESS_VERSION } from "./process.ts";
 import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
-import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
+import { decisionDeLaConsulta, estadoPorFuente, porQueNoSePuedeAnalizar, temasSinRespuesta } from "./calidad-de-la-consulta.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import { leerLaConsulta } from "./consulta-de-perfil.ts";
 import { filaDelAnalisis } from "./fila-del-analisis.ts";
@@ -66,7 +66,13 @@ function pasoPerfil(s: Fila, ahora: Date): ResultadoDelPaso {
   const lectura = leerLaConsulta(raw, { cedula: id, ingresado: id, tipoIdentificacion: "cedula" });
   // Sin reintentos: la especificación promete una respuesta fija, y una integración
   // no tiene por qué esperar los ocho minutos de reintentos de una caída de verdad.
-  if (!lectura.ok) return { ok: false, fallo: { ...falloDeUnPaso("perfil", lectura.status), noReintentar: true } };
+  if (!lectura.ok) return { ok: false, fallo: { ...falloDeUnPaso("perfil", lectura.status), temas: temasSinRespuesta(estadoPorFuente(raw)), noReintentar: true } };
+  // El mismo freno que el de verdad (pasoPerfil): una obligatoria sin respuesta y
+  // sin bloqueo hallado no llega al modelo. Los temas salen de la misma tabla.
+  const sim = perfilSimulado(id);
+  if (decisionDeLaConsulta(sim.estado_por_fuente, sim.control_bloqueo) === "frenar") {
+    return { ok: false, fallo: { detalle: porQueNoSePuedeAnalizar(sim.estado_por_fuente), codigo: "fuentes_no_disponibles", esperarMs: 0, temas: temasSinRespuesta(sim.estado_por_fuente), noReintentar: true } };
+  }
   const f = perfil.fuentesIngreso;
   return {
     ok: true,

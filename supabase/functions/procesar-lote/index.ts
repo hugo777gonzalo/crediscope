@@ -36,7 +36,7 @@ import {
   personaNoExiste,
 } from "../_shared/proveedor-info-1-client.ts";
 import { buildStandardProfile, PROCESS_VERSION } from "../_shared/process.ts";
-import { estadoPorFuente, cuantasFuentesContestaron, elPerfilSirve, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
+import { cuantasFuentesContestaron, destinoDeLaConsultaDelLote, elPerfilSePuedeAnalizar, elPerfilSirve, estadoPorFuente, laConsultaSirve, porQueNoSirve } from "../_shared/calidad-de-la-consulta.ts";
 import { CORTE_IESS_CONOCIDO } from "../_shared/fuentes-ingreso.ts";
 import { columnasDelPerfil } from "../_shared/columnas-del-perfil.ts";
 import { guardarCrudoProveedorInfo1 } from "../_shared/crudo-proveedor-info-1.ts";
@@ -103,7 +103,7 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   // es reciente?", y el perfil actual es el último, sin condiciones.
   const { data } = await serviceClient
     .from("client_profiles")
-    .select("id, client_id, fuentes_ok, ejes_ok, created_at")
+    .select("id, client_id, fuentes_ok, ejes_ok, created_at, estado_por_fuente")
     .eq("client_id", cliente.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -115,6 +115,9 @@ async function perfilVigente(cedula: string, dias: number): Promise<{ id: string
   // tienen ejes_ok, y mirando sólo fuentes_ok el lote los reconsultaría
   // a todos. Ver elPerfilSirve().
   if (!elPerfilSirve(data)) return null;
+  // Uno incompleto tampoco: reutilizarlo dejaría la consulta incompleta como
+  // «reutilizada», y nunca se le volvería a preguntar a la fuente.
+  if (!elPerfilSePuedeAnalizar(data.estado_por_fuente)) return null;
   // Y tiene que caer dentro de la ventana de validez.
   if (data.created_at < desde) return null;
 
@@ -255,15 +258,20 @@ async function consultarItem(
       meta: { lote_id: item.lote_id, client_profile_id: guardado.id, ingresado: item.ingresado },
     });
 
+    // Cada intento deja su perfil (constancia de la consulta). Si le faltan
+    // obligatorias no está hecha: vuelve a la cola hasta 3 veces y después queda
+    // incompleta, no `ok`.
+    const destino = destinoDeLaConsultaDelLote(estadoDeCadaFuente, item.intentos + 1);
     await serviceClient
       .from("lote_items")
       .update({
-        estado: "ok",
+        estado: destino.estado,
         client_profile_id: guardado.id,
         duracion_ms: Date.now() - inicio,
         intentos: item.intentos + 1,
-        procesado_at: new Date().toISOString(),
-        motivo: null,
+        procesado_at: destino.estado === "pendiente" ? null : new Date().toISOString(),
+        ...(destino.estado === "pendiente" ? { tomado_at: null } : {}),
+        motivo: destino.estado === "ok" ? null : destino.motivo,
       })
       .eq("id", item.id);
   } catch (err) {

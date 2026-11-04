@@ -112,7 +112,11 @@ su guía: `docs/equifax.md`.
     uno definitivo (`identificacion_no_encontrada`, `tope_diario_agotado`) cierra la
     evaluación. Para la API `fallida` es final: el trabajador nunca la deja ahí si queda algo
     que reintentar; si el próximo intento caería fuera del plazo (15 min interactiva, 24 h
-    diferida) se cierra ya con `plazo_vencido`. El id público es `ev_` + el uuid en base32.
+    diferida) se cierra ya con el código del último fallo.
+    **La diferida con `fuentes_no_disponibles` no se rinde a los 17,5 minutos** (negocio, 2026-10-31):
+    reintenta hasta el plazo, con una espera de la mitad de lo transcurrido (30 s a 2 h) y sin gastar el
+    tope de intentos (`reintentaHastaElPlazo()`). La interactiva queda igual. Un fallo lleva `temas`
+    (en el registro del paso) y la API los entrega como `Fallo.temasNoConsultados`. El id público es `ev_` + el uuid en base32.
   - `pedido-de-evaluacion-api.ts` valida el pedido (campos de más = error; persona,
     autorización, referencia y operador obligatorios; `modalidad` sin decir es `basico`);
     `evaluacion-de-la-api.ts` arma la `Evaluacion`. Con `completitud: parcial` (faltó una
@@ -126,7 +130,7 @@ su guía: `docs/equifax.md`.
     `cabecerasSinCors()`, que sí lleva el sello del despliegue (el corredor lo confirma con
     OPTIONS).
   - **El sandbox** (`sandbox-casos.ts`, `sandbox-simuladores.ts`, `sandbox-pasos.ts`; decisión
-    del negocio, 2026-10-30). Las identificaciones `0000000001` a `0000000007` de la
+    del negocio, 2026-10-30). Las identificaciones `0000000001` a `0000000008` de la
     especificación corren por el trabajador con simuladores de Proveedor_Info_1, Equifax y el modelo:
     `correrPaso()` las desvía antes de todo, y lo demás (perfil, controles, estructura,
     capacidad, «parcial nunca aprueba») es el código real. Cuatro controles: la identificación
@@ -203,6 +207,9 @@ su guía: `docs/equifax.md`.
   con su forma de «no hay». `decisionDeLaConsulta()` dice qué pasa antes del modelo,
   y la leen `analizarPersona()`, los pasos de las evaluaciones y «Análisis con IA»;
   el lote usa `elPerfilSePuedeAnalizar()`.
+  - Un lote de consulta (`procesar-lote`) cuyo perfil queda incompleto vuelve a la cola hasta 3
+    veces (`destinoDeLaConsultaDelLote()`) y después queda en `error` con «Consulta incompleta»;
+    no tiene estado propio para no pedir una migración. Un perfil incompleto no se reutiliza.
   - Falta una obligatoria: el modelo no corre (`ConsultaIncompleta`). `faltante` no
     cuenta como respuesta, salvo renta y antecedentes. Los pasos cortan ya en el
     perfil, antes del buró que se cobra, y no reutilizan un perfil incompleto.

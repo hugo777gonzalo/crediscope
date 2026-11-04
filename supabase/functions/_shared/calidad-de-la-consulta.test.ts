@@ -2,6 +2,7 @@ import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import {
   completitudDeLaConsulta,
   decisionDeLaConsulta,
+  destinoDeLaConsultaDelLote,
   elPerfilSePuedeAnalizar,
   FUENTES,
   obligatoriasQueNoSeVan,
@@ -189,4 +190,20 @@ Deno.test("la lista de la migración 145 es la de FUENTES", async () => {
   assertEquals(deLaFuncion("fuentes_de_peso_con_error"), delNivel("secundaria_de_peso").sort());
   const conFaltante = OBLIGATORIAS.filter((f) => FUENTES[f].noHay === "faltante").sort();
   assertStringIncludes(sql, `f in (${conFaltante.map((f) => `'${f}'`).join(", ")})`);
+});
+
+Deno.test("lote: una consulta incompleta vuelve a la cola hasta 3 veces y después queda incompleta, nunca ok", () => {
+  const incompleta = { ...completa(), denuncias: "error" };
+  assertEquals(destinoDeLaConsultaDelLote(completa(), 1), { estado: "ok" });
+  const primero = destinoDeLaConsultaDelLote(incompleta, 1);
+  assertEquals(primero.estado, "pendiente");
+  assertEquals(destinoDeLaConsultaDelLote(incompleta, 2).estado, "pendiente");
+  const ultimo = destinoDeLaConsultaDelLote(incompleta, 3);
+  assertEquals(ultimo.estado, "error");
+  assertStringIncludes((ultimo as { motivo: string }).motivo, "Consulta incompleta después de 3 intentos");
+  assertStringIncludes((ultimo as { motivo: string }).motivo, "las denuncias");
+});
+
+Deno.test("lote: faltar una secundaria de peso no es incompleta", () => {
+  assertEquals(destinoDeLaConsultaDelLote({ ...completa(), vehiculos: "error" }, 1), { estado: "ok" });
 });

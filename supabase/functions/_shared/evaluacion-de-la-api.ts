@@ -106,7 +106,13 @@ export function armarEvaluacion(d: DatosDeLaEvaluacion): Fila {
     if (disponibilidad) salida.disponibilidad = disponibilidad;
   }
   if (estado === "fallida") {
-    salida.fallo = { codigo: (s.fallo_codigo ?? fallido?.codigo ?? "error_interno") as CodigoDeFallo, ...(fallido?.detalle ? { detalle: String(fallido.detalle) } : {}) };
+    const codigo = (s.fallo_codigo ?? fallido?.codigo ?? "error_interno") as CodigoDeFallo;
+    salida.fallo = {
+      codigo,
+      ...(fallido?.detalle ? { detalle: String(fallido.detalle) } : {}),
+      // Sólo con este código: la institución decide si reintentar mirando qué faltó.
+      ...(codigo === "fuentes_no_disponibles" ? { temasNoConsultados: Array.isArray(fallido?.temas) ? fallido.temas : [] } : {}),
+    };
   }
   // Las versiones y la trazabilidad dicen con qué se analizó: sólo hay algo que decir
   // cuando hubo un análisis. En una evaluación fallida no hay marco ni modelo, y
