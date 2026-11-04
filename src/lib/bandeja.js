@@ -40,6 +40,12 @@ export const ETIQUETA_ESTADO_BANDEJA = {
   // Ver _shared/calidad-de-la-consulta.ts.
   consulta_fallida: "La consulta falló",
   sin_consulta: "Sin consultar",
+  // Faltó una de las 21 fuentes obligatorias: el modelo no corrió y hay que
+  // reconsultar. No es "Sin analizar", que es trabajo de un analista.
+  consulta_incompleta: "Consulta incompleta",
+  // Reconsultar no lo resolvió (la misma fuente falló en dos consultas con un
+  // día de por medio): sin score, lo ve una persona.
+  revision_manual: "Revisión manual",
 };
 
 export const COLOR_ESTADO_BANDEJA = {
@@ -48,6 +54,8 @@ export const COLOR_ESTADO_BANDEJA = {
   no_completado: "var(--bad)",
   consulta_fallida: "var(--warn)",
   sin_consulta: "var(--text-muted)",
+  consulta_incompleta: "var(--warn)",
+  revision_manual: "var(--bad)",
 };
 
 // El color de la franja al borde de la fila. La recomendación manda
@@ -55,7 +63,8 @@ export const COLOR_ESTADO_BANDEJA = {
 export function colorFranja(fila) {
   if (fila.recomendacion) return colorRecomendacion(fila.recomendacion);
   if (fila.estado === "no_completado") return "var(--bad)";
-  if (fila.estado === "consulta_fallida") return "var(--warn)";
+  if (fila.estado === "consulta_fallida" || fila.estado === "consulta_incompleta") return "var(--warn)";
+  if (fila.estado === "revision_manual") return "var(--bad)";
   return "transparent";
 }
 

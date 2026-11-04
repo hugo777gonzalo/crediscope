@@ -393,6 +393,18 @@ export function porQueEsParcial(estado: EstadoDeLaConsulta): string {
 }
 
 /**
+ * Un análisis hecho sobre una consulta a la que hoy le falta una obligatoria (1 sobre
+ * una consulta rota y 11 con un «no hay» falso, decisión 9). No se borra ni se
+ * reanaliza: se marca, y se reanaliza al reconsultar a la persona. Vacío si no hay
+ * nada que decir, también cuando el perfil no guardó el detalle por fuente.
+ */
+export function porQueElAnalisisSeMarca(estado: EstadoDeLaConsulta): string {
+  const faltan = obligatoriasSinRespuesta(estado);
+  if (faltan.length === 0) return "";
+  return `Este análisis se hizo con una consulta incompleta: no se pudo obtener ${listaDeTemas(faltan)}. Hay que reconsultar a la persona para confirmarlo.`;
+}
+
+/**
  * ¿Se puede afirmar que esta persona NO aporta al IESS?
  *
  * Los aportes llegan en basesInternas (nova_bases_internas -> tiess). Si

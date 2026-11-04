@@ -180,7 +180,7 @@ su guía: `docs/equifax.md`.
 
 - **Pruebas de las funciones**: `supabase/functions/_shared/*.test.ts`. Se
   corren con:
-  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,api supabase/functions/`
+  - `npx --yes deno@2.9.6 test --no-lock --node-modules-dir=none --allow-env --allow-read=supabase/functions,supabase/migrations,api supabase/functions/`
     (`api`: `sandbox.test.ts` valida cada respuesta contra `api/openapi.yaml`).
 
     `--node-modules-dir=none` hace falta desde que una prueba alcanza los tipos de supabase-js
@@ -288,6 +288,13 @@ su guía: `docs/equifax.md`.
     de `_shared/buro-de-la-institucion.ts`; si cambia una, cambia la otra.
     `docs/propuesta-dias-de-mora-con-buro.md`; se mide con
     `node scripts/medir-dias-de-mora-con-buro.mjs`.
+  - **El estado de la bandeja juzga las 21 obligatorias en SQL** (145):
+    `fuentes_obligatorias_sin_respuesta()` y `fuentes_de_peso_con_error()` son
+    la copia de `FUENTES` en `calidad-de-la-consulta.ts`, y una prueba de Deno
+    lee la migración y las compara. Con una obligatoria sin respuesta y sin
+    análisis, `consulta_incompleta` (o `revision_manual`, si la falla no se va).
+    El análisis hecho sobre una consulta así no se toca: `analisis_sobre_consulta_incompleta`
+    se calcula del perfil con que se hizo, y `analisis_parcial` baja «aprobar» a «revisar».
   - Medido el 2026-10-12: la primera página de la bandeja, de 570 ms a 6 ms;
     Monitoreo, de 1,3 s a 126 ms; Fuentes de ingreso, de 1,4 s a 179 ms.
 - **El centro de datos suma `consultas_por_dia_y_fuente`** (125), por día de

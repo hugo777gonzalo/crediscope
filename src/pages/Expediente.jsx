@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { metaDeLaConsulta } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
+import {
+  completitudDeLaConsulta,
+  metaDeLaConsulta,
+  porQueElAnalisisSeMarca,
+  porQueEsParcial,
+  porQueNoSePuedeAnalizar,
+  recomendacionDeLaEntrega,
+} from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 import {
   ArrowLeft,
   IdCard,
@@ -28,7 +35,7 @@ import {
 import { mesLegible } from "../lib/ingresosCampos.js";
 import { formatearFechaHora, haceCuanto } from "../lib/fechas.js";
 import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
-import { colorScore, colorRecomendacion, textoRecomendacion } from "../lib/bandeja.js";
+import { colorScore, colorRecomendacion, textoRecomendacion, ETIQUETA_ESTADO_BANDEJA, COLOR_ESTADO_BANDEJA } from "../lib/bandeja.js";
 import { rutaDeRegreso } from "../lib/regresoBandeja.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
@@ -202,6 +209,18 @@ export default function Expediente() {
   // forma nueva mostraría "respondió 0" en los 3.059 perfiles viejos.
   const meta = sp?.metaConsulta ? metaDeLaConsulta(sp.metaConsulta) : null;
 
+  // La consulta quedó incompleta y no hay análisis (145): se ve como un estado,
+  // no como un "Sin dictamen" que parece pendiente de un analista.
+  const estadoSinScore = ["consulta_incompleta", "revision_manual"].includes(cabecera?.estado) ? cabecera.estado : null;
+  // La recomendación que se entrega, con la regla de la consulta parcial: lo guardado no se toca.
+  const estadoDelAnalisis = consultas?.find((c) => c.id === analisis?.client_profile_id)?.estado_por_fuente ?? null;
+  const recomendacionEntregada = analisis
+    ? recomendacionDeLaEntrega(analisis.recomendacion, completitudDeLaConsulta(estadoDelAnalisis))
+    : null;
+  const avisoDelAnalisis = !analisis || analisis.fallo
+    ? null
+    : porQueElAnalisisSeMarca(estadoDelAnalisis) || (completitudDeLaConsulta(estadoDelAnalisis) === "parcial" ? porQueEsParcial(estadoDelAnalisis) : null);
+
   return (
     <div>
       {avisoRuc}
@@ -239,8 +258,8 @@ export default function Expediente() {
           <Sello etiqueta="Score" valor={analisis && !analisis.fallo ? analisis.crediscope_score : "—"} color={analisis && !analisis.fallo ? colorScore(analisis.crediscope_score) : null} />
           <Sello
             etiqueta="Recomendación"
-            valor={textoRecomendacion(analisis?.recomendacion) ?? "Sin dictamen"}
-            color={analisis?.recomendacion ? colorRecomendacion(analisis.recomendacion) : null}
+            valor={estadoSinScore ? ETIQUETA_ESTADO_BANDEJA[estadoSinScore] : (textoRecomendacion(recomendacionEntregada) ?? "Sin dictamen")}
+            color={estadoSinScore ? COLOR_ESTADO_BANDEJA[estadoSinScore] : recomendacionEntregada ? colorRecomendacion(recomendacionEntregada) : null}
           />
           <Sello etiqueta="Segmento" valor={f?.segmento ? (ETIQUETA_SEGMENTO[f.segmento] ?? f.segmento) : "Sin clasificar"} />
           <Sello etiqueta="Ingreso reportado al IESS" valor={textoIngresoReportado(f?.pisoIngresoMensualReportado, f?.corteIessUsado)} />
@@ -251,6 +270,12 @@ export default function Expediente() {
           />
           <Sello etiqueta="Última consulta" valor={haceCuanto(perfil?.created_at)} />
         </div>
+        {estadoSinScore ? (
+          <Aviso titulo={ETIQUETA_ESTADO_BANDEJA[estadoSinScore]}>
+            {porQueNoSePuedeAnalizar(perfil?.estado_por_fuente, estadoSinScore === "revision_manual")}
+          </Aviso>
+        ) : null}
+        {avisoDelAnalisis ? <Aviso>{avisoDelAnalisis}</Aviso> : null}
       </div>
 
       <div className="crediscope-exp-grid">
@@ -637,6 +662,7 @@ function construirLineaDeTiempo(datos) {
     enlace: `/historial/perfil/${c.id}`,
   }));
 
+  const estadoPorPerfil = new Map((datos.consultas ?? []).map((c) => [c.id, c.estado_por_fuente]));
   const deAnalisis = (datos.analisisPrevios ?? []).map((a) => ({
     clave: `analisis-${a.id}`,
     cuando: a.created_at,
@@ -646,7 +672,8 @@ function construirLineaDeTiempo(datos) {
       ? `${ETIQUETA_FALLO[a.fallo_tipo] ?? "falla sin clasificar"} · ${a.rules_version}`
       : [
           `Score ${a.crediscope_score}`,
-          textoRecomendacion(a.recomendacion),
+          textoRecomendacion(recomendacionDeLaEntrega(a.recomendacion, completitudDeLaConsulta(estadoPorPerfil.get(a.client_profile_id)))),
+          porQueElAnalisisSeMarca(estadoPorPerfil.get(a.client_profile_id)) ? "consulta incompleta" : null,
           a.rules_version,
           a.veredicto_origen === "control_bloqueo" ? "decidió un control de bloqueo, no el modelo" : null,
         ]

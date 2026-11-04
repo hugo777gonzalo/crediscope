@@ -60,6 +60,9 @@ const TARJETAS = [
   // Las que hay que volver a consultar. Tienen su propia tarjeta
   // porque son trabajo pendiente nuestro, no de un analista.
   { clave: "consulta_fallida", etiqueta: "Consulta falló", color: "var(--warn)", filtro: ["estado", "consulta_fallida"] },
+  // Faltó una fuente obligatoria (145): antes figuraban en Sin analizar.
+  { clave: "consulta_incompleta", etiqueta: "Consulta incompleta", color: "var(--warn)", filtro: ["estado", "consulta_incompleta"] },
+  { clave: "revision_manual", etiqueta: "Revisión manual", color: "var(--bad)", filtro: ["estado", "revision_manual"], soloSiHay: true },
   // Lo que queda para que las tarjetas sumen el total: análisis viejos que
   // todavía no registraban recomendación. Se calcula acá, no viene de la base.
   {
@@ -73,7 +76,7 @@ const TARJETAS = [
   { clave: "con_bloqueo", etiqueta: "Con bloqueo", color: "var(--bad)", filtro: null },
 ];
 
-const CLAVES_QUE_SUMAN = ["aprobar", "revisar", "observar", "negar", "sin_analisis", "no_completado", "consulta_fallida"];
+const CLAVES_QUE_SUMAN = ["aprobar", "revisar", "observar", "negar", "sin_analisis", "no_completado", "consulta_fallida", "consulta_incompleta", "revision_manual"];
 
 export default function Solicitudes() {
   const [params, setParams] = useSearchParams();
@@ -448,6 +451,12 @@ function FilaBandeja({ f }) {
         ) : (
           <span style={{ color: COLOR_ESTADO_BANDEJA[f.estado], fontSize: 13 }}>{ETIQUETA_ESTADO_BANDEJA[f.estado]}</span>
         )}
+        {/* Un análisis ya hecho no se borra: se avisa que se hizo con una consulta a la que le faltaba algo. */}
+        {f.analisis_sobre_consulta_incompleta ? (
+          <span className="crediscope-celda-sub" style={{ color: "var(--warn)" }}>Consulta incompleta</span>
+        ) : f.analisis_parcial ? (
+          <span className="crediscope-celda-sub">Consulta parcial</span>
+        ) : null}
         {f.tiene_bloqueante ? (
           <span className="crediscope-celda-sub" style={{ color: "var(--bad)", display: "flex", alignItems: "center", gap: 4 }}>
             <ShieldAlert size={12} /> Lista de control

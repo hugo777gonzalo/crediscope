@@ -5,7 +5,14 @@ import ClienteHeader from "../components/ClienteHeader.jsx";
 import InfoTooltip from "../components/InfoTooltip.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
 import { formatearFechaHora } from "../lib/fechas.js";
+import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import {
+  completitudDeLaConsulta,
+  porQueElAnalisisSeMarca,
+  porQueEsParcial,
+  recomendacionDeLaEntrega,
+} from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 import Cargando from "../components/ui/Cargando.jsx";
 
 // Visor de SOLO LECTURA de un Análisis con IA puntual del Historial.
@@ -29,6 +36,12 @@ export default function HistorialAnalisisDetalle() {
   }, [id]);
 
   const cedula = result?.clients?.cedula;
+  // La regla de la entrega sobre lo guardado (145): una consulta parcial no pasa de
+  // «Revisar», y un análisis sobre una consulta incompleta lo dice. Lo guardado no se toca.
+  const estadoDeLaConsulta = result?.client_profiles?.estado_por_fuente ?? null;
+  const parcial = completitudDeLaConsulta(estadoDeLaConsulta) === "parcial";
+  const entregado = result && parcial ? { ...result, recomendacion: recomendacionDeLaEntrega(result.recomendacion, "parcial") } : result;
+  const aviso = result && !result.fallo ? porQueElAnalisisSeMarca(estadoDeLaConsulta) || (parcial ? porQueEsParcial(estadoDeLaConsulta) : "") : "";
 
   return (
     <div>
@@ -54,10 +67,11 @@ export default function HistorialAnalisisDetalle() {
           <ClienteHeader
             cedula={cedula}
             score={result.fallo ? null : result.crediscope_score}
-            recomendacion={result.fallo ? null : result.recomendacion}
+            recomendacion={result.fallo ? null : entregado.recomendacion}
             infoTooltip={<InfoTooltip texto={`Análisis con IA generado el ${formatearFechaHora(result.created_at)} (${result.rules_version}) — vista de solo lectura del expediente.`} />}
           />
-          <AnalisisResultado result={result} />
+          {aviso ? <Aviso>{aviso}</Aviso> : null}
+          <AnalisisResultado result={entregado} />
         </>
       ) : null}
     </div>
