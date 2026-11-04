@@ -45,6 +45,7 @@ import { MODELO } from "../_shared/llm-scoring.ts";
 import { clasificarFallo } from "../_shared/fallos-llm.ts";
 import { probarFuenteDeDatos } from "../_shared/proveedor-info-1-client.ts";
 import { avisar, hayCanal } from "../_shared/notificador.ts";
+import { contarRecientes, fuentesMudas, MIN_CONSULTAS_POR_DIA_DE_REFERENCIA } from "../_shared/contenido-por-fuente.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -326,6 +327,54 @@ async function revisarPresupuesto() {
   });
 }
 
+// Una fuente que sigue contestando pero deja de traer contenido (docs/propuesta-fuentes-obligatorias.md,
+// 3.3). Sólo avisa, nunca frena (decisión 12b). El umbral y sus mínimos, en contenido-por-fuente.ts.
+// Una falla de este control no puede tumbar al vigía: es un aviso más, no un chequeo del servicio.
+const NL = String.fromCharCode(10);
+async function revisarContenidoPorFuente() {
+  try {
+    // Las últimas 200 consultas de la semana: con el tráfico normal (1 a 8 por día) casi nunca
+    // llega al mínimo y calla; con una tanda grande, juzga la población más reciente.
+    const desde = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data: filas } = await serviceClient
+      .from("client_profiles")
+      .select("estado_por_fuente, clients!inner(es_sintetico)")
+      .eq("clients.es_sintetico", false)
+      .not("estado_por_fuente", "is", null)
+      .gte("created_at", desde)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!filas?.length) return;
+
+    const { data: dias } = await serviceClient
+      .from("consultas_por_dia_y_fuente")
+      .select("fuente, consultas, con_datos, errores")
+      .gte("consultas", MIN_CONSULTAS_POR_DIA_DE_REFERENCIA)
+      .limit(5000);
+
+    const mudas = fuentesMudas(
+      contarRecientes(filas.map((f) => f.estado_por_fuente as Record<string, unknown>)),
+      (dias ?? []).map((d) => ({ fuente: d.fuente, consultas: d.consultas, conDatos: d.con_datos, errores: d.errores })),
+    );
+    if (!mudas.length) return;
+
+    // Un aviso por día de Ecuador (UTC-5): con el vigía corriendo cada pocos minutos, el aviso
+    // repetido se pierde. Los puntos se escriben con coma y sin decimales de más.
+    const hoy = new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
+    const pct = (x: number) => `${Math.round(x * 100)}%`;
+    await avisar(serviceClient, {
+      tipo: "contenido_por_fuente",
+      referencia: hoy,
+      titulo: `CrediScope: ${mudas.length === 1 ? "una fuente dejó" : `${mudas.length} fuentes dejaron`} de traer contenido`,
+      cuerpo:
+        mudas.map((m) => `${m.fuente}: ${pct(m.tasaActual)} con contenido (lo habitual, ${pct(m.tasaDeReferencia)}), sobre ${m.consultas} consultas`).join(NL) +
+        NL + "No dieron error: contestaron sin traer datos. Es un aviso, no frena ninguna consulta.",
+    });
+  } catch (err) {
+    console.error("No se pudo revisar el contenido por fuente:", String(err));
+  }
+}
+
 async function registrarEstado(c: Chequeo, incidenteId: string | null) {
   const { data: previo } = await serviceClient
     .from("servicio_estado")
@@ -402,6 +451,7 @@ Deno.serve(async (req) => {
     // Va después de los chequeos y no antes: si el servicio se acaba de
     // caer, lo primero que tiene que salir es esa noticia.
     await revisarPresupuesto();
+    await revisarContenidoPorFuente();
 
     return new Response(
       JSON.stringify({
