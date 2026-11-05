@@ -39,6 +39,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { comandoDeConsulta, exigirConfirmacionParaEscribir } from "./_comun/consulta-sql.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const opcion = (n) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
@@ -71,12 +72,12 @@ const leerSecretos = (archivo) => {
 
 // Corre SQL contra una base por la API de gestión (el CLI con la sesión
 // iniciada). El SQL va en un temporal porque puede llevar secretos.
-function correrSql(proyecto, sql, secretos = []) {
+function correrSql(proyecto, sql, secretos = [], { escribe = false } = {}) {
   const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "migrar-"));
   const archivo = path.join(carpeta, "consulta.sql");
   fs.writeFileSync(archivo, sql);
   try {
-    const salida = execSync(`npx --yes supabase@latest db query --linked --project-ref ${proyecto} --file "${archivo}" -o json`, {
+    const salida = execSync(comandoDeConsulta(archivo, { proyecto, escribe }), {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -126,11 +127,13 @@ function aplicar(cliente, migracion) {
   const propia = /^\s*(begin|commit)\s*;/im.test(original);
   const registro = `insert into esquema_version (version, archivo, aplicada_por) values (${migracion.numero}, '${migracion.archivo.replaceAll("'", "''")}', 'corredor');`;
   const sql = propia ? `${lleno}\n;\n${registro}\n` : `begin;\n${lleno}\n;\n${registro}\ncommit;\n`;
-  return correrSql(cliente.proyecto, sql, Object.values(secretos));
+  return correrSql(cliente.proyecto, sql, Object.values(secretos), { escribe: true });
 }
 
 const modo = bandera("aplicar") ? "aplicar" : bandera("seco") ? "seco" : bandera("funciones") ? "funciones" : bandera("iniciar") ? "iniciar" : "estado";
 let fallas = 0;
+// Antes de tocar nada: sin la confirmación, --funciones desplegaba y después no podía anotar.
+if (modo !== "estado" && modo !== "seco") exigirConfirmacionParaEscribir(`node scripts/migrar-clientes.mjs --${modo}`);
 
 if (modo === "iniciar") {
   if (!soloCliente) {
@@ -275,7 +278,9 @@ for (const cliente of clientes) {
       const texto = (s) => `'${String(s).replaceAll("'", "''")}'`;
       const anotado = correrSql(
         cliente.proyecto,
-        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${desplegadas.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`
+        `insert into despliegues (base, commit_git, funciones, esquema, usuario_equipo) values (${texto(cliente.clave)}, ${texto(sello)}, array[${desplegadas.map(texto).join(", ")}]::text[], ${actual.version}, ${texto(os.userInfo().username)});`,
+        [],
+        { escribe: true }
       );
       if (anotado.ok) {
         console.log("               anotado en despliegues");

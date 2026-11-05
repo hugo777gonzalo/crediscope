@@ -27,6 +27,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { raizPrincipal } from "./_comun/entorno.mjs";
+import { comandoDeConsulta } from "./_comun/consulta-sql.mjs";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
 const PRINCIPAL = raizPrincipal(RAIZ);
@@ -36,7 +37,7 @@ function consultar(sql) {
   const archivo = path.join(carpeta, "consulta.sql");
   fs.writeFileSync(archivo, sql);
   try {
-    const salida = execSync(`npx --yes supabase@latest db query --linked --workdir "${PRINCIPAL}" --file "${archivo}" -o json`, {
+    const salida = execSync(comandoDeConsulta(archivo, { workdir: PRINCIPAL }), {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });

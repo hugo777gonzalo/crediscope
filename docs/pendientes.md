@@ -24,11 +24,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **144** (medido con el corredor el 2026-10-31; no hay 137: la
-  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144. `auditar-seguridad.mjs` dio 79 de 79 después
-  de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`59f5ef0466c9`**, 13 de 13, desplegado el 2026-10-31 a las 23:00 sobre el
-  esquema 144 (`despliegues`; el anterior fue `aedc9aa014c3`). El núcleo de la API está desplegado y
+- **Base:** última migración aplicada, la **145** (medido con el corredor el 2026-11-04; no hay 137: la
+  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144: ninguna función lee todavía lo de la 145.
+  `auditar-seguridad.mjs` dio 81 de 81 después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`ece1d189789d`**, 13 de 13, desplegado el 2026-11-04 sobre el esquema 145
+  (`despliegues`): las sesiones 1 a 4 de `docs/propuesta-fuentes-obligatorias.md` (#117, #125, #126 y
+  #124). El anterior fue `976b83bd3f0a`, y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
