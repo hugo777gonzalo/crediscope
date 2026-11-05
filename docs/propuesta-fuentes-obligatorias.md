@@ -451,7 +451,9 @@ es esto. La respuesta a su pregunta es que un caso no evaluable no se guarda com
 hasta terminar los arreglos, así que el efecto en el score (sección 11) sigue sin medir. `esPrueba` ya quedó cerrado (PR 109), y
 del paso 2 sólo falta Diners.
 
-El renombre del proveedor ya entró (PR 111). La sesión del marco (PR 113) sigue abierta y comparte con la sesión 1 sólo `analisis-de-la-persona.ts`: la que entre segunda actualiza contra `main`.
+**Estado (2026-11-04):** las sesiones 1 a 4 están fusionadas y desplegadas (PR 117, 125, 126 y 124;
+sello `ece1d189789d`, base en la 145). Falta la 5. El renombre del proveedor (PR 111) y el marco (PR 113)
+entraron antes.
 
 | Sesión | Pasos | Decisiones | Toca | Cuándo |
 |---|---|---|---|---|
