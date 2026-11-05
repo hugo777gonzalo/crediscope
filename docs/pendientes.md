@@ -24,13 +24,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **145** (medido con el corredor el 2026-11-04; no hay 137: la
-  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144: ninguna función lee todavía lo de la 145. **La 146** (permisos por
-  defecto de las tablas nuevas de `public`, PR 127) está fusionada y **sin aplicar**.
-  `auditar-seguridad.mjs` dio 81 de 81 después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`ece1d189789d`**, 13 de 13, desplegado el 2026-11-04 sobre el esquema 145
-  (`despliegues`): las sesiones 1 a 4 de `docs/propuesta-fuentes-obligatorias.md` (#117, #125, #126 y
-  #124). El anterior fue `976b83bd3f0a`, y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
+- **Base:** última migración aplicada, la **147** (medido con el corredor el 2026-11-05; no hay 137: la
+  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 147 (las filas de marco-v34 y v35). La 146 son los
+  permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
+  después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`cc88fd66866f`**, 13 de 13, desplegado el 2026-11-05 sobre el esquema 147
+  (`despliegues`): marco-v35 y estructura-v18 (#129). El anterior fue `ece1d189789d` (las sesiones 1 a 4
+  de `docs/propuesta-fuentes-obligatorias.md`), y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
@@ -46,10 +46,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v32 con Claude Sonnet 5.5, desplegada el 2026-10-31 y sin ningún
-  análisis todavía (marco-v33, el buró, sigue apagada: punto 2.0; marco-v31 no llegó a usarse, 0
-  análisis). estructura-v17 (el último perfil de las 3.765 personas reales, recalculado el 2026-10-31
-  y medido el 2026-11-04); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+- **Versiones en producción:** marco-v35 con Claude Sonnet 5.5 y el buró de la institución encendido,
+  desplegada el 2026-11-05 y sin ningún análisis todavía (marco-v31 a v33 no llegaron a usarse, 0
+  análisis; v34 es el texto sin buró). estructura-v18 (el último perfil de las 3.766 personas reales,
+  recalculado el 2026-11-05); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -232,29 +232,26 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## 2. Espera una decisión del negocio
 
-0. **marco-v32 y marco-v33 (PR 113).** Las correcciones de la revisión de casos del 2026-10-31 y,
-   sobre ellas, el buró. La 144 está aplicada, v32 desplegada (entra a todos los análisis nuevos) y
-   los 3.765 perfiles reales recalculados a estructura-v17: un seco posterior da 0 a escribir,
-   `validar-perfil-del-modelo.mjs` da 0 fallas en las 14 reglas y 17 personas tienen
-   `rucDepuradoEnRelacionDeDependencia` (335 sin RUC que evaluar). Queda:
+0. **marco-v35 (PR 113 y 129).** Las correcciones de la revisión de casos del 2026-10-31 (v32), el
+   RUC depurado neutro para todas las depuradas y el buró de la institución encendido (negocio,
+   2026-11-04). Aplicado el 2026-11-05: la 147, las funciones en `cc88fd66866f` y los 3.766 perfiles
+   reales recalculados a estructura-v18. Un seco posterior da 0 a escribir,
+   `validar-perfil-del-modelo.mjs` da 0 fallas en las 14 reglas y 169 personas tienen
+   `rucDepuradoPorElSri` (336 sin RUC que evaluar). Una consulta del buró sólo cuenta si está vigente
+   hasta el 17 del mes. Queda:
    - **Los USD 4,4 de la base de prueba:** `analizar-en-lote enviar` corrió el 2026-10-31 a las 12:06,
      antes del PR 113, con autorización del negocio. Un envío nuevo lee el código de la copia desde
-     donde corre, y `main` ya dice v32.
-   - **El RUC depurado para todas y el buró encendido** (negocio, 2026-11-04; PR de marco-v34 y
-     v35, sin aplicar). La regla pasa de 17 a todas las depuradas (estructura-v18,
-     `rucDepuradoPorElSri`) y `buroDeLaInstitucion` queda encendido: entra marco-v35. Orden:
-     fusionar, aplicar la 147 (arrastra la 146 del PR 127, si sigue sin aplicar), desplegar con
-     `--funciones` y recalcular `--grupos=laboral` con el seco antes. Una consulta del buró sólo
-     cuenta si está vigente hasta el 17 del mes.
+     donde corre, y `main` ya dice v35.
    - **Sin medir, porque hace falta el modelo:** si deja de escribir «sin atraso» con A2 y «nadie
      miró», y cuánto mueven el score estas correcciones (punto 2.1).
    - **Sin tocar, a revisar:** `eventos-entre-consultas.ts` no cuenta como deterioro pasar de A1 a
      A2; es del Laboratorio, no de lo que lee el modelo. Y la medición de A2 en el retail que trajo
      la revisión (7 de 8 filas, A1 en 0 de 116) no se pudo repetir: ni `retails` de Proveedor_Info_1 ni el
      crudo guardado de Equifax traen calificación; salió de otra lectura.
-1. **La comparación de marco-v30, v32 y v33.** Falta autorizarla con una cifra: 62 personas con las
-   tres versiones, unos USD 3,5 en lote (estimado, no medido: USD 0,0178 por análisis de v30, medido
-   con v28; v32 suma unos USD 0,0001 con el marco en caché y v33, USD 0,0019). Sin el brazo de v30,
+1. **La comparación de marco-v30, v34 y v35** (se escribió para v32 y v33, que pasaron a v34 y v35 con
+   el RUC depurado). Falta autorizarla con una cifra: 62 personas con las tres versiones, unos USD 3,5
+   en lote (estimado, no medido: USD 0,0178 por análisis de v30, medido con v28; v32 sumaba unos USD
+   0,0001 con el marco en caché y v33, USD 0,0019). Sin el brazo de v30,
    USD 2,4. Importa para saber cuánto mueven las correcciones y el buró
    (`docs/propuesta-marco-equifax.md`, secciones 6 a 8).
    **Las consultas de esas 62 caducaron el 18/10**: o se vuelve a pagar Equifax (USD 24,80, se
@@ -541,7 +538,8 @@ La fecha es en la que se vuelve a mirar cada uno (propuesta; el negocio la cambi
    punta estuviera dentro de la cabeza de su PR: los PR se fusionan con squash, así que «no es
    ancestro de `main`» no dice si hay trabajo perdido. Así apareció un commit del 2026-10-21 que no
    había entrado: entró con el PR que trae esta nota. Las 20 líneas sin commitear de la carpeta de un
-   agente (las etiquetas del veredicto de capacidad para un marco-v32 que no existe) quedaron en
+   agente (las etiquetas del veredicto de capacidad para un «marco-v32» de entonces, que no es el marco-v32
+   de la revisión de casos) quedaron en
    `research/parches/`, fuera de git.
 2. **Quedan** las carpetas `cranky-goodall-f18441` (PR 82) y `suspicious-gagarin-e12f62` (la sesión
    de la paridad), con sus ramas. `claude/postgres-aws-data-review-66a14e` y
