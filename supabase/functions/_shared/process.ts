@@ -14,7 +14,7 @@
 import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo, rucDepuradoEnRelacionDeDependencia } from "./ruc.ts";
+import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo, rucDepuradoPorElSri } from "./ruc.ts";
 import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
@@ -467,7 +467,10 @@ function fechaDeCorte(v: unknown): string | null {
 // rucDepuradoEnRelacionDeDependencia (ruc.ts), porque el motivo de la baja del
 // RUC no estaba en el perfil y sin él el marco no puede dejarla neutra. Y A2 y
 // A3 cuentan como calificaciones en atraso en operacionesEnAtrasoSinMonto.
-export const PROCESS_VERSION = "estructura-v17"; // ver docs/estructura-estandarizada.md
+// estructura-v18 (2026-11-04, decisión del negocio): el campo pasa a
+// rucDepuradoPorElSri, cierto para toda baja por depuración (169 personas, no
+// 17): la actividad del establecimiento ya no cuenta.
+export const PROCESS_VERSION = "estructura-v18"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1020,7 +1023,7 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     antiguedadUltimaEtapaActivaMeses,
     mesesInactivoActividadEconomica,
     tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
-    rucDepuradoEnRelacionDeDependencia: rucDepuradoEnRelacionDeDependencia(rucReferencia, establecimientos),
+    rucDepuradoPorElSri: rucDepuradoPorElSri(rucReferencia),
     obligadoALlevarContabilidadRuc: obligadoALlevarContabilidad(rucReferencia),
     antiguedadEmpleoActualMeses,
     duracionEmpleoMasLargoMeses,

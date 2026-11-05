@@ -29,7 +29,8 @@
 //      como 140 y pasó a 141 porque la agenda se aplicó antes.
 // 144: las filas de marco-v32 y marco-v33. Sin ellas, todo análisis falla al guardarse
 //      por la clave foránea de analysis_results.rules_version.
-export const ESQUEMA_MINIMO = 144;
+// 147: las filas de marco-v34 y marco-v35 (el RUC depurado para todas y el buró encendido).
+export const ESQUEMA_MINIMO = 147;
 
 let verificada: number | null = null;
 

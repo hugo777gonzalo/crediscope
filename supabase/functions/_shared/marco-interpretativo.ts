@@ -474,13 +474,21 @@
 //
 // v33 (2026-10-31): v32 más el buró de la institución, con el mismo armado de
 // v31 (marcoConElBuro). Sin buró el texto es el de v32. Sigue apagada: la
-// enciende CONFIG_LLM.buroDeLaInstitucion cuando el negocio lo diga.
+// enciende CONFIG_LLM.buroDeLaInstitucion cuando el negocio lo diga. No llegó
+// a usarse (0 análisis), como v32: las dos pasan a v34 y v35.
+//
+// v34 y v35 (2026-11-04, negocio): el RUC depurado es neutro para todas las
+// depuradas, no sólo con la actividad en relación de dependencia (de 17 a 169
+// personas; estructura-v18 cambia el campo a rucDepuradoPorElSri). El texto de
+// v32 decía «la actividad era el trabajo en relación de dependencia, no un
+// negocio», falso para 77 que traen «SIN ACTIVIDAD ECONOMICA». v34 es v32 con
+// eso; v35, v33 con eso, y es la que entra: el buró se encendió el mismo día.
 //
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v32";
+export const MARCO_VERSION = "marco-v34";
 
 // El retail es el mismo con buró y sin él: una sola vez, para que los dos
 // textos no digan cosas distintas de la misma fuente.
@@ -850,10 +858,10 @@ ${CORTE_DEL_RETAIL}
    - tipoUltimoCeseRuc ("cancelacion" | "suspension_definitiva" | null)
      dice cómo terminó la última etapa activa. Puede mencionarse como
      matiz, sin peso propio aparte del estado y los meses inactivo.
-   - rucDepuradoEnRelacionDeDependencia=true: el SRI dio de baja ese RUC en
-     una depuración de su registro, y la actividad era el trabajo en
-     relación de dependencia, no un negocio. No es una señal negativa: no
-     lo pongas en negatives ni hables de una actividad económica perdida.
+   - rucDepuradoPorElSri=true: el SRI dio de baja ese RUC de oficio, en
+     una depuración de su registro; no fue un cese ni una suspensión que
+     pidiera la persona. No es una señal negativa: no lo pongas en
+     negatives ni hables de una actividad económica perdida o suspendida.
 
 9. seguridadSocial: afiliadoIessActivo, esPensionista y esJubilado son una
    señal adicional de estabilidad y capacidad, algo más débil que laboral
@@ -1098,7 +1106,7 @@ positives, negatives, missingInfo y reasoning.
 // marco-v33: el buró de la institución (apagado; ver las notas v31 y v33 arriba)
 // ---------------------------------------------------------------------------
 
-export const MARCO_VERSION_CON_BURO = "marco-v33";
+export const MARCO_VERSION_CON_BURO = "marco-v35";
 
 // Los grupos 3 y 4 cuando llega buroEquifax. Los criterios dentro del grupo
 // son, como los demás del marco, una propuesta a validar con el negocio

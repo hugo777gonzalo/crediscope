@@ -107,23 +107,22 @@ export function rucActivo(c: AnyRecord, establecimientos: AnyRecord[] = []): boo
   return establecimientos.length === 0 || establecimientos.some(establecimientoAbierto);
 }
 
-// ¿El SRI dio de baja este RUC en una depuración de su registro, y la actividad
-// era el trabajo en relación de dependencia? (estructura-v17, decisión del
-// negocio del 2026-10-31: no es una señal negativa.) El modelo leía a esa gente
-// como una actividad económica suspendida (c-79e1ac23), y el motivo sólo
-// viene en observ_solicitud_suspension. Medido en el último perfil de las 3.765
+// ¿El SRI dio de baja este RUC de oficio, en una depuración de su registro?
+// No es una señal negativa (negocio): el modelo leía a esa gente como una
+// actividad económica suspendida (c-79e1ac23), y el motivo sólo viene en
+// observ_solicitud_suspension. Medido en el último perfil de las 3.765
 // personas reales: de 1.276 con fecha de cese, 169 son «DEPURACION» (las demás,
-// «CESE DE ACTIVIDADES» 387, «FALLECIMIENTO» 7 y vacío 713), y de ellas 17 con
-// esta actividad; 77 de las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», que
-// quedan afuera hasta que el negocio decida. El RUC del establecimiento se
-// compara si viene: una persona puede tener más de un registro. Sin RUC, null.
-const ACTIVIDAD_EN_RELACION_DE_DEPENDENCIA = /RELACION DE DEPENDENCIA/;
+// «CESE DE ACTIVIDADES» 387, «FALLECIMIENTO» 7 y vacío 713).
+// estructura-v17 (2026-10-31) la daba sólo con la actividad «en relación de
+// dependencia» en el establecimiento: 17 de las 169. El 2026-11-04 el negocio
+// la extendió a todas las depuradas (estructura-v18): 77 traen «SIN ACTIVIDAD
+// ECONOMICA - CIIU» y 130 trabajan para un tercero, y la baja la decidió el SRI,
+// no la persona. Sin RUC, null.
 const sinTildes = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toUpperCase();
 
-export function rucDepuradoEnRelacionDeDependencia(c: AnyRecord | null | undefined, establecimientos: AnyRecord[] = []): boolean | null {
+export function rucDepuradoPorElSri(c: AnyRecord | null | undefined): boolean | null {
   if (!c || !esRegistroDeRuc(c)) return null;
-  if (sinTildes(c.observ_solicitud_suspension) !== "DEPURACION") return false;
-  return establecimientos.some((e) => (!e.ruc || e.ruc === c.ruc) && ACTIVIDAD_EN_RELACION_DE_DEPENDENCIA.test(sinTildes(e.act_economica)));
+  return sinTildes(c.observ_solicitud_suspension) === "DEPURACION";
 }
 
 // «Obligado a llevar contabilidad», del registro del RUC (estructura-v15, para
