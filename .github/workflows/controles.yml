@@ -76,7 +76,7 @@ jobs:
         with:
           node-version: 24
       # Los guiones no pasan por lint ni build: al menos que compilen.
-      - run: for f in scripts/*.mjs scripts/_comun/*.mjs scripts/lib/*.mjs; do node --check "$f"; done
+      - run: for f in scripts/*.mjs scripts/_comun/*.mjs scripts/lib/*.mjs scripts/revision-de-datos/*.mjs; do node --check "$f"; done
       # El detector de eventos se prueba sin base, sin red y sin datos de
       # personas; las otras pruebas de scripts/ necesitan la base viva.
       - run: node scripts/probar-detector.mjs

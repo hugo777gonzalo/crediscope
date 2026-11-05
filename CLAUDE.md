@@ -238,6 +238,7 @@ Romper cualquiera de estas rompe algo real.
 | La demo para una institución | `docs/plan-demo-ifi.md` |
 | Cambios de estructura del producto | `docs/arquitectura-fabrica-de-credito.md` (en pausa) |
 | Lo que el negocio observa en los análisis | `docs/observaciones-del-negocio.md` (en pausa); los casos atípicos, `scripts/detectar-atipicos.mjs` |
+| Revisar los datos de la cartera, contrastar Proveedor_Info_1 con Equifax o seguir un dato raro hasta su causa | la habilidad `revision-de-datos` (`.claude/skills/revision-de-datos/`) y `node scripts/revisar-datos.mjs` |
 | La auditoría externa del 2026-10-09 | `docs/remediacion-auditoria-externa.md`; el informe (E1 a E27) en `auditoria/` y la ficha del modelo en `docs/cumplimiento/`, fuera de git; la tarjeta de puntaje, `docs/tarjeta-de-puntaje.md` |
 | El caso, la fecha y los números de una lección | `docs/lecciones.md` |
 

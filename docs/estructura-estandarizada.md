@@ -820,9 +820,10 @@ interface StandardClientProfile {
 > `false` si no; `null` sin RUC. La baja la decide el SRI, no la persona, y la v17
 > dejaba afuera a 152 de las 169 depuradas (77 con «SIN ACTIVIDAD ECONOMICA»). Lo
 > lee marco-v34 (y v35, con el buró).
-> - **Se despliega primero y se recalcula después**
->   (`recalcular-grupos.mjs --grupos=laboral`, `--seco` antes). Un perfil en v17
->   trae el nombre viejo, que el marco nuevo no explica.
+> - **Aplicada el 2026-11-05:** desplegada primero (`cc88fd66866f`) y recalculada
+>   después (`recalcular-grupos.mjs --grupos=laboral`): 3.766 de 3.766 escritos,
+>   `true` en 169, `false` en 3.261 y sin RUC en 336. Un seco posterior da 0 a
+>   escribir y `validar-perfil-del-modelo.mjs`, 0 fallas.
 
 ## De dónde sale cada cálculo (trazabilidad)
 
