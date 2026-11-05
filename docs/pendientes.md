@@ -434,6 +434,18 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
+19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** El negocio
+    decidió lo demás ese día y está en el PR de la habilidad (Simulador en el menú, Nueva solicitud
+    vacía, bandeja con las incompletas al final, textos del Simulador, ordenar las migradas). Queda:
+    - **Desplegar `consultar-equifax`** con la acción `ordenar` y probar el botón «Ordenar la consulta
+      guardada» con una persona migrada sin tablas. Hasta entonces la función vieja lo rechaza (pide
+      base legal) sin consultar a Equifax.
+    - **El botón «Volver a consultar» después del 17**: hoy vuelve a aparecer cuando vence la vigencia
+      mensual. El negocio dijo que con una respuesta correcta no tiene sentido; falta confirmar si
+      también vale vencida.
+    - **El menú en el teléfono** sigue siendo una fila de íconos sin texto, y las pestañas miden 31 px.
+    - `/solicitud/no-existe` y una solicitud que no existe dan dos mensajes distintos; a los emojis el
+      Inicio los llama «pasaporte».
 
 ## 3. Espera a terceros
 

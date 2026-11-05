@@ -28,6 +28,15 @@ const BuroDeLaPersona = lazy(() => import("./pages/BuroDeLaPersona.jsx"));
 const SimuladorCredito = lazy(() => import("./pages/SimuladorCredito.jsx"));
 const CapacidadDePago = lazy(() => import("./pages/CapacidadDePago.jsx"));
 const NuevaSolicitud = lazy(() => import("./pages/NuevaSolicitud.jsx"));
+
+// Cada entrada a Nueva solicitud arranca con el formulario vacío: la clave de
+// la navegación cambia en cada clic, aunque ya se esté en la misma ruta. En el
+// QA del 2026-11-05 el formulario traía la cédula de la última persona vista
+// (o la que quedó escrita) y se podía evaluar a la anterior sin darse cuenta.
+function NuevaSolicitudLimpia() {
+  const { key } = useLocation();
+  return <NuevaSolicitud key={key} />;
+}
 const Solicitud = lazy(() => import("./pages/Solicitud.jsx"));
 const Solicitudes = lazy(() => import("./pages/Solicitudes.jsx"));
 const Expediente = lazy(() => import("./pages/Expediente.jsx"));
@@ -220,7 +229,7 @@ export default function App() {
           <Route path="/capacidad/:cedula" element={<CapacidadDePago />} />
           {/* La solicitud de crédito (133). /solicitud y no /solicitudes: ésa es la
               bandeja, y /solicitudes/:cedula el Expediente. */}
-          <Route path="/solicitud/nueva" element={<NuevaSolicitud />} />
+          <Route path="/solicitud/nueva" element={<NuevaSolicitudLimpia />} />
           <Route path="/solicitud/:id" element={<Solicitud />} />
           {/* La bandeja y el expediente. El expediente tiene ruta
               propia a propósito: se comparte por enlace, se abren

@@ -7,7 +7,9 @@ import {
   porQueEsParcial,
   porQueNoSePuedeAnalizar,
   recomendacionDeLaEntrega,
+  FUENTES,
 } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
+import { clasificarIdentificacion } from "../../supabase/functions/_shared/identificacion.ts";
 import {
   ArrowLeft,
   IdCard,
@@ -176,6 +178,24 @@ export default function Expediente() {
 
   // La búsqueda del Inicio abre siempre el expediente, también el de una persona
   // que todavía no se consultó: acá se la consulta, en vez de quedar sin salida.
+  // Una dirección con una identificación imposible (provincia 99, letras) no
+  // invita a consultarla: la función la rechazaría. Se dice lo mismo que en el
+  // Inicio (QA del 2026-11-05).
+  const identificacion = clasificarIdentificacion(cedula ?? "");
+  if (!datos && !identificacion.consultable)
+    return (
+      <div className="crediscope-card">
+        <h2 style={{ marginTop: 0 }}>Esta identificación no se puede consultar</h2>
+        {/* revisar-textos: permitir subtitulo-de-pagina -- estado de error: dice qué pasa y qué hacer */}
+        <p style={{ margin: 0 }}>{identificacion.mensaje}</p>
+        <p style={{ margin: "14px 0 0" }}>
+          <Link className="crediscope-btn crediscope-btn-ghost" to="/">
+            Buscar otra persona
+          </Link>
+        </p>
+      </div>
+    );
+
   if (!datos)
     return (
       <div>
@@ -339,9 +359,7 @@ export default function Expediente() {
                 <strong>{entero(meta.conDatos.length)}</strong> trajeron datos
                 {meta.sinDatos.length ? `, ${entero(meta.sinDatos.length)} dijeron que no hay registros de esta persona` : ""}
                 {meta.noMedidas.length ? ` y ${entero(meta.noMedidas.length)} no se pudieron medir` : ""}.
-                {meta.noMedidas.length
-                  ? ` Sin medir: ${meta.noMedidas.join(", ")}.`
-                  : ""}
+                {meta.noMedidas.length ? ` Sin medir: ${fuentesParaElAnalista(meta.noMedidas, meta.porBloques)}.` : ""}
               </p>
             ) : null}
 
@@ -349,10 +367,20 @@ export default function Expediente() {
 
             {/* El hueco, dicho. Es lo primero que va a ocupar este lugar
                 cuando exista la solicitud. */}
+            {/* Hasta el 2026-11-05 decía que la capacidad no se podía calcular porque
+                el monto y el plazo «no se registran»: era de antes de la solicitud
+                (17/10), y quien seguía la pantalla al pie de la letra se quedaba ahí. */}
             <div className="crediscope-pendiente" style={{ marginTop: 12 }}>
               <p>
-                <strong>Falta la capacidad de pago.</strong> Es la cuota frente al ingreso reportado, y es donde se decide un
-                crédito. Todavía no se puede calcular: faltan el monto y el plazo del crédito solicitado, que hoy no se registran.
+                <strong>Capacidad de pago:</strong> se calcula con el monto y el plazo del crédito pedido.
+              </p>
+              <p style={{ margin: "8px 0 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link className="crediscope-btn crediscope-btn-ghost" to={`/capacidad/${encodeURIComponent(cedula)}`}>
+                  Calcular la capacidad de pago
+                </Link>
+                <Link className="crediscope-btn crediscope-btn-ghost" to={`/solicitud/nueva?cedula=${encodeURIComponent(cedula)}`}>
+                  Nueva solicitud
+                </Link>
               </p>
             </div>
           </section>
@@ -626,6 +654,19 @@ function SeccionIngresos({ f, laboral }) {
       ) : null}
     </div>
   );
+}
+
+// Las fuentes que no se pudieron medir, en palabras del analista: el tema de cada
+// una (`FUENTES`), sin repetir, y las secundarias contadas. Hasta el 2026-11-05 se
+// listaban con el nombre de Proveedor_Info_1 («trabajoHistoricosMecanizado»,
+// «telefonos»): 44 nombres internos en la tarjeta principal. Una consulta vieja,
+// medida por bloques, no tiene esos nombres y se deja como estaba.
+function fuentesParaElAnalista(fuentes, porBloques) {
+  if (porBloques) return fuentes.join(", ");
+  const temas = [...new Set(fuentes.map((f) => FUENTES[f]?.tema).filter(Boolean))];
+  const secundarias = fuentes.filter((f) => !FUENTES[f]?.tema).length;
+  const partes = secundarias ? [...temas, plural(secundarias, "fuente secundaria", "fuentes secundarias")] : temas;
+  return partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}` : partes[0];
 }
 
 function Par({ etiqueta, valor }) {

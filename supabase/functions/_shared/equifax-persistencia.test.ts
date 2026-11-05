@@ -12,6 +12,7 @@ import {
   guardarTablasDeLaConsulta,
   identidadDeLaConsulta,
   inicioDelDiaEcuador,
+  ordenarConsultaGuardada,
   procesarConsultaEquifax,
 } from "./equifax-persistencia.ts";
 import type { RespuestaEquifax } from "./equifax-client.ts";
@@ -142,6 +143,38 @@ Deno.test("una consulta vigente se reutiliza y no se paga de nuevo", async () =>
   const r = await procesarConsultaEquifax({ ...BASE, db, consultar, ahora: AHORA });
   assertEquals(r.resultado, "reutilizada");
   assertEquals(cuenta.n, 0);
+});
+
+// Las migradas de AWS (2026-10-28) se guardaron sólo con el crudo, sin tablas.
+const migradaSinTablas = (created_at: string) => ({
+  id: "migrada", identificacion: "0102030405", tipo_identificacion: "C", created_at, ambiente: "produccion",
+  estructura: null, respuesta_cruda: respuestaOk().cuerpo, parametros: { migrada_de: "aws" },
+});
+
+Deno.test("una vigente sin tablas se reutiliza sin pagar y se ordena desde su crudo", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaSinTablas("2026-10-19T12:00:00Z")] });
+  const { cuenta, consultar } = llamadas();
+  const r = await procesarConsultaEquifax({ ...BASE, db, consultar, ahora: AHORA });
+  assertEquals(r.resultado, "reutilizada");
+  assertEquals(cuenta.n, 0);
+  assertEquals(db.llamadasRpc.map((l) => [l.nombre, l.args.p_consulta]), [["equifax_reemplazar_tablas", "migrada"]]);
+  assert(r.resultado === "reutilizada" && r.tablas?.ok);
+});
+
+Deno.test("ordenar la consulta guardada nunca consulta a Equifax, aunque esté vencida", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaSinTablas("2026-09-01T12:00:00Z")] });
+  const r = await ordenarConsultaGuardada(db, "0102030405");
+  assertEquals(r.resultado, "ordenada");
+  assertEquals(db.llamadasRpc.length, 1);
+  assertEquals(db.tablas.audit_log.length, 0);
+});
+
+Deno.test("ordenar no rehace una consulta que ya tiene tablas, y sin consulta lo dice", async () => {
+  const ordenada = { ...migradaSinTablas("2026-10-19T12:00:00Z"), estructura: { version: "x" } };
+  const db = baseFalsa({ consultas_equifax: [ordenada] });
+  assertEquals((await ordenarConsultaGuardada(db, "0102030405")).resultado, "ya_ordenada");
+  assertEquals(db.llamadasRpc.length, 0);
+  assertEquals((await ordenarConsultaGuardada(baseFalsa(), "0102030405")).resultado, "sin_consulta");
 });
 
 Deno.test("una consulta de antes del corte del 18 ya no sirve y se vuelve a pagar", async () => {
