@@ -24,11 +24,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **144** (medido con el corredor el 2026-10-31; no hay 137: la
-  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144. `auditar-seguridad.mjs` dio 79 de 79 después
-  de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`59f5ef0466c9`**, 13 de 13, desplegado el 2026-10-31 a las 23:00 sobre el
-  esquema 144 (`despliegues`; el anterior fue `aedc9aa014c3`). El núcleo de la API está desplegado y
+- **Base:** última migración aplicada, la **145** (medido con el corredor el 2026-11-04; no hay 137: la
+  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 144: ninguna función lee todavía lo de la 145. **La 146** (permisos por
+  defecto de las tablas nuevas de `public`, PR 127) está fusionada y **sin aplicar**.
+  `auditar-seguridad.mjs` dio 81 de 81 después de desplegar. La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
+- **Funciones:** sello **`ece1d189789d`**, 13 de 13, desplegado el 2026-11-04 sobre el esquema 145
+  (`despliegues`): las sesiones 1 a 4 de `docs/propuesta-fuentes-obligatorias.md` (#117, #125, #126 y
+  #124). El anterior fue `976b83bd3f0a`, y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
   `2f30bffab7fd`, por la pantalla: la consulta corrió con c-79e1ac23 y el análisis reutilizó el de
@@ -72,9 +74,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 - **Freno por consulta incompleta (2026-10-31, negocio):** el modelo no corre sin las 21 fuentes
   obligatorias (`FUENTES`, `calidad-de-la-consulta.ts`). Alcanza a 769 de los 3.765 últimos perfiles
-  reales, que hay que reconsultar antes de analizarlos, y 12 personas quedan a revisión manual. Falta
-  verlo en la bandeja, que hoy las muestra «Sin analizar», y en los lotes de consulta y la API: son las
-  sesiones 2 y 3 de `docs/propuesta-fuentes-obligatorias.md`, sección 12. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
+  reales, que hay que reconsultar antes de analizarlos, y 12 personas quedan a revisión manual. La bandeja
+  («Consulta incompleta», 145), los lotes de consulta, la API y el vigía ya lo aplican (sesiones 2 a 4 de
+  `docs/propuesta-fuentes-obligatorias.md`, sección 12, desplegadas el 2026-11-04). Falta la 5, lo que
+  lee el modelo, con la versión del marco del predictor. El análisis de c-79e1ac23 del 2026-10-31 se hizo antes del freno y
   sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
   fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
   el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.

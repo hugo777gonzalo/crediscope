@@ -130,7 +130,9 @@ Romper cualquiera de estas rompe algo real.
    depender de ella, subir `ESQUEMA_MINIMO` (`_shared/version-esquema.ts`): primero se
    migra, después se despliega (`--funciones`), o la función contesta
    503. Para consultas sueltas sigue
-   `npx --yes supabase@latest db query --linked --file <archivo>`.
+   `npx --yes supabase@latest db query --remote --read-only --file <archivo>`: desde la CLI 3
+   (2026-11-04) una escritura en producción pide `SUPABASE_YES=1` exportada en ese shell, y los guiones
+   arman el comando con `scripts/_comun/consulta-sql.mjs`.
    **Las funciones se despliegan sólo con `--funciones`, desde una copia
    limpia de `origin/main`.** Se arma con `git worktree add --detach`,
    copiando `supabase/.temp` a esa copia. El corredor:

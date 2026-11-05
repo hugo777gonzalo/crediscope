@@ -23,10 +23,12 @@ import os from "node:os";
 import path from "node:path";
 import { abrirEjecucion } from "./_comun/ejecucion.mjs";
 import { raizPrincipal } from "./_comun/entorno.mjs";
+import { comandoDeConsulta, exigirConfirmacionParaEscribir } from "./_comun/consulta-sql.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const opcion = (n) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
 const seco = process.argv.includes("--seco");
+if (!seco) exigirConfirmacionParaEscribir("El reescrito del historial");
 const lote = Number(opcion("lote") ?? 200);
 const V = "nova" + "data";
 
@@ -74,10 +76,10 @@ function leerEnv(archivo) {
 
 // El rol temporal de la CLI se rehace en cada llamada: otra sesión consultando a la vez lo
 // rompe ("password authentication failed for user cli_login_postgres", 2026-10-31). Se reintenta.
-function correr(proyecto, sql) {
+function correr(proyecto, sql, escribe = false) {
   for (let intento = 1; ; intento++) {
     try {
-      return correrUna(proyecto, sql);
+      return correrUna(proyecto, sql, escribe);
     } catch (e) {
       if (intento >= 6 || !/cli_login_postgres|temp role|timeout|ECONN/i.test(String(e.stderr || e.message))) throw e;
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000 * intento);
@@ -85,12 +87,12 @@ function correr(proyecto, sql) {
   }
 }
 
-function correrUna(proyecto, sql) {
+function correrUna(proyecto, sql, escribe) {
   const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "historial-"));
   const archivo = path.join(carpeta, "consulta.sql");
   fs.writeFileSync(archivo, sql);
   try {
-    const salida = execSync(`npx --yes supabase@latest db query --linked --project-ref ${proyecto} --file "${archivo}" -o json`, {
+    const salida = execSync(comandoDeConsulta(archivo, { proyecto, escribe }), {
       encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
     });
     return JSON.parse(salida.slice(salida.indexOf("{"))).rows ?? [];
@@ -121,7 +123,7 @@ with u as (
   update public.${tabla} set ${columna} = pg_temp.renombrar(${columna}::text)::${tipo}
    where ctid in (select ctid from public.${tabla} where ${condicion} limit ${lote})
   returning 1)
-select count(*)::int as n from u;`)[0].n;
+select count(*)::int as n from u;`, true)[0].n;
       hechas += n;
       if (n < lote) break;
     }

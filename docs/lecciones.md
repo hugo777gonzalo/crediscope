@@ -671,6 +671,11 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Guiones
 
+- **Una versión nueva de la CLI parecía una base caída** (2026-11-04). `npx --yes supabase@latest`
+  pasó a la 3.0.0, que no corre `db query` contra una base alojada sin confirmar. El corredor tomó la
+  negativa por un error de la base, y el control de seguridad marcó tres fallas que no existían: con
+  la confirmación dio 81 de 81. `@latest` trae una versión nueva sin aviso, y seis guiones armaban el
+  comando cada uno a su manera. Desde el PR 128, un solo lugar lo arma (`_comun/consulta-sql.mjs`).
 - **Renombrar lo guardado no renombra el crudo** (2026-10-31). El cambio de nombre
   del proveedor reescribió las claves de los perfiles, pero el respaldo sigue con la
   clave anterior de una fuente de pensión alimenticia. El seco de estructura-v17 frenó

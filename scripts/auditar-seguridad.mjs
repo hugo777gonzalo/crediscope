@@ -26,6 +26,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSy
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { comandoDeConsulta } from "./_comun/consulta-sql.mjs";
 
 const leerEnv = (archivo) =>
   Object.fromEntries(
@@ -113,7 +114,7 @@ const carpeta = mkdtempSync(path.join(tmpdir(), "auditar-"));
 const archivoSql = path.join(carpeta, "catalogo.sql");
 writeFileSync(archivoSql, SQL);
 try {
-  const salida = execSync(`npx --yes supabase@latest db query --linked --file "${archivoSql}" -o json`, {
+  const salida = execSync(comandoDeConsulta(archivoSql), {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -195,7 +196,7 @@ if (filas.length > 0 || resultados.length === 0) {
     const archivoC = path.join(carpetaC, "cedulas.sql");
     writeFileSync(archivoC, `select count(*)::int as n from clients where cedula in (${[...numeros].map((n) => `'${n}'`).join(",")});`);
     try {
-      const salida = execSync(`npx --yes supabase@latest db query --linked --file "${archivoC}" -o json`, {
+      const salida = execSync(comandoDeConsulta(archivoC), {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -244,7 +245,7 @@ select distinct 'digitos', substr(ruta, 2) from caminar where jsonb_typeof(v) = 
 union all
 select 'version', rules_version || ' del ' || to_char(created_at at time zone 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') from ultimo;`);
   try {
-    const salida = execSync(`npx --yes supabase@latest db query --linked --file "${archivoM}" -o json`, {
+    const salida = execSync(comandoDeConsulta(archivoM), {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
