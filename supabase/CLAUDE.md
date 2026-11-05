@@ -248,6 +248,10 @@ su guía: `docs/equifax.md`.
     toma el número libre al aplicarse (regla 1).
 
 **Base y procesos**
+- **Una tabla nueva de `public` ya no trae permisos de la plataforma** (desde el
+  2026-10-30). La 146 deja `select, insert, update, delete` a `authenticated` y
+  `service_role` por defecto (nunca `anon`); la RLS sigue siendo el control. Una tabla más
+  estricta revoca lo que sobra justo después de crearse (141).
 - **Una agenda nueva lee la clave de Vault**
   (`vault.decrypted_secrets`, como en la 114), nunca el marcador `<<VIGIA_CLAVE>>` en la
   tarea: la clave quedaría en `cron.job` y, en cada corrida, en `cron.job_run_details`.

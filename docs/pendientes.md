@@ -151,7 +151,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    parametrizar `auditar-seguridad.mjs` por base y probar el 503 de `exigirEsquema()` con la
    primera base atrasada. Importa: hoy hay una sola base y es requisito del primer cliente
    externo (`docs/plan-segundo-cliente.md`). Lo hace Claude; se verifica armando una base vacía
-   con el corredor y con el control en ok contra ella.
+   con el corredor y con el control en ok contra ella. Desde el 2026-10-30 Supabase no da acceso a
+   la Data API a las tablas nuevas de `public`: la 146 fija los privilegios por defecto para lo
+   que se cree después, pero las tablas de la 001 a la 144 no los traen en una base armada desde
+   cero. La línea base tiene que darles `authenticated` y `service_role` (no `anon`, 113) y
+   respetar las restricciones puntuales, como las de la 141.
 8. **Hoja de ruta de la auditoría externa (E6 a E26).** Las fases 2 y 3 de la sección 7 del
    informe (`auditoria/2026-10-09-auditoria-externa-integral.md`, fuera de git) no se
    revisaron una por una: **no se midió cuáles quedaron hechas**. Falta ese recuento y sacar
