@@ -1,5 +1,6 @@
 import { moneda, plural } from "../../lib/formatos.js";
 import { comoCambiaLaCuota } from "../../lib/credito.js";
+import InfoTooltip from "../InfoTooltip.jsx";
 
 // La cuota como protagonista: la cifra grande, en qué se va cada dólar del
 // primer mes (capital, interés, seguro) y lo que cuesta el crédito entero.
@@ -38,7 +39,14 @@ export default function CuotaDestacada({ simulacion: s, titulo = "Cuota mensual"
 
       <div className="crediscope-credito-datos">
         <div>
-          <p>Total a pagar</p>
+          {/* Lo propio del cálculo de CrediScope, que antes era un aviso «Cómo se
+              calcula» siempre visible en el Simulador (2026-11-05). */}
+          <p>
+            Total a pagar{" "}
+            <InfoTooltip etiqueta="Qué incluye el total">
+              Capital, interés y seguro, sin comisiones ni otros cargos. Cada valor se redondea al centavo en su mes y la última cuota ajusta la diferencia.
+            </InfoTooltip>
+          </p>
           <strong>{moneda(s.totalPagado, 2)}</strong>
         </div>
         <div>

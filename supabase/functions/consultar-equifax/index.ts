@@ -16,6 +16,9 @@
 //   - baseLegal: bajo qué contrato se consulta a esta persona; queda en la
 //     auditoría de cada consulta. Obligatoria (10 caracteres o más).
 //   - forzar: salta la reutilización y vuelve a pagar.
+//   - { "accion": "ordenar", "identificacion": "..." }: pasa a sus tablas la última consulta
+//     guardada, desde el crudo. No consulta a Equifax ni se cobra (2026-11-05: las migradas de
+//     AWS quedaron sin tablas y la pantalla sólo decía «avisá a administración»).
 //   - { "accion": "probar_conexion" }: pide un token y nada más.
 //     No consulta a nadie y no cuesta; sirve para saber si Equifax deja pasar
 //     a las Edge Functions (con Aval, el WAF rechazó su IP de salida).
@@ -30,7 +33,7 @@ import { exigirEsquema } from "../_shared/version-esquema.ts";
 import { exigirRol, identificarActor } from "../_shared/autorizacion.ts";
 import { clasificarIdentificacion } from "../_shared/identificacion.ts";
 import { probarConexion } from "../_shared/equifax-client.ts";
-import { procesarConsultaEquifax } from "../_shared/equifax-persistencia.ts";
+import { ordenarConsultaGuardada, procesarConsultaEquifax } from "../_shared/equifax-persistencia.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -71,6 +74,21 @@ Deno.serve(async (req) => {
 
   const identificacion = typeof cuerpo?.identificacion === "string" ? cuerpo.identificacion : typeof cuerpo?.cedula === "string" ? cuerpo.cedula : "";
   if (!identificacion) return responder({ error: "Falta 'identificacion' en el body" }, 400);
+
+  if (cuerpo?.accion === "ordenar") {
+    const ident = clasificarIdentificacion(identificacion);
+    if (!ident.consultable) return responder({ error: ident.mensaje, tipoIdentificacion: ident.tipo, ingresado: ident.ingresado }, 400);
+    try {
+      const r = await ordenarConsultaGuardada(serviceClient, ident.cedula as string);
+      if (r.resultado === "sin_consulta") return responder({ error: "Esta persona no tiene una consulta a Equifax guardada." }, 404);
+      if (r.resultado === "ya_ordenada") return responder({ id: r.id, accion: "ordenar", tablas_hechas: true, ya_estaba: true });
+      if (!r.tablas.ok) console.error("consultar-equifax ordenar:", r.tablas.codigo);
+      return responder({ id: r.id, accion: "ordenar", tablas_hechas: r.tablas.ok, ya_estaba: false }, r.tablas.ok ? 200 : 500);
+    } catch (err) {
+      console.error("consultar-equifax ordenar:", (err as Error)?.name);
+      return responder({ error: "No se pudo ordenar la consulta guardada." }, 500);
+    }
+  }
 
   const baseLegal = typeof cuerpo?.baseLegal === "string" ? cuerpo.baseLegal.trim() : "";
   if (baseLegal.length < 10) {
@@ -113,8 +131,8 @@ Deno.serve(async (req) => {
       ambiente: r.fila.ambiente,
       identificacion: cedula,
       // false = el crudo quedó guardado pero las tablas y la estructura no se pudieron derivar (se
-      // rehacen sin volver a pagar). null = la consulta se reutilizó: no se volvió a derivar nada.
-      tablas_hechas: r.resultado === "consultada" ? r.tablas.ok : null,
+      // rehacen sin volver a pagar). null = se reutilizó una que ya estaba ordenada.
+      tablas_hechas: r.resultado === "consultada" ? r.tablas.ok : r.tablas ? r.tablas.ok : null,
     });
   } catch (err) {
     // Sin el mensaje crudo: un error de un tercero puede repetir lo que se le mandó.

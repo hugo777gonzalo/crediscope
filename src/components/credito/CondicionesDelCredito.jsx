@@ -1,14 +1,13 @@
 import { ShieldCheck } from "lucide-react";
 import { decimal, entero, moneda } from "../../lib/formatos.js";
-import { aNumero, PLAZOS_FRECUENTES, SISTEMAS, SISTEMAS_DETALLE, textoDelSeguro } from "../../lib/credito.js";
+import { aNumero, PLAZOS_FRECUENTES, SISTEMAS, textoDelSeguro } from "../../lib/credito.js";
 import EntradaDeMonto from "./EntradaDeMonto.jsx";
 import { PRODUCTO_CONSUMO } from "../../../supabase/functions/_shared/simulador-credito.ts";
 
 // El formulario del crédito: lo comparten el simulador y la capacidad de pago,
 // para que las dos pantallas pidan lo mismo de la misma manera.
 //
-// Pensado para alguien que no es experto: lo que más se cambia (monto y plazo)
-// va arriba, con un deslizador y plazos de un toque; la tasa al lado de la
+// Lo que más se cambia (monto y plazo) va arriba, con un deslizador y plazos de un toque; la tasa al lado de la
 // Tasa mínima y la máxima (vacía es la máxima); el seguro, que casi nunca se
 // toca, plegado con su resumen a la vista.
 
@@ -27,7 +26,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
     <div className="crediscope-card crediscope-credito-formulario">
       <div className="crediscope-credito-campo">
         <div className="crediscope-credito-campo-cabecera">
-          <label htmlFor="credito-monto">¿Cuánto necesita?</label>
+          <label htmlFor="credito-monto">Monto</label>
           <span className="crediscope-muted">en dólares</span>
         </div>
         <EntradaDeMonto id="credito-monto" prefijo="$" valor={valores.monto} alCambiar={cambiar.setMonto} invalido={!(montoNumero >= montoMinimo && montoNumero <= montoMaximo)} />
@@ -46,7 +45,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
 
       <div className="crediscope-credito-campo">
         <div className="crediscope-credito-campo-cabecera">
-          <label htmlFor="credito-plazo">¿En cuántos meses?</label>
+          <label htmlFor="credito-plazo">Plazo</label>
         </div>
         <div className="crediscope-credito-plazos">
           <div className="crediscope-credito-chips" role="group" aria-label="Plazos frecuentes">
@@ -85,7 +84,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
         </div>
         <div className="crediscope-credito-campo">
           <div className="crediscope-credito-campo-cabecera">
-            <label htmlFor="credito-sistema">Cómo se paga</label>
+            <label htmlFor="credito-sistema">Sistema de amortización</label>
           </div>
           <select id="credito-sistema" className="crediscope-input crediscope-credito-selector" value={valores.sistema} onChange={(e) => cambiar.setSistema(e.target.value)}>
             {Object.entries(SISTEMAS).map(([valor, texto]) => (
@@ -94,7 +93,6 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
               </option>
             ))}
           </select>
-          <p className="crediscope-credito-ayuda">{SISTEMAS_DETALLE[valores.sistema]}</p>
         </div>
       </div>
 
@@ -104,10 +102,7 @@ export default function CondicionesDelCredito({ valores, cambiar }) {
           <span>Seguro de desgravamen</span>
           <span className="crediscope-muted">{Number.isFinite(seguro.tasaPorcentaje) ? textoDelSeguro(seguro) : "revisar"}</span>
         </summary>
-        <p className="crediscope-credito-ayuda" style={{ marginTop: 10 }}>
-          Cubre la deuda si la persona fallece o queda incapacitada. Se suma a la cuota de cada mes.
-        </p>
-        <div className="crediscope-credito-tres">
+        <div className="crediscope-credito-tres" style={{ marginTop: 10 }}>
           <div className="crediscope-credito-campo">
             <label htmlFor="credito-seguro">Tasa del seguro</label>
             <EntradaDeMonto id="credito-seguro" sufijo="%" valor={valores.tasaSeguro} alCambiar={cambiar.setTasaSeguro} invalido={!(seguro.tasaPorcentaje >= 0)} />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { getUltimaConsultaEquifax, getOperacionesEquifax, getHistoriaDePagosEquifax, getCortesDelReporteEquifax, registrarEvento } from "../lib/api.js";
+import { getUltimaConsultaEquifax, ordenarConsultaEquifax, getOperacionesEquifax, getHistoriaDePagosEquifax, getCortesDelReporteEquifax, registrarEvento } from "../lib/api.js";
 import { estaVigenteHastaElCorte, finDeLaVigencia } from "../../supabase/functions/_shared/vigencia-mensual.ts";
 import { formatearFecha, formatearFechaHora } from "../lib/fechas.js";
 import { franjaDePagos } from "../lib/equifaxPantalla.js";
@@ -48,6 +48,24 @@ export default function PerfilEquifax() {
   const [reporteAbierto, setReporteAbierto] = useState(false);
   const [imprimiendo, setImprimiendo] = useState(false);
   const [recienConsultada, setRecienConsultada] = useState(null);
+  const [ordenando, setOrdenando] = useState(false);
+  const [errorAlOrdenar, setErrorAlOrdenar] = useState(null);
+
+  // Una consulta guardada sin tablas (las migradas de AWS) se ordena desde lo
+  // que contestó Equifax: no se vuelve a consultar ni se cobra.
+  async function ordenar() {
+    if (ordenando) return;
+    setOrdenando(true);
+    setErrorAlOrdenar(null);
+    try {
+      await ordenarConsultaEquifax(cedula);
+      await cargar();
+    } catch (err) {
+      setErrorAlOrdenar(err);
+    } finally {
+      setOrdenando(false);
+    }
+  }
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -212,9 +230,15 @@ export default function PerfilEquifax() {
           ) : (
             <Aviso tipo="advertencia" titulo="La consulta está guardada pero todavía no se ordenó.">
               <p className="crediscope-muted">
-                Lo que contestó Equifax está guardado entero; falta pasarlo a sus tablas. Avisá a administración: se hace
-                sin volver a pagar.
+                Lo que contestó Equifax está guardado entero; falta pasarlo a sus tablas
+                {admin ? ". Ordenarla no consulta a Equifax ni se cobra." : ". Lo hace administración, sin volver a pagar."}
               </p>
+              {admin ? (
+                <button type="button" className="crediscope-btn" onClick={ordenar} disabled={ordenando}>
+                  {ordenando ? "Ordenando..." : "Ordenar la consulta guardada"}
+                </button>
+              ) : null}
+              {errorAlOrdenar ? <AvisoDeError error={errorAlOrdenar} /> : null}
             </Aviso>
           )}
         </>

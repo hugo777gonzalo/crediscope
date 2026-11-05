@@ -79,7 +79,8 @@ export interface TablasGuardadas {
 }
 
 export type ResultadoDeProceso =
-  | { resultado: "reutilizada"; fila: Base; vigenteHasta: string }
+  // tablas: sólo si la vigente no las tenía y se armaron ahora desde su crudo (sin pagar).
+  | { resultado: "reutilizada"; fila: Base; vigenteHasta: string; tablas?: TablasGuardadas }
   | { resultado: "consultada"; fila: Base; vigenteHasta: string; respuesta: RespuestaEquifax; tablas: TablasGuardadas }
   | { resultado: "simulada"; reutilizaria: boolean; consultasHoy: number; tope: number; fechaDeLaVigente?: string }
   | {
@@ -187,6 +188,22 @@ async function personaConocida(db: Base, cedula: string): Promise<string | null>
   return data?.id ?? null;
 }
 
+// Ordena en sus tablas la última consulta guardada de la persona, vigente o no, desde su crudo.
+// NUNCA consulta a Equifax: es el botón «Ordenar la consulta guardada» de la pestaña Equifax, para
+// las migradas de AWS que quedaron sin tablas. Si ya estaba ordenada, no la rehace.
+export async function ordenarConsultaGuardada(
+  db: Base,
+  cedula: string,
+): Promise<{ resultado: "sin_consulta" } | { resultado: "ya_ordenada"; id: string } | { resultado: "ordenada"; id: string; tablas: TablasGuardadas }> {
+  const { data, error } = await db.from("consultas_equifax").select("id, identificacion, created_at, ambiente, estructura, respuesta_cruda")
+    .eq("identificacion", cedula).eq("tipo_identificacion", "C")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error("no se pudo buscar la consulta guardada: " + error.message);
+  if (!data || data.respuesta_cruda == null) return { resultado: "sin_consulta" };
+  if (data.estructura != null) return { resultado: "ya_ordenada", id: data.id };
+  return { resultado: "ordenada", id: data.id, tablas: await guardarTablasDeLaConsulta(db, data) };
+}
+
 async function consultaVigente(db: Base, cedula: string, ahora: Date) {
   const { data, error } = await db.from("consultas_equifax").select("*")
     .eq("identificacion", cedula).eq("tipo_identificacion", "C")
@@ -221,7 +238,14 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     return { resultado: "rechazada", motivo: "no_se_pudo_guardar", http: 500, error: (err as Error).message };
   }
   if (previa && !o.simular) {
-    return { resultado: "reutilizada", fila: previa, vigenteHasta: finDeLaVigencia(ahora).toISOString() };
+    const vigenteHasta = finDeLaVigencia(ahora).toISOString();
+    // Una vigente sin tablas (las 3.533 migradas de AWS, 2026-10-28, se guardaron sólo con el
+    // crudo por el tamaño de la base) se ordena ahora desde lo guardado: es gratis, y si no, la
+    // pantalla mostraba una consulta pagada que nadie podía leer.
+    if (previa.estructura == null && previa.respuesta_cruda != null) {
+      return { resultado: "reutilizada", fila: previa, vigenteHasta, tablas: await guardarTablasDeLaConsulta(o.db, previa) };
+    }
+    return { resultado: "reutilizada", fila: previa, vigenteHasta };
   }
 
   // 3. Tope diario. Si no se puede medir, no se consulta: sin el número no hay tope.

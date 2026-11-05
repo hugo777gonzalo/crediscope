@@ -268,6 +268,20 @@ export async function consultarEquifax(cedula) {
   return data;
 }
 
+// Pasa a sus tablas la última consulta guardada de la persona, desde lo que
+// contestó Equifax. NO consulta a Equifax ni se cobra, esté vigente o no: es para
+// las migradas de AWS, que quedaron guardadas sin tablas (2026-11-05).
+export async function ordenarConsultaEquifax(cedula) {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase no está configurado.");
+  }
+  const { data, error } = await supabase.functions.invoke("consultar-equifax", {
+    body: { accion: "ordenar", identificacion: cedula },
+  });
+  if (error) throw await errorDeFuncion(error);
+  return data;
+}
+
 // Las solicitudes de crédito (133). La función `evaluar-solicitud` crea la
 // solicitud y la evalúa por pasos: `avanzar` corre uno por llamada (consultar
 // Proveedor_Info_1 y el modelo juntos pasan los 150 s de una función). La pantalla
@@ -327,10 +341,18 @@ export async function contarConsultasEquifaxDeHoy() {
 // Lo que se le pagó (o pudo pagársele) a Equifax, para Costos › Equifax: las
 // consultas guardadas (sólo la fecha y el ambiente, nunca la persona) y los
 // fallos que pudieron cobrarse. El cálculo, en costoEquifax.js.
+// Sin las migradas de AWS (`parametros.migrada_de`, migrar-equifax-aws.mjs): las
+// pagó otro y Equifax autorizó reutilizarlas. Contadas, octubre decía $1.455,60
+// por 3.639 consultas donde se pagaron 97 (QA del 2026-11-05).
 export async function getConsumoEquifax() {
   const [consultas, dudosas] = await Promise.all([
     traerTodas((opciones) =>
-      supabase.from("consultas_equifax").select("id, created_at, ambiente", opciones).order("created_at").order("id"),
+      supabase
+        .from("consultas_equifax")
+        .select("id, created_at, ambiente", opciones)
+        .is("parametros->migrada_de", null)
+        .order("created_at")
+        .order("id"),
     ),
     traerTodas((opciones) =>
       supabase
@@ -951,45 +973,79 @@ function filtrosBandeja({ desde, hasta, busqueda, recomendacion, segmento, estad
   };
 }
 
+// Las que hay que volver a consultar van al final en cualquier orden. En el QA
+// del 2026-11-05 la bandeja abría con una consulta incompleta arriba de todo
+// (un expediente vacío como primera vista). La vista no tiene una columna para
+// ordenar por estado, así que se piden dos partes y se pagina sobre las dos.
+const ESTADOS_AL_FINAL = ["consulta_incompleta", "consulta_fallida"];
+
 export async function getBandejaSolicitudes(filtros = {}) {
   const { orden = "reciente", pagina = 0, porPagina = BANDEJA_POR_PAGINA } = filtros;
   const f = filtrosBandeja(filtros);
   const criterio = ORDENES_BANDEJA[orden] ?? ORDENES_BANDEJA.reciente;
 
-  // Sin las personas sintéticas de Aval (118); se siguen abriendo por su
-  // cédula desde el expediente.
-  let q = supabase.from("bandeja_solicitudes").select("*", { count: "exact" }).eq("es_sintetico", false);
+  function consulta({ alFinal, soloContar = false }) {
+    // Sin las personas sintéticas de Aval (118); se siguen abriendo por su
+    // cédula desde el expediente.
+    let q = supabase
+      .from("bandeja_solicitudes")
+      .select("*", { count: "exact", head: soloContar })
+      .eq("es_sintetico", false);
+    q = alFinal ? q.in("estado", ESTADOS_AL_FINAL) : q.not("estado", "in", `(${ESTADOS_AL_FINAL.join(",")})`);
 
-  if (f.p_desde) q = q.gte("ultima_actividad", f.p_desde);
-  if (f.p_hasta) q = q.lte("ultima_actividad", f.p_hasta);
-  if (f.p_recomendacion) q = q.eq("recomendacion", f.p_recomendacion);
-  if (f.p_segmento) q = q.eq("fuente_segmento", f.p_segmento);
-  if (f.p_estado) q = q.eq("estado", f.p_estado);
-  if (f.p_origen) q = q.eq("perfil_origen", f.p_origen);
-  if (f.p_busqueda) {
-    // Una sola caja para cédula y nombre: el analista tiene uno de los
-    // dos y no tiene por qué decirnos cuál. Los dígitos se buscan por
-    // el principio de la cédula, las letras por cualquier parte del
-    // nombre.
-    const esCedula = /^\d+$/.test(f.p_busqueda);
-    q = esCedula
-      ? q.like("cedula", `${f.p_busqueda}%`)
-      : q.ilike("nombre", `%${f.p_busqueda}%`);
+    if (f.p_desde) q = q.gte("ultima_actividad", f.p_desde);
+    if (f.p_hasta) q = q.lte("ultima_actividad", f.p_hasta);
+    if (f.p_recomendacion) q = q.eq("recomendacion", f.p_recomendacion);
+    if (f.p_segmento) q = q.eq("fuente_segmento", f.p_segmento);
+    if (f.p_estado) q = q.eq("estado", f.p_estado);
+    if (f.p_origen) q = q.eq("perfil_origen", f.p_origen);
+    if (f.p_busqueda) {
+      // Una sola caja para cédula y nombre: el analista tiene uno de los
+      // dos y no tiene por qué decirnos cuál. Los dígitos se buscan por
+      // el principio de la cédula, las letras por cualquier parte del
+      // nombre.
+      const esCedula = /^\d+$/.test(f.p_busqueda);
+      q = esCedula ? q.like("cedula", `${f.p_busqueda}%`) : q.ilike("nombre", `%${f.p_busqueda}%`);
+    }
+    if (soloContar) return q;
+
+    // nullsFirst: false deja abajo a los que todavía no tienen puntaje ni
+    // ingreso reportado. Ordenar por "puntaje más alto" y encontrar arriba una fila
+    // vacía es desconcertante.
+    q = q.order(criterio.columna, { ascending: criterio.asc, nullsFirst: false });
+    // Desempate estable: sin esto, dos filas con el mismo puntaje pueden
+    // cambiar de orden entre páginas y la misma persona aparecer dos
+    // veces o ninguna.
+    if (criterio.columna !== "ultima_actividad") q = q.order("ultima_actividad", { ascending: false });
+    return q.order("client_id", { ascending: true });
   }
 
-  // nullsFirst: false deja abajo a los que todavía no tienen puntaje ni
-  // ingreso reportado. Ordenar por "puntaje más alto" y encontrar arriba una fila
-  // vacía es desconcertante.
-  q = q.order(criterio.columna, { ascending: criterio.asc, nullsFirst: false });
-  // Desempate estable: sin esto, dos filas con el mismo puntaje pueden
-  // cambiar de orden entre páginas y la misma persona aparecer dos
-  // veces o ninguna.
-  if (criterio.columna !== "ultima_actividad") q = q.order("ultima_actividad", { ascending: false });
+  // Primero se cuentan las dos partes: pedir un tramo que empieza después de la
+  // última fila es un error de PostgREST (416), no una lista vacía.
+  const [primeras, ultimas] = await Promise.all([
+    consulta({ alFinal: false, soloContar: true }),
+    consulta({ alFinal: true, soloContar: true }),
+  ]);
+  if (primeras.error) throw primeras.error;
+  if (ultimas.error) throw ultimas.error;
+  const cuantasPrimeras = primeras.count ?? 0;
+  const cuantasUltimas = ultimas.count ?? 0;
 
   const desdeFila = pagina * porPagina;
-  const { data, error, count } = await q.range(desdeFila, desdeFila + porPagina - 1);
-  if (error) throw error;
-  return { filas: data || [], total: count ?? 0, pagina, porPagina };
+  const hastaFila = desdeFila + porPagina - 1;
+  const pedidos = [];
+  if (desdeFila < cuantasPrimeras) {
+    pedidos.push(consulta({ alFinal: false }).range(desdeFila, Math.min(hastaFila, cuantasPrimeras - 1)));
+  }
+  if (hastaFila >= cuantasPrimeras && desdeFila - cuantasPrimeras < cuantasUltimas) {
+    const desde = Math.max(0, desdeFila - cuantasPrimeras);
+    pedidos.push(consulta({ alFinal: true }).range(desde, Math.min(hastaFila - cuantasPrimeras, cuantasUltimas - 1)));
+  }
+  const respuestas = await Promise.all(pedidos);
+  const conError = respuestas.find((r) => r.error);
+  if (conError) throw conError.error;
+  const filas = respuestas.flatMap((r) => r.data || []);
+  return { filas, total: cuantasPrimeras + cuantasUltimas, pagina, porPagina };
 }
 
 // Los totales de la franja superior. Van aparte de la lista porque la

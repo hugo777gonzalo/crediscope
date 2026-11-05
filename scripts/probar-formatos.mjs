@@ -124,7 +124,8 @@ igual("ubicación: una dirección que no existe", ubic("/no-existe"), "CrediScop
   const comun = seccionesVisibles(false).map((s) => s.texto);
   const admin = seccionesVisibles(true).map((s) => s.texto);
   igual("menú: quien no es admin no ve Costos, Laboratorio ni Configuración", ["Costos", "Laboratorio", "Configuración", "Consultas por lote"].some((t) => comun.includes(t)), false);
-  igual("menú: admin ve las nueve secciones", admin.length, 9);
+  igual("menú: admin ve las diez secciones", admin.length, 10);
+  igual("menú: el Simulador es una sección propia (2026-11-05)", comun.includes("Simulador de crédito"), true);
   const fuentes = seccionesVisibles(false).find((s) => s.id === "fuentes");
   igual("menú: «Parámetros» es sólo de admin", hijosVisibles(fuentes, false).some((h) => h.texto === "Parámetros"), false);
 }

@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronDown,
+  Calculator,
 } from "lucide-react";
 import LogoMark from "./LogoMark.jsx";
 import { getUltimaCedula } from "../lib/ultimaCedula.js";
@@ -46,6 +47,7 @@ const CLAVE_COLAPSADO = "crediscope.menu.colapsado";
 const ICONOS = {
   inicio: Home,
   evaluacion: ClipboardCheck,
+  simulador: Calculator,
   solicitudes: FileStack,
   fuentes: Wallet,
   reportes: BarChart3,
