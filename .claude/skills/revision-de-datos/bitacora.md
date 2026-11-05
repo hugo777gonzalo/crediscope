@@ -3,6 +3,11 @@
 Una línea por corrida que cambió algo de la habilidad: qué se corrió, qué se encontró y
 qué se cambió. Casos sólo como `c-xxxxxxxx`. La más nueva va arriba.
 
+- **2026-11-05**, tercera corrida, después de aplicar estructura-v19 en producción.
+  - `cargo-vigente-sin-aporte-vigente` dio 0 de 1.914, con 17 resueltos.
+  - `perfil-con-estructura-atrasada` dio 0 de 3.766.
+  - No volvió ninguna regresión: el arreglo se probó con el mismo detector que lo encontró.
+
 - **2026-11-05**, segunda corrida. El negocio pidió solucionar `cargo-vigente-sin-aporte-vigente`.
   - 17 de los 23 dejaron de aportar un corte antes y el mecanizado los daba con empleo actual. Se corrigió en estructura-v19: cambian 20 perfiles.
   - Los otros 6 tenían `basesInternas` en error. El detector ahora sólo cuenta las consultas en que contestaron los aportes, y pasó a regresión.

@@ -840,6 +840,10 @@ interface StandardClientProfile {
 >   de empleador (`clienteEsSuPropioEmpleador`, `empleadorConApellidoDelCliente`).
 >   A 17 se les quita el `cargoVigente`, a 8 los empleadores jurídicos y a 5 la
 >   antigüedad del empleador. Ningún perfil queda sin reproducirse.
+> - **Aplicada el 2026-11-05:** desplegada primero (`6d30f65ed598`) y recalculada después.
+>   - Se escribieron 3.766 de 3.766, y cambiaron los mismos 20.
+>   - `revisar-datos.mjs`: `cargo-vigente-sin-aporte-vigente` bajó de 17 a 0 y no volvió ninguna regresión.
+>   - `validar-perfil-del-modelo.mjs`: 0 fallas.
 
 ## De dónde sale cada cálculo (trazabilidad)
 
