@@ -132,16 +132,17 @@ export type ConfigRazonamiento = {
   // marco-v33: el buró de la institución en lugar del de bancos y
   // cooperativas de Proveedor_Info_1, cuando la persona tiene una consulta vigente
   // (perfil-del-modelo.ts, buro-de-la-institucion.ts). Es lo único que este
-  // interruptor enciende: las correcciones de v32 van sin interruptor.
-  // APAGADO hasta que el negocio lo diga (decidió encenderlo después de las
-  // correcciones). Mientras esté apagado, el pedido es el de v32 byte a byte
-  // aunque llegue un buró. Encenderlo pide antes la migración de la fila de
-  // marco-v33 aplicada (ESQUEMA_MINIMO ya la exige): primero se migra, después
-  // se despliega. Todavía no se combina con marcoPorCliente: sus marcas son
-  // del texto sin buró.
+  // interruptor enciende: las correcciones de v32 y v34 van sin interruptor.
+  // ENCENDIDO desde el 2026-11-04 (negocio: después de las correcciones). La
+  // versión es la del buró (marco-v35) aunque la persona no tenga consulta
+  // vigente: su texto es entonces el de v34, y cuál leyó cada análisis lo dice
+  // su mensaje_al_modelo (con o sin buroEquifax). Apagado, el pedido es el de
+  // v34 byte a byte aunque llegue un buró. No consulta a Equifax: lee lo ya
+  // guardado. Todavía no se combina con marcoPorCliente: sus marcas son del
+  // texto sin buró.
   buroDeLaInstitucion?: boolean;
 };
-export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000, buroDeLaInstitucion: false };
+export const CONFIG_LLM: ConfigRazonamiento = { razonamiento: "activo", maxTokens: 10_000, buroDeLaInstitucion: true };
 
 // La versión del marco que lee un pedido armado con esta configuración: va en
 // analysis_results.rules_version y en el registro de consumo.

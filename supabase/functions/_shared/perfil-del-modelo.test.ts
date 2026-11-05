@@ -168,9 +168,9 @@ Deno.test("el modelo lee temasSinRespuesta; temasNoConsultados queda sólo en el
 
 Deno.test("el RUC depurado llega con laboral, y sin el dato el campo no se inventa", () => {
   const con = perfil();
-  (con.laboral as Record<string, unknown>).rucDepuradoEnRelacionDeDependencia = true;
-  assertEquals((mensajeParaElModelo(con, []).perfilDelModelo.laboral as Record<string, unknown>).rucDepuradoEnRelacionDeDependencia, true);
-  assertEquals("rucDepuradoEnRelacionDeDependencia" in (mensajeParaElModelo(perfil(), []).perfilDelModelo.laboral as Record<string, unknown>), false);
+  (con.laboral as Record<string, unknown>).rucDepuradoPorElSri = true;
+  assertEquals((mensajeParaElModelo(con, []).perfilDelModelo.laboral as Record<string, unknown>).rucDepuradoPorElSri, true);
+  assertEquals("rucDepuradoPorElSri" in (mensajeParaElModelo(perfil(), []).perfilDelModelo.laboral as Record<string, unknown>), false);
 });
 
 Deno.test("un perfil sin laboral ni ingresos se arma igual", () => {

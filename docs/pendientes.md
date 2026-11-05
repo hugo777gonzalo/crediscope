@@ -237,11 +237,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    - **Los USD 4,4 de la base de prueba:** `analizar-en-lote enviar` corrió el 2026-10-31 a las 12:06,
      antes del PR 113, con autorización del negocio. Un envío nuevo lee el código de la copia desde
      donde corre, y `main` ya dice v32.
-   - **La regla del RUC depurado alcanza a 17 de 169** por decir «relación de dependencia». 77 de
-     las 169 traen «SIN ACTIVIDAD ECONOMICA - CIIU», y 130 trabajan para un tercero: ¿se extiende
-     a todas las depuradas? Cambiarlo es un cambio de estructura con su recálculo.
-   - **Encender el buró:** `buroDeLaInstitucion: true` y `--funciones`, después de v32. Importa saber
-     que una consulta sólo cuenta si está vigente hasta el 17 del mes.
+   - **El RUC depurado para todas y el buró encendido** (negocio, 2026-11-04; PR de marco-v34 y
+     v35, sin aplicar). La regla pasa de 17 a todas las depuradas (estructura-v18,
+     `rucDepuradoPorElSri`) y `buroDeLaInstitucion` queda encendido: entra marco-v35. Orden:
+     fusionar, aplicar la 147 (arrastra la 146 del PR 127, si sigue sin aplicar), desplegar con
+     `--funciones` y recalcular `--grupos=laboral` con el seco antes. Una consulta del buró sólo
+     cuenta si está vigente hasta el 17 del mes.
    - **Sin medir, porque hace falta el modelo:** si deja de escribir «sin atraso» con A2 y «nadie
      miró», y cuánto mueven el score estas correcciones (punto 2.1).
    - **Sin tocar, a revisar:** `eventos-entre-consultas.ts` no cuenta como deterioro pasar de A1 a
