@@ -2,10 +2,12 @@ import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import {
   completitudDeLaConsulta,
   decisionDeLaConsulta,
+  destinoDeLaConsultaDelLote,
   elPerfilSePuedeAnalizar,
   FUENTES,
   obligatoriasQueNoSeVan,
   obligatoriasSinRespuesta,
+  porQueElAnalisisSeMarca,
   porQueEsParcial,
   porQueNoSePuedeAnalizar,
   recomendacionDeLaEntrega,
@@ -167,4 +169,41 @@ Deno.test("el aviso de una consulta parcial nombra lo que faltó", () => {
   assertStringIncludes(porQueEsParcial({ ...completa(), vehiculos: "error" }), "los vehículos");
   // Un análisis anterior a esta lista puede tener una obligatoria sin respuesta y ninguna de peso.
   assertStringIncludes(porQueEsParcial({ ...completa(), denuncias: "error" }), "las denuncias");
+});
+
+Deno.test("un análisis sobre una consulta incompleta se marca, y uno completo o sin detalle no", () => {
+  assertStringIncludes(porQueElAnalisisSeMarca({ ...completa(), denuncias: "faltante" }), "las denuncias");
+  assertEquals(porQueElAnalisisSeMarca(completa()), "");
+  // Un perfil anterior al 2026-09-17 no guardó el detalle por fuente: no se puede juzgar.
+  assertEquals(porQueElAnalisisSeMarca(null), "");
+});
+
+// La bandeja juzga en SQL (145) con la misma lista. Si una de las dos cambia sola,
+// la bandeja diría «Consulta incompleta» por una regla que el freno ya no tiene.
+Deno.test("la lista de la migración 145 es la de FUENTES", async () => {
+  const sql = await Deno.readTextFile(new URL("../../migrations/145_consulta_incompleta_en_la_bandeja.sql", import.meta.url));
+  const deLaFuncion = (nombre: string) => {
+    const cuerpo = sql.split(`function ${nombre}(`)[1].split("unnest(array[")[1].split("]) f")[0];
+    return [...cuerpo.matchAll(/'(\w+)'/g)].map((m) => m[1]).sort();
+  };
+  assertEquals(deLaFuncion("fuentes_obligatorias_sin_respuesta"), [...OBLIGATORIAS].sort());
+  assertEquals(deLaFuncion("fuentes_de_peso_con_error"), delNivel("secundaria_de_peso").sort());
+  const conFaltante = OBLIGATORIAS.filter((f) => FUENTES[f].noHay === "faltante").sort();
+  assertStringIncludes(sql, `f in (${conFaltante.map((f) => `'${f}'`).join(", ")})`);
+});
+
+Deno.test("lote: una consulta incompleta vuelve a la cola hasta 3 veces y después queda incompleta, nunca ok", () => {
+  const incompleta = { ...completa(), denuncias: "error" };
+  assertEquals(destinoDeLaConsultaDelLote(completa(), 1), { estado: "ok" });
+  const primero = destinoDeLaConsultaDelLote(incompleta, 1);
+  assertEquals(primero.estado, "pendiente");
+  assertEquals(destinoDeLaConsultaDelLote(incompleta, 2).estado, "pendiente");
+  const ultimo = destinoDeLaConsultaDelLote(incompleta, 3);
+  assertEquals(ultimo.estado, "error");
+  assertStringIncludes((ultimo as { motivo: string }).motivo, "Consulta incompleta después de 3 intentos");
+  assertStringIncludes((ultimo as { motivo: string }).motivo, "las denuncias");
+});
+
+Deno.test("lote: faltar una secundaria de peso no es incompleta", () => {
+  assertEquals(destinoDeLaConsultaDelLote({ ...completa(), vehiculos: "error" }, 1), { estado: "ok" });
 });

@@ -59,6 +59,24 @@ const FALLOS_DEFINITIVOS: ReadonlySet<CodigoDeFallo> = new Set<CodigoDeFallo>([
 
 export const esFalloDefinitivo = (codigo: CodigoDeFallo) => FALLOS_DEFINITIVOS.has(codigo);
 
+// La diferida tiene 24 horas y las fuentes caídas suelen volver dentro de ellas
+// (de 41 personas que tardaron entre 1 y 24 horas en completarse, 38 lo hicieron):
+// rendirse a los 17,5 minutos, con los 5 intentos de arriba, tiraba un plazo que la
+// institución ya había aceptado esperar. Sólo para `fuentes_no_disponibles`: ahí
+// consultar no se cobra. La espera crece con lo ya transcurrido (la mitad, entre
+// 30 s y 2 h) y no con el número de intento: así el tope de intentos, que cuida
+// al buró y a los pasos cortados, no se gasta con una caída larga.
+export const ESPERA_MIN_DIFERIDA_MS = 30_000;
+export const ESPERA_MAX_DIFERIDA_MS = 2 * 3_600_000;
+
+export const reintentaHastaElPlazo = (s: Pick<FilaDeLaCola, "prioridad">, fallo: Pick<FalloDeUnPaso, "codigo">) =>
+  s.prioridad === "diferida" && fallo.codigo === "fuentes_no_disponibles";
+
+export function esperaDeLaDiferida(creadaEl: string, ahora: Date): number {
+  const transcurrido = Math.max(0, ahora.getTime() - Date.parse(creadaEl));
+  return Math.min(ESPERA_MAX_DIFERIDA_MS, Math.max(ESPERA_MIN_DIFERIDA_MS, Math.round(transcurrido / 2)));
+}
+
 export function plazoDeLaEvaluacion(prioridad: string | null | undefined, recibidaEl: Date): Date {
   return new Date(recibidaEl.getTime() + (prioridad === "diferida" ? PLAZO_DIFERIDA_MS : PLAZO_INTERACTIVA_MS));
 }
@@ -180,10 +198,10 @@ export function despuesDeUnPaso(s: FilaDeLaCola, paso: Paso, r: ResultadoDelPaso
   return despuesDeUnFallo(s, paso, r.fallo, ahora);
 }
 
-function final(s: FilaDeLaCola, paso: Paso, detalle: string, codigo: CodigoDeFallo, ahora: Date): CambiosDeLaCola {
+function final(s: FilaDeLaCola, paso: Paso, detalle: string, codigo: CodigoDeFallo, ahora: Date, temas?: string[]): CambiosDeLaCola {
   return {
     ...suelta(ahora),
-    pasos: marcarFallido(s.pasos, paso, detalle, codigo, 0, ahora),
+    pasos: marcarFallido(s.pasos, paso, detalle, codigo, 0, ahora, temas),
     estado: "fallida",
     fallo_codigo: codigo,
     terminada_el: ahora.toISOString(),
@@ -192,28 +210,29 @@ function final(s: FilaDeLaCola, paso: Paso, detalle: string, codigo: CodigoDeFal
 }
 
 function despuesDeUnFallo(s: FilaDeLaCola, paso: Paso, fallo: FalloDeUnPaso, ahora: Date): CambiosDeLaCola {
-  if (esFalloDefinitivo(fallo.codigo) || fallo.noReintentar) return final(s, paso, fallo.detalle, fallo.codigo, ahora);
+  if (esFalloDefinitivo(fallo.codigo) || fallo.noReintentar) return final(s, paso, fallo.detalle, fallo.codigo, ahora, fallo.temas);
 
   // `intentos` ya cuenta el que acaba de fallar: el trabajador lo suma al tomar
   // el paso. Quien llame sin haberlo sumado (una prueba) es el primero.
   const intentos = Math.max(s.intentos, 1);
-  if (intentos >= MAX_INTENTOS[paso]) return final(s, paso, fallo.detalle, fallo.codigo, ahora);
+  const hastaElPlazo = reintentaHastaElPlazo(s, fallo);
+  if (!hastaElPlazo && intentos >= MAX_INTENTOS[paso]) return final(s, paso, fallo.detalle, fallo.codigo, ahora, fallo.temas);
 
   // La espera del propio fallo manda cuando es mayor: un paso que pudo dejar algo
   // en vuelo no se vuelve a tomar antes de que esa función termine seguro.
-  const espera = Math.max(esperaTrasFallo(intentos), fallo.esperarMs);
+  const espera = Math.max(hastaElPlazo ? esperaDeLaDiferida(s.creada_el, ahora) : esperaTrasFallo(intentos), fallo.esperarMs);
   const proximo = new Date(ahora.getTime() + espera);
   // Si el próximo intento cae fuera del plazo no tiene sentido esperarlo: se le
   // dice ya a la institución, que puede pedirla de nuevo (la especificación
   // prefiere rechazar a tiempo a entregar tarde). Con el código de lo que falló:
   // «plazo_vencido» a secas taparía que fueron las fuentes, y la institución
   // decide distinto si puede reintentar más tarde o no.
-  if (s.plazo_hasta && proximo.getTime() > Date.parse(s.plazo_hasta)) return final(s, paso, fallo.detalle, fallo.codigo, ahora);
+  if (s.plazo_hasta && proximo.getTime() > Date.parse(s.plazo_hasta)) return final(s, paso, fallo.detalle, fallo.codigo, ahora, fallo.temas);
 
   return {
     ...suelta(ahora),
     // El paso vuelve a pendiente, con lo que pasó a la vista de quien lea la fila.
-    pasos: s.pasos.map((p) => (p.paso === paso ? { paso, estado: "pendiente", el: ahora.toISOString(), detalle: fallo.detalle, codigo: fallo.codigo } : p)),
+    pasos: s.pasos.map((p) => (p.paso === paso ? { paso, estado: "pendiente", el: ahora.toISOString(), detalle: fallo.detalle, codigo: fallo.codigo, ...(fallo.temas?.length ? { temas: fallo.temas } : {}) } : p)),
     estado: "en_evaluacion",
     intentos,
     proximo_intento_el: proximo.toISOString(),
@@ -237,7 +256,7 @@ export function despuesDelPlazo(s: FilaDeLaCola, ahora: Date = new Date()): Camb
   if (!pendiente) return null;
   const detalle = pendiente.detalle ?? "La evaluación no terminó dentro de su plazo.";
   // Si el paso ya había fallado antes, esa es la causa; sin un fallo anotado, el plazo.
-  return final(s, pendiente.paso, detalle, pendiente.codigo ?? "plazo_vencido", ahora);
+  return final(s, pendiente.paso, detalle, pendiente.codigo ?? "plazo_vencido", ahora, pendiente.temas);
 }
 
 // Cuánto después del plazo se sigue esperando al trabajador antes de ENTREGAR la

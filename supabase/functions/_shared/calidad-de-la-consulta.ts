@@ -290,6 +290,30 @@ export function decisionDeLaConsulta(estado: EstadoDeLaConsulta, control: { bloq
   return control?.bloqueado === true ? "negar_por_control" : "frenar";
 }
 
+/** Cuántas veces se consulta a una persona de un lote antes de dejarla «incompleta» (negocio, 2026-10-31). */
+export const MAX_INTENTOS_DE_CONSULTA_INCOMPLETA = 3;
+
+/**
+ * Qué se anota en un lote de consulta cuando la persona se consultó pero le faltan
+ * obligatorias. `intentos` cuenta el que acaba de terminar. Antes quedaba `ok`: el
+ * 2026-10-28 se contaron como buenas 553 consultas así, y la bandeja las daba por
+ * hechas. Sin modelo de por medio, un bloqueo hallado no cambia nada acá: el lote
+ * sólo consulta, y la persona se reconsulta igual.
+ */
+export function destinoDeLaConsultaDelLote(
+  estado: EstadoDeLaConsulta,
+  intentos: number,
+): { estado: "ok" } | { estado: "pendiente" | "error"; motivo: string } {
+  if (elPerfilSePuedeAnalizar(estado)) return { estado: "ok" };
+  const lista = listaDeTemas(obligatoriasSinRespuesta(estado));
+  if (intentos < MAX_INTENTOS_DE_CONSULTA_INCOMPLETA) {
+    return { estado: "pendiente", motivo: `Consulta incompleta en el intento ${intentos}, vuelve a la cola: faltó ${lista}.` };
+  }
+  // Sin un estado propio (haría falta una migración de lote_items): queda en error
+  // con este encabezado, que la pantalla del lote muestra como el motivo.
+  return { estado: "error", motivo: `Consulta incompleta después de ${intentos} intentos: no se pudo obtener ${lista}.` };
+}
+
 const UN_DIA_MS = 24 * 3_600_000;
 
 /**
@@ -366,6 +390,18 @@ export function porQueEsParcial(estado: EstadoDeLaConsulta): string {
   // También las obligatorias: un análisis hecho antes de esta lista puede tenerlas sin respuesta.
   const lista = listaDeTemas([...obligatoriasSinRespuesta(estado), ...secundariasDePesoConError(estado)]);
   return `Consulta parcial: no se pudo obtener ${lista}. La recomendación no pasa de Revisar.`;
+}
+
+/**
+ * Un análisis hecho sobre una consulta a la que hoy le falta una obligatoria (1 sobre
+ * una consulta rota y 11 con un «no hay» falso, decisión 9). No se borra ni se
+ * reanaliza: se marca, y se reanaliza al reconsultar a la persona. Vacío si no hay
+ * nada que decir, también cuando el perfil no guardó el detalle por fuente.
+ */
+export function porQueElAnalisisSeMarca(estado: EstadoDeLaConsulta): string {
+  const faltan = obligatoriasSinRespuesta(estado);
+  if (faltan.length === 0) return "";
+  return `Este análisis se hizo con una consulta incompleta: no se pudo obtener ${listaDeTemas(faltan)}. Hay que reconsultar a la persona para confirmarlo.`;
 }
 
 /**

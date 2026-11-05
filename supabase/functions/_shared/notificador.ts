@@ -32,7 +32,7 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
 
 export interface Aviso {
-  // incidente_abierto | incidente_cerrado | presupuesto
+  // incidente_abierto | incidente_cerrado | presupuesto | contenido_por_fuente
   tipo: string;
   // Sobre qué. Junto al tipo forma la llave que impide repetir el mismo
   // aviso: el id del incidente, o "2026-09:70" para el 70% de
