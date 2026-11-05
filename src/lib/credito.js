@@ -17,11 +17,9 @@ export function aNumero(texto) {
   return Number(t);
 }
 
-export const SISTEMAS = { frances: "Cuota fija", aleman: "Capital fijo" };
-export const SISTEMAS_DETALLE = {
-  frances: "Paga lo mismo de capital e interés todos los meses (sistema francés).",
-  aleman: "Paga lo mismo de capital cada mes; la cuota empieza más alta y baja (sistema alemán).",
-};
+// Por el nombre que usa el personal de crédito; la explicación de cada sistema
+// se sacó el 2026-11-05 (la pantalla es para personal capacitado).
+export const SISTEMAS = { frances: "Francés (cuota fija)", aleman: "Alemán (capital fijo)" };
 
 export const PLAZOS_FRECUENTES = [12, 24, 36, 48, 60];
 

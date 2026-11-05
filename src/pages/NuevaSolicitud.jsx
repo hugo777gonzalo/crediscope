@@ -4,7 +4,6 @@ import { CheckCircle2, Layers, ShieldAlert } from "lucide-react";
 import { evaluarSolicitud, getSolicitudesRecientes } from "../lib/api.js";
 import { useBuro } from "../lib/useBuro.js";
 import { useProfile, esAdmin } from "../lib/useProfile.js";
-import { getUltimaCedula } from "../lib/ultimaCedula.js";
 import { aNumero, useCondicionesDelCredito } from "../lib/credito.js";
 import { moneda, plural } from "../lib/formatos.js";
 import { TARIFA_EQUIFAX_USD } from "../lib/costoEquifax.js";
@@ -35,7 +34,7 @@ export default function NuevaSolicitud() {
   const { buro } = useBuro();
   const { profile } = useProfile();
   const admin = esAdmin(profile);
-  const [cedula, setCedula] = useState(params.get("cedula") ?? getUltimaCedula() ?? "");
+  const [cedula, setCedula] = useState(params.get("cedula") ?? "");
   const [modalidad, setModalidad] = useState("pro");
   const [declarado, setDeclarado] = useState("");
   const { valores, cambiar, pedido } = useCondicionesDelCredito();
