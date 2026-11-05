@@ -825,6 +825,22 @@ interface StandardClientProfile {
 >   `true` en 169, `false` en 3.261 y sin RUC en 336. Un seco posterior da 0 a
 >   escribir y `validar-perfil-del-modelo.mjs`, 0 fallas.
 
+> **estructura-v19 (2026-11-05, pedido del negocio)** — el empleo actual del
+> mecanizado exige además que su mes no sea anterior al corte del IESS con que
+> `fuentes-ingreso.ts` decide si la persona sigue aportando (`corteIessUsado`).
+> Con los tres meses de tolerancia solos, quien dejó de aportar un corte antes
+> seguía con empleo actual y cargo vigente mientras sus ingresos decían «no
+> aparece en el corte». El mecanizado y los aportes coincidían en el último mes.
+> Lo encontró el detector `cargo-vigente-sin-aporte-vigente` de
+> `scripts/revisar-datos.mjs` (habilidad `revision-de-datos`): 23 casos. 17 eran
+> esto, y 6 tenían los aportes en error, con el cargo cierto (c-d4625b8b es de
+> los 17).
+> - **Seco del 2026-11-05** (`recalcular-grupos.mjs --grupos=laboral --seco`): cambia
+>   el grupo laboral en 20 de 3.766. Se les vacía `empleosActuales`, con sus marcas
+>   de empleador (`clienteEsSuPropioEmpleador`, `empleadorConApellidoDelCliente`).
+>   A 17 se les quita el `cargoVigente`, a 8 los empleadores jurídicos y a 5 la
+>   antigüedad del empleador. Ningún perfil queda sin reproducirse.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |

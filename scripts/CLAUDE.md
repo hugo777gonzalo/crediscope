@@ -81,6 +81,10 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   `scripts/predictor-ingresos/medir_sombra.py`. Repetirla con cada modelo nuevo del nivel 1 y al completar
   el lote de paridad. La edad y el reloj van a la fecha de la consulta de AWS: el perfil guarda la edad del
   día en que se consultó a Proveedor_Info_1, y con ella la cobertura bajó dos puntos.
+- `scripts/estimar-ingresos-en-lote.mjs` corre el estimador de la función `estimar-ingreso` sobre el último
+  perfil de cada persona real, con el modelo vigente y SIN guardar: escribe en `research/estimaciones-en-lote/`. Sirve
+  para medir el predictor mientras `estimaciones_de_ingreso` esté vacía. El 2026-11-05 mostró que 624 de 2.061
+  estimaciones serían de consultas incompletas.
 - `scripts/probar-paridad-variables-de-ingreso.mjs` pasa las respuestas crudas de Equifax por
   `variables-de-ingreso.ts` y las compara con el extracto de AWS con que se entrenó (necesita `research/`;
   sale con 1 si una paridad baja de su umbral). Repetirlo al tocar `equifax-tablas.ts`,
