@@ -1,0 +1,368 @@
+// El catálogo de detectores de la revisión de datos (habilidad `revision-de-datos`).
+//
+// Cada detector es un error que ya encontramos en un caso real, escrito como
+// consulta para que se mida en toda la cartera y no vuelva sin que nadie lo
+// note. Nacieron de la revisión de casos del 2026-10-31 al 2026-11-05: el negocio
+// encontró a mano errores en la fuente, la estructura, los ingresos, lo que lee
+// el modelo y lo que responde, y cada uno se midió después en la cartera (el A2
+// leído como «sin atraso», el retail con corte de 2025, la pasantía de 2019
+// leída como cargo vigente, el análisis hecho con 41 de 52 fuentes caídas...).
+//
+// Cómo se suma uno (la habilidad lo explica entero):
+//   - `id` en minúsculas con guiones, que no cambia: la comparación entre
+//     corridas se hace por id.
+//   - `capa`: dónde nace el error (ver CAPAS). Un detector mide UNA capa.
+//   - `tipo`:
+//       "regresion"  un error ya corregido. Tiene que dar 0; si no, el guion
+//                    sale con 1. Es la prueba de que el arreglo sigue puesto.
+//       "revisar"    una inconsistencia exacta que hay que mirar caso por caso.
+//       "confirmar"  busca frases o umbrales: tiene falsos positivos.
+//   - `conocido` (opcional): qué se decidió sobre lo que marca, para que el
+//     próximo que lo corra no lo investigue de nuevo. Sin `conocido`, un caso
+//     es un hallazgo abierto.
+//   - `caso`: la referencia c-xxxxxxxx del caso que lo originó (nunca una cédula:
+//     el repositorio es público) y la fecha.
+//   - `poblacion`: SQL que cuenta sobre cuántas personas se mide. Si da 0, el
+//     detector queda «no medido», no «sin casos».
+//   - `casos`: SQL que devuelve `client_id` y `detalle` (jsonb). El detalle puede
+//     llevar montos: va a research/, fuera de git. A la consola salen conteos y
+//     referencias c-xxxxxxxx.
+//
+// Las tablas comunes (`ultimo`, `analisis`, `equifax`) están en BASE. Sólo
+// personas reales: las 240 sintéticas de Aval no cuentan (118).
+//
+// AVISO: este archivo no pasa por lint ni build. Después de tocarlo, correr
+// `node scripts/revisar-datos.mjs --solo=<id>` y mirar el detalle de un caso.
+
+import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
+
+export const CAPAS = {
+  fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
+  estructura: "2. Estructura estandarizada (process.ts)",
+  ingresos: "3. Perfil de ingresos (fuentes-ingreso.ts)",
+  predictor: "4. Predictor de ingresos",
+  cruce: "5. Cruce entre Proveedor_Info_1 y Equifax",
+  modelo: "6. Respuesta del modelo",
+};
+
+// Las obligatorias y su «no hay» salen de la regla del freno, importada del
+// código (Node 24 lee el .ts): la primera versión de este archivo copiaba las 5
+// fuentes del PR 104, que el 2026-11-04 pasaron a ser 21, y contaba 671
+// consultas incompletas en vez de las de verdad.
+const OBLIGATORIAS = Object.entries(FUENTES).filter(([, f]) => f.nivel === "obligatoria");
+// laObligatoriaContesto(): ok, ok_vacio y deshabilitado contestan; faltante,
+// sólo donde es el «no hay» de esa fuente. Un estado vacío no frena.
+const noContesto = (columna, [fuente, ficha]) => {
+  const contesta = ficha.noHay === "faltante" ? `('ok', 'ok_vacio', 'deshabilitado', 'faltante')` : `('ok', 'ok_vacio', 'deshabilitado')`;
+  return `coalesce(${columna}->>'${fuente}', 'faltante') not in ${contesta}`;
+};
+const algunaClaveCaida = (columna) =>
+  `(${columna} is not null and ${columna} <> '{}'::jsonb and (` + OBLIGATORIAS.map((o) => noContesto(columna, o)).join(" or ") + "))";
+const clavesCaidas = (columna) =>
+  "array_remove(array[" + OBLIGATORIAS.map((o) => `case when ${noContesto(columna, o)} then '${o[0]}' end`).join(", ") + "], null)";
+
+export const BASE = `
+reales as (select id from clients where not es_sintetico),
+ultimo_id as (
+  select distinct on (p.client_id) p.id
+  from client_profiles p join reales r on r.id = p.client_id
+  order by p.client_id, p.created_at desc
+),
+ultimo as (
+  select p.id as perfil_id, p.client_id, p.created_at, p.structure_version, p.estado_por_fuente,
+         p.standard_profile as sp
+  from client_profiles p join ultimo_id u on u.id = p.id
+),
+analisis_id as (
+  select distinct on (a.client_id) a.id
+  from analysis_results a join reales r on r.id = a.client_id
+  where a.fallo is null and a.crediscope_score is not null
+  order by a.client_id, a.created_at desc
+),
+analisis as (
+  select a.id, a.client_id, a.created_at, a.rules_version, a.crediscope_score, a.client_profile_id,
+         coalesce(a.narrative_summary, '') || ' ' || coalesce(a.positives::text, '') || ' ' ||
+         coalesce(a.negatives::text, '') || ' ' || coalesce(a.missing_info::text, '') as texto
+  from analysis_results a join analisis_id u on u.id = a.id
+),
+equifax as (
+  select distinct on (q.client_id) q.id as consulta_id, q.client_id, q.created_at
+  from consultas_equifax q join reales r on r.id = q.client_id
+  where q.http_equifax = 200 and exists (select 1 from equifax_resumen s where s.consulta_equifax_id = q.id)
+  order by q.client_id, q.created_at desc
+)`;
+
+export const DETECTORES = [
+  // ── 1. Fuente ────────────────────────────────────────────────────────────
+  {
+    id: "analisis-con-obligatoria-sin-respuesta",
+    capa: "fuente",
+    tipo: "regresion",
+    titulo: "Análisis hecho después del freno con una fuente obligatoria sin respuesta",
+    caso: "c-79e1ac23, 2026-10-31: analizado con 41 de 52 fuentes en error, sin ver un hipotecario del BIESS",
+    // El freno (PR 104) se desplegó el 2026-10-31; lo anterior queda como estaba.
+    poblacion: `select count(*) from analisis where created_at >= '2026-11-01'`,
+    casos: `
+      select a.client_id, jsonb_build_object('marco', a.rules_version, 'analizado', a.created_at,
+             'caidas', ${clavesCaidas("p.estado_por_fuente")}) as detalle
+      from analisis a join client_profiles p on p.id = a.client_profile_id
+      where a.created_at >= '2026-11-01' and ${algunaClaveCaida("p.estado_por_fuente")}`,
+  },
+  {
+    id: "consulta-incompleta-sin-reconsultar",
+    capa: "fuente",
+    tipo: "revisar",
+    conocido: "el freno no las deja analizar; se resuelve reconsultando (docs/pendientes.md, «Freno por consulta incompleta»)",
+    titulo: "Último perfil con una fuente obligatoria sin respuesta (no se puede analizar)",
+    caso: "freno del 2026-10-31: docs/pendientes.md, «Freno por consulta incompleta», contó 769 de 3.765",
+    poblacion: `select count(*) from ultimo where estado_por_fuente is not null and estado_por_fuente <> '{}'::jsonb`,
+    casos: `
+      select client_id, jsonb_build_object('consultado', created_at, 'caidas', ${clavesCaidas("estado_por_fuente")}) as detalle
+      from ultimo where ${algunaClaveCaida("estado_por_fuente")}`,
+  },
+  {
+    id: "retail-con-corte-viejo",
+    capa: "fuente",
+    tipo: "revisar",
+    conocido: "es el corte que entrega Proveedor_Info_1; desde estructura-v16 llega al modelo como fechaCorteRetail",
+    titulo: "Deudas en casas comerciales con un corte de más de 6 meses antes de la consulta",
+    caso: "c-82cc2afc, 2026-10-31: el retail de Proveedor_Info_1 venía con corte 31/07/2025",
+    poblacion: `select count(*) from ultimo where (sp->'comportamientoBancario'->>'numeroDeudasRetail')::int > 0`,
+    casos: `
+      select client_id, jsonb_build_object('corte', sp->'comportamientoBancario'->>'fechaCorteRetail',
+             'consultado', sp->>'consultadoEn') as detalle
+      from ultimo
+      where (sp->'comportamientoBancario'->>'numeroDeudasRetail')::int > 0
+        and (sp->'comportamientoBancario'->>'fechaCorteRetail')::date
+            < (sp->>'consultadoEn')::timestamptz::date - interval '6 months'`,
+  },
+
+  // ── 2. Estructura ────────────────────────────────────────────────────────
+  {
+    id: "perfil-con-estructura-atrasada",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Último perfil en una versión de estructura que no es la vigente",
+    caso: "recálculos del 2026-10-31 y del 2026-11-05: un perfil atrasado no tiene las correcciones",
+    // {{PROCESS_VERSION}} lo pone el guion, leído de process.ts.
+    poblacion: `select count(*) from ultimo`,
+    casos: `
+      select client_id, jsonb_build_object('version', structure_version) as detalle
+      from ultimo where structure_version is distinct from '{{PROCESS_VERSION}}'`,
+  },
+  {
+    id: "prestamos-biess-sin-marcar",
+    capa: "estructura",
+    tipo: "regresion",
+    // Corregido en estructura-v16 (2026-10-31): 0 de 918 el 2026-11-05.
+    titulo: "Préstamos del IESS/BIESS contados pero tieneCreditoIessBiess en falso",
+    caso: "c-82cc2afc, 2026-10-31: 9 préstamos y tieneCreditoIessBiess=false",
+    poblacion: `select count(*) from ultimo where (sp->'comportamientoBancario'->>'numeroCreditosFormales')::int > 0`,
+    casos: `
+      select client_id, jsonb_build_object('prestamos', sp->'comportamientoBancario'->'numeroCreditosFormales',
+             'saldo', sp->'comportamientoBancario'->'saldoPrestamosIessBiess') as detalle
+      from ultimo
+      where (sp->'comportamientoBancario'->>'numeroCreditosFormales')::int > 0
+        and coalesce((sp->'comportamientoBancario'->>'tieneCreditoIessBiess')::boolean, false) = false`,
+  },
+  {
+    id: "cargo-vigente-sin-aporte-vigente",
+    capa: "estructura",
+    tipo: "confirmar",
+    titulo: "Cargo vigente de Proveedor_Info_1 sin ningún aporte de un empleador vigente en el IESS",
+    caso: "c-5ee429cc, 2026-10-31: una pasantía de 2019 con salida 1900-01-01 se leía como cargo vigente",
+    poblacion: `select count(*) from ultimo where sp->'laboral'->>'cargoVigente' is not null`,
+    casos: `
+      select client_id, jsonb_build_object('cargo', sp->'laboral'->>'cargoVigente',
+             'antiguedadEmpleadorAnios', sp->'laboral'->'empleadorVigenteAntiguedadAnios') as detalle
+      from ultimo
+      where sp->'laboral'->>'cargoVigente' is not null
+        and not jsonb_path_exists(coalesce(sp->'fuentesIngreso'->'fuentes', '[]'),
+                                  '$[*] ? (@.vigenteAlCorte == true && @.empleador != null)')`,
+  },
+
+  // ── 3. Perfil de ingresos ────────────────────────────────────────────────
+  {
+    id: "salario-mas-alto-bajo-un-empleo-vigente",
+    capa: "ingresos",
+    // Corregido en estructura-v17 (2026-10-31): 0 de 1.954 el 2026-11-05.
+    tipo: "regresion",
+    titulo: "Salario más alto registrado por debajo de lo que reporta hoy un solo empleo vigente (5% de margen)",
+    caso: "c-82cc2afc, 2026-10-31: «salario más alto» de un empleo de 2018 contra un ingreso reportado varias veces mayor",
+    // Contra el empleo vigente más alto y no contra el ingreso reportado: el
+    // reportado suma los empleos, y la primera corrida (2026-11-05) marcaba a
+    // quien tiene dos empleos de lo mismo (60 casos, la mayoría así).
+    poblacion: `select count(*) from ultimo
+      where (sp->'laboral'->>'salarioMasAltoRegistrado')::numeric > 0
+        and jsonb_path_exists(coalesce(sp->'fuentesIngreso'->'fuentes', '[]'), '$[*] ? (@.vigenteAlCorte == true && @.montoMensualReportado > 0)')`,
+    casos: `
+      select client_id, jsonb_build_object('salarioMasAlto', sp->'laboral'->'salarioMasAltoRegistrado',
+             'empleoVigenteMasAlto', vigente) as detalle
+      from (
+        select client_id, sp,
+               (select max((f->>'montoMensualReportado')::numeric)
+                  from jsonb_array_elements(coalesce(sp->'fuentesIngreso'->'fuentes', '[]')) f
+                 where (f->>'vigenteAlCorte')::boolean) as vigente
+        from ultimo
+        where (sp->'laboral'->>'salarioMasAltoRegistrado')::numeric > 0
+      ) x
+      where vigente > 0 and (sp->'laboral'->>'salarioMasAltoRegistrado')::numeric < 0.95 * vigente`,
+  },
+  {
+    id: "ingreso-reportado-sin-fuente-vigente",
+    capa: "ingresos",
+    tipo: "regresion",
+    // 0 de 1.954 el 2026-11-05: es una regla del cálculo, no un hallazgo.
+    titulo: "Ingreso reportado mayor que cero sin ninguna fuente vigente al corte",
+    caso: "regla de fuentes-ingreso.ts: el reportado es la suma de las fuentes vigentes",
+    poblacion: `select count(*) from ultimo where (sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric > 0`,
+    casos: `
+      select client_id, jsonb_build_object('reportadoIess', sp->'fuentesIngreso'->'pisoIngresoMensualReportado') as detalle
+      from ultimo
+      where (sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric > 0
+        and not jsonb_path_exists(coalesce(sp->'fuentesIngreso'->'fuentes', '[]'), '$[*] ? (@.vigenteAlCorte == true)')`,
+  },
+
+  // ── 4. Predictor de ingresos ─────────────────────────────────────────────
+  {
+    id: "estimacion-lejos-del-reportado",
+    capa: "predictor",
+    tipo: "confirmar",
+    titulo: "Estimación del predictor a más del doble o menos de la mitad del ingreso reportado al IESS",
+    caso: "especificación del predictor, 7: medir contra el reportado donde los dos existen",
+    poblacion: `select count(*) from estimaciones_de_ingreso e join ultimo u on u.client_id = e.client_id
+      where (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric > 0`,
+    casos: `
+      select e.client_id, jsonb_build_object('estimado', e.valor_central, 'minimo90', e.minimo_90,
+             'reportadoIess', u.sp->'fuentesIngreso'->'pisoIngresoMensualReportado', 'nivel', e.nivel) as detalle
+      from estimaciones_de_ingreso e join ultimo u on u.client_id = e.client_id
+      where (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric > 0
+        and (e.valor_central > 2 * (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric
+             or e.valor_central < 0.5 * (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric)`,
+  },
+
+  // ── 5. Cruce entre Proveedor_Info_1 y Equifax ────────────────────────────
+  {
+    id: "mora-comercial-que-solo-ve-equifax",
+    capa: "cruce",
+    tipo: "revisar",
+    conocido: "desde marco-v35 (2026-11-05) el modelo lee el buró de la institución, que trae esta mora",
+    titulo: "Equifax trae una deuda comercial propia con 90 días o más de mora y el retail de Proveedor_Info_1 no",
+    caso: "c-82cc2afc, 2026-10-31: casas comerciales con más de 200 días en Equifax que Proveedor_Info_1 no mostraba",
+    poblacion: `select count(*) from equifax e join ultimo u on u.client_id = e.client_id`,
+    casos: `
+      select e.client_id, jsonb_build_object(
+               'diasEquifax', max(o.dias_morosidad),
+               'diasProveedorInfo1', max(u.sp->'comportamientoBancario'->>'diasMoraMaximaRetail'),
+               'empresas', count(distinct o.institucion)) as detalle
+      from equifax e
+      join ultimo u on u.client_id = e.client_id
+      join equifax_operaciones o on o.consulta_equifax_id = e.consulta_id
+      where o.sistema = 'comercial' and o.rol = 'titular' and o.dias_morosidad >= 90
+        and coalesce((u.sp->'comportamientoBancario'->>'diasMoraMaximaRetail')::int, 0) < 90
+      group by e.client_id`,
+  },
+  {
+    id: "ruc-suspension-difiere",
+    capa: "cruce",
+    tipo: "revisar",
+    titulo: "La fecha de suspensión definitiva del RUC en Equifax no es la de Proveedor_Info_1",
+    caso: "c-79e1ac23, 2026-10-31: las dos fuentes decían suspendido el mismo día, pero la pantalla de Equifax no lo mostraba",
+    poblacion: `select count(*) from equifax e join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id where s.sri_tiene_ruc`,
+    casos: `
+      select e.client_id, jsonb_build_object('equifax', s.sri_fecha_suspension_definitiva,
+             'proveedorInfo1', u.sp->'laboral'->>'fechaCeseActividadesRuc',
+             'tipoCese', u.sp->'laboral'->>'tipoUltimoCeseRuc', 'estadoEquifax', s.sri_estado_contribuyente) as detalle
+      from equifax e
+      join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_tiene_ruc
+        and s.sri_fecha_suspension_definitiva is distinct from
+            case when u.sp->'laboral'->>'tipoUltimoCeseRuc' = 'suspension_definitiva'
+                 then (u.sp->'laboral'->>'fechaCeseActividadesRuc')::date end`,
+  },
+  {
+    id: "ruc-inicio-difiere",
+    capa: "cruce",
+    tipo: "revisar",
+    titulo: "La fecha de inicio de actividades del RUC en Equifax no es la de Proveedor_Info_1",
+    caso: "c-79e1ac23, 2026-10-31: pedido del negocio de validar las fechas del RUC entre las dos fuentes",
+    poblacion: `select count(*) from equifax e join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_fecha_inicio_actividades is not null and u.sp->'laboral'->>'fechaInicioActividadesRuc' is not null`,
+    casos: `
+      select e.client_id, jsonb_build_object('equifax', s.sri_fecha_inicio_actividades,
+             'proveedorInfo1', u.sp->'laboral'->>'fechaInicioActividadesRuc') as detalle
+      from equifax e
+      join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_fecha_inicio_actividades is not null and u.sp->'laboral'->>'fechaInicioActividadesRuc' is not null
+        and s.sri_fecha_inicio_actividades <> (u.sp->'laboral'->>'fechaInicioActividadesRuc')::date`,
+  },
+
+  // ── 6. Respuesta del modelo ──────────────────────────────────────────────
+  {
+    id: "atraso-leido-como-sin-atraso",
+    capa: "modelo",
+    tipo: "confirmar",
+    conocido: "marco-v32 definió A2 como atraso; los análisis anteriores siguen en la bandeja hasta que se rehagan",
+    titulo: "El análisis dice «sin atraso» o «sin mora» y la peor calificación propia es A2 o peor",
+    caso: "c-82cc2afc, 2026-10-31: A1/A2 leído «sin atraso» cuando A2 ya son días de mora",
+    poblacion: `select count(*) from analisis a join ultimo u on u.client_id = a.client_id
+      where u.sp->'comportamientoBancario'->>'peorCalificacionRiesgo' is not null`,
+    casos: `
+      select a.client_id, jsonb_build_object('marco', a.rules_version,
+             'peorCalificacion', u.sp->'comportamientoBancario'->>'peorCalificacionRiesgo') as detalle
+      from analisis a join ultimo u on u.client_id = a.client_id
+      where u.sp->'comportamientoBancario'->>'peorCalificacionRiesgo' ~ '^(A2|A3|B|C|D|E)'
+        and a.texto ~* '(sin|ning[uú]n|no (registra|presenta|tiene)) (atrasos?|moras?|morosidad)'`,
+  },
+  {
+    id: "frase-retirada-en-el-analisis",
+    capa: "modelo",
+    tipo: "regresion",
+    titulo: "Un análisis de marco-v32 o posterior usa una frase que el marco retiró",
+    caso: "c-79e1ac23, 2026-10-31: «nadie miró» en lugar de decir que no se pudo obtener la información",
+    poblacion: `select count(*) from analisis where substring(rules_version from 'marco-v(\\d+)')::int >= 32`,
+    casos: `
+      select client_id, jsonb_build_object('marco', rules_version) as detalle
+      from analisis
+      where substring(rules_version from 'marco-v(\\d+)')::int >= 32
+        and texto ~* '(nadie mir|asalariad|puntaje)'`,
+  },
+  {
+    id: "analisis-con-marco-sin-registrar",
+    capa: "modelo",
+    tipo: "regresion",
+    titulo: "Análisis con una versión del marco que no tiene su fila en scoring_rules_versions",
+    caso: "regla de supabase/CLAUDE.md: cada versión del marco lleva su fila",
+    poblacion: `select count(*) from analisis`,
+    casos: `
+      select client_id, jsonb_build_object('marco', rules_version) as detalle
+      from analisis a
+      where not exists (select 1 from scoring_rules_versions v where v.version = a.rules_version)`,
+  },
+  {
+    id: "score-fuera-de-rango",
+    capa: "modelo",
+    tipo: "regresion",
+    titulo: "Score fuera de 1 a 999",
+    caso: "el score de CrediScope va de 1 a 999",
+    poblacion: `select count(*) from analisis`,
+    casos: `
+      select client_id, jsonb_build_object('score', crediscope_score) as detalle
+      from analisis where crediscope_score not between 1 and 999`,
+  },
+];
+
+// Los controles que ya existen y miden otras partes de la cadena. La revisión
+// los nombra para no duplicarlos (habilidad, «Controles que ya existen»).
+export const CONTROLES_EXISTENTES = [
+  { guion: "scripts/validar-perfil-del-modelo.mjs", mide: "lo que lee el modelo (14 reglas, sin llamarlo)" },
+  { guion: "scripts/detectar-atipicos.mjs", mide: "lo que escribió el modelo contra lo que leyó y el crudo" },
+  { guion: "scripts/conciliar-equifax.mjs", mide: "Equifax contra sí mismo (detalle contra resumen)" },
+  { guion: "scripts/medir-solapamiento-equifax.mjs", mide: "bancos, cooperativas y comercial entre Equifax y Proveedor_Info_1, por sistema" },
+  { guion: "scripts/probar-paridad-variables-de-ingreso.mjs", mide: "las variables del predictor contra el extracto de AWS" },
+  { guion: "scripts/recalcular-grupos.mjs --seco", mide: "si el perfil guardado se reproduce desde el crudo" },
+];

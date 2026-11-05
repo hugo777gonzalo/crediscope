@@ -55,6 +55,14 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   2026-10-31. Va con `--seco`, `--desde`, `--una-por-persona` y `--sin-tablas`; las tablas se derivan al evaluar a la persona,
   y `cargar-tablas-equifax.mjs` sin filtro las derivaría todas (`docs/pendientes.md`, punto 12).
 
+## Revisión de datos
+
+- `scripts/revisar-datos.mjs` corre el catálogo de `scripts/revision-de-datos/detectores.mjs`
+  (habilidad `revision-de-datos`) en una sola consulta de sólo lectura y sale con 1 si vuelve un
+  error corregido. Un error de datos que se encontró a mano entra ahí como detector, con su caso.
+- Un detector que necesita una regla del código la importa del `.ts` (Node 24 lo lee), no la copia:
+  el primero copiaba 5 fuentes del freno que ya eran 21 y contaba 671 consultas incompletas en vez de 770.
+
 ## Predictor de ingresos
 
 - `scripts/predictor-ingresos/` es Python (entrenamiento, calibración, exportación y medición), no Node,
