@@ -327,10 +327,18 @@ export async function contarConsultasEquifaxDeHoy() {
 // Lo que se le pagó (o pudo pagársele) a Equifax, para Costos › Equifax: las
 // consultas guardadas (sólo la fecha y el ambiente, nunca la persona) y los
 // fallos que pudieron cobrarse. El cálculo, en costoEquifax.js.
+// Sin las migradas de AWS (`parametros.migrada_de`, migrar-equifax-aws.mjs): las
+// pagó otro y Equifax autorizó reutilizarlas. Contadas, octubre decía $1.455,60
+// por 3.639 consultas donde se pagaron 97 (QA del 2026-11-05).
 export async function getConsumoEquifax() {
   const [consultas, dudosas] = await Promise.all([
     traerTodas((opciones) =>
-      supabase.from("consultas_equifax").select("id, created_at, ambiente", opciones).order("created_at").order("id"),
+      supabase
+        .from("consultas_equifax")
+        .select("id, created_at, ambiente", opciones)
+        .is("parametros->migrada_de", null)
+        .order("created_at")
+        .order("id"),
     ),
     traerTodas((opciones) =>
       supabase

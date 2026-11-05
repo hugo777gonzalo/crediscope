@@ -4,12 +4,10 @@ import { ShieldCheck, FileClock, Wallet } from "lucide-react";
 // (marco-v15): nivel de riesgo e historial de pago. Son etiquetas, no
 // texto -- el porqué está en el resumen.
 //
-// El tercero del diseño, capacidad de pago, se muestra como pendiente a
-// propósito: es la cuota frente al ingreso reportado y no se puede calcular
-// sin el monto y el plazo del crédito pedido, que hoy no se registran (el
-// ingreso sí se conoce: es el de Fuentes de Ingreso). Se deja visible y
-// explicado en vez de ocultarlo, para que quede claro qué falta. El Expediente
-// dice lo mismo con las mismas palabras.
+// El tercero del diseño, capacidad de pago, se muestra «Sin calcular» a
+// propósito: el análisis no conoce el monto ni el plazo. Desde el 2026-10-17
+// se calcula en Capacidad de pago y en la solicitud, y la ayuda dice dónde
+// (hasta el 2026-11-05 decía que el monto y el plazo «no se registran»).
 
 const COLOR_RIESGO = {
   "muy bajo": "var(--good)",
@@ -75,7 +73,7 @@ export default function IndicadoresAnalisis({ riesgo, historial }) {
         etiqueta="Capacidad"
         valor="Sin calcular"
         color="var(--text-muted)"
-        titulo="Pendiente: la capacidad de pago es la cuota frente al ingreso reportado. Todavía no se puede calcular: faltan el monto y el plazo del crédito solicitado, que hoy no se registran."
+        titulo="Se calcula en Capacidad de pago o en una solicitud Pro o Plus, con el monto y el plazo del crédito pedido."
       />
     </div>
   );

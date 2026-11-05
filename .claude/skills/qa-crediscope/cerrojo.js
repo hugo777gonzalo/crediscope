@@ -37,6 +37,7 @@
   const frenadas = [];
   let pasaron = 0;
   let demoraMs = 0;
+  let demoraFrenadaMs = 3000;
 
   // La ruta de la app lleva la cédula (/perfil/:cedula): se tapa antes de anotarla.
   const tapar = (s) => String(s).replace(/\d{7,}/g, "#######");
@@ -66,6 +67,11 @@
     const motivo = motivoParaFrenar(url, metodo);
     if (motivo) {
       frenadas.push({ que: motivo, pantalla: tapar(location.pathname), ms: Math.round(performance.now()) });
+      // Contestar al instante falsea el doble clic: el error del primer envío
+      // libera el botón antes del segundo clic, y parecen tres envíos donde un
+      // servidor real (que tarda segundos) habría dejado el botón deshabilitado.
+      // Pasó en la primera corrida (2026-11-05, Nueva solicitud).
+      await new Promise((r) => setTimeout(r, demoraFrenadaMs));
       return new Response(JSON.stringify({ message: "Frenado por el cerrojo de QA", code: "QA_CERROJO" }), {
         status: 418,
         headers: { "content-type": "application/json" },
@@ -99,21 +105,29 @@
     // recarga que lo borró.
     async dobleClic(texto, { veces = 2, entreMs = 80 } = {}) {
       if (window.fetch === original) throw new Error("El cerrojo no está puesto");
-      const boton = [...document.querySelectorAll("button, a, [role=button]")]
-        .find((b) => b.textContent.trim().toLowerCase().includes(texto.toLowerCase()));
-      if (!boton) return { encontrado: false };
+      const coincide = (b) => b.textContent.trim().toLowerCase().includes(texto.toLowerCase());
+      const boton = [...document.querySelectorAll("button, [role=button]")].find(coincide);
+      if (!boton) {
+        // Un enlace no envía nada: navega, y una carga completa borra el cerrojo.
+        // «Volver a analizar» del Expediente es un enlace (2026-11-05).
+        const enlace = [...document.querySelectorAll("a")].find(coincide);
+        return enlace ? { encontrado: true, esEnlace: tapar(enlace.getAttribute("href")) } : { encontrado: false };
+      }
       frenadas.length = 0;
       for (let i = 0; i < veces; i++) {
         boton.click();
         await new Promise((r) => setTimeout(r, entreMs));
       }
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, demoraFrenadaMs + 500));
       return { encontrado: true, deshabilitado: boton.disabled === true, frenadas: frenadas.map((f) => f.que), repetidas: this.repetidas() };
     },
     // Comprueba que frena de verdad: una escritura a una tabla que no existe.
     async probar() {
+      const antes = demoraFrenadaMs;
+      demoraFrenadaMs = 0;
       const r = await window.fetch(new URL("/rest/v1/qa_cerrojo_prueba", location.href), { method: "POST" });
       frenadas.length = 0;
+      demoraFrenadaMs = antes;
       return r.status === 418 ? "frena" : `NO FRENA (${r.status})`;
     },
     quitar() {

@@ -436,6 +436,23 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
+19. **Lo que la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`) dejó para decidir.**
+    Lo seguro se arregló en el PR de la habilidad. Queda:
+    - **Equifax con la consulta migrada de AWS** (la sesión de Equifax): 3.533 de las 3.542 migradas
+      no tienen tablas, y la pestaña Equifax de esas personas dice «no tiene consulta» y ofrece
+      «Consultar a Equifax», que se cobraría otra vez. Medir antes si el botón reutiliza el crudo
+      migrado. La auditoría del expediente sí muestra «Consulta a Equifax», y la línea de tiempo no.
+    - **Menú:** el Simulador está dentro de «Evaluación Crediticia», plegado, y el apurado no lo
+      encontró; en el teléfono el menú es una fila de íconos sin texto y las pestañas miden 31 px.
+    - **Nueva solicitud trae la cédula de la última persona vista**: cómodo desde el expediente, pero
+      quien entra por el menú puede evaluar a la persona anterior sin darse cuenta.
+    - **La bandeja abre con una consulta incompleta arriba** (orden «Más reciente»): lo primero que
+      ve un analista nuevo es un expediente vacío.
+    - **Textos menores:** el Simulador explica conceptos de crédito («La efectiva es lo que cuesta el
+      interés en un año...», «sistema francés»), contra la regla del 2026-10-20; «1,000.50» se rechaza
+      sin decir que el decimal va con coma; un monto negativo dice «mayor que cero» cuando el mínimo es
+      1.000; a los emojis el Inicio los llama «pasaporte»; `/solicitud/no-existe` y una solicitud que no
+      existe dan dos mensajes distintos.
 
 ## 3. Espera a terceros
 

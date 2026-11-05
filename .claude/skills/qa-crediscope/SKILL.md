@@ -154,6 +154,22 @@ La lista va al usuario en el chat, sin cédulas ni montos de personas.
    «no se pudo ver» (y por qué). Lo que sigue vuelve al paso 1 o se dice.
 3. Nada se fusiona sin el sí del usuario (`feedback-cierre-de-sesion`).
 
+## Lo que enseñó la primera corrida (2026-11-05)
+
+- **Un doble clic «que manda tres» puede ser del cerrojo.** Si contesta al instante, el
+  error del primer envío libera el botón antes del segundo clic. Por eso el cerrojo
+  tarda 3 s en contestar lo que frena, como un servidor real. Un hallazgo de doble
+  envío se confirma con esa demora antes de anotarlo.
+- **Un enlace no se aprieta con `dobleClic()`**: navega, la carga completa borra el
+  cerrojo y lo que siga queda sin protección. Ahora `dobleClic()` sólo aprieta botones
+  y de un enlace devuelve adónde lleva. Después de cualquier navegación, comprobar
+  `performance.getEntriesByType('resource')` por `/functions/v1/` antes de seguir.
+- **Una cifra del escéptico se verifica contra la base** antes de anotarla (consulta de
+  sólo lectura, `CLAUDE.md`): así salió que Costos contaba las consultas migradas de AWS.
+- **Las decisiones del negocio se miran antes de proponer**: «Revisión» en la tarjeta
+  del modelo junto a «Revisar» en el sello parecía un defecto y es a propósito
+  (`terminologia.md`).
+
 ## Al terminar
 
 Decir qué perfiles corrieron y a qué ancho; cuántos hallazgos, cuántos se
