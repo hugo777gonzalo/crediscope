@@ -814,6 +814,16 @@ interface StandardClientProfile {
 >   antes). Sin el recálculo el campo no llega y el análisis sigue como hasta ahora
 >   para esa persona. No se muestra en pantalla: el nombre lo decide el negocio.
 
+> **estructura-v18 (2026-11-04, decisión del negocio)** — el campo pasa a
+> `rucDepuradoPorElSri` (`ruc.ts`): `true` si el RUC de referencia trae
+> «DEPURACION» en `observ_solicitud_suspension`, con la actividad que sea;
+> `false` si no; `null` sin RUC. La baja la decide el SRI, no la persona, y la v17
+> dejaba afuera a 152 de las 169 depuradas (77 con «SIN ACTIVIDAD ECONOMICA»). Lo
+> lee marco-v34 (y v35, con el buró).
+> - **Se despliega primero y se recalcula después**
+>   (`recalcular-grupos.mjs --grupos=laboral`, `--seco` antes). Un perfil en v17
+>   trae el nombre viejo, que el marco nuevo no explica.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |

@@ -33,9 +33,10 @@ su guía: `docs/equifax.md`.
     de esa misma persona se reutiliza en vez de volver a preguntar (E1).
   - La huella no cuenta `cache_control` ni `max_tokens`.
   - `puntuarPedido()` llama al modelo con un pedido ya armado.
-  `MARCO_VERSION` (marco-v32) entra con el despliegue, sin interruptor;
-  `MARCO_VERSION_CON_BURO` (marco-v33, v32 más el buró) la enciende
-  `CONFIG_LLM.buroDeLaInstitucion`, y es lo único que ese interruptor enciende.
+  `MARCO_VERSION` (marco-v34) es el texto sin buró; `MARCO_VERSION_CON_BURO`
+  (marco-v35, v34 más el buró) la enciende `CONFIG_LLM.buroDeLaInstitucion`,
+  encendido desde el 2026-11-04, y es lo único que ese interruptor enciende.
+  Encendido, todo análisis es v35, tenga o no la persona una consulta vigente.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
   de temas que el perfil no trae (toma el número de versión libre al
   encenderse; la v29 fue E27). Corta el marco vigente por marcas,
@@ -346,13 +347,12 @@ su guía: `docs/equifax.md`.
 - "Es su propio patrono": sólo `_shared/patrono.ts` (RUC = cédula +
   001/002/003; el nombre sólo sin RUC). El dueño en su propia nómina no
   lo hace empleador.
-- Un RUC dado de baja por depuración del SRI con actividad en relación de
-  dependencia es neutro (negocio, 2026-10-31):
-  `rucDepuradoEnRelacionDeDependencia()` (`ruc.ts`, estructura-v17). El motivo
-  viene sólo en `observ_solicitud_suspension` y la actividad en
-  `establecimientoActEconomica`: de 1.276 personas con cese, 169 depuradas y 17
-  con esa actividad. Una regla sobre un dato que el perfil no guarda no se
-  resuelve con el marco: lleva estructura y recálculo.
+- Un RUC dado de baja por depuración del SRI es neutro, sea cual sea la
+  actividad (negocio, 2026-11-04): `rucDepuradoPorElSri()` (`ruc.ts`,
+  estructura-v18; la v17 exigía la actividad en relación de dependencia y
+  alcanzaba a 17 de las 169 depuradas). El motivo viene sólo en
+  `observ_solicitud_suspension`. Una regla sobre un dato que el perfil no guarda
+  no se resuelve con el marco: lleva estructura y recálculo.
 - "RUC activo": sólo `_shared/ruc.ts` (cuenta el cese temporal, exige un
   establecimiento abierto). Proveedor_Info_1 manda el estado "ABIERTO" o "ABI":
   `establecimientoAbierto()` es la única comparación (estructura-v13).

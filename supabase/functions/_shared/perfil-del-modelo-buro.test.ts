@@ -1,8 +1,8 @@
-// El buró de la institución en el perfil del modelo (marco-v33, apagado):
-// un tema, una fuente. Dos promesas, y si cualquiera falla el modelo lee
-// otra cosa que la decidida:
-// - una persona SIN buró da el perfil de marco-v32 byte a byte, y con el
-//   interruptor apagado el pedido es el de v32 aunque llegue un buró;
+// El buró de la institución en el perfil del modelo (marco-v35, encendido el
+// 2026-11-04): un tema, una fuente. Dos promesas, y si cualquiera falla el
+// modelo lee otra cosa que la decidida:
+// - una persona SIN buró da el perfil de marco-v34 byte a byte, y con el
+//   interruptor apagado el pedido es el de v34 aunque llegue un buró;
 // - con buró, la deuda de bancos y cooperativas sale de Equifax y la de
 //   Proveedor_Info_1 no llega, ni en null.
 // Datos inventados (perfil-de-prueba.ts y equifax-respuesta-de-prueba.ts): el
@@ -39,11 +39,12 @@ const buro = (): BuroDeLaInstitucion => ({
 const conBuro = (p = perfilDePrueba()) => armarPerfilDelModelo(p, new Set(), buro()) as any;
 const sinBloqueo = { bloqueado: false, hallazgos: [] };
 const ENCENDIDO = { ...CONFIG_LLM, buroDeLaInstitucion: true };
+const APAGADO = { ...CONFIG_LLM, buroDeLaInstitucion: false };
 const sistema = (pedido: Record<string, unknown>) => (pedido.system as Array<{ text: string }>)[0].text;
 
 // ---- sin buró: lo de hoy, byte a byte ----
 
-Deno.test("sin buró, el perfil del modelo es el de marco-v32, byte a byte", async () => {
+Deno.test("sin buró, el perfil del modelo es el de marco-v34, byte a byte", async () => {
   const esperado = await Deno.readTextFile(new URL("./perfil-del-modelo-sin-buro.esperado.json", import.meta.url));
   const comoSeGuardo = (pm: unknown) => JSON.stringify(pm, null, 2) + "\n";
   assertEquals(comoSeGuardo(armarPerfilDelModelo(perfilDePrueba())), esperado.replace(/\r\n/g, "\n"));
@@ -51,11 +52,15 @@ Deno.test("sin buró, el perfil del modelo es el de marco-v32, byte a byte", asy
   assertEquals(comoSeGuardo(mensajeParaElModelo(perfilDePrueba(), [], new Set(), null).perfilDelModelo), esperado.replace(/\r\n/g, "\n"));
 });
 
-Deno.test("con el interruptor apagado, el pedido es el de v32 aunque llegue un buró", async () => {
-  assertEquals(CONFIG_LLM.buroDeLaInstitucion, false);
-  assertEquals(versionDelMarco(CONFIG_LLM), "marco-v32");
-  const hoy = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set());
-  const conUnBuro = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), CONFIG_LLM, buro());
+Deno.test("el interruptor está encendido (negocio, 2026-11-04): todo análisis nuevo es marco-v35", () => {
+  assertEquals(CONFIG_LLM.buroDeLaInstitucion, true);
+  assertEquals(versionDelMarco(CONFIG_LLM), "marco-v35");
+});
+
+Deno.test("con el interruptor apagado, el pedido es el de v34 aunque llegue un buró", async () => {
+  assertEquals(versionDelMarco(APAGADO), "marco-v34");
+  const hoy = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), APAGADO);
+  const conUnBuro = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), APAGADO, buro());
   assertEquals(conUnBuro, hoy);
   assertEquals(await huellaDelPedido(conUnBuro), await huellaDelPedido(hoy));
   assertEquals(sistema(hoy), MARCO_INTERPRETATIVO);
@@ -234,12 +239,13 @@ Deno.test("A2 es atraso, y la calificación no se traduce a días", () => {
 Deno.test("el empleador vigente en null y el RUC depurado están explicados en los dos textos", () => {
   for (const texto of LOS_DOS_TEXTOS) {
     assert(texto.includes("empleadorVigenteSituacionLegal"));
-    assert(texto.includes("rucDepuradoEnRelacionDeDependencia=true"));
+    assert(texto.includes("rucDepuradoPorElSri=true"));
+    assertEquals(texto.includes("relación de dependencia, no un negocio"), false);
   }
 });
 
-Deno.test("encendido: v33, con la sección del buró sólo para quien lo tiene", () => {
-  assertEquals(versionDelMarco(ENCENDIDO), "marco-v33");
+Deno.test("encendido: v35, con la sección del buró sólo para quien lo tiene", () => {
+  assertEquals(versionDelMarco(ENCENDIDO), "marco-v35");
   const con = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, buro());
   const sin = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, null);
   assertEquals(sistema(con), marcoConElBuro(true));
