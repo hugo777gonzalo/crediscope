@@ -151,7 +151,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
    primera base atrasada. Importa: hoy hay una sola base y es requisito del primer cliente
    externo (`docs/plan-segundo-cliente.md`). Lo hace Claude; se verifica armando una base vacía
    con el corredor y con el control en ok contra ella. Desde el 2026-10-30 Supabase no da acceso a
-   la Data API a las tablas nuevas de `public`: la 145 fija los privilegios por defecto para lo
+   la Data API a las tablas nuevas de `public`: la 146 fija los privilegios por defecto para lo
    que se cree después, pero las tablas de la 001 a la 144 no los traen en una base armada desde
    cero. La línea base tiene que darles `authenticated` y `service_role` (no `anon`, 113) y
    respetar las restricciones puntuales, como las de la 141.

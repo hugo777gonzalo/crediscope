@@ -249,7 +249,7 @@ su guía: `docs/equifax.md`.
 
 **Base y procesos**
 - **Una tabla nueva de `public` ya no trae permisos de la plataforma** (desde el
-  2026-10-30). La 145 deja `select, insert, update, delete` a `authenticated` y
+  2026-10-30). La 146 deja `select, insert, update, delete` a `authenticated` y
   `service_role` por defecto (nunca `anon`); la RLS sigue siendo el control. Una tabla más
   estricta revoca lo que sobra justo después de crearse (141).
 - **Una agenda nueva lee la clave de Vault**
