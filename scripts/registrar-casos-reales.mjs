@@ -24,6 +24,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { comandoDeConsulta } from "./_comun/consulta-sql.mjs";
 
 const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "..");
 const SALIDA = path.join(RAIZ, "research", "casos-reales");
@@ -78,7 +79,7 @@ fs.writeFileSync(
 );
 let clientes = [];
 try {
-  const salida = execSync(`npx --yes supabase@latest db query --linked --file "${archivoSql}" -o json`, {
+  const salida = execSync(comandoDeConsulta(archivoSql), {
     cwd: RAIZ,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],

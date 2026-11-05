@@ -11,6 +11,9 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   ya tenía ese commit de la corrida anterior, está bien.
 - Desde un worktree, los guiones leen `.env.functions` y escriben en
   `research/` de la carpeta principal (`scripts/_comun/entorno.mjs`).
+  `auditar-seguridad.mjs` no: lee `.env` del directorio donde se corre, así que va desde la carpeta principal.
+- `db query` se arma sólo con `scripts/_comun/consulta-sql.mjs` (CLI 3, 2026-11-04): las lecturas van
+  con `--read-only`, y lo que escribe corta antes de empezar sin `SUPABASE_YES` exportada en ese shell.
 
 ## Crudo y recálculo
 
