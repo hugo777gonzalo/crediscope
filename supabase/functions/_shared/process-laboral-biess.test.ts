@@ -113,6 +113,29 @@ Deno.test("sin empleo actual no hay cargo vigente", () => {
   assertEquals(l.empleadorVigenteSituacionLegal, null);
 });
 
+// estructura-v19: el mecanizado y los aportes terminan un mes antes del corte.
+// Con los tres meses de tolerancia solos, seguía con empleo actual y cargo.
+Deno.test("quien dejó de aportar antes del corte del IESS no tiene empleo actual ni cargo vigente", () => {
+  const mesAnterior = new Date(Date.UTC(ahora.getFullYear(), ahora.getMonth() - 1, 1));
+  const anterior = `${mesAnterior.getUTCFullYear()}-${String(mesAnterior.getUTCMonth() + 1).padStart(2, "0")}`;
+  const raw = {
+    general: { status: "ok", data: { personaNatural: { nombre: "ZZPRUEBA ZZINVENTADA ANA" } } },
+    trabajoHistoricosMecanizado: fuente({
+      mecanizadoEmpleados: [registroDelMecanizado(RUC_NUEVA, "EMPRESA NUEVA S.A.", 900, "GUARDIA", anterior)],
+    }),
+    basesInternas: fuente({
+      tiess: [aporte(RUC_NUEVA, "EMPRESA NUEVA S.A.", 900, mesAnterior.getUTCFullYear(), mesAnterior.getUTCMonth() + 1)],
+    }),
+  } as unknown as RespuestaProveedorInfo1;
+  const perfil = buildStandardProfile(raw, CEDULA, MES_ACTUAL).profile;
+  assertEquals(perfil.fuentesIngreso.apareceEnUltimoCorte, false);
+  assertEquals(perfil.laboral.empleosActuales, []);
+  assertEquals(perfil.laboral.cargoVigente, null);
+  // El mismo mes en el corte sí es empleo actual.
+  const enElCorte = buildStandardProfile(raw, CEDULA, anterior).profile;
+  assertEquals(enElCorte.laboral.cargoVigente, "GUARDIA");
+});
+
 Deno.test("los datos del empleador salen del historial sólo si es el de un empleo actual, por RUC", () => {
   const l = perfilDe({
     ...FUENTES_LABORALES,

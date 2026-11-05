@@ -58,7 +58,14 @@ Cómo leer la salida, en este orden:
 Después correr los controles que miden lo que este guion no repite (`--listar` los
 nombra): `validar-perfil-del-modelo.mjs` sobre lo que lee el modelo,
 `medir-solapamiento-equifax.mjs` sobre bancos y cooperativas por sistema, y
-`conciliar-equifax.mjs` sobre Equifax contra sí mismo.
+`conciliar-equifax.mjs` sobre Equifax contra sí mismo. Mientras
+`estimaciones_de_ingreso` esté vacía, el predictor se mide con
+`estimar-ingresos-en-lote.mjs`: corre el estimador sobre el último perfil de cada persona
+sin guardar nada.
+
+Después de un cambio en `process.ts`, `perfil-con-estructura-atrasada` marca a todos
+hasta el recálculo, y la regresión que el cambio corrige sigue marcada hasta entonces.
+Es lo esperado: se vuelve a correr después de recalcular.
 
 ## Modo 2: un dato raro de un caso
 

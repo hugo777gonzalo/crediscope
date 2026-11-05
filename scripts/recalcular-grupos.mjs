@@ -130,6 +130,8 @@ const mesMenos = (m) => { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(
 
 const escrituras = [];
 const noReproducen = [];
+let conCambios = 0;
+const camposQueCambian = {};
 let yaEnVersion = 0;
 for (let i = 0; i < candidatos.length; i += 50) {
   const lote = candidatos.slice(i, i + 50);
@@ -154,6 +156,14 @@ for (let i = 0; i < candidatos.length; i += 50) {
     if (otras.length) { noReproducen.push(`p-${perfilId.slice(0, 8)}: ${otras.slice(0, 3).join(", ")}`); continue; }
     const perfil = { ...guardado };
     for (const g of GRUPOS) perfil[g] = nuevo[g];
+    // Qué cambia de verdad dentro de los grupos: «a escribir» cuenta también a
+    // quien sólo sube de versión (3.766 de 3.766 en el seco de estructura-v19,
+    // que cambiaba el empleo actual de unas decenas).
+    const cambiadas = GRUPOS.flatMap((g) => rutasDistintas(guardado[g], nuevo[g], `.${g}`));
+    if (cambiadas.length) {
+      conCambios++;
+      for (const r of new Set(cambiadas.map((x) => x.split(".").slice(0, 3).join(".")))) camposQueCambian[r] = (camposQueCambian[r] ?? 0) + 1;
+    }
     const escritura = { id: perfilId, standard_profile: perfil };
     if (BLOQUEO) {
       const anterior = fila.control_bloqueo;
@@ -173,6 +183,8 @@ for (let i = 0; i < candidatos.length; i += 50) {
 }
 console.log(`candidatos: ${candidatos.length} (carpeta ${deDonde.enLaCarpeta}, depósito ${deDonde.delDeposito}, sin crudo ${deDonde.sinCrudo}) | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
 if (noReproducen.length) console.log("no reproducen (no se tocan):", noReproducen.slice(0, 10));
+console.log(`cambia algo de ${GRUPOS.join(", ")} en ${conCambios}; el resto sólo sube de versión.`);
+for (const [campo, n] of Object.entries(camposQueCambian).sort((a, b) => b[1] - a[1])) console.log(`  ${campo}: ${n}`);
 if (BLOQUEO) {
   console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);
   // Las cédulas quedan en un archivo local (research/ está fuera del

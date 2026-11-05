@@ -232,6 +232,24 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## 2. Espera una decisión del negocio
 
+00. **Lo que dejó la primera revisión de datos (habilidad `revision-de-datos`, 2026-11-05).**
+   - **estructura-v19** (pedido del negocio, «cargo vigente: solucionalo»). El empleo actual del
+     mecanizado exige el corte del IESS de los ingresos, y el perfil laboral cambia en 20 personas.
+     Falta, con su sí, fusionar el PR, desplegar las funciones y aplicar
+     `recalcular-grupos.mjs --grupos=laboral` (el seco ya está hecho).
+   - **Rehacer los análisis que dicen «sin atraso» con A2 o peor** (el negocio lo autorizó, falta el
+     sí con la cifra). Son 85, todos de marco-v30 o anterior; 84 se pueden analizar y 1 tiene la
+     consulta incompleta. En lote, a unos USD 0,034 por análisis a precio de lista, son unos USD 2,85
+     de lista o USD 1,45 con la tarifa del lote. Conviene después de v19, para que lean el perfil
+     corregido.
+   - **El predictor sobre consultas incompletas.** `estimar-ingresos-en-lote.mjs`, sin guardar, muestra
+     que 624 de las 2.061 estimaciones de la cartera serían de consultas con una obligatoria sin
+     respuesta, 552 sin edad ni sexo. `estimar-ingreso` no aplica el freno que sí aplica el modelo.
+     Decidir si lo aplica.
+   - **Dos RUC con la suspensión distinta entre Equifax y Proveedor_Info_1** (c-0be1e991, c-74997fb7):
+     Equifax dice ACTIVO con una fecha de suspensión definitiva y Proveedor_Info_1 dice cancelado en
+     otra fecha. El negocio los revisa en el SRI.
+
 0. **marco-v35 (PR 113 y 129).** Las correcciones de la revisión de casos del 2026-10-31 (v32), el
    RUC depurado neutro para todas las depuradas y el buró de la institución encendido (negocio,
    2026-11-04). Aplicado el 2026-11-05: la 147, las funciones en `cc88fd66866f` y los 3.766 perfiles

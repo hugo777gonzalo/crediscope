@@ -168,15 +168,22 @@ export const DETECTORES = [
   {
     id: "cargo-vigente-sin-aporte-vigente",
     capa: "estructura",
-    tipo: "confirmar",
-    titulo: "Cargo vigente de Proveedor_Info_1 sin ningún aporte de un empleador vigente en el IESS",
-    caso: "c-5ee429cc, 2026-10-31: una pasantía de 2019 con salida 1900-01-01 se leía como cargo vigente",
-    poblacion: `select count(*) from ultimo where sp->'laboral'->>'cargoVigente' is not null`,
+    // Corregido en estructura-v19 (2026-11-05): de los 23 de la primera corrida,
+    // 17 habían dejado de aportar un corte antes y el mecanizado los daba con
+    // empleo actual. Los otros 6 tenían basesInternas en error: el cargo era
+    // cierto y la consulta, incompleta. Sólo cuentan las consultas en que los
+    // aportes contestaron.
+    tipo: "regresion",
+    titulo: "Cargo vigente sin ningún aporte de un empleador vigente al corte, con los aportes del IESS contestados",
+    caso: "c-5ee429cc, 2026-10-31 (pasantía de 2019 leída como cargo vigente); c-d4625b8b, 2026-11-05 (dejó de aportar un corte antes)",
+    poblacion: `select count(*) from ultimo where sp->'laboral'->>'cargoVigente' is not null
+      and estado_por_fuente->>'basesInternas' in ('ok', 'ok_vacio')`,
     casos: `
       select client_id, jsonb_build_object('cargo', sp->'laboral'->>'cargoVigente',
              'antiguedadEmpleadorAnios', sp->'laboral'->'empleadorVigenteAntiguedadAnios') as detalle
       from ultimo
       where sp->'laboral'->>'cargoVigente' is not null
+        and estado_por_fuente->>'basesInternas' in ('ok', 'ok_vacio')
         and not jsonb_path_exists(coalesce(sp->'fuentesIngreso'->'fuentes', '[]'),
                                   '$[*] ? (@.vigenteAlCorte == true && @.empleador != null)')`,
   },
@@ -224,21 +231,37 @@ export const DETECTORES = [
   },
 
   // ── 4. Predictor de ingresos ─────────────────────────────────────────────
+  // La primera versión comparaba la estimación con el ingreso reportado al IESS,
+  // pero el predictor estima sólo a quien no lo tiene verificado (decidirEstimacion):
+  // esa población iba a estar siempre vacía. Mientras estimaciones_de_ingreso esté
+  // vacía, el predictor se mide sin guardar con scripts/estimar-ingresos-en-lote.mjs.
   {
-    id: "estimacion-lejos-del-reportado",
+    id: "estimacion-sobre-consulta-incompleta",
     capa: "predictor",
-    tipo: "confirmar",
-    titulo: "Estimación del predictor a más del doble o menos de la mitad del ingreso reportado al IESS",
-    caso: "especificación del predictor, 7: medir contra el reportado donde los dos existen",
-    poblacion: `select count(*) from estimaciones_de_ingreso e join ultimo u on u.client_id = e.client_id
-      where (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric > 0`,
+    tipo: "revisar",
+    titulo: "Estimación hecha sobre una consulta con una fuente obligatoria sin respuesta",
+    caso: "estimar-ingresos-en-lote.mjs, 2026-11-05: 624 de 2.061 estimaciones de la cartera serían de consultas incompletas, 552 sin edad ni sexo",
+    poblacion: `select count(*) from estimaciones_de_ingreso`,
     casos: `
       select e.client_id, jsonb_build_object('estimado', e.valor_central, 'minimo90', e.minimo_90,
-             'reportadoIess', u.sp->'fuentesIngreso'->'pisoIngresoMensualReportado', 'nivel', e.nivel) as detalle
-      from estimaciones_de_ingreso e join ultimo u on u.client_id = e.client_id
-      where (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric > 0
-        and (e.valor_central > 2 * (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric
-             or e.valor_central < 0.5 * (u.sp->'fuentesIngreso'->>'pisoIngresoMensualReportado')::numeric)`,
+             'caidas', ${clavesCaidas("p.estado_por_fuente")}) as detalle
+      from estimaciones_de_ingreso e join client_profiles p on p.id = e.client_profile_id
+      where ${algunaClaveCaida("p.estado_por_fuente")}`,
+  },
+  {
+    id: "estimacion-lejos-de-equifax",
+    capa: "predictor",
+    tipo: "confirmar",
+    titulo: "Estimación del predictor a más del doble o menos de la mitad del ingreso que estima Equifax",
+    caso: "estimar-ingresos-en-lote.mjs, 2026-11-05: en 52 personas con las dos, razón mediana 0,74; 7 más del doble y 14 menos de la mitad",
+    poblacion: `select count(*) from estimaciones_de_ingreso e join equifax q on q.client_id = e.client_id
+      join equifax_resumen s on s.consulta_equifax_id = q.consulta_id where s.ingreso_estimado_usd > 0`,
+    casos: `
+      select e.client_id, jsonb_build_object('estimado', e.valor_central, 'equifax', s.ingreso_estimado_usd) as detalle
+      from estimaciones_de_ingreso e join equifax q on q.client_id = e.client_id
+      join equifax_resumen s on s.consulta_equifax_id = q.consulta_id
+      where s.ingreso_estimado_usd > 0
+        and (e.valor_central > 2 * s.ingreso_estimado_usd or e.valor_central < 0.5 * s.ingreso_estimado_usd)`,
   },
 
   // ── 5. Cruce entre Proveedor_Info_1 y Equifax ────────────────────────────
@@ -364,5 +387,6 @@ export const CONTROLES_EXISTENTES = [
   { guion: "scripts/conciliar-equifax.mjs", mide: "Equifax contra sí mismo (detalle contra resumen)" },
   { guion: "scripts/medir-solapamiento-equifax.mjs", mide: "bancos, cooperativas y comercial entre Equifax y Proveedor_Info_1, por sistema" },
   { guion: "scripts/probar-paridad-variables-de-ingreso.mjs", mide: "las variables del predictor contra el extracto de AWS" },
+  { guion: "scripts/estimar-ingresos-en-lote.mjs", mide: "el predictor sobre toda la cartera, sin guardar (mientras no haya estimaciones)" },
   { guion: "scripts/recalcular-grupos.mjs --seco", mide: "si el perfil guardado se reproduce desde el crudo" },
 ];

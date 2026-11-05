@@ -470,7 +470,10 @@ function fechaDeCorte(v: unknown): string | null {
 // estructura-v18 (2026-11-04, decisión del negocio): el campo pasa a
 // rucDepuradoPorElSri, cierto para toda baja por depuración (169 personas, no
 // 17): la actividad del establecimiento ya no cuenta.
-export const PROCESS_VERSION = "estructura-v18"; // ver docs/estructura-estandarizada.md
+// estructura-v19 (2026-11-05, pedido del negocio): el empleo actual del
+// mecanizado exige que su mes no sea anterior al corte del IESS de las
+// fuentes de ingreso, la misma vigencia que ya tenían los aportes.
+export const PROCESS_VERSION = "estructura-v19"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -668,7 +671,17 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   const mecanizado = arr(fuentes, "trabajoHistoricosMecanizado", "mecanizadoEmpleados");
   const mecanizadoOrdenado = [...mecanizado].sort((a, b) => baseDateTs(b) - baseDateTs(a));
   const ultimoMecanizado = (mecanizadoOrdenado[0] as AnyRecord | undefined) ?? null;
-  const empleoActualConfiable = Boolean(ultimoMecanizado) && dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null);
+  // Desde estructura-v19 (2026-11-05), además, el mes del mecanizado no puede
+  // ser anterior al corte del IESS con que fuentes-ingreso.ts decide si la
+  // persona sigue aportando. Con los tres meses solos, quien dejó de aportar un
+  // corte antes seguía con «empleo actual» y cargo vigente mientras sus
+  // ingresos decían «no aparece en el corte»: 17 personas de la cartera
+  // (detector cargo-vigente-sin-aporte-vigente, scripts/revisar-datos.mjs), con
+  // el mecanizado y los aportes de acuerdo en el último mes.
+  const empleoActualConfiable =
+    Boolean(ultimoMecanizado) &&
+    dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null) &&
+    String(ultimoMecanizado?.baseDate ?? "") >= fuentesIngreso.corteIessUsado;
 
   // TODOS los empleos del último corte, no solo el primero.
   //

@@ -335,7 +335,10 @@ su guía: `docs/equifax.md`.
   consulta de 90 días, 3,5 s antes de cada consulta. Si cambia la
   condición, cambia el índice.
 - Empleo actual e ingresos leen el mismo registro: el empleo cae a los
-  aportes cuando el mecanizado no trae nada.
+  aportes cuando el mecanizado no trae nada. Y miden la vigencia con el mismo
+  corte (estructura-v19): un mecanizado anterior a `corteIessUsado` no es empleo
+  actual, aunque tenga menos de tres meses (20 personas con cargo o empleo
+  vigente habían dejado de aportar).
 - Meses que Proveedor_Info_1 no publicó para nadie (2018-02, 2019-09..11,
   2020-01..03, 05, 06, 08, 11) no cortan la continuidad. La antigüedad
   sale de `fecIng`, no del primer aporte (`continuidadLaboral`).

@@ -40,6 +40,9 @@ Vive en `client_profiles.standard_profile` y `structure_version`, y la arma
 Lo que ya salió de esta capa:
 - **Una fecha centinela leída como dato.** Una pasantía de 2019 con salida `1900-01-01`
   quedaba como cargo vigente (c-5ee429cc). Detector: `cargo-vigente-sin-aporte-vigente`.
+- **Dos reglas de vigencia para el mismo dato.** El mecanizado aceptaba un empleo de
+  hasta tres meses y los ingresos exigían el corte: 17 personas que dejaron de aportar
+  seguían con cargo vigente (c-d4625b8b, corregido en v19). El mismo detector.
 - **Una marca que contradice a su conteo.** 9 préstamos del BIESS con
   `tieneCreditoIessBiess=false` (c-82cc2afc, corregido en v16). Detector:
   `prestamos-biess-sin-marcar`.
