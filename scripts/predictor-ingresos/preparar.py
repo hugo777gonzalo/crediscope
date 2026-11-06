@@ -17,20 +17,27 @@ sys.path.insert(0, str(Path(__file__).parent))
 import comun as c
 
 
+# La extracción de AWS escribe lo recuperado del IESS con el nombre anterior del proveedor, y el renombre del 2026-10-31 (#111) lo cambió también acá:
+# desde entonces nada se leía como verificado y `preparar` armaba 57.340 independientes en vez de 57.061 (lo vio la fase 4, 2026-11-06). El dato de AWS no
+# cambia de nombre; el nombre anterior va partido para que no vuelva al repositorio (como en `scripts/_comun/crudo-del-ultimo-perfil.mjs`).
+CATEGORIA_RECUPERADO = "NOVA" + "DATA"
+
+
 def leer(nombre, texto=False):
     # `ignore_errors` y `sample_size=-1` son los de los guiones viejos: las extracciones traen filas con texto donde va un número.
     return f"read_csv('{(c.ENTRADAS / nombre).as_posix()}.csv', header=true, ignore_errors=true, sample_size=-1{', all_varchar=true' if texto else ''})"
 
 
-def main():
-    t0 = time.time()
-    con = duckdb.connect()
-    embudo = {}
+def armar_consultas(con, solo_con_ingreso_validado=True, antes_de=None, embudo=None):
+    """Las consultas de titulares con su solicitud, una por persona (la más reciente), con las variables de los dos niveles y el SRI.
+    `preparar` la usa con `solo_con_ingreso_validado` (la tabla con que se entrena); `destilacion.py`, sin él y con `antes_de`, para el alumno del
+    predictor de Equifax y las consultas sin ingreso validado (fase 4). Devuelve la identificación: quien la llama la usa en memoria y no la escribe."""
+    embudo = {} if embudo is None else embudo
 
     # 1) Flujos de ingreso del titular. Lo recuperado de Proveedor_Info_1 (el salario del IESS) es lo verificado; el resto, lo no verificado.
     flujos = con.execute(f"""select id_persona_requerimiento,
         sum(case when estado and ingreso>0 then ingreso else 0 end) tot_f,
-        sum(case when estado and ingreso>0 and upper(observacion_categoria) like 'RECUPERADO PROVEEDOR_INFO_1%' then ingreso else 0 end) ver_f,
+        sum(case when estado and ingreso>0 and upper(observacion_categoria) like 'RECUPERADO {CATEGORIA_RECUPERADO}%' then ingreso else 0 end) ver_f,
         max(case when estado and upper(observacion_categoria) like '%PREDICTOR%' then 1 else 0 end) f_pred,
         sum(case when estado then coalesce(monto_banco_principal,0)+coalesce(monto_banco_secundaria,0) else 0 end) m_banco,
         sum(case when estado then coalesce(monto_iva,0)+coalesce(monto_iva_semestral,0) else 0 end) m_iva
@@ -60,15 +67,17 @@ def main():
     # 4) Consultas de titulares con su solicitud. Del extracto del predictor de Equifax solo se leen las columnas de entrada y las de medir
     #    (la respuesta comercial); `income_predictor_equifax` no se lee: es solo contraste.
     a = con.execute(f"""select id_consulta_equifax, identificacion, id_persona_requerimiento, try_cast(fecha_consulta_equifax as timestamp) t,
-        respuesta_comercial med_resp, relacion_dependencia rel,
+        respuesta_comercial med_resp, relacion_dependencia rel, try_cast(ingreso_validado_total as double) med_ivt,
         edad_a_la_consulta edad, genero, estado_civil, provincia_trabajo prov_trab, canton_trabajo cant_trab, provincia_domicilio prov_dom, canton_domicilio cant_dom,
         iess_salario_total_ultimo_mes aporte, iess_meses_con_aporte meses_aporte, iess_numero_empleos n_empleos,
         saldo_total_reportado saldo, n_operaciones_reportadas n_oper, max_dias_vencido max_mora,
         credito_mayor_aprobado_monto cred_mayor, try_cast(credito_mayor_aprobado_fecha as timestamp) cred_fecha, credito_mayor_12m_monto cred_12m, credito_mayor_24m_monto cred_24m,
         deuda_total_adeudada deuda_total, n_instituciones_con_deuda n_inst, n_creditos_aprobados n_creditos, valor_creditos_aprobados valor_creditos,
         valor_saldos_vigentes saldos_vig, deuda_actual_total deuda_actual, deuda_hace_3_meses deuda_3m
-        from {leer('predictor_equifax_por_consulta')} where tipo_deudor='TITULAR' and id_persona_requerimiento is not null and ingreso_validado_total>0""").df()
-    embudo["consultas de titulares con solicitud e ingreso validado"] = len(a)
+        from {leer('predictor_equifax_por_consulta')} where tipo_deudor='TITULAR' and id_persona_requerimiento is not null{' and ingreso_validado_total>0' if solo_con_ingreso_validado else ''}""").df()
+    if antes_de is not None:
+        a = a[a.t < antes_de].reset_index(drop=True)
+    embudo["consultas de titulares con solicitud e ingreso validado" if solo_con_ingreso_validado else "consultas de titulares con solicitud"] = len(a)
     a = a.merge(cuota, on="id_consulta_equifax", how="left").merge(deuda, on="id_consulta_equifax", how="left").merge(flujos, on="id_persona_requerimiento", how="left")
     # La consulta más reciente de cada persona. El orden por fecha es el que fija las particiones de la validación cruzada: no cambiarlo.
     a = a.sort_values("t").drop_duplicates("identificacion", keep="last").reset_index(drop=True)
@@ -101,6 +110,14 @@ def main():
     a = a.merge(s[["id_consulta_equifax", "sri_bloque", "sri_ruc", "sri_estado", "sri_clase", "sri_obligado", "sri_antig", "sri_susp", "sri_ciiu_secc", "sri_ciiu_div"]],
                 on="id_consulta_equifax", how="left")
     a["sri_bloque"] = a.sri_bloque.eq(True)
+    return a
+
+
+def main():
+    t0 = time.time()
+    con = duckdb.connect()
+    embudo = {}
+    a = armar_consultas(con, embudo=embudo)
 
     # 6) La población del predictor: independientes con ingreso no verificado.
     d = a[(a.rel == "INDEPENDIENTE") & (a.unver > 0) & (a.unver < 60000)].reset_index(drop=True)
