@@ -344,7 +344,11 @@ su guía: `docs/equifax.md`.
   - `suprimir_titular()` devuelve `crudos_equifax` y `derechos-del-titular.mjs` los borra. Un JSON de AWS
     sin fila en la base no se encuentra por cédula (su nombre es el id de AWS).
   - Vaciar la fila no devuelve espacio al sistema operativo: Postgres lo reutiliza, y `pg_database_size` baja
-    sólo con un `VACUUM FULL` (que bloquea la tabla).
+    sólo con un `VACUUM FULL` (que bloquea la tabla). Medido el 2026-11-06: tras vaciar las 3.542 la base
+    estaba en 534 MB (508 antes: la subida de 20.616 objetos sumó metadatos en `storage.objects`) y bajó a 478 MB con
+    `vacuum full consultas_equifax` (58,4 a 5,3 MB). Va por `db query` sin transacción, con `SUPABASE_YES=1`.
+  - La 149 limpia a diario `cron.job_run_details` (más de 7 días): con dos tareas por minuto crecía 1,6 MB al día
+    y llegó a 82 MB sin que nadie lo mirara. Una agenda nueva que corra seguido suma a esa cuenta.
 
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente

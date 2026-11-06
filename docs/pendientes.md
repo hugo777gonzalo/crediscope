@@ -13,11 +13,21 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Espacio de la base (2026-11-05): 485 MB de 500 MB del plan Free** (15 MB de margen; el 04/11
-  eran 477, el 31/10, tras la migración, 443); se midió con `pg_database_size`. Otras sesiones escriben (perfiles,
+- **Espacio de la base (2026-11-06): 478 MB de 500 MB del plan Free** (22 MB de margen; el 05/11 eran
+  485 y el 06/11 llegaron a 534, por encima del plan); se midió con `pg_database_size`. Lo que lo llenó, medido:
+  `cron.job_run_details` con 82 MB (89.361 filas, 1,6 MB por día; la 149 lo limpia), el TOAST de
+  `lab_reconsultas` (80 MB) y de `client_profiles` (69 MB), y `storage.objects` (55 MB: sólo sus metadatos e
+  índices; los 20.616 objetos de la subida del crudo de Equifax sumaron unos 35). Otras sesiones escriben (perfiles,
   laboratorio): **no cargar nada grande sin medir**. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
-  a Pro, o guardar el crudo de Equifax en Storage como el de Proveedor_Info_1, es la salida de fondo
-  (cambia el esquema de `consultas_equifax`: decisión aparte).
+  a Pro es la salida de fondo. **Vaciar una columna no devuelve espacio**: el 06/11 la base subió 26 MB mientras se vaciaba
+  el crudo de Equifax y recién bajó con `vacuum full consultas_equifax` (de 58,4 a 5,3 MB; hay que pedirlo con confirmación).
+- **El crudo de las migradas de AWS está en Storage (2026-11-06; 148, PR 138):** las 3.542 consultas con
+  `respuesta_cruda` en null y `crudo_ruta` puesta, en el depósito `crudo-equifax-migrado` (162,9 MB comprimido con las
+  20.616 bajadas y su respaldo; Storage total, 255,5 MB de 1 GB). La lectura se probó en producción con una persona
+  de fila vacía (c-6da51438): «Ordenar la consulta guardada» armó sus tablas. Las consultas pagadas por nosotros
+  siguen con el crudo en la fila (2,3 MB). **Volver a correr `migrar-equifax-aws.mjs` mete el crudo en la fila otra vez**:
+  después se repite `subir-equifax-migrado-a-storage.mjs` (subir, `--enlazar`, `--vaciar --confirmo`) y el `vacuum full`.
+  Un JSON de AWS sin fila en la base no se encuentra por cédula para la supresión del titular.
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
   27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11, pero
   **no se borran al vencer** (negocio, 2026-11-05: una consulta queda como la base de lo que se
@@ -25,12 +35,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **147** (medido con el corredor el 2026-11-05; no hay 137: la
-  del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 147 (las filas de marco-v34 y v35). La 146 son los
+- **Base:** última migración aplicada, la **148** (el corredor, 2026-11-06; la **149**, la limpieza del registro de
+  pg_cron, se aplica recién fusionada; no hay 137: la del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 148 (el crudo en
+  Storage). La 146 son los
   permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
   después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`03dc54558780`**, 13 de 13, desplegado el 2026-11-05 sobre el esquema 147
-  (`despliegues`): el freno del predictor (#135); `auditar-seguridad.mjs`, 79 de 79. Antes, `6d30f65ed598`:
+- **Funciones:** sello **`661445837c92`**, 13 de 13, desplegado el 2026-11-06 sobre el esquema 148
+  (`despliegues`): la lectura del crudo de Equifax desde Storage (#138). Antes, `03dc54558780` (el freno del
+  predictor, #135; `auditar-seguridad.mjs`, 79 de 79) y `6d30f65ed598`:
   estructura-v19 (#133), y con él `consultar-equifax` con la acción `ordenar` (#130).
   Antes, `cc88fd66866f` (marco-v35 y estructura-v18, #129) y `ece1d189789d` (las sesiones 1 a 4
   de `docs/propuesta-fuentes-obligatorias.md`), y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
@@ -489,13 +501,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
 19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** Lo demás
     se decidió y se desplegó ese día (PR 130, sello `2d898f9ea4e9`). Queda:
-    - **El crudo de Equifax en Storage** (decisión del negocio del 2026-11-05: revisarlo). Medido ese
-      día: el crudo ocupa 50 MB en la base (14 KB por consulta, 48 MB de las migradas), y las tablas
-      derivadas, 12 MB para 107 consultas, unos 110 KB por consulta. Pasar el crudo a Storage (como el
-      de Proveedor_Info_1, 88 MB de 1 GB usados) libera unos 48 MB, pero **ordenar las 3.533 migradas
-      de una vez no entra** (unos 390 MB): las tablas se arman sólo cuando alguien consulta a la persona
-      mientras su consulta está vigente, o con el botón «Ordenar la consulta guardada»
-      (administración). Cambia el esquema de `consultas_equifax`: un frente aparte.
+    - **El crudo de Equifax en Storage: hecho el 2026-11-06** (148, PR 138; el estado, arriba). El crudo de las migradas
+      pasó de 50,4 MB en la fila a 41 KB; `consultas_equifax` bajó de 60,9 a 5,3 MB tras el `vacuum full`. Quedan las tablas
+      derivadas: **ordenar las 3.533 migradas de una vez no entra** (unos 390 MB), y se arman sólo cuando alguien consulta a
+      la persona mientras su consulta está vigente, o con «Ordenar la consulta guardada» (administración).
     - **El menú en el teléfono** sigue siendo una fila de íconos sin texto, y las pestañas miden 31 px.
     - `/solicitud/no-existe` y una solicitud que no existe dan dos mensajes distintos; a los emojis el
       Inicio los llama «pasaporte».
