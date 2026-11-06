@@ -28,8 +28,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 147 (las filas de marco-v34 y v35). La 146 son los
   permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
   después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`cc88fd66866f`**, 13 de 13, desplegado el 2026-11-05 sobre el esquema 147
-  (`despliegues`): marco-v35 y estructura-v18 (#129). El anterior fue `ece1d189789d` (las sesiones 1 a 4
+- **Funciones:** sello **`6d30f65ed598`**, 13 de 13, desplegado el 2026-11-05 sobre el esquema 147
+  (`despliegues`): estructura-v19 (#133), y con él `consultar-equifax` con la acción `ordenar` (#130).
+  Antes, `cc88fd66866f` (marco-v35 y estructura-v18, #129) y `ece1d189789d` (las sesiones 1 a 4
   de `docs/propuesta-fuentes-obligatorias.md`), y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
   2026-10-31: Básico, Pro y Plus con los siete casos, sin filas en las tablas de personas. Con
@@ -48,7 +49,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
 - **Versiones en producción:** marco-v35 con Claude Sonnet 5.5 y el buró de la institución encendido,
   desplegada el 2026-11-05 y sin ningún análisis todavía (marco-v31 a v33 no llegaron a usarse, 0
-  análisis; v34 es el texto sin buró). estructura-v18 (el último perfil de las 3.766 personas reales,
+  análisis; v34 es el texto sin buró). estructura-v19 (el último perfil de las 3.766 personas reales,
   recalculado el 2026-11-05); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
@@ -233,10 +234,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 ## 2. Espera una decisión del negocio
 
 00. **Lo que dejó la primera revisión de datos (habilidad `revision-de-datos`, 2026-11-05).**
-   - **estructura-v19** (pedido del negocio, «cargo vigente: solucionalo»). El empleo actual del
-     mecanizado exige el corte del IESS de los ingresos, y el perfil laboral cambia en 20 personas.
-     Falta, con su sí, fusionar el PR, desplegar las funciones y aplicar
-     `recalcular-grupos.mjs --grupos=laboral` (el seco ya está hecho).
+   - **estructura-v19: aplicada el 2026-11-05** (PR 133, funciones en `6d30f65ed598`, 3.766 perfiles
+     recalculados). El perfil laboral cambió en 20 personas, y `cargo-vigente-sin-aporte-vigente` bajó de 17
+     a 0. No volvió ninguna regresión, `validar-perfil-del-modelo.mjs` da 0 fallas y
+     `auditar-seguridad.mjs`, 79 de 79.
    - **Rehacer los análisis que dicen «sin atraso» con A2 o peor** (el negocio lo autorizó, falta el
      sí con la cifra). Son 85, todos de marco-v30 o anterior; 84 se pueden analizar y 1 tiene la
      consulta incompleta. En lote, a unos USD 0,034 por análisis a precio de lista, son unos USD 2,85
@@ -455,9 +456,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** El negocio
     decidió lo demás ese día y está en el PR de la habilidad (Simulador en el menú, Nueva solicitud
     vacía, bandeja con las incompletas al final, textos del Simulador, ordenar las migradas). Queda:
-    - **Desplegar `consultar-equifax`** con la acción `ordenar` y probar el botón «Ordenar la consulta
-      guardada» con una persona migrada sin tablas. Hasta entonces la función vieja lo rechaza (pide
-      base legal) sin consultar a Equifax.
+    - **Probar el botón «Ordenar la consulta guardada»** con una persona migrada sin tablas.
+      `consultar-equifax` con la acción `ordenar` quedó desplegada el 2026-11-05 (`6d30f65ed598`, junto con
+      estructura-v19), y falta probarla.
     - **El botón «Volver a consultar» después del 17**: hoy vuelve a aparecer cuando vence la vigencia
       mensual. El negocio dijo que con una respuesta correcta no tiene sentido; falta confirmar si
       también vale vencida.
