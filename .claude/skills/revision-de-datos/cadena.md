@@ -114,6 +114,7 @@ midieron el 2026-10-31.
 | Comercial castigado sólo en Equifax | c-acdc2297 | El retail de Proveedor_Info_1 no trae castigos viejos |
 | Mismo banco, mismo corte, saldo distinto | 3 de 23 | Sin explicar: entre 1,5% y 2,7%, todos con atraso |
 | Cortes distintos | unas 60 personas | Cada fuente actualiza en su mes: comparar sólo con el mismo corte |
+| RUC activo en Equifax e inactivo en el perfil | c-0be1e991, c-74997fb7 | No es legítima: el SRI de Proveedor_Info_1 venía atrasado. No traía el reinicio de 2025 y sumaba una cancelación que el SRI ya no muestra. Lo confirmó el negocio en el SRI el 2026-11-05. Ante una duda del RUC, el SRI decide |
 
 Si la diferencia no está en la tabla y se repite, es un hallazgo: un detector nuevo en la
 capa 5 (`cruce`) y una fila nueva acá cuando se explique.

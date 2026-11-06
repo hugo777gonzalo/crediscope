@@ -101,9 +101,9 @@ const estimados = [];
 let fallaron = 0;
 for (let i = 0; i < elegidos.length; i += 50) {
   const lote = elegidos.slice(i, i + 50);
-  const perfiles = await pedir(`client_profiles?select=id,client_id,created_at,standard_profile&id=in.(${lote.map((p) => p.id).join(",")})`);
+  const perfiles = await pedir(`client_profiles?select=id,client_id,created_at,standard_profile,estado_por_fuente&id=in.(${lote.map((p) => p.id).join(",")})`);
   for (const p of perfiles) {
-    const decision = decidirEstimacion(p.standard_profile);
+    const decision = decidirEstimacion(p.standard_profile, p.estado_por_fuente);
     const clave = decision.nivel === 1 ? "estimado" : decision.motivo ?? `nivel ${decision.nivel}`;
     porMotivo[clave] = (porMotivo[clave] ?? 0) + 1;
     const linea = { client_id: p.client_id, perfil_id: p.id, consultado: p.created_at, nivel: decision.nivel, motivo: decision.motivo, equifax: equifax.get(p.client_id) ?? null };

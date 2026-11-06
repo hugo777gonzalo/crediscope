@@ -13,9 +13,16 @@
 //   - Una consulta antigua se estima igual, con un aviso: reconsultar lo decide quien mira.
 //   - El nivel 2 todavía no existe: quien tiene Equifax usa el nivel 1.
 //   - Sin la tabla de pensiones (especificación, 3.3), un jubilado no recibe estimación.
+//   - Una consulta sin la identidad, los aportes o el RUC no se estima (negocio,
+//     2026-11-05): son las entradas del nivel 1. Sin edad ni sexo, el mínimo al 90%
+//     cambiaba de lado de USD 1.000 en el 39% de 694 perfiles completos, y sin aportes no
+//     se sabe si la persona tiene un ingreso verificado. Las demás obligatorias no
+//     frenan: con sólo esas caídas, la estimación quedaba igual (razón mediana 0,97 en
+//     23 personas). Sin el freno se estimaban 624 consultas incompletas de 2.061.
 //
 // Lo verificado y lo estimado nunca se suman (especificación, 2.2): cada uno va en su bloque.
 
+import { obligatoriasSinRespuesta } from "./calidad-de-la-consulta.ts";
 import { datosDeCapacidad, PARAMETROS_CAPACIDAD } from "./capacidad-de-pago.ts";
 import { fechaEnEcuador } from "./equifax-estructura.ts";
 import { type Calibracion, estimarIngreso, leerModeloComprimido, type MinimoDeIngreso, type ModeloDeIngreso, type Tramo } from "./predictor-ingresos.ts";
@@ -37,11 +44,24 @@ const SEGMENTOS_QUE_SE_ESTIMAN = new Set(["independiente", "ingresos_mixtos", "a
 
 const AVISO_DEL_VERIFICADO = "Puede tener ingresos que no constan.";
 const AVISO_DE_PENSION = "La referencia de pensión por tipo de afiliación todavía no está disponible.";
+const AVISO_DE_CONSULTA_INCOMPLETA =
+  "No se pudo obtener la identidad, los aportes al IESS o el RUC de la persona: reconsultala para estimar su ingreso.";
 const AVISO_DE_CONSULTA_ANTIGUA = `La consulta tiene más de ${DIAS_DE_UNA_CONSULTA_RECIENTE} días: el resultado es a esa fecha.`;
 
 // ---------------------------------------------------------------- lo que entra y lo que sale
 
-export type MotivoSinEstimacion = "ingreso_verificado" | "jubilado" | "dependiente_sin_monto" | "sin_datos";
+export type MotivoSinEstimacion = "ingreso_verificado" | "jubilado" | "dependiente_sin_monto" | "sin_datos" | "consulta_incompleta";
+
+// Las fuentes de las que sale la entrada del nivel 1: la edad y el sexo (`general`), de qué
+// vive y lo verificado (`basesInternas`) y el SRI (`contribuyente`). Las tres son
+// obligatorias; si contestaron se decide con la regla del freno (`obligatoriasSinRespuesta`).
+export const FUENTES_DEL_PREDICTOR = ["general", "basesInternas", "contribuyente"] as const;
+
+/** Las fuentes del predictor que no contestaron en esa consulta. Un estado vacío (un perfil viejo) no frena. */
+export function fuentesDelPredictorSinRespuesta(estado: Record<string, string> | null | undefined): string[] {
+  const sinRespuesta = new Set(obligatoriasSinRespuesta(estado));
+  return FUENTES_DEL_PREDICTOR.filter((f) => sinRespuesta.has(f));
+}
 
 export interface IngresoVerificado {
   origen: "IESS";
@@ -121,8 +141,14 @@ export function ingresoVerificado(perfil: Record<string, unknown>): IngresoVerif
   return { origen: "IESS", salarioReportado: salario / 100, aportePersonal: aporte / 100, ingresoNeto: (salario - aporte) / 100, mes: datos.corteIess };
 }
 
-/** El selector de la especificación (3.2): toma el primer caso que aplica. */
-export function decidirEstimacion(perfil: Record<string, unknown>): DecisionDeLaEstimacion {
+/**
+ * El selector de la especificación (3.2): toma el primer caso que aplica. `estado` es
+ * `client_profiles.estado_por_fuente` de la misma consulta.
+ */
+export function decidirEstimacion(perfil: Record<string, unknown>, estado?: Record<string, string> | null): DecisionDeLaEstimacion {
+  const caidas = fuentesDelPredictorSinRespuesta(estado);
+  // Sin los aportes, el segmento sale de su ausencia y no se sabe si hay un sueldo verificado.
+  if (caidas.includes("basesInternas")) return { nivel: null, motivo: "consulta_incompleta", verificado: null };
   const fuentes = perfil.fuentesIngreso as { segmento?: unknown } | null | undefined;
   const segmento = typeof fuentes?.segmento === "string" ? fuentes.segmento : null;
   const verificado = ingresoVerificado(perfil);
@@ -132,7 +158,10 @@ export function decidirEstimacion(perfil: Record<string, unknown>): DecisionDeLa
   // Sin estimación, el nivel dice si al menos hay algo verificado: un jubilado puede tener además un sueldo.
   const nivelSinEstimar = verificado ? 0 : null;
   if (segmento !== null && SEGMENTOS_DE_PENSION.has(segmento)) return { nivel: nivelSinEstimar, motivo: "jubilado", verificado };
-  if (segmento !== null && SEGMENTOS_QUE_SE_ESTIMAN.has(segmento)) return { nivel: 1, motivo: null, verificado };
+  if (segmento !== null && SEGMENTOS_QUE_SE_ESTIMAN.has(segmento)) {
+    // Lo verificado no depende de la identidad ni del RUC: se entrega igual.
+    return caidas.length > 0 ? { nivel: nivelSinEstimar, motivo: "consulta_incompleta", verificado } : { nivel: 1, motivo: null, verificado };
+  }
   // `sin_datos` y `no_clasificado`, o un perfil sin clasificar: es la ausencia de la consulta, no un juicio sobre la persona.
   return { nivel: nivelSinEstimar, motivo: "sin_datos", verificado };
 }
@@ -160,6 +189,7 @@ export function armarEstimacion(pedido: PedidoDeEstimacion): { respuesta: Respue
   if (decision.nivel !== 1) {
     if (decision.nivel === 0) avisos.unshift(AVISO_DEL_VERIFICADO);
     if (decision.motivo === "jubilado") avisos.unshift(AVISO_DE_PENSION);
+    if (decision.motivo === "consulta_incompleta") avisos.unshift(AVISO_DE_CONSULTA_INCOMPLETA);
     return {
       respuesta: {
         id: null, version: null, nivel: decision.nivel, consultadoEl, verificado: decision.verificado,

@@ -35,6 +35,7 @@
 // `node scripts/revisar-datos.mjs --solo=<id>` y mirar el detalle de un caso.
 
 import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
+import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -56,10 +57,12 @@ const noContesto = (columna, [fuente, ficha]) => {
   const contesta = ficha.noHay === "faltante" ? `('ok', 'ok_vacio', 'deshabilitado', 'faltante')` : `('ok', 'ok_vacio', 'deshabilitado')`;
   return `coalesce(${columna}->>'${fuente}', 'faltante') not in ${contesta}`;
 };
-const algunaClaveCaida = (columna) =>
-  `(${columna} is not null and ${columna} <> '{}'::jsonb and (` + OBLIGATORIAS.map((o) => noContesto(columna, o)).join(" or ") + "))";
-const clavesCaidas = (columna) =>
-  "array_remove(array[" + OBLIGATORIAS.map((o) => `case when ${noContesto(columna, o)} then '${o[0]}' end`).join(", ") + "], null)";
+const algunaClaveCaida = (columna, fuentes = OBLIGATORIAS) =>
+  `(${columna} is not null and ${columna} <> '{}'::jsonb and (` + fuentes.map((o) => noContesto(columna, o)).join(" or ") + "))";
+const clavesCaidas = (columna, fuentes = OBLIGATORIAS) =>
+  "array_remove(array[" + fuentes.map((o) => `case when ${noContesto(columna, o)} then '${o[0]}' end`).join(", ") + "], null)";
+// Las del freno del predictor (estimacion-de-ingreso.ts), con su ficha.
+const DEL_PREDICTOR = OBLIGATORIAS.filter(([f]) => FUENTES_DEL_PREDICTOR.includes(f));
 
 export const BASE = `
 reales as (select id from clients where not es_sintetico),
@@ -238,15 +241,17 @@ export const DETECTORES = [
   {
     id: "estimacion-sobre-consulta-incompleta",
     capa: "predictor",
-    tipo: "revisar",
-    titulo: "Estimación hecha sobre una consulta con una fuente obligatoria sin respuesta",
-    caso: "estimar-ingresos-en-lote.mjs, 2026-11-05: 624 de 2.061 estimaciones de la cartera serían de consultas incompletas, 552 sin edad ni sexo",
+    // El freno (negocio, 2026-11-05): sin la identidad, los aportes o el RUC no se
+    // estima. Las demás obligatorias no frenan y este detector no las mira.
+    tipo: "regresion",
+    titulo: "Estimación hecha sin la identidad, los aportes o el RUC",
+    caso: "estimar-ingresos-en-lote.mjs, 2026-11-05: sin el freno, 624 de 2.061 estimaciones eran de consultas incompletas, 552 sin edad ni sexo",
     poblacion: `select count(*) from estimaciones_de_ingreso`,
     casos: `
       select e.client_id, jsonb_build_object('estimado', e.valor_central, 'minimo90', e.minimo_90,
-             'caidas', ${clavesCaidas("p.estado_por_fuente")}) as detalle
+             'caidas', ${clavesCaidas("p.estado_por_fuente", DEL_PREDICTOR)}) as detalle
       from estimaciones_de_ingreso e join client_profiles p on p.id = e.client_profile_id
-      where ${algunaClaveCaida("p.estado_por_fuente")}`,
+      where ${algunaClaveCaida("p.estado_por_fuente", DEL_PREDICTOR)}`,
   },
   {
     id: "estimacion-lejos-de-equifax",
@@ -289,8 +294,13 @@ export const DETECTORES = [
     id: "ruc-suspension-difiere",
     capa: "cruce",
     tipo: "revisar",
-    titulo: "La fecha de suspensión definitiva del RUC en Equifax no es la de Proveedor_Info_1",
+    titulo: "La fecha de suspensión definitiva del RUC en Equifax no es la del último cese en Proveedor_Info_1",
     caso: "c-79e1ac23, 2026-10-31: las dos fuentes decían suspendido el mismo día, pero la pantalla de Equifax no lo mostraba",
+    // Los dos casos del 2026-11-05 (c-0be1e991, c-74997fb7) los revisó el negocio en
+    // el SRI: la suspensión es la misma en las tres fuentes. Proveedor_Info_1 trae
+    // además una cancelación posterior que el SRI ya no muestra, y no trae el
+    // reinicio de 2025. Ver ruc-activo-difiere.
+    conocido: "Proveedor_Info_1 suma una cancelación que el SRI ya no muestra; la suspensión coincide (SRI, 2026-11-05)",
     poblacion: `select count(*) from equifax e join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
       join ultimo u on u.client_id = e.client_id where s.sri_tiene_ruc`,
     casos: `
@@ -322,6 +332,25 @@ export const DETECTORES = [
       join ultimo u on u.client_id = e.client_id
       where s.sri_fecha_inicio_actividades is not null and u.sp->'laboral'->>'fechaInicioActividadesRuc' is not null
         and s.sri_fecha_inicio_actividades <> (u.sp->'laboral'->>'fechaInicioActividadesRuc')::date`,
+  },
+  {
+    id: "ruc-activo-difiere",
+    capa: "cruce",
+    tipo: "revisar",
+    titulo: "Equifax y el perfil no dicen lo mismo de si el RUC está activo",
+    caso: "c-0be1e991 y c-74997fb7, 2026-11-05: el SRI los muestra ACTIVOS desde un reinicio de 2025 que el crudo de Proveedor_Info_1 del 2026-10-03 no trae; Equifax sí los da activos",
+    poblacion: `select count(*) from equifax e join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_tiene_ruc and s.sri_estado_contribuyente is not null and u.sp->'laboral'->>'tieneRucActivo' is not null`,
+    casos: `
+      select e.client_id, jsonb_build_object('estadoEquifax', s.sri_estado_contribuyente,
+             'activoProveedorInfo1', u.sp->'laboral'->'tieneRucActivo', 'tipoCese', u.sp->'laboral'->>'tipoUltimoCeseRuc',
+             'consultaEquifax', e.created_at::date, 'consultaProveedorInfo1', u.created_at::date) as detalle
+      from equifax e
+      join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_tiene_ruc and s.sri_estado_contribuyente is not null and u.sp->'laboral'->>'tieneRucActivo' is not null
+        and (upper(s.sri_estado_contribuyente) = 'ACTIVO') <> (u.sp->'laboral'->>'tieneRucActivo')::boolean`,
   },
 
   // ── 6. Respuesta del modelo ──────────────────────────────────────────────

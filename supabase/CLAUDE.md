@@ -161,7 +161,10 @@ su guía: `docs/equifax.md`.
 - `estimacion-de-ingreso.ts` y la función `estimar-ingreso` (141) — la estimación de una persona desde
   su último perfil: el selector de la especificación, 3.2 (`decidirEstimacion()`), lo verificado (con
   `datosDeCapacidad()`, el mismo descuento que la capacidad), y la respuesta y la fila
-  (`armarEstimacion()`). **El reloj es la fecha de la consulta** (`client_profiles.created_at`), no hoy:
+  (`armarEstimacion()`). **Sin la identidad, los aportes o el RUC no se estima** (negocio, 2026-11-05):
+  `decidirEstimacion()` recibe `estado_por_fuente` y contesta `consulta_incompleta`. Sin edad ni sexo, el
+  mínimo cambiaba de lado de USD 1.000 en el 39%; las demás obligatorias no frenan.
+  **El reloj es la fecha de la consulta** (`client_profiles.created_at`), no hoy:
   el mismo perfil y el mismo modelo dan lo mismo. La fila no lleva cédula ni nombre, y los cuantiles
   quedan en ella, no en la respuesta. El modelo está en el depósito privado `modelos-de-ingreso` de
   cada base: `crearCargadorDeModelo()` lo baja sólo si cambió la huella de la fila vigente y se niega

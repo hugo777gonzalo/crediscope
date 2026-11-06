@@ -2062,12 +2062,14 @@ components:
           const: false
         motivo:
           type: string
-          enum: [ingreso_verificado, jubilado, dependiente_sin_monto, sin_datos]
+          enum: [ingreso_verificado, jubilado, dependiente_sin_monto, sin_datos, consulta_incompleta]
           description: |
             - `ingreso_verificado`: un tercero lo reporta y no se estima.
             - `jubilado`: la referencia de pensión todavía no se entrega.
             - `dependiente_sin_monto`: trabaja para un tercero y el IESS no trae el monto.
             - `sin_datos`: la consulta no alcanza para clasificar de qué vive la persona.
+            - `consulta_incompleta`: no se pudo obtener la identidad, los aportes al IESS o el RUC, y
+              hay que reconsultar a la persona.
 
     EstimacionDeIngreso:
       type: object

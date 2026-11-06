@@ -3,6 +3,19 @@
 Una línea por corrida que cambió algo de la habilidad: qué se corrió, qué se encontró y
 qué se cambió. Casos sólo como `c-xxxxxxxx`. La más nueva va arriba.
 
+- **2026-11-05**, cuarta corrida.
+  - **RUC.** El negocio revisó los dos casos en el SRI: coincide con Equifax.
+    - Proveedor_Info_1 no traía el reinicio de 2025 y sumaba una cancelación vieja.
+    - `ruc-suspension-difiere` quedó como conocido.
+    - Nuevo detector `ruc-activo-difiere`: 2 de 86.
+  - **Predictor.** Se midió si la consulta incompleta afecta la estimación: sí, cuando faltan la identidad o los aportes.
+    - Sin edad ni sexo cambia el lado de USD 1.000 del mínimo al 90% en el 39% de los casos.
+    - Con otras obligatorias caídas, la estimación casi no cambia.
+  - **Análisis.** El negocio decidió no rehacer los 85 «sin atraso».
+  - **Freno del predictor.** El negocio dijo «sí, ese freno»: sin identidad, aportes o RUC no se estima.
+    - Sin guardar, los estimados de la cartera bajan de 2.061 a 1.493.
+    - `estimacion-sobre-consulta-incompleta` mira sólo esas tres fuentes y pasó a regresión.
+
 - **2026-11-05**, tercera corrida, después de aplicar estructura-v19 en producción.
   - `cargo-vigente-sin-aporte-vigente` dio 0 de 1.914, con 17 resueltos.
   - `perfil-con-estructura-atrasada` dio 0 de 3.766.
