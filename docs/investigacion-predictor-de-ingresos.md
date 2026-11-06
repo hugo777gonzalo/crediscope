@@ -415,6 +415,10 @@ corrección evita.)
   estimador de cuota desde el saldo solo hace falta para Proveedor_Info_1 sola, y ahí la
   precisión será baja sin el plazo. Recomendación: **no construirlo todavía**;
   hacerlo después de conocer el uso real (sección 6).
+- **Actualizado el 2026-11-05 (12.33):** con dos meses seguidos de la misma operación no hace falta el
+  plazo. En cooperativas, la baja del saldo más el interés del mes da la cuota dentro de ±10% en el 72% de
+  508 operaciones, y con 13 meses salen también el plazo restante y el monto. Se pidió a Proveedor_Info_1
+  el historial mensual por operación; se decide al recibir la muestra.
 
 #### 4.12 Crédito que sostiene el ingreso de quien no tiene IESS: advertencia de selección
 
@@ -3143,6 +3147,77 @@ Elegidos (la suma de los dos niveles): lineal con espaciado mínimo 0,50, expone
 5. **Calibración con sólo OK FACTURAR**: no se midió sobre los rechazados ni sobre las demás respuestas, y el corrimiento sale de 1.925 casos.
 6. **Fechas**: la tabla trae la fecha de la consulta tal como la guarda AWS, sin zona horaria; los cortes de régimen del 14 de enero, 2 de marzo y 13 de abril pueden correrse un día sin cambiar nada.
 7. **La paridad del SRI**: el nivel 1 se entrenó con el SRI que trae el extracto de AWS (el de Equifax) y en producción recibe el de Proveedor_Info_1, cuya paridad sigue medida en 87 personas (especificación, sección 9, punto 7). Estas medidas suponen que son lo mismo.
+
+### 12.33 El pedido a Proveedor_Info_1: la base del IESS y el historial de deudas (2026-11-05)
+
+El negocio pidió dos cosas para el nivel 1 (Proveedor_Info_1 sin buró): la base de afiliados del IESS
+(unos 3,8 millones de personas, según el negocio; 9.8 decía 3,9) y el historial de deudas por operación,
+para estimar la cuota de cada crédito desde la baja del saldo, como ya la informan las cooperativas.
+Reemplaza a las tandas de 9.8.
+
+**Lo que se pide.** El libro de ejemplo y el correo los decidió el negocio el 2026-11-05: con la cédula
+directa (hay acuerdo con Proveedor_Info_1, sin seudónimo), sin nombrar el producto y sin justificar para qué.
+Son seis archivos y 77 campos, en CSV separado por «|» y en UTF-8. Un dato que falta va vacío, no en cero.
+
+| Archivo | Una fila por | Período |
+|---|---|---|
+| `afiliados` | persona, con el resumen del IESS: meses con aporte en 12 y 24 meses, primer y último mes con aporte, último salario | a octubre 2026 |
+| `aportes_iess` | persona, mes y empleador: tipo de empleador (código y descripción del IESS), cargo, salario, entrada y salida | octubre 2026, julio 2026, diciembre 2025 y octubre 2025 |
+| `sri` | establecimiento, con los datos del RUC repetidos: las fechas que lee `ruc.ts` (inicio, reinicio, suspensión, cancelación y su motivo) y el obligado | situación actual |
+| `deudas` | operación y mes: número de operación estable, tipo, calidad, estado, concesión, monto, plazo, tasa, cuota, los cinco saldos, por vencer a 30 días, días de mora, calificación y cupo | 13 meses seguidos, de octubre 2025 a octubre 2026 |
+| `vehiculos`, `renta` | vehículo; persona y año | si están disponibles |
+
+Primero va una muestra de 10.000 personas al azar, y después la base completa.
+
+- **Los cuatro cortes del IESS:** el de hoy y el de julio dan el objetivo y su estabilidad, y permiten
+  entrenar con uno y medir con el otro. Diciembre de 2025 es el último mes con el salario básico de ese
+  año (470), y separa el Ingreso Mínimo SBU de un aumento. Octubre de 2025 da la variación anual sin
+  temporada.
+- **En deudas, 13 meses:** dan 12 diferencias, y la cuota se toma como la mediana, porque un solo mes
+  engaña (abajo).
+- **Una operación cancelada** aparece en el mes en que se canceló, con saldo 0: así se distingue «se
+  pagó» de «no se informó».
+- **Lo que quedó fuera:** la Lista B (mandar cédulas de independientes con ingreso conocido) y la hoja que
+  explica el cálculo de la cuota.
+
+**Lo medido en los crudos locales** (sólo agregados):
+
+- **Cooperativas, que informan la cuota.** Se tomaron 508 operaciones al día en agosto y septiembre de 2026.
+  - Con cuota ≈ (saldo anterior − saldo actual) + saldo anterior × 16% / 12, la estimación queda dentro de
+    ±10% de la informada en el 72% y dentro de ±20% en el 88%.
+  - Con el capital por vencer a 30 días + el interés del mes, el 71% y el 87%.
+  - Con un solo mes (735 operaciones del crudo del 2026-10-03, por vencer a 30 días), el 68% a ±10%.
+- **Bancos de Proveedor_Info_1:**
+  - No traen número de operación: en 1.155 de 7.911 filas, la misma persona repite entidad y rol.
+  - `saldo0_1` a `saldo_mas_36` son proporciones que suman 1, no por vencer por plazos.
+  - El tipo llega «C» en todas las filas.
+  - No traen días de mora ni cuota, y hay una sola foto mensual.
+  - Sin el número de operación no se puede seguir una deuda mes a mes: por eso es la primera pregunta del
+    correo.
+- **BIESS:**
+  - Trae monto, plazo, tasa y cuota estimada. Esa cuota queda un 3% sobre la francesa: puede incluir el
+    seguro, sin confirmar.
+  - El saldo no cambió en 1.321 operaciones entre consultas de 8 a 19 días: se pregunta a qué fecha
+    corresponde y cada cuánto se actualiza.
+- **El ejemplo del negocio** (12.300, 12.020 y 11.987, con un atraso en febrero):
+  - Da una cuota de 440 en enero y de 189 en febrero.
+  - Coincide con un crédito de 15.283 a 48 meses al 15,6%, con cuota de 430.
+  - Con la mediana se recuperan la cuota (430), el plazo que falta, n = −ln(1 − r·B/A) / ln(1+r) (28 meses),
+    el plazo original (20 meses desde la concesión + 28 = 48) y el monto, A·(1 − (1+r)^−N) / r.
+
+**Sin confirmar:**
+- La tasa del 16% es supuesta: la del segmento, no la de cada operación.
+- El método se midió sólo en cooperativas. En bancos se podrá medir contra las cooperativas y el BIESS de la
+  muestra, que traen la cuota.
+- 4.11 decía «no construirlo todavía» por falta de plazo. Se decide al recibir la muestra.
+
+**Dónde está** (fuera de git, en `research/ejemplos-pedido-ingresos/`):
+- `solicitud-informacion-iess-deudas-2026-11.xlsx`: lo que se envía, con datos ficticios. Las identificaciones
+  de ejemplo fallan el dígito verificador, y el guion lo comprueba: un RUC inventado, `11999999…`, pasaba
+  el de sociedades.
+- `pedido-datos-predictor-ingresos-2026-11.xlsx`: la versión interna, con el cálculo de la cuota en fórmulas,
+  el porqué de cada campo y 15 preguntas.
+- `guiones/`: `armar_solicitud.py`, `armar_pedido.py`, `medir_deudas.py` y `medir_series.py`.
 
 ## 13. Registro de verificación
 

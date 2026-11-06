@@ -494,9 +494,17 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         especificación): con las consultas recientes la regla que no se encontraba se cumple casi entera. Entrenar con lo que arma el módulo sigue siendo
         coherente (la misma implementación entrena y sirve), pero cambia el significado de esas 19; la decisión entre las dos fuentes se toma al conocer
         la paridad de las consultas anteriores a septiembre, que no se midió.
+    11. **Pedido a Proveedor_Info_1 de la base del IESS y el historial de deudas, armado el 2026-11-05** (12.33; libro y correo en
+        `research/ejemplos-pedido-ingresos/`, fuera de git). El negocio lo envía. Lleva la cédula directa, cuatro cortes del IESS (octubre y julio
+        de 2026, diciembre y octubre de 2025) y 13 meses de deudas por operación, con un número de operación estable. Va primero una muestra de
+        10.000 personas. Al recibirla:
+        - revisar el formato y las respuestas a las cinco preguntas del correo (sobre todo si los bancos traen número de operación);
+        - medir la cuota desde el saldo en bancos, contra las cooperativas y el BIESS, que la traen;
+        - decidir si se construye el estimador de 4.11;
+        - pedir la base completa.
 
     **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
-    las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
+    las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
 19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** Lo demás
