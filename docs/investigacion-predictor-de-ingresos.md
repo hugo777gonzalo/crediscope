@@ -3329,9 +3329,9 @@ La cobertura sube porque las etiquetas agregadas, más bajas que las validadas, 
 
 **Qué entra en `ingreso-v2`.**
 1. Entrenar como hoy, con todas las respuestas y sin pesos.
-2. **Calibrar el mínimo con OK FACTURAR y condicionado** (`modelos_de_ingreso.calibracion`, en logaritmo):
-   - en el nivel 2, sin reparos: el error de la capacidad de pago queda en 0,4%;
-   - en el nivel 1, el «alcanza» por error sube a 1,2%, arriba de la meta propuesta de 1%: lo decide el negocio, o el nivel 1 queda sin calibrar.
+2. **Calibrar el mínimo con OK FACTURAR y condicionado, en los dos niveles** (`modelos_de_ingreso.calibracion`, en logaritmo). **Decidido por el negocio el 2026-11-06**, sabiendo lo que cuesta:
+   - en el nivel 1 el «alcanza» por error sube a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6% en vez de 23,1%;
+   - en el nivel 2 queda en 0,4% y 22,8%.
 3. Ni la cifra de Equifax ni un alumno, como alerta o como etiqueta. La pregunta abierta de 12.28 (si la destilación se hace igual) queda contestada con lo medido: con estos tres propósitos no mejora la asertividad.
 4. Antes de reentrenar, `preparar.py` con el arreglo de abajo.
 

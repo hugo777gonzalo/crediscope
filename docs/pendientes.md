@@ -513,14 +513,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
           0,54 en OK); la cifra misma sí (0,68 en el nivel 2), pero en las etiquetas editadas baja a 0,56: es el ancla. Las consultas que paga CrediScope
           traen la cifra (96 de 97, `equifax_resumen.ingreso_estimado_usd`).
         - **D1 se descarta**: con 16.375 consultas sin ingreso validado etiquetadas por la cifra, la pérdida empeora entre 0,1% y 4,6%.
-        - **Para `ingreso-v2`**: entrenar como hoy y calibrar con OK FACTURAR y condicionado. **Decide el negocio** si el nivel 1 se calibra así: su
-          «alcanza» por error sube de 0,5% a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6% en vez de 23,1%; en el nivel 2
-          queda en 0,4%. Con el mínimo calibrado, la cobertura baja a 80% en todas y a 60% en los rechazados, cuya etiqueta baja por la decisión.
+        - **Para `ingreso-v2`**: entrenar como hoy y calibrar con OK FACTURAR y condicionado **en los dos niveles (decidido por el negocio el
+          2026-11-06)**. En el nivel 1 el «alcanza» por error sube de 0,5% a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6%
+          en vez de 23,1%; en el nivel 2 queda en 0,4%. Con el mínimo calibrado, la cobertura baja a 80% en todas y a 60% en los rechazados, cuya
+          etiqueta baja por la decisión. Se aplica al exportar `ingreso-v2`; `ingreso-v1` sigue sin calibrar.
         - **Arreglado de paso**: desde el renombre del proveedor (#111) `preparar.py` no reconocía lo recuperado del IESS y armaba una tabla mala
           (57.340 independientes en vez de 57.061); la tabla en uso, del 22/10, estaba bien. Con el arreglo vuelve a salir idéntica.
 
-    **Decisiones abiertas del negocio:** si el nivel 1 se calibra con OK FACTURAR aunque su error en la capacidad de pago pase la meta (punto 12; la
-    destilación, medida con tres propósitos, no mejora la asertividad);
+    **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12):
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
