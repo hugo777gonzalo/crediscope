@@ -29,8 +29,9 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 147 (las filas de marco-v34 y v35). La 146 son los
   permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
   después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`6d30f65ed598`**, 13 de 13, desplegado el 2026-11-05 sobre el esquema 147
-  (`despliegues`): estructura-v19 (#133), y con él `consultar-equifax` con la acción `ordenar` (#130).
+- **Funciones:** sello **`03dc54558780`**, 13 de 13, desplegado el 2026-11-05 sobre el esquema 147
+  (`despliegues`): el freno del predictor (#135); `auditar-seguridad.mjs`, 79 de 79. Antes, `6d30f65ed598`:
+  estructura-v19 (#133), y con él `consultar-equifax` con la acción `ordenar` (#130).
   Antes, `cc88fd66866f` (marco-v35 y estructura-v18, #129) y `ece1d189789d` (las sesiones 1 a 4
   de `docs/propuesta-fuentes-obligatorias.md`), y antes `59f5ef0466c9` (marco-v32). El núcleo de la API está desplegado y
   apagado para terceros. `API_SANDBOX` está puesto y el sandbox se probó de punta a punta el
@@ -254,8 +255,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      - **Freno decidido por el negocio y construido el 2026-11-05.** No se estima si no contestó
        `general`, `basesInternas` o `contribuyente` (`FUENTES_DEL_PREDICTOR`, motivo
        `consulta_incompleta`), y las demás obligatorias no frenan. Medido sin guardar: los estimados
-       bajan de 2.061 a 1.493, con 666 en `consulta_incompleta` y ninguno sin edad ni sexo. Falta
-       desplegar `estimar-ingreso`. El detector `estimacion-sobre-consulta-incompleta` es de regresión.
+       bajan de 2.061 a 1.493, con 666 en `consulta_incompleta` y ninguno sin edad ni sexo. Desplegado
+       el 2026-11-05 (`03dc54558780`), sin probar en vivo: la función exige la sesión de un analista. Se
+       prueba con la primera estimación de una consulta incompleta, que debe contestar
+       `consulta_incompleta` sin guardar fila. El detector `estimacion-sobre-consulta-incompleta` es de regresión.
    - **Dos RUC que el SRI da activos** (c-0be1e991, c-74997fb7, revisados por el negocio el 2026-11-05).
      El SRI coincide con Equifax: ACTIVO, con la misma fecha de cese y un reinicio en 2025 (18/07 y
      23/10). El crudo de Proveedor_Info_1 del 2026-10-03 no trae ese reinicio y suma una cancelación que
