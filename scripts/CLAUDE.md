@@ -85,6 +85,11 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   perfil de cada persona real, con el modelo vigente y SIN guardar: escribe en `research/estimaciones-en-lote/`. Sirve
   para medir el predictor mientras `estimaciones_de_ingreso` esté vacía. El 2026-11-05 mostró que 624 de 2.061
   estimaciones serían de consultas incompletas.
+- `scripts/predictor-ingresos/matriz-desde-crudo.mjs` (Node, aunque la carpeta sea de Python) arma la matriz del nivel 2 desde los
+  JSON crudos de Equifax bajados de AWS, con `derivarTablas` y `vectorDeNivel2` y la fecha de la consulta como reloj, sin copiar una
+  regla: una sola implementación para entrenar y servir (especificación, 9.1). Cruza con `personas.parquet` por la id de consulta y mide
+  la paridad contra el extracto. **Una fecha de AWS sin zona es hora de Ecuador**: se lee con `-05:00` y no con la zona de la máquina.
+  Repetirlo al bajar más respaldo; no entrena. El control `guiones` no revisa esa carpeta: `node --check` a mano.
 - `scripts/probar-paridad-variables-de-ingreso.mjs` pasa las respuestas crudas de Equifax por
   `variables-de-ingreso.ts` y las compara con el extracto de AWS con que se entrenó (necesita `research/`;
   sale con 1 si una paridad baja de su umbral). Repetirlo al tocar `equifax-tablas.ts`,

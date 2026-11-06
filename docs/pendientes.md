@@ -469,6 +469,19 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        1% o menos y negadas de más de 21% y 20% o menos. Para las fases que siguen: entrenar sin rechazados y calibrar con OK FACTURAR, la cola
        exponencial de `cdf` (con espaciado mínimo de 0,30 en logaritmo; resuelve sólo el extremo, no el centro) y el salto de la etiqueta de OK
        FACTURAR al pasar al tope de 10.000 del predictor de Equifax.
+    10. **Fase 2, primer paso: la matriz del nivel 2 desde el crudo, medida el 2026-11-06** (`scripts/predictor-ingresos/matriz-desde-crudo.mjs`; agregados
+        en `metricas/matriz-desde-crudo-2026-11.json`). Las 20.560 respuestas bajadas (ids 400316 a 420882) pasaron por `derivarTablas` y `vectorDeNivel2`
+        sin una falla (734 sin `reporteCrediticio`, que quedan sin variables). **Cruzan con la tabla de entrenamiento 3.935 de las 21.260 que entrenan**
+        (OK FACTURAR 591, condicionado 184), **todas de septiembre y octubre**: de las 12.604 que entrenan hasta junio no cruza ninguna. Faltan del
+        respaldo 17.325 (OK FACTURAR y condicionado: 1.925 hasta junio y 838 desde julio; ids 314409 a 400306), que se bajan de la más nueva a la más
+        vieja. Con lo bajado no se puede reentrenar el nivel 2: hay que seguir hasta la id 314409 (diciembre de 2025).
+        **Paridad de las 19 variables (3.935)**: desde `equifax_operaciones` coinciden con el extracto entre 25,3% (`c_tarjeta`) y 100%, y donde el
+        extracto tiene dato, `c_tarjeta` 0,0%, `c_consumo` 19,0%, `n_consumo` 33,5% y `n_oper` 39,4%. Para tarjeta la cantidad de operaciones (97,6%) y el
+        saldo (99,5%) casi coinciden y la cuota es otra (la mediana del módulo, 1,9 veces la del extracto). **Desde las listas de `interconnectResponse`
+        coinciden al 100% en 16 de las 19, 99,6% en `max_dias_t` y 98,7% en `max_mora`** (74,5% a 100% en las 5.001 de todo el año, sección 9 de la
+        especificación): con las consultas recientes la regla que no se encontraba se cumple casi entera. Entrenar con lo que arma el módulo sigue siendo
+        coherente (la misma implementación entrena y sirve), pero cambia el significado de esas 19; la decisión entre las dos fuentes se toma al conocer
+        la paridad de las consultas anteriores a septiembre, que no se midió.
 
     **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
