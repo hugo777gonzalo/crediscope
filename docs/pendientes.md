@@ -462,6 +462,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        con el negocio la regla de `cdf` (`comun.py`): con un mínimo alto, el tramo de menos de un salario
        básico queda en 2,5% y los siguientes en 0,01%, porque por debajo del primer cuantil vale la mitad
        de su nivel.
+    9. **Fase 0 de la revisión del predictor, medida el 2026-11-06** (12.32; `scripts/predictor-ingresos/linea_base.py`, agregados en
+       `metricas/linea-base-2026-11.json`). Hacia adelante, contra una línea base sin variables, el nivel 1 baja la pérdida de cuantiles 11,0% y el 2,
+       27,8%; tramo exacto o vecino 67,6% y 82,3% contra 59,2%; el mínimo del 90% aprueba por error 0,5% y 0,2% de las decisiones de capacidad y
+       niega de más 23,1% y 24,0%. **Metas propuestas, a decidir**: agudeza 13% y 30%, tramo exacto o vecino 70% y 84%, decisión con error de
+       1% o menos y negadas de más de 21% y 20% o menos. Para las fases que siguen: entrenar sin rechazados y calibrar con OK FACTURAR, la cola
+       exponencial de `cdf` (con espaciado mínimo de 0,30 en logaritmo; resuelve sólo el extremo, no el centro) y el salto de la etiqueta de OK
+       FACTURAR al pasar al tope de 10.000 del predictor de Equifax.
 
     **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y

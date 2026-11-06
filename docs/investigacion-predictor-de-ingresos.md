@@ -2692,6 +2692,458 @@ Con el código viejo y el nuevo, el mensaje al modelo de las 2.567 personas del 
 Desplegado (`dabb60be9f3c`, 2026-10-30) y recalculados los perfiles guardados (3.764 de 3.764), **«a la consulta» da lo mismo que «con el obligado»**: R² 0,187, el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y se certifica «al menos 2.000» al 3,0%, con 87,5% de precisión (16 personas, 14 aciertos).
 541 de los 542 perfiles traen el campo, y en ninguno difiere del crudo. El que falta es de una persona con dos perfiles del lote, creados con 3 segundos de diferencia: el recálculo toca sólo el último, que sí quedó en v15, y la sombra lee el del crudo, que es el anterior.
 
+### 12.32 Línea base, curvas de aprendizaje y efecto en la decisión (2026-11-06)
+
+**Qué se hizo.** Fase 0 de la revisión integral del predictor del 2026-11-06: hasta acá sólo se medía la cobertura del mínimo al 90% (89,1% hacia adelante en el nivel 1; 95,7% en OK FACTURAR y condicionado) y el R² (0,157 en la validación cruzada y 0,074 en OK FACTURAR), y nunca se había medido la agudeza contra una línea base, las curvas de aprendizaje, la cobertura por grupo,
+el costo del sexo como variable, qué etiquetas conviene usar, el efecto de las versiones del predictor de Equifax sobre la etiqueta, el efecto en la capacidad de pago ni las colas de la distribución. `scripts/predictor-ingresos/linea_base.py` lo mide, **siempre hacia adelante** como `medir.py` (se entrena con las 12.604 personas de antes de julio y se prueba con las 8.656 de julio a octubre, 1.613 en OK FACTURAR y condicionado),
+para el nivel 1 vigente (`ingreso-v1`: edad, sexo, fecha de la consulta y SRI de Proveedor_Info_1) y para el nivel 2. Sus números fijan las metas de asertividad de las fases que siguen. **No cambia nada en producción**: no hubo ninguna consulta a AWS, a Proveedor_Info_1, a Equifax ni al modelo de lenguaje, no se escribió en la base y no se tocó `predictor-ingresos.ts` ni `comun.py`.
+Los modelos hacia adelante son los de `medir.py` (diferencia máxima 0 en logaritmo), así que el 89,1% y el 87,4% de cobertura y los R² de 0,175 y 0,372 son los de 12.26 y 12.30. Intervalos del 95% por remuestreo de personas (1.000 veces; 500 por grupo). A git sólo van los agregados (`scripts/predictor-ingresos/metricas/linea-base-2026-11.json`); lo demás queda en `C:\datos\ingresos\resultados\predictor-ingresos\linea-base\`.
+
+**El resultado en una tabla** (nivel 1 / nivel 2; intervalos del 95% entre paréntesis):
+
+| Medida | Resultado | Lectura |
+|---|---|---|
+| 1 Línea base sin variables | La pérdida de cuantiles baja **11,0% (10,1 a 11,9)** y **27,8% (26,4 a 29,1)** contra los cuantiles marginales de todo el entrenamiento (11,1% y 27,8% contra los de abril a junio); en OK FACTURAR, 16,9% y 42,3%. Tramo exacto o vecino: 67,6% y 82,3% contra 59,2% de la línea base | La línea base, un mínimo igual para todos (900), **cubre 90,6%**: más que el nivel 1 sin calibrar (89,1%). La cobertura no distingue al modelo de «decir lo mismo a todos»; la agudeza sí, y en el nivel 1 es poca |
+| 2 Curvas de aprendizaje | Del 50% al 100% de las personas la pérdida baja 0,7% y 0,8% (0,2074 a 0,2060 y 0,1686 a 0,1672); lo último que se suma (del 75% al 100%) trae el 7% y el 6% de todo lo que bajó desde el 10% | **Se aplana en los dos**. El nivel 2 todavía gana cobertura con más etiquetas (86,5% con la mitad, 87,4% con todas); el nivel 1 casi no (88,8% y 89,1%) |
+| 3 Cobertura por grupo | Sin calibrar, de 73,0% (rechazados) a 92,0% (obligados a contabilidad) en el nivel 1; **mujeres 88,1% contra hombres 89,8%**; sin RUC 87,4% (84,5 a 88,9). Ningún grupo tiene menos de 300 casos (el menor, 339). Calibrado, entre 89,1% y 92,3% en los grupos de personas (sexo, edad, RUC, mes), 96,4% en OK FACTURAR y 75,5% en rechazados | Los rechazados (el analista baja el ingreso) y, en el nivel 2, quienes no tienen RUC (83,1%, calibrado 85,9%) quedan lejos del 90% |
+| 4 Costo del sexo (nivel 1) | Sin el sexo el R² baja **0,002 (0,000 a 0,005)** y la pérdida 0,12%; cobertura, certificación y mínimo casi iguales. Todo lo demás igual, el mismo caso como hombre da un mínimo **1,1% mayor** en la mediana (11 dólares) y un valor central 4,5% mayor | El sexo cuesta poco de precisión y mueve poco el mínimo. La brecha de cobertura entre hombres y mujeres no viene de tenerlo como variable: sin él es de 2,2 puntos (1,0 a 3,6) contra 1,7 (0,4 a 3,1) con él |
+| 5 Etiquetas | En OK FACTURAR, entrenar **sin rechazados** baja la pérdida 2,5% (nivel 1: 0,1914 a 0,1867) y 2,3% (nivel 2: 0,1329 a 0,1299); **sólo con OK FACTURAR** no mejora y cubre peor (87,2% y 85,0%). Calibrar sólo con OK FACTURAR deja la cobertura en OK entre 90,2% y 91,3% | Con todas las respuestas el mínimo cubre de más en OK (95,7% y 93,3%) y es bajo (mediana 1.158 y 1.521): calibrar con OK lo sube a entre 1.441 y 1.708 y deja la cobertura cerca del 90% |
+| 6 Versiones del predictor de Equifax | **En el total no hay saltos**: la mediana de real sobre valor central queda entre 0,98 y 1,02 por mes y entre 0,99 y 1,04 por régimen. **En OK FACTURAR sí, al pasar al tope de 10.000** (2 de marzo): baja de 1,30 a 1,09 en el nivel 1 (factor 0,835; 0,729 a 0,943) y de 1,05 a 0,97 en el 2 (0,919; 0,853 a 0,989); con la corrección del negocio sube 1,081 (1,011 a 1,140) en el nivel 2 | La etiqueta de OK FACTURAR cambia con el régimen del predictor de Equifax (el analista lo usa de ancla, 12.28): no se debería mezclar lo de antes y lo de después del 2 de marzo sin mirarlo |
+| 7 Capacidad de pago | Con el mínimo del 90%, 8 créditos de USD 3.000 a 20.000 (36 y 60 meses): concordancia **76,4% y 75,8%**, «alcanza» por error **0,5% (0,3 a 0,7) y 0,2% (0,1 a 0,3)**, niega de más **23,1% y 24,0%**. Con el valor central, «alcanza» por error 10,5% y 4,5% (34,0% y 21,5% de lo que aprueba) | El mínimo del 90% casi nunca aprueba a quien no alcanza, y lo paga con casi una de cada cuatro negativas de más |
+| 8 Colas | La regla actual pone 2,55% en «menos de 470» donde se observa 1,39% (nivel 1). Una cola **exponencial en logaritmo con espaciado mínimo de 0,30** baja el Brier total 0,0012 (0,0009 a 0,0015) en el nivel 1 y 0,0011 en el 2 | Se recomienda, pero es un arreglo chico: el error grande de los tramos está en el centro («940 a 1.999» se predice 33,7% contra 31,2%), no en las colas |
+
+**1. Línea base sin variables.** Los doce cuantiles marginales del logaritmo del ingreso no verificado del entrenamiento (700, 900, 1.000, 1.200, 1.500, 1.800, 2.100, 2.747, 3.480, 4.626, 7.000 y 10.000 dólares; los de abril a junio, parecidos) aplicados a todos los casos de la prueba. La pérdida de cuantiles es el promedio de los doce cuantiles de la pérdida de pinball en logaritmo; la mejora relativa es `1 − pérdida del nivel / pérdida de la línea base`.
+
+*Hacia adelante, todas (n = 8.656)*
+
+| Sistema | Pérdida de cuantiles (IC 95%) | R² | El real supera el mínimo del 90% (%) | Del 85% (%) | Mediana del mínimo del 90% | Mediana de mínimo sobre real | Tramo exacto (%) | Tramo exacto o vecino (%) |
+|---|---|---|---|---|---|---|---|---|
+| Nivel 1 (vigente) | 0,206 (0,200 a 0,212) | 0,175 | 89,1 (88,5 a 89,8) | 84,8 | 1.021 | 0,45 | 36,4 | 67,6 (66,6 a 68,6) |
+| Nivel 2 | 0,167 (0,162 a 0,173) | 0,372 | 87,4 (86,6 a 88,0) | 82,0 | 1.138 | 0,55 | 47,0 | 82,3 (81,5 a 83,1) |
+| Línea base: cuantiles de todo el entrenamiento | 0,231 (0,226 a 0,237) | -0,021 | 90,6 (90,0 a 91,1) | 89,1 | 900 | 0,41 | 31,2 | 59,2 (58,2 a 60,2) |
+| Línea base: cuantiles de abril a junio (6.347 personas) | 0,232 (0,226 a 0,237) | -0,028 | 90,6 (90,0 a 91,1) | 89,1 | 900 | 0,41 | 31,2 | 59,2 (58,2 a 60,2) |
+*Hacia adelante, OK FACTURAR y condicionado (n = 1.613)*
+
+| Sistema | Pérdida de cuantiles (IC 95%) | R² | El real supera el mínimo del 90% (%) | Del 85% (%) | Mediana del mínimo del 90% | Mediana de mínimo sobre real | Tramo exacto (%) | Tramo exacto o vecino (%) |
+|---|---|---|---|---|---|---|---|---|
+| Nivel 1 (vigente) | 0,191 (0,185 a 0,199) | 0,106 | 95,7 (94,6 a 96,6) | 93,0 | 1.158 | 0,36 | 34,2 | 63,5 (61,1 a 66,1) |
+| Nivel 2 | 0,133 (0,127 a 0,139) | 0,546 | 93,3 (92,1 a 94,5) | 89,8 | 1.521 | 0,52 | 52,3 | 87,4 (85,7 a 88,9) |
+| Línea base: cuantiles de todo el entrenamiento | 0,230 (0,221 a 0,240) | -0,440 | 98,4 (97,7 a 98,9) | 97,6 | 900 | 0,29 | 20,7 | 43,8 (41,3 a 46,4) |
+| Línea base: cuantiles de abril a junio (6.347 personas) | 0,232 (0,222 a 0,241) | -0,478 | 98,4 (97,7 a 98,9) | 97,6 | 900 | 0,29 | 20,7 | 43,8 (41,3 a 46,4) |
+*Mejora relativa de la pérdida de cuantiles (intervalo del 95%)*
+
+| Sistema | Contra | Casos | Mejora |
+|---|---|---|---|
+| Nivel 1 (vigente) | Línea base: cuantiles de todo el entrenamiento | todas | 11,0% (10,1 a 11,9) |
+| Nivel 1 (vigente) | Línea base: cuantiles de todo el entrenamiento | OK FACTURAR y condicionado | 16,9% (14,7 a 18,9) |
+| Nivel 1 (vigente) | Línea base: cuantiles de abril a junio (6.347 personas) | todas | 11,1% (10,2 a 12,0) |
+| Nivel 1 (vigente) | Línea base: cuantiles de abril a junio (6.347 personas) | OK FACTURAR y condicionado | 17,5% (15,2 a 19,5) |
+| Nivel 2 | Línea base: cuantiles de todo el entrenamiento | todas | 27,8% (26,4 a 29,1) |
+| Nivel 2 | Línea base: cuantiles de todo el entrenamiento | OK FACTURAR y condicionado | 42,3% (39,7 a 44,6) |
+| Nivel 2 | Línea base: cuantiles de abril a junio (6.347 personas) | todas | 27,8% (26,4 a 29,1) |
+| Nivel 2 | Línea base: cuantiles de abril a junio (6.347 personas) | OK FACTURAR y condicionado | 42,7% (40,1 a 45,0) |
+| Nivel 2 | Nivel 1 (vigente) | todas | 18,8% (17,6 a 20,1) |
+| Nivel 2 | Nivel 1 (vigente) | OK FACTURAR y condicionado | 30,6% (27,9 a 33,1) |
+
+Cuantiles de las líneas base en dólares (0,05 a 0,95): todo el entrenamiento 700, 900, 1.000, 1.200, 1.500, 1.800, 2.100, 2.747, 3.480, 4.626, 7.000, 10.000; abril a junio 700, 900, 1.000, 1.200, 1.500, 1.800, 2.056, 2.687, 3.351, 4.500, 7.000, 10.000.
+
+- **El nivel 1 mejora poco sobre la línea base.** Baja la pérdida 11,0% (10,1 a 11,9); acierta el tramo exacto 36,4% contra 31,2% y el exacto o vecino 67,6% contra 59,2%. En OK FACTURAR la ganancia es mayor (16,9%, 14,7 a 18,9), pero el R² sigue en 0,106.
+- **El nivel 2 sí es otro modelo**: baja la pérdida 27,8% (26,4 a 29,1) contra la línea base y 18,8% (17,6 a 20,1) contra el nivel 1; acierta el tramo exacto o vecino 82,3%.
+- **La cobertura no mide la agudeza.** La línea base cubre 90,6% (90,0 a 91,1) con un mínimo de 900 igual para todos; el nivel 1 cubre 89,1% con 1.021 de mediana. Un mínimo no es bueno sólo por cubrir el 90%: importa cuánto vale mientras lo cubre (cociente de la mediana del mínimo sobre el ingreso real: 0,41 la línea base, 0,45 el nivel 1 y 0,55 el nivel 2).
+- Las dos líneas base dan lo mismo (11,0% y 11,1% de mejora del nivel 1): se usa la de todo el entrenamiento.
+
+**2. Curvas de aprendizaje.**
+
+*Hacia adelante, con el 10, 25, 50, 75 y 100% de las personas de antes de julio (promedio de 3 sorteos con semilla fija; con el 100% hay uno solo, porque los tres serían iguales)*
+
+| Nivel | Personas | R² (todas / OK FACTURAR y condicionado) | Pérdida de cuantiles (todas / OK) | El real supera el mínimo del 90%, % (todas / OK) |
+|---|---|---|---|---|
+| 1 | 1.260 (10%) | 0,117 / 0,053 | 0,2177 / 0,1973 | 82,8 / 91,2 |
+| 1 | 3.151 (25%) | 0,153 / 0,042 | 0,2098 / 0,1955 | 87,4 / 95,2 |
+| 1 | 6.302 (50%) | 0,166 / 0,081 | 0,2074 / 0,1931 | 88,8 / 95,5 |
+| 1 | 9.453 (75%) | 0,170 / 0,100 | 0,2068 / 0,1924 | 88,8 / 95,4 |
+| 1 | 12.604 (100%) | 0,175 / 0,106 | 0,2060 / 0,1914 | 89,1 / 95,7 |
+| 2 | 1.260 (10%) | 0,334 / 0,478 | 0,1791 / 0,1432 | 81,6 / 89,6 |
+| 2 | 3.151 (25%) | 0,358 / 0,524 | 0,1709 / 0,1355 | 84,9 / 92,1 |
+| 2 | 6.302 (50%) | 0,365 / 0,539 | 0,1686 / 0,1339 | 86,5 / 93,2 |
+| 2 | 9.453 (75%) | 0,369 / 0,539 | 0,1679 / 0,1336 | 87,1 / 93,7 |
+| 2 | 12.604 (100%) | 0,372 / 0,546 | 0,1672 / 0,1329 | 87,4 / 93,3 |
+
+*Qué parte de lo que bajó la pérdida entre el 10% y el 100% de las personas llegó con cada tramo (100% = todo lo que bajó)*
+
+| Nivel | Casos | Baja de la pérdida del 10% al 100% | Del 25% al 50% | Del 50% al 100% | Del 75% al 100% |
+|---|---|---|---|---|---|
+| 1 | todas | 5,4% | 20% | 12% | 7% |
+| 1 | OK FACTURAR y condicionado | 3,0% | 41% | 28% | 16% |
+| 2 | todas | 6,6% | 19% | 12% | 6% |
+| 2 | OK FACTURAR y condicionado | 7,2% | 16% | 10% | 7% |
+
+- **Nivel 1: se aplana.** De la mitad a todas las personas la pérdida baja 0,0014 (0,7%), el R² de 0,166 a 0,175 y la cobertura de 88,8% a 89,1%; las últimas 3.150 personas (del 75% al 100%) bajan la pérdida 0,0008. Otra duplicación debería bajarla menos que la última (0,0014, o sea menos de 0,6 puntos de agudeza contra la línea base de 0,231): lo que falta tiene que venir de otras variables o de otras etiquetas. No se midió más allá de las 12.604 personas que hay.
+- **Nivel 2: se aplana en la pérdida, no del todo en la cobertura.** De la mitad a todas la pérdida baja 0,0014 (0,8%) y el R² de 0,365 a 0,372, pero la cobertura al 90% todavía sube de a 0,3 a 0,6 puntos por cada cuarto de las personas (86,5%, 87,1%, 87,4%): más etiquetas ayudan a la cobertura más que a la agudeza.
+- En OK FACTURAR las curvas son más ruidosas (el R² del nivel 1 con el 25% de las personas, 0,042, es menor que con el 10%, 0,053) y siguen la misma forma.
+
+**3. Cobertura y mínimo mediano por grupo.** Sin calibrar y con el corrimiento conforme de `calibrar.py` (la «cruzada» en logaritmo: el modelo con todo lo anterior a julio y el corrimiento sacado de sus predicciones fuera de muestra, 0,040 en el nivel 1 y 0,066 en el 2). Los grupos con menos de 300 casos llevarían la marca «pocos casos»: no hay ninguno (el menor, los obligados a llevar contabilidad, tiene 339).
+
+*Nivel 1: el real supera el mínimo del 90%, sin calibrar y calibrado (corrimiento 0,040 en logaritmo). «Pocos casos» = menos de 300*
+
+| Grupo | Casos | Mediana del ingreso | Sin calibrar: cobertura (IC 95%) | Sin calibrar: mediana del mínimo | Calibrado: cobertura (IC 95%) | Calibrado: mediana del mínimo |
+|---|---|---|---|---|---|---|
+| Todas | 8.656 | 2.219 | 89,1 (88,5 a 89,8) | 1.021 | 90,4 (89,8 a 91,1) | 981 |
+| Sexo: masculino | 5.199 | 2.462 | 89,8 (89,0 a 90,6) | 1.057 | 91,1 (90,3 a 91,8) | 1.015 |
+| Sexo: femenino | 3.457 | 2.000 | 88,1 (87,0 a 89,1) | 987 | 89,4 (88,4 a 90,4) | 948 |
+| Edad: hasta 30 | 2.449 | 1.550 | 88,7 (87,4 a 89,9) | 804 | 89,8 (88,6 a 90,9) | 773 |
+| Edad: 31 a 45 | 3.453 | 2.500 | 88,8 (87,7 a 89,8) | 1.077 | 90,6 (89,6 a 91,5) | 1.035 |
+| Edad: 46 a 60 | 1.899 | 3.000 | 90,0 (88,7 a 91,3) | 1.170 | 91,0 (89,7 a 92,2) | 1.124 |
+| Edad: más de 60 | 855 | 3.000 | 89,8 (87,5 a 91,9) | 1.216 | 90,5 (88,4 a 92,5) | 1.169 |
+| Con RUC | 7.870 | 2.500 | 89,3 (88,6 a 90,0) | 1.061 | 90,6 (89,9 a 91,2) | 1.019 |
+| Sin RUC | 786 | 1.286 | 87,4 (84,7 a 89,5) | 763 | 89,1 (86,6 a 91,0) | 733 |
+| Obligado a llevar contabilidad: sí | 339 | 9.652 | 92,0 (89,1 a 94,7) | 2.541 | 92,3 (89,2 a 94,8) | 2.441 |
+| Obligado a llevar contabilidad: no | 7.531 | 2.380 | 89,2 (88,5 a 89,9) | 1.044 | 90,5 (89,8 a 91,2) | 1.003 |
+| Obligado a llevar contabilidad: sin dato | 786 | 1.286 | 87,4 (84,7 a 89,5) | 763 | 89,1 (86,6 a 91,0) | 733 |
+| Estado del RUC: activo | 7.290 | 2.500 | 89,3 (88,6 a 90,1) | 1.087 | 90,6 (89,9 a 91,3) | 1.044 |
+| Estado del RUC: suspendido | 580 | 1.600 | 88,8 (86,5 a 91,3) | 876 | 90,2 (87,9 a 92,6) | 842 |
+| Estado del RUC: sin dato | 786 | 1.286 | 87,4 (84,7 a 89,5) | 763 | 89,1 (86,6 a 91,0) | 733 |
+| Respuesta: OK FACTURAR y condicionado | 1.613 | 3.147 | 95,7 (94,6 a 96,7) | 1.158 | 96,4 (95,5 a 97,3) | 1.112 |
+| Respuesta: rechazado | 2.016 | 1.500 | 73,0 (70,9 a 74,8) | 995 | 75,5 (73,6 a 77,5) | 956 |
+| Respuesta: las demás (sin respuesta, aprobado, pendiente) | 5.027 | 2.400 | 93,5 (92,8 a 94,2) | 986 | 94,5 (93,9 a 95,1) | 947 |
+| Mes de la consulta: 2026-07 | 2.175 | 2.155 | 88,7 (87,4 a 89,9) | 1.027 | 90,0 (88,6 a 91,2) | 987 |
+| Mes de la consulta: 2026-08 | 2.448 | 2.175 | 89,1 (87,9 a 90,3) | 1.009 | 90,4 (89,3 a 91,6) | 969 |
+| Mes de la consulta: 2026-09 | 2.328 | 2.353 | 88,7 (87,6 a 90,1) | 1.013 | 90,5 (89,3 a 91,6) | 973 |
+| Mes de la consulta: 2026-10 | 1.705 | 2.301 | 90,3 (88,9 a 91,6) | 1.042 | 90,9 (89,4 a 92,3) | 1.001 |
+*Nivel 2: el real supera el mínimo del 90%, sin calibrar y calibrado (corrimiento 0,066 en logaritmo). «Pocos casos» = menos de 300*
+
+| Grupo | Casos | Mediana del ingreso | Sin calibrar: cobertura (IC 95%) | Sin calibrar: mediana del mínimo | Calibrado: cobertura (IC 95%) | Calibrado: mediana del mínimo |
+|---|---|---|---|---|---|---|
+| Todas | 8.656 | 2.219 | 87,4 (86,7 a 88,0) | 1.138 | 89,6 (88,9 a 90,2) | 1.065 |
+| Sexo: masculino | 5.199 | 2.462 | 88,3 (87,4 a 89,2) | 1.156 | 90,4 (89,5 a 91,2) | 1.082 |
+| Sexo: femenino | 3.457 | 2.000 | 86,0 (84,8 a 87,1) | 1.111 | 88,3 (87,2 a 89,4) | 1.040 |
+| Edad: hasta 30 | 2.449 | 1.550 | 86,0 (84,8 a 87,4) | 892 | 88,5 (87,4 a 89,7) | 835 |
+| Edad: 31 a 45 | 3.453 | 2.500 | 87,4 (86,3 a 88,5) | 1.208 | 89,7 (88,7 a 90,7) | 1.131 |
+| Edad: 46 a 60 | 1.899 | 3.000 | 88,4 (86,9 a 89,7) | 1.380 | 90,4 (89,0 a 91,7) | 1.292 |
+| Edad: más de 60 | 855 | 3.000 | 89,2 (87,1 a 91,6) | 1.347 | 90,4 (88,4 a 92,5) | 1.261 |
+| Con RUC | 7.870 | 2.500 | 87,8 (87,1 a 88,5) | 1.186 | 90,0 (89,3 a 90,6) | 1.111 |
+| Sin RUC | 786 | 1.286 | 83,1 (79,9 a 85,5) | 798 | 85,9 (83,0 a 88,2) | 747 |
+| Obligado a llevar contabilidad: sí | 339 | 9.652 | 94,4 (91,9 a 96,8) | 3.276 | 95,0 (92,6 a 97,3) | 3.067 |
+| Obligado a llevar contabilidad: no | 7.531 | 2.380 | 87,5 (86,8 a 88,3) | 1.164 | 89,7 (89,1 a 90,4) | 1.090 |
+| Obligado a llevar contabilidad: sin dato | 786 | 1.286 | 83,1 (79,9 a 85,5) | 798 | 85,9 (83,0 a 88,2) | 747 |
+| Estado del RUC: activo | 7.290 | 2.500 | 87,9 (87,2 a 88,6) | 1.216 | 90,1 (89,4 a 90,8) | 1.138 |
+| Estado del RUC: suspendido | 580 | 1.600 | 86,7 (84,0 a 89,5) | 966 | 88,4 (85,7 a 90,9) | 904 |
+| Estado del RUC: sin dato | 786 | 1.286 | 83,1 (79,9 a 85,5) | 798 | 85,9 (83,0 a 88,2) | 747 |
+| Respuesta: OK FACTURAR y condicionado | 1.613 | 3.147 | 93,3 (92,0 a 94,5) | 1.521 | 94,9 (93,7 a 95,9) | 1.424 |
+| Respuesta: rechazado | 2.016 | 1.500 | 71,7 (69,9 a 73,7) | 1.068 | 75,5 (73,8 a 77,5) | 1.000 |
+| Respuesta: las demás (sin respuesta, aprobado, pendiente) | 5.027 | 2.400 | 91,8 (91,0 a 92,5) | 1.078 | 93,6 (92,9 a 94,1) | 1.009 |
+| Mes de la consulta: 2026-07 | 2.175 | 2.155 | 86,9 (85,6 a 88,4) | 1.131 | 89,4 (88,1 a 90,8) | 1.059 |
+| Mes de la consulta: 2026-08 | 2.448 | 2.175 | 87,6 (86,4 a 88,9) | 1.135 | 89,5 (88,3 a 90,7) | 1.062 |
+| Mes de la consulta: 2026-09 | 2.328 | 2.353 | 87,1 (85,8 a 88,4) | 1.129 | 89,4 (88,2 a 90,8) | 1.057 |
+| Mes de la consulta: 2026-10 | 1.705 | 2.301 | 88,2 (86,6 a 89,6) | 1.157 | 90,1 (88,6 a 91,5) | 1.083 |
+
+- **Sexo**: las mujeres cubren menos que los hombres, 88,1% contra 89,8% en el nivel 1 (1,7 puntos) y 86,0% contra 88,3% en el 2 (2,3 puntos); calibrado, 89,4% contra 91,1% y 88,3% contra 90,4%. En el nivel 1 los intervalos no se tocan. Las mujeres ganan menos (mediana de 2.000 contra 2.462) y el mínimo mediano que se les da es más bajo (987 contra 1.057).
+- **Edad**: hasta los 30 años el nivel 2 cubre 86,0% y calibrado 88,5%; de los 46 años en adelante cubre 88,4% y 89,2%, y calibrado 90,4%.
+- **RUC**: quien no tiene RUC cubre 87,4% (84,5 a 88,9) en el nivel 1 y **83,1% (79,4 a 84,6)** en el 2; calibrado 89,1% y 85,9%. Los obligados a llevar contabilidad cubren de más (92,0% y 94,4%): su mínimo es alto (2.541 y 3.276) y su ingreso, más alto aún. El RUC suspendido no se distingue del activo.
+- **Respuesta comercial**: los **rechazados cubren 73,0% y 71,7%** (75,5% calibrados); el analista les baja el ingreso (12.21) y el modelo se entrena con todas las respuestas. OK FACTURAR y condicionado cubre 95,7% y 93,3%, y las demás respuestas 93,5% y 91,8%: el 89,1% del total es el promedio de una población que cubre de más y una que cubre de menos.
+- **Mes de la consulta**: sin deriva visible de julio a octubre (nivel 1: 88,7%, 89,1%, 88,7% y 90,3%; nivel 2: 86,9% a 88,2%).
+
+**4. El costo del sexo en el nivel 1.** Se midió qué se perdería sin el sexo como variable, cuánto mueve el mínimo y si la brecha de cobertura entre mujeres y hombres (sección 3) viene de tenerla.
+
+*Con y sin el sexo, hacia adelante*
+
+| Nivel 1 | Casos | R² | Pérdida de cuantiles | El real supera el mínimo del 90% (%) | Del 85% (%) | Mediana del mínimo | Certifica «al menos 2.000» (% y precisión) |
+|---|---|---|---|---|---|---|---|
+| Nivel 1 vigente (con el sexo) | todas | 0,175 (0,149 a 0,202) | 0,2060 | 89,1 (88,5 a 89,8) | 84,8 | 1.021 | 3,5% y 95,1% |
+| Nivel 1 vigente (con el sexo) | OK FACTURAR y condicionado | 0,106 (0,057 a 0,152) | 0,1914 | 95,7 (94,6 a 96,6) | 93,0 | 1.158 | 7,1% y 96,5% |
+| Nivel 1 sin el sexo | todas | 0,173 (0,147 a 0,199) | 0,2062 | 89,1 (88,4 a 89,8) | 84,8 | 1.030 | 3,5% y 95,0% |
+| Nivel 1 sin el sexo | OK FACTURAR y condicionado | 0,103 (0,053 a 0,147) | 0,1916 | 95,5 (94,4 a 96,5) | 93,2 | 1.147 | 7,1% y 96,5% |
+*Diferencia del nivel vigente con el nivel sin el sexo (intervalo del 95%)*
+
+| Casos | Diferencia de R² | Baja de la pérdida de cuantiles |
+|---|---|---|
+| todas | 0,002 (0,000 a 0,005) | 0,12% (-0,01 a 0,24) |
+| OK FACTURAR y condicionado | 0,004 (-0,004 a 0,012) | 0,10% (-0,26 a 0,46) |
+*Cobertura del mínimo del 90% por sexo, con y sin el sexo como variable (brecha en puntos; intervalo del 95%)*
+
+| Modelo | Sexo | Casos | Cobertura (IC 95%) | Mediana del mínimo |
+|---|---|---|---|---|
+| con el sexo (vigente) | masculino | 5.199 | 89,8 (89,0 a 90,6) | 1.057 |
+| con el sexo (vigente) | femenino | 3.457 | 88,1 (87,0 a 89,1) | 987 |
+| con el sexo (vigente) | brecha: masculino menos femenino | 8.656 | 1,7 (0,4 a 3,1) | — |
+| sin el sexo | masculino | 5.199 | 90,0 (89,3 a 90,8) | 1.049 |
+| sin el sexo | femenino | 3.457 | 87,8 (86,8 a 88,8) | 1.007 |
+| sin el sexo | brecha: masculino menos femenino | 8.656 | 2,2 (1,0 a 3,6) | — |
+*Todo lo demás igual: el mismo caso como hombre y como mujer (modelo vigente)*
+
+| Casos | Mínimo mediano: hombre / mujer | Mediana de hombre sobre mujer (p10 a p90) | Diferencia mediana en dólares | Hombre más de 5% arriba / abajo (%) | Certifica «al menos 2.000»: hombre / mujer (%) | Valor central: hombre sobre mujer (mediana) |
+|---|---|---|---|---|---|---|
+| Todos los casos de la prueba (8.656) | 1.028 / 1.014 | 1,011 (0,981 a 1,068) | 11 | 14,9 / 0,6 | 3,5 / 3,6 | 1,045 |
+| Los que son hombres (5.199) | 1.057 / 1.036 | 1,010 (0,981 a 1,068) | 11 | 15,1 / 0,5 | 4,5 / 4,6 | 1,046 |
+| Las que son mujeres (3.457) | 1.004 / 987 | 1,012 (0,982 a 1,069) | 11 | 14,6 / 0,7 | 2,0 / 2,0 | 1,042 |
+| OK FACTURAR y condicionado (1.613) | 1.161 / 1.148 | 1,008 (0,984 a 1,053) | 10 | 11,2 / 0,7 | 7,1 / 7,1 | 1,073 |
+
+Ingreso real mediano de la prueba: hombres 2.462, mujeres 2.000. El modelo reentrenado reproduce el hacia adelante vigente con diferencia máxima 0.0e+00.
+
+- **Casi no cuesta nada.** Sin el sexo el R² baja 0,002 (0,000 a 0,005) y la pérdida de cuantiles 0,12% (−0,01 a 0,24); la cobertura es la misma (89,1%), «al menos 2.000» se certifica igual (3,5%) y el mínimo mediano sube de 1.021 a 1.030. En OK FACTURAR la diferencia no se distingue de cero.
+- **Todo lo demás igual, el efecto directo es chico.** El mismo caso, predicho como hombre y como mujer, da un mínimo con una mediana 1,1% mayor para el hombre (11 dólares; el percentil 10 de la razón es 0,98 y el 90, 1,07): en el 14,9% de los casos el hombre queda más de 5% arriba y en el 0,6% más de 5% abajo. El valor central es 4,5% mayor. La certificación «al menos 2.000» es la misma (3,5% y 3,6%).
+- **La brecha de cobertura no viene de tener el sexo.** Con el sexo, el mínimo cubre 89,8% en los hombres y 88,1% en las mujeres (brecha de 1,7 puntos; 0,4 a 3,1); sin él, 90,0% y 87,8% (2,2 puntos; 1,0 a 3,6). El mínimo mediano de las mujeres sube de 987 a 1.007 y el de los hombres baja de 1.057 a 1.049, pero la brecha no se cierra (las mujeres ganan menos: mediana de 2.000 contra 2.462).
+- Sacar el sexo del nivel 1 costaría 0,002 de R², y la decisión es del negocio.
+
+**5. Qué etiquetas usar.** Tres entrenamientos de cada nivel, medidos sobre OK FACTURAR y condicionado de julio a octubre, y la calibración conforme hecha con todos los casos del entrenamiento (como hoy) o sólo con los de OK FACTURAR y condicionado (el corrimiento sale de las predicciones fuera de muestra de esos casos).
+
+*Nivel 1, medido sobre OK FACTURAR y condicionado de julio a octubre (n = 1.613)*
+
+| Entrenado con | Calibración | Corrimiento del 90% | R² | Pérdida de cuantiles | El real supera el mínimo del 90% (IC 95%) | Del 85% (%) | Mediana del mínimo | Tramo exacto (%) | Certifica «al menos 2.000» (% y precisión) |
+|---|---|---|---|---|---|---|---|---|---|
+| Todas las respuestas (como hoy) (12.604) | sin calibrar | — | 0,106 | 0,1914 | 95,7 (94,6 a 96,6) | 93,0 | 1.158 | 34,2 | 7,1% y 96,5% |
+| Todas las respuestas (como hoy) (12.604) | calibrado con todos los casos del entrenamiento (12.604) | 0,040 | 0,106 | 0,1914 | 96,4 (95,5 a 97,3) | 93,7 | 1.112 | 34,2 | 7,1% y 96,5% |
+| Todas las respuestas (como hoy) (12.604) | calibrado sólo con OK FACTURAR y condicionado (1.925) | -0,233 | 0,106 | 0,1914 | 90,2 (88,7 a 91,6) | 85,9 | 1.462 | 34,2 | 7,9% y 94,5% |
+| Sin rechazados (9.865) | sin calibrar | — | 0,144 | 0,1867 | 92,1 (90,8 a 93,3) | 87,2 | 1.392 | 36,0 | 7,4% y 96,6% |
+| Sin rechazados (9.865) | calibrado con todos los casos del entrenamiento (9.865) | 0,044 | 0,144 | 0,1867 | 93,4 (92,2 a 94,5) | 88,5 | 1.333 | 36,0 | 7,4% y 96,6% |
+| Sin rechazados (9.865) | calibrado sólo con OK FACTURAR y condicionado (1.925) | -0,034 | 0,144 | 0,1867 | 91,3 (89,8 a 92,6) | 86,6 | 1.441 | 36,0 | 7,4% y 96,6% |
+| Sólo OK FACTURAR y condicionado (1.925) | sin calibrar | — | 0,115 | 0,1923 | 87,2 (85,6 a 88,8) | 81,6 | 1.526 | 32,5 | 13,5% y 87,2% |
+| Sólo OK FACTURAR y condicionado (1.925) | calibrado con todos los casos del entrenamiento (1.925) | 0,119 | 0,115 | 0,1923 | 91,3 (89,8 a 92,7) | 86,2 | 1.355 | 32,5 | 7,4% y 95,8% |
+*Nivel 2, medido sobre OK FACTURAR y condicionado de julio a octubre (n = 1.613)*
+
+| Entrenado con | Calibración | Corrimiento del 90% | R² | Pérdida de cuantiles | El real supera el mínimo del 90% (IC 95%) | Del 85% (%) | Mediana del mínimo | Tramo exacto (%) | Certifica «al menos 2.000» (% y precisión) |
+|---|---|---|---|---|---|---|---|---|---|
+| Todas las respuestas (como hoy) (12.604) | sin calibrar | — | 0,546 | 0,1329 | 93,3 (92,1 a 94,5) | 89,8 | 1.521 | 52,3 | 35,4% y 97,7% |
+| Todas las respuestas (como hoy) (12.604) | calibrado con todos los casos del entrenamiento (12.604) | 0,066 | 0,546 | 0,1329 | 94,9 (93,8 a 95,9) | 91,5 | 1.424 | 52,3 | 31,9% y 98,4% |
+| Todas las respuestas (como hoy) (12.604) | calibrado sólo con OK FACTURAR y condicionado (1.925) | -0,105 | 0,546 | 0,1329 | 90,5 (89,1 a 91,9) | 86,8 | 1.690 | 52,3 | 40,7% y 97,0% |
+| Sin rechazados (9.865) | sin calibrar | — | 0,566 | 0,1299 | 88,8 (87,2 a 90,3) | 83,3 | 1.795 | 52,9 | 44,6% y 96,9% |
+| Sin rechazados (9.865) | calibrado con todos los casos del entrenamiento (9.865) | 0,063 | 0,566 | 0,1299 | 91,3 (89,9 a 92,7) | 86,6 | 1.686 | 52,9 | 41,5% y 97,6% |
+| Sin rechazados (9.865) | calibrado sólo con OK FACTURAR y condicionado (1.925) | 0,050 | 0,566 | 0,1299 | 90,9 (89,5 a 92,3) | 87,2 | 1.708 | 52,9 | 42,0% y 97,6% |
+| Sólo OK FACTURAR y condicionado (1.925) | sin calibrar | — | 0,551 | 0,1330 | 85,0 (83,3 a 86,7) | 79,9 | 1.910 | 52,4 | 47,7% y 96,8% |
+| Sólo OK FACTURAR y condicionado (1.925) | calibrado con todos los casos del entrenamiento (1.925) | 0,121 | 0,551 | 0,1330 | 91,0 (89,6 a 92,4) | 87,0 | 1.692 | 52,4 | 41,4% y 98,1% |
+
+- **Sin rechazados mejora lo que se mide en OK FACTURAR**: la pérdida baja 2,5% en el nivel 1 y 2,3% en el 2, y el R² sube de 0,106 a 0,144 y de 0,546 a 0,566. Al rechazado el analista le baja el ingreso (razón de 0,46, 12.21): es otra etiqueta que la de los demás.
+- **Sólo con OK FACTURAR no mejora** (pérdida 0,1923 y 0,1330, igual o peor que con todas) y, con 1.925 personas, deja el mínimo cubriendo 87,2% y 85,0%: pocos casos y un mínimo demasiado alto sin calibrar.
+- **El mínimo de hoy cubre de más en OK FACTURAR** (95,7% y 93,3%, mediana 1.158 y 1.521). Calibrando sólo con OK FACTURAR la cobertura queda en 90,2% (88,7 a 91,6) y 90,5% (89,1 a 91,9) con un mínimo mediano de 1.462 y 1.690 (26% y 11% más alto): el corrimiento pasa a ser negativo (−0,233 y −0,105). Entrenando sin rechazados el mismo método da 91,3% y 90,9% con 1.441 y 1.708, y «al menos 2.000» se certifica en el 42,0% de OK FACTURAR del nivel 2 con 97,6% de precisión (hoy 35,4% con 97,7%).
+- **Advertencia**: una calibración hecha sólo con OK FACTURAR no se midió sobre los rechazados ni sobre las demás respuestas, que cubren menos (sección 3); y OK FACTURAR es la etiqueta del analista de Novacredit con el predictor de Equifax de ancla (sección 6).
+
+**6. Las versiones del predictor de Equifax y la etiqueta.** Por mes de consulta y por régimen del predictor (los cortes de fecha medidos en 12.11; los nombres V0, V1, V2 y V3 son del negocio y no se cruzan uno a uno con los cortes: V0 es el de tope 20.000 hasta el 13 de enero, la corrección que dio los repetidos 1.051, 2.051 y 1.501 cae en el tramo del tope de 10.000, y V3 es la corrección del negocio desde abril).
+Validación cruzada por persona de toda la tabla (21.260), porque los meses de enero a junio no tienen una prueba hacia adelante; el «nivel 1 sin la fecha de la consulta» se agrega para que `anio_mes` no absorba un cambio de régimen. La marca «pocos casos» señala los períodos de menos de 300 casos.
+
+*Validación cruzada por persona, todas: mediana de real sobre valor central y cobertura del mínimo del 90%*
+
+| Período | Casos | Ingreso mediano | Nivel 1: real sobre central | Nivel 1 sin la fecha de la consulta: real sobre central | Nivel 2: real sobre central | Nivel 1: cobertura (%) | Nivel 1 sin la fecha de la consulta: cobertura (%) | Nivel 2: cobertura (%) |
+|---|---|---|---|---|---|---|---|---|
+| Mes 2026-01 | 2.011 | 2.101 | 1,00 (0,98 a 1,04) | 1,02 (0,99 a 1,06) | 1,02 (0,99 a 1,05) | 89,5 | 90,6 | 89,6 |
+| Mes 2026-02 | 1.812 | 2.200 | 0,98 (0,95 a 1,02) | 0,99 (0,96 a 1,03) | 0,99 (0,96 a 1,03) | 88,1 | 87,3 | 85,9 |
+| Mes 2026-03 | 2.406 | 2.150 | 1,00 (0,98 a 1,04) | 1,02 (0,98 a 1,04) | 1,01 (0,99 a 1,05) | 89,4 | 89,6 | 89,3 |
+| Mes 2026-04 | 2.072 | 2.182 | 0,98 (0,95 a 1,02) | 0,98 (0,95 a 1,02) | 1,00 (0,98 a 1,04) | 88,9 | 88,2 | 87,8 |
+| Mes 2026-05 | 2.268 | 2.000 | 1,01 (0,98 a 1,04) | 1,01 (0,98 a 1,04) | 1,01 (0,97 a 1,03) | 89,3 | 89,5 | 88,8 |
+| Mes 2026-06 | 2.007 | 2.050 | 1,01 (0,97 a 1,05) | 1,01 (0,96 a 1,04) | 1,00 (0,98 a 1,03) | 88,9 | 88,9 | 87,8 |
+| Mes 2026-07 | 2.175 | 2.155 | 0,99 (0,96 a 1,03) | 0,99 (0,96 a 1,01) | 1,00 (0,97 a 1,02) | 89,2 | 89,0 | 87,9 |
+| Mes 2026-08 | 2.448 | 2.175 | 1,00 (0,97 a 1,04) | 1,00 (0,97 a 1,03) | 0,99 (0,97 a 1,01) | 89,3 | 89,2 | 88,1 |
+| Mes 2026-09 | 2.328 | 2.353 | 0,99 (0,97 a 1,03) | 0,99 (0,95 a 1,01) | 0,99 (0,97 a 1,02) | 89,3 | 89,1 | 87,6 |
+| Mes 2026-10 | 1.705 | 2.301 | 1,00 (0,96 a 1,04) | 0,98 (0,94 a 1,01) | 1,00 (0,98 a 1,04) | 89,0 | 89,7 | 89,3 |
+| Régimen: hasta el 13 de enero (tope 20.000, valores continuos) | 622 | 2.073 | 1,04 (0,97 a 1,13) | 1,04 (0,96 a 1,13) | 1,02 (0,97 a 1,07) | 91,0 | 92,4 | 91,8 |
+| Régimen: 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 3.229 | 2.200 | 0,99 (0,96 a 1,02) | 1,01 (0,97 a 1,03) | 1,00 (0,98 a 1,03) | 88,4 | 88,3 | 87,0 |
+| Régimen: 2 de marzo al 12 de abril (tope 10.000) | 2.993 | 2.052 | 1,00 (0,97 a 1,03) | 1,01 (0,97 a 1,03) | 1,00 (0,98 a 1,03) | 89,7 | 89,7 | 89,3 |
+| Régimen: desde el 13 de abril (corrección del negocio, V3) | 14.416 | 2.200 | 1,00 (0,99 a 1,01) | 0,99 (0,98 a 1,00) | 1,00 (0,99 a 1,01) | 89,1 | 89,0 | 88,1 |
+*Validación cruzada por persona, OK FACTURAR y condicionado: mediana de real sobre valor central y cobertura del mínimo del 90%*
+
+| Período | Casos | Ingreso mediano | Nivel 1: real sobre central | Nivel 1 sin la fecha de la consulta: real sobre central | Nivel 2: real sobre central | Nivel 1: cobertura (%) | Nivel 1 sin la fecha de la consulta: cobertura (%) | Nivel 2: cobertura (%) |
+|---|---|---|---|---|---|---|---|---|
+| Mes 2026-01 (pocos casos) | 262 | 3.895 | 1,26 (1,11 a 1,46) | 1,30 (1,17 a 1,46) | 1,08 (0,99 a 1,18) | 97,7 | 98,5 | 96,9 |
+| Mes 2026-02 (pocos casos) | 200 | 3.844 | 1,40 (1,14 a 1,58) | 1,38 (1,15 a 1,56) | 1,05 (0,96 a 1,13) | 97,0 | 96,5 | 93,5 |
+| Mes 2026-03 | 366 | 3.000 | 1,11 (1,04 a 1,21) | 1,14 (1,04 a 1,23) | 0,98 (0,92 a 1,04) | 95,1 | 95,4 | 93,4 |
+| Mes 2026-04 | 342 | 3.000 | 1,06 (0,97 a 1,18) | 1,05 (0,96 a 1,16) | 1,05 (0,99 a 1,11) | 96,8 | 95,9 | 94,2 |
+| Mes 2026-05 | 366 | 3.083 | 1,10 (1,00 a 1,25) | 1,11 (1,00 a 1,26) | 1,00 (0,94 a 1,05) | 94,8 | 95,1 | 92,3 |
+| Mes 2026-06 | 386 | 3.116 | 1,15 (1,09 a 1,23) | 1,13 (1,08 a 1,22) | 1,01 (0,96 a 1,09) | 94,8 | 94,6 | 94,0 |
+| Mes 2026-07 | 419 | 3.146 | 1,17 (1,09 a 1,27) | 1,18 (1,09 a 1,24) | 1,09 (1,01 a 1,13) | 95,9 | 95,7 | 94,5 |
+| Mes 2026-08 | 409 | 3.259 | 1,15 (1,07 a 1,26) | 1,17 (1,07 a 1,31) | 1,03 (0,99 a 1,07) | 94,9 | 95,1 | 93,2 |
+| Mes 2026-09 | 442 | 3.037 | 1,08 (1,00 a 1,17) | 1,07 (1,00 a 1,18) | 1,07 (1,01 a 1,14) | 96,2 | 95,0 | 93,2 |
+| Mes 2026-10 | 343 | 3.287 | 1,16 (1,03 a 1,24) | 1,15 (1,06 a 1,21) | 1,05 (0,99 a 1,11) | 94,8 | 95,6 | 95,9 |
+| Régimen: hasta el 13 de enero (tope 20.000, valores continuos) (pocos casos) | 86 | 3.950 | 1,22 (1,00 a 2,01) | 1,28 (1,01 a 2,00) | 1,09 (1,00 a 1,28) | 97,7 | 98,8 | 98,8 |
+| Régimen: 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 379 | 3.832 | 1,30 (1,15 a 1,48) | 1,34 (1,18 a 1,49) | 1,05 (0,98 a 1,13) | 97,1 | 97,1 | 94,5 |
+| Régimen: 2 de marzo al 12 de abril (tope 10.000) | 447 | 3.000 | 1,09 (1,01 a 1,18) | 1,12 (1,00 a 1,19) | 0,97 (0,92 a 1,02) | 95,1 | 95,3 | 93,3 |
+| Régimen: desde el 13 de abril (corrección del negocio, V3) | 2.626 | 3.117 | 1,14 (1,10 a 1,17) | 1,13 (1,10 a 1,17) | 1,05 (1,02 a 1,06) | 95,5 | 95,3 | 93,9 |
+
+*Salto de un régimen al siguiente: cambio de la mediana de real sobre valor central (factor; intervalo del 95%)*
+
+| Casos | Modelo | De | A | Factor de la mediana de real sobre valor central (IC 95%) |
+|---|---|---|---|---|
+| todas | Nivel 1 | hasta el 13 de enero (tope 20.000, valores continuos) | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 0,956 (0,868 a 1,033) |
+| todas | Nivel 2 | hasta el 13 de enero (tope 20.000, valores continuos) | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 0,984 (0,932 a 1,038) |
+| todas | Nivel 1 | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 2 de marzo al 12 de abril (tope 10.000) | 1,007 (0,971 a 1,053) |
+| todas | Nivel 2 | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 2 de marzo al 12 de abril (tope 10.000) | 0,998 (0,969 a 1,041) |
+| todas | Nivel 1 | 2 de marzo al 12 de abril (tope 10.000) | desde el 13 de abril (corrección del negocio, V3) | 1,004 (0,973 a 1,035) |
+| todas | Nivel 2 | 2 de marzo al 12 de abril (tope 10.000) | desde el 13 de abril (corrección del negocio, V3) | 0,998 (0,965 a 1,019) |
+| OK FACTURAR y condicionado | Nivel 1 | hasta el 13 de enero (tope 20.000, valores continuos) | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 1,066 (0,637 a 1,347) |
+| OK FACTURAR y condicionado | Nivel 2 | hasta el 13 de enero (tope 20.000, valores continuos) | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 0,965 (0,819 a 1,097) |
+| OK FACTURAR y condicionado | Nivel 1 | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 2 de marzo al 12 de abril (tope 10.000) | 0,835 (0,717 a 0,968) |
+| OK FACTURAR y condicionado | Nivel 2 | 14 de enero al 1 de marzo (valores discretos, aún tope 20.000) | 2 de marzo al 12 de abril (tope 10.000) | 0,919 (0,838 a 1,003) |
+| OK FACTURAR y condicionado | Nivel 1 | 2 de marzo al 12 de abril (tope 10.000) | desde el 13 de abril (corrección del negocio, V3) | 1,047 (0,954 a 1,111) |
+| OK FACTURAR y condicionado | Nivel 2 | 2 de marzo al 12 de abril (tope 10.000) | desde el 13 de abril (corrección del negocio, V3) | 1,081 (1,015 a 1,150) |
+
+- **En el total no hay saltos de régimen**: la mediana de real sobre valor central queda entre 0,98 y 1,02 en los diez meses y entre 0,99 y 1,04 en los cuatro regímenes, y los factores entre regímenes seguidos son 0,956 (0,884 a 1,037), 1,007 (0,978 a 1,046) y 1,004 (0,970 a 1,035) en el nivel 1, todos con el 1 adentro. La cobertura del 90% del nivel 1 va de 88,1% a 89,5% por mes y de 88,4% a 91,0% por régimen (91,0% antes del 13 de enero, con 622 casos).
+- **En OK FACTURAR y condicionado sí hay un salto al pasar al tope de 10.000** (2 de marzo): la mediana de real sobre valor central baja de 1,30 a 1,09 en el nivel 1 (factor 0,835; 0,729 a 0,943; sin la fecha de la consulta, 0,836) y de 1,05 a 0,97 en el 2 (0,919; 0,853 a 0,989), y el ingreso mediano de OK FACTURAR baja de 3.832 a 3.000 entre un régimen y otro.
+  Con la corrección del negocio (desde el 13 de abril) el cociente sube en el nivel 2 (1,081; 1,011 a 1,140) y en el nivel 1 no se distingue de cero (1,047; 0,963 a 1,118). Son 379 y 447 casos por régimen y los regímenes no son un experimento: lo que se ve es compatible con un analista que ancla en el predictor, no lo prueba.
+- **En OK FACTURAR el cociente es mayor que 1 casi todos los meses** (1,14 en el nivel 1 y 1,05 en el 2 desde el 13 de abril): el modelo, entrenado con todas las respuestas, subestima a esa población (sección 5).
+- Con el predictor de Equifax mismo no se midió (queda fuera de la tabla por regla, `comun.PROHIBIDAS`): lo que se ve es el efecto en la etiqueta, no en el predictor.
+
+**7. Capacidad de pago.** La decisión «alcanza o no alcanza» de `evaluarCapacidad` con el ingreso real contra la que daría el mínimo del 90%, el cuantil 0,25 y el valor central de cada nivel. Parámetros leídos de `capacidad-de-pago.ts` y `simulador-credito.ts`: **carga máxima 40%** (`PARAMETROS_CAPACIDAD.cargaMaxima`; el margen de «justo» de 5% no cambia el sí o no, porque `cumple` es todo menos «no alcanza»), **Tasa máxima 15,6%**,
+desgravamen 0,6% anual sobre saldo y sistema francés (`PRODUCTO_CONSUMO`); la cuota del primer mes se reprodujo en centavos enteros como `simularCredito` y coincide en los ocho créditos con la del `.ts` ejecutado (diferencia 0). El tope se compara en centavos como `evaluarCapacidad`: alcanza si `cuota financiera de Equifax + cuota nueva ≤ floor(ingreso × 0,40)`. **Un ingreso estimado no lleva el descuento del aporte personal** (9,45%): no es un sueldo, y el tipo `estimado` de la especificación (sección 6, punto 6) todavía no existe en el `.ts`.
+Casos: los 1.613 de OK FACTURAR y condicionado de julio a octubre, con su cuota financiera de Equifax como lo que ya pagan (mediana de 1.546; ninguno sin dato). Créditos de USD 3.000, 5.000, 10.000 y 20.000 a 36 y 60 meses. El cuantil 0,25 no es uno de los doce: se interpola en logaritmo entre el 0,20 y el 0,30. El mínimo del 90% lleva el límite de medio salario básico (241).
+
+Parámetros leídos de los `.ts`: carga máxima 40%, Tasa máxima 15,6%, desgravamen 0,6% anual sobre saldo, sistema francés. Casos: 1.613 de OK FACTURAR y condicionado de julio a octubre; ya paga la cuota financiera de Equifax (mediana 1.546).
+*Con el ingreso real, ¿cuántos alcanzan?*
+
+| Crédito | Cuota del primer mes | Alcanza con el ingreso real (%) |
+|---|---|---|
+| 3.000 a 36 meses | 106,38 | 39,0 |
+| 5.000 a 36 meses | 177,30 | 35,2 |
+| 10.000 a 36 meses | 354,60 | 26,9 |
+| 20.000 a 36 meses | 709,20 | 15,1 |
+| 3.000 a 60 meses | 73,82 | 40,5 |
+| 5.000 a 60 meses | 123,03 | 37,9 |
+| 10.000 a 60 meses | 246,06 | 30,8 |
+| 20.000 a 60 meses | 492,12 | 22,4 |
+*Los ocho créditos juntos (promedio por persona; intervalo del 95% por remuestreo de personas)*
+
+| Con qué se decide | Mediana del ingreso estimado | Dice «alcanza» (%) | Concordancia (%) | «Alcanza» por error (%) | Niega de más (%) | Error entre los que dicen «alcanza» (%) |
+|---|---|---|---|---|---|---|
+| Nivel 1: mínimo al 90% | 1.158 | 8,4 | 76,4 (74,7 a 78,1) | 0,5 (0,3 a 0,7) | 23,1 (21,4 a 24,8) | 5,7 |
+| Nivel 1: cuantil 0,25 | 1.756 | 15,4 | 79,3 (77,6 a 80,9) | 2,5 (2,0 a 3,1) | 18,1 (16,6 a 19,8) | 16,5 |
+| Nivel 1: valor central | 2.953 | 30,8 | 78,8 (77,1 a 80,2) | 10,5 (9,4 a 11,7) | 10,7 (9,4 a 12,2) | 34,0 |
+| Nivel 2: mínimo al 90% | 1.521 | 7,2 | 75,8 (74,1 a 77,6) | 0,2 (0,1 a 0,3) | 24,0 (22,3 a 25,8) | 2,4 |
+| Nivel 2: cuantil 0,25 | 2.089 | 11,1 | 78,8 (77,1 a 80,4) | 0,7 (0,5 a 0,9) | 20,6 (19,0 a 22,2) | 5,9 |
+| Nivel 2: valor central | 2.853 | 21,2 | 81,1 (79,5 a 82,5) | 4,5 (3,9 a 5,3) | 14,4 (13,1 a 15,9) | 21,5 |
+
+*Por crédito, con el mínimo del 90%*
+
+| Crédito | Real alcanza (%) | Nivel 1: dice «alcanza» / concordancia / «alcanza» por error / niega de más (%) | Nivel 2: ídem (%) |
+|---|---|---|---|
+| 3.000 a 36 meses (cuota 106,38) | 39,0 | 13,1 / 73,0 / 0,6 / 26,5 | 12,2 / 72,7 / 0,2 / 27,1 |
+| 5.000 a 36 meses (cuota 177,30) | 35,2 | 11,1 / 74,6 / 0,6 / 24,7 | 9,9 / 74,1 / 0,2 / 25,6 |
+| 10.000 a 36 meses (cuota 354,60) | 26,9 | 5,1 / 77,0 / 0,6 / 22,4 | 2,2 / 75,3 / 0,0 / 24,7 |
+| 20.000 a 36 meses (cuota 709,20) | 15,1 | 0,6 / 85,3 / 0,1 / 14,6 | 0,1 / 85,0 / 0,0 / 15,0 |
+| 3.000 a 60 meses (cuota 73,82) | 40,5 | 14,1 / 72,5 / 0,6 / 27,0 | 13,3 / 72,1 / 0,3 / 27,6 |
+| 5.000 a 60 meses (cuota 123,03) | 37,9 | 12,5 / 73,2 / 0,7 / 26,2 | 11,5 / 73,0 / 0,3 / 26,7 |
+| 10.000 a 60 meses (cuota 246,06) | 30,8 | 9,0 / 77,0 / 0,6 / 22,4 | 7,7 / 76,4 / 0,2 / 23,3 |
+| 20.000 a 60 meses (cuota 492,12) | 22,4 | 1,4 / 78,9 / 0,1 / 21,1 | 0,5 / 78,1 / 0,0 / 21,9 |
+
+- **El mínimo del 90% casi nunca aprueba por error y niega mucho de más.** «Alcanza» por error en el 0,5% (0,3 a 0,7) de las decisiones del nivel 1 y el 0,2% (0,1 a 0,3) del 2 (5,7% y 2,4% de lo que aprueban), a cambio de negar de más el 23,1% y el 24,0%: sólo aprueba al 8,4% y 7,2% cuando con el ingreso real alcanzaría el 15% al 40% según el crédito.
+- **El valor central aprueba demasiado**: «alcanza» por error en el 10,5% (nivel 1) y el 4,5% (nivel 2), el 34,0% y el 21,5% de lo que aprueba. No es una opción para decidir sin ingreso verificado.
+- **El cuantil 0,25 es un punto intermedio que el nivel 2 aprovecha y el nivel 1 no**: en el nivel 2 da 0,7% de error y 20,6% de negadas de más (concordancia 78,8%); en el nivel 1 sube el error a 2,5% para ganar tres puntos de concordancia (79,3%).
+- Con la cuota que ya pagan, al 59,5% de los casos no les alcanza ni el crédito más chico (USD 3.000 a 60 meses: alcanza el 40,5% con el ingreso real). Por eso negar acierta de entrada en más de la mitad de las decisiones y la concordancia sola subestima el problema: conviene mirar el error y la negación de más por separado.
+
+**8. Colas de la distribución.** `cdf` pone la mitad del nivel por debajo del cuantil 0,05 (0,025) y por encima del 0,95 (0,975), de golpe, sea cual sea la distancia al cuantil: un mínimo alto deja «menos de un salario» en 2,5% y los tramos siguientes en 0,01% (punto 18.8 de `docs/pendientes.md`). Dos reglas alternativas con el espaciado en logaritmo de los dos cuantiles extremos, **acotado desde abajo** para que dos cuantiles casi iguales no den una cola infinitamente fina:
+la **lineal** (la probabilidad sigue la pendiente de los dos cuantiles extremos y no baja de 0,005) y la **exponencial** (la cola decae como un exponencial en el logaritmo del ingreso, una Pareto arriba: nunca llega a cero). Los límites del espaciado se eligieron con lo anterior a julio (predicciones fuera de muestra) y no con la prueba. La regla actual se reprodujo exacta (diferencia 0 con `comun.probabilidades`).
+
+*Cómo se eligió el espaciado mínimo: Brier total con lo anterior a julio (predicciones fuera de muestra; menor es mejor)*
+
+| Nivel | Forma | Espaciado mínimo | Brier total | Cambio por el espaciado máximo (0,5 a 2) |
+|---|---|---|---|---|
+| 1 | lineal | 0,05 | 0,74823 | 0,00000 |
+| 1 | lineal | 0,10 | 0,74818 | 0,00000 |
+| 1 | lineal | 0,20 | 0,74797 | 0,00000 |
+| 1 | lineal | 0,30 | 0,74771 | 0,00000 |
+| 1 | lineal | 0,50 | 0,74733 | 0,00000 |
+| 1 | exponencial | 0,05 | 0,74763 | 0,00000 |
+| 1 | exponencial | 0,10 | 0,74758 | 0,00000 |
+| 1 | exponencial | 0,20 | 0,74742 | 0,00000 |
+| 1 | exponencial | 0,30 | 0,74732 | 0,00000 |
+| 1 | exponencial | 0,50 | 0,74750 | 0,00000 |
+| 1 | actual | — | 0,74854 | — |
+| 2 | lineal | 0,05 | 0,67848 | 0,00000 |
+| 2 | lineal | 0,10 | 0,67838 | 0,00000 |
+| 2 | lineal | 0,20 | 0,67800 | 0,00000 |
+| 2 | lineal | 0,30 | 0,67757 | 0,00000 |
+| 2 | lineal | 0,50 | 0,67697 | 0,00000 |
+| 2 | exponencial | 0,05 | 0,67769 | 0,00000 |
+| 2 | exponencial | 0,10 | 0,67747 | 0,00000 |
+| 2 | exponencial | 0,20 | 0,67709 | 0,00000 |
+| 2 | exponencial | 0,30 | 0,67694 | 0,00000 |
+| 2 | exponencial | 0,50 | 0,67708 | 0,00000 |
+| 2 | actual | — | 0,67834 | — |
+
+Elegidos (la suma de los dos niveles): lineal con espaciado mínimo 0,50, exponencial con 0,30; el máximo, en 1.
+*Nivel 1, todas (n = 8.656): probabilidad predicha media contra frecuencia observada, y Brier por tramo*
+
+| Tramo | Observada (%) | Predicha: actual / lineal / exponencial (%) | Brier por tramo: actual / lineal / exponencial |
+|---|---|---|---|
+| menos de 470 | 1,39 | 2,55 / 1,06 / 1,62 | 0,01378 / 0,01359 / 0,01357 |
+| 470 a 939 | 8,46 | 6,93 / 8,79 / 8,29 | 0,07542 / 0,07487 / 0,07483 |
+| 940 a 1.999 | 31,18 | 34,08 / 33,72 / 33,66 | 0,20392 / 0,20361 / 0,20358 |
+| 2.000 a 2.999 | 19,55 | 19,23 / 19,23 / 19,23 | 0,15751 / 0,15751 / 0,15751 |
+| 3.000 a 4.999 | 19,15 | 18,64 / 18,52 / 18,46 | 0,15286 / 0,15289 / 0,15291 |
+| 5.000 o más | 20,27 | 18,57 / 18,70 / 18,76 | 0,13942 / 0,13932 / 0,13930 |
+
+| Regla | Brier total | Diferencia con la actual (IC 95%) | Tramo exacto (%) | Exacto o vecino (%) |
+|---|---|---|---|---|
+| Actual (la mitad del nivel por fuera de los extremos) | 0,74291 | — | 36,4 | 67,6 |
+| Lineal en logaritmo, acotada | 0,74179 | -0,00112 (-0,00142 a -0,00079) | 36,6 | 68,0 |
+| Exponencial en logaritmo, acotada | 0,74170 | -0,00121 (-0,00151 a -0,00093) | 36,6 | 68,0 |
+*Nivel 1, OK FACTURAR y condicionado (n = 1.613): probabilidad predicha media contra frecuencia observada, y Brier por tramo*
+
+| Tramo | Observada (%) | Predicha: actual / lineal / exponencial (%) | Brier por tramo: actual / lineal / exponencial |
+|---|---|---|---|
+| menos de 470 | 0,25 | 2,50 / 0,68 / 1,18 | 0,00299 / 0,00246 / 0,00254 |
+| 470 a 939 | 1,49 | 3,37 / 5,66 / 5,29 | 0,01643 / 0,01738 / 0,01688 |
+| 940 a 1.999 | 20,71 | 27,42 / 26,97 / 26,85 | 0,16236 / 0,16155 / 0,16149 |
+| 2.000 a 2.999 | 21,57 | 19,22 / 19,20 / 19,20 | 0,16799 / 0,16800 / 0,16799 |
+| 3.000 a 4.999 | 25,42 | 21,59 / 21,53 / 21,53 | 0,18961 / 0,18964 / 0,18964 |
+| 5.000 o más | 30,56 | 25,89 / 25,95 / 25,96 | 0,19151 / 0,19150 / 0,19150 |
+
+| Regla | Brier total | Diferencia con la actual (IC 95%) | Tramo exacto (%) | Exacto o vecino (%) |
+|---|---|---|---|---|
+| Actual (la mitad del nivel por fuera de los extremos) | 0,73087 | — | 34,2 | 63,5 |
+| Lineal en logaritmo, acotada | 0,73053 | -0,00035 (-0,00089 a 0,00019) | 35,0 | 64,4 |
+| Exponencial en logaritmo, acotada | 0,73005 | -0,00083 (-0,00135 a -0,00031) | 34,9 | 64,4 |
+*Nivel 2, todas (n = 8.656): probabilidad predicha media contra frecuencia observada, y Brier por tramo*
+
+| Tramo | Observada (%) | Predicha: actual / lineal / exponencial (%) | Brier por tramo: actual / lineal / exponencial |
+|---|---|---|---|
+| menos de 470 | 1,39 | 2,57 / 0,98 / 1,32 | 0,01373 / 0,01347 / 0,01347 |
+| 470 a 939 | 8,46 | 6,79 / 8,03 / 7,90 | 0,07013 / 0,06981 / 0,06980 |
+| 940 a 1.999 | 31,18 | 32,89 / 33,21 / 33,08 | 0,18186 / 0,18153 / 0,18151 |
+| 2.000 a 2.999 | 19,55 | 19,98 / 20,04 / 19,97 | 0,15099 / 0,15097 / 0,15097 |
+| 3.000 a 4.999 | 19,15 | 19,27 / 19,04 / 18,89 | 0,14135 / 0,14130 / 0,14130 |
+| 5.000 o más | 20,27 | 18,50 / 18,70 / 18,84 | 0,10060 / 0,10048 / 0,10048 |
+
+| Regla | Brier total | Diferencia con la actual (IC 95%) | Tramo exacto (%) | Exacto o vecino (%) |
+|---|---|---|---|---|
+| Actual (la mitad del nivel por fuera de los extremos) | 0,65866 | — | 47,0 | 82,3 |
+| Lineal en logaritmo, acotada | 0,65756 | -0,00110 (-0,00143 a -0,00077) | 47,0 | 82,4 |
+| Exponencial en logaritmo, acotada | 0,65754 | -0,00112 (-0,00141 a -0,00085) | 47,0 | 82,4 |
+*Nivel 2, OK FACTURAR y condicionado (n = 1.613): probabilidad predicha media contra frecuencia observada, y Brier por tramo*
+
+| Tramo | Observada (%) | Predicha: actual / lineal / exponencial (%) | Brier por tramo: actual / lineal / exponencial |
+|---|---|---|---|
+| menos de 470 | 0,25 | 2,53 / 0,64 / 0,79 | 0,00297 / 0,00243 / 0,00245 |
+| 470 a 939 | 1,49 | 2,34 / 3,51 / 3,69 | 0,01407 / 0,01456 / 0,01435 |
+| 940 a 1.999 | 20,71 | 23,17 / 23,85 / 23,67 | 0,12458 / 0,12452 / 0,12426 |
+| 2.000 a 2.999 | 21,57 | 21,11 / 21,22 / 21,10 | 0,15492 / 0,15483 / 0,15480 |
+| 3.000 a 4.999 | 25,42 | 24,13 / 23,85 / 23,78 | 0,16817 / 0,16802 / 0,16802 |
+| 5.000 o más | 30,56 | 26,72 / 26,92 / 26,97 | 0,11746 / 0,11739 / 0,11739 |
+
+| Regla | Brier total | Diferencia con la actual (IC 95%) | Tramo exacto (%) | Exacto o vecino (%) |
+|---|---|---|---|---|
+| Actual (la mitad del nivel por fuera de los extremos) | 0,58217 | — | 52,3 | 87,4 |
+| Lineal en logaritmo, acotada | 0,58175 | -0,00042 (-0,00102 a 0,00020) | 52,6 | 87,5 |
+| Exponencial en logaritmo, acotada | 0,58126 | -0,00091 (-0,00146 a -0,00036) | 52,4 | 87,6 |
+
+- **La regla exponencial con espaciado mínimo de 0,30 es la que se recomienda.** Baja el Brier total 0,0012 (0,0009 a 0,0015) en el nivel 1 y 0,0011 (0,0009 a 0,0014) en el 2; en OK FACTURAR 0,0008 (0,0003 a 0,0014) y 0,0009 (0,0004 a 0,0015). La lineal baja casi lo mismo, pero su mejor espaciado quedó en el borde de lo probado (0,50) y en OK FACTURAR su intervalo incluye 0.
+- **Lo que arregla**: la probabilidad media de «menos de 470» pasa de 2,55% a 1,62% donde se observa 1,39% (nivel 1; en el nivel 2, de 2,57% a 1,32%), y la de «470 a 939» de 6,93% a 8,29% donde se observa 8,46%. El tramo exacto sube 0,2 puntos y el exacto o vecino, 0,4: nada que cambie una decisión.
+- **Lo que no arregla**: la cola de arriba y el centro. «5.000 o más» se predice 18,8% donde se observa 20,3% y «940 a 1.999», 33,7% donde se observa 31,2% (nivel 1); en OK FACTURAR, 26,9% contra 20,7% y 26,0% contra 30,6%. Parece el sesgo de la mezcla de poblaciones (sección 5), no el de las colas.
+- **Recomendación** (no se cambió `predictor-ingresos.ts`): reemplazar el caso de «por debajo del primer cuantil» y «por encima del último» de `cdf` por la cola exponencial con espaciado mínimo de 0,30 en logaritmo (el máximo no importa: con 0,5, 1 y 2 el Brier cambia menos de 0,00001), y volver a medir con la calibración por población de la sección 5 antes de mostrar tramos.
+
+**Metas propuestas** (a decidir por el negocio; se miden hacia adelante, sobre todas las respuestas y sobre OK FACTURAR y condicionado, con el modelo y los casos de esta sección como punto de partida):
+
+| Medida | Hoy (nivel 1 / nivel 2) | Piso | Meta | Por qué |
+|---|---|---|---|---|
+| **Agudeza**: baja de la pérdida de cuantiles contra la línea base de todo el entrenamiento (todas las respuestas; en OK FACTURAR hoy es 16,9% / 42,3%, sin meta propia) | 11,0% (10,1 a 11,9) / 27,8% (26,4 a 29,1) | 10% / 26% (el extremo de abajo del intervalo de hoy, redondeado) | **13% / 30%** | Más volumen del mismo tipo da menos de un punto (sección 2): los dos puntos de más tienen que venir de la etiqueta (sin rechazados baja la pérdida 2,3% a 2,5% en OK FACTURAR; en todas las respuestas no se midió) y de variables nuevas. Un modelo que no llegue al piso es una regresión (especificación, sección 9, punto 4). Es un juicio, no una cuenta |
+| **Tramo exacto o vecino** | 67,6% (66,6 a 68,6) / 82,3% (81,5 a 83,1); línea base 59,2% | 66% / 81% | **70% / 84%** | Los intervalos de hoy miden unos 2 y 1,6 puntos de ancho: 2,4 y 1,7 puntos más son lo mínimo que se distingue del número de hoy. El nivel 1 recorre 8,4 de los 40,8 puntos que le faltan a la línea base. En OK FACTURAR el nivel 2 ya está en 87,4% |
+| **Decisión**: «alcanza» por error y niega de más con el mínimo del 90% (8 créditos de la sección 7) | Error 0,5% (0,3 a 0,7) / 0,2% (0,1 a 0,3); niega de más 23,1% / 24,0% (concordancia 76,4% / 75,8%) | Error de 1% o menos en los dos niveles | **Error de 1% o menos y niega de más de 21% o menos (nivel 1) y de 20% o menos (nivel 2)** | El 1% es el doble del error de hoy del nivel 1 y menos de la mitad del que da el cuantil 0,25 (2,5%): deja margen sin parecerse a un cuantil que ya no certifica al 90%. Con el cuantil 0,25 el nivel 2 ya llega a 20,6% de negadas de más con 0,7% de error; el 20% con el mínimo del 90% exige un modelo más agudo, no otro cuantil. Para el nivel 1, 21% son dos puntos menos que hoy, en línea con los dos puntos de agudeza; los cuantiles entre el 0,10 y el 0,25 no se midieron |
+
+**Lo que no se pudo medir.**
+1. **El ingreso real de la capacidad de pago**: el «real» es el ingreso no verificado que validó el analista de Novacredit en OK FACTURAR y condicionado, con el predictor de Equifax de ancla (12.28), no un ingreso comprobado; y la cuota financiera de Equifax es sólo la del sistema financiero (las casas comerciales y las deudas sin cuota no están). Tampoco se midió con quienes no son OK FACTURAR.
+2. **El efecto del régimen del predictor de Equifax sobre el predictor mismo**: la columna del predictor no entra a la tabla (regla de `comun.PROHIBIDAS`); sólo se vio su efecto en la etiqueta, y el mapeo fino de V0 a V3 a los cortes de fecha es del negocio.
+3. **Sexo**: sólo en el nivel 1. El «todo lo demás igual» es un contrafactual del modelo, no una causa; no se midió el efecto en el nivel 2 ni la brecha cruzada con la edad o el RUC (grupos de menos de 300 casos).
+4. **Curvas de aprendizaje**: llegan hasta las 12.604 personas que hay; con más no se extrapola. El 100% es un solo sorteo.
+5. **Calibración con sólo OK FACTURAR**: no se midió sobre los rechazados ni sobre las demás respuestas, y el corrimiento sale de 1.925 casos.
+6. **Fechas**: la tabla trae la fecha de la consulta tal como la guarda AWS, sin zona horaria; los cortes de régimen del 14 de enero, 2 de marzo y 13 de abril pueden correrse un día sin cambiar nada.
+7. **La paridad del SRI**: el nivel 1 se entrenó con el SRI que trae el extracto de AWS (el de Equifax) y en producción recibe el de Proveedor_Info_1, cuya paridad sigue medida en 87 personas (especificación, sección 9, punto 7). Estas medidas suponen que son lo mismo.
+
 ## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,
