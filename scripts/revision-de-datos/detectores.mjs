@@ -289,8 +289,13 @@ export const DETECTORES = [
     id: "ruc-suspension-difiere",
     capa: "cruce",
     tipo: "revisar",
-    titulo: "La fecha de suspensión definitiva del RUC en Equifax no es la de Proveedor_Info_1",
+    titulo: "La fecha de suspensión definitiva del RUC en Equifax no es la del último cese en Proveedor_Info_1",
     caso: "c-79e1ac23, 2026-10-31: las dos fuentes decían suspendido el mismo día, pero la pantalla de Equifax no lo mostraba",
+    // Los dos casos del 2026-11-05 (c-0be1e991, c-74997fb7) los revisó el negocio en
+    // el SRI: la suspensión es la misma en las tres fuentes. Proveedor_Info_1 trae
+    // además una cancelación posterior que el SRI ya no muestra, y no trae el
+    // reinicio de 2025. Ver ruc-activo-difiere.
+    conocido: "Proveedor_Info_1 suma una cancelación que el SRI ya no muestra; la suspensión coincide (SRI, 2026-11-05)",
     poblacion: `select count(*) from equifax e join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
       join ultimo u on u.client_id = e.client_id where s.sri_tiene_ruc`,
     casos: `
@@ -322,6 +327,25 @@ export const DETECTORES = [
       join ultimo u on u.client_id = e.client_id
       where s.sri_fecha_inicio_actividades is not null and u.sp->'laboral'->>'fechaInicioActividadesRuc' is not null
         and s.sri_fecha_inicio_actividades <> (u.sp->'laboral'->>'fechaInicioActividadesRuc')::date`,
+  },
+  {
+    id: "ruc-activo-difiere",
+    capa: "cruce",
+    tipo: "revisar",
+    titulo: "Equifax y el perfil no dicen lo mismo de si el RUC está activo",
+    caso: "c-0be1e991 y c-74997fb7, 2026-11-05: el SRI los muestra ACTIVOS desde un reinicio de 2025 que el crudo de Proveedor_Info_1 del 2026-10-03 no trae; Equifax sí los da activos",
+    poblacion: `select count(*) from equifax e join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_tiene_ruc and s.sri_estado_contribuyente is not null and u.sp->'laboral'->>'tieneRucActivo' is not null`,
+    casos: `
+      select e.client_id, jsonb_build_object('estadoEquifax', s.sri_estado_contribuyente,
+             'activoProveedorInfo1', u.sp->'laboral'->'tieneRucActivo', 'tipoCese', u.sp->'laboral'->>'tipoUltimoCeseRuc',
+             'consultaEquifax', e.created_at::date, 'consultaProveedorInfo1', u.created_at::date) as detalle
+      from equifax e
+      join equifax_resumen s on s.consulta_equifax_id = e.consulta_id
+      join ultimo u on u.client_id = e.client_id
+      where s.sri_tiene_ruc and s.sri_estado_contribuyente is not null and u.sp->'laboral'->>'tieneRucActivo' is not null
+        and (upper(s.sri_estado_contribuyente) = 'ACTIVO') <> (u.sp->'laboral'->>'tieneRucActivo')::boolean`,
   },
 
   // ── 6. Respuesta del modelo ──────────────────────────────────────────────

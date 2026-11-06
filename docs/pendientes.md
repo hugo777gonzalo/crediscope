@@ -238,18 +238,26 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
      recalculados). El perfil laboral cambió en 20 personas, y `cargo-vigente-sin-aporte-vigente` bajó de 17
      a 0. No volvió ninguna regresión, `validar-perfil-del-modelo.mjs` da 0 fallas y
      `auditar-seguridad.mjs`, 79 de 79.
-   - **Rehacer los análisis que dicen «sin atraso» con A2 o peor** (el negocio lo autorizó, falta el
-     sí con la cifra). Son 85, todos de marco-v30 o anterior; 84 se pueden analizar y 1 tiene la
-     consulta incompleta. En lote, a unos USD 0,034 por análisis a precio de lista, son unos USD 2,85
-     de lista o USD 1,45 con la tarifa del lote. Conviene después de v19, para que lean el perfil
-     corregido.
-   - **El predictor sobre consultas incompletas.** `estimar-ingresos-en-lote.mjs`, sin guardar, muestra
-     que 624 de las 2.061 estimaciones de la cartera serían de consultas con una obligatoria sin
-     respuesta, 552 sin edad ni sexo. `estimar-ingreso` no aplica el freno que sí aplica el modelo.
-     Decidir si lo aplica.
-   - **Dos RUC con la suspensión distinta entre Equifax y Proveedor_Info_1** (c-0be1e991, c-74997fb7):
-     Equifax dice ACTIVO con una fecha de suspensión definitiva y Proveedor_Info_1 dice cancelado en
-     otra fecha. El negocio los revisa en el SRI.
+   - **Los 85 análisis que dicen «sin atraso» con A2 o peor no se rehacen** (negocio, 2026-11-05). Son
+     de marco-v30 o anterior y quedan en la bandeja como están. El detector
+     `atraso-leido-como-sin-atraso` los sigue contando, por marco.
+   - **El predictor sobre consultas incompletas: sí afecta** (medido el 2026-11-05 sin guardar,
+     `estimar-ingresos-en-lote.mjs` y una simulación). `estimar-ingreso` no aplica el freno, y 624 de las
+     2.061 estimaciones de la cartera serían de consultas incompletas:
+     - En 532 faltan a la vez la identidad (`general`) y los aportes (`basesInternas`). Sin aportes no se
+       sabe si la persona tiene un ingreso verificado, que es lo primero que decide el selector. Sin edad
+       ni sexo, en 694 perfiles completos la estimación baja en mediana un 13%, cambia más de 20% en el
+       19% y cambia el lado de USD 1.000 del mínimo al 90% en el 39%.
+     - En 56 faltan sólo otras obligatorias (denuncias, listas). En 23 personas con una consulta completa
+       anterior, la razón mediana del valor central es 0,97.
+     - Propuesta: que no estime cuando no contestó `general`, `basesInternas` o `contribuyente` (las
+       entradas del nivel 1), y que el resto de las obligatorias no lo frenen. Espera la decisión del
+       negocio.
+   - **Dos RUC que el SRI da activos** (c-0be1e991, c-74997fb7, revisados por el negocio el 2026-11-05).
+     El SRI coincide con Equifax: ACTIVO, con la misma fecha de cese y un reinicio en 2025 (18/07 y
+     23/10). El crudo de Proveedor_Info_1 del 2026-10-03 no trae ese reinicio y suma una cancelación que
+     el SRI ya no muestra, así que el perfil los da con el RUC inactivo. Entre quienes tienen Equifax son
+     2 de 86 (detector `ruc-activo-difiere`). Sin acción por ahora: es el dato de la fuente.
 
 0. **marco-v35 (PR 113 y 129).** Las correcciones de la revisión de casos del 2026-10-31 (v32), el
    RUC depurado neutro para todas las depuradas y el buró de la institución encendido (negocio,
