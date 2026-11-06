@@ -41,10 +41,11 @@ const { MARCO_INTERPRETATIVO, marcoConElBuro } = await compartido("marco-interpr
 const { estaVigenteHastaElCorte } = await compartido("vigencia-mensual.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 
+const { leerCrudoDeLaConsulta } = await import(new URL("../supabase/functions/_shared/crudo-equifax-migrado.ts", import.meta.url).href);
 const fallar = (e) => { console.error(explicar(e)); process.exit(1); };
 
 const { data: consultas, error } = await db.from("consultas_equifax")
-  .select("id, client_id, created_at, estructura, respuesta_cruda")
+  .select("id, client_id, created_at, estructura, respuesta_cruda, crudo_ruta")
   .eq("ambiente", "produccion").eq("http_equifax", 200).not("estructura", "is", null)
   .order("created_at", { ascending: true }).order("id", { ascending: true });
 if (error) fallar(error);
@@ -92,7 +93,7 @@ for (const [clientId, c] of porPersona) {
   r.sinBuro.push(JSON.stringify(sin).length);
   r.conBuro.push(textoCon.length);
 
-  const valores = centinelas(c.respuesta_cruda);
+  const valores = centinelas(await leerCrudoDeLaConsulta(db, c));
   r.centinelas += valores.length;
   if (valores.some((v) => textoBloque.includes(v))) r.personalEnElBloque++;
   if (valores.some((v) => textoCon.includes(v))) r.personalEnElPerfil++;

@@ -26,6 +26,7 @@ import {
   laConsultaEquifaxSirve,
   type RespuestaEquifax,
 } from "./equifax-client.ts";
+import { leerCrudoDeLaConsulta } from "./crudo-equifax-migrado.ts";
 import { calcularEstructura, EQUIFAX_ESTRUCTURA_VERSION } from "./equifax-estructura.ts";
 import { derivarTablas } from "./equifax-tablas.ts";
 import { estaVigenteHastaElCorte, finDeLaVigencia } from "./vigencia-mensual.ts";
@@ -154,16 +155,18 @@ export function identidadDeLaConsulta(cuerpo: unknown, cedula: string): boolean 
 // Nunca lanza: devuelve ok:false y dice por qué.
 export async function guardarTablasDeLaConsulta(
   db: Base,
-  consulta: { id: string; identificacion: string; created_at: string; ambiente: string; respuesta_cruda: unknown },
+  consulta: { id: string; identificacion: string; created_at: string; ambiente: string; respuesta_cruda?: unknown; crudo_ruta?: string | null },
 ): Promise<TablasGuardadas> {
   let avisos: string[] = [];
   try {
-    const derivadas = derivarTablas(consulta.respuesta_cruda);
+    // Una migrada de AWS puede tener el crudo en Storage y no en la fila (148).
+    const crudo = await leerCrudoDeLaConsulta(db, consulta);
+    const derivadas = derivarTablas(crudo);
     avisos = derivadas.avisos;
     const estructura = calcularEstructura(derivadas, {
       consultadoEl: consulta.created_at,
       ambiente: consulta.ambiente,
-      identidadVerificada: identidadDeLaConsulta(consulta.respuesta_cruda, consulta.identificacion),
+      identidadVerificada: identidadDeLaConsulta(crudo, consulta.identificacion),
     });
     const { data, error } = await db.rpc("equifax_reemplazar_tablas", {
       p_consulta: consulta.id,
@@ -195,11 +198,11 @@ export async function ordenarConsultaGuardada(
   db: Base,
   cedula: string,
 ): Promise<{ resultado: "sin_consulta" } | { resultado: "ya_ordenada"; id: string } | { resultado: "ordenada"; id: string; tablas: TablasGuardadas }> {
-  const { data, error } = await db.from("consultas_equifax").select("id, identificacion, created_at, ambiente, estructura, respuesta_cruda")
+  const { data, error } = await db.from("consultas_equifax").select("id, identificacion, created_at, ambiente, estructura, respuesta_cruda, crudo_ruta")
     .eq("identificacion", cedula).eq("tipo_identificacion", "C")
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new Error("no se pudo buscar la consulta guardada: " + error.message);
-  if (!data || data.respuesta_cruda == null) return { resultado: "sin_consulta" };
+  if (!data || (data.respuesta_cruda == null && !data.crudo_ruta)) return { resultado: "sin_consulta" };
   if (data.estructura != null) return { resultado: "ya_ordenada", id: data.id };
   return { resultado: "ordenada", id: data.id, tablas: await guardarTablasDeLaConsulta(db, data) };
 }
@@ -242,7 +245,7 @@ export async function procesarConsultaEquifax(o: OpcionesDeProceso): Promise<Res
     // Una vigente sin tablas (las 3.533 migradas de AWS, 2026-10-28, se guardaron sólo con el
     // crudo por el tamaño de la base) se ordena ahora desde lo guardado: es gratis, y si no, la
     // pantalla mostraba una consulta pagada que nadie podía leer.
-    if (previa.estructura == null && previa.respuesta_cruda != null) {
+    if (previa.estructura == null && (previa.respuesta_cruda != null || previa.crudo_ruta)) {
       return { resultado: "reutilizada", fila: previa, vigenteHasta, tablas: await guardarTablasDeLaConsulta(o.db, previa) };
     }
     return { resultado: "reutilizada", fila: previa, vigenteHasta };

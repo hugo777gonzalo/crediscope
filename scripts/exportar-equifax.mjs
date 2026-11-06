@@ -57,7 +57,8 @@ if (valor("archivo")) {
     if (error) throw new Error(explicar(error));
     if (!data) morir(`${valor("caso")} no tiene ninguna consulta guardada de Equifax.`);
     etiqueta = valor("caso");
-    cuerpo = data.respuesta_cruda;
+  const { leerCrudoDeLaConsulta } = await import(new URL("../supabase/functions/_shared/crudo-equifax-migrado.ts", import.meta.url).href);
+    cuerpo = await leerCrudoDeLaConsulta(db, data);
     meta = [
       ["Origen", "consulta guardada en la base"],
       ["Persona (código)", etiqueta],

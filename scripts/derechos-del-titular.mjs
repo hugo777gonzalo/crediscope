@@ -138,11 +138,14 @@ for (const tabla of TABLAS_DE_EQUIFAX) {
   datos[tabla] = idsDeConsultasEquifax.length ? await leerTodas(tabla, `consulta_equifax_id=in.(${idsDeConsultasEquifax.join(",")})`) : [];
 }
 const crudos = (datos.client_profiles ?? []).map((p) => p.crudo_ruta).filter(Boolean);
+// El crudo de Equifax migrado de AWS vive en otro depósito desde la 148 (la fila sólo tiene la ruta).
+const crudosEquifax = (datos.consultas_equifax ?? []).map((c) => c.crudo_ruta).filter(Boolean);
 
 console.log(`\nInventario de ${ENMASCARADA}`);
 for (const [tabla] of [["clients"], ...TABLAS]) console.log(`  ${tabla.padEnd(28)} ${datos[tabla].length}`);
 for (const tabla of TABLAS_DE_EQUIFAX) console.log(`  ${tabla.padEnd(28)} ${datos[tabla].length}`);
 console.log(`  ${"crudo en Storage".padEnd(28)} ${crudos.length}`);
+console.log(`  ${"crudo de Equifax en Storage".padEnd(28)} ${crudosEquifax.length}`);
 
 // Si la persona es un caso de desarrollo, el código la cita como
 // c-xxxxxxxx y el registro local guarda su cédula y el texto de la cita
@@ -176,8 +179,9 @@ const localesEnResearch = () => {
 
 if (bandera("exportar")) {
   const exportacion = { generado: new Date().toISOString(), titular: CEDULA, datos, crudo: [] };
-  for (const ruta of crudos) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-proveedor-info-1/${ruta}`, { headers: cabeceras });
+  const aExportar = [...crudos.map((ruta) => ["crudo-proveedor-info-1", ruta]), ...crudosEquifax.map((ruta) => ["crudo-equifax-migrado", ruta])];
+  for (const [deposito, ruta] of aExportar) {
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${deposito}/${ruta}`, { headers: cabeceras });
     if (!r.ok) {
       exportacion.crudo.push({ ruta, error: `HTTP ${r.status}` });
       continue;
@@ -210,8 +214,9 @@ if (bandera("suprimir")) {
   console.log("\nBase:", JSON.stringify(resultado.conteos));
 
   let borrados = 0;
-  for (const ruta of resultado.crudos ?? []) {
-    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/crudo-proveedor-info-1`, {
+  const aBorrar = [...(resultado.crudos ?? []).map((ruta) => ["crudo-proveedor-info-1", ruta]), ...(resultado.crudos_equifax ?? []).map((ruta) => ["crudo-equifax-migrado", ruta])];
+  for (const [deposito, ruta] of aBorrar) {
+    const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${deposito}`, {
       method: "DELETE",
       headers: cabeceras,
       body: JSON.stringify({ prefixes: [ruta] }),
@@ -219,7 +224,8 @@ if (bandera("suprimir")) {
     if (r.ok) borrados++;
     else console.error(`  No se pudo borrar un crudo (HTTP ${r.status}): reintentar con el mismo comando.`);
   }
-  console.log(`Storage: ${borrados} de ${(resultado.crudos ?? []).length} crudos borrados.`);
+  console.log(`Storage: ${borrados} de ${aBorrar.length} crudos borrados.`);
+console.log("Un JSON de AWS sin fila en la base (aws/<id>.json.gz) no se encuentra por cédula: buscarlo en los lotes de research/ si la persona estuvo ahí.");
 
   const locales = localesEnResearch();
   console.log(

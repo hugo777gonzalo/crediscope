@@ -23,6 +23,10 @@ adelante consta así:
   Volver a consultar (vencida, sólo administración) agrega una fila nueva con sus propias tablas, y
   `solicitudes.consulta_equifax_id` dice cuál usó cada evaluación. Una migrada sin tablas se ordena
   desde su crudo, sin pagar: al reutilizarla vigente o con «Ordenar la consulta guardada».
+- **El crudo de las migradas vive en Storage** (148, negocio, 2026-11-05: medida temporal por el techo
+  de 500 MB del plan Free): depósito `crudo-equifax-migrado`, uno por consulta de AWS bajada (también las
+  que no se migraron), enlazado por `consultas_equifax.crudo_ruta`. Se lee con `leerCrudoDeLaConsulta()`;
+  detalle en `supabase/CLAUDE.md`. Las consultas pagadas por nosotros siguen en la fila.
 - **Esas personas no se consultan a Proveedor_Info_1 por ahora** (negocio, 2026-10-30: el servicio
   tiene intermitencias). Quedan con el buró y sin perfil de Proveedor_Info_1.
 - La autorización de cada titular sigue siendo de la IFI, por contrato.

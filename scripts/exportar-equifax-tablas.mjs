@@ -76,12 +76,14 @@ const aplanar = (o, pref = "", salida = {}) => {
   return salida;
 };
 
+const { leerCrudoDeLaConsulta } = await import(new URL("../supabase/functions/_shared/crudo-equifax-migrado.ts", import.meta.url).href);
 for (const c of consultas) {
-  const { data, error: errCrudo } = await db.from("consultas_equifax").select("identificacion, respuesta_cruda").eq("id", c.id).single();
+  const { data, error: errCrudo } = await db.from("consultas_equifax").select("identificacion, respuesta_cruda, crudo_ruta").eq("id", c.id).single();
   if (errCrudo) {
     console.error(explicar(errCrudo));
     process.exit(1);
   }
+  data.respuesta_cruda = await leerCrudoDeLaConsulta(db, data);
   const persona = c.client_id ? `c-${String(c.client_id).slice(0, 8)}` : `consulta-${c.id.slice(0, 8)}`;
   const r = derivarTablas(data.respuesta_cruda);
   const verificada = (() => {

@@ -17,6 +17,7 @@ import {
 } from "./equifax-persistencia.ts";
 import type { RespuestaEquifax } from "./equifax-client.ts";
 import { CEDULA_DE_PRUEBA, respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
+import { comprimirTexto, rutaDelCrudoMigrado } from "./crudo-equifax-migrado.ts";
 
 // deno-lint-ignore no-explicit-any
 type Fila = Record<string, any>;
@@ -28,6 +29,8 @@ function baseFalsa(
     fallanInsertsDeConsultas?: number;
     rpcFalla?: { code: string; message: string };
     rpcLanza?: boolean;
+    // Storage: ruta -> bytes gzip (crudo-equifax-migrado, 148).
+    objetos?: Record<string, Uint8Array>;
   } = {},
 ) {
   // Cada base copia sus listas: dos bases armadas con la misma lista se la
@@ -98,7 +101,19 @@ function baseFalsa(
     if (opciones.rpcFalla) return Promise.resolve({ data: null, error: opciones.rpcFalla });
     return Promise.resolve({ data: { equifax_operaciones: 5, equifax_resumen: 1 }, error: null });
   };
-  return { from: constructor, rpc, tablas, intentosDeInsertEnConsultas, llamadasRpc };
+  const descargas: string[] = [];
+  const storage = {
+    from: (deposito: string) => ({
+      download: (ruta: string) => {
+        descargas.push(deposito + "/" + ruta);
+        const bytes = deposito === "crudo-equifax-migrado" ? opciones.objetos?.[ruta] : undefined;
+        return Promise.resolve(bytes
+          ? { data: new Blob([bytes as BlobPart]), error: null }
+          : { data: null, error: { message: "Object not found" } });
+      },
+    }),
+  };
+  return { from: constructor, rpc, storage, descargas, tablas, intentosDeInsertEnConsultas, llamadasRpc };
 }
 
 const respuestaOk = (): RespuestaEquifax => ({
@@ -528,4 +543,49 @@ Deno.test("el freno no impide reutilizar una consulta vigente, ni cuenta cuando 
 Deno.test("si no se puede leer la auditoría, el freno no se cierra solo", async () => {
   const mal = { from: () => ({ select: () => ({ in: () => ({ order: () => ({ limit: () => Promise.resolve({ data: null, error: { message: "sin conexión", code: "XX000" } }) }) }) }) }) };
   assertEquals((await frenoDeEquifax(mal, AHORA)).abierto, false);
+});
+
+// --- El crudo de las migradas en Storage (148, 2026-11-06) -------------------
+
+const migradaEnStorage = (created_at: string, ruta: string | null = rutaDelCrudoMigrado("1001")) => ({
+  id: "migrada", identificacion: CEDULA_DE_PRUEBA, tipo_identificacion: "C", created_at, ambiente: "produccion",
+  estructura: null, respuesta_cruda: null, crudo_ruta: ruta, parametros: { migrada_de: { fuente: "aws", id_consulta_equifax: "1001" } },
+});
+const objetoDeLaRespuesta = async () => ({ [rutaDelCrudoMigrado("1001")]: await comprimirTexto(JSON.stringify(respuestaDePrueba())) });
+
+Deno.test("ordenar una migrada sin crudo en la fila lo lee de Storage y arma las tablas desde ese crudo", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaEnStorage("2026-09-01T12:00:00Z")] }, { objetos: await objetoDeLaRespuesta() });
+  const r = await ordenarConsultaGuardada(db, CEDULA_DE_PRUEBA);
+  assertEquals(r.resultado, "ordenada");
+  assertEquals(db.descargas, ["crudo-equifax-migrado/aws/1001.json.gz"]);
+  assertEquals(db.llamadasRpc.length, 1);
+  assertEquals(db.llamadasRpc[0].args.p_estructura.consulta.consultadoEl, "2026-09-01T12:00:00Z");
+  assertEquals(db.tablas.audit_log.length, 0, "ordenar no consulta ni audita");
+});
+
+Deno.test("reutilizar una vigente con el crudo en Storage la ordena sin pagar", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaEnStorage("2026-10-19T12:00:00Z")] }, { objetos: await objetoDeLaRespuesta() });
+  const { cuenta, consultar } = llamadas();
+  const r = await procesarConsultaEquifax({ ...BASE, cedula: CEDULA_DE_PRUEBA, db, consultar, ahora: AHORA });
+  assertEquals(r.resultado, "reutilizada");
+  assertEquals(cuenta.n, 0);
+  assert(r.resultado === "reutilizada" && r.tablas?.ok);
+});
+
+Deno.test("la fila con su crudo no toca Storage", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaSinTablas("2026-09-01T12:00:00Z")] });
+  await ordenarConsultaGuardada(db, "0102030405");
+  assertEquals(db.descargas.length, 0);
+});
+
+Deno.test("si el objeto de Storage falta, no se derivan tablas de la nada y el error no inventa datos", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaEnStorage("2026-09-01T12:00:00Z")] }, { objetos: {} });
+  const r = await ordenarConsultaGuardada(db, CEDULA_DE_PRUEBA);
+  assert(r.resultado === "ordenada" && !r.tablas.ok);
+  assertEquals(db.llamadasRpc.length, 0);
+});
+
+Deno.test("una fila sin crudo y sin ruta cuenta como sin consulta", async () => {
+  const db = baseFalsa({ consultas_equifax: [migradaEnStorage("2026-09-01T12:00:00Z", null)] });
+  assertEquals((await ordenarConsultaGuardada(db, CEDULA_DE_PRUEBA)).resultado, "sin_consulta");
 });
