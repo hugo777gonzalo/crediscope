@@ -504,8 +504,23 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         - medir la cuota desde el saldo en bancos, contra las cooperativas y el BIESS, que la traen;
         - decidir si se construye el estimador de 4.11;
         - pedir la base completa.
+    12. **Fase 4, destilación con propósito, medida el 2026-11-06** (12.34; `scripts/predictor-ingresos/destilacion.py`, agregados en
+        `metricas/destilacion-2026-11.json`). Hacia adelante, con la regla de cada hipótesis fijada antes de medir:
+        - **D3 sigue**, pero sólo la calibración: calibrar el mínimo con OK FACTURAR y condicionado lleva la cobertura ahí a 90,2% y 90,5% (hoy 95,7% y
+          93,3%) con un mínimo mediano de 1.462 y 1.690 (hoy 1.158 y 1.521). Los pesos por calidad de la etiqueta no entran: ganan a lo sumo 1,6% de
+          pérdida en OK y la pierden en el resto. Una de cada tres etiquetas de OK FACTURAR es la cifra de Equifax tal cual (54% sin documento).
+        - **D2 se descarta**: el alumno del predictor de Equifax (R² 0,791 contra la cifra) no anticipa que el ingreso quede bajo el mínimo (AUC de 0,43 a
+          0,54 en OK); la cifra misma sí (0,68 en el nivel 2), pero en las etiquetas editadas baja a 0,56: es el ancla. Las consultas que paga CrediScope
+          traen la cifra (96 de 97, `equifax_resumen.ingreso_estimado_usd`).
+        - **D1 se descarta**: con 16.375 consultas sin ingreso validado etiquetadas por la cifra, la pérdida empeora entre 0,1% y 4,6%.
+        - **Para `ingreso-v2`**: entrenar como hoy y calibrar con OK FACTURAR y condicionado **en los dos niveles (decidido por el negocio el
+          2026-11-06)**. En el nivel 1 el «alcanza» por error sube de 0,5% a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6%
+          en vez de 23,1%; en el nivel 2 queda en 0,4%. Con el mínimo calibrado, la cobertura baja a 80% en todas y a 60% en los rechazados, cuya
+          etiqueta baja por la decisión. Se aplica al exportar `ingreso-v2`; `ingreso-v1` sigue sin calibrar.
+        - **Arreglado de paso**: desde el renombre del proveedor (#111) `preparar.py` no reconocía lo recuperado del IESS y armaba una tabla mala
+          (57.340 independientes en vez de 57.061); la tabla en uso, del 22/10, estaba bien. Con el arreglo vuelve a salir idéntica.
 
-    **Decisiones abiertas del negocio:** si la destilación se hace igual, aunque no mejora la asertividad;
+    **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12):
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
