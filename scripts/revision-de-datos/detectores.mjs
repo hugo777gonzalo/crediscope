@@ -35,6 +35,7 @@
 // `node scripts/revisar-datos.mjs --solo=<id>` y mirar el detalle de un caso.
 
 import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
+import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -56,10 +57,12 @@ const noContesto = (columna, [fuente, ficha]) => {
   const contesta = ficha.noHay === "faltante" ? `('ok', 'ok_vacio', 'deshabilitado', 'faltante')` : `('ok', 'ok_vacio', 'deshabilitado')`;
   return `coalesce(${columna}->>'${fuente}', 'faltante') not in ${contesta}`;
 };
-const algunaClaveCaida = (columna) =>
-  `(${columna} is not null and ${columna} <> '{}'::jsonb and (` + OBLIGATORIAS.map((o) => noContesto(columna, o)).join(" or ") + "))";
-const clavesCaidas = (columna) =>
-  "array_remove(array[" + OBLIGATORIAS.map((o) => `case when ${noContesto(columna, o)} then '${o[0]}' end`).join(", ") + "], null)";
+const algunaClaveCaida = (columna, fuentes = OBLIGATORIAS) =>
+  `(${columna} is not null and ${columna} <> '{}'::jsonb and (` + fuentes.map((o) => noContesto(columna, o)).join(" or ") + "))";
+const clavesCaidas = (columna, fuentes = OBLIGATORIAS) =>
+  "array_remove(array[" + fuentes.map((o) => `case when ${noContesto(columna, o)} then '${o[0]}' end`).join(", ") + "], null)";
+// Las del freno del predictor (estimacion-de-ingreso.ts), con su ficha.
+const DEL_PREDICTOR = OBLIGATORIAS.filter(([f]) => FUENTES_DEL_PREDICTOR.includes(f));
 
 export const BASE = `
 reales as (select id from clients where not es_sintetico),
@@ -238,15 +241,17 @@ export const DETECTORES = [
   {
     id: "estimacion-sobre-consulta-incompleta",
     capa: "predictor",
-    tipo: "revisar",
-    titulo: "Estimación hecha sobre una consulta con una fuente obligatoria sin respuesta",
-    caso: "estimar-ingresos-en-lote.mjs, 2026-11-05: 624 de 2.061 estimaciones de la cartera serían de consultas incompletas, 552 sin edad ni sexo",
+    // El freno (negocio, 2026-11-05): sin la identidad, los aportes o el RUC no se
+    // estima. Las demás obligatorias no frenan y este detector no las mira.
+    tipo: "regresion",
+    titulo: "Estimación hecha sin la identidad, los aportes o el RUC",
+    caso: "estimar-ingresos-en-lote.mjs, 2026-11-05: sin el freno, 624 de 2.061 estimaciones eran de consultas incompletas, 552 sin edad ni sexo",
     poblacion: `select count(*) from estimaciones_de_ingreso`,
     casos: `
       select e.client_id, jsonb_build_object('estimado', e.valor_central, 'minimo90', e.minimo_90,
-             'caidas', ${clavesCaidas("p.estado_por_fuente")}) as detalle
+             'caidas', ${clavesCaidas("p.estado_por_fuente", DEL_PREDICTOR)}) as detalle
       from estimaciones_de_ingreso e join client_profiles p on p.id = e.client_profile_id
-      where ${algunaClaveCaida("p.estado_por_fuente")}`,
+      where ${algunaClaveCaida("p.estado_por_fuente", DEL_PREDICTOR)}`,
   },
   {
     id: "estimacion-lejos-de-equifax",

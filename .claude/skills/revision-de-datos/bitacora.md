@@ -12,6 +12,9 @@ qué se cambió. Casos sólo como `c-xxxxxxxx`. La más nueva va arriba.
     - Sin edad ni sexo cambia el lado de USD 1.000 del mínimo al 90% en el 39% de los casos.
     - Con otras obligatorias caídas, la estimación casi no cambia.
   - **Análisis.** El negocio decidió no rehacer los 85 «sin atraso».
+  - **Freno del predictor.** El negocio dijo «sí, ese freno»: sin identidad, aportes o RUC no se estima.
+    - Sin guardar, los estimados de la cartera bajan de 2.061 a 1.493.
+    - `estimacion-sobre-consulta-incompleta` mira sólo esas tres fuentes y pasó a regresión.
 
 - **2026-11-05**, tercera corrida, después de aplicar estructura-v19 en producción.
   - `cargo-vigente-sin-aporte-vigente` dio 0 de 1.914, con 17 resueltos.

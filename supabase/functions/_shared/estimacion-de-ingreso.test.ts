@@ -109,6 +109,43 @@ Deno.test("el selector: cada segmento cae donde dice la especificación (3.2)", 
   }
 });
 
+// Freno del 2026-11-05: sin las entradas del nivel 1 no se estima; el resto de las obligatorias no frena.
+const ESTADO_COMPLETO: Record<string, string> = { general: "ok", basesInternas: "ok", contribuyente: "ok_vacio", denuncias: "ok" };
+
+Deno.test("sin la identidad o el RUC no se estima, y lo verificado se entrega igual", () => {
+  for (const caida of ["general", "contribuyente"]) {
+    const estado = { ...ESTADO_COMPLETO, [caida]: "error" };
+    const d = decidirEstimacion(conSueldos("ingresos_mixtos", [600]), estado);
+    assertEquals([caida, d.nivel, d.motivo, d.verificado?.salarioReportado], [caida, 0, "consulta_incompleta", 600]);
+    assertEquals(decidirEstimacion(conSueldos("independiente", []), estado).nivel, null);
+  }
+});
+
+Deno.test("sin los aportes no se estima ni se da por verificado, sea cual sea el segmento", () => {
+  const estado = { ...ESTADO_COMPLETO, basesInternas: "faltante" };
+  for (const segmento of ["informal_o_sin_actividad", "dependiente_privado", "sin_datos"]) {
+    const d = decidirEstimacion(conSueldos(segmento, []), estado);
+    assertEquals([segmento, d.nivel, d.motivo, d.verificado], [segmento, null, "consulta_incompleta", null]);
+  }
+});
+
+Deno.test("otra obligatoria caída o un estado vacío no frenan la estimación", () => {
+  assertEquals(decidirEstimacion(conSueldos("independiente", []), { ...ESTADO_COMPLETO, denuncias: "error" }).nivel, 1);
+  assertEquals(decidirEstimacion(conSueldos("independiente", []), {}).nivel, 1);
+  assertEquals(decidirEstimacion(conSueldos("independiente", []), null).nivel, 1);
+  // Con la identidad y los aportes, un dependiente se sigue verificando.
+  assertEquals(decidirEstimacion(conSueldos("dependiente_privado", [1000]), ESTADO_COMPLETO).motivo, "ingreso_verificado");
+});
+
+Deno.test("la respuesta de una consulta incompleta avisa que hay que reconsultar", () => {
+  const perfil = conSueldos("independiente", []);
+  const decision = decidirEstimacion(perfil, { ...ESTADO_COMPLETO, general: "error" });
+  const { respuesta, fila } = armarEstimacion({ id: ID, perfil, decision, consultadoEl: CONSULTA, ahora: AHORA, vigente: null });
+  assertEquals(fila, null);
+  assertEquals(respuesta.estimado, { aplica: false, motivo: "consulta_incompleta" });
+  assert(respuesta.calidad.avisos[0].includes("reconsultala"));
+});
+
 Deno.test("un perfil viejo sin clasificación de ingresos no se estima", () => {
   assertEquals(decidirEstimacion({}).nivel, null);
   assertEquals(decidirEstimacion({ fuentesIngreso: null }).motivo, "sin_datos");

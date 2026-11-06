@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
   const { data: perfil, error: errorPerfil } = await serviceClient
     .from("client_profiles")
-    .select("id, created_at, standard_profile")
+    .select("id, created_at, standard_profile, estado_por_fuente")
     .eq("client_id", cliente.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -89,7 +89,8 @@ Deno.serve(async (req) => {
   if (!perfil) return responder({ error: "La persona no tiene un perfil guardado: primero hay que consultarla." }, 404);
 
   const perfilEstandar = perfil.standard_profile as Record<string, unknown>;
-  const decision = decidirEstimacion(perfilEstandar);
+  // Con el estado de la misma consulta: sin la identidad, los aportes o el RUC no se estima.
+  const decision = decidirEstimacion(perfilEstandar, perfil.estado_por_fuente as Record<string, string> | null);
 
   // A un dependiente no se le evalúa el modelo: sin modelo publicado se le contesta igual.
   let vigente: ModeloVigente | null = null;

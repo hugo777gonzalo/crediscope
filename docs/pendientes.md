@@ -250,9 +250,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        19% y cambia el lado de USD 1.000 del mínimo al 90% en el 39%.
      - En 56 faltan sólo otras obligatorias (denuncias, listas). En 23 personas con una consulta completa
        anterior, la razón mediana del valor central es 0,97.
-     - Propuesta: que no estime cuando no contestó `general`, `basesInternas` o `contribuyente` (las
-       entradas del nivel 1), y que el resto de las obligatorias no lo frenen. Espera la decisión del
-       negocio.
+     - **Freno decidido por el negocio y construido el 2026-11-05.** No se estima si no contestó
+       `general`, `basesInternas` o `contribuyente` (`FUENTES_DEL_PREDICTOR`, motivo
+       `consulta_incompleta`), y las demás obligatorias no frenan. Medido sin guardar: los estimados
+       bajan de 2.061 a 1.493, con 666 en `consulta_incompleta` y ninguno sin edad ni sexo. Falta
+       desplegar `estimar-ingreso`. El detector `estimacion-sobre-consulta-incompleta` es de regresión.
    - **Dos RUC que el SRI da activos** (c-0be1e991, c-74997fb7, revisados por el negocio el 2026-11-05).
      El SRI coincide con Equifax: ACTIVO, con la misma fecha de cese y un reinicio en 2025 (18/07 y
      23/10). El crudo de Proveedor_Info_1 del 2026-10-03 no trae ese reinicio y suma una cancelación que
