@@ -19,6 +19,10 @@ adelante consta así:
   hubiéramos hecho nosotros (`origen = 'lote'`, `ambiente = 'produccion'`, `created_at` = la
   fecha original, procedencia en `parametros.migrada_de`). Idempotente. Una consulta migrada
   vale hasta el 17 del mes de su fecha, como cualquier otra; las viejas no cuentan como vigentes.
+- **Una consulta no se borra ni se reemplaza** (negocio, 2026-11-05): es la base de lo que se analizó.
+  Volver a consultar (vencida, sólo administración) agrega una fila nueva con sus propias tablas, y
+  `solicitudes.consulta_equifax_id` dice cuál usó cada evaluación. Una migrada sin tablas se ordena
+  desde su crudo, sin pagar: al reutilizarla vigente o con «Ordenar la consulta guardada».
 - **Esas personas no se consultan a Proveedor_Info_1 por ahora** (negocio, 2026-10-30: el servicio
   tiene intermitencias). Quedan con el buró y sin perfil de Proveedor_Info_1.
 - La autorización de cada titular sigue siendo de la IFI, por contrato.

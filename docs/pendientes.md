@@ -13,14 +13,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Espacio de la base (2026-11-04): 477 MB de 500 MB del plan Free** (23 MB de margen; el 31/10,
-  tras la migración, eran 443); se midió con `pg_database_size`. Otras sesiones escriben (perfiles,
+- **Espacio de la base (2026-11-05): 485 MB de 500 MB del plan Free** (15 MB de margen; el 04/11
+  eran 477, el 31/10, tras la migración, 443); se midió con `pg_database_size`. Otras sesiones escriben (perfiles,
   laboratorio): **no cargar nada grande sin medir**. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
   a Pro, o guardar el crudo de Equifax en Storage como el de Proveedor_Info_1, es la salida de fondo
   (cambia el esquema de `consultas_equifax`: decisión aparte).
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
-  27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11; pasada
-  esa fecha se pueden quitar. Equifax autorizó reutilizarlas (`docs/equifax.md`). Faltan las
+  27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11, pero
+  **no se borran al vencer** (negocio, 2026-11-05: una consulta queda como la base de lo que se
+  analizó; volver a consultar suma una nueva y no reemplaza la anterior). Equifax autorizó reutilizarlas (`docs/equifax.md`). Faltan las
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
@@ -453,15 +454,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,9 millones (en proceso por el proveedor); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
-19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** El negocio
-    decidió lo demás ese día y está en el PR de la habilidad (Simulador en el menú, Nueva solicitud
-    vacía, bandeja con las incompletas al final, textos del Simulador, ordenar las migradas). Queda:
-    - **Probar el botón «Ordenar la consulta guardada»** con una persona migrada sin tablas.
-      `consultar-equifax` con la acción `ordenar` quedó desplegada el 2026-11-05 (`6d30f65ed598`, junto con
-      estructura-v19), y falta probarla.
-    - **El botón «Volver a consultar» después del 17**: hoy vuelve a aparecer cuando vence la vigencia
-      mensual. El negocio dijo que con una respuesta correcta no tiene sentido; falta confirmar si
-      también vale vencida.
+19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** Lo demás
+    se decidió y se desplegó ese día (PR 130, sello `2d898f9ea4e9`). Queda:
+    - **El crudo de Equifax en Storage** (decisión del negocio del 2026-11-05: revisarlo). Medido ese
+      día: el crudo ocupa 50 MB en la base (14 KB por consulta, 48 MB de las migradas), y las tablas
+      derivadas, 12 MB para 107 consultas, unos 110 KB por consulta. Pasar el crudo a Storage (como el
+      de Proveedor_Info_1, 88 MB de 1 GB usados) libera unos 48 MB, pero **ordenar las 3.533 migradas
+      de una vez no entra** (unos 390 MB): las tablas se arman sólo cuando alguien consulta a la persona
+      mientras su consulta está vigente, o con el botón «Ordenar la consulta guardada»
+      (administración). Cambia el esquema de `consultas_equifax`: un frente aparte.
     - **El menú en el teléfono** sigue siendo una fila de íconos sin texto, y las pestañas miden 31 px.
     - `/solicitud/no-existe` y una solicitud que no existe dan dos mensajes distintos; a los emojis el
       Inicio los llama «pasaporte».
