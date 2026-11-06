@@ -106,13 +106,20 @@ if (pendientes.length === 0) {
 const ejecucion = SECO ? null : await abrirEjecucion({ url: process.env.SUPABASE_URL, clave: process.env.SUPABASE_SERVICE_ROLE_KEY, guion: "cargar-tablas-equifax" });
 
 let hechas = 0, fallidas = 0, filas = 0;
+const { leerCrudoDeLaConsulta } = await import(new URL("../supabase/functions/_shared/crudo-equifax-migrado.ts", import.meta.url).href);
 for (const c of pendientes) {
   const etiqueta = c.client_id ? `c-${String(c.client_id).slice(0, 8)}` : `consulta-${c.id.slice(0, 8)}`;
   // El crudo se trae de a una consulta: pesa cientos de KB.
-  const { data: fila, error } = await db.from("consultas_equifax").select("id, identificacion, created_at, ambiente, respuesta_cruda").eq("id", c.id).single();
+  const { data: fila, error } = await db.from("consultas_equifax").select("id, identificacion, created_at, ambiente, respuesta_cruda, crudo_ruta").eq("id", c.id).single();
   if (error) {
     fallidas++;
     console.log(`[${etiqueta}] ERROR al leer el crudo: ${explicar(error)}`);
+    continue;
+  }
+  // Una migrada de AWS puede tener el crudo en Storage (148).
+  try { fila.respuesta_cruda = await leerCrudoDeLaConsulta(db, fila); } catch (err) {
+    fallidas++;
+    console.log(`[${etiqueta}] ERROR al leer el crudo de Storage: ${err.message}`);
     continue;
   }
   if (SECO) {

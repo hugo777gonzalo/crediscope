@@ -329,6 +329,22 @@ su guía: `docs/equifax.md`.
   ignora `contentType` y el depósito lo rechaza (así no se guardó ningún
   crudo hasta el 2026-10-04).
   Lo que leyó el modelo queda en `analysis_results.mensaje_al_modelo`.
+- **El crudo de Equifax migrado de AWS vive en Storage** (148, 2026-11-06; medida TEMPORAL del negocio,
+  sólo para esas consultas): depósito privado `crudo-equifax-migrado`, gzip,
+  `aws/<id_consulta_equifax>.json.gz` (el `response_json` tal cual) y `aws/respaldo/lote-NNNNNN.jsonl.gz`
+  (el resto de cada fila de AWS). La fila guarda la ruta en `consultas_equifax.crudo_ruta` y su
+  `respuesta_cruda` queda en null (hay un check: nunca sin crudo en ningún lado; el disparador sólo deja
+  pasar el paso «de la fila a Storage»). Las consultas que pagamos nosotros siguen con el crudo en la fila.
+  - **Quien necesite el crudo de una consulta lo lee con `leerCrudoDeLaConsulta(db, fila)`**
+    (`_shared/crudo-equifax-migrado.ts`), nunca `fila.respuesta_cruda` a secas; lo mismo los guiones.
+    `guardarTablasDeLaConsulta` y `ordenarConsultaGuardada` ya lo hacen.
+  - Lo escribe sólo `scripts/subir-equifax-migrado-a-storage.mjs` (fases `--seco`, subir, `--verificar`,
+    `--enlazar`, `--vaciar --confirmo`). Una migración nueva de AWS (`migrar-equifax-aws.mjs`) vuelve a
+    meter el crudo en la fila: después se corre ese guion de nuevo.
+  - `suprimir_titular()` devuelve `crudos_equifax` y `derechos-del-titular.mjs` los borra. Un JSON de AWS
+    sin fila en la base no se encuentra por cédula (su nombre es el id de AWS).
+  - Vaciar la fila no devuelve espacio al sistema operativo: Postgres lo reutiliza, y `pg_database_size` baja
+    sólo con un `VACUUM FULL` (que bloquea la tabla).
 
 **IESS, ingresos y fuentes de ingreso**
 - El corte del IESS es `corte_iess_vigente()` (083): el mes más reciente
