@@ -13,9 +13,11 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **Espacio de la base (2026-11-06): 478 MB de 500 MB del plan Free** (22 MB de margen; el 05/11 eran
-  485 y el 06/11 llegaron a 534, por encima del plan); se midió con `pg_database_size`. Lo que lo llenó, medido:
-  `cron.job_run_details` con 82 MB (89.361 filas, 1,6 MB por día; la 149 lo limpia), el TOAST de
+- **Espacio de la base (2026-11-06): 409 MB de 500 MB del plan Free** (91 MB de margen; el 05/11 eran
+  485 y el 06/11 llegaron a 534, por encima del plan, y bajaron a 478 tras el `vacuum full` de `consultas_equifax` y a 409 tras el
+  de `cron.job_run_details`); se midió con `pg_database_size`. Lo que lo llenó, medido:
+  `cron.job_run_details` con 82 MB (89.361 filas, 1,6 MB por día; la 149 lo dejó en 16 MB y lo limpia a diario; falta ver que la tarea
+  corra sola), el TOAST de
   `lab_reconsultas` (80 MB) y de `client_profiles` (69 MB), y `storage.objects` (55 MB: sólo sus metadatos e
   índices; los 20.616 objetos de la subida del crudo de Equifax sumaron unos 35). Otras sesiones escriben (perfiles,
   laboratorio): **no cargar nada grande sin medir**. Con ese techo una reconsulta masiva de Proveedor_Info_1 la vuelve a llenar. Pasar
@@ -35,8 +37,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **148** (el corredor, 2026-11-06; la **149**, la limpieza del registro de
-  pg_cron, se aplica recién fusionada; no hay 137: la del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 148 (el crudo en
+- **Base:** última migración aplicada, la **149** (el corredor, 2026-11-06; la 149 es la limpieza diaria del registro de
+  pg_cron; no hay 137: la del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 148 (el crudo en
   Storage). La 146 son los
   permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
   después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
