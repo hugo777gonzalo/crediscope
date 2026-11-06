@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { getUltimaConsultaEquifax, ordenarConsultaEquifax, getOperacionesEquifax, getHistoriaDePagosEquifax, getCortesDelReporteEquifax, registrarEvento } from "../lib/api.js";
@@ -53,8 +53,13 @@ export default function PerfilEquifax() {
 
   // Una consulta guardada sin tablas (las migradas de AWS) se ordena desde lo
   // que contestó Equifax: no se vuelve a consultar ni se cobra.
+  // El candado es una referencia y no el estado: dos clics en el mismo instante
+  // ven el mismo `ordenando` viejo, y en la prueba del 2026-11-05 salieron dos
+  // pedidos (sin costo, pero el segundo sobraba).
+  const ordenandoAhora = useRef(false);
   async function ordenar() {
-    if (ordenando) return;
+    if (ordenandoAhora.current) return;
+    ordenandoAhora.current = true;
     setOrdenando(true);
     setErrorAlOrdenar(null);
     try {
@@ -63,6 +68,7 @@ export default function PerfilEquifax() {
     } catch (err) {
       setErrorAlOrdenar(err);
     } finally {
+      ordenandoAhora.current = false;
       setOrdenando(false);
     }
   }
