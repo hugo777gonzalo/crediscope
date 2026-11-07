@@ -451,6 +451,14 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   persona (edad, sexo, estado civil, provincia y cantón) entre AWS y Proveedor_Info_1
   sigue sin medirse. El caso completo, en `docs/investigacion-predictor-de-ingresos.md`
   (12.23 a 12.25).
+- **Una regla «que no se encuentra» puede ser un tipo de dato** (predictor de ingresos,
+  2026-11-06). Desde el 2026-10-22 la mora máxima del extracto de AWS no salía de las listas de
+  `interconnectResponse` en el 1,3% de las consultas, y se buscaba una fila de más o de menos. Era el
+  máximo de los días vencidos comparados como texto: «65» le gana a «259». Como texto coincide en
+  3.766 de 3.766; con el máximo de verdad, en 3.717. `max_dias_t` salió de otra tabla, con el máximo
+  como texto por sistema y tipo de crédito y como número entre ellos (3.935 de 3.935). El modelo
+  aprendió esos valores: `variables-de-ingreso.ts` los reproduce (12.35). Antes de dar una paridad por
+  imposible, probar el valor del otro lado como texto, como número y por grupo.
 - **La población de entrenamiento tiene que ser la del producto** (predictor de
   ingresos, 2026-10-26). Se dio por hecho que la base de AWS mezclaba crédito de
   vehículos y de consumo (lo sugería una marca del catálogo de respuestas), y se
@@ -671,6 +679,12 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Guiones
 
+- **pandas no relee exacto el decimal que escribió JavaScript** (predictor de ingresos, 2026-11-06).
+  La matriz del nivel 2 armada en Node desde el crudo coincidía con el extracto dentro de la tolerancia, pero
+  sus cuantiles diferían hasta 0,06 en logaritmo en el nivel 1, que no usa Equifax: `read_csv` dejó la
+  antigüedad del SRI y los cocientes a un bit de distancia en 634 y 722 de 3.935 consultas, y un bit
+  alcanza para cambiar de rama en un árbol. Con `float_precision="round_trip"` la diferencia es 0. Un
+  archivo que pasa números entre Node y Python se lee con «round_trip» y se compara con igualdad exacta.
 - **Una versión nueva de la CLI parecía una base caída** (2026-11-04). `npx --yes supabase@latest`
   pasó a la 3.0.0, que no corre `db query` contra una base alojada sin confirmar. El corredor tomó la
   negativa por un error de la base, y el control de seguridad marcó tres fallas que no existían: con

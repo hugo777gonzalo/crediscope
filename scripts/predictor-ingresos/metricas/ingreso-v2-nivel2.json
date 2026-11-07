@@ -1,0 +1,81 @@
+{
+  "poblacion": "solicitantes de crédito independientes (en AWS, el 96% automotriz)",
+  "medido_el": "2026-11-07",
+  "fuente": "docs/investigacion-predictor-de-ingresos.md, 12.35; scripts/predictor-ingresos/ingreso_v2.py y metricas/ingreso-v2-2026-11.json",
+  "variables": 46,
+  "lleva_el_sexo": true,
+  "entrenamiento": {
+    "casos": 19221,
+    "desde": "2026-02-02",
+    "hasta": "2026-10-20",
+    "filtro": "desde febrero"
+  },
+  "calibracion": {
+    "para": "OK FACTURAR y condicionado (AWS, 2026)",
+    "casos": 3273,
+    "corrimientoLog90": -0.11684097819930717,
+    "corrimientoLog85": -0.08340426783160204
+  },
+  "validacion_cruzada": {
+    "casos": 19221,
+    "r2": 0.347,
+    "r2_intervalo": [
+      0.318,
+      0.38
+    ],
+    "tramo_exacto": 0.456,
+    "tramo_o_vecino": 0.811,
+    "real_supera_minimo_90": 0.831,
+    "mediana_minimo_90": 1212
+  },
+  "ok_facturar_y_condicionado": {
+    "casos": 3273,
+    "real_supera_minimo_90": 0.9,
+    "mediana_minimo_90": 1715
+  },
+  "hacia_adelante": {
+    "descripcion": "Entrenado hasta junio, probado de julio a octubre de 2026, con el mínimo calibrado.",
+    "casos": 8656,
+    "ok_facturar_y_condicionado": 1613,
+    "baja_de_la_perdida_contra_el_minimo_fijo": 0.271,
+    "baja_de_la_perdida_intervalo": [
+      0.258,
+      0.284
+    ],
+    "tramo_exacto_o_vecino": 0.819,
+    "real_supera_minimo_90_en_ok": 0.915,
+    "real_supera_minimo_90_en_ok_intervalo": [
+      0.901,
+      0.929
+    ],
+    "real_supera_minimo_90_en_todas": 0.843,
+    "mediana_minimo_90_en_ok": 1688,
+    "capacidad_de_pago_en_ok": {
+      "concordancia": 0.7666,
+      "alcanza_por_error": 0.0026,
+      "niega_de_mas": 0.2309
+    }
+  },
+  "sexo": {
+    "diferencia_r2_con_menos_sin": 0.0006,
+    "intervalo": [
+      -0.0014,
+      0.0026
+    ],
+    "baja_de_la_perdida_con_el_sexo": 0.0008
+  },
+  "prueba_con_el_crudo": {
+    "descripcion": "Las consultas de septiembre y octubre con el crudo de Equifax: el nivel 2 armado por variables-de-ingreso.ts, como en producción.",
+    "casos": 3935,
+    "ok_facturar_y_condicionado": 775,
+    "variables_distintas_del_extracto": {},
+    "baja_de_la_perdida_contra_el_minimo_fijo": 0.28,
+    "tramo_exacto_o_vecino": 0.819,
+    "real_supera_minimo_90_en_ok": 0.915,
+    "capacidad_de_pago_en_ok": {
+      "concordancia": 0.7532,
+      "alcanza_por_error": 0.0031,
+      "niega_de_mas": 0.2437
+    }
+  }
+}
