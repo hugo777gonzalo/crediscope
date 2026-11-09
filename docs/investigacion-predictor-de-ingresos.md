@@ -3219,6 +3219,136 @@ Primero va una muestra de 10.000 personas al azar, y después la base completa.
   el porqué de cada campo y 15 preguntas.
 - `guiones/`: `armar_solicitud.py`, `armar_pedido.py`, `medir_deudas.py` y `medir_series.py`.
 
+### 12.34 Destilación con propósito: el ancla de la etiqueta, una alerta para pedir documentos y el maestro como etiquetador (2026-11-06)
+
+**Qué se hizo.** Fase 4 de la revisión integral del predictor: tres hipótesis para sacarle algo al predictor de Equifax («el maestro»), probadas en el orden D3, D2 y D1, cada una con una regla fijada antes de medir.
+Las midió `scripts/predictor-ingresos/destilacion.py` con el marco de la fase 0 (12.32): siempre hacia adelante, con las 12.604 personas de antes de julio para entrenar y las 8.656 de julio a octubre para probar (1.613 en OK FACTURAR y condicionado). Las medidas son la pérdida de cuantiles, el tramo exacto o vecino, la cobertura del mínimo del 90% y la decisión de la capacidad de pago.
+Los modelos de hoy reproducen los de `medir.py` con diferencia 0, y «sin rechazados» da la misma pérdida que la sección 5 de la fase 0. Todo fue local:
+- ninguna consulta a AWS, a Equifax, a Proveedor_Info_1 ni al modelo de lenguaje;
+- la base, sólo en lectura;
+- la cifra de Equifax, los documentos y el historial de los flujos se leen en memoria de las extracciones ya bajadas y nunca entran como variable.
+
+A git van los agregados (`metricas/destilacion-2026-11.json`); las tablas completas quedan en `C:\datos\ingresos\resultados\predictor-ingresos\destilacion\`. Intervalos del 95% por remuestreo de personas (1.000 veces).
+
+**El resultado** (nivel 1 / nivel 2):
+
+| Hipótesis | Regla para seguir | Lo medido | Decisión |
+|---|---|---|---|
+| D3 Quitar el ancla de la etiqueta | Cobertura en OK FACTURAR y condicionado entre 90% y 94% con un mínimo más alto que el de hoy, sin empeorar la agudeza general (la pérdida en todas no sube más de 1% y el tramo exacto o vecino no baja más de un punto) | **Calibrar con OK FACTURAR y condicionado**, entrenando como hoy: cobertura en OK **90,2% (88,7 a 91,6) y 90,5% (89,1 a 91,9)**; mínimo mediano en OK **1.462 y 1.690** (hoy 1.158 y 1.521); la pérdida no cambia. Entrenar sin rechazados o con pesos fuertes empeora la pérdida en todas entre 2,2% y 6,0% | **Sigue**: la calibración con OK FACTURAR y condicionado. Los pesos por calidad no entran |
+| D2 Alerta para pedir documentos | AUC de 0,65 o más con el alumno, en OK FACTURAR y condicionado | Con el alumno, **0,43 a 0,54** en OK con el mínimo calibrado, y ninguna combinación pasa de 0,57. Con la cifra misma (el techo): **0,84 y 0,68**, pero en las etiquetas que el analista editó baja a 0,75 y **0,56** | **Se descarta**: el alumno no separa nada, y lo que separa la cifra en el nivel 2 es el ancla |
+| D1 El maestro etiqueta las consultas sin ingreso validado | La pérdida baja 2% o más y la cobertura no baja | Con 16.375 consultas sin ingreso validado, **la pérdida empeora en las ocho variantes**: entre 0,1% y 4,6% en todas y entre 2,0% y 10,5% en OK | **Se descarta**, como anticipaban las curvas planas de la fase 0 |
+
+**La calidad de la etiqueta.** Se separó la etiqueta en grupos: OK FACTURAR con documento de ingresos cargado (`documentos_por_persona.csv`), OK FACTURAR sin documento, condicionado, aprobado o pendiente, sin respuesta y rechazado. Aparte se marcó la que es igual a la cifra del predictor de Equifax, a ±1%: el analista la dejó como venía.
+
+| Grupo (prueba, julio a octubre) | Casos | Igual a la cifra de Equifax | Etiqueta sobre la cifra, mediana (todas / editadas) |
+|---|---|---|---|
+| OK FACTURAR con documento | 891 | 30,0% | 1,00 / 1,29 |
+| OK FACTURAR sin documento | 356 | **53,9%** | 1,00 / 0,91 |
+| OK FACTURAR CONDICIONADO | 366 | 23,8% | 1,00 / 1,37 |
+| Aprobado, aprobado condicionado o pendiente | 1.802 | 9,2% | 1,61 / 1,75 |
+| Sin respuesta | 3.225 | 1,8% | 1,58 / 1,61 |
+| RECHAZADO | 2.016 | 33,6% | 1,00 / 1,05 |
+
+En el entrenamiento la proporción es parecida (20,4%, 56,7%, 25,0%, 6,9%, 1,6% y 29,1%). **Una de cada tres etiquetas de OK FACTURAR y condicionado de la prueba (546 de 1.613) es la cifra de Equifax tal cual**, y más de la mitad cuando no hay documento. Las demás se llaman «editadas» (1.067). El monto de los flujos con historial (`flujos_historial.csv`, desde marzo) cambió en el 76% a 83% de los OK FACTURAR.
+
+**D3. Quitar el ancla.** Cinco entrenamientos y cuatro calibraciones del mínimo, en los dos niveles.
+- Entrenamientos: como hoy; sin rechazados; la etiqueta igual a la cifra con peso 0,3; y dos esquemas de pesos por calidad.
+- Los pesos se fijaron antes de medir, con lo que dicen 12.15 y 12.21 de cada grupo:
+  - moderado: OK con documento 1; sin documento y condicionado 0,8; aprobado, pendiente y sin respuesta 0,6; rechazado 0,3; la igual a la cifra, por 0,6;
+  - fuerte: 1; 0,7; 0,4; 0 (sin rechazados); por 0,3.
+- Calibraciones: sin calibrar; con todos los casos que entrenan; con OK FACTURAR y condicionado; con OK y condicionado editados.
+- El corrimiento sale de las predicciones fuera de muestra de los mismos casos que entrenan, como `calibrar.py`.
+
+| Nivel | Entrenado con | Calibrado | Pérdida en todas / en OK (baja) | Tramo exacto o vecino | Cobertura en OK | Mínimo en OK | Cobertura en todas / rechazados | «Alcanza» por error / niega de más | Regla |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | como hoy | sin calibrar | — | 67,6% | 95,7% | 1.158 | 89,1% / 73,0% | 0,5% / 23,1% | no: cubre de más |
+| 1 | como hoy | con OK y condicionado | 0 / 0 | 67,6% | **90,2%** | **1.462** | 80,3% / 60,0% | 1,2% (0,9 a 1,5) / 20,6% | **sí** |
+| 1 | pesos moderados | con OK y condicionado | −0,9% / **+1,6%** | 69,1% | 90,8% | 1.435 | 81,3% / 61,0% | 1,1% / 20,7% | sí |
+| 1 | sin rechazados | con OK y condicionado | −2,2% / +2,5% | 69,0% | 91,3% | 1.441 | 81,2% / 59,9% | 1,2% / 20,6% | no: la pérdida en todas |
+| 2 | como hoy | sin calibrar | — | 82,3% | 93,3% | 1.521 | 87,4% / 71,7% | 0,2% / 24,0% | no: el mínimo |
+| 2 | como hoy | con OK y condicionado | 0 / 0 | 82,3% | **90,5%** | **1.690** | 82,5% / 62,1% | 0,4% (0,2 a 0,5) / 22,8% | **sí** |
+| 2 | igual a la cifra con peso 0,3 | con OK y condicionado | −0,8% / +0,4% | 82,3% | 91,4% | 1.659 | 82,5% / 60,9% | 0,3% / 22,9% | sí |
+| 2 | pesos moderados | con OK y condicionado | −1,7% / +2,0% | 82,3% | 91,7% | 1.688 | 83,1% / 60,9% | 0,3% / 23,0% | no: la pérdida en todas |
+| 2 | sin rechazados | con OK y condicionado | −5,6% / +2,3% | 82,9% | 90,9% | 1.708 | 80,6% / 53,2% | 0,3% / 22,8% | no: la pérdida en todas |
+
+- **La regla la cumple la calibración, no los pesos.** Calibrar con OK FACTURAR y condicionado (corrimiento de −0,233 y −0,105 en logaritmo: sube el mínimo 26% y 11%) lleva la cobertura en OK al 90% sin tocar el modelo. En el nivel 2, certificar «al menos 2.000» pasa de 35,4% a 40,7% de OK, con precisión de 97,7% a 97,0%.
+- **Pesar las etiquetas mejora lo que se mide en OK y lo paga en el resto.** Todo lo que baja el peso de los rechazados sube el modelo: gana entre 1,6% y 2,5% de pérdida en OK y pierde entre 0,9% y 6,0% en todas, porque las etiquetas de los rechazados y de los sin respuesta siguen ahí. Dentro de la tolerancia de la pérdida quedan sólo los pesos moderados del nivel 1 y el peso 0,3 a la cifra. Ganan en OK 1,6% (nivel 1), y 0,7% y 0,4% (niveles 1 y 2): menos que el 2% que se pide a D1 para valer la pena.
+- **Calibrar con las editadas** (sin las etiquetas que son la cifra) da casi lo mismo: 89,6% en el nivel 1, que queda fuera por poco, y 91,2% en el 2.
+- **Lo que cuesta.** El mínimo se calibra para quien el analista aprueba. Con él, la cobertura en todas baja a 80,3% y 82,5%, en los sin respuesta (el monto del concesionario sin revisar) a 82,6% y 85,5% y en los rechazados a 60,0% y 62,1%. En los rechazados el analista baja el monto después de decidir, así que esa cobertura no mide un ingreso.
+- En la capacidad de pago, el nivel 1 calibrado dice «alcanza» por error **1,2% (0,9 a 1,5)**: arriba de la meta propuesta de 1% (12.32). A cambio niega de más 20,6% en vez de 23,1%. El nivel 2 queda en 0,4% y 22,8%.
+
+**D2. Una alerta para pedir documentos.**
+- **El alumno.** Los parámetros son los de 12.28, con las variables de cada nivel. Entrena con las 189.839 consultas de titulares anteriores a julio que traen la cifra, una por persona y ninguna de la prueba.
+  - Hacia adelante reproduce la cifra con **R² 0,791** en el nivel 2 (el 0,79 de 12.28; 61,9% dentro de ±25%).
+  - En el nivel 1, con sólo la edad, el sexo, la fecha y el SRI, el R² es 0,268.
+- **La señal y el evento.** La señal es nuestra mediana o nuestro mínimo sobre la estimación del alumno, en logaritmo. El evento es que el ingreso validado quede bajo nuestro mínimo: el calibrado con OK FACTURAR de D3 o el de hoy.
+- **El techo.** Lo mismo con la cifra real de Equifax.
+- **La referencia.** Sólo nuestro mínimo, sin Equifax.
+- Se mide sobre las mismas 8.635 personas para todas las señales (las que tienen la cifra).
+
+| Nivel | Casos (con el mínimo calibrado) | Alumno: mínimo sobre el suyo | Alumno: mediana sobre la suya | Techo: mínimo sobre la cifra | Referencia sin Equifax |
+|---|---|---|---|---|---|
+| 1 | OK y condicionado (158 de 1.611 bajo el mínimo) | 0,537 (0,491 a 0,584) | 0,502 | **0,841 (0,812 a 0,871)** | 0,576 |
+| 1 | OK y condicionado editadas (100 de 1.065) | 0,524 | 0,473 | 0,747 (0,706 a 0,789) | 0,546 |
+| 1 | todas (1.692 de 8.635) | 0,564 | 0,499 | 0,758 | 0,481 |
+| 2 | OK y condicionado (153 de 1.611) | 0,518 (0,469 a 0,565) | 0,427 | **0,678 (0,636 a 0,721)** | 0,514 |
+| 2 | OK y condicionado editadas (122 de 1.065) | 0,454 | 0,356 | **0,564 (0,520 a 0,610)** | 0,507 |
+| 2 | todas (1.504 de 8.635) | 0,551 | 0,499 | 0,618 | 0,494 |
+
+- **El alumno no sirve de alerta**: imitar la cifra con las mismas variables del modelo no agrega información sobre el ingreso. Ninguna de las 24 combinaciones de señal, mínimo, grupo y nivel pasa de 0,566. Con el mínimo de hoy da lo mismo (0,41 a 0,56 en OK).
+- **La cifra misma separa, pero por el ancla.** En el nivel 2 pasa la regla en OK (0,678; 0,651 con el mínimo de hoy). En las etiquetas editadas cae a 0,564 (0,556 con el mínimo de hoy). Cuando el analista copia la cifra, «la cifra está bajo nuestro mínimo» y «el ingreso validado está bajo nuestro mínimo» son lo mismo.
+- **En el nivel 1** la cifra separa también en las editadas (0,747): el buró que el nivel 1 no tiene sí dice algo. Pero quien tiene la cifra tiene una consulta de Equifax y se estima con el nivel 2.
+- Pidiendo documentos al 20% con la señal más alta, el techo del nivel 2 en OK atrapa el 40,5% de los casos bajo el mínimo y acierta en el 19,2%; el alumno, 20,9% y 9,9%: lo mismo que pedirlos al azar (20% y 9,5%).
+- **Las consultas que paga CrediScope traen la cifra**: `scripts/predictor-ingresos/cifra-de-equifax-en-consultas.mjs` leyó en sólo lectura `consultas_equifax` con `leerCrudoDeLaConsulta()`. En `interconnectResponse.ResultadoSegmentacion.IncomePredictor`:
+  - 96 de las 97 consultas pagadas por CrediScope (12 de la pantalla y 85 de lotes, todas de octubre de 2026) la traen mayor que cero; en 1 viene vacía o en cero;
+  - las 200 migradas de AWS leídas al azar, de 3.542, la traen todas;
+  - `equifax_resumen.ingreso_estimado_usd` ya la guarda en las 96.
+
+  En producción no hace falta el alumno para tener la cifra, pero la cifra como alerta no pasa de lo que el ancla explica.
+
+**D1. El maestro como etiquetador.**
+- **La población.** Las consultas de titulares anteriores a julio, con el bloque del SRI y la cifra, sin ingreso validado y que hoy no entrenan: 16.375, 11.543 de ellas con RUC.
+  - No se pudo pedir «independientes»: en AWS la relación de dependencia sale de la misma validación del ingreso y viene vacía en todas ellas. La primera corrida filtró por independiente y no encontró ninguna.
+  - Son casi todas consultas sin respuesta comercial (99,8%), y el 58,1% aporta al IESS: muchas serán dependientes.
+- **Las etiquetas.** Dos, con peso 0,5:
+  - la cifra tal cual;
+  - la cifra recalibrada con los que sí tienen etiqueta (log ingreso = 2,952 + 0,657 × log cifra) más un desvío sorteado de ellos, para que tenga la dispersión de un ingreso.
+
+| Nivel | Agregadas | Etiqueta | Pérdida en todas (baja) | Pérdida en OK (baja) | Cobertura en todas / en OK |
+|---|---|---|---|---|---|
+| 1 | — | como hoy | — | — | 89,1% / 95,7% |
+| 1 | 16.375 | la cifra | −4,6% (−5,2 a −3,9) | −10,5% | 94,8% / 98,2% |
+| 1 | 16.375 | recalibrada | −0,2% (−0,5 a 0,0) | −2,0% | 91,0% / 97,0% |
+| 1 | 11.543 con RUC | recalibrada | −0,1% (−0,3 a 0,1) | −2,1% | 90,7% / 96,8% |
+| 2 | — | como hoy | — | — | 87,4% / 93,3% |
+| 2 | 16.375 | la cifra | −3,7% (−4,4 a −3,0) | −3,9% | 90,0% / 94,5% |
+| 2 | 16.375 | recalibrada | −0,7% (−1,0 a −0,4) | −2,4% | 88,8% / 94,5% |
+| 2 | 11.543 con RUC | recalibrada | −0,5% (−0,8 a −0,2) | −2,2% | 88,8% / 94,4% |
+
+La cobertura sube porque las etiquetas agregadas, más bajas que las validadas, bajan el mínimo; la agudeza empeora en todas las variantes. Sumar personas no ayuda cuando la curva de aprendizaje ya es plana (12.32), y la cifra de Equifax como etiqueta está lejos del ingreso validado (R² de −0,04 sin recalibrar y 0,25 recalibrada, 12.28).
+
+**Qué entra en `ingreso-v2`.**
+1. Entrenar como hoy, con todas las respuestas y sin pesos.
+2. **Calibrar el mínimo con OK FACTURAR y condicionado, en los dos niveles** (`modelos_de_ingreso.calibracion`, en logaritmo). **Decidido por el negocio el 2026-11-06**, sabiendo lo que cuesta:
+   - en el nivel 1 el «alcanza» por error sube a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6% en vez de 23,1%;
+   - en el nivel 2 queda en 0,4% y 22,8%.
+3. Ni la cifra de Equifax ni un alumno, como alerta o como etiqueta. La pregunta abierta de 12.28 (si la destilación se hace igual) queda contestada con lo medido: con estos tres propósitos no mejora la asertividad.
+4. Antes de reentrenar, `preparar.py` con el arreglo de abajo.
+
+**Un error encontrado de paso.** El renombre del proveedor (#111, 2026-10-31) cambió en `preparar.py` el texto con que la extracción de AWS marca lo recuperado del IESS, y la extracción lo sigue escribiendo con el nombre anterior.
+- Desde entonces `preparar.py` no reconocía nada como verificado y armaba 57.340 independientes en vez de 57.061.
+- La tabla en uso (`personas.parquet`, del 2026-10-22) estaba bien: nadie había vuelto a correr `preparar.py`.
+- El arreglo lee el nombre anterior partido, como `scripts/_comun/crudo-del-ultimo-perfil.mjs`, y la tabla vuelve a salir idéntica byte a byte (SHA-256 `9ae586c6…`).
+- `preparar.py` también deja la armada de las consultas en `armar_consultas()`, que `destilacion.py` usa sin el filtro del ingreso validado.
+
+**No se pudo medir.**
+- Un ingreso sin ancla: el «real» es el del analista con la cifra a la vista. Las «editadas» también se anclan (mediana de 1,29 veces la cifra en OK con documento).
+- Si el mínimo calibrado con OK cubre de verdad a los rechazados y a los sin respuesta: su etiqueta es consecuencia de la decisión o un monto sin revisar.
+- La alerta con la cifra en las consultas que paga CrediScope: esas 97 personas no tienen ingreso validado.
+- Otros esquemas de pesos: los dos se fijaron antes de medir, para no ajustarlos con la prueba.
+- La capacidad de pago fuera de OK FACTURAR y condicionado.
+- En D1, quiénes de las agregadas son independientes.
+
 ## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,
