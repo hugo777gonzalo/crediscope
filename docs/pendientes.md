@@ -553,11 +553,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     - **p4, Equifax existe y no llega**: 214 de 247 análisis piden una cuota que Equifax ya tenía, y sólo
       28 de las 244 personas tienen la consulta en la base.
 
+    **Hecho el 2026-11-09**: `armar-carpetas.mjs` sirve para cualquier marco, `medir-lote.mjs` mide los
+    homónimos y los días entre la solicitud y la consulta, y `resultado-de-pago.mjs` arma el resultado de
+    pago (p8): en 197 de las 232 personas de la base de prueba con solicitud, el crédito figura en la
+    cartera de la institución; 18 están en mora hoy y ninguna en impago. **Pregunta abierta para el negocio**:
+    27 de las 33 solicitudes con «RECHAZAR» en `credito-real.json` tienen el crédito en la cartera, así que
+    esa decisión no es la que decidió si se otorgaba: ¿es automática y la revierte un analista?
+
     Lo que queda de la habilidad, sin decisión del negocio:
-    - generalizar `armar-carpetas.mjs` al marco del análisis elegido (hoy lee marco-v30 y la base de
-      prueba);
-    - llevar a `medir-lote.mjs` las dos mediciones del piloto que siguen sueltas: los homónimos y los
-      días entre la solicitud y la consulta;
     - crear la tarea programada local del barrido mensual, con el sí del negocio.
 
     **Pregunta abierta**: cómo valida la institución el «ingreso validado del titular». En 42 de 233
