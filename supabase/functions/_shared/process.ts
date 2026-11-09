@@ -20,7 +20,7 @@ import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // se reexporta para scripts/corregir-empleo-actual.mjs.
 export { relacionConEmpleador };
 import { rolEnDenuncia } from "./denuncias.ts";
-import { demandasPorCategoria, esDemandaDeCobro, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
+import { anioDeLaDemanda, demandasPorCategoria, esDemandaDeCobro, quienDemanda, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
 import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
@@ -349,43 +349,70 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
 // vigentes, el perfil decía que no tenía crédito del IESS/BIESS (308 de 918
 // personas con créditos formales quedaban así).
 //
-// Una operación que esté en las dos se cuenta una vez, por su número o, si no
-// coincide, por su fecha de concesión y monto. Manda la de la base interna, con
-// los días de mora más altos de las dos.
-type OperacionIess = { numero: string; concesion: string; monto: number | null; saldo: number; diasMora: number };
+// Una operación que esté en las dos se cuenta una vez: por su número, o por el
+// mismo monto (a un dólar) con la concesión a 31 días o menos. Desde
+// estructura-v21 (p6 de la revisión del análisis, aprobada por el negocio el
+// 2026-11-08); hasta v20 se pedían la fecha y el monto exactos, y la base
+// interna y la fuente de préstamos anotan el mismo hipotecario con otro número
+// y la fecha corrida: en c-b9fc9a82 a 2 días. Medido el 2026-11-09 sobre las
+// 3.766 personas reales: 177 hipotecarios contados dos veces en 174 personas
+// (145 a 3 días o menos, 173 a 7, 176 a 15), USD 6,6 millones de saldo de más.
+//
+// Manda la de la fuente de préstamos, con los días de mora más altos de las
+// dos: trae `fechaCorte` y su saldo es el de hoy, y la base interna es una foto
+// vieja (en c-3cec8b5f, 18.831 contra 14.816 del mismo hipotecario).
+//
+// Y de la base interna no se cuentan los préstamos terminados: los que siguen
+// «VIGENTE» con el plazo ya cumplido y sin mora, que la fuente de préstamos ya
+// no trae. Eran 1.600 operaciones en 679 personas, terminadas hace 3 años y
+// medio en la mediana, con USD 4,6 millones de saldo que ya no se debe
+// (c-40d771e1). Los que la base marca «VENCIDO» o «MORA» se cuentan: deben.
+// La fuente de préstamos trae sólo lo vigente (PV), vencido (VC) o en
+// novación (ND): en el respaldo del 03/10, ningún cancelado.
+type OperacionIess = { numero: string; dia: number | null; monto: number | null; saldo: number; diasMora: number };
 
-function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]): OperacionIess[] {
+const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
+
+// «31/07/2025» a días desde 1970; null si no es una fecha.
+function diaDeFechaDDMMYYYY(v: unknown): number | null {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86_400_000) : null;
+}
+
+export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]): OperacionIess[] {
   const sinCeros = (v: unknown) => String(v ?? "").trim().replace(/^0+/, "");
-  const base: OperacionIess[] = deLaBase.map((r) => ({
-    // Los hipotecarios llevan otros nombres de campo (sr...), y su mora no se
-    // leía: diasMoraAfi no existe en ellos.
-    numero: sinCeros(r.numeroOperacion ?? r.srNrooperaciongaf),
-    concesion: String(r.fechaConsesion ?? r.srFecprimerdesembolso ?? "").trim(),
-    monto: num(r.montoTransferido ?? r.srMontofinanciado),
-    saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
-    diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
+  const hoy = Math.floor(Date.now() / 86_400_000);
+  const prestamos: OperacionIess[] = deLosPrestamos.map((r) => ({
+    numero: sinCeros(r.nroOperacion),
+    dia: diaDeFechaDDMMYYYY(r.fechaConcesion),
+    monto: num(r.valorPrestamo),
+    saldo: (num(r.valorPorVencer) ?? 0) + (num(r.valorVencido) ?? 0),
+    diasMora: num(r.diasMora) ?? 0,
   }));
-  const porNumero = new Map<string, OperacionIess>();
-  const porFechaYMonto = new Map<string, OperacionIess>();
-  const clave = (o: OperacionIess) => (o.concesion && o.monto !== null ? `${o.concesion}|${Math.round(o.monto)}` : null);
-  for (const o of base) {
-    if (o.numero) porNumero.set(o.numero, o);
-    const k = clave(o);
-    if (k) porFechaYMonto.set(k, o);
-  }
-  const salida = [...base];
-  for (const r of deLosPrestamos) {
+  const esLaMisma = (a: OperacionIess, b: OperacionIess) =>
+    (a.numero !== "" && a.numero === b.numero) ||
+    (a.monto !== null && b.monto !== null && Math.abs(a.monto - b.monto) <= 1 &&
+      a.dia !== null && b.dia !== null && Math.abs(a.dia - b.dia) <= DIAS_DE_TOLERANCIA_EN_LA_CONCESION);
+  const salida = [...prestamos];
+  for (const r of deLaBase) {
     const o: OperacionIess = {
-      numero: sinCeros(r.nroOperacion),
-      concesion: String(r.fechaConcesion ?? "").trim(),
-      monto: num(r.valorPrestamo),
-      saldo: (num(r.valorPorVencer) ?? 0) + (num(r.valorVencido) ?? 0),
-      diasMora: num(r.diasMora) ?? 0,
+      // Los hipotecarios llevan otros nombres de campo (sr...), y su mora no se
+      // leía: diasMoraAfi no existe en ellos.
+      numero: sinCeros(r.numeroOperacion ?? r.srNrooperaciongaf),
+      dia: diaDeFechaDDMMYYYY(r.fechaConsesion ?? r.srFecprimerdesembolso),
+      monto: num(r.montoTransferido ?? r.srMontofinanciado),
+      saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
+      diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
     };
-    const k = clave(o);
-    const repetida = (o.numero ? porNumero.get(o.numero) : undefined) ?? (k ? porFechaYMonto.get(k) : undefined);
-    if (repetida) repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
-    else salida.push(o);
+    const repetida = prestamos.find((p) => esLaMisma(p, o));
+    if (repetida) {
+      repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
+      continue;
+    }
+    const estado = String(r.estadoOperacion ?? r.srEstadocredito ?? "").trim().toUpperCase();
+    const fin = diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito);
+    const terminado = estado === "VIGENTE" && fin !== null && fin < hoy && o.diasMora === 0;
+    if (!terminado) salida.push(o);
   }
   return salida;
 }
@@ -477,7 +504,14 @@ function fechaDeCorte(v: unknown): string | null {
 // negocio el 2026-11-08): una demanda por un delito de seguridad ciudadana es
 // de la persona sólo si el demandado es ella (riesgoSeguridadCiudadana; las
 // demás, aviso en el bloqueo).
-export const PROCESS_VERSION = "estructura-v20"; // ver docs/estructura-estandarizada.md
+// estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
+// aprobadas por el negocio el 2026-11-08): un préstamo del IESS/BIESS en las
+// dos fuentes se une por monto con la concesión a 31 días, con el saldo de la
+// fuente de préstamos, y no se cuentan los terminados de la base interna
+// (comportamientoBancario); la cartera de la institución lee todas sus
+// operaciones, con su cuota y sus cuotas pagadas (comportamientoInterno); y
+// cada demanda de cobro dice su año y quién demanda (riesgoJudicialCrediticio).
+export const PROCESS_VERSION = "estructura-v21"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -494,7 +528,9 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
 
   const basesInternas = obj(fuentes, "basesInternas", "__never__") ?? ((fuentes?.basesInternas as AnyRecord | undefined)?.data as AnyRecord | undefined) ?? null;
   const biWrap = { x: { data: basesInternas } } as unknown as AnyRecord;
-  const personasIncump = (arr(biWrap, "x", "personasIncumplimientos")[0] as AnyRecord | undefined) ?? null;
+  // La cartera de la institución: una fila por operación (ver
+  // comportamientoInterno).
+  const operacionesInstitucion = arr(biWrap, "x", "personasIncumplimientos");
   const tiess = arr(biWrap, "x", "tiess");
   const tcredQ = arr(biWrap, "x", "tcredQuirografarios");
   const tcredH = arr(biWrap, "x", "tcredHipotecarios");
@@ -1270,13 +1306,49 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   };
 
   // ---- comportamientoInterno (grupo nuevo — scoring propio Proveedor_Info_1) ----
+  // personasIncumplimientos trae una fila por OPERACIÓN de la persona con la
+  // institución, no una por persona. Hasta estructura-v20 se leía sólo la
+  // primera: medido el 2026-11-09 sobre las 3.766 personas reales, 782 de las
+  // 2.602 con operaciones tienen más de una, y en 464 la primera era una
+  // cancelada que escondía la vigente (c-5dfb1e00). Y la cuota (cuotaNova) y
+  // las cuotas pagadas no llegaban (p3 de la revisión del análisis, aprobada
+  // por el negocio el 2026-11-08).
+  const esCancelada = (o: AnyRecord) => String(o.estadoOperacion ?? "").trim().toUpperCase() === "CANCELADA";
+  const vigentesInstitucion = operacionesInstitucion.filter((o) => !esCancelada(o));
+  // El hábito de pago y el perfil interno son de la persona: se leen de una
+  // operación vigente si hay, y si no de la primera.
+  const filaDeLaPersona = vigentesInstitucion[0] ?? operacionesInstitucion[0] ?? null;
+  const maximo = (ops: AnyRecord[], campo: string) => {
+    const valores = ops.map((o) => num(o[campo])).filter((n): n is number => n !== null);
+    return valores.length ? Math.max(...valores) : null;
+  };
   const comportamientoInterno: StandardClientProfile["comportamientoInterno"] = {
-    proveedorInfo1ResultadoHabitoPago: (personasIncump?.resultadoHabitoPago as string) ?? null,
-    proveedorInfo1PerfilInterno: (personasIncump?.perfilInterno as string) ?? null,
-    proveedorInfo1DiasMoraMaxima: num(personasIncump?.diasMoraMax),
-    proveedorInfo1DiasMoraVigente: num(personasIncump?.diasMoraVigentes),
-    proveedorInfo1SaldoCapitalVigente: num(personasIncump?.saldoCapital),
-    esClienteInterno: Boolean(personasIncump?.identificacion),
+    proveedorInfo1ResultadoHabitoPago: (filaDeLaPersona?.resultadoHabitoPago as string) ?? null,
+    proveedorInfo1PerfilInterno: (filaDeLaPersona?.perfilInterno as string) ?? null,
+    // De todas las operaciones, también las canceladas: es la historia.
+    proveedorInfo1DiasMoraMaxima: maximo(operacionesInstitucion, "diasMoraMax"),
+    // Lo vigente, de las vigentes: una cancelada no tiene mora de hoy.
+    proveedorInfo1DiasMoraVigente: operacionesInstitucion.length ? maximo(vigentesInstitucion, "diasMoraVigentes") ?? 0 : null,
+    proveedorInfo1SaldoCapitalVigente: operacionesInstitucion.length
+      ? redondear(vigentesInstitucion.reduce((s, o) => s + (num(o.saldoCapital) ?? 0), 0))
+      : null,
+    esClienteInterno: operacionesInstitucion.some((o) => Boolean(o.identificacion)),
+    // Desde estructura-v21: cada operación, las vigentes primero, y la cuota
+    // que la persona ya paga a la institución (la suma de las vigentes). El
+    // nombre que lee el modelo y la capacidad de pago lo ponen sus sesiones.
+    operacionesConLaInstitucion: [...vigentesInstitucion, ...operacionesInstitucion.filter(esCancelada)].map((o) => ({
+      estado: textoDe(o.estadoOperacion),
+      saldoCapital: num(o.saldoCapital),
+      cuotaMensual: num(o.cuotaNova),
+      plazoCuotas: num(o.plazoCuotas),
+      cuotasPagadas: num(o.cuotasCanceladas),
+      cuotasVencidas: num(o.cuotasVencidas),
+      diasMoraVigentes: num(o.diasMoraVigentes),
+      diasMoraMaxima: num(o.diasMoraMax),
+    })),
+    cuotaMensualConLaInstitucion: operacionesInstitucion.length
+      ? redondear(vigentesInstitucion.reduce((s, o) => s + (num(o.cuotaNova) ?? 0), 0))
+      : null,
   };
 
   // ---- transitoVehicular ----
@@ -1358,6 +1430,12 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   const riesgoJudicialCrediticio: StandardClientProfile["riesgoJudicialCrediticio"] = {
     numeroDemandasComoDemandado: demandasCrediticias.length,
     tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias, (d) => tipoDeCobroLegible(delitoDe(d), demandanteDe(d))),
+    // Desde estructura-v21 (p5 de la revisión del análisis): una demanda de
+    // cobro de 2009 de un particular no pesa como una de un banco del año
+    // pasado, y el perfil no decía ni el año ni quién demanda.
+    demandasDeCobro: demandasCrediticias
+      .map((d) => ({ anio: anioDeLaDemanda((d.demanda as AnyRecord | undefined)?.fecha), quienDemanda: quienDemanda(demandanteDe(d)) }))
+      .sort((a, b) => (b.anio ?? 0) - (a.anio ?? 0)),
   };
   const riesgoJudicialCivil: StandardClientProfile["riesgoJudicialCivil"] = {
     numeroDemandasComoDemandado: demandasCivilesResto.length,

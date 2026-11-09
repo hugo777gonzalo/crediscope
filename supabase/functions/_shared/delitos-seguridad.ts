@@ -24,7 +24,7 @@
 // traían las dos formas ("TRÁFICO ILÍCITO" y "TRAFICO ILICITO"), y así una
 // variante que falte no deja pasar a nadie.
 
-import { type CotejoDelDemandado, cotejarDemandado } from "./demandas.ts";
+import { anioDeLaDemanda, type CotejoDelDemandado, cotejarDemandado } from "./demandas.ts";
 
 type Categoria = { categoria: string; palabrasClave: string[]; excluir?: string[] };
 
@@ -80,13 +80,6 @@ export interface DemandaPenalSinCotejo {
   cotejo: Exclude<CotejoDelDemandado, "es_la_persona">;
   // El año de la demanda, para que el analista la encuentre. null = sin fecha.
   anio: number | null;
-}
-
-// La fecha llega en milisegundos a la medianoche de Ecuador (UTC-5).
-function anioDeLaDemanda(fecha: unknown): number | null {
-  const ms = typeof fecha === "number" ? fecha : Number.NaN;
-  if (!Number.isFinite(ms)) return null;
-  return new Date(ms - 5 * 3600 * 1000).getUTCFullYear();
 }
 
 export function delitosDeSeguridadEnDemandas(
