@@ -98,41 +98,53 @@ const operacion = (o: Record<string, string>) => ({
   ...o,
 });
 
-Deno.test("p3: todas las operaciones con la institución, la vigente aunque la primera esté cancelada", () => {
+Deno.test("p3: una vigente antes que una cancelada, y entre vigentes la de mayor saldo; nada se suma", () => {
   const i = perfilDe({
     basesInternas: fuente({
       personasIncumplimientos: [
-        operacion({ estadoOperacion: "CANCELADA", saldoCapital: "0.0000", cuotaNova: "150.00", cuotasCanceladas: "36.00", plazoCuotas: "36.00", diasMoraMax: "20.00" }),
-        operacion({ diasMoraVigentes: "5.00", diasMoraMax: "5.00" }),
-        operacion({ saldoCapital: "1000.5000", cuotaNova: "99.50" }),
+        operacion({ operacion: "100", estadoOperacion: "CANCELADA", saldoCapital: "0.0000", cuotaNova: "900.00", diasMoraMax: "20.00" }),
+        operacion({ operacion: "200", saldoCapital: "1000.5000", diasMoraVigentes: "5.00", diasMoraMax: "5.00", perfilInterno: "NUEVO" }),
+        operacion({ operacion: "300", saldoCapital: "9000.0000" }),
       ],
     }),
   }).comportamientoInterno;
-  assertEquals(i.esClienteInterno, true);
-  assertEquals(i.proveedorInfo1SaldoCapitalVigente, 10000.5);
-  assertEquals(i.cuotaMensualConLaInstitucion, 399.5);
-  assertEquals(i.proveedorInfo1DiasMoraVigente, 5);
-  // La máxima es de la historia: también la de la cancelada.
-  assertEquals(i.proveedorInfo1DiasMoraMaxima, 20);
-  assertEquals(i.operacionesConLaInstitucion.map((o) => o.estado), ["VIGENTE", "VIGENTE", "CANCELADA"]);
-  assertEquals(i.operacionesConLaInstitucion[2], {
-    estado: "CANCELADA",
-    saldoCapital: 0,
-    cuotaMensual: 150,
-    plazoCuotas: 36,
-    cuotasPagadas: 36,
-    cuotasVencidas: 0,
-    diasMoraVigentes: 0,
-    diasMoraMaxima: 20,
+  // La de 9.000, sola: no 10.000,50 sumando las dos vigentes.
+  assertEquals(i, {
+    proveedorInfo1ResultadoHabitoPago: "Excelente Pagador",
+    proveedorInfo1PerfilInterno: "BUENO",
+    proveedorInfo1DiasMoraMaxima: 0,
+    proveedorInfo1DiasMoraVigente: 0,
+    proveedorInfo1SaldoCapitalVigente: 9000,
+    esClienteInterno: true,
+    proveedorInfo1EstadoOperacion: "VIGENTE",
   });
 });
 
-Deno.test("p3: con todo cancelado no hay saldo ni cuota de hoy; sin operaciones, null", () => {
-  const cancelada = perfilDe({ basesInternas: fuente({ personasIncumplimientos: [operacion({ estadoOperacion: "CANCELADA", saldoCapital: "0" })] }) })
-    .comportamientoInterno;
-  assertEquals([cancelada.proveedorInfo1SaldoCapitalVigente, cancelada.cuotaMensualConLaInstitucion, cancelada.proveedorInfo1DiasMoraVigente], [0, 0, 0]);
+Deno.test("p3: con todo cancelado, la de mayor cuota por plazo; empate, la de número más alto", () => {
+  const cancelada = (o: Record<string, string>) => operacion({ estadoOperacion: "CANCELADA", saldoCapital: "0", ...o });
+  const mayor = perfilDe({
+    basesInternas: fuente({
+      personasIncumplimientos: [
+        cancelada({ operacion: "900", cuotaNova: "138.14", plazoCuotas: "36", perfilInterno: "CHICA" }),
+        cancelada({ operacion: "100", cuotaNova: "492.98", plazoCuotas: "36", perfilInterno: "GRANDE" }),
+      ],
+    }),
+  }).comportamientoInterno;
+  assertEquals([mayor.proveedorInfo1PerfilInterno, mayor.proveedorInfo1EstadoOperacion, mayor.proveedorInfo1SaldoCapitalVigente], ["GRANDE", "CANCELADA", 0]);
+  const empate = perfilDe({
+    basesInternas: fuente({
+      personasIncumplimientos: [
+        cancelada({ operacion: "100", perfilInterno: "VIEJA" }),
+        cancelada({ operacion: "200", perfilInterno: "RECIENTE" }),
+      ],
+    }),
+  }).comportamientoInterno;
+  assertEquals(empate.proveedorInfo1PerfilInterno, "RECIENTE");
+});
+
+Deno.test("p3: sin operaciones con la institución no es cliente interno", () => {
   const sin = perfilDe({}).comportamientoInterno;
-  assertEquals([sin.esClienteInterno, sin.proveedorInfo1SaldoCapitalVigente, sin.cuotaMensualConLaInstitucion, sin.operacionesConLaInstitucion], [false, null, null, []]);
+  assertEquals([sin.esClienteInterno, sin.proveedorInfo1SaldoCapitalVigente, sin.proveedorInfo1EstadoOperacion], [false, null, null]);
 });
 
 // ---- p5 ----

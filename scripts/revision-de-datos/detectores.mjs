@@ -38,6 +38,7 @@ import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta
 import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
 import { evaluarControlesBloqueo } from "../../supabase/functions/_shared/controles-bloqueo.ts";
 import { delitosDeSeguridadEnDemandas } from "../../supabase/functions/_shared/delitos-seguridad.ts";
+import { operacionDelComportamientoInterno } from "../../supabase/functions/_shared/process.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -496,25 +497,28 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
-    id: "cartera-de-la-institucion-incompleta-en-el-perfil",
+    id: "comportamiento-interno-de-otra-operacion",
     capa: "estructura",
     tipo: "regresion",
-    titulo: "El perfil guardado no trae todas las operaciones de la persona con la institución",
-    caso: "c-5dfb1e00, 2026-11-06: llegaba una operación cancelada y escondía la vigente, sin cuota ni cuotas pagadas (p3 de la revisión del análisis)",
-    conocido: "hasta estructura-v20 se leía sólo la primera: se corrige con el recálculo de v21 (--grupos=comportamientoInterno)",
-    aplica: ({ raw }) => operacionesDeLaInstitucion(raw).length > 0,
+    titulo: "El comportamiento interno guardado no es el de la operación que manda la regla (la vigente de mayor saldo, o la cancelada de mayor cuota por plazo)",
+    caso: "c-5dfb1e00, 2026-11-06: se leía la primera operación, una cancelada, y decía saldo 0 con dos vigentes (p3 de la revisión del análisis)",
+    conocido: "hasta estructura-v20 se leía la primera fila: se corrige con el recálculo de v21 (--grupos=comportamientoInterno)",
+    aplica: ({ raw }) => operacionesDeLaInstitucion(raw).length > 1,
     detectar: ({ raw, perfil }) => {
       const ops = operacionesDeLaInstitucion(raw);
-      if ((perfil?.comportamientoInterno?.operacionesConLaInstitucion ?? []).length === ops.length) return null;
-      const vigentes = ops.filter((o) => String(o.estadoOperacion ?? "").toUpperCase() !== "CANCELADA");
-      const primeraCancelada = String(ops[0].estadoOperacion ?? "").toUpperCase() === "CANCELADA";
-      // También quien tiene una sola: su cuota y sus cuotas pagadas no llegan.
+      const elegida = operacionDelComportamientoInterno(ops);
+      const guardado = perfil?.comportamientoInterno ?? {};
+      const comoNumero = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
+      const igual =
+        comoNumero(guardado.proveedorInfo1SaldoCapitalVigente) === comoNumero(elegida.saldoCapital) &&
+        (guardado.proveedorInfo1PerfilInterno ?? null) === (elegida.perfilInterno ?? null) &&
+        (guardado.proveedorInfo1ResultadoHabitoPago ?? null) === (elegida.resultadoHabitoPago ?? null);
+      if (igual) return null;
       return {
         operaciones: ops.length,
-        vigentes: vigentes.length,
-        laPrimeraEsCanceladaYHayVigente: primeraCancelada && vigentes.length > 0,
-        saldoVigente: Math.round(vigentes.reduce((s, o) => s + (Number(o.saldoCapital) || 0), 0)),
-        cuotaVigente: Math.round(vigentes.reduce((s, o) => s + (Number(o.cuotaNova) || 0), 0)),
+        vigentes: ops.filter((o) => String(o.estadoOperacion ?? "").toUpperCase() !== "CANCELADA").length,
+        guardado: { saldo: guardado.proveedorInfo1SaldoCapitalVigente ?? null, perfil: guardado.proveedorInfo1PerfilInterno ?? null },
+        elegida: { estado: elegida.estadoOperacion ?? null, saldo: comoNumero(elegida.saldoCapital), perfil: elegida.perfilInterno ?? null },
       };
     },
   },

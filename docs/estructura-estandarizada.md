@@ -872,24 +872,30 @@ interface StandardClientProfile {
 >   cuentan los «VIGENTE» con el plazo cumplido y sin mora. Medido: 177 hipotecarios
 >   contados dos veces en 174 personas (USD 6,6 M de más; c-b9fc9a82) y 1.600
 >   préstamos terminados en 651 personas, hace 3,4 años en la mediana (USD 3,6 M; c-40d771e1).
-> - **p3, la cartera de la institución** (`comportamientoInterno`): se leían sólo la
->   primera de sus operaciones (782 de 2.602 personas tienen varias; en 464 la primera
->   era una cancelada que escondía la vigente, c-5dfb1e00). Suma
->   `operacionesConLaInstitucion` y `cuotaMensualConLaInstitucion`; el saldo, la mora
->   vigente y la máxima salen de todas; el hábito de pago y el perfil interno, de una
->   vigente.
+> - **p3, Comportamiento Interno** (`comportamientoInterno`, decisión del negocio del
+>   2026-11-09): se leía la primera de las operaciones de la persona con la institución
+>   (782 de 2.602 personas tienen varias; en 464 la primera era una cancelada que
+>   escondía la vigente, c-5dfb1e00). Son historia de pago, no deuda: se reporta UNA y
+>   nada se suma ni entra en un cálculo (`operacionDelComportamientoInterno()`): una
+>   vigente antes que una cancelada; entre vigentes, la de mayor saldo; entre
+>   canceladas, la de mayor cuota por plazo (la fuente no trae el valor financiado);
+>   empate, la de número más alto. Suma `proveedorInfo1EstadoOperacion`. En pantalla la
+>   sección pasa a llamarse «Comportamiento Interno».
 > - **p5** (`riesgoJudicialCrediticio.demandasDeCobro`): de cada demanda de cobro, el
 >   año y quién demanda (`quienDemanda()`: institución financiera, empresa o persona).
 > - **Seco del 2026-11-09** (`recalcular-grupos.mjs --grupos=comportamientoBancario,
 >   comportamientoInterno,riesgoJudicialCrediticio,riesgoSeguridadCiudadana --bloqueo
->   --seco`, con v20): 3.766 perfiles, ninguno deja de reproducirse. Cambian
->   `saldoPrestamosIessBiess` en 767, `tieneCreditoIessBiess` en 192 (sólo tenían
->   préstamos terminados), `proveedorInfo1SaldoCapitalVigente` en 732,
->   `proveedorInfo1PerfilInterno` en 254, `proveedorInfo1ResultadoHabitoPago` en 222,
->   `proveedorInfo1DiasMoraMaxima` en 227 y `proveedorInfo1DiasMoraVigente` en 61.
-> - **Sin aplicar.** Los campos nuevos le llegan al modelo (`perfil-del-modelo.ts` deja
->   pasar lo que no esté en `RUTAS_QUE_NO_LLEGAN`): se despliega junto con el marco que
->   los nombra. La capacidad de pago todavía no suma `cuotaMensualConLaInstitucion`.
+>   --seco`, sobre los perfiles guardados en v19): 3.766 perfiles, ninguno deja de
+>   reproducirse. Cambian `saldoPrestamosIessBiess` en 767, `tieneCreditoIessBiess` en
+>   192 (sólo tenían préstamos terminados), y en Comportamiento Interno, por la operación
+>   elegida, `proveedorInfo1SaldoCapitalVigente` en 557, `proveedorInfo1DiasMoraMaxima`
+>   en 377, `proveedorInfo1PerfilInterno` en 292, `proveedorInfo1ResultadoHabitoPago` en
+>   249 y `proveedorInfo1DiasMoraVigente` en 62. El detector
+>   `comportamiento-interno-de-otra-operacion` da 568 de las 782 personas con varias
+>   operaciones.
+> - **Sin aplicar.** Los campos nuevos (`proveedorInfo1EstadoOperacion`,
+>   `demandasDeCobro`) le llegan al modelo (`perfil-del-modelo.ts` deja pasar lo que no
+>   esté en `RUTAS_QUE_NO_LLEGAN`): se despliega junto con el marco que los nombra.
 
 ## De dónde sale cada cálculo (trazabilidad)
 

@@ -417,6 +417,31 @@ export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyR
   return salida;
 }
 
+// ---- La operación del comportamiento interno ----
+//
+// personasIncumplimientos trae una fila por OPERACIÓN de la persona con la
+// institución, no una por persona, y hasta estructura-v20 se leía la primera.
+// Medido el 2026-11-09 sobre las 3.766 personas reales: 782 de las 2.602 con
+// operaciones tienen más de una, y en 464 la primera era una cancelada que
+// escondía la vigente (c-5dfb1e00: decía saldo 0 con dos vigentes).
+//
+// Decisión del negocio (2026-11-09, p3 de la revisión del análisis): estas
+// operaciones son historia de pago, no deuda. Se reporta UNA, sin sumar nada:
+// una vigente antes que una cancelada; entre vigentes, la de mayor saldo; entre
+// canceladas, la de mayor cuota por plazo (la fuente no trae el valor
+// financiado, y es lo más cercano al tamaño del crédito). Empate: la de número
+// de operación más alto, que es la más reciente.
+export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): AnyRecord | null {
+  const cancelada = (o: AnyRecord) => String(o.estadoOperacion ?? "").trim().toUpperCase() === "CANCELADA";
+  const tamano = (o: AnyRecord) => (cancelada(o) ? (num(o.cuotaNova) ?? 0) * (num(o.plazoCuotas) ?? 0) : num(o.saldoCapital) ?? 0);
+  const numero = (o: AnyRecord) => num(o.operacion) ?? 0;
+  return (
+    [...operaciones].sort(
+      (a, b) => Number(cancelada(a)) - Number(cancelada(b)) || tamano(b) - tamano(a) || numero(b) - numero(a),
+    )[0] ?? null
+  );
+}
+
 // «31/07/25» o «31/07/2025» a «2025-07-31». Proveedor_Info_1 escribe el corte del
 // retail con el año de dos cifras.
 function fechaDeCorte(v: unknown): string | null {
@@ -508,8 +533,8 @@ function fechaDeCorte(v: unknown): string | null {
 // aprobadas por el negocio el 2026-11-08): un préstamo del IESS/BIESS en las
 // dos fuentes se une por monto con la concesión a 31 días, con el saldo de la
 // fuente de préstamos, y no se cuentan los terminados de la base interna
-// (comportamientoBancario); la cartera de la institución lee todas sus
-// operaciones, con su cuota y sus cuotas pagadas (comportamientoInterno); y
+// (comportamientoBancario); el comportamiento interno reporta una sola
+// operación de la institución, elegida, sin sumar nada (comportamientoInterno); y
 // cada demanda de cobro dice su año y quién demanda (riesgoJudicialCrediticio).
 export const PROCESS_VERSION = "estructura-v21"; // ver docs/estructura-estandarizada.md
 
@@ -528,8 +553,8 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
 
   const basesInternas = obj(fuentes, "basesInternas", "__never__") ?? ((fuentes?.basesInternas as AnyRecord | undefined)?.data as AnyRecord | undefined) ?? null;
   const biWrap = { x: { data: basesInternas } } as unknown as AnyRecord;
-  // La cartera de la institución: una fila por operación (ver
-  // comportamientoInterno).
+  // Las operaciones de la persona con la institución, una fila por
+  // operación (ver operacionDelComportamientoInterno).
   const operacionesInstitucion = arr(biWrap, "x", "personasIncumplimientos");
   const tiess = arr(biWrap, "x", "tiess");
   const tcredQ = arr(biWrap, "x", "tcredQuirografarios");
@@ -1306,49 +1331,20 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   };
 
   // ---- comportamientoInterno (grupo nuevo — scoring propio Proveedor_Info_1) ----
-  // personasIncumplimientos trae una fila por OPERACIÓN de la persona con la
-  // institución, no una por persona. Hasta estructura-v20 se leía sólo la
-  // primera: medido el 2026-11-09 sobre las 3.766 personas reales, 782 de las
-  // 2.602 con operaciones tienen más de una, y en 464 la primera era una
-  // cancelada que escondía la vigente (c-5dfb1e00). Y la cuota (cuotaNova) y
-  // las cuotas pagadas no llegaban (p3 de la revisión del análisis, aprobada
-  // por el negocio el 2026-11-08).
-  const esCancelada = (o: AnyRecord) => String(o.estadoOperacion ?? "").trim().toUpperCase() === "CANCELADA";
-  const vigentesInstitucion = operacionesInstitucion.filter((o) => !esCancelada(o));
-  // El hábito de pago y el perfil interno son de la persona: se leen de una
-  // operación vigente si hay, y si no de la primera.
-  const filaDeLaPersona = vigentesInstitucion[0] ?? operacionesInstitucion[0] ?? null;
-  const maximo = (ops: AnyRecord[], campo: string) => {
-    const valores = ops.map((o) => num(o[campo])).filter((n): n is number => n !== null);
-    return valores.length ? Math.max(...valores) : null;
-  };
+  // Lo que la institución sabe del hábito de pago de la persona, de UNA de sus
+  // operaciones (operacionDelComportamientoInterno). Es información, no deuda:
+  // ningún saldo de acá se suma ni entra en un cálculo (negocio, 2026-11-09).
+  const operacionInterna = operacionDelComportamientoInterno(operacionesInstitucion);
   const comportamientoInterno: StandardClientProfile["comportamientoInterno"] = {
-    proveedorInfo1ResultadoHabitoPago: (filaDeLaPersona?.resultadoHabitoPago as string) ?? null,
-    proveedorInfo1PerfilInterno: (filaDeLaPersona?.perfilInterno as string) ?? null,
-    // De todas las operaciones, también las canceladas: es la historia.
-    proveedorInfo1DiasMoraMaxima: maximo(operacionesInstitucion, "diasMoraMax"),
-    // Lo vigente, de las vigentes: una cancelada no tiene mora de hoy.
-    proveedorInfo1DiasMoraVigente: operacionesInstitucion.length ? maximo(vigentesInstitucion, "diasMoraVigentes") ?? 0 : null,
-    proveedorInfo1SaldoCapitalVigente: operacionesInstitucion.length
-      ? redondear(vigentesInstitucion.reduce((s, o) => s + (num(o.saldoCapital) ?? 0), 0))
-      : null,
-    esClienteInterno: operacionesInstitucion.some((o) => Boolean(o.identificacion)),
-    // Desde estructura-v21: cada operación, las vigentes primero, y la cuota
-    // que la persona ya paga a la institución (la suma de las vigentes). El
-    // nombre que lee el modelo y la capacidad de pago lo ponen sus sesiones.
-    operacionesConLaInstitucion: [...vigentesInstitucion, ...operacionesInstitucion.filter(esCancelada)].map((o) => ({
-      estado: textoDe(o.estadoOperacion),
-      saldoCapital: num(o.saldoCapital),
-      cuotaMensual: num(o.cuotaNova),
-      plazoCuotas: num(o.plazoCuotas),
-      cuotasPagadas: num(o.cuotasCanceladas),
-      cuotasVencidas: num(o.cuotasVencidas),
-      diasMoraVigentes: num(o.diasMoraVigentes),
-      diasMoraMaxima: num(o.diasMoraMax),
-    })),
-    cuotaMensualConLaInstitucion: operacionesInstitucion.length
-      ? redondear(vigentesInstitucion.reduce((s, o) => s + (num(o.cuotaNova) ?? 0), 0))
-      : null,
+    proveedorInfo1ResultadoHabitoPago: (operacionInterna?.resultadoHabitoPago as string) ?? null,
+    proveedorInfo1PerfilInterno: (operacionInterna?.perfilInterno as string) ?? null,
+    proveedorInfo1DiasMoraMaxima: num(operacionInterna?.diasMoraMax),
+    proveedorInfo1DiasMoraVigente: num(operacionInterna?.diasMoraVigentes),
+    proveedorInfo1SaldoCapitalVigente: num(operacionInterna?.saldoCapital),
+    esClienteInterno: Boolean(operacionInterna?.identificacion),
+    // Desde estructura-v21: si la operación está vigente o cancelada. Sin él,
+    // el saldo 0 de una cancelada se lee como una vigente pagada.
+    proveedorInfo1EstadoOperacion: textoDe(operacionInterna?.estadoOperacion),
   };
 
   // ---- transitoVehicular ----

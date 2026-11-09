@@ -25,7 +25,7 @@ export const ETIQUETAS_GRUPO = {
   identidad: "SocioDemográficas",
   contacto: "Contacto y Domicilio",
   transitoVehicular: "Tránsito Vehicular",
-  comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
+  comportamientoInterno: "Comportamiento Interno",
   fuentesIngreso: "Fuentes de Ingreso",
   // No existe en el perfil guardado: lo arma el perfil del modelo
   // (perfil-del-modelo.ts) sumando la deuda de todas las fuentes. Se

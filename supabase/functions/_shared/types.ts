@@ -463,20 +463,10 @@ export interface StandardClientProfile {
     proveedorInfo1DiasMoraVigente: number | null;
     proveedorInfo1SaldoCapitalVigente: number | null;
     esClienteInterno: boolean;
-    // Desde estructura-v21 (p3): cada operación con la institución, las
-    // vigentes primero, y la suma de las cuotas de las vigentes. null = la
-    // persona no tiene operaciones con ella.
-    operacionesConLaInstitucion: {
-      estado: string | null;
-      saldoCapital: number | null;
-      cuotaMensual: number | null;
-      plazoCuotas: number | null;
-      cuotasPagadas: number | null;
-      cuotasVencidas: number | null;
-      diasMoraVigentes: number | null;
-      diasMoraMaxima: number | null;
-    }[];
-    cuotaMensualConLaInstitucion: number | null;
+    // Desde estructura-v21 (p3): todos los campos de arriba salen de UNA
+    // operación (operacionDelComportamientoInterno, process.ts), y éste dice si
+    // está vigente o cancelada. Es historia de pago: nada de acá se suma.
+    proveedorInfo1EstadoOperacion: string | null;
   };
 
   transitoVehicular: {
