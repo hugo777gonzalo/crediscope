@@ -44,7 +44,10 @@
 // MEDIDO SIN MODELO (2026-11-09): baja las 53 aprobaciones del lote del 31/10 y
 // las 49 de marco-v28. Con lo que llega hoy, ninguno de esos 454 análisis tiene
 // la capacidad evidenciada: «aprobar» vuelve cuando lleguen las cuotas (Equifax,
-// p4; la institución, p3).
+// p4; la institución, p3). Contra el pago (resultado de la base de prueba, PR
+// #148): de las 41 aprobadas cuyo crédito figura en la cartera, 2 están hoy en
+// mora (6 y 12 días) y la regla las baja, pero baja también las 39 que pagan.
+// Hoy no distingue a nadie: frena por falta de evidencia, no predice el pago.
 
 import type { LlmScoringResult } from "./types.ts";
 
