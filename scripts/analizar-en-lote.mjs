@@ -13,9 +13,9 @@
 // filaDelAnalisis(): los mismos que usa analyze-client. Un análisis en lote
 // queda igual que uno de la pantalla, atado a su perfil y con lo que leyó el
 // modelo. Reutiliza perfiles guardados: no reconsulta Proveedor_Info_1. Con
-// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v33) lee la consulta vigente
-// del buró de la institución igual que analyze-client
-// (buro-de-la-institucion.ts); nunca consulta a Equifax.
+// CONFIG_LLM.buroDeLaInstitucion encendido (marco-v33) lee la última consulta
+// del buró de la institución anterior a la fecha del lote, vigente o no, igual
+// que analyze-client (buro-de-la-institucion.ts); nunca consulta a Equifax.
 //
 // Las repeticiones (--ruido) miden cuánto cambia el modelo con el mismo
 // perfil. Sólo la primera de cada perfil se guarda como análisis; las demás
@@ -51,7 +51,7 @@ globalThis.Deno = { env: { get: (k) => env[k] } };
 
 const compartido = (a) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", a)).href);
 const { armarPedidoScoring, huellaDelPedido, interpretar, CONFIG_LLM, versionDelMarco, MODELO } = await compartido("llm-scoring.ts");
-const { buroDeLaBase, consultaVigenteDeEquifax } = await compartido("buro-de-la-institucion.ts");
+const { buroDeLaBase, ultimaConsultaDeEquifax } = await compartido("buro-de-la-institucion.ts");
 const { loadDisabledFields } = await compartido("runtime-config.ts");
 const { registrarLlamadaLlm } = await compartido("llm-log.ts");
 const { elPerfilSePuedeAnalizar, elPerfilSirve } = await compartido("calidad-de-la-consulta.ts");
@@ -194,7 +194,7 @@ async function enviar() {
     // Una selección puede ser de antes de que cambiara la lista de obligatorias.
     if (!elPerfilSePuedeAnalizar(d.estado_por_fuente)) { incompletos++; continue; }
     const control = d.control_bloqueo ?? { bloqueado: false, hallazgos: [] };
-    const buro = conBuro ? await consultaVigenteDeEquifax(supabase, s.clientId, ahora) : null;
+    const buro = conBuro ? await ultimaConsultaDeEquifax(supabase, { id: s.clientId, cedula: s.cedula }, ahora) : null;
     const params = armarPedidoScoring(d.standard_profile, control, camposDeshabilitados, CONFIG_LOTE, buro);
     // El mismo pedido que un análisis que ya existe da el mismo resultado
     // (huellaDelPedido, auditoría externa E1): no se paga dos veces. Salvo
@@ -212,7 +212,7 @@ async function enviar() {
     }
     // Lo que leyó el modelo y el control de bloqueo, una vez por perfil:
     // los necesita filaDelAnalisis al recoger.
-    meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control, huellaPedido, consultaBuro: buro?.consultaId ?? null };
+    meta[s.perfilId] = { mensajeAlModelo: JSON.parse(params.messages[0].content), controlBloqueo: control, huellaPedido, consultaBuro: buro ? (buro.consultaId ?? buro.crudoAws) : null };
   }
   if (incompletos) console.log(`${incompletos} tienen la consulta incompleta: no se mandan.`);
   if (yaAnalizados) console.log(`${yaAnalizados} ya tenían un análisis con este mismo pedido: no se mandan.`);
