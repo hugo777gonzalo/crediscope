@@ -494,15 +494,23 @@
 //    con «El comportamiento de…»); la deuda contra el ingreso de un año o la
 //    cuota contra el del mes, nunca «N veces el ingreso mensual» (5% del lote).
 //  - p5, las demandas de cobro con su año y quién demanda (demandasDeCobro):
-//    una de más de 2 años pesa menos. En c-5dfb1e00 una de 2005 y dos de 2009
-//    pesaron unos 170 puntos. El dato lo trae la estructura (otra sesión): sin
-//    él el texto dice que no se sabe el año.
-//  - p3, el nombre: la cartera de la institución es «crédito con la
-//    institución», no la de otro motor de scoring con el nombre del proveedor.
-//    Un «Excelente Pagador» con 4 cuotas pagadas había pesado como fortaleza.
-//  - p7, el lugar del ingreso estimado (ingresoEstimado) y de su mínimo: un
-//    indicio sin verificar, nunca capacidad. No llega todavía: el predictor no
-//    tiene estimaciones en producción y su versión 2 está en el PR #145.
+//    una de más de 2 años pesa menos. En un caso del piloto, tres demandas de
+//    hace más de 15 años pesaron unos 170 puntos. El dato lo trae la estructura
+//    (otra sesión): sin él el texto dice que no se sabe el año.
+//  - p3, el nombre: la operación con la institución es el «Comportamiento
+//    Interno», historia de pago y no deuda (negocio, 2026-11-09: no entra en
+//    ningún cálculo de saldo ni de cuota). Llega una sola operación, con
+//    proveedorInfo1EstadoOperacion (PR #153). El marco la presentaba como el
+//    veredicto de otro motor de scoring con el nombre del proveedor, y un
+//    «Excelente Pagador» con 4 cuotas pagadas había pesado como fortaleza.
+//  - p7, el lugar del ingreso estimado (fuentesIngreso.ingresoEstimado): con el
+//    rótulo «Ingreso estimado, sin verificar», su mínimo del 90% vale como el
+//    ingreso de la persona y el modelo puede aprobar con él, diciendo que hay
+//    que verificarlo (negocio, 2026-11-09). La «Referencia de solicitantes» no.
+//    Es lo mismo que hará la capacidad de pago (especificación del predictor,
+//    paso 6) y que lee la regla de capacidad (capacidad-evidenciada.ts). No
+//    llega todavía: el predictor no tiene estimaciones en producción y su
+//    versión 2 está en el PR #145.
 //  - p1, el aviso nuevo del control (PR #149): posible_homonimo_en_demanda_penal,
 //    sin bloqueo, se lee como el homónimo de las listas: una verificación de
 //    identidad, no un delito de la persona. También en marco-por-cliente.ts.
@@ -846,23 +854,27 @@ ${CORTE_DEL_RETAIL}
      lista: podés precisarlos para esta persona, no contradecirlos ni
      reemplazarlos por otros.
    - ingresoEstimado: lo que estima el predictor de ingresos de CrediScope
-     con los datos de la persona. Llega sólo cuando hay una estimación. Es
-     una estimación sin verificar, no un ingreso:
-     · rotulo dice cómo nombrarla: "Ingreso estimado, sin verificar" o,
+     con los datos de la persona. Llega sólo cuando hay una estimación (no
+     para quien tiene un ingreso confirmado por un tercero). Es un ingreso
+     estimado, sin verificar:
+     · rotulo dice cómo nombrarlo: "Ingreso estimado, sin verificar" o,
        con un mínimo bajo, "Referencia de solicitantes". Usá ese nombre.
      · minimo es lo que gana al menos, con la seguridad que dice
-       seguridadDelMinimo (0,9 es 9 de cada 10 personas como ella).
-       Citá el mínimo con su seguridad; valorCentral es sólo una
+       seguridadDelMinimo (0,9 es 9 de cada 10 personas como ella). Para
+       la capacidad usá siempre el mínimo; valorCentral es sólo una
        referencia y no se usa para decir cuánto gana.
-     · Nunca confirma la capacidad ni reemplaza al ingreso reportado al
-       IESS: no lo sumes, no lo uses para aprobar y no lo pongas en
-       positives como un ingreso.
-     · Sirve para leer lo que falta. Con un ingreso Por confirmar o Sin
-       determinar, o con el Ingreso Mínimo SBU, un mínimo estimado muy
-       por encima de lo reportado dice que el ingreso real probablemente
-       es mayor: decilo así, como un indicio, y pedí los documentos que
-       lo confirmen. Un mínimo por debajo de lo reportado no lo
-       desmiente.
+     · Con el rótulo "Ingreso estimado, sin verificar", el mínimo vale
+       como el ingreso de la persona para juzgar su capacidad cuando no
+       hay uno confirmado por un tercero: podés aprobar con él. Decí en el
+       reasoning que es estimado, y en accionesSugeridas que hay que
+       verificarlo con los Documentos de Confirmación de Ingresos.
+     · "Referencia de solicitantes" no es el ingreso de la persona: es lo
+       que gana la mayoría de quienes piden crédito. No alcanza para
+       aprobar.
+     · No lo sumes al ingreso reportado al IESS. Con el Ingreso Mínimo
+       SBU, un mínimo estimado muy por encima dice que el ingreso real
+       probablemente es mayor: decilo como un indicio. Un mínimo por
+       debajo de lo reportado no lo desmiente.
 
    laboral: empleosActuales (una entrada por empleo vigente, con
    tipoEmpleador, cargo y salarioAprox) e ingresoPromedioUltimos6Meses son
@@ -970,19 +982,22 @@ ${CORTE_DEL_RETAIL}
     valorAdeudadoTransito). No le des el peso de los grupos de
     comportamiento de pago.
 
-15. comportamientoInterno: el crédito con la institución que pide este
-    análisis. Sólo llega cuando la persona tiene o tuvo un crédito con
-    ella. Llamalo "crédito con la institución", nunca con el nombre de la
-    fuente que lo trae (los campos empiezan con proveedorInfo1 por eso, no
-    porque sea de otra entidad). proveedorInfo1ResultadoHabitoPago y
-    proveedorInfo1PerfilInterno son cómo paga ese crédito según la propia
-    institución: pesa como comportamientoBancario o más. Si no
+15. comportamientoInterno: el Comportamiento Interno, cómo pagó la persona
+    su operación con la institución que pide este análisis. Sólo llega
+    cuando tiene o tuvo una. Es historia de pago, no deuda: llega una sola
+    operación (la vigente de mayor saldo o, si no tiene vigentes, la
+    cancelada más grande), y proveedorInfo1EstadoOperacion dice si está
+    vigente o cancelada. Llamalo "Comportamiento Interno", nunca con el
+    nombre de la fuente que lo trae (los campos empiezan con proveedorInfo1
+    por eso, no porque sea de otra entidad). proveedorInfo1ResultadoHabitoPago
+    y proveedorInfo1PerfilInterno son cómo pagó según la propia institución:
+    pesa como comportamientoBancario o más. Si no
     llega, no es un hueco de información: no lo menciones.
-    - Pesa según cuánta historia hay: "Excelente Pagador" con pocas
-      cuotas pagadas es poca evidencia, no una fortaleza.
-    - proveedorInfo1SaldoCapitalVigente es deuda propia. Si endeudamiento
-      no la incluye, nombrala aparte al decir cuánto debe, y su cuota no
-      se conoce: no supongas que es la única deuda ni que está paga.
+    - Pesa según cuánta historia hay: "Excelente Pagador" en una operación
+      que recién empieza es poca evidencia, no una fortaleza.
+    - No es deuda para este análisis: su saldo no se suma a lo que debe ni
+      a la carga de cuotas, y no lo uses para hablar de su capacidad de
+      pago. Dice cómo paga, no cuánto debe.
 
 QUÉ INFORMACIÓN SE PUDO OBTENER
 Es la distinción más importante de este marco. disponibilidad, al
