@@ -260,3 +260,23 @@ Deno.test("encendido: v35, con la sección del buró sólo para quien lo tiene",
 Deno.test("el buró y el marco por cliente todavía no se combinan", () => {
   assertThrows(() => armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), { ...ENCENDIDO, marcoPorCliente: true }, buro()));
 });
+
+// ---- marco-v36: la antigüedad de la consulta del buró ----
+
+Deno.test("con la fecha del análisis, el buró dice cuántos días tiene su reporte, justo después de la fecha", () => {
+  // El reporte es del 12 de octubre en Ecuador; el análisis, del 11 de noviembre a las 20:30 de Ecuador
+  // (ya 12 en UTC): 30 días, contados en días de Ecuador.
+  // deno-lint-ignore no-explicit-any
+  const bloque = (armarPerfilDelModelo(perfilDePrueba(), new Set(), buro(), new Date("2026-11-12T01:30:00Z")) as any).buroEquifax;
+  assertEquals(bloque.fechaDelReporte, "2026-10-12");
+  assertEquals(bloque.diasDesdeElReporte, 30);
+  assertEquals(Object.keys(bloque).slice(0, 2), ["fechaDelReporte", "diasDesdeElReporte"]);
+  // Sin la fecha del análisis no se agrega: las pruebas y los guiones que no la pasan quedan igual.
+  assertEquals("diasDesdeElReporte" in conBuro().buroEquifax, false);
+});
+
+Deno.test("el pedido lleva la antigüedad del buró con la fecha que recibe", () => {
+  const pedido = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, buro(), new Date("2026-10-20T15:00:00Z"));
+  const mensaje = JSON.parse((pedido.messages as Array<{ content: string }>)[0].content);
+  assertEquals(mensaje.perfilDelModelo.buroEquifax.diasDesdeElReporte, 8);
+});

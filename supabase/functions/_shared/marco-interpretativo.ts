@@ -503,6 +503,13 @@
 //  - p7, el lugar del ingreso estimado (ingresoEstimado) y de su mínimo: un
 //    indicio sin verificar, nunca capacidad. No llega todavía: el predictor no
 //    tiene estimaciones en producción y su versión 2 está en el PR #145.
+//  - p1, el aviso nuevo del control (PR #149): posible_homonimo_en_demanda_penal,
+//    sin bloqueo, se lee como el homónimo de las listas: una verificación de
+//    identidad, no un delito de la persona. También en marco-por-cliente.ts.
+//  - La antigüedad de la consulta de Equifax (diasDesdeElReporte, al lado de
+//    fechaDelReporte): con p4 el análisis lee la última consulta aunque no esté
+//    vigente, y el modelo no sabía cuán vieja era. Los cortes de 30 y 60 días son
+//    una propuesta a validar con el negocio.
 // Desde v36 el interruptor del buró no tiene versión propia: está encendido
 // desde el 2026-11-04, y lo que leyó cada análisis lo dice su
 // mensaje_al_modelo (con o sin buroEquifax), como ya pasaba dentro de v35.
@@ -563,6 +570,18 @@ Homónimo (cumplimiento.tieneHomonimoEnListaControl, o un hallazgo
 mismo nombre y otra cédula en una lista de control. No es la persona: no
 es negativo ni indicio de mal comportamiento. A lo sumo, una nota de
 auditoría (posible confusión de identidad a vigilar).
+
+Posible homónimo en una demanda penal (un hallazgo
+"posible_homonimo_en_demanda_penal" con bloqueante=false): la fuente de
+demandas encontró, por el nombre, una demanda por un delito de seguridad
+ciudadana, y el demandado no se pudo confirmar como esta persona. El
+mensaje dice el delito, el año y por qué no se pudo confirmar. No es un
+delito de la persona: no bajes el score, no lo pongas en negatives y no
+cambies la recomendación por eso. Es una verificación de identidad: va en
+accionesSugeridas, con el delito y el año ("Verificar en la Función
+Judicial si la demanda por extorsión de 2019 es contra esta persona").
+Si el analista confirma que es ella, no califica para crédito por
+política; eso lo decide él, no vos.
 
 CÓMO PENSAR EL SCORE
 Es una guía, no una fórmula. Los grupos del profile van en orden de
@@ -1194,6 +1213,14 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
    comportamientoBancario trae sólo lo que el buró no cubre (ver 4). Todo
    es según Equifax y a la fecha de su reporte (fechaDelReporte): decilo
    así.
+   - diasDesdeElReporte dice cuántos días tenía esa consulta el día de
+     este análisis. La deuda y sobre todo la cuota cambian: entre dos
+     consultas de una misma persona a menos de 90 días, la cuota cambió
+     más de 20% en una de cada cuatro, y a más de 60 días en casi la
+     mitad. Hasta 30 días, leela como actual. Con más de 30, nombrá la
+     fecha del reporte y tratá la cuota como aproximada. Con más de 60, si
+     la decisión depende de la cuota o de la deuda, decí en missingInfo
+     que hay que actualizar la consulta.
    - Equifax no da la calificación de la Superintendencia (A1 a E): el
      atraso se lee en días de mora. Hoy, maximoDiasDeMora de cada sistema;
      en los últimos 24 meses, conductaDePago. Al día (0 días) es lo mejor;
