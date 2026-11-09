@@ -863,6 +863,34 @@ interface StandardClientProfile {
 >   `bloqueo-por-demanda-de-otro-demandado` (`scripts/revisar-crudo.mjs`).
 > - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
 
+> **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
+> aprobadas por el negocio el 2026-11-08)**
+> - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la
+>   base interna y de la fuente de préstamos se une por número o por el mismo monto (a
+>   un dólar) con la concesión a 31 días o menos; manda el saldo de la fuente de
+>   préstamos (trae `fechaCorte`), con la mora más alta; y de la base interna no se
+>   cuentan los «VIGENTE» con el plazo cumplido y sin mora. Medido: 177 hipotecarios
+>   contados dos veces en 174 personas (USD 6,6 M de más; c-b9fc9a82) y 1.600
+>   préstamos terminados hace 3,4 años en la mediana (c-40d771e1).
+> - **p3, la cartera de la institución** (`comportamientoInterno`): se leían sólo la
+>   primera de sus operaciones (782 de 2.602 personas tienen varias; en 464 la primera
+>   era una cancelada que escondía la vigente, c-5dfb1e00). Suma
+>   `operacionesConLaInstitucion` y `cuotaMensualConLaInstitucion`; el saldo, la mora
+>   vigente y la máxima salen de todas; el hábito de pago y el perfil interno, de una
+>   vigente.
+> - **p5** (`riesgoJudicialCrediticio.demandasDeCobro`): de cada demanda de cobro, el
+>   año y quién demanda (`quienDemanda()`: institución financiera, empresa o persona).
+> - **Seco del 2026-11-09** (`recalcular-grupos.mjs --grupos=comportamientoBancario,
+>   comportamientoInterno,riesgoJudicialCrediticio,riesgoSeguridadCiudadana --bloqueo
+>   --seco`, con v20): 3.766 perfiles, ninguno deja de reproducirse. Cambian
+>   `saldoPrestamosIessBiess` en 767, `tieneCreditoIessBiess` en 192 (sólo tenían
+>   préstamos terminados), `proveedorInfo1SaldoCapitalVigente` en 732,
+>   `proveedorInfo1PerfilInterno` en 254, `proveedorInfo1ResultadoHabitoPago` en 222,
+>   `proveedorInfo1DiasMoraMaxima` en 227 y `proveedorInfo1DiasMoraVigente` en 61.
+> - **Sin aplicar.** Los campos nuevos le llegan al modelo (`perfil-del-modelo.ts` deja
+>   pasar lo que no esté en `RUTAS_QUE_NO_LLEGAN`): se despliega junto con el marco que
+>   los nombra. La capacidad de pago todavía no suma `cuotaMensualConLaInstitucion`.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |

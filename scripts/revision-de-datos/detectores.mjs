@@ -458,6 +458,7 @@ export const DETECTORES_DEL_CRUDO = [
     tipo: "revisar",
     titulo: "Un préstamo del IESS/BIESS que está en la base interna y en la fuente de préstamos con otro número y la fecha corrida: se suma dos veces",
     caso: "c-b9fc9a82, 2026-11-06: el hipotecario, con el mismo monto y la concesión a 2 días, contado dos veces (p6 de la revisión del análisis)",
+    conocido: "mide la fuente: desde estructura-v21 operacionesIessBiess (process.ts) los une; 174 personas el 2026-11-09",
     aplica: ({ raw }) => opsDeLaBase(raw).length > 0 && opsDeLosPrestamos(raw).length > 0,
     detectar: ({ raw }) => {
       const base = opsDeLaBase(raw);
@@ -475,8 +476,9 @@ export const DETECTORES_DEL_CRUDO = [
     id: "prestamo-biess-terminado-contado",
     capa: "estructura",
     tipo: "revisar",
-    titulo: "Un préstamo del IESS/BIESS de la base interna con el plazo ya cumplido (o no vigente) que suma saldo",
+    titulo: "Un préstamo del IESS/BIESS de la base interna «VIGENTE» con el plazo ya cumplido y sin mora, que suma saldo",
     caso: "c-40d771e1, 2026-11-06: un quirografario que terminó en 2023 seguía «VIGENTE» en la base interna y sumaba saldo (p6)",
+    conocido: "mide la fuente: desde estructura-v21 los terminados sin mora no se cuentan (VENCIDO y MORA sí); 679 personas el 2026-11-09",
     aplica: ({ raw }) => opsDeLaBase(raw).length > 0,
     detectar: ({ raw, capturadoEl }) => {
       const hoy = Math.floor(new Date(capturadoEl).getTime() / 86400000);
@@ -485,7 +487,8 @@ export const DETECTORES_DEL_CRUDO = [
         if (b.saldo <= 0) return false;
         // Si la fuente de préstamos la trae, la fuente de préstamos manda.
         if (prestamos.some((p) => (b.numero && b.numero === p.numero) || (Math.abs(b.monto - p.monto) <= 1 && Math.abs((b.dia ?? 0) - (p.dia ?? 0)) <= 31))) return false;
-        return b.estado !== "VIGENTE" || (b.fin !== null && b.fin < hoy && b.diasMora === 0);
+        // «VENCIDO» y «MORA» no están terminados: deben.
+        return b.estado === "VIGENTE" && b.fin !== null && b.fin < hoy && b.diasMora === 0;
       });
       return terminadas.length
         ? { terminadas: terminadas.map((b) => ({ tipo: b.tipo, estado: b.estado, finHaceDias: b.fin === null ? null : hoy - b.fin, saldo: b.saldo })) }
@@ -493,14 +496,16 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
-    id: "cartera-de-la-institucion-con-una-sola-operacion",
+    id: "cartera-de-la-institucion-incompleta-en-el-perfil",
     capa: "estructura",
-    tipo: "revisar",
-    titulo: "La institución tiene varias operaciones con la persona y el perfil lee sólo la primera",
+    tipo: "regresion",
+    titulo: "El perfil guardado no trae todas las operaciones de la persona con la institución",
     caso: "c-5dfb1e00, 2026-11-06: llegaba una operación cancelada y escondía la vigente, sin cuota ni cuotas pagadas (p3 de la revisión del análisis)",
+    conocido: "hasta estructura-v20 se leía sólo la primera: se corrige con el recálculo de v21 (--grupos=comportamientoInterno)",
     aplica: ({ raw }) => operacionesDeLaInstitucion(raw).length > 0,
-    detectar: ({ raw }) => {
+    detectar: ({ raw, perfil }) => {
       const ops = operacionesDeLaInstitucion(raw);
+      if ((perfil?.comportamientoInterno?.operacionesConLaInstitucion ?? []).length === ops.length) return null;
       const vigentes = ops.filter((o) => String(o.estadoOperacion ?? "").toUpperCase() !== "CANCELADA");
       const primeraCancelada = String(ops[0].estadoOperacion ?? "").toUpperCase() === "CANCELADA";
       // También quien tiene una sola: su cuota y sus cuotas pagadas no llegan.
