@@ -36,6 +36,8 @@
 
 import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta.ts";
 import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
+import { evaluarControlesBloqueo } from "../../supabase/functions/_shared/controles-bloqueo.ts";
+import { delitosDeSeguridadEnDemandas } from "../../supabase/functions/_shared/delitos-seguridad.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -405,6 +407,50 @@ export const DETECTORES = [
     casos: `
       select client_id, jsonb_build_object('score', crediscope_score) as detalle
       from analisis where crediscope_score not between 1 and 999`,
+  },
+];
+
+// ── Sobre el crudo ──────────────────────────────────────────────────────────
+//
+// Lo que no se ve en la base: un error que nace al leer el crudo de
+// Proveedor_Info_1 (una operación contada dos veces, un demandado que no es la
+// persona) no deja rastro en el perfil guardado, que ya lo trae mezclado. Estos
+// detectores leen el crudo del último perfil de cada persona real (la carpeta de
+// research/ y, lo que no está ahí, el depósito) y lo comparan con el perfil y el
+// bloqueo guardados. Los corre `node scripts/revisar-crudo.mjs`: sólo lee, no
+// cuesta, y escribe el detalle en research/revision-de-datos/.
+//
+// Cada uno es como los de arriba (id, capa, tipo, titulo, caso, conocido), con
+// dos funciones en vez de SQL. Las dos reciben { raw, cedula, perfil, bloqueo }:
+// el crudo y lo guardado en client_profiles (standard_profile, control_bloqueo).
+//   - `aplica`: ¿la persona entra en la población?
+//   - `detectar`: el detalle del caso, o null. Sin cédulas ni nombres: va a
+//     research/, pero se cita por consola.
+// La regla se importa del .ts (Node 24 lo lee), nunca se copia.
+export const DETECTORES_DEL_CRUDO = [
+  {
+    id: "bloqueo-por-demanda-de-otro-demandado",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Bloqueada por un delito de seguridad ciudadana que sólo sale de demandas en las que el demandado no es la persona",
+    caso: "c-14f9ee80, 2026-11-06: bloqueada por una demanda de narcotráfico contra otros procesados (p1 de la revisión del análisis, estructura-v20)",
+    conocido: "se corrige con el recálculo de estructura-v20 (recalcular-grupos.mjs --grupos=riesgoSeguridadCiudadana --bloqueo)",
+    aplica: ({ bloqueo }) => (bloqueo?.hallazgos ?? []).some((h) => h.code === "delito_seguridad_ciudadana"),
+    detectar: ({ raw, cedula, bloqueo }) => {
+      const ahora = evaluarControlesBloqueo(raw, cedula);
+      if (ahora.hallazgos.some((h) => h.code === "delito_seguridad_ciudadana")) return null;
+      const persona = raw.general?.data?.personaNatural;
+      const { sinCotejo } = delitosDeSeguridadEnDemandas(raw.demandas?.data?.demandas ?? [], persona?.nombre);
+      return {
+        // Si sigue bloqueada por otro control (lista negra, OFAC...), el
+        // análisis no cambia: sólo cambia el motivo.
+        sigueBloqueada: ahora.bloqueado,
+        antes: bloqueo.hallazgos.filter((h) => h.bloqueante).map((h) => h.code),
+        cotejos: sinCotejo.map((s) => s.cotejo),
+        delitos: [...new Set(sinCotejo.flatMap((s) => s.categorias))],
+        anios: sinCotejo.map((s) => s.anio),
+      };
+    },
   },
 ];
 

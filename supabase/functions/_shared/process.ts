@@ -21,7 +21,7 @@ import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 export { relacionConEmpleador };
 import { rolEnDenuncia } from "./denuncias.ts";
 import { demandasPorCategoria, esDemandaDeCobro, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
-import { categoriasDelitoGraveSeguridad } from "./delitos-seguridad.ts";
+import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 type AnyRecord = Record<string, unknown>;
@@ -473,7 +473,11 @@ function fechaDeCorte(v: unknown): string | null {
 // estructura-v19 (2026-11-05, pedido del negocio): el empleo actual del
 // mecanizado exige que su mes no sea anterior al corte del IESS de las
 // fuentes de ingreso, la misma vigencia que ya tenían los aportes.
-export const PROCESS_VERSION = "estructura-v19"; // ver docs/estructura-estandarizada.md
+// estructura-v20 (2026-11-09, p1 de la revisión del análisis, aprobada por el
+// negocio el 2026-11-08): una demanda por un delito de seguridad ciudadana es
+// de la persona sólo si el demandado es ella (riesgoSeguridadCiudadana; las
+// demás, aviso en el bloqueo).
+export const PROCESS_VERSION = "estructura-v20"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1461,11 +1465,14 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // Las denuncias, sólo aquellas en las que la persona es la acusada
   // (denuncias.ts): hasta estructura-v8 entraban todas, y 42 de 59
   // personas figuraban con un delito de seguridad ciudadana por haberlo
-  // denunciado o sufrido. Las demandas no necesitan el filtro: la fuente es
-  // la de demandas contra la persona, y en las 35 de delitos graves figura
-  // su nombre completo entre los demandados (medido el 2026-09-28).
+  // denunciado o sufrido. Las demandas, sólo si el demandado es la persona
+  // (delitosDeSeguridadEnDemandas, estructura-v20): hasta v19 se suponía que
+  // la fuente traía sólo las suyas (lo medido el 2026-09-28 contaba el
+  // nombre en cualquier lugar del texto), y en 8 de 33 bloqueadas por una
+  // demanda el demandado era otro. Las que no son de ella llegan sólo como
+  // aviso en el bloqueo, no acá.
   const categoriasSeguridad = new Set([
-    ...demandas.flatMap((d) => categoriasDelitoGraveSeguridad(delitoDe(d))),
+    ...delitosDeSeguridadEnDemandas(demandas, identidad.nombreCompleto).propias,
     ...denuncias.filter((_, i) => rolesEnDenuncias[i] === "acusada").flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
     ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
   ]);
