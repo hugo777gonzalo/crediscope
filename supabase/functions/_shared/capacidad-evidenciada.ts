@@ -32,25 +32,28 @@
 //    - préstamos del IESS/BIESS: ninguna fuente trae la cuota (el rol de pagos
 //      muestra el descuento). Cuenta con saldo (desde marco-v32): antes llegaba
 //      sólo cuántos préstamos tuvo, sin decir si siguen vigentes;
-//    - el crédito con la institución (comportamientoInterno): llega el saldo y no
-//      la cuota. Cuando la estructura la traiga (p3), se lee acá;
 //    - un tema de deuda sin respuesta: no se sabe si debe.
 //    No cuentan las casas comerciales (son de su corte, julio de 2025: el marco
-//    dice que no son deuda de hoy) ni lo que respalda como codeudor o garante
-//    (no es propio).
+//    dice que no son deuda de hoy), lo que respalda como codeudor o garante (no
+//    es propio) ni el Comportamiento Interno: la operación con la institución es
+//    historia de pago y no entra en ningún cálculo, ni de saldo ni de cuota
+//    (negocio, 2026-11-09).
 // No juzga si la capacidad alcanza: eso es del modelo y de la capacidad de pago
 // de la solicitud (capacidad-de-pago.ts). Sólo si hay con qué juzgarla.
 //
 // MEDIDO SIN MODELO (2026-11-09), sobre las 53 aprobaciones del lote del 31/10:
-// - con lo que leyó el modelo (sin Equifax), baja las 53, y las 49 de marco-v28:
-//   sin la cuota de bancos nadie tiene la capacidad evidenciada;
+// - con lo que leyó el modelo (sin Equifax), baja las 53: sin la cuota de bancos
+//   nadie tiene la capacidad evidenciada;
 // - con la última consulta de Equifax (p4, PR #152: 246 de 247 la tienen, 17 días
-//   de mediana), baja 48. Lo que falta ya no es bancos sino la cuota del
-//   IESS/BIESS (34), la del crédito con la institución (40) y el ingreso (10).
-// Contra el pago (PR #148), de las 41 aprobadas cuyo crédito figura en la
-// cartera, las 2 que hoy están en mora (6 y 12 días) bajan por el IESS/BIESS, y
-// de las 4 que quedan aprobadas ninguna está en mora. Con «sólo el ingreso»
-// quedarían las 2 aprobadas.
+//   de mediana), quedan 11: lo que falta es la cuota del IESS/BIESS (34) y el
+//   ingreso (10). Contra el pago (PR #148), de las 41 aprobadas cuyo crédito
+//   figura en la cartera, las 2 que hoy están en mora (6 y 12 días) bajan por el
+//   IESS/BIESS, y de las 8 que quedan ninguna está en mora.
+// Pero Equifax trae el préstamo del BIESS, con su cuota, en 28 de esas 34: la
+// cuota está en cuotaMensualConocida, sólo que el perfil del modelo no dice que
+// la incluye. Si se la diera por conocida, quedarían 37 y las 2 en mora seguirían
+// aprobadas: las dos tienen una cuota conocida mayor que su ingreso reportado al
+// IESS, y eso ya no es falta de evidencia sino de capacidad.
 
 import type { LlmScoringResult } from "./types.ts";
 
@@ -63,8 +66,7 @@ export type MotivoSinCapacidad =
   | "cuota_bancos"
   | "cuota_cooperativas"
   | "cuota_buro"
-  | "cuota_iess_biess"
-  | "cuota_institucion";
+  | "cuota_iess_biess";
 
 export interface Faltante {
   motivo: MotivoSinCapacidad;
@@ -139,8 +141,6 @@ export function capacidadEvidenciada(perfilDelModelo: AnyRecord | null | undefin
   const biess = positivo(comoObjeto(p.comportamientoBancario)?.saldoPrestamosIessBiess);
   if (biess > 0) faltantes.push({ motivo: "cuota_iess_biess", acreedor: "el IESS/BIESS", saldo: biess });
 
-  const institucion = positivo(comoObjeto(p.comportamientoInterno)?.proveedorInfo1SaldoCapitalVigente);
-  if (institucion > 0) faltantes.push({ motivo: "cuota_institucion", acreedor: "la institución", saldo: institucion });
 
   return { evidenciada: faltantes.length === 0, faltantes };
 }
@@ -150,8 +150,8 @@ function unir(partes: string[], conjuncion: "y" | "ni"): string {
 }
 
 // La acción, en una oración: «el ingreso no está confirmado por un tercero (Por
-// confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con la
-// institución ($14.665)».
+// confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con el
+// IESS/BIESS ($3.200)».
 export function accionDeLaRegla(faltantes: Faltante[]): string {
   const partes: string[] = [];
   const ingreso = faltantes.find((f) => f.motivo === "ingreso_sin_confirmar");

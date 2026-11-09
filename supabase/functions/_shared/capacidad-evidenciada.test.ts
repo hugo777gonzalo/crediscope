@@ -97,10 +97,14 @@ Deno.test("los préstamos del IESS/BIESS cuentan con saldo; sin saldo no se sabe
   assertEquals(motivos(perfil({ comportamientoBancario: { ...sinSaldo, numeroPrestamosIessBiess: 8 } })), []);
 });
 
-Deno.test("el crédito con la institución llega sin cuota (p3)", () => {
-  const interno = { esClienteInterno: true, proveedorInfo1SaldoCapitalVigente: 14665, proveedorInfo1ResultadoHabitoPago: "Excelente Pagador" };
-  assertEquals(motivos(perfil({ comportamientoInterno: interno })), ["cuota_institucion"]);
-  assertEquals(motivos(perfil({ comportamientoInterno: { ...interno, proveedorInfo1SaldoCapitalVigente: 0 } })), []);
+Deno.test("el Comportamiento Interno no cuenta: es historia de pago, no deuda (negocio, 2026-11-09)", () => {
+  const interno = {
+    esClienteInterno: true,
+    proveedorInfo1SaldoCapitalVigente: 14665,
+    proveedorInfo1EstadoOperacion: "vigente",
+    proveedorInfo1ResultadoHabitoPago: "Excelente Pagador",
+  };
+  assertEquals(motivos(perfil({ comportamientoInterno: interno })), []);
 });
 
 Deno.test("casas comerciales y deuda como codeudor no cuentan: una es de su corte y la otra no es propia", () => {
@@ -117,12 +121,12 @@ Deno.test("la acción dice qué falta en una oración", () => {
     { deudaPropiaBancos: 8374, deudaPropiaTotal: 8374 },
     perfil({
       fuentesIngreso: { estado: "Por confirmar", ingresoReportadoIess: 470 },
-      comportamientoInterno: { proveedorInfo1SaldoCapitalVigente: 14665 },
+      comportamientoBancario: { ...perfil().comportamientoBancario, numeroPrestamosIessBiess: 1, saldoPrestamosIessBiess: 3200 },
     }),
   );
   assertEquals(
     accionDeLaRegla(capacidadEvidenciada(p).faltantes),
-    "Confirmar la capacidad de pago antes de aprobar: el ingreso no está confirmado por un tercero (Por confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con la institución ($14.665). El resto del análisis apunta a aprobar.",
+    "Confirmar la capacidad de pago antes de aprobar: el ingreso no está confirmado por un tercero (Por confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con el IESS/BIESS ($3.200). El resto del análisis apunta a aprobar.",
   );
   assertEquals(
     accionDeLaRegla(capacidadEvidenciada(conDeuda({ deudaPropiaBancos: 500, deudaPropiaTotal: 500 })).faltantes),
