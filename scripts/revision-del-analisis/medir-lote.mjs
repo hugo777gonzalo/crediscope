@@ -33,7 +33,11 @@
 // necesita el paso 2. Sale a research/, fuera de git.
 //
 // Uso:
-//   node scripts/revision-del-analisis/medir-lote.mjs [--marco=marco-vNN] [--desde=AAAA-MM-DD] [--hasta=AAAA-MM-DD] [--utc]
+//   node scripts/revision-del-analisis/medir-lote.mjs [--marco=marco-vNN] [--desde=AAAA-MM-DD] [--hasta=AAAA-MM-DD] [--utc] [--cartera]
+//
+//   `--cartera` suma la medida de los homónimos sobre el último perfil de cada persona real
+//   bloqueada por un delito de seguridad (lee 30 o 40 crudos del depósito propio); sin ella,
+//   los homónimos se miden sólo en los análisis del lote.
 //
 //   Sin --marco: el del análisis más reciente. Sin fechas: todo el marco. Las fechas son
 //   días de Ecuador (UTC-5, inclusivos). `--utc` las cuenta como días UTC: así contó el
@@ -44,27 +48,24 @@
 // (llm_usage, veredicto_origen) o la forma de `consultas_equifax.estructura`,
 // ajustar acá o mide otra cosa sin avisar.
 
-import { execSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { carpetaDeResearch, raizPrincipal } from "../_comun/entorno.mjs";
-import { comandoDeConsulta } from "../_comun/consulta-sql.mjs";
-
-const RAIZ = path.resolve(import.meta.dirname, "..", "..");
-const PRINCIPAL = raizPrincipal(RAIZ);
+import { pathToFileURL } from "node:url";
+import { carpetaDeResearch } from "../_comun/entorno.mjs";
+import { PRINCIPAL, RAIZ, accesoASupabase, consultar, lectorDeCrudos } from "./comun.mjs";
 
 // ------------------------------------------------------------------ argumentos
-const CONOCIDOS = new Set(["marco", "desde", "hasta", "utc"]);
+const CONOCIDOS = new Set(["marco", "desde", "hasta", "utc", "cartera"]);
 for (const a of process.argv.slice(2)) {
   const nombre = /^--([a-z]+)(=|$)/.exec(a)?.[1];
   if (!nombre || !CONOCIDOS.has(nombre)) {
-    console.error(`Argumento desconocido: ${a}\nUso: node scripts/revision-del-analisis/medir-lote.mjs [--marco=marco-vNN] [--desde=AAAA-MM-DD] [--hasta=AAAA-MM-DD] [--utc]`);
+    console.error(`Argumento desconocido: ${a}\nUso: node scripts/revision-del-analisis/medir-lote.mjs [--marco=marco-vNN] [--desde=AAAA-MM-DD] [--hasta=AAAA-MM-DD] [--utc] [--cartera]`);
     process.exit(1);
   }
 }
 const arg = (nombre) => process.argv.find((a) => a.startsWith(`--${nombre}=`))?.slice(nombre.length + 3);
 const UTC = process.argv.includes("--utc");
+const CARTERA = process.argv.includes("--cartera");
 const ZONA = UTC ? "UTC" : "America/Guayaquil";
 // Todo lo que va al SQL se valida antes: no se arma una consulta con texto libre.
 const validar = (valor, patron, que) => {
@@ -79,25 +80,6 @@ const DESDE = validar(arg("desde"), /^\d{4}-\d{2}-\d{2}$/, "--desde");
 const HASTA = validar(arg("hasta"), /^\d{4}-\d{2}-\d{2}$/, "--hasta");
 
 // ------------------------------------------------------------------- la base
-function consultar(sql) {
-  const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "medir-lote-"));
-  const archivo = path.join(carpeta, "consulta.sql");
-  fs.writeFileSync(archivo, sql, "utf8");
-  try {
-    const salida = execSync(comandoDeConsulta(archivo, { workdir: PRINCIPAL }), {
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return JSON.parse(salida.slice(salida.indexOf("{"))).rows;
-  } catch (e) {
-    // Sin el SQL en el mensaje: no hace falta y la salida de error puede traer datos.
-    throw new Error(`La consulta a la base falló: ${String(e.stderr ?? e.message).trim().split(/\r?\n/).slice(-3).join(" ")}`);
-  } finally {
-    fs.rmSync(carpeta, { recursive: true, force: true });
-  }
-}
-
 if (!MARCO) {
   const [fila] = consultar(`select a.rules_version as marco from analysis_results a join clients c on c.id = a.client_id
     where not c.es_sintetico order by a.created_at desc limit 1`);
@@ -113,7 +95,7 @@ if (!MARCO) {
 const filtroFecha = (operador, valor) => (valor ? `and (a.created_at at time zone '${ZONA}')::date ${operador} '${valor}'::date` : "");
 const SQL_LOTE = `
 with lote as (
-  select a.id, a.client_id, a.client_profile_id, a.created_at, a.crediscope_score as s, a.recomendacion as rec,
+  select a.id, a.client_id, a.client_profile_id, a.created_at, c.cedula, a.crediscope_score as s, a.recomendacion as rec,
          a.veredicto_origen as origen, (a.fallo is not null) as con_fallo,
          coalesce((a.llm_usage->'output_tokens_details'->>'thinking_tokens')::int, 0) as razonamiento,
          a.narrative_summary as n, a.positives as p, a.negatives as ng, a.missing_info as m, a.acciones_sugeridas as ac
@@ -133,7 +115,8 @@ eq as (
   order by l.client_id, (e.estructura is not null) desc, e.created_at desc
 )
 select json_agg(x order by x.created_at) as r from (
-  select l.*, cp.fuente_segmento as segmento,
+  select l.*, cp.fuente_segmento as segmento, cp.created_at as perfil_creado_el,
+         case when cp.control_bloqueo->'hallazgos' @> '[{"code":"delito_seguridad_ciudadana"}]'::jsonb then cp.crudo_ruta end as crudo_ruta_de_la_demanda,
          coalesce((select json_agg(h->>'code')
                    from jsonb_array_elements(case when jsonb_typeof(cp.control_bloqueo->'hallazgos') = 'array'
                                                   then cp.control_bloqueo->'hallazgos' else '[]'::jsonb end) h
@@ -382,6 +365,128 @@ function leerPredictor() {
   return { archivo, porPersona };
 }
 
+// ------------------------------------- 7. los bloqueos por la demanda de otra persona
+// Por qué: el control de bloqueo por un delito de seguridad (`delito_seguridad_ciudadana`) tomaba
+// la demanda sin cotejar quién era el demandado, y en el piloto 8 de 33 personas bloqueadas por
+// una demanda tenían como demandado a otra (c-14f9ee80: la institución le había aprobado un
+// crédito). Es la propuesta p1; esta medición dice cuántos del lote están así, y `--cartera` repite
+// la medida del piloto sobre el último perfil de cada persona real bloqueada por ese delito.
+//
+// Cómo se cotejan: el nombre en Ecuador es APELLIDO1 APELLIDO2 NOMBRE1 [NOMBRE2], y una persona
+// figura como demandada si en UN mismo demandado (el texto se corta por «;», «,», « Y » y « DEF »)
+// están sus dos apellidos juntos y su primer nombre. La primera versión daba por coincidente a
+// una persona porque su primer nombre estaba en el abogado defensor: por eso es un mismo demandado.
+// Sólo lee el crudo del depósito propio; no consulta a Proveedor_Info_1.
+const sinTildes = (t) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+const palabrasDelNombre = (t) => sinTildes(t).replace(/[^A-Z ]/g, " ").split(/\s+/).filter((w) => w.length > 2);
+const demandadosDe = (t) => sinTildes(t).split(/[;,]| Y | DEF /).map((x) => x.replace(/[^A-Z ]/g, " ").replace(/\s+/g, " ").trim());
+const paginasDe = (fuente) => (Array.isArray(fuente) ? fuente : fuente ? [fuente] : []);
+
+function homonimiaDelCrudo(crudo, categoriasDelitoGraveSeguridad) {
+  const raw = crudo.raw ?? crudo;
+  const nombre = palabrasDelNombre(raw.general?.data?.nombre ?? JSON.stringify(raw.general ?? "").match(/"nombre":"([^"]+)"/)?.[1]);
+  const demandas = paginasDe(raw.demandas)
+    .flatMap((p) => (Array.isArray(p?.data?.demandas) ? p.data.demandas : []))
+    .filter((d) => categoriasDelitoGraveSeguridad(d.demanda?.delito).length);
+  const porDenuncia = paginasDe(raw.denuncias).some((p) => lista(p?.data?.denuncias).some((d) => categoriasDelitoGraveSeguridad(d.delito).length));
+  const porAntecedente = categoriasDelitoGraveSeguridad(raw.antecedentesPenales?.data?.antecedentes?.descripcion).length > 0;
+  const apellidos = nombre.slice(0, 2).join(" "), primerNombre = nombre[2];
+  const coincide = demandas.some((d) => demandadosDe(d.demanda?.demandado).some((g) => nombre.length >= 3 && g.includes(apellidos) && g.split(" ").includes(primerNombre)));
+  return { porDemanda: demandas.length > 0, coincide, tambienPorOtraVia: porDenuncia || porAntecedente };
+}
+
+let lectorDeCrudo = null;
+let delitos = null;
+// perfiles: [{ id, caso, perfil_id, crudo_ruta }]. Devuelve el resumen y las `id` cuyo demandado no coincide.
+async function medirHomonimos(perfiles) {
+  const resumen = { perfiles_bloqueados_por_delito_de_seguridad: perfiles.length, sin_crudo: 0, por_una_demanda: 0, el_demandado_es_la_persona: 0, el_demandado_no_coincide: 0, tambien_por_denuncia_o_antecedente: 0, casos_sin_coincidencia: [] };
+  const sinCoincidencia = new Set();
+  if (!perfiles.length) return { resumen, sinCoincidencia };
+  lectorDeCrudo ??= lectorDeCrudos(accesoASupabase());
+  if (!delitos) {
+    globalThis.Deno ??= { env: { get: (k) => process.env[k] } };
+    delitos = (await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/delitos-seguridad.ts")).href)).categoriasDelitoGraveSeguridad;
+  }
+  for (const p of perfiles) {
+    const { crudo } = p.crudo_ruta ? await lectorDeCrudo(p.perfil_id, p.crudo_ruta) : { crudo: null };
+    if (!crudo) { resumen.sin_crudo++; continue; }
+    const h = homonimiaDelCrudo(crudo, delitos);
+    if (h.tambienPorOtraVia) resumen.tambien_por_denuncia_o_antecedente++;
+    if (!h.porDemanda) continue;
+    resumen.por_una_demanda++;
+    if (h.coincide) resumen.el_demandado_es_la_persona++;
+    else { resumen.el_demandado_no_coincide++; resumen.casos_sin_coincidencia.push(p.caso); sinCoincidencia.add(p.id); }
+  }
+  return { resumen, sinCoincidencia };
+}
+
+const candidatosDelLote = filas.filter((a) => a.crudo_ruta_de_la_demanda);
+const { resumen: homonimosDelLote, sinCoincidencia: demandaAjena } = await medirHomonimos(
+  candidatosDelLote.map((a) => ({ id: a.id, caso: a.caso, perfil_id: a.client_profile_id, crudo_ruta: a.crudo_ruta_de_la_demanda })));
+for (const a of filas) a.demandaDeOtraPersona = demandaAjena.has(a.id);
+
+let homonimosDeLaCartera = null;
+if (CARTERA) {
+  // El último perfil de cada persona real, como en el piloto: un bloqueo viejo ya corregido no cuenta.
+  const bloqueadas = consultar(`
+    with u as (select distinct on (p.client_id) p.id, p.client_id, p.crudo_ruta, p.control_bloqueo as cb
+               from client_profiles p join clients c on c.id = p.client_id and not c.es_sintetico
+               order by p.client_id, p.created_at desc)
+    select id, client_id, crudo_ruta from u where cb->'hallazgos' @> '[{"code":"delito_seguridad_ciudadana"}]'::jsonb;`);
+  homonimosDeLaCartera = (await medirHomonimos(bloqueadas.map((f) => ({ id: f.client_id, caso: corto(f.client_id), perfil_id: f.id, crudo_ruta: f.crudo_ruta })))).resumen;
+}
+
+// --------------------- 8. los días entre la solicitud y la consulta (sólo la base de prueba)
+// Por qué: la decisión de la institución es una referencia débil porque decidió meses antes de la
+// consulta que analizó el modelo: en el piloto, 120 días de mediana y más de 90 en 153 de 232. La
+// solicitud sólo la trae la base de prueba de AWS; para el resto de la cartera no se mide. Las
+// fechas de AWS vienen sin zona: son hora de Ecuador (UTC-5).
+const RUTA_CREDITO_REAL = path.join(PRINCIPAL, "research", "base-prueba-2026-11", "credito-real.json");
+const creditoReal = fs.existsSync(RUTA_CREDITO_REAL) ? JSON.parse(fs.readFileSync(RUTA_CREDITO_REAL, "utf8")) : null;
+const diaEc = (instante) => new Date(new Date(instante).getTime() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+const diasEntre = (desde, hasta) => Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86400000);
+let diasDeLaSolicitud = { estado: "no medido: falta research/base-prueba-2026-11/credito-real.json" };
+if (creditoReal) {
+  const dias = [];
+  for (const a of filas) {
+    const solicitud = creditoReal[a.cedula]?.fecha_ingreso_requerimiento;
+    if (solicitud && a.perfil_creado_el) dias.push(diasEntre(String(solicitud).slice(0, 10), diaEc(a.perfil_creado_el)));
+  }
+  diasDeLaSolicitud = {
+    base: "base-prueba-2026-11 (credito-real.json)",
+    analisis_con_solicitud: { n: dias.length, de: N },
+    mediana_en_dias: dias.length ? mediana(dias) : null,
+    con_mas_de_90_dias: dias.filter((d) => d > 90).length,
+    con_solicitud_posterior_a_la_consulta: dias.filter((d) => d < 0).length,
+  };
+}
+
+// ------------------------- 9. el resultado de pago contra la recomendación (la vara más fuerte)
+// El resultado de pago lo arma `resultado-de-pago.mjs` para la base de prueba: si el crédito pedido
+// figura en la cartera de la institución y cómo se pagó. Acá se cruza con lo que recomendó el modelo.
+// Es una referencia con límites: la mayoría de los créditos son de personas que el modelo mandó a
+// revisar, y pocos aprobaron o negaron, así que una tasa de mora de 2 de 41 no es todavía una
+// conclusión sobre el modelo.
+const RUTA_DEL_PAGO = path.join(PRINCIPAL, "research", "revision-del-analisis", "resultado-de-pago-base-prueba.json");
+const pagos = fs.existsSync(RUTA_DEL_PAGO) ? JSON.parse(fs.readFileSync(RUTA_DEL_PAGO, "utf8")).personas : null;
+let pagoContraLaRecomendacion = { estado: "no medido: falta resultado-de-pago-base-prueba.json (resultado-de-pago.mjs)" };
+if (pagos) {
+  const porBandaDePago = {};
+  let conResultado = 0;
+  for (const a of filas) {
+    const p = pagos[a.client_id];
+    if (!p?.figura_en_la_cartera) continue;
+    conResultado++;
+    const celda = (porBandaDePago[claveDeBanda(a)] ??= { analisis: 0, sin_atrasos: 0, atrasos_ya_pagados: 0, en_mora_hoy: 0, impago: 0 });
+    celda.analisis++;
+    celda[p.resultado.clase]++;
+  }
+  pagoContraLaRecomendacion = {
+    analisis_con_el_credito_en_la_cartera: { n: conResultado, de: N },
+    por_recomendacion: porBandaDePago,
+  };
+}
+
 // ------------------------------------------------------------------ los casos
 // Las marcas que lee `elegir-casos.mjs`. Una marca no es un dictamen: dice dónde
 // conviene que mire el jefe de crédito.
@@ -390,6 +495,7 @@ const casos = filas.map((a) => {
   if (a.rec === "aprobar" && delModelo(a) && !a.razono) marcas.push("aprobo_sin_razonar");
   if (a.rec === "aprobar" && (a.sinCuota || a.sinCapacidad)) marcas.push("aprobacion_sin_capacidad");
   if (!delModelo(a)) marcas.push("bloqueo_por_control");
+  if (a.demandaDeOtraPersona) marcas.push("bloqueo_por_demanda_de_otra_persona");
   if (a.sinCuota && a.eq_cuota != null && Number(a.eq_cuota) > 0) marcas.push("pide_la_cuota_y_equifax_la_tenia");
   return {
     analisis_id: a.id, client_id: a.client_id, perfil_id: a.client_profile_id, caso: a.caso,
@@ -417,6 +523,9 @@ const medicion = {
   razonamiento,
   lenguaje,
   aprobaciones_sin_cuota_ni_capacidad: aprobacionesSin,
+  homonimos_en_demandas: { del_lote: homonimosDelLote, de_la_cartera: homonimosDeLaCartera ?? "no medido (--cartera)" },
+  dias_entre_la_solicitud_y_la_consulta: diasDeLaSolicitud,
+  resultado_de_pago_contra_la_recomendacion: pagoContraLaRecomendacion,
   cuotas_y_equifax: cuotas,
   predictor,
   marcas,
@@ -448,6 +557,15 @@ console.log(`Cuotas y Equifax: ${cuotas.con_consulta_de_equifax.n} de ${N} con c
 console.log(predictor.archivo
   ? `Predictor (${predictor.archivo}): ${predictor.con_valor_central.n} de ${N} con valor central; ${predictor.linea_sin_valor_central} con línea sin valor; ${predictor.sin_linea} sin línea; ${predictor.sobre_otro_perfil_que_el_analisis} sobre otro perfil`
   : `Predictor: ${predictor.aviso}`);
+const hl = homonimosDelLote;
+console.log(`Bloqueos por un delito de seguridad (${hl.perfiles_bloqueados_por_delito_de_seguridad} en el lote): por una demanda ${hl.por_una_demanda}; el demandado es la persona en ${hl.el_demandado_es_la_persona} y no coincide en ${hl.el_demandado_no_coincide}${hl.casos_sin_coincidencia.length ? ` (${hl.casos_sin_coincidencia.join(", ")})` : ""}`);
+if (homonimosDeLaCartera) console.log(`  en la cartera: ${homonimosDeLaCartera.por_una_demanda} bloqueadas por una demanda, el demandado no coincide en ${homonimosDeLaCartera.el_demandado_no_coincide}`);
+if (diasDeLaSolicitud.mediana_en_dias != null) console.log(`Días entre la solicitud y la consulta: mediana ${diasDeLaSolicitud.mediana_en_dias}; más de 90 en ${diasDeLaSolicitud.con_mas_de_90_dias} de ${diasDeLaSolicitud.analisis_con_solicitud.n} con solicitud`);
+else console.log(`Días entre la solicitud y la consulta: ${diasDeLaSolicitud.estado}`);
+if (pagoContraLaRecomendacion.por_recomendacion) {
+  console.log(`Resultado de pago (${pagoContraLaRecomendacion.analisis_con_el_credito_en_la_cartera.n} de ${N} con el crédito en la cartera):`);
+  for (const [banda, c] of Object.entries(pagoContraLaRecomendacion.por_recomendacion)) console.log(`  ${banda}: ${c.analisis}; sin atrasos ${c.sin_atrasos}, atrasos ya pagados ${c.atrasos_ya_pagados}, en mora hoy ${c.en_mora_hoy}, impago ${c.impago}`);
+} else console.log(`Resultado de pago: ${pagoContraLaRecomendacion.estado}`);
 console.log("Marcas para elegir casos:");
 for (const [m, n] of Object.entries(marcas)) console.log(`  ${m}: ${n} de ${N}${m === "bloqueo_por_control" ? ` (${casos.filter((c) => c.marcas.includes(m)).map((c) => c.caso).join(", ")})` : ""}`);
 console.log(`Escrito: ${path.relative(PRINCIPAL, salida)}`);

@@ -71,9 +71,16 @@ dicen no conocer la capacidad, los pedidos de una cuota que Equifax ya tenía y 
 predictor. Deja la medición en `mediciones/<sello>.json`. Son los «x de N» que van a la página:
 un dictamen es una anécdota.
 
-Dos mediciones del piloto todavía no están en un guion: los bloqueos por la demanda de otra
-persona (`homonimos.mjs`) y los días entre la solicitud y la consulta (`fechas.sql`), los dos en
-`guiones-del-piloto/` de la corrida del 2026-11-06. Hasta que se porten, se corren desde ahí.
+Mide además tres cosas que el piloto había hecho aparte:
+- **Los bloqueos por la demanda de otra persona** (p1): en los análisis del lote, y con `--cartera`
+  sobre el último perfil de cada persona bloqueada por un delito de seguridad. Cotejan los dos
+  apellidos y el primer nombre dentro de un mismo demandado. Da los mismos 11 de 33 que dejó el
+  piloto en su archivo; la propuesta p1 cuenta 8 después de leerlos, así que **se leen los casos
+  antes de citar el número**: el medidor sobra por un lado (un nombre con el orden cambiado) y
+  nunca prueba que la demanda sea de otro.
+- **Los días entre la solicitud y la consulta**, sólo para la base de prueba (es la única que trae la
+  solicitud): mediana de 121 días, más de 90 en 155 de 234.
+- **La recomendación contra el resultado de pago** (paso 3), cuando existe `resultado-de-pago-base-prueba.json`.
 
 ### 2. Elegir los casos · guion, sin costo
 
@@ -93,26 +100,38 @@ qué se eligió el caso: no se le pasa a quien dictamina.
 ### 3. Armar las carpetas · guion; Sonnet si falta algo
 
 ```bash
+node scripts/revision-del-analisis/resultado-de-pago.mjs
+```
+
+```bash
 node scripts/revision-del-analisis/armar-carpetas.mjs --carpeta=<ruta completa de la carpeta de la corrida>
 ```
 
+`resultado-de-pago.mjs` (sólo lectura, sin costo) arma el resultado de pago de las 244 personas de la
+base de prueba y se repite sólo si cambia esa base o el crudo (ver «La vara»).
+
 Una carpeta por caso con su `INDICE.md`, que separa lo que se abre en cada fase: lo que leyó el
-modelo y lo que leería hoy, el predictor, la capacidad, las demandas por fecha, Equifax, el
-control y el crudo (fase 1); la respuesta del modelo (fase 2); la decisión de la institución
-(fase 3). Al final del índice, «Qué faltó y por qué».
+modelo con su marco y lo que leería hoy, el predictor, la capacidad, las demandas por fecha,
+Equifax, el control y el crudo (fase 1); la respuesta del modelo (fase 2); la decisión de la
+institución y **cómo se pagó el crédito** (fase 3). Al final del índice, «Qué faltó y por qué».
 
 - Si faltó algo que se puede resolver leyendo (un análisis de otro perfil, un crudo que no está
   en la carpeta del respaldo, una consulta de Equifax en otra tabla), se lo pide al agente
   `armador-de-carpetas` (Sonnet), con la lista de casos y lo que dice cada índice. No opina sobre
   los casos y no toca el guion: si el guion tiene que cambiar, lo dice y lo cambia esta sesión.
-- **Antes de pasar al paso 4, abrir los archivos de fase 1 de un caso y buscar el score o la
-  recomendación del modelo y la decisión de la institución.** En el piloto `capacidad.json` los
-  traía y contaminó 3 de 12 ciegos.
-- Hoy el guion está hecho para el piloto: el análisis de marco-v30, la base de prueba de AWS
-  (`research/base-prueba-2026-11/`, la única con la decisión real de la institución) y las
-  estimaciones del 2026-11-05. Una corrida sobre otro marco o sobre la cartera de producción
-  necesita que lea el marco del análisis elegido; es una mejora de la herramienta propia y se
-  hace sin preguntar.
+- **La fase 1 no lleva el score ni la recomendación del modelo, la decisión de la institución ni el
+  resultado de pago.** El guion lo comprueba solo: después de cada caso abre los JSON de la fase 1 y
+  corta si alguno trae una clave de las fases 2 o 3. En el piloto `capacidad.json` los traía y
+  contaminó 3 de 12 ciegos. Sigue valiendo mirar un caso a mano antes del paso 4: la guarda busca
+  claves, no un score escrito dentro de un texto.
+- **El guion sirve para cualquier marco.** Toma el análisis de `analisisId` y el texto del marco de
+  su `rules_version`, que saca de git (v28 y v30 ya no están en el árbol; da byte por byte los mismos
+  textos que el piloto). Una versión con el buró tiene dos textos, y el índice dice cuál leyó el
+  análisis y cuál le llegaría hoy. La base de prueba es opcional: una persona de la cartera de
+  producción no tiene capacidad, decisión de la institución ni resultado de pago, y el índice lo dice
+  como «no es una falta».
+- Los archivos llevan el marco en el nombre: `leido-v30.json`, `leeria-v35.json`,
+  `respuesta-v30.json`, `diferencias-v30-v35.md`.
 
 ### 4. El dictamen a ciegas · agentes Opus, 4 casos cada uno
 
@@ -205,14 +224,25 @@ Con qué se juzga si el modelo acertó, de la más débil a la más fuerte:
 1. **El criterio experto**: la pauta de [dictamen.md](dictamen.md) y el jefe de crédito a ciegas.
 2. **La decisión de la institución**: una referencia, no la verdad. Decidió un crédito concreto
    (en la base de prueba, un vehículo con entrada y prenda), con un ingreso que validó ella y, en
-   la mediana, 120 días antes de la consulta que analizó el modelo. En 4 de los 12 casos del
-   piloto el crédito pedido parecía estar ya dentro del perfil analizado (confirmado en uno).
+   la mediana, 121 días antes de la consulta que analizó el modelo. Y la decisión que trae
+   `credito-real.json` **no es la que decidió si se otorgaba**: de 33 solicitudes con
+   «RECHAZAR», 27 tienen el crédito en la cartera con el mismo plazo, la misma cuota y las cuotas
+   que corresponden al tiempo. Pregunta abierta para el negocio: ¿es una decisión automática que
+   después revierte un analista?
 3. **Los casos de referencia del negocio**: los que el negocio dictaminó él mismo, en
    [casos-de-referencia.md](casos-de-referencia.md). Un análisis que los contradice es un hallazgo
    aunque el jefe de crédito esté de acuerdo con el modelo.
-4. **El pago real**, cuando exista (propuesta p8): el comportamiento del crédito otorgado en la
-   cartera de la institución (`basesInternas`). En el piloto 3 casos ya lo tenían: uno a 58 días
-   de mora, otro con hasta 25 días en sus primeras 3 cuotas y otro al día.
+4. **El pago real** (propuesta p8, `resultado-de-pago.mjs`): el comportamiento del crédito otorgado
+   en la cartera de la institución (`basesInternas.personasIncumplimientos` del crudo). Se coteja el
+   crédito pedido con las operaciones de la cartera por plazo, cuota (o saldo, si aún no pagó) y
+   tiempo; sólo cuenta con las tres cosas («alta»), y un «posible» no es un resultado. De las 232
+   personas con solicitud, en 197 el crédito figura: 92 sin atrasos, 87 con atrasos ya pagados, 18
+   en mora hoy y 0 en impago (más de 90 días). Contra la recomendación del modelo (lote del 31/10):
+   negar, 3 en mora hoy de 6; revisar, 13 de 147; aprobar, 2 de 41. Con tan pocos «negar» y
+   «aprobar», es una pista y no una conclusión. El pago está observado al corte de la cartera
+   (30/09/2026), meses después de la solicitud: dice cómo va, no cómo terminará.
+   Va en la fase 3 de cada carpeta (`resultado-de-pago.json`), nunca en la fase 1: es un ancla
+   tan fuerte como el score.
 
 ## Cuándo corre
 
