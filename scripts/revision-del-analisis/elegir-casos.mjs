@@ -38,15 +38,11 @@
 // AVISO: este archivo no pasa por lint ni build. Si cambia la forma de la medición
 // (`formato`) o lo que lee `armar-carpetas.mjs` de cada caso, ajustar acá.
 
-import { execSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { carpetaDeResearch, raizPrincipal } from "../_comun/entorno.mjs";
-import { comandoDeConsulta } from "../_comun/consulta-sql.mjs";
+import { carpetaDeResearch } from "../_comun/entorno.mjs";
+import { PRINCIPAL, RAIZ, consultar, listaDeUuid } from "./comun.mjs";
 
-const RAIZ = path.resolve(import.meta.dirname, "..", "..");
-const PRINCIPAL = raizPrincipal(RAIZ);
 const MAXIMO_DE_CASOS = 15; // decisión del negocio, 2026-11-06
 
 // ------------------------------------------------------------------ argumentos
@@ -79,32 +75,6 @@ if (fs.existsSync(SELECCION) && !process.argv.includes("--sobrescribir")) {
   salirCon(`Ya existe ${path.relative(PRINCIPAL, SELECCION)}: otra corrida pudo haber armado carpetas con esa selección. Usá otra --carpeta o --sobrescribir.`);
 }
 
-// ------------------------------------------------------------------- la base
-function consultar(sql) {
-  const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), "elegir-casos-"));
-  const archivo = path.join(carpeta, "consulta.sql");
-  fs.writeFileSync(archivo, sql, "utf8");
-  try {
-    const salida = execSync(comandoDeConsulta(archivo, { workdir: PRINCIPAL }), {
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return JSON.parse(salida.slice(salida.indexOf("{"))).rows;
-  } catch (e) {
-    // Sin el SQL en el mensaje: lleva las ids de las personas.
-    throw new Error(`La consulta a la base falló: ${String(e.stderr ?? e.message).trim().split(/\r?\n/).slice(-3).join(" ")}`);
-  } finally {
-    fs.rmSync(carpeta, { recursive: true, force: true });
-  }
-}
-// Lo que va al SQL son ids y un marco que se validan antes: no se arma una consulta con texto libre.
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const listaDeUuid = (ids) => {
-  const malos = ids.filter((i) => !UUID.test(i));
-  if (malos.length) throw new Error(`${malos.length} identificadores que no son uuid en la medición.`);
-  return `array[${ids.map((i) => `'${i}'`).join(",")}]::uuid[]`;
-};
 if (!/^marco-v\d+$/.test(medicion.marco)) salirCon("La medición no trae un marco válido.");
 
 // ------------------------------------------------------------ azar con semilla
@@ -148,6 +118,7 @@ const ETIQUETAS = {
   aprobo_sin_razonar: "aprobó sin razonar",
   aprobacion_sin_capacidad: "aprobación sin cuota ni capacidad evidenciada (a confirmar)",
   bloqueo_por_control: "bloqueo por control",
+  bloqueo_por_demanda_de_otra_persona: "bloqueo por la demanda de otra persona",
   dos_marcos: "persona con análisis de dos marcos",
   azar: "al azar",
 };
@@ -157,7 +128,12 @@ const GRUPOS = [
   { id: "aprobacion_sin_capacidad", peso: 3, candidatos: () => casos.filter((c) => c.marcas.includes("aprobacion_sin_capacidad")), estrato: (c) => c.segmento ?? sinSegmento },
   // Los bloqueos se reparten por el hallazgo que bloquea, no por segmento: dos bloqueos por
   // el mismo delito enseñan lo mismo, y uno por otra causa enseña otra cosa.
-  { id: "bloqueo_por_control", peso: 2, candidatos: () => casos.filter((c) => c.marcas.includes("bloqueo_por_control")), estrato: (c) => c.bloqueos.join("+") || "sin hallazgo bloqueante" },
+  // Primero los bloqueados por la demanda de otra persona (p1): es donde el control se equivoca.
+  { id: "bloqueo_por_control", peso: 2, candidatos: () => {
+      const mezclados = barajar(casos.filter((c) => c.marcas.includes("bloqueo_por_control")));
+      const ajena = (c) => c.marcas.includes("bloqueo_por_demanda_de_otra_persona");
+      return [...mezclados.filter(ajena), ...mezclados.filter((c) => !ajena(c))];
+    }, estrato: (c) => c.bloqueos.join("+") || "sin hallazgo bloqueante", yaOrdenados: true },
   // Donde la recomendación cambió entre marcos va primero: es donde un marco nuevo mueve la decisión.
   { id: "dos_marcos", peso: 2, candidatos: () => {
       const conPar = casos.filter((c) => parDe.has(c.client_id));
