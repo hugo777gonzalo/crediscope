@@ -8,6 +8,7 @@
 
 import type { LlmScoringResult, ResultadoControlBloqueo } from "./types.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
+import { aplicarReglaDeCapacidad } from "./capacidad-evidenciada.ts";
 
 export interface DatosDelAnalisis {
   runId: string;
@@ -31,7 +32,11 @@ export interface DatosDelAnalisis {
 }
 
 export function filaDelAnalisis(d: DatosDelAnalisis) {
-  const { llmResult, controlBloqueo } = d;
+  const { controlBloqueo } = d;
+  // Sin capacidad de pago evidenciada, «aprobar» baja a «revisar» (p2,
+  // capacidad-evidenciada.ts). Acá y no en puntuarPedido: por esta función pasan
+  // también el lote y el análisis reutilizado.
+  const llmResult = aplicarReglaDeCapacidad(d.llmResult);
   // Un control de bloqueo bloqueante no se delega al criterio del LLM
   // (marco-interpretativo.ts v14): fuerza el score y la recomendación.
   const score = controlBloqueo.bloqueado ? 1 : llmResult.score;
