@@ -364,8 +364,8 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
 //
 // Y de la base interna no se cuentan los préstamos terminados: los que siguen
 // «VIGENTE» con el plazo ya cumplido y sin mora, que la fuente de préstamos ya
-// no trae. Eran 1.600 operaciones en 679 personas, terminadas hace 3 años y
-// medio en la mediana, con USD 4,6 millones de saldo que ya no se debe
+// no trae. Eran 1.600 operaciones en 651 personas, terminadas hace 3 años y
+// medio en la mediana, con USD 3,6 millones de saldo que ya no se debe
 // (c-40d771e1). Los que la base marca «VENCIDO» o «MORA» se cuentan: deben.
 // La fuente de préstamos trae sólo lo vigente (PV), vencido (VC) o en
 // novación (ND): en el respaldo del 03/10, ningún cancelado.

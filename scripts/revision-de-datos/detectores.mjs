@@ -478,7 +478,7 @@ export const DETECTORES_DEL_CRUDO = [
     tipo: "revisar",
     titulo: "Un préstamo del IESS/BIESS de la base interna «VIGENTE» con el plazo ya cumplido y sin mora, que suma saldo",
     caso: "c-40d771e1, 2026-11-06: un quirografario que terminó en 2023 seguía «VIGENTE» en la base interna y sumaba saldo (p6)",
-    conocido: "mide la fuente: desde estructura-v21 los terminados sin mora no se cuentan (VENCIDO y MORA sí); 679 personas el 2026-11-09",
+    conocido: "mide la fuente: desde estructura-v21 los terminados sin mora no se cuentan (VENCIDO y MORA sí); 651 personas el 2026-11-09",
     aplica: ({ raw }) => opsDeLaBase(raw).length > 0,
     detectar: ({ raw, capturadoEl }) => {
       const hoy = Math.floor(new Date(capturadoEl).getTime() / 86400000);

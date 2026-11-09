@@ -871,7 +871,7 @@ interface StandardClientProfile {
 >   préstamos (trae `fechaCorte`), con la mora más alta; y de la base interna no se
 >   cuentan los «VIGENTE» con el plazo cumplido y sin mora. Medido: 177 hipotecarios
 >   contados dos veces en 174 personas (USD 6,6 M de más; c-b9fc9a82) y 1.600
->   préstamos terminados hace 3,4 años en la mediana (c-40d771e1).
+>   préstamos terminados en 651 personas, hace 3,4 años en la mediana (USD 3,6 M; c-40d771e1).
 > - **p3, la cartera de la institución** (`comportamientoInterno`): se leían sólo la
 >   primera de sus operaciones (782 de 2.602 personas tienen varias; en 464 la primera
 >   era una cancelada que escondía la vigente, c-5dfb1e00). Suma
