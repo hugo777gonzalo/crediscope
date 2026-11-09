@@ -47,7 +47,7 @@
 // - con la última consulta de Equifax (p4, PR #152: 246 de 247 la tienen, 17 días
 //   de mediana), quedan 11: lo que falta es la cuota del IESS/BIESS (34) y el
 //   ingreso (10). Contra el pago (PR #148), de las 41 aprobadas cuyo crédito
-//   figura en la cartera, las 2 que hoy están en mora (6 y 12 días) bajan por el
+//   figura en la cartera, las 2 que hoy están en mora bajan por el
 //   IESS/BIESS, y de las 8 que quedan ninguna está en mora.
 // Pero Equifax trae el préstamo del BIESS, con su cuota, en 28 de esas 34: la
 // cuota está en cuotaMensualConocida, sólo que el perfil del modelo no dice que
