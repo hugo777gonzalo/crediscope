@@ -6,6 +6,7 @@
 // QUÉ SUBE (depósito privado `crudo-equifax-migrado`, gzip; ver _shared/crudo-equifax-migrado.ts):
 //   aws/<id_consulta_equifax>.json.gz     el response_json de cada consulta, tal cual (las 20.560 bajadas)
 //   aws/respaldo/lote-NNNNNN.jsonl.gz     el resto de cada fila de AWS (todo menos response_json), de respaldo
+//   aws/indice/por-cedula.json.gz         cédula -> consultas de AWS que están en el depósito (fase --indice)
 // El nombre lleva el id de AWS y no una cédula: un JSON que todavía no tiene fila en la base ya tiene su lugar.
 //
 // FASES, de a una y en este orden (cada una se puede repetir: son idempotentes):
@@ -18,6 +19,10 @@
 //                  deja en null respuesta_cruda de las filas con crudo_ruta, DESPUÉS de bajar cada objeto y
 //                  comprobar que es igual a lo que tiene la fila. Sin --confirmo no hace nada. Hacerlo recién
 //                  con la lectura desde Storage desplegada
+//   --indice       arma el índice por cédula con las consultas de los lotes cuyo crudo ya está en el depósito
+//                  y lo sube (lo reemplaza si estaba). Con --seco sólo cuenta y mide. Lo lee el análisis
+//                  (buro-de-la-institucion.ts) para encontrar la última consulta de una persona sin fila.
+//                  Repetirlo después de subir lotes nuevos: lo que no está en el índice no se encuentra.
 //   --max=N        sólo las primeras N consultas (muestra) en --enlazar y --vaciar
 //   --carpeta=<ruta>  otra carpeta de lotes
 //   --sin-commit   permite correr con cambios sin guardar en git (queda anotado)
@@ -42,6 +47,7 @@ const SECO = bandera("seco");
 const VERIFICAR = bandera("verificar");
 const ENLAZAR = bandera("enlazar");
 const VACIAR = bandera("vaciar");
+const INDICE = bandera("indice");
 const MAX = valor("max") ? Number(valor("max")) : Infinity;
 const PARALELO = 8;
 
@@ -49,12 +55,16 @@ const morir = (...lineas) => { console.error(lineas.join("\n")); process.exit(1)
 
 cargarEntorno(RAIZ);
 for (const clave of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) if (!process.env[clave]) morir(`Falta ${clave} en .env.functions.`);
-if ([SECO, VERIFICAR, ENLAZAR, VACIAR].filter(Boolean).length > 1) morir("Una fase por corrida: --seco, --verificar, --enlazar o --vaciar.");
+// --indice se puede probar en seco; las demás fases van solas.
+if ([VERIFICAR, ENLAZAR, VACIAR, INDICE].filter(Boolean).length > 1 || (SECO && (VERIFICAR || ENLAZAR || VACIAR))) {
+  morir("Una fase por corrida: --seco, --verificar, --enlazar, --vaciar o --indice (ésta, también con --seco).");
+}
 if (VACIAR && !bandera("confirmo")) morir("--vaciar deja en null el crudo de las filas migradas: confirmarlo con --confirmo (después de verificar y de desplegar la lectura desde Storage).");
 
-const { BUCKET_CRUDO_EQUIFAX_MIGRADO: BUCKET, rutaDelCrudoMigrado, rutaDelRespaldoDeLote, descomprimirTexto } = await import(
-  new URL("../supabase/functions/_shared/crudo-equifax-migrado.ts", import.meta.url).href
-);
+const {
+  BUCKET_CRUDO_EQUIFAX_MIGRADO: BUCKET, rutaDelCrudoMigrado, rutaDelRespaldoDeLote, descomprimirTexto,
+  entradaDelIndice, armarIndiceDelCrudoMigrado, RUTA_DEL_INDICE_POR_CEDULA,
+} = await import(new URL("../supabase/functions/_shared/crudo-equifax-migrado.ts", import.meta.url).href);
 
 const carpeta = valor("carpeta") ?? carpetaDeResearch(RAIZ, "ingresos-aws", "crudo-equifax");
 const manifiesto = path.join(carpeta, "manifiesto.jsonl");
@@ -120,6 +130,47 @@ async function migradasDeLaBase() {
     if (data.length < 1000) break;
   }
   return filas;
+}
+
+// ---------- índice por cédula ----------
+// Antes de esperado(): no necesita comprimir cada cuerpo para medirlo. Nunca imprime una cédula.
+if (INDICE) {
+  const motivos = { sin_respuesta_util: 0, sin_documento: 0, documento_invalido: 0, sin_fecha: 0, sin_objeto_en_el_deposito: 0 };
+  const existentes = await listarDeposito();
+  const entradas = [];
+  let leidas = 0;
+  for (const { filas } of lotes()) {
+    for (const f of filas) {
+      leidas++;
+      const r = entradaDelIndice(f);
+      if (!r.ok) { motivos[r.motivo]++; continue; }
+      // Sólo lo que se puede leer: una entrada sin su objeto haría fallar el análisis de esa persona.
+      if (!existentes.has(rutaDelCrudoMigrado(r.entrada.idAws))) { motivos.sin_objeto_en_el_deposito++; continue; }
+      entradas.push(r.entrada);
+    }
+  }
+  const indice = armarIndiceDelCrudoMigrado(entradas, new Date().toISOString());
+  const bytes = zlib.gzipSync(JSON.stringify(indice), { level: 9 });
+  console.log(`filas leídas de los lotes        : ${leidas}`);
+  for (const [motivo, n] of Object.entries(motivos)) console.log(`  fuera, ${motivo.replaceAll("_", " ").padEnd(28)}: ${n}`);
+  console.log(`consultas en el índice           : ${indice.consultas}`);
+  console.log(`personas en el índice            : ${Object.keys(indice.personas).length}`);
+  console.log(`peso del índice (gzip)           : ${(bytes.length / 1024).toFixed(0)} KB`);
+  if (SECO) {
+    console.log("\nEN SECO: no se escribió nada. Para subirlo: repetir sin --seco.");
+    process.exit(0);
+  }
+  const ejecucionIndice = await abrirEjecucion({ url: process.env.SUPABASE_URL, clave: process.env.SUPABASE_SERVICE_ROLE_KEY, guion: "subir-equifax-migrado-a-storage" });
+  // upsert:true sólo acá: el índice se rehace entero con cada bajada; los crudos, en cambio, nunca se pisan.
+  const { error } = await db.storage.from(BUCKET).upload(RUTA_DEL_INDICE_POR_CEDULA, bytes, { contentType: "application/gzip", upsert: true });
+  if (error) morir(`No se pudo subir el índice: ${error.message}`);
+  const { data: blob, error: errBajar } = await db.storage.from(BUCKET).download(RUTA_DEL_INDICE_POR_CEDULA);
+  if (errBajar || !blob) morir(`El índice se subió pero no se pudo bajar para compararlo: ${errBajar?.message ?? "sin datos"}`);
+  const vuelta = JSON.parse(await descomprimirTexto(new Uint8Array(await blob.arrayBuffer())));
+  const igual = JSON.stringify(vuelta) === JSON.stringify(indice);
+  ejecucionIndice.anotar({ fase: "indice", consultas: indice.consultas, personas: Object.keys(indice.personas).length, bytes: bytes.length, ...motivos, verificado: igual });
+  console.log(igual ? "\nÍndice subido y verificado (bajado y comparado)." : "\nNO VERIFICADO: el índice bajado no es igual al subido.");
+  process.exit(igual ? 0 : 1);
 }
 
 // Compara el depósito con lo esperado. Devuelve lo que falta y lo que no coincide.

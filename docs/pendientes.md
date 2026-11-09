@@ -29,7 +29,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de fila vacía (c-6da51438): «Ordenar la consulta guardada» armó sus tablas. Las consultas pagadas por nosotros
   siguen con el crudo en la fila (2,3 MB). **Volver a correr `migrar-equifax-aws.mjs` mete el crudo en la fila otra vez**:
   después se repite `subir-equifax-migrado-a-storage.mjs` (subir, `--enlazar`, `--vaciar --confirmo`) y el `vacuum full`.
-  Un JSON de AWS sin fila en la base no se encuentra por cédula para la supresión del titular.
+  Un JSON de AWS sin fila en la base se encuentra por cédula en el índice de Storage (p4, 2026-11-09), pero la supresión
+  del titular todavía no lo lee: falta que `derechos-del-titular.mjs` borre esos crudos y saque a la persona del índice.
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
   27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11, pero
   **no se borran al vencer** (negocio, 2026-11-05: una consulta queda como la base de lo que se
@@ -364,6 +365,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     última de la persona aunque haya vencido; Plus, sólo la vigente; Pro, ninguna. El enlace
     «Ver el detalle de la capacidad de pago» de la solicitud puede dar otra cuota que la
     solicitud. Se verifica comparando las dos cuotas para una misma persona.
+    **Propuesta (p4, 2026-11-09)**: desde la p4 el análisis lee la última consulta, vigente o no
+    (`ultimaConsultaDeEquifax()`). Que la capacidad de pago (pantalla, función y Plus) lea esa
+    misma, y que la vigencia sólo decida si Plus vuelve a pagar: una sola regla para leer y otra
+    para cobrar. Hoy la de la capacidad toma la última por cédula sin mirar la fecha del cálculo
+    ni la identidad, y no ve las consultas de AWS sin fila. Pro seguiría sin Equifax salvo que el
+    negocio decida que lea la guardada, que no cuesta. Decide el negocio.
 12. **Diseño y producto de la revisión de UX** (`docs/revision-ux.md`, sección 3): Inicio como
     pantalla de trabajo, un solo camino a una persona (falta Aval), unir «Empleos vigentes» y
     «Fuentes detectadas», menos accesos por fila en la bandeja, esqueletos en vez de
@@ -551,7 +558,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     - **p3, la cartera de la institución llega mal al modelo**, en 7 de 12 casos: una sola operación, a
       veces la cancelada, sin cuota y fuera de la deuda.
     - **p4, Equifax existe y no llega**: 214 de 247 análisis piden una cuota que Equifax ya tenía, y sólo
-      28 de las 244 personas tienen la consulta en la base.
+      28 de las 244 personas tienen la consulta en la base. **En curso (2026-11-09)**: el negocio decidió
+      que el análisis lea la última consulta, vigente o no; construida con un índice por cédula en Storage
+      (281 KB, nada en la base). Medido sin costo: base de prueba, de 0 a 244 de 244 con buró a la fecha de
+      su análisis (mediana de 17 días, máximo 58); cartera real con perfil, de 6 a 399 de 3.766 si se
+      analizara hoy (mediana de 26 días, máximo 67). Falta subir el índice (`--indice`, escribe en
+      producción), desplegar y la comparación con el modelo, con el sí del negocio (USD 3,8 a 9,3).
 
     **Hecho el 2026-11-09**: `armar-carpetas.mjs` sirve para cualquier marco, `medir-lote.mjs` mide los
     homónimos y los días entre la solicitud y la consulta, y `resultado-de-pago.mjs` arma el resultado de

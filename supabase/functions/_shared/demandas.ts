@@ -262,3 +262,132 @@ export function demandasPorCategoria(
     .map(([categoria, g]) => ({ categoria, cantidad: g.cantidad, tipos: [...g.tipos] }))
     .sort((a, b) => b.cantidad - a.cantidad || a.categoria.localeCompare(b.categoria));
 }
+
+// ---- ¿La persona es la demandada? ----
+//
+// Proveedor_Info_1 trae de la Función Judicial las demandas que encuentra por
+// el NOMBRE, no por la cédula: el campo `demandado` es texto libre con todos
+// los procesados de la causa, a veces separados por comas y a veces sólo por
+// espacios, con sus abogados en el medio ("... DEF PART AB. ..."). Hasta
+// estructura-v19 el bloqueo por delitos de seguridad ciudadana tomaba toda
+// demanda de esa fuente. En la revisión del análisis del 2026-11-06, de 33
+// personas bloqueadas por una demanda, en 8 el demandado era otra persona
+// (c-14f9ee80, confirmado a mano: comparte un apellido con un procesado y
+// el primer nombre con otro), en 1 tenía los apellidos en otro orden y en 2
+// no había un nombre que cotejar. Salían con score 1 y «negar».
+//
+// Decisión del negocio (2026-11-08, p1 de la revisión): la demanda es de la
+// persona sólo si UN MISMO demandado lleva sus dos apellidos juntos y su
+// primer nombre. Repartidos entre varios demandados no valen, ni tomados del
+// abogado o de quien demanda (`ofendido`, que acá no se mira).
+//
+// "Un mismo demandado", cuando la fuente no los separa, es una secuencia
+// seguida: los dos apellidos y enseguida el primer nombre (como los escribe
+// el Registro Civil), o el primer nombre, a lo sumo otro nombre, y los dos
+// apellidos ("JUAN CARLOS PEREZ LOPEZ"). En una lista pegada
+// ("PEREZ LOPEZ MARIA GOMEZ RUIZ JUAN ...") el primer nombre suelto en
+// cualquier lugar del texto era casi siempre de otro.
+//
+// Lo que no coincide queda como aviso para verificar, nunca como delito propio:
+//   - apellidos_invertidos: mismos nombres con los apellidos en otro orden. En
+//     Ecuador el orden es paterno y materno, y el orden invertido es otra
+//     filiación: lo más probable es otra persona, aunque puede ser un error de
+//     tipeo del juzgado. Un bloqueo es score 1 y «negar» sin análisis: no se
+//     funda en una coincidencia que hay que interpretar. Se avisa aparte para
+//     que el analista lo mire primero.
+//   - sin_demandado: la fuente no dice a quién se demanda. La única relación con
+//     la persona es que la fuente la encontró por el nombre, la misma que tienen
+//     los homónimos; sin dato no hay hecho que bloquee (como las denuncias sin
+//     su cédula, denuncias.ts).
+//   - sin_nombre: no se pudo leer el nombre de la persona. La identidad es una
+//     fuente obligatoria: sin ella la consulta queda incompleta y se frena hasta
+//     reconsultar (calidad-de-la-consulta.ts), en vez de negar con un bloqueo
+//     que no se pudo cotejar.
+export type CotejoDelDemandado = "es_la_persona" | "apellidos_invertidos" | "otra_persona" | "sin_demandado" | "sin_nombre";
+
+// Las partículas de un apellido o un nombre compuesto van pegadas a la palabra
+// que sigue: "DE LA TORRE" es un apellido, y "MARIA DE LOS ANGELES", un nombre
+// y su segundo. Contadas por separado, "DE LA TORRE VASQUEZ JUAN" daba como
+// apellidos "DE LA" y como primer nombre "TORRE".
+const PARTICULAS = new Set(["DE", "DEL", "LA", "LAS", "LOS", "DA", "DAS", "DO", "DOS", "DI", "VAN", "VON", "SAN", "SANTA"]);
+
+// Lo que antecede al nombre de un abogado o un defensor. "AB." llega como "AB"
+// porque se quita la puntuación. La Defensoría Pública no está: es una
+// institución, y lo que la sigue suele ser el nombre de su defendido.
+const ANTES_DE_UN_ABOGADO = new Set([
+  "AB", "ABG", "ABOG", "ABOGADO", "ABOGADA", "DR", "DRA", "DOCTOR", "DOCTORA", "DEF", "DEFENSOR", "DEFENSORA",
+  "PROCURADOR", "PROCURADORA", "PATROCINADOR", "PATROCINADORA",
+]);
+
+// Una letra rota de la fuente (repararTexto la deja como "?") vale por
+// cualquier letra al comparar.
+function palabraNormalizada(texto: string): string {
+  return sinTildes(repararTexto(texto.replace(/Ã‘/g, "Ñ"))).replace(/[^A-Z? ]+/g, " ");
+}
+
+// Las palabras de un nombre, con las partículas pegadas a la siguiente.
+function gruposDelNombre(texto: string): string[] {
+  const palabras = palabraNormalizada(texto).split(/\s+/).filter(Boolean);
+  const grupos: string[] = [];
+  let pendiente: string[] = [];
+  for (const p of palabras) {
+    if (PARTICULAS.has(p)) {
+      pendiente.push(p);
+      continue;
+    }
+    // "DEL AB." es «del abogado»: la partícula no se pega a la marca, o la
+    // marca deja de reconocerse.
+    if (ANTES_DE_UN_ABOGADO.has(p)) grupos.push(...pendiente, p);
+    else grupos.push([...pendiente, p].join(" "));
+    pendiente = [];
+  }
+  if (pendiente.length) grupos.push(pendiente.join(" "));
+  return grupos;
+}
+
+// Cada demandado o lista de demandados, separados por lo que la fuente usa
+// para separarlos: coma, punto y coma, barra, paréntesis o la «Y» suelta.
+function tramosDelDemandado(demandado: string): string[][] {
+  return sinTildes(repararTexto(demandado.replace(/Ã‘/g, "Ñ")))
+    .split(/[,;/()[\]|]|\bY\b/)
+    .map(gruposDelNombre)
+    .filter((t) => t.length > 0);
+}
+
+function mismoGrupo(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (!a.includes("?") && !b.includes("?")) return false;
+  const comodin = (x: string) => new RegExp(`^${x.replace(/\?+/g, "[A-Z]")}$`);
+  return comodin(a).test(b) || comodin(b).test(a);
+}
+
+// ¿La secuencia está seguida en el tramo, sin ser el nombre de un abogado?
+function apareceSeguida(tramo: string[], secuencia: (string | null)[]): boolean {
+  for (let i = 0; i + secuencia.length <= tramo.length; i++) {
+    // null = cualquier nombre (el segundo nombre, que puede faltar o no).
+    if (!secuencia.every((s, j) => s === null || mismoGrupo(tramo[i + j], s))) continue;
+    if (ANTES_DE_UN_ABOGADO.has(tramo[i - 1] ?? "") || ANTES_DE_UN_ABOGADO.has(tramo[i - 2] ?? "")) continue;
+    return true;
+  }
+  return false;
+}
+
+function llevaElNombre(tramos: string[][], apellido1: string, apellido2: string, primerNombre: string | undefined): boolean {
+  const formas: (string | null)[][] = primerNombre
+    ? [[apellido1, apellido2, primerNombre], [primerNombre, apellido1, apellido2], [primerNombre, null, apellido1, apellido2]]
+    : [[apellido1, apellido2]];
+  return tramos.some((tramo) => formas.some((forma) => apareceSeguida(tramo, forma)));
+}
+
+// `nombreDeLaPersona` como lo da la identidad: APELLIDO1 APELLIDO2 NOMBRE1
+// [NOMBRE2].
+export function cotejarDemandado(demandado: unknown, nombreDeLaPersona: unknown): CotejoDelDemandado {
+  const persona = gruposDelNombre(String(nombreDeLaPersona ?? ""));
+  if (persona.length < 2) return "sin_nombre";
+  const tramos = tramosDelDemandado(String(demandado ?? ""));
+  if (tramos.length === 0) return "sin_demandado";
+  const [apellido1, apellido2, primerNombre] = persona;
+  if (llevaElNombre(tramos, apellido1, apellido2, primerNombre)) return "es_la_persona";
+  if (apellido1 !== apellido2 && llevaElNombre(tramos, apellido2, apellido1, primerNombre)) return "apellidos_invertidos";
+  return "otra_persona";
+}
