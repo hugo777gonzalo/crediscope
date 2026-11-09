@@ -1677,12 +1677,12 @@ components:
             properties:
               codigo:
                 type: string
-                enum: [fallecido, cedula_inconsistente, lista_control, lista_negra, listas_control_interno, pep, homonimo_en_lista_control, delito_seguridad_ciudadana]
+                enum: [fallecido, cedula_inconsistente, lista_control, lista_negra, listas_control_interno, pep, homonimo_en_lista_control, delito_seguridad_ciudadana, posible_homonimo_en_demanda_penal]
               mensaje:
                 type: string
               bloqueante:
                 type: boolean
-                description: '`false`: se informa, pero no fuerza la negación (por ejemplo, una persona expuesta políticamente o un homónimo).'
+                description: '`false`: se informa, pero no fuerza la negación (por ejemplo, una persona expuesta políticamente, un homónimo o una demanda penal cuyo demandado no es la persona).'
 
     Disponibilidad:
       type: object

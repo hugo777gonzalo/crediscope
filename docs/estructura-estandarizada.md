@@ -845,6 +845,24 @@ interface StandardClientProfile {
 >   - `revisar-datos.mjs`: `cargo-vigente-sin-aporte-vigente` bajó de 17 a 0 y no volvió ninguna regresión.
 >   - `validar-perfil-del-modelo.mjs`: 0 fallas.
 
+> **estructura-v20 (2026-11-09, p1 de la revisión del análisis, aprobada por el
+> negocio el 2026-11-08)** — una demanda por un delito de seguridad ciudadana es de
+> la persona sólo si UN MISMO demandado lleva sus dos apellidos juntos y su primer
+> nombre (`cotejarDemandado()`, `demandas.ts`; `delitosDeSeguridadEnDemandas()`,
+> `delitos-seguridad.ts`). La fuente las encuentra por el nombre. Lo que no
+> coincide (otro nombre, los apellidos en otro orden, sin demandado o sin el nombre
+> de la persona) no cuenta en `riesgoSeguridadCiudadana` y el bloqueo lo avisa sin
+> bloquear: `posible_homonimo_en_demanda_penal`, «Posible homónimo: verificar».
+> - **Seco del 2026-11-09** (`recalcular-grupos.mjs --grupos=riesgoSeguridadCiudadana
+>   --bloqueo --seco`, viejo contra nuevo con el perfil entero): 3.766 perfiles, ninguno
+>   deja de reproducirse; cambia `riesgoSeguridadCiudadana` en 13 y se desbloquean 12
+>   de las 36 personas bloqueadas por este control (0 bloqueos nuevos). De las 12: 9
+>   con el nombre de otro demandado (una es la abogada defensora), 1 con los
+>   apellidos en otro orden, 1 sin demandado y 1 sin el nombre (identidad en error:
+>   la consulta queda incompleta y se frena). El detector es
+>   `bloqueo-por-demanda-de-otro-demandado` (`scripts/revisar-crudo.mjs`).
+> - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |

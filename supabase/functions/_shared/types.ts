@@ -97,7 +97,10 @@ export type CodigoControlBloqueo =
   | "listas_control_interno"
   | "pep"
   | "homonimo_en_lista_control"
-  | "delito_seguridad_ciudadana";
+  | "delito_seguridad_ciudadana"
+  // Una demanda por un delito de seguridad en la que el demandado no es la
+  // persona (estructura-v20, delitos-seguridad.ts): se avisa, no bloquea.
+  | "posible_homonimo_en_demanda_penal";
 
 export interface HallazgoControlBloqueo {
   code: CodigoControlBloqueo;
