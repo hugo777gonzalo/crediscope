@@ -200,7 +200,7 @@ Deno.test("una migrada y su entrada en el índice son la misma consulta: gana la
   const migrada = fila("c-9", "2026-10-02T14:00:00.000Z", { estructura: null, crudo_ruta: "aws/7002.json.gz", id_aws: "7002" });
   const c = await ultimaConsultaDeEquifax(baseFalsa({}, { listas: { consultas_equifax: filas(migrada) }, objetos }), PERSONA, AHORA);
   assertEquals([c?.consultaId, c?.crudoAws], ["c-9", null]);
-  assertEquals((c?.estructura.consulta as Record<string, unknown>).identidadVerificada, true);
+  assertEquals((c!.estructura.consulta as Record<string, unknown>).identidadVerificada, true);
 });
 
 Deno.test("una fila sin estructura y con el crudo en la fila se deriva desde ese crudo", async () => {
@@ -211,7 +211,7 @@ Deno.test("una fila sin estructura y con el crudo en la fila se deriva desde ese
     { listas: { consultas_equifax: filas(sinTablas) } },
   );
   const c = await ultimaConsultaDeEquifax(db, PERSONA, AHORA);
-  assertEquals([c?.consultaId, (c?.estructura.consulta as Record<string, unknown>).consultadoEl], ["c-3", "2026-10-01T14:00:00Z"]);
+  assertEquals([c?.consultaId, (c!.estructura.consulta as Record<string, unknown>).consultadoEl], ["c-3", "2026-10-01T14:00:00Z"]);
   assertEquals(db.llamadas.some((l) => l.metodo === "eq" && l.args[0] === "id" && l.args[1] === "c-3"), true);
 });
 
