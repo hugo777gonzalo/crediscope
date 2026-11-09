@@ -484,11 +484,34 @@
 // negocio», falso para 77 que traen «SIN ACTIVIDAD ECONOMICA». v34 es v32 con
 // eso; v35, v33 con eso, y es la que entra: el buró se encendió el mismo día.
 //
+// v36 (BORRADOR, 2026-11-09; no se prueba ni se despliega sin autorización del
+// negocio con la cifra): la versión del predictor de ingresos (punto 2.4 de
+// pendientes, decidido el 2026-10-29) con las propuestas de la revisión del
+// análisis del 2026-11-06, aprobadas el 2026-11-08.
+//  - p9, la redacción que provocaba el propio marco: «persona» y no «cliente»
+//    (el marco decía «cliente» y el 57% de los análisis también); la primera
+//    frase del reasoning dice la recomendación y lo que la decide (el 72% abría
+//    con «El comportamiento de…»); la deuda contra el ingreso de un año o la
+//    cuota contra el del mes, nunca «N veces el ingreso mensual» (5% del lote).
+//  - p5, las demandas de cobro con su año y quién demanda (demandasDeCobro):
+//    una de más de 2 años pesa menos. En c-5dfb1e00 una de 2005 y dos de 2009
+//    pesaron unos 170 puntos. El dato lo trae la estructura (otra sesión): sin
+//    él el texto dice que no se sabe el año.
+//  - p3, el nombre: la cartera de la institución es «crédito con la
+//    institución», no la de otro motor de scoring con el nombre del proveedor.
+//    Un «Excelente Pagador» con 4 cuotas pagadas había pesado como fortaleza.
+//  - p7, el lugar del ingreso estimado (ingresoEstimado) y de su mínimo: un
+//    indicio sin verificar, nunca capacidad. No llega todavía: el predictor no
+//    tiene estimaciones en producción y su versión 2 está en el PR #145.
+// Desde v36 el interruptor del buró no tiene versión propia: está encendido
+// desde el 2026-11-04, y lo que leyó cada análisis lo dice su
+// mensaje_al_modelo (con o sin buroEquifax), como ya pasaba dentro de v35.
+
 // El LLM recibe esto como parte de su system prompt, junto con el perfil
 // del modelo (perfilDelModelo) y los hallazgos de controles-bloqueo.ts
 // (que ya se resolvieron de forma determinística, no los debe recalcular).
 
-export const MARCO_VERSION = "marco-v34";
+export const MARCO_VERSION = "marco-v36";
 
 // El retail es el mismo con buró y sin él: una sola vez, para que los dos
 // textos no digan cosas distintas de la misma fuente.
@@ -537,7 +560,7 @@ reciente: usalo para dar contexto real en vez de sólo decir "es PEP".
 
 Homónimo (cumplimiento.tieneHomonimoEnListaControl, o un hallazgo
 "homonimo_en_lista_control" con bloqueante=false) es OTRA persona con el
-mismo nombre y otra cédula en una lista de control. No es el cliente: no
+mismo nombre y otra cédula en una lista de control. No es la persona: no
 es negativo ni indicio de mal comportamiento. A lo sumo, una nota de
 auditoría (posible confusión de identidad a vigilar).
 
@@ -641,6 +664,15 @@ ${CORTE_DEL_RETAIL}
    mayor que 0 pesa fuerte, como comportamientoCooperativas: alguien ya le
    demandó por no pagar. tiposDemandasComoDemandado dice de qué es cada
    cobro.
+   - demandasDeCobro trae cada una con su año y quién demanda
+     ("Institución financiera" o "Persona"). Una demanda de más de 2 años
+     pesa menos, y menos cuanto más vieja: una de 2009 con el buró al día
+     desde entonces es historia, no situación actual. Una del último año
+     pesa entera. Que la demande una institución financiera dice más de
+     su comportamiento de pago que el cobro de una letra entre personas.
+     Nombrá el año ("una demanda de cobro de 2009"). Sin demandasDeCobro
+     (perfiles anteriores) no se sabe el año: no supongas que es reciente
+     ni vieja.
 
 6. riesgoJudicialCivil: el resto de los procesos en su contra. No todos
    son juicios: demandasPorCategoria dice cuántos hay de cada categoría, y
@@ -792,8 +824,26 @@ ${CORTE_DEL_RETAIL}
    - documentosDeConfirmacion son los "Documentos de Confirmación de
      Ingresos" que la pantalla ya le pide al analista. Si el caso depende
      del ingreso, tus accionesSugeridas tienen que ser coherentes con esa
-     lista: podés precisarlos para este cliente, no contradecirlos ni
+     lista: podés precisarlos para esta persona, no contradecirlos ni
      reemplazarlos por otros.
+   - ingresoEstimado: lo que estima el predictor de ingresos de CrediScope
+     con los datos de la persona. Llega sólo cuando hay una estimación. Es
+     una estimación sin verificar, no un ingreso:
+     · rotulo dice cómo nombrarla: "Ingreso estimado, sin verificar" o,
+       con un mínimo bajo, "Referencia de solicitantes". Usá ese nombre.
+     · minimo es lo que gana al menos, con la seguridad que dice
+       seguridadDelMinimo (0,9 es 9 de cada 10 personas como ella).
+       Citá el mínimo con su seguridad; valorCentral es sólo una
+       referencia y no se usa para decir cuánto gana.
+     · Nunca confirma la capacidad ni reemplaza al ingreso reportado al
+       IESS: no lo sumes, no lo uses para aprobar y no lo pongas en
+       positives como un ingreso.
+     · Sirve para leer lo que falta. Con un ingreso Por confirmar o Sin
+       determinar, o con el Ingreso Mínimo SBU, un mínimo estimado muy
+       por encima de lo reportado dice que el ingreso real probablemente
+       es mayor: decilo así, como un indicio, y pedí los documentos que
+       lo confirmen. Un mínimo por debajo de lo reportado no lo
+       desmiente.
 
    laboral: empleosActuales (una entrada por empleo vigente, con
    tipoEmpleador, cargo y salarioAprox) e ingresoPromedioUltimos6Meses son
@@ -817,7 +867,7 @@ ${CORTE_DEL_RETAIL}
      común: no se sabe. No es un negativo ni contradice el empleo, y no hace
      falta nombrarlo.
    - empleadorConApellidoDelCliente: algún empleador lleva uno de los
-     apellidos del cliente, posible empleo en un negocio familiar; cuál de
+     apellidos de la persona, posible empleo en un negocio familiar; cuál de
      sus empleos es, lo dice posibleNegocioFamiliar en cada uno. No es
      negativo por sí solo: mucha gente trabaja formalmente en la empresa
      de su familia. Lo que cambia es cuánto vale el ingreso declarado como
@@ -901,11 +951,19 @@ ${CORTE_DEL_RETAIL}
     valorAdeudadoTransito). No le des el peso de los grupos de
     comportamiento de pago.
 
-15. comportamientoInterno: sólo llega cuando la persona es cliente interno
-    de Proveedor_Info_1. Si llega con datos (proveedorInfo1ResultadoHabitoPago,
-    proveedorInfo1PerfilInterno), es el veredicto de otro motor de scoring sobre
-    esta misma persona: pesa como comportamientoBancario o más. Si no
+15. comportamientoInterno: el crédito con la institución que pide este
+    análisis. Sólo llega cuando la persona tiene o tuvo un crédito con
+    ella. Llamalo "crédito con la institución", nunca con el nombre de la
+    fuente que lo trae (los campos empiezan con proveedorInfo1 por eso, no
+    porque sea de otra entidad). proveedorInfo1ResultadoHabitoPago y
+    proveedorInfo1PerfilInterno son cómo paga ese crédito según la propia
+    institución: pesa como comportamientoBancario o más. Si no
     llega, no es un hueco de información: no lo menciones.
+    - Pesa según cuánta historia hay: "Excelente Pagador" con pocas
+      cuotas pagadas es poca evidencia, no una fortaleza.
+    - proveedorInfo1SaldoCapitalVigente es deuda propia. Si endeudamiento
+      no la incluye, nombrala aparte al decir cuánto debe, y su cuota no
+      se conoce: no supongas que es la única deuda ni que está paga.
 
 QUÉ INFORMACIÓN SE PUDO OBTENER
 Es la distinción más importante de este marco. disponibilidad, al
@@ -975,6 +1033,13 @@ El analista que lee esto no conoce el perfil del modelo; conoce el
 negocio.
 - Todo en español, cada frase de cada campo, aunque un valor del profile
   venga en otro idioma.
+- A quien se analiza llamala "la persona", nunca "el cliente": cliente es
+  quien ya tiene un crédito.
+- Para poner la deuda frente al ingreso, compará la cuota con el ingreso
+  del mes, o la deuda total con el ingreso de un año (12 veces el
+  mensual). Nunca escribas "debe N veces su ingreso mensual": pone un
+  saldo que se paga en años contra un solo mes de ingreso y exagera la
+  carga.
 - No escribas el nombre técnico de un campo ("numeroDenunciasComoSospechoso",
   "estadoAfiliacionIess", "pensionAlimenticiaEnMora"): traducilo a lo que
   un analista entiende sin haber visto el JSON ("aparece 2 veces como
@@ -1026,7 +1091,7 @@ uno de la otra. Una de estas tres:
     dirección. No es un rechazo: no niegues por lo que no se sabe ni
     apruebes sin los sustentos suficientes. En este caso missingInfo dice
     concretamente qué dato falta y por qué cambia la decisión, y
-    accionesSugeridas qué pedirle o verificarle al cliente para
+    accionesSugeridas qué pedirle o verificarle a la persona para
     conseguirlo.
 - "negar": señales graves y confirmadas de mal comportamiento de pago
   (mora significativa vigente, cartera castigada, demandas de cobro
@@ -1044,7 +1109,7 @@ el análisis.
   con…", "Contrastar…"), una acción por línea, en una oración que se
   entienda sola: ni telegráfica ("Pedir rol de pagos") ni un relato de
   tres renglones.
-- Tienen que ser de este cliente: si la misma frase le sirve a cualquiera,
+- Tienen que ser de esta persona: si la misma frase le sirve a cualquiera,
   no va.
 - Cuando corresponda, decí qué destraba: qué cambiaría en la decisión si
   ese dato aparece o se confirma.
@@ -1082,7 +1147,11 @@ La pantalla muestra todo junto: cada campo tiene que aportar algo que los
 otros no dicen.
 - reasoning: 3 a 6 líneas, en tono profesional, que explican por qué:
   qué evidencia pesó más, qué tensión hubo entre grupos, por qué esa
-  recomendación y no otra. No repitas los indicadores en prosa ("el
+  recomendación y no otra. La primera frase dice la recomendación y lo
+  que la decide ("Revisar: paga al día, pero la cuota de su deuda con
+  bancos no se conoce y el ingreso está por confirmar."); el analista que
+  lee sólo esa frase tiene que saber qué hacer. No abras describiendo un
+  grupo ("El comportamiento de pago de..."). No repitas los indicadores en prosa ("el
   perfil muestra un riesgo muy alto, con un score muy bajo" no agrega
   nada) ni pongas acciones. El reasoning contesta "¿por qué?",
   accionesSugeridas "¿qué hago?" y missingInfo "¿qué no se pudo
@@ -1106,7 +1175,7 @@ positives, negatives, missingInfo y reasoning.
 // marco-v33: el buró de la institución (apagado; ver las notas v31 y v33 arriba)
 // ---------------------------------------------------------------------------
 
-export const MARCO_VERSION_CON_BURO = "marco-v35";
+export const MARCO_VERSION_CON_BURO = MARCO_VERSION;
 
 // Los grupos 3 y 4 cuando llega buroEquifax. Los criterios dentro del grupo
 // son, como los demás del marco, una propuesta a validar con el negocio
