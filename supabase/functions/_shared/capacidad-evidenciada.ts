@@ -41,13 +41,16 @@
 // No juzga si la capacidad alcanza: eso es del modelo y de la capacidad de pago
 // de la solicitud (capacidad-de-pago.ts). Sólo si hay con qué juzgarla.
 //
-// MEDIDO SIN MODELO (2026-11-09): baja las 53 aprobaciones del lote del 31/10 y
-// las 49 de marco-v28. Con lo que llega hoy, ninguno de esos 454 análisis tiene
-// la capacidad evidenciada: «aprobar» vuelve cuando lleguen las cuotas (Equifax,
-// p4; la institución, p3). Contra el pago (resultado de la base de prueba, PR
-// #148): de las 41 aprobadas cuyo crédito figura en la cartera, 2 están hoy en
-// mora (6 y 12 días) y la regla las baja, pero baja también las 39 que pagan.
-// Hoy no distingue a nadie: frena por falta de evidencia, no predice el pago.
+// MEDIDO SIN MODELO (2026-11-09), sobre las 53 aprobaciones del lote del 31/10:
+// - con lo que leyó el modelo (sin Equifax), baja las 53, y las 49 de marco-v28:
+//   sin la cuota de bancos nadie tiene la capacidad evidenciada;
+// - con la última consulta de Equifax (p4, PR #152: 246 de 247 la tienen, 17 días
+//   de mediana), baja 48. Lo que falta ya no es bancos sino la cuota del
+//   IESS/BIESS (34), la del crédito con la institución (40) y el ingreso (10).
+// Contra el pago (PR #148), de las 41 aprobadas cuyo crédito figura en la
+// cartera, las 2 que hoy están en mora (6 y 12 días) bajan por el IESS/BIESS, y
+// de las 4 que quedan aprobadas ninguna está en mora. Con «sólo el ingreso»
+// quedarían las 2 aprobadas.
 
 import type { LlmScoringResult } from "./types.ts";
 
