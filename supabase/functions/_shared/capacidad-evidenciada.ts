@@ -20,40 +20,45 @@
 // - La razón sale concreta (cuánto debe y a quién) y dice qué conseguir.
 // No cambia lo que lee ni lo que escribe el modelo: no es una versión del marco.
 //
-// QUÉ ES «EVIDENCIADA»: las dos cosas que hacen falta para comparar.
-// 1. Un ingreso confirmado por un tercero (fuentesIngreso.estado «Confirmado por
-//    un tercero», con monto). «Por confirmar» y «Sin determinar» no lo son: el
-//    marco ya dice que ahí la capacidad no está evidenciada. Un jubilado o un
-//    militar sin monto tampoco: se sabe que cobra, no cuánto.
-// 2. La cuota de toda su deuda propia vigente:
+// QUÉ ES «EVIDENCIADA»: las dos cosas que hacen falta para comparar (alcance
+// decidido por el negocio el 2026-11-09).
+// 1. Un ingreso con qué medir:
+//    - el confirmado por un tercero (fuentesIngreso.estado «Confirmado por un
+//      tercero», con monto);
+//    - o, si no lo hay, la estimación propia del predictor de ingresos
+//      (fuentesIngreso.ingresoEstimado con el rótulo «Ingreso estimado, sin
+//      verificar» y su mínimo del 90%). El modelo puede aprobar asumiendo esa
+//      estimación como válida; verificarla queda para el analista. Es lo mismo
+//      que hará la capacidad de pago (especificación del predictor, paso 6). La
+//      «Referencia de solicitantes» no alcanza: es la de la población, no la de
+//      la persona. Hoy no llega ninguna estimación al perfil del modelo (marco-v36).
+//    Un jubilado sin monto no tiene con qué medir hasta que exista la referencia
+//    de pensiones del predictor.
+// 2. La cuota de su deuda con bancos y cooperativas:
 //    - bancos: sin el buró de la institución, Proveedor_Info_1 no informa la
 //      cuota de bancos; con Equifax, la trae (cuotaMensualConocida);
 //    - cooperativas: la cuota viene con la deuda; sin ella, no se conoce;
-//    - préstamos del IESS/BIESS: ninguna fuente trae la cuota (el rol de pagos
-//      muestra el descuento). Cuenta con saldo (desde marco-v32): antes llegaba
-//      sólo cuántos préstamos tuvo, sin decir si siguen vigentes;
-//    - un tema de deuda sin respuesta: no se sabe si debe.
+//    - un tema de esa deuda sin respuesta: no se sabe si debe.
+//    No frena la cuota de los préstamos del IESS/BIESS, que ninguna fuente trae
+//    al perfil: el negocio decidió que no se frena una aprobación por eso.
+//    Equifax trae el préstamo del BIESS con su cuota en 28 de 34 casos medidos.
 //    No cuentan las casas comerciales (son de su corte, julio de 2025: el marco
 //    dice que no son deuda de hoy), lo que respalda como codeudor o garante (no
 //    es propio) ni el Comportamiento Interno: la operación con la institución es
-//    historia de pago y no entra en ningún cálculo, ni de saldo ni de cuota
-//    (negocio, 2026-11-09).
+//    historia de pago y no entra en ningún cálculo, ni de saldo ni de cuota.
 // No juzga si la capacidad alcanza: eso es del modelo y de la capacidad de pago
 // de la solicitud (capacidad-de-pago.ts). Sólo si hay con qué juzgarla.
 //
 // MEDIDO SIN MODELO (2026-11-09), sobre las 53 aprobaciones del lote del 31/10:
-// - con lo que leyó el modelo (sin Equifax), baja las 53: sin la cuota de bancos
-//   nadie tiene la capacidad evidenciada;
+// - con lo que leyó el modelo (sin Equifax), baja 51: sin la cuota de bancos;
 // - con la última consulta de Equifax (p4, PR #152: 246 de 247 la tienen, 17 días
-//   de mediana), quedan 11: lo que falta es la cuota del IESS/BIESS (34) y el
-//   ingreso (10). Contra el pago (PR #148), de las 41 aprobadas cuyo crédito
-//   figura en la cartera, las 2 que hoy están en mora bajan por el
-//   IESS/BIESS, y de las 8 que quedan ninguna está en mora.
-// Pero Equifax trae el préstamo del BIESS, con su cuota, en 28 de esas 34: la
-// cuota está en cuotaMensualConocida, sólo que el perfil del modelo no dice que
-// la incluye. Si se la diera por conocida, quedarían 37 y las 2 en mora seguirían
-// aprobadas: las dos tienen una cuota conocida mayor que su ingreso reportado al
-// IESS, y eso ya no es falta de evidencia sino de capacidad.
+//   de mediana), baja 10, todas por el ingreso; con la estimación propia del
+//   predictor (nivel 1 sin calibrar, medida en lote sin guardar), baja 5: 3
+//   jubilados, 1 con sólo la referencia de solicitantes y 1 dependiente sin monto.
+// Contra el pago (PR #148), de las 41 aprobadas cuyo crédito figura en la
+// cartera, bajan 4 y ninguna está en mora; las 2 que hoy están en mora siguen
+// aprobadas. En las dos, la cuota que ya se conoce supera el ingreso reportado al
+// IESS: no les falta evidencia sino capacidad, y eso no lo mira esta regla.
 
 import type { LlmScoringResult } from "./types.ts";
 
@@ -65,8 +70,7 @@ export type MotivoSinCapacidad =
   | "deuda_sin_respuesta"
   | "cuota_bancos"
   | "cuota_cooperativas"
-  | "cuota_buro"
-  | "cuota_iess_biess";
+  | "cuota_buro";
 
 export interface Faltante {
   motivo: MotivoSinCapacidad;
@@ -89,6 +93,9 @@ export interface CapacidadEvidenciada {
 export const ACCION_DE_LA_REGLA_DE_CAPACIDAD = "Confirmar la capacidad de pago antes de aprobar:";
 
 const CONFIRMADO = "Confirmado por un tercero";
+// El rótulo del predictor cuando el mínimo pasa de USD 1.000 (estimacion-de-ingreso.ts):
+// es una estimación de la persona. «Referencia de solicitantes» es la de la población.
+const ROTULO_DE_LA_ESTIMACION_PROPIA = "Ingreso estimado, sin verificar";
 
 const moneda = new Intl.NumberFormat("es-EC", {
   style: "currency",
@@ -103,15 +110,19 @@ const comoObjeto = (v: unknown): AnyRecord | null => (v && typeof v === "object"
 // Los temas de deuda que, sin respuesta, dejan sin saber si la persona debe. Con
 // el buró de la institución, bancos, Diners y cooperativas los trae Equifax y ya
 // cuentan como consultados (perfil-del-modelo.ts, disponibilidadPorTema).
-const TEMAS_DE_DEUDA = ["buró de crédito de bancos", "tarjetas Diners", "cooperativas", "préstamos del IESS/BIESS"];
+const TEMAS_DE_DEUDA = ["buró de crédito de bancos", "tarjetas Diners", "cooperativas"];
 
 export function capacidadEvidenciada(perfilDelModelo: AnyRecord | null | undefined): CapacidadEvidenciada {
   const p = comoObjeto(perfilDelModelo) ?? {};
   const faltantes: Faltante[] = [];
 
-  // 1. El ingreso.
+  // 1. El ingreso: el confirmado por un tercero o, si no lo hay, la estimación
+  // propia del predictor (su mínimo del 90%).
   const fi = comoObjeto(p.fuentesIngreso);
-  if (fi?.estado !== CONFIRMADO || positivo(fi?.ingresoReportadoIess) === 0) {
+  const confirmado = fi?.estado === CONFIRMADO && positivo(fi?.ingresoReportadoIess) > 0;
+  const estimado = comoObjeto(fi?.ingresoEstimado);
+  const conEstimacionPropia = estimado?.rotulo === ROTULO_DE_LA_ESTIMACION_PROPIA && positivo(estimado?.minimo) > 0;
+  if (!confirmado && !conEstimacionPropia) {
     faltantes.push({ motivo: "ingreso_sin_confirmar", ...(typeof fi?.estado === "string" && fi.estado !== CONFIRMADO ? { detalle: fi.estado } : {}) });
   }
 
@@ -138,9 +149,6 @@ export function capacidadEvidenciada(perfilDelModelo: AnyRecord | null | undefin
     }
   }
 
-  const biess = positivo(comoObjeto(p.comportamientoBancario)?.saldoPrestamosIessBiess);
-  if (biess > 0) faltantes.push({ motivo: "cuota_iess_biess", acreedor: "el IESS/BIESS", saldo: biess });
-
 
   return { evidenciada: faltantes.length === 0, faltantes };
 }
@@ -150,8 +158,8 @@ function unir(partes: string[], conjuncion: "y" | "ni"): string {
 }
 
 // La acción, en una oración: «el ingreso no está confirmado por un tercero (Por
-// confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con el
-// IESS/BIESS ($3.200)».
+// confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con
+// cooperativas ($1.801)».
 export function accionDeLaRegla(faltantes: Faltante[]): string {
   const partes: string[] = [];
   const ingreso = faltantes.find((f) => f.motivo === "ingreso_sin_confirmar");

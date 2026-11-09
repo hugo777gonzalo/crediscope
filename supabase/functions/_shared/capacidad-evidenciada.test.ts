@@ -70,6 +70,19 @@ Deno.test("un ingreso que no confirma un tercero no evidencia la capacidad", () 
   assertEquals(motivos(perfil({ fuentesIngreso: null })), ["ingreso_sin_confirmar"]);
 });
 
+Deno.test("la estimación propia del predictor vale como ingreso; la referencia de solicitantes no (negocio, 2026-11-09)", () => {
+  const conEstimacion = (ingresoEstimado: AnyRecord) =>
+    perfil({ fuentesIngreso: { estado: "Por confirmar", ingresoReportadoIess: 470, ingresoEstimado } });
+  assertEquals(motivos(conEstimacion({ rotulo: "Ingreso estimado, sin verificar", minimo: 1240, seguridadDelMinimo: 0.9 })), []);
+  assertEquals(motivos(conEstimacion({ rotulo: "Referencia de solicitantes", minimo: 980, seguridadDelMinimo: 0.9 })), ["ingreso_sin_confirmar"]);
+  assertEquals(motivos(conEstimacion({ rotulo: "Ingreso estimado, sin verificar", minimo: null })), ["ingreso_sin_confirmar"]);
+  // Sin ingreso del IESS y sin estado (un independiente que no aporta), la estimación sola alcanza.
+  assertEquals(motivos(perfil({ fuentesIngreso: { estado: "Sin determinar", ingresoEstimado: { rotulo: "Ingreso estimado, sin verificar", minimo: 1500 } } })), []);
+  // Con la estimación, la aprobación del modelo queda.
+  const r = aprobacion(conEstimacion({ rotulo: "Ingreso estimado, sin verificar", minimo: 1240 }));
+  assertEquals(aplicarReglaDeCapacidad(r).recomendacion, "aprobar");
+});
+
 Deno.test("sin el buró de la institución, la deuda con bancos deja la cuota sin conocer", () => {
   assertEquals(motivos(conDeuda({ deudaPropiaBancos: 8374, deudaPropiaTotal: 8374 })), ["cuota_bancos"]);
 });
@@ -88,13 +101,12 @@ Deno.test("con el buró de la institución, la cuota de Equifax cubre bancos, co
   assertEquals(motivos(conBuro({ deudaPropiaBancos: null, deudaPropiaTotal: null, cuotaMensualConocida: null })), ["cuota_buro"]);
 });
 
-Deno.test("los préstamos del IESS/BIESS cuentan con saldo; sin saldo no se sabe si siguen vigentes", () => {
-  const banco = (campos: AnyRecord) => perfil({ comportamientoBancario: { ...perfil().comportamientoBancario, ...campos } });
-  assertEquals(motivos(banco({ numeroPrestamosIessBiess: 2, saldoPrestamosIessBiess: 3200 })), ["cuota_iess_biess"]);
-  assertEquals(motivos(banco({ numeroPrestamosIessBiess: 8, saldoPrestamosIessBiess: 0 })), []);
-  // Antes de marco-v32 llegaba sólo cuántos tuvo.
-  const { saldoPrestamosIessBiess: _, ...sinSaldo } = perfil().comportamientoBancario;
-  assertEquals(motivos(perfil({ comportamientoBancario: { ...sinSaldo, numeroPrestamosIessBiess: 8 } })), []);
+Deno.test("la cuota de los préstamos del IESS/BIESS no frena (negocio, 2026-11-09)", () => {
+  const banco = { ...perfil().comportamientoBancario, numeroPrestamosIessBiess: 2, saldoPrestamosIessBiess: 3200 };
+  assertEquals(motivos(perfil({ comportamientoBancario: banco })), []);
+  // Tampoco si esa fuente no contestó.
+  const p = perfil({ comportamientoBancario: banco, disponibilidad: { temasConsultados: [], temasSinRespuesta: ["préstamos del IESS/BIESS"] } });
+  assertEquals(motivos(p), []);
 });
 
 Deno.test("el Comportamiento Interno no cuenta: es historia de pago, no deuda (negocio, 2026-11-09)", () => {
@@ -118,15 +130,12 @@ Deno.test("un tema de deuda sin respuesta deja sin saber si debe", () => {
 
 Deno.test("la acción dice qué falta en una oración", () => {
   const p = conDeuda(
-    { deudaPropiaBancos: 8374, deudaPropiaTotal: 8374 },
-    perfil({
-      fuentesIngreso: { estado: "Por confirmar", ingresoReportadoIess: 470 },
-      comportamientoBancario: { ...perfil().comportamientoBancario, numeroPrestamosIessBiess: 1, saldoPrestamosIessBiess: 3200 },
-    }),
+    { deudaPropiaBancos: 8374, deudaPropiaCooperativas: 1801, deudaPropiaTotal: 10175, cuotaMensualConocida: null },
+    perfil({ fuentesIngreso: { estado: "Por confirmar", ingresoReportadoIess: 470 } }),
   );
   assertEquals(
     accionDeLaRegla(capacidadEvidenciada(p).faltantes),
-    "Confirmar la capacidad de pago antes de aprobar: el ingreso no está confirmado por un tercero (Por confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con el IESS/BIESS ($3.200). El resto del análisis apunta a aprobar.",
+    "Confirmar la capacidad de pago antes de aprobar: el ingreso no está confirmado por un tercero (Por confirmar) y no se conoce la cuota de su deuda con bancos ($8.374) ni con cooperativas ($1.801). El resto del análisis apunta a aprobar.",
   );
   assertEquals(
     accionDeLaRegla(capacidadEvidenciada(conDeuda({ deudaPropiaBancos: 500, deudaPropiaTotal: 500 })).faltantes),
