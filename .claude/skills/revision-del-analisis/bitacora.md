@@ -33,8 +33,9 @@ de la habilidad. Casos sólo como `c-xxxxxxxx`. La más nueva va arriba.
       disparó y dictaminar también sin el control (`c-14f9ee80`);
     - una diferencia de score mayor que el ruido es hallazgo aunque la recomendación coincida
       (`c-5dfb1e00`, 170 puntos).
-  - **10 propuestas** (p1 a p10) en https://claude.ai/artifact/7EsSQjxfejmkW2zNCNhsuS. Al
-    2026-11-07, ninguna decidida.
+  - **10 propuestas** (p1 a p10) en https://claude.ai/artifact/7EsSQjxfejmkW2zNCNhsuS. El
+    2026-11-08 el negocio aprobó las 10, sin comentarios. La p4 (Equifax que no llega) no tenía
+    una opción recomendada: «aprobar» no dice cuál, y la habilidad ahora pide preguntarlo.
   - **Pregunta abierta para el negocio**: cómo valida la institución el «ingreso validado del
     titular». En 42 de 233 es igual (±5%) al ingreso que estima Equifax.
   - Las mediciones del lote, hechas a mano en `guiones-del-piloto/`, pasaron a `medir-lote.mjs` y

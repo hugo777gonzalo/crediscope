@@ -8,4 +8,5 @@ modelo. Casos sólo como `c-xxxxxxxx`; la cédula de cada uno, en
 
 Una línea por caso: el caso, la fecha, qué dijo el negocio y sobre qué análisis (marco).
 
-Todavía ninguno: al 2026-11-07 el negocio no dictaminó un análisis en la página del piloto.
+Todavía ninguno: lo que el negocio decidió el 2026-11-08 en la página del piloto son las
+propuestas, no casos.
