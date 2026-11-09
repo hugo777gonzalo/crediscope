@@ -533,6 +533,37 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     - **El menú en el teléfono** sigue siendo una fila de íconos sin texto, y las pestañas miden 31 px.
     - `/solicitud/no-existe` y una solicitud que no existe dan dos mensajes distintos; a los emojis el
       Inicio los llama «pasaporte».
+20. **La revisión del análisis: las 10 propuestas, aprobadas y sin aplicar** (habilidad
+    `revision-del-analisis`, piloto del 2026-11-06). Un jefe de crédito (Opus, a ciegas) revisó 12 análisis
+    de la base de prueba de AWS, y se midieron sin modelo los 247 del lote del 31/10. De 81 hallazgos, el 64%
+    nace en los datos que le llegan al modelo, y marco-v35 no corrige el 70%. Las propuestas están en
+    https://claude.ai/artifact/7EsSQjxfejmkW2zNCNhsuS, y el 2026-11-08 el negocio aprobó las 10 sin
+    comentarios (colección `decisiones`). Cada una va en su sesión y su PR, por el circuito de siempre; las
+    que tocan el marco van juntas en la versión del predictor (p7). **La p4 no tenía una opción
+    recomendada**: falta que el negocio diga cuál, y con cuántos días si es leer la última consulta. Las
+    cuatro altas:
+    - **p1, bloqueos por la demanda penal de otra persona**: el control toma la demanda sin cotejar al
+      demandado, y en 8 de 33 bloqueados por una demanda el demandado es otro. En c-14f9ee80 se confirmó a
+      mano, y la institución le había aprobado un crédito. Es el riesgo aceptado 5.5 (demandas de un
+      homónimo), pero acá la demanda ajena no sólo pesa: bloquea.
+    - **p2, aprobaciones sin razonamiento**: 45 de las 53 aprobaciones del lote salieron sin razonamiento.
+      Sin razonar el modelo aprueba el 39%; razonando, el 6%.
+    - **p3, la cartera de la institución llega mal al modelo**, en 7 de 12 casos: una sola operación, a
+      veces la cancelada, sin cuota y fuera de la deuda.
+    - **p4, Equifax existe y no llega**: 214 de 247 análisis piden una cuota que Equifax ya tenía, y sólo
+      28 de las 244 personas tienen la consulta en la base.
+
+    Lo que queda de la habilidad, sin decisión del negocio:
+    - generalizar `armar-carpetas.mjs` al marco del análisis elegido (hoy lee marco-v30 y la base de
+      prueba);
+    - llevar a `medir-lote.mjs` las dos mediciones del piloto que siguen sueltas: los homónimos y los
+      días entre la solicitud y la consulta;
+    - crear la tarea programada local del barrido mensual, con el sí del negocio.
+
+    **Pregunta abierta**: cómo valida la institución el «ingreso validado del titular». En 42 de 233
+    casos es igual (±5%) al estimado de Equifax.
+
+    Se cierra cuando cada propuesta aprobada tenga su PR y su medición posterior (habilidad, paso 7).
 
 ## 3. Espera a terceros
 
