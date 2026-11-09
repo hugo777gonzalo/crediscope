@@ -39,7 +39,7 @@ import {
   temasSinRespuesta,
 } from "./calidad-de-la-consulta.ts";
 import { armarPedidoScoring, CONFIG_LLM, huellaDelPedido, puntuarPedido, versionDelMarco } from "./llm-scoring.ts";
-import { buroVigenteDeLaPersona } from "./buro-de-la-institucion.ts";
+import { buroDeLaPersonaParaElAnalisis } from "./buro-de-la-institucion.ts";
 import { COLUMNAS_PARA_REUTILIZAR, filaDelAnalisis, resultadoReutilizado, resultadoSinModelo } from "./fila-del-analisis.ts";
 import { loadCorteIess, loadDisabledFields, loadDisabledResources } from "./runtime-config.ts";
 import { registrarLlamadaLlm } from "./llm-log.ts";
@@ -263,9 +263,10 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
   const disabledFields = await loadDisabledFields(db);
   // El buró de la institución (marco-v33): con el interruptor apagado no se
   // lee nada y el pedido es el de v30. Encendido, la deuda de bancos y
-  // cooperativas sale de la consulta vigente del buró, si la persona la
-  // tiene; nunca se consulta a Equifax desde acá (cada consulta se cobra).
-  const buro = CONFIG_LLM.buroDeLaInstitucion ? await buroVigenteDeLaPersona(db, client.id) : null;
+  // cooperativas sale de la última consulta del buró de la persona, vigente o
+  // no (negocio, 2026-11-09); nunca se consulta a Equifax desde acá (cada
+  // consulta se cobra).
+  const buro = CONFIG_LLM.buroDeLaInstitucion ? await buroDeLaPersonaParaElAnalisis(db, { id: client.id, cedula }) : null;
   const marcoVersion = versionDelMarco(CONFIG_LLM);
   const pedido = armarPedidoScoring(profile as unknown as Record<string, unknown>, controlBloqueo, disabledFields, CONFIG_LLM, buro);
 
@@ -345,8 +346,9 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
           // ver en Costos que el gasto sube con cada marco nuevo y no
           // con el volumen.
           marco: marcoVersion,
-          // Qué consulta del buró leyó (marco-v33). El id, nunca la cédula.
-          ...(buro ? { consultaBuro: buro.consultaId } : {}),
+          // Qué consulta del buró leyó (marco-v33). El id, nunca la cédula; una
+          // de AWS sin fila, por su objeto en el depósito.
+          ...(buro ? { consultaBuro: buro.consultaId ?? buro.crudoAws } : {}),
         },
         esPrueba,
         razonamiento: CONFIG_LLM.razonamiento,
@@ -385,7 +387,7 @@ export async function analizarPersona(o: OpcionesDeAnalisis): Promise<Record<str
       recomendacion: finalRecomendacion,
       control_bloqueado: controlBloqueo.bloqueado,
       ...(reutilizaAnalisisId ? { reutiliza_analisis_id: reutilizaAnalisisId } : {}),
-      ...(buro ? { consulta_equifax_id: buro.consultaId } : {}),
+      ...(buro ? { consulta_equifax_id: buro.consultaId, ...(buro.crudoAws ? { crudo_equifax_aws: buro.crudoAws } : {}) } : {}),
     },
   });
 
