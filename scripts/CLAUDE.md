@@ -62,6 +62,10 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   error corregido. Un error de datos que se encontró a mano entra ahí como detector, con su caso.
 - Un detector que necesita una regla del código la importa del `.ts` (Node 24 lo lee), no la copia:
   el primero copiaba 5 fuentes del freno que ya eran 21 y contaba 671 consultas incompletas en vez de 770.
+- `scripts/revision-del-analisis/` (habilidad `revision-del-analisis`): `medir-lote.mjs` mide un lote de análisis sin
+  modelo, `elegir-casos.mjs` elige hasta 15 casos y `armar-carpetas.mjs` arma la carpeta a ciegas de cada uno en
+  `research/revision-del-analisis/`. Los tres sólo leen, y el control `guiones` les pasa `node --check`. La fase 1 de una carpeta nunca lleva el score del modelo ni la
+  decisión de la institución: en el piloto `capacidad.json` los traía y contaminó 3 de 12 dictámenes.
 
 ## Predictor de ingresos
 
