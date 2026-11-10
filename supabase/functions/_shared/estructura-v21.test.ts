@@ -178,3 +178,37 @@ Deno.test("p5: cada demanda de cobro con su año y quién demanda, la más recie
     { anio: 2009, quienDemanda: "persona" },
   ]);
 });
+
+// ---- p10 ----
+
+Deno.test("p10: el colateral es el precio promedio de mercado, y el avalúo sólo sin precio de mercado", () => {
+  const vehiculo = (o: Record<string, number | null>) => ({
+    tipoComercial: "autos",
+    valorAvaluo: 0,
+    precioPromedio: 0,
+    precioMinimo: null,
+    precioMaximo: 0,
+    precioComercial: 0,
+    precioVentaPublico: 0,
+    precioVentaPromedio: null,
+    precioVenta: null,
+    ...o,
+  });
+  const p = perfilDe({
+    vehiculos: fuente({
+      personaVehiculo: [
+        // Nuevo: el avalúo pasa al mercado; manda el mercado (antes, el avalúo).
+        vehiculo({ valorAvaluo: 39594, precioPromedio: 17484, precioMinimo: 18800, precioMaximo: 18800, precioComercial: 17484 }),
+        // Con rango de mercado: el promedio, no el máximo.
+        vehiculo({ valorAvaluo: 2747, precioPromedio: 23343, precioMaximo: 25900, precioComercial: 17200 }),
+        // Sin promedio pero con precio comercial: el comercial.
+        vehiculo({ valorAvaluo: 5000, precioComercial: 8000 }),
+        // Sin ningún precio de mercado: el avalúo.
+        vehiculo({ valorAvaluo: 9541.5 }),
+        // El precio de lista de cuando era nuevo no cuenta.
+        vehiculo({ precioVenta: 29990 }),
+      ],
+    }),
+  }).patrimonio;
+  assertEquals(p.valorColateralVehiculos, 17484 + 23343 + 8000 + 9541.5);
+});

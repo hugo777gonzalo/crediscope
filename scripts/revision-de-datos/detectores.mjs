@@ -525,15 +525,17 @@ export const DETECTORES_DEL_CRUDO = [
   {
     id: "colateral-de-vehiculos-sobre-el-precio-promedio",
     capa: "estructura",
-    tipo: "confirmar",
+    tipo: "regresion",
     titulo: "El colateral de los vehículos (el precio más alto de cada uno) pasa en más de 25% al precio promedio de mercado",
     caso: "4 de 4 casos del piloto del 2026-11-06 con el precio más alto o el avalúo, entre 25% y 60% sobre el promedio (p10)",
+    conocido: "hasta estructura-v20 se tomaba el máximo de siete precios: 550 personas el 2026-11-09; se corrige con el recálculo de v21 (--grupos=patrimonio)",
     aplica: ({ perfil }) => (perfil?.patrimonio?.numeroVehiculos ?? 0) > 0,
     detectar: ({ raw, perfil }) => {
       const vehiculos = raw.vehiculos?.data?.personaVehiculo ?? [];
-      // La referencia es el precio promedio de mercado; sin él, el avalúo, que
-      // es lo único que hay.
-      const referencia = vehiculos.reduce((s, v) => s + (Number(v.precioPromedio) > 0 ? Number(v.precioPromedio) : Number(v.valorAvaluo) || 0), 0);
+      // La referencia es el precio de mercado (el primero que la fuente trae,
+      // como en process.ts desde v21); sin ninguno, el avalúo.
+      const mercado = (v) => ["precioPromedio", "precioComercial", "precioVentaPromedio", "precioVentaPublico"].map((c) => Number(v[c]) || 0).find((p) => p > 0);
+      const referencia = vehiculos.reduce((s, v) => s + (mercado(v) ?? (Number(v.valorAvaluo) || 0)), 0);
       const colateral = perfil.patrimonio.valorColateralVehiculos ?? 0;
       if (!(referencia > 0) || colateral <= referencia * 1.25) return null;
       const deDonde = vehiculos.map((v) => {

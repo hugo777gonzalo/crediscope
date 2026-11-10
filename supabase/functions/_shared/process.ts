@@ -536,6 +536,8 @@ function fechaDeCorte(v: unknown): string | null {
 // (comportamientoBancario); el comportamiento interno reporta una sola
 // operación de la institución, elegida, sin sumar nada (comportamientoInterno); y
 // cada demanda de cobro dice su año y quién demanda (riesgoJudicialCrediticio).
+// Y el colateral de vehículos es el precio promedio de mercado, con el avalúo
+// sólo sin precio de mercado (patrimonio, p10, negocio, 2026-11-09).
 export const PROCESS_VERSION = "estructura-v21"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
@@ -1199,20 +1201,25 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // ---- patrimonio ----
   const vehiculos = arr(fuentes, "vehiculos", "personaVehiculo");
   const sumVeh = (field: string) => vehiculos.reduce((s, v) => s + (num(v[field]) ?? 0), 0);
-  // valorColateralVehiculos: para colaterales importa el valor más
-  // aproximado a mercado ACTUAL, tomando por cada vehículo el máximo
-  // entre sus distintas fuentes de precio (auditoría pedida por el
-  // usuario — Proveedor_Info_1 da varios precios por vehículo que no
-  // coinciden: valorAvaluo usa depreciación lineal SRI y castiga fuerte
-  // vehículos viejos, ej. $82 en una moto 2016). A propósito NO incluye
-  // precioVenta: para vehículos viejos ese campo parece ser el precio
-  // de lista cuando el vehículo era nuevo (ej. Nissan X-Trail 2010:
-  // precioVenta=$29990 vs precioMaximo=$20500 de mercado actual),
-  // incluirlo sobrestimaría el colateral. valorAvaluo SÍ se incluye en
-  // el máximo (nunca es el más alto en la práctica, pero sirve de piso
-  // para vehículos donde los campos de mercado vienen todos en 0).
-  const CAMPOS_VALOR_VEHICULO = ["valorAvaluo", "precioPromedio", "precioMinimo", "precioMaximo", "precioComercial", "precioVentaPublico", "precioVentaPromedio"];
-  const valorMaximoVehiculo = (v: AnyRecord): number => Math.max(0, ...CAMPOS_VALOR_VEHICULO.map((c) => num(v[c]) ?? 0));
+  // valorColateralVehiculos: lo que se espera obtener al vender cada
+  // vehículo. Desde estructura-v21 (p10 de la revisión del análisis, negocio,
+  // 2026-11-09) es el precio promedio de mercado, y el avalúo del SRI sólo
+  // cuando la fuente no trae ningún precio de mercado.
+  //
+  // Hasta v20 era el MÁXIMO de siete precios, para que el avalúo, que
+  // castiga a los vehículos viejos ($82 en una moto 2016), quedara de piso.
+  // Se suponía que el avalúo nunca es el más alto, y en los vehículos nuevos
+  // lo es: un camión 2023 con avalúo de 39.594 y precio de mercado de 17.484
+  // (c-0ec2827c). Medido el 2026-11-09: el colateral pasaba en más de 25% al
+  // precio promedio en 550 de 2.198 personas (USD 23,0 M contra 14,4 M); el
+  // más alto era el precio máximo del rango en 349 vehículos y el avalúo en 301.
+  // precioVenta sigue afuera: en los vehículos viejos es el precio de lista
+  // de cuando eran nuevos (Nissan X-Trail 2010: 29.990 contra 20.500).
+  const PRECIOS_DE_MERCADO = ["precioPromedio", "precioComercial", "precioVentaPromedio", "precioVentaPublico"];
+  const valorDeColateral = (v: AnyRecord): number => {
+    const mercado = PRECIOS_DE_MERCADO.map((c) => num(v[c]) ?? 0).find((p) => p > 0);
+    return mercado ?? Math.max(0, num(v.valorAvaluo) ?? 0);
+  };
   const patrimonio: StandardClientProfile["patrimonio"] = {
     numeroVehiculos: vehiculos.length,
     valorAvaluoVehiculos: sumVeh("valorAvaluo"),
@@ -1225,7 +1232,7 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     valorComercialTotalVehiculos: sumVeh("precioComercial"),
     valorVentaTotalVehiculos: sumVeh("precioVentaPublico"),
     valorPromedioTotalVehiculos: sumVeh("precioVentaPromedio"),
-    valorColateralVehiculos: vehiculos.reduce((s, v) => s + valorMaximoVehiculo(v), 0),
+    valorColateralVehiculos: redondear(vehiculos.reduce((s, v) => s + valorDeColateral(v), 0)),
   };
 
   // ---- comportamientoBancario ----
