@@ -518,6 +518,12 @@
 //    fechaDelReporte): con p4 el análisis lee la última consulta aunque no esté
 //    vigente, y el modelo no sabía cuán vieja era. Los cortes de 30 y 60 días son
 //    una propuesta a validar con el negocio.
+//  - Los tramos de carga máxima por perfil (negocio, 2026-11-10): el modelo
+//    ubica a la persona en el tramo "1" (80%), "2" (60%), "3" (40%) o "fuera"
+//    y lo devuelve en tramoDeCarga; el tope lo aplica el código
+//    (tramos-de-carga.ts, donde está la calibración con la cartera de AWS).
+//    Va antes de la recomendación en la respuesta: el modelo escribe los
+//    campos en orden, y "fuera" no puede terminar en "aprobar".
 // Desde v36 el interruptor del buró no tiene versión propia: está encendido
 // desde el 2026-11-04, y lo que leyó cada análisis lo dice su
 // mensaje_al_modelo (con o sin buroEquifax), como ya pasaba dentro de v35.
@@ -1106,6 +1112,39 @@ negocio.
   liquidación, la persona dejó de aparecer en el IESS, sus aportes
   cayeron), y entonces nombrá el hecho, no la generalidad.
 
+TRAMO DE CARGA
+Cuánto de su ingreso puede comprometer una persona en cuotas depende de su
+perfil: lo decidió el negocio con la cartera de la institución, donde la
+mora la anticipó la conducta de pago al pedir más que la carga. Ubicá a la
+persona en uno de estos tramos y decilo en tramoDeCarga. La carga es la
+suma de las cuotas que ya paga y la del crédito que pida, contra su ingreso
+neto del mes; esa cuenta no la hacés vos: la hace la capacidad de pago con
+el crédito que se pida. Vos decís el tramo y por qué.
+- "1", muy bueno (hasta 80%). Cumple todo esto:
+  · el ingreso está confirmado por un tercero (fuentesIngreso.estado
+    "Confirmado por un tercero"); uno estimado o por confirmar no alcanza;
+  · continuidadLaboral vigente de 24 meses o más, con 12 de 12 meses con
+    aportes;
+  · deudaPropiaTotal de hasta un año y medio de su ingreso;
+  · ningún mes con mora en los últimos 24 (conductaDePago,
+    mesesConMoraEnLosUltimos24 en 0) y nada vencido hoy; si llega
+    comportamientoInterno, sin días de mora en esa operación;
+  · sin demandas de cobro.
+- "2", promedio (hasta 60%): nada vencido hoy y sin demandas de cobro, sin
+  cumplir todo lo del tramo "1".
+- "3", con atrasos leves (hasta 40%): un atraso de 1 a 30 días hoy y sin
+  demandas de cobro.
+- "fuera", sin aprobación directa: un atraso de más de 30 días hoy o
+  alguna demanda de cobro. Con "fuera" la recomendación no es "aprobar".
+El atraso de hoy es el mayor de moraActual y de los préstamos del
+IESS/BIESS (diasMoraCreditoIessBiess). Sin buroEquifax no se saben los
+días: algo en atraso hoy en bancos o cooperativas deja a la persona
+"fuera" hasta que una consulta del buró diga cuántos son, y sin
+conductaDePago no hay tramo "1". En tramoDeCarga.motivo va, en una
+oración, lo que decide el tramo: para el "1", que cumple todo; para los
+demás, lo que lo deja fuera del tramo de arriba. El porcentaje del tramo
+no va en el resto de la respuesta: no es una condición del crédito.
+
 RECOMENDACIÓN
 Además del score, decí qué hacer con el caso. El score mide el riesgo; la
 recomendación es la acción sugerida al analista, y no siempre se deduce
@@ -1201,8 +1240,8 @@ otros no dicen.
   respuesta). Las señales negativas ya confirmadas van en negatives.
 
 La respuesta es un único objeto JSON con estos campos: score,
-recomendacion, accionesSugeridas, indicadorRiesgo, indicadorHistorial,
-positives, negatives, missingInfo y reasoning.
+tramoDeCarga, recomendacion, accionesSugeridas, indicadorRiesgo,
+indicadorHistorial, positives, negatives, missingInfo y reasoning.
 `.trim();
 
 // ---------------------------------------------------------------------------
