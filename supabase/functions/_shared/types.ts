@@ -134,6 +134,7 @@ export interface ResultadoControlBloqueo {
 // (personasIncumplimientos) de comportamientoBancario, por su peso.
 
 import type { AnalisisFuentesIngreso } from "./fuentes-ingreso.ts";
+import type { QuienDemanda } from "./demandas.ts";
 
 export interface StandardClientProfile {
   cedula: string;
@@ -462,6 +463,10 @@ export interface StandardClientProfile {
     proveedorInfo1DiasMoraVigente: number | null;
     proveedorInfo1SaldoCapitalVigente: number | null;
     esClienteInterno: boolean;
+    // Desde estructura-v21 (p3): todos los campos de arriba salen de UNA
+    // operación (operacionDelComportamientoInterno, process.ts), y éste dice si
+    // está vigente o cancelada. Es historia de pago: nada de acá se suma.
+    proveedorInfo1EstadoOperacion: string | null;
   };
 
   transitoVehicular: {
@@ -488,6 +493,9 @@ export interface StandardClientProfile {
     // Desde v12, la que es de cobro sólo por quién la presentó lo dice:
     // "Otros (demanda de una institución financiera)".
     tiposDemandasComoDemandado: string[];
+    // Desde estructura-v21 (p5): de cada demanda de cobro, el año y quién
+    // demanda, de la más reciente a la más vieja (demandas.ts).
+    demandasDeCobro: { anio: number | null; quienDemanda: QuienDemanda | null }[];
   };
 
   // Demandas civiles NO crediticias (laboral, familia, tránsito,

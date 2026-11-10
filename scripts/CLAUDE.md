@@ -60,6 +60,9 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 - `scripts/revisar-datos.mjs` corre el catálogo de `scripts/revision-de-datos/detectores.mjs`
   (habilidad `revision-de-datos`) en una sola consulta de sólo lectura y sale con 1 si vuelve un
   error corregido. Un error de datos que se encontró a mano entra ahí como detector, con su caso.
+- `scripts/revisar-crudo.mjs` corre `DETECTORES_DEL_CRUDO` (mismo catálogo) sobre el crudo del último perfil de cada
+  persona real (carpeta de `research/` y depósito, ~2 min, sólo lee). Es para lo que no deja rastro en el perfil guardado:
+  la demanda penal de otro demandado (p1) o el hipotecario contado dos veces (p6) salieron a mano, persona por persona.
 - Un detector que necesita una regla del código la importa del `.ts` (Node 24 lo lee), no la copia:
   el primero copiaba 5 fuentes del freno que ya eran 21 y contaba 671 consultas incompletas en vez de 770.
 - `scripts/revision-del-analisis/` (habilidad `revision-del-analisis`): `medir-lote.mjs` mide un lote de análisis sin

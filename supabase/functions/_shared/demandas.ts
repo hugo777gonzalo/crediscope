@@ -172,6 +172,31 @@ function esTipoSinTema(delito: unknown): boolean {
   return TIPOS_SIN_TEMA.has(normalizado(tipoDeDemandaLegible(delito) ?? ""));
 }
 
+// Quién presentó una demanda de cobro (p5 de la revisión del análisis,
+// estructura-v21): el marco la lee distinto si demanda un banco o una
+// cooperativa (una deuda con el sistema financiero) que si demanda una casa
+// comercial o un particular. La institución financiera es la misma lista de
+// arriba; una empresa, por su forma o su giro en el nombre; lo demás, una
+// persona. Sin demandante, null: no se sabe.
+export type QuienDemanda = "institucion_financiera" | "empresa" | "persona";
+const EMPRESA =
+  /\bS\.? ?A\.?(?=\s|$|,)|\bC\.? ?A\.?(?=\s|$|,)|\bS\.?A\.?S\b|\bCIA\b|\bLTDA\b|\bCOMPANIA\b|\bCORPORACION\b|\bCOMERCIAL\b|\bCOMERCIALIZADORA\b|\bEMPRESA\b|\bIMPORTADORA\b|\bDISTRIBUIDORA\b|\bINDUSTRIA|\bGRUPO\b|\bSOCIEDAD\b|\bFUNDACION\b|\bASOCIACION\b|\bCOOPERATIVA\b|\bINSTITUTO\b|\bUNIVERSIDAD\b|\bUNIDAD EDUCATIVA\b|\bMUNICIPIO\b|\bGAD\b|\bMINISTERIO\b|\bSERVICIO DE RENTAS\b|\bIESS\b|\bCNEL\b|\bCONAFIPS\b/;
+
+export function quienDemanda(demandante: unknown): QuienDemanda | null {
+  const texto = normalizado(demandante);
+  if (!texto) return null;
+  if (INSTITUCION_FINANCIERA.test(texto)) return "institucion_financiera";
+  return EMPRESA.test(texto) ? "empresa" : "persona";
+}
+
+// El año de una demanda; la fecha llega en milisegundos a la medianoche de
+// Ecuador (UTC-5). null = sin fecha.
+export function anioDeLaDemanda(fecha: unknown): number | null {
+  const ms = typeof fecha === "number" ? fecha : Number.NaN;
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms - 5 * 3600 * 1000).getUTCFullYear();
+}
+
 // De cobro sólo por quién la presentó: el tipo no lo dice.
 export function esCobroPorQuienDemanda(delito: unknown, demandante: unknown): boolean {
   return esTipoSinTema(delito) && INSTITUCION_FINANCIERA.test(normalizado(demandante));

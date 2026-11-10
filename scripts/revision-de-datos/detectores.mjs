@@ -38,6 +38,7 @@ import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta
 import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
 import { evaluarControlesBloqueo } from "../../supabase/functions/_shared/controles-bloqueo.ts";
 import { delitosDeSeguridadEnDemandas } from "../../supabase/functions/_shared/delitos-seguridad.ts";
+import { operacionDelComportamientoInterno } from "../../supabase/functions/_shared/process.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -452,7 +453,134 @@ export const DETECTORES_DEL_CRUDO = [
       };
     },
   },
+  {
+    id: "prestamo-biess-contado-dos-veces",
+    capa: "estructura",
+    tipo: "revisar",
+    titulo: "Un préstamo del IESS/BIESS que está en la base interna y en la fuente de préstamos con otro número y la fecha corrida: se suma dos veces",
+    caso: "c-b9fc9a82, 2026-11-06: el hipotecario, con el mismo monto y la concesión a 2 días, contado dos veces (p6 de la revisión del análisis)",
+    conocido: "mide la fuente: desde estructura-v21 operacionesIessBiess (process.ts) los une; 174 personas el 2026-11-09",
+    aplica: ({ raw }) => opsDeLaBase(raw).length > 0 && opsDeLosPrestamos(raw).length > 0,
+    detectar: ({ raw }) => {
+      const base = opsDeLaBase(raw);
+      const repetidas = [];
+      for (const p of opsDeLosPrestamos(raw)) {
+        // La regla vigente ya une por número o por fecha y monto exactos.
+        if (base.some((b) => (b.numero && b.numero === p.numero) || (b.concesion === p.concesion && Math.round(b.monto) === Math.round(p.monto)))) continue;
+        const par = base.find((b) => Math.abs(b.monto - p.monto) <= 1 && b.dia !== null && p.dia !== null && Math.abs(b.dia - p.dia) <= 31);
+        if (par) repetidas.push({ tipo: p.tipo, dias: Math.abs(par.dia - p.dia), saldoBase: par.saldo, saldoPrestamos: p.saldo });
+      }
+      return repetidas.length ? { repetidas, saldoContadoDeMas: Math.round(repetidas.reduce((s, r) => s + Math.min(r.saldoBase, r.saldoPrestamos), 0)) } : null;
+    },
+  },
+  {
+    id: "prestamo-biess-terminado-contado",
+    capa: "estructura",
+    tipo: "revisar",
+    titulo: "Un préstamo del IESS/BIESS de la base interna «VIGENTE» con el plazo ya cumplido y sin mora, que suma saldo",
+    caso: "c-40d771e1, 2026-11-06: un quirografario que terminó en 2023 seguía «VIGENTE» en la base interna y sumaba saldo (p6)",
+    conocido: "mide la fuente: desde estructura-v21 los terminados sin mora no se cuentan (VENCIDO y MORA sí); 651 personas el 2026-11-09",
+    aplica: ({ raw }) => opsDeLaBase(raw).length > 0,
+    detectar: ({ raw, capturadoEl }) => {
+      const hoy = Math.floor(new Date(capturadoEl).getTime() / 86400000);
+      const prestamos = opsDeLosPrestamos(raw);
+      const terminadas = opsDeLaBase(raw).filter((b) => {
+        if (b.saldo <= 0) return false;
+        // Si la fuente de préstamos la trae, la fuente de préstamos manda.
+        if (prestamos.some((p) => (b.numero && b.numero === p.numero) || (Math.abs(b.monto - p.monto) <= 1 && Math.abs((b.dia ?? 0) - (p.dia ?? 0)) <= 31))) return false;
+        // «VENCIDO» y «MORA» no están terminados: deben.
+        return b.estado === "VIGENTE" && b.fin !== null && b.fin < hoy && b.diasMora === 0;
+      });
+      return terminadas.length
+        ? { terminadas: terminadas.map((b) => ({ tipo: b.tipo, estado: b.estado, finHaceDias: b.fin === null ? null : hoy - b.fin, saldo: b.saldo })) }
+        : null;
+    },
+  },
+  {
+    id: "comportamiento-interno-de-otra-operacion",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "El comportamiento interno guardado no es el de la operación que manda la regla (la vigente de mayor saldo, o la cancelada de mayor cuota por plazo)",
+    caso: "c-5dfb1e00, 2026-11-06: se leía la primera operación, una cancelada, y decía saldo 0 con dos vigentes (p3 de la revisión del análisis)",
+    conocido: "hasta estructura-v20 se leía la primera fila: se corrige con el recálculo de v21 (--grupos=comportamientoInterno)",
+    aplica: ({ raw }) => operacionesDeLaInstitucion(raw).length > 1,
+    detectar: ({ raw, perfil }) => {
+      const ops = operacionesDeLaInstitucion(raw);
+      const elegida = operacionDelComportamientoInterno(ops);
+      const guardado = perfil?.comportamientoInterno ?? {};
+      const comoNumero = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
+      const igual =
+        comoNumero(guardado.proveedorInfo1SaldoCapitalVigente) === comoNumero(elegida.saldoCapital) &&
+        (guardado.proveedorInfo1PerfilInterno ?? null) === (elegida.perfilInterno ?? null) &&
+        (guardado.proveedorInfo1ResultadoHabitoPago ?? null) === (elegida.resultadoHabitoPago ?? null);
+      if (igual) return null;
+      return {
+        operaciones: ops.length,
+        vigentes: ops.filter((o) => String(o.estadoOperacion ?? "").toUpperCase() !== "CANCELADA").length,
+        guardado: { saldo: guardado.proveedorInfo1SaldoCapitalVigente ?? null, perfil: guardado.proveedorInfo1PerfilInterno ?? null },
+        elegida: { estado: elegida.estadoOperacion ?? null, saldo: comoNumero(elegida.saldoCapital), perfil: elegida.perfilInterno ?? null },
+      };
+    },
+  },
+  {
+    id: "colateral-de-vehiculos-sobre-el-precio-promedio",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "El colateral de los vehículos (el precio más alto de cada uno) pasa en más de 25% al precio promedio de mercado",
+    caso: "4 de 4 casos del piloto del 2026-11-06 con el precio más alto o el avalúo, entre 25% y 60% sobre el promedio (p10)",
+    conocido: "hasta estructura-v20 se tomaba el máximo de siete precios: 550 personas el 2026-11-09; se corrige con el recálculo de v21 (--grupos=patrimonio)",
+    aplica: ({ perfil }) => (perfil?.patrimonio?.numeroVehiculos ?? 0) > 0,
+    detectar: ({ raw, perfil }) => {
+      const vehiculos = raw.vehiculos?.data?.personaVehiculo ?? [];
+      // La referencia es el precio de mercado (el primero que la fuente trae,
+      // como en process.ts desde v21); sin ninguno, el avalúo.
+      const mercado = (v) => ["precioPromedio", "precioComercial", "precioVentaPromedio", "precioVentaPublico"].map((c) => Number(v[c]) || 0).find((p) => p > 0);
+      const referencia = vehiculos.reduce((s, v) => s + (mercado(v) ?? (Number(v.valorAvaluo) || 0)), 0);
+      const colateral = perfil.patrimonio.valorColateralVehiculos ?? 0;
+      if (!(referencia > 0) || colateral <= referencia * 1.25) return null;
+      const deDonde = vehiculos.map((v) => {
+        const campos = ["valorAvaluo", "precioPromedio", "precioMinimo", "precioMaximo", "precioComercial", "precioVentaPublico", "precioVentaPromedio"];
+        return campos.reduce((a, c) => ((Number(v[c]) || 0) > (Number(v[a]) || 0) ? c : a), "valorAvaluo");
+      });
+      return { vehiculos: vehiculos.length, colateral: Math.round(colateral), referencia: Math.round(referencia), razon: Math.round((colateral / referencia) * 100) / 100, campoMasAlto: deDonde };
+    },
+  },
 ];
+
+// Los préstamos del IESS/BIESS como los traen las dos fuentes, para medir
+// (la regla que los une es operacionesIessBiess, en process.ts). Fechas
+// DD/MM/AAAA a días desde 1970.
+function diaDDMMAAAA(v) {
+  const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86400000) : null;
+}
+const sinCeros = (v) => String(v ?? "").trim().replace(/^0+/, "");
+function opsDeLaBase(raw) {
+  const bi = raw.basesInternas?.data ?? {};
+  const q = (bi.tcredQuirografarios ?? []).map((r) => ({
+    tipo: "quirografario", numero: sinCeros(r.numeroOperacion), concesion: String(r.fechaConsesion ?? "").trim(), dia: diaDDMMAAAA(r.fechaConsesion),
+    fin: diaDDMMAAAA(r.fechaFinCredito), monto: Number(r.montoTransferido) || 0, saldo: Number(r.saldoTotalCredito) || 0,
+    diasMora: Number(r.diasMoraAfi) || 0, estado: String(r.estadoOperacion ?? "").toUpperCase(),
+  }));
+  const h = (bi.tcredHipotecarios ?? []).map((r) => ({
+    tipo: "hipotecario", numero: sinCeros(r.srNrooperaciongaf), concesion: String(r.srFecprimerdesembolso ?? "").trim(), dia: diaDDMMAAAA(r.srFecprimerdesembolso),
+    fin: diaDDMMAAAA(r.srFecfincredito), monto: Number(r.srMontofinanciado) || 0, saldo: Number(r.srSaldototalcredito) || 0,
+    diasMora: Number(r.srDiasmoraafi) || 0, estado: String(r.srEstadocredito ?? "").toUpperCase(),
+  }));
+  return [...q, ...h];
+}
+function opsDeLosPrestamos(raw) {
+  const de = (fuente, tipo) =>
+    (raw[fuente]?.data?.prestamos ?? []).map((r) => ({
+      tipo, numero: sinCeros(r.nroOperacion), concesion: String(r.fechaConcesion ?? "").trim(), dia: diaDDMMAAAA(r.fechaConcesion),
+      monto: Number(r.valorPrestamo) || 0, saldo: (Number(r.valorPorVencer) || 0) + (Number(r.valorVencido) || 0), estado: String(r.estado ?? ""),
+    }));
+  return [...de("creditoQuirografario", "quirografario"), ...de("creditoHipotecario", "hipotecario")];
+}
+const operacionesDeLaInstitucion = (raw) => {
+  const v = raw.basesInternas?.data?.personasIncumplimientos;
+  return Array.isArray(v) ? v : [];
+};
 
 // Los controles que ya existen y miden otras partes de la cadena. La revisión
 // los nombra para no duplicarlos (habilidad, «Controles que ya existen»).

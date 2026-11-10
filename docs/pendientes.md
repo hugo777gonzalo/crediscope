@@ -13,6 +13,21 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
+- **`main` tiene estructura-v21 sin desplegar (2026-11-09, #153): no desplegar `main` hasta que marco-v36
+  esté lista**, salvo que el negocio lo autorice sabiendo esto. Cualquier despliegue con `--funciones` desde
+  `main` lleva v21, venga de la sesión que venga (el que más riesgo tiene es el del predictor, #145): con
+  marco-v35, el modelo recibiría `comportamientoInterno.proveedorInfo1EstadoOperacion` y
+  `riesgoJudicialCrediticio.demandasDeCobro` (año y quién demanda), que v35 no explica. v21 trae p6 (el BIESS
+  sin contar dos veces ni los préstamos terminados), p3 (Comportamiento Interno de una sola operación, sin
+  sumar nada), p5 y p10 (el colateral de vehículos al precio de mercado).
+  - **Después del despliegue, el recálculo:** `node scripts/recalcular-grupos.mjs
+    --grupos=comportamientoBancario,comportamientoInterno,riesgoJudicialCrediticio,patrimonio
+    --carpeta=research/proveedor-info-1-raw-2026-10-03`, primero con `--seco`. El seco del 2026-11-09 sobre los
+    perfiles en v20: los 3.766 se reproducen y cambian el colateral en 1.362, el saldo del BIESS en 767,
+    `tieneCreditoIessBiess` en 192 y el saldo de Comportamiento Interno en 557.
+  - **Al final, `node scripts/revisar-crudo.mjs`:** las regresiones de p3
+    (`comportamiento-interno-de-otra-operacion`) y p10 (`colateral-de-vehiculos-sobre-el-precio-promedio`)
+    tienen que dar 0.
 - **Espacio de la base (2026-11-06): 409 MB de 500 MB del plan Free** (91 MB de margen; el 05/11 eran
   485 y el 06/11 llegaron a 534, por encima del plan, y bajaron a 478 tras el `vacuum full` de `consultas_equifax` y a 409 tras el
   de `cron.job_run_details`); se midió con `pg_database_size`. Lo que lo llenó, medido:
