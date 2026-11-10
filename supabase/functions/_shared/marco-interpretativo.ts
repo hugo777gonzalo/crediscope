@@ -523,7 +523,10 @@
 //    y lo devuelve en tramoDeCarga; el tope lo aplica el código
 //    (tramos-de-carga.ts, donde está la calibración con la cartera de AWS).
 //    Va antes de la recomendación en la respuesta: el modelo escribe los
-//    campos en orden, y "fuera" no puede terminar en "aprobar".
+//    campos en orden, y "fuera" no puede terminar en "aprobar". Sólo una
+//    demanda de cobro de los últimos 2 años saca del tramo (negocio,
+//    2026-11-10); para eso cada una llega con aniosAtras, porque el modelo
+//    no sabe en qué año está.
 // Desde v36 el interruptor del buró no tiene versión propia: está encendido
 // desde el 2026-11-04, y lo que leyó cada análisis lo dice su
 // mensaje_al_modelo (con o sin buroEquifax), como ya pasaba dentro de v35.
@@ -697,9 +700,10 @@ ${CORTE_DEL_RETAIL}
    mayor que 0 pesa fuerte, como comportamientoCooperativas: alguien ya le
    demandó por no pagar. tiposDemandasComoDemandado dice de qué es cada
    cobro.
-   - demandasDeCobro trae cada una con su año (anio) y quién demanda
-     (quienDemanda: "institucion_financiera", "empresa" o "persona"). Una
-     demanda de más de 2 años
+   - demandasDeCobro trae cada una con su año (anio), cuántos años tiene
+     el día de este análisis (aniosAtras) y quién demanda (quienDemanda:
+     "institucion_financiera", "empresa" o "persona"). Una demanda de más
+     de 2 años
      pesa menos, y menos cuanto más vieja: una de 2009 con el buró al día
      desde entonces es historia, no situación actual. Una del último año
      pesa entera. Que la demande una institución financiera dice más de
@@ -1130,13 +1134,18 @@ el crédito que se pida. Vos decís el tramo y por qué.
   · ningún mes con mora en los últimos 24 (conductaDePago,
     mesesConMoraEnLosUltimos24 en 0) y nada vencido hoy; si llega
     comportamientoInterno, sin días de mora en esa operación;
-  · sin demandas de cobro.
-- "2", promedio (hasta 60%): nada vencido hoy y sin demandas de cobro, sin
-  cumplir todo lo del tramo "1".
+  · sin demandas de cobro recientes.
+- "2", promedio (hasta 60%): nada vencido hoy y sin demandas de cobro
+  recientes, sin cumplir todo lo del tramo "1".
 - "3", con atrasos leves (hasta 40%): un atraso de 1 a 30 días hoy y sin
-  demandas de cobro.
+  demandas de cobro recientes.
 - "fuera", sin aprobación directa: un atraso de más de 30 días hoy o
-  alguna demanda de cobro. Con "fuera" la recomendación no es "aprobar".
+  alguna demanda de cobro reciente. Con "fuera" la recomendación no es
+  "aprobar".
+Una demanda de cobro es reciente si tiene 2 años o menos (aniosAtras en
+demandasDeCobro). Una más vieja no cambia el tramo, aunque pese en el
+score como dice el grupo 5. Si no se sabe su año (sin aniosAtras ni
+anio), cuenta como reciente: no se puede descartar.
 El atraso de hoy es el mayor de moraActual y de los préstamos del
 IESS/BIESS (diasMoraCreditoIessBiess). Sin buroEquifax no se saben los
 días: algo en atraso hoy en bancos o cooperativas deja a la persona

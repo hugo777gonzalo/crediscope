@@ -755,6 +755,19 @@ export function armarPerfilDelModelo(
   if (cobro && typeof cobro === "object" && Array.isArray(cobro.tiposDemandasComoDemandado)) {
     cobro.tiposDemandasComoDemandado = tiposLegibles(cobro.tiposDemandasComoDemandado);
   }
+  // marco-v36: cuántos años tiene cada demanda de cobro el día del análisis.
+  // Sólo una de los últimos 2 años saca a la persona de su tramo de carga
+  // (negocio, 2026-11-10), y el modelo no sabe en qué año está: con el año
+  // solo, una de 2024 podía leerse como reciente o como vieja.
+  if (ahora && cobro && typeof cobro === "object" && Array.isArray(cobro.demandasDeCobro)) {
+    const anioDelAnalisis = Number(fechaEnEcuador(ahora.toISOString()).slice(0, 4));
+    cobro.demandasDeCobro = (cobro.demandasDeCobro as AnyRecord[]).map((d) => {
+      const anio = typeof d?.anio === "number" ? d.anio : null;
+      return Object.fromEntries(Object.entries(d ?? {}).flatMap(([clave, valor]) =>
+        clave === "anio" ? [[clave, valor], ["aniosAtras", anio === null ? null : anioDelAnalisis - anio]] : [[clave, valor]]
+      ));
+    });
+  }
   // Desde marco-v28: el grupo sólo llega si la persona es cliente interno.
   // Casi nadie lo es, y el marco gastaba un párrafo en decir que, vacío, se
   // ignore. Si la fuente no contestó, lo dice la disponibilidad.
