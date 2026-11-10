@@ -697,8 +697,9 @@ ${CORTE_DEL_RETAIL}
    mayor que 0 pesa fuerte, como comportamientoCooperativas: alguien ya le
    demandó por no pagar. tiposDemandasComoDemandado dice de qué es cada
    cobro.
-   - demandasDeCobro trae cada una con su año y quién demanda
-     ("Institución financiera" o "Persona"). Una demanda de más de 2 años
+   - demandasDeCobro trae cada una con su año (anio) y quién demanda
+     (quienDemanda: "institucion_financiera", "empresa" o "persona"). Una
+     demanda de más de 2 años
      pesa menos, y menos cuanto más vieja: una de 2009 con el buró al día
      desde entonces es historia, no situación actual. Una del último año
      pesa entera. Que la demande una institución financiera dice más de
