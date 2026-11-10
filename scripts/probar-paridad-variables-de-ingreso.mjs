@@ -1,7 +1,7 @@
 // La prueba de paridad del predictor de ingresos (docs/especificacion-predictor-de-ingresos.md,
-// sección 9, punto 1): las 5.001 respuestas crudas de Equifax de la base de AWS pasan por
-// derivarTablas y por el módulo de variables, y lo que sale se compara con el extracto con el
-// que se entrenó el modelo. Si no coincide, el modelo recibe en producción otra cosa que lo que
+// sección 9, punto 1): las 5.001 respuestas crudas de Equifax de la base de AWS (de diciembre de 2025
+// a octubre de 2026) pasan por el módulo de variables (`vectorDeNivel2`, desde el crudo) y lo que sale
+// se compara con el extracto con el que se entrenó el modelo, en total y por mes de la consulta. Si no coincide, el modelo recibe en producción otra cosa que lo que
 // aprendió y nadie lo ve: por eso se mide variable por variable, y lo que no coincide se dice.
 //
 // Datos (fuera de git, con identificaciones y montos de personas reales; no se copia nada de
@@ -17,7 +17,7 @@
 //   node scripts/probar-paridad-variables-de-ingreso.mjs
 //   npx --yes deno@2.9.6 run --allow-read --allow-env --allow-run=git scripts/probar-paridad-variables-de-ingreso.mjs
 //
-// Sale con 1 si una paridad cae por debajo de lo medido el 2026-10-22 (UMBRALES): el cambio de una
+// Sale con 1 si una paridad cae por debajo de lo medido (UMBRALES): el cambio de una
 // regla de equifax-tablas.ts o de variables-de-ingreso.ts, o un cambio en la respuesta de Equifax,
 // vuelve a correr esta prueba (sección 7 de la especificación).
 //
@@ -26,7 +26,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { raizPrincipal } from "./_comun/entorno.mjs";
-import { derivarTablas, rolDeEquifax } from "../supabase/functions/_shared/equifax-tablas.ts";
+import { derivarTablas } from "../supabase/functions/_shared/equifax-tablas.ts";
 import { VARIABLES_DEL_NIVEL_2, vectorDeNivel2 } from "../supabase/functions/_shared/variables-de-ingreso.ts";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
@@ -135,7 +135,12 @@ console.log(`En el extracto: ${predictor.size} filas de las diez variables, ${cu
 // Un perfil mínimo: lo que mide esta prueba es el nivel de Equifax; la persona no entra.
 const AHORA = new Date("2026-10-22T15:00:00Z");
 const perfilVacio = {};
-const vectorDe = (m, tablas = m.derivado.tablas) => vectorDeNivel2(perfilVacio, tablas, { ahora: AHORA, consultadoEl: m.fecha });
+// Un vector por respuesta, guardado: la misma respuesta da siempre el mismo vector.
+const vectoresGuardados = new Map();
+const vectorDe = (m) => {
+  if (!vectoresGuardados.has(m)) vectoresGuardados.set(m, vectorDeNivel2(perfilVacio, m.crudo, { ahora: AHORA, consultadoEl: m.fecha }));
+  return vectoresGuardados.get(m);
+};
 const ids = [...muestra.keys()];
 
 // ---------------------------------------------------------------------------
@@ -245,49 +250,53 @@ const TOTALES = [
   ["max_mora", (p) => numero(p.max_dias_vencido)],
 ];
 
-// Las dos fuentes posibles de las operaciones: equifax_operaciones (reporteCrediticio, lo que dice la
-// especificación) y las listas DetalleDeudaActualReportada* de interconnectResponse, de donde salió el extracto.
-const LISTAS_DE_LA_IR = ["DetalleDeudaActualReportadaRFRSBS", "DetalleDeudaActualReportadaSICOMSBS", "DetalleDeudaActualReportadaSBSSBS_Educativo"];
-const operacionesDeLaIr = (crudo) => LISTAS_DE_LA_IR.flatMap((k) => (Array.isArray(crudo.interconnectResponse?.[k]) ? crudo.interconnectResponse[k] : [])).map((f) => {
-  const { rol, original } = rolDeEquifax(f.Tipo_Riesgo);
-  return {
-    rol, rol_original: original, tipo_credito: typeof f.Tipo_Credito === "string" ? f.Tipo_Credito : null,
-    cuota_mensual_usd: numero(f.Cuota_Mensual), saldo_deuda_usd: numero(f.Saldo_Deuda), dias_morosidad: numero(f.Dias_Venc),
-  };
-});
-
-const aws = new Map(ids.map((id) => [id, variablesDeAws(id)]));
-function paridadDeOperaciones(titulo, conTablas, umbral) {
-  console.log(titulo);
-  const vectores = new Map(ids.map((id) => {
-    const m = muestra.get(id);
-    return [id, vectorDe(m, conTablas(m)).variables];
-  }));
-  for (const variable of POR_TIPO) {
-    mide("operaciones", variable, ids.map((id) => igual(vectores.get(id)[variable], aws.get(id)[variable], 0.02)), umbral?.[variable]);
-  }
-  for (const [variable, deAws] of TOTALES) {
-    mide("operaciones", `${variable} (total de AWS)`, ids.map((id) => {
-      const p = predictor.get(id);
-      return p && deAws(p) !== null ? igual(vectores.get(id)[variable], deAws(p), 0.02) : undefined;
-    }), umbral?.[variable]);
-  }
-}
-const UMBRALES_DE_LA_3A = {
-  c_consumo: 0.48, c_tarjeta: 0.50, c_micro: 0.88, c_vivienda: 0.91, c_comercial: 0.98, c_educativo: 1, s_consumo: 0.78, s_tarjeta: 0.94, s_micro: 0.98, s_vivienda: 0.99,
-  n_consumo: 0.65, n_tarjeta: 0.94, n_micro: 0.98, n_vivienda: 0.99, c_codeudor: 0.92, max_dias_t: 0.87, n_oper: 0.65, saldo: 0.84, max_mora: 0.88,
+// Desde variables-de-ingreso-v2 (2026-11-06) las operaciones salen de las listas DetalleDeudaActualReportada* de
+// interconnectResponse, de donde salió el extracto, con el máximo de la mora como texto, como AWS (12.35). Hasta v1 salían de
+// equifax_operaciones (reporteCrediticio): la columna «v1» es lo que daba eso con estas 5.001, el 2026-10-22.
+const V1_2026_10_22 = {
+  c_consumo: 48.7, c_tarjeta: 50.4, c_micro: 88.2, c_vivienda: 91.9, c_comercial: 98.3, c_educativo: 100, s_consumo: 78.6, s_tarjeta: 94.7, s_micro: 98.9, s_vivienda: 99.5,
+  n_consumo: 65.1, n_tarjeta: 94.1, n_micro: 98.8, n_vivienda: 99.5, c_codeudor: 92.9, max_dias_t: 87.6, n_oper: 65.6, saldo: 84.4, max_mora: 88.8,
 };
-// Umbrales: lo medido el 2026-10-22 con equifax_operaciones, redondeado hacia abajo. Las operaciones de
-// reporteCrediticio NO reproducen el extracto (el extracto salió de interconnectResponse): los umbrales
-// impiden que empeore, no dicen que esté bien.
-console.log("\n3. Las operaciones contra equifax_deuda_por_tipo.csv y los totales del extracto");
-paridadDeOperaciones("  3a. Desde equifax_operaciones (reporteCrediticio): lo que dice la sección 4.2", (m) => m.derivado.tablas, UMBRALES_DE_LA_3A);
-console.log("");
-paridadDeOperaciones(
-  "  3b. Alternativa medida, NO construida: desde las listas DetalleDeudaActualReportada* de interconnectResponse",
-  (m) => ({ ...m.derivado.tablas, equifax_operaciones: operacionesDeLaIr(m.crudo) }),
-  undefined,
-);
+// Umbrales: lo medido el 2026-11-06 con la regla de v2, redondeado hacia abajo. En las consultas de septiembre y octubre las listas
+// reproducen el extracto entero; antes, no (ver el corte por mes): los umbrales impiden que empeore, no dicen que el pasado esté bien.
+const UMBRALES_DE_LAS_OPERACIONES = {
+  c_consumo: 0.74, c_tarjeta: 0.80, c_micro: 0.94, c_vivienda: 0.97, c_comercial: 0.99, c_educativo: 1, s_consumo: 0.75, s_tarjeta: 0.80, s_micro: 0.94, s_vivienda: 0.97,
+  n_consumo: 0.77, n_tarjeta: 0.80, n_micro: 0.95, n_vivienda: 0.97, c_codeudor: 0.97, max_dias_t: 0.91, n_oper: 0.85, saldo: 0.93, max_mora: 0.95,
+};
+const aws = new Map(ids.map((id) => [id, variablesDeAws(id)]));
+const LAS_19 = [...POR_TIPO, ...TOTALES.map(([v]) => v)];
+// Coincide una variable de una respuesta con el extracto (undefined: el extracto no tiene el total, no se compara).
+function coincide(id, variable) {
+  const v = vectorDe(muestra.get(id)).variables[variable];
+  const total = TOTALES.find(([n]) => n === variable);
+  if (!total) return igual(v, aws.get(id)[variable], 0.02);
+  const p = predictor.get(id);
+  return p && total[1](p) !== null ? igual(v, total[1](p), 0.02) : undefined;
+}
+console.log("\n3. Las operaciones (desde las listas de interconnectResponse) contra equifax_deuda_por_tipo.csv y los totales del extracto");
+for (const variable of LAS_19) {
+  mide("operaciones", `${variable}${TOTALES.some(([n]) => n === variable) ? " (total de AWS)" : ""}   [v1: ${String(V1_2026_10_22[variable]).replace(".", ",")}%]`,
+    ids.map((id) => coincide(id, variable)), UMBRALES_DE_LAS_OPERACIONES[variable]);
+}
+// Por mes de la consulta: lo que dice si el extracto con que se entrenó (enero a junio) es lo que la función arma hoy.
+{
+  const mesDe = (id) => String(muestra.get(id).fecha).slice(0, 7);
+  const meses = [...new Set(ids.map(mesDe))].sort();
+  const porMes = {};
+  console.log("\n  Por mes de la consulta: respuestas con las 19 iguales al extracto (y la peor variable del mes)");
+  for (const mes of meses) {
+    const delMes = ids.filter((id) => mesDe(id) === mes);
+    const todas = delMes.filter((id) => LAS_19.every((v) => coincide(id, v) !== false)).length;
+    const porVariable = Object.fromEntries(LAS_19.map((v) => {
+      const c = delMes.map((id) => coincide(id, v)).filter((x) => x !== undefined);
+      return [v, c.length ? Math.round((1000 * c.filter(Boolean).length) / c.length) / 10 : null];
+    }));
+    const [peor, peorPct] = Object.entries(porVariable).filter(([, x]) => x !== null).sort((a, b) => a[1] - b[1])[0];
+    porMes[mes] = { respuestas: delMes.length, las_19_iguales: todas, por_variable_pct: porVariable };
+    console.log(`  ${mes}  ${String(delMes.length).padStart(5)} respuestas  las 19 iguales ${pct(todas, delMes.length).padStart(7)}   peor: ${peor} ${String(peorPct).replace(".", ",")}%`);
+  }
+  medidas["operaciones por mes"] = porMes;
+}
 
 // ---------------------------------------------------------------------------
 // 4. El SRI
@@ -321,4 +330,11 @@ console.log(`
 Vectores del nivel 2 armados: ${vectores.length} (el perfil va vacío: las variables de la persona no se miden acá).`);
 console.log(`Sin dato, por variable de Equifax: ${sinDato.join(", ")}.`);
 console.log(fallas === 0 ? "\nTodo bien: ninguna paridad cayó por debajo de su umbral." : `\n${fallas} paridad(es) por debajo de su umbral.`);
+// --resumen-git=<ruta>: los conteos (sin identificaciones ni montos) para dejarlos en el repositorio.
+const resumenGit = process.argv.slice(2).find((a) => a.startsWith("--resumen-git="))?.slice("--resumen-git=".length);
+if (resumenGit) {
+  const destino = path.resolve(RAIZ, resumenGit);
+  fs.writeFileSync(destino, JSON.stringify({ generado: new Date().toISOString().slice(0, 10), respuestas: muestra.size, fallas, medidas }, null, 2) + "\n", "utf8");
+  console.log(`Resumen agregado para git: ${destino}`);
+}
 process.exit(fallas === 0 ? 0 : 1);

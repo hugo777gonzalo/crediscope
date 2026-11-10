@@ -271,6 +271,21 @@ Deno.test("la calibración de la fila del modelo se aplica, se dice y queda guar
   assertEquals(fila?.calibracion, calibracion);
 });
 
+Deno.test("sin calibración en la fila se aplica la que trae el modelo; la de la fila (la institución) manda sobre ella", () => {
+  const delModelo = { para: "OK FACTURAR y condicionado (AWS, 2026)", casos: 3538, corrimientoLog90: Math.log(0.8), corrimientoLog85: 0 };
+  const conLaDelModelo = (calibracion: ModeloVigente["calibracion"]): ModeloVigente => ({
+    ...vigenteDe(1200, calibracion), modelo: prepararModelo({ ...archivoDeModelo(1200), calibracion: delModelo }),
+  });
+  const soloModelo = estimar(perfilDe("independiente"), { vigente: conLaDelModelo(null) });
+  assertEquals(estimadoDe(soloModelo.respuesta).minimoCertificado.monto, 1500, "1.200 / 0,8: un corrimiento negativo sube el mínimo");
+  assertEquals(soloModelo.respuesta.modelo?.calibradoPara, delModelo.para);
+  assertEquals(soloModelo.fila?.calibracion, delModelo, "la fila guarda la calibración que se aplicó");
+  const institucion = { para: "Institución inventada", casos: 800, corrimientoLog90: Math.log(1.25), corrimientoLog85: 0 };
+  const conFila = estimar(perfilDe("independiente"), { vigente: conLaDelModelo(institucion) });
+  assertEquals(estimadoDe(conFila.respuesta).minimoCertificado.monto, 960);
+  assertEquals(conFila.fila?.calibracion, institucion);
+});
+
 // ---------------------------------------------------------------- la fila
 
 Deno.test("la fila lleva lo que hace falta para vigilar el modelo y ningún identificador", () => {

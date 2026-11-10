@@ -1,0 +1,67 @@
+{
+  "poblacion": "solicitantes de crédito independientes (en AWS, el 96% automotriz)",
+  "medido_el": "2026-11-07",
+  "fuente": "docs/investigacion-predictor-de-ingresos.md, 12.35; scripts/predictor-ingresos/ingreso_v2.py y metricas/ingreso-v2-2026-11.json",
+  "variables": 8,
+  "lleva_el_sexo": true,
+  "entrenamiento": {
+    "casos": 21260,
+    "desde": "2025-12-30",
+    "hasta": "2026-10-20",
+    "filtro": "todo"
+  },
+  "calibracion": {
+    "para": "OK FACTURAR y condicionado (AWS, 2026)",
+    "casos": 3538,
+    "corrimientoLog90": -0.22738000338101383,
+    "corrimientoLog85": -0.21352257093258764
+  },
+  "validacion_cruzada": {
+    "casos": 21260,
+    "r2": 0.157,
+    "r2_intervalo": [
+      0.143,
+      0.172
+    ],
+    "tramo_exacto": 0.362,
+    "tramo_o_vecino": 0.671,
+    "real_supera_minimo_90": 0.807,
+    "mediana_minimo_90": 1249
+  },
+  "ok_facturar_y_condicionado": {
+    "casos": 3538,
+    "real_supera_minimo_90": 0.901,
+    "mediana_minimo_90": 1452
+  },
+  "hacia_adelante": {
+    "descripcion": "Entrenado hasta junio, probado de julio a octubre de 2026, con el mínimo calibrado.",
+    "casos": 8656,
+    "ok_facturar_y_condicionado": 1613,
+    "baja_de_la_perdida_contra_el_minimo_fijo": 0.11,
+    "baja_de_la_perdida_intervalo": [
+      0.101,
+      0.119
+    ],
+    "tramo_exacto_o_vecino": 0.676,
+    "real_supera_minimo_90_en_ok": 0.902,
+    "real_supera_minimo_90_en_ok_intervalo": [
+      0.887,
+      0.916
+    ],
+    "real_supera_minimo_90_en_todas": 0.803,
+    "mediana_minimo_90_en_ok": 1462,
+    "capacidad_de_pago_en_ok": {
+      "concordancia": 0.7822,
+      "alcanza_por_error": 0.012,
+      "niega_de_mas": 0.2058
+    }
+  },
+  "sexo": {
+    "diferencia_r2_con_menos_sin": 0.0024,
+    "intervalo": [
+      0.0,
+      0.005
+    ],
+    "baja_de_la_perdida_con_el_sexo": 0.0012
+  }
+}
