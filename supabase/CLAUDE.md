@@ -153,11 +153,15 @@ su guía: `docs/equifax.md`.
     la puerta es de administradores, y con una credencial de prueba se consultaría a una
     persona de verdad.
 - `variables-de-ingreso.ts` — el vector de entrada del predictor de ingresos (niveles 1 y 2)
-  desde el perfil y las tablas de Equifax (`equifax_analisis_credito`, desde la 138). Una sola
-  implementación: lo que no coincide con el extracto de AWS con el que se entrenará el modelo
-  queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
+  desde el perfil y, el nivel 2, desde la **respuesta cruda** de Equifax (`vectorDeNivel2`; en producción
+  `vectorDeNivel2DeLaConsulta`, que la lee con `leerCrudoDeLaConsulta()`). Una sola implementación: la
+  usan también la matriz de entrenamiento y la prueba de paridad. Lo que no coincide con el extracto de
+  AWS queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
   se mide con `node scripts/probar-paridad-variables-de-ingreso.mjs` (necesita `research/`).
-  Sin RUC es un dato; sin respuesta de la fuente no lo es.
+  Sin RUC es un dato; sin respuesta de la fuente no lo es. **Las operaciones del nivel 2 salen de las
+  listas de `interconnectResponse`, no de `equifax_operaciones`** (v2, 12.35): de ahí las armó el
+  extracto, y la mora máxima como TEXTO («65» > «259»). Se reproduce, no se corrige: es lo que aprendió
+  el modelo. Para la deuda de la persona sigue `reporteCrediticio`: los dos bloques no se suman nunca.
 - `predictor-ingresos.ts` — el evaluador del predictor de ingresos: lee el modelo exportado
   (`crediscope-arboles-1`, `scripts/predictor-ingresos/FORMATO.md`), evalúa los doce cuantiles en
   logaritmo y arma la respuesta (`estimarIngreso()`). El Python `evaluador_referencia.py` es la
@@ -176,7 +180,9 @@ su guía: `docs/equifax.md`.
   quedan en ella, no en la respuesta. El modelo está en el depósito privado `modelos-de-ingreso` de
   cada base: `crearCargadorDeModelo()` lo baja sólo si cambió la huella de la fila vigente y se niega
   a servir otro archivo. La calibración va en `modelos_de_ingreso.calibracion` (una base por
-  institución). Un modelo nuevo lleva versión nueva y `scripts/publicar-modelo-de-ingreso.mjs`.
+  institución) y manda; sin ella se aplica la que trae el archivo (`ingreso-v2` viene calibrado con OK
+  FACTURAR y condicionado). Hasta el 2026-11-06 el null de la fila tapaba la del archivo. Un modelo
+  nuevo lleva versión nueva y `scripts/publicar-modelo-de-ingreso.mjs`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de

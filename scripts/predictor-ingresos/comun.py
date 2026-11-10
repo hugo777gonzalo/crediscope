@@ -55,6 +55,15 @@ NIVELES = {
     1: NIVEL_1_CANDIDATO,
     2: BASE + BURO + CUOTA + SRI_PROVEEDOR_INFO_1 + SRI_EQUIFAX,
 }
+# ingreso-v2 (12.35): lo que hoy no se puede servir con Proveedor_Info_1 sale también del nivel 2. El estado civil y la zona no tienen mapeo a las
+# categorías de AWS (MAPEO_DE_PROVEEDOR_INFO_1 los deja sin dato) y el IESS de Proveedor_Info_1 no es el del extracto (los meses con aporte no coinciden
+# en ninguno de 99; 12.29): entrenar con ellos y servirlos vacíos es darle al modelo, en todos los casos, un faltante que casi nunca vio.
+NO_SERVIBLES = ["estado_civil"] + ZONA + IESS
+NIVELES_V2 = {1: NIVEL_1_CANDIDATO, 2: [x for x in NIVELES[2] if x not in NO_SERVIBLES]}
+# Desde febrero de 2026 las listas de interconnectResponse reproducen el extracto en las 19 variables de las operaciones; en diciembre y enero no
+# (paridad por mes de las 5.001, 12.35). Lo anterior a esta fecha se mide aparte en el nivel 2.
+INICIO_DE_LA_PARIDAD = pd.Timestamp("2026-02-01")
+
 # El nivel 1 contra el anterior, y lo que pesa cada variable que se discutió al decidirlo (12.30).
 VARIANTES_NIVEL_1 = {
     "anterior: con estado civil, zona e IESS de AWS": NIVEL_1_ANTERIOR,
@@ -84,7 +93,7 @@ def verificar_entradas(columnas):
         raise ValueError(f"Variables que no pueden ser entrada del predictor: {malas}")
 
 
-for _n, _c in {**{f"nivel {k}": v for k, v in NIVELES.items()}, **VARIANTES_SRI, **VARIANTES_NIVEL_1}.items():
+for _n, _c in {**{f"nivel {k}": v for k, v in NIVELES.items()}, **{f"v2 nivel {k}": v for k, v in NIVELES_V2.items()}, **VARIANTES_SRI, **VARIANTES_NIVEL_1}.items():
     verificar_entradas(_c)
 
 # ---------------------------------------------------------------- modelo
