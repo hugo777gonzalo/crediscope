@@ -57,9 +57,11 @@ if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
 const { evaluarControlesBloqueo } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/controles-bloqueo.ts")).href);
 const { columnasDelPerfil } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/columnas-del-perfil.ts")).href);
-// El hallazgo que estructura-v9 puede cambiar. Cualquier otro tiene que
-// reproducirse igual.
-const HALLAZGO_QUE_CAMBIA = "delito_seguridad_ciudadana";
+// Los hallazgos que un cambio del bloqueo puede mover: el delito de seguridad
+// ciudadana (estructura-v9) y, desde estructura-v20, el aviso de la demanda
+// penal cuyo demandado no es la persona. Cualquier otro tiene que reproducirse
+// igual.
+const HALLAZGOS_QUE_CAMBIAN = new Set(["delito_seguridad_ciudadana", "posible_homonimo_en_demanda_penal"]);
 
 // Los secretos se leen del archivo y no se imprimen.
 cargarEntorno(RAIZ);
@@ -124,7 +126,7 @@ const ESPERADAS = [
   ".consultadoEn", ".identidad.edad", ".identidad.edadConyuge", ".identidad.añosCasado",
   ".fuentesIngreso.detalle.recalculo", ".fuentesIngreso.correccion", ".laboral.correccionEmpleoActual",
 ];
-const sinElQueCambia = (b) => canonico((b?.hallazgos ?? []).filter((h) => h.code !== HALLAZGO_QUE_CAMBIA));
+const sinElQueCambia = (b) => canonico((b?.hallazgos ?? []).filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code)));
 const cambiosDeBloqueo = { desbloqueados: [], bloqueados: [], otroMotivo: 0, sinBloqueoGuardado: 0 };
 const mesMenos = (m) => { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(5)) - 2; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`; };
 

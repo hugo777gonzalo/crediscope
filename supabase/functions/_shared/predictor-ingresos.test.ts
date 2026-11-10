@@ -5,8 +5,8 @@
 //   - Siempre, con un modelo CHICO inventado en el mismo formato, armado acá: cada regla
 //     del formato (FORMATO.md) con su caso, y la respuesta con cuentas hechas a mano.
 //   - Sólo si existe, la prueba de oro: las 200 entradas inventadas de cada nivel contra
-//     las salidas de LightGBM (casos-de-oro/). Se activa con la variable de entorno
-//     PREDICTOR_INGRESOS_MODELOS, la carpeta con ingreso-v1-nivel1.json.gz y nivel2:
+//     las salidas de LightGBM (casos-de-oro/), de ingreso-v1 y de ingreso-v2. Se activa con la variable de entorno
+//     PREDICTOR_INGRESOS_MODELOS, la carpeta con ingreso-v1-nivel1.json.gz, ingreso-v2-nivel1.json.gz y sus nivel2:
 //
 //   PREDICTOR_INGRESOS_MODELOS=C:/datos/ingresos/modelos/exportado \
 //     deno test --no-lock --allow-env --allow-read=supabase/functions,C:/datos/ingresos/modelos/exportado supabase/functions/_shared/predictor-ingresos.test.ts
@@ -14,6 +14,8 @@
 import { assert, assertAlmostEquals, assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1";
 import oroNivel1 from "../../../scripts/predictor-ingresos/casos-de-oro/nivel1.json" with { type: "json" };
 import oroNivel2 from "../../../scripts/predictor-ingresos/casos-de-oro/nivel2.json" with { type: "json" };
+import oroV2Nivel1 from "../../../scripts/predictor-ingresos/casos-de-oro/ingreso-v2-nivel1.json" with { type: "json" };
+import oroV2Nivel2 from "../../../scripts/predictor-ingresos/casos-de-oro/ingreso-v2-nivel2.json" with { type: "json" };
 import {
   type Calibracion,
   distribucionEn,
@@ -336,12 +338,15 @@ const centavosRedondeados = (v: number) => Math.round(v * 100) / 100;
 
 const TOLERANCIA = 0.001; // en logaritmo (especificación, 6.2); el evaluador de referencia en Python da 1e-13
 
+// Los casos de oro de cada versión: los de ingreso-v1 (el vigente) no se pisan al exportar otra (exportar.py --version=).
+const CASOS_DE_ORO = [["ingreso-v1", 1, oroNivel1], ["ingreso-v1", 2, oroNivel2], ["ingreso-v2", 1, oroV2Nivel1], ["ingreso-v2", 2, oroV2Nivel2]] as const;
+
 Deno.test("los casos de oro están completos y son coherentes (el repositorio los guarda sin el modelo)", () => {
-  for (const [nivel, oro] of [[1, oroNivel1], [2, oroNivel2]] as const) {
+  for (const [version, nivel, oro] of CASOS_DE_ORO) {
     assertEquals(oro.casos.length, 200);
     assertEquals(oro.cuantiles, NIVELES);
     assertEquals(oro.tolerancia, TOLERANCIA);
-    assertEquals(oro.modelo, `ingreso-v1-nivel${nivel}.json.gz`);
+    assertEquals(oro.modelo, `${version}-nivel${nivel}.json.gz`);
     const nombres = Object.keys(oro.casos[0].entradas).sort();
     for (const caso of oro.casos) {
       assertEquals(Object.keys(caso.entradas).sort(), nombres, caso.id);
@@ -353,15 +358,27 @@ Deno.test("los casos de oro están completos y son coherentes (el repositorio lo
 
 const CARPETA_DE_MODELOS = Deno.env.get("PREDICTOR_INGRESOS_MODELOS");
 
-for (const [nivel, oro] of [[1, oroNivel1], [2, oroNivel2]] as const) {
+Deno.test("ingreso-v2 viaja calibrado con OK FACTURAR y condicionado; ingreso-v1, sin calibrar", () => {
+  for (const oro of [oroV2Nivel1, oroV2Nivel2]) {
+    const c = oro.calibracion as Calibracion;
+    assert(c.para.includes("OK FACTURAR"), c.para);
+    assert(c.casos >= 500, `${c.casos} casos`);
+    assert(c.corrimientoLog90 < 0, "con OK FACTURAR y condicionado el mínimo sube (12.34)");
+  }
+  for (const oro of [oroNivel1, oroNivel2]) assertEquals((oro as { calibracion?: unknown }).calibracion, undefined);
+});
+
+for (const [version, nivel, oro] of CASOS_DE_ORO) {
   // Sin el modelo real (fuera de git) la prueba se omite: el modelo chico de arriba es el que corre en la integración continua.
   Deno.test({
-    name: `prueba de oro del nivel ${nivel}: las 200 entradas coinciden con LightGBM a menos de ${TOLERANCIA} en el logaritmo de cada cuantil`,
+    name: `prueba de oro de ${version}, nivel ${nivel}: las 200 entradas coinciden con LightGBM a menos de ${TOLERANCIA} en el logaritmo de cada cuantil`,
     ignore: !CARPETA_DE_MODELOS,
     fn: async () => {
       const bytes = await Deno.readFile(`${CARPETA_DE_MODELOS}/${oro.modelo}`);
       const modelo = await leerModeloComprimido(new Blob([bytes]));
       assertEquals(modelo.nivel, nivel);
+      assertEquals(modelo.version, version);
+      assertEquals(modelo.calibracion, (oro as { calibracion?: Calibracion }).calibracion ?? null, "la calibración del archivo es la de sus casos de oro");
       let peor = 0;
       for (const caso of oro.casos) {
         const obtenido = evaluarCuantilesLog(modelo, caso.entradas as Record<string, number | string | null>);
@@ -371,7 +388,7 @@ for (const [nivel, oro] of [[1, oroNivel1], [2, oroNivel2]] as const) {
           assert(diferencia < TOLERANCIA, `${caso.id}, cuantil ${NIVELES[i]}: ${obtenido[i]} contra ${esperado}`);
         });
       }
-      console.log(`nivel ${nivel}: diferencia máxima contra LightGBM en 200 casos: ${peor.toExponential(2)}`);
+      console.log(`${version}, nivel ${nivel}: diferencia máxima contra LightGBM en 200 casos: ${peor.toExponential(2)}`);
     },
   });
 }

@@ -36,7 +36,14 @@ su guía: `docs/equifax.md`.
   `MARCO_VERSION` (marco-v34) es el texto sin buró; `MARCO_VERSION_CON_BURO`
   (marco-v35, v34 más el buró) la enciende `CONFIG_LLM.buroDeLaInstitucion`,
   encendido desde el 2026-11-04, y es lo único que ese interruptor enciende.
-  Encendido, todo análisis es v35, tenga o no la persona una consulta vigente.
+  Encendido, todo análisis es v35, tenga o no la persona una consulta de Equifax.
+  **El análisis lee la última consulta de la persona, vigente o no** (negocio, 2026-11-09, p4):
+  `ultimaConsultaDeEquifax()` (`buro-de-la-institucion.ts`) junta las filas de `consultas_equifax`
+  y el índice por cédula de las consultas de AWS en Storage (`crudo-equifax-migrado.ts`), nunca
+  una posterior al análisis, y deriva la estructura en memoria si no está guardada
+  (`derivarLaConsulta()`, sin escribir). La vigencia del 17 (`consultaVigenteDeEquifax()`) sigue
+  para cobrar, reutilizar y lo que la pantalla muestra como vigente. Medido: en la base de prueba,
+  244 de 244 personas con buró a la fecha de su análisis (antes 0), mediana de 17 días.
 - `marco-por-cliente.ts` → `componerMarco()` — el marco sin las secciones
   de temas que el perfil no trae (toma el número de versión libre al
   encenderse; la v29 fue E27). Corta el marco vigente por marcas,
@@ -146,11 +153,15 @@ su guía: `docs/equifax.md`.
     la puerta es de administradores, y con una credencial de prueba se consultaría a una
     persona de verdad.
 - `variables-de-ingreso.ts` — el vector de entrada del predictor de ingresos (niveles 1 y 2)
-  desde el perfil y las tablas de Equifax (`equifax_analisis_credito`, desde la 138). Una sola
-  implementación: lo que no coincide con el extracto de AWS con el que se entrenará el modelo
-  queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
+  desde el perfil y, el nivel 2, desde la **respuesta cruda** de Equifax (`vectorDeNivel2`; en producción
+  `vectorDeNivel2DeLaConsulta`, que la lee con `leerCrudoDeLaConsulta()`). Una sola implementación: la
+  usan también la matriz de entrenamiento y la prueba de paridad. Lo que no coincide con el extracto de
+  AWS queda en `pendientes` y en `docs/especificacion-predictor-de-ingresos.md`, sección 9, punto 1;
   se mide con `node scripts/probar-paridad-variables-de-ingreso.mjs` (necesita `research/`).
-  Sin RUC es un dato; sin respuesta de la fuente no lo es.
+  Sin RUC es un dato; sin respuesta de la fuente no lo es. **Las operaciones del nivel 2 salen de las
+  listas de `interconnectResponse`, no de `equifax_operaciones`** (v2, 12.35): de ahí las armó el
+  extracto, y la mora máxima como TEXTO («65» > «259»). Se reproduce, no se corrige: es lo que aprendió
+  el modelo. Para la deuda de la persona sigue `reporteCrediticio`: los dos bloques no se suman nunca.
 - `predictor-ingresos.ts` — el evaluador del predictor de ingresos: lee el modelo exportado
   (`crediscope-arboles-1`, `scripts/predictor-ingresos/FORMATO.md`), evalúa los doce cuantiles en
   logaritmo y arma la respuesta (`estimarIngreso()`). El Python `evaluador_referencia.py` es la
@@ -169,7 +180,9 @@ su guía: `docs/equifax.md`.
   quedan en ella, no en la respuesta. El modelo está en el depósito privado `modelos-de-ingreso` de
   cada base: `crearCargadorDeModelo()` lo baja sólo si cambió la huella de la fila vigente y se niega
   a servir otro archivo. La calibración va en `modelos_de_ingreso.calibracion` (una base por
-  institución). Un modelo nuevo lleva versión nueva y `scripts/publicar-modelo-de-ingreso.mjs`.
+  institución) y manda; sin ella se aplica la que trae el archivo (`ingreso-v2` viene calibrado con OK
+  FACTURAR y condicionado). Hasta el 2026-11-06 el null de la fila tapaba la del archivo. Un modelo
+  nuevo lleva versión nueva y `scripts/publicar-modelo-de-ingreso.mjs`.
 - **Cada módulo tiene su propia puerta** (negocio, 2026-10-17): un módulo nuevo
   es una función propia que se llama sola (`simular-credito`,
   `capacidad-de-pago`) y una operación propia en `api/openapi.yaml`, además de
@@ -293,7 +306,9 @@ su guía: `docs/equifax.md`.
     bancos (D empieza a los 91) y `tiene_mora`, el monto en atraso de bancos y
     cooperativas; `consulta_buro_id` dice de qué consulta salieron. La regla
     de la consulta vigente es `buro_vigente_de_la_persona()`, la copia en SQL
-    de `_shared/buro-de-la-institucion.ts`; si cambia una, cambia la otra.
+    de `consultaVigenteDeEquifax()` (`_shared/buro-de-la-institucion.ts`); si
+    cambia una, cambia la otra. La del análisis (la última, vigente o no) no
+    tiene copia en SQL: lee el índice de Storage.
     `docs/propuesta-dias-de-mora-con-buro.md`; se mide con
     `node scripts/medir-dias-de-mora-con-buro.mjs`.
   - **El estado de la bandeja juzga las 21 obligatorias en SQL** (145):
@@ -321,6 +336,13 @@ su guía: `docs/equifax.md`.
   vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
 
 **Crudo de Proveedor_Info_1**
+- **Una regla que une, elige o descarta registros de la fuente se mide con un
+  detector sobre el crudo antes de entrar** (`scripts/revisar-crudo.mjs`), nunca
+  con el mismo criterio que la regla ni sólo con coincidencias exactas, y se cuenta
+  cuántas filas trae cada persona. El perfil guardado ya trae la mezcla y ningún
+  control sobre la base la ve: así pasaron el bloqueo por la demanda de otro, el
+  BIESS contado dos veces y la primera operación de la institución (2026-11-06,
+  `docs/lecciones.md`).
 - El crudo de Proveedor_Info_1 se guarda desde la 090 en el depósito privado
   `crudo-proveedor-info-1` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
@@ -342,7 +364,9 @@ su guía: `docs/equifax.md`.
     `--enlazar`, `--vaciar --confirmo`). Una migración nueva de AWS (`migrar-equifax-aws.mjs`) vuelve a
     meter el crudo en la fila: después se corre ese guion de nuevo.
   - `suprimir_titular()` devuelve `crudos_equifax` y `derechos-del-titular.mjs` los borra. Un JSON de AWS
-    sin fila en la base no se encuentra por cédula (su nombre es el id de AWS).
+    sin fila en la base se encuentra por cédula sólo en el índice `aws/indice/por-cedula.json.gz`
+    (fase `--indice` de `subir-equifax-migrado-a-storage.mjs`; 19.819 consultas de 18.080 personas,
+    281 KB): la supresión todavía no lo lee. Se rearma después de subir lotes nuevos.
   - Vaciar la fila no devuelve espacio al sistema operativo: Postgres lo reutiliza, y `pg_database_size` baja
     sólo con un `VACUUM FULL` (que bloquea la tabla). Medido el 2026-11-06: tras vaciar las 3.542 la base
     estaba en 534 MB (508 antes: la subida de 20.616 objetos sumó metadatos en `storage.objects`) y bajó a 478 MB con

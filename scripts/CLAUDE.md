@@ -60,12 +60,19 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 - `scripts/revisar-datos.mjs` corre el catálogo de `scripts/revision-de-datos/detectores.mjs`
   (habilidad `revision-de-datos`) en una sola consulta de sólo lectura y sale con 1 si vuelve un
   error corregido. Un error de datos que se encontró a mano entra ahí como detector, con su caso.
+- `scripts/revisar-crudo.mjs` corre `DETECTORES_DEL_CRUDO` (mismo catálogo) sobre el crudo del último perfil de cada
+  persona real (carpeta de `research/` y depósito, ~2 min, sólo lee). Es para lo que no deja rastro en el perfil guardado:
+  la demanda penal de otro demandado (p1) o el hipotecario contado dos veces (p6) salieron a mano, persona por persona.
 - Un detector que necesita una regla del código la importa del `.ts` (Node 24 lo lee), no la copia:
   el primero copiaba 5 fuentes del freno que ya eran 21 y contaba 671 consultas incompletas en vez de 770.
 - `scripts/revision-del-analisis/` (habilidad `revision-del-analisis`): `medir-lote.mjs` mide un lote de análisis sin
   modelo, `elegir-casos.mjs` elige hasta 15 casos y `armar-carpetas.mjs` arma la carpeta a ciegas de cada uno en
-  `research/revision-del-analisis/`. Los tres sólo leen, y el control `guiones` les pasa `node --check`. La fase 1 de una carpeta nunca lleva el score del modelo ni la
-  decisión de la institución: en el piloto `capacidad.json` los traía y contaminó 3 de 12 dictámenes.
+  `research/revision-del-analisis/`. Los guiones sólo leen (`comun.mjs` es lo que comparten: la consulta, las ids de caso y la lectura del crudo),
+  y el control `guiones` les pasa `node --check`. `armar-carpetas.mjs` sirve para cualquier marco: saca el texto del marco del análisis de git, y la base de
+  prueba de AWS es opcional. `resultado-de-pago.mjs` arma, para esa base, si el crédito pedido ya figura en la cartera de la institución (plazo, cuota o
+  saldo, y tiempo coherente) y cómo se pagó; va en la fase 3 de cada carpeta. La fase 1 nunca lleva el score del modelo, la
+  decisión de la institución ni el resultado de pago: en el piloto `capacidad.json` los traía y contaminó 3 de 12 dictámenes, y el guion ahora corta si una
+  clave de las fases 2 o 3 aparece en la 1.
 
 ## Predictor de ingresos
 
@@ -90,11 +97,14 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   para medir el predictor mientras `estimaciones_de_ingreso` esté vacía. El 2026-11-05 mostró que 624 de 2.061
   estimaciones serían de consultas incompletas.
 - `scripts/predictor-ingresos/matriz-desde-crudo.mjs` (Node, aunque la carpeta sea de Python) arma la matriz del nivel 2 desde los
-  JSON crudos de Equifax bajados de AWS, con `derivarTablas` y `vectorDeNivel2` y la fecha de la consulta como reloj, sin copiar una
-  regla: una sola implementación para entrenar y servir (especificación, 9.1). Cruza con `personas.parquet` por la id de consulta y mide
-  la paridad contra el extracto. **Una fecha de AWS sin zona es hora de Ecuador**: se lee con `-05:00` y no con la zona de la máquina.
-  Repetirlo al bajar más respaldo; no entrena. El control `guiones` no revisa esa carpeta: `node --check` a mano.
+  JSON crudos de Equifax bajados de AWS con `vectorDeNivel2` (desde el crudo, el mismo de producción) y la fecha de la consulta como reloj,
+  sin copiar una regla: una sola implementación para entrenar y servir (especificación, 9.1). Cruza con `personas.parquet` por la id de
+  consulta, mide la paridad contra el extracto y sale con 1 si una variable de Equifax baja del 100% (así está desde v2, 12.35). **Una
+  fecha de AWS sin zona es hora de Ecuador**: se lee con `-05:00` y no con la zona de la máquina. Repetirlo al tocar
+  `variables-de-ingreso.ts`; no entrena. El control `guiones` no revisa esa carpeta: `node --check` a mano. `ingreso_v2.py` lee su matriz.
 - `scripts/probar-paridad-variables-de-ingreso.mjs` pasa las respuestas crudas de Equifax por
-  `variables-de-ingreso.ts` y las compara con el extracto de AWS con que se entrenó (necesita `research/`;
-  sale con 1 si una paridad baja de su umbral). Repetirlo al tocar `equifax-tablas.ts`,
-  `variables-de-ingreso.ts` o la respuesta de Equifax.
+  `variables-de-ingreso.ts` y las compara con el extracto de AWS con que se entrenó, en total y por mes (necesita `research/`;
+  sale con 1 si una paridad baja de su umbral). Desde febrero de 2026 las 19 de las operaciones coinciden al 100%; en diciembre y
+  enero, no (AWS las armó distinto). Repetirlo al tocar `equifax-tablas.ts`, `variables-de-ingreso.ts` o la respuesta de Equifax.
+- Un CSV con números que escribió Node se lee en pandas con `float_precision="round_trip"`: el lector por omisión los deja a un
+  bit y un árbol cambia de rama (`docs/lecciones.md`, Guiones).

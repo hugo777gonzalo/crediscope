@@ -3349,6 +3349,87 @@ La cobertura sube porque las etiquetas agregadas, más bajas que las validadas, 
 - La capacidad de pago fuera de OK FACTURAR y condicionado.
 - En D1, quiénes de las agregadas son independientes.
 
+### 12.35 ingreso-v2: el nivel 2 sin diferencia entre entrenar y servir, y los dos niveles calibrados (2026-11-06)
+
+**Qué se hizo.** Cierra la fase 2 de la revisión integral del predictor.
+- Las 19 variables de las operaciones del nivel 2 (`c_*`, `s_*`, `n_*`, `c_codeudor`, `max_dias_t`, `n_oper`, `saldo` y `max_mora`) salen ahora de las listas de `interconnectResponse`, como el extracto de AWS.
+- El nivel 2 deja lo que Proveedor_Info_1 no puede dar.
+- Los dos niveles se calibran con OK FACTURAR y condicionado (decisión del negocio, 12.34).
+
+Todo fue local: ninguna consulta a AWS, a Equifax, a Proveedor_Info_1 ni al modelo de lenguaje, y ninguna migración.
+- Se entrena con el extracto ya bajado (21.260 independientes).
+- La paridad se mide con los 20.560 crudos de `research/ingresos-aws/crudo-equifax/` y las 5.001 respuestas de `muestra_respuestas_equifax.jsonl`.
+- Lo miden `matriz-desde-crudo.mjs`, `probar-paridad-variables-de-ingreso.mjs` e `ingreso_v2.py`, con el marco de la fase 0 (12.32): siempre hacia adelante, 12.604 para entrenar y 8.656 de julio a octubre para probar (1.613 en OK FACTURAR y condicionado).
+- Intervalos del 95% por remuestreo de personas (1.000 veces).
+- A git van `metricas/matriz-desde-crudo-v2-2026-11.json`, `metricas/paridad-5001-v2-2026-11.json`, `metricas/ingreso-v2-2026-11.json` y `metricas/ingreso-v2-nivelN.json`, sólo agregados. Las tablas completas quedan en `C:\datos\ingresos\resultados\predictor-ingresos\ingreso-v2\`.
+
+**1. La regla que no se encontraba era un tipo de dato.** El 2026-10-22 (sección 9 de la especificación) las listas no reproducían el extracto y «no se encontró la regla». El 2026-11-06 (PR 140) ya daban 100% en 16 de las 19 en las consultas de septiembre y octubre, pero no en `max_mora` (98,7%) ni en `max_dias_t` (99,6%).
+- **`max_mora` es el máximo de `Dias_Venc` comparado como TEXTO**: «65» le gana a «259». Así coincide en las 3.766 consultas en que el extracto lo tiene; con el máximo de verdad, en 3.717.
+- **`max_dias_t` salió de otra tabla de AWS** (`equifax_deuda_por_tipo`), con una fila por sistema y tipo de crédito y su máximo como texto. `preparar.py` toma la mayor de esas filas como número. Así coincide en las 3.935; con el máximo numérico de todo, en 3.920, y como texto de todo, en 3.909.
+- Las 169 consultas sin totales en el extracto no traen filas en las listas: también coinciden, con nulo.
+- `variables-de-ingreso.ts` (v2) reproduce eso. No corrige el máximo: el modelo aprendió esos valores.
+
+**2. La paridad, con la misma función que sirve.**
+- **Las 3.935 que cruzan** (septiembre 2.230, octubre 1.705; 591 OK FACTURAR y 184 condicionado). `vectorDeNivel2` desde el crudo da las **44 variables de Equifax iguales al extracto en el 100% de las consultas**. Desde `equifax_operaciones` (v1), las 19 coincidían entre 25,3% (`c_tarjeta`) y 100%. El guion sale con 1 si una baja.
+- **Las 5.001 de todo el año, por mes de la consulta.** Desde febrero de 2026 las 19 coinciden en el 100% de las respuestas de cada mes (2.963 respuestas de febrero a octubre). En diciembre de 2025 y enero de 2026, sólo en 13,5% (52) y 32,9% (1.986); en enero `c_tarjeta` coincide en 51,8% y `c_consumo` en 37,9%. AWS armó esos meses de otra manera. Sobre las 5.001 juntas: `c_consumo` 74,5% (48,7% en v1), `c_tarjeta` 80,2% (50,4%), `max_mora` 95,4% (88,8%).
+- **Las consultas que paga CrediScope traen las tres listas**: 87 de 87 en `research/equifax/crudo/`.
+
+**3. Lo que el nivel 2 no puede recibir.** Entrenado con el estado civil, la zona y el IESS del extracto, el nivel 2 de `ingreso-v1` los recibiría vacíos en producción. El estado civil y la zona no tienen mapeo a las categorías de AWS, y el IESS de Proveedor_Info_1 no es el del extracto (12.29).
+- **Como se sirve**, su pérdida sube **1,31% (1,01 a 1,60)** contra como se entrenó: la agudeza pasa de 27,8% a 26,8%.
+- **Entrenado sin ellos** (`comun.NIVELES_V2[2]`, 46 variables), en las 3.935 con el crudo gana **0,70% (0,46 a 0,95)** a `ingreso-v1` servido.
+- En el extracto completo, donde v1 sí tiene esas variables, pierde 0,60% (0,31 a 0,88): lo que esas variables valen en AWS y no en producción.
+
+**4. La regla «desde febrero»**, fijada antes de medir: el nivel 2 se entrena sin diciembre ni enero (2.039 filas de 12.604) si la pérdida en todas no sube más de 0,5% y la cobertura calibrada en OK queda entre 88% y 95%.
+- Sube **0,30% (0,15 a 0,44)**; en las 3.935 con el crudo, 0,49% (0,26 a 0,73).
+- La cobertura en OK es 91,5%.
+- **Se adopta**: el nivel 2 se sirve igual que se entrena en todas sus filas.
+- El costo viene de entrenar con 16% menos casos hacia adelante; con todo 2026 son 9,6% menos (19.221 de 21.260).
+- Si el negocio prefiere esos 0,3 puntos de agudeza, se vuelve a entrenar con todo (`n2` en `ingreso_v2.py`).
+
+**5. Lo que se exporta, calibrado** (hacia adelante; nivel 1 / nivel 2):
+
+| Medida | Nivel 1 | Nivel 2 | Meta y piso (12.32) |
+|---|---|---|---|
+| Corrimiento del mínimo, en logaritmo (con el modelo de todo 2026) | −0,227 (3.538 casos) | −0,117 (3.273 casos) | — |
+| Baja de la pérdida contra el mínimo fijo, en todas | 11,0% (10,1 a 11,9) | 27,1% (25,8 a 28,4) | 13% y 10% / 30% y 26%: **pasa el piso, no la meta** |
+| Tramo exacto o vecino, en todas | 67,6% | 81,9% | 70% y 66% / 84% y 81%: **pasa el piso, no la meta** |
+| Cobertura del mínimo del 90% en OK FACTURAR y condicionado | **90,2% (88,7 a 91,6)** | **91,5% (90,1 a 92,9)** | 88% a 95% |
+| Mínimo mediano en OK | 1.462 (sin calibrar, 1.158) | 1.688 (sin calibrar, 1.567) | — |
+| Cobertura en todas / en los rechazados | 80,3% / 60,0% | 84,3% / 65,4% | — |
+| Capacidad de pago en OK: «alcanza» por error | 1,20% (0,88 a 1,54) | 0,26% (0,14 a 0,40) | 1% (en el nivel 1, 1,2% aceptado por el negocio) |
+| Niega de más / concordancia | 20,6% / 78,2% | 23,1% / 76,7% | 21% y 20% o menos: el nivel 2 no llega |
+
+- **El nivel 1 de `ingreso-v2` es el de `ingreso-v1` con la calibración**: las mismas variables, la misma tabla y los mismos árboles. Sus 200 casos de oro son idénticos.
+- **En las 3.935 con el crudo**, con el nivel 2 armado como en producción y lo que no se puede servir vacío:
+  - nivel 1: agudeza 12,3%, tramo exacto o vecino 67,1%, cobertura en OK 89,2% (775 casos), «alcanza» por error 1,37%;
+  - nivel 2: 28,0%, 81,9%, 91,5% y 0,31%.
+
+  Con lo que arma la función desde el crudo, los cuantiles son **exactamente** los del extracto: diferencia 0 en logaritmo en las 3.935, en todas las variantes que se pueden servir. La matriz se lee con `float_precision="round_trip"`: con el lector por omisión de pandas, la antigüedad del SRI y los cocientes salían a un bit de distancia en 634 y 722 consultas, y eso movía algún cuantil hasta 0,06.
+
+**6. El sexo**, con y sin él, calibrados (la fase 0 daba 0,002 de R² en el nivel 1):
+
+| Nivel | Diferencia de R² (con menos sin) | Baja de la pérdida con el sexo | Brecha de cobertura hombres menos mujeres: con / sin | «Alcanza» por error: con / sin |
+|---|---|---|---|---|
+| 1 | 0,002 (0,000 a 0,005) | 0,12% (−0,01 a 0,24) | 1,9 (0,2 a 3,6) / 2,4 (0,8 a 4,2) puntos | 1,20% / 1,18% |
+| 2 | 0,001 (−0,001 a 0,003) | 0,08% (−0,02 a 0,19) | 2,7 (1,1 a 4,3) / 2,2 (0,7 a 3,8) puntos | 0,26% / 0,32% |
+
+En OK FACTURAR y condicionado la cobertura es casi la misma para los dos sexos, con y sin la variable (nivel 1: 90,2% y 90,2% con ella, 90,6% y 90,2% sin ella; nivel 2: 91,7% y 91,1%, y 90,3% y 91,5%). **Decide el negocio.** Lo exportado lleva el sexo, como `ingreso-v1`; sin él es `ingreso_v2.py --sin-sexo` y volver a exportar.
+
+**7. La exportación.**
+- `ingreso-v2-nivel1.json.gz` (0,53 MB, SHA-256 `5a72bd49…`) e `ingreso-v2-nivel2.json.gz` (0,61 MB, `06fd8ffe…`), en `C:\datos\ingresos\modelos\exportado\`.
+- Llevan la calibración adentro (`calibracion`, FORMATO.md).
+- El evaluador de referencia coincide con LightGBM a 3e-14 en 4.020 entradas inventadas por nivel.
+- La prueba de oro de Deno da diferencia 0 en los 200 casos de cada nivel (`casos-de-oro/ingreso-v2-nivelN.json`; los de `ingreso-v1` no se tocaron).
+- **Arreglado de paso**: `estimacion-de-ingreso.ts` pasaba el null de `modelos_de_ingreso.calibracion` como «sin calibración» y tapaba la del archivo. Ahora manda la de la institución y, sin ella, la del modelo.
+
+**No se hizo ni se pudo medir.**
+- `ingreso-v2` no se publicó ni se activó (lo decide el negocio).
+- `estimar-ingreso` todavía no sirve el nivel 2: `vectorDeNivel2DeLaConsulta` está lista y probada, pero no hay un selector que la llame.
+- La edad y el sexo de la prueba con el crudo son los de AWS: en producción salen de Proveedor_Info_1 (99,6% iguales, 12.29).
+- La prueba con el crudo es sólo de septiembre y octubre.
+- Las sumas de cuotas y saldos de la función están redondeadas a centavos y las del extracto no: difieren en el último decimal binario (219 de las 3.935 en `c_consumo`), y no mueven ningún cuantil en esas consultas. Con otros montos podría tocar un umbral: queda medido, no corregido.
+- El sexo en el nivel 2 no tiene una medida de paridad propia: sale del mismo mapeo que el nivel 1.
+
 ## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,

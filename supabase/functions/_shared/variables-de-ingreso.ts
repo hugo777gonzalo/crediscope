@@ -1,10 +1,10 @@
 // El vector de entrada del predictor de ingresos: las variables que el modelo
 // aprendió (docs/especificacion-predictor-de-ingresos.md, secciones 4.1 y 4.2),
-// armadas desde el perfil de la persona y desde las tablas de Equifax.
+// armadas desde el perfil de la persona y desde la respuesta cruda de Equifax.
 //
-// UNA sola implementación (paso 1 de la sección 6): el evaluador, la función y
-// la prueba de paridad la llaman; ninguna arma las variables por su cuenta. Las
-// variables se entrenaron con el extracto de AWS y acá se arman con lo que
+// UNA sola implementación (paso 1 de la sección 6): el evaluador, la función, la
+// matriz de entrenamiento y la prueba de paridad la llaman; ninguna arma las
+// variables por su cuenta. Las variables se entrenaron con el extracto de AWS y acá se arman con lo que
 // CrediScope tiene; cada diferencia entre las dos cosas es un error del modelo
 // que nadie ve, así que lo que NO coincide queda dicho en `pendientes` y en la
 // sección 9 de la especificación, no escondido.
@@ -27,6 +27,16 @@
 //   - Un grupo sin filas es nulo, no cero: en el entrenamiento la suma de nada
 //     era un faltante, y el modelo lo trata como tal.
 //
+//   - El nivel 2 se arma desde la RESPUESTA CRUDA de Equifax, no desde las tablas
+//     guardadas: el guion que arma la matriz de entrenamiento
+//     (scripts/predictor-ingresos/matriz-desde-crudo.mjs) y la producción
+//     (`vectorDeNivel2DeLaConsulta`, que la lee con `leerCrudoDeLaConsulta()`)
+//     pasan por la misma función. Las cuotas, saldos, conteos y la mora salen de
+//     las listas de `interconnectResponse`, como el extracto de AWS (ver
+//     `operacionesParaIngreso`); hasta variables-de-ingreso-v1 salían de
+//     `equifax_operaciones` y `c_tarjeta` coincidía con el extracto en 25,3% de
+//     3.935 consultas (investigación, 12.35).
+//
 // Una variable que no se pudo armar queda en `sinDato`; una que se armó con una
 // definición sin confirmar o sin paridad medida queda en `pendientes`.
 //
@@ -34,10 +44,12 @@
 // sintaxis que se pueda borrar (nada de enum, namespace ni propiedades de
 // parámetro).
 
+import { leerCrudoDeLaConsulta } from "./crudo-equifax-migrado.ts";
 import { fechaEnEcuador } from "./equifax-estructura.ts";
-import type { FilaOperacion, TablasEquifax } from "./equifax-tablas.ts";
+import { derivarTablas, rolDeEquifax, type Rol, type TablasEquifax } from "./equifax-tablas.ts";
 
-export const VARIABLES_DE_INGRESO_VERSION = "variables-de-ingreso-v1";
+// v2 (2026-11-06): el nivel 2 sale de la respuesta cruda y las operaciones, de interconnectResponse. El nivel 1 no cambió.
+export const VARIABLES_DE_INGRESO_VERSION = "variables-de-ingreso-v2";
 
 export type ValorDeVariable = number | string | null;
 
@@ -174,7 +186,9 @@ export interface OpcionesDelNivel2 extends OpcionesDelVector {
   consultadoEl: Date | string;
 }
 
-export type TablasParaIngreso = Pick<TablasEquifax, "equifax_operaciones" | "equifax_indicadores_por_periodo" | "equifax_resumen" | "equifax_analisis_credito">;
+// Lo que el nivel 2 lee de las tablas que deriva de la respuesta (el análisis de crédito, la cuota y el SRI). Las operaciones no: salen de
+// las listas de interconnectResponse (`operacionesParaIngreso`).
+type TablasParaIngreso = Pick<TablasEquifax, "equifax_indicadores_por_periodo" | "equifax_resumen" | "equifax_analisis_credito">;
 
 // ---------------------------------------------------------------------------
 // Lectores
@@ -321,8 +335,10 @@ function cargarElSriDeEquifax(v: VectorDeIngreso, tablas: TablasParaIngreso, aho
 // ---------------------------------------------------------------------------
 // El buró de Equifax (nivel 2)
 // ---------------------------------------------------------------------------
+export type TipoDeCreditoParaIngreso = "TARJETA" | "CONSUMO" | "MICROCREDITO" | "VIVIENDA" | "COMERCIAL" | "EDUCATIVO" | "OTRO";
+
 // El tipo de crédito de una operación, como lo agrupó el entrenamiento.
-export function tipoDeCreditoParaIngreso(tipo: string | null): "TARJETA" | "CONSUMO" | "MICROCREDITO" | "VIVIENDA" | "COMERCIAL" | "EDUCATIVO" | "OTRO" {
+export function tipoDeCreditoParaIngreso(tipo: string | null): TipoDeCreditoParaIngreso {
   const t = (tipo ?? "").trim().toUpperCase();
   if (t.startsWith("TARJETA")) return "TARJETA";
   if (t.startsWith("CONSUMO")) return "CONSUMO";
@@ -370,14 +386,91 @@ function cargarElBuro(v: VectorDeIngreso, tablas: TablasParaIngreso, consultadoE
   const cociente = (n: number | null, d: number | null): number | null => (n === null || d === null || d <= 0 ? null : Math.min(20, Math.max(0, n / d)));
   x.g6 = cociente(hact, h6);
   x.g12 = cociente(hact, h12);
+}
 
-  // Las operaciones. Las filas de «otro» riesgo y tipo «otro» son totales por sistema en el extracto de AWS y se excluyen.
-  const ops: FilaOperacion[] = tablas.equifax_operaciones.filter((f) => !(f.rol === "otro" && tipoDeCreditoParaIngreso(f.tipo_credito) === "OTRO"));
+// ---------------------------------------------------------------------------
+// Las operaciones del buró (nivel 2): de las listas de interconnectResponse
+// ---------------------------------------------------------------------------
+// El extracto de AWS con que se entrenó el nivel 2 armó las cuotas, los saldos, los conteos y la mora de estas tres listas, no de
+// `reporteCrediticio` (de donde sale `equifax_operaciones`). En las 3.935 consultas de septiembre y octubre que están en la tabla de
+// entrenamiento, desde `equifax_operaciones` `c_tarjeta` coincidía en 25,3% y `c_consumo` en 19,0% de las que tienen dato; desde estas
+// listas, las 19 variables coinciden en todas (investigación, 12.35). Las dos traen la misma deuda en otra forma y NUNCA se suman
+// (docs/equifax.md): para el predictor manda ésta porque es la que aprendió el modelo; para la deuda de la persona sigue `reporteCrediticio`.
+export const LISTAS_DE_OPERACIONES_PARA_INGRESO = [
+  "DetalleDeudaActualReportadaRFRSBS", "DetalleDeudaActualReportadaSICOMSBS", "DetalleDeudaActualReportadaSBSSBS_Educativo",
+] as const;
+
+export interface OperacionParaIngreso {
+  rol: Rol;
+  sistema: string | null;
+  tipo: TipoDeCreditoParaIngreso;
+  cuota: number | null;
+  saldo: number | null;
+  diasVencidos: number | null;
+}
+
+const esRegistro = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const numeroOpcional = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Las operaciones de las tres listas `DetalleDeudaActualReportada*` de la respuesta cruda. `null` si la respuesta no trae
+ * `interconnectResponse`: no es lo mismo que «no tiene operaciones» (las listas vinieron vacías, `[]`).
+ */
+export function operacionesParaIngreso(crudo: unknown): OperacionParaIngreso[] | null {
+  const ir = esRegistro(crudo) ? crudo.interconnectResponse : undefined;
+  if (!esRegistro(ir)) return null;
+  return LISTAS_DE_OPERACIONES_PARA_INGRESO.flatMap((lista) => (Array.isArray(ir[lista]) ? (ir[lista] as unknown[]) : []).filter(esRegistro).map((f) => ({
+    rol: rolDeEquifax(f.Tipo_Riesgo).rol,
+    sistema: typeof f.Sistema === "string" && f.Sistema.trim() !== "" ? f.Sistema.trim().toUpperCase() : lista,
+    tipo: tipoDeCreditoParaIngreso(typeof f.Tipo_Credito === "string" ? f.Tipo_Credito : null),
+    cuota: numeroOpcional(f.Cuota_Mensual),
+    saldo: numeroOpcional(f.Saldo_Deuda),
+    diasVencidos: numeroOpcional(f.Dias_Venc),
+  })));
+}
+
+// El máximo como lo calculó el extracto de AWS: comparando el TEXTO de los números, así que «65» le gana a «259». En las 3.935 consultas
+// que cruzan, `max_mora` coincide con el extracto en 3.717 de 3.766 con el máximo numérico y en las 3.766 como texto. El modelo aprendió
+// ese valor: servir el máximo de verdad le daría, en el 1,3% de los casos, un número que nunca vio en ese lugar.
+function maximoComoTexto(valores: Array<number | null>): number | null {
+  let mayor: string | null = null;
+  for (const v of valores) {
+    if (v === null) continue;
+    const t = String(v);
+    if (mayor === null || t > mayor) mayor = t;
+  }
+  return mayor === null ? null : Number(mayor);
+}
+
+// `max_dias_t` salió de otra tabla de AWS, con una fila por sistema y tipo de crédito y su máximo como texto, y el entrenamiento tomó la
+// mayor de esas filas como número (preparar.py). Así coincide en las 3.935; con el máximo numérico de todo, en 3.920, y como texto de
+// todo, en 3.909.
+function maximoPorGrupoComoTexto(filas: OperacionParaIngreso[]): number | null {
+  const grupos = new Map<string, Array<number | null>>();
+  for (const f of filas) {
+    const clave = `${f.sistema}|${f.tipo}`;
+    grupos.set(clave, [...(grupos.get(clave) ?? []), f.diasVencidos]);
+  }
+  return maximo([...grupos.values()].map(maximoComoTexto));
+}
+
+function cargarLasOperaciones(v: VectorDeIngreso, operaciones: OperacionParaIngreso[] | null): void {
+  const x = v.variables;
+  if (operaciones === null) {
+    v.avisos.push("La respuesta de Equifax no trae interconnectResponse: las cuotas, saldos, conteos y la mora de las operaciones quedan sin dato.");
+    return;
+  }
+  // Las filas de «otro» riesgo y tipo «otro» son totales por sistema en el extracto de AWS y se excluyen de lo que es por tipo y rol.
+  const ops = operaciones.filter((f) => !(f.rol === "otro" && f.tipo === "OTRO"));
   const titular = ops.filter((f) => f.rol === "titular");
-  const delTipo = (tipo: ReturnType<typeof tipoDeCreditoParaIngreso>) => titular.filter((f) => tipoDeCreditoParaIngreso(f.tipo_credito) === tipo);
-  const n = (filas: FilaOperacion[]): number | null => (filas.length === 0 ? null : filas.length);
-  const cuota = (filas: FilaOperacion[]) => suma(filas.map((f) => f.cuota_mensual_usd));
-  const saldoDe = (filas: FilaOperacion[]) => suma(filas.map((f) => f.saldo_deuda_usd));
+  const delTipo = (tipo: TipoDeCreditoParaIngreso) => titular.filter((f) => f.tipo === tipo);
+  const n = (filas: OperacionParaIngreso[]): number | null => (filas.length === 0 ? null : filas.length);
+  const cuota = (filas: OperacionParaIngreso[]) => suma(filas.map((f) => f.cuota));
+  const saldoDe = (filas: OperacionParaIngreso[]) => suma(filas.map((f) => f.saldo));
   x.c_consumo = cuota(delTipo("CONSUMO"));
   x.c_tarjeta = cuota(delTipo("TARJETA"));
   x.c_micro = cuota(delTipo("MICROCREDITO"));
@@ -393,16 +486,15 @@ function cargarElBuro(v: VectorDeIngreso, tablas: TablasParaIngreso, consultadoE
   x.n_micro = n(delTipo("MICROCREDITO"));
   x.n_vivienda = n(delTipo("VIVIENDA"));
   x.c_codeudor = cuota(ops.filter((f) => f.rol === "codeudor" || f.rol === "garante"));
-  x.max_dias_t = maximo(titular.map((f) => f.dias_morosidad));
+  x.max_dias_t = maximoPorGrupoComoTexto(titular);
   // Todas las filas y todos los roles: así los sumaba el extracto de AWS, también las de totales.
-  x.saldo = saldoDe(tablas.equifax_operaciones);
-  x.n_oper = n(tablas.equifax_operaciones);
-  x.max_mora = maximo(tablas.equifax_operaciones.map((f) => f.dias_morosidad));
-  v.pendientes.push("operaciones: las cuotas, saldos y conteos por tipo se arman de equifax_operaciones (reporteCrediticio), como dice la sección 4.2; el extracto de AWS salió de las listas DetalleDeudaActualReportada* de interconnectResponse y la paridad medida es parcial (sección 9, punto 1).");
+  x.saldo = saldoDe(operaciones);
+  x.n_oper = n(operaciones);
+  x.max_mora = maximoComoTexto(operaciones.map((f) => f.diasVencidos));
 }
 
 // ---------------------------------------------------------------------------
-// Las dos puertas
+// Las puertas
 // ---------------------------------------------------------------------------
 export function vectorDeNivel1(perfil: PerfilParaIngreso, o: OpcionesDelNivel1): VectorDeIngreso {
   const ahora = aFecha(o.ahora);
@@ -412,12 +504,33 @@ export function vectorDeNivel1(perfil: PerfilParaIngreso, o: OpcionesDelNivel1):
   return cerrar(v);
 }
 
-export function vectorDeNivel2(perfil: PerfilParaIngreso, tablas: TablasParaIngreso, o: OpcionesDelNivel2): VectorDeIngreso {
+/** El nivel 2 desde la respuesta cruda de Equifax (el `response_json` de AWS o `consultas_equifax.respuesta_cruda`): lo mismo al entrenar y al servir. */
+export function vectorDeNivel2(perfil: PerfilParaIngreso, respuestaCruda: unknown, o: OpcionesDelNivel2): VectorDeIngreso {
   const ahora = aFecha(o.ahora);
   const v = nuevoVector(2, VARIABLES_DEL_NIVEL_2);
+  const { tablas } = derivarTablas(respuestaCruda);
   cargarLaPersona(v, perfil, o, ahora);
   // En el nivel 2 el SRI sale de Equifax, igual que en el entrenamiento; no del RUC de Proveedor_Info_1.
   cargarElSriDeEquifax(v, tablas, ahora);
   cargarElBuro(v, tablas, aFecha(o.consultadoEl));
+  cargarLasOperaciones(v, operacionesParaIngreso(respuestaCruda));
   return cerrar(v);
+}
+
+// deno-lint-ignore no-explicit-any
+type Base = any;
+
+/**
+ * El nivel 2 de una consulta guardada en `consultas_equifax`: el crudo se lee con `leerCrudoDeLaConsulta()` (de la fila o, si es una
+ * migrada de AWS, de Storage), nunca de `respuesta_cruda` a secas. El reloj de la concesión es el de la consulta, salvo que se diga otro.
+ * Lanza si la consulta no tiene crudo: armar el vector de «nada» daría un nivel 2 lleno de faltantes que parece una persona sin buró.
+ */
+export async function vectorDeNivel2DeLaConsulta(
+  db: Base,
+  consulta: { created_at: string; respuesta_cruda?: unknown; crudo_ruta?: string | null },
+  perfil: PerfilParaIngreso,
+  o: OpcionesDelVector & { consultadoEl?: Date | string },
+): Promise<VectorDeIngreso> {
+  const crudo = await leerCrudoDeLaConsulta(db, consulta);
+  return vectorDeNivel2(perfil, crudo, { ...o, consultadoEl: o.consultadoEl ?? consulta.created_at });
 }

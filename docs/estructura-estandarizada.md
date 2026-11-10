@@ -845,6 +845,65 @@ interface StandardClientProfile {
 >   - `revisar-datos.mjs`: `cargo-vigente-sin-aporte-vigente` bajó de 17 a 0 y no volvió ninguna regresión.
 >   - `validar-perfil-del-modelo.mjs`: 0 fallas.
 
+> **estructura-v20 (2026-11-09, p1 de la revisión del análisis, aprobada por el
+> negocio el 2026-11-08)** — una demanda por un delito de seguridad ciudadana es de
+> la persona sólo si UN MISMO demandado lleva sus dos apellidos juntos y su primer
+> nombre (`cotejarDemandado()`, `demandas.ts`; `delitosDeSeguridadEnDemandas()`,
+> `delitos-seguridad.ts`). La fuente las encuentra por el nombre. Lo que no
+> coincide (otro nombre, los apellidos en otro orden, sin demandado o sin el nombre
+> de la persona) no cuenta en `riesgoSeguridadCiudadana` y el bloqueo lo avisa sin
+> bloquear: `posible_homonimo_en_demanda_penal`, «Posible homónimo: verificar».
+> - **Seco del 2026-11-09** (`recalcular-grupos.mjs --grupos=riesgoSeguridadCiudadana
+>   --bloqueo --seco`, viejo contra nuevo con el perfil entero): 3.766 perfiles, ninguno
+>   deja de reproducirse; cambia `riesgoSeguridadCiudadana` en 13 y se desbloquean 12
+>   de las 36 personas bloqueadas por este control (0 bloqueos nuevos). De las 12: 9
+>   con el nombre de otro demandado (una es la abogada defensora), 1 con los
+>   apellidos en otro orden, 1 sin demandado y 1 sin el nombre (identidad en error:
+>   la consulta queda incompleta y se frena). El detector es
+>   `bloqueo-por-demanda-de-otro-demandado` (`scripts/revisar-crudo.mjs`).
+> - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
+
+> **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
+> aprobadas por el negocio el 2026-11-08)**
+> - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la
+>   base interna y de la fuente de préstamos se une por número o por el mismo monto (a
+>   un dólar) con la concesión a 31 días o menos; manda el saldo de la fuente de
+>   préstamos (trae `fechaCorte`), con la mora más alta; y de la base interna no se
+>   cuentan los «VIGENTE» con el plazo cumplido y sin mora. Medido: 177 hipotecarios
+>   contados dos veces en 174 personas (USD 6,6 M de más; c-b9fc9a82) y 1.600
+>   préstamos terminados en 651 personas, hace 3,4 años en la mediana (USD 3,6 M; c-40d771e1).
+> - **p3, Comportamiento Interno** (`comportamientoInterno`, decisión del negocio del
+>   2026-11-09): se leía la primera de las operaciones de la persona con la institución
+>   (782 de 2.602 personas tienen varias; en 464 la primera era una cancelada que
+>   escondía la vigente, c-5dfb1e00). Son historia de pago, no deuda: se reporta UNA y
+>   nada se suma ni entra en un cálculo (`operacionDelComportamientoInterno()`): una
+>   vigente antes que una cancelada; entre vigentes, la de mayor saldo; entre
+>   canceladas, la de mayor cuota por plazo (la fuente no trae el valor financiado);
+>   empate, la de número más alto. Suma `proveedorInfo1EstadoOperacion`. En pantalla la
+>   sección pasa a llamarse «Comportamiento Interno».
+> - **p10, el colateral de vehículos** (`patrimonio.valorColateralVehiculos`, decisión del
+>   negocio del 2026-11-09): el precio de mercado de cada vehículo (el promedio, o el
+>   comercial si no hay promedio) y el avalúo del SRI sólo sin precio de mercado. Hasta
+>   v20 era el máximo de siete precios, y en los vehículos nuevos el avalúo pasa al
+>   mercado (c-0ec2827c: 39.594 contra 17.484): pasaba en más de 25% al promedio en 550
+>   de 2.198 personas.
+> - **p5** (`riesgoJudicialCrediticio.demandasDeCobro`): de cada demanda de cobro, el
+>   año y quién demanda (`quienDemanda()`: institución financiera, empresa o persona).
+> - **Seco del 2026-11-09** (`recalcular-grupos.mjs --grupos=comportamientoBancario,
+>   comportamientoInterno,riesgoJudicialCrediticio,riesgoSeguridadCiudadana --bloqueo
+>   --seco`, sobre los perfiles guardados en v19; repetido con `patrimonio` sobre los de
+>   v20): 3.766 perfiles, ninguno deja de reproducirse. Cambian
+>   `valorColateralVehiculos` en 1.362, `saldoPrestamosIessBiess` en 767, `tieneCreditoIessBiess` en
+>   192 (sólo tenían préstamos terminados), y en Comportamiento Interno, por la operación
+>   elegida, `proveedorInfo1SaldoCapitalVigente` en 557, `proveedorInfo1DiasMoraMaxima`
+>   en 377, `proveedorInfo1PerfilInterno` en 292, `proveedorInfo1ResultadoHabitoPago` en
+>   249 y `proveedorInfo1DiasMoraVigente` en 62. El detector
+>   `comportamiento-interno-de-otra-operacion` da 568 de las 782 personas con varias
+>   operaciones.
+> - **Sin aplicar.** Los campos nuevos (`proveedorInfo1EstadoOperacion`,
+>   `demandasDeCobro`) le llegan al modelo (`perfil-del-modelo.ts` deja pasar lo que no
+>   esté en `RUTAS_QUE_NO_LLEGAN`): se despliega junto con el marco que los nombra.
+
 ## De dónde sale cada cálculo (trazabilidad)
 
 | Campo calculado | Fuente(s) Proveedor_Info_1 | Cómo se calcula/corrige |

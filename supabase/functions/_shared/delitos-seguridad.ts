@@ -24,6 +24,8 @@
 // traían las dos formas ("TRÁFICO ILÍCITO" y "TRAFICO ILICITO"), y así una
 // variante que falte no deja pasar a nadie.
 
+import { anioDeLaDemanda, type CotejoDelDemandado, cotejarDemandado } from "./demandas.ts";
+
 type Categoria = { categoria: string; palabrasClave: string[]; excluir?: string[] };
 
 function sinTildes(s: string): string {
@@ -61,4 +63,38 @@ export function categoriasDelitoGraveSeguridad(texto: unknown): string[] {
   return CATEGORIAS.filter(
     (c) => c.palabrasClave.some((kw) => t.includes(kw)) && !(c.excluir ?? []).some((kw) => t.includes(kw))
   ).map((c) => c.categoria);
+}
+
+// ---- En las demandas de la Función Judicial ----
+//
+// Una demanda por un delito de seguridad es de la persona sólo si el demandado
+// es ella (cotejarDemandado, demandas.ts; p1 de la revisión del análisis,
+// estructura-v20). Las demás quedan como posible homónimo: el bloqueo las avisa
+// sin bloquear y el perfil no las cuenta como delito propio. Lo usan el
+// bloqueo (controles-bloqueo.ts) y el perfil (process.ts): una sola regla.
+
+type AnyRecord = Record<string, unknown>;
+
+export interface DemandaPenalSinCotejo {
+  categorias: string[];
+  cotejo: Exclude<CotejoDelDemandado, "es_la_persona">;
+  // El año de la demanda, para que el analista la encuentre. null = sin fecha.
+  anio: number | null;
+}
+
+export function delitosDeSeguridadEnDemandas(
+  demandas: AnyRecord[],
+  nombreDeLaPersona: unknown,
+): { propias: string[]; sinCotejo: DemandaPenalSinCotejo[] } {
+  const propias = new Set<string>();
+  const sinCotejo: DemandaPenalSinCotejo[] = [];
+  for (const d of demandas) {
+    const demanda = (d.demanda ?? {}) as AnyRecord;
+    const categorias = categoriasDelitoGraveSeguridad(demanda.delito);
+    if (categorias.length === 0) continue;
+    const cotejo = cotejarDemandado(demanda.demandado, nombreDeLaPersona);
+    if (cotejo === "es_la_persona") categorias.forEach((c) => propias.add(c));
+    else sinCotejo.push({ categorias, cotejo, anio: anioDeLaDemanda(demanda.fecha) });
+  }
+  return { propias: [...propias], sinCotejo };
 }

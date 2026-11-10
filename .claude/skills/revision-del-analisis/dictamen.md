@@ -18,15 +18,17 @@ criterio y con todo lo que hay disponible, incluso lo que el modelo no recibió.
      escribís `dictamen-ciego.md` ANTES de abrir la respuesta del modelo.
   2. **Contra el modelo**: abrís la respuesta del modelo (y la del marco anterior si
      existe) y comparás.
-  3. **Contra la institución**: abrís `institucion.json` al final.
+  3. **Contra la institución y el pago**: abrís `institucion.json` y, al final,
+     `resultado-de-pago.json`.
 - **El ruido del modelo**: el mismo perfil analizado dos veces mueve el score unos 40
   puntos y cambia 1 de cada 13 recomendaciones. Una diferencia menor no es un hallazgo; una
   mayor sí, aunque la recomendación coincida (en el piloto, 170 puntos por dos demandas de 2009
   con la misma recomendación).
 - **La institución no es la verdad**: decidió un crédito real (en la base de prueba, un
   vehículo, con entrada y prenda), con ingreso validado por ella y con su propio proceso.
-  El modelo analizó a la persona sin conocer la solicitud. Su decisión es una referencia,
-  no el resultado de pago (no hay datos de mora posterior).
+  El modelo analizó a la persona sin conocer la solicitud. Su decisión es una referencia.
+  El resultado de pago, cuando el crédito pedido figura en su cartera, es el dato más fuerte del
+  caso y viene aparte, en `resultado-de-pago.json`.
 - **Citás la evidencia**: cada afirmación tuya dice de qué archivo y qué campo sale. Lo que
   no pudiste verificar se dice «no verificado», nunca se rellena.
 - **El marco vigente tiene dos textos**: con la sección de Equifax para quien tiene una
@@ -108,6 +110,15 @@ antes de la consulta, la persona pudo cambiar en el medio: en el piloto, una rec
 mayo tenía en octubre un crédito nuevo de la misma institución, por el mismo monto y plazo
 que había pedido. Con meses de distancia la decisión real es una referencia débil.
 
+**El resultado de pago** (`resultado-de-pago.json`, el último archivo que abrís). Si el crédito
+pedido figura en la cartera de la institución, dice cómo se pagó: estado, cuotas pagadas, mora
+vigente y máxima y la clase (`sin_atrasos`, `atrasos_ya_pagados`, `en_mora_hoy`, `impago`).
+Comparalo con tu dictamen ciego y con el modelo: quién estuvo más cerca de lo que pasó. Cuidado con
+tres límites: (1) el pago está observado al corte de la cartera, no al final del crédito; un crédito
+de 60 cuotas con 5 pagadas todavía no dice mucho; (2) si `figura_en_la_cartera` es falso o la
+confianza no es «alta», no hay resultado: decí «no hay» y no lo rellenes; (3) un buen pago no prueba
+que el modelo se equivocó al pedir una revisión: el análisis se hizo sin conocer la solicitud.
+
 ## Qué entregás por caso
 
 En la carpeta del caso:
@@ -125,6 +136,7 @@ En la carpeta del caso:
   ],
   "calidad": { "primera_frase": "", "acciones_genericas": [], "terminos_retirados": [], "nota": "" },
   "institucion": { "decision": "", "perfil_final": "", "mas_cerca": "yo|modelo|ninguno|igual", "por_que": "" },
+  "pago": { "figura": true, "clase": "", "mora_maxima_dias": 0, "mas_cerca": "yo|modelo|ninguno|igual|no_hay", "por_que": "" },
   "contraste_marco_anterior": "",
   "sobre_la_pauta": ""
 }
