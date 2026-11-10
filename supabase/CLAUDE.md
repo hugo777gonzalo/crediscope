@@ -330,6 +330,13 @@ su guía: `docs/equifax.md`.
   vuelve el corte de 8 s, y lo que entra en el día no aparece hasta mañana.
 
 **Crudo de Proveedor_Info_1**
+- **Una regla que une, elige o descarta registros de la fuente se mide con un
+  detector sobre el crudo antes de entrar** (`scripts/revisar-crudo.mjs`), nunca
+  con el mismo criterio que la regla ni sólo con coincidencias exactas, y se cuenta
+  cuántas filas trae cada persona. El perfil guardado ya trae la mezcla y ningún
+  control sobre la base la ve: así pasaron el bloqueo por la demanda de otro, el
+  BIESS contado dos veces y la primera operación de la institución (2026-11-06,
+  `docs/lecciones.md`).
 - El crudo de Proveedor_Info_1 se guarda desde la 090 en el depósito privado
   `crudo-proveedor-info-1` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo
