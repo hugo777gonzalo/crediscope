@@ -194,7 +194,8 @@ Deno.test("una operación que está en las dos fuentes se cuenta una vez, por su
     }),
     creditoQuirografario: fuente({
       prestamos: [
-        // El mismo número, sin ceros, con más mora: se cuenta una vez y manda el saldo de la base.
+        // El mismo número, sin ceros, con más mora: se cuenta una vez. Desde
+        // estructura-v21 manda el saldo de la fuente de préstamos, que trae el corte.
         prestamo("123", 900, 0, 20, "10/01/2024", 3000),
         // Otro número, pero la misma fecha y monto que la segunda de la base.
         prestamo("777", 450, 0, 0, "11/02/2024", 1500),
@@ -203,7 +204,7 @@ Deno.test("una operación que está en las dos fuentes se cuenta una vez, por su
       ],
     }),
   }).comportamientoBancario;
-  assertEquals(b.saldoPrestamosIessBiess, 1700);
+  assertEquals(b.saldoPrestamosIessBiess, 1550);
   assertEquals(b.diasMoraCreditoIessBiess, 20);
 });
 

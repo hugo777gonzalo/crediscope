@@ -38,6 +38,7 @@ El resto de pantallas, pestañas y botones, en oración: «Personas por segmento
 |---|---|---|
 | piso / piso de ingreso | **ingreso reportado al IESS**; y **Ingreso Mínimo SBU** si el monto es el SBU del año o está a ±5% (`esIngresoMinimoSbu()`) | Negocio, 2026-09-25: «en Ecuador no se usa el término piso». Tampoco para una tarifa («poner piso a la tarifa» → «fijar el mínimo»). |
 | asalariado | **dependiente** (relación de dependencia) | Negocio, 2026-09-25 |
+| Comportamiento Interno (Fuente Externa) | **Comportamiento Interno** | Negocio, 2026-11-09 (p3 de la revisión del análisis): la sección reporta una sola operación de la institución, como historia de pago, y nada de ella se suma. |
 | Confirmada / Provisional / Indeterminada | **Confirmado por un tercero / Por confirmar / Sin determinar** | Negocio, 2026-09-26. Quedaban «provisionales e indeterminados» en el Panorama y en las Reglas. |
 | Reportada por un tercero | Empleador privado · público · diplomático · externo (SÓLO organismos internacionales) · Otros empleadores (doméstico, agrícola, código no reconocido) | Negocio, 2026-09-26 |
 | Autodeclarada | Empresa propia (patrono o RUC activo) · Afiliación voluntaria (sin negocio registrado) | Idem |

@@ -310,6 +310,33 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ### Crudo de Proveedor_Info_1
 
+- **Una regla entre fuentes se mide contra el crudo, no con su propio criterio.** La
+  revisión del análisis del 2026-11-06 (habilidad `revision-del-analisis`) encontró
+  cuatro errores de la estructura que ningún control veía, porque el perfil guardado ya
+  los traía mezclados. Ninguno era de programación: cada regla hacía lo que se diseñó, y
+  el diseño suponía algo de la fuente que nadie midió.
+  - **El bloqueo por la demanda penal de otro.** En estructura-v9 (2026-09-28) se
+    decidió que las demandas no necesitaban cotejar al demandado porque «en las 35 de
+    delitos graves figura su nombre completo». Esa medición buscaba las palabras del
+    nombre en cualquier lugar del texto, que era lo que había que probar: en c-14f9ee80
+    salían de tres personas, una de ellas el abogado. 12 de 36 bloqueados no eran los
+    demandados, y una era la abogada defensora (estructura-v20).
+  - **El BIESS contado dos veces.** estructura-v16 (2026-10-31) unió la base interna y la
+    fuente de préstamos «sin contar dos veces» y midió que ninguna operación tenía el
+    mismo número ni la misma fecha y monto; lo leyó como que no se pisaban. Cada fuente
+    numera y fecha el mismo préstamo a su manera (primer desembolso y concesión, a 2 días
+    en c-b9fc9a82): 177 hipotecarios en 174 personas, USD 6,6 M de más. Y sumó el saldo de
+    la base interna, una foto vieja: 1.600 préstamos «VIGENTE» terminados hace 3,4 años
+    en la mediana (c-40d771e1).
+  - **La primera operación de la institución.** Desde el primer commit (2026-09-03) el
+    comportamiento interno leía la primera fila de `personasIncumplimientos`, como si
+    fuera una por persona. Es una por operación: en 464 personas la primera era una
+    cancelada que escondía la vigente (c-5dfb1e00).
+  - **El colateral de vehículos.** Toma el precio más alto de siete (2026-09-10)
+    suponiendo que el avalúo nunca es el mayor, cierto en los vehículos viejos que se
+    revisaron. En los nuevos lo es (301 vehículos), y el colateral pasa en más de 25% al
+    precio promedio en 550 de 2.198 personas (p10, sin decidir).
+
 - **El crudo de Proveedor_Info_1 no se guarda en la base, pero hay respaldo
   local.** En la base va el perfil estandarizado. El crudo está en
   `research/` (fuera del repo, datos personales):

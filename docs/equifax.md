@@ -18,7 +18,8 @@ adelante consta así:
 - Se migran a `consultas_equifax` con `node scripts/migrar-equifax-aws.mjs` como si las
   hubiéramos hecho nosotros (`origen = 'lote'`, `ambiente = 'produccion'`, `created_at` = la
   fecha original, procedencia en `parametros.migrada_de`). Idempotente. Una consulta migrada
-  vale hasta el 17 del mes de su fecha, como cualquier otra; las viejas no cuentan como vigentes.
+  vale hasta el 17 del mes de su fecha, como cualquier otra; las viejas no cuentan como vigentes para cobrar
+  ni reutilizar. **El análisis lee la última, vigente o no** (negocio, 2026-11-09): ver abajo.
 - **Una consulta no se borra ni se reemplaza** (negocio, 2026-11-05): es la base de lo que se analizó.
   Volver a consultar (vencida, sólo administración) agrega una fila nueva con sus propias tablas, y
   `solicitudes.consulta_equifax_id` dice cuál usó cada evaluación. Una migrada sin tablas se ordena
@@ -54,9 +55,13 @@ adelante consta así:
     elige el selector «Buró» de Configuración y decide la pestaña de cada
     persona; el menú dice «Buró» y `/buro/:cedula` lleva a la que corresponde.
     `activo` sigue diciendo sólo si se puede consultar.
-  - **El buró en lo que lee el modelo es `marco-v33`, APAGADO**
-    (`CONFIG_LLM.buroDeLaInstitucion`): `_shared/buro-de-la-institucion.ts` busca
-    la consulta vigente y `armarPerfilDelModelo(perfil, campos, buro)` pone
+  - **El buró en lo que lee el modelo** (`CONFIG_LLM.buroDeLaInstitucion`, encendido
+    desde el 2026-11-04 con marco-v35): `_shared/buro-de-la-institucion.ts` busca
+    la última consulta de la persona, vigente o no y nunca posterior al análisis
+    (`ultimaConsultaDeEquifax()`, negocio, 2026-11-09): en `consultas_equifax` y,
+    para las de AWS sin fila, en el índice por cédula del depósito
+    `crudo-equifax-migrado`; sin estructura guardada la deriva en memoria. El bloque
+    lleva `fechaDelReporte`. `armarPerfilDelModelo(perfil, campos, buro)` pone
     `buroEquifax` en lugar de bancos y cooperativas de Proveedor_Info_1;
     `marcoConElBuro()` arma el texto con buró sobre el de v32. Sin buró, el perfil
     es el de v32 byte a byte (`perfil-del-modelo-sin-buro.esperado.json`).

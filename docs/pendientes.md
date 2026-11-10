@@ -13,6 +13,21 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
+- **`main` tiene estructura-v21 sin desplegar (2026-11-09, #153): no desplegar `main` hasta que marco-v36
+  esté lista**, salvo que el negocio lo autorice sabiendo esto. Cualquier despliegue con `--funciones` desde
+  `main` lleva v21, venga de la sesión que venga (el que más riesgo tiene es el del predictor, #145): con
+  marco-v35, el modelo recibiría `comportamientoInterno.proveedorInfo1EstadoOperacion` y
+  `riesgoJudicialCrediticio.demandasDeCobro` (año y quién demanda), que v35 no explica. v21 trae p6 (el BIESS
+  sin contar dos veces ni los préstamos terminados), p3 (Comportamiento Interno de una sola operación, sin
+  sumar nada), p5 y p10 (el colateral de vehículos al precio de mercado).
+  - **Después del despliegue, el recálculo:** `node scripts/recalcular-grupos.mjs
+    --grupos=comportamientoBancario,comportamientoInterno,riesgoJudicialCrediticio,patrimonio
+    --carpeta=research/proveedor-info-1-raw-2026-10-03`, primero con `--seco`. El seco del 2026-11-09 sobre los
+    perfiles en v20: los 3.766 se reproducen y cambian el colateral en 1.362, el saldo del BIESS en 767,
+    `tieneCreditoIessBiess` en 192 y el saldo de Comportamiento Interno en 557.
+  - **Al final, `node scripts/revisar-crudo.mjs`:** las regresiones de p3
+    (`comportamiento-interno-de-otra-operacion`) y p10 (`colateral-de-vehiculos-sobre-el-precio-promedio`)
+    tienen que dar 0.
 - **Espacio de la base (2026-11-06): 409 MB de 500 MB del plan Free** (91 MB de margen; el 05/11 eran
   485 y el 06/11 llegaron a 534, por encima del plan, y bajaron a 478 tras el `vacuum full` de `consultas_equifax` y a 409 tras el
   de `cron.job_run_details`); se midió con `pg_database_size`. Lo que lo llenó, medido:
@@ -29,7 +44,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de fila vacía (c-6da51438): «Ordenar la consulta guardada» armó sus tablas. Las consultas pagadas por nosotros
   siguen con el crudo en la fila (2,3 MB). **Volver a correr `migrar-equifax-aws.mjs` mete el crudo en la fila otra vez**:
   después se repite `subir-equifax-migrado-a-storage.mjs` (subir, `--enlazar`, `--vaciar --confirmo`) y el `vacuum full`.
-  Un JSON de AWS sin fila en la base no se encuentra por cédula para la supresión del titular.
+  Un JSON de AWS sin fila en la base se encuentra por cédula en el índice de Storage (p4, 2026-11-09), pero la supresión
+  del titular todavía no lo lee: falta que `derechos-del-titular.mjs` borre esos crudos y saque a la persona del índice.
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
   27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11, pero
   **no se borran al vencer** (negocio, 2026-11-05: una consulta queda como la base de lo que se
@@ -364,6 +380,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     última de la persona aunque haya vencido; Plus, sólo la vigente; Pro, ninguna. El enlace
     «Ver el detalle de la capacidad de pago» de la solicitud puede dar otra cuota que la
     solicitud. Se verifica comparando las dos cuotas para una misma persona.
+    **Propuesta (p4, 2026-11-09)**: desde la p4 el análisis lee la última consulta, vigente o no
+    (`ultimaConsultaDeEquifax()`). Que la capacidad de pago (pantalla, función y Plus) lea esa
+    misma, y que la vigencia sólo decida si Plus vuelve a pagar: una sola regla para leer y otra
+    para cobrar. Hoy la de la capacidad toma la última por cédula sin mirar la fecha del cálculo
+    ni la identidad, y no ve las consultas de AWS sin fila. Pro seguiría sin Equifax salvo que el
+    negocio decida que lea la guardada, que no cuesta. Decide el negocio.
 12. **Diseño y producto de la revisión de UX** (`docs/revision-ux.md`, sección 3): Inicio como
     pantalla de trabajo, un solo camino a una persona (falta Aval), unir «Empleos vigentes» y
     «Fuentes detectadas», menos accesos por fila en la bandeja, esqueletos en vez de
@@ -553,6 +575,45 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     - **El menú en el teléfono** sigue siendo una fila de íconos sin texto, y las pestañas miden 31 px.
     - `/solicitud/no-existe` y una solicitud que no existe dan dos mensajes distintos; a los emojis el
       Inicio los llama «pasaporte».
+20. **La revisión del análisis: las 10 propuestas, aprobadas y sin aplicar** (habilidad
+    `revision-del-analisis`, piloto del 2026-11-06). Un jefe de crédito (Opus, a ciegas) revisó 12 análisis
+    de la base de prueba de AWS, y se midieron sin modelo los 247 del lote del 31/10. De 81 hallazgos, el 64%
+    nace en los datos que le llegan al modelo, y marco-v35 no corrige el 70%. Las propuestas están en
+    https://claude.ai/artifact/7EsSQjxfejmkW2zNCNhsuS, y el 2026-11-08 el negocio aprobó las 10 sin
+    comentarios (colección `decisiones`). Cada una va en su sesión y su PR, por el circuito de siempre; las
+    que tocan el marco van juntas en la versión del predictor (p7). **La p4 no tenía una opción
+    recomendada**: falta que el negocio diga cuál, y con cuántos días si es leer la última consulta. Las
+    cuatro altas:
+    - **p1, bloqueos por la demanda penal de otra persona**: el control toma la demanda sin cotejar al
+      demandado, y en 8 de 33 bloqueados por una demanda el demandado es otro. En c-14f9ee80 se confirmó a
+      mano, y la institución le había aprobado un crédito. Es el riesgo aceptado 5.5 (demandas de un
+      homónimo), pero acá la demanda ajena no sólo pesa: bloquea.
+    - **p2, aprobaciones sin razonamiento**: 45 de las 53 aprobaciones del lote salieron sin razonamiento.
+      Sin razonar el modelo aprueba el 39%; razonando, el 6%.
+    - **p3, la cartera de la institución llega mal al modelo**, en 7 de 12 casos: una sola operación, a
+      veces la cancelada, sin cuota y fuera de la deuda.
+    - **p4, Equifax existe y no llega**: 214 de 247 análisis piden una cuota que Equifax ya tenía, y sólo
+      28 de las 244 personas tienen la consulta en la base. **En curso (2026-11-09)**: el negocio decidió
+      que el análisis lea la última consulta, vigente o no; construida con un índice por cédula en Storage
+      (281 KB, nada en la base). Medido sin costo: base de prueba, de 0 a 244 de 244 con buró a la fecha de
+      su análisis (mediana de 17 días, máximo 58); cartera real con perfil, de 6 a 399 de 3.766 si se
+      analizara hoy (mediana de 26 días, máximo 67). Falta subir el índice (`--indice`, escribe en
+      producción), desplegar y la comparación con el modelo, con el sí del negocio (USD 3,8 a 9,3).
+
+    **Hecho el 2026-11-09**: `armar-carpetas.mjs` sirve para cualquier marco, `medir-lote.mjs` mide los
+    homónimos y los días entre la solicitud y la consulta, y `resultado-de-pago.mjs` arma el resultado de
+    pago (p8): en 197 de las 232 personas de la base de prueba con solicitud, el crédito figura en la
+    cartera de la institución; 18 están en mora hoy y ninguna en impago. **Pregunta abierta para el negocio**:
+    27 de las 33 solicitudes con «RECHAZAR» en `credito-real.json` tienen el crédito en la cartera, así que
+    esa decisión no es la que decidió si se otorgaba: ¿es automática y la revierte un analista?
+
+    Lo que queda de la habilidad, sin decisión del negocio:
+    - crear la tarea programada local del barrido mensual, con el sí del negocio.
+
+    **Pregunta abierta**: cómo valida la institución el «ingreso validado del titular». En 42 de 233
+    casos es igual (±5%) al estimado de Equifax.
+
+    Se cierra cuando cada propuesta aprobada tenga su PR y su medición posterior (habilidad, paso 7).
 
 ## 3. Espera a terceros
 
