@@ -480,12 +480,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        la respuesta incompleta (el guion los contó como hechos). La prueba en sombra se repite tal cual
        (`node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`).
        Las 542 de 12.29 sí tienen RUC en Proveedor_Info_1 (512): lo que no tienen es el SRI de Equifax.
-    5. Reentrenar el nivel 2 desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19
-       variables que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
-       respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja); recalibrar y volver a
-       exportar. Todavía lleva el estado civil, la zona y el IESS del extracto de AWS: decidir si se sacan
-       como en el nivel 1 (en 12.26 costaban 0,004 de R²).
-    6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
+    5. ~~Reentrenar el nivel 2 desde las respuestas crudas~~ **No hace falta (12.35, 2026-11-06)**: con `variables-de-ingreso-v2` la
+       función reproduce el extracto (100% en las 3.935 que cruzan, y en cada mes desde febrero en las 5.001), así que el nivel 2 se entrena
+       con el extracto y se sirve igual. El estado civil, la zona y el IESS salieron del nivel 2 en `ingreso-v2` (lo que costaban, en 12.35).
+    6. (Sólo si se quisieran volver a meter en el nivel 2: `ingreso-v2` ya no los usa, 12.35.) Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
        de AWS a Proveedor_Info_1 (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
     7. **Desplegados para el nivel 1 (2026-10-31):** `modelos_de_ingreso`, `estimaciones_de_ingreso`
@@ -516,7 +514,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         saldo (99,5%) casi coinciden y la cuota es otra (la mediana del módulo, 1,9 veces la del extracto). **Desde las listas de `interconnectResponse`
         coinciden al 100% en 16 de las 19, 99,6% en `max_dias_t` y 98,7% en `max_mora`** (74,5% a 100% en las 5.001 de todo el año, sección 9 de la
         especificación): con las consultas recientes la regla que no se encontraba se cumple casi entera. Entrenar con lo que arma el módulo sigue siendo
-        coherente (la misma implementación entrena y sirve), pero cambia el significado de esas 19; la decisión entre las dos fuentes se toma al conocer
+        coherente (la misma implementación entrena y sirve), pero cambia el significado de esas 19 (**resuelto en 12.35: las listas, con la mora como texto; punto 13**); la decisión entre las dos fuentes se toma al conocer
         la paridad de las consultas anteriores a septiembre, que no se midió.
     11. **Pedido a Proveedor_Info_1 de la base del IESS y el historial de deudas, armado el 2026-11-05** (12.33; libro y correo en
         `research/ejemplos-pedido-ingresos/`, fuera de git). El negocio lo envía. Lleva la cédula directa, cuatro cortes del IESS (octubre y julio
@@ -538,12 +536,34 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         - **Para `ingreso-v2`**: entrenar como hoy y calibrar con OK FACTURAR y condicionado **en los dos niveles (decidido por el negocio el
           2026-11-06)**. En el nivel 1 el «alcanza» por error sube de 0,5% a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6%
           en vez de 23,1%; en el nivel 2 queda en 0,4%. Con el mínimo calibrado, la cobertura baja a 80% en todas y a 60% en los rechazados, cuya
-          etiqueta baja por la decisión. Se aplica al exportar `ingreso-v2`; `ingreso-v1` sigue sin calibrar.
+          etiqueta baja por la decisión. Se aplicó al exportar `ingreso-v2` (punto 13); `ingreso-v1` sigue sin calibrar.
         - **Arreglado de paso**: desde el renombre del proveedor (#111) `preparar.py` no reconocía lo recuperado del IESS y armaba una tabla mala
           (57.340 independientes en vez de 57.061); la tabla en uso, del 22/10, estaba bien. Con el arreglo vuelve a salir idéntica.
 
-    **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12):
-    las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
+    13. **`ingreso-v2` armado el 2026-11-06, sin publicar ni activar** (12.35; `scripts/predictor-ingresos/ingreso_v2.py`, agregados en
+        `metricas/ingreso-v2-2026-11.json` y `metricas/ingreso-v2-nivelN.json`; los archivos, en `C:\datos\ingresos\modelos\exportado\`).
+        - **El nivel 2 se sirve igual que se entrena**: `variables-de-ingreso-v2` arma las 19 de las operaciones de las listas de
+          `interconnectResponse` con la mora máxima comparada como texto, como AWS («65» > «259»). Las 44 variables de Equifax coinciden con el
+          extracto en el 100% de las 3.935 que cruzan; en las 5.001 de todo el año, en cada mes desde febrero (diciembre y enero, no). En
+          producción el crudo se lee con `vectorDeNivel2DeLaConsulta` (`leerCrudoDeLaConsulta()`).
+        - El nivel 2 ya no lleva el estado civil, la zona ni el IESS: servidos vacíos le costaban 1,31% de pérdida. Se entrena desde febrero
+          (regla fijada antes de medir: cuesta 0,30% de pérdida y deja el entrenamiento igual a lo que se sirve).
+        - **Calibrado con OK FACTURAR y condicionado, adentro del archivo** (corrimiento −0,227 y −0,117). Hacia adelante: cobertura en OK
+          90,2% y 91,5%, mínimo mediano 1.462 y 1.688, «alcanza» por error 1,20% y 0,26%, niega de más 20,6% y 23,1%. Agudeza 11,0% y 27,1%,
+          tramo exacto o vecino 67,6% y 81,9%: **pasan los pisos de la fase 0, no las metas**. El nivel 1 tiene los mismos árboles que
+          `ingreso-v1`: sólo cambia la calibración.
+        - **Arreglado**: la estimación tapaba con el null de la fila la calibración que trae el archivo (`estimacion-de-ingreso.ts`).
+        - **Para decidir (negocio)**:
+          - el sexo: con él, 0,002 y 0,001 de R² y una brecha de cobertura de 1,9 y 2,7 puntos; sin él, 2,4 y 2,2. Lo exportado lo lleva;
+            sin él es `ingreso_v2.py --sin-sexo` y volver a exportar;
+          - activar el nivel 1 de `ingreso-v2` en lugar de `ingreso-v1`: `node scripts/publicar-modelo-de-ingreso.mjs --modelo=... --seco`, y
+            compararlo antes con el vigente (especificación, 7);
+          - entrenar el nivel 2 con diciembre y enero si se prefieren los 0,3 puntos de agudeza.
+        - **Falta para servir el nivel 2**: el selector de `estimar-ingreso` que lo use con una consulta de Equifax vigente (hoy sólo sirve
+          el nivel 1) y una prueba con una persona autorizada.
+
+    **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12; las de `ingreso-v2`, en el punto 13):
+    las variables de la persona del nivel 2 (en `ingreso-v2` salieron: no se pueden servir); los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
 19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** Lo demás

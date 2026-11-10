@@ -3,9 +3,12 @@
 # en Python, sí van al repositorio (casos-de-oro/): el evaluador de `_shared/` los tiene que reproducir con una diferencia menor que 0,001 en el logaritmo.
 # Antes de escribir nada, el evaluador de referencia (Python puro) se prueba contra LightGBM: si no coinciden, no se exporta.
 #
-#   python -I scripts/predictor-ingresos/exportar.py [--nivel=1|2]
+#   python -I scripts/predictor-ingresos/exportar.py [--nivel=1|2] [--version=ingreso-v2]
 #
 # `--nivel` exporta uno solo: el archivo del otro y sus casos de oro no se tocan (el archivo lleva la fecha de exportación en `entrenado_el`).
+# `--version` elige qué se exporta: ingreso-v1 (por omisión) lee MODELOS/completo/ y escribe casos-de-oro/nivelN.json; otra versión lee
+# MODELOS/<versión>/completo/ (ingreso_v2.py) y escribe casos-de-oro/<versión>-nivelN.json, así los casos del modelo vigente no se pisan.
+# Si el manifiesto trae `calibracion` (ingreso-v2: OK FACTURAR y condicionado), viaja dentro del archivo y el evaluador la aplica (FORMATO.md).
 import datetime
 import gzip
 import json
@@ -20,11 +23,20 @@ sys.path.insert(0, str(Path(__file__).parent))
 import comun as c
 import evaluador_referencia as ev
 
-VERSION = "ingreso-v1"
+VERSION = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--version=")), "ingreso-v1")
 CASOS = Path(__file__).parent / "casos-de-oro"
 DESTINO = c.MODELOS / "exportado"
 N_CASOS = 200
 TOLERANCIA = 0.001  # en logaritmo, la de la especificación (6.2)
+CASOS_MINIMOS_DE_CALIBRACION = 500  # los de predictor-ingresos.ts: un archivo con menos no se podría leer
+
+
+def carpeta_del_modelo(nivel):
+    return c.MODELOS / "completo" / f"nivel{nivel}" if VERSION == "ingreso-v1" else c.MODELOS / VERSION / "completo" / f"nivel{nivel}"
+
+
+def archivo_de_casos(nivel):
+    return CASOS / (f"nivel{nivel}.json" if VERSION == "ingreso-v1" else f"{VERSION}-nivel{nivel}.json")
 
 
 def convertir(carpeta, nivel):
@@ -74,13 +86,21 @@ def convertir(carpeta, nivel):
                 nodos["izquierda"].append(ref(n["left_child"]))
                 nodos["derecha"].append(ref(n["right_child"]))
             raices.append(ref(raiz))
-    return {
+    compacto = {
         "formato": "crediscope-arboles-1", "version": VERSION, "nivel": nivel, "entrenado_el": datetime.date.today().isoformat(),
         "objetivo": "logaritmo natural del ingreso mensual no verificado, en dólares", "cuantiles": c.LEV, "arboles_por_cuantil": c.N_ARBOLES,
         "variables": variables, "arboles": raices, "nodos": nodos, "conjuntos": conjuntos, "hojas": hojas,
         "origen": {"huella_entrenamiento_sha256": man["huella_sha256"], "n": man["n"], "consultas_desde": man["consultas_desde"], "consultas_hasta": man["consultas_hasta"],
                    "parametros": man["parametros"], "versiones": man["versiones"]},
     }
+    cal = man.get("calibracion")
+    if cal is not None:
+        if man.get("version") != VERSION:
+            raise SystemExit(f"El manifiesto de {carpeta} es de {man.get('version')}, no de {VERSION}.")
+        if not (cal.get("para") and cal.get("casos", 0) >= CASOS_MINIMOS_DE_CALIBRACION and all(math.isfinite(cal.get(k, math.nan)) for k in ("corrimientoLog90", "corrimientoLog85"))):
+            raise SystemExit(f"La calibración del manifiesto de {carpeta} no es válida: {cal}")
+        compacto["calibracion"] = {k: cal[k] for k in ("para", "casos", "corrimientoLog90", "corrimientoLog85")}
+    return compacto
 
 
 # ---------------------------------------------------------------- entradas inventadas
@@ -152,7 +172,7 @@ def main():
     DESTINO.mkdir(parents=True, exist_ok=True)
     CASOS.mkdir(parents=True, exist_ok=True)
     for nivel in [int(a.split("=")[1]) for a in sys.argv[1:] if a.startswith("--nivel=")] or [1, 2]:
-        carpeta = c.MODELOS / "completo" / f"nivel{nivel}"
+        carpeta = carpeta_del_modelo(nivel)
         lgb_modelo = c.ModeloGuardado(carpeta)
         compacto = convertir(carpeta, nivel)
         ruta = DESTINO / f"{VERSION}-nivel{nivel}.json.gz"
@@ -181,16 +201,17 @@ def main():
         cabecera = {
             "descripcion": f"Casos de oro del nivel {nivel} del predictor de ingresos: entradas inventadas (no salen de ninguna persona) y los doce cuantiles en logaritmo natural que da LightGBM, ordenados.",
             "modelo": f"{VERSION}-nivel{nivel}.json.gz", "huella_entrenamiento_sha256": compacto["origen"]["huella_entrenamiento_sha256"],
-            "tolerancia": TOLERANCIA, "cuantiles": c.LEV}
+            "tolerancia": TOLERANCIA, "cuantiles": c.LEV, "calibracion": compacto.get("calibracion")}
         # Una línea por caso: el archivo se lee y se compara en un diff.
         lineas = ",\n".join("  " + json.dumps(k, ensure_ascii=False, allow_nan=False) for k in casos)
         texto = json.dumps(cabecera, ensure_ascii=False, indent=1)[:-2] + ',\n "casos": [\n' + lineas + "\n ]\n}\n"
-        (CASOS / f"nivel{nivel}.json").write_text(texto, encoding="utf-8")
+        archivo_de_casos(nivel).write_text(texto, encoding="utf-8")
         dif = max(float(np.abs(np.array(ev.evaluar(m, k["entradas"])) - k["cuantiles_log"]).max()) for k in casos)
         sha = c.huella(ruta)
         (DESTINO / f"{VERSION}-nivel{nivel}.json.gz.sha256").write_text(sha + "\n", encoding="utf-8")
         print(f"nivel {nivel}: {ruta.name}: {ruta.stat().st_size / 1e6:.2f} MB comprimido, {sin_comprimir / 1e6:.2f} MB sin comprimir, {c.miles(len(m['nodos']['variable']))} divisiones, "
-              f"{c.miles(len(m['hojas']))} hojas, {c.miles(len(m['conjuntos']))} conjuntos de categorías; casos de oro: {len(casos)}, diferencia máxima del evaluador de referencia {dif:.2e}; sha256 {sha[:16]}…")
+              f"{c.miles(len(m['hojas']))} hojas, {c.miles(len(m['conjuntos']))} conjuntos de categorías; casos de oro: {len(casos)}, diferencia máxima del evaluador de referencia {dif:.2e}; sha256 {sha[:16]}…"
+              + (f"; calibrado para {compacto['calibracion']['para']} (corrimiento {compacto['calibracion']['corrimientoLog90']:.4f})" if "calibracion" in compacto else ""))
     print("casos de oro en", CASOS)
 
 

@@ -8,14 +8,14 @@ nivel son dos arreglos de números por nodo: 1,9 MB sin comprimir y 0,6 MB compr
 
 ## Archivo
 
-`ingreso-v1-nivel1.json.gz` y `ingreso-v1-nivel2.json.gz`: un JSON comprimido con gzip, sin espacios. Quedan fuera de git
+`<versión>-nivel1.json.gz` y `<versión>-nivel2.json.gz` (`ingreso-v1`, `ingreso-v2`): un JSON comprimido con gzip, sin espacios. Quedan fuera de git
 (`C:\datos\ingresos\modelos\exportado\`), con su huella en `<archivo>.sha256`: el mismo modelo da los mismos bytes. En Deno se lee con
 `new Response(blob.stream().pipeThrough(new DecompressionStream("gzip"))).json()`. Los números son JSON estándar de doble precisión: no hay `NaN` ni infinitos.
 
 | Campo | Qué es |
 |---|---|
 | `formato` | `"crediscope-arboles-1"`. Un evaluador que no lo conoce se niega a evaluar. |
-| `version`, `nivel`, `entrenado_el` | `"ingreso-v1"`, 1 o 2, fecha de entrenamiento. |
+| `version`, `nivel`, `entrenado_el` | `"ingreso-v1"` o `"ingreso-v2"`, 1 o 2, fecha de entrenamiento. |
 | `objetivo` | El modelo predice el **logaritmo natural** del ingreso mensual no verificado, en dólares. |
 | `cuantiles` | Los doce niveles: 0,05; 0,10; 0,15; 0,20; 0,30; 0,40; 0,50; 0,60; 0,70; 0,80; 0,90; 0,95. |
 | `arboles_por_cuantil` | 170. |
@@ -25,6 +25,7 @@ nivel son dos arreglos de números por nodo: 1,9 MB sin comprimir y 0,6 MB compr
 | `conjuntos` | Lista de listas de códigos de categoría; una división categórica apunta a una por su índice. |
 | `hojas` | Valor de cada hoja, ya multiplicado por la tasa de aprendizaje y con el promedio inicial sumado en el primer árbol. |
 | `origen` | Huella del archivo de entrenamiento, personas, fechas, parámetros y versiones de las bibliotecas. No se usa para evaluar. |
+| `calibracion` | Opcional, desde `ingreso-v2`: `{para, casos, corrimientoLog90, corrimientoLog85}`. El mínimo del 90% es `exp(cuantil 0,10 − corrimientoLog90)` y el del 85%, `exp(cuantil 0,15 − corrimientoLog85)`, sin bajar de medio salario básico; un corrimiento negativo sube el mínimo. La calcula `ingreso_v2.py` (calibración conforme con OK FACTURAR y condicionado, 12.35) y pide 500 casos o más. La de la institución (`modelos_de_ingreso.calibracion`) la reemplaza. No cambia los cuantiles: los casos de oro son los de antes de calibrar. |
 
 ## Referencias a hijos
 
@@ -60,7 +61,7 @@ el dinero es `exp(...)`. De ahí salen el mínimo certificado (`exp` del cuantil
 
 ## Prueba de oro
 
-`casos-de-oro/nivel1.json` y `nivel2.json`: 200 casos cada uno, con `entradas` **inventadas** (no salen de ninguna persona) y `cuantiles_log` tal como los da LightGBM, ordenados.
+`casos-de-oro/nivel1.json` y `nivel2.json` (`ingreso-v1`), e `ingreso-v2-nivel1.json` e `ingreso-v2-nivel2.json`: 200 casos cada uno, con `entradas` **inventadas** (no salen de ninguna persona) y `cuantiles_log` tal como los da LightGBM, ordenados.
 Los primeros 20 son casos de borde (todo faltante, todo cero, valores enormes y negativos, y valores **justo en el umbral** de una división y en el número siguiente); los otros 180 son entradas al azar con faltantes y categorías nunca vistas.
 El evaluador pasa si en cada caso, para cada cuantil, `|salida − cuantiles_log| < tolerancia` (0,001; el evaluador de referencia en Python da 1e-13). Cada archivo trae la huella del archivo de entrenamiento del modelo del que salió:
 si se vuelve a entrenar, los casos se regeneran con `exportar.py` y el cambio se ve en el diff.
