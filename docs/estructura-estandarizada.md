@@ -881,12 +881,19 @@ interface StandardClientProfile {
 >   canceladas, la de mayor cuota por plazo (la fuente no trae el valor financiado);
 >   empate, la de número más alto. Suma `proveedorInfo1EstadoOperacion`. En pantalla la
 >   sección pasa a llamarse «Comportamiento Interno».
+> - **p10, el colateral de vehículos** (`patrimonio.valorColateralVehiculos`, decisión del
+>   negocio del 2026-11-09): el precio de mercado de cada vehículo (el promedio, o el
+>   comercial si no hay promedio) y el avalúo del SRI sólo sin precio de mercado. Hasta
+>   v20 era el máximo de siete precios, y en los vehículos nuevos el avalúo pasa al
+>   mercado (c-0ec2827c: 39.594 contra 17.484): pasaba en más de 25% al promedio en 550
+>   de 2.198 personas.
 > - **p5** (`riesgoJudicialCrediticio.demandasDeCobro`): de cada demanda de cobro, el
 >   año y quién demanda (`quienDemanda()`: institución financiera, empresa o persona).
 > - **Seco del 2026-11-09** (`recalcular-grupos.mjs --grupos=comportamientoBancario,
 >   comportamientoInterno,riesgoJudicialCrediticio,riesgoSeguridadCiudadana --bloqueo
->   --seco`, sobre los perfiles guardados en v19): 3.766 perfiles, ninguno deja de
->   reproducirse. Cambian `saldoPrestamosIessBiess` en 767, `tieneCreditoIessBiess` en
+>   --seco`, sobre los perfiles guardados en v19; repetido con `patrimonio` sobre los de
+>   v20): 3.766 perfiles, ninguno deja de reproducirse. Cambian
+>   `valorColateralVehiculos` en 1.362, `saldoPrestamosIessBiess` en 767, `tieneCreditoIessBiess` en
 >   192 (sólo tenían préstamos terminados), y en Comportamiento Interno, por la operación
 >   elegida, `proveedorInfo1SaldoCapitalVigente` en 557, `proveedorInfo1DiasMoraMaxima`
 >   en 377, `proveedorInfo1PerfilInterno` en 292, `proveedorInfo1ResultadoHabitoPago` en
