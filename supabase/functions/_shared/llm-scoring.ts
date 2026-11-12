@@ -40,7 +40,6 @@ import type {
 import { MARCO_VERSION, MARCO_INTERPRETATIVO, MARCO_VERSION_CON_BURO, marcoConElBuro } from "./marco-interpretativo.ts";
 import { clasificarFallo } from "./fallos-llm.ts";
 import { type BuroDeLaInstitucion, mensajeParaElModelo } from "./perfil-del-modelo.ts";
-import { TRAMOS_DE_CARGA, normalizarTramoDeCarga } from "./tramos-de-carga.ts";
 import { componerMarco } from "./marco-por-cliente.ts";
 
 const RECOMENDACIONES_VALIDAS: RecomendacionAccion[] = ["aprobar", "revisar", "negar"];
@@ -167,26 +166,15 @@ function opcionesDeRazonamiento(config: ConfigRazonamiento): Record<string, unkn
 // de la lista. El orden de los campos es el de siempre: el modelo los
 // escribe en ese orden. El rango del score (1-999) no se puede expresar en
 // el esquema; lo dice el marco y lo acota interpretar().
-// tramoDeCarga (marco-v36, borrador) va antes de la recomendación: el modelo
-// fija el tramo antes de recomendar, y "fuera" no termina en "aprobar".
 const ESQUEMA_RESPUESTA = {
   type: "object",
   additionalProperties: false,
   required: [
-    "score", "tramoDeCarga", "recomendacion", "accionesSugeridas", "indicadorRiesgo", "indicadorHistorial",
+    "score", "recomendacion", "accionesSugeridas", "indicadorRiesgo", "indicadorHistorial",
     "positives", "negatives", "missingInfo", "reasoning",
   ],
   properties: {
     score: { type: "integer" },
-    tramoDeCarga: {
-      type: "object",
-      additionalProperties: false,
-      required: ["tramo", "motivo"],
-      properties: {
-        tramo: { type: "string", enum: [...TRAMOS_DE_CARGA] },
-        motivo: { type: "string" },
-      },
-    },
     recomendacion: { type: "string", enum: ["aprobar", "revisar", "negar"] },
     accionesSugeridas: { type: "array", items: { type: "string" } },
     indicadorRiesgo: { type: "string", enum: NIVELES_RIESGO },
@@ -260,7 +248,6 @@ export function interpretar(data: Record<string, unknown>, modelo: string): LlmS
     return {
       score,
       recomendacion: normalizarRecomendacion(parsed.recomendacion),
-      tramoDeCarga: normalizarTramoDeCarga((parsed as Record<string, unknown>).tramoDeCarga),
       // Tope de 5: el marco pide entre 2 y 4. Si el modelo se entusiasma
       // y devuelve una lista larga, se corta — una "recomendación" de 9
       // pasos deja de ser accionable y nadie la sigue.
@@ -412,8 +399,9 @@ export function armarPedidoScoring(
   camposDeshabilitados: Set<string>,
   config: ConfigRazonamiento = CONFIG_LLM,
   buro: BuroDeLaInstitucion | null = null,
-  // La fecha del análisis: con ella el bloque del buró dice cuántos días tiene
-  // su consulta (marco-v36).
+  // La fecha del análisis: con ella cada demanda de cobro dice cuántos años
+  // tiene (marco-v36). Cambia sólo con el año, así que la huella del pedido
+  // sigue sirviendo para reutilizar un análisis.
   ahora: Date = new Date(),
 ): Record<string, unknown> {
   if (config.buroDeLaInstitucion && config.marcoPorCliente) {

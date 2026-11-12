@@ -684,28 +684,11 @@ function conElBuro(copia: Record<string, unknown>, bloque: AnyRecord): Record<st
 // que el modelo sepa que el campo existe y no se le dio. `buro`: la consulta
 // vigente del buró de la institución, o null; sólo la pasa
 // armarPedidoScoring() con CONFIG_LLM.buroDeLaInstitucion encendido.
-// marco-v36: cuántos días tiene la consulta del buró el día del análisis, justo
-// después de su fecha. El modelo veía la fecha del reporte pero no la de hoy, y
-// no podía saber si la consulta era de ayer o de hace tres meses. Medido por la
-// sesión de estabilidad (2026-11-09) en pares de consultas de una misma persona a
-// 1 a 90 días: la cuota cambió más de 20% en el 23,6%, y a 61 a 90 días, en el
-// 44%. Sin `ahora` no se agrega (las pruebas y los guiones que no lo pasan siguen
-// igual). Con él, el mismo pedido cambia de huella de un día al otro: un análisis
-// con buró se reutiliza sólo el mismo día, que es lo correcto si la consulta envejece.
-function conLaAntiguedadDelReporte(bloque: AnyRecord, ahora: Date | null): AnyRecord {
-  if (!ahora || typeof bloque.fechaDelReporte !== "string") return bloque;
-  const dias = Math.round((Date.parse(fechaEnEcuador(ahora.toISOString())) - Date.parse(bloque.fechaDelReporte)) / 86_400_000);
-  if (!Number.isFinite(dias)) return bloque;
-  return Object.fromEntries(
-    Object.entries(bloque).flatMap(([clave, valor]) => (clave === "fechaDelReporte" ? [[clave, valor], ["diasDesdeElReporte", dias]] : [[clave, valor]])),
-  );
-}
-
 export function armarPerfilDelModelo(
   perfil: AnyRecord,
   camposDeshabilitados: Set<string> = new Set(),
   buro: BuroDeLaInstitucion | null = null,
-  // La fecha del análisis, para la antigüedad del buró (marco-v36).
+  // La fecha del análisis, para los años de cada demanda de cobro (marco-v36).
   ahora: Date | null = null,
 ): AnyRecord {
   const copia = JSON.parse(JSON.stringify(perfil ?? {})) as Record<string, unknown>;
@@ -730,9 +713,7 @@ export function armarPerfilDelModelo(
     bancario.numeroPrestamosIessBiess = bancario.numeroCreditosFormales;
     delete bancario.numeroCreditosFormales;
   }
-  const bloqueDelBuro = buro?.proveedor === "equifax" && buro.estructura
-    ? conLaAntiguedadDelReporte(buroEquifaxDelPerfilDelModelo(buro.estructura), ahora)
-    : null;
+  const bloqueDelBuro = buro?.proveedor === "equifax" && buro.estructura ? buroEquifaxDelPerfilDelModelo(buro.estructura) : null;
   copia.endeudamiento = bloqueDelBuro ? endeudamientoConBuroEquifax(copia, bloqueDelBuro) : endeudamientoDelPerfilDelModelo(copia);
   // Las demandas (desde marco-v26): de las civiles, cuántas hay de cada
   // categoría (demandas.ts) en lugar de 615 textos libres con artículos del
@@ -756,9 +737,10 @@ export function armarPerfilDelModelo(
     cobro.tiposDemandasComoDemandado = tiposLegibles(cobro.tiposDemandasComoDemandado);
   }
   // marco-v36: cuántos años tiene cada demanda de cobro el día del análisis.
-  // Sólo una de los últimos 2 años saca a la persona de su tramo de carga
-  // (negocio, 2026-11-10), y el modelo no sabe en qué año está: con el año
-  // solo, una de 2024 podía leerse como reciente o como vieja.
+  // Una de más de 2 años pesa menos (p5), y el modelo no sabe en qué año
+  // está: con el año solo, una de 2024 podía leerse como reciente o como
+  // vieja. Sin `ahora` no se agrega (las pruebas y los guiones que no lo
+  // pasan quedan igual).
   if (ahora && cobro && typeof cobro === "object" && Array.isArray(cobro.demandasDeCobro)) {
     const anioDelAnalisis = Number(fechaEnEcuador(ahora.toISOString()).slice(0, 4));
     cobro.demandasDeCobro = (cobro.demandasDeCobro as AnyRecord[]).map((d) => {

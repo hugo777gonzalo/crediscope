@@ -484,49 +484,40 @@
 // negocio», falso para 77 que traen «SIN ACTIVIDAD ECONOMICA». v34 es v32 con
 // eso; v35, v33 con eso, y es la que entra: el buró se encendió el mismo día.
 //
-// v36 (BORRADOR, 2026-11-09; no se prueba ni se despliega sin autorización del
-// negocio con la cifra): la versión del predictor de ingresos (punto 2.4 de
-// pendientes, decidido el 2026-10-29) con las propuestas de la revisión del
-// análisis del 2026-11-06, aprobadas el 2026-11-08.
-//  - p9, la redacción que provocaba el propio marco: «persona» y no «cliente»
-//    (el marco decía «cliente» y el 57% de los análisis también); la primera
-//    frase del reasoning dice la recomendación y lo que la decide (el 72% abría
-//    con «El comportamiento de…»); la deuda contra el ingreso de un año o la
-//    cuota contra el del mes, nunca «N veces el ingreso mensual» (5% del lote).
-//  - p5, las demandas de cobro con su año y quién demanda (demandasDeCobro):
-//    una de más de 2 años pesa menos. En un caso del piloto, tres demandas de
-//    hace más de 15 años pesaron unos 170 puntos. El dato lo trae la estructura
-//    (otra sesión): sin él el texto dice que no se sabe el año.
-//  - p3, el nombre: la operación con la institución es el «Comportamiento
-//    Interno», historia de pago y no deuda (negocio, 2026-11-09: no entra en
-//    ningún cálculo de saldo ni de cuota). Llega una sola operación, con
-//    proveedorInfo1EstadoOperacion (PR #153). El marco la presentaba como el
-//    veredicto de otro motor de scoring con el nombre del proveedor, y un
-//    «Excelente Pagador» con 4 cuotas pagadas había pesado como fortaleza.
-//  - p7, el lugar del ingreso estimado (fuentesIngreso.ingresoEstimado): con el
-//    rótulo «Ingreso estimado, sin verificar», su mínimo del 90% vale como el
-//    ingreso de la persona y el modelo puede aprobar con él, diciendo que hay
-//    que verificarlo (negocio, 2026-11-09). La «Referencia de solicitantes» no.
-//    Es lo mismo que hará la capacidad de pago (especificación del predictor,
-//    paso 6) y que lee la regla de capacidad (capacidad-evidenciada.ts). No
-//    llega todavía: el predictor no tiene estimaciones en producción y su
-//    versión 2 está en el PR #145.
-//  - p1, el aviso nuevo del control (PR #149): posible_homonimo_en_demanda_penal,
-//    sin bloqueo, se lee como el homónimo de las listas: una verificación de
-//    identidad, no un delito de la persona. También en marco-por-cliente.ts.
-//  - La antigüedad de la consulta de Equifax (diasDesdeElReporte, al lado de
-//    fechaDelReporte): con p4 el análisis lee la última consulta aunque no esté
-//    vigente, y el modelo no sabía cuán vieja era. Los cortes de 30 y 60 días son
-//    una propuesta a validar con el negocio.
-//  - Los tramos de carga máxima por perfil (negocio, 2026-11-10): el modelo
-//    ubica a la persona en el tramo "1" (80%), "2" (60%), "3" (40%) o "fuera"
-//    y lo devuelve en tramoDeCarga; el tope lo aplica el código
-//    (tramos-de-carga.ts, donde está la calibración con la cartera de AWS).
-//    Va antes de la recomendación en la respuesta: el modelo escribe los
-//    campos en orden, y "fuera" no puede terminar en "aprobar". Sólo una
-//    demanda de cobro de los últimos 2 años saca del tramo (negocio,
-//    2026-11-10); para eso cada una llega con aniosAtras, porque el modelo
-//    no sabe en qué año está.
+// v36 (2026-11-12): la versión MÍNIMA que decidió el negocio el 2026-11-11, lo
+// justo para desplegar estructura-v21 (PR #153) y la redacción de las
+// propuestas de la revisión del análisis que aprobó el 2026-11-08. Con v35 el
+// modelo recibiría de v21 dos campos que no se le explican.
+//  - p5, las demandas de cobro con su año y quién demanda (demandasDeCobro,
+//    estructura-v21): una de más de 2 años pesa menos. En un caso del piloto,
+//    tres demandas de hace más de 15 años pesaron unos 170 puntos. Cada una
+//    llega con aniosAtras, contado con el año de Ecuador del día del análisis:
+//    el modelo no sabe en qué año está, y con el año solo una de 2024 podía
+//    leerse como reciente o como vieja.
+//  - p3, el Comportamiento Interno: llega una sola operación, con
+//    proveedorInfo1EstadoOperacion (estructura-v21). Es una referencia
+//    cualitativa (negocio, 2026-11-11): deja de pesar «como el buró o más», se
+//    resalta («fue cliente de la institución y está catalogado como…»), sobre
+//    todo al recomendar revisar, y se señala cuando contrasta con lo que dice el
+//    sistema financiero hoy. No se suma a la deuda ni a la cuota: los créditos
+//    vigentes ya constan en el buró. El marco la presentaba como el veredicto de
+//    otro motor de scoring, y un «Excelente Pagador» con 4 cuotas pagadas había
+//    pesado como fortaleza.
+//  - p9, la redacción: «persona» y no «cliente» (el marco decía «cliente» y el
+//    57% de los análisis también); la primera frase del reasoning dice la
+//    recomendación y lo que la decide (el 72% abría con «El comportamiento
+//    de…»); la deuda contra el ingreso de un año o la cuota contra el del mes,
+//    nunca «N veces el ingreso mensual» (5% del lote).
+//  - p1, el aviso del control (PR #149, ya desplegado):
+//    posible_homonimo_en_demanda_penal, sin bloqueo, se lee como el homónimo
+//    de las listas: una verificación de identidad, no un delito de la persona.
+//    También en marco-por-cliente.ts.
+// Quedó para la versión mayor (decisión del 2026-11-11; el borrador está en el
+// commit cd61f36 del PR #151): el lugar del ingreso estimado del predictor
+// (p7), los tramos de carga máxima con el campo tramoDeCarga en la respuesta,
+// la antigüedad de la consulta de Equifax (diasDesdeElReporte) y el campo de
+// capacidad propuesto. Tocan la solicitud, la capacidad o el formato de la
+// respuesta.
 // Desde v36 el interruptor del buró no tiene versión propia: está encendido
 // desde el 2026-11-04, y lo que leyó cada análisis lo dice su
 // mensaje_al_modelo (con o sin buroEquifax), como ya pasaba dentro de v35.
@@ -703,9 +694,8 @@ ${CORTE_DEL_RETAIL}
    - demandasDeCobro trae cada una con su año (anio), cuántos años tiene
      el día de este análisis (aniosAtras) y quién demanda (quienDemanda:
      "institucion_financiera", "empresa" o "persona"). Una demanda de más
-     de 2 años
-     pesa menos, y menos cuanto más vieja: una de 2009 con el buró al día
-     desde entonces es historia, no situación actual. Una del último año
+     de 2 años pesa menos, y menos cuanto más vieja: una de 2009 con el
+     buró al día desde entonces es historia, no situación actual. Una del último año
      pesa entera. Que la demande una institución financiera dice más de
      su comportamiento de pago que el cobro de una letra entre personas.
      Nombrá el año ("una demanda de cobro de 2009"). Sin demandasDeCobro
@@ -864,28 +854,6 @@ ${CORTE_DEL_RETAIL}
      del ingreso, tus accionesSugeridas tienen que ser coherentes con esa
      lista: podés precisarlos para esta persona, no contradecirlos ni
      reemplazarlos por otros.
-   - ingresoEstimado: lo que estima el predictor de ingresos de CrediScope
-     con los datos de la persona. Llega sólo cuando hay una estimación (no
-     para quien tiene un ingreso confirmado por un tercero). Es un ingreso
-     estimado, sin verificar:
-     · rotulo dice cómo nombrarlo: "Ingreso estimado, sin verificar" o,
-       con un mínimo bajo, "Referencia de solicitantes". Usá ese nombre.
-     · minimo es lo que gana al menos, con la seguridad que dice
-       seguridadDelMinimo (0,9 es 9 de cada 10 personas como ella). Para
-       la capacidad usá siempre el mínimo; valorCentral es sólo una
-       referencia y no se usa para decir cuánto gana.
-     · Con el rótulo "Ingreso estimado, sin verificar", el mínimo vale
-       como el ingreso de la persona para juzgar su capacidad cuando no
-       hay uno confirmado por un tercero: podés aprobar con él. Decí en el
-       reasoning que es estimado, y en accionesSugeridas que hay que
-       verificarlo con los Documentos de Confirmación de Ingresos.
-     · "Referencia de solicitantes" no es el ingreso de la persona: es lo
-       que gana la mayoría de quienes piden crédito. No alcanza para
-       aprobar.
-     · No lo sumes al ingreso reportado al IESS. Con el Ingreso Mínimo
-       SBU, un mínimo estimado muy por encima dice que el ingreso real
-       probablemente es mayor: decilo como un indicio. Un mínimo por
-       debajo de lo reportado no lo desmiente.
 
    laboral: empleosActuales (una entrada por empleo vigente, con
    tipoEmpleador, cargo y salarioAprox) e ingresoPromedioUltimos6Meses son
@@ -1001,14 +969,25 @@ ${CORTE_DEL_RETAIL}
     vigente o cancelada. Llamalo "Comportamiento Interno", nunca con el
     nombre de la fuente que lo trae (los campos empiezan con proveedorInfo1
     por eso, no porque sea de otra entidad). proveedorInfo1ResultadoHabitoPago
-    y proveedorInfo1PerfilInterno son cómo pagó según la propia institución:
-    pesa como comportamientoBancario o más. Si no
-    llega, no es un hueco de información: no lo menciones.
-    - Pesa según cuánta historia hay: "Excelente Pagador" en una operación
-      que recién empieza es poca evidencia, no una fortaleza.
+    y proveedorInfo1PerfilInterno son cómo la cataloga la propia
+    institución. Si no llega, no es un hueco de información: no lo
+    menciones.
+    - Es una referencia cualitativa, no una fuente de comportamiento de
+      pago como el buró: el score lo deciden los grupos de arriba. Esa
+      operación, si está vigente, ya consta en el buró con su atraso y su
+      saldo.
+    - Resaltalo siempre que llegue, con la categoría de la institución
+      ("fue cliente de la institución y está catalogada como Excelente
+      Pagador"), sobre todo cuando recomiendes "revisar": es lo primero que
+      el analista va a querer contrastar con su propio sistema.
+    - Si contrasta con lo que dice hoy el sistema financiero (buen pagador
+      en la institución y en mora en el buró, o al revés), señalalo como
+      una tensión a verificar.
+    - Decí cuánta historia hay detrás: "Excelente Pagador" en una operación
+      que recién empieza es poca evidencia.
     - No es deuda para este análisis: su saldo no se suma a lo que debe ni
       a la carga de cuotas, y no lo uses para hablar de su capacidad de
-      pago. Dice cómo paga, no cuánto debe.
+      pago.
 
 QUÉ INFORMACIÓN SE PUDO OBTENER
 Es la distinción más importante de este marco. disponibilidad, al
@@ -1117,44 +1096,6 @@ negocio.
   liquidación, la persona dejó de aparecer en el IESS, sus aportes
   cayeron), y entonces nombrá el hecho, no la generalidad.
 
-TRAMO DE CARGA
-Cuánto de su ingreso puede comprometer una persona en cuotas depende de su
-perfil: lo decidió el negocio con la cartera de la institución, donde la
-mora la anticipó la conducta de pago al pedir más que la carga. Ubicá a la
-persona en uno de estos tramos y decilo en tramoDeCarga. La carga es la
-suma de las cuotas que ya paga y la del crédito que pida, contra su ingreso
-neto del mes; esa cuenta no la hacés vos: la hace la capacidad de pago con
-el crédito que se pida. Vos decís el tramo y por qué.
-- "1", muy bueno (hasta 80%). Cumple todo esto:
-  · el ingreso está confirmado por un tercero (fuentesIngreso.estado
-    "Confirmado por un tercero"); uno estimado o por confirmar no alcanza;
-  · continuidadLaboral vigente de 24 meses o más, con 12 de 12 meses con
-    aportes;
-  · deudaPropiaTotal de hasta un año y medio de su ingreso;
-  · ningún mes con mora en los últimos 24 (conductaDePago,
-    mesesConMoraEnLosUltimos24 en 0) y nada vencido hoy; si llega
-    comportamientoInterno, sin días de mora en esa operación;
-  · sin demandas de cobro recientes.
-- "2", promedio (hasta 60%): nada vencido hoy y sin demandas de cobro
-  recientes, sin cumplir todo lo del tramo "1".
-- "3", con atrasos leves (hasta 40%): un atraso de 1 a 30 días hoy y sin
-  demandas de cobro recientes.
-- "fuera", sin aprobación directa: un atraso de más de 30 días hoy o
-  alguna demanda de cobro reciente. Con "fuera" la recomendación no es
-  "aprobar".
-Una demanda de cobro es reciente si tiene 2 años o menos (aniosAtras en
-demandasDeCobro). Una más vieja no cambia el tramo, aunque pese en el
-score como dice el grupo 5. Si no se sabe su año (sin aniosAtras ni
-anio), cuenta como reciente: no se puede descartar.
-El atraso de hoy es el mayor de moraActual y de los préstamos del
-IESS/BIESS (diasMoraCreditoIessBiess). Sin buroEquifax no se saben los
-días: algo en atraso hoy en bancos o cooperativas deja a la persona
-"fuera" hasta que una consulta del buró diga cuántos son, y sin
-conductaDePago no hay tramo "1". En tramoDeCarga.motivo va, en una
-oración, lo que decide el tramo: para el "1", que cumple todo; para los
-demás, lo que lo deja fuera del tramo de arriba. El porcentaje del tramo
-no va en el resto de la respuesta: no es una condición del crédito.
-
 RECOMENDACIÓN
 Además del score, decí qué hacer con el caso. El score mide el riesgo; la
 recomendación es la acción sugerida al analista, y no siempre se deduce
@@ -1220,8 +1161,9 @@ al score.
   score y coherente con él (score alto, riesgo bajo).
 - indicadorHistorial: qué tan bueno es el comportamiento de pago
   demostrado, juzgado sólo con comportamientoBancario,
-  comportamientoCooperativas, comportamientoInterno y
-  riesgoJudicialCrediticio (el perfil entero ya lo mide el score). "sin
+  comportamientoCooperativas y
+  riesgoJudicialCrediticio (el perfil entero ya lo mide el score; el
+  Comportamiento Interno no lo mueve: es una referencia aparte). "sin
   historial" es para quien no registra operaciones de crédito: no es lo
   mismo que un mal historial.
 
@@ -1234,8 +1176,8 @@ otros no dicen.
   que la decide ("Revisar: paga al día, pero la cuota de su deuda con
   bancos no se conoce y el ingreso está por confirmar."); el analista que
   lee sólo esa frase tiene que saber qué hacer. No abras describiendo un
-  grupo ("El comportamiento de pago de..."). No repitas los indicadores en prosa ("el
-  perfil muestra un riesgo muy alto, con un score muy bajo" no agrega
+  grupo ("El comportamiento de pago de..."). No repitas los indicadores
+  en prosa ("el perfil muestra un riesgo muy alto, con un score muy bajo" no agrega
   nada) ni pongas acciones. El reasoning contesta "¿por qué?",
   accionesSugeridas "¿qué hago?" y missingInfo "¿qué no se pudo
   confirmar?".
@@ -1250,8 +1192,8 @@ otros no dicen.
   respuesta). Las señales negativas ya confirmadas van en negatives.
 
 La respuesta es un único objeto JSON con estos campos: score,
-tramoDeCarga, recomendacion, accionesSugeridas, indicadorRiesgo,
-indicadorHistorial, positives, negatives, missingInfo y reasoning.
+recomendacion, accionesSugeridas, indicadorRiesgo, indicadorHistorial,
+positives, negatives, missingInfo y reasoning.
 `.trim();
 
 // ---------------------------------------------------------------------------
@@ -1277,14 +1219,6 @@ const GRUPOS_DEL_BURO_EQUIFAX = `3. buroEquifax: el buró de crédito de la inst
    comportamientoBancario trae sólo lo que el buró no cubre (ver 4). Todo
    es según Equifax y a la fecha de su reporte (fechaDelReporte): decilo
    así.
-   - diasDesdeElReporte dice cuántos días tenía esa consulta el día de
-     este análisis. La deuda y sobre todo la cuota cambian: entre dos
-     consultas de una misma persona a menos de 90 días, la cuota cambió
-     más de 20% en una de cada cuatro, y a más de 60 días en casi la
-     mitad. Hasta 30 días, leela como actual. Con más de 30, nombrá la
-     fecha del reporte y tratá la cuota como aproximada. Con más de 60, si
-     la decisión depende de la cuota o de la deuda, decí en missingInfo
-     que hay que actualizar la consulta.
    - Equifax no da la calificación de la Superintendencia (A1 a E): el
      atraso se lee en días de mora. Hoy, maximoDiasDeMora de cada sistema;
      en los últimos 24 meses, conductaDePago. Al día (0 días) es lo mejor;
@@ -1428,7 +1362,6 @@ const CORTES_CON_BURO: Corte[] = [
     hasta: " alguien ya le",
     nuevo: "como un incumplimiento en el buró:",
   },
-  { desde: "pesa como comportamientoBancario o más", hasta: " o más. Si no", nuevo: "pesa como buroEquifax" },
   {
     desde: "\n\nDe eso se sigue:",
     hasta: "De eso se sigue:",
@@ -1440,9 +1373,9 @@ const CORTES_CON_BURO: Corte[] = [
 `,
   },
   {
-    desde: "juzgado sólo con comportamientoBancario,\n  comportamientoCooperativas, comportamientoInterno y",
+    desde: "juzgado sólo con comportamientoBancario,\n  comportamientoCooperativas y",
     hasta: "\n  riesgoJudicialCrediticio",
-    nuevo: "juzgado sólo con buroEquifax, comportamientoBancario (casas\n  comerciales y préstamos del IESS/BIESS), comportamientoInterno y",
+    nuevo: "juzgado sólo con buroEquifax, comportamientoBancario (casas\n  comerciales y préstamos del IESS/BIESS) y",
   },
 ];
 

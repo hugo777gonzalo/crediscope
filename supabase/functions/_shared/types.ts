@@ -135,7 +135,6 @@ export interface ResultadoControlBloqueo {
 
 import type { AnalisisFuentesIngreso } from "./fuentes-ingreso.ts";
 import type { QuienDemanda } from "./demandas.ts";
-import type { TramoDeCarga } from "./tramos-de-carga.ts";
 
 export interface StandardClientProfile {
   cedula: string;
@@ -659,11 +658,6 @@ export interface LlamadaRealizada {
 export interface LlmScoringResult {
   score: number; // 1-999, APROXIMADO — el LLM lo estima con el marco interpretativo, no es una fórmula
   recomendacion: RecomendacionAccion;
-  // El tramo de carga máxima en que el modelo ubica a la persona (marco-v36,
-  // borrador; tramos-de-carga.ts). null: la respuesta no lo trajo (un marco
-  // anterior, un fallo o un modelo simulado). Todavía no se guarda: hace
-  // falta su columna en analysis_results al activar v36.
-  tramoDeCarga?: TramoDeCarga | null;
   // Qué hacer con el caso: 2-4 pasos concretos (marco-v16). Es lo único
   // accionable del análisis — el resto explica o describe.
   accionesSugeridas: string[];
