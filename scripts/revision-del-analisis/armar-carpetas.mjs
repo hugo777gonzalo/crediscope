@@ -412,7 +412,8 @@ for (const caso of seleccion) {
   const buro = hayBuro ? await consultaVigenteDeEquifax(supabase, caso.clientId, ahora) : null;
   // Con el interruptor del buró encendido todas las personas quedan con la versión del buró, tengan o no una consulta vigente.
   const vigente = abreviar(hayBuro ? MARCO_CON_BURO : MARCO_SIN_BURO);
-  const params = armarPedidoScoring(perfil.standard_profile, control, camposDeshabilitados, CONFIG_LLM, buro);
+  // La misma fecha que la consulta del buró: es lo que leería hoy (las demandas de cobro con sus años, marco-v36).
+  const params = armarPedidoScoring(perfil.standard_profile, control, camposDeshabilitados, CONFIG_LLM, buro, ahora);
   const leeria = JSON.parse(params.messages[0].content);
   escribirJson(f(`leeria-${vigente}.json`), leeria);
   const conBuro = Object.hasOwn(leeria, "buroEquifax");
