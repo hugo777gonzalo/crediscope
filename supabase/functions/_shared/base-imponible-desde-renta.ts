@@ -55,6 +55,9 @@
 // dólares se acumularían errores de coma flotante en la ida y vuelta.
 //
 // TABLAS: cada año lleva la resolución o la página oficial de donde salió.
+// Una tabla anual puede ser reemplazada por una ley dentro del mismo ejercicio
+// (2023, ver abajo): la que vale es la última vigente para ese ejercicio, y
+// antes de dar por buena una resolución se mira si algo posterior la cambió.
 // Un año que no se pudo confirmar en una fuente oficial NO está: la función
 // contesta «sin_tabla». Las bases por tramo son las PUBLICADAS (redondeadas
 // al dólar en 2019, 2020, 2021, 2023, 2024 y 2025), no las acumuladas: pueden
@@ -113,11 +116,17 @@ const TABLAS_EN_DOLARES: Record<number, TablaAnual> = {
     ],
   },
   2023: {
-    fuente: "Resolución NAC-DGERCGC22-00000058 (27-dic-2022)",
+    // LECCIÓN: una tabla anual del SRI puede ser REEMPLAZADA POR UNA LEY dentro del mismo ejercicio, y la que
+    // vale es la última vigente para ese ejercicio. La Resolución NAC-DGERCGC22-00000058 (27-dic-2022) fijó
+    // para 2023 otra tabla (11.722 / 14.935 / 18.666 ... con 24.231 en el último tramo); el Decreto-Ley Orgánica
+    // para el Fortalecimiento de la Economía Familiar (jun-2023) la cambió para el cálculo del ejercicio 2023
+    // (según el boletín de Andersen citado por quien revisó; el texto del decreto no se leyó acá). La tabla de
+    // abajo es la que publica el SRI para 2023, y la página no nombra la norma que la sostiene.
+    fuente: "SRI, Declaración Impuesto a la Renta 2023 (https://www.sri.gob.ec/en/declaracion-impuesto-a-la-renta-2023); reemplazó a la de la NAC-DGERCGC22-00000058",
     tramos: [
-      [0, 11722, 0, 0], [11722, 14935, 0, 5], [14935, 18666, 161, 10], [18666, 22418, 534, 12],
-      [22418, 32783, 984, 15], [32783, 43147, 2539, 20], [43147, 53512, 4612, 25],
-      [53512, 63876, 7203, 30], [63876, 103644, 10312, 35], [103644, null, 24231, 37],
+      [0, 11722, 0, 0], [11722, 14930, 0, 5], [14930, 19385, 160, 10], [19385, 25638, 606, 12],
+      [25638, 33738, 1356, 15], [33738, 44721, 2571, 20], [44721, 59537, 4768, 25],
+      [59537, 79388, 8472, 30], [79388, 105580, 14427, 35], [105580, null, 23594, 37],
     ],
   },
   2024: {
