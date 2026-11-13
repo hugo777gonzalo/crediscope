@@ -71,6 +71,10 @@ I10, I50, I90 = (c.LEV.index(x) for x in (0.10, 0.50, 0.90))
 pct = lb.pct
 
 
+# Se sube a mano cuando cambia lo que `usos()` guarda en las copias en disco (el método, no sólo los datos).
+VERSION_GUION = 2
+
+
 def h(*partes):
     return hashlib.sha1("|".join(map(str, partes)).encode()).hexdigest()[:12]
 
@@ -234,6 +238,12 @@ def seccion_A(d, N):
         for t in TIPOS:
             if 0 < conteos[t] < MIN_PRUEBA:
                 grandes = [g for g in TIPOS if conteos[g] >= MIN_PRUEBA]
+                # `central_mediano` sólo existe con 30 casos o más (medir_grupo): con menos, el tipo no se junta ni se rellena con cero; queda
+                # como «casos insuficientes» (un tipo de 1 a 29 casos de prueba cortaba la corrida con un KeyError).
+                if conteos[t] < 30:
+                    if nivel == 1:
+                        juntos.append({"tipo": t, "casos": conteos[t], "junto_con": None, "nota": "casos insuficientes"})
+                    continue
                 ref = {g: medir_grupo(d, N[1]["m"], np.where(tipo_te == g)[0])["central_mediano"] for g in grandes + [t]}
                 cerca = min(grandes, key=lambda g: abs(np.log(ref[g]) - np.log(ref[t])))
                 idx = np.where(np.isin(tipo_te, [t, cerca]))[0]
@@ -632,7 +642,9 @@ def usos(d, N, nivel, nombre, et_tr, et_te):
     tr, cols, Q = n["tr"], n["cols"], n["Q"]
     m_unico = lb.MedidasLB(Q, d.real)
     r = {"agrupacion": nombre, "nivel": nivel, "grupos": int(len(np.unique(et_tr)))}
-    clave = h(nivel, nombre, len(tr), d.huella[:12], np.bincount(et_tr + 1).tolist(), np.bincount(et_te + 1).tolist())
+    # La huella incluye las columnas, los parámetros del modelo y la versión del guion: sin ellas, una corrida sin `--recalcular` devolvía
+    # copias viejas sin avisar si cambiaba cualquiera de los tres.
+    clave = h(VERSION_GUION, nivel, nombre, len(tr), d.huella[:12], cols, sorted(c.PAR.items()), c.N_ARBOLES, MIN_MODELO_PROPIO, np.bincount(et_tr + 1).tolist(), np.bincount(et_te + 1).tolist())
     if not nombre.startswith("grados"):
         # Como variable
         z = copia(f"variable-{clave}", lambda: {"Q": predecir(*entrenar(con_grupo(tr, et_tr), cols + ["grupo"], ["grupo"]), con_grupo(d.te, et_te), cols + ["grupo"])})
@@ -777,6 +789,9 @@ def seccion_C(d, N, tipo_te):
             p = 1 - c.cdf(n["Q"], u)
             o = d.real > u
             p_oof, o_tr = 1 - c.cdf(n["oof"], u), tr.unver.values > u
+            # Ojo: la probabilidad sale de los cuantiles SIN calibrar y la isotónica se ajusta con todas las respuestas, mientras que el mínimo
+            # que se sirve está corrido con OK FACTURAR. Por eso «probabilidad de superar un monto» y «certifica al menos» pueden contradecirse.
+            # Sólo se mide así; no se cambió el método.
             iso = IsotonicRegression(out_of_bounds="clip", y_min=0, y_max=1).fit(p_oof, o_tr)
             p_iso = iso.predict(p)
             for s, idx in (("todas", d.todas), ("OK FACTURAR y condicionado", d.ok)):

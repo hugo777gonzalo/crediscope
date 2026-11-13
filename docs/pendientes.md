@@ -574,6 +574,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         - **El extra del dependiente no se puede estimar** (AUC 0,62 con RUC activo, R² 0,01). El modelo de independientes aplicado a ese
           extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 que lo estima con el nivel 1 o 2 hay que cambiarla**: sin monto,
           «con o sin indicios; se valida con documentos». La actualiza la sesión principal.
+        - **Límites de esta medición** (de la revisión):
+          - los tipos de persona se definen aquí con la clase del contribuyente y el obligado a llevar contabilidad que trae Equifax, no con las
+            reglas de la especificación: **sin buró esa clasificación no se puede armar**;
+          - el «rentista» se define por la composición de la etiqueta validada (arriendos la mitad o más de lo no verificado): sirve para medir,
+            y **no se reproduce en producción**;
+          - la probabilidad por umbral sale de cuantiles sin calibrar y la isotónica se ajusta con todas las respuestas, mientras el mínimo que se
+            sirve está corrido con OK FACTURAR: **la probabilidad y el «certifica al menos» pueden contradecirse**. Se midió así; el método no se
+            cambió.
         - **Para el marco, medido**:
           - la probabilidad de superar cada monto está bien calibrada en el nivel 1; en el nivel 2, en 2.000 sobreestima 5 puntos (ECE
             0,052), y una isotónica por umbral la arregla (medida, no construida);
