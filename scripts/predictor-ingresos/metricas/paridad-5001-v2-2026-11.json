@@ -1,0 +1,476 @@
+{
+  "generado": "2026-11-07",
+  "respuestas": 5001,
+  "fallas": 0,
+  "medidas": {
+    "crédito · mayor crédito aprobado (cred_mayor)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · mayor crédito reciente (cred_12m)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · mayor crédito actual (cred_24m)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · total adeudado (deuda_total)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · instituciones con deuda (n_inst)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · créditos aprobados (n_creditos)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · valor de créditos aprobados (valor_creditos)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · saldos vigentes (saldos_vig)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · deuda actual (deuda_actual)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · deuda de hace 3 meses (deuda_3m)": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "crédito · fecha de concesión del mayor aprobado": {
+      "ok": 4499,
+      "total": 4499
+    },
+    "cuota · cuota_estimada_mensual_usd = cuota estimada de AWS": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · cuota_fin (cuota financiera del impacto económico)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · h12 (retroactivo -12 meses)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · h6 (retroactivo -6 meses)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · hact (retroactivo 0 meses)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · cuota proyectada a 6 meses (no es entrada)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · cuota proyectada a 12 meses (no es entrada)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · g6 (cociente actual / -6 meses)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "cuota · g12 (cociente actual / -12 meses)": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "operaciones · c_consumo   [v1: 48,7%]": {
+      "ok": 3727,
+      "total": 5001
+    },
+    "operaciones · c_tarjeta   [v1: 50,4%]": {
+      "ok": 4012,
+      "total": 5001
+    },
+    "operaciones · c_micro   [v1: 88,2%]": {
+      "ok": 4710,
+      "total": 5001
+    },
+    "operaciones · c_vivienda   [v1: 91,9%]": {
+      "ok": 4866,
+      "total": 5001
+    },
+    "operaciones · c_comercial   [v1: 98,3%]": {
+      "ok": 4980,
+      "total": 5001
+    },
+    "operaciones · c_educativo   [v1: 100%]": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "operaciones · s_consumo   [v1: 78,6%]": {
+      "ok": 3784,
+      "total": 5001
+    },
+    "operaciones · s_tarjeta   [v1: 94,7%]": {
+      "ok": 4012,
+      "total": 5001
+    },
+    "operaciones · s_micro   [v1: 98,9%]": {
+      "ok": 4742,
+      "total": 5001
+    },
+    "operaciones · s_vivienda   [v1: 99,5%]": {
+      "ok": 4875,
+      "total": 5001
+    },
+    "operaciones · n_consumo   [v1: 65,1%]": {
+      "ok": 3899,
+      "total": 5001
+    },
+    "operaciones · n_tarjeta   [v1: 94,1%]": {
+      "ok": 4012,
+      "total": 5001
+    },
+    "operaciones · n_micro   [v1: 98,8%]": {
+      "ok": 4755,
+      "total": 5001
+    },
+    "operaciones · n_vivienda   [v1: 99,5%]": {
+      "ok": 4875,
+      "total": 5001
+    },
+    "operaciones · c_codeudor   [v1: 92,9%]": {
+      "ok": 4855,
+      "total": 5001
+    },
+    "operaciones · max_dias_t   [v1: 87,6%]": {
+      "ok": 4555,
+      "total": 5001
+    },
+    "operaciones · n_oper (total de AWS)   [v1: 65,6%]": {
+      "ok": 4110,
+      "total": 4783
+    },
+    "operaciones · saldo (total de AWS)   [v1: 84,4%]": {
+      "ok": 4474,
+      "total": 4783
+    },
+    "operaciones · max_mora (total de AWS)   [v1: 88,8%]": {
+      "ok": 4389,
+      "total": 4602
+    },
+    "operaciones por mes": {
+      "2025-12": {
+        "respuestas": 52,
+        "las_19_iguales": 7,
+        "por_variable_pct": {
+          "c_consumo": 21.2,
+          "c_tarjeta": 40.4,
+          "c_micro": 86.5,
+          "c_vivienda": 84.6,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 19.2,
+          "s_tarjeta": 40.4,
+          "s_micro": 92.3,
+          "s_vivienda": 100,
+          "n_consumo": 25,
+          "n_tarjeta": 40.4,
+          "n_micro": 92.3,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 82.7,
+          "n_oper": 22.4,
+          "saldo": 36.7,
+          "max_mora": 92.3
+        }
+      },
+      "2026-01": {
+        "respuestas": 1986,
+        "las_19_iguales": 654,
+        "por_variable_pct": {
+          "c_consumo": 37.9,
+          "c_tarjeta": 51.8,
+          "c_micro": 85.7,
+          "c_vivienda": 93.6,
+          "c_comercial": 98.9,
+          "c_educativo": 100,
+          "s_consumo": 40.8,
+          "s_tarjeta": 51.8,
+          "s_micro": 87.2,
+          "s_vivienda": 93.7,
+          "n_consumo": 46.5,
+          "n_tarjeta": 51.8,
+          "n_micro": 87.8,
+          "n_vivienda": 93.7,
+          "c_codeudor": 92.6,
+          "max_dias_t": 78,
+          "n_oper": 66.5,
+          "saldo": 85.3,
+          "max_mora": 87.8
+        }
+      },
+      "2026-02": {
+        "respuestas": 520,
+        "las_19_iguales": 520,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-03": {
+        "respuestas": 621,
+        "las_19_iguales": 621,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-04": {
+        "respuestas": 305,
+        "las_19_iguales": 305,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-05": {
+        "respuestas": 255,
+        "las_19_iguales": 255,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-06": {
+        "respuestas": 240,
+        "las_19_iguales": 240,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-07": {
+        "respuestas": 308,
+        "las_19_iguales": 308,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-08": {
+        "respuestas": 281,
+        "las_19_iguales": 281,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-09": {
+        "respuestas": 255,
+        "las_19_iguales": 255,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      },
+      "2026-10": {
+        "respuestas": 178,
+        "las_19_iguales": 178,
+        "por_variable_pct": {
+          "c_consumo": 100,
+          "c_tarjeta": 100,
+          "c_micro": 100,
+          "c_vivienda": 100,
+          "c_comercial": 100,
+          "c_educativo": 100,
+          "s_consumo": 100,
+          "s_tarjeta": 100,
+          "s_micro": 100,
+          "s_vivienda": 100,
+          "n_consumo": 100,
+          "n_tarjeta": 100,
+          "n_micro": 100,
+          "n_vivienda": 100,
+          "c_codeudor": 100,
+          "max_dias_t": 100,
+          "n_oper": 100,
+          "saldo": 100,
+          "max_mora": 100
+        }
+      }
+    },
+    "sri · sri_ruc": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · sri_estado": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · sri_clase": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · sri_obligado": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · sri_ciiu_secc": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · sri_ciiu_div": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · fecha de inicio de actividades": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · fecha de suspensión definitiva": {
+      "ok": 5001,
+      "total": 5001
+    },
+    "sri · sin bloque en el extracto = sin bloque en la tabla": {
+      "ok": 5001,
+      "total": 5001
+    }
+  }
+}

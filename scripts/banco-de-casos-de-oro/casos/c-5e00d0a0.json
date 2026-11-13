@@ -1,0 +1,77 @@
+{
+  "formato": 1,
+  "id": "c-5e00d0a0",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-5e00d0a0/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Una demanda por pagaré de 2005 no frena a un dependiente con pago excelente y créditos anteriores pagados con la institución.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Dependiente con ingreso confirmado por un tercero, A1 en bancos, casi veinte años de historia sin mora y dos créditos anteriores con la institución pagados sin atraso.",
+    "La demanda por pagaré es de 2005, de un banco que ya no existe: es un antecedente, no una razón para revisar.",
+    "Las cuotas del buró se acercan al ingreso reportado, pero lleva años pagándolas: se aprueba al documentar el ingreso mayor."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "aprobar"
+  ],
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 680,
+        "max": 900,
+        "porque": "El jefe de crédito dio 780."
+      },
+      {
+        "tipo": "texto_requerido",
+        "patron": "2005",
+        "campos": [
+          "todo"
+        ],
+        "porque": "La demanda se nombra con su año."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "pesa fuerte",
+        "campos": [
+          "todo"
+        ],
+        "porque": "Una demanda de hace más de 20 años no pesa fuerte."
+      },
+      {
+        "tipo": "accion",
+        "accion": "documentar_ingreso",
+        "porque": "Lo que falta es documentar el ingreso mayor al reportado."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Resaltar que fue cliente de la institución y pagó sus créditos sin atraso, como referencia cualitativa.",
+        "Decir que la demanda de 2005 es un antecedente que no mueve la recomendación."
+      ],
+      "no_debe": [
+        "Sumar la operación con la institución a la deuda o a las cuotas.",
+        "Poner como negativos saldos de tarjetas en A1 o un RUC cesado hace muchos años.",
+        "Usar la demanda de 2005 como el motivo de revisar."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "comportamiento_interno_cualitativo",
+      "que_cambio": "El jefe de crédito sumó la cuota de la operación vigente con la institución para medir la capacidad; ahora no se suma: los créditos vigentes constan en el buró."
+    },
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "Lo que frenó al modelo (el pagaré de 2005) queda como antecedente."
+    }
+  ]
+}

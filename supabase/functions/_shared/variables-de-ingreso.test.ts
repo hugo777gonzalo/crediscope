@@ -5,12 +5,13 @@
 //
 // deno test --allow-env supabase/functions/
 
-import { assert, assertAlmostEquals, assertEquals, assertFalse } from "jsr:@std/assert@1";
-import { derivarTablas } from "./equifax-tablas.ts";
+import { assert, assertAlmostEquals, assertEquals, assertFalse, assertRejects } from "jsr:@std/assert@1";
+import { comprimirTexto } from "./crudo-equifax-migrado.ts";
 import { respuestaDePrueba } from "./equifax-respuesta-de-prueba.ts";
 import {
   CREDITOS_POSTERIORES_QUE_SE_ANULAN,
   MAPEO_DE_PROVEEDOR_INFO_1,
+  operacionesParaIngreso,
   sexoParaIngreso,
   tipoDeCreditoParaIngreso,
   VARIABLES_CATEGORICAS,
@@ -19,6 +20,7 @@ import {
   variablesDelIess,
   vectorDeNivel1,
   vectorDeNivel2,
+  vectorDeNivel2DeLaConsulta,
   type MapeoDeCategorias,
   type PerfilParaIngreso,
 } from "./variables-de-ingreso.ts";
@@ -26,7 +28,28 @@ import {
 const AHORA = new Date("2026-09-10T15:00:00Z"); // 10:00 en Ecuador
 const CONSULTA = "2026-08-31T15:00:00Z";
 
-const tablas = (cambios: Parameters<typeof respuestaDePrueba>[0] = {}) => derivarTablas(respuestaDePrueba(cambios)).tablas;
+// Las listas de interconnectResponse de las que sale el nivel 2, con la misma deuda que reporteCrediticio en la respuesta de prueba:
+//   bancos (SFR)   titular consumo 4.000 (cuota 200, 45 días), titular microcrédito 0, codeudor comercial 500 (cuota 50)
+//   comercio       titular consumo 200 (cuota 20), garante consumo 100
+type Fila = Record<string, unknown>;
+const fila = (c: Fila): Fila => ({
+  Sistema: "SFR", Institucion: "BANCO DE PRUEBA UNO", Tipo_Riesgo: "TITULAR", Tipo_Credito: "Consumo", Fecha_Corte: "2026 Ago",
+  Saldo_Deuda: 0, Cuota_Mensual: 0, Dias_Venc: 0, Total_Vencido: 0, ...c,
+});
+const LISTAS_DE_PRUEBA = {
+  DetalleDeudaActualReportadaRFRSBS: [],
+  DetalleDeudaActualReportadaSICOMSBS: [
+    fila({ Sistema: "SICOM", Institucion: "COMERCIO DE PRUEBA", Saldo_Deuda: 200, Cuota_Mensual: 20 }),
+    fila({ Sistema: "SICOM", Institucion: "COMERCIO DE PRUEBA DOS", Tipo_Riesgo: "GARANTE", Saldo_Deuda: 100 }),
+  ],
+  DetalleDeudaActualReportadaSBSSBS_Educativo: [
+    fila({ Saldo_Deuda: 4000, Cuota_Mensual: 200, Dias_Venc: 45, Total_Vencido: 300 }),
+    fila({ Institucion: "BANCO DE PRUEBA DOS", Tipo_Riesgo: "Titular", Tipo_Credito: "Microcredito" }),
+    fila({ Institucion: "BANCO DE PRUEBA TRES", Tipo_Riesgo: "CODEUDOR", Tipo_Credito: "Comercial", Saldo_Deuda: 500, Cuota_Mensual: 50 }),
+  ],
+};
+const respuesta = (cambios: Parameters<typeof respuestaDePrueba>[0] = {}) =>
+  respuestaDePrueba({ ...cambios, interconnectResponse: { ...LISTAS_DE_PRUEBA, ...cambios.interconnectResponse } });
 
 // Un mapeo de prueba: NO es el de producción (esa equivalencia no se midió), sólo prueba que la interfaz se usa.
 const MAPEO_DE_PRUEBA: MapeoDeCategorias = {
@@ -93,12 +116,12 @@ Deno.test("el sexo: sólo las dos categorías del entrenamiento, que son las de 
 });
 
 Deno.test("el nivel 2 sin mapeo de estado civil y zona: salen sin dato y se dice pendiente; con mapeo y ubicaciones, pasan", () => {
-  const sin = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
+  const sin = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
   assertEquals(sin.variables.genero, "FEMENINO");
   for (const c of ["estado_civil", "prov_trab", "cant_trab", "prov_dom", "cant_dom"]) assertEquals(sin.variables[c], null, c);
   assert(sin.pendientes.some((p) => p.startsWith("categorias")));
   assert(sin.pendientes.some((p) => p.startsWith("ubicaciones")));
-  const con = vectorDeNivel2(perfil(), tablas(), {
+  const con = vectorDeNivel2(perfil(), respuesta(), {
     ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess, mapeo: MAPEO_DE_PRUEBA,
     ubicaciones: { provinciaDomicilio: "PROV A", cantonDomicilio: "CANTON A", provinciaTrabajo: null, cantonTrabajo: "CANTON B" },
   });
@@ -176,7 +199,7 @@ Deno.test("sin respuesta no es un dato: si el contribuyente no contestó, todo e
 });
 
 Deno.test("el nivel 2: las diez variables del análisis de crédito pasan tal cual", () => {
-  const v = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
+  const v = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(Object.keys(v.variables), [...VARIABLES_DEL_NIVEL_2]);
   assertEquals(v.variables.cred_mayor, 12000);
   assertEquals(v.variables.cred_12m, 5000.46);
@@ -191,25 +214,25 @@ Deno.test("el nivel 2: las diez variables del análisis de crédito pasan tal cu
 
 Deno.test("un crédito concedido después de la consulta se anula: puede ser el que se está pidiendo", () => {
   assertEquals(CREDITOS_POSTERIORES_QUE_SE_ANULAN, ["cred_mayor", "cred_12m", "cred_24m"]);
-  const posterior = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "10/09/2026", CMRMontoOriginal: 5000.456, CMRFecConcesion: "10/02/2026", CMAMontoOriginal: 8000, CMAFecConcesion: "05/09/2026" } } });
+  const posterior = respuesta({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "10/09/2026", CMRMontoOriginal: 5000.456, CMRFecConcesion: "10/02/2026", CMAMontoOriginal: 8000, CMAFecConcesion: "05/09/2026" } } });
   const v = vectorDeNivel2(perfil(), posterior, { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.cred_mayor, null, "concedido después de la consulta: puede ser el que se pide");
   assertEquals(v.variables.cred_24m, null, "el crédito actual concedido el 5 de septiembre tampoco se usa");
   assertEquals(v.variables.cred_12m, 5000.46, "el reciente es de febrero: se usa");
-  const mismoDia = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "31/08/2026" } } });
+  const mismoDia = respuesta({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "31/08/2026" } } });
   assertEquals(vectorDeNivel2(perfil(), mismoDia, { ahora: AHORA, consultadoEl: CONSULTA }).variables.cred_mayor, 9000, "el mismo día no es posterior");
-  const sinFecha = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000 } } });
+  const sinFecha = respuesta({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000 } } });
   assertEquals(vectorDeNivel2(perfil(), sinFecha, { ahora: AHORA, consultadoEl: CONSULTA }).variables.cred_mayor, 9000, "sin fecha no hay con qué anular");
 });
 
 Deno.test("la fecha de la consulta es la de Ecuador: una consulta de las 20:00 del 31 ya es del 1 en UTC", () => {
-  const t = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "01/09/2026" } } });
+  const t = respuesta({ interconnectResponse: { AnalisisCreditoSectorFinanciero: { MCAMontoOriginal: 9000, MCAFecConcesion: "01/09/2026" } } });
   const v = vectorDeNivel2(perfil(), t, { ahora: AHORA, consultadoEl: "2026-09-01T01:00:00Z" }); // 20:00 del 31 de agosto en Ecuador
   assertEquals(v.variables.cred_mayor, null, "concedido el 1 de septiembre, después de una consulta del 31 de agosto");
 });
 
 Deno.test("la cuota y su historial: cuota financiera, -12, -6 y actual, y los cocientes acotados", () => {
-  const v = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
+  const v = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.cuota_fin, 250);
   assertEquals(v.variables.h12, 180);
   assertEquals(v.variables.h6, 190);
@@ -219,17 +242,17 @@ Deno.test("la cuota y su historial: cuota financiera, -12, -6 y actual, y los co
 });
 
 Deno.test("los cocientes: denominador cero o nulo es sin dato, y se acotan a 20", () => {
-  const t = tablas({ reporteCrediticio: { historico_cuota_estimada: [{ retroactivo: "-12 Meses", cuota_mensual: 0 }, { retroactivo: "-6 Meses", cuota_mensual: 5 }, { retroactivo: "Actual", cuota_mensual: 500 }] } });
+  const t = respuesta({ reporteCrediticio: { historico_cuota_estimada: [{ retroactivo: "-12 Meses", cuota_mensual: 0 }, { retroactivo: "-6 Meses", cuota_mensual: 5 }, { retroactivo: "Actual", cuota_mensual: 500 }] } });
   const v = vectorDeNivel2(perfil(), t, { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.g12, null, "con una cuota de hace 12 meses de 0 no hay cociente");
   assertEquals(v.variables.g6, 20, "500 / 5 = 100, acotado a 20");
-  const sinHistorial = tablas({ reporteCrediticio: { historico_cuota_estimada: [] } });
+  const sinHistorial = respuesta({ reporteCrediticio: { historico_cuota_estimada: [] } });
   const w = vectorDeNivel2(perfil(), sinHistorial, { ahora: AHORA, consultadoEl: CONSULTA });
   for (const c of ["h12", "h6", "hact", "g6", "g12"]) assertEquals(w.variables[c], null, c);
 });
 
 Deno.test("las operaciones por tipo: sólo el titular, y un grupo sin filas es sin dato, no cero", () => {
-  const v = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
+  const v = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.c_consumo, 220, "200 del banco y 20 del comercio; el garante no suma acá");
   assertEquals(v.variables.s_consumo, 4200);
   assertEquals(v.variables.n_consumo, 2);
@@ -244,17 +267,78 @@ Deno.test("las operaciones por tipo: sólo el titular, y un grupo sin filas es s
 });
 
 Deno.test("el saldo, el número de operaciones y la mora máxima cuentan todas las operaciones y todos los roles", () => {
-  const v = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
+  const v = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.saldo, 4800);
   assertEquals(v.variables.n_oper, 5);
   assertEquals(v.variables.max_mora, 45);
-  assert(v.pendientes.some((p) => p.startsWith("operaciones")), "la paridad de las operaciones es parcial y se dice");
+  assertFalse(v.pendientes.some((p) => p.startsWith("operaciones")), "desde v2 la paridad de las operaciones es completa (12.35)");
 });
 
 Deno.test("sin operaciones: el saldo, el conteo y la mora quedan sin dato", () => {
-  const t = tablas({ reporteCrediticio: { detalle_deuda_actual_sb: [], detalle_deuda_actual_seps: [], detalle_deuda_actual_sicom: [] } });
+  const t = respuesta({ interconnectResponse: { DetalleDeudaActualReportadaRFRSBS: [], DetalleDeudaActualReportadaSICOMSBS: [], DetalleDeudaActualReportadaSBSSBS_Educativo: [] } });
   const v = vectorDeNivel2(perfil(), t, { ahora: AHORA, consultadoEl: CONSULTA });
   for (const c of ["saldo", "n_oper", "max_mora", "max_dias_t", "c_codeudor", "c_consumo"]) assertEquals(v.variables[c], null, c);
+  assertFalse(v.avisos.some((a) => a.includes("interconnectResponse")), "las listas vinieron vacías: no tiene operaciones");
+});
+
+Deno.test("las operaciones salen de interconnectResponse, no de reporteCrediticio (de donde salió el extracto de AWS)", () => {
+  // La respuesta de prueba sin las listas de arriba: reporteCrediticio trae consumo por 220 y la única fila de las listas es de 777.777, sin tipo.
+  const v = vectorDeNivel2(perfil(), respuestaDePrueba(), { ahora: AHORA, consultadoEl: CONSULTA });
+  assertEquals(v.variables.saldo, 777777);
+  assertEquals(v.variables.n_oper, 1);
+  assertEquals(v.variables.c_consumo, null, "el consumo de reporteCrediticio no entra");
+  // Y al revés: una tarjeta que sólo está en las listas sí entra.
+  const conTarjeta = respuesta({ interconnectResponse: { DetalleDeudaActualReportadaRFRSBS: [fila({ Sistema: "SFNR", Tipo_Credito: "Tarjeta de Crédito", Saldo_Deuda: 900, Cuota_Mensual: 75 })] } });
+  const w = vectorDeNivel2(perfil(), conTarjeta, { ahora: AHORA, consultadoEl: CONSULTA });
+  assertEquals([w.variables.c_tarjeta, w.variables.s_tarjeta, w.variables.n_tarjeta], [75, 900, 1]);
+  assertEquals(w.variables.c_consumo, 220, "las tres listas se juntan");
+});
+
+Deno.test("la mora máxima es la del extracto de AWS: comparada como texto, y la del titular por sistema y tipo de crédito", () => {
+  const t = respuesta({
+    interconnectResponse: {
+      DetalleDeudaActualReportadaSICOMSBS: [],
+      DetalleDeudaActualReportadaSBSSBS_Educativo: [
+        fila({ Dias_Venc: 130 }), fila({ Dias_Venc: 65 }), fila({ Tipo_Credito: "Microcredito", Dias_Venc: 259 }), fila({ Tipo_Riesgo: "GARANTE", Dias_Venc: 0 }),
+      ],
+    },
+  });
+  const v = vectorDeNivel2(perfil(), t, { ahora: AHORA, consultadoEl: CONSULTA });
+  assertEquals(v.variables.max_mora, 65, "«65» le gana a «259» y a «130» como texto: así lo calculó AWS");
+  assertEquals(v.variables.max_dias_t, 259, "consumo da 65 (texto) y microcrédito 259; entre los dos, el mayor como número");
+});
+
+Deno.test("sin interconnectResponse las operaciones quedan sin dato y se avisa; no es lo mismo que no tener operaciones", () => {
+  assertEquals(operacionesParaIngreso({ reporteCrediticio: {} }), null);
+  assertEquals(operacionesParaIngreso(null), null);
+  assertEquals(operacionesParaIngreso({ interconnectResponse: {} }), []);
+  const v = vectorDeNivel2(perfil(), { ...respuesta(), interconnectResponse: undefined }, { ahora: AHORA, consultadoEl: CONSULTA });
+  for (const c of ["c_consumo", "s_consumo", "n_consumo", "c_codeudor", "max_dias_t", "saldo", "n_oper", "max_mora"]) assertEquals(v.variables[c], null, c);
+  assert(v.avisos.some((a) => a.includes("interconnectResponse")));
+  assertEquals(v.variables.cuota_fin, 250, "lo que sale de reporteCrediticio sigue");
+});
+
+// Una base con Storage de mentira: sólo lo que usa leerCrudoDeLaConsulta().
+function baseConCrudo(objetos: Record<string, Uint8Array>) {
+  return {
+    storage: {
+      from: (_deposito: string) => ({
+        download: (ruta: string) => Promise.resolve(ruta in objetos ? { data: new Blob([objetos[ruta] as BlobPart]), error: null } : { data: null, error: { message: "no existe" } }),
+      }),
+    },
+  };
+}
+
+Deno.test("en producción el nivel 2 lee el crudo de la consulta: de la fila o, si es una migrada, de Storage", async () => {
+  const crudo = respuesta();
+  const esperado = vectorDeNivel2(perfil(), crudo, { ahora: AHORA, consultadoEl: CONSULTA });
+  const base = baseConCrudo({ "aws/123.json.gz": await comprimirTexto(JSON.stringify(crudo)) });
+  const deLaFila = await vectorDeNivel2DeLaConsulta(base, { created_at: CONSULTA, respuesta_cruda: crudo }, perfil(), { ahora: AHORA });
+  const deStorage = await vectorDeNivel2DeLaConsulta(base, { created_at: CONSULTA, respuesta_cruda: null, crudo_ruta: "aws/123.json.gz" }, perfil(), { ahora: AHORA });
+  assertEquals(JSON.stringify(deLaFila), JSON.stringify(esperado));
+  assertEquals(JSON.stringify(deStorage), JSON.stringify(esperado), "el reloj de la concesión es la fecha de la consulta");
+  await assertRejects(() => vectorDeNivel2DeLaConsulta(base, { created_at: CONSULTA, respuesta_cruda: null, crudo_ruta: null }, perfil(), { ahora: AHORA }));
+  await assertRejects(() => vectorDeNivel2DeLaConsulta(base, { created_at: CONSULTA, crudo_ruta: "aws/no-esta.json.gz" }, perfil(), { ahora: AHORA }));
 });
 
 Deno.test("el tipo de crédito se agrupa como en el entrenamiento", () => {
@@ -269,7 +353,7 @@ Deno.test("el tipo de crédito se agrupa como en el entrenamiento", () => {
 });
 
 Deno.test("el SRI de Equifax en el nivel 2: estado, clase, sección y división del CIIU, obligado y años", () => {
-  const v = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
+  const v = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.sri_ruc, 1);
   assertEquals(v.variables.sri_estado, "ACTIVO");
   assertEquals(v.variables.sri_clase, "RIMPE");
@@ -281,23 +365,23 @@ Deno.test("el SRI de Equifax en el nivel 2: estado, clase, sección y división 
 });
 
 Deno.test("el SRI en el nivel 2 sale de Equifax aunque Proveedor_Info_1 diga otra cosa", () => {
-  const v = vectorDeNivel2(perfil({ laboral: { estadoActividadEconomica: "sin_ruc" } }), tablas(), { ahora: AHORA, consultadoEl: CONSULTA });
+  const v = vectorDeNivel2(perfil({ laboral: { estadoActividadEconomica: "sin_ruc" } }), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(v.variables.sri_ruc, 1);
 });
 
 Deno.test("sin el bloque del SRI en la respuesta, todo el SRI queda sin dato; con el bloque vacío, no tiene RUC", () => {
-  const sinBloque = derivarTablas(respuestaDePrueba({ reporteCrediticio: { informacion_sri: undefined } })).tablas;
+  const sinBloque = respuesta({ reporteCrediticio: { informacion_sri: undefined } });
   const a = vectorDeNivel2(perfil(), sinBloque, { ahora: AHORA, consultadoEl: CONSULTA });
   for (const c of ["sri_ruc", "sri_estado", "sri_clase", "sri_obligado", "sri_antig", "sri_susp", "sri_ciiu_secc", "sri_ciiu_div"]) assertEquals(a.variables[c], null, c);
   assert(a.avisos.some((x) => x.includes("SRI")));
-  const vacio = derivarTablas(respuestaDePrueba({ reporteCrediticio: { informacion_sri: [] } })).tablas;
+  const vacio = respuesta({ reporteCrediticio: { informacion_sri: [] } });
   const b = vectorDeNivel2(perfil(), vacio, { ahora: AHORA, consultadoEl: CONSULTA });
   assertEquals(b.variables.sri_ruc, 0);
   assertEquals(b.variables.sri_estado, null);
 });
 
 Deno.test("sin el análisis de crédito en la respuesta, las diez variables de crédito quedan sin dato y se avisa", () => {
-  const t = tablas({ interconnectResponse: { AnalisisCreditoSectorFinanciero: undefined } });
+  const t = respuesta({ interconnectResponse: { AnalisisCreditoSectorFinanciero: undefined } });
   const v = vectorDeNivel2(perfil(), t, { ahora: AHORA, consultadoEl: CONSULTA });
   for (const c of ["cred_mayor", "cred_12m", "cred_24m", "deuda_total", "n_inst", "n_creditos", "valor_creditos", "saldos_vig", "deuda_actual", "deuda_3m"]) assertEquals(v.variables[c], null, c);
   assert(v.avisos.some((a) => a.includes("AnalisisCreditoSectorFinanciero")));
@@ -307,7 +391,7 @@ Deno.test("sin el análisis de crédito en la respuesta, las diez variables de c
 Deno.test("el vector no lleva identificadores: ni la cédula, ni el nombre, ni el RUC", () => {
   const v = vectorDeNivel2(
     { ...perfil(), identidad: { edad: 41, genero: "MUJER", estadoCivil: "CASADO", nombreCompleto: "PERSONA DE PRUEBA UNO", cedula: "0102030405" } as never },
-    tablas(),
+    respuesta(),
     { ahora: AHORA, consultadoEl: CONSULTA, mapeo: MAPEO_DE_PRUEBA, historialIess: iess },
   );
   const texto = JSON.stringify(v);
@@ -315,7 +399,7 @@ Deno.test("el vector no lleva identificadores: ni la cédula, ni el nombre, ni e
 });
 
 Deno.test("el mismo perfil y la misma respuesta dan siempre el mismo vector", () => {
-  const a = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
-  const b = vectorDeNivel2(perfil(), tablas(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
+  const a = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
+  const b = vectorDeNivel2(perfil(), respuesta(), { ahora: AHORA, consultadoEl: CONSULTA, historialIess: iess });
   assertEquals(JSON.stringify(a), JSON.stringify(b));
 });

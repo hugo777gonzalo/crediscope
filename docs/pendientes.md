@@ -13,6 +13,21 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
+- **`main` tiene estructura-v21 sin desplegar (2026-11-09, #153): no desplegar `main` hasta que marco-v36
+  esté lista**, salvo que el negocio lo autorice sabiendo esto. Cualquier despliegue con `--funciones` desde
+  `main` lleva v21, venga de la sesión que venga (el que más riesgo tiene es el del predictor, #145): con
+  marco-v35, el modelo recibiría `comportamientoInterno.proveedorInfo1EstadoOperacion` y
+  `riesgoJudicialCrediticio.demandasDeCobro` (año y quién demanda), que v35 no explica. v21 trae p6 (el BIESS
+  sin contar dos veces ni los préstamos terminados), p3 (Comportamiento Interno de una sola operación, sin
+  sumar nada), p5 y p10 (el colateral de vehículos al precio de mercado).
+  - **Después del despliegue, el recálculo:** `node scripts/recalcular-grupos.mjs
+    --grupos=comportamientoBancario,comportamientoInterno,riesgoJudicialCrediticio,patrimonio
+    --carpeta=research/proveedor-info-1-raw-2026-10-03`, primero con `--seco`. El seco del 2026-11-09 sobre los
+    perfiles en v20: los 3.766 se reproducen y cambian el colateral en 1.362, el saldo del BIESS en 767,
+    `tieneCreditoIessBiess` en 192 y el saldo de Comportamiento Interno en 557.
+  - **Al final, `node scripts/revisar-crudo.mjs`:** las regresiones de p3
+    (`comportamiento-interno-de-otra-operacion`) y p10 (`colateral-de-vehiculos-sobre-el-precio-promedio`)
+    tienen que dar 0.
 - **Espacio de la base (2026-11-06): 409 MB de 500 MB del plan Free** (91 MB de margen; el 05/11 eran
   485 y el 06/11 llegaron a 534, por encima del plan, y bajaron a 478 tras el `vacuum full` de `consultas_equifax` y a 409 tras el
   de `cron.job_run_details`); se midió con `pg_database_size`. Lo que lo llenó, medido:
@@ -29,7 +44,8 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   de fila vacía (c-6da51438): «Ordenar la consulta guardada» armó sus tablas. Las consultas pagadas por nosotros
   siguen con el crudo en la fila (2,3 MB). **Volver a correr `migrar-equifax-aws.mjs` mete el crudo en la fila otra vez**:
   después se repite `subir-equifax-migrado-a-storage.mjs` (subir, `--enlazar`, `--vaciar --confirmo`) y el `vacuum full`.
-  Un JSON de AWS sin fila en la base no se encuentra por cédula para la supresión del titular.
+  Un JSON de AWS sin fila en la base se encuentra por cédula en el índice de Storage (p4, 2026-11-09), pero la supresión
+  del titular todavía no lo lee: falta que `derechos-del-titular.mjs` borre esos crudos y saque a la persona del índice.
 - **Consultas de Equifax migradas de AWS (2026-10-31):** 3.542 crudos (3.440 personas, del 18 al
   27/10, sin tablas derivadas) con `node scripts/migrar-equifax-aws.mjs`. Valen hasta el 17/11, pero
   **no se borran al vencer** (negocio, 2026-11-05: una consulta queda como la base de lo que se
@@ -98,6 +114,31 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   sigue guardado: se reemplaza al reconsultarla. Los tres perfiles de ese día dieron error en 41
   fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
   el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
+
+## Reestructuración del núcleo: ola 1 hecha (2026-11-13)
+
+La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tareas viven en un doc privado de Claude: https://claude.ai/artifact/AdZJBTAUAc5tNTkwVkKnCd (pestañas «Plan de ejecución» y «Contrato del análisis premium»). El informe visual de ejemplo está en https://claude.ai/artifact/AmiHUuoqFvFNYEXdsswLqA. El negocio la aprobó con ajustes el 2026-11-11 y aprobó la ola 1 el 2026-11-12.
+
+**Lo decidido (negocio, 2026-11-11):**
+- CrediScope es un analista con IA y entrega una recomendación; decide una persona de la institución. Seis salidas: Aprobación Directa, Aprobar, Cambio de Condiciones, Condicionado, Revisar y Negar.
+- Se diseña primero para la institución sin buró. Los datos de la institución son referencia cualitativa. El Laboratorio, el score estadístico y el lector de documentos quedan para después.
+- Un mal comportamiento de pago recomienda negar salvo atenuantes medibles: hoy al día, endeudamiento a la baja, 12 meses o más de estabilidad, ingreso al alza.
+
+**Lo medido en la ola 1 (2026-11-12 y 13):**
+- El proveedor sigue caído: en una consulta de prueba con una persona autorizada contestaron 7 de 52 fuentes y fallaron 15 de las 21 obligatorias. La consulta se guarda con que conteste una sola fuente, y el resumen de la persona toma el último perfil aunque sea peor que el anterior.
+- De 444 personas con recomendación: 96 aprobar, 322 revisar y 25 negar. De los 322 «revisar», 282 mencionan una deuda sin cuota informada y 195 un ingreso «Por confirmar» (conteo por palabras clave: es una cota).
+- Con una definición amplia, 166 de 435 personas tienen mal comportamiento de pago; 116 es sólo por una demanda de cobro, sin distinguir su antigüedad.
+- El PR 150 bajaría 92 de 95 aprobaciones a «revisar»: se recomienda cerrarlo y llevar la idea a la versión mayor del marco.
+- Cotas del ingreso contra 28.906 ingresos validados de la originación: la cuota pagada al día sobre una carga de 0,75 cubre el 94,5%; el cupo de tarjetas sirve poco; una de cada diez personas aprobadas y sin mora paga en cuotas más del 61% de su ingreso validado.
+- El lote de paridad no alcanza para mejorar el predictor sin buró: es todo de independientes y su crudo es posterior a los ingresos validados. Depende de la base grande pedida al proveedor.
+- El respaldo crudo de Equifax tiene 23.420 respuestas; 2.760 se bajaron el 2026-11-10, después de la orden de parar del 2026-11-06. Falta confirmarlo con el negocio.
+
+**PR abiertos de la ola 1 y qué esperan:**
+- #151, marco-v36 mínimo: revisado; espera marcarse listo y el sí a fusionar. Fusionarlo activa v36 y pide la migración 150 antes de desplegar (la secuencia está en su descripción).
+- #157 (control del crudo con crudos inventados), #158 (base imponible desde el impuesto a la renta) y #159 (banco de casos de oro, 25 casos): revisados, esperan el sí a fusionar.
+- #156, mediciones del predictor, ya con sus cuatro arreglos. El #155 no se fusiona como está: hay que rehacer la especificación con la escalera de evidencia, el nivel sin buró y las cotas.
+
+**Sigue (ola 2, con el sí a fusionar y desplegar v36):** el corredor del banco de casos, el despliegue de estructura-v21 con su recálculo, el diseño del estándar por institución, el de la capa de hechos y el de la escalera del ingreso.
 
 ## 1. Lo que Claude puede hacer ya
 
@@ -364,6 +405,12 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     última de la persona aunque haya vencido; Plus, sólo la vigente; Pro, ninguna. El enlace
     «Ver el detalle de la capacidad de pago» de la solicitud puede dar otra cuota que la
     solicitud. Se verifica comparando las dos cuotas para una misma persona.
+    **Propuesta (p4, 2026-11-09)**: desde la p4 el análisis lee la última consulta, vigente o no
+    (`ultimaConsultaDeEquifax()`). Que la capacidad de pago (pantalla, función y Plus) lea esa
+    misma, y que la vigencia sólo decida si Plus vuelve a pagar: una sola regla para leer y otra
+    para cobrar. Hoy la de la capacidad toma la última por cédula sin mirar la fecha del cálculo
+    ni la identidad, y no ve las consultas de AWS sin fila. Pro seguiría sin Equifax salvo que el
+    negocio decida que lea la guardada, que no cuesta. Decide el negocio.
 12. **Diseño y producto de la revisión de UX** (`docs/revision-ux.md`, sección 3): Inicio como
     pantalla de trabajo, un solo camino a una persona (falta Aval), unir «Empleos vigentes» y
     «Fuentes detectadas», menos accesos por fila en la bandeja, esqueletos en vez de
@@ -458,12 +505,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
        la respuesta incompleta (el guion los contó como hechos). La prueba en sombra se repite tal cual
        (`node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`).
        Las 542 de 12.29 sí tienen RUC en Proveedor_Info_1 (512): lo que no tienen es el SRI de Equifax.
-    5. Reentrenar el nivel 2 desde las respuestas crudas de Equifax con `variables-de-ingreso.ts` (las 19
-       variables que no coinciden con el extracto) cuando termine el respaldo (20.300 de unas 105.070
-       respuestas JSON al 2026-10-28; se baja de la más nueva a la más vieja); recalibrar y volver a
-       exportar. Todavía lleva el estado civil, la zona y el IESS del extracto de AWS: decidir si se sacan
-       como en el nivel 1 (en 12.26 costaban 0,004 de R²).
-    6. Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
+    5. ~~Reentrenar el nivel 2 desde las respuestas crudas~~ **No hace falta (12.35, 2026-11-06)**: con `variables-de-ingreso-v2` la
+       función reproduce el extracto (100% en las 3.935 que cruzan, y en cada mes desde febrero en las 5.001), así que el nivel 2 se entrena
+       con el extracto y se sirve igual. El estado civil, la zona y el IESS salieron del nivel 2 en `ingreso-v2` (lo que costaban, en 12.35).
+    6. (Sólo si se quisieran volver a meter en el nivel 2: `ingreso-v2` ya no los usa, 12.35.) Completar el módulo de variables para el nivel 2: el mapeo del estado civil, la provincia y el cantón
        de AWS a Proveedor_Info_1 (el sexo ya está medido), la zona en el perfil y las filas mensuales del IESS
        (`trabajoHistoricosMecanizado`; sección 9 de la especificación).
     7. **Desplegados para el nivel 1 (2026-10-31):** `modelos_de_ingreso`, `estimaciones_de_ingreso`
@@ -494,7 +539,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         saldo (99,5%) casi coinciden y la cuota es otra (la mediana del módulo, 1,9 veces la del extracto). **Desde las listas de `interconnectResponse`
         coinciden al 100% en 16 de las 19, 99,6% en `max_dias_t` y 98,7% en `max_mora`** (74,5% a 100% en las 5.001 de todo el año, sección 9 de la
         especificación): con las consultas recientes la regla que no se encontraba se cumple casi entera. Entrenar con lo que arma el módulo sigue siendo
-        coherente (la misma implementación entrena y sirve), pero cambia el significado de esas 19; la decisión entre las dos fuentes se toma al conocer
+        coherente (la misma implementación entrena y sirve), pero cambia el significado de esas 19 (**resuelto en 12.35: las listas, con la mora como texto; punto 13**); la decisión entre las dos fuentes se toma al conocer
         la paridad de las consultas anteriores a septiembre, que no se midió.
     11. **Pedido a Proveedor_Info_1 de la base del IESS y el historial de deudas, armado el 2026-11-05** (12.33; libro y correo en
         `research/ejemplos-pedido-ingresos/`, fuera de git). El negocio lo envía. Lleva la cédula directa, cuatro cortes del IESS (octubre y julio
@@ -516,12 +561,63 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         - **Para `ingreso-v2`**: entrenar como hoy y calibrar con OK FACTURAR y condicionado **en los dos niveles (decidido por el negocio el
           2026-11-06)**. En el nivel 1 el «alcanza» por error sube de 0,5% a 1,2% (0,9 a 1,5), arriba de la meta propuesta de 1%, y niega de más 20,6%
           en vez de 23,1%; en el nivel 2 queda en 0,4%. Con el mínimo calibrado, la cobertura baja a 80% en todas y a 60% en los rechazados, cuya
-          etiqueta baja por la decisión. Se aplica al exportar `ingreso-v2`; `ingreso-v1` sigue sin calibrar.
+          etiqueta baja por la decisión. Se aplicó al exportar `ingreso-v2` (punto 13); `ingreso-v1` sigue sin calibrar.
         - **Arreglado de paso**: desde el renombre del proveedor (#111) `preparar.py` no reconocía lo recuperado del IESS y armaba una tabla mala
           (57.340 independientes en vez de 57.061); la tabla en uso, del 22/10, estaba bien. Con el arreglo vuelve a salir idéntica.
 
-    **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12):
-    las variables de la persona del nivel 2; los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
+    13. **`ingreso-v2` armado el 2026-11-06, sin publicar ni activar** (12.35; `scripts/predictor-ingresos/ingreso_v2.py`, agregados en
+        `metricas/ingreso-v2-2026-11.json` y `metricas/ingreso-v2-nivelN.json`; los archivos, en `C:\datos\ingresos\modelos\exportado\`).
+        - **El nivel 2 se sirve igual que se entrena**: `variables-de-ingreso-v2` arma las 19 de las operaciones de las listas de
+          `interconnectResponse` con la mora máxima comparada como texto, como AWS («65» > «259»). Las 44 variables de Equifax coinciden con el
+          extracto en el 100% de las 3.935 que cruzan; en las 5.001 de todo el año, en cada mes desde febrero (diciembre y enero, no). En
+          producción el crudo se lee con `vectorDeNivel2DeLaConsulta` (`leerCrudoDeLaConsulta()`).
+        - El nivel 2 ya no lleva el estado civil, la zona ni el IESS: servidos vacíos le costaban 1,31% de pérdida. Se entrena desde febrero
+          (regla fijada antes de medir: cuesta 0,30% de pérdida y deja el entrenamiento igual a lo que se sirve).
+        - **Calibrado con OK FACTURAR y condicionado, adentro del archivo** (corrimiento −0,227 y −0,117). Hacia adelante: cobertura en OK
+          90,2% y 91,5%, mínimo mediano 1.462 y 1.688, «alcanza» por error 1,20% y 0,26%, niega de más 20,6% y 23,1%. Agudeza 11,0% y 27,1%,
+          tramo exacto o vecino 67,6% y 81,9%: **pasan los pisos de la fase 0, no las metas**. El nivel 1 tiene los mismos árboles que
+          `ingreso-v1`: sólo cambia la calibración.
+        - **Arreglado**: la estimación tapaba con el null de la fila la calibración que trae el archivo (`estimacion-de-ingreso.ts`).
+        - **Para decidir (negocio)**:
+          - el sexo: con él, 0,002 y 0,001 de R² y una brecha de cobertura de 1,9 y 2,7 puntos; sin él, 2,4 y 2,2. Lo exportado lo lleva;
+            sin él es `ingreso_v2.py --sin-sexo` y volver a exportar;
+          - activar el nivel 1 de `ingreso-v2` en lugar de `ingreso-v1`: `node scripts/publicar-modelo-de-ingreso.mjs --modelo=... --seco`, y
+            compararlo antes con el vigente (especificación, 7);
+          - entrenar el nivel 2 con diciembre y enero si se prefieren los 0,3 puntos de agudeza.
+        - **Falta para servir el nivel 2**: el selector de `estimar-ingreso` que lo use con una consulta de Equifax vigente (hoy sólo sirve
+          el nivel 1) y una prueba con una persona autorizada.
+
+    14. **Tipos de persona y agrupaciones, medidos el 2026-11-10** (12.36; `scripts/predictor-ingresos/tipos_y_grupos.py`, agregados en
+        `metricas/tipos-y-grupos-2026-11.json`). Es el paso 1 del orden de trabajo de 3.5 de la especificación, sobre `ingreso-v2`.
+        - **Ninguna agrupación mejora el predictor.** Probadas: los tipos, k-medias, mezcla de gaussianas, Gower, un árbol sobre el error y
+          las hojas del modelo. Como variable, lo mejor es el tipo en el nivel 1 (+0,34%, la regla pedía 1%); un modelo por grupo pierde
+          siempre. La calibración por grupo no deja todos los grupos entre 88% y 92%: la única ya lo hace en el nivel 1, y calibrar por tipo
+          empeora (no se repite de un período al otro). **`ingreso-v2` queda como está.**
+        - **La confiabilidad por tipo, medida** (cobertura del mínimo en OK, nivel 1 / nivel 2): formal 89,1% / 98,3%; semiformal 91,0% /
+          90,0%; poco formal 88,7% / 92,5%. En el RUC no activo y el sin RUC no se puede medir: 26 casos OK de 1.363. Los rentistas (84 en
+          la prueba) van con el semiformal. El formal lo subestima el nivel 2 (niega de más 37%).
+        - **El extra del dependiente no se puede estimar** (AUC 0,62 con RUC activo, R² 0,01). El modelo de independientes aplicado a ese
+          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 que lo estima con el nivel 1 o 2 hay que cambiarla**: sin monto,
+          «con o sin indicios; se valida con documentos». La actualiza la sesión principal.
+        - **Límites de esta medición** (de la revisión):
+          - los tipos de persona se definen aquí con la clase del contribuyente y el obligado a llevar contabilidad que trae Equifax, no con las
+            reglas de la especificación: **sin buró esa clasificación no se puede armar**;
+          - el «rentista» se define por la composición de la etiqueta validada (arriendos la mitad o más de lo no verificado): sirve para medir,
+            y **no se reproduce en producción**;
+          - la probabilidad por umbral sale de cuantiles sin calibrar y la isotónica se ajusta con todas las respuestas, mientras el mínimo que se
+            sirve está corrido con OK FACTURAR: **la probabilidad y el «certifica al menos» pueden contradecirse**. Se midió así; el método no se
+            cambió.
+        - **Para el marco, medido**:
+          - la probabilidad de superar cada monto está bien calibrada en el nivel 1; en el nivel 2, en 2.000 sobreestima 5 puntos (ECE
+            0,052), y una isotónica por umbral la arregla (medida, no construida);
+          - «lo declarado está por encima de lo probable» anticipa que el validado baje: AUC 0,76 a 0,79 con el nivel 2. Con el nivel 1 no
+            suma al declarado solo;
+          - el ancho del rango sirve de grado de confiabilidad en el nivel 1 (tramo exacto o vecino de 78,8% a 61,5%), no en el 2.
+        - **Para decidir (negocio)**: qué de esto se le entrega al marco y con qué nombres. Y si se construye la isotónica del nivel 2
+          antes de entregarle la probabilidad.
+
+    **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12; las de `ingreso-v2`, en el punto 13):
+    las variables de la persona del nivel 2 (en `ingreso-v2` salieron: no se pueden servir); los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
     Proveedor_Info_1 con el de Equifax en más de 87 personas.
 19. **Lo que quedó de la QA con cinco usuarios (2026-11-05, habilidad `qa-crediscope`).** Lo demás
@@ -533,6 +629,45 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     - **El menú en el teléfono** sigue siendo una fila de íconos sin texto, y las pestañas miden 31 px.
     - `/solicitud/no-existe` y una solicitud que no existe dan dos mensajes distintos; a los emojis el
       Inicio los llama «pasaporte».
+20. **La revisión del análisis: las 10 propuestas, aprobadas y sin aplicar** (habilidad
+    `revision-del-analisis`, piloto del 2026-11-06). Un jefe de crédito (Opus, a ciegas) revisó 12 análisis
+    de la base de prueba de AWS, y se midieron sin modelo los 247 del lote del 31/10. De 81 hallazgos, el 64%
+    nace en los datos que le llegan al modelo, y marco-v35 no corrige el 70%. Las propuestas están en
+    https://claude.ai/artifact/7EsSQjxfejmkW2zNCNhsuS, y el 2026-11-08 el negocio aprobó las 10 sin
+    comentarios (colección `decisiones`). Cada una va en su sesión y su PR, por el circuito de siempre; las
+    que tocan el marco van juntas en la versión del predictor (p7). **La p4 no tenía una opción
+    recomendada**: falta que el negocio diga cuál, y con cuántos días si es leer la última consulta. Las
+    cuatro altas:
+    - **p1, bloqueos por la demanda penal de otra persona**: el control toma la demanda sin cotejar al
+      demandado, y en 8 de 33 bloqueados por una demanda el demandado es otro. En c-14f9ee80 se confirmó a
+      mano, y la institución le había aprobado un crédito. Es el riesgo aceptado 5.5 (demandas de un
+      homónimo), pero acá la demanda ajena no sólo pesa: bloquea.
+    - **p2, aprobaciones sin razonamiento**: 45 de las 53 aprobaciones del lote salieron sin razonamiento.
+      Sin razonar el modelo aprueba el 39%; razonando, el 6%.
+    - **p3, la cartera de la institución llega mal al modelo**, en 7 de 12 casos: una sola operación, a
+      veces la cancelada, sin cuota y fuera de la deuda.
+    - **p4, Equifax existe y no llega**: 214 de 247 análisis piden una cuota que Equifax ya tenía, y sólo
+      28 de las 244 personas tienen la consulta en la base. **En curso (2026-11-09)**: el negocio decidió
+      que el análisis lea la última consulta, vigente o no; construida con un índice por cédula en Storage
+      (281 KB, nada en la base). Medido sin costo: base de prueba, de 0 a 244 de 244 con buró a la fecha de
+      su análisis (mediana de 17 días, máximo 58); cartera real con perfil, de 6 a 399 de 3.766 si se
+      analizara hoy (mediana de 26 días, máximo 67). Falta subir el índice (`--indice`, escribe en
+      producción), desplegar y la comparación con el modelo, con el sí del negocio (USD 3,8 a 9,3).
+
+    **Hecho el 2026-11-09**: `armar-carpetas.mjs` sirve para cualquier marco, `medir-lote.mjs` mide los
+    homónimos y los días entre la solicitud y la consulta, y `resultado-de-pago.mjs` arma el resultado de
+    pago (p8): en 197 de las 232 personas de la base de prueba con solicitud, el crédito figura en la
+    cartera de la institución; 18 están en mora hoy y ninguna en impago. **Pregunta abierta para el negocio**:
+    27 de las 33 solicitudes con «RECHAZAR» en `credito-real.json` tienen el crédito en la cartera, así que
+    esa decisión no es la que decidió si se otorgaba: ¿es automática y la revierte un analista?
+
+    Lo que queda de la habilidad, sin decisión del negocio:
+    - crear la tarea programada local del barrido mensual, con el sí del negocio.
+
+    **Pregunta abierta**: cómo valida la institución el «ingreso validado del titular». En 42 de 233
+    casos es igual (±5%) al estimado de Equifax.
+
+    Se cierra cuando cada propuesta aprobada tenga su PR y su medición posterior (habilidad, paso 7).
 
 ## 3. Espera a terceros
 

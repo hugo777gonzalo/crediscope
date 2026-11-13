@@ -148,6 +148,22 @@ export function identidadDeLaConsulta(cuerpo: unknown, cedula: string): boolean 
   return documento === null ? null : documento === cedula;
 }
 
+// Las tablas y la estructura de un crudo, en memoria y sin escribir nada. La misma cuenta para
+// guardarlas (abajo) y para el análisis, que con una consulta sin tablas (las de AWS) las deriva al
+// momento: la base no tiene lugar para guardar las de 20.000 consultas (buro-de-la-institucion.ts).
+export function derivarLaConsulta(
+  crudo: unknown,
+  consulta: { identificacion: string; created_at: string; ambiente: string },
+) {
+  const derivadas = derivarTablas(crudo);
+  const estructura = calcularEstructura(derivadas, {
+    consultadoEl: consulta.created_at,
+    ambiente: consulta.ambiente,
+    identidadVerificada: identidadDeLaConsulta(crudo, consulta.identificacion),
+  });
+  return { derivadas, estructura };
+}
+
 // Descompone el crudo YA GUARDADO de una consulta en las tablas equifax_* y calcula su estructura
 // (docs/propuesta-estructura-equifax.md), todo en una llamada atómica a la base
 // (equifax_reemplazar_tablas, 126). La misma función sirve para una consulta recién pagada y para
@@ -161,13 +177,8 @@ export async function guardarTablasDeLaConsulta(
   try {
     // Una migrada de AWS puede tener el crudo en Storage y no en la fila (148).
     const crudo = await leerCrudoDeLaConsulta(db, consulta);
-    const derivadas = derivarTablas(crudo);
+    const { derivadas, estructura } = derivarLaConsulta(crudo, consulta);
     avisos = derivadas.avisos;
-    const estructura = calcularEstructura(derivadas, {
-      consultadoEl: consulta.created_at,
-      ambiente: consulta.ambiente,
-      identidadVerificada: identidadDeLaConsulta(crudo, consulta.identificacion),
-    });
     const { data, error } = await db.rpc("equifax_reemplazar_tablas", {
       p_consulta: consulta.id,
       p_tablas: derivadas.tablas,

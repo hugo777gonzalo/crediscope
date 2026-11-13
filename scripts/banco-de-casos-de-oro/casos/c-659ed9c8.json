@@ -1,0 +1,61 @@
+{
+  "formato": 1,
+  "id": "c-659ed9c8",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-659ed9c8/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "La pensión alimenticia en mora es mora vigente: con pagaré demandado y sin ingreso verificable, negar.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Independiente sin ingreso verificable, con la pensión alimenticia en mora y otra demanda de alimentos de la semana anterior a la consulta.",
+    "El buró de la institución muestra un atraso de más de cinco años que terminó hace poco más de un año; desde entonces está al día, pero su deuda se triplicó con tarjetas nuevas.",
+    "Al día en el crédito es un atenuante, pero la pensión está en mora y la deuda sube: negar."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 450,
+        "porque": "El jefe de crédito dio 300; el modelo, 430 con «revisar»."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "buró limpio|no hay mora vigente|sin mora vigente",
+        "campos": [
+          "todo"
+        ],
+        "porque": "La pensión en mora es mora vigente."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Tratar la pensión alimenticia en mora como mora vigente.",
+        "Nombrar el pagaré con su año (2015) y la demanda de alimentos reciente.",
+        "Si llega el buró de la institución, nombrar el atraso largo ya cerrado y el aumento de la deuda."
+      ],
+      "no_debe": [
+        "Decir que no hay mora vigente porque el crédito está al día.",
+        "Dar por consultada una fuente de denuncias que falló."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "mal_pago_niega_salvo_atenuantes",
+      "que_cambio": "Estar al día desde hace un año es un atenuante medible; no alcanza con la pensión en mora y la deuda al alza."
+    },
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "El pagaré de 2015 pesa menos; la demanda de alimentos reciente, no."
+    }
+  ]
+}

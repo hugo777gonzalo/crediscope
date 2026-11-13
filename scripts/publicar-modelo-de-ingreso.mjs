@@ -55,7 +55,10 @@ const crudo = JSON.parse(zlib.gunzipSync(bytes).toString("utf8"));
 const modelo = prepararModelo(crudo);
 
 // Los mismos casos de oro de exportar.py: un archivo que no los reproduce daría montos equivocados sin ningún error.
-const oro = JSON.parse(fs.readFileSync(path.join(RAIZ, "scripts", "predictor-ingresos", "casos-de-oro", `nivel${modelo.nivel}.json`), "utf8"));
+// Cada versión desde ingreso-v2 tiene los suyos (exportar.py --version=); los de ingreso-v1 se llaman nivelN.json.
+const casosDeLaVersion = path.join(RAIZ, "scripts", "predictor-ingresos", "casos-de-oro", `${modelo.version}-nivel${modelo.nivel}.json`);
+const oro = JSON.parse(fs.readFileSync(fs.existsSync(casosDeLaVersion) ? casosDeLaVersion : path.join(RAIZ, "scripts", "predictor-ingresos", "casos-de-oro", `nivel${modelo.nivel}.json`), "utf8"));
+if (oro.modelo !== `${modelo.version}-nivel${modelo.nivel}.json.gz`) morir(`Los casos de oro son de ${oro.modelo}, no de ${modelo.version} del nivel ${modelo.nivel}.`);
 if (oro.huella_entrenamiento_sha256 !== crudo.origen?.huella_entrenamiento_sha256) {
   morir(`Los casos de oro del nivel ${modelo.nivel} son de otro entrenamiento: regenerarlos con exportar.py.`);
 }
@@ -69,6 +72,11 @@ if (!poblacion) morir("Las métricas no dicen la población con que se entrenó 
 
 const rutaArchivo = `${modelo.version}-nivel${modelo.nivel}.json.gz`;
 console.log(`${modelo.version}, nivel ${modelo.nivel}, entrenado el ${modelo.entrenadoEl}: ${bytes.length} bytes, huella ${huella.slice(0, 12)}, ${oro.casos.length} casos de oro iguales.`);
+// Desde ingreso-v2 el archivo trae su calibración (OK FACTURAR y condicionado): la fila la deja en null y la estimación aplica la del
+// modelo; una institución con sus 500 casos la reemplaza con `modelos_de_ingreso.calibracion` (estimacion-de-ingreso.ts).
+console.log(modelo.calibracion
+  ? `Trae su calibración: ${modelo.calibracion.para}, ${modelo.calibracion.casos} casos, corrimiento ${modelo.calibracion.corrimientoLog90.toFixed(4)} en logaritmo.`
+  : "Sin calibración en el archivo: el mínimo sale sin calibrar mientras la fila no traiga una.");
 
 // ---------------------------------------------------------------- la base
 

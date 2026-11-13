@@ -19,6 +19,7 @@ const ETIQUETA_FUENTE = {
   pep: "Persona expuesta políticamente",
   homonimo_en_lista_control: "Homónimo en lista de control",
   delito_seguridad_ciudadana: "Delito grave de seguridad ciudadana",
+  posible_homonimo_en_demanda_penal: "Posible homónimo en una demanda penal",
   fallecido: "Registro de fallecimiento",
   cedula_inconsistente: "Identificación inconsistente",
 };

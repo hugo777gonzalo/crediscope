@@ -202,7 +202,10 @@ export function armarEstimacion(pedido: PedidoDeEstimacion): { respuesta: Respue
 
   if (!vigente) throw new Error("El nivel 1 necesita el modelo vigente.");
   const vector = vectorDeNivel1(perfil as PerfilParaIngreso, { ahora: consultadoEl });
-  const e = estimarIngreso(vigente.modelo, vector.variables, { anio: Number(fechaEnEcuador(consultadoEl).slice(0, 4)), calibracion: vigente.calibracion });
+  // La de la institución (la fila) manda; sin ella, la que trae el modelo (ingreso-v2 viene calibrado con OK FACTURAR y condicionado,
+  // 12.35). Pasar el null de la fila habría servido ingreso-v2 sin calibrar sin que nada lo dijera.
+  const calibracion = vigente.calibracion ?? vigente.modelo.calibracion;
+  const e = estimarIngreso(vigente.modelo, vector.variables, { anio: Number(fechaEnEcuador(consultadoEl).slice(0, 4)), calibracion });
   const calidad = {
     variablesUsadas: Object.values(vector.variables).filter((v) => v !== null).length,
     variablesSinDato: vector.sinDato.length,
@@ -229,7 +232,7 @@ export function armarEstimacion(pedido: PedidoDeEstimacion): { respuesta: Respue
       id, modelo_id: vigente.id, nivel: 1, version_variables: VARIABLES_DE_INGRESO_VERSION, consultada_el: consultadoEl,
       variables: vector.variables, sin_dato: vector.sinDato, cuantiles_log: e.cuantilesLog,
       minimo_90: e.minimoCertificado.monto, minimo_85: e.minimoAlternativo.monto, valor_central: e.valorCentral,
-      calibracion: vigente.calibracion, respuesta,
+      calibracion, respuesta,
     },
   };
 }

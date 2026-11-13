@@ -356,6 +356,7 @@ export const GRUPOS_CONFIG = {
     campos: [
       ["proveedorInfo1ResultadoHabitoPago", "Hábito de pago (fuente externa)", "texto"],
       ["proveedorInfo1PerfilInterno", "Perfil interno (fuente externa)", "texto"],
+      ["proveedorInfo1EstadoOperacion", "Estado de la operación", "texto"],
       ["proveedorInfo1DiasMoraMaxima", "Días mora máxima", "numero"],
       ["proveedorInfo1DiasMoraVigente", "Días mora vigente", "numero"],
       ["proveedorInfo1SaldoCapitalVigente", "Saldo capital vigente", "moneda"],
@@ -433,5 +434,5 @@ export const ETIQUETAS_GRUPO = {
   identidad: "SocioDemográficas",
   contacto: "Contacto y Domicilio",
   transitoVehicular: "Tránsito Vehicular",
-  comportamientoInterno: "Comportamiento Interno (Fuente Externa)",
+  comportamientoInterno: "Comportamiento Interno",
 };

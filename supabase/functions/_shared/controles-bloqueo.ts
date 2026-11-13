@@ -24,7 +24,18 @@
 
 import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaProveedorInfo1 } from "./types.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
-import { categoriasDelitoGraveSeguridad } from "./delitos-seguridad.ts";
+import { categoriasDelitoGraveSeguridad, type DemandaPenalSinCotejo, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
+
+const POR_QUE_NO_ES_ELLA: Record<DemandaPenalSinCotejo["cotejo"], string> = {
+  otra_persona: "el demandado tiene otro nombre",
+  apellidos_invertidos: "el demandado lleva sus nombres con los apellidos en otro orden",
+  sin_demandado: "la fuente no dice a quién se demanda",
+  sin_nombre: "no se pudo leer el nombre de la persona para cotejarlo",
+};
+
+function describirDemandaSinCotejo(d: DemandaPenalSinCotejo): string {
+  return `demanda por ${d.categorias.join(", ")}${d.anio ? ` (${d.anio})` : ""}: ${POR_QUE_NO_ES_ELLA[d.cotejo]}`;
+}
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -140,10 +151,13 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
   // procesada o aprehendida, con su cédula): ver denuncias.ts. Hasta
   // estructura-v8 entraban todas, y 42 de las 59 personas bloqueadas por
   // este control eran quienes habían denunciado o sufrido el delito (31
-  // extorsiones), testigos, un policía y un abogado defensor. Las demandas
-  // son las de la fuente de demandas CONTRA la persona.
+  // extorsiones), testigos, un policía y un abogado defensor.
+  // Las demandas, sólo si el demandado es la persona (estructura-v20,
+  // delitosDeSeguridadEnDemandas): la fuente las busca por el nombre, y en 8
+  // de 33 personas bloqueadas por una demanda el demandado era otro.
+  const enDemandas = delitosDeSeguridadEnDemandas(demandas ?? [], persona?.nombre);
   const categoriasEncontradas = new Set([
-    ...(demandas ?? []).flatMap((d) => categoriasEnTexto((d.demanda as Record<string, unknown> | undefined)?.delito)),
+    ...enDemandas.propias,
     ...(denuncias ?? [])
       .filter((d) => rolEnDenuncia(d, requestedCedula) === "acusada")
       .flatMap((d) => categoriasEnTexto(d.delito)),
@@ -154,6 +168,15 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
       code: "delito_seguridad_ciudadana",
       message: `Registra delito(s) de seguridad ciudadana: ${[...categoriasEncontradas].join(", ")}`,
       bloqueante: true,
+    });
+  }
+  // Las demás se avisan sin bloquear, con lo que el analista necesita para
+  // buscarlas: el delito, el año y por qué no se pudo decir que es ella.
+  if (enDemandas.sinCotejo.length > 0) {
+    hallazgos.push({
+      code: "posible_homonimo_en_demanda_penal",
+      message: `Posible homónimo: verificar. ${enDemandas.sinCotejo.map(describirDemandaSinCotejo).join("; ")}`,
+      bloqueante: false,
     });
   }
 

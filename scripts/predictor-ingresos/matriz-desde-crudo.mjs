@@ -1,11 +1,12 @@
-// La matriz de entrenamiento del nivel 2 del predictor de ingresos, armada desde el crudo de Equifax con el mismo código que sirve el modelo
-// (docs/especificacion-predictor-de-ingresos.md, sección 9, punto 1: «entrenar con las variables que arma este módulo sobre las respuestas JSON
-// crudas»). Cada respuesta pasa por `derivarTablas` y por `vectorDeNivel2`, con la fecha de la consulta como reloj; ninguna regla se copia acá.
+// La matriz del nivel 2 del predictor de ingresos, armada desde el crudo de Equifax con el mismo código que sirve el modelo
+// (docs/especificacion-predictor-de-ingresos.md, sección 9, punto 1). Cada respuesta pasa por `vectorDeNivel2` (que la deriva con
+// `derivarTablas` y lee las operaciones de las listas de `interconnectResponse`), con la fecha de la consulta como reloj; ninguna regla se
+// copia acá. Es la prueba de que entrenar y servir dan lo mismo: el nivel 2 se entrena con el extracto de AWS y se sirve con esta función.
 //
-// Por qué existe: el nivel 2 se entrenó con el extracto de AWS, y 19 variables de cuotas, saldos y conteos salieron de las listas de
-// `interconnectResponse`, no de `equifax_operaciones`. En producción se arman de `equifax_operaciones` (coinciden entre 48,7% y 100%), así
-// que el modelo recibiría otra cosa que lo que aprendió. Entrenar sobre lo que arma el módulo cierra esa brecha, y este guion mide con
-// cuántos casos etiquetados se puede hacer.
+// Por qué existe: 19 variables de cuotas, saldos, conteos y mora del extracto salieron de las listas de `interconnectResponse`, y hasta
+// variables-de-ingreso-v1 la función las armaba de `equifax_operaciones` (en las 3.935 que cruzan, `c_tarjeta` coincidía en 25,3%). Desde v2
+// las arma de las listas, con el máximo «como texto» con que AWS calculó la mora, y coinciden en todas (investigación, 12.35). El guion
+// sale con 1 si alguna variable de Equifax de las que cruzan baja de UMBRAL_DE_PARIDAD: así se nota si cambia la respuesta o la regla.
 //
 // Entradas (fuera de git, datos de personas): los lotes de `research/ingresos-aws/crudo-equifax/` de la carpeta principal (manifiesto.jsonl +
 // json/lote-NNNNNN.jsonl.gz, una fila de AWS por línea) y la tabla de entrenamiento `personas.parquet` (preparar.py).
@@ -17,7 +18,7 @@
 //
 //   node scripts/predictor-ingresos/matriz-desde-crudo.mjs
 //   node scripts/predictor-ingresos/matriz-desde-crudo.mjs --limite=500 --sin-cruce      (prueba rápida)
-//   node scripts/predictor-ingresos/matriz-desde-crudo.mjs --resumen-git=scripts/predictor-ingresos/metricas/matriz-desde-crudo-2026-11.json
+//   node scripts/predictor-ingresos/matriz-desde-crudo.mjs --resumen-git=scripts/predictor-ingresos/metricas/matriz-desde-crudo-v2-2026-11.json
 //
 // Opciones: --carpeta= (el crudo), --salida=, --tabla=, --python=, --limite=N, --sin-cruce, --resumen-git=<ruta>.
 //
@@ -28,7 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { raizPrincipal } from "../_comun/entorno.mjs";
-import { derivarTablas, EQUIFAX_TABLAS_VERSION, rolDeEquifax } from "../../supabase/functions/_shared/equifax-tablas.ts";
+import { derivarTablas, EQUIFAX_TABLAS_VERSION } from "../../supabase/functions/_shared/equifax-tablas.ts";
 import {
   VARIABLES_DE_INGRESO_VERSION, VARIABLES_DE_LA_PERSONA, VARIABLES_DEL_NIVEL_2, vectorDeNivel2,
 } from "../../supabase/functions/_shared/variables-de-ingreso.ts";
@@ -58,16 +59,17 @@ if (!fs.existsSync(path.join(CARPETA, "manifiesto.jsonl"))) morir(`No hay manifi
 
 // Las variables que salen del crudo de Equifax: todas las del nivel 2 menos las de la persona, y la fecha (`anio_mes`), que sale del reloj.
 const VARIABLES = VARIABLES_DEL_NIVEL_2.filter((v) => v === "anio_mes" || !VARIABLES_DE_LA_PERSONA.includes(v));
-// Las 19 variables de cuotas, saldos y conteos que el extracto de AWS sacó de otra lista (sección 9, punto 1) y su paridad medida el
-// 2026-10-22 con 5.001 respuestas desde `equifax_operaciones`.
+// Las 19 variables de cuotas, saldos, conteos y mora que el extracto de AWS sacó de las listas de interconnectResponse (sección 9, punto 1), con
+// su paridad desde `equifax_operaciones` (variables-de-ingreso-v1) en estas mismas 3.935 consultas, medida el 2026-11-06 (PR 140; los tres
+// totales, sobre las 3.766 en que el extracto los tiene). Es la referencia de lo que se corrigió.
 const LAS_19 = [
-  ["c_consumo", 48.7], ["c_tarjeta", 50.4], ["c_micro", 88.2], ["c_vivienda", 91.9], ["c_comercial", 98.3], ["c_educativo", 100],
-  ["s_consumo", 78.6], ["s_tarjeta", 94.7], ["s_micro", 98.9], ["s_vivienda", 99.5],
-  ["n_consumo", 65.1], ["n_tarjeta", 94.1], ["n_micro", 98.8], ["n_vivienda", 99.5],
-  ["c_codeudor", 92.9], ["max_dias_t", 87.6], ["n_oper", 65.6], ["saldo", 84.4], ["max_mora", 88.8],
+  ["c_consumo", 31.1], ["c_tarjeta", 25.3], ["c_micro", 73.3], ["c_vivienda", 90.1], ["c_comercial", 95.5], ["c_educativo", 100],
+  ["s_consumo", 86.0], ["s_tarjeta", 99.6], ["s_micro", 99.7], ["s_vivienda", 100],
+  ["n_consumo", 43.4], ["n_tarjeta", 98.2], ["n_micro", 99.0], ["n_vivienda", 100],
+  ["c_codeudor", 88.1], ["max_dias_t", 96.9], ["n_oper", 39.4], ["saldo", 93.9], ["max_mora", 95.6],
 ];
-// Los tres totales sólo se comparan donde el extracto tiene dato (así los midió la prueba de paridad): la tabla de AWS los trae para 4.783 de 5.001.
-const SOLO_CON_DATO_DEL_EXTRACTO = new Set(["n_oper", "saldo", "max_mora"]);
+// Las variables de Equifax de las consultas que cruzan coinciden con el extracto en el 100% (2026-11-06): menos que esto corta el guion.
+const UMBRAL_DE_PARIDAD = 100;
 const TOLERANCIA = { sri_antig: 0.0005, sri_susp: 0.0005, anio_mes: 1e-6, g6: 0.01, g12: 0.01 }; // el resto, 0,02 (las sumas se guardan a centavos)
 const CORTE_FECHA = "2026-07-01"; // comun.py: se entrena hasta junio y se mide de julio a octubre
 
@@ -84,7 +86,7 @@ function fechaDeEcuador(texto) {
 }
 
 // ---------------------------------------------------------------------------
-// 0. La tabla de entrenamiento (sólo si hay cruce): se lee antes para que, al pasar por cada consulta que cruza, se mida también la alternativa
+// 0. La tabla de entrenamiento (sólo si hay cruce)
 // ---------------------------------------------------------------------------
 function cargarExtracto() {
   if (!fs.existsSync(TABLA)) morir(`No existe la tabla de entrenamiento ${TABLA}.`);
@@ -110,19 +112,6 @@ function cargarExtracto() {
   return { filas, meta };
 }
 const extracto = SIN_CRUCE ? null : cargarExtracto();
-
-// La alternativa medida el 2026-10-22 y NO construida (sección 9, punto 1): las operaciones salen de las listas DetalleDeudaActualReportada* de
-// `interconnectResponse`, de donde salió el extracto de AWS, no de `reporteCrediticio`. Se repite acá, a propósito, sólo como diagnóstico de las
-// consultas que cruzan, para decir cuánto se parece cada fuente al extracto; ninguna variable de la matriz sale de aquí.
-const LISTAS_DE_LA_IR = ["DetalleDeudaActualReportadaRFRSBS", "DetalleDeudaActualReportadaSICOMSBS", "DetalleDeudaActualReportadaSBSSBS_Educativo"];
-const numeroOpcional = (v) => (v === null || v === undefined || v === "" ? null : Number.isFinite(Number(v)) ? Number(v) : null);
-const operacionesDeLaIr = (cuerpo) => LISTAS_DE_LA_IR.flatMap((k) => (Array.isArray(cuerpo.interconnectResponse?.[k]) ? cuerpo.interconnectResponse[k] : [])).map((f) => {
-  const { rol, original } = rolDeEquifax(f.Tipo_Riesgo);
-  return {
-    rol, rol_original: original, tipo_credito: typeof f.Tipo_Credito === "string" ? f.Tipo_Credito : null,
-    cuota_mensual_usd: numeroOpcional(f.Cuota_Mensual), saldo_deuda_usd: numeroOpcional(f.Saldo_Deuda), dias_morosidad: numeroOpcional(f.Dias_Venc),
-  };
-});
 
 // ---------------------------------------------------------------------------
 // 1. Leer los lotes y armar el vector de cada consulta
@@ -154,22 +143,14 @@ function procesar(linea) {
   if (typeof cuerpo === "string") { try { cuerpo = JSON.parse(cuerpo); } catch { fallar(id, "response_json es un texto que no es JSON"); return; } }
   if (!cuerpo || typeof cuerpo !== "object" || Array.isArray(cuerpo)) { fallar(id, "sin response_json (la consulta no guardó la respuesta)"); return; }
 
+  // Sólo para contar los avisos de la derivación: el vector la hace por su cuenta, desde el mismo crudo.
   let derivado;
   try { derivado = derivarTablas(cuerpo); } catch (e) { fallar(id, `derivarTablas lanzó: ${String(e?.message ?? e).slice(0, 80)}`); return; }
   let vector;
   try {
     // El perfil va vacío: la persona no sale de Equifax. El reloj es la fecha de la consulta, para que la misma respuesta dé siempre lo mismo.
-    vector = vectorDeNivel2({}, derivado.tablas, { ahora: fecha, consultadoEl: fecha });
+    vector = vectorDeNivel2({}, cuerpo, { ahora: fecha, consultadoEl: fecha });
   } catch (e) { fallar(id, `vectorDeNivel2 lanzó: ${String(e?.message ?? e).slice(0, 80)}`); return; }
-
-  // El diagnóstico de la alternativa, sólo donde la consulta cruza con la tabla de entrenamiento.
-  let alt = null;
-  if (extracto?.filas.has(String(id))) {
-    try {
-      const v = vectorDeNivel2({}, { ...derivado.tablas, equifax_operaciones: operacionesDeLaIr(cuerpo) }, { ahora: fecha, consultadoEl: fecha }).variables;
-      alt = Object.fromEntries(LAS_19.map(([n]) => [n, v[n] ?? null]));
-    } catch { alt = null; }
-  }
 
   for (const a of derivado.avisos) sumar(avisosPorTexto, `derivarTablas: ${a.replace(/\d+/g, "N")}`);
   for (const a of vector.avisos) if (!a.startsWith("Sin el historial del IESS")) sumar(avisosPorTexto, `variables-de-ingreso: ${a.replace(/\d+/g, "N")}`);
@@ -179,7 +160,6 @@ function procesar(linea) {
     estado: fila.estado ?? null,
     conReporte: Boolean(cuerpo.reporteCrediticio && typeof cuerpo.reporteCrediticio === "object"),
     nAvisos: derivado.avisos.length,
-    alt,
     v: Object.fromEntries(VARIABLES.map((n) => [n, vector.variables[n] ?? null])),
   });
 }
@@ -311,14 +291,15 @@ function cruzar() {
     if (typeof a === "string" || typeof e === "string") return String(a).toUpperCase() === String(e).toUpperCase() ? "coincide" : "distinto";
     return Math.abs(a - e) <= (TOLERANCIA[nombre] ?? 0.02) ? "coincide" : "distinto";
   };
-  // `origen` es de dónde sale el valor que se compara: «v» es la matriz (lo que arma el módulo) y «alt» la alternativa medida, no construida.
-  function paridad(filas, nombre, origen = "v") {
+  // Se compara todo, también nulo contra nulo: desde v2 las 169 consultas sin totales en el extracto vienen sin operaciones en las listas,
+  // y la matriz también los deja nulos (hasta v1 se excluían, porque `equifax_operaciones` sí traía filas).
+  function paridad(filas, nombre) {
     const r = { n: 0, coincide: 0, falta_en_la_matriz: 0, sobra_en_la_matriz: 0, distinto: 0, sin_dato_en_el_extracto: 0, con_dato_en_el_extracto: 0, coincide_con_dato: 0 };
     for (const { r: reg, f } of filas) {
       const e = nombre === "anio_mes" ? anioMesDe(reg) : (f[nombre] ?? null);
-      if (SOLO_CON_DATO_DEL_EXTRACTO.has(nombre) && e === null) { r.sin_dato_en_el_extracto++; continue; }
+      if (e === null) r.sin_dato_en_el_extracto++;
       r.n++;
-      const c = compara(nombre, reg[origen]?.[nombre] ?? null, e);
+      const c = compara(nombre, reg.v[nombre] ?? null, e);
       // «Nulo contra nulo» coincide y infla el porcentaje donde la mayoría no tiene el dato (c_educativo, c_comercial): aparte se mide
       // sólo donde el extracto tiene valor, que es donde el modelo aprendió algo.
       if (e !== null) { r.con_dato_en_el_extracto++; if (c === "coincide") r.coincide_con_dato++; }
@@ -331,9 +312,6 @@ function cruzar() {
   }
   const queEntrenan = cruzadas.filter(({ f }) => f.sri_bloque);
   const paridadPorVariable = Object.fromEntries(VARIABLES.map((n) => [n, paridad(queEntrenan, n)]));
-  const sinAlternativa = queEntrenan.filter(({ r }) => r.alt === null).length; // si la alternativa no se pudo armar, la comparación sería de nulos
-  if (sinAlternativa > 0) console.warn(`AVISO: la alternativa de las listas de interconnectResponse no se pudo armar en ${sinAlternativa} consultas que cruzan.`);
-  const paridadAlternativa = Object.fromEntries(LAS_19.map(([n]) => [n, paridad(queEntrenan.filter(({ r }) => r.alt !== null), n, "alt")]));
   const vaciosExtracto = Object.fromEntries(VARIABLES.map((n) => [n, n === "anio_mes" ? 0 : redondeo(queEntrenan.filter(({ f }) => (f[n] ?? null) === null).length, queEntrenan.length)]));
   const vaciosMatriz = vacios(queEntrenan.map(({ r }) => r));
 
@@ -352,7 +330,10 @@ function cruzar() {
     por_mes: Object.fromEntries([...porMes.entries()].sort()),
   };
   resumen.paridad_de_las_que_cruzan_y_entrenan = { n: queEntrenan.length, variables: paridadPorVariable };
-  resumen.paridad_de_la_alternativa_de_las_listas_de_interconnectResponse_no_construida = { n: queEntrenan.length - sinAlternativa, variables: paridadAlternativa };
+  resumen.paridad_de_las_19_desde_equifax_operaciones_en_v1_pct = Object.fromEntries(LAS_19);
+  const bajoElUmbral = VARIABLES.filter((n) => paridadPorVariable[n].coincide_pct < UMBRAL_DE_PARIDAD);
+  resumen.umbral_de_paridad_pct = UMBRAL_DE_PARIDAD;
+  resumen.variables_bajo_el_umbral = bajoElUmbral;
   resumen.vacio_por_variable_pct_de_las_que_cruzan_y_entrenan = { matriz: vaciosMatriz, extracto: vaciosExtracto };
 
   // ---- salida en pantalla
@@ -368,17 +349,19 @@ function cruzar() {
   console.log(`  Misma fecha de consulta que la tabla: ${fechaIgual} de ${fechaIgual + fechaDistinta}. El bloque del SRI de la matriz concuerda con la tabla: ${bloqueConcuerda} de ${cruzadas.length}.`);
   console.log("  Por mes de la consulta (entrenan / cruzan):", [...porMes.entries()].sort().map(([m, c]) => `${m} ${c.entrenan}/${c.cruzan}`).join(", "));
 
-  const fila = (nombre, p, referencia) => `  ${nombre.padEnd(14)} ${String(p.n).padStart(5)}  ${pct(p.coincide, p.n).padStart(7)}  falta ${String(p.falta_en_la_matriz).padStart(4)}  sobra ${String(p.sobra_en_la_matriz).padStart(4)}  distinto ${String(p.distinto).padStart(4)}  con dato en el extracto ${String(p.con_dato_en_el_extracto).padStart(5)}: ${pct(p.coincide_con_dato, p.con_dato_en_el_extracto).padStart(7)}${referencia === undefined ? "" : `   (2026-10-22 con 5.001: ${String(referencia).replace(".", ",")}%)`}`;
+  const fila = (nombre, p, referencia) => `  ${nombre.padEnd(14)} ${String(p.n).padStart(5)}  ${pct(p.coincide, p.n).padStart(7)}  falta ${String(p.falta_en_la_matriz).padStart(4)}  sobra ${String(p.sobra_en_la_matriz).padStart(4)}  distinto ${String(p.distinto).padStart(4)}  con dato en el extracto ${String(p.con_dato_en_el_extracto).padStart(5)}: ${pct(p.coincide_con_dato, p.con_dato_en_el_extracto).padStart(7)}${referencia === undefined ? "" : `   (desde equifax_operaciones, v1: ${String(referencia).replace(".", ",")}%)`}`;
   console.log(`\nParidad de las 19 variables contra el extracto, sobre las ${queEntrenan.length} que cruzan y entrenan (falta = el extracto tiene dato y la matriz no; sobra = al revés):`);
   for (const [n, ref] of LAS_19) console.log(fila(n, paridadPorVariable[n], ref));
   console.log("\nLas demás variables de Equifax contra el extracto:");
   for (const n of VARIABLES) if (!LAS_19.some(([x]) => x === n)) console.log(fila(n, paridadPorVariable[n]));
-  console.log("\nDiagnóstico, NO construido: las mismas 19 armadas desde las listas DetalleDeudaActualReportada* de interconnectResponse, contra el extracto:");
-  for (const [n] of LAS_19) console.log(fila(n, paridadAlternativa[n]));
+  console.log(bajoElUmbral.length === 0
+    ? `\nTodas las variables de Equifax coinciden con el extracto en al menos el ${UMBRAL_DE_PARIDAD}% de las que cruzan.`
+    : `\nFALLA: ${bajoElUmbral.join(", ")} coinciden con el extracto en menos del ${UMBRAL_DE_PARIDAD}% de las que cruzan.`);
+  return bajoElUmbral.length;
 }
 
-if (!SIN_CRUCE) cruzar();
-else console.log("Sin cruce con la tabla de entrenamiento (--sin-cruce).");
+const bajoElUmbral = SIN_CRUCE ? 0 : cruzar();
+if (SIN_CRUCE) console.log("Sin cruce con la tabla de entrenamiento (--sin-cruce).");
 
 console.log("\nVacío por variable en la matriz (todas las procesadas):", VARIABLES.map((n) => `${n} ${String(vaciosTodas[n]).replace(".", ",")}%`).join(", "));
 
@@ -390,3 +373,4 @@ if (RESUMEN_GIT) {
   fs.writeFileSync(destino, JSON.stringify(resumen, null, 2) + "\n", "utf8");
   console.log(`Resumen agregado para git: ${destino}`);
 }
+process.exit(bajoElUmbral === 0 ? 0 : 1);
