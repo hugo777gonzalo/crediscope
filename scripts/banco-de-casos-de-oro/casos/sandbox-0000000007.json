@@ -1,0 +1,60 @@
+{
+  "formato": 1,
+  "id": "sandbox-0000000007",
+  "fuente": "sandbox_api",
+  "de_donde_sale": "Sandbox de la API: 0000000007 en supabase/functions/_shared/sandbox-casos.ts y el perfil inventado de sandbox-simuladores.ts.",
+  "tema": "Una evaluación que tarda no cambia el veredicto: el mismo perfil sin buró de 0000000001.",
+  "perfil": {
+    "origen": "sandbox",
+    "identificacion": "0000000007",
+    "modalidad": "basico"
+  },
+  "buro_equifax": "no",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "El perfil es el de 0000000001 y la evaluación tarda dos minutos en terminar.",
+    "No tener historial crediticio no es mal comportamiento: no hay atraso, ni deuda, ni demanda.",
+    "Se aprueba con un monto prudente para un primer crédito; no es una Aprobación Directa porque no hay pago que mirar."
+  ],
+  "recomendacion_hoy": "aprobar",
+  "hoy_tambien_aceptable": [
+    "revisar"
+  ],
+  "salida_version_mayor": "aprobar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "indicador",
+        "indicador": "historial",
+        "valores": [
+          "sin historial"
+        ],
+        "porque": "Sin buró no hay historial que calificar como bueno o malo."
+      },
+      {
+        "tipo": "score_entre",
+        "min": 550,
+        "max": 850,
+        "porque": "Sin señales negativas y con ingreso confirmado; sin historial, no lo más alto."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "excelente pagador|buen pagador|historial (de pago )?(excelente|bueno)",
+        "campos": [
+          "todo"
+        ],
+        "porque": "No hay pago que elogiar: sería inventarlo."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que no tiene historial crediticio y que eso no es una señal negativa.",
+        "Apoyar la recomendación en el empleo estable y el ingreso confirmado."
+      ],
+      "no_debe": [
+        "Inventar un comportamiento de pago.",
+        "Negar o revisar sólo por no tener buró."
+      ]
+    }
+  }
+}
