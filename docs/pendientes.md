@@ -115,6 +115,31 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
   el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
 
+## Reestructuración del núcleo: ola 1 hecha (2026-11-13)
+
+La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tareas viven en un doc privado de Claude: https://claude.ai/artifact/AdZJBTAUAc5tNTkwVkKnCd (pestañas «Plan de ejecución» y «Contrato del análisis premium»). El informe visual de ejemplo está en https://claude.ai/artifact/AmiHUuoqFvFNYEXdsswLqA. El negocio la aprobó con ajustes el 2026-11-11 y aprobó la ola 1 el 2026-11-12.
+
+**Lo decidido (negocio, 2026-11-11):**
+- CrediScope es un analista con IA y entrega una recomendación; decide una persona de la institución. Seis salidas: Aprobación Directa, Aprobar, Cambio de Condiciones, Condicionado, Revisar y Negar.
+- Se diseña primero para la institución sin buró. Los datos de la institución son referencia cualitativa. El Laboratorio, el score estadístico y el lector de documentos quedan para después.
+- Un mal comportamiento de pago recomienda negar salvo atenuantes medibles: hoy al día, endeudamiento a la baja, 12 meses o más de estabilidad, ingreso al alza.
+
+**Lo medido en la ola 1 (2026-11-12 y 13):**
+- El proveedor sigue caído: en una consulta de prueba con una persona autorizada contestaron 7 de 52 fuentes y fallaron 15 de las 21 obligatorias. La consulta se guarda con que conteste una sola fuente, y el resumen de la persona toma el último perfil aunque sea peor que el anterior.
+- De 444 personas con recomendación: 96 aprobar, 322 revisar y 25 negar. De los 322 «revisar», 282 mencionan una deuda sin cuota informada y 195 un ingreso «Por confirmar» (conteo por palabras clave: es una cota).
+- Con una definición amplia, 166 de 435 personas tienen mal comportamiento de pago; 116 es sólo por una demanda de cobro, sin distinguir su antigüedad.
+- El PR 150 bajaría 92 de 95 aprobaciones a «revisar»: se recomienda cerrarlo y llevar la idea a la versión mayor del marco.
+- Cotas del ingreso contra 28.906 ingresos validados de la originación: la cuota pagada al día sobre una carga de 0,75 cubre el 94,5%; el cupo de tarjetas sirve poco; una de cada diez personas aprobadas y sin mora paga en cuotas más del 61% de su ingreso validado.
+- El lote de paridad no alcanza para mejorar el predictor sin buró: es todo de independientes y su crudo es posterior a los ingresos validados. Depende de la base grande pedida al proveedor.
+- El respaldo crudo de Equifax tiene 23.420 respuestas; 2.760 se bajaron el 2026-11-10, después de la orden de parar del 2026-11-06. Falta confirmarlo con el negocio.
+
+**PR abiertos de la ola 1 y qué esperan:**
+- #151, marco-v36 mínimo: revisado; espera marcarse listo y el sí a fusionar. Fusionarlo activa v36 y pide la migración 150 antes de desplegar (la secuencia está en su descripción).
+- #157 (control del crudo con crudos inventados), #158 (base imponible desde el impuesto a la renta) y #159 (banco de casos de oro, 25 casos): revisados, esperan el sí a fusionar.
+- #156, mediciones del predictor, ya con sus cuatro arreglos. El #155 no se fusiona como está: hay que rehacer la especificación con la escalera de evidencia, el nivel sin buró y las cotas.
+
+**Sigue (ola 2, con el sí a fusionar y desplegar v36):** el corredor del banco de casos, el despliegue de estructura-v21 con su recálculo, el diseño del estándar por institución, el de la capa de hechos y el de la escalera del ingreso.
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
