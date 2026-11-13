@@ -438,6 +438,16 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
     independizarse de ese predictor. El negocio dijo el 2026-10-29 que la quiere para mejorar la
     asertividad, que es justo lo que lo medido no respalda (sumar el alumno al nivel 2 lleva el R² de
     0,341 a 0,342): falta decidir si se hace igual.
+    **Decidido el 2026-11-09: una estimación para todos, por tipo de persona, con su confiabilidad**
+    (especificación, 3.5; nada construido). Los tipos son dependiente con o sin ingreso extra,
+    independiente formal, semiformal y poco formal, rentista, pensionista e informal. Cambia la decisión
+    del 2026-10-30: el extra del dependiente se estima sólo donde deja rastro formal (sin rastro no se
+    puede predecir, 12.14) y el pensionista recibe la referencia por afiliación. Cartera medida ese día
+    (3.766 personas con perfil): 1.941 independientes sin separar, 1.339 dependientes, 262 jubilados y
+    80 informales. **Lo que sigue de esto, en orden:** medir la confiabilidad por tipo con los datos
+    locales (sin costo), construir la tabla de pensiones, y recién entonces llevar el tipo y la
+    confiabilidad a la respuesta y al selector. Las reglas que separan a los tres independientes y al
+    rentista, y los nombres de los grados, los confirma el negocio después de la medición.
     **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Proveedor_Info_1 (más la
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
