@@ -1,0 +1,76 @@
+{
+  "formato": 1,
+  "id": "c-5dfb1e00",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-5dfb1e00/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Demandas de cobro de hace más de 15 años no bajan 170 puntos a una persona con todo en A1.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Jubilada con un negocio propio que paga una deuda grande con A1 en todo, cooperativas sin un día de atraso y un score del buró de la institución casi perfecto.",
+    "Las dos demandas de cobro son de 2009, de particulares, con una década de buró limpio después; las que la tienen como ofendida son cobros a sus propios clientes, porque vende a crédito.",
+    "El ingreso del negocio no está documentado, pero el flujo se ve en los pagos: se aprueba al documentar la facturación."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "aprobar"
+  ],
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 680,
+        "max": 900,
+        "porque": "El jefe de crédito dio 760; el modelo, 590, porque las demandas de 2009 «pesan fuerte»."
+      },
+      {
+        "tipo": "texto_requerido",
+        "patron": "2009",
+        "campos": [
+          "todo"
+        ],
+        "porque": "Las demandas se nombran con su año (marco-v36, aniosAtras)."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "pesan? fuerte",
+        "campos": [
+          "todo"
+        ],
+        "porque": "Una demanda de hace más de 15 años no pesa fuerte."
+      },
+      {
+        "tipo": "accion",
+        "accion": "documentar_ingreso",
+        "porque": "Lo que falta es documentar el ingreso del negocio."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que las demandas de cobro tienen más de 15 años y una década de buen pago después, y que por eso pesan poco.",
+        "Leer las demandas en que ella es la ofendida como cobros a sus clientes, no como una señal en su contra."
+      ],
+      "no_debe": [
+        "Presentar la deuda de la casa comercial como actual sin decir de qué fecha es el corte.",
+        "Tomar el promedio de aportes de hace años como su ingreso de hoy."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "Confirma lo que dijo el jefe de crédito: las demandas de 2009 no mueven la recomendación."
+    },
+    {
+      "decision": "seis_salidas",
+      "que_cambio": "«Revisar con sesgo a aprobar» del piloto pasa a Condicionado: se aprueba al documentar el ingreso del negocio."
+    }
+  ]
+}

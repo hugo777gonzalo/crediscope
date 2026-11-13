@@ -1,0 +1,50 @@
+{
+  "formato": 1,
+  "id": "sandbox-0000000002",
+  "fuente": "sandbox_api",
+  "de_donde_sale": "Sandbox de la API: 0000000002 en supabase/functions/_shared/sandbox-casos.ts y el perfil inventado de sandbox-simuladores.ts.",
+  "tema": "Faltó una secundaria de peso: la entrega es parcial y nunca «aprobar», aunque el perfil lo merezca.",
+  "perfil": {
+    "origen": "sandbox",
+    "identificacion": "0000000002",
+    "modalidad": "basico"
+  },
+  "buro_equifax": "no",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "El mismo perfil inventado que 0000000001, con la consulta de demandas como ofendido sin respuesta.",
+    "El modelo puede recomendar aprobar; la entrega baja a «revisar» porque la consulta está incompleta (D6).",
+    "En la versión mayor se aprueba al completar la consulta que faltó."
+  ],
+  "recomendacion_hoy": "revisar",
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "indicador",
+        "indicador": "historial",
+        "valores": [
+          "sin historial"
+        ],
+        "porque": "El perfil no tiene buró."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "demandas? como ofendid[oa]: (ninguna|0|no (tiene|registra))",
+        "campos": [
+          "todo"
+        ],
+        "porque": "La fuente no contestó: no se puede decir que no hay."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "La entrega dice completitud parcial y recomienda revisar.",
+        "Decir que no se pudo obtener información de las demandas como ofendido y que por eso no hay sustento suficiente."
+      ],
+      "no_debe": [
+        "Presentar el tema sin respuesta como «no hay»."
+      ]
+    }
+  }
+}

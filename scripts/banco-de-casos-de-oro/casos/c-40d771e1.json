@@ -1,0 +1,62 @@
+{
+  "formato": 1,
+  "id": "c-40d771e1",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-40d771e1/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Buen pagador sobreendeudado: aprobar diciendo que la capacidad es lo menos evidenciado es incoherente.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "necesario",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Jubilado con un historial de pago impecable en bancos y en el BIESS, y una pensión de monto desconocido.",
+    "Su deuda en bancos, el quirografario del BIESS y el crédito con la institución pesan varias veces el ingreso de un año; el buró de la institución dice sobreendeudamiento alto y su score cae a la mitad en un año.",
+    "No hay capacidad evidenciada para deuda nueva: negar, o revisar si sólo se mira lo que trae la fuente principal."
+  ],
+  "recomendacion_hoy": "negar",
+  "hoy_tambien_aceptable": [
+    "revisar"
+  ],
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 600,
+        "porque": "El jefe de crédito dio 420; el modelo aprobó con 820 y riesgo bajo."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "riesgo",
+        "valores": [
+          "moderado",
+          "alto",
+          "muy alto"
+        ],
+        "porque": "Con sobreendeudamiento alto el riesgo no es bajo, aunque el pago sea impecable."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que la deuda pesa varias veces el ingreso de un año y que la cuota no se puede medir contra una pensión sin monto.",
+        "Nombrar el saldo del BIESS aparte, sin sumarle un préstamo ya terminado."
+      ],
+      "no_debe": [
+        "Leer «Confirmado por un tercero» de una jubilación sin monto como un ingreso verificado.",
+        "Recomendar aprobar mientras dice que la capacidad es lo menos evidenciado.",
+        "Contar las demandas de hace más de diez años, de un solo demandante, como una señal vigente."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "Las demandas son de 2013 a 2015: no sostienen el veredicto. Lo sostiene el sobreendeudamiento."
+    }
+  ]
+}
