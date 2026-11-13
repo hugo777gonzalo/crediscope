@@ -688,6 +688,8 @@ export function armarPerfilDelModelo(
   perfil: AnyRecord,
   camposDeshabilitados: Set<string> = new Set(),
   buro: BuroDeLaInstitucion | null = null,
+  // La fecha del análisis, para los años de cada demanda de cobro (marco-v36).
+  ahora: Date | null = null,
 ): AnyRecord {
   const copia = JSON.parse(JSON.stringify(perfil ?? {})) as Record<string, unknown>;
   copia.fuentesIngreso = ingresosDelPerfilDelModelo(perfil);
@@ -734,6 +736,20 @@ export function armarPerfilDelModelo(
   if (cobro && typeof cobro === "object" && Array.isArray(cobro.tiposDemandasComoDemandado)) {
     cobro.tiposDemandasComoDemandado = tiposLegibles(cobro.tiposDemandasComoDemandado);
   }
+  // marco-v36: cuántos años tiene cada demanda de cobro el día del análisis.
+  // Una de más de 2 años pesa menos (p5), y el modelo no sabe en qué año
+  // está: con el año solo, una de 2024 podía leerse como reciente o como
+  // vieja. Sin `ahora` no se agrega (las pruebas y los guiones que no lo
+  // pasan quedan igual).
+  if (ahora && cobro && typeof cobro === "object" && Array.isArray(cobro.demandasDeCobro)) {
+    const anioDelAnalisis = Number(fechaEnEcuador(ahora.toISOString()).slice(0, 4));
+    cobro.demandasDeCobro = (cobro.demandasDeCobro as AnyRecord[]).map((d) => {
+      const anio = typeof d?.anio === "number" ? d.anio : null;
+      return Object.fromEntries(Object.entries(d ?? {}).flatMap(([clave, valor]) =>
+        clave === "anio" ? [[clave, valor], ["aniosAtras", anio === null ? null : anioDelAnalisis - anio]] : [[clave, valor]]
+      ));
+    });
+  }
   // Desde marco-v28: el grupo sólo llega si la persona es cliente interno.
   // Casi nadie lo es, y el marco gastaba un párrafo en decir que, vacío, se
   // ignore. Si la fuente no contestó, lo dice la disponibilidad.
@@ -761,9 +777,10 @@ export function mensajeParaElModelo(
   hallazgosControlBloqueo: unknown[] | null | undefined,
   camposDeshabilitados: Set<string> = new Set(),
   buro: BuroDeLaInstitucion | null = null,
+  ahora: Date | null = null,
 ): { perfilDelModelo: AnyRecord; hallazgosControlBloqueo: unknown[] } {
   return {
-    perfilDelModelo: armarPerfilDelModelo(perfil, camposDeshabilitados, buro),
+    perfilDelModelo: armarPerfilDelModelo(perfil, camposDeshabilitados, buro, ahora),
     // Ya resueltos de forma determinística: el modelo no los recalcula.
     hallazgosControlBloqueo: limpiarValores(hallazgosControlBloqueo ?? []) as unknown[],
   };
