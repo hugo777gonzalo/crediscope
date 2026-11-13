@@ -562,6 +562,35 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
         - **Falta para servir el nivel 2**: el selector de `estimar-ingreso` que lo use con una consulta de Equifax vigente (hoy sólo sirve
           el nivel 1) y una prueba con una persona autorizada.
 
+    14. **Tipos de persona y agrupaciones, medidos el 2026-11-10** (12.36; `scripts/predictor-ingresos/tipos_y_grupos.py`, agregados en
+        `metricas/tipos-y-grupos-2026-11.json`). Es el paso 1 del orden de trabajo de 3.5 de la especificación, sobre `ingreso-v2`.
+        - **Ninguna agrupación mejora el predictor.** Probadas: los tipos, k-medias, mezcla de gaussianas, Gower, un árbol sobre el error y
+          las hojas del modelo. Como variable, lo mejor es el tipo en el nivel 1 (+0,34%, la regla pedía 1%); un modelo por grupo pierde
+          siempre. La calibración por grupo no deja todos los grupos entre 88% y 92%: la única ya lo hace en el nivel 1, y calibrar por tipo
+          empeora (no se repite de un período al otro). **`ingreso-v2` queda como está.**
+        - **La confiabilidad por tipo, medida** (cobertura del mínimo en OK, nivel 1 / nivel 2): formal 89,1% / 98,3%; semiformal 91,0% /
+          90,0%; poco formal 88,7% / 92,5%. En el RUC no activo y el sin RUC no se puede medir: 26 casos OK de 1.363. Los rentistas (84 en
+          la prueba) van con el semiformal. El formal lo subestima el nivel 2 (niega de más 37%).
+        - **El extra del dependiente no se puede estimar** (AUC 0,62 con RUC activo, R² 0,01). El modelo de independientes aplicado a ese
+          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 que lo estima con el nivel 1 o 2 hay que cambiarla**: sin monto,
+          «con o sin indicios; se valida con documentos». La actualiza la sesión principal.
+        - **Límites de esta medición** (de la revisión):
+          - los tipos de persona se definen aquí con la clase del contribuyente y el obligado a llevar contabilidad que trae Equifax, no con las
+            reglas de la especificación: **sin buró esa clasificación no se puede armar**;
+          - el «rentista» se define por la composición de la etiqueta validada (arriendos la mitad o más de lo no verificado): sirve para medir,
+            y **no se reproduce en producción**;
+          - la probabilidad por umbral sale de cuantiles sin calibrar y la isotónica se ajusta con todas las respuestas, mientras el mínimo que se
+            sirve está corrido con OK FACTURAR: **la probabilidad y el «certifica al menos» pueden contradecirse**. Se midió así; el método no se
+            cambió.
+        - **Para el marco, medido**:
+          - la probabilidad de superar cada monto está bien calibrada en el nivel 1; en el nivel 2, en 2.000 sobreestima 5 puntos (ECE
+            0,052), y una isotónica por umbral la arregla (medida, no construida);
+          - «lo declarado está por encima de lo probable» anticipa que el validado baje: AUC 0,76 a 0,79 con el nivel 2. Con el nivel 1 no
+            suma al declarado solo;
+          - el ancho del rango sirve de grado de confiabilidad en el nivel 1 (tramo exacto o vecino de 78,8% a 61,5%), no en el 2.
+        - **Para decidir (negocio)**: qué de esto se le entrega al marco y con qué nombres. Y si se construye la isotónica del nivel 2
+          antes de entregarle la probabilidad.
+
     **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12; las de `ingreso-v2`, en el punto 13):
     las variables de la persona del nivel 2 (en `ingreso-v2` salieron: no se pueden servir); los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y
     `nnivins` de la ENEMDU (los códigos de la ENIGHUR se confirmaron). Falta también cotejar el SRI de
