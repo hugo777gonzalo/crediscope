@@ -80,6 +80,10 @@ jobs:
       # El detector de eventos se prueba sin base, sin red y sin datos de
       # personas; las otras pruebas de scripts/ necesitan la base viva.
       - run: node scripts/probar-detector.mjs
+      # Los detectores del crudo (revisar-crudo.mjs) sobre crudos inventados:
+      # ningún otro control del PR mira el crudo, y tres errores de mezcla
+      # llegaron a producción por eso. Sin base, sin red y sin datos de personas.
+      - run: node scripts/probar-crudos-sinteticos.mjs
       # El formato del banco de casos de oro, que ninguna versión del marco o del
       # modelo se despliega sin pasar (2026-11-11): un caso mal escrito, o un caso
       # real con forma de cédula o de monto, no entra al repositorio público.

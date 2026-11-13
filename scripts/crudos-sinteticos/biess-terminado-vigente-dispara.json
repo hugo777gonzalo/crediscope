@@ -1,0 +1,17 @@
+{
+  "descripcion": "Un quirografario «VIGENTE» en la base interna con el plazo cumplido en 2023, sin mora y con saldo, y la fuente de préstamos no lo trae",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tcredQuirografarios": [
+          { "numeroOperacion": "0000200", "fechaConsesion": "10/03/2021", "fechaFinCredito": "10/03/2023", "montoTransferido": 3000, "saldoTotalCredito": 1000, "diasMoraAfi": 0, "estadoOperacion": "VIGENTE" }
+        ]
+      }
+    }
+  },
+  "esperado": { "prestamo-biess-terminado-contado": "dispara" }
+}
