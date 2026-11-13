@@ -3430,6 +3430,193 @@ En OK FACTURAR y condicionado la cobertura es casi la misma para los dos sexos, 
 - Las sumas de cuotas y saldos de la función están redondeadas a centavos y las del extracto no: difieren en el último decimal binario (219 de las 3.935 en `c_consumo`), y no mueven ningún cuantil en esas consultas. Con otros montos podría tocar un umbral: queda medido, no corregido.
 - El sexo en el nivel 2 no tiene una medida de paridad propia: sale del mismo mapeo que el nivel 1.
 
+### 12.36 Tipos de persona y agrupaciones: la confiabilidad por tipo, y ninguna agrupación mejora el predictor (2026-11-10)
+
+**Qué se hizo.** El negocio decidió el 2026-11-09 una estimación para todos, por tipo de persona y con la confiabilidad de cada tipo (especificación, 3.5), y el 2026-11-10 pidió buscar con k-medias y métodos parecidos agrupaciones que mejoren el predictor.
+- Es el paso 1 del orden de trabajo de 3.5: medir la confiabilidad por tipo con los datos locales, sin costo.
+- Todo sobre `ingreso-v2` (12.35): el nivel 1 y el nivel 2 entrenado desde febrero, calibrados con OK FACTURAR y condicionado. Nada se cambió en el modelo exportado ni en la función.
+- Siempre hacia adelante, con el marco de la fase 0 (12.32): 12.604 personas para entrenar (el nivel 2, 10.565 desde febrero) y 8.656 de julio a octubre para probar, 1.613 en OK FACTURAR y condicionado. Intervalos del 95% por remuestreo de personas (1.000 veces; 500 por grupo).
+- Lo mide `scripts/predictor-ingresos/tipos_y_grupos.py` (10 minutos). A git va `metricas/tipos-y-grupos-2026-11.json`, sólo agregados: un grupo de menos de 50 personas no lleva medianas de montos. Las tablas completas quedan en `C:\datos\ingresos\resultados\predictor-ingresos\tipos-y-grupos\`.
+- Local: ninguna consulta a AWS, a Equifax, a Proveedor_Info_1 ni al modelo de lenguaje, y ninguna migración.
+
+**Las reglas, fijadas antes de medir** (las del encabezado del guion):
+
+| Prueba | Sigue si |
+|---|---|
+| El grupo como variable | La pérdida de cuantiles en todas baja 1% o más, con un intervalo que no toca el 0 |
+| Un modelo por grupo | La misma (un grupo con menos de 1.000 casos de entrenamiento usa el modelo único) |
+| Calibración por grupo | La cobertura del mínimo en OK queda entre 88% y 92% en cada grupo con 100 casos OK de prueba o más; el mínimo mediano en OK no baja más de 2%; el «alcanza» por error no pasa del aceptado (1,2% y 1%); y la calibración única no lo lograba ya |
+| Grados por el ancho | El tramo exacto o vecino crece de grado en grado y los extremos se separan 10 puntos o más, con intervalos que no se tocan |
+| Los tipos separan | El valor central mediano de dos tipos difiere con intervalos que no se tocan |
+| El extra del dependiente | En quienes tienen RUC activo: AUC de 0,75 o más, R² del monto de 0,25 o más y el tramo del total sube un punto o más |
+| La probabilidad de superar un umbral | Error de calibración esperado (ECE) de 0,05 o menos en cada umbral, en todas |
+| El declarado como alerta | AUC de 0,65 o más y 0,03 más que el declarado solo (la regla de D2, 12.34) |
+
+La última condición de la calibración por grupo se agregó después de la corrida de prueba y antes de la definitiva: con las demás, una agrupación «seguía» aunque la calibración única ya dejara cada grupo en la banda.
+
+**1. Los tipos con lo que hay en AWS.** Del SRI de Equifax hay RUC, estado, obligado a llevar contabilidad, clase y CIIU; no hay nómina que paga, ISD, establecimientos ni renta causada. Las reglas de 3.5 quedan así:
+- **formal**: RUC activo y obligado a llevar contabilidad;
+- **semiformal**: RUC activo, no obligado y régimen general (clase «OTROS»);
+- **poco formal**: RUC activo en RIMPE (en 2026 no hay RISE: uno en 21.260);
+- **RUC no activo** y **sin RUC**, aparte;
+- **rentista**: los arriendos (`fuente_ingreso` o `macroactividad` ARRIENDOS) son la mitad o más de lo no verificado. Va primero.
+
+**En producción la clase sólo la trae Equifax** (4.1): con el nivel 1 se distingue formal, RUC activo no obligado, RUC no activo y sin RUC; semiformal y poco formal se separan sólo con la consulta de Equifax.
+
+**2. La confiabilidad de cada tipo** (nivel 1 / nivel 2, calibrados como se exportan):
+
+| Tipo | Prueba (OK) | Cobertura del mínimo en OK | En todas | Tramo exacto o vecino | Valor central mediano | «Alcanza» por error / niega de más, en OK |
+|---|---|---|---|---|---|---|
+| Formal | 330 (119) | 89,1% (83,2 a 95,0) / **98,3% (95,8 a 100)** | 88,5% / 94,5% | 90,0% / 90,0% | 8.201 / 7.303 | **2,31%** / 29,5%; 0,00% / **37,3%** |
+| Semiformal | 3.942 (958) | 91,0% (89,1 a 92,7) / 90,0% (87,9 a 91,9) | 83,6% / 84,2% | 63,8% / 81,9% | 2.662 / 2.429 | 0,91% / 19,3%; 0,31% / 21,0% |
+| Poco formal | 2.937 (467) | 88,7% (85,7 a 91,2) / 92,5% (89,8 a 94,9) | 77,2% / 84,6% | 63,5% / 79,6% | 2.471 / 2.178 | 1,45% / 21,2%; 0,19% / 24,0% |
+| RUC no activo | 577 (15) | sin medir (15 casos) | 76,6% / 82,3% | 80,2% / 84,9% | 1.650 / 1.648 | sin medir |
+| Sin RUC | 786 (11) | sin medir (11 casos) | 75,3% / 81,3% | 84,7% / 84,9% | 1.292 / 1.272 | sin medir |
+| Rentista, junto con semiformal | 84 (43) y 3.942 | 91,0% / 90,1% | 83,5% / 84,2% | 63,7% / 82,0% | 2.665 / 2.434 | 0,94% / 19,2%; 0,32% / 20,9% |
+| Todos | 8.656 (1.613) | 90,2% / 91,5% | 80,3% / 84,3% | 67,6% / 81,9% | 2.410 / 2.153 | 1,20% / 20,6%; 0,26% / 23,1% |
+
+- **Las reglas separan grupos que el modelo estima distinto**: los diez pares de los cinco tipos con 300 casos o más tienen el valor central mediano con intervalos que no se tocan, en los dos niveles. Pero el modelo ya los separa por su cuenta: el tipo como variable no suma (punto 5).
+- **Formal: el mínimo se queda corto en el nivel 2.** Cubre 98,3% en OK, y el nivel 2 niega de más al 37,3%. El valor central lo subestima: la mediana de real sobre central es +0,14 y +0,24 en logaritmo, contra −0,02 y −0,03 en todos. En el nivel 1, con el mínimo más alto, el «alcanza» por error es 2,31%, arriba del 1,2% aceptado. Son 119 casos OK de prueba y 118 a 141 para calibrar: la calibración propia no lo arregla (95,9% en el nivel 2, punto 5).
+- **Quien no tiene el RUC activo casi nunca llega a OK FACTURAR**: 26 de 1.363 en la prueba. Su confiabilidad en aprobados no se puede medir. En todas (que mezcla rechazados y sin respuesta) cubre 75% a 82%, como el total.
+- **La agudeza de cada tipo no se compara con la del total.** Se mide contra el mínimo fijo de todos, así que suma «saber de qué tipo es»: el formal da 50,6% y 58,6% porque está lejos de la mediana general. El poco formal da 2,2% en el nivel 1: sin el buró, el modelo casi no sabe más de él que la mediana de todos.
+- **Rentistas**: 113 en el entrenamiento y 84 en la prueba; 95 en la prueba tienen algún arriendo. Los arriendos son 1,4% o menos del ingreso adicional (12.17). El modelo los subestima un poco (real sobre central +0,16 y +0,08 en logaritmo) y cubre 90,7% y 93,0% en sus 43 OK. Se informan con el semiformal, el tipo más cercano por el valor central.
+- **El rentista no entra como variable ni como grupo de calibración**: se reconoce por los flujos, que son la composición de la etiqueta.
+
+**3. El ingreso extra del dependiente, con el SRI.** 9.573 dependientes con sueldo verificado del IESS y el bloque del SRI: 5.355 para entrenar y 4.218 para probar, 1.273 de ellos con RUC activo.
+- Tiene extra el 28,8%; con RUC activo, el 40,9%.
+- El sueldo del IESS entra como variable: en producción se conoce.
+
+| Variables | AUC de tener extra (todos) | Con RUC activo | R² del monto | Error mediano del monto | Tramo del total: sólo el IESS → con el extra estimado |
+|---|---|---|---|---|---|
+| Edad, sexo, fecha y sueldo | 0,555 (0,538 a 0,574) | 0,563 | −0,05 | 61% | 80,4% → 64,4% |
+| Más el buró, sin SRI (como 12.14) | 0,653 (0,634 a 0,671) | 0,628 | 0,00 | 56% | 80,4% → 68,5% |
+| Más el SRI de Proveedor_Info_1, sin buró | 0,616 (0,597 a 0,635) | 0,559 | −0,08 | 63% | 80,4% → 69,9% |
+| Todo: SRI de Proveedor_Info_1 y de Equifax y buró | **0,687 (0,670 a 0,703)** | **0,624 (0,594 a 0,655)** | **0,01** | 56% | 80,4% → 71,4% (con RUC activo, 71,8% → 58,3%) |
+
+- **No sigue** (la regla pedía 0,75, 0,25 y un punto más de tramo). El SRI sube el AUC de 0,653 a 0,687, y en quienes tienen RUC activo no ayuda.
+- Hacia adelante y sólo con 2026 da menos que el 0,72 y el 0,11 de 12.14, que eran por validación cruzada con todos los años.
+- **Sumar el extra estimado empeora el tramo del total**: el monto no se puede predecir.
+- **El modelo de independientes no sirve para el extra de un dependiente.**
+  - Aplicado a los 1.214 dependientes de la prueba que lo tienen, el mínimo del 90% cubre el 22,8% (nivel 1) y el 16,3% (nivel 2); con RUC activo, el 18,0% y el 10,6%.
+  - El mínimo es en la mediana el doble del extra (2,01 y 1,96 veces). Pierde contra no usar variables: −73% y −80%.
+  - El modelo aprendió el ingreso entero de un independiente. El extra de un dependiente es un complemento, mucho más chico.
+  - La fila «dependiente con ingreso extra» de 3.5 dice «la estimación de lo no verificado con el nivel 1 o 2». **Eso daría un mínimo falso**: lo que se puede decir es «sin indicios» o «con indicios; se valida con documentos», sin monto.
+
+**4. Agrupaciones sin supervisión** (k-medias, mezcla de gaussianas diagonal y k-medoides con la distancia de Gower para datos mixtos).
+- Las variables son las del nivel 1 (edad, sexo, RUC, estado, obligado, antigüedad y suspensión) y las del nivel 2 (más clase, CIIU, buró y cuotas, montos en logaritmo).
+- Los vacíos llevan un indicador por bloque (sin SRI, sin buró, sin cuota, sin crédito mayor), para que veinte columnas vacías a la vez no pesen veinte veces.
+- De 2 a 12 grupos. Se elige el número con más silueta entre los que tienen una estabilidad de 0,75 o más (Rand ajustado medio entre 8 remuestreos del 80% de 4.000 personas de entrenamiento).
+
+| Nivel | Método | Grupos | Estabilidad | Silueta | Qué son, en palabras de crédito |
+|---|---|---|---|---|---|
+| 1 | k-medias | 4 | 0,978 | 0,415 | Jóvenes (32 años) con RUC activo reciente, 44% RIMPE, 54% de las personas (ingreso mediano 2.000); mayores (52) con RUC de 20 años, 33% (3.000); sin RUC (28 años), 9% (1.286); obligados a llevar contabilidad (50 años, la mitad en comercio), 4% (9.652) |
+| 1 | Mezcla de gaussianas | 3 | 0,920 | 0,462 | Sin RUC (9%); RUC activo no obligado (80%); el resto, RUC no activo y obligados (11%) |
+| 1 | Gower | 11 | 0,799 | 0,653 | Lo mismo partido por edad, RUC activo o no y obligado |
+| 2 | k-medias | 2 | 0,957 | 0,179 | Con deudas vigentes (56%, 42 años, 17% con hipotecario; 3.099) y con poco o nada en el buró (44%, 32 años, 18% sin deuda; 1.500) |
+| 2 | Mezcla de gaussianas | 2 | 0,912 | 0,149 | Lo mismo: 27% sin buró o sin RUC (1.500) y 73% con deudas (2.700) |
+| 2 | Gower | 4 | **0,378** | 0,202 | Ningún número de grupos llega a 0,75: **inestable, se descarta**. Los 4 de la mejor estabilidad: sin RUC; sin deuda vigente; jóvenes con deuda chica; con deuda grande |
+
+- **Los grupos son las variables que el modelo ya usa**: si tiene RUC y está activo, si es obligado, la edad, si tiene deudas.
+- En cada grupo el valor central mediano coincide con el ingreso mediano real (2.128 contra 2.000, 3.031 contra 3.000, 1.292 contra 1.286): **el modelo no se equivoca de nivel en ninguno**.
+- Las tres agrupaciones se parecen poco entre sí (Rand ajustado de 0,23 a 0,50): no hay una estructura natural en los datos, sólo cortes de las mismas variables.
+
+**5. Agrupaciones con supervisión.**
+- **Un árbol de profundidad 3 sobre el error** (hojas de 300 o más), entrenado con las predicciones fuera de muestra del entrenamiento.
+  - Sobre la pérdida de cuantiles corta por la antigüedad del RUC, la edad, el estado y el obligado (nivel 1), y por el saldo de tarjeta, la cuota de hace seis meses y el comercio (nivel 2).
+  - La pérdida por hoja va de 0,16 a 0,27 y se repite hacia adelante (Spearman de 0,60 y 0,57 entre hojas).
+  - Sobre el fallo del mínimo, en la prueba las hojas fallan entre 11,7% y 26,0% (en todas). En el nivel 2 el orden de las hojas no se repite hacia adelante (Spearman −0,04).
+  - **El error está repartido: no hay un grupo donde el modelo se equivoque mucho más.**
+- **Las hojas del modelo** (la hoja de cada uno de los 170 árboles del cuantil 0,50, en 20 dimensiones, con k-medias) dan 11 grupos en el nivel 1 (estabilidad 0,783) y 3 en el nivel 2 (0,817). Son tramos de ingreso estimado: el parecido «según el ingreso» es el valor central.
+
+**6. Para qué sirve cada agrupación: ninguna pasa su regla.**
+
+| Agrupación | Como variable: baja de la pérdida (nivel 1 / nivel 2) | Un modelo por grupo | Calibración por grupo: grupos en banda, única → por grupo |
+|---|---|---|---|
+| Tipos de persona (sin rentista) | **+0,34% (0,16 a 0,53)** / +0,02% | −0,89% / −1,36% | 3 de 3 → 2 de 3 / 1 de 3 → 1 de 3 |
+| k-medias | −0,01% / −0,00% | −0,82% / −0,79% | 3 de 3 → 3 de 3 / 2 de 2 → 2 de 2 |
+| Mezcla de gaussianas | −0,03% / +0,02% | −0,50% / −0,61% | 2 de 2 → 2 de 2 / 1 de 2 → 1 de 2 |
+| Gower | −0,11% / −0,01% | −1,38% / −1,11% | 3 de 3 → 2 de 3 / 1 de 2 → 1 de 2 |
+| Árbol sobre la pérdida | −0,08% / −0,02% | −1,28% / −2,06% | 3 de 3 → 2 de 3 / 3 de 4 → 3 de 4 |
+| Árbol sobre el fallo del mínimo | −0,01% / −0,10% | −1,51% / −1,86% | 2 de 3 → 2 de 3 / 2 de 3 → 2 de 3 |
+| Hojas del modelo | −0,10% / −0,01% | −3,73% / −1,64% | 4 de 7 → 5 de 7 / 2 de 2 → 2 de 2 |
+
+- **Como variable**, lo único con un intervalo lejos del 0 es el tipo en el nivel 1 (+0,34%). Es la clase del contribuyente, que el nivel 1 no tiene: un tercio de lo que se pedía.
+- **Un modelo por grupo** pierde siempre (de −0,5% a −3,7%): cada modelo ve menos casos y no aprende nada que el único no sepa.
+- **La calibración por grupo** no deja todos los grupos en la banda en ninguna agrupación.
+  - **En el nivel 1, la calibración única ya deja en la banda** a los tres tipos con casos OK: formal 89,3%, semiformal 91,0% y poco formal 88,7%. Lo mismo pasa con casi todas las agrupaciones.
+  - Calibrar por tipo **empeora**: el semiformal queda en 89,3% y el poco formal en 92,9%. En el entrenamiento los corrimientos eran muy distintos (−0,284 y −0,120), pero esa diferencia no se repite de julio a octubre. Con 500 a 1.000 casos por grupo, el corrimiento propio es ruido más el cambio de un período a otro.
+  - En el nivel 2, el formal pasa de 98,3% a 95,9% con su corrimiento: sigue fuera.
+  - **La candidata principal se descarta**: con estos datos, «la confiabilidad por tipo» se dice midiéndola (punto 2), no calibrando cada tipo por separado.
+
+**7. Grados de confiabilidad por el ancho del rango** (cuantil 0,90 menos 0,10 en logaritmo, cortes por terciles y cuartiles de las predicciones fuera de muestra del entrenamiento):
+
+| Nivel | Grado | Personas | Tramo exacto | Tramo exacto o vecino | ±25% | Cobertura en OK | Mínimo mediano en OK |
+|---|---|---|---|---|---|---|---|
+| 1 | Angosto | 28,1% | 43,9% | **78,8% (77,1 a 80,3)** | 33,8% | 90,6% (159 OK) | 1.204 |
+| 1 | Medio | 35,6% | 32,5% | 65,1% (63,5 a 66,7) | 26,7% | 90,8% | 1.373 |
+| 1 | Ancho | 36,2% | 34,3% | **61,5% (59,7 a 63,2)** | 25,4% | 89,7% | 1.524 |
+| 2 | Angosto | 37,3% | 50,5% | 86,2% (85,0 a 87,3) | 41,2% | 89,3% | 1.967 |
+| 2 | Medio | 33,7% | 44,2% | 80,7% (79,2 a 82,4) | 37,1% | 93,1% | 1.394 |
+| 2 | Ancho | 29,0% | 44,3% | 77,8% (76,2 a 79,4) | 31,4% | 95,2% | 1.359 |
+
+- **Nivel 1 con tres grados: sirve.** Del más angosto al más ancho, el tramo exacto o vecino baja de 78,8% a 61,5% (17 puntos, intervalos separados) y la cobertura queda en 90% en los tres.
+  - El grado angosto es sobre todo de ingresos estimados bajos (mínimo mediano 1.204), donde el tramo vecino abarca más en proporción. Una parte de la diferencia es la forma de los tramos y no más certeza.
+  - Con cuatro grados no crece de grado en grado (70,3% y 61,1% en el segundo y el tercero, 62,7% en el cuarto).
+- **Nivel 2: no sirve.** La diferencia es de 8,3 puntos con tres grados y 9,2 con cuatro, menos de 10. Además los grados anchos sobrecubren (93,1% y 95,2%).
+
+**8. Lo que leería el modelo de lenguaje.**
+- **La probabilidad de superar cada umbral** (470, 940, 2.000, 3.000 y 5.000; la que sale de los cuantiles sin calibrar, como los tramos):
+
+| Nivel | ECE en todas por umbral | Peor | En OK | Con isotónica (todas) |
+|---|---|---|---|---|
+| 1 | 0,012 / 0,013 / 0,038 / 0,036 / 0,020 | 2.000: dice 56,4%, son 52,9% | 0,023 a **0,072** (2.000: dice 66,7%, son 73,7%) | 0,001 a 0,014 |
+| 2 | 0,012 / 0,009 / **0,052** / 0,037 / 0,015 | 2.000: dice 58,1%, son 52,9% (0,046 a 0,061) | 0,018 a 0,032 | 0,001 a 0,019 |
+
+- **El nivel 1 está bien calibrado**: cumple en los cinco umbrales.
+- **El nivel 2 no, por poco**: en 2.000 sobreestima 5 puntos.
+  - Una regresión isotónica por umbral, ajustada con las predicciones fuera de muestra del entrenamiento, lo deja en 0,019.
+  - En OK empeora (de 0,023 a 0,046 en 2.000): calibra para todos los solicitantes, no para los aprobados.
+- **Por tipo** la probabilidad está corrida:
+  - el poco formal, sobreestimado (nivel 1, 2.000: dice 59,1%, son 52,0%; ECE 0,075);
+  - el RUC no activo, sobreestimado (0,074 y 0,092);
+  - el formal, subestimado en el nivel 2 (5.000: dice 62,9%, son 73,3%; ECE 0,104).
+- **El declarado contra lo que el predictor cree probable.** AWS trae dos cifras declaradas:
+  - el ingreso declarado en la solicitud (`persona_ingreso_declarado`, 7.054 de la prueba);
+  - el primer monto de cada flujo no verificado (`flujos_historial`, 8.253).
+
+  El monto declarado del flujo no sirve: es el validado en el 96%.
+  - El puntaje es la probabilidad, según el predictor, de que lo no verificado quede por debajo del declarado menos lo verificado.
+  - El evento es que el validado quede 5% o más por debajo del declarado: 25,8% de los casos (38,3% en OK).
+
+| Nivel | Casos | AUC del predictor | AUC del declarado solo | Sirve |
+|---|---|---|---|---|
+| 1 | Todas (7.054) | 0,717 (0,704 a 0,730) | 0,719 | No: no suma al declarado |
+| 1 | OK (1.205) | 0,703 (0,673 a 0,734) | 0,668 | Sí |
+| 2 | Todas | **0,763 (0,752 a 0,774)** | 0,719 | Sí |
+| 2 | OK | **0,793 (0,767 a 0,817)** | 0,668 | Sí |
+
+  Con el primer monto de los flujos da lo mismo: nivel 2, 0,742 y 0,781 contra 0,702 y 0,663.
+  - **Una advertencia**: el analista de AWS usaba el predictor de Equifax como ancla (12.28), y el nivel 2 ve el mismo buró. Parte de lo que anticipa es que el analista iba a bajar la cifra hacia la de Equifax, no que la persona declaró de más.
+  - Aun así es la evidencia que el negocio quiere darle al marco: «lo declarado está por encima de lo que su buró hace probable».
+
+**Recomendación.**
+- **Al predictor no entra nada**: ni tipos ni grupos como variable, ni modelos por grupo, ni calibración por grupo. `ingreso-v2` queda como está.
+- **Al marco, como evidencia y no como ingreso validado:**
+  1. El tipo de persona y la confiabilidad medida de su tipo (la tabla del punto 2).
+     - Para quien no tiene el RUC activo, la cobertura es «sin medir en aprobados».
+     - El formal lleva la advertencia de que el nivel 2 lo subestima.
+  2. La probabilidad de superar cada monto: la del nivel 1 tal cual, y la del nivel 2 con la isotónica por umbral (medida, no construida). En los dos casos, dicha como la probabilidad entre solicitantes.
+  3. Con el nivel 2, la señal de que lo declarado está por encima de lo probable (AUC 0,76 a 0,79). Con el nivel 1 no suma al declarado solo en todas: no se entrega.
+  4. Con el nivel 1, el grado por el ancho del rango (tres grados). Con el nivel 2, no.
+- **El dependiente con ingreso extra**: sin monto estimado y sin el modelo de independientes. Lo que corresponde decir es «sin indicios» o «con indicios; se valida con documentos». Cambia una fila de 3.5: la actualiza la sesión principal.
+
+**No se hizo ni se pudo medir.**
+- Las reglas de 3.5 que usan nómina, ISD, establecimientos o renta causada no se pudieron armar: AWS no los trae. El formal y el semiformal de este informe son aproximaciones con el obligado y la clase.
+- La confiabilidad en aprobados de quien no tiene RUC activo, y la de los informales y pensionistas: no están en la tabla de independientes.
+- Los rentistas son 84 en la prueba: sus intervalos son anchos.
+- El hueco del propio patrono de 3.5 (quien cobra por la nómina de una compañía suya) no se mide con estos datos.
+- La isotónica del nivel 2 está medida, no construida ni exportada.
+
 ## 13. Registro de verificación
 
 Censo 2022 (2026-10-17): página de datos, diccionarios de cantón, sector y manzana,

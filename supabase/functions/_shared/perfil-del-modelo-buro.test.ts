@@ -52,13 +52,14 @@ Deno.test("sin buró, el perfil del modelo es el de marco-v34, byte a byte", asy
   assertEquals(comoSeGuardo(mensajeParaElModelo(perfilDePrueba(), [], new Set(), null).perfilDelModelo), esperado.replace(/\r\n/g, "\n"));
 });
 
-Deno.test("el interruptor está encendido (negocio, 2026-11-04): todo análisis nuevo es marco-v35", () => {
+Deno.test("el interruptor está encendido (negocio, 2026-11-04): todo análisis nuevo es marco-v36", () => {
   assertEquals(CONFIG_LLM.buroDeLaInstitucion, true);
-  assertEquals(versionDelMarco(CONFIG_LLM), "marco-v35");
+  assertEquals(versionDelMarco(CONFIG_LLM), "marco-v36");
 });
 
 Deno.test("con el interruptor apagado, el pedido es el de v34 aunque llegue un buró", async () => {
-  assertEquals(versionDelMarco(APAGADO), "marco-v34");
+  // Desde v36 el interruptor no tiene versión propia (marco-interpretativo.ts).
+  assertEquals(versionDelMarco(APAGADO), "marco-v36");
   const hoy = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), APAGADO);
   const conUnBuro = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), APAGADO, buro());
   assertEquals(conUnBuro, hoy);
@@ -244,8 +245,8 @@ Deno.test("el empleador vigente en null y el RUC depurado están explicados en l
   }
 });
 
-Deno.test("encendido: v35, con la sección del buró sólo para quien lo tiene", () => {
-  assertEquals(versionDelMarco(ENCENDIDO), "marco-v35");
+Deno.test("encendido: v36, con la sección del buró sólo para quien lo tiene", () => {
+  assertEquals(versionDelMarco(ENCENDIDO), "marco-v36");
   const con = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, buro());
   const sin = armarPedidoScoring(perfilDePrueba(), sinBloqueo, new Set(), ENCENDIDO, null);
   assertEquals(sistema(con), marcoConElBuro(true));

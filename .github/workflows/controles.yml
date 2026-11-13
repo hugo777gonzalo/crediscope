@@ -76,10 +76,14 @@ jobs:
         with:
           node-version: 24
       # Los guiones no pasan por lint ni build: al menos que compilen.
-      - run: for f in scripts/*.mjs scripts/_comun/*.mjs scripts/lib/*.mjs scripts/revision-de-datos/*.mjs scripts/revision-del-analisis/*.mjs; do node --check "$f"; done
+      - run: for f in scripts/*.mjs scripts/_comun/*.mjs scripts/lib/*.mjs scripts/revision-de-datos/*.mjs scripts/revision-del-analisis/*.mjs scripts/banco-de-casos-de-oro/*.mjs; do node --check "$f"; done
       # El detector de eventos se prueba sin base, sin red y sin datos de
       # personas; las otras pruebas de scripts/ necesitan la base viva.
       - run: node scripts/probar-detector.mjs
+      # El formato del banco de casos de oro, que ninguna versión del marco o del
+      # modelo se despliega sin pasar (2026-11-11): un caso mal escrito, o un caso
+      # real con forma de cédula o de monto, no entra al repositorio público.
+      - run: node scripts/probar-banco-de-casos.mjs
 
   secretos:
     name: secretos
