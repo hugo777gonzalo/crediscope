@@ -33,10 +33,11 @@ su guía: `docs/equifax.md`.
     de esa misma persona se reutiliza en vez de volver a preguntar (E1).
   - La huella no cuenta `cache_control` ni `max_tokens`.
   - `puntuarPedido()` llama al modelo con un pedido ya armado.
-  `MARCO_VERSION` (marco-v34) es el texto sin buró; `MARCO_VERSION_CON_BURO`
-  (marco-v35, v34 más el buró) la enciende `CONFIG_LLM.buroDeLaInstitucion`,
-  encendido desde el 2026-11-04, y es lo único que ese interruptor enciende.
-  Encendido, todo análisis es v35, tenga o no la persona una consulta de Equifax.
+  Desde marco-v36 `MARCO_VERSION_CON_BURO` es `MARCO_VERSION`: el texto con
+  la sección de Equifax lo enciende `CONFIG_LLM.buroDeLaInstitucion` (desde el
+  2026-11-04), pero la versión es una sola, tenga o no la persona una consulta
+  de Equifax; lo que leyó cada análisis lo dice su `mensaje_al_modelo`.
+  Hasta v35 eran dos (v34 sin buró, v35 con él).
   **El análisis lee la última consulta de la persona, vigente o no** (negocio, 2026-11-09, p4):
   `ultimaConsultaDeEquifax()` (`buro-de-la-institucion.ts`) junta las filas de `consultas_equifax`
   y el índice por cédula de las consultas de AWS en Storage (`crudo-equifax-migrado.ts`), nunca
