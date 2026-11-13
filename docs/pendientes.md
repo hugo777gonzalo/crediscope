@@ -115,6 +115,31 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   fuentes; parece una caída de Proveedor_Info_1, sin confirmar. El 409 se probó en vivo con c-79e1ac23
   el 2026-10-31: quedó `client.analyze_frenado` y no se llamó al modelo.
 
+## Reestructuración del núcleo: ola 1 hecha (2026-11-13)
+
+La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tareas viven en un doc privado de Claude: https://claude.ai/artifact/AdZJBTAUAc5tNTkwVkKnCd (pestañas «Plan de ejecución» y «Contrato del análisis premium»). El informe visual de ejemplo está en https://claude.ai/artifact/AmiHUuoqFvFNYEXdsswLqA. El negocio la aprobó con ajustes el 2026-11-11 y aprobó la ola 1 el 2026-11-12.
+
+**Lo decidido (negocio, 2026-11-11):**
+- CrediScope es un analista con IA y entrega una recomendación; decide una persona de la institución. Seis salidas: Aprobación Directa, Aprobar, Cambio de Condiciones, Condicionado, Revisar y Negar.
+- Se diseña primero para la institución sin buró. Los datos de la institución son referencia cualitativa. El Laboratorio, el score estadístico y el lector de documentos quedan para después.
+- Un mal comportamiento de pago recomienda negar salvo atenuantes medibles: hoy al día, endeudamiento a la baja, 12 meses o más de estabilidad, ingreso al alza.
+
+**Lo medido en la ola 1 (2026-11-12 y 13):**
+- El proveedor sigue caído: en una consulta de prueba con una persona autorizada contestaron 7 de 52 fuentes y fallaron 15 de las 21 obligatorias. La consulta se guarda con que conteste una sola fuente, y el resumen de la persona toma el último perfil aunque sea peor que el anterior.
+- De 444 personas con recomendación: 96 aprobar, 322 revisar y 25 negar. De los 322 «revisar», 282 mencionan una deuda sin cuota informada y 195 un ingreso «Por confirmar» (conteo por palabras clave: es una cota).
+- Con una definición amplia, 166 de 435 personas tienen mal comportamiento de pago; 116 es sólo por una demanda de cobro, sin distinguir su antigüedad.
+- El PR 150 bajaría 92 de 95 aprobaciones a «revisar»: se recomienda cerrarlo y llevar la idea a la versión mayor del marco.
+- Cotas del ingreso contra 28.906 ingresos validados de la originación: la cuota pagada al día sobre una carga de 0,75 cubre el 94,5%; el cupo de tarjetas sirve poco; una de cada diez personas aprobadas y sin mora paga en cuotas más del 61% de su ingreso validado.
+- El lote de paridad no alcanza para mejorar el predictor sin buró: es todo de independientes y su crudo es posterior a los ingresos validados. Depende de la base grande pedida al proveedor.
+- El respaldo crudo de Equifax tiene 23.420 respuestas; 2.760 se bajaron el 2026-11-10, después de la orden de parar del 2026-11-06. Falta confirmarlo con el negocio.
+
+**PR abiertos de la ola 1 y qué esperan:**
+- #151, marco-v36 mínimo: revisado; espera marcarse listo y el sí a fusionar. Fusionarlo activa v36 y pide la migración 150 antes de desplegar (la secuencia está en su descripción).
+- #157 (control del crudo con crudos inventados), #158 (base imponible desde el impuesto a la renta) y #159 (banco de casos de oro, 25 casos): revisados, esperan el sí a fusionar.
+- #156, mediciones del predictor, ya con sus cuatro arreglos. El #155 no se fusiona como está: hay que rehacer la especificación con la escalera de evidencia, el nivel sin buró y las cotas.
+
+**Sigue (ola 2, con el sí a fusionar y desplegar v36):** el corredor del banco de casos, el despliegue de estructura-v21 con su recálculo, el diseño del estándar por institución, el de la capa de hechos y el de la escalera del ingreso.
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
@@ -561,6 +586,35 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
           - entrenar el nivel 2 con diciembre y enero si se prefieren los 0,3 puntos de agudeza.
         - **Falta para servir el nivel 2**: el selector de `estimar-ingreso` que lo use con una consulta de Equifax vigente (hoy sólo sirve
           el nivel 1) y una prueba con una persona autorizada.
+
+    14. **Tipos de persona y agrupaciones, medidos el 2026-11-10** (12.36; `scripts/predictor-ingresos/tipos_y_grupos.py`, agregados en
+        `metricas/tipos-y-grupos-2026-11.json`). Es el paso 1 del orden de trabajo de 3.5 de la especificación, sobre `ingreso-v2`.
+        - **Ninguna agrupación mejora el predictor.** Probadas: los tipos, k-medias, mezcla de gaussianas, Gower, un árbol sobre el error y
+          las hojas del modelo. Como variable, lo mejor es el tipo en el nivel 1 (+0,34%, la regla pedía 1%); un modelo por grupo pierde
+          siempre. La calibración por grupo no deja todos los grupos entre 88% y 92%: la única ya lo hace en el nivel 1, y calibrar por tipo
+          empeora (no se repite de un período al otro). **`ingreso-v2` queda como está.**
+        - **La confiabilidad por tipo, medida** (cobertura del mínimo en OK, nivel 1 / nivel 2): formal 89,1% / 98,3%; semiformal 91,0% /
+          90,0%; poco formal 88,7% / 92,5%. En el RUC no activo y el sin RUC no se puede medir: 26 casos OK de 1.363. Los rentistas (84 en
+          la prueba) van con el semiformal. El formal lo subestima el nivel 2 (niega de más 37%).
+        - **El extra del dependiente no se puede estimar** (AUC 0,62 con RUC activo, R² 0,01). El modelo de independientes aplicado a ese
+          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 que lo estima con el nivel 1 o 2 hay que cambiarla**: sin monto,
+          «con o sin indicios; se valida con documentos». La actualiza la sesión principal.
+        - **Límites de esta medición** (de la revisión):
+          - los tipos de persona se definen aquí con la clase del contribuyente y el obligado a llevar contabilidad que trae Equifax, no con las
+            reglas de la especificación: **sin buró esa clasificación no se puede armar**;
+          - el «rentista» se define por la composición de la etiqueta validada (arriendos la mitad o más de lo no verificado): sirve para medir,
+            y **no se reproduce en producción**;
+          - la probabilidad por umbral sale de cuantiles sin calibrar y la isotónica se ajusta con todas las respuestas, mientras el mínimo que se
+            sirve está corrido con OK FACTURAR: **la probabilidad y el «certifica al menos» pueden contradecirse**. Se midió así; el método no se
+            cambió.
+        - **Para el marco, medido**:
+          - la probabilidad de superar cada monto está bien calibrada en el nivel 1; en el nivel 2, en 2.000 sobreestima 5 puntos (ECE
+            0,052), y una isotónica por umbral la arregla (medida, no construida);
+          - «lo declarado está por encima de lo probable» anticipa que el validado baje: AUC 0,76 a 0,79 con el nivel 2. Con el nivel 1 no
+            suma al declarado solo;
+          - el ancho del rango sirve de grado de confiabilidad en el nivel 1 (tramo exacto o vecino de 78,8% a 61,5%), no en el 2.
+        - **Para decidir (negocio)**: qué de esto se le entrega al marco y con qué nombres. Y si se construye la isotónica del nivel 2
+          antes de entregarle la probabilidad.
 
     **Decisiones abiertas del negocio** (la destilación quedó medida con tres propósitos y no mejora la asertividad, punto 12; las de `ingreso-v2`, en el punto 13):
     las variables de la persona del nivel 2 (en `ingreso-v2` salieron: no se pueden servir); los nombres de pantalla; la base de 3,8 millones (pedido listo, punto 11); y `p42` y

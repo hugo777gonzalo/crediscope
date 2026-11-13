@@ -30,7 +30,8 @@
 // 144: las filas de marco-v32 y marco-v33. Sin ellas, todo análisis falla al guardarse
 //      por la clave foránea de analysis_results.rules_version.
 // 147: las filas de marco-v34 y marco-v35 (el RUC depurado para todas y el buró encendido).
-export const ESQUEMA_MINIMO = 148;
+// 150: la fila de marco-v36 (estructura-v21 explicada al modelo).
+export const ESQUEMA_MINIMO = 150;
 
 let verificada: number | null = null;
 
