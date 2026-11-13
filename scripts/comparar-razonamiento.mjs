@@ -171,7 +171,10 @@ if (!SOLO_EXCEL) {
       if (guardado && typeof guardado.perfilDelModelo === "string") guardado.perfilDelModelo = JSON.parse(guardado.perfilDelModelo);
       const motivo = !a ? `sin análisis de ${HOY_DE_LA_BASE} sobre su último perfil`
         : !(a.llm_model ?? "").startsWith(MODELO) ? "el análisis guardado es de otro modelo"
-        : otrasDiferencias(guardado, mensajeParaElModelo(p.standard_profile, p.control_bloqueo?.hallazgos ?? [], camposDeshabilitados)).length
+        // Con la fecha del análisis guardado, no la de hoy: desde marco-v36 cada demanda de
+        // cobro dice cuántos años tiene, y sin la fecha (o con la de hoy) salía una diferencia
+        // que el modelo no leyó.
+        : otrasDiferencias(guardado, mensajeParaElModelo(p.standard_profile, p.control_bloqueo?.hallazgos ?? [], camposDeshabilitados, null, new Date(a.created_at))).length
           ? "el mensaje cambió en algo más que lo esperado" : null;
       if (motivo) {
         saltados[motivo] = (saltados[motivo] ?? 0) + 1;

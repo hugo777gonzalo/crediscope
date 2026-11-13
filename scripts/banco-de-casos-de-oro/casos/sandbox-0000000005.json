@@ -1,0 +1,31 @@
+{
+  "formato": 1,
+  "id": "sandbox-0000000005",
+  "fuente": "sandbox_api",
+  "de_donde_sale": "Sandbox de la API: 0000000005 en supabase/functions/_shared/sandbox-casos.ts y el perfil inventado de sandbox-simuladores.ts.",
+  "tema": "La identificación no existe en la fuente: no hay perfil ni modelo.",
+  "perfil": {
+    "origen": "sandbox",
+    "identificacion": "0000000005",
+    "modalidad": "basico"
+  },
+  "buro_equifax": "no",
+  "flujo_esperado": "persona_no_encontrada",
+  "dictamen": [
+    "La fuente principal dice que la identificación no existe.",
+    "Se entrega persona_no_encontrada: no se arma un perfil en blanco ni se llama al modelo."
+  ],
+  "recomendacion_hoy": null,
+  "salida_version_mayor": null,
+  "afirmaciones": {
+    "automaticas": [],
+    "de_juicio": {
+      "debe": [
+        "La entrega dice persona_no_encontrada."
+      ],
+      "no_debe": [
+        "Que se arme un perfil vacío y se analice como alguien sin historial."
+      ]
+    }
+  }
+}

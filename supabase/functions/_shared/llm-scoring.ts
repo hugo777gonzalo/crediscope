@@ -399,6 +399,10 @@ export function armarPedidoScoring(
   camposDeshabilitados: Set<string>,
   config: ConfigRazonamiento = CONFIG_LLM,
   buro: BuroDeLaInstitucion | null = null,
+  // La fecha del análisis: con ella cada demanda de cobro dice cuántos años
+  // tiene (marco-v36). Cambia sólo con el año, así que la huella del pedido
+  // sigue sirviendo para reutilizar un análisis.
+  ahora: Date = new Date(),
 ): Record<string, unknown> {
   if (config.buroDeLaInstitucion && config.marcoPorCliente) {
     throw new Error("marcoPorCliente y buroDeLaInstitucion todavía no se combinan: las marcas del marco por cliente son del texto sin buró");
@@ -408,7 +412,7 @@ export function armarPedidoScoring(
   // 2026-09-15 no hubo UNA lectura. Escribirla cuesta 25% más que
   // mandarlo normal (~$0,008 por análisis tirados). En lote sí conviene
   // (config.cachearMarco, desde el 2026-10-03): los pedidos salen juntos.
-  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados, config.buroDeLaInstitucion ? buro : null);
+  const userPayload = mensajeParaElModelo(profile, controlBloqueo.hallazgos, camposDeshabilitados, config.buroDeLaInstitucion ? buro : null, ahora);
   const textoMarco = config.buroDeLaInstitucion
     ? marcoConElBuro("buroEquifax" in userPayload.perfilDelModelo)
     : config.marcoPorCliente
