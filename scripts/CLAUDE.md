@@ -74,6 +74,11 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   decisión de la institución ni el resultado de pago: en el piloto `capacidad.json` los traía y contaminó 3 de 12 dictámenes, y el guion ahora corta si una
   clave de las fases 2 o 3 aparece en la 1.
 
+- `scripts/banco-de-casos-de-oro/` (2026-11-11): un JSON por caso con el dictamen del jefe de crédito, la recomendación de hoy,
+  la salida de la versión mayor y lo que el análisis debe y no debe decir. Ninguna versión del marco, del perfil del modelo o del
+  modelo se despliega sin pasarlo. `probar-banco-de-casos.mjs` prueba el formato en el control `guiones`; el corredor contra el
+  modelo todavía no existe (su README dice qué necesita). Un caso real lleva sólo su referencia: el perfil se carga de la base.
+
 ## Predictor de ingresos
 
 - `scripts/predictor-ingresos/` es Python (entrenamiento, calibración, exportación y medición), no Node,
