@@ -1,0 +1,25 @@
+{
+  "descripcion": "Un quirografario del IESS en la base interna y en la fuente de préstamos con otro número y la concesión a 2 días: mismo monto, se sumaría dos veces",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tcredQuirografarios": [
+          { "numeroOperacion": "0000100", "fechaConsesion": "10/03/2025", "fechaFinCredito": "10/03/2030", "montoTransferido": 5000, "saldoTotalCredito": 4000, "diasMoraAfi": 0, "estadoOperacion": "VIGENTE" }
+        ]
+      }
+    },
+    "creditoQuirografario": {
+      "status": "ok",
+      "data": {
+        "prestamos": [
+          { "nroOperacion": "999999", "fechaConcesion": "12/03/2025", "valorPrestamo": 5000, "valorPorVencer": 4000, "valorVencido": 0, "estado": "VIGENTE" }
+        ]
+      }
+    }
+  },
+  "esperado": { "prestamo-biess-contado-dos-veces": "dispara" }
+}

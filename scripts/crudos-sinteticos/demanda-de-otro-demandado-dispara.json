@@ -1,0 +1,20 @@
+{
+  "descripcion": "Bloqueada por narcotráfico (guardado) pero la única demanda es contra otros procesados: el bloqueo vigente ya no la cuenta",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "demandas": {
+      "status": "ok",
+      "data": {
+        "demandas": [
+          { "demanda": { "delito": "TRÁFICO ILÍCITO DE SUSTANCIAS CATALOGADAS SUJETAS A FISCALIZACIÓN", "demandado": "INVENTADO UNO ALFA; INVENTADO DOS BETA", "fecha": "10/05/2024" } }
+        ]
+      }
+    }
+  },
+  "guardado": {
+    "bloqueo": { "bloqueado": true, "hallazgos": [{ "code": "delito_seguridad_ciudadana", "bloqueante": true }] }
+  },
+  "esperado": { "bloqueo-por-demanda-de-otro-demandado": "dispara" }
+}
