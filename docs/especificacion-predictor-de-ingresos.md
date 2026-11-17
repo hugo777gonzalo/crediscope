@@ -6,12 +6,13 @@ viven fuera de git (`research/ingresos-aws/` y `C:\datos\ingresos\`).
 
 ## 0. En una página
 
-**Qué hace.** Para una persona cuyo ingreso no lo verifica un tercero (independientes, jubilados, personas sin actividad formal e ingreso adicional de dependientes), devuelve un
+**Qué hace.** Para una persona cuyo ingreso no lo verifica un tercero (independientes, jubilados y personas sin actividad formal; el ingreso adicional de un dependiente queda como indicio, sin monto, 3.5), devuelve un
 **ingreso mínimo certificado** (el monto que el ingreso real supera con 90% o 85% de seguridad), la **probabilidad de cada tramo** y un valor central. El ingreso que sí verifica un tercero
 (el salario que reporta el IESS) se muestra aparte, tal cual, y no se estima.
 
 **Para todos, por tipo de persona** (negocio, 2026-11-09; **decidido y todavía no construido**, sección 3.5): el predictor tiene que llegar a una estimación para cada tipo (dependiente con o sin ingreso extra, independiente formal, semiformal y poco formal, rentista, pensionista e informal)
-y decir qué tan confiable es en cada uno. La estimación no decide sola: el ingreso se valida después del análisis. Hoy el código sigue el selector de 3.2, que estima sólo a los independientes, juntos.
+y decir qué tan confiable es en cada uno. **La confiabilidad es el peldaño de la escalera de evidencia del ingreso** (negocio, 2026-11-13; `docs/escalera-del-ingreso.md`, PR 164): seis peldaños, del sueldo reportado al IESS a la referencia del tipo de persona, y **el predictor es el peldaño 4, el mínimo certificado**.
+La estimación no decide sola: el ingreso se valida después del análisis. Hoy el código sigue el selector de 3.2, que estima sólo a los independientes, juntos.
 
 **Lo que garantiza y lo que no.** La seguridad del mínimo se midió contra el ingreso calculado de personas que pidieron crédito **automotriz** (AWS: el 96%; solo 68 de 57.061 son de consumo): el real lo supera el 89% de las veces con el mínimo del 90%.
 **No hay calibración por producto** (negocio, 2026-10-28): el crédito automotriz y el de consumo son el mismo, y lo comparable es el valor financiado (12.27).
@@ -19,6 +20,7 @@ y decir qué tan confiable es en cada uno. La estimación no decide sola: el ing
 solo donde el ingreso es verificable, y para lo estimado se promete un mínimo.
 
 **Tres niveles según los datos que haya** (decisión del negocio del 2026-10-21): verificado (IESS), estimado con Proveedor_Info_1, y estimado con Proveedor_Info_1 y buró.
+Entre los dos estimados se propone **un nivel intermedio sin buró** (deuda y calificación en bancos y cooperativas, vehículos, empleados, establecimientos), para la institución sin buró: no hay con qué entrenarlo hasta que llegue la base del proveedor (3.6).
 **No se pide patrimonio, ni gastos, ni entrada** (decisión del 2026-10-22): el patrimonio es de otro análisis, a cargo de un analista, y el crédito de consumo no tiene entrada (4.3). Más dos referencias que no son una estimación de la persona:
 la pensión por tipo de afiliación y la distribución nacional de su tipo.
 
@@ -45,13 +47,15 @@ la pensión por tipo de afiliación y la distribución nacional de su tipo.
 | 2026-10-30 | **Cómo se sirve el nivel 1.** El modelo vive en un depósito privado de cada base, con una fila por modelo. La estimación usa la fecha de la consulta, no la de hoy, y una consulta de más de 90 días se estima igual, con un aviso. Sigue el selector de 3.2: dependientes, sólo lo verificado; jubilados, sin estimación hasta tener la tabla de pensiones. Arranca sin calibrar. El rótulo es «Referencia de solicitantes» hasta un mínimo de USD 1.000 inclusive. |
 | 2026-11-06 | **`ingreso-v2` calibra los dos niveles con OK FACTURAR y condicionado** (12.34), aunque en el nivel 1 el «alcanza» por error de la capacidad de pago suba a 1,2%, arriba de la meta propuesta de 1%. Se entrena como hoy, con todas las respuestas y sin pesos. La destilación (alerta con un alumno del predictor de Equifax y etiquetar con él lo que no tiene ingreso validado) se midió y no entra. |
 | 2026-11-09 | **Una estimación para todos, por tipo de persona, con su confiabilidad** (3.5). El ingreso del IESS vale como ingreso sólo cuando lo reporta un empleador que es un tercero: la afiliación voluntaria, la empresa unipersonal y el aporte por cuenta propia no lo validan. Un dependiente puede tener ingresos extra: el del IESS no es todo su ingreso. Los tipos: dependiente (con o sin ingreso extra), independiente formal, semiformal y poco formal, rentista, pensionista (jubilados y quien recibe una pensión alimenticia) e informal. La estimación no decide sola: el ingreso se valida después del análisis, sobre todo en los independientes. **Cambia la del 2026-10-30** (dependientes, sólo lo verificado; jubilados, sin estimación). Los tramos de carga máxima por perfil y la aprobación con ingreso validado no son del predictor: van en la capacidad de pago y el marco. |
+| 2026-11-11 | **Primero sin buró** (reestructuración del núcleo): se diseña primero para la institución sin buró; los datos de la institución son referencia cualitativa y no entran al ingreso; el lector de documentos queda para después. Para el predictor, lo que más importa es lo que se sirve sin buró (el nivel 1 y el intermedio de 3.6), y mejorarlo depende de la base del proveedor: el lote de paridad sólo sirve para medir. **La destilación del predictor de Equifax queda cerrada**: medida el 2026-11-06 con tres propósitos (12.34), no mejora la asertividad. |
+| 2026-11-13 | **La escalera de evidencia del ingreso** (`docs/escalera-del-ingreso.md`): seis peldaños, que no se suman. El predictor es el peldaño 4 (mínimo certificado); un mínimo de USD 1.000 o menos baja al 6 (referencia del tipo de persona). Las cotas que nombró el negocio (la cuota pagada al día y, con buró, el cupo de tarjetas) son del peldaño 3: evidencia, no entradas del predictor (3.5). Reemplaza los cuatro grados de confiabilidad que proponía 3.5. |
 | 2026-10-26 | Las rentabilidades por giro que dio el negocio eran aproximadas: son valores genéricos que no nacen de una metodología válida. No son entrada; la garantía aguanta que estén infladas hasta un 30% (12.27). |
 | 2026-10-21 | El resultado es un tramo con probabilidad y un valor central con rango. Los tramos del tramo alto: 2.000 a 2.999, 3.000 a 4.999 y 5.000 o más. |
 | 2026-10-21 | El predictor de Equifax es solo contraste, no entrada. La cuota financiera de Equifax es la pista principal. No se usan los límites de cuota por institución (se incumplen por excepción). |
-| 2026-10-21 | AWS es el piloto y se reentrena con los 3,9 millones del proveedor cuando lleguen. Se entrena con todas las respuestas comerciales y se mide con OK FACTURAR (con condicionado), que cuenta como verdad: lo declarado lo valida el analista con documentos. |
+| 2026-10-21 | AWS es el piloto y se reentrena con los 3,8 millones del proveedor cuando lleguen. Se entrena con todas las respuestas comerciales y se mide con OK FACTURAR (con condicionado), que cuenta como verdad: lo declarado lo valida el analista con documentos. |
 | 2026-10-21 | ±10% del monto solo donde el ingreso es verificable; para lo estimado, **mínimo certificado más rango**, y el monto exacto se confirma con documentos. |
 | 2026-10-21 | Se muestra siempre un valor mínimo, **no menor a la mitad del salario básico**: es improbable que quien gana menos pida un crédito. Aval no tiene consultas con ingreso calculado: la versión con buró es solo Equifax. |
-| 2026-10-21 | La base de 3,9 millones no trae el monto de la pensión: los jubilados quedan como estimados. |
+| 2026-10-21 | La base de 3,8 millones no trae el monto de la pensión: los jubilados quedan como estimados. |
 | 2026-10-21 | Los dos primeros tramos siguen al salario básico del año; los demás son dólares fijos. Se autorizó leer el catálogo CIIU de AWS y se abrirá un PR con la investigación y esta especificación, sin fusionar hasta que lo pida el negocio. |
 
 ## 2. Qué devuelve
@@ -109,8 +113,8 @@ Los números del ejemplo son inventados.
 6. **Una variable sin dato no corta la estimación**: baja la precisión y se dice en `calidad`. Una persona sin consulta de buró no usa el nivel 2.
 7. **La estimación es a la fecha de la consulta** (`consultadoEl`): la edad, `anio_mes`, la antigüedad del RUC y el salario básico de los tramos son de ese día, no de hoy, y el mismo perfil con el mismo modelo da siempre lo mismo. Pasados 90 días la respuesta lo avisa (decisión del 2026-10-30).
 8. **Sin estimación, `estimado` trae `aplica: false` y `motivo`** (`ingreso_verificado`, `jubilado`, `dependiente_sin_monto` o `sin_datos`), e `id`, `version` y `modelo` van en `null`: no se evaluó el modelo y no queda fila. `nivel` es 0 con lo verificado y `null` si no hay ni verificado ni estimado.
-9. **Decidido el 2026-11-09 y todavía no construido: la respuesta dice el tipo de persona y la confiabilidad de lo que entrega** (3.5). Con eso la regla 1 cambia para el dependiente: trae `verificado` y, si hay rastro formal de otro ingreso, también `estimado`, que sigue sin sumarse a lo verificado.
-   Y `motivo: jubilado` deja de existir cuando esté la tabla de pensiones (3.3).
+9. **Decidido el 2026-11-09 y todavía no construido: la respuesta dice el tipo de persona y el peldaño de la escalera del ingreso de lo que entrega** (3.5; `docs/escalera-del-ingreso.md`): lo verificado es el peldaño 1, el mínimo certificado el 4 y las referencias el 6; un mínimo de USD 1.000 o menos baja al 6.
+   El dependiente sigue con la regla 1 (`verificado` y `estimado.aplica: false`): un rastro formal de otro ingreso se dice como indicio, sin monto (12.36). Y `motivo: jubilado` deja de existir cuando esté la tabla de pensiones (3.3).
 
 ### 2.3 El neto de lo verificado
 
@@ -180,25 +184,45 @@ El negocio pidió una estimación para todos, por tipo de persona, y que cada un
 **Un hueco, sin medir**: al propio patrono se lo reconoce por el RUC de persona natural o por el nombre. Quien cobra por la nómina de una compañía suya, con otro RUC, hoy pasa como dependiente verificado; la fuente `administraciones` (con dato en 32 personas de la cartera) es por donde se mediría.
 
 **Lo que choca con lo medido.** El ingreso extra de un dependiente no se puede predecir con estos datos (12.14): AUC de 0,72 para saber si lo tiene, R² de 0,11 para el monto (error mediano de 47%), y sumarlo sólo sube el acierto del tramo de 85,7% a 86,1%.
-En AWS lo declara el 24,7% de los dependientes; en el país tiene algún ingreso adicional el 6,9% (ENIGHUR), con medianas chicas (un arriendo, 150; otra ocupación, 64). Por eso el extra se estima sólo donde deja rastro, y sin rastro la respuesta lo dice.
+En AWS lo declara el 24,7% de los dependientes; en el país tiene algún ingreso adicional el 6,9% (ENIGHUR), con medianas chicas (un arriendo, 150; otra ocupación, 64).
+**Medido otra vez el 2026-11-10, ahora con el SRI** (12.36): AUC de 0,62 en quienes tienen RUC activo y R² de 0,01 para el monto; el modelo de independientes aplicado a ese extra cubre entre 16% y 23% (da un mínimo del doble).
+Por eso el extra **no se estima, ni aun con rastro formal**: el rastro se dice como indicio, sin monto, y el extra lo prueban la renta causada (peldaño 3 de la escalera) o un documento (peldaño 2).
 
-**Los tipos, qué recibe cada uno y con qué confiabilidad.** La cartera se midió el 2026-11-09: 3.766 personas con perfil, sin las sintéticas (`resumen_por_persona`, por `fuente_segmento`).
+**Los tipos, qué recibe cada uno y en qué peldaño.** La cartera se midió el 2026-11-09: 3.766 personas con perfil, sin las sintéticas (`resumen_por_persona`, por `fuente_segmento`). La cobertura es la del mínimo en OK FACTURAR y condicionado, nivel 1 / nivel 2, hacia adelante y con `ingreso-v2` (12.36), medida con la clase del contribuyente de Equifax.
 
-| Tipo | Cómo se reconoce | En cartera | Qué recibe | Confiabilidad |
+| Tipo | Cómo se reconoce | En cartera | Qué recibe | Peldaño y confiabilidad |
 |---|---|---|---|---|
-| Dependiente | Segmentos `publico`, `diplomatico`, `dependiente_privado` y `empleo_domestico`: un tercero reporta el sueldo | 1.339 | El salario del IESS y su neto, como hoy | Verificado por un tercero |
-| Dependiente con ingreso extra | El anterior con rastro formal de otra actividad: RUC activo con un establecimiento abierto, o un indicio de `indiciosDeIngresoMayor()` (nómina que paga, obligado a llevar contabilidad o impuesto a la renta que el sueldo no explica) | 100 con algún indicio; con RUC activo, sin contar | Lo verificado y, aparte, la estimación de lo no verificado con el nivel 1 o 2. **Sin rastro, ningún monto**: «sin indicios de otro ingreso; se valida con documentos» | La del nivel usado. **Sin medir en dependientes**: el modelo se entrenó con independientes |
-| Independiente formal | RUC activo y al menos uno de: obligado a llevar contabilidad, nómina que paga, ISD, más de un establecimiento abierto (regla propuesta) | 1.941 los tres, sin separar | Mínimo certificado, tramos y valor central, nivel 1 o 2 | La del nivel usado (3.1 y 12.34). **Por tipo de independiente, sin medir**; los obligados a llevar contabilidad cubren más (91,7% y 94,4%, 12.26) |
-| Independiente semiformal | RUC activo con renta causada y sin lo anterior (regla propuesta) | | Lo mismo | Sin medir |
-| Independiente poco formal | RUC sin nada de lo anterior, régimen RIMPE o RISE, o aporte artesanal (regla propuesta) | | Lo mismo | Sin medir. Quien no tiene RUC cubre menos (87,4% y 83,1%, 12.26) |
-| Rentista | No existe como segmento. Propuesta: actividad de alquiler en los establecimientos, o inmuebles o inversiones sin otra actividad | No se distingue | Hoy cae como independiente o informal | Sin medir |
-| Pensionista | Segmentos `jubilado` y `jubilado_con_ingreso_adicional` (IESS, ISSFA, ISSPOL). Quien recibe una pensión alimenticia no se reconoce: la fuente se lee del lado de quien la debe | 262 | La pensión por tipo de afiliación (3.3) | Referencia: es lo normal en su tipo, no una estimación de la persona |
-| Informal | Segmento `informal_o_sin_actividad` | 80 | La referencia nacional de su tipo (3.4), con «requiere validación en campo» | Referencia. El modelo no está probado sin RUC ni aporte, y AWS casi no tiene ingresos bajos (sección 8) |
+| Dependiente | Segmentos `publico`, `diplomatico`, `dependiente_privado` y `empleo_domestico`: un tercero reporta el sueldo | 1.339 | El salario del IESS y su neto, como hoy | Peldaño 1, verificado por un tercero |
+| Dependiente con ingreso extra | El anterior con rastro formal de otra actividad: RUC activo con un establecimiento abierto, o un indicio de `indiciosDeIngresoMayor()` (nómina que paga, obligado a llevar contabilidad o impuesto a la renta que el sueldo no explica) | 100 con algún indicio; con RUC activo, sin contar | Lo verificado y el indicio, **sin monto**: «con indicios de otro ingreso; se valida con documentos» (o «sin indicios») | Peldaño 1 para el sueldo. El extra no tiene peldaño 4: no se puede estimar (12.36) |
+| Independiente formal | RUC activo y obligado a llevar contabilidad | 1.941 los tres, sin separar | Mínimo certificado, tramos y valor central, nivel 1 o 2 | Peldaño 4 (6 con un mínimo de USD 1.000 o menos). 89,1% / 98,3%; el nivel 2 lo subestima (niega de más 37%) |
+| Independiente semiformal | Sólo con buró: RUC activo, no obligado y régimen general. Sin buró no se separa del poco formal: «RUC activo no obligado» | | Lo mismo | Peldaño 4 o 6. 91,0% / 90,0% |
+| Independiente poco formal | Sólo con buró: RUC activo en RIMPE | | Lo mismo | Peldaño 4 o 6. 88,7% / 92,5%. El RUC no activo y el sin RUC, que por ahora van acá, no se pueden medir: 26 casos OK de 1.363 |
+| Rentista | No existe como segmento. 12.36 lo definió por la composición del ingreso validado (arriendos la mitad o más), que en producción no se ve. Propuesta: RUC con actividad de arriendo | No se distingue | Como el semiformal | Peldaño 4 o 6. Medido junto con el semiformal: 91,0% / 90,1% (84 rentistas) |
+| Pensionista | Segmentos `jubilado` y `jubilado_con_ingreso_adicional` (IESS, ISSFA, ISSPOL). Quien recibe una pensión alimenticia no se reconoce: la fuente se lee del lado de quien la debe | 262 | La pensión por tipo de afiliación (3.3) | Peldaño 1 sin monto (la fuente no da la pensión) y peldaño 6: lo normal en su tipo, no una estimación de la persona |
+| Informal | Segmento `informal_o_sin_actividad` | 80 | La referencia nacional de su tipo (3.4), con «requiere validación en campo» | Peldaño 6. El modelo no está probado sin RUC ni aporte, y AWS casi no tiene ingresos bajos (sección 8) |
 
 Quedan 104 personas `sin_datos` o `no_clasificado`, que no se estiman: es la ausencia de la consulta. Y 40 que hoy se estiman como independientes (24 `ingresos_mixtos`, 13 `agricola` y 3 `trabajo_hogar`): a qué tipo va cada segmento se decide con la medición del paso 1.
 «Con dato» en las tablas de esta sección quiere decir que la fuente trajo algo en el último perfil de la persona (`estado_por_fuente` en `ok`).
 
-**Los grados de confiabilidad** (propuesta; los nombres los decide el negocio): **verificado por un tercero** (sueldo del IESS), **estimado con buró** (nivel 2), **estimado sin buró** (nivel 1) y **referencia** (pensión por afiliación o distribución nacional). Cada grado lleva la cobertura medida de su mínimo y no una palabra suelta.
+**La confiabilidad es el peldaño de la escalera** (negocio, 2026-11-13; `docs/escalera-del-ingreso.md`, que dice la fuente, la regla y el monto de cada uno). Reemplaza los cuatro grados que proponía esta sección. Del más fuerte al más débil:
+1. **verificado por un tercero** (el sueldo reportado al IESS por un empleador, neto del aporte personal);
+2. **verificado con documento**;
+3. **cota por crédito otorgado** (lo que la persona ya demostró pagando);
+4. **mínimo certificado**: el de este predictor, en el nivel que se haya usado, con la cobertura medida de su tipo;
+5. **declarado**;
+6. **referencia del tipo de persona**: la pensión por afiliación (3.3), la distribución nacional (3.4) o el mínimo del predictor cuando no pasa de USD 1.000.
+
+Los peldaños no se suman: cada uno es otra lectura del mismo ingreso. El predictor entrega el 4 (o el 6) y nada más; con qué peldaño alcanza la capacidad lo decide la escalera.
+
+**Las cotas del negocio son peldaño 3, no entradas del predictor.** La cuota pagada al día sobre una carga de 0,75 (cubre el 94,5% de 28.906 ingresos validados de la originación, aprobados ya filtrados) y, sólo con buró, el cupo de tarjetas sobre 19 (de apoyo) prueban un mínimo del ingreso y sirven de evidencia contra lo declarado.
+No entran al modelo como variables ni corrigen su mínimo: el nivel 2 ya lee las cuotas de Equifax, y la cota es otra lectura del mismo dato que la escalera combina por máximo con las demás. **La cuota más el gasto básico del hogar no entra**, ni como cota: su mejora viene del monto fijo y funciona sólo porque la población medida ya pasó un filtro de ingreso.
+
+**Las reglas de los tres independientes, con lo que trae Proveedor_Info_1.** La clase del contribuyente (régimen general o RIMPE) **sólo llega por Equifax**, así que sin buró las reglas son:
+- **formal**: RUC activo y obligado a llevar contabilidad. El obligado de Proveedor_Info_1 coincide con el de Equifax en 56 de 56 (medido el 2026-11-13);
+- **RUC activo no obligado**: semiformal y poco formal juntos. La mejor regla con datos de Proveedor_Info_1 para separarlos (el RUC con inicio antes de 2022) acierta el 66% contra un 48% de base, con 56 casos: **no alcanza**;
+- **RUC no activo** y **sin RUC**, aparte.
+
+Con la consulta de Equifax se separan por la clase, como en 12.36. La regla anterior de esta sección (obligado, o nómina que paga, ISD o más de un establecimiento) no se pudo medir: AWS no trae esos datos. Falta verificar si `contribuyente` de Proveedor_Info_1 trae el régimen.
 
 **Qué datos faltan en cada tipo y si existen en alguna fuente.**
 
@@ -212,12 +236,32 @@ Quedan 104 personas `sin_datos` o `no_clasificado`, que no se estiman: es la aus
 | Informal | Vehículos, y deudas si tiene crédito | Todo lo demás | En ninguna: visita, cuentas o el Ingreso declarado, que la capacidad de pago ya admite como «sin verificar» |
 
 **Orden de trabajo.**
-1. Medir la confiabilidad por tipo con los datos locales, sin costo: los tres tipos de independiente con el SRI de Equifax de AWS (obligado, clase y CIIU), los flujos de AWS marcados como arriendos, y el extra del dependiente otra vez, ahora con el SRI. De ahí sale si las reglas propuestas separan grupos que el modelo estima distinto; si no, se dicen juntos.
+1. ~~Medir la confiabilidad por tipo con los datos locales~~: **hecho el 2026-11-10** (12.36). Ninguna agrupación mejora el predictor y `ingreso-v2` queda como está; las coberturas por tipo están en la tabla de arriba; el extra del dependiente no se estima.
 2. Construir la tabla de pensiones (3.3) con el mapeo oficial.
-3. Llevar el tipo y la confiabilidad a la respuesta (2.2, regla 9) y reemplazar el selector de 3.2.
-4. Después, la capacidad de pago y la pantalla.
+3. Llevar el tipo y el peldaño a la respuesta (2.2, regla 9) y reemplazar el selector de 3.2, junto con la escalera (pasos 1 y 5 de `docs/escalera-del-ingreso.md`).
+4. Después, la capacidad de pago y la pantalla, por la escalera.
+5. El nivel intermedio sin buró (3.6), cuando llegue la base del proveedor.
 
 La base del IESS del proveedor (12.33) sigue siendo la que trae a la población general: sin ella, el informal y los ingresos bajos quedan en referencia.
+
+### 3.6 Nivel intermedio sin buró (propuesta; sin datos para entrenarlo)
+
+Entre el nivel 1 (edad, sexo y SRI) y el 2 (con Equifax) cabe un nivel con lo que Proveedor_Info_1 ya trae y el nivel 1 no usa, para la institución sin buró, que es la que se diseña primero (decisión del 2026-11-11):
+- la deuda y la calificación en bancos y cooperativas;
+- la cuota de las cooperativas (`comportamientoCooperativas.cuotaMensualTotal`; de los bancos la fuente no trae la cuota, sólo el saldo);
+- el valor de los vehículos (4.1);
+- los empleados (la nómina que paga);
+- los establecimientos.
+
+El estado civil y las cargas familiares quedan **abiertos a medición**: el negocio dijo que pueden usarse si mejoran la precisión. Salieron del nivel 1 el 2026-10-29 porque no sumaban sobre la edad y el sexo (4.1).
+
+**El freno: no hay con qué entrenarlo.** AWS no guarda la respuesta de Proveedor_Info_1, y el único cruce es el lote de paridad (12.29), que **sólo sirve para medir**: es todo de independientes y su crudo es posterior al ingreso validado, así que la deuda o los establecimientos de hoy pueden ser consecuencia del ingreso que se quiere predecir.
+El nivel se entrena cuando llegue la base del proveedor (unos 3,8 millones de personas, con el historial de deudas por operación; pedido listo, 12.33). Hasta entonces, lo que se sirve sin buró es el nivel 1.
+
+**Lo medido el 2026-11-13 sobre el lote de paridad** (ola 1 de la reestructuración; para decidir qué pedir, no para servir):
+- Una escala de formalidad ordena el ingreso, pero su percentil 10 queda cerca de USD 900 salvo con nómina (USD 1.200): no sube el mínimo.
+- El buró de bancos y los establecimientos suben el R² de 0,15 a 0,34, con **contaminación probable**: los datos del proveedor son posteriores al ingreso.
+- Los vehículos, el IESS, los hijos y el cónyuge no alcanzan. El estado civil y las cargas familiares suman +0,02 de R², con un intervalo que toca el cero.
 
 ## 4. Variables y de dónde salen en CrediScope
 
@@ -238,7 +282,7 @@ Desde el 2026-10-29 el nivel 1 lleva solo la edad, el sexo, la fecha de la consu
 
 **El SRI entra; la actividad y la antigüedad de AWS no.** En AWS salen del flujo de ingreso (declaradas o escritas por el analista), no del SRI: cotejadas con lo que trae Equifax del SRI, la **sección coincide en el 58%** de 1.368 casos y la **fecha de inicio es idéntica en el 19%** (12.23).
 Se extrajo el SRI de las respuestas de Equifax guardadas en AWS (12.24) y **suma el doble de lo previsto**: con lo que Proveedor_Info_1 da, el R² del nivel 1 pasa de 0,091 a 0,172 en 21.260 independientes de 2026, y se sostiene entrenando hasta junio y midiendo de julio a octubre (de 0,097 a 0,187).
-Es más que la actividad y la antigüedad declaradas de AWS (0,146 sobre los mismos casos). El SRI **solo existe en las respuestas JSON de Equifax** (desde diciembre de 2025): el modelo con SRI se entrena con 2026 hasta que lleguen los 3,9 millones.
+Es más que la actividad y la antigüedad declaradas de AWS (0,146 sobre los mismos casos). El SRI **solo existe en las respuestas JSON de Equifax** (desde diciembre de 2025): el modelo con SRI se entrena con 2026 hasta que lleguen los 3,8 millones.
 
 **Qué da Proveedor_Info_1 del SRI y qué no.** `datosContribuyente` trae el RUC, la fecha de inicio, el cese, el reinicio, la suspensión definitiva y `obligado`; los establecimientos traen la actividad como texto (`act_economica`). **No trae el CIIU ni la clase del contribuyente** (RIMPE u otros),
 que solo vienen de Equifax. Sumarlos al nivel 1 daría 0,020 más de R² y al nivel 2 apenas 0,003, así que el nivel 1 no los usa. Falta medir si el texto de la actividad de los establecimientos de Proveedor_Info_1 se puede llevar a un CIIU (sección 10).
@@ -250,7 +294,7 @@ El estado de Proveedor_Info_1 se lleva a «activo» si es `activa_*` y a «suspe
 El 87,3% de los independientes de AWS tiene RUC: quien no lo tiene es la minoría que igual pidió crédito. Para quien no tiene RUC ni aporte al IESS el modelo no está probado (sección 8).
 
 **Variable posible, sin entrenar: el valor de los vehículos de la persona.** Proveedor_Info_1 lo trae (el modelo de score lo lee como colateral) y podría decir algo del ingreso. No hay dato de entrenamiento: AWS no guarda la respuesta de Proveedor_Info_1, y lo que guarda de vehículos es el vehículo que se financia.
-Probarla exige reconsultar a Proveedor_Info_1 una muestra de personas de AWS: la de 12.29 dejó 542 con respuesta completa (de 2023 a 2025), pero esta variable no se probó.
+Probarla exige reconsultar a Proveedor_Info_1 una muestra de personas de AWS: la de 12.29 dejó 542 con respuesta completa (de 2023 a 2025). Medida el 2026-11-13 sobre ese lote, no alcanza (3.6).
 
 ### 4.2 Nivel 2: buró de Equifax
 
@@ -359,7 +403,7 @@ Lo que se mide cada mes, con los casos en que después aparece un ingreso verifi
 | Personas con variables sin dato | las del entrenamiento | sube más de 10 puntos |
 | Cobertura por institución y por producto | igual que la general | difiere en más de 8 puntos |
 
-**Disparadores de reentrenamiento**: cada trimestre; al llegar los 3,9 millones del proveedor; al cambiar el salario básico (cada año: la fecha entra como variable y los tramos de 470 y 940 se mueven); al cambiar una institución o un producto; o ante cualquiera de las alertas de arriba.
+**Disparadores de reentrenamiento**: cada trimestre; al llegar los 3,8 millones del proveedor; al cambiar el salario básico (cada año: la fecha entra como variable y los tramos de 470 y 940 se mueven); al cambiar una institución o un producto; o ante cualquiera de las alertas de arriba.
 **Un modelo nuevo no pasa a vigente sin compararlo con el vigente sobre los mismos casos** y sin su fila. Cualquier cambio en la respuesta de Equifax (una versión nueva de `EQUIFAX_TABLAS_VERSION`) vuelve a correr la prueba de paridad de la sección 9. La fecha como variable hace que el modelo no
 extrapole: más allá del último mes entrenado se comporta como en ese mes.
 
@@ -369,7 +413,7 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 2. **Está calibrado con solicitantes de AWS**, que en su 96% piden crédito automotriz (54.906 de 57.061 independientes; 68 son de consumo). Para el negocio el automotriz y el de consumo son lo mismo (12.27), así que no se rotula por producto; para una institución de microcrédito o cooperativa, sin calibrar, la cobertura no está medida.
 3. **La etiqueta no es verdad absoluta**: el ingreso calculado se hizo después de ver el predictor de Equifax, se edita (en el 75% de los OK FACTURAR) y en los rechazos baja (razón de 0,46). El mismo cálculo repetido cae en el mismo tramo el 88% de las veces.
 4. **Con Proveedor_Info_1 solo la persona se distingue poco de la población** (R² de 0,157 con la edad, el sexo y su SRI; sin el SRI, con el nivel anterior, 0,091). Sin el «obligado a llevar contabilidad», que el perfil todavía no guarda, no certifica «al menos 2.000» a nadie (12.30).
-5. **No estima el ingreso adicional de un dependiente** ni el de un jubilado más allá de la referencia por afiliación. Con la decisión del 2026-11-09 (3.5) el extra de un dependiente se estima sólo donde deja rastro formal, y esa estimación no está medida en dependientes; sin rastro no hay monto, porque no se puede predecir (12.14).
+5. **No estima el ingreso adicional de un dependiente, ni aun con rastro formal**, ni el de un jubilado más allá de la referencia por afiliación. Medido con el SRI (12.36): AUC de 0,62 con RUC activo y R² de 0,01 para el monto (antes, 12.14: 0,72 y 0,11). El rastro se dice como indicio, sin monto, y el extra lo prueban la renta causada o un documento (peldaños 3 y 2 de la escalera).
 6. **Los ingresos bajos no se pueden certificar** con este modelo: AWS casi no los tiene. El 0,56% de los solicitantes ganan menos de medio salario básico. Por eso al informal se le entrega una referencia de su tipo y no una estimación (3.5).
 7. Aval, sin consultas con ingreso calculado, usa el nivel 1.
 8. **El SRI solo existe en las respuestas JSON de Equifax (desde diciembre de 2025)**: el modelo con SRI se entrena con 2026 (21.260 independientes) y no se probó con quien no tiene RUC ni aporte al IESS (el 87% de los independientes de AWS tiene RUC).
@@ -378,7 +422,8 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
    Contra la respuesta cruda de Equifax (17.354 consultas, sin cruzar identificaciones): la edad coincide (fecha de nacimiento idéntica en el 88,8% y a un año en el 99,9%) y la zona no (provincia de domicilio 88,5%, cantón 75,2%; de trabajo, 80,0% y 70,0%); el sexo y el estado civil no se pudieron medir contra Equifax (solo trae 563 de 20.000 y ninguna está en el extracto), y AWS los tiene completos (12.27).
    Con la medida (12.29) el negocio decidió el 2026-10-29 el nivel 1 con la edad, el sexo y el SRI, sin estado civil, zona ni IESS; el modelo exportado ya es ese (12.30). La prueba en sombra con el perfil de CrediScope de 532 de esas personas cubre lo mismo que la prueba hacia adelante en AWS (89,1%).
 10. **No está medido con el ingreso verificado de otra institución** (12.27). Por producto no hace falta medir: automotriz y consumo son lo mismo para el negocio.
-11. **La confiabilidad por tipo de persona no está medida** (3.5): lo medido es de los independientes juntos. Tampoco hay datos, en ninguna fuente, del IVA o las ventas, del monto de un arriendo ni del de una pensión.
+11. **La confiabilidad por tipo de persona se midió con la clase del contribuyente de Equifax** (12.36): sin buró, el semiformal y el poco formal no se separan; el RUC no activo y el sin RUC no se pueden medir (26 casos OK de 1.363); y el rentista se definió por la composición del ingreso validado, que en producción no se ve. Tampoco hay datos, en ninguna fuente, del IVA o las ventas, del monto de un arriendo ni del de una pensión.
+12. **Sin buró, el predictor no mejora con lo que hay.** El nivel intermedio (3.6) no tiene con qué entrenarse hasta que llegue la base del proveedor: el lote de paridad es posterior al ingreso validado y sólo sirve para medir.
 
 ## 9. Pruebas de aceptación
 
@@ -422,8 +467,8 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 9. **Prueba en sombra del nivel 1** (12.30; `node scripts/sombra-predictor-ingresos.mjs` y `scripts/predictor-ingresos/medir_sombra.py`): las personas de AWS reconsultadas en Proveedor_Info_1, con las variables armadas desde su perfil de CrediScope y evaluadas con `predictor-ingresos.ts`, contra su ingreso validado.
    Medida el 2026-10-29 con 532: el real supera el mínimo del 90% el 89,1% (86,5 a 91,7) y el del 85%, el 85,0%; hacia adelante en AWS, 89,1% y 84,8%. Se repite al completar el lote y con cada modelo nuevo del nivel 1, y no debería quedar más de dos puntos por debajo de la prueba hacia adelante.
 10. **De punta a punta** (`_shared/estimacion-de-ingreso.test.ts`): ocho perfiles inventados pasan por el selector, las variables y el modelo. Las variables se comparan con las calculadas aparte en Python desde estas definiciones (`scripts/predictor-ingresos/casos_de_estimacion.py`), y los cuantiles y montos, con el evaluador de referencia, sólo donde esté el modelo real.
-11. **Por tipo de persona** (3.5; todavía sin medir): cada tipo que recibe una estimación tiene medida, hacia adelante, la cobertura de su mínimo y el tramo exacto o vecino, con su intervalo, y un tipo con menos de 300 casos se dice junto con el más cercano.
-    Una referencia (pensionista, informal) se rotula como referencia y nunca como estimación de la persona. Un dependiente sin rastro de otro ingreso no recibe monto del extra.
+11. **Por tipo de persona** (3.5; medido el 2026-11-10 con la clase de Equifax, 12.36): cada tipo que recibe una estimación tiene medida, hacia adelante, la cobertura de su mínimo y el tramo exacto o vecino, con su intervalo, y un tipo con menos de 300 casos se dice junto con el más cercano.
+    Una referencia (pensionista, informal) se rotula como peldaño 6 y nunca como estimación de la persona. Un dependiente no recibe monto del extra, tenga o no rastro de otro ingreso.
 
 ## 10. Lo que falta decidir o conseguir
 
@@ -433,11 +478,11 @@ extrapole: más allá del último mes entrenado se comporta como en ese mes.
 | Completar la reconsulta a Proveedor_Info_1 (1.620 de las 2.162 sin respuesta buena: 986 sin consultar y 634 con error o sin datos), con menos hilos y primero la mitad con el SRI de Equifax (consultas de 2026); después, entrenar con los datos tal como los arma CrediScope. Queda para después (decisión del 2026-10-29) | Negocio: autoriza y decide el ritmo (la base legal del lote ya se declaró, 12.29) | Mide el SRI de Proveedor_Info_1 contra el de Equifax con más personas (el nivel 1 depende de él) y permite probar el valor de los vehículos (4.1). A 20 hilos Proveedor_Info_1 falló en la mitad de los perfiles de ese rango (12.29); AWS no guarda la respuesta de Proveedor_Info_1 |
 | Cotejar el SRI de Proveedor_Info_1 con el de Equifax en más de 87 personas, incluido el `obligado`, y ver si el texto de la actividad de los establecimientos de Proveedor_Info_1 (`act_economica`) se lleva a un CIIU | Claude, con la base de CrediScope (crecen con cada consulta de Equifax) | El nivel 1 depende de que Proveedor_Info_1 dé el mismo SRI que se usó para entrenar; con la clase y el CIIU ganaría +0,020 de R² (4.1) |
 | Casos con ingreso validado de otra institución | Cada institución | Calibración por institución (sección 5), no por producto: el negocio dijo el 2026-10-28 que automotriz y consumo son lo mismo (12.27). El ingreso verificado es el validado de AWS (2026-10-22) |
-| La destilación del predictor de Equifax (400.000 consultas en cinco años): el negocio la quiere para mejorar la asertividad (2026-10-29). **Medida el 2026-11-06 con tres propósitos (12.34)**: como alerta para pedir documentos y como etiqueta de lo que no tiene ingreso validado se descarta; sólo queda calibrar con OK FACTURAR | Negocio | Lo medido no la respalda: destilar no mejora la predicción del ingreso validado (0,342 contra 0,341 de R²; 12.28), y en 12.34 la alerta del alumno da AUC de 0,43 a 0,54 y etiquetar con la cifra empeora la pérdida |
-| La base de 3,9 millones | Proveedor (en proceso, 2026-10-22) | Reentrenar con una población menos sesgada hacia quien pide crédito |
+| El nivel intermedio sin buró (3.6; primero sin buró, decisión del 2026-11-11): entrenarlo con la base del proveedor, y medir en ella el estado civil y las cargas familiares | Claude, cuando llegue la base | Es lo que mejoraría el ingreso de la institución sin buró. En el lote de paridad el buró de bancos y los establecimientos suben el R² de 0,15 a 0,34 con contaminación probable, y el estado civil y las cargas suman +0,02 con un intervalo que toca el cero |
+| La base de 3,8 millones | Proveedor (en proceso, 2026-10-22; pedido listo, 12.33) | Reentrenar con una población menos sesgada hacia quien pide crédito, y entrenar el nivel intermedio (3.6) |
 | Confirmar `p42` (categoría de ocupación) y `nnivins` (instrucción) de la ENEMDU | INEC (el formulario o los tabulados con códigos; no están en los archivos revisados) | Los de la ENIGHUR y `p05a` de la ENEMDU se confirmaron el 2026-10-26; la selección de independientes de la ENEMDU coincide con la ruta del cuestionario, así que la cifra no cambia (12.27) |
 | Los nombres de pantalla (propuesta en 6.7) | Negocio | Los nombres los decide el negocio |
-| Los tipos de persona (3.5): confirmar las reglas que separan al independiente formal, semiformal y poco formal y al rentista, y los nombres de los grados de confiabilidad | Negocio, después de la medición del paso 1 de 3.5 | Las reglas son una propuesta armada con lo que trae el perfil; el IVA, la facturación y la clase del contribuyente, que el negocio nombró, no están en Proveedor_Info_1 |
-| Medir la confiabilidad por tipo y el extra del dependiente con el SRI; medir a quien cobra por la nómina de su propia compañía (`administraciones`) y si la fuente de pensiones alimenticias dice quién la recibe | Claude, con los datos locales y la base, sin costo | Sin eso la confiabilidad por tipo es la de los independientes juntos, y el dueño de una compañía pasa como dependiente verificado |
+| Los tipos de persona (3.5): confirmar las reglas sin buró (formal por el obligado de Proveedor_Info_1; semiformal y poco formal juntos como «RUC activo no obligado») y la regla del rentista; verificar si `contribuyente` de Proveedor_Info_1 trae el régimen | Negocio las reglas; Claude el régimen | La clase del contribuyente sólo llega por Equifax, y la mejor regla con Proveedor_Info_1 acierta 66% contra 48% de base (56 casos). Los nombres de los peldaños son los de la escalera (`docs/escalera-del-ingreso.md`, decisión D1) |
+| Medir a quien cobra por la nómina de su propia compañía (`administraciones`) y si la fuente de pensiones alimenticias dice quién la recibe. La confiabilidad por tipo y el extra del dependiente ya se midieron (12.36) | Claude, con la base, sin costo | El dueño de una compañía pasa como dependiente verificado |
 | Construir la tabla de pensiones por afiliación (3.3) con el mapeo oficial | Claude | Es lo que recibe el pensionista: hoy la respuesta le dice `motivo: jubilado` |
 | La tabla de rentabilidades por giro de AWS (comercio y servicios generales 0,30; fabricación, agricultura, construcción, transporte y telecomunicaciones 0,40; servicios profesionales 0,70; arriendos 1,00): el negocio dice que son valores genéricos que no nacen de una metodología válida | Negocio | Escalan el ingreso calculado de cuentas e IVA, el 32% de lo que se mide: la garantía aguanta que estén infladas hasta un 30%; si lo estuvieran más, la cobertura baja (12.27) |

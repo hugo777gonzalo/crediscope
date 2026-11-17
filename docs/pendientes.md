@@ -466,13 +466,15 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
     **Decidido el 2026-11-09: una estimación para todos, por tipo de persona, con su confiabilidad**
     (especificación, 3.5; nada construido). Los tipos son dependiente con o sin ingreso extra,
     independiente formal, semiformal y poco formal, rentista, pensionista e informal. Cambia la decisión
-    del 2026-10-30: el extra del dependiente se estima sólo donde deja rastro formal (sin rastro no se
-    puede predecir, 12.14) y el pensionista recibe la referencia por afiliación. Cartera medida ese día
-    (3.766 personas con perfil): 1.941 independientes sin separar, 1.339 dependientes, 262 jubilados y
-    80 informales. **Lo que sigue de esto, en orden:** medir la confiabilidad por tipo con los datos
-    locales (sin costo), construir la tabla de pensiones, y recién entonces llevar el tipo y la
-    confiabilidad a la respuesta y al selector. Las reglas que separan a los tres independientes y al
-    rentista, y los nombres de los grados, los confirma el negocio después de la medición.
+    del 2026-10-30: el pensionista recibe la referencia por afiliación. El extra del dependiente **no se
+    estima, ni con rastro formal** (12.36: AUC 0,62, R² 0,01): queda como indicio sin monto. Cartera
+    medida ese día (3.766 personas con perfil): 1.941 independientes sin separar, 1.339 dependientes,
+    262 jubilados y 80 informales. **Alineada el 2026-11-17 con la escalera del ingreso** (PR 164): la
+    confiabilidad es el peldaño (el predictor es el 4) y las cotas del negocio son peldaño 3, no
+    entradas; sin buró, semiformal y poco formal no se separan (la clase sólo llega por Equifax); el
+    nivel intermedio sin buró (especificación, 3.6) espera la base del proveedor. **Lo que sigue, en
+    orden:** la tabla de pensiones, el tipo y el peldaño en la respuesta junto con la escalera, y el
+    nivel intermedio cuando llegue la base. Las reglas sin buró y la del rentista las confirma el negocio.
     **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Proveedor_Info_1 (más la
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
@@ -607,8 +609,8 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
           90,0%; poco formal 88,7% / 92,5%. En el RUC no activo y el sin RUC no se puede medir: 26 casos OK de 1.363. Los rentistas (84 en
           la prueba) van con el semiformal. El formal lo subestima el nivel 2 (niega de más 37%).
         - **El extra del dependiente no se puede estimar** (AUC 0,62 con RUC activo, R² 0,01). El modelo de independientes aplicado a ese
-          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 que lo estima con el nivel 1 o 2 hay que cambiarla**: sin monto,
-          «con o sin indicios; se valida con documentos». La actualiza la sesión principal.
+          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 ya no lo estima** (PR 155): sin monto,
+          «con o sin indicios; se valida con documentos».
         - **Límites de esta medición** (de la revisión):
           - los tipos de persona se definen aquí con la clase del contribuyente y el obligado a llevar contabilidad que trae Equifax, no con las
             reglas de la especificación: **sin buró esa clasificación no se puede armar**;
