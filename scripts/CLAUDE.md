@@ -81,7 +81,7 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 - `scripts/banco-de-casos-de-oro/` (2026-11-11): un JSON por caso con el dictamen del jefe de crédito, la recomendación de hoy,
   la salida de la versión mayor y lo que el análisis debe y no debe decir. Ninguna versión del marco, del perfil del modelo o del
   modelo se despliega sin pasarlo. `probar-banco-de-casos.mjs` prueba el formato en el control `guiones`; el corredor (`correr-banco-de-casos.mjs`, en seco por omisión) contra el
-  modelo todavía no existe (su README dice qué necesita). Un caso real lleva sólo su referencia: el perfil se carga de la base.
+  modelo (con costo: pide `--confirmo-costo`; su README dice qué hace). Un caso real lleva sólo su referencia: el perfil se carga de la base.
 
 ## Predictor de ingresos
 
