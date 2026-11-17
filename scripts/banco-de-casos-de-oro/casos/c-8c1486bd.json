@@ -1,0 +1,40 @@
+{
+  "formato": 1,
+  "id": "c-8c1486bd",
+  "fuente": "observacion_del_negocio",
+  "de_donde_sale": "Observación O-2 (docs/observaciones-del-negocio.md): un bloqueo por la lista negra de la financiera por mal pagador en etapa prejudicial, elegido de la base el 2026-11-12; también está en la corrida de la revisión del 2026-11-07 (fuera de git).",
+  "tema": "Lista negra por mal pagador con mal comportamiento en el buró: se niega con el control o sin él.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "negado_por_control",
+  "dictamen": [
+    "Figura en la lista negra de la financiera como mal pagador reportado a legal, en etapa prejudicial y sin fraude.",
+    "Aun sin el control, el buró trae C2 en bancos, una operación en atraso sin monto, atraso hoy en cooperativas y pago irregular con la institución, sin ingreso confirmado.",
+    "Mal comportamiento actual sin atenuantes: negar."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [],
+    "de_juicio": {
+      "debe": [
+        "El control de lista negra niega sin llamar al modelo.",
+        "Si el negocio pasa la lista negra por mal pagador a dato de comportamiento (O-2, opción 2), el modelo igual niega: el caso pasa a analisis_del_modelo con «negar»."
+      ],
+      "no_debe": [
+        "Que un análisis del modelo sobre este perfil, si lo hubiera, ponga como positivo «sin mora vigente» con atraso hoy en cooperativas."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "mal_pago_niega_salvo_atenuantes",
+      "que_cambio": "La decisión hace que el veredicto no dependa de lo que se decida sobre el control (O-2): con mal comportamiento actual, el modelo niega."
+    }
+  ]
+}

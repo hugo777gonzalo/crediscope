@@ -1,0 +1,17 @@
+{
+  "descripcion": "El mismo vehículo con el perfil armado por el código vigente: el colateral es el precio promedio de mercado",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "vehiculos": {
+      "status": "ok",
+      "data": {
+        "personaVehiculo": [
+          { "tipoComercial": "autos", "valorAvaluo": 12000, "precioPromedio": 10000, "precioMinimo": 8000, "precioMaximo": 16000 }
+        ]
+      }
+    }
+  },
+  "esperado": { "colateral-de-vehiculos-sobre-el-precio-promedio": "no-dispara" }
+}

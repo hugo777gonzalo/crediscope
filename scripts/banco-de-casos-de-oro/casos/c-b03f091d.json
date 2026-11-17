@@ -1,0 +1,66 @@
+{
+  "formato": 1,
+  "id": "c-b03f091d",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-b03f091d/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Dos operaciones en mora con la institución, A2 en bancos y un cheque protestado reciente: negar.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Independiente sin aportes al IESS en años y sin ingreso verificable.",
+    "Tiene las dos operaciones con la institución en mora, A2 en dos de sus tres operaciones bancarias y una demanda por cheque protestado de 2025; el buró de la institución suma tarjetas al tope y sobreendeudamiento alto.",
+    "Mal comportamiento actual sin atenuantes: negar."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 350,
+        "porque": "El jefe de crédito dio 180; el modelo, 220."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "limpio|\\bsin (ningún )?(atraso|mora)\\b|\\bal día\\b",
+        "campos": [
+          "positives"
+        ],
+        "porque": "A2 ya es atraso: el buró de bancos no es limpio."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "historial",
+        "valores": [
+          "regular",
+          "malo"
+        ],
+        "porque": "Mora vigente con la institución y A2 en bancos."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que A2 es atraso.",
+        "Llamar «la institución» a la cartera de la institución, no por el nombre del proveedor de datos.",
+        "Nombrar el cheque protestado de 2025 como una demanda reciente que pesa."
+      ],
+      "no_debe": [
+        "Contar como colateral que reduce el riesgo el vehículo que financió la institución y que está en mora.",
+        "Dudar de si la deuda con la institución ya está en los bancos cuando no lo está."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "comportamiento_interno_cualitativo",
+      "que_cambio": "La mora con la institución se resalta y se contrasta; el veredicto lo sostienen también el A2, la demanda reciente y el sobreendeudamiento."
+    }
+  ]
+}

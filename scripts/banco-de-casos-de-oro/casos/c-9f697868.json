@@ -1,0 +1,69 @@
+{
+  "formato": 1,
+  "id": "c-9f697868",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-9f697868/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Buró limpio contra atrasos recientes con la institución: la tensión se resalta y decide la capacidad.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Independiente con un negocio de servicios de muchos años, A1 en sus bancos y sin mora en el buró en dos años.",
+    "Con la institución tiene un crédito vigente con atrasos en las primeras cuotas y una cuota que dobla lo que reporta al IESS; su deuda se triplicó en un año y las tarjetas están al tope.",
+    "Lo que decide es la capacidad, no el pago: revisar pidiendo los movimientos bancarios."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "negar"
+  ],
+  "salida_version_mayor": "revisar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 400,
+        "max": 680,
+        "porque": "El jefe de crédito dio 520."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "sin saldo pendiente",
+        "campos": [
+          "todo"
+        ],
+        "porque": "El perfil tomó un crédito ya cancelado; el vigente tiene saldo."
+      },
+      {
+        "tipo": "accion",
+        "accion": "documentar_ingreso",
+        "porque": "La primera acción es pedir los movimientos bancarios."
+      },
+      {
+        "tipo": "primera_frase",
+        "patron": "capacidad|ingreso|deuda|cuota",
+        "porque": "La primera frase dice lo que decide el caso: la capacidad, no el buen pago."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Resaltar el Comportamiento Interno (crédito vigente con atrasos recientes) y marcarlo como una tensión con el buró limpio.",
+        "Decir que la deuda creció mucho en un año."
+      ],
+      "no_debe": [
+        "Decir «sin indicios de ingreso mayor» si el impuesto a la renta no contestó.",
+        "Generar una acción por una contravención de tránsito clasificada como otro delito."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "comportamiento_interno_cualitativo",
+      "que_cambio": "Los atrasos con la institución no pesan como un atraso del buró: se resaltan y se contrastan. Por eso no pasa a negar."
+    }
+  ]
+}

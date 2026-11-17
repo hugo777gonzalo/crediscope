@@ -1,0 +1,73 @@
+{
+  "formato": 1,
+  "id": "c-4421209e",
+  "fuente": "observacion_del_negocio",
+  "de_donde_sale": "Observación O-5 (docs/observaciones-del-negocio.md): el análisis 8b28ca58, «revisar», de una afiliada voluntaria con créditos que paga al día.",
+  "tema": "Créditos importantes pagados al día son evidencia de capacidad: el ingreso no determinado no pesa solo.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-07",
+    "marco_del_analisis": "marco-v28"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Afiliada voluntaria con Ingreso Mínimo SBU, A1 en bancos, cooperativa al día y excelente pagadora con la institución.",
+    "La cuota que ya paga es alta frente al ingreso reportado, pero la paga al día: otra entidad ya le evaluó la capacidad.",
+    "Pesa una demanda de cobro de pagaré de 2024, sin saber si sigue vigente: se aprueba al aclararla y documentar el ingreso."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "aprobar"
+  ],
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 500,
+        "max": 800,
+        "porque": "El modelo dio 480 con marco-v28; con el pago al día como evidencia, sube."
+      },
+      {
+        "tipo": "texto_requerido",
+        "patron": "2024",
+        "campos": [
+          "todo"
+        ],
+        "porque": "La demanda se nombra con su año."
+      },
+      {
+        "tipo": "accion",
+        "accion": "verificar_demanda",
+        "porque": "La condición incluye aclarar el estado de la demanda."
+      },
+      {
+        "tipo": "accion",
+        "accion": "documentar_ingreso",
+        "porque": "Y documentar el ingreso."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Leer los créditos vigentes pagados al día como evidencia indirecta de capacidad.",
+        "Decir qué dos cosas destraban la aprobación: el estado de la demanda y el ingreso."
+      ],
+      "no_debe": [
+        "Leer el crédito con la institución y la operación del banco como dos deudas sin verificar que no son la misma.",
+        "Sumar el saldo con la institución a la deuda."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "comportamiento_interno_cualitativo",
+      "que_cambio": "El crédito con la institución se resalta como referencia y no se suma: la deuda contada dos veces que sospechaba el modelo deja de ser posible."
+    },
+    {
+      "decision": "bajar_revisar",
+      "que_cambio": "En la versión mayor es Condicionado, no Revisar."
+    }
+  ]
+}

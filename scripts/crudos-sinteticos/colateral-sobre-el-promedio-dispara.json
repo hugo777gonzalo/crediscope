@@ -1,0 +1,20 @@
+{
+  "descripcion": "Un vehículo con precio promedio 10.000, máximo 16.000 y avalúo 12.000; el perfil guardado tiene el colateral en el máximo (60% sobre el promedio), como hasta estructura-v20",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "vehiculos": {
+      "status": "ok",
+      "data": {
+        "personaVehiculo": [
+          { "tipoComercial": "autos", "valorAvaluo": 12000, "precioPromedio": 10000, "precioMinimo": 8000, "precioMaximo": 16000 }
+        ]
+      }
+    }
+  },
+  "guardado": {
+    "perfil": { "patrimonio": { "valorColateralVehiculos": 16000 } }
+  },
+  "esperado": { "colateral-de-vehiculos-sobre-el-precio-promedio": "dispara" }
+}

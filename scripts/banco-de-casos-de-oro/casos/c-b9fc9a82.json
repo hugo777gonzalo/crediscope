@@ -1,0 +1,63 @@
+{
+  "formato": 1,
+  "id": "c-b9fc9a82",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-b9fc9a82/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Mora recurrente en el buró de la institución y un crédito reestructurado: negar aunque las demandas sean viejas.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "necesario",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Jubilada con pensión de monto desconocido, A1 en la fuente principal.",
+    "El buró de la institución muestra atrasos repetidos de hasta un mes, saldo vencido en el último corte, muchas tarjetas cerca del cupo, un crédito reestructurado y un score que cae fuerte en un año.",
+    "Las tres demandas de cobro son de su fondo de jubilación y tienen más de 2 años: pesan menos, pero el mal comportamiento actual decide: negar."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 500,
+        "porque": "El jefe de crédito dio 390; el modelo, 560 sin el buró de la institución."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "historial",
+        "valores": [
+          "regular",
+          "malo"
+        ],
+        "porque": "Atrasos repetidos y un reestructurado."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Nombrar el atraso del último corte y la recurrencia de los atrasos del buró de la institución.",
+        "Nombrar las demandas con su año y quién demanda, y darles menos peso.",
+        "Nombrar el saldo del BIESS sin contar dos veces el mismo hipotecario."
+      ],
+      "no_debe": [
+        "Leer como «Excelente Pagador» un crédito con la institución sin cuotas pagadas todavía.",
+        "Contar como negativo que una jubilada no aporte al IESS.",
+        "Tomar el colateral por el precio máximo del vehículo."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "En el piloto las tres demandas sumaban al «negar»; ahora pesan menos y el veredicto descansa en la mora recurrente del buró de la institución."
+    },
+    {
+      "decision": "mal_pago_niega_salvo_atenuantes",
+      "que_cambio": "No está al día en el último corte y su deuda en tarjetas no baja: no hay atenuante."
+    }
+  ]
+}

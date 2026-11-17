@@ -46,6 +46,9 @@ const RAIZ = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 const compartido = (f) => import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared", f)).href);
 const { armarPerfilDelModelo, mensajeParaElModelo, RUTAS_QUE_NO_LLEGAN, ATRIBUTOS_PROTEGIDOS } = await compartido("perfil-del-modelo.ts");
 const { clasificarPerfilLaboral } = await compartido("perfil-laboral.ts");
+// Lo que se valida es lo que leería el modelo hoy: con la fecha, como lo arma
+// armarPedidoScoring(). Sin ella no llegan los años de cada demanda de cobro (marco-v36).
+const AHORA = new Date();
 
 // Los secretos se leen del archivo y no se imprimen.
 // Desde un worktree, .env.functions es el de la carpeta principal (_comun/entorno.mjs).
@@ -129,7 +132,7 @@ for (let i = 0; i < ids.length; i += 100) {
     revisados++;
     let pm;
     try {
-      pm = armarPerfilDelModelo(sp);
+      pm = armarPerfilDelModelo(sp, new Set(), null, AHORA);
     } catch (e) {
       fallar(`1. no se arma: ${e.message}`, caso);
       continue;
@@ -138,13 +141,13 @@ for (let i = 0; i < ids.length; i += 100) {
     const f = sp.fuentesIngreso;
     const antes = f ? { ...sp, fuentesIngreso: Object.fromEntries(Object.entries(f).filter(([k]) => k !== "detalle")) } : sp;
     tamanos.antes.push(JSON.stringify(antes).length);
-    tamanos.despues.push(JSON.stringify(mensajeParaElModelo(sp, [])).length);
+    tamanos.despues.push(JSON.stringify(mensajeParaElModelo(sp, [], new Set(), null, AHORA)).length);
 
     // 13. Desde marco-v29 (E27): nada que identifique a la persona ni a un
     // tercero. Se comparan valores enteros, no pedazos: "aportes al IESS"
     // no es el nombre de un empleador que se llame IESS.
     {
-      const mensaje = mensajeParaElModelo(sp, []);
+      const mensaje = mensajeParaElModelo(sp, [], new Set(), null, AHORA);
       const nombres = new Set(
         [sp.identidad?.nombreCompleto, sp.laboral?.empleoActual?.empleador, sp.cumplimiento?.detallePep?.empresa,
           ...(sp.laboral?.empleosActuales ?? []).map((e) => e?.empleador), ...(f?.fuentes ?? []).map((x) => x?.empleador)]
@@ -209,7 +212,7 @@ for (let i = 0; i < ids.length; i += 100) {
     }
     // 8. Todo número entero: 258798.83000000002 llegaba así al modelo, y el
     // modelo copia los números tal cual a lo que escribe.
-    if (conDecimales(mensajeParaElModelo(sp, []))) fallar("8. un número llega con decimales", caso);
+    if (conDecimales(mensajeParaElModelo(sp, [], new Set(), null, AHORA))) fallar("8. un número llega con decimales", caso);
 
     // 9. Desde marco-v25: la disponibilidad por tema, primera, sin fuentes.
     const di = pm.disponibilidad;

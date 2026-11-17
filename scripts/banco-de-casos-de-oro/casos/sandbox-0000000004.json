@@ -1,0 +1,31 @@
+{
+  "formato": 1,
+  "id": "sandbox-0000000004",
+  "fuente": "sandbox_api",
+  "de_donde_sale": "Sandbox de la API: 0000000004 en supabase/functions/_shared/sandbox-casos.ts y el perfil inventado de sandbox-simuladores.ts.",
+  "tema": "El modelo no contesta: se entrega sin veredicto, sin score y nunca «aprobar».",
+  "perfil": {
+    "origen": "sandbox",
+    "identificacion": "0000000004",
+    "modalidad": "basico"
+  },
+  "buro_equifax": "no",
+  "flujo_esperado": "sin_veredicto",
+  "dictamen": [
+    "El perfil es el de 0000000001; lo que falla es el modelo.",
+    "Sin respuesta del modelo no hay juicio: la evaluación termina como sin veredicto y queda en manos del analista."
+  ],
+  "recomendacion_hoy": null,
+  "salida_version_mayor": null,
+  "afirmaciones": {
+    "automaticas": [],
+    "de_juicio": {
+      "debe": [
+        "La entrega dice sin_veredicto y no lleva score del modelo."
+      ],
+      "no_debe": [
+        "Que la entrega diga «aprobar» por defecto."
+      ]
+    }
+  }
+}

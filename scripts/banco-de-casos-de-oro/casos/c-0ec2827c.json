@@ -1,0 +1,67 @@
+{
+  "formato": 1,
+  "id": "c-0ec2827c",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-0ec2827c/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Atraso al corte en la operación principal, pensión alimenticia en mora y deuda al alza: niega aunque haya una calificación A1.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Independiente con empleados y señales de un ingreso mayor al reportado al IESS, pero con mal comportamiento vigente.",
+    "La operación que concentra la mayor parte de su deuda bancaria está en B2 al corte, hubo atraso en las primeras cuotas con la institución y la pensión alimenticia figura en mora.",
+    "La deuda crece rápido y ningún atenuante medible compensa: negar, pidiendo el certificado de la pensión antes de darla por incumplida."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 450,
+        "porque": "El jefe de crédito dio 320; el modelo, 190. Más de 450 es no ver el atraso vigente."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "atrasos? (pasados|menores)",
+        "campos": [
+          "todo"
+        ],
+        "porque": "El modelo leyó B2 como un atraso pasado o menor: es la calificación al corte."
+      },
+      {
+        "tipo": "accion",
+        "accion": "verificar_pension",
+        "porque": "El total pagado de la pensión en cero por años puede ser pago directo no registrado: se confirma con el certificado."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que B2 es un atraso a la fecha del corte en la operación que concentra la mayor parte de la deuda bancaria.",
+        "Nombrar la demanda de cobro con su año y darle menos peso por tener más de 2 años.",
+        "Contrastar el atraso con la institución (Comportamiento Interno) con el buró, como referencia."
+      ],
+      "no_debe": [
+        "Abrir los positivos con «su mejor calificación es A1».",
+        "Contar como colateral pleno el avalúo fiscal de unidades de carga que pueden estar prendadas.",
+        "Dar la mora de la pensión como confirmada sin pedir el certificado."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "La demanda de cobro de 2019 pesaba en el dictamen del piloto; ahora pesa menos. El veredicto no cambia: lo sostienen el atraso vigente y la pensión."
+    },
+    {
+      "decision": "comportamiento_interno_cualitativo",
+      "que_cambio": "El atraso con la institución en las primeras cuotas se resalta y se contrasta, no se suma como un atraso del buró."
+    }
+  ]
+}

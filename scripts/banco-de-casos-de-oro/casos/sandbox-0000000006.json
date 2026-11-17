@@ -1,0 +1,31 @@
+{
+  "formato": 1,
+  "id": "sandbox-0000000006",
+  "fuente": "sandbox_api",
+  "de_donde_sale": "Sandbox de la API: 0000000006 en supabase/functions/_shared/sandbox-casos.ts y el perfil inventado de sandbox-simuladores.ts.",
+  "tema": "Ninguna fuente contestó: la consulta no se guarda ni se analiza.",
+  "perfil": {
+    "origen": "sandbox",
+    "identificacion": "0000000006",
+    "modalidad": "basico"
+  },
+  "buro_equifax": "no",
+  "flujo_esperado": "fuentes_no_disponibles",
+  "dictamen": [
+    "Ninguna fuente contestó.",
+    "Una ficha en blanco sería igual a la de alguien sin historial: se entrega fuentes_no_disponibles, sin modelo."
+  ],
+  "recomendacion_hoy": null,
+  "salida_version_mayor": null,
+  "afirmaciones": {
+    "automaticas": [],
+    "de_juicio": {
+      "debe": [
+        "La entrega dice fuentes_no_disponibles."
+      ],
+      "no_debe": [
+        "Que se llame al modelo con un perfil vacío."
+      ]
+    }
+  }
+}

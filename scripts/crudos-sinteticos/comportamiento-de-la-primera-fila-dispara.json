@@ -1,0 +1,23 @@
+{
+  "descripcion": "Dos operaciones con la institución, la primera cancelada y la segunda vigente con saldo; el perfil guardado quedó con la primera fila (saldo 0, perfil A), como hasta estructura-v20",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          { "identificacion": "0000000000", "operacion": 1, "estadoOperacion": "CANCELADA", "cuotaNova": 100, "plazoCuotas": 12, "saldoCapital": 0, "perfilInterno": "A", "resultadoHabitoPago": "BUENO" },
+          { "identificacion": "0000000000", "operacion": 2, "estadoOperacion": "VIGENTE", "cuotaNova": 150, "plazoCuotas": 24, "saldoCapital": 3000, "perfilInterno": "B", "resultadoHabitoPago": "REGULAR" }
+        ]
+      }
+    }
+  },
+  "guardado": {
+    "perfil": {
+      "comportamientoInterno": { "proveedorInfo1SaldoCapitalVigente": 0, "proveedorInfo1PerfilInterno": "A", "proveedorInfo1ResultadoHabitoPago": "BUENO" }
+    }
+  },
+  "esperado": { "comportamiento-interno-de-otra-operacion": "dispara" }
+}

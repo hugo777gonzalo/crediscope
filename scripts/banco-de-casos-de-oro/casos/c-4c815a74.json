@@ -1,0 +1,67 @@
+{
+  "formato": 1,
+  "id": "c-4c815a74",
+  "fuente": "observacion_del_negocio",
+  "de_donde_sale": "Observación O-1 (docs/observaciones-del-negocio.md): un «revisar» con riesgo bajo e historial excelente de un independiente, elegido de la base el 2026-11-12 entre los últimos análisis con marco-v30.",
+  "tema": "Independiente con pago excelente y sin ingreso confirmado: no se manda a revisar sólo por el ingreso.",
+  "perfil": {
+    "origen": "base",
+    "cual": "ultimo"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Independiente con RUC activo hace muchos años, A1 en sus operaciones bancarias, casa comercial al día y excelente pagador con la institución.",
+    "No aporta al IESS, como mucha gente que trabaja por su cuenta, y su deuda vigente, pagada al día, muestra que otra entidad ya le evaluó la capacidad.",
+    "Lo único que falta es documentar el ingreso: se aprueba con esa condición."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "aprobar"
+  ],
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 700,
+        "max": 900,
+        "porque": "El modelo dio 760 con riesgo bajo: el score no está en discusión, la salida sí."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "riesgo",
+        "valores": [
+          "muy bajo",
+          "bajo"
+        ],
+        "porque": "El propio modelo lo dice bajo."
+      },
+      {
+        "tipo": "accion",
+        "accion": "documentar_ingreso",
+        "porque": "La condición es documentar la facturación."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que lo único que falta para aprobar es documentar el ingreso, y qué documento lo resuelve.",
+        "Leer la deuda vigente pagada al día como evidencia indirecta de capacidad."
+      ],
+      "no_debe": [
+        "Leer la falta de aportes al IESS de un independiente con RUC activo como un negativo de comportamiento.",
+        "Llamar «cesante» a quien tiene un RUC activo."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "bajar_revisar",
+      "que_cambio": "Con el predictor en el perfil del modelo, «aprobar» con la acción de documentar el ingreso es la respuesta esperada; hoy, sin estimación, la regla de capacidad evidenciada (p2, PR 150) lo baja a «revisar»."
+    },
+    {
+      "decision": "seis_salidas",
+      "que_cambio": "En la versión mayor es Condicionado, no Revisar."
+    }
+  ]
+}

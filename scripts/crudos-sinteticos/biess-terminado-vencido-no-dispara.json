@@ -1,0 +1,17 @@
+{
+  "descripcion": "Con el plazo cumplido pero «VENCIDO» y con mora: la persona debe, no está terminado y sí se cuenta",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tcredQuirografarios": [
+          { "numeroOperacion": "0000200", "fechaConsesion": "10/03/2021", "fechaFinCredito": "10/03/2023", "montoTransferido": 3000, "saldoTotalCredito": 1000, "diasMoraAfi": 400, "estadoOperacion": "VENCIDO" }
+        ]
+      }
+    }
+  },
+  "esperado": { "prestamo-biess-terminado-contado": "no-dispara" }
+}

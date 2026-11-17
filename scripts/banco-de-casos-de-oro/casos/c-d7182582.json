@@ -1,0 +1,65 @@
+{
+  "formato": 1,
+  "id": "c-d7182582",
+  "fuente": "observacion_del_negocio",
+  "de_donde_sale": "Observación O-3 (docs/observaciones-del-negocio.md): la persona del análisis 84d225ec (marco anterior a v28), con una demanda por cheque fuera de plazo de 2016.",
+  "tema": "Una demanda por cheque de 2016, sola, no se vuelve la razón de revisar ni la acción principal.",
+  "perfil": {
+    "origen": "base",
+    "cual": "ultimo"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Independiente con empleados, actividad estable de muchos años, A1 sin mora y buen pagador con la institución.",
+    "La única señal judicial es una demanda por cheque fuera de plazo de 2016: con una década de buen pago después, es un antecedente.",
+    "El ingreso reportado es bajo frente a la deuda bancaria: se aprueba al documentar el ingreso del negocio."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "aprobar"
+  ],
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 650,
+        "max": 900,
+        "porque": "Con la demanda pesando menos, el score sube; el análisis viejo dio 735."
+      },
+      {
+        "tipo": "texto_requerido",
+        "patron": "2016",
+        "campos": [
+          "todo"
+        ],
+        "porque": "La demanda se nombra con su año."
+      },
+      {
+        "tipo": "accion",
+        "accion": "documentar_ingreso",
+        "porque": "La condición es el ingreso, no la demanda."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Nombrar la demanda de 2016 como un antecedente de hace más de 2 años que pesa poco."
+      ],
+      "no_debe": [
+        "Hacer de la verificación del juicio de 2016 la condición para aprobar.",
+        "Llamar a una demanda de hace una década «señal directa y relevante» de mal pago."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "demanda_antigua_pesa_menos",
+      "que_cambio": "Es la observación que motivó la decisión: la demanda de 2016 pesa menos."
+    },
+    {
+      "decision": "bajar_revisar",
+      "que_cambio": "Hoy se acepta «aprobar» con la acción de documentar el ingreso; en la versión mayor, Condicionado."
+    }
+  ]
+}

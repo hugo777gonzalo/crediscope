@@ -63,6 +63,10 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 - `scripts/revisar-crudo.mjs` corre `DETECTORES_DEL_CRUDO` (mismo catálogo) sobre el crudo del último perfil de cada
   persona real (carpeta de `research/` y depósito, ~2 min, sólo lee). Es para lo que no deja rastro en el perfil guardado:
   la demanda penal de otro demandado (p1) o el hipotecario contado dos veces (p6) salieron a mano, persona por persona.
+- `scripts/probar-crudos-sinteticos.mjs` corre `DETECTORES_DEL_CRUDO` sobre los crudos inventados de
+  `scripts/crudos-sinteticos/` (sin base ni datos de personas) y es parte del control `guiones` de cada PR. Un detector
+  nuevo del crudo entra con su caso que dispara y uno que no (el guion corta si falta); un caso que dispara lleva en
+  `guardado` lo que habría dejado la versión vieja de la estructura. Todo valor es inventado: el repositorio es público.
 - Un detector que necesita una regla del código la importa del `.ts` (Node 24 lo lee), no la copia:
   el primero copiaba 5 fuentes del freno que ya eran 21 y contaba 671 consultas incompletas en vez de 770.
 - `scripts/revision-del-analisis/` (habilidad `revision-del-analisis`): `medir-lote.mjs` mide un lote de análisis sin
@@ -73,6 +77,11 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   saldo, y tiempo coherente) y cómo se pagó; va en la fase 3 de cada carpeta. La fase 1 nunca lleva el score del modelo, la
   decisión de la institución ni el resultado de pago: en el piloto `capacidad.json` los traía y contaminó 3 de 12 dictámenes, y el guion ahora corta si una
   clave de las fases 2 o 3 aparece en la 1.
+
+- `scripts/banco-de-casos-de-oro/` (2026-11-11): un JSON por caso con el dictamen del jefe de crédito, la recomendación de hoy,
+  la salida de la versión mayor y lo que el análisis debe y no debe decir. Ninguna versión del marco, del perfil del modelo o del
+  modelo se despliega sin pasarlo. `probar-banco-de-casos.mjs` prueba el formato en el control `guiones`; el corredor contra el
+  modelo todavía no existe (su README dice qué necesita). Un caso real lleva sólo su referencia: el perfil se carga de la base.
 
 ## Predictor de ingresos
 

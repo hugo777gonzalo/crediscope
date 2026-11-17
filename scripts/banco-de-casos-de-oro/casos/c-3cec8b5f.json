@@ -1,0 +1,78 @@
+{
+  "formato": 1,
+  "id": "c-3cec8b5f",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-3cec8b5f/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Mora vigente en el buró, deuda al alza y tarjetas al tope: negar aunque la estabilidad laboral sea larga.",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "necesario",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Dependiente con muchos años en el mismo empleador e ingreso confirmado por un tercero: lo laboral es bueno.",
+    "La deuda real, con el BIESS y las demás entidades, es muchas veces lo que se veía; el buró de la institución trae mora vigente, meses con más de 90 días en los últimos dos años y tarjetas nuevas al tope.",
+    "La cuota ya compromete cerca de la mitad del ingreso. La estabilidad es un atenuante, pero no está al día y se endeuda más: negar."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 500,
+        "porque": "El jefe de crédito dio 380; el modelo aprobó con 835 sin ver la deuda ni la mora."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "capacidad (de pago )?(está |quedó )?(suficientemente )?evidenciada",
+        "campos": [
+          "todo"
+        ],
+        "porque": "Aprobó con «capacidad evidenciada» mientras decía que no conocía la cuota."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "\\bsin (ningún )?(atraso|mora)\\b|\\bal día\\b",
+        "campos": [
+          "positives"
+        ],
+        "porque": "Hay mora vigente en el buró de la institución."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "historial",
+        "valores": [
+          "regular",
+          "malo"
+        ],
+        "porque": "Meses con más de 90 días en los últimos dos años."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Nombrar la mora vigente y los meses con atraso grave del buró de la institución.",
+        "Nombrar el saldo del BIESS aparte de la deuda del buró, sin contarlo dos veces.",
+        "Explicar por qué la estabilidad laboral no alcanza como atenuante."
+      ],
+      "no_debe": [
+        "Poner el mismo hábito de pago a la vez como positivo y como negativo.",
+        "Sumar la operación con la institución a la deuda o a las cuotas."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "mal_pago_niega_salvo_atenuantes",
+      "que_cambio": "La estabilidad laboral es un atenuante medible; no alcanza porque la persona no está al día y su deuda crece. Queda escrito por qué no compensa."
+    },
+    {
+      "decision": "comportamiento_interno_cualitativo",
+      "que_cambio": "El jefe de crédito sumó la operación con la institución a la deuda; ahora es referencia cualitativa y no entra en la suma."
+    }
+  ]
+}

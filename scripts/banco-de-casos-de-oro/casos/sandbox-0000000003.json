@@ -1,0 +1,32 @@
+{
+  "formato": 1,
+  "id": "sandbox-0000000003",
+  "fuente": "sandbox_api",
+  "de_donde_sale": "Sandbox de la API: 0000000003 en supabase/functions/_shared/sandbox-casos.ts y el perfil inventado de sandbox-simuladores.ts.",
+  "tema": "Coincidencia en una lista de control sólo por el nombre: hoy niega el control sin llamar al modelo.",
+  "perfil": {
+    "origen": "sandbox",
+    "identificacion": "0000000003",
+    "modalidad": "basico"
+  },
+  "buro_equifax": "no",
+  "flujo_esperado": "negado_por_control",
+  "dictamen": [
+    "Persona inventada que aparece en una lista OFAC con su nombre y sin cédula.",
+    "El control de bloqueo niega hoy sin llamar al modelo; la observación O-2 propone que una coincidencia sin cédula sea una advertencia, sin decidir."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [],
+    "de_juicio": {
+      "debe": [
+        "El control de bloqueo niega y el modelo no corre.",
+        "La entrega dice que la negativa es de un control, no del modelo."
+      ],
+      "no_debe": [
+        "Que se llame al modelo."
+      ]
+    }
+  }
+}

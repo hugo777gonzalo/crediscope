@@ -1,0 +1,79 @@
+{
+  "formato": 1,
+  "id": "c-14f9ee80",
+  "fuente": "piloto_revision_del_analisis",
+  "de_donde_sale": "Piloto de la revisión del análisis (2026-11-06): dictamen del jefe de crédito en research/revision-del-analisis/piloto-2026-11-06/c-14f9ee80/dictamen.md (fuera de git), sobre el análisis con marco-v30 del lote del 2026-10-31.",
+  "tema": "Un posible homónimo en una demanda penal no niega: es una verificación de identidad en las acciones (p1).",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-31",
+    "marco_del_analisis": "marco-v30"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Profesional dependiente con actividad propia, ingreso confirmado por un tercero, A1 en todos sus bancos y sin mora en el buró de la institución.",
+    "El control lo negó por una causa penal de 2013 cuyos procesados son otras personas: la fuente juntó palabras de dos nombres ajenos.",
+    "Se aprueba al confirmar con cumplimiento que la causa no es suya; el empleo actual es reciente y conviene confirmarlo."
+  ],
+  "recomendacion_hoy": "revisar",
+  "hoy_tambien_aceptable": [
+    "aprobar"
+  ],
+  "salida_version_mayor": "condicionado",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 600,
+        "max": 850,
+        "porque": "El jefe de crédito dio 690 sin el control; un homónimo no baja el score (p1)."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "riesgo",
+        "valores": [
+          "muy bajo",
+          "bajo",
+          "moderado"
+        ],
+        "porque": "El comportamiento de pago es excelente: riesgo alto sería pesar la causa ajena."
+      },
+      {
+        "tipo": "accion",
+        "accion": "verificar_identidad",
+        "porque": "La causa penal se confirma con cumplimiento antes de decidir."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "narcotr",
+        "campos": [
+          "negatives"
+        ],
+        "porque": "La causa es de otra persona: no va como un negativo de esta."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Nombrar la causa penal con su delito y su año como un posible homónimo que se verifica, no como un antecedente de la persona.",
+        "Decir que el empleo actual empezó hace pocos meses, después de un período sólo con aportes propios."
+      ],
+      "no_debe": [
+        "Recomendar comunicar una negativa antes de verificar la identidad.",
+        "Afirmar «sin deudas con sentencia firme» si esa fuente no contestó.",
+        "Decir que la continuidad laboral no tiene cortes cuando el empleo actual es reciente."
+      ]
+    }
+  },
+  "ajustes_por_las_decisiones": [
+    {
+      "decision": "seis_salidas",
+      "que_cambio": "En el piloto el jefe dijo «revisar»; con seis salidas es Condicionado: se aprueba al cumplirse la verificación de identidad."
+    },
+    {
+      "decision": "bajar_revisar",
+      "que_cambio": "Hoy se acepta «aprobar» con la verificación como primera acción: el homónimo no cambia la recomendación (p1)."
+    }
+  ]
+}

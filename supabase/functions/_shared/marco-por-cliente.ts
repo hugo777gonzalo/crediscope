@@ -53,8 +53,16 @@ const SECCIONES: Seccion[] = [
   {
     id: "homonimo",
     desde: "Homónimo (cumplimiento",
-    hasta: "CÓMO PENSAR EL SCORE",
+    hasta: "Posible homónimo en una demanda penal",
     aplica: (p, hs) => g(p, "cumplimiento").tieneHomonimoEnListaControl === true || conCodigo(hs, "homonimo_en_lista_control"),
+  },
+  {
+    // Desde marco-v36 (p1): el aviso del control cuando el demandado de una
+    // demanda penal no se pudo confirmar como la persona. Sólo llega como hallazgo.
+    id: "homonimo-en-demanda-penal",
+    desde: "Posible homónimo en una demanda penal",
+    hasta: "CÓMO PENSAR EL SCORE",
+    aplica: (_p, hs) => conCodigo(hs, "posible_homonimo_en_demanda_penal"),
   },
   {
     id: "impedimento",

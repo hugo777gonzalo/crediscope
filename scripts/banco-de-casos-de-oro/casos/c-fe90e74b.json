@@ -1,0 +1,67 @@
+{
+  "formato": 1,
+  "id": "c-fe90e74b",
+  "fuente": "observacion_del_negocio",
+  "de_donde_sale": "Observación O-4 (docs/observaciones-del-negocio.md): el análisis 4f41141c, que puso como positivo «sin atraso grave» con una calificación B2.",
+  "tema": "Una calificación B2 sin monto vencido no se lee como «sin atraso».",
+  "perfil": {
+    "origen": "base",
+    "cual": "del_analisis_revisado",
+    "fecha_del_analisis": "2026-10-07",
+    "marco_del_analisis": "marco-v28"
+  },
+  "buro_equifax": "si_hay",
+  "flujo_esperado": "analisis_del_modelo",
+  "dictamen": [
+    "Sin actividad registrada ni ingreso, con siete demandas de cobro recientes, atraso vigente en cooperativas y una deuda muy alta.",
+    "La calificación B2 en bancos es un atraso aunque la operación no traiga monto vencido.",
+    "Negar; el veredicto no cambia, lo que no puede pasar es leer el buró de bancos como sin atraso."
+  ],
+  "recomendacion_hoy": "negar",
+  "salida_version_mayor": "negar",
+  "afirmaciones": {
+    "automaticas": [
+      {
+        "tipo": "score_entre",
+        "min": 1,
+        "max": 300,
+        "porque": "El modelo dio 120 y el veredicto es claro."
+      },
+      {
+        "tipo": "texto_prohibido",
+        "patron": "sin atraso|sin saldo vencido",
+        "campos": [
+          "positives"
+        ],
+        "porque": "B2 es atraso: no va como positivo «sin atraso»."
+      },
+      {
+        "tipo": "texto_requerido",
+        "patron": "B2",
+        "campos": [
+          "negatives",
+          "reasoning"
+        ],
+        "porque": "La calificación B2 se nombra como un atraso."
+      },
+      {
+        "tipo": "indicador",
+        "indicador": "historial",
+        "valores": [
+          "regular",
+          "malo"
+        ],
+        "porque": "Demandas de cobro recientes y atraso vigente."
+      }
+    ],
+    "de_juicio": {
+      "debe": [
+        "Decir que B2 es una calificación con atraso aunque no venga monto vencido.",
+        "Nombrar las demandas de cobro con su año: son de 2025 y 2026."
+      ],
+      "no_debe": [
+        "Poner la calificación de bancos como un positivo."
+      ]
+    }
+  }
+}
