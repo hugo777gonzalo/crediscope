@@ -37,7 +37,7 @@ import {
 import { mesLegible } from "../lib/ingresosCampos.js";
 import { formatearFechaHora, haceCuanto } from "../lib/fechas.js";
 import { ETIQUETA_FALLO } from "../lib/consumoLlm.js";
-import { colorScore, colorRecomendacion, textoRecomendacion, ETIQUETA_ESTADO_BANDEJA, COLOR_ESTADO_BANDEJA } from "../lib/bandeja.js";
+import { colorScore, colorRecomendacion, textoRecomendacion, ETIQUETA_ESTADO_BANDEJA, COLOR_ESTADO_BANDEJA, etiquetaConsultaPosteriorIncompleta } from "../lib/bandeja.js";
 import { rutaDeRegreso } from "../lib/regresoBandeja.js";
 import SegmentosPerfil from "../components/SegmentosPerfil.jsx";
 import AnalisisResultado from "../components/AnalisisResultado.jsx";
@@ -269,6 +269,9 @@ export default function Expediente() {
           <h2>{nombre}</h2>
           <span className="crediscope-exp-cedula">{cedula}</span>
           {cabecera?.perfil_origen === "lote" ? <span className="crediscope-sello-lote">De lote</span> : null}
+          {etiquetaConsultaPosteriorIncompleta(cabecera) ? (
+            <span className="crediscope-celda-sub" style={{ color: "var(--warn)" }}>{etiquetaConsultaPosteriorIncompleta(cabecera)}</span>
+          ) : null}
         </div>
 
         {/* Los sellos contestan en dos segundos si hay que preocuparse.
