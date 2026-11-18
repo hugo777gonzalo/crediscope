@@ -11,6 +11,7 @@
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).
 
+import { separarProvidencias } from "./providencias.ts";
 import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
@@ -583,7 +584,11 @@ function fechaDeCorte(v: unknown): string | null {
 // estructura-v22 (2026-11-17, F12): comportamientoBancario.operacionesIessBiess,
 // cada préstamo del IESS/BIESS con su tipo, saldo y fecha de fin, para la cuota
 // estimada de la capacidad de pago. No llega al modelo.
-export const PROCESS_VERSION = "estructura-v22"; // ver docs/estructura-estandarizada.md
+// estructura-v23 (E12, R5 del negocio, 2026-11-18): una providencia de
+// certificación (un pedido de información) ya no cuenta como `enListaControl`:
+// queda en `tieneProvidenciaDeCertificacion` y no bloquea (providencias.ts).
+// La v22 es la del PR 173 (capacidad de pago).
+export const PROCESS_VERSION = "estructura-v23"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1549,10 +1554,10 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // código homonimo_en_lista_control (bug encontrado auditando cédulas
   // c-10a696c9/c-7c7071e4: la identificación del "homónimo" nunca
   // coincide con la del cliente consultado).
-  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce(
-    (s, c) => s + arr(fuentes, "listasControl", c).length,
-    0
-  );
+  const providenciasDeControl = separarProvidencias(arr(fuentes, "listasControl", "providenciasOpr"));
+  const totalListasControl = arr(fuentes, "listasControl", "ofacsOpr").length + providenciasDeControl.bloquean.length;
+  const totalProvidenciasDeCertificacion =
+    providenciasDeControl.certificacion.length + separarProvidencias(arr(biWrap, "x", "tprovidencias")).certificacion.length;
   const totalHomonimos = arr(fuentes, "listasControl", "homonimosOpr").length + arr(biWrap, "x", "tconsephomonimos").length;
   const totalPep = arr(fuentes, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
   const pepRegistros = [...arr(fuentes, "listasControl", "personaPublicasOpr"), ...arr(biWrap, "x", "tpeps")];
@@ -1576,6 +1581,7 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
   const cumplimiento: StandardClientProfile["cumplimiento"] = {
     enListaControl: totalListasControl > 0,
+    tieneProvidenciaDeCertificacion: totalProvidenciasDeCertificacion > 0,
     tieneHomonimoEnListaControl: totalHomonimos > 0,
     enListaNegra: Boolean(((fuentes?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),
