@@ -24,6 +24,7 @@
 
 import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaProveedorInfo1 } from "./types.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
+import { separarProvidencias } from "./providencias.ts";
 import { categoriasDelitoGraveSeguridad, type DemandaPenalSinCotejo, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 
 const POR_QUE_NO_ES_ELLA: Record<DemandaPenalSinCotejo["cotejo"], string> = {
@@ -68,10 +69,13 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
   const listasControl = raw.listasControl?.data as Record<string, unknown> | undefined;
   // personaPublicasOpr = PEP — se cuenta aparte, NO entra en este total
   // (ver nota de cabecera: PEP no es bloqueante).
-  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce((sum, campo) => {
-    const v = listasControl?.[campo];
-    return sum + (Array.isArray(v) ? v.length : 0);
-  }, 0);
+  // Las providencias de certificación (un pedido de información) no bloquean
+  // (R5, 2026-11-18): se avisan aparte, con la salida en Revisar como máximo.
+  const providenciasOpr = separarProvidencias(
+    Array.isArray(listasControl?.providenciasOpr) ? (listasControl!.providenciasOpr as Record<string, unknown>[]) : [],
+  );
+  const ofacsOpr = Array.isArray(listasControl?.ofacsOpr) ? (listasControl!.ofacsOpr as unknown[]).length : 0;
+  const totalListasControl = ofacsOpr + providenciasOpr.bloquean.length;
   if (totalListasControl > 0) {
     hallazgos.push({
       code: "lista_control",
@@ -113,15 +117,34 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
     });
   }
 
-  const controlInterno = ["tofac", "tofac2", "tconsepvinculados", "tprovidencias"].reduce((sum, campo) => {
-    const v = basesInternas?.[campo];
-    return sum + (Array.isArray(v) ? v.length : v ? 1 : 0);
-  }, 0);
+  const providenciasInternas = separarProvidencias(
+    Array.isArray(basesInternas?.tprovidencias) ? (basesInternas!.tprovidencias as Record<string, unknown>[]) : [],
+  );
+  // tprovidencias puede venir como un objeto suelto y no como lista: se cuenta
+  // como una, y sin tipo legible bloquea (el comportamiento de siempre).
+  const providenciaInternaSuelta = !Array.isArray(basesInternas?.tprovidencias) && basesInternas?.tprovidencias ? 1 : 0;
+  const controlInterno =
+    ["tofac", "tofac2", "tconsepvinculados"].reduce((sum, campo) => {
+      const v = basesInternas?.[campo];
+      return sum + (Array.isArray(v) ? v.length : v ? 1 : 0);
+    }, 0) +
+    providenciasInternas.bloquean.length +
+    providenciaInternaSuelta;
   if (controlInterno > 0) {
     hallazgos.push({
       code: "listas_control_interno",
       message: `Aparece en ${controlInterno} registro(s) de listas internas de control (OFAC/CONSEP/providencias)`,
       bloqueante: true,
+    });
+  }
+
+  const providenciasDeCertificacion = providenciasOpr.certificacion.length + providenciasInternas.certificacion.length;
+  if (providenciasDeCertificacion > 0) {
+    hallazgos.push({
+      code: "providencia_certificacion",
+      message: `Registra ${providenciasDeCertificacion} providencia(s) de certificación (un pedido de información de un fiscal o un juez, no una retención): no bloquea, y la salida no pasa de Revisar`,
+      bloqueante: false,
+      salidaMaxima: "revisar",
     });
   }
 
@@ -181,6 +204,8 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
   }
 
   const bloqueado = hallazgos.some((h) => h.bloqueante);
+  // Un bloqueo manda sobre cualquier tope: el tope sólo se anota si no hay bloqueo.
+  const salidaMaxima = !bloqueado && hallazgos.some((h) => h.salidaMaxima === "revisar") ? "revisar" : null;
 
-  return { bloqueado, hallazgos };
+  return { bloqueado, hallazgos, salidaMaxima };
 }

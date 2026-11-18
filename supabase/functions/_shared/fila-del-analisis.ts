@@ -35,7 +35,13 @@ export function filaDelAnalisis(d: DatosDelAnalisis) {
   // Un control de bloqueo bloqueante no se delega al criterio del LLM
   // (marco-interpretativo.ts v14): fuerza el score y la recomendación.
   const score = controlBloqueo.bloqueado ? 1 : llmResult.score;
-  const recomendacion = controlBloqueo.bloqueado ? "negar" : llmResult.recomendacion;
+  // Una advertencia con salida máxima (la providencia de certificación, E12/R5)
+  // no niega: sólo impide que el análisis diga «aprobar».
+  const recomendacion = controlBloqueo.bloqueado
+    ? "negar"
+    : controlBloqueo.salidaMaxima === "revisar" && llmResult.recomendacion === "aprobar"
+    ? "revisar"
+    : llmResult.recomendacion;
   return {
     ingestion_run_id: d.runId,
     client_id: d.clientId,

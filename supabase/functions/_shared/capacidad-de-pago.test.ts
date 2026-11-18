@@ -5,7 +5,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals, assertThrows } from "jsr:@std/assert@1";
-import { conIngresoDeclarado, datosDeCapacidad, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import { conIngresoDeclarado, cuotaPorAnualidad, datosDeCapacidad, TASA_ANUAL_BIESS, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 
@@ -109,8 +109,8 @@ Deno.test("con Equifax: las cuotas del titular por sistema, y lo de codeudor no 
     { concepto: "Bancos", montoMensual: 310.4, origen: "Equifax" },
     { concepto: "Sector comercial", montoMensual: 42, origen: "Equifax" },
   ]);
-  // Los bancos ya tienen cuota; las casas comerciales siguen sin ella.
-  assertEquals(d.deudasSinCuota.map((x) => x.concepto), ["Casas comerciales", "Préstamo del IESS o BIESS"]);
+  // Los bancos ya tienen cuota (con el BIESS adentro); las casas comerciales siguen sin ella.
+  assertEquals(d.deudasSinCuota.map((x) => x.concepto), ["Casas comerciales"]);
 });
 
 Deno.test("la pensión alimenticia que paga es una cuota más; una fuente que ya no está vigente no es ingreso", () => {
@@ -363,4 +363,65 @@ Deno.test("una fuente que no contestó se dice: no es una persona sin deudas", (
   // Y con todo contestado no hay nada que avisar.
   assertEquals(datosDeCapacidad(perfilDePrueba(), null).fuentesSinConsultar, []);
   assertEquals(evaluarCapacidad({ ...datosDeCapacidad(perfilDePrueba(), null), cuotaNueva: 100 }).avisos.some((a) => a.includes("No se pudo consultar")), false);
+});
+
+// ---- El BIESS: el buró de Proveedor_Info_1 no lo trae y el de Equifax sí ----
+
+const HOY = new Date(Date.UTC(2026, 10, 17));
+const conBiess = (operaciones: unknown[] | undefined) => {
+  const perfil = perfilDePrueba() as Record<string, any>;
+  perfil.comportamientoBancario.saldoPrestamosIessBiess = 10000;
+  if (operaciones) perfil.comportamientoBancario.operacionesIessBiess = operaciones;
+  return perfil;
+};
+
+Deno.test("sin buró: el BIESS lleva su saldo y una cuota estimada por anualidad con el plazo que queda", () => {
+  const perfil = conBiess([{ tipo: "quirografario", saldo: 10000, fechaFin: "2028-11-17" }]);
+  const d = datosDeCapacidad(perfil, null, HOY);
+  const esperada = cuotaPorAnualidad(10000, TASA_ANUAL_BIESS.quirografario, 24);
+  const o = d.obligaciones.find((x) => x.concepto.startsWith("Préstamo del IESS o BIESS"));
+  assert(o && o.estimada === true);
+  assertAlmostEquals(o.montoMensual, esperada, 0.01);
+  assertAlmostEquals(esperada, 445.9, 0.5);
+  assertEquals(d.deudasSinCuota.some((x) => x.concepto === "Préstamo del IESS o BIESS"), false);
+  const c = evaluarCapacidad({ ...d, cuotaNueva: 100 });
+  assert(c.avisos.some((a) => a.includes("cuotas estimadas")));
+  assertAlmostEquals(c.obligacionesActuales, 145.35 + esperada, 0.01);
+});
+
+Deno.test("sin buró: un BIESS sin fecha de fin queda como deuda sin cuota, con su saldo", () => {
+  const d = datosDeCapacidad(conBiess([{ tipo: "quirografario", saldo: 10000, fechaFin: null }]), null, HOY);
+  assertEquals(d.obligaciones.some((x) => x.concepto.startsWith("Préstamo del IESS")), false);
+  const linea = d.deudasSinCuota.find((x) => x.concepto === "Préstamo del IESS o BIESS");
+  assertEquals(linea?.saldo, 10000);
+  // Un perfil anterior a estructura-v22 no trae las operaciones: el saldo total, sin cuota.
+  const viejo = datosDeCapacidad(conBiess(undefined), null, HOY);
+  assertEquals(viejo.deudasSinCuota.find((x) => x.concepto === "Préstamo del IESS o BIESS")?.saldo, 10000);
+});
+
+Deno.test("sin buró: el hipotecario usa su tasa y una operación sin fecha no esconde a la que sí la tiene", () => {
+  const d = datosDeCapacidad(
+    conBiess([
+      { tipo: "hipotecario", saldo: 40000, fechaFin: "2046-11-17" },
+      { tipo: "quirografario", saldo: 3000, fechaFin: null },
+    ]),
+    null,
+    HOY,
+  );
+  const o = d.obligaciones.find((x) => x.estimada);
+  assertAlmostEquals(o!.montoMensual, cuotaPorAnualidad(40000, TASA_ANUAL_BIESS.hipotecario, 240), 0.01);
+  assertEquals(d.deudasSinCuota.find((x) => x.concepto === "Préstamo del IESS o BIESS")?.saldo, 3000);
+});
+
+Deno.test("con Equifax: la línea del BIESS del proveedor no se agrega, ni sin cuota ni estimada", () => {
+  const estructura = { deudaActualTitular: { bancos: { cuotaMensualUsd: 310.4 } } };
+  const d = datosDeCapacidad(conBiess([{ tipo: "quirografario", saldo: 10000, fechaFin: "2028-11-17" }]), estructura, HOY);
+  assertEquals(d.obligaciones.some((x) => x.concepto.includes("BIESS")), false);
+  assertEquals(d.deudasSinCuota.some((x) => x.concepto.includes("BIESS")), false);
+  assertEquals(d.fuentesSinConsultar, []);
+  // Y si la fuente de préstamos no contestó, tampoco se avisa: el buró de Equifax lo cubre.
+  const perfil = conBiess(undefined) as Record<string, any>;
+  perfil.metaConsulta = { fuentesNoMedidas: ["creditoQuirografario"] };
+  assertEquals(datosDeCapacidad(perfil, estructura, HOY).fuentesSinConsultar, []);
+  assertEquals(datosDeCapacidad(perfil, null, HOY).fuentesSinConsultar, ["préstamos del IESS o BIESS"]);
 });
