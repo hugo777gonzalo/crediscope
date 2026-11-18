@@ -1,0 +1,28 @@
+{
+  "descripcion": "Dos deudas con casas comerciales con cortes distintos: el perfil guarda el más antiguo, y los hechos dicen también el más reciente",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "retails": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "retails": [
+          { "institucion": "ALMACEN FICTICIO UNO", "fecha": "31/07/25", "totalDeuda": 300, "valorVencido": 50, "valorProcesoJudicial": 0, "valorProcesoCastigado": 0, "diasMora": 15 },
+          { "institucion": "ALMACEN FICTICIO DOS", "fecha": "30/06/25", "totalDeuda": 200, "valorVencido": 0, "valorProcesoJudicial": 0, "valorProcesoCastigado": 0, "diasMora": 0 }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": { "ret.corte@1": "aplica" },
+  "hechos": {
+    "ret.corte": { "valor": "2025-06-30", "registros": ["retails.retails#1"] },
+    "ret.corte.mas_reciente": { "valor": "2025-07-31", "registros": ["retails.retails#0"] },
+    "ret.deudas.cantidad": { "valor": 2 },
+    "ret.deuda.total": { "valor": 500, "registros": ["retails.retails#0", "retails.retails#1"] },
+    "ret.deuda.vencida": { "valor": 50, "registros": ["retails.retails#0"] },
+    "ret.mora.dias_max": { "valor": 15, "registros": ["retails.retails#0"] }
+  }
+}

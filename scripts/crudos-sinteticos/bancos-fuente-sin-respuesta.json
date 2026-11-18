@@ -1,0 +1,25 @@
+{
+  "descripcion": "Diners no contestó y el registro de deudores falló: el perfil escribe lo de Super como si fuera todo (y «no figura»), y los hechos dicen que no se sabe",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1001", "entnombre": "BANCO FICTICIO UNO", "riesgo": "T", "calificacion": "A1", "saldoVigente": "900.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" }
+        ]
+      }
+    },
+    "buroCreditoDiners": { "status": "error", "data": null },
+    "deudores": { "status": "faltante", "data": null }
+  },
+  "esperado": {},
+  "hechos": {
+    "ban.operaciones.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta" },
+    "ban.saldo.por_vencer": { "valor": null, "motivo": "fuente_sin_respuesta" },
+    "ban.registro_deudores.figura": { "valor": null, "motivo": "fuente_sin_respuesta" }
+  }
+}

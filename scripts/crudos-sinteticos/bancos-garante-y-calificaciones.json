@@ -1,0 +1,37 @@
+{
+  "descripcion": "Tres operaciones propias (A1, AL y B1 con saldomora) y una como garante (D): la garantía no entra en lo propio, AL no es la peor ni la mejor, y con saldomora se lee saldomora",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1001", "entnombre": "BANCO FICTICIO UNO", "riesgo": "T", "calificacion": "A1", "saldoVigente": "1000.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" },
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1002", "entnombre": "BANCO FICTICIO DOS", "riesgo": "T", "calificacion": "AL", "saldoVigente": "500.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" },
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1003", "entnombre": "BANCO FICTICIO TRES", "riesgo": "T", "calificacion": "B1", "saldoVigente": "0", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "50.00", "saldomora": "200.00" },
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1004", "entnombre": "BANCO FICTICIO CUATRO", "riesgo": "G", "calificacion": "D", "saldoVigente": "3000.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "400.00", "saldomora": "0" }
+        ]
+      }
+    },
+    "buroCreditoDiners": { "status": "ok", "data": { "estado": { "codigo": "OK", "mensaje": "" }, "datosSuper": [] } }
+  },
+  "esperado": {},
+  "reglas": { "ban.propias@1": "aplica", "ban.calificacion@1": "aplica", "ban.vencido@1": "no-aplica" },
+  "hechos": {
+    "ban.operaciones.cantidad": {
+      "valor": 3,
+      "registros": ["buroCreditoSuper.datosSuper#0", "buroCreditoSuper.datosSuper#1", "buroCreditoSuper.datosSuper#2"],
+      "descartados": ["buroCreditoSuper.datosSuper#3:rol_garante_o_codeudor"]
+    },
+    "ban.calificacion.peor": { "valor": "B1", "registros": ["buroCreditoSuper.datosSuper#2"] },
+    "ban.calificacion.mejor": { "valor": "A1", "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.saldo.por_vencer": { "valor": 1500 },
+    "ban.saldo.vencido": { "valor": 200, "registros": ["buroCreditoSuper.datosSuper#2"] },
+    "ban.garante.operaciones.cantidad": { "valor": 1, "registros": ["buroCreditoSuper.datosSuper#3"] },
+    "ban.garante.deuda": { "valor": 3400, "registros": ["buroCreditoSuper.datosSuper#3"] },
+    "ban.garante.calificacion.peor": { "valor": "D", "registros": ["buroCreditoSuper.datosSuper#3"] }
+  }
+}

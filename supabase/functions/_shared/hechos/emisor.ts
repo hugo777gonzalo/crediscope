@@ -4,7 +4,7 @@
 // valor cita al menos un registro, uno sin valor dice su motivo, una señal dice de
 // qué hechos sale, y todo código está en el catálogo. Mínimo del paso 0: sin reglas.
 
-import type { CodigoDelCatalogo, Contexto, Diferencia, Entidad, Hecho, Senal } from "./tipos.ts";
+import type { CodigoDelCatalogo, Contexto, Descarte, Diferencia, Entidad, Hecho, MotivoDeNoDisponible, RefDeRegistro, Senal } from "./tipos.ts";
 
 export const FORMA_DE_UN_CODIGO = /^[a-z]{2,5}(\.[a-z0-9_]+){1,3}$/;
 
@@ -13,7 +13,53 @@ export interface Emisor {
   entidad(e: Entidad): void;
   diferencia(d: Omit<Diferencia, "clase" | "fechaDeLaConsulta">): void;
   senal(s: Omit<Senal, "clase" | "fechaDeLaConsulta">): void;
+  // La clave de una entidad nueva (1.3): estable dentro de la consulta. Si dos
+  // entidades distintas caen en la misma huella, la segunda se resume con un
+  // contador. La lleva el emisor porque dos grupos emiten operaciones.
+  clave(prefijo: "op" | "emp" | "dem" | "est", identidad: string): Entidad["clave"];
   resultado(): { hechos: Hecho[]; entidades: Entidad[]; diferencias: Diferencia[]; senales: Senal[] };
+}
+
+// Lo que todo grupo repite al emitir: la unidad sale de su catálogo, y un hecho
+// de una fuente es «confirmado por un tercero» o no tiene valor y dice por qué.
+export function ayudanteDelGrupo(emisor: Emisor, catalogo: CodigoDelCatalogo[]) {
+  const unidades = new Map(catalogo.map((c) => [c.codigo, c.unidad]));
+  const unidad = (codigo: string) => {
+    const u = unidades.get(codigo);
+    if (!u) throw new Error(`Código fuera del catálogo del grupo: ${codigo}`);
+    return u;
+  };
+  return {
+    confirmado(
+      codigo: string,
+      regla: string,
+      fuentes: string[],
+      valor: Hecho["valor"],
+      registros: RefDeRegistro[],
+      fechaDelDato: string | null,
+      extra: { descartados?: Descarte[]; entidades?: string[] } = {},
+    ) {
+      const h: Omit<Hecho, "clase" | "fechaDeLaConsulta"> = { codigo, regla, unidad: unidad(codigo), valor, calidad: "confirmado_por_tercero", fuentes, fechaDelDato, registros };
+      if (extra.descartados?.length) h.descartados = extra.descartados;
+      if (extra.entidades?.length) h.entidades = extra.entidades;
+      emisor.hecho(h);
+    },
+    sinValor(codigo: string, regla: string, fuentes: string[], motivo: MotivoDeNoDisponible) {
+      emisor.hecho({ codigo, regla, unidad: unidad(codigo), valor: null, calidad: "no_disponible", motivo, fuentes, fechaDelDato: null, registros: [] });
+    },
+  };
+}
+
+// La huella de una entidad (1.1): seis caracteres hexadecimales de un resumen
+// de lo que la identifica. FNV-1a de 32 bits: sincrónico y sin dependencias,
+// porque derivar es puro y corre igual en Deno, en Node y en el navegador.
+export function huella(texto: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < texto.length; i++) {
+    h ^= texto.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0").slice(0, 6);
 }
 
 export function crearEmisor(contexto: Contexto, catalogo: CodigoDelCatalogo[]): Emisor {
@@ -22,6 +68,7 @@ export function crearEmisor(contexto: Contexto, catalogo: CodigoDelCatalogo[]): 
   const entidades: Entidad[] = [];
   const diferencias: Diferencia[] = [];
   const senales: Senal[] = [];
+  const usadas = new Set<string>();
   const fecha = contexto.fechaDeLaConsulta;
 
   function exigirCodigo(codigo: string) {
@@ -38,7 +85,14 @@ export function crearEmisor(contexto: Contexto, catalogo: CodigoDelCatalogo[]): 
       hechos.push({ ...h, clase: "hecho", fechaDeLaConsulta: fecha });
     },
     entidad(e) {
+      if (!usadas.has(e.clave)) throw new Error(`Entidad con una clave que no dio el emisor: ${e.clave}`);
       entidades.push(e);
+    },
+    clave(prefijo, identidad) {
+      let clave = `${prefijo}-${huella(identidad)}` as Entidad["clave"];
+      for (let n = 1; usadas.has(clave); n++) clave = `${prefijo}-${huella(`${identidad}#${n}`)}` as Entidad["clave"];
+      usadas.add(clave);
+      return clave;
     },
     diferencia(d) {
       exigirCodigo(d.codigo);
