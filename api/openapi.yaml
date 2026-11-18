@@ -1667,9 +1667,12 @@ components:
         analisis:
           description: |
             Análisis premium. Se SUMA a lo anterior: `recomendacion` sigue
-            llenándose con la equivalencia aprobacion_directa y aprobar a
-            aprobar; cambio_de_condiciones, condicionado y revisar a revisar;
-            negar a negar. `null` mientras no exista para esta evaluación.
+            llenándose con la equivalencia aprobacion_directa, aprobar y
+            cambio_de_condiciones a aprobar (en la versión 1 un Cambio de
+            Condiciones equivale a aprobar: al riesgo le alcanza y lo que no
+            alcanza es la capacidad de pago); condicionado (Aprobado con
+            Requisitos en pantalla; el valor es una clave interna y no cambia) y
+            revisar a revisar; negar a negar. `null` mientras no exista para esta evaluación.
           oneOf:
             - $ref: '#/components/schemas/AnalisisPremium'
             - type: 'null'
@@ -1690,6 +1693,11 @@ components:
       description: Dólares, con dos decimales.
     SalidaDeRecomendacion:
       type: string
+      description: |
+        Salida del estándar de la institución. `condicionado` se muestra como
+        «Aprobado con Requisitos» (decisión del negocio del 2026-11-18); el valor
+        es una clave interna estable y no cambia. `cambio_de_condiciones`
+        equivale a aprobar en la versión 1.
       enum: [aprobacion_directa, aprobar, cambio_de_condiciones, condicionado, revisar, negar]
     PeldanoDeIngreso:
       type: string
@@ -3171,7 +3179,7 @@ components:
           huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b
         variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
     EvaluacionCompletadaPremium:
-      summary: Completada en Pro con el análisis premium (persona ficticia, sin buró, Cambio de Condiciones)
+      summary: Completada en Pro con el análisis premium (persona ficticia, sin buró, Cambio de Condiciones, que equivale a aprobar)
       value:
         id: ev_01JABCH6JKMN7NPQR8STVW9XYZ
         estado: completada
@@ -3182,7 +3190,7 @@ components:
         plazoHasta: '2026-11-16T09:45:03-05:00'
         resultado:
           score: 640
-          recomendacion: revisar
+          recomendacion: aprobar
           veredictoOrigen: modelo
           indicadorRiesgo: moderado
           indicadorHistorial: sin historial

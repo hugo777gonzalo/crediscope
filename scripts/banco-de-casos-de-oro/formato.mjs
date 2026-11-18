@@ -26,20 +26,23 @@ export const SALIDAS_DE_LA_VERSION_MAYOR = {
   aprobacion_directa: "Aprobación Directa",
   aprobar: "Aprobar",
   cambio_de_condiciones: "Cambio de Condiciones",
-  condicionado: "Condicionado",
+  condicionado: "Aprobado con Requisitos",
   revisar: "Revisar",
   negar: "Negar",
 };
 
 // Qué recomendación de hoy es compatible con cada salida de la versión mayor. Un
 // caso que diga «Negar» en la mayor y «aprobar» hoy tiene un error de redacción,
-// no un criterio nuevo. Cambio de Condiciones y Condicionado no existen hoy:
-// el modelo los expresa como «revisar» o, con la acción que pide el requisito, como
-// «aprobar».
+// no un criterio nuevo. Cambio de Condiciones y Aprobado con Requisitos (clave
+// interna `condicionado`) no existen hoy: el modelo los expresa como «revisar» o,
+// con la acción que pide el requisito, como «aprobar». Decisión S3 del negocio
+// (2026-11-18): en la versión 1 Cambio de Condiciones equivale a aprobar, porque
+// al riesgo le alcanza y lo que no alcanza es la capacidad de pago; por eso ya no
+// es compatible con «negar» y «revisar» deja de ser su equivalente directo.
 export const COMPATIBLES_CON_HOY = {
   aprobacion_directa: ["aprobar"],
   aprobar: ["aprobar"],
-  cambio_de_condiciones: ["revisar", "negar"],
+  cambio_de_condiciones: ["aprobar"],
   condicionado: ["aprobar", "revisar"],
   revisar: ["revisar"],
   negar: ["negar"],
