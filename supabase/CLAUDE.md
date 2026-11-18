@@ -66,7 +66,7 @@ su guía: `docs/equifax.md`.
 - `capacidad-de-pago.ts` → `datosDeCapacidad()` y `evaluarCapacidad()` — si la
   cuota entra en el ingreso neto reportado al IESS, sumada a lo que ya paga.
   Una deuda sin cuota se lista aparte, nunca como cero: con saldo entra con una cuota
-  estimada de `FACTOR_CUOTA_ESTIMADA` (6,3% del saldo por mes, C1, 2026-11-18; capacidad-v5), rotulada
+  estimada con un factor por tramo de saldo (`TRAMOS_FACTOR_CUOTA`, 2,5% a 6,5% del saldo por mes; hipotecario sin plazo, `FACTOR_CUOTA_HIPOTECARIO`; C1, 2026-11-18; capacidad-v5), rotulada
   como estimada igual que el BIESS por anualidad, y sin saldo queda sin contar. Una respuesta de Equifax
   sin reporte no es «no debe» (`elBuroTraeDetalle()`): Plus corta al terminar el
   paso del buró, antes de pagar el modelo. La usan la pantalla

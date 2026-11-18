@@ -5,7 +5,7 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals, assertThrows } from "jsr:@std/assert@1";
-import { conIngresoDeclarado, cuotaPorAnualidad, cuotaPorFactorDeSaldo, FACTOR_CUOTA_ESTIMADA, CAPACIDAD_VERSION, datosDeCapacidad, TASA_ANUAL_BIESS, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import { conIngresoDeclarado, cuotaPorAnualidad, cuotaPorFactorDeSaldo, FACTOR_CUOTA_HIPOTECARIO, TRAMOS_FACTOR_CUOTA, CAPACIDAD_VERSION, datosDeCapacidad, TASA_ANUAL_BIESS, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 
@@ -89,8 +89,8 @@ Deno.test("sin buró: el sueldo del IESS, la cuota de cooperativas y los bancos 
   assertEquals(d.fuenteDeLasCuotas, "proveedor_info_1");
   assertEquals(d.ingresos, [{ concepto: "Sueldo reportado al IESS · Empleador privado", montoMensual: 1200, tipo: "sueldo", origen: "IESS" }]);
   assertEquals(d.obligaciones[0], { concepto: "Cooperativas", montoMensual: 145.35, origen: "Proveedor_Info_1" });
-  // Los bancos sin cuota entran con el 6,3% del saldo; las casas comerciales siguen sin contar.
-  assertEquals(d.obligaciones[1], { concepto: "Bancos (cuota estimada)", montoMensual: 347.17, origen: "Proveedor_Info_1", estimada: true, metodoDeEstimacion: "factor_saldo" });
+  // Los bancos sin cuota entran con el factor de su tramo (5.510,65 en 3 operaciones: 1.837 por operación, 6,5%); las casas comerciales siguen sin contar.
+  assertEquals(d.obligaciones[1], { concepto: "Bancos (cuota estimada)", montoMensual: 358.19, origen: "Proveedor_Info_1", estimada: true, metodoDeEstimacion: "factor_saldo" });
   assert(!d.obligaciones.some((x) => x.concepto.includes("Casas comerciales")));
   assertEquals(d.deudasSinCuota.map((x) => x.concepto), ["Bancos", "Casas comerciales", "Préstamo del IESS o BIESS"]);
   assertEquals(d.deudasSinCuota[0].saldo, 5510.65);
@@ -343,10 +343,10 @@ Deno.test("datosDeCapacidad con Equifax: una estructura sin deuda del titular no
   assertEquals(d.fuenteDeLasCuotas, "equifax");
   // Los bancos de Equifax tienen saldo y cuota cero: no se cuentan como cero, se estiman (C1).
   assertEquals(d.obligaciones, [
-    { concepto: "Bancos (cuota estimada)", montoMensual: 516.6, origen: "Equifax", estimada: true, metodoDeEstimacion: "factor_saldo" },
+    { concepto: "Bancos (cuota estimada)", montoMensual: 508.4, origen: "Equifax", estimada: true, metodoDeEstimacion: "factor_saldo" },
     { concepto: "Sector comercial", montoMensual: 25, origen: "Equifax" },
   ]);
-  assertEquals(d.deudasSinCuota[0], { concepto: "Bancos", saldo: 8200, origen: "Equifax", cuotaEstimada: 516.6 });
+  assertEquals(d.deudasSinCuota[0], { concepto: "Bancos", saldo: 8200, origen: "Equifax", cuotaEstimada: 508.4 });
   // Con Equifax no se mezclan los bancos de Proveedor_Info_1.
   assert(!d.deudasSinCuota.some((x) => x.origen === "Proveedor_Info_1" && x.concepto === "Bancos"));
   const c = evaluarCapacidad({ ...d, cuotaNueva: 100 });
@@ -394,7 +394,7 @@ Deno.test("sin buró: el BIESS lleva su saldo y una cuota estimada por anualidad
   assertEquals(d.deudasSinCuota.some((x) => x.concepto === "Préstamo del IESS o BIESS"), false);
   const c = evaluarCapacidad({ ...d, cuotaNueva: 100 });
   assert(c.avisos.some((a) => a.includes("cuotas estimadas")));
-  assertAlmostEquals(c.obligacionesActuales, 145.35 + 347.17 + esperada, 0.01);
+  assertAlmostEquals(c.obligacionesActuales, 145.35 + 358.19 + esperada, 0.01);
 });
 
 Deno.test("sin buró: un BIESS sin fecha de fin queda como deuda sin cuota, con su saldo", () => {
@@ -433,10 +433,18 @@ Deno.test("con Equifax: la línea del BIESS del proveedor no se agrega, ni sin c
   assertEquals(datosDeCapacidad(perfil, null, HOY).fuentesSinConsultar, ["préstamos del IESS o BIESS"]);
 });
 
-Deno.test("C1: la cuota estimada es el 6,3% del saldo, y sin saldo no se inventa", () => {
-  assertEquals(FACTOR_CUOTA_ESTIMADA, 0.063);
-  assertEquals(cuotaPorFactorDeSaldo(10000), 630);
-  assertEquals(cuotaPorFactorDeSaldo(5510.65), 347.17);
+Deno.test("C1: la cuota estimada sale del tramo de saldo por operación, y sin saldo no se inventa", () => {
+  // Todos los factores caen en el rango de 2,5% a 6,5% que fijó el negocio.
+  for (const t of TRAMOS_FACTOR_CUOTA) assert(t.factor >= 0.025 && t.factor <= 0.065);
+  assertEquals(cuotaPorFactorDeSaldo(1500), 97.5);
+  assertEquals(cuotaPorFactorDeSaldo(10000), 620);
+  assertEquals(cuotaPorFactorDeSaldo(15000), 705);
+  // El tramo es por operación: 30.000 en tres operaciones son 10.000 cada una.
+  assertEquals(cuotaPorFactorDeSaldo(30000, { operaciones: 3 }), 1860);
+  // Un saldo de 60.000 deja de costar 3.780 (el 6,3% parejo): 2,5%.
+  assertEquals(cuotaPorFactorDeSaldo(60000), 1500);
+  assertEquals(cuotaPorFactorDeSaldo(100000, { hipotecario: true }), 1070);
+  assertEquals(FACTOR_CUOTA_HIPOTECARIO, 0.0107);
   assertEquals(cuotaPorFactorDeSaldo(null), null);
   assertEquals(cuotaPorFactorDeSaldo(0), null);
   assertEquals(CAPACIDAD_VERSION, "capacidad-v5");
@@ -448,15 +456,15 @@ Deno.test("C1: una deuda de bancos sin cuota entra al veredicto como cuota estim
   perfil.comportamientoBancario = { saldoTotalVigente: 10000, deudaEnAtraso: 0 };
   const d = datosDeCapacidad(perfil, null);
   const o = d.obligaciones.find((x) => x.concepto === "Bancos (cuota estimada)");
-  assert(o && o.estimada === true && o.montoMensual === 630);
-  assertEquals(d.deudasSinCuota, [{ concepto: "Bancos", saldo: 10000, origen: "Proveedor_Info_1", cuotaEstimada: 630 }]);
+  assert(o && o.estimada === true && o.montoMensual === 620);
+  assertEquals(d.deudasSinCuota, [{ concepto: "Bancos", saldo: 10000, origen: "Proveedor_Info_1", cuotaEstimada: 620 }]);
   const c = evaluarCapacidad({ ...d, cuotaNueva: 100 });
-  assertEquals(c.obligacionesActuales, 630);
+  assertEquals(c.obligacionesActuales, 620);
   assertEquals(c.obligacionesIncompletas, true);
-  assert(c.avisos.some((a) => a.includes("6,3% del saldo")));
+  assert(c.avisos.some((a) => a.includes("tramo de saldo")));
   // La deuda ya está contada: no es un hueco, y no se suma de nuevo.
   assert(!c.avisos.some((a) => a.includes("Hay deudas sin cuota informada: lo que paga")));
-  // 1.200 de sueldo: neto 1.086,60, tope 434,64; 630 ya lo pasan.
+  // 1.200 de sueldo: neto 1.086,60, tope 434,64; 620 ya lo pasan.
   assertEquals(c.veredicto, "no_alcanza");
 });
 
@@ -469,16 +477,16 @@ Deno.test("C1: sin saldo la deuda sigue sin contar y el aviso de hueco se mantie
   });
   assertEquals(c.obligacionesActuales, 0);
   assert(c.avisos.some((a) => a.includes("Hay deudas sin cuota informada: lo que paga")));
-  assert(!c.avisos.some((a) => a.includes("6,3%")));
+  assert(!c.avisos.some((a) => a.includes("tramo de saldo")));
 });
 
-Deno.test("C1: el BIESS con anualidad no se cuenta dos veces, y sin fecha de fin usa el 6,3%", () => {
+Deno.test("C1: el BIESS con anualidad no se cuenta dos veces, y sin fecha de fin usa el tramo, o el factor hipotecario", () => {
   const con = datosDeCapacidad(conBiess([{ tipo: "quirografario", saldo: 10000, fechaFin: "2028-11-17" }]), null, HOY);
   assertEquals(con.obligaciones.filter((x) => x.concepto.includes("BIESS")).length, 1);
   assertEquals(con.obligaciones.find((x) => x.concepto.includes("BIESS"))?.metodoDeEstimacion, "anualidad");
   const sin = datosDeCapacidad(conBiess([{ tipo: "quirografario", saldo: 10000, fechaFin: null }]), null, HOY);
   const o = sin.obligaciones.find((x) => x.concepto.includes("BIESS"));
-  assertEquals(o?.montoMensual, 630);
+  assertEquals(o?.montoMensual, 620);
   assertEquals(o?.metodoDeEstimacion, "factor_saldo");
   const mixto = datosDeCapacidad(
     conBiess([{ tipo: "hipotecario", saldo: 40000, fechaFin: "2046-11-17" }, { tipo: "quirografario", saldo: 3000, fechaFin: null }]),
@@ -487,5 +495,12 @@ Deno.test("C1: el BIESS con anualidad no se cuenta dos veces, y sin fecha de fin
   );
   const biess = mixto.obligaciones.filter((x) => x.concepto.includes("BIESS"));
   assertEquals(biess.map((x) => x.metodoDeEstimacion), ["anualidad", "factor_saldo"]);
-  assertEquals(biess[1].montoMensual, 189);
+  assertEquals(biess[1].montoMensual, 195);
+});
+
+Deno.test("C1: un BIESS hipotecario sin fecha de fin usa el factor hipotecario, no el del tramo", () => {
+  const d = datosDeCapacidad(conBiess([{ tipo: "hipotecario", saldo: 60000, fechaFin: null }]), null, HOY);
+  const o = d.obligaciones.find((x) => x.concepto.includes("BIESS"));
+  assertEquals(o?.montoMensual, 642);
+  assertEquals(o?.metodoDeEstimacion, "factor_saldo");
 });
