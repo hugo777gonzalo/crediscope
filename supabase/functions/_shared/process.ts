@@ -25,13 +25,11 @@ import { anioDeLaDemanda, demandasPorCategoria, esDemandaDeCobro, quienDemanda, 
 import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
-type AnyRecord = Record<string, unknown>;
+// Los ayudantes de lectura del crudo viven en la capa de hechos desde la tarea
+// E4: el perfil y los hechos leen el mismo registro con el mismo código.
+import { arr, estadoRecurso, num, obj, parseFecha, redondear, textoDe } from "./hechos/lectura-del-crudo.ts";
 
-function parseFecha(v: unknown): Date | null {
-  if (v === null || v === undefined || v === "") return null;
-  const d = new Date(v as string | number);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+type AnyRecord = Record<string, unknown>;
 
 function formatFechaISO(d: Date | null): string | null {
   return d ? d.toISOString().slice(0, 10) : null;
@@ -136,18 +134,6 @@ function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" |
   return cancelacion && cancelacion.getTime() === cese.getTime() ? "cancelacion" : "suspension_temporal";
 }
 
-function num(v: unknown): number | null {
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isNaN(n) ? null : n;
-}
-
-// Sumas de dinero a centavos: sumar decimales en coma flotante dejaba
-// saldos como 258798.83000000002, que el modelo copiaba tal cual.
-function redondear(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 // La escala de calificaciones del buró, de mejor a peor. En consumo sale de
 // los días de atraso; en el comercial, no sólo de ellos.
 const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
@@ -168,12 +154,6 @@ function extremoDeCalificacion(operaciones: AnyRecord[], cual: "peor" | "mejor")
   return todas[0] ?? null;
 }
 
-function arr(multi: AnyRecord | null | undefined, recurso: string, campo: string): AnyRecord[] {
-  const v = (multi?.[recurso] as AnyRecord | undefined)?.data as AnyRecord | undefined;
-  const items = v?.[campo];
-  return Array.isArray(items) ? (items as AnyRecord[]) : [];
-}
-
 // seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
 // modelo tal cual.
 const DESCRIPCION_SERVICIO: Record<string, string> = {
@@ -184,22 +164,6 @@ const DESCRIPCION_SERVICIO: Record<string, string> = {
   "ISSPOL:pasivo": "policía en servicio pasivo (retirado)",
   "ISSPOL:montepio": "beneficiario de montepío policial",
 };
-
-// Status de la fuente puntual (ResultadoFuente.status) — a diferencia de
-// arr()/obj(), que solo miran si HAY registros, esto distingue "el
-// recurso se consultó bien y no trajo nada" (status "ok", 0 registros
-// reales) de "el recurso falló/no trajo datos" (status "faltante"/
-// "error"/"deshabilitado") — necesario para no confundir "confirmado
-// que NO aplica" con "no lo sabemos" (ver seguridadSocial más abajo).
-function estadoRecurso(multi: AnyRecord | null | undefined, recurso: string): string | undefined {
-  return (multi?.[recurso] as AnyRecord | undefined)?.status as string | undefined;
-}
-
-function obj(multi: AnyRecord | null | undefined, recurso: string, campo: string): AnyRecord | null {
-  const v = (multi?.[recurso] as AnyRecord | undefined)?.data as AnyRecord | undefined;
-  const val = v?.[campo];
-  return val && typeof val === "object" && !Array.isArray(val) ? (val as AnyRecord) : null;
-}
 
 // La regla de cobro vive en demandas.ts desde estructura-v11, junto con
 // las categorías de las demás demandas.
@@ -273,11 +237,6 @@ function aniosDesdeMs(v: unknown): number | null {
   if (!Number.isFinite(n) || n < ANTES_DE_1950) return null;
   const anios = (Date.now() - n) / (365.25 * 24 * 3600 * 1000);
   return anios >= 0 && anios < 200 ? Math.floor(anios) : null;
-}
-
-function textoDe(v: unknown): string | null {
-  const t = String(v ?? "").trim();
-  return t === "" ? null : t;
 }
 
 // ---- Empleadores y préstamos del IESS que vienen de más de una fuente ----

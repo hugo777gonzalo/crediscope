@@ -1,0 +1,47 @@
+{
+  "descripcion": "Una E con el atraso en noDevengaInteres y en mora (saldomora en 0), una tarjeta Diners al día y un retail con un solo corte: el vencido cae a mora y el atraso suma lo que no devenga",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1001", "entnombre": "BANCO FICTICIO UNO", "riesgo": "T", "calificacion": "E", "saldoVigente": "0", "noDevengaInteres": "700.00", "judicial": "0", "castigo": "0", "mora": "300.00", "saldomora": "0" }
+        ]
+      }
+    },
+    "buroCreditoDiners": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "2001", "entnombre": "TARJETA FICTICIA", "riesgo": "T", "calificacion": "A1", "saldoVigente": "250.50", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" }
+        ]
+      }
+    },
+    "retails": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "retails": [
+          { "institucion": "ALMACEN FICTICIO", "fecha": "31/07/25", "totalDeuda": 100, "valorVencido": 0, "valorProcesoJudicial": 0, "valorProcesoCastigado": 0, "diasMora": 0 }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": { "ban.propias@1": "no-aplica", "ban.vencido@1": "aplica", "ret.corte@1": "no-aplica" },
+  "hechos": {
+    "ban.operaciones.cantidad": { "valor": 2, "registros": ["buroCreditoSuper.datosSuper#0", "buroCreditoDiners.datosSuper#0"] },
+    "ban.saldo.vencido": { "valor": 300, "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.saldo.no_devenga": { "valor": 700, "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.saldo.en_atraso": { "valor": 1000, "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.saldo.por_vencer": { "valor": 250.5, "registros": ["buroCreditoDiners.datosSuper#0"] },
+    "ban.calificacion.peor": { "valor": "E" },
+    "ret.corte": { "valor": "2025-07-31", "registros": ["retails.retails#0"] },
+    "ret.corte.mas_reciente": { "valor": "2025-07-31", "registros": ["retails.retails#0"] }
+  }
+}

@@ -11,7 +11,15 @@
           { "numeroOperacion": "0000200", "fechaConsesion": "10/03/2021", "fechaFinCredito": "10/03/2023", "montoTransferido": 3000, "saldoTotalCredito": 1000, "diasMoraAfi": 400, "estadoOperacion": "VENCIDO" }
         ]
       }
-    }
+    },
+    "creditoQuirografario": { "status": "ok", "data": { "prestamos": [] } },
+    "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } }
   },
-  "esperado": { "prestamo-biess-terminado-contado": "no-dispara" }
+  "esperado": { "prestamo-biess-terminado-contado": "no-dispara" },
+  "reglas": { "biess.union@2": "no-aplica" },
+  "hechos": {
+    "biess.operaciones.cantidad": { "valor": 1, "registros": ["basesInternas.tcredQuirografarios#0"] },
+    "biess.saldo": { "valor": 1000, "registros": ["basesInternas.tcredQuirografarios#0"] },
+    "biess.mora.dias_max": { "valor": 400, "registros": ["basesInternas.tcredQuirografarios#0"] }
+  }
 }
