@@ -19,7 +19,14 @@
           { "nroOperacion": "100", "fechaConcesion": "10/03/2025", "valorPrestamo": 5000, "valorPorVencer": 4000, "valorVencido": 0, "estado": "VIGENTE" }
         ]
       }
-    }
+    },
+    "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } }
   },
-  "esperado": { "prestamo-biess-contado-dos-veces": "no-dispara" }
+  "esperado": { "prestamo-biess-contado-dos-veces": "no-dispara" },
+  "reglas": { "biess.mora@1": "no-aplica" },
+  "hechos": {
+    "biess.operaciones.cantidad": { "valor": 1, "registros": ["creditoQuirografario.prestamos#0"] },
+    "biess.mora.dias_max": { "valor": 0, "registros": ["creditoQuirografario.prestamos#0"] },
+    "biess.saldo": { "valor": 4000, "registros": ["creditoQuirografario.prestamos#0"] }
+  }
 }

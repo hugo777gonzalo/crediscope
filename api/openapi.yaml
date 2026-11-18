@@ -687,7 +687,9 @@ paths:
 
         Al sueldo de un dependiente se le descuenta el aporte personal al IESS.
         Una deuda sin cuota informada no se cuenta como cero: se devuelve en
-        `datos.deudasSinCuota` y `obligacionesIncompletas` es `true`. `datos`
+        `datos.deudasSinCuota` y `obligacionesIncompletas` es `true`. Si tiene
+        saldo, su cuota se estima con un porcentaje del saldo por mes (de 2,5% a 6,5% según el tramo de saldo por operación; 1,07% si es hipotecario) y entra en
+        `datos.obligaciones` con `estimada: true`; sin saldo, no se cuenta. `datos`
         dice con qué ingresos y cuotas se midió (con el Ingreso declarado, el
         único ingreso es el declarado).
       security:
@@ -743,7 +745,7 @@ paths:
                   summary: Respuesta al pedido con los datos de la IFI
                   value:
                     capacidad:
-                      version: capacidad-v4
+                      version: capacidad-v5
                       veredicto: alcanza
                       cumple: true
                       ingresoReportado: 1200
@@ -803,7 +805,7 @@ paths:
                   summary: Respuesta al pedido con una persona y su Ingreso declarado (las cuotas, de Equifax)
                   value:
                     capacidad:
-                      version: capacidad-v4
+                      version: capacidad-v5
                       veredicto: alcanza
                       cumple: true
                       ingresoReportado: 1800
@@ -848,7 +850,7 @@ paths:
                       totalPagado: 6289.37
                     montoMaximo: 8531.14
                     capacidadSoloIess:
-                      version: capacidad-v4
+                      version: capacidad-v5
                       veredicto: no_alcanza
                       cumple: false
                       ingresoReportado: 1200
@@ -2529,6 +2531,15 @@ components:
         origen:
           type: string
           maxLength: 100
+        estimada:
+          type: boolean
+          description: 'La fuente no informa esta cuota: la estimó CrediScope.'
+        metodoDeEstimacion:
+          type: string
+          enum: [anualidad, factor_saldo]
+          description: >-
+            `anualidad`: el saldo y el plazo que queda. `factor_saldo`: un porcentaje
+            del saldo por mes según su tramo, para una deuda sin cuota informada y sin plazo.
 
     DeudaSinCuota:
       type: object
@@ -2544,6 +2555,13 @@ components:
         origen:
           type: string
           maxLength: 100
+        cuotaEstimada:
+          type: number
+          minimum: 0
+          description: >-
+            La cuota que se estimó con un porcentaje del saldo por mes. Ya entra en
+            `obligaciones` como cuota estimada: acá sólo se muestra, no se suma
+            otra vez. Ausente cuando no hay saldo con qué estimarla.
 
     ParametrosDeCapacidad:
       type: object
@@ -3101,7 +3119,7 @@ components:
             hallazgos: []
           capacidadDePago:
             capacidad:
-              version: capacidad-v4
+              version: capacidad-v5
               veredicto: alcanza
               cumple: true
               ingresoReportado: 1200
