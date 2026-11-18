@@ -61,10 +61,12 @@ const contexto: Contexto = {
   persona: { nombre: null, fechaDeNacimiento: null },
 };
 
-Deno.test("con los grupos vacíos, el documento es el vacío con su versión", () => {
+Deno.test("con un crudo vacío, todo hecho dice que la fuente no contestó, y nada más sale", () => {
   const h = derivarHechos({}, contexto);
   assertEquals(h.version, HECHOS_VERSION);
-  assertEquals([h.hechos, h.entidades, h.diferencias, h.senales], [[], [], [], []]);
+  assertEquals(h.hechos.length > 0, true);
+  assertEquals(h.hechos.every((x) => x.valor === null && x.motivo === "fuente_sin_respuesta"), true);
+  assertEquals([h.entidades, h.diferencias, h.senales], [[], [], []]);
 });
 
 Deno.test("el emisor exige catálogo, registros, motivo y derivaDe", () => {

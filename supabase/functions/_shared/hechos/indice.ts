@@ -45,8 +45,11 @@ export const GRUPOS = {
   cumplimiento,
 };
 
-// Los grupos que ya pasaron la etapa A (sección 5.3): vacío hasta que uno pase.
-export const GRUPOS_EN_PARIDAD: string[] = [];
+// Los grupos cuya etapa A dio paridad sobre el crudo real (sección 5.3): la
+// prueba de los crudos inventados repite su paridad en cada PR. El grupo 1, el
+// 2026-11-18: 0 diferencias en 112.980 campos de 3.766 personas, salvo 12 de 3
+// personas a las que les faltó una fuente de préstamos del BIESS.
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);

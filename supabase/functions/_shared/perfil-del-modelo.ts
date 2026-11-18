@@ -165,9 +165,14 @@ export const CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN = ["laboral.obligadoALlevarConta
 // cada préstamo del IESS/BIESS con su fecha de fin. El modelo sigue leyendo los
 // totales (saldoPrestamosIessBiess); cambiar eso es versión nueva del marco.
 export const CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN = ["comportamientoBancario.operacionesIessBiess"];
+// La providencia de certificación (estructura-v23, E12) la resuelve el código:
+// no bloquea y topa la salida en Revisar (`salidaMaxima`). El mensaje sigue
+// siendo el de marco-v36 byte a byte; avisárselo al modelo es versión del marco.
+export const CAMPOS_DE_CONTROLES_QUE_NO_LLEGAN = ["cumplimiento.tieneProvidenciaDeCertificacion"];
 
 export const RUTAS_QUE_NO_LLEGAN: string[] = [
   ...IDENTIFICADORES_QUE_NO_LLEGAN,
+  ...CAMPOS_DE_CONTROLES_QUE_NO_LLEGAN,
   ...Object.entries(ATRIBUTOS_PROTEGIDOS).filter(([, llega]) => !llega).map(([ruta]) => ruta),
   ...CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN,
   ...CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN,
