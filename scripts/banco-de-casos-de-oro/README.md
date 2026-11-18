@@ -81,7 +81,7 @@ un caso real.
 3. Si es real, `node scripts/registrar-casos-reales.mjs` (la referencia tiene que
    resolver a una sola persona).
 
-## El corredor (todavía no existe)
+## El corredor (`scripts/correr-banco-de-casos.mjs`)
 
 Es otra tarea. Lo que tiene que hacer, para que un caso se pueda correr igual hoy y
 dentro de seis meses:
