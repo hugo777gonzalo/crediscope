@@ -125,6 +125,20 @@ export function rucDepuradoPorElSri(c: AnyRecord | null | undefined): boolean | 
   return sinTildes(c.observ_solicitud_suspension) === "DEPURACION";
 }
 
+// Un sí/no del registro del RUC, como lo manda Proveedor_Info_1: «SI» o «S», y
+// también «SÍ» (con tilde, que el NFD quita), sin importar mayúsculas ni espacios.
+// Hay una sola lectura porque la misma bandera llegaba como «S» en un registro y
+// como «SÍ» en otro: cada comparación suelta la leía distinto y el resultado
+// dependía del lugar que la miraba. Sólo para lo que sale del registro del RUC.
+export function esSi(valor: unknown): boolean {
+  return ["SI", "S"].includes(sinTildes(valor));
+}
+
+// El negativo: «NO» o «N», con la misma normalización que esSi.
+export function esNo(valor: unknown): boolean {
+  return ["NO", "N"].includes(sinTildes(valor));
+}
+
 // «Obligado a llevar contabilidad», del registro del RUC (estructura-v15, para
 // el nivel 1 del predictor de ingresos). Proveedor_Info_1 lo abrevia igual que el estado
 // de los establecimientos: en los crudos del 2026-10-03 (2.553 registros con
@@ -135,13 +149,9 @@ export function rucDepuradoPorElSri(c: AnyRecord | null | undefined): boolean | 
 // valor que no es ninguno de los cuatro también es null: no se adivina.
 //
 // OJO: fuentes-ingreso.ts compara sólo «SI» para el indicio de ingreso mayor y
-// el tamaño del negocio, y no ve la «S». Pasarlo a esta función cambia lo que
-// lee el modelo (fuentes-v nueva y marco nuevo): queda pendiente.
-const OBLIGADO_SI = new Set(["SI", "S"]);
-const OBLIGADO_NO = new Set(["NO", "N"]);
-
+// el tamaño del negocio, y no ve la «S» ni la «SÍ». Pasarlo a esta función cambia
+// lo que lee el modelo (fuentes-v nueva y marco nuevo): queda pendiente.
 export function obligadoALlevarContabilidad(c: AnyRecord | null | undefined): boolean | null {
   if (!c || !esRegistroDeRuc(c)) return null;
-  const v = String(c.obligado ?? "").trim().toUpperCase();
-  return OBLIGADO_SI.has(v) ? true : OBLIGADO_NO.has(v) ? false : null;
+  return esSi(c.obligado) ? true : esNo(c.obligado) ? false : null;
 }

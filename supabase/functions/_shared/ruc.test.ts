@@ -1,7 +1,7 @@
 // El «obligado a llevar contabilidad» del RUC (estructura-v15): ruc.ts lo lee y
 // process.ts lo pone en laboral, del mismo registro que las fechas.
 import { assertEquals } from "jsr:@std/assert@1";
-import { establecimientoAbierto, obligadoALlevarContabilidad, rucActivo, rucDepuradoPorElSri } from "./ruc.ts";
+import { esNo, esSi, establecimientoAbierto, obligadoALlevarContabilidad, rucActivo, rucDepuradoPorElSri } from "./ruc.ts";
 import { buildStandardProfile } from "./process.ts";
 import type { RespuestaProveedorInfo1 } from "./types.ts";
 
@@ -11,6 +11,26 @@ Deno.test("el obligado: Proveedor_Info_1 lo abrevia, «S» es «SI» y «N» es 
   for (const v of ["SI", "S", "si", " S "]) assertEquals(obligadoALlevarContabilidad(registro(v)), true, v);
   for (const v of ["NO", "N", "no"]) assertEquals(obligadoALlevarContabilidad(registro(v)), false, v);
   for (const v of [null, undefined, "", "X", "SIN DATO"]) assertEquals(obligadoALlevarContabilidad(registro(v)), null, String(v));
+});
+
+Deno.test("esSi y esNo: «S», «SI» y «SÍ» son sí; «N», «NO» son no; con cualquier mayúscula, tilde o espacio", () => {
+  for (const v of ["S", "SI", "SÍ", "Sí", "si", " S ", " SI "]) assertEquals(esSi(v), true, JSON.stringify(v));
+  for (const v of ["N", "NO", "No", " n "]) assertEquals(esNo(v), true, JSON.stringify(v));
+  for (const v of ["N", "NO", " NO "]) assertEquals(esSi(v), false, JSON.stringify(v));
+  for (const v of ["SI", "S", "SÍ"]) assertEquals(esNo(v), false, JSON.stringify(v));
+});
+
+Deno.test("esSi y esNo con vacío, null y basura: ninguno cuenta como sí ni como no", () => {
+  for (const v of ["", null, undefined, "   ", "X", "SIN DATO"]) {
+    assertEquals(esSi(v), false, String(v));
+    assertEquals(esNo(v), false, String(v));
+  }
+});
+
+Deno.test("el obligado acepta «SÍ» como sí, igual que «SI»", () => {
+  assertEquals(obligadoALlevarContabilidad(registro("SÍ")), true);
+  assertEquals(obligadoALlevarContabilidad(registro("Sí")), true);
+  assertEquals(obligadoALlevarContabilidad(registro("NÓ")), false, "NÓ se lee como NO: el tilde no cambia la palabra");
 });
 
 Deno.test("el obligado sin RUC no es false: un cascarón o ningún registro quedan sin dato", () => {
