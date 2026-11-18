@@ -1,0 +1,34 @@
+{
+  "descripcion": "Un quirografario en las dos fuentes con el mismo número: la base interna trae más días de mora y otro saldo; se cuenta una vez, con los días de la base y el saldo de la fuente de préstamos",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tcredQuirografarios": [
+          { "numeroOperacion": "0000300", "fechaConsesion": "10/03/2025", "fechaFinCredito": "10/03/2030", "montoTransferido": 5000, "saldoTotalCredito": 4500, "diasMoraAfi": 45, "estadoOperacion": "VIGENTE" }
+        ],
+        "tcredHipotecarios": []
+      }
+    },
+    "creditoQuirografario": {
+      "status": "ok",
+      "data": {
+        "prestamos": [
+          { "nroOperacion": "300", "fechaConcesion": "10/03/2025", "valorPrestamo": 5000, "valorPorVencer": 4000, "valorVencido": 100, "diasMora": 10, "estado": "PV", "fechaCorte": "30/09/2026" }
+        ]
+      }
+    },
+    "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } }
+  },
+  "esperado": {},
+  "reglas": { "biess.union@2": "aplica", "biess.mora@1": "aplica" },
+  "hechos": {
+    "biess.operaciones.cantidad": { "valor": 1, "registros": ["creditoQuirografario.prestamos#0"], "descartados": ["basesInternas.tcredQuirografarios#0:misma_operacion_que_la_fuente_de_prestamos"] },
+    "biess.mora.dias_max": { "valor": 45, "registros": ["basesInternas.tcredQuirografarios#0"] },
+    "biess.saldo": { "valor": 4100, "registros": ["creditoQuirografario.prestamos#0"], "diferencias": ["dif.biess.saldo"] },
+    "biess.prestamos.en_la_fuente.cantidad": { "valor": 1 }
+  }
+}

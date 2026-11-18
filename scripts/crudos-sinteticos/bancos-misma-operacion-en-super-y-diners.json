@@ -1,0 +1,34 @@
+{
+  "descripcion": "La misma operación (mismo acreedor y saldo) en Super y en Diners, y una C1 sin ningún monto: no se unen (paridad; unirlas es de la tarea E8) y la C1 cuenta como atraso sin monto",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "2001", "entnombre": "TARJETA FICTICIA", "riesgo": "T", "calificacion": "A1", "saldoVigente": "1200.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" },
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1001", "entnombre": "BANCO FICTICIO UNO", "riesgo": "T", "calificacion": "C1", "saldoVigente": "0", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" }
+        ]
+      }
+    },
+    "buroCreditoDiners": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "2001", "entnombre": "TARJETA FICTICIA", "riesgo": "T", "calificacion": "A1", "saldoVigente": "1200.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "hechos": {
+    "ban.operaciones.cantidad": { "valor": 3 },
+    "ban.saldo.por_vencer": { "valor": 2400, "registros": ["buroCreditoSuper.datosSuper#0", "buroCreditoDiners.datosSuper#0"] },
+    "ban.operaciones.en_atraso_sin_monto": { "valor": 1, "registros": ["buroCreditoSuper.datosSuper#1"] },
+    "ban.calificacion.peor": { "valor": "C1", "registros": ["buroCreditoSuper.datosSuper#1"] }
+  }
+}

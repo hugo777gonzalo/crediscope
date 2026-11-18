@@ -132,4 +132,19 @@ export interface CodigoDelCatalogo {
   campoDelPerfil?: string;
   llegaAlModelo: boolean;
   esIdentificador: boolean;
+  // Lo que el perfil escribe hoy cuando el hecho no tiene valor (la fuente no
+  // contestó, o no hay registros a los que aplicar la regla): con esto
+  // perfil-desde-hechos.ts reproduce el campo sin inventar un valor en el hecho.
+  enElPerfilSinValor?: 0 | false | null;
+  // Cómo vuelve a calcular el valor la comparación en seco, desde los registros
+  // citados y con su propio código (5.1, punto 5). Sin esto no se recuenta.
+  recuento?: "suma" | "conteo" | "maximo";
+}
+
+// Una diferencia contra el perfil que el negocio aprobó (5.2, punto 3).
+export interface DiferenciaEsperada {
+  campo: string; // "comportamientoBancario.figuraEnRegistroDeudores"
+  detector: string; // el id del detector del crudo que la cuenta
+  aprobadaEl: string; // fecha de la aprobación del negocio
+  motivo: string;
 }

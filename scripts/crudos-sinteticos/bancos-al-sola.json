@@ -1,0 +1,27 @@
+{
+  "descripcion": "Una sola operación, calificada AL (fuera de la escala, al día): se nombra como la peor y la mejor, y sin atraso",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": { "codigo": "OK", "mensaje": "" },
+        "datosSuper": [
+          { "tipo": "C", "fecha": "2026/08/31", "codEntidad": "1001", "entnombre": "BANCO FICTICIO UNO", "riesgo": "T", "calificacion": "AL", "saldoVigente": "800.00", "noDevengaInteres": "0", "judicial": "0", "castigo": "0", "mora": "0", "saldomora": "0" }
+        ]
+      }
+    },
+    "buroCreditoDiners": { "status": "ok", "data": { "estado": { "codigo": "OK", "mensaje": "" }, "datosSuper": [] } }
+  },
+  "esperado": {},
+  "reglas": { "ban.calificacion@1": "no-aplica" },
+  "hechos": {
+    "ban.calificacion.peor": { "valor": "AL", "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.calificacion.mejor": { "valor": "AL", "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.saldo.en_atraso": { "valor": 0, "registros": ["buroCreditoSuper.datosSuper#0"] },
+    "ban.operaciones.en_atraso_sin_monto": { "valor": 0, "registros": ["buroCreditoSuper.datosSuper", "buroCreditoDiners.datosSuper"] },
+    "ban.garante.calificacion.peor": { "valor": null, "motivo": "no_aplica" }
+  }
+}
