@@ -58,19 +58,31 @@ Las seis salidas, ordenadas en cinco escalones:
 |---|---|---|
 | 4 | Aprobación Directa | Lo pedido se aprueba sin más revisión. Sólo la otorga el código. |
 | 3 | Aprobar | Se recomienda aprobar lo pedido; lo confirma la persona de la institución. |
-| 2 | Cambio de Condiciones | Lo pedido no entra; otro monto o plazo, calculado, sí. |
-| 2 | Condicionado | Se aprueba al cumplirse un requisito del catálogo. |
+| 2 | Cambio de Condiciones | Lo pedido no entra; otro monto o plazo, calculado, sí. En la v1 **equivale a aprobar** (S3, negocio, 2026-11-18). |
+| 2 | Aprobado con Requisitos | Se aprueba al cumplirse un requisito del catálogo. Nombre de pantalla decidido el 2026-11-18 (S5, antes «Condicionado»); la clave interna sigue siendo `condicionado`. |
 | 1 | Revisar | El caso pide criterio: hay una tensión que ningún documento ni otro monto resuelve. |
 | 0 | Negar | No se recomienda. |
 
-Cambio de Condiciones y Condicionado comparten escalón porque los dos son «sí,
+Cambio de Condiciones y Aprobado con Requisitos comparten escalón porque los dos son «sí,
 con algo pendiente»; cuál de los dos sale lo decide la causa (la capacidad o un
 requisito). Pueden darse juntos: otro monto y además un requisito.
+
+**Decisión S3 (negocio, 2026-11-18): en la versión 1, Cambio de Condiciones
+equivale a aprobar** («Aprobado con Cambio de Condiciones»). Al riesgo le
+alcanza; lo que no alcanza es la capacidad de pago, y la oferta calculada la
+resuelve. Por eso, hacia la API y hacia el banco de casos de oro, la salida
+`cambio_de_condiciones` se traduce a `aprobar` (no a `revisar` ni a `negar`).
+La recomendación previa (un escalón propio por debajo de Aprobar) queda como
+alternativa para una versión posterior.
+**Decisión S5 (2026-11-18):** el nombre de pantalla del escalón «con algo
+pendiente» es **Aprobado con Requisitos**, no «Condicionado». Es un nombre de
+pantalla: la clave `condicionado` del estándar, del contrato y del banco de
+casos no cambia.
 
 **El principio que ordena todo el diseño**, y la palanca principal para bajar
 «revisar»:
 
-> Lo que se resuelve con un documento es **Condicionado**. Lo que se resuelve
+> Lo que se resuelve con un documento es **Aprobado con Requisitos**. Lo que se resuelve
 > con otro monto o plazo es **Cambio de Condiciones**. **Revisar** queda sólo
 > para lo que pide criterio.
 
@@ -549,9 +561,9 @@ meses). «Ingresos» quiere decir veces el ingreso mensual aceptado.
 
 | | **Verificado** | **Inferido o declarado coherente** | **Sin evidencia** |
 |---|---|---|---|
-| **Probado** | **Núcleo.** Única celda con Aprobación Directa. El monto lo da la capacidad. Sin colateral hasta USD 15.000 | **Paga, y no se ve de qué.** Aprobar si la cuota nueva no supera la mayor cuota que ya paga al día (reemplazo de cuota); para más, Condicionado a sustento de ingreso. Sin colateral hasta USD 10.000 | **Historial sin ingreso.** Condicionado a sustento de ingreso, con el ingreso necesario calculado. Nunca Revisar sólo por el ingreso |
-| **Corto** | **Sueldo con poco historial.** Aprobar hasta 8 ingresos; sin Aprobación Directa. Sin colateral hasta USD 10.000 | Aprobar hasta 4 ingresos; para más, Condicionado. Sin colateral hasta USD 5.000 | Condicionado a sustento de ingreso |
-| **Sin historial** | **Primer crédito con sueldo.** Aprobar hasta 6 ingresos y 24 meses. Sin colateral hasta USD 5.000 | Condicionado a sustento; hasta 3 ingresos y 24 meses | **Nada que leer.** Condicionado a sustento de ingreso, hasta USD 3.000. Es la celda donde la IA más va a bajar a Revisar |
+| **Probado** | **Núcleo.** Única celda con Aprobación Directa. El monto lo da la capacidad. Sin colateral hasta USD 15.000 | **Paga, y no se ve de qué.** Aprobar si la cuota nueva no supera la mayor cuota que ya paga al día (reemplazo de cuota); para más, Aprobado con Requisitos: sustento de ingreso. Sin colateral hasta USD 10.000 | **Historial sin ingreso.** Aprobado con Requisitos: sustento de ingreso, con el ingreso necesario calculado. Nunca Revisar sólo por el ingreso |
+| **Corto** | **Sueldo con poco historial.** Aprobar hasta 8 ingresos; sin Aprobación Directa. Sin colateral hasta USD 10.000 | Aprobar hasta 4 ingresos; para más, Aprobado con Requisitos. Sin colateral hasta USD 5.000 | Aprobado con Requisitos: sustento de ingreso |
+| **Sin historial** | **Primer crédito con sueldo.** Aprobar hasta 6 ingresos y 24 meses. Sin colateral hasta USD 5.000 | Aprobado con Requisitos: sustento; hasta 3 ingresos y 24 meses | **Nada que leer.** Aprobado con Requisitos: sustento de ingreso, hasta USD 3.000. Es la celda donde la IA más va a bajar a Revisar |
 
 Cómo actúan los límites de una celda:
 
@@ -561,7 +573,11 @@ Cómo actúan los límites de una celda:
   `montoMaximoParaCuota()`, nunca escritos por la IA).
 - **Monto por encima de lo que se presta sin colateral**: cada institución
   elige en su estándar si eso es Cambio de Condiciones (el monto sin colateral)
-  o Condicionado (`constitucion_de_colateral`). «Sin colateral» deja de ser un
+  o Aprobado con Requisitos (`constitucion_de_colateral`). **Decisión C4
+  (2026-11-18): el garante y el colateral son requisitos de cada institución**,
+  no del estándar de CrediScope. El modelo sólo menciona que la persona tiene
+  patrimonio que podría apalancar (si un analista de la institución lo
+  determina); no pone el garante ni el colateral como condición propia. «Sin colateral» deja de ser un
   motivo para revisar (94 menciones): es un límite con una salida definida. Una
   institución cuyo producto ya trae el colateral (la automotriz) apaga el
   límite.
@@ -580,7 +596,7 @@ es la suma de las cuotas actuales y la nueva sobre el ingreso aceptado.
 |---|---|---|
 | **Alcanza** | La carga con lo pedido no pasa de la carga máxima menos el margen | Hasta 35% |
 | **Justo** | Pasa de ahí y no supera la carga máxima | 35% a 40% |
-| **Extendida** | Supera la carga máxima y no la extendida, y la persona cumple lo que la extendida exige (riesgo Bajo, historial probado, ingreso verificado) | 40% a 50% |
+| **Extendida** | Supera la carga máxima y no la extendida, y la persona cumple lo que la extendida exige (riesgo Bajo, historial probado, ingreso verificado) | 40% a 50% (C2, 2026-11-18: la carga va del 40 al 60% según el riesgo; ver abajo) |
 | **Alcanza con cambio** | Lo pedido no entra, pero un monto o plazo dentro del producto y de la celda sí | Se entrega la oferta calculada |
 | **No alcanza** | Ni el monto mínimo del producto al plazo máximo entra | — |
 | **Sin medir** | No hay ingreso aceptado (celdas sin evidencia) | Se entrega el **ingreso necesario** |
@@ -596,13 +612,13 @@ Tres piezas nuevas:
   la misma operación en el proveedor, y se elige el factor que deje por debajo
   a no más de una de cada cuatro.
 - **Dependencia de lo estimado.** Si el veredicto cambia al quitar las cuotas
-  estimadas (alcanza sin ellas y no con ellas), la salida es Condicionado a
+  estimadas (alcanza sin ellas y no con ellas), la salida es Aprobado con Requisitos a
   `detalle_de_la_deuda_sin_cuota` (tabla de amortización o estado de cuenta),
   no Revisar. Si no cambia, la deuda sin cuota se menciona y no mueve nada.
 - **Ingreso necesario.** Con «sin medir», el código calcula el ingreso mensual
   que haría entrar lo pedido: cuotas actuales más la nueva, dividido por la
   carga máxima. El requisito sale con el número: «Sustentar un ingreso neto
-  mensual de al menos USD X». Así el Condicionado es verificable aunque hoy no
+  mensual de al menos USD X». Así el Aprobado con Requisitos es verificable aunque hoy no
   se sepa nada del ingreso.
 
 Por qué una carga extendida: la carga máxima vigente es 40% (negocio,
@@ -612,6 +628,18 @@ afuera a gente que paga. La extendida no sube el límite para todos: lo sube a
 50% sólo donde hay más evidencia (riesgo Bajo, historial probado, ingreso
 verificado), y nunca con Aprobación Directa. **Propuesta sin medir** (decisión
 8.5).
+
+**Decisión C2 (negocio, 2026-11-18): la carga máxima es variable, del 40 al
+60% según el riesgo de la persona** (más riesgo, menos capacidad), y se calcula
+sobre el **neto disponible** tal como lo define el negocio: sueldo validado más
+ingresos extras (RUC), menos el gasto del hogar, menos los gastos financieros
+(las cuotas de todos sus créditos, tarjetas incluidas), menos las pensiones,
+menos las cuotas de quirografarios e hipotecarios vigentes del IESS o BIESS,
+menos otros gastos identificables en la data. La capacidad de pago es el
+porcentaje del neto disponible. Reemplaza al 40% parejo y a la extendida de 50%
+de arriba, que quedan como la recomendación previa. **Abierto:** validar que
+esos porcentajes se calculan sobre ese neto y no sobre el ingreso bruto, y qué
+porcentaje corresponde a cada nivel de riesgo (sin medir contra la cartera).
 
 **Sin solicitud de crédito** (una consulta de la persona, sin monto ni plazo)
 no hay cuota. El veredicto se calcula con el **crédito de referencia** de la
@@ -623,9 +651,9 @@ no tienen solicitud.
 
 | Riesgo ↓ / Capacidad → | Alcanza | Justo | Extendida | Alcanza con cambio | No alcanza | Sin medir |
 |---|---|---|---|---|---|---|
-| **Bajo** | Aprobar (Aprobación Directa si cumple 4.4) | Aprobar | Aprobar | Cambio de Condiciones | Negar | Condicionado |
-| **Con observaciones** | Aprobar | Revisar | Cambio de Condiciones | Cambio de Condiciones | Negar | Condicionado |
-| **Deteriorado** | Condicionado | Revisar | Revisar | Revisar | Negar | Revisar |
+| **Bajo** | Aprobar (Aprobación Directa si cumple 4.4) | Aprobar | Aprobar | Cambio de Condiciones | Negar | Aprobado con Requisitos |
+| **Con observaciones** | Aprobar | Revisar | Cambio de Condiciones | Cambio de Condiciones | Negar | Aprobado con Requisitos |
+| **Deteriorado** | Aprobado con Requisitos | Revisar | Revisar | Revisar | Negar | Revisar |
 | **Mal comportamiento** | Negar | Negar | Negar | Negar | Negar | Negar |
 
 El motivo de cada casilla:
@@ -649,10 +677,10 @@ El motivo de cada casilla:
 sólo es honesto cuando el ingreso es de verdad el que se midió:
 
 - Ingreso verificado y cuotas informadas: Negar (motivo: capacidad).
-- El resultado depende de cuotas estimadas: Condicionado a
+- El resultado depende de cuotas estimadas: Aprobado con Requisitos a
   `detalle_de_la_deuda_sin_cuota`.
 - Ingreso inferido o declarado, o la cota por cuotas dice que el ingreso real
-  es mayor que el medido: Condicionado a `sustento_de_ingreso`, con el ingreso
+  es mayor que el medido: Aprobado con Requisitos: `sustento_de_ingreso`, con el ingreso
   necesario.
 
 ### 4.3 Los controles y los límites, por encima de la matriz
@@ -663,7 +691,7 @@ límite sobre lo que la matriz dio. Se aplica el más restrictivo.
 | Veredicto de controles | De dónde sale | Efecto |
 |---|---|---|
 | **Bloqueo** | Fallecido; fraude documental; delito de seguridad ciudadana (acusada, con su cédula, o demandada con el nombre cotejado); lista de control con identificación coincidente; providencias (hasta la decisión 8.7) | Negar, score 1, sin margen para la IA |
-| **Verificación de identidad** | OFAC sin identificación (la coincidencia es sólo por nombre); posible homónimo en una demanda penal; la cédula de la fuente no coincide con la consultada | La salida no pasa de Condicionado, con `verificacion_de_identidad` |
+| **Verificación de identidad** | OFAC sin identificación (la coincidencia es sólo por nombre); posible homónimo en una demanda penal; la cédula de la fuente no coincide con la consultada | La salida no pasa de Aprobado con Requisitos, con `verificacion_de_identidad` |
 | **Advertencia** | PEP | La salida no pasa de Aprobar (sin Aprobación Directa), con `debida_diligencia_reforzada` |
 | **Informa** | Homónimo en una lista (la cédula del registro es otra) | Se muestra; no cambia la salida |
 | **Limpio** | Nada de lo anterior | — |
@@ -679,7 +707,7 @@ Otros límites:
   Regla vigente.
 - **La celda**: su salida máxima y sus límites de monto, plazo y colateral.
 - **Dos fuentes que no coinciden** (72 menciones): la capa de hechos dice cuál
-  vale. Si la diferencia cambia un veredicto, la salida no pasa de Condicionado
+  vale. Si la diferencia cambia un veredicto, la salida no pasa de Aprobado con Requisitos
   a `aclaracion_entre_fuentes`; si no lo cambia, se anota.
 
 Con un bloqueo se guardan igual los veredictos de riesgo y capacidad (O-2,
@@ -720,10 +748,10 @@ recomendación de negar.
 | Base | La IA puede | La IA no puede |
 |---|---|---|
 | Aprobación Directa | Quitarla (queda Aprobar), nombrando el hecho | — |
-| Aprobar | Bajar a Condicionado, eligiendo un requisito del catálogo | Otorgar la Aprobación Directa; bajar a Revisar o a Negar de un salto |
-| Condicionado | Bajar a Revisar; subir a Aprobar sólo si el hecho que el requisito pedía ya está en el caso | Inventar un requisito fuera del catálogo |
-| Cambio de Condiciones | Bajar a Revisar | Subir a Aprobar (que lo pedido no entra es un cálculo); cambiar el monto o el plazo de la oferta |
-| Revisar | Subir a Condicionado, nombrando el requisito que resuelve la duda; bajar a Negar | Subir a Aprobar de un salto |
+| Aprobar | Bajar a Aprobado con Requisitos, eligiendo un requisito del catálogo | Otorgar la Aprobación Directa; bajar a Revisar o a Negar de un salto |
+| Aprobado con Requisitos | Bajar a Revisar; subir a Aprobar sólo si el hecho que el requisito pedía ya está en el caso | Inventar un requisito fuera del catálogo |
+| Cambio de Condiciones | Bajar a Revisar | Cambiar el monto o el plazo de la oferta. Subir a Aprobar ya no hace falta: en la v1 equivale a aprobar (S3) |
+| Revisar | Subir a Aprobado con Requisitos, nombrando el requisito que resuelve la duda; bajar a Negar | Subir a Aprobar de un salto |
 | Negar por capacidad | Subir a Revisar | — |
 | Negar por mal comportamiento | Mantener Negar, o recomendar Revisar o Aprobar según los atenuantes y el caso completo | Otorgar la Aprobación Directa |
 | Negar por un control de bloqueo | Explicarlo en términos de política de crédito | Moverlo |
@@ -755,7 +783,7 @@ Cambian estos parámetros (todos **propuesta sin medir**):
 | Demanda de cobro: ventana de mal comportamiento | 3 años | 2 años | 2 años |
 | Demanda de cobro: pesa menos hasta | 7 años | 5 años | 3 años |
 | Demanda puesta por una persona natural | Cuenta como las demás | Deteriorado | Con observaciones |
-| Pensión alimenticia en mora | Mal comportamiento | Deteriorado | Deteriorado |
+| Pensión alimenticia en mora | Mal comportamiento | Tolerancia USD 300; por encima, Revisar; agravante menor (R6, 2026-11-18) | Igual que la de por defecto |
 | Con mal comportamiento, la IA puede recomendar | Negar o Revisar | Negar, Revisar o Aprobar | Negar, Revisar o Aprobar |
 | Carga máxima | 35% | 40% | 45% |
 | Carga extendida | No hay | Hasta 50% | Hasta 60% |
@@ -764,10 +792,10 @@ Cambian estos parámetros (todos **propuesta sin medir**):
 | Declarado coherente: hasta cuántas veces | 1,25 | 1,5 | 2 |
 | Historial probado: deuda al día desde | USD 8.000 | USD 5.000 | USD 3.000 |
 | Con observaciones y capacidad justa | Revisar | Revisar | Aprobar |
-| Deteriorado y alcanza | Revisar | Condicionado | Condicionado |
-| Aprobación Directa | Apagada sin buró | Monto hasta USD 5.000, 36 meses | Monto hasta USD 10.000, 48 meses; también en verificado con historial corto |
+| Deteriorado y alcanza | Revisar | Aprobado con Requisitos | Aprobado con Requisitos |
+| Aprobación Directa | Apagada sin buró | Sin buró, activable por institución (C3, 2026-11-18); monto hasta USD 5.000, 36 meses | Monto hasta USD 10.000, 48 meses; también en verificado con historial corto |
 | Primer crédito con sueldo (verificado, sin historial) | Hasta 4 ingresos, 18 meses | Hasta 6 ingresos, 24 meses | Hasta 8 ingresos, 36 meses |
-| Sin evidencia y sin historial | Revisar | Condicionado, hasta USD 3.000 | Condicionado, hasta USD 5.000 |
+| Sin evidencia y sin historial | Revisar | Aprobado con Requisitos, hasta USD 3.000 | Aprobado con Requisitos, hasta USD 5.000 |
 | Monto sin colateral (celda núcleo) | USD 10.000 | USD 15.000 | USD 20.000 |
 | Margen de la IA | Sólo hacia abajo | Un escalón, en las dos direcciones | Un escalón, en las dos direcciones |
 | Bandas del score | Las mismas | Las mismas | Las mismas |
@@ -799,33 +827,33 @@ en varias filas, y entonces manda la salida más restrictiva.
 
 | Caso | Menciones | Salida base | Qué se pide |
 |---|---|---|---|
-| Deuda sin cuota informada | 282 | La que dé la matriz con la cuota estimada. Condicionado sólo si el veredicto depende de la estimación | `detalle_de_la_deuda_sin_cuota`: tabla de amortización o estado de cuenta de esa deuda |
-| Ingreso «Por confirmar» | 195 | Condicionado. Con historial probado y cuota nueva dentro del reemplazo de cuota: Aprobar | `sustento_de_ingreso`, con el ingreso necesario en dólares |
-| Demanda de cobro | 108 | Hasta 2 años: Negar (mal comportamiento). De 2 a 5: Condicionado si alcanza, Revisar si no. Más de 5: no mueve | `certificado_del_juicio`: estado del proceso, o constancia de pago de la obligación |
-| Dejó de aparecer en el IESS | 97 | El ingreso deja de ser verificado (no está vigente): Condicionado | `certificado_laboral_vigente`, o `sustento_de_ingreso` de la actividad actual |
-| Sin colateral | 94 | No es un motivo. Monto dentro del límite sin colateral: sin efecto. Por encima: Cambio de Condiciones o Condicionado, según eligió la institución | `constitucion_de_colateral` |
-| Dos fuentes no coinciden | 72 | Si la diferencia cambia un veredicto: Condicionado. Si no: se anota | `aclaracion_entre_fuentes`: el documento que dice cuál vale |
+| Deuda sin cuota informada | 282 | La que dé la matriz con la cuota estimada. Aprobado con Requisitos sólo si el veredicto depende de la estimación | `detalle_de_la_deuda_sin_cuota`: tabla de amortización o estado de cuenta de esa deuda |
+| Ingreso «Por confirmar» | 195 | Aprobado con Requisitos. Con historial probado y cuota nueva dentro del reemplazo de cuota: Aprobar | `sustento_de_ingreso`, con el ingreso necesario en dólares |
+| Demanda de cobro | 108 | Hasta 2 años: Negar (mal comportamiento). De 2 a 5: Aprobado con Requisitos si alcanza, Revisar si no. Más de 5: no mueve | `certificado_del_juicio`: estado del proceso, o constancia de pago de la obligación |
+| Dejó de aparecer en el IESS | 97 | El ingreso deja de ser verificado (no está vigente): Aprobado con Requisitos | `certificado_laboral_vigente`, o `sustento_de_ingreso` de la actividad actual |
+| Sin colateral | 94 | No es un motivo. Monto dentro del límite sin colateral: sin efecto. Por encima: Cambio de Condiciones o Aprobado con Requisitos, según eligió la institución | `constitucion_de_colateral` |
+| Dos fuentes no coinciden | 72 | Si la diferencia cambia un veredicto: Aprobado con Requisitos. Si no: se anota | `aclaracion_entre_fuentes`: el documento que dice cuál vale |
 | Capacidad que no entra | 60 | Cambio de Condiciones si hay una oferta que entra; Aprobar si cae en la carga extendida; si no, el ajuste de 4.2 | La oferta calculada, o `sustento_de_ingreso` |
-| Calificación en atraso sin monto | 53 | Manda la letra. A2 y A3: Aprobar si alcanza. B1 a C2: Condicionado. D y E: Negar | `certificado_de_estar_al_dia` de esa entidad |
+| Calificación en atraso sin monto | 53 | Manda la letra. A2 y A3: Aprobar si alcanza. B1 a C2: Aprobado con Requisitos. D y E: Negar | `certificado_de_estar_al_dia` de esa entidad |
 
 ### 6.2 Los motivos nuevos
 
 | Caso | Menciones | Salida base | Qué se pide |
 |---|---|---|---|
-| Negocio propio con RUC activo, sin monto de ingreso | 148 | Condicionado. Con base imponible calculable desde el impuesto causado, pasa a inferido y sigue la matriz | `sustento_de_ingreso`: declaraciones del IVA de 6 meses o la de renta |
+| Negocio propio con RUC activo, sin monto de ingreso | 148 | Aprobado con Requisitos. Con base imponible calculable desde el impuesto causado, pasa a inferido y sigue la matriz | `sustento_de_ingreso`: declaraciones del IVA de 6 meses o la de renta |
 | Dirección o teléfono sin actualizar | 100 | No cambia la salida | `actualizacion_de_datos`, antes de desembolsar |
 | Multas de tránsito | 84 | Hasta un Salario Básico Unificado: no mueve. Por encima: con observaciones | Nada |
-| RUC suspendido o reactivado | 53 | Depurado por el SRI: neutro (regla vigente). Suspendido y es la única fuente de ingreso: Condicionado. Reactivado hace menos de 12 meses: no hay estabilidad; no mueve la salida | `ruc_activo_y_declaraciones` |
-| Pensión alimenticia en mora | 47 | Deteriorado: Condicionado si alcanza, Revisar si no | `certificado_de_pension_alimenticia` al día |
+| RUC suspendido o reactivado | 53 | Depurado por el SRI: neutro (regla vigente). Suspendido y es la única fuente de ingreso: Aprobado con Requisitos. Reactivado hace menos de 12 meses: no hay estabilidad; no mueve la salida | `ruc_activo_y_declaraciones` |
+| Pensión alimenticia en mora | 47 | R6 (2026-11-18): tolerancia de USD 300, por encima Revisar; agravante menor si la persona está al día, estable y con capacidad aceptable (ni Deteriorado ni mal comportamiento directo); casos del banco `c-0ec2827c` y `c-659ed9c8` por revisar | `certificado_de_pension_alimenticia` al día |
 
 ### 6.3 Las observaciones del negocio
 
 | Caso | Referencia | Salida base | Qué se pide |
 |---|---|---|---|
-| Riesgo bajo e historial excelente que hoy va a revisar (52; 63 sólo por el ingreso) | O-1 | Aprobar, o Condicionado si el ingreso no está evidenciado. Nunca Revisar sólo por el ingreso | `sustento_de_ingreso` |
-| Por cuenta propia con créditos pagados al día (74 con deuda al día de USD 5.000 o más) | O-1, O-5 | Historial probado. Aprobar dentro del reemplazo de cuota; para más, Condicionado | `sustento_de_ingreso` |
+| Riesgo bajo e historial excelente que hoy va a revisar (52; 63 sólo por el ingreso) | O-1 | Aprobar, o Aprobado con Requisitos si el ingreso no está evidenciado. Nunca Revisar sólo por el ingreso | `sustento_de_ingreso` |
+| Por cuenta propia con créditos pagados al día (74 con deuda al día de USD 5.000 o más) | O-1, O-5 | Historial probado. Aprobar dentro del reemplazo de cuota; para más, Aprobado con Requisitos | `sustento_de_ingreso` |
 | Afiliación voluntaria con el Ingreso Mínimo SBU | O-5 | El aporte no muestra lo que gana: ingreso inferido por el SBU o por la cota por cuotas. Igual que la fila anterior | `sustento_de_ingreso` |
-| OFAC sin identificación (10 personas) | O-2 | Condicionado como máximo | `verificacion_de_identidad` contra el registro de la lista |
+| OFAC sin identificación (10 personas) | O-2 | Aprobado con Requisitos como máximo | `verificacion_de_identidad` contra el registro de la lista |
 | Lista de mal pagador (39) | O-2 | Negar (mal comportamiento vigente). Los pagos o abonos van como evidencia para la IA | — |
 | Fraude documental (1) | O-2 | Negar por bloqueo | — |
 | Delito de seguridad ciudadana (24); fallecido (4) | O-2 | Negar por bloqueo | — |
@@ -847,7 +875,7 @@ en varias filas, y entonces manda la salida más restrictiva.
 | Mal comportamiento histórico, hoy al día, con estabilidad | Negar de base; es el caso donde la IA tiene más evidencia para subir | Lo que la IA nombre del catálogo |
 | Consulta parcial | Revisar como máximo (regla vigente) | Repetir la consulta |
 | Consulta incompleta | No se analiza (regla vigente) | — |
-| Sin ingreso evidenciado y sin historial | Condicionado, hasta USD 3.000 | `sustento_de_ingreso` |
+| Sin ingreso evidenciado y sin historial | Aprobado con Requisitos, hasta USD 3.000 | `sustento_de_ingreso` |
 
 ---
 
@@ -879,7 +907,7 @@ cuesta, y cada etapa tiene una condición para pasar a la siguiente.
 2. **Contra la referencia 61 / 36 / 2** de la originación automotriz. Con seis
    salidas hay dos lecturas, y se informan las dos:
    - **estricta**: «aprobar» es Aprobación Directa más Aprobar;
-   - **amplia**: se suman Cambio de Condiciones y Condicionado, que la persona
+   - **amplia**: se suman Cambio de Condiciones y Aprobado con Requisitos, que la persona
      de la institución cierra sin tener que formarse un criterio.
 
    Hoy CrediScope está en 21,6 / 72,5 / 5,6. La referencia es un norte, no una
@@ -902,7 +930,7 @@ cuesta, y cada etapa tiene una condición para pasar a la siguiente.
   debajo de 50% en la de por defecto. **El 50% es una propuesta de umbral, sin
   medir**: si no se llega, se mira qué motivo retiene más casos y se discute
   ese parámetro, no se fuerza la cifra.
-- Cada salida Condicionado tiene al menos un requisito del catálogo, y cada
+- Cada salida Aprobado con Requisitos tiene al menos un requisito del catálogo, y cada
   Cambio de Condiciones, una oferta calculada.
 - Lo que no se pudo medir se informa como no medido, no como cero: sin crudo,
   sin año de la demanda, sin cuota, atenuante no medido.
@@ -926,16 +954,16 @@ confirma o desmiente.
 |---|---|---|---|
 | Ventana de la demanda de cobro (2 años) y tramo que pesa menos (5) | Personas en mal comportamiento | 166 de 435 (amplia), 116 sólo por demanda; 48 (estricta) | Baja hacia la estricta; las de 2 a 5 años pasan a Deteriorado |
 | Corte de mal comportamiento vigente (D, 90 días) | Personas en mal comportamiento y en Deteriorado | Sin medir con este corte (entre 48 y 166) | Con C1 y 60 días, suben los Negar |
-| Cuota estimada de la deuda sin cuota (3,5%) | «Revisar» por deuda sin cuota | 282 menciones | Pasan a tener un veredicto de capacidad; a Condicionado sólo las que dependen de la estimación |
-| Condicionado a sustento con ingreso necesario | «Revisar» por ingreso «Por confirmar» y por negocio propio sin monto | 195 y 148 menciones | Pasan de Revisar a Condicionado |
+| Cuota estimada de la deuda sin cuota (3,5%) | «Revisar» por deuda sin cuota | 282 menciones | Pasan a tener un veredicto de capacidad; a Aprobado con Requisitos sólo las que dependen de la estimación |
+| Aprobado con Requisitos: sustento con ingreso necesario | «Revisar» por ingreso «Por confirmar» y por negocio propio sin monto | 195 y 148 menciones | Pasan de Revisar a Aprobado con Requisitos |
 | Reemplazo de cuota y celda de historial probado | Por cuenta propia aprobados | 1 de cada 55 independientes (2026-10-07); 74 con capacidad ya probada | Una parte pasa a Aprobar |
-| Monto que se presta sin colateral | «Revisar» por falta de colateral | 94 menciones | Sale de Revisar: sin efecto, Cambio de Condiciones o Condicionado |
+| Monto que se presta sin colateral | «Revisar» por falta de colateral | 94 menciones | Sale de Revisar: sin efecto, Cambio de Condiciones o Aprobado con Requisitos |
 | Carga máxima y carga extendida | «Revisar» por capacidad que no entra | 60 menciones | Parte a Cambio de Condiciones, parte a Aprobar por la extendida |
-| La letra manda sobre el monto | Calificación en atraso sin monto | 53 menciones | A2 y A3 salen de Revisar; B1 a C2 van a Condicionado |
-| Certificado laboral vigente | Dejó de aparecer en el IESS | 97 menciones | A Condicionado |
-| Aclaración entre fuentes | Dos fuentes no coinciden | 72 menciones | A Condicionado sólo las que cambian un veredicto |
-| Pensión alimenticia en mora como Deteriorado | Pensión en mora | 47 menciones | A Condicionado o Revisar; con la conservadora, a Negar |
-| OFAC sin identificación a verificación; lista de mal pagador a comportamiento | Bloqueos | 10 y 39 personas (2026-10-07) | 10 salen de Negar a Condicionado; 39 siguen en Negar, ahora con atenuantes y con su análisis guardado |
+| La letra manda sobre el monto | Calificación en atraso sin monto | 53 menciones | A2 y A3 salen de Revisar; B1 a C2 van a Aprobado con Requisitos |
+| Certificado laboral vigente | Dejó de aparecer en el IESS | 97 menciones | A Aprobado con Requisitos |
+| Aclaración entre fuentes | Dos fuentes no coinciden | 72 menciones | A Aprobado con Requisitos sólo las que cambian un veredicto |
+| Pensión alimenticia en mora (R6: tolerancia USD 300) | Pensión en mora | 47 menciones | Hasta USD 300, agravante menor; por encima, Revisar |
+| OFAC sin identificación a verificación; lista de mal pagador a comportamiento | Bloqueos | 10 y 39 personas (2026-10-07) | 10 salen de Negar a Aprobado con Requisitos; 39 siguen en Negar, ahora con atenuantes y con su análisis guardado |
 | Criterios de la Aprobación Directa | Personas con Aprobación Directa | 0 hoy | Pocas; se cuenta cuántas quita cada criterio |
 | Margen de la IA | Casos movidos y dirección | Sin medir | Una minoría, en las dos direcciones |
 
@@ -957,7 +985,9 @@ confirma o desmiente.
 
 ## 8. Decisiones que quedan para el negocio
 
-Cada una con la recomendación de este diseño.
+Cada una con la recomendación de este diseño y, en **Decisión**, lo que
+respondió el negocio el 2026-11-18 (las de la capa de hechos y las de la
+escalera del ingreso están en sus propios documentos).
 
 1. **Los tramos de la demanda de cobro**: hasta 2 años es mal comportamiento;
    de 2 a 5 pesa menos (Deteriorado, con certificado del juicio); más de 5 sólo
@@ -995,3 +1025,55 @@ Cada una con la recomendación de este diseño.
    primera versión lo cambia CrediScope a pedido escrito de la institución**,
    con versión nueva y la comparación en seco de ese cambio como constancia;
    la pantalla para que la institución lo edite, después.
+
+### Lo que decidió el negocio (2026-11-18)
+
+Aceptadas como se recomendaron: la 4 (estimar la cuota, 3,5% del saldo, tras medir
+el factor; C1), la 7 (providencias; R5: la de certificación pasa a advertencia con
+salida máxima Revisar, la de retención bloquea) y la 9 (el estándar lo cambia
+CrediScope a pedido escrito, con versión nueva y comparación en seco; O1). También
+S1 (un escalón; la Aprobación Directa queda fuera del alcance de la IA), S2 (el
+score con banda), S4 (Básico sin capacidad ni oferta; Pro y Plus completos) y S6
+(la salida que ya figura se deja; una salida aceptable cuenta como pasada).
+
+Decididas distinto de lo recomendado:
+
+- **S3**: en la v1, Cambio de Condiciones equivale a aprobar (ver el escalón 2).
+- **S5**: «Aprobado con Requisitos» en lugar de «Condicionado» como nombre de pantalla.
+- **C2** (punto 5): carga del 40 al 60% según el riesgo, sobre el neto disponible
+  del negocio (ver 4.1).
+- **C3** (punto 6): Aprobación Directa sin buró **permitida**, y activable por
+  institución según su apetito al riesgo (la variante angosta es un parámetro).
+- **C4**: garante y colateral son requisitos de cada institución; el modelo sólo
+  menciona el patrimonio que podría apalancar (ver 3.3).
+- **R6** (punto 8): pensión alimenticia en mora con tolerancia de USD 300; por
+  encima, Revisar; agravante menor si la persona está al día, estable y con
+  capacidad aceptable. Ni Deteriorado ni mal comportamiento directo.
+
+Abiertas, el negocio pidió una propuesta (no se inventa la respuesta):
+
+- **R1** (punto 1, demanda de cobro): combinar la antigüedad con si el proceso
+  terminó, con una lista de términos de cierre (créditos: abandono, archivo de la
+  causa, extinción de la obligación, desistimiento, retiro de la demanda; penales:
+  sobreseimiento, archivo de la investigación). Validar si sale del crudo o si hay
+  que consultar la página pública de la Función Judicial (autorizado a consultar a
+  la persona analizada; sin evadir barreras contra robots).
+- **R2 y R3** (puntos 2 y 3, mora vigente): umbrales de tolerancia en dólares por
+  sector que reporta, desde calificación B y más de 30 días (SBS: hasta USD 30
+  aceptar, hasta 150 revisar, más de 150 negar; SEPS: 30 y 200; comercial: 100 y
+  300), **parametrizados por institución según su apetito al riesgo, como tarea
+  adicional**, y R3 define Aprobar, Revisar o Negar a partir de ellos. Falta la
+  propuesta de cómo organizarlos y cómo los lee el modelo.
+- **R4** (atenuantes y agravantes): propuesta parecida a R2, con umbrales de monto
+  y de tiempo; un mal comportamiento pierde relevancia si el vigente lo superó;
+  los atenuantes y agravantes se ordenan por importancia. Los umbrales de la
+  recomendación previa (30 días, 10%, SBU) quedan sin decidir hasta esa propuesta.
+- **I5** (la c de la cota por cuotas): 0,75 provisional, pero el negocio pidió una
+  explicación más larga, en otra sesión, para entender la decisión.
+- **D4** (bancos sin buró): decidido, con ese alcance, el 2026-11-18: cuando el modelo
+  responde, nombra el atraso como «en atraso», sin los días de cada operación.
+  Es lo recomendado. El negocio dijo además que «los días son importantes» (25
+  días no es 300); no pidió leer la calificación como un rango de días. Se
+  mantiene la regla de hoy.
+- **I2** (qué entra al peldaño 3): el negocio escribió «A y B»; se lee como la
+  opción (b), que ya incluye las cuotas al día. Falta confirmarlo.

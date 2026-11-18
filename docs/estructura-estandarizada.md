@@ -863,6 +863,13 @@ interface StandardClientProfile {
 >   `bloqueo-por-demanda-de-otro-demandado` (`scripts/revisar-crudo.mjs`).
 > - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
 
+> **estructura-v22 (2026-11-17, F12, BIESS en la capacidad de pago)**
+> - `comportamientoBancario.operacionesIessBiess`: cada préstamo del IESS/BIESS con
+>   `tipo`, `saldo` y `fechaFin` (la de la base interna, o concesión más plazo original
+>   en la fuente de préstamos). Sólo lo lee la capacidad de pago, que estima la cuota
+>   por anualidad; no llega al modelo (`CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN`).
+> - **Sin aplicar:** se despliega primero y se recalcula después; un perfil anterior sigue
+>   funcionando (el BIESS sale como deuda sin cuota, con su saldo total).
 > **estructura-v23 (E12, R5 del negocio, 2026-11-18; la v22 es la del PR 173)**
 > - La providencia de **certificación** (un pedido de información de un fiscal o un
 >   juez) ya no bloquea: `cumplimiento.enListaControl` no la cuenta, el hallazgo

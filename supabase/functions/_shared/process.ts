@@ -370,7 +370,34 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
 // (c-40d771e1). Los que la base marca «VENCIDO» o «MORA» se cuentan: deben.
 // La fuente de préstamos trae sólo lo vigente (PV), vencido (VC) o en
 // novación (ND): en el respaldo del 03/10, ningún cancelado.
-type OperacionIess = { numero: string; dia: number | null; monto: number | null; saldo: number; diasMora: number };
+//
+// Desde estructura-v22 (F12, 2026-11-17) cada operación lleva también su tipo y
+// el día en que termina, porque la capacidad de pago estima la cuota con la
+// anualidad del plazo que queda (capacidad-de-pago.ts): el buró de bancos de
+// Proveedor_Info_1 no trae al BIESS (0 de 1.025 personas con préstamo), así que
+// su cuota no está en ningún otro lado. La base interna dice cuándo termina
+// (fechaFinCredito / srFecfincredito); la fuente de préstamos no, y ahí el fin
+// es la concesión más el plazo original en meses.
+export type OperacionIess = {
+  numero: string;
+  dia: number | null;
+  monto: number | null;
+  saldo: number;
+  diasMora: number;
+  tipo: "quirografario" | "hipotecario" | null;
+  fin: number | null;
+};
+
+// Marca de qué lista salió un registro de la fuente de préstamos, que no dice su tipo.
+const TIPO_DE_LA_FILA = "__tipoIess";
+export function conTipoIess(filas: AnyRecord[], tipo: "quirografario" | "hipotecario"): AnyRecord[] {
+  return filas.map((r) => ({ ...r, [TIPO_DE_LA_FILA]: tipo }));
+}
+
+// «yyyy-mm-dd» desde los días desde 1970; null sin fecha.
+export function fechaDeDia(dia: number | null): string | null {
+  return dia === null ? null : new Date(dia * 86_400_000).toISOString().slice(0, 10);
+}
 
 const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
 
@@ -378,6 +405,14 @@ const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
 function diaDeFechaDDMMYYYY(v: unknown): number | null {
   const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   return m ? Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86_400_000) : null;
+}
+
+// Concesión («dd/mm/yyyy») más el plazo en meses, a días desde 1970.
+function finDeLaConcesion(concesion: unknown, plazoMeses: unknown): number | null {
+  const m = String(concesion ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const plazo = num(plazoMeses);
+  if (!m || plazo === null || plazo <= 0) return null;
+  return Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1 + Math.round(plazo), Number(m[1])) / 86_400_000);
 }
 
 export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]): OperacionIess[] {
@@ -389,6 +424,8 @@ export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyR
     monto: num(r.valorPrestamo),
     saldo: (num(r.valorPorVencer) ?? 0) + (num(r.valorVencido) ?? 0),
     diasMora: num(r.diasMora) ?? 0,
+    tipo: (r[TIPO_DE_LA_FILA] as OperacionIess["tipo"] | undefined) ?? null,
+    fin: finDeLaConcesion(r.fechaConcesion, r.plazoOriginal),
   }));
   const esLaMisma = (a: OperacionIess, b: OperacionIess) =>
     (a.numero !== "" && a.numero === b.numero) ||
@@ -404,14 +441,19 @@ export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyR
       monto: num(r.montoTransferido ?? r.srMontofinanciado),
       saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
       diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
+      tipo: (r[TIPO_DE_LA_FILA] as OperacionIess["tipo"] | undefined) ?? (r.srNrooperaciongaf !== undefined ? "hipotecario" : null),
+      fin: diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito),
     };
     const repetida = prestamos.find((p) => esLaMisma(p, o));
     if (repetida) {
       repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
+      // La fecha de fin de la base interna es la pactada: vale más que la derivada.
+      repetida.fin = o.fin ?? repetida.fin;
+      repetida.tipo = repetida.tipo ?? o.tipo;
       continue;
     }
     const estado = String(r.estadoOperacion ?? r.srEstadocredito ?? "").trim().toUpperCase();
-    const fin = diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito);
+    const fin = o.fin;
     const terminado = estado === "VIGENTE" && fin !== null && fin < hoy && o.diasMora === 0;
     if (!terminado) salida.push(o);
   }
@@ -539,6 +581,9 @@ function fechaDeCorte(v: unknown): string | null {
 // cada demanda de cobro dice su año y quién demanda (riesgoJudicialCrediticio).
 // Y el colateral de vehículos es el precio promedio de mercado, con el avalúo
 // sólo sin precio de mercado (patrimonio, p10, negocio, 2026-11-09).
+// estructura-v22 (2026-11-17, F12): comportamientoBancario.operacionesIessBiess,
+// cada préstamo del IESS/BIESS con su tipo, saldo y fecha de fin, para la cuota
+// estimada de la capacidad de pago. No llega al modelo.
 // estructura-v23 (E12, R5 del negocio, 2026-11-18): una providencia de
 // certificación (un pedido de información) ya no cuenta como `enListaControl`:
 // queda en `tieneProvidenciaDeCertificacion` y no bloquea (providencias.ts).
@@ -1277,8 +1322,11 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // Los préstamos del IESS/BIESS de las dos fuentes, sin contar dos veces una
   // operación que esté en ambas (estructura-v16, ver operacionesIessBiess).
   const creditosIess = operacionesIessBiess(
-    [...tcredQ, ...tcredH],
-    [...arr(fuentes, "creditoQuirografario", "prestamos"), ...arr(fuentes, "creditoHipotecario", "prestamos")],
+    [...conTipoIess(tcredQ, "quirografario"), ...conTipoIess(tcredH, "hipotecario")],
+    [
+      ...conTipoIess(arr(fuentes, "creditoQuirografario", "prestamos"), "quirografario"),
+      ...conTipoIess(arr(fuentes, "creditoHipotecario", "prestamos"), "hipotecario"),
+    ],
   );
   // La fecha de `retails` es el corte de la casa comercial, no del día de la
   // consulta (fechaActualizacion): las 63 filas de las 91 personas con
@@ -1319,6 +1367,9 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     tieneCreditoIessBiess: creditosIess.length > 0,
     diasMoraCreditoIessBiess: creditosIess.length ? Math.max(...creditosIess.map((c) => c.diasMora)) : null,
     saldoPrestamosIessBiess: creditosIess.length ? redondear(creditosIess.reduce((s, c) => s + c.saldo, 0)) : null,
+    // Desde estructura-v22: una fila por operación, para estimar la cuota en la
+    // capacidad de pago. No llega al modelo (RUTAS_QUE_NO_LLEGAN).
+    operacionesIessBiess: creditosIess.map((c) => ({ tipo: c.tipo, saldo: redondear(c.saldo), fechaFin: fechaDeDia(c.fin) })),
   };
 
   // ---- comportamientoCooperativas ----
