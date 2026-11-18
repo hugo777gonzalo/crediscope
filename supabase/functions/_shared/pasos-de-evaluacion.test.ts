@@ -121,3 +121,43 @@ Deno.test("el fallo de una consulta incompleta se reintenta, salvo que la falla 
   assertEquals([queNoSeVa.codigo, queNoSeVa.noReintentar], ["fuentes_no_disponibles", true]);
   assert(/revisión manual/.test(queNoSeVa.detalle), queNoSeVa.detalle);
 });
+
+// F13: Pro y Plus leen la misma consulta de Equifax para la misma persona. Una base
+// que contesta lo guardado: el perfil, quién es el buró y las consultas (por id y en lista).
+function baseConBuroGuardado(estructura: unknown | null, clave = "equifax") {
+  const filas = estructura
+    ? [{ id: "consulta", created_at: "2026-01-10T15:00:00Z", ambiente: "produccion", estructura, crudo_ruta: null, id_aws: null }]
+    : [];
+  return {
+    from: (tabla: string) => {
+      // deno-lint-ignore no-explicit-any
+      const q: any = {};
+      for (const m of ["select", "eq", "not", "lte", "order", "limit"]) q[m] = () => q;
+      q.maybeSingle = () => Promise.resolve({
+        data: tabla === "client_profiles" ? { standard_profile: perfilDePrueba() } : tabla === "proveedores" ? { clave } : { estructura },
+        error: null,
+      });
+      q.then = (ok: (r: unknown) => unknown, mal: (e: unknown) => unknown) => Promise.resolve({ data: filas, error: null }).then(ok, mal);
+      return q;
+    },
+    storage: { from: () => ({ download: () => Promise.resolve({ data: null, error: { message: "Object not found", statusCode: "404" } }) }) },
+  };
+}
+
+Deno.test("Pro lee la última consulta guardada y calcula la misma capacidad que Plus", async () => {
+  const guardada = { consulta: { identidadVerificada: true }, deudaActualTitular: { bancos: { cuotaMensualUsd: 100, saldoDeudaUsd: 1000 }, cooperativas: null, comercial: null } };
+  const persona = { client_id: "persona-1", identificacion: "9900000000" };
+  const plus = await pasoCapacidad({ ...solicitud, ...persona }, baseConBuroGuardado(guardada));
+  const pro = await pasoCapacidad({ ...solicitud, ...persona, modalidad: "pro", consulta_equifax_id: null }, baseConBuroGuardado(guardada));
+  assert(plus.ok && pro.ok);
+  if (plus.ok && pro.ok) {
+    assertEquals(pro.resultado, plus.resultado);
+    assert(pro.detalle.includes("consulta de Equifax guardada"));
+  }
+});
+
+Deno.test("Pro sin ninguna consulta guardada sigue con Proveedor_Info_1 y lo dice", async () => {
+  const r = await pasoCapacidad({ ...solicitud, client_id: "persona-1", identificacion: "9900000000", modalidad: "pro", consulta_equifax_id: null }, baseConBuroGuardado(null));
+  assert(r.ok);
+  if (r.ok) assert(r.detalle.includes("No hay consulta de Equifax guardada"));
+});

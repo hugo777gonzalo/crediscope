@@ -92,11 +92,15 @@ export const INDICADORES = {
 
 // Los tipos de acción sugerida que un guion reconoce por sí solo. Un patrón amplio
 // a propósito: la afirmación es «existe una acción de este tipo», no su redacción.
+// Con marco-v36 (corrida del 17/11) el modelo sugirió «verificar en la Función Judicial
+// el juicio de alimentos» y «si la demanda es contra esta persona, el demandado figura con
+// otro nombre», y se marcaron como falla dos acciones que sí estaban. Por eso la identidad
+// también calza con esas formas, pero no con cualquier «verificar en la Función Judicial».
 export const TIPOS_DE_ACCION = {
   documentar_ingreso: /factura|\bIVA\b|declaraci[oó]n|estados? de cuenta|movimientos|roles? de pago|certificado de ingreso|documentos? de confirmaci[oó]n|ingreso/iu,
-  verificar_identidad: /homónim|homonim|identidad|cumplimiento|no (es|sea) (de )?(esta|la) persona/iu,
+  verificar_identidad: /homónim|homonim|identidad|cumplimiento|no (es|sea) (de )?(esta|la) persona|(es|sea) contra (esta|la) persona|otro nombre|si el demandado (es|sea) (esta|la) persona/iu,
   verificar_demanda: /demanda|juicio|proceso judicial|causa/iu,
-  verificar_pension: /pensi[oó]n alimenticia|\bSUPA\b/iu,
+  verificar_pension: /pensi[oó]n(es)? alimenticia|(juicio|demanda|causa|deuda|pago) de alimentos|\bSUPA\b/iu,
   confirmar_deuda_y_cuota: /cuota|tabla de amortizaci[oó]n|estado de la deuda|saldo/iu,
 };
 
