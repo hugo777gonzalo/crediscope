@@ -16,7 +16,7 @@
 // (`falloDeUnPaso`); nunca copia lo que contestó un tercero, que podría traer su
 // mensaje (Proveedor_Info_1, Equifax, el modelo) o el de la base.
 
-import { consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
+import { buroDeLaPersonaParaElAnalisis, consultaVigenteDeEquifax } from "./buro-de-la-institucion.ts";
 import { analizarPersona, ConsultaIncompleta } from "./analisis-de-la-persona.ts";
 import { consultarYGuardarPerfil } from "./consulta-de-perfil.ts";
 import { decisionDeLaConsulta, elPerfilSirve, porQueNoSePuedeAnalizar, requiereRevisionManual, temasSinRespuesta } from "./calidad-de-la-consulta.ts";
@@ -274,6 +274,21 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
     const { data } = await db.from("consultas_equifax").select("estructura").eq("id", s.consulta_equifax_id).maybeSingle();
     estructura = data?.estructura ?? null;
   }
+  // Pro no consulta ni cobra: lee la última consulta de Equifax guardada, vigente
+  // o no, con la misma función que el análisis (F13). Antes Pro calculaba la
+  // capacidad con las cuotas de Proveedor_Info_1 aunque hubiera un buró guardado,
+  // y su veredicto difería del de Plus por la lectura y no por la persona. Sin
+  // ninguna guardada sigue como antes.
+  let avisoDelBuro = "";
+  if (s.modalidad === "pro" && s.client_id) {
+    const guardada = await buroDeLaPersonaParaElAnalisis(db, { id: s.client_id, cedula: s.identificacion });
+    if (guardada) {
+      estructura = guardada.estructura;
+      avisoDelBuro = ` Con la consulta de Equifax guardada del ${fecha(guardada.consultadoEl)}${guardada.vigente ? "" : " (vencida)"}.`;
+    } else {
+      avisoDelBuro = " No hay consulta de Equifax guardada: se usaron las cuotas de Proveedor_Info_1.";
+    }
+  }
   // La consulta del buró ya se hizo (o se reutilizó) en el paso anterior: que no
   // se pueda leer es un problema del buró, no un cálculo mal pedido.
   if (s.modalidad === "plus" && !estructura) {
@@ -281,5 +296,6 @@ export async function pasoCapacidad(s: Fila, db: Fila): Promise<ResultadoDelPaso
   }
   // El paso del buró ya lo corta: esto queda para una evaluación que llegó acá antes.
   if (s.modalidad === "plus" && !elBuroTraeDetalle(estructura)) return fallo(EQUIFAX_SIN_REPORTE, "buro_no_disponible");
-  return capacidadDeLaSolicitud(s, perfil.standard_profile, estructura);
+  const r = capacidadDeLaSolicitud(s, perfil.standard_profile, estructura);
+  return r.ok && avisoDelBuro ? { ...r, detalle: r.detalle + avisoDelBuro } : r;
 }
