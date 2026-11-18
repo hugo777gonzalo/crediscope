@@ -26,20 +26,23 @@ export const SALIDAS_DE_LA_VERSION_MAYOR = {
   aprobacion_directa: "Aprobación Directa",
   aprobar: "Aprobar",
   cambio_de_condiciones: "Cambio de Condiciones",
-  condicionado: "Condicionado",
+  condicionado: "Aprobado con Requisitos",
   revisar: "Revisar",
   negar: "Negar",
 };
 
 // Qué recomendación de hoy es compatible con cada salida de la versión mayor. Un
 // caso que diga «Negar» en la mayor y «aprobar» hoy tiene un error de redacción,
-// no un criterio nuevo. Cambio de Condiciones y Condicionado no existen hoy:
-// el modelo los expresa como «revisar» o, con la acción que pide el requisito, como
-// «aprobar».
+// no un criterio nuevo. Cambio de Condiciones y Aprobado con Requisitos (clave
+// interna `condicionado`) no existen hoy: el modelo los expresa como «revisar» o,
+// con la acción que pide el requisito, como «aprobar». Decisión S3 del negocio
+// (2026-11-18): en la versión 1 Cambio de Condiciones equivale a aprobar, porque
+// al riesgo le alcanza y lo que no alcanza es la capacidad de pago; por eso ya no
+// es compatible con «negar» y «revisar» deja de ser su equivalente directo.
 export const COMPATIBLES_CON_HOY = {
   aprobacion_directa: ["aprobar"],
   aprobar: ["aprobar"],
-  cambio_de_condiciones: ["revisar", "negar"],
+  cambio_de_condiciones: ["aprobar"],
   condicionado: ["aprobar", "revisar"],
   revisar: ["revisar"],
   negar: ["negar"],
@@ -89,11 +92,15 @@ export const INDICADORES = {
 
 // Los tipos de acción sugerida que un guion reconoce por sí solo. Un patrón amplio
 // a propósito: la afirmación es «existe una acción de este tipo», no su redacción.
+// Con marco-v36 (corrida del 17/11) el modelo sugirió «verificar en la Función Judicial
+// el juicio de alimentos» y «si la demanda es contra esta persona, el demandado figura con
+// otro nombre», y se marcaron como falla dos acciones que sí estaban. Por eso la identidad
+// también calza con esas formas, pero no con cualquier «verificar en la Función Judicial».
 export const TIPOS_DE_ACCION = {
   documentar_ingreso: /factura|\bIVA\b|declaraci[oó]n|estados? de cuenta|movimientos|roles? de pago|certificado de ingreso|documentos? de confirmaci[oó]n|ingreso/iu,
-  verificar_identidad: /homónim|homonim|identidad|cumplimiento|no (es|sea) (de )?(esta|la) persona/iu,
+  verificar_identidad: /homónim|homonim|identidad|cumplimiento|no (es|sea) (de )?(esta|la) persona|(es|sea) contra (esta|la) persona|otro nombre|si el demandado (es|sea) (esta|la) persona/iu,
   verificar_demanda: /demanda|juicio|proceso judicial|causa/iu,
-  verificar_pension: /pensi[oó]n alimenticia|\bSUPA\b/iu,
+  verificar_pension: /pensi[oó]n(es)? alimenticia|(juicio|demanda|causa|deuda|pago) de alimentos|\bSUPA\b/iu,
   confirmar_deuda_y_cuota: /cuota|tabla de amortizaci[oó]n|estado de la deuda|saldo/iu,
 };
 
