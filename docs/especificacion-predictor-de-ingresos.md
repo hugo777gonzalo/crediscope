@@ -253,7 +253,7 @@ Entre el nivel 1 (edad, sexo y SRI) y el 2 (con Equifax) cabe un nivel con lo qu
 - los empleados (la nómina que paga);
 - los establecimientos.
 
-El estado civil y las cargas familiares quedan **abiertos a medición**: el negocio dijo que pueden usarse si mejoran la precisión. Salieron del nivel 1 el 2026-10-29 porque no sumaban sobre la edad y el sexo (4.1).
+El estado civil y las cargas familiares quedan **abiertos a medición**: el negocio lo confirmó el 2026-11-11 tras consultar a Legal: se pueden usar en el predictor de ingresos sin restricción, si mejoran la precisión. Salieron del nivel 1 el 2026-10-29 porque no sumaban sobre la edad y el sexo (4.1).
 
 **El freno: no hay con qué entrenarlo.** AWS no guarda la respuesta de Proveedor_Info_1, y el único cruce es el lote de paridad (12.29), que **sólo sirve para medir**: es todo de independientes y su crudo es posterior al ingreso validado, así que la deuda o los establecimientos de hoy pueden ser consecuencia del ingreso que se quiere predecir.
 El nivel se entrena cuando llegue la base del proveedor (unos 3,8 millones de personas, con el historial de deudas por operación; pedido listo, 12.33). Hasta entonces, lo que se sirve sin buró es el nivel 1.
