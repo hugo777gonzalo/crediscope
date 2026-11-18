@@ -161,10 +161,16 @@ export const ATRIBUTOS_PROTEGIDOS: Record<string, boolean> = {
 // la próxima versión del marco se arma con los resultados del predictor).
 export const CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN = ["laboral.obligadoALlevarContabilidadRuc"];
 
+// Lo que el perfil guarda sólo para la capacidad de pago (estructura-v22, F12):
+// cada préstamo del IESS/BIESS con su fecha de fin. El modelo sigue leyendo los
+// totales (saldoPrestamosIessBiess); cambiar eso es versión nueva del marco.
+export const CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN = ["comportamientoBancario.operacionesIessBiess"];
+
 export const RUTAS_QUE_NO_LLEGAN: string[] = [
   ...IDENTIFICADORES_QUE_NO_LLEGAN,
   ...Object.entries(ATRIBUTOS_PROTEGIDOS).filter(([, llega]) => !llega).map(([ruta]) => ruta),
   ...CAMPOS_DEL_PREDICTOR_QUE_NO_LLEGAN,
+  ...CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN,
 ];
 
 function quitarRuta(nodo: unknown, partes: string[]): void {
@@ -529,6 +535,8 @@ export const CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1 = [
   "numeroOperacionesComoGaranteOCodeudor",
   "deudaComoGaranteOCodeudor",
   "peorCalificacionComoGaranteOCodeudor",
+  // Sólo para la capacidad de pago (estructura-v22); nunca llega al modelo.
+  "operacionesIessBiess",
 ] as const;
 
 const SISTEMAS_DEL_BURO = ["bancos", "cooperativas", "comercial"] as const;

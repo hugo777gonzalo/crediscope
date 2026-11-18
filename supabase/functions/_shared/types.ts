@@ -433,6 +433,9 @@ export interface StandardClientProfile {
     // Desde estructura-v16: saldo (por vencer y vencido) de los préstamos
     // del IESS/BIESS de las dos fuentes; null si no hay ninguno.
     saldoPrestamosIessBiess?: number | null;
+    // Desde estructura-v22: cada préstamo con su tipo, saldo y fecha de fin
+    // (yyyy-mm-dd; null si la fuente no la trae). No llega al modelo.
+    operacionesIessBiess?: Array<{ tipo: "quirografario" | "hipotecario" | null; saldo: number; fechaFin: string | null }>;
   };
 
   // "Comportamiento Cooperativas" (grupo 9)
