@@ -13,9 +13,11 @@
 //   el aporte personal al IESS, que la persona no cobra: una institución mide
 //   la carga contra el sueldo líquido del rol de pagos. Al aporte propio no:
 //   la base la elige el afiliado y no es un sueldo.
-// - Una deuda sin cuota informada (las casas comerciales, los bancos sin
-//   buró) no se cuenta como cero: se lista aparte y el resultado avisa que la
-//   carga real es mayor. Un hueco que se rellena con cero hace que uno
+// - Una deuda sin cuota informada no se cuenta como cero: se lista aparte y,
+//   si tiene saldo, entra con una cuota estimada (FACTOR_CUOTA_ESTIMADA, C1);
+//   las casas comerciales de Proveedor_Info_1, que no se pudieron medir, y las
+//   que no traen saldo quedan sin contar y el resultado avisa que la carga
+//   real es mayor. Un hueco que se rellena con cero hace que uno
 //   subestime su propio problema.
 // - El tope de la carga (cuotas sobre ingreso) es un parámetro de cada
 //   institución, no una regla del sistema.
@@ -32,8 +34,10 @@ import { esIngresoMinimoSbu } from "./fuentes-ingreso.ts";
 // v2 (2026-10-17): el Ingreso declarado. v3 (2026-10-18): el veredicto se
 // decide en centavos enteros y las entradas inválidas se dicen o se rechazan.
 // v4 (2026-10-21): `cumple`, el sí o no que pide la API para el flujo Plus; el
-// cálculo y el veredicto no cambian.
-export const CAPACIDAD_VERSION = "capacidad-v4";
+// cálculo y el veredicto no cambian. v5 (2026-11-18): una deuda con saldo y sin
+// cuota informada cuenta con una cuota estimada (decisión C1): el veredicto
+// cambia para quien tiene una, y la versión lo dice.
+export const CAPACIDAD_VERSION = "capacidad-v5";
 
 export interface ParametrosCapacidad {
   /** Fracción: 0.40 quiere decir que las cuotas no pasan del 40% del ingreso neto. */
@@ -69,8 +73,10 @@ export interface ObligacionMensual {
   concepto: string;
   montoMensual: number;
   origen: string;
-  /** La cuota no la informa la fuente: es una anualidad del saldo y el plazo que queda. */
+  /** La cuota no la informa la fuente: la estimamos (ver `metodoDeEstimacion`). */
   estimada?: boolean;
+  /** Cómo se estimó: la anualidad con el plazo que queda, o el factor único sobre el saldo (C1). */
+  metodoDeEstimacion?: "anualidad" | "factor_saldo";
 }
 
 export interface DeudaSinCuota {
@@ -78,6 +84,12 @@ export interface DeudaSinCuota {
   /** null cuando la fuente dice que existe pero no el saldo. */
   saldo: number | null;
   origen: string;
+  /**
+   * La cuota que se estimó para esta deuda con FACTOR_CUOTA_ESTIMADA. Ya entra
+   * en `obligaciones` como cuota estimada: acá es sólo para mostrarla, y no se
+   * suma otra vez.
+   */
+  cuotaEstimada?: number;
 }
 
 export interface EntradaDeCapacidad {
@@ -202,11 +214,16 @@ export function evaluarCapacidad(e: EntradaDeCapacidad): Capacidad {
   if (veredicto === "sin_ingreso") {
     avisos.push("No hay un ingreso reportado al IESS ni declarado con el que medir la cuota.");
   }
-  if (deudasSinCuota.length > 0) {
+  // Una deuda con cuota estimada ya está contada en las obligaciones: no es un hueco.
+  if (deudasSinCuota.some((x) => !(typeof x?.cuotaEstimada === "number" && x.cuotaEstimada > 0))) {
     avisos.push("Hay deudas sin cuota informada: lo que paga por mes es más de lo que se cuenta acá.");
   }
-  if (lista(e.obligaciones).some((x) => x?.estimada === true)) {
+  const estimadas = lista(e.obligaciones).filter((x) => x?.estimada === true);
+  if (estimadas.some((x) => x.metodoDeEstimacion !== "factor_saldo")) {
     avisos.push("Hay cuotas estimadas desde el saldo y el plazo que queda, no informadas por la fuente: la cuota real puede ser distinta.");
+  }
+  if (estimadas.some((x) => x.metodoDeEstimacion === "factor_saldo")) {
+    avisos.push("Hay deudas sin cuota informada con cuotas estimadas en 6,3% del saldo por mes: la cuota real puede ser distinta.");
   }
   if (obligacionesSinMonto > 0) {
     avisos.push("Hay cuotas sin un monto válido: no se contaron, y lo que paga por mes es más de lo que se cuenta acá.");
@@ -288,6 +305,23 @@ const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cub
 export const TASA_ANUAL_BIESS = { quirografario: 0.065, hipotecario: 0.0299 } as const;
 export const TASA_BIESS_POR_CONFIRMAR = true;
 
+// Una deuda con saldo y sin cuota informada se estima con el 6,3% del saldo por
+// mes: decisión del negocio C1 (2026-11-18), sobre la medición F12 del
+// 2026-11-17. En 590 personas con bancos de Proveedor_Info_1 y Equifax, la
+// cuota de bancos de Equifax sobre el saldo dio una mediana de 6,28%; con ese
+// factor único el error mediano por persona fue de USD 896 contra USD 1.540 de
+// contar cero (el 100% del error). Un factor por tramo de saldo bajaba a USD 710,
+// pero el negocio eligió el único. Sesgo: la muestra son quienes llegaron a
+// evaluación, con más tarjeta y más deuda que el resto. La referencia misma es
+// una estimación de Equifax, no la cuota pactada.
+export const FACTOR_CUOTA_ESTIMADA = 0.063;
+
+/** null sin saldo: sin saldo no hay con qué estimar, y la deuda queda como hueco. */
+export function cuotaPorFactorDeSaldo(saldo: number | null | undefined): number | null {
+  if (typeof saldo !== "number" || !Number.isFinite(saldo) || saldo <= 0) return null;
+  return Math.round(saldo * FACTOR_CUOTA_ESTIMADA * 100) / 100;
+}
+
 // Cuota de una anualidad: saldo, tasa nominal anual y meses que quedan (mínimo 1).
 export function cuotaPorAnualidad(saldo: number, tasaAnual: number, meses: number): number {
   const n = Math.max(1, Math.round(meses));
@@ -357,6 +391,18 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
 
   const obligaciones: ObligacionMensual[] = [];
   const deudasSinCuota: DeudaSinCuota[] = [];
+  // La deuda sigue en la lista de las que no informan cuota, con la que se le
+  // estimó, y la misma cuota entra en las obligaciones con el rótulo de estimada
+  // (el mecanismo del BIESS por anualidad): la lista sólo la muestra.
+  const sinCuota = (concepto: string, saldo: number | null, origen: string, rotulo = concepto) => {
+    const cuotaEstimada = cuotaPorFactorDeSaldo(saldo);
+    if (cuotaEstimada === null) {
+      deudasSinCuota.push({ concepto, saldo, origen });
+      return;
+    }
+    deudasSinCuota.push({ concepto, saldo, origen, cuotaEstimada });
+    obligaciones.push({ concepto: `${rotulo} (cuota estimada)`, montoMensual: cuotaEstimada, origen, estimada: true, metodoDeEstimacion: "factor_saldo" });
+  };
   const bancario = comoObjeto(perfil?.comportamientoBancario);
   const cooperativas = comoObjeto(perfil?.comportamientoCooperativas);
   const titular = elBuroTraeDetalle(estructuraEquifax) ? comoObjeto(estructuraEquifax?.deudaActualTitular) : null;
@@ -369,14 +415,14 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
       if (cuota !== null && cuota > 0) obligaciones.push({ concepto: nombre, montoMensual: cuota, origen: "Equifax" });
       // Con saldo y sin cuota, es una deuda sin cuota informada, no una cuota de
       // cero: la estructura suma 0 cuando Equifax no trae la cuota de la operación.
-      else if ((numero(s?.saldoDeudaUsd) ?? 0) > 0) deudasSinCuota.push({ concepto: nombre, saldo: numero(s?.saldoDeudaUsd), origen: "Equifax" });
+      else if ((numero(s?.saldoDeudaUsd) ?? 0) > 0) sinCuota(nombre, numero(s?.saldoDeudaUsd), "Equifax");
     }
   } else {
     const cuotaCoop = numero(cooperativas?.cuotaMensualTotal);
     if (cuotaCoop !== null && cuotaCoop > 0) obligaciones.push({ concepto: "Cooperativas", montoMensual: cuotaCoop, origen: "Proveedor_Info_1" });
     // Sin buró, Proveedor_Info_1 trae el saldo de los bancos pero no la cuota.
     const saldoBancos = (numero(bancario?.saldoTotalVigente) ?? 0) + (numero(bancario?.deudaEnAtraso) ?? numero(bancario?.saldoEnMoraBuroCredito) ?? 0);
-    if (saldoBancos > 0) deudasSinCuota.push({ concepto: "Bancos", saldo: Math.round(saldoBancos * 100) / 100, origen: "Proveedor_Info_1" });
+    if (saldoBancos > 0) sinCuota("Bancos", Math.round(saldoBancos * 100) / 100, "Proveedor_Info_1");
   }
 
   // Una fuente que no contestó (error o apagada) no es una fuente sin deuda: el
@@ -416,12 +462,13 @@ export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: An
       }
     }
     if (operaciones.length === 0) {
-      deudasSinCuota.push({ concepto: "Préstamo del IESS o BIESS", saldo: numero(bancario.saldoPrestamosIessBiess), origen: "Proveedor_Info_1" });
+      sinCuota("Préstamo del IESS o BIESS", numero(bancario.saldoPrestamosIessBiess), "Proveedor_Info_1");
     } else {
       if (conCuota > 0) {
-        obligaciones.push({ concepto: "Préstamo del IESS o BIESS (cuota estimada)", montoMensual: Math.round(cuotaEstimada * 100) / 100, origen: "Proveedor_Info_1", estimada: true });
+        obligaciones.push({ concepto: "Préstamo del IESS o BIESS (cuota estimada)", montoMensual: Math.round(cuotaEstimada * 100) / 100, origen: "Proveedor_Info_1", estimada: true, metodoDeEstimacion: "anualidad" });
       }
-      if (saldoSinCuota > 0) deudasSinCuota.push({ concepto: "Préstamo del IESS o BIESS", saldo: Math.round(saldoSinCuota * 100) / 100, origen: "Proveedor_Info_1" });
+      // Sin tipo o sin fecha de fin no hay anualidad: el factor único.
+      if (saldoSinCuota > 0) sinCuota("Préstamo del IESS o BIESS", Math.round(saldoSinCuota * 100) / 100, "Proveedor_Info_1", "Préstamo del IESS o BIESS sin fecha de fin");
     }
   }
 
