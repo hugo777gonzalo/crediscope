@@ -9,13 +9,17 @@
 -- completo guardado unos días antes. Medido el 2026-11-17 sobre la cartera sin
 -- sintéticas: 2 personas con un anterior MÁS completo dentro de los 7 días
 -- previos al último (las dos pasaban a `consulta_incompleta`); 56 en cualquier
--- fecha, que no cambian.
+-- fecha, que con la ampliación del 18/11 sí cambian.
 --
--- Regla nueva: el perfil del resumen es el último, salvo que uno anterior,
--- dentro de los 7 días previos al último, tenga MENOS obligatorias faltantes
--- (misma cuenta que la bandeja: `fuentes_obligatorias_sin_respuesta`); en ese
--- caso se toma el de menos faltantes (el más reciente si empatan) y se enciende
--- `consulta_posterior_incompleta`. Un perfil sin detalle por fuente (anteriores
+-- Regla nueva: el perfil del resumen es el último, salvo que uno anterior tenga
+-- MENOS obligatorias faltantes (misma cuenta que la bandeja:
+-- `fuentes_obligatorias_sin_respuesta`); en ese caso se toma el más reciente
+-- entre los de menos faltantes y se enciende `consulta_posterior_incompleta`.
+-- Ampliación aceptada por el negocio el 2026-11-18, sin límite de días: la
+-- prueba con una persona autorizada (c-f059ebe9) y el proveedor caído dejó un
+-- perfil nuevo con 15 obligatorias caídas, aunque el bueno era de semanas
+-- antes y la ventana de 7 días no lo alcanzaba. El costo: quien de verdad
+-- cambió (ya no aparece en una fuente) puede mostrar datos viejos; la marca lo avisa. Un perfil sin detalle por fuente (anteriores
 -- al 2026-09-17) cuenta 0 faltantes sólo porque no se puede juzgar: no sirve de
 -- anterior mejor.
 --
@@ -40,7 +44,7 @@ alter table resumen_por_persona
   add column consulta_posterior_incompleta boolean not null default false;
 
 comment on column resumen_por_persona.consulta_posterior_incompleta is
-  'La persona tiene una consulta posterior (dentro de 7 días) con más fuentes obligatorias faltantes; el resumen muestra la anterior, más completa (151).';
+  'La persona tiene una consulta posterior con más fuentes obligatorias faltantes; el resumen muestra la anterior, más completa (151).';
 
 CREATE OR REPLACE FUNCTION public.refrescar_resumen_por_persona(p_clientes uuid[])
  RETURNS void
@@ -161,8 +165,8 @@ begin
      limit 1
   ) u on true
   left join lateral (
-    -- El perfil del resumen: el último, o un anterior de los 7 días previos
-    -- con menos obligatorias faltantes (151). Sólo cuentan los que tienen
+    -- El perfil del resumen: el último, o el más reciente entre los anteriores
+    -- con el menor número de obligatorias faltantes, sin límite de días (151). Sólo cuentan los que tienen
     -- detalle por fuente y alguna fuente en el estado: sin eso `faltan` sería 0
     -- por no poder juzgarlo. `|| '{}'` deja el perfil descomprimido en memoria una sola vez: cada
     -- `->` sobre la columna lo descomprimiría de nuevo.
@@ -176,7 +180,6 @@ begin
      where cp.client_id = c.id
        and (cp.id = u.id
             or (cp.created_at < u.created_at
-                and cp.created_at >= u.created_at - interval '7 days'
                 and cp.estado_por_fuente is not null
                 and cp.estado_por_fuente <> '{}'::jsonb
                 and coalesce(cp.fuentes_ok, cp.ejes_ok, 0) > 0

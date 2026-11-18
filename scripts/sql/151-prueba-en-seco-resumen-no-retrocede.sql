@@ -1,6 +1,6 @@
 -- Prueba en seco de la 151 (sólo lectura): qué personas cambiarían de perfil
 -- en el resumen con la regla nueva. Es la misma lógica del lateral `p` de la
--- migración, escrita como select. Esperado el 2026-11-17: 2 personas.
+-- migración, escrita como select. Sin límite de días (ampliación del 2026-11-18).
 -- La cuenta de faltantes va escrita en línea (copia de fuentes_obligatorias_sin_respuesta, 145)
 -- porque el rol de lectura de la CLI no puede ejecutar esa función.
 -- Correr: npx --yes supabase@latest db query --remote --read-only --file <este archivo>
@@ -21,18 +21,19 @@ ultimo as (
 elegido as (
   select distinct on (u.client_id)
          u.client_id, u.id as id_ultimo, u.faltan as faltan_ultimo,
-         p.id as id_elegido, p.faltan as faltan_elegido, p.created_at as fecha_elegido
+         p.id as id_elegido, p.faltan as faltan_elegido, p.created_at as fecha_elegido,
+         (now() - p.created_at) as antiguedad_elegido
     from ultimo u
     join perfiles p on p.client_id = u.client_id
      and (p.id = u.id
           or (p.created_at < u.created_at
-              and p.created_at >= u.created_at - interval '7 days'
               and p.con_detalle and p.faltan < u.faltan))
    order by u.client_id, (p.id = u.id), p.faltan, p.created_at desc
 )
 select 'c-' || left(client_id::text, 8) as caso,
        faltan_ultimo, faltan_elegido,
-       (faltan_elegido = 0) as pasaria_a_completa
+       (faltan_elegido = 0) as pasaria_a_completa,
+       (antiguedad_elegido > interval '30 days') as mas_de_30_dias
   from elegido
  where id_elegido <> id_ultimo
  order by 1;
