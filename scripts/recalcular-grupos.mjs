@@ -68,11 +68,16 @@ const { columnasDelPerfil } = await import(pathToFileURL(path.join(RAIZ, "supaba
 // el viejo `listas_control_interno` ya no la cuenta. Sin sumarlo, 5 perfiles
 // quedaron como «no reproducen» en el seco del 2026-11-18 (el bloqueo guardado
 // no tenía ese hallazgo) y el desbloqueo que el cambio busca no se podía aplicar.
-const HALLAZGOS_QUE_CAMBIAN = new Set(["delito_seguridad_ciudadana", "posible_homonimo_en_demanda_penal", "providencia_certificacion"]);
-// Estos dos llevan en el mensaje la cantidad de registros: al dejar de contar las
-// providencias de certificación el número baja aunque el hallazgo siga (o se
-// compara sólo por su código y si bloquea).
-const HALLAZGOS_CON_CUENTA_EN_EL_MENSAJE = new Set(["listas_control_interno", "lista_control"]);
+// Por la misma causa `lista_control` y `listas_control_interno` pueden dejar de
+// existir (la persona sólo tenía providencias de certificación: 4 perfiles) o
+// bajar su cuenta, que va en el mensaje.
+const HALLAZGOS_QUE_CAMBIAN = new Set([
+  "delito_seguridad_ciudadana",
+  "posible_homonimo_en_demanda_penal",
+  "providencia_certificacion",
+  "lista_control",
+  "listas_control_interno",
+]);
 
 // Los secretos se leen del archivo y no se imprimen.
 cargarEntorno(RAIZ);
@@ -107,7 +112,11 @@ const ultimoPorCliente = new Map();
     despues = cuerpo.at(-1).id;
   }
 }
-const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
+// --perfiles=3e9103d2,617a49ab: sólo esos perfiles (prefijo del id), para
+// investigar uno que no se reproduce sin repetir los 15 minutos de la cartera.
+const SOLO_PERFILES = (process.argv.find((a) => a.startsWith("--perfiles="))?.slice(11) ?? "").split(",").filter(Boolean);
+const { candidatos: todosLosCandidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
+const candidatos = SOLO_PERFILES.length ? todosLosCandidatos.filter((c) => SOLO_PERFILES.some((p) => c.perfilId.startsWith(p))) : todosLosCandidatos;
 const clientePorPerfil = new Map([...ultimoPorCliente].map(([clienteId, p]) => [p.id, clienteId]));
 
 function armarEnFecha(instante, fn) {
@@ -139,11 +148,7 @@ const ESPERADAS = [
   ".fuentesIngreso.detalle.recalculo", ".fuentesIngreso.correccion", ".laboral.correccionEmpleoActual",
 ];
 const sinElQueCambia = (b) =>
-  canonico(
-    (b?.hallazgos ?? [])
-      .filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code))
-      .map((h) => (HALLAZGOS_CON_CUENTA_EN_EL_MENSAJE.has(h.code) ? { code: h.code, bloqueante: h.bloqueante } : h)),
-  );
+  canonico((b?.hallazgos ?? []).filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code)));
 const codigosBloqueantes = (b) => (b?.hallazgos ?? []).filter((h) => h.bloqueante).map((h) => h.code).sort().join("+") || "ninguno";
 const porMotivoDeDesbloqueo = {};
 const cambiosDeBloqueo = { desbloqueados: [], bloqueados: [], otroMotivo: 0, sinBloqueoGuardado: 0 };
@@ -192,7 +197,11 @@ for (let i = 0; i < candidatos.length; i += 50) {
       if (!anterior) cambiosDeBloqueo.sinBloqueoGuardado++;
       else if (sinElQueCambia(anterior) !== sinElQueCambia(bloqueo)) {
         cambiosDeBloqueo.otroMotivo++;
-        noReproducen.push(`p-${perfilId.slice(0, 8)}: control_bloqueo difiere en otro hallazgo`);
+        // Los códigos que sobran o faltan, para no tener que adivinar cuál es.
+        const codigos = (b) => new Set((b?.hallazgos ?? []).filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code)).map((h) => `${h.code}${h.bloqueante ? "*" : ""}`));
+        const ant = codigos(anterior), nue = codigos(bloqueo);
+        const dif = [...ant].filter((c) => !nue.has(c)).map((c) => `-${c}`).concat([...nue].filter((c) => !ant.has(c)).map((c) => `+${c}`));
+        noReproducen.push(`p-${perfilId.slice(0, 8)}: control_bloqueo difiere en otro hallazgo (${dif.join(" ") || "mismo código, distinto contenido"})`);
         continue;
       }
       if (anterior?.bloqueado && !bloqueo.bloqueado) {
