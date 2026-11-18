@@ -13,21 +13,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **`main` tiene estructura-v21 sin desplegar (2026-11-09, #153): no desplegar `main` hasta que marco-v36
-  esté lista**, salvo que el negocio lo autorice sabiendo esto. Cualquier despliegue con `--funciones` desde
-  `main` lleva v21, venga de la sesión que venga (el que más riesgo tiene es el del predictor, #145): con
-  marco-v35, el modelo recibiría `comportamientoInterno.proveedorInfo1EstadoOperacion` y
-  `riesgoJudicialCrediticio.demandasDeCobro` (año y quién demanda), que v35 no explica. v21 trae p6 (el BIESS
-  sin contar dos veces ni los préstamos terminados), p3 (Comportamiento Interno de una sola operación, sin
-  sumar nada), p5 y p10 (el colateral de vehículos al precio de mercado).
-  - **Después del despliegue, el recálculo:** `node scripts/recalcular-grupos.mjs
-    --grupos=comportamientoBancario,comportamientoInterno,riesgoJudicialCrediticio,patrimonio
-    --carpeta=research/proveedor-info-1-raw-2026-10-03`, primero con `--seco`. El seco del 2026-11-09 sobre los
-    perfiles en v20: los 3.766 se reproducen y cambian el colateral en 1.362, el saldo del BIESS en 767,
-    `tieneCreditoIessBiess` en 192 y el saldo de Comportamiento Interno en 557.
-  - **Al final, `node scripts/revisar-crudo.mjs`:** las regresiones de p3
-    (`comportamiento-interno-de-otra-operacion`) y p10 (`colateral-de-vehiculos-sobre-el-precio-promedio`)
-    tienen que dar 0.
+- **marco-v36 y estructura-v21 en producción (2026-11-17, #151 y #153):** migración 150 aplicada con el corredor,
+  funciones desplegadas con el sello **`dd771515bdc0`**, 13 de 13 (`despliegues`), y el recálculo de las 3.766
+  personas reales a estructura-v21 (escritas 3.766 de 3.766; 0 perfiles que no se reproducen). Cambiaron el
+  colateral de vehículos en 1.361, el saldo del BIESS en 767, `tieneCreditoIessBiess` en 192 y el saldo de
+  Comportamiento Interno en 557. `revisar-crudo.mjs`: las regresiones `comportamiento-interno-de-otra-operacion`
+  (0 de 782) y `colateral-de-vehiculos-sobre-el-precio-promedio` (0 de 2.197) dan 0. Ya no hay advertencia de no
+  desplegar `main`. Falta un análisis con el modelo en marco-v36 (sin ninguno todavía).
 - **Espacio de la base (2026-11-06): 409 MB de 500 MB del plan Free** (91 MB de margen; el 05/11 eran
   485 y el 06/11 llegaron a 534, por encima del plan, y bajaron a 478 tras el `vacuum full` de `consultas_equifax` y a 409 tras el
   de `cron.job_run_details`); se midió con `pg_database_size`. Lo que lo llenó, medido:
@@ -53,13 +45,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **149** (el corredor, 2026-11-06; la 149 es la limpieza diaria del registro de
+- **Base:** última migración aplicada, la **150** (marco-v36, el corredor, 2026-11-17; antes la 149, 2026-11-06; la 149 es la limpieza diaria del registro de
   pg_cron; no hay 137: la del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 148 (el crudo en
   Storage). La 146 son los
   permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
   después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`661445837c92`**, 13 de 13, desplegado el 2026-11-06 sobre el esquema 148
-  (`despliegues`): la lectura del crudo de Equifax desde Storage (#138). Antes, `03dc54558780` (el freno del
+- **Funciones:** sello **`dd771515bdc0`**, 13 de 13, desplegado el 2026-11-17 sobre el esquema 150
+  (`despliegues`): marco-v36 y estructura-v21. Antes, `661445837c92` (2026-11-06): la lectura del crudo de Equifax
+  desde Storage (#138). Antes, `03dc54558780` (el freno del
   predictor, #135; `auditar-seguridad.mjs`, 79 de 79) y `6d30f65ed598`:
   estructura-v19 (#133), y con él `consultar-equifax` con la acción `ordenar` (#130).
   Antes, `cc88fd66866f` (marco-v35 y estructura-v18, #129) y `ece1d189789d` (las sesiones 1 a 4
@@ -79,10 +72,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v35 con Claude Sonnet 5.5 y el buró de la institución encendido,
-  desplegada el 2026-11-05 y sin ningún análisis todavía (marco-v31 a v33 no llegaron a usarse, 0
-  análisis; v34 es el texto sin buró). estructura-v19 (el último perfil de las 3.766 personas reales,
-  recalculado el 2026-11-05); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+- **Versiones en producción:** marco-v36 (2026-11-17) con Claude Sonnet 5.5 y el buró de la institución encendido,
+  sin ningún análisis todavía; antes marco-v35 (2026-11-05; marco-v31 a v33 no llegaron a usarse, 0
+  análisis; v34 es el texto sin buró). estructura-v21 (el último perfil de las 3.766 personas reales,
+  recalculado el 2026-11-17); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
