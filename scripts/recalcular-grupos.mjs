@@ -51,7 +51,9 @@ const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10)
 // principal (_comun/entorno.mjs): el guion los buscaba en su propia carpeta y
 // el recálculo de estructura-v15 fue el primero desde un worktree.
 const PRINCIPAL = raizPrincipal(RAIZ);
-const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
+// resolve y no join: con una ruta absoluta en --carpeta, join la pegaba detrás de
+// la carpeta principal (ENOENT, 2026-11-18).
+const CARPETA = path.resolve(PRINCIPAL,process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
 if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
