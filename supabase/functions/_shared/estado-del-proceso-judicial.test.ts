@@ -165,6 +165,29 @@ Deno.test("deprecatorio sin tipo de acción: lo delata la devolución", () => {
   assertEquals(r.estado, "no_es_demanda");
 });
 
+Deno.test("un cobro con un deprecatorio devuelto entre sus dependencias sigue siendo demanda", () => {
+  const r = estadoDelProcesoJudicial({
+    numeroProceso: "17371202000005G",
+    dependencias: [
+      {
+        nombre: "UNIDAD JUDICIAL CIVIL",
+        instancia: "PRIMERA INSTANCIA",
+        actuaciones: [
+          { fecha: "2025-02-01", tipo: "CALIFICACION DE LA DEMANDA" },
+          { fecha: "2025-03-01", tipo: "PROVIDENCIA GENERAL" },
+          { fecha: "2025-06-01", tipo: PAGO },
+        ],
+      },
+      {
+        nombre: "UNIDAD JUDICIAL DE OTRA CIUDAD",
+        actuaciones: [{ fecha: "2025-04-01", tipo: "DEVOLUCION DEPRECATORIO" }],
+      },
+    ],
+  }, opc);
+  assertEquals(r.estado, "terminado");
+  assertEquals(r.motivo, "pago");
+});
+
 Deno.test("varias dependencias: el cierre vale en la de primera instancia", () => {
   const r = estadoDelProcesoJudicial({
     numeroProceso: "17371202000002G",

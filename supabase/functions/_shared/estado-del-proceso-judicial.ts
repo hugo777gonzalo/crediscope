@@ -119,17 +119,21 @@ export function motivoDeCierreDeLaActuacion(
   return null;
 }
 
-function esDeprecatorio(p: ProcesoJudicial): boolean {
+function esDeprecatorio(
+  p: ProcesoJudicial,
+  principal: DependenciaJudicial | null,
+): boolean {
   if (
     normalizarTexto(p.tipoAccion).includes("DEPRECATORIO") ||
     normalizarTexto(p.materia).includes("DEPRECATORIO")
   ) return true;
   // Un deprecatorio termina con «DEVOLUCION DEPRECATORIO»: sirve de respaldo
-  // si la fuente no trae el tipo de acción.
-  return p.dependencias.some((d) =>
-    d.actuaciones.some((a) =>
-      normalizarTexto(a.tipo).startsWith("DEVOLUCION DEPRECATORIO")
-    )
+  // si la fuente no trae el tipo de acción, pero sólo en la dependencia
+  // principal. Un juicio de cobro trae sus encargos de citación en otra ciudad
+  // como dependencias propias (visto en los procesos leídos el 2026-11-18):
+  // mirarlas todas hacía pasar la demanda entera por un deprecatorio.
+  return (principal?.actuaciones ?? []).some((a) =>
+    normalizarTexto(a.tipo).startsWith("DEVOLUCION DEPRECATORIO")
   );
 }
 
@@ -194,7 +198,7 @@ export function estadoDelProcesoJudicial(
     dependenciaPrincipal: principal?.nombre ?? null,
   };
 
-  if (esDeprecatorio(proceso)) {
+  if (esDeprecatorio(proceso, principal)) {
     return {
       ...base,
       estado: "no_es_demanda",
