@@ -11,7 +11,7 @@
 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { leerCasos, textoQueParecePersonal, validarCaso } from "./banco-de-casos-de-oro/formato.mjs";
+import { TIPOS_DE_ACCION, leerCasos, textoQueParecePersonal, validarCaso } from "./banco-de-casos-de-oro/formato.mjs";
 
 const RAIZ = path.resolve(import.meta.dirname, "..");
 // La lista de identificaciones del sandbox se importa del código, no se copia: un
@@ -70,6 +70,14 @@ if (bueno) {
 }
 control("acepta años y relaciones", textoQueParecePersonal("La demanda de 2009 pesa menos; la deuda supera el ingreso de un año y el 63% está en bancos.") === null);
 control("acepta las siglas", textoQueParecePersonal("El saldo del BIESS y la pensión del SUPA.") === null);
+
+// 3. Los tipos de acción: las redacciones reales que el modelo dio con marco-v36 (17/11) y
+// que se marcaron como falla estando la acción; y que la identidad no sea cualquier
+// «verificar en la Función Judicial».
+const tipo = (t, texto) => TIPOS_DE_ACCION[t].test(texto);
+control("verificar_pension acepta el juicio de alimentos", tipo("verificar_pension", "Verificar en la Función Judicial el estado del juicio de alimentos, es decir, si hay convenio de pago o apremio."));
+control("verificar_identidad acepta «es contra esta persona»", tipo("verificar_identidad", "Verificar en la Función Judicial si la demanda es contra esta persona, ya que el demandado figura con otro nombre."));
+control("verificar_identidad no acepta cualquier consulta a la Función Judicial", !tipo("verificar_identidad", "Verificar en la Función Judicial el estado del juicio y si hay sentencia."));
 
 console.log(fallas ? `\n${fallas} fallas.` : `\nTodo bien: ${leidos.length} casos.`);
 process.exit(fallas ? 1 : 0);

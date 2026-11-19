@@ -26,6 +26,7 @@ export function perfilDePrueba(): Record<string, unknown> {
     },
     cumplimiento: {
       enListaControl: false,
+      tieneProvidenciaDeCertificacion: false,
       enListaNegra: false,
       registraSercopContraloria: false,
       esPersonaExpuestaPoliticamente: false,

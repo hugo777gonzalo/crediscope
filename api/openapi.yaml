@@ -459,6 +459,8 @@ paths:
                   $ref: '#/components/examples/EvaluacionCompletada'
                 completadaPro:
                   $ref: '#/components/examples/EvaluacionCompletadaPro'
+                completadaPremium:
+                  $ref: '#/components/examples/EvaluacionCompletadaPremium'
                 sinVeredicto:
                   $ref: '#/components/examples/EvaluacionSinVeredicto'
                 fallida:
@@ -685,7 +687,9 @@ paths:
 
         Al sueldo de un dependiente se le descuenta el aporte personal al IESS.
         Una deuda sin cuota informada no se cuenta como cero: se devuelve en
-        `datos.deudasSinCuota` y `obligacionesIncompletas` es `true`. `datos`
+        `datos.deudasSinCuota` y `obligacionesIncompletas` es `true`. Si tiene
+        saldo, su cuota se estima con un porcentaje del saldo por mes (de 2,5% a 6,5% según el tramo de saldo por operación; 1,07% si es hipotecario) y entra en
+        `datos.obligaciones` con `estimada: true`; sin saldo, no se cuenta. `datos`
         dice con qué ingresos y cuotas se midió (con el Ingreso declarado, el
         único ingreso es el declarado).
       security:
@@ -741,7 +745,7 @@ paths:
                   summary: Respuesta al pedido con los datos de la IFI
                   value:
                     capacidad:
-                      version: capacidad-v4
+                      version: capacidad-v5
                       veredicto: alcanza
                       cumple: true
                       ingresoReportado: 1200
@@ -801,7 +805,7 @@ paths:
                   summary: Respuesta al pedido con una persona y su Ingreso declarado (las cuotas, de Equifax)
                   value:
                     capacidad:
-                      version: capacidad-v4
+                      version: capacidad-v5
                       veredicto: alcanza
                       cumple: true
                       ingresoReportado: 1800
@@ -846,7 +850,7 @@ paths:
                       totalPagado: 6289.37
                     montoMaximo: 8531.14
                     capacidadSoloIess:
-                      version: capacidad-v4
+                      version: capacidad-v5
                       veredicto: no_alcanza
                       cumple: false
                       ingresoReportado: 1200
@@ -1662,6 +1666,329 @@ components:
           type: boolean
           const: true
           description: La decisión de crédito la toma una persona de la IFI.
+        analisis:
+          description: |
+            Análisis premium. Se SUMA a lo anterior: `recomendacion` sigue
+            llenándose con la equivalencia aprobacion_directa, aprobar y
+            cambio_de_condiciones a aprobar (en la versión 1 un Cambio de
+            Condiciones equivale a aprobar: al riesgo le alcanza y lo que no
+            alcanza es la capacidad de pago); condicionado (Aprobado con
+            Requisitos en pantalla; el valor es una clave interna y no cambia) y
+            revisar a revisar; negar a negar. `null` mientras no exista para esta evaluación.
+          oneOf:
+            - $ref: '#/components/schemas/AnalisisPremium'
+            - type: 'null'
+
+    CodigoDeHecho:
+      type: string
+      pattern: '^[A-Z]{3}-[0-9]{3}$'
+      example: IES-001
+    ListaDeHechos:
+      type: array
+      description: Códigos de las claves del mapa `hechos` que respaldan lo que se afirma.
+      items:
+        $ref: '#/components/schemas/CodigoDeHecho'
+    Monto:
+      type: number
+      minimum: 0
+      multipleOf: 0.01
+      description: Dólares, con dos decimales.
+    SalidaDeRecomendacion:
+      type: string
+      description: |
+        Salida del estándar de la institución. `condicionado` se muestra como
+        «Aprobado con Requisitos» (decisión del negocio del 2026-11-18); el valor
+        es una clave interna estable y no cambia. `cambio_de_condiciones`
+        equivale a aprobar en la versión 1.
+      enum: [aprobacion_directa, aprobar, cambio_de_condiciones, condicionado, revisar, negar]
+    PeldanoDeIngreso:
+      type: string
+      enum: [verificado_por_tercero, verificado_con_documento, cota_por_credito, minimo_certificado, declarado, referencia_del_tipo]
+    Cuota:
+      type: object
+      required: [monto, plazoMeses, cuota]
+      properties:
+        monto:
+          $ref: '#/components/schemas/Monto'
+        plazoMeses:
+          type: integer
+          minimum: 1
+        cuota:
+          $ref: '#/components/schemas/Monto'
+    AnalisisPremium:
+      type: object
+      description: |
+        Análisis premium de la evaluación. Los textos libres se muestran como
+        texto, sin interpretarlos como HTML. Cada bloque dice quién lo produjo
+        (`recomendacion.origen`).
+      required: [recomendacion]
+      properties:
+        recomendacion:
+          type: object
+          required: [salida, base, origen, motivos, requiereDecisionHumana]
+          properties:
+            salida:
+              $ref: '#/components/schemas/SalidaDeRecomendacion'
+            base:
+              description: Lo que dio el estándar, antes de un ajuste de la IA o de un control.
+              $ref: '#/components/schemas/SalidaDeRecomendacion'
+            origen:
+              type: string
+              enum: [estandar, ia, control_bloqueo]
+            motivos:
+              type: array
+              items:
+                type: object
+                required: [codigo, texto]
+                properties:
+                  codigo:
+                    type: string
+                  texto:
+                    type: string
+                    maxLength: 1000
+            requiereDecisionHumana:
+              type: boolean
+              const: true
+        dictamen:
+          type: string
+          maxLength: 1500
+        veredictos:
+          type: object
+          properties:
+            riesgo:
+              type: object
+              required: [nivel, score]
+              properties:
+                nivel:
+                  type: string
+                  enum: [muy bajo, bajo, moderado, alto, muy alto]
+                score:
+                  type: [integer, 'null']
+                  minimum: 1
+                  maximum: 999
+                banda:
+                  type: object
+                  required: [desde, hasta]
+                  properties:
+                    desde:
+                      type: integer
+                      minimum: 1
+                      maximum: 999
+                    hasta:
+                      type: integer
+                      minimum: 1
+                      maximum: 999
+                ajusteDeLaIA:
+                  type: [object, 'null']
+                  required: [puntos, motivo, hechos]
+                  properties:
+                    puntos:
+                      type: integer
+                    motivo:
+                      type: string
+                      maxLength: 1000
+                    hechos:
+                      $ref: '#/components/schemas/ListaDeHechos'
+            capacidad:
+              type: object
+              required: [resultado]
+              properties:
+                resultado:
+                  type: string
+                  enum: [entra, entra_con_cambio, no_entra, no_evaluable]
+                cargaConLoPedido:
+                  type: object
+                  description: Rango de la carga (cuotas sobre ingreso neto), de 0 a 1.
+                  required: [desde, hasta]
+                  properties:
+                    desde:
+                      type: number
+                    hasta:
+                      type: number
+                cargaMaxima:
+                  type: number
+                peldanoQueSostiene:
+                  oneOf:
+                    - $ref: '#/components/schemas/PeldanoDeIngreso'
+                    - type: 'null'
+            controles:
+              type: object
+              required: [resultado, hallazgos]
+              properties:
+                resultado:
+                  type: string
+                  enum: [sin_observaciones, por_verificar, bloqueado]
+                hallazgos:
+                  $ref: '#/components/schemas/ControlesDeBloqueo/properties/hallazgos'
+        hallazgos:
+          type: array
+          items:
+            type: object
+            required: [sentido, peso, texto, hechos]
+            properties:
+              sentido:
+                type: string
+                enum: [a_favor, en_contra]
+              peso:
+                type: string
+                enum: [alto, medio, bajo]
+              texto:
+                type: string
+                maxLength: 1000
+              hechos:
+                $ref: '#/components/schemas/ListaDeHechos'
+        atenuantes:
+          type: array
+          items:
+            type: object
+            required: [codigo, cumple, hechos]
+            properties:
+              codigo:
+                type: string
+                enum: [al_dia_hoy, endeudamiento_a_la_baja, estabilidad_12_meses, ingreso_al_alza]
+              cumple:
+                type: string
+                enum: [si, no, no_medible]
+              hechos:
+                $ref: '#/components/schemas/ListaDeHechos'
+        alertas:
+          type: array
+          items:
+            type: object
+            required: [tipo, texto, hechos]
+            properties:
+              tipo:
+                type: string
+                enum: [contradiccion_entre_fuentes, posible_deuda_repetida, identidad_por_confirmar, patron_atipico, historial_con_la_institucion_contrasta, dato_desactualizado]
+              texto:
+                type: string
+                maxLength: 1000
+              hechos:
+                $ref: '#/components/schemas/ListaDeHechos'
+        queSePide:
+          type: array
+          items:
+            type: object
+            required: [codigo, tipo, texto, paraQue, queCambia]
+            properties:
+              codigo:
+                type: string
+              tipo:
+                type: string
+                enum: [documento, constancia, verificacion_de_identidad, confirmacion_en_fuente]
+              texto:
+                type: string
+                maxLength: 1000
+              paraQue:
+                type: string
+                maxLength: 1000
+              queCambia:
+                type: string
+                maxLength: 1000
+        oferta:
+          type: [object, 'null']
+          required: [pedido, alternativas]
+          properties:
+            pedido:
+              $ref: '#/components/schemas/Cuota'
+            alternativas:
+              type: array
+              items:
+                $ref: '#/components/schemas/Cuota'
+            cuotaTope:
+              oneOf:
+                - $ref: '#/components/schemas/Monto'
+                - type: 'null'
+        ingreso:
+          type: object
+          required: [sostieneElCalculo, escalera]
+          properties:
+            sostieneElCalculo:
+              oneOf:
+                - $ref: '#/components/schemas/PeldanoDeIngreso'
+                - type: 'null'
+            escalera:
+              type: array
+              items:
+                type: object
+                required: [peldano, montoMensual, fuente, estado, porQue]
+                properties:
+                  peldano:
+                    $ref: '#/components/schemas/PeldanoDeIngreso'
+                  montoMensual:
+                    oneOf:
+                      - $ref: '#/components/schemas/Monto'
+                      - type: 'null'
+                  fuente:
+                    type: string
+                  estado:
+                    type: string
+                    enum: [disponible, no_disponible, referencia]
+                  porQue:
+                    type: string
+                    maxLength: 1000
+        historialConLaInstitucion:
+          type: [object, 'null']
+          required: [fueCliente, habitoDePago, contrasta]
+          properties:
+            fueCliente:
+              type: boolean
+            habitoDePago:
+              type: [string, 'null']
+            contrasta:
+              type: boolean
+        hechos:
+          type: object
+          description: Mapa de código de hecho a su valor, fuente, fecha y calidad.
+          propertyNames:
+            $ref: '#/components/schemas/CodigoDeHecho'
+          additionalProperties:
+            type: object
+            required: [valor, fuente, fechaDelDato, calidad]
+            properties:
+              valor:
+                type: [string, number, boolean, 'null']
+              fuente:
+                type: string
+              fechaDelDato:
+                type: [string, 'null']
+              calidad:
+                type: string
+                enum: [confirmado_por_tercero, declarado, calculado, no_disponible]
+        cobertura:
+          type: object
+          required: [escenario, completitud, piezasLimitadas]
+          properties:
+            escenario:
+              type: string
+              enum: [sin_buro, sin_buro_con_datos_de_la_institucion, con_buro, con_buro_y_datos_de_la_institucion]
+            completitud:
+              type: string
+              enum: [completa, parcial]
+            piezasLimitadas:
+              type: array
+              items:
+                type: object
+                required: [pieza, porQue]
+                properties:
+                  pieza:
+                    type: string
+                  porQue:
+                    type: string
+                    maxLength: 1000
+        verificacion:
+          type: object
+          required: [resultado, citasValidas, citas]
+          properties:
+            resultado:
+              type: string
+              enum: [conforme, observado, no_verificado]
+            citasValidas:
+              type: integer
+              minimum: 0
+            citas:
+              type: integer
+              minimum: 0
 
     ControlesDeBloqueo:
       type: object
@@ -2204,6 +2531,15 @@ components:
         origen:
           type: string
           maxLength: 100
+        estimada:
+          type: boolean
+          description: 'La fuente no informa esta cuota: la estimó CrediScope.'
+        metodoDeEstimacion:
+          type: string
+          enum: [anualidad, factor_saldo]
+          description: >-
+            `anualidad`: el saldo y el plazo que queda. `factor_saldo`: un porcentaje
+            del saldo por mes según su tramo, para una deuda sin cuota informada y sin plazo.
 
     DeudaSinCuota:
       type: object
@@ -2219,6 +2555,13 @@ components:
         origen:
           type: string
           maxLength: 100
+        cuotaEstimada:
+          type: number
+          minimum: 0
+          description: >-
+            La cuota que se estimó con un porcentaje del saldo por mes. Ya entra en
+            `obligaciones` como cuota estimada: acá sólo se muestra, no se suma
+            otra vez. Ausente cuando no hay saldo con qué estimarla.
 
     ParametrosDeCapacidad:
       type: object
@@ -2776,7 +3119,7 @@ components:
             hallazgos: []
           capacidadDePago:
             capacidad:
-              version: capacidad-v4
+              version: capacidad-v5
               veredicto: alcanza
               cumple: true
               ingresoReportado: 1200
@@ -2849,6 +3192,177 @@ components:
         trazabilidad:
           consultadaEl: '2026-10-09T10:02:41-05:00'
           analizadaEl: '2026-10-09T10:03:19-05:00'
+          perfilReutilizado: false
+          analisisReutilizado: false
+          huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b
+        variabilidadDeclarada: El mismo perfil analizado dos veces puede variar unos 40 puntos.
+    EvaluacionCompletadaPremium:
+      summary: Completada en Pro con el análisis premium (persona ficticia, sin buró, Cambio de Condiciones, que equivale a aprobar)
+      value:
+        id: ev_01JABCH6JKMN7NPQR8STVW9XYZ
+        estado: completada
+        modalidad: pro
+        referencia: SOL-2026-55559
+        recibidaEl: '2026-11-16T09:30:03-05:00'
+        terminadaEl: '2026-11-16T09:31:12-05:00'
+        plazoHasta: '2026-11-16T09:45:03-05:00'
+        resultado:
+          score: 640
+          recomendacion: aprobar
+          veredictoOrigen: modelo
+          indicadorRiesgo: moderado
+          indicadorHistorial: sin historial
+          positivos:
+            - Excelente Pagador en la institución.
+          negativos:
+            - Lo pedido supera lo que su ingreso verificado sostiene.
+          informacionFaltante:
+            - No se consultó el buró de crédito.
+          accionesSugeridas:
+            - Ofrecer USD 4.000 a 36 meses.
+          razonamiento: Ingreso verificado por el IESS que sostiene una cuota menor a la pedida; buen hábito de pago en la institución.
+          controlesDeBloqueo:
+            bloqueado: false
+            hallazgos: []
+          requiereRevisionHumana: true
+          analisis:
+            recomendacion:
+              salida: cambio_de_condiciones
+              base: cambio_de_condiciones
+              origen: estandar
+              motivos:
+                - codigo: capacidad_con_cambio
+                  texto: Con lo pedido la carga supera el máximo; con USD 4.000 a 36 meses entra.
+              requiereDecisionHumana: true
+            dictamen: Persona con ingreso verificado por el IESS de USD 951. Lo pedido (USD 8.000 a 36 meses) no entra en su capacidad; USD 4.000 a 36 meses sí. Es Excelente Pagador en la institución.
+            veredictos:
+              riesgo:
+                nivel: moderado
+                score: 640
+                banda:
+                  desde: 600
+                  hasta: 680
+                ajusteDeLaIA:
+                  puntos: 20
+                  motivo: El hábito de pago en la institución contrasta favorablemente con la falta de buró.
+                  hechos: [INS-001]
+              capacidad:
+                resultado: entra_con_cambio
+                cargaConLoPedido:
+                  desde: 0.31
+                  hasta: 0.34
+                cargaMaxima: 0.4
+                peldanoQueSostiene: verificado_por_tercero
+              controles:
+                resultado: sin_observaciones
+                hallazgos: []
+            hallazgos:
+              - sentido: a_favor
+                peso: alto
+                texto: Excelente Pagador en la institución, con créditos cancelados al día.
+                hechos: [INS-001]
+              - sentido: en_contra
+                peso: medio
+                texto: Lo pedido supera lo que su ingreso verificado sostiene.
+                hechos: [IES-001, SIM-001]
+            atenuantes:
+              - codigo: al_dia_hoy
+                cumple: si
+                hechos: [INS-001]
+              - codigo: endeudamiento_a_la_baja
+                cumple: no_medible
+                hechos: []
+              - codigo: estabilidad_12_meses
+                cumple: si
+                hechos: [IES-002]
+              - codigo: ingreso_al_alza
+                cumple: no
+                hechos: [IES-001]
+            alertas:
+              - tipo: dato_desactualizado
+                texto: El último aporte al IESS es de hace dos meses.
+                hechos: [IES-002]
+            queSePide:
+              - codigo: confirmar_ingreso
+                tipo: documento
+                texto: Últimos tres roles de pago.
+                paraQue: Confirmar que el ingreso se mantiene.
+                queCambia: Con el ingreso confirmado se puede sostener la oferta de USD 4.000.
+            oferta:
+              pedido:
+                monto: 8000.00
+                plazoMeses: 36
+                cuota: 283.00
+              alternativas:
+                - monto: 4000.00
+                  plazoMeses: 36
+                  cuota: 141.00
+              cuotaTope: 150.00
+            ingreso:
+              sostieneElCalculo: verificado_por_tercero
+              escalera:
+                - peldano: verificado_por_tercero
+                  montoMensual: 951.00
+                  fuente: IESS
+                  estado: disponible
+                  porQue: Aportes reportados al IESS por el empleador.
+                - peldano: verificado_con_documento
+                  montoMensual: null
+                  fuente: Documentos de la persona
+                  estado: no_disponible
+                  porQue: No se presentó ningún documento.
+                - peldano: referencia_del_tipo
+                  montoMensual: 900.00
+                  fuente: Referencia por tipo de persona
+                  estado: referencia
+                  porQue: Sólo orienta; no sostiene el cálculo.
+            historialConLaInstitucion:
+              fueCliente: true
+              habitoDePago: Excelente Pagador
+              contrasta: true
+            hechos:
+              INS-001:
+                valor: Excelente Pagador
+                fuente: Datos de la institución
+                fechaDelDato: '2026-11-01'
+                calidad: confirmado_por_tercero
+              IES-001:
+                valor: 951.00
+                fuente: IESS
+                fechaDelDato: '2026-09-30'
+                calidad: confirmado_por_tercero
+              IES-002:
+                valor: 14 meses de aportes continuos
+                fuente: IESS
+                fechaDelDato: '2026-09-30'
+                calidad: confirmado_por_tercero
+              SIM-001:
+                valor: 283.00
+                fuente: Simulador de crédito
+                fechaDelDato: '2026-11-16'
+                calidad: calculado
+            cobertura:
+              escenario: sin_buro_con_datos_de_la_institucion
+              completitud: parcial
+              piezasLimitadas:
+                - pieza: Endeudamiento en el sistema
+                  porQue: No se consultó el buró de crédito.
+            verificacion:
+              resultado: conforme
+              citasValidas: 4
+              citas: 4
+        disponibilidad:
+          completitud: parcial
+          temasNoConsultados: [buro]
+        versiones:
+          api: 1.0.0
+          marco: marco-v35
+          estructura: estructura-v18
+          fuentesIngreso: fuentes-v10
+          modelo: claude-sonnet-5-5
+        trazabilidad:
+          consultadaEl: '2026-11-16T09:30:40-05:00'
+          analizadaEl: '2026-11-16T09:31:10-05:00'
           perfilReutilizado: false
           analisisReutilizado: false
           huellaDelPedidoAlModelo: sha256:4c1d9a0b7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b

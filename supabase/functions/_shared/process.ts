@@ -11,6 +11,7 @@
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).
 
+import { separarProvidencias } from "./providencias.ts";
 import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
@@ -24,13 +25,11 @@ import { anioDeLaDemanda, demandasPorCategoria, esDemandaDeCobro, quienDemanda, 
 import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
-type AnyRecord = Record<string, unknown>;
+// Los ayudantes de lectura del crudo viven en la capa de hechos desde la tarea
+// E4: el perfil y los hechos leen el mismo registro con el mismo código.
+import { arr, estadoRecurso, num, obj, parseFecha, redondear, textoDe } from "./hechos/lectura-del-crudo.ts";
 
-function parseFecha(v: unknown): Date | null {
-  if (v === null || v === undefined || v === "") return null;
-  const d = new Date(v as string | number);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+type AnyRecord = Record<string, unknown>;
 
 function formatFechaISO(d: Date | null): string | null {
   return d ? d.toISOString().slice(0, 10) : null;
@@ -135,18 +134,6 @@ function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" |
   return cancelacion && cancelacion.getTime() === cese.getTime() ? "cancelacion" : "suspension_temporal";
 }
 
-function num(v: unknown): number | null {
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isNaN(n) ? null : n;
-}
-
-// Sumas de dinero a centavos: sumar decimales en coma flotante dejaba
-// saldos como 258798.83000000002, que el modelo copiaba tal cual.
-function redondear(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 // La escala de calificaciones del buró, de mejor a peor. En consumo sale de
 // los días de atraso; en el comercial, no sólo de ellos.
 const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
@@ -167,12 +154,6 @@ function extremoDeCalificacion(operaciones: AnyRecord[], cual: "peor" | "mejor")
   return todas[0] ?? null;
 }
 
-function arr(multi: AnyRecord | null | undefined, recurso: string, campo: string): AnyRecord[] {
-  const v = (multi?.[recurso] as AnyRecord | undefined)?.data as AnyRecord | undefined;
-  const items = v?.[campo];
-  return Array.isArray(items) ? (items as AnyRecord[]) : [];
-}
-
 // seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
 // modelo tal cual.
 const DESCRIPCION_SERVICIO: Record<string, string> = {
@@ -183,22 +164,6 @@ const DESCRIPCION_SERVICIO: Record<string, string> = {
   "ISSPOL:pasivo": "policía en servicio pasivo (retirado)",
   "ISSPOL:montepio": "beneficiario de montepío policial",
 };
-
-// Status de la fuente puntual (ResultadoFuente.status) — a diferencia de
-// arr()/obj(), que solo miran si HAY registros, esto distingue "el
-// recurso se consultó bien y no trajo nada" (status "ok", 0 registros
-// reales) de "el recurso falló/no trajo datos" (status "faltante"/
-// "error"/"deshabilitado") — necesario para no confundir "confirmado
-// que NO aplica" con "no lo sabemos" (ver seguridadSocial más abajo).
-function estadoRecurso(multi: AnyRecord | null | undefined, recurso: string): string | undefined {
-  return (multi?.[recurso] as AnyRecord | undefined)?.status as string | undefined;
-}
-
-function obj(multi: AnyRecord | null | undefined, recurso: string, campo: string): AnyRecord | null {
-  const v = (multi?.[recurso] as AnyRecord | undefined)?.data as AnyRecord | undefined;
-  const val = v?.[campo];
-  return val && typeof val === "object" && !Array.isArray(val) ? (val as AnyRecord) : null;
-}
 
 // La regla de cobro vive en demandas.ts desde estructura-v11, junto con
 // las categorías de las demás demandas.
@@ -272,11 +237,6 @@ function aniosDesdeMs(v: unknown): number | null {
   if (!Number.isFinite(n) || n < ANTES_DE_1950) return null;
   const anios = (Date.now() - n) / (365.25 * 24 * 3600 * 1000);
   return anios >= 0 && anios < 200 ? Math.floor(anios) : null;
-}
-
-function textoDe(v: unknown): string | null {
-  const t = String(v ?? "").trim();
-  return t === "" ? null : t;
 }
 
 // ---- Empleadores y préstamos del IESS que vienen de más de una fuente ----
@@ -369,7 +329,34 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
 // (c-40d771e1). Los que la base marca «VENCIDO» o «MORA» se cuentan: deben.
 // La fuente de préstamos trae sólo lo vigente (PV), vencido (VC) o en
 // novación (ND): en el respaldo del 03/10, ningún cancelado.
-type OperacionIess = { numero: string; dia: number | null; monto: number | null; saldo: number; diasMora: number };
+//
+// Desde estructura-v22 (F12, 2026-11-17) cada operación lleva también su tipo y
+// el día en que termina, porque la capacidad de pago estima la cuota con la
+// anualidad del plazo que queda (capacidad-de-pago.ts): el buró de bancos de
+// Proveedor_Info_1 no trae al BIESS (0 de 1.025 personas con préstamo), así que
+// su cuota no está en ningún otro lado. La base interna dice cuándo termina
+// (fechaFinCredito / srFecfincredito); la fuente de préstamos no, y ahí el fin
+// es la concesión más el plazo original en meses.
+export type OperacionIess = {
+  numero: string;
+  dia: number | null;
+  monto: number | null;
+  saldo: number;
+  diasMora: number;
+  tipo: "quirografario" | "hipotecario" | null;
+  fin: number | null;
+};
+
+// Marca de qué lista salió un registro de la fuente de préstamos, que no dice su tipo.
+const TIPO_DE_LA_FILA = "__tipoIess";
+export function conTipoIess(filas: AnyRecord[], tipo: "quirografario" | "hipotecario"): AnyRecord[] {
+  return filas.map((r) => ({ ...r, [TIPO_DE_LA_FILA]: tipo }));
+}
+
+// «yyyy-mm-dd» desde los días desde 1970; null sin fecha.
+export function fechaDeDia(dia: number | null): string | null {
+  return dia === null ? null : new Date(dia * 86_400_000).toISOString().slice(0, 10);
+}
 
 const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
 
@@ -377,6 +364,14 @@ const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
 function diaDeFechaDDMMYYYY(v: unknown): number | null {
   const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   return m ? Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86_400_000) : null;
+}
+
+// Concesión («dd/mm/yyyy») más el plazo en meses, a días desde 1970.
+function finDeLaConcesion(concesion: unknown, plazoMeses: unknown): number | null {
+  const m = String(concesion ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const plazo = num(plazoMeses);
+  if (!m || plazo === null || plazo <= 0) return null;
+  return Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1 + Math.round(plazo), Number(m[1])) / 86_400_000);
 }
 
 export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]): OperacionIess[] {
@@ -388,6 +383,8 @@ export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyR
     monto: num(r.valorPrestamo),
     saldo: (num(r.valorPorVencer) ?? 0) + (num(r.valorVencido) ?? 0),
     diasMora: num(r.diasMora) ?? 0,
+    tipo: (r[TIPO_DE_LA_FILA] as OperacionIess["tipo"] | undefined) ?? null,
+    fin: finDeLaConcesion(r.fechaConcesion, r.plazoOriginal),
   }));
   const esLaMisma = (a: OperacionIess, b: OperacionIess) =>
     (a.numero !== "" && a.numero === b.numero) ||
@@ -403,14 +400,19 @@ export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyR
       monto: num(r.montoTransferido ?? r.srMontofinanciado),
       saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
       diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
+      tipo: (r[TIPO_DE_LA_FILA] as OperacionIess["tipo"] | undefined) ?? (r.srNrooperaciongaf !== undefined ? "hipotecario" : null),
+      fin: diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito),
     };
     const repetida = prestamos.find((p) => esLaMisma(p, o));
     if (repetida) {
       repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
+      // La fecha de fin de la base interna es la pactada: vale más que la derivada.
+      repetida.fin = o.fin ?? repetida.fin;
+      repetida.tipo = repetida.tipo ?? o.tipo;
       continue;
     }
     const estado = String(r.estadoOperacion ?? r.srEstadocredito ?? "").trim().toUpperCase();
-    const fin = diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito);
+    const fin = o.fin;
     const terminado = estado === "VIGENTE" && fin !== null && fin < hoy && o.diasMora === 0;
     if (!terminado) salida.push(o);
   }
@@ -538,7 +540,14 @@ function fechaDeCorte(v: unknown): string | null {
 // cada demanda de cobro dice su año y quién demanda (riesgoJudicialCrediticio).
 // Y el colateral de vehículos es el precio promedio de mercado, con el avalúo
 // sólo sin precio de mercado (patrimonio, p10, negocio, 2026-11-09).
-export const PROCESS_VERSION = "estructura-v21"; // ver docs/estructura-estandarizada.md
+// estructura-v22 (2026-11-17, F12): comportamientoBancario.operacionesIessBiess,
+// cada préstamo del IESS/BIESS con su tipo, saldo y fecha de fin, para la cuota
+// estimada de la capacidad de pago. No llega al modelo.
+// estructura-v23 (E12, R5 del negocio, 2026-11-18): una providencia de
+// certificación (un pedido de información) ya no cuenta como `enListaControl`:
+// queda en `tieneProvidenciaDeCertificacion` y no bloquea (providencias.ts).
+// La v22 es la del PR 173 (capacidad de pago).
+export const PROCESS_VERSION = "estructura-v23"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1272,8 +1281,11 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // Los préstamos del IESS/BIESS de las dos fuentes, sin contar dos veces una
   // operación que esté en ambas (estructura-v16, ver operacionesIessBiess).
   const creditosIess = operacionesIessBiess(
-    [...tcredQ, ...tcredH],
-    [...arr(fuentes, "creditoQuirografario", "prestamos"), ...arr(fuentes, "creditoHipotecario", "prestamos")],
+    [...conTipoIess(tcredQ, "quirografario"), ...conTipoIess(tcredH, "hipotecario")],
+    [
+      ...conTipoIess(arr(fuentes, "creditoQuirografario", "prestamos"), "quirografario"),
+      ...conTipoIess(arr(fuentes, "creditoHipotecario", "prestamos"), "hipotecario"),
+    ],
   );
   // La fecha de `retails` es el corte de la casa comercial, no del día de la
   // consulta (fechaActualizacion): las 63 filas de las 91 personas con
@@ -1314,6 +1326,9 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     tieneCreditoIessBiess: creditosIess.length > 0,
     diasMoraCreditoIessBiess: creditosIess.length ? Math.max(...creditosIess.map((c) => c.diasMora)) : null,
     saldoPrestamosIessBiess: creditosIess.length ? redondear(creditosIess.reduce((s, c) => s + c.saldo, 0)) : null,
+    // Desde estructura-v22: una fila por operación, para estimar la cuota en la
+    // capacidad de pago. No llega al modelo (RUTAS_QUE_NO_LLEGAN).
+    operacionesIessBiess: creditosIess.map((c) => ({ tipo: c.tipo, saldo: redondear(c.saldo), fechaFin: fechaDeDia(c.fin) })),
   };
 
   // ---- comportamientoCooperativas ----
@@ -1498,10 +1513,10 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // código homonimo_en_lista_control (bug encontrado auditando cédulas
   // c-10a696c9/c-7c7071e4: la identificación del "homónimo" nunca
   // coincide con la del cliente consultado).
-  const totalListasControl = ["ofacsOpr", "providenciasOpr"].reduce(
-    (s, c) => s + arr(fuentes, "listasControl", c).length,
-    0
-  );
+  const providenciasDeControl = separarProvidencias(arr(fuentes, "listasControl", "providenciasOpr"));
+  const totalListasControl = arr(fuentes, "listasControl", "ofacsOpr").length + providenciasDeControl.bloquean.length;
+  const totalProvidenciasDeCertificacion =
+    providenciasDeControl.certificacion.length + separarProvidencias(arr(biWrap, "x", "tprovidencias")).certificacion.length;
   const totalHomonimos = arr(fuentes, "listasControl", "homonimosOpr").length + arr(biWrap, "x", "tconsephomonimos").length;
   const totalPep = arr(fuentes, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
   const pepRegistros = [...arr(fuentes, "listasControl", "personaPublicasOpr"), ...arr(biWrap, "x", "tpeps")];
@@ -1525,6 +1540,7 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
   const cumplimiento: StandardClientProfile["cumplimiento"] = {
     enListaControl: totalListasControl > 0,
+    tieneProvidenciaDeCertificacion: totalProvidenciasDeCertificacion > 0,
     tieneHomonimoEnListaControl: totalHomonimos > 0,
     enListaNegra: Boolean(((fuentes?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
     impedimentoCargosPublicos: Boolean(impedimentoActivo),

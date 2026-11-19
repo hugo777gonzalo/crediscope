@@ -5,6 +5,7 @@
 // van a dejar de coincidir y la misma persona se va a ver de un color
 // en la lista y de otro al abrirla.
 
+import { formatearFecha } from "./fechas.js";
 import { ETIQUETAS_RECOMENDACION } from "../components/RecomendacionBadge.jsx";
 
 export const MAX_SCORE = 999;
@@ -78,4 +79,15 @@ export const ETIQUETA_ORIGEN = {
 export function proporcionScore(score) {
   if (!score) return 0;
   return Math.max(0, Math.min(1, score / MAX_SCORE));
+}
+
+// Regla nuestra (151): si la consulta más reciente vino con más fuentes
+// obligatorias sin respuesta, el resumen se queda con un perfil anterior. El
+// analista tiene que saber que los datos mostrados no son los últimos.
+export function etiquetaConsultaPosteriorIncompleta(fila) {
+  if (!fila?.consulta_posterior_incompleta) return null;
+  const fecha = fila.perfil_at ? formatearFecha(fila.perfil_at) : null;
+  return fecha && fecha !== "—"
+    ? `Perfil del ${fecha}; la consulta más reciente vino incompleta`
+    : "La consulta más reciente vino incompleta";
 }

@@ -1044,8 +1044,33 @@ export async function getBandejaSolicitudes(filtros = {}) {
   const respuestas = await Promise.all(pedidos);
   const conError = respuestas.find((r) => r.error);
   if (conError) throw conError.error;
-  const filas = respuestas.flatMap((r) => r.data || []);
+  const filas = await conMarcaDePosterior(respuestas.flatMap((r) => r.data || []));
   return { filas, total: cuantasPrimeras + cuantasUltimas, pagina, porPagina };
+}
+
+// La marca `consulta_posterior_incompleta` (151) vive en resumen_por_persona y
+// la vista bandeja_solicitudes NO la trae (la vista lista sus columnas). Se
+// pide aparte, sólo las filas con la marca encendida. Antes de aplicar la 151
+// la columna no existe y PostgREST contesta con error: ahí no hay marca, y la
+// pantalla sigue como estaba. Un fallo de esta lectura nunca tumba la bandeja.
+export async function traerMarcasDeConsultaPosterior(clientIds) {
+  const marcas = new Map();
+  const ids = [...new Set((clientIds || []).filter(Boolean))];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from("resumen_por_persona")
+      .select("client_id, perfil_at")
+      .eq("consulta_posterior_incompleta", true)
+      .in("client_id", ids.slice(i, i + 200));
+    if (error) return marcas;
+    for (const r of data || []) marcas.set(r.client_id, r.perfil_at);
+  }
+  return marcas;
+}
+
+async function conMarcaDePosterior(filas) {
+  const marcas = await traerMarcasDeConsultaPosterior((filas || []).map((f) => f.client_id));
+  return (filas || []).map((f) => ({ ...f, consulta_posterior_incompleta: marcas.has(f.client_id) }));
 }
 
 // Los totales de la franja superior. Van aparte de la lista porque la
@@ -1157,7 +1182,7 @@ export async function getExpediente(cedula) {
 
   return {
     client,
-    cabecera: cabecera.data,
+    cabecera: cabecera.data ? (await conMarcaDePosterior([cabecera.data]))[0] : cabecera.data,
     perfil: perfilCompleto.data,
     analisis: analisisCompleto.data,
     consultas: perfiles.data || [],

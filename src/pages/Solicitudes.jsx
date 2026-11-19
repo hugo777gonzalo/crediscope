@@ -18,6 +18,7 @@ import {
   colorRecomendacion,
   textoRecomendacion,
   ETIQUETA_ESTADO_BANDEJA,
+  etiquetaConsultaPosteriorIncompleta,
   COLOR_ESTADO_BANDEJA,
   proporcionScore,
 } from "../lib/bandeja.js";
@@ -456,6 +457,9 @@ function FilaBandeja({ f }) {
           <span className="crediscope-celda-sub" style={{ color: "var(--warn)" }}>Consulta incompleta</span>
         ) : f.analisis_parcial ? (
           <span className="crediscope-celda-sub">Consulta parcial</span>
+        ) : null}
+        {etiquetaConsultaPosteriorIncompleta(f) ? (
+          <span className="crediscope-celda-sub" style={{ color: "var(--warn)" }}>{etiquetaConsultaPosteriorIncompleta(f)}</span>
         ) : null}
         {f.tiene_bloqueante ? (
           <span className="crediscope-celda-sub" style={{ color: "var(--bad)", display: "flex", alignItems: "center", gap: 4 }}>

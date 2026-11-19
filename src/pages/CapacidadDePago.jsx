@@ -267,7 +267,10 @@ export default function CapacidadDePago() {
                         <span>
                           {x.concepto} <span className="crediscope-tag crediscope-tag-neutral">{x.origen}</span>
                         </span>
-                        <span>{x.saldo === null ? "Sin monto" : `Debe ${moneda(x.saldo, 2)}`}</span>
+                        <span>
+                          {x.saldo === null ? "Sin monto" : `Debe ${moneda(x.saldo, 2)}`}
+                          {x.cuotaEstimada ? ` · cuota estimada ${moneda(x.cuotaEstimada, 2)}` : ""}
+                        </span>
                       </div>
                     ))}
                   </div>

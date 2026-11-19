@@ -13,21 +13,13 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 
 ## Estado vigente (cada línea dice cuándo se midió)
 
-- **`main` tiene estructura-v21 sin desplegar (2026-11-09, #153): no desplegar `main` hasta que marco-v36
-  esté lista**, salvo que el negocio lo autorice sabiendo esto. Cualquier despliegue con `--funciones` desde
-  `main` lleva v21, venga de la sesión que venga (el que más riesgo tiene es el del predictor, #145): con
-  marco-v35, el modelo recibiría `comportamientoInterno.proveedorInfo1EstadoOperacion` y
-  `riesgoJudicialCrediticio.demandasDeCobro` (año y quién demanda), que v35 no explica. v21 trae p6 (el BIESS
-  sin contar dos veces ni los préstamos terminados), p3 (Comportamiento Interno de una sola operación, sin
-  sumar nada), p5 y p10 (el colateral de vehículos al precio de mercado).
-  - **Después del despliegue, el recálculo:** `node scripts/recalcular-grupos.mjs
-    --grupos=comportamientoBancario,comportamientoInterno,riesgoJudicialCrediticio,patrimonio
-    --carpeta=research/proveedor-info-1-raw-2026-10-03`, primero con `--seco`. El seco del 2026-11-09 sobre los
-    perfiles en v20: los 3.766 se reproducen y cambian el colateral en 1.362, el saldo del BIESS en 767,
-    `tieneCreditoIessBiess` en 192 y el saldo de Comportamiento Interno en 557.
-  - **Al final, `node scripts/revisar-crudo.mjs`:** las regresiones de p3
-    (`comportamiento-interno-de-otra-operacion`) y p10 (`colateral-de-vehiculos-sobre-el-precio-promedio`)
-    tienen que dar 0.
+- **marco-v36 y estructura-v21 en producción (2026-11-17, #151 y #153):** migración 150 aplicada con el corredor,
+  funciones desplegadas con el sello **`dd771515bdc0`**, 13 de 13 (`despliegues`), y el recálculo de las 3.766
+  personas reales a estructura-v21 (escritas 3.766 de 3.766; 0 perfiles que no se reproducen). Cambiaron el
+  colateral de vehículos en 1.361, el saldo del BIESS en 767, `tieneCreditoIessBiess` en 192 y el saldo de
+  Comportamiento Interno en 557. `revisar-crudo.mjs`: las regresiones `comportamiento-interno-de-otra-operacion`
+  (0 de 782) y `colateral-de-vehiculos-sobre-el-precio-promedio` (0 de 2.197) dan 0. Ya no hay advertencia de no
+  desplegar `main`. Falta un análisis con el modelo en marco-v36 (sin ninguno todavía).
 - **Espacio de la base (2026-11-06): 409 MB de 500 MB del plan Free** (91 MB de margen; el 05/11 eran
   485 y el 06/11 llegaron a 534, por encima del plan, y bajaron a 478 tras el `vacuum full` de `consultas_equifax` y a 409 tras el
   de `cron.job_run_details`); se midió con `pg_database_size`. Lo que lo llenó, medido:
@@ -53,13 +45,14 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   anteriores al 18/10 y los ~86.000 JSON por bajar: no entran en 500 MB. Unas 15.000 personas que
   creó la primera corrida quedaron en `clients` sin datos (`audit_log` impide borrarlas) y entran
   en los totales de personas reales: medirlo antes de dar un total.
-- **Base:** última migración aplicada, la **149** (el corredor, 2026-11-06; la 149 es la limpieza diaria del registro de
+- **Base:** última migración aplicada, la **150** (marco-v36, el corredor, 2026-11-17; antes la 149, 2026-11-06; la 149 es la limpieza diaria del registro de
   pg_cron; no hay 137: la del PR 82 pasó a 139), y `ESQUEMA_MINIMO` está en 148 (el crudo en
   Storage). La 146 son los
   permisos por defecto de las tablas nuevas de `public` (PR 127). `auditar-seguridad.mjs` dio 79 de 79
   después de desplegar, «todo cerrado». La 140 sacó de la agenda la clave que la 139 dejó en texto plano.
-- **Funciones:** sello **`661445837c92`**, 13 de 13, desplegado el 2026-11-06 sobre el esquema 148
-  (`despliegues`): la lectura del crudo de Equifax desde Storage (#138). Antes, `03dc54558780` (el freno del
+- **Funciones:** sello **`dd771515bdc0`**, 13 de 13, desplegado el 2026-11-17 sobre el esquema 150
+  (`despliegues`): marco-v36 y estructura-v21. Antes, `661445837c92` (2026-11-06): la lectura del crudo de Equifax
+  desde Storage (#138). Antes, `03dc54558780` (el freno del
   predictor, #135; `auditar-seguridad.mjs`, 79 de 79) y `6d30f65ed598`:
   estructura-v19 (#133), y con él `consultar-equifax` con la acción `ordenar` (#130).
   Antes, `cc88fd66866f` (marco-v35 y estructura-v18, #129) y `ece1d189789d` (las sesiones 1 a 4
@@ -79,10 +72,10 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   corrió el 2026-10-31 (245 análisis con marco-v30, USD 3,95, 0 fallidos): 53 aprobar, 179 revisar y
   13 negar. De los 53 aprobados, 42 no alcanzan en Plus y sólo 5 cumplen: el modelo no lee las cuotas
   de Equifax (`marco-v31` apagado). `cruce-flujos.csv` en esa carpeta; el crédito es igual para todos.
-- **Versiones en producción:** marco-v35 con Claude Sonnet 5.5 y el buró de la institución encendido,
-  desplegada el 2026-11-05 y sin ningún análisis todavía (marco-v31 a v33 no llegaron a usarse, 0
-  análisis; v34 es el texto sin buró). estructura-v19 (el último perfil de las 3.766 personas reales,
-  recalculado el 2026-11-05); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
+- **Versiones en producción:** marco-v36 (2026-11-17) con Claude Sonnet 5.5 y el buró de la institución encendido,
+  sin ningún análisis todavía; antes marco-v35 (2026-11-05; marco-v31 a v33 no llegaron a usarse, 0
+  análisis; v34 es el texto sin buró). estructura-v21 (el último perfil de las 3.766 personas reales,
+  recalculado el 2026-11-17); fuentes-v11 (2026-10-30); las 240 sintéticas quedaron en v3,
   perfil-laboral-v3, simulador-v4, capacidad-v3. La estructura y las fuentes salen de la base
   (`structure_version`, `fuente_version`); el resto, del código de `main`.
 - **Personas (2026-10-28, `clients`):** 3.764 reales y 240 sintéticas. **1.191 reales son nuevas
@@ -120,9 +113,15 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
 La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tareas viven en un doc privado de Claude: https://claude.ai/artifact/AdZJBTAUAc5tNTkwVkKnCd (pestañas «Plan de ejecución» y «Contrato del análisis premium»). El informe visual de ejemplo está en https://claude.ai/artifact/AmiHUuoqFvFNYEXdsswLqA. El negocio la aprobó con ajustes el 2026-11-11 y aprobó la ola 1 el 2026-11-12.
 
 **Lo decidido (negocio, 2026-11-11):**
-- CrediScope es un analista con IA y entrega una recomendación; decide una persona de la institución. Seis salidas: Aprobación Directa, Aprobar, Cambio de Condiciones, Condicionado, Revisar y Negar.
+- CrediScope es un analista con IA y entrega una recomendación; decide una persona de la institución. Seis salidas: Aprobación Directa, Aprobar, Cambio de Condiciones, Aprobado con Requisitos (antes Condicionado, 2026-11-18), Revisar y Negar.
 - Se diseña primero para la institución sin buró. Los datos de la institución son referencia cualitativa. El Laboratorio, el score estadístico y el lector de documentos quedan para después.
 - Un mal comportamiento de pago recomienda negar salvo atenuantes medibles: hoy al día, endeudamiento a la baja, 12 meses o más de estabilidad, ingreso al alza.
+
+**Decisiones del 18/11 (negocio, las 36 pendientes de los diseños; los documentos `estandar-de-la-institucion.md`, `capa-de-hechos.md` y `escalera-del-ingreso.md` las recogen):**
+- Aceptadas como se recomendaron: R5, C1, I1, I3, I4, I6 a I11, S1, S2, S4, S6, D1 y O1.
+- Distinto de lo recomendado: S5 («Aprobado con Requisitos», no «Condicionado»; la clave `condicionado` no cambia); S3 (en la v1 Cambio de Condiciones equivale a aprobar; el contrato y `COMPATIBLES_CON_HOY` ya lo reflejan, ningún caso del banco cambia); C3 (Aprobación Directa sin buró, activable por institución); C4 (garante y colateral son requisitos de cada institución; el modelo sólo menciona el patrimonio); C2 (carga del 40 al 60% según el riesgo, sobre el neto disponible del negocio); R6 (pensión alimenticia: tolerancia USD 300, por encima Revisar, agravante menor); D2 (b, validar con R1); D3 (b); D5 (una sola operación con la institución); D6 (unir Super y Diners); D7 (seguir bloqueando por todas las listas del proveedor); D8 (la ONU se puede usar, con la confirmación escrita que tiene el negocio: guardarla en `docs/cumplimiento/`, fuera de git; **el cotejo del PR 168 hay que corregirlo aparte**, porque su texto decía que el uso no se permite).
+- D4 (bancos sin buró): decidido con alcance acotado, el modelo nombra el atraso como «en atraso», sin días de cada operación. Nada en la capa de hechos ni en `api/openapi.yaml` da días al modelo cuando la fuente no los informa; no se cambió nada.
+- **Abierto, pide propuesta:** R1 (demanda de cobro: antigüedad más proceso terminado, ¿sale del crudo o de la Función Judicial?); R2 y R3 (umbrales de mora por sector, parametrizados por institución: tarea adicional por institución); R4 (atenuantes y agravantes ordenados, con umbrales de monto y de tiempo); I5 (c de la cota por cuotas: el negocio pidió una explicación más larga, en otra sesión). **Abierto, pregunta:** la lectura de I2 como la opción (b).
 
 **Lo medido en la ola 1 (2026-11-12 y 13):**
 - El proveedor sigue caído: en una consulta de prueba con una persona autorizada contestaron 7 de 52 fuentes y fallaron 15 de las 21 obligatorias. La consulta se guarda con que conteste una sola fuente, y el resumen de la persona toma el último perfil aunque sea peor que el anterior.
@@ -463,6 +462,18 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
     independizarse de ese predictor. El negocio dijo el 2026-10-29 que la quiere para mejorar la
     asertividad, que es justo lo que lo medido no respalda (sumar el alumno al nivel 2 lleva el R² de
     0,341 a 0,342): falta decidir si se hace igual.
+    **Decidido el 2026-11-09: una estimación para todos, por tipo de persona, con su confiabilidad**
+    (especificación, 3.5; nada construido). Los tipos son dependiente con o sin ingreso extra,
+    independiente formal, semiformal y poco formal, rentista, pensionista e informal. Cambia la decisión
+    del 2026-10-30: el pensionista recibe la referencia por afiliación. El extra del dependiente **no se
+    estima, ni con rastro formal** (12.36: AUC 0,62, R² 0,01): queda como indicio sin monto. Cartera
+    medida ese día (3.766 personas con perfil): 1.941 independientes sin separar, 1.339 dependientes,
+    262 jubilados y 80 informales. **Alineada el 2026-11-17 con la escalera del ingreso** (PR 164): la
+    confiabilidad es el peldaño (el predictor es el 4) y las cotas del negocio son peldaño 3, no
+    entradas; sin buró, semiformal y poco formal no se separan (la clase sólo llega por Equifax); el
+    nivel intermedio sin buró (especificación, 3.6) espera la base del proveedor. **Lo que sigue, en
+    orden:** la tabla de pensiones, el tipo y el peldaño en la respuesta junto con la escalera, y el
+    nivel intermedio cuando llegue la base. Las reglas sin buró y la del rentista las confirma el negocio.
     **Decidido el 2026-10-29 (12.30):** el nivel 1 es la edad, el sexo y el SRI de Proveedor_Info_1 (más la
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
@@ -597,8 +608,8 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
           90,0%; poco formal 88,7% / 92,5%. En el RUC no activo y el sin RUC no se puede medir: 26 casos OK de 1.363. Los rentistas (84 en
           la prueba) van con el semiformal. El formal lo subestima el nivel 2 (niega de más 37%).
         - **El extra del dependiente no se puede estimar** (AUC 0,62 con RUC activo, R² 0,01). El modelo de independientes aplicado a ese
-          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 que lo estima con el nivel 1 o 2 hay que cambiarla**: sin monto,
-          «con o sin indicios; se valida con documentos». La actualiza la sesión principal.
+          extra cubre 16% a 23%: da un mínimo del doble. **La fila de 3.5 ya no lo estima** (PR 155): sin monto,
+          «con o sin indicios; se valida con documentos».
         - **Límites de esta medición** (de la revisión):
           - los tipos de persona se definen aquí con la clase del contribuyente y el obligado a llevar contabilidad que trae Equifax, no con las
             reglas de la especificación: **sin buró esa clasificación no se puede armar**;

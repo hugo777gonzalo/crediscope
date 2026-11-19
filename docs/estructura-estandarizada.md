@@ -863,6 +863,26 @@ interface StandardClientProfile {
 >   `bloqueo-por-demanda-de-otro-demandado` (`scripts/revisar-crudo.mjs`).
 > - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
 
+> **estructura-v22 (2026-11-17, F12, BIESS en la capacidad de pago)**
+> - `comportamientoBancario.operacionesIessBiess`: cada préstamo del IESS/BIESS con
+>   `tipo`, `saldo` y `fechaFin` (la de la base interna, o concesión más plazo original
+>   en la fuente de préstamos). Sólo lo lee la capacidad de pago, que estima la cuota
+>   por anualidad; no llega al modelo (`CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN`).
+> - **Sin aplicar:** se despliega primero y se recalcula después; un perfil anterior sigue
+>   funcionando (el BIESS sale como deuda sin cuota, con su saldo total).
+> **estructura-v23 (E12, R5 del negocio, 2026-11-18; la v22 es la del PR 173)**
+> - La providencia de **certificación** (un pedido de información de un fiscal o un
+>   juez) ya no bloquea: `cumplimiento.enListaControl` no la cuenta, el hallazgo
+>   `providencia_certificacion` avisa y la recomendación no pasa de Revisar
+>   (`salidaMaxima`, `fila-del-analisis.ts`). La de retención sigue bloqueando. El tipo
+>   sale de `notificacion` (`providencias.ts`). Campo nuevo `tieneProvidenciaDeCertificacion`,
+>   que no llega al modelo.
+> - Sin cambio, por decisión del negocio (D7): todas las listas de control del proveedor
+>   (OFAC incluida) bloquean; fraude documental, delito de seguridad y fallecido, también.
+> - Medido en seco sobre el crudo del 2026-10-03 (`scripts/medir-bloqueos-o2.mjs`): 2 de
+>   65 bloqueados dejan de bloquear.
+> - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
+
 > **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
 > aprobadas por el negocio el 2026-11-08)**
 > - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la

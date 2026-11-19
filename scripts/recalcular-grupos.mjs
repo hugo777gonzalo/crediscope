@@ -51,7 +51,9 @@ const IGNORAR = (process.argv.find((a) => a.startsWith("--ignorar="))?.slice(10)
 // principal (_comun/entorno.mjs): el guion los buscaba en su propia carpeta y
 // el recálculo de estructura-v15 fue el primero desde un worktree.
 const PRINCIPAL = raizPrincipal(RAIZ);
-const CARPETA = path.join(PRINCIPAL, process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
+// resolve y no join: con una ruta absoluta en --carpeta, join la pegaba detrás de
+// la carpeta principal (ENOENT, 2026-11-18).
+const CARPETA = path.resolve(PRINCIPAL,process.argv.find((a) => a.startsWith("--carpeta="))?.slice(10) ?? "research/proveedor-info-1-raw-2026-09-25");
 if (GRUPOS.length === 0) throw new Error("Falta --grupos=grupo1,grupo2");
 
 const { buildStandardProfile, PROCESS_VERSION } = await import(pathToFileURL(path.join(RAIZ, "supabase/functions/_shared/process.ts")).href);
@@ -61,7 +63,21 @@ const { columnasDelPerfil } = await import(pathToFileURL(path.join(RAIZ, "supaba
 // ciudadana (estructura-v9) y, desde estructura-v20, el aviso de la demanda
 // penal cuyo demandado no es la persona. Cualquier otro tiene que reproducirse
 // igual.
-const HALLAZGOS_QUE_CAMBIAN = new Set(["delito_seguridad_ciudadana", "posible_homonimo_en_demanda_penal"]);
+// Desde estructura-v23 (PR 176), `providencia_certificacion`: la providencia de
+// certificación pasó de bloqueo a advertencia, así que el hallazgo es nuevo y
+// el viejo `listas_control_interno` ya no la cuenta. Sin sumarlo, 5 perfiles
+// quedaron como «no reproducen» en el seco del 2026-11-18 (el bloqueo guardado
+// no tenía ese hallazgo) y el desbloqueo que el cambio busca no se podía aplicar.
+// Por la misma causa `lista_control` y `listas_control_interno` pueden dejar de
+// existir (la persona sólo tenía providencias de certificación: 4 perfiles) o
+// bajar su cuenta, que va en el mensaje.
+const HALLAZGOS_QUE_CAMBIAN = new Set([
+  "delito_seguridad_ciudadana",
+  "posible_homonimo_en_demanda_penal",
+  "providencia_certificacion",
+  "lista_control",
+  "listas_control_interno",
+]);
 
 // Los secretos se leen del archivo y no se imprimen.
 cargarEntorno(RAIZ);
@@ -96,7 +112,12 @@ const ultimoPorCliente = new Map();
     despues = cuerpo.at(-1).id;
   }
 }
-const { candidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
+// --perfiles=3e9103d2,617a49ab: sólo esos perfiles (prefijo del id), para
+// investigar uno que no se reproduce sin repetir los 15 minutos de la cartera.
+const SOLO_PERFILES = (process.argv.find((a) => a.startsWith("--perfiles="))?.slice(11) ?? "").split(",").filter(Boolean);
+const { candidatos: todosLosCandidatos, cuenta: deDonde } = candidatosDelUltimoPerfil(CARPETA, ultimoPorCliente);
+const candidatos = SOLO_PERFILES.length ? todosLosCandidatos.filter((c) => SOLO_PERFILES.some((p) => c.perfilId.startsWith(p))) : todosLosCandidatos;
+const clientePorPerfil = new Map([...ultimoPorCliente].map(([clienteId, p]) => [p.id, clienteId]));
 
 function armarEnFecha(instante, fn) {
   const DateReal = globalThis.Date;
@@ -126,7 +147,10 @@ const ESPERADAS = [
   ".consultadoEn", ".identidad.edad", ".identidad.edadConyuge", ".identidad.añosCasado",
   ".fuentesIngreso.detalle.recalculo", ".fuentesIngreso.correccion", ".laboral.correccionEmpleoActual",
 ];
-const sinElQueCambia = (b) => canonico((b?.hallazgos ?? []).filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code)));
+const sinElQueCambia = (b) =>
+  canonico((b?.hallazgos ?? []).filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code)));
+const codigosBloqueantes = (b) => (b?.hallazgos ?? []).filter((h) => h.bloqueante).map((h) => h.code).sort().join("+") || "ninguno";
+const porMotivoDeDesbloqueo = {};
 const cambiosDeBloqueo = { desbloqueados: [], bloqueados: [], otroMotivo: 0, sinBloqueoGuardado: 0 };
 const mesMenos = (m) => { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(5)) - 2; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`; };
 
@@ -173,10 +197,23 @@ for (let i = 0; i < candidatos.length; i += 50) {
       if (!anterior) cambiosDeBloqueo.sinBloqueoGuardado++;
       else if (sinElQueCambia(anterior) !== sinElQueCambia(bloqueo)) {
         cambiosDeBloqueo.otroMotivo++;
-        noReproducen.push(`p-${perfilId.slice(0, 8)}: control_bloqueo difiere en otro hallazgo`);
+        // Los códigos que sobran o faltan, para no tener que adivinar cuál es.
+        const codigos = (b) => new Set((b?.hallazgos ?? []).filter((h) => !HALLAZGOS_QUE_CAMBIAN.has(h.code)).map((h) => `${h.code}${h.bloqueante ? "*" : ""}`));
+        const ant = codigos(anterior), nue = codigos(bloqueo);
+        const dif = [...ant].filter((c) => !nue.has(c)).map((c) => `-${c}`).concat([...nue].filter((c) => !ant.has(c)).map((c) => `+${c}`));
+        noReproducen.push(`p-${perfilId.slice(0, 8)}: control_bloqueo difiere en otro hallazgo (${dif.join(" ") || "mismo código, distinto contenido"})`);
         continue;
       }
-      if (anterior?.bloqueado && !bloqueo.bloqueado) cambiosDeBloqueo.desbloqueados.push(cedula);
+      if (anterior?.bloqueado && !bloqueo.bloqueado) {
+        cambiosDeBloqueo.desbloqueados.push(cedula);
+        const motivo = codigosBloqueantes(anterior);
+        porMotivoDeDesbloqueo[motivo] = (porMotivoDeDesbloqueo[motivo] ?? 0) + 1;
+      }
+      // Quien cambia el motivo del bloqueo sin dejar de estar bloqueado, o el que
+      // cambia en lista_control, se ve en el seco con su perfil (sin cédula).
+      if (codigosBloqueantes(anterior) !== codigosBloqueantes(bloqueo) || anterior?.bloqueado !== bloqueo.bloqueado) {
+        console.log(`  cambia el bloqueo de p-${perfilId.slice(0, 8)} (cliente c-${String(clientePorPerfil.get(perfilId) ?? "").slice(0, 8)}): ${anterior?.bloqueado ? "bloqueado" : "no bloqueado"} [${codigosBloqueantes(anterior)}] -> ${bloqueo.bloqueado ? "bloqueado" : "no bloqueado"} [${codigosBloqueantes(bloqueo)}]`);
+      }
       if (anterior && !anterior.bloqueado && bloqueo.bloqueado) cambiosDeBloqueo.bloqueados.push(cedula);
       escritura.control_bloqueo = bloqueo;
     }
@@ -189,6 +226,7 @@ console.log(`cambia algo de ${GRUPOS.join(", ")} en ${conCambios}; el resto sól
 for (const [campo, n] of Object.entries(camposQueCambian).sort((a, b) => b[1] - a[1])) console.log(`  ${campo}: ${n}`);
 if (BLOQUEO) {
   console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);
+  console.log("desbloqueos por hallazgo bloqueante anterior:", porMotivoDeDesbloqueo);
   // Las cédulas quedan en un archivo local (research/ está fuera del
   // repositorio): son las personas cuyos análisis guardados salieron con
   // un bloqueo que ya no aplica.

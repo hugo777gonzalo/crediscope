@@ -100,7 +100,10 @@ export type CodigoControlBloqueo =
   | "delito_seguridad_ciudadana"
   // Una demanda por un delito de seguridad en la que el demandado no es la
   // persona (estructura-v20, delitos-seguridad.ts): se avisa, no bloquea.
-  | "posible_homonimo_en_demanda_penal";
+  | "posible_homonimo_en_demanda_penal"
+  // Una providencia de certificación (un pedido de información) no bloquea
+  // (E12, R5): avisa y topa la salida en Revisar (providencias.ts).
+  | "providencia_certificacion";
 
 export interface HallazgoControlBloqueo {
   code: CodigoControlBloqueo;
@@ -109,11 +112,16 @@ export interface HallazgoControlBloqueo {
   // informativo (ej. PEP, cédula inconsistente): se muestra en el
   // análisis pero NO fuerza el score a 1 ni se debe tratar como negativo.
   bloqueante: boolean;
+  // Una advertencia que no bloquea pero limita lo más que puede recomendarse.
+  salidaMaxima?: "revisar";
 }
 
 export interface ResultadoControlBloqueo {
   bloqueado: boolean; // true => score se fuerza a 1 sin importar el criterio del LLM
   hallazgos: HallazgoControlBloqueo[];
+  // Sin bloqueo, lo más que puede recomendarse ("aprobar" pasa a "revisar").
+  // Opcional: los controles guardados antes de E12 no lo traen.
+  salidaMaxima?: "revisar" | null;
 }
 
 // ---------- Estructura estandarizada (procesada/calculada) ----------
@@ -433,6 +441,9 @@ export interface StandardClientProfile {
     // Desde estructura-v16: saldo (por vencer y vencido) de los préstamos
     // del IESS/BIESS de las dos fuentes; null si no hay ninguno.
     saldoPrestamosIessBiess?: number | null;
+    // Desde estructura-v22: cada préstamo con su tipo, saldo y fecha de fin
+    // (yyyy-mm-dd; null si la fuente no la trae). No llega al modelo.
+    operacionesIessBiess?: Array<{ tipo: "quirografario" | "hipotecario" | null; saldo: number; fechaFin: string | null }>;
   };
 
   // "Comportamiento Cooperativas" (grupo 9)
@@ -549,6 +560,9 @@ export interface StandardClientProfile {
 
   cumplimiento: {
     enListaControl: boolean;
+    // Providencia de certificación (un pedido de información): no bloquea y
+    // topa la salida en Revisar (estructura-v23, providencias.ts).
+    tieneProvidenciaDeCertificacion: boolean;
     // Homónimo: Proveedor_Info_1 encontró a alguien más con el MISMO NOMBRE pero
     // CÉDULA DISTINTA en una lista de control — no es el cliente. Dato
     // informativo, nunca descalifica (ver controles-bloqueo.ts, código
