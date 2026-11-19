@@ -507,6 +507,11 @@ export interface StandardClientProfile {
     // Desde estructura-v21 (p5): de cada demanda de cobro, el año y quién
     // demanda, de la más reciente a la más vieja (demandas.ts).
     demandasDeCobro: { anio: number | null; quienDemanda: QuienDemanda | null }[];
+    // Desde estructura-v24 (D2): las de cobro que no se cuentan porque el
+    // demandado es otra persona («posible homónimo»), y las que se cuentan sin
+    // poder confirmar que son suyas. Un perfil anterior no los trae.
+    numeroDemandasDeOtroDemandado?: number;
+    numeroDemandasSinCotejo?: number;
   };
 
   // Demandas civiles NO crediticias (laboral, familia, tránsito,
@@ -518,6 +523,10 @@ export interface StandardClientProfile {
     // demandas.ts, con sus tipos legibles. Distingue un juicio de una
     // investigación penal archivada, de un trámite o de tránsito.
     demandasPorCategoria?: Array<{ categoria: string; cantidad: number; tipos: string[] }>;
+    // Desde estructura-v24 (D2): lo mismo que en riesgoJudicialCrediticio, de
+    // las que no son de cobro.
+    numeroDemandasDeOtroDemandado?: number;
+    numeroDemandasSinCotejo?: number;
     numeroDemandasComoOfendido: number;
     // Solo cuenta la deuda/mora del registro pn_supa donde el CLIENTE es
     // el obligado a pagar (ver esClienteObligadoSupa en process.ts) — un

@@ -1,0 +1,28 @@
+{
+  "descripcion": "D2: perfil de estructura-v23 que contó una demanda de cobro y una civil de otro demandado (más una con los apellidos invertidos y una sin demandado, que siguen contando): el detector marca las dos de más",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-11-10T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO MARTA" } } },
+    "demandas": {
+      "status": "ok",
+      "data": {
+        "demandas": [
+          { "demanda": { "delito": "COBRO DE DINERO", "demandado": "PRUEBA FICTICIO MARTA", "ofendido": "PERSONA INVENTADA", "fecha": "10/05/2024" } },
+          { "demanda": { "delito": "COBRO DE DINERO", "demandado": "FICTICIO PRUEBA MARTA", "ofendido": "PERSONA INVENTADA", "fecha": "10/05/2023" } },
+          { "demanda": { "delito": "COBRO DE DINERO", "demandado": "", "ofendido": "PERSONA INVENTADA", "fecha": "10/05/2022" } },
+          { "demanda": { "delito": "COBRO DE DINERO", "demandado": "INVENTADO ALFA BETA OMEGA", "ofendido": "PERSONA INVENTADA", "fecha": "10/05/2021" } },
+          { "demanda": { "delito": "DIVORCIO", "demandado": "INVENTADO GAMA DELTA", "ofendido": "PERSONA INVENTADA", "fecha": "10/05/2020" } },
+          { "demanda": { "delito": "DESPIDO INTEMPESTIVO", "demandado": "PRUEBA FICTICIO MARTA", "ofendido": "PERSONA INVENTADA", "fecha": "10/05/2019" } }
+        ]
+      }
+    }
+  },
+  "guardado": {
+    "perfil": {
+      "riesgoJudicialCrediticio": { "numeroDemandasComoDemandado": 4 },
+      "riesgoJudicialCivil": { "numeroDemandasComoDemandado": 2 }
+    }
+  },
+  "esperado": { "demanda-de-cobro-o-civil-de-otro-demandado": "dispara" }
+}
