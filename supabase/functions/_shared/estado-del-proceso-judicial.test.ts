@@ -5,13 +5,13 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import {
-  ANIOS_SIN_AVANCE_PROVISIONAL,
+  ANIOS_SIN_AVANCE,
   estadoDelProcesoJudicial,
   type ProcesoJudicial,
 } from "./estado-del-proceso-judicial.ts";
 
 const HOY = "2026-11-18";
-const opc = { hoy: HOY, aniosSinAvance: ANIOS_SIN_AVANCE_PROVISIONAL };
+const opc = { hoy: HOY, aniosSinAvance: ANIOS_SIN_AVANCE };
 
 const PAGO = "SOLUCION O PAGO Y/O EXTINCION DE LA OBLIGACION (AUTO INTERLOCUTORIO)";
 const ARCHIVO = "ARCHIVO DEL PROCESO (AUTO INTERLOCUTORIO)";
@@ -232,10 +232,10 @@ Deno.test("varias dependencias sin instancia: manda la de más actuaciones", () 
 });
 
 Deno.test("sin_avance: justo en el límite sigue pendiente y un día después ya no", () => {
-  // hoy 2026-11-18, 3 años -> límite 2023-11-18
-  const enElLimite = estadoDelProcesoJudicial(cobro([["2023-11-18", "SENTENCIA"]]), opc);
+  // hoy 2026-11-18, 2 años -> límite 2024-11-18
+  const enElLimite = estadoDelProcesoJudicial(cobro([["2024-11-18", "SENTENCIA"]]), opc);
   assertEquals(enElLimite.estado, "pendiente");
-  const pasado = estadoDelProcesoJudicial(cobro([["2023-11-17", "SENTENCIA"]]), opc);
+  const pasado = estadoDelProcesoJudicial(cobro([["2024-11-17", "SENTENCIA"]]), opc);
   assertEquals(pasado.estado, "sin_avance");
   assertEquals(pasado.motivo, null);
 });

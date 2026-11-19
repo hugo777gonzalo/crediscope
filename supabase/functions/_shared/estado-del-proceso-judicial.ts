@@ -21,10 +21,10 @@
 // es la de mañana, así que todo se hace con fechas de calendario en texto
 // «AAAA-MM-DD», nunca con Date con hora.
 
-/** Años sin actuaciones a partir de los cuales un proceso sin cierre es «sin_avance».
- *  Lo fija el negocio: este valor es PROVISIONAL y el llamador lo pasa explícito
- *  en `opciones.aniosSinAvance`; la función no lo asume por su cuenta. */
-export const ANIOS_SIN_AVANCE_PROVISIONAL = 3;
+/** Años sin actuaciones a partir de los cuales un proceso sin cierre es «sin_avance»
+ *  y se desestima. Lo fijó el negocio el 2026-11-18 (2 años). El llamador lo pasa
+ *  explícito en `opciones.aniosSinAvance`; la función no lo asume por su cuenta. */
+export const ANIOS_SIN_AVANCE = 2;
 
 export type EstadoDelProceso =
   | "terminado"
