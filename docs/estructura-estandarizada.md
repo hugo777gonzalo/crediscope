@@ -870,6 +870,38 @@ interface StandardClientProfile {
 >   por anualidad; no llega al modelo (`CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN`).
 > - **Sin aplicar:** se despliega primero y se recalcula después; un perfil anterior sigue
 >   funcionando (el BIESS sale como deuda sin cuota, con su saldo total).
+> **estructura-v24 (D2 del negocio, 2026-11-18, confirmada el 2026-11-19)** — una demanda
+> de cobro o civil en la que el demandado es OTRA persona deja de contar, como en v20 con
+> las penales. La fuente las busca por el nombre y `esDemandaDeCobro` y
+> `demandasPorCategoria` daban por propia toda la que traía.
+> - **Una sola atribución** (`atribuirDemandas()`, `demandas.ts`, con el `cotejarDemandado()`
+>   de v20): sólo «otra persona» sale de las cuentas de `riesgoJudicialCrediticio` y
+>   `riesgoJudicialCivil`. Sin demandado, sin el nombre de la persona y con los apellidos
+>   en otro orden **siguen contando** y se avisan: lo que no se puede atribuir va como «sin
+>   cotejo», nunca como «no es de ella» (para un bloqueo el orden invertido no alcanza; para
+>   contar una deuda sí, y el aviso le dice al analista que la mire).
+> - **Campos nuevos**, en los dos grupos: `numeroDemandasDeOtroDemandado` (las que no se
+>   cuentan: «posible homónimo») y `numeroDemandasSinCotejo` (las que se cuentan sin
+>   confirmar). Son para el aviso en pantalla y **no llegan al modelo**
+>   (`CAMPOS_DE_CONTROLES_QUE_NO_LLEGAN`); al modelo sólo le cambian los números de las
+>   demandas. El catalogador de procesos (R1, PR 184) no lee demandas: no comparte esta lectura.
+> - **Detector** del crudo `demanda-de-cobro-o-civil-de-otro-demandado` (`revisar-crudo.mjs`,
+>   «regresión»), con un criterio distinto del cotejo: el perfil no puede contar más
+>   demandas que las que traen alguna palabra del nombre de la persona en el demandado.
+>   Casos sintéticos: `demandas-de-otro-demandado-dispara.json` y `...-no-dispara.json`.
+> - **Seco del 2026-11-19** (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil
+>   --bloqueo --seco`, crudo del 2026-10-03 y depósito): 3.766 perfiles, ninguno deja de
+>   reproducirse; cambian los conteos de 137 personas (43 por demandas de cobro, 124 por
+>   civiles). Sobre el crudo de esas personas: de 1.406 demandas de cobro, 119 son de otra
+>   persona (dejan de contar), 28 traen los apellidos en otro orden y 90 no se pueden
+>   cotejar (85 sin demandado, 5 sin el nombre), y siguen contando; de 4.422 civiles, 594 de
+>   otra persona, 40 con los apellidos invertidos y 353 sin cotejo (334 y 19). 26 personas
+>   quedan sin ninguna demanda de cobro y 29 sin ninguna civil. 298 personas llevan al menos
+>   un aviso de «sin cotejo». Bloqueo: 0 se desbloquean y 0 se bloquean (D2 no lo toca).
+>   Cambia de salida: no se midió; depende del modelo (no se usó). De las 137, 25 tienen un
+>   análisis guardado (20 Revisar, 2 Aprobar, 2 Negar, 1 sin recomendación).
+> - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
+
 > **estructura-v23 (E12, R5 del negocio, 2026-11-18; la v22 es la del PR 173)**
 > - La providencia de **certificación** (un pedido de información de un fiscal o un
 >   juez) ya no bloquea: `cumplimiento.enListaControl` no la cuenta, el hallazgo
