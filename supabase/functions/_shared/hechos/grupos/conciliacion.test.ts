@@ -1,5 +1,5 @@
 // La prueba de las diferencias de E9 cuyo grupo todavía no existe (docs/capa-de-hechos.md,
-// sección 6, puntos 10, 12 y 13): cada una sale cuando las dos fuentes dicen lo mismo de lo
+// sección 6, puntos 12 y 13): cada una sale cuando las dos fuentes dicen lo mismo de lo
 // mismo (o se contradicen, la educación), no sale cuando no, y ninguna cambia un valor del perfil.
 //
 // deno test --allow-env --allow-read=supabase/functions supabase/functions/
@@ -24,32 +24,6 @@ Deno.test("el grupo sólo tiene diferencias: ningún campo del perfil, nada lleg
   assertEquals(CATALOGO.every((c) => c.codigo.startsWith("dif.") && !c.campoDelPerfil && !c.llegaAlModelo), true);
   const todos = catalogoCompleto().map((c) => c.codigo);
   assertEquals(todos.length, new Set(todos).size);
-});
-
-// ---- Punto 10 ----
-
-const conPep = (lista: unknown[], base: unknown[]) => ({
-  listasControl: ok({ personaPublicasOpr: lista }),
-  basesInternas: ok({ tpeps: base }),
-});
-
-Deno.test("dif.cum.pep.repetido: el mismo cargo y fecha en las dos listas; otro cargo u otra fecha, no", () => {
-  const doc = derivarHechos(conPep(
-    [{ cargo: "Concejal  Inventado", fecha: "2020-05-01" }, { cargo: "ASESOR FICTICIO", fecha: "2021-01-01" }],
-    [{ cargo: "ASESOR FICTICIO", fecha: "2022-01-01" }, { cargo: "CONCEJAL INVENTADO", fecha: "2020-05-01" }],
-  ), contexto);
-  const difs = de(doc, "dif.cum.pep.repetido");
-  assertEquals(difs.map((d) => [d.manda.registro.indice, d.cede[0].registro.fuente, d.cede[0].registro.lista, d.cede[0].registro.indice, d.lectura]), [[0, "basesInternas", "tpeps", 1, "esperada"]]);
-  assertEquals(difs[0].manda.valor, "CONCEJAL INVENTADO · 2020-05-01");
-  // Un registro de una lista se une con uno solo de la otra.
-  const doble = derivarHechos(conPep([{ cargo: "A", fecha: "2020-01-01" }, { cargo: "A", fecha: "2020-01-01" }], [{ cargo: "A", fecha: "2020-01-01" }]), contexto);
-  assertEquals(de(doble, "dif.cum.pep.repetido").length, 1);
-});
-
-Deno.test("dif.cum.pep.repetido: el perfil sigue diciendo lo mismo (PEP y el detalle del más reciente)", () => {
-  const raw = conPep([{ cargo: "A", fecha: "2020-01-01" }], [{ cargo: "A", fecha: "2020-01-01" }]);
-  const perfil = buildStandardProfile(raw as never, "0000000000", "2026-10").profile;
-  assertEquals([perfil.cumplimiento.esPersonaExpuestaPoliticamente, perfil.cumplimiento.detallePep?.cargo], [true, "A"]);
 });
 
 // ---- Punto 12 ----

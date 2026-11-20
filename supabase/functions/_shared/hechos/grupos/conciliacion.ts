@@ -1,14 +1,13 @@
 // E9 de la capa de hechos: las diferencias entre fuentes cuyo grupo todavía no existe
-// (docs/capa-de-hechos.md, sección 6, puntos 10, 12 y 13).
+// (docs/capa-de-hechos.md, sección 6, puntos 12 y 13).
 //
-// Cada una debería vivir en el archivo de su grupo: el PEP en cumplimiento.ts, las multas en
-// transito.ts y el nivel de educación en identidad.ts. Esos grupos están vacíos o los está
-// llenando otra sesión, y dos sesiones no tocan el mismo archivo (sección 3.2). Cuando el
-// grupo se llena, la diferencia se muda a su archivo CON EL MISMO CÓDIGO y sale de acá: un
-// código no cambia de significado ni se repite en dos catálogos (el emisor no lo admite).
+// Cada una debería vivir en el archivo de su grupo: las multas en transito.ts y el nivel de
+// educación en identidad.ts. Esos grupos están vacíos. Cuando el grupo se llena, la diferencia
+// se muda a su archivo CON EL MISMO CÓDIGO y sale de acá: un código no cambia de significado ni
+// se repite en dos catálogos. El PEP (punto 10) ya se mudó: `dif.cum.pep.repetido` vive en
+// cumplimiento.ts desde estructura-v28.
 //
-// Ninguna cambia un valor del perfil: process.ts sigue sumando las dos fuentes de PEP y de
-// multas, y mostrando el nivel del registro civil junto al del título. Lo que no se guarda no
+// Ninguna cambia un valor del perfil: process.ts sigue sumando las multas y mostrando el nivel del registro civil junto al del título. Lo que no se guarda no
 // se puede medir después: por eso se guardan aunque sean esperadas. Lo que el negocio puede
 // decidir sobre cada una está en la sección 10 del diseño, con su medición.
 //
@@ -28,7 +27,6 @@ const dif = (codigo: string, descripcion: string, unidad: CodigoDelCatalogo["uni
 });
 
 export const CATALOGO: CodigoDelCatalogo[] = [
-  dif("dif.cum.pep.repetido", "El mismo cargo público con la misma fecha en las dos listas de personas expuestas políticamente", "texto"),
   dif("dif.tra.posible_repetida", "La misma multa de tránsito (placa y día de emisión) en dos entidades, contada en las dos", "usd"),
   dif("dif.ide.nivel_de_educacion", "Nivel de educación del registro civil contra el del título registrado más alto", "texto"),
   // Punto 16. No la emite este grupo: necesita el buró, que derivarHechos no recibe. La arma
@@ -40,43 +38,8 @@ export const REGLAS_QUE_MEZCLAN: string[] = [];
 
 export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor): void {
   const crudo = (crudoSinTipo ?? {}) as AnyRecord;
-  pepRepetido(crudo, contexto.consulta, emisor);
   multaRepetida(crudo, contexto.consulta, emisor);
   nivelDeEducacion(crudo, contexto.consulta, emisor);
-}
-
-// ---- Punto 10: PEP en las dos listas ----
-//
-// process.ts suma `listasControl.personaPublicasOpr` y `basesInternas.tpeps` sin unirlas. Medido
-// el 2026-11-20 sobre las 3.766 personas: las 46 con PEP lo tienen en las dos listas, y 29 con el
-// mismo cargo y la misma fecha. Hoy no cambia nada: el perfil dice sólo si es PEP y
-// el detalle del registro más reciente. La fecha se compara como texto, como la compara
-// process.ts al elegir el más reciente; en las dos viene «aaaa-mm-dd».
-const normalizado = (v: unknown) => String(v ?? "").trim().toUpperCase().replace(/\s+/g, " ");
-
-function pepRepetido(crudo: AnyRecord, consulta: string, emisor: Emisor): void {
-  const deLaLista = filasDe(crudo, "listasControl", "personaPublicasOpr");
-  const deLaBase = filasDe(crudo, "basesInternas", "tpeps");
-  const tomadas = new Set<Fila>();
-  for (const a of deLaLista) {
-    const cargo = normalizado(a.r.cargo);
-    const fecha = textoDe(a.r.fecha);
-    if (!cargo || !fecha) continue;
-    const b = deLaBase.find((x) => !tomadas.has(x) && normalizado(x.r.cargo) === cargo && textoDe(x.r.fecha) === fecha);
-    if (!b) continue;
-    tomadas.add(b);
-    emisor.diferencia({
-      codigo: "dif.cum.pep.repetido",
-      regla: "cum.pep.repetido@1",
-      sobre: `listasControl.personaPublicasOpr#${a.indice}`,
-      // Ninguna manda: se suman sin unir. La lista de control va primero porque es la que lee
-      // el control de bloqueo.
-      manda: { fuente: "listasControl", valor: `${cargo} · ${fecha}`, registro: refDeFila(consulta, a, "cargo") },
-      cede: [{ fuente: "basesInternas", valor: `${normalizado(b.r.cargo)} · ${textoDe(b.r.fecha)}`, registro: refDeFila(consulta, b, "cargo") }],
-      magnitud: { absoluta: null, relativa: null },
-      lectura: "esperada",
-    });
-  }
 }
 
 // ---- Punto 12: la misma multa en dos entidades de tránsito ----

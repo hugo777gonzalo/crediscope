@@ -65,8 +65,11 @@ export const GRUPOS = {
 // etapa B (estructura-v25) process.ts lo arma desde los hechos. El grupo 2, el
 // 2026-11-20: 0 diferencias en 26.362 campos de las mismas 3.766 personas. El grupo 3
 // (riesgo judicial), el mismo día: 0 diferencias en 75.320 campos, y el hallazgo de
-// seguridad ciudadana desde hechos da lo mismo que el control de bloqueo en las 3.766.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos"];
+// seguridad ciudadana desde hechos da lo mismo que el control de bloqueo en las 3.766. Los
+// grupos penal y cumplimiento (E7, 2026-11-20): paridad en las mismas 3.766 personas, y desde
+// su etapa B (estructura-v28) process.ts los arma desde los hechos y el control de bloqueo toma
+// de ellos todos sus hallazgos.
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos", "penal", "cumplimiento"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);
@@ -75,7 +78,7 @@ export function catalogoCompleto(): CodigoDelCatalogo[] {
 // Los grupos de los que depende el perfil: process.ts los arma con `perfilDesdeHechos`
 // (etapa B). Si uno falla, el perfil no se puede armar, y tiene que fallar como hoy. Un grupo
 // nuevo se suma acá cuando su bloque de process.ts pasa a armarse desde los hechos.
-export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas", "riesgoJudicial"];
+export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas", "riesgoJudicial", "penal", "cumplimiento"];
 
 export interface OpcionesDeDerivacion {
   // Con `estricto`, el error de cualquier grupo se propaga. Lo usan los guiones y las
