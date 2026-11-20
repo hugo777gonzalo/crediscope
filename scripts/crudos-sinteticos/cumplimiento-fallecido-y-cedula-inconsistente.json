@@ -1,0 +1,20 @@
+{
+  "descripcion": "Grupo de cumplimiento: la fuente de identidad registra a la persona como fallecida y trae otra cédula que la consultada, y la lista negra interna la nombra; el fallecido y la lista negra bloquean y la cédula inconsistente sólo avisa",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO DOCE", "identificacion": "1111111111", "fechaDefuncion": "2024-01-01" } } },
+    "listasControl": { "status": "ok", "data": { "ofacsOpr": [], "providenciasOpr": [], "homonimosOpr": [], "personaPublicasOpr": [] } },
+    "basesInternas": { "status": "ok", "data": { "tofac": [], "tprovidencias": [], "tconsephomonimos": [], "tpeps": [] } },
+    "listaNegra": { "status": "ok", "data": { "listaNegra": { "idListaNegra": 1, "nombreCliente": "PRUEBA FICTICIO DOCE" } } },
+    "demandas": { "status": "ok", "data": { "demandas": [] } },
+    "denuncias": { "status": "ok", "data": { "denuncias": [] } },
+    "antecedentesPenales": { "status": "ok", "data": { "antecedentes": { "descripcion": "NO" } } }
+  },
+  "esperado": {},
+  "hechos": {
+    "cum.fallecido.registrado": { "valor": true },
+    "cum.identidad.cedula_de_la_fuente": { "valor": "1111111111" },
+    "cum.lista_negra.existe": { "valor": true }
+  }
+}

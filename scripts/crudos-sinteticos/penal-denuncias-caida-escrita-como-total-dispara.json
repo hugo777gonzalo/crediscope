@@ -1,0 +1,33 @@
+{
+  "descripcion": "Grupo penal: la fuente de denuncias no contestó (faltante) y el perfil de estructura-v27 escribió 0 denuncias, como si la persona no tuviera ninguna; la tarjeta de Riesgo Penal decía «Sin antecedentes penales ni denuncias registradas»: el detector lo marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO SIETE", "identificacion": "0000000000" } } },
+    "listasControl": { "status": "ok", "data": { "ofacsOpr": [], "providenciasOpr": [], "homonimosOpr": [], "personaPublicasOpr": [] } },
+    "basesInternas": { "status": "ok", "data": { "tofac": [], "tprovidencias": [], "tconsephomonimos": [], "tpeps": [] } },
+    "listaNegra": { "status": "ok", "data": { "listaNegra": null } },
+    "demandas": { "status": "ok", "data": { "demandas": [] } },
+    "denuncias": { "status": "faltante", "data": null },
+    "antecedentesPenales": { "status": "ok", "data": { "antecedentes": { "descripcion": "NO" } } }
+  },
+  "guardado": {
+    "perfil": {
+      "riesgoPenal": {
+        "tieneAntecedentesPenales": false,
+        "descripcionAntecedentes": null,
+        "numeroDenunciasComoSospechoso": 0,
+        "numeroDenunciasComoVictima": 0,
+        "camposSinDato": null
+      }
+    }
+  },
+  "esperado": {
+    "dato-penal-o-de-cumplimiento-de-fuente-sin-respuesta-escrito-como-total": "dispara"
+  },
+  "hechos": {
+    "pen.denuncias.como_acusada.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "pen.denuncias.con_otro_papel.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "pen.antecedentes.existe": { "valor": false }
+  }
+}

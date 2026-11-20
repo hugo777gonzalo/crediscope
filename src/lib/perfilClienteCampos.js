@@ -301,7 +301,9 @@ export const GRUPOS_CONFIG = {
   },
   riesgoPenal: {
     mensajeVacio: "Sin antecedentes penales ni denuncias registradas.",
-    presencia: (p) => p.riesgoPenal?.tieneAntecedentesPenales || (p.riesgoPenal?.numeroDenunciasComoSospechoso ?? 0) > 0 || (p.riesgoPenal?.numeroDenunciasComoVictima ?? 0) > 0,
+    // Con una fuente que no contestó la tarjeta muestra su fila «sin dato», nunca el mensaje de vacío:
+    // «sin denuncias» de alguien a quien no se pudo mirar era una afirmación falsa (estructura-v28).
+    presencia: (p) => camposSinDato(p, "riesgoPenal").length > 0 || p.riesgoPenal?.tieneAntecedentesPenales || (p.riesgoPenal?.numeroDenunciasComoSospechoso ?? 0) > 0 || (p.riesgoPenal?.numeroDenunciasComoVictima ?? 0) > 0,
     campos: [
       ["tieneAntecedentesPenales", "Antecedentes penales", "booleano_si_true"],
       ["descripcionAntecedentes", "Descripción", "texto"],
@@ -314,6 +316,7 @@ export const GRUPOS_CONFIG = {
   cumplimiento: {
     mensajeVacio: "Sin coincidencias en listas de control ni impedimentos registrados.",
     presencia: (p) =>
+      camposSinDato(p, "cumplimiento").length > 0 ||
       p.cumplimiento?.enListaControl ||
       p.cumplimiento?.enListaNegra ||
       p.cumplimiento?.impedimentoCargosPublicos ||
@@ -413,6 +416,24 @@ const FUENTE_DEL_CAMPO = {
     valorMensualPensiones: "Pensiones alimenticias",
     numeroPensionesEnMora: "Pensiones alimenticias",
   },
+  // Desde estructura-v28 (grupos penal y de cumplimiento): cada campo dice de qué fuente sale.
+  riesgoPenal: {
+    tieneAntecedentesPenales: "Antecedentes penales",
+    descripcionAntecedentes: "Antecedentes penales",
+    numeroDenunciasComoSospechoso: "Denuncias",
+    numeroDenunciasComoVictima: "Denuncias",
+  },
+  cumplimiento: {
+    enListaControl: "Listas de control",
+    tieneProvidenciaDeCertificacion: "Listas de control",
+    tieneHomonimoEnListaControl: "Listas de control",
+    enListaNegra: "Lista negra",
+    impedimentoCargosPublicos: "Impedimento para cargos públicos",
+    causalImpedimento: "Impedimento para cargos públicos",
+    registraSercopContraloria: "SERCOP y Contraloría",
+    esPersonaExpuestaPoliticamente: "Persona expuesta políticamente",
+    detallePep: "Persona expuesta políticamente",
+  },
 };
 // Seguridad ciudadana sale de tres fuentes (demandas, denuncias y antecedentes) y el perfil no dice
 // cuál no contestó: una sola fila para el grupo.
@@ -422,6 +443,8 @@ const FUENTE_POR_GRUPO = {
   riesgoJudicialCrediticio: "Demandas",
   riesgoJudicialCivil: "Demandas",
   riesgoSeguridadCiudadana: "Demandas, denuncias y antecedentes",
+  riesgoPenal: "Antecedentes y denuncias",
+  cumplimiento: "Listas de control",
 };
 
 export function camposSinDato(profile, grupo) {

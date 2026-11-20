@@ -11,7 +11,6 @@
 // Conectada a analyze-client/llm-scoring desde marco-v1 — es la
 // entrada real del LLM (ver marco-interpretativo.ts).
 
-import { separarProvidencias } from "./providencias.ts";
 import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
 import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
@@ -20,7 +19,6 @@ import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
 export { relacionConEmpleador };
-import { rolEnDenuncia } from "./denuncias.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 // Los ayudantes de lectura del crudo viven en la capa de hechos desde la tarea
@@ -384,7 +382,14 @@ export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): Any
 // (hechos/controles.ts). Con una fuente que no contestó el campo es null y el grupo lo lista
 // en camposSinDato con el parcial (lo que escribía la v26 como si fuera el total). El modelo y
 // la capacidad de pago leen lo de antes hasta la versión mayor del marco.
-export const PROCESS_VERSION = "estructura-v27"; // ver docs/estructura-estandarizada.md
+// estructura-v28 (E7, etapa B de los grupos penal y de cumplimiento de la capa de hechos): riesgoPenal
+// y cumplimiento salen de hechos/grupos/penal.ts y cumplimiento.ts, y el control de bloqueo toma de los
+// mismos hechos TODOS sus hallazgos (fallecido, listas, homónimos, PEP; hechos/controles.ts): ya no
+// relee el crudo. Con una fuente que no contestó el campo es null y el grupo lo lista en
+// camposSinDato con el parcial (lo que escribía la v27 como si fuera el total, y que la tarjeta
+// «Riesgo Penal / Fiscalía» leía como «sin antecedentes ni denuncias»). El modelo y la capacidad de
+// pago leen lo de antes hasta la versión mayor del marco. El bloqueo no cambia.
+export const PROCESS_VERSION = "estructura-v28"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1231,72 +1236,47 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   } as StandardClientProfile["riesgoJudicialCivil"], jv);
 
   // ---- riesgoPenal ----
-  const antecedentes = obj(fuentes, "antecedentesPenales", "antecedentes");
-  // El papel de la persona en cada denuncia sale de denuncias.ts, la misma
-  // regla que usa el control de bloqueo. Ser denunciante, víctima o testigo
-  // es SOLO CONTEXTO (no penaliza); ser sospechosa o procesada sí. Una
-  // denuncia sin su cédula entre las partes no es suya y no cuenta
-  // (decisión del negocio, 2026-09-28): hasta estructura-v8 contaba como
-  // "víctima" -- 232 de 1.780 denuncias.
-  const denuncias = arr(fuentes, "denuncias", "denuncias");
-  const rolesEnDenuncias = denuncias.map((d) => rolEnDenuncia(d, cedula));
-  const riesgoPenal: StandardClientProfile["riesgoPenal"] = {
-    tieneAntecedentesPenales: antecedentes ? antecedentes.descripcion !== "NO" : null,
-    descripcionAntecedentes: antecedentes && antecedentes.descripcion !== "NO" ? (antecedentes.descripcion as string) : null,
-    numeroDenunciasComoSospechoso: rolesEnDenuncias.filter((r) => r === "acusada").length,
-    // El nombre quedó de cuando sólo se distinguía sospechoso de víctima:
-    // cuenta toda denuncia en la que figura con otro papel (denunciante,
-    // víctima, testigo, perjudicado).
-    numeroDenunciasComoVictima: rolesEnDenuncias.filter((r) => r === "otro_papel").length,
-  };
+  // Desde estructura-v28 sale de la capa de hechos (etapa B del grupo penal, docs/capa-de-hechos.md,
+  // 3.3). El papel de la persona en cada denuncia sale de denuncias.ts, la misma regla que usa el
+  // control de bloqueo: ser denunciante, víctima o testigo es SOLO CONTEXTO (no penaliza); ser
+  // sospechosa o procesada sí. Una denuncia sin su cédula entre las partes no es suya y no cuenta
+  // (decisión del negocio, 2026-09-28): hasta estructura-v8 contaba como "víctima" -- 232 de 1.780
+  // denuncias. El nombre de numeroDenunciasComoVictima quedó de cuando sólo se distinguía sospechoso
+  // de víctima: cuenta toda denuncia en la que figura con otro papel.
+  // Con la fuente de denuncias caída (o la de antecedentes con un error) el campo es null y el grupo
+  // lo lista en camposSinDato: hasta la v27 el perfil escribía 0 denuncias, y la tarjeta decía «sin
+  // antecedentes ni denuncias» de alguien a quien no se pudo mirar.
+  const pn = perfilDesdeHechos(hechos, "riesgoPenal") as AnyRecord;
+  const riesgoPenal = conSinDato({
+    tieneAntecedentesPenales: pn.tieneAntecedentesPenales,
+    descripcionAntecedentes: pn.descripcionAntecedentes,
+    numeroDenunciasComoSospechoso: pn.numeroDenunciasComoSospechoso,
+    numeroDenunciasComoVictima: pn.numeroDenunciasComoVictima,
+  } as StandardClientProfile["riesgoPenal"], pn);
 
   // ---- cumplimiento (control de bloqueo, informativo) ----
-  // personaPublicasOpr/tpeps = PEP — se cuenta aparte de enListaControl,
-  // ver controles-bloqueo.ts: no es señal de riesgo crediticio.
-  // homonimosOpr/tconsephomonimos EXCLUIDOS a propósito: son otra persona
-  // con el mismo nombre, cédula distinta — ver controles-bloqueo.ts,
-  // código homonimo_en_lista_control (bug encontrado auditando cédulas
-  // c-10a696c9/c-7c7071e4: la identificación del "homónimo" nunca
-  // coincide con la del cliente consultado).
-  const providenciasDeControl = separarProvidencias(arr(fuentes, "listasControl", "providenciasOpr"));
-  const totalListasControl = arr(fuentes, "listasControl", "ofacsOpr").length + providenciasDeControl.bloquean.length;
-  const totalProvidenciasDeCertificacion =
-    providenciasDeControl.certificacion.length + separarProvidencias(arr(biWrap, "x", "tprovidencias")).certificacion.length;
-  const totalHomonimos = arr(fuentes, "listasControl", "homonimosOpr").length + arr(biWrap, "x", "tconsephomonimos").length;
-  const totalPep = arr(fuentes, "listasControl", "personaPublicasOpr").length + arr(biWrap, "x", "tpeps").length;
-  const pepRegistros = [...arr(fuentes, "listasControl", "personaPublicasOpr"), ...arr(biWrap, "x", "tpeps")];
-  const pepMasReciente = [...pepRegistros].sort((a, b) => String(b.fecha ?? "").localeCompare(String(a.fecha ?? "")))[0] as AnyRecord | undefined;
-  const detallePep = pepMasReciente
-    ? {
-        cargo: (pepMasReciente.cargo as string) ?? null,
-        empresa: (pepMasReciente.empresa as string) ?? (pepMasReciente.empresaSector as string) ?? null,
-        sueldo: num(pepMasReciente.sueldo),
-        fecha: (pepMasReciente.fecha as string) ?? null,
-      }
-    : null;
-  const sercopData = obj(fuentes, "sercop", "data");
-  // impedimentoCargosPublicos.data es un ARRAY (no un objeto como el
-  // resto de recursos "singleton") — obj() lo rechazaba por tipo y
-  // devolvía null siempre, así que este campo daba false/null sin
-  // importar la realidad (bug encontrado auditando cédula c-f059ebe9,
-  // que SÍ tiene registraImpedimento=true real). Se agrega sobre todos
-  // los elementos del array por si acaso viniera más de uno.
-  const impedimentoRegistros = arr(fuentes, "impedimentoCargosPublicos", "data");
-  const impedimentoActivo = impedimentoRegistros.find((r) => r.registraImpedimento === true) ?? null;
-  const cumplimiento: StandardClientProfile["cumplimiento"] = {
-    enListaControl: totalListasControl > 0,
-    tieneProvidenciaDeCertificacion: totalProvidenciasDeCertificacion > 0,
-    tieneHomonimoEnListaControl: totalHomonimos > 0,
-    enListaNegra: Boolean(((fuentes?.listaNegra as AnyRecord | undefined)?.data as AnyRecord | undefined)?.listaNegra),
-    impedimentoCargosPublicos: Boolean(impedimentoActivo),
-    causalImpedimento: ((impedimentoActivo?.causales as AnyRecord[] | undefined)?.[0]?.causal as string) ?? null,
-    registraSercopContraloria: Boolean(
-      (((sercopData?.contraloria as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0 ||
-        (((sercopData?.sercop as AnyRecord | undefined)?.registros as unknown[] | undefined)?.length ?? 0) > 0
-    ),
-    esPersonaExpuestaPoliticamente: totalPep > 0,
-    detallePep,
-  };
+  // Desde estructura-v28 sale de la capa de hechos (hechos/grupos/cumplimiento.ts), los mismos
+  // hechos de los que el control de bloqueo arma todos sus hallazgos (hechos/controles.ts).
+  // personaPublicasOpr/tpeps = PEP: se cuenta aparte de enListaControl, no es señal de riesgo
+  // crediticio, y las dos fuentes se suman sin unir.
+  // homonimosOpr/tconsephomonimos EXCLUIDOS a propósito de enListaControl: son otra persona con el
+  // mismo nombre, cédula distinta, código homonimo_en_lista_control (bug encontrado auditando
+  // cédulas c-10a696c9/c-7c7071e4: la identificación del "homónimo" nunca coincide con la del
+  // cliente consultado).
+  // impedimentoCargosPublicos.data trae una lista: sobre todos sus elementos (bug encontrado auditando
+  // la cédula c-f059ebe9, que SÍ tiene registraImpedimento=true real; obj() lo rechazaba por tipo).
+  const cp = perfilDesdeHechos(hechos, "cumplimiento") as AnyRecord;
+  const cumplimiento = conSinDato({
+    enListaControl: cp.enListaControl,
+    tieneProvidenciaDeCertificacion: cp.tieneProvidenciaDeCertificacion,
+    tieneHomonimoEnListaControl: cp.tieneHomonimoEnListaControl,
+    enListaNegra: cp.enListaNegra,
+    impedimentoCargosPublicos: cp.impedimentoCargosPublicos,
+    causalImpedimento: cp.causalImpedimento,
+    registraSercopContraloria: cp.registraSercopContraloria,
+    esPersonaExpuestaPoliticamente: cp.esPersonaExpuestaPoliticamente,
+    detallePep: cp.detallePep,
+  } as StandardClientProfile["cumplimiento"], cp);
 
   // ---- riesgoSeguridadCiudadana (grupo propio, control de bloqueo duro) ----
   // Desde estructura-v27 sale de la capa de hechos, con los mismos hechos de los que
