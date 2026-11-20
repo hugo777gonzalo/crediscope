@@ -82,6 +82,7 @@ const { derivarHechos, GRUPOS } = await importar("supabase/functions/_shared/hec
 const { perfilDesdeHechos, gruposDelPerfil } = await importar("supabase/functions/_shared/hechos/perfil-desde-hechos.ts");
 const { buildStandardProfile } = await importar("supabase/functions/_shared/process.ts");
 const { conLosValoresDeAntes } = await importar("supabase/functions/_shared/campos-sin-dato.ts");
+const { CORTE_IESS_CONOCIDO } = await importar("supabase/functions/_shared/fuentes-ingreso.ts");
 const { controlesDesdeHechos, CODIGOS_DE_SEGURIDAD } = await importar("supabase/functions/_shared/hechos/controles.ts");
 const { evaluarControlesBloqueo } = await importar("supabase/functions/_shared/controles-bloqueo.ts");
 
@@ -256,11 +257,13 @@ for (let i = 0; i < candidatos.length; i += 50) {
       cedula: crudo.cedula,
       consulta: crudo.perfilId ?? "sin-perfil",
       fechaDeLaConsulta: crudo.capturadoEl,
-      corteIess: String(crudo.capturadoEl).slice(0, 7),
+      // El mismo argumento con que se armó el perfil (`undefined`: el corte conocido). El
+      // grupo 4 lee el corte del IESS para decidir el empleo actual.
+      corteIess: CORTE_IESS_CONOCIDO,
       persona: { nombre: null, fechaDeNacimiento: null },
     };
     const t0 = performance.now();
-    const doc = derivarHechos(raw, contexto);
+    const doc = derivarHechos(raw, contexto, { estricto: true }); // un grupo que se cae no pasa en silencio
     const json = JSON.stringify(doc);
     medidas.ms.push(performance.now() - t0);
     medidas.documentoJson.push(Buffer.byteLength(json));

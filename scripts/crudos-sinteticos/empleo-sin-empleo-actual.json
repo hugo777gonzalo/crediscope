@@ -1,0 +1,123 @@
+{
+  "descripcion": "Grupo 4: un solo empleo que terminó en 2021: sin empleo actual no hay cargo ni empleador vigente, ningún empleador de los últimos 24 meses, y la duración del empleo más largo sale de sus fechas",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/01/2019",
+            "fecSal": "30/06/2021",
+            "ocupacion": "ANALISTA",
+            "anio": 2021,
+            "mes": 5
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/01/2019",
+            "fecSal": "30/06/2021",
+            "ocupacion": "ANALISTA",
+            "anio": 2021,
+            "mes": 6
+          }
+        ]
+      }
+    },
+    "trabajoHistoricosMecanizado": {
+      "status": "ok",
+      "data": {
+        "mecanizadoEmpleados": []
+      }
+    },
+    "trabajoHistoricos": {
+      "status": "ok",
+      "data": {
+        "trabajosHistoricos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "administraciones": {
+      "status": "ok",
+      "data": {
+        "administraciones": []
+      }
+    },
+    "cumplimientoPatronal": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "emp.actual@1": "no-aplica",
+    "emp.antiguedad@1": "no-aplica"
+  },
+  "hechos": {
+    "lab.empleo_actual.fuente": {
+      "valor": "ninguna",
+      "registros": [
+        "trabajoHistoricosMecanizado.mecanizadoEmpleados",
+        "basesInternas.tiess"
+      ]
+    },
+    "lab.empleos_actuales": {
+      "valor": []
+    },
+    "lab.empleadores.ultimos_24_meses": {
+      "valor": 0
+    },
+    "lab.duracion.empleo_mas_largo_meses": {
+      "valor": 29,
+      "registros": [
+        "basesInternas.tiess#1"
+      ]
+    },
+    "lab.cargo.vigente": {
+      "valor": null,
+      "motivo": "no_aplica"
+    },
+    "ruc.actividad.estado": {
+      "valor": "sin_ruc"
+    }
+  }
+}

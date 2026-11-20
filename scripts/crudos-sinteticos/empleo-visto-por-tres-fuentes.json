@@ -1,0 +1,246 @@
+{
+  "descripcion": "Grupo 4: un mismo empleo lo ven los aportes, el mecanizado y el historial (con el nombre escrito distinto y un salario más alto en el historial): una sola entidad con tres vistas, el salario más alto cita el historial y deja afuera a las otras dos, y los salarios del mes difieren entre el mecanizado y los aportes",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 6
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 7
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 8
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 9
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          }
+        ]
+      }
+    },
+    "trabajoHistoricosMecanizado": {
+      "status": "ok",
+      "data": {
+        "mecanizadoEmpleados": [
+          {
+            "baseDate": "2026-10",
+            "fechaIngreso": 1583020800000,
+            "rucEmpresa": "1790000000001",
+            "nombreEmpresa": "EMPRESA FICTICIA S.A.",
+            "personaPatrono": {
+              "identificacion": "1790000000001",
+              "nombre": "EMPRESA FICTICIA S.A."
+            },
+            "personaIngreso": {
+              "valor": 820
+            },
+            "cargo": {
+              "nombre": "ANALISTA"
+            }
+          },
+          {
+            "baseDate": "2026-09",
+            "fechaIngreso": 1583020800000,
+            "rucEmpresa": "1790000000001",
+            "nombreEmpresa": "EMPRESA FICTICIA S.A.",
+            "personaPatrono": {
+              "identificacion": "1790000000001",
+              "nombre": "EMPRESA FICTICIA S.A."
+            },
+            "personaIngreso": {
+              "valor": 800
+            },
+            "cargo": {
+              "nombre": "ANALISTA"
+            }
+          }
+        ]
+      }
+    },
+    "trabajoHistoricos": {
+      "status": "ok",
+      "data": {
+        "trabajosHistoricos": [
+          {
+            "personaTrabajo": {
+              "fechaIngreso": 1583020800000,
+              "personaPatrono": {
+                "tipoPersona": "JURIDICA",
+                "identificacion": "1790000000001",
+                "nombre": "EMPRESA FICTICIA SA",
+                "situacionLegal": {
+                  "nombre": "ACTIVA"
+                },
+                "tipoCompania": {
+                  "nombre": "ANONIMA"
+                },
+                "fechaConstitucion": 1262304000000
+              },
+              "personaIngreso": {
+                "valor": 1500
+              },
+              "cargo": {
+                "nombre": "GERENTE"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "administraciones": {
+      "status": "ok",
+      "data": {
+        "administraciones": []
+      }
+    },
+    "cumplimientoPatronal": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "emp.actual@1": "aplica",
+    "emp.union@1": "aplica",
+    "emp.historial@1": "aplica",
+    "emp.salario_mas_alto@1": "aplica",
+    "emp.vigente@1": "aplica",
+    "emp.antiguedad@1": "aplica"
+  },
+  "hechos": {
+    "lab.empleo_actual.fuente": {
+      "valor": "mecanizado",
+      "registros": [
+        "trabajoHistoricosMecanizado.mecanizadoEmpleados#0"
+      ]
+    },
+    "lab.empleos_actuales": {
+      "valor": [
+        {
+          "empleador": "EMPRESA FICTICIA S.A.",
+          "cargo": "ANALISTA",
+          "salarioAprox": 820
+        }
+      ],
+      "registros": [
+        "trabajoHistoricosMecanizado.mecanizadoEmpleados#0"
+      ]
+    },
+    "lab.salario.mas_alto": {
+      "valor": 1500,
+      "registros": [
+        "trabajoHistoricos.trabajosHistoricos#0"
+      ],
+      "descartados": [
+        "trabajoHistoricosMecanizado.mecanizadoEmpleados#0:el_maximo_de_esta_fuente_es_menor",
+        "basesInternas.tiess#0:el_maximo_de_esta_fuente_es_menor"
+      ],
+      "diferencias": [
+        "dif.lab.salario_del_mes"
+      ]
+    },
+    "lab.empleadores.historial": {
+      "valor": 1,
+      "registros": [
+        "trabajoHistoricos.trabajosHistoricos#0"
+      ]
+    },
+    "lab.empleador_vigente.situacion_legal": {
+      "valor": "ACTIVA",
+      "registros": [
+        "trabajoHistoricos.trabajosHistoricos#0"
+      ]
+    },
+    "lab.antiguedad.empleo_actual_meses": {
+      "valor": 79,
+      "registros": [
+        "basesInternas.tiess#4"
+      ]
+    }
+  }
+}

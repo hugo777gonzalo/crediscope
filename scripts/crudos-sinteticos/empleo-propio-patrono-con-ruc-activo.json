@@ -1,0 +1,158 @@
+{
+  "descripcion": "Grupo 4: sin mecanizado, el empleo actual sale de los aportes del corte y el patrono es la propia persona (su RUC es su cédula más 001), con un único registro de RUC activo y ningún establecimiento informado; el aporte propio sólo cuenta como empleo desde que abrió el RUC",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "0000000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "PRUEBA FICTICIO MARTA",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "600",
+            "fecIng": "15/01/2025",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 8
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "0000000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "PRUEBA FICTICIO MARTA",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "600",
+            "fecIng": "15/01/2025",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 9
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "0000000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "PRUEBA FICTICIO MARTA",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "600",
+            "fecIng": "15/01/2025",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          }
+        ]
+      }
+    },
+    "trabajoHistoricosMecanizado": {
+      "status": "ok",
+      "data": {
+        "mecanizadoEmpleados": []
+      }
+    },
+    "trabajoHistoricos": {
+      "status": "ok",
+      "data": {
+        "trabajosHistoricos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "administraciones": {
+      "status": "ok",
+      "data": {
+        "administraciones": []
+      }
+    },
+    "cumplimientoPatronal": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": [
+          {
+            "ruc": "0000000000001",
+            "fecha_inscripcion_ruc": "2024/05/01",
+            "fecha_inicio_actividades": "2024/05/01",
+            "obligado": "NO"
+          }
+        ]
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "emp.actual@1": "aplica",
+    "emp.union@1": "no-aplica",
+    "emp.historial@1": "no-aplica",
+    "emp.salario_mas_alto@1": "no-aplica",
+    "emp.vigente@1": "no-aplica",
+    "ruc.referencia@1": "no-aplica"
+  },
+  "hechos": {
+    "lab.empleo_actual.fuente": {
+      "valor": "aportes",
+      "registros": [
+        "basesInternas.tiess#2"
+      ]
+    },
+    "lab.cliente_es_su_propio_empleador": {
+      "valor": true
+    },
+    "lab.salario.mas_alto": {
+      "valor": 600,
+      "registros": [
+        "basesInternas.tiess#0"
+      ]
+    },
+    "lab.antiguedad.empleo_actual_meses": {
+      "valor": 20,
+      "registros": [
+        "basesInternas.tiess#2"
+      ]
+    },
+    "ruc.activo": {
+      "valor": true,
+      "registros": [
+        "contribuyente.datosContribuyente#0"
+      ]
+    },
+    "ruc.actividad.estado": {
+      "valor": "activa_sin_interrupciones"
+    },
+    "ruc.referencia.numero": {
+      "valor": "0000000000001",
+      "registros": [
+        "contribuyente.datosContribuyente#0"
+      ],
+      "descartados": []
+    }
+  }
+}

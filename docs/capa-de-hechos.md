@@ -696,6 +696,207 @@ diferencia que la inversión admite, el **«sin dato»**:
   el diseño lo respeta y lo deja como regla con nombre. (5) Es el grupo donde más pesa el
   reloj.
 
+#### 4.4.1 El mapa del grupo (2026-11-20, antes de escribir código)
+
+El riesgo (1) está cerrado: abajo está cada campo de `laboral`, de `fuentesIngreso` con su
+`detalle` y de `tributario`, con la fuente que lee, la regla y de dónde sale hoy. Se hizo
+leyendo `process.ts` (532 a 1022) y `fuentes-ingreso.ts` línea por línea, sin medir nada nuevo.
+
+**Cómo se parte.** El grupo no entra en un solo PR razonable: `laboral` son 33 campos y
+`fuentesIngreso` otros 12 más nueve del `detalle`, con 1.386 líneas de reglas y textos que
+arman un segmento. Etapa A en dos PR, en este orden:
+
+1. **Empleo y actividad con RUC** (`empleo.ts` y `actividad-con-ruc.ts`): los 33 campos de
+   `laboral`.
+2. **Ingresos** (`ingresos.ts`): `fuentesIngreso` y su `detalle`. Va después porque lee las
+   mismas filas del IESS con un lector propio (abajo, «Dos lectores del mismo crudo»), y su
+   paridad es sobre textos (`motivoSegmento`, `paraConfirmar`) además de cifras.
+
+**Las fuentes** (clave de `FUENTES`, lista, cuántas filas y qué dice «no hay»; en todas «no
+hay» es la lista vacía con `status: "ok"`):
+
+| Fuente | Lista | Qué es una fila | Quién la lee hoy |
+|---|---|---|---|
+| `basesInternas` | `tiess` | un aporte mensual al IESS por empleo (`anio`, `mes`, `rucEmp`, `nomEmp`, `tipEmp`, `salario`, `fecIng`, `fecSal`, `ocupacion`) | `laboral`, `fuentesIngreso` |
+| `trabajoHistoricosMecanizado` | `mecanizadoEmpleados` | un registro por mes y empleo (`baseDate` «aaaa-mm», `rucEmpresa`, `nombreEmpresa`, `personaIngreso.valor`, `cargo.nombre`) | `laboral` |
+| `trabajoHistoricos` | `trabajosHistoricos` | un empleo, casi siempre viejo (`personaTrabajo.fechaIngreso` en ms, `personaPatrono.identificacion`, `situacionLegal`, `tipoCompania`, `fechaConstitucion`) | `laboral` |
+| `empleados` | `empleados` | la nómina que paga la persona (`ci`, `nomAfi`, `salario`, `anio`, `mes`) | `laboral`, `fuentesIngreso` |
+| `contribuyente` | `datosContribuyente` | un registro de RUC (`ruc`, fechas de inicio, cese, reinicio, `obligado`, `observ_solicitud_suspension`) | `laboral`, `tributario`, `fuentesIngreso` |
+| `establecimientoActEconomica` | `datosEstablecimientoActEco` | un establecimiento (`num_establecimiento`, `estado_establecimiento`, `fech_cierre`, `act_economica`) | `laboral`, `fuentesIngreso` |
+| `cumplimientoPatronal` | `afiliaciones` | una afiliación patronal (`obligaciones`) | `laboral` |
+| `administraciones` | `administraciones` | un cargo de administrador de una compañía | `laboral` (sólo `esEmpleadorOAdministrador`) |
+| `sriImpuestoRenta` | `data[0].impuestosISD` y `.impuestosRenta` | un año fiscal | `tributario`, `fuentesIngreso.detalle` |
+| `jubilados` y `servicioMilitarOPolicial` | `trabajos` y las afiliaciones ISSFAC/ISSPOL | una jubilación o una afiliación | sólo `fuentesIngreso` |
+| `pensionAlimenticia` (y la del proveedor) | `supas` | un proceso | sólo `fuentesIngreso` (la que **percibe**) |
+| `general` | `personaNatural.nombre` | el nombre, para el cotejo de apellidos y del propio patrono | `laboral`, `fuentesIngreso` |
+
+**Dos lectores del mismo crudo** (medidos al leer; la paridad los reproduce tal cual y no se
+unifican en esta etapa, cada uno es una diferencia que el negocio no ha decidido):
+
+- Los aportes: `process.ts` lee `basesInternas.data.tiess`; `fuentes-ingreso.ts`, `basesInternas.data.data ?? basesInternas.data`.
+- Los establecimientos: `process.ts` lee sólo `datosEstablecimientoActEco`; `fuentes-ingreso.ts`
+  junta **todas** las listas de `data`. Como `reglaDeTrabajo()` (que usa la antigüedad en el empleo
+  actual de `laboral`) es de `fuentes-ingreso.ts`, esa antigüedad depende del segundo lector.
+- Los registros de RUC: `process.ts` mira todos y toma `[0]` de referencia aunque sea un cascarón
+  (sin `ruc`); `fuentes-ingreso.ts` descarta los cascarones antes.
+- Un «empleo» se agrupa de **tres maneras**: la antigüedad por `nomEmp|fecIng`, la continuidad por
+  `rucEmp|fecIng|inicio posible` y los vínculos del detalle por `rucEmp ?? nomEmp|fecIng`. La entidad
+  `empleo` (RUC comparable o nombre normalizado, más la fecha de ingreso) es una cuarta y no
+  reemplaza a ninguna: las reglas conservan la suya, con nombre.
+- «Obligado a llevar contabilidad»: `ruc.ts` entiende «SI», «S», «NO» y «N»; el indicio de ingreso mayor y el
+  tamaño del negocio de `fuentes-ingreso.ts` sólo «SI» (riesgo 3: va con la versión mayor del marco, F16).
+
+**El reloj.** En `laboral` mandan seis lugares: `ahoraActividad` (antigüedad de la actividad y del empleo),
+`dentroUltimos3Meses` (el empleo actual confiable), `mesesDesdeUltimaEvidenciaActiva`, `aniosDesdeMs` (con
+`Date.now()`) y dos más dentro de esos. Con hechos los seis toman `contexto.fechaDeLaConsulta`. `fuentes-ingreso.ts`
+no usa reloj: su corte es un parámetro (`contexto.corteIess`, el argumento de `buildStandardProfile`; vacío, el
+`CORTE_IESS_CONOCIDO`) y el último mes del propio cliente.
+
+**La calidad.** Un aporte que paga un empleador (código de empleador público, privado, doméstico, agrícola o
+diplomático, y el patrono distinto de la persona) es `confirmado_por_tercero`; el de quien es su propio patrono
+(su RUC es su cédula más 001) o aporta por cuenta propia (códigos 3, 8, 24, 30, 31, 32, 34: afiliado voluntario,
+artesano, RISE, sin relación de dependencia) es `declarado`. Un hecho que junta filas de las dos clases toma la más
+débil (`declarado`). La nómina que paga la persona y su tipo de empleador son `declarado`: los reporta ella como
+empleadora. El RUC, sus fechas, sus establecimientos y su obligación de contabilidad los informa el SRI
+(`confirmado_por_tercero`); lo que sale de una regla nuestra (la antigüedad, si el RUC está activo, el estado de la
+actividad, de qué fuente salió el empleo actual) es `calculado`.
+
+##### `laboral` (33 campos), campo por campo
+
+«Reloj» marca los que hoy leen `new Date()`. `r` es el registro que cita el hecho. Las fuentes que no
+contestaron dejan el hecho sin valor, con el `parcial` que el perfil escribe hoy.
+
+| Campo del perfil | Código | Fuentes | Regla de hoy | Qué cita (`r`) y qué queda dicho |
+|---|---|---|---|---|
+| `empleosActuales` | `lab.empleos_actuales` | mecanizado, `tiess` | los registros del último mes del mecanizado si es de los últimos 3 meses (reloj) y no anterior al corte del IESS; si no, los aportes de `tiess` de ese corte | `r`: las filas que dieron cada empleo. **Nuevo: `lab.empleo_actual.fuente`** (`mecanizado`, `aportes` o `ninguna`), que el perfil no guarda y de la que dependen el cargo y los datos del empleador. Calidad por fila |
+| (nuevo) | `lab.empleo_actual.fuente` | mecanizado, `tiess` | la elección de arriba | `calculado`; regla `emp.actual@1` |
+| `empleadorConApellidoDelCliente` | `lab.empleador_con_apellido_del_cliente` | las del empleo actual, `general` | `relacionConEmpleador()` sobre cada empleo actual; `true` si alguno comparte | `calculado`; sin empleo, `no_aplica` |
+| `clienteEsSuPropioEmpleador` | `lab.cliente_es_su_propio_empleador` | ídem | ídem, sobre el RUC del patrono y, sin RUC, el nombre | `calculado`; es lo que hace `declarado` al aporte |
+| `numeroEmpleadoresUltimos24Meses` | `lab.empleadores.ultimos_24_meses` | `tiess` | nombres de empleador distintos con `mesesDesdeUltimaEvidenciaActiva` ≤ 24 (reloj) | una fila por nombre distinto; recuento por conteo |
+| `ingresoPromedioUltimos6Meses` | `lab.ingreso.promedio_6_meses` | mecanizado | se suma por mes y se promedian los 6 últimos meses | las filas de esos 6 meses (`personaIngreso`) |
+| `esEmpleadorOAdministrador` | `lab.es_empleador_o_administrador` | `empleados`, `administraciones` | hay nómina (sin la propia persona) o un cargo de administrador | la primera fila que lo hace cierto; la propia persona en la nómina va en `descartados` (`es_la_propia_persona`) |
+| `numeroEmpleadosRegistrados` | `lab.empleados.cantidad` | `empleados`, `general` | cédulas distintas de la nómina sin la propia persona | una fila por cédula; `declarado` |
+| `tipoEmpleador` | `lab.tipo_empleador` | `empleados` | el `tipEmp` de la **primera** fila de la nómina, aunque sea la propia persona | esa fila; `declarado` |
+| `obligacionesPatronalesEnMora` | `lab.obligaciones_patronales_en_mora` | `cumplimientoPatronal` | alguna afiliación cuyo texto de obligaciones no dice «NO REGISTRA» ni empieza con «NO » | las filas en mora, o todas |
+| `historialEmpleosRegistrados` | `lab.empleadores.historial` | historial, mecanizado, `tiess` | empleadores distintos entre las tres: manda el RUC, un registro sin RUC se une al de igual nombre comparable | una fila por empleador (`emp.historial@1`); cada fila con su fuente. Las tres fuentes en una entidad `empleo` |
+| `salarioMasAltoRegistrado` | `lab.salario.mas_alto` | historial, mecanizado, `tiess` | el máximo de los salarios positivos de las tres | **Nuevo: qué registros lo sostienen**, uno por fuente que llega a ese valor. Calidad: la más débil de los citados |
+| `cargoVigente` | `lab.cargo.vigente` | las del empleo actual | el cargo del empleo actual de mayor `salarioAprox`, entre los que tienen cargo | la fila de ese empleo |
+| `empleadorVigenteSituacionLegal` | `lab.empleador_vigente.situacion_legal` | historial, las del empleo actual | del registro del historial con más reciente `fechaIngreso` **cuyo RUC es el de un empleo actual** | esa fila; el criterio (un RUC de 10 dígitos es cédula + 001) queda en `emp.vigente@1` |
+| `empleadorVigenteTipoCompania` | `lab.empleador_vigente.tipo_compania` | ídem | ídem | ídem |
+| `empleadorVigenteAntiguedadAnios` | `lab.empleador_vigente.antiguedad_anios` | ídem | `aniosDesdeMs(fechaConstitucion)` (reloj, `Date.now()`) | ídem; `calculado` |
+| `empleadoresJuridicos` | `lab.empleadores.juridicos` | ídem | RUC distintos de persona jurídica entre los del historial que son de un empleo actual; `null` si no hay ninguno | una fila por RUC |
+| `antiguedadEmpleoActualMeses` | `lab.antiguedad.empleo_actual_meses` | `tiess`, contribuyente, establecimientos | de los empleos sin salida con ≥ 3 aportes, evidencia de los últimos 3 meses (reloj) y último mes entre los empleos que `reglaDeTrabajo()` acepta: el más largo, desde el ingreso (o el inicio del RUC) hasta el último aporte | la última fila del empleo que gana. **Regla con nombre `emp.antiguedad@1`: no cruza aportes con mecanizado, a propósito (riesgo 4)** |
+| `duracionEmpleoMasLargoMeses` | `lab.duracion.empleo_mas_largo_meses` | `tiess` | el empleo (`nomEmp|fecIng|fecSal`) más largo, hasta la salida o el último aporte | la fila del último aporte de ese empleo |
+| `tieneRucActivo` | `ruc.activo` | contribuyente, establecimientos | `rucActivo()` de `ruc.ts` sobre alguno de los registros | `calculado`; los registros activos, o todos |
+| `tieneEstablecimientoActivo` | `ruc.establecimiento.activo` | ídem | el mismo valor | ídem |
+| `esIndependiente` | `lab.es_independiente` | ídem | el mismo valor | ídem |
+| `fechaInicioActividadesRuc` | `ruc.fecha.inicio_actividades` | contribuyente | del RUC de referencia | el registro de referencia |
+| `fechaCeseActividadesRuc` | `ruc.fecha.cese` | ídem | el cese más reciente, incluido el temporal | ídem |
+| `fechaReinicioActividadesRuc` | `ruc.fecha.reinicio` | ídem | | ídem |
+| `numeroEstablecimientosActivos` | `ruc.establecimientos.activos` | establecimientos, contribuyente | los abiertos, y 0 si el RUC no está activo | los abiertos; con 0, la respuesta de la fuente |
+| `numeroEstablecimientosInactivos` | `ruc.establecimientos.inactivos` | ídem | el resto | los demás |
+| `tieneEstablecimientosRegistrados` | `ruc.establecimientos.registrados` | establecimientos | hay alguno | el primero |
+| `estadoActividadEconomica` | `ruc.actividad.estado` | contribuyente | los 5 casos de la nota de `process.ts` | `calculado`; el RUC de referencia |
+| `antiguedadUltimaEtapaActivaMeses` | `ruc.actividad.antiguedad_ultima_etapa_meses` | ídem | del inicio o reinicio hasta hoy (reloj) o hasta el cese | ídem |
+| `mesesInactivoActividadEconomica` | `ruc.actividad.meses_inactivo` | ídem | desde el cese hasta hoy (reloj) | ídem |
+| `tipoUltimoCeseRuc` | `ruc.cese.tipo` | ídem | cancelación, suspensión definitiva o temporal | ídem |
+| `rucDepuradoPorElSri` | `ruc.depurado_por_el_sri` | ídem | `ruc.ts`: la baja de oficio por depuración | ídem |
+| `obligadoALlevarContabilidadRuc` | `ruc.obligado_contabilidad` | ídem | `ruc.ts` (riesgo 3: «SI», «S», «NO», «N») | ídem |
+| (nuevo) | `ruc.referencia.numero` | ídem | **Cuál es el RUC de referencia cuando hay más de uno**: el primero activo, y si ninguno, el `[0]` | identificador (no llega al modelo); los demás registros van en `descartados` con `no_es_el_de_referencia` |
+
+**Entidades.** `empleo` (`emp-*`): una por empleador y fecha de ingreso, con una vista por cada fuente que la ve.
+El empleador es su RUC comparable (un RUC de 10 dígitos es cédula + 001) o, sin RUC, su nombre normalizado
+(`nombreComparable`); la fecha de ingreso es `fecIng` (aportes) o `fechaIngreso` en milisegundos (historial,
+mecanizado). Sus atributos dicen el último salario, el último mes, si es su propio patrono y la calidad. La unión es
+`emp.union@1` y **no cambia ningún campo**: cada campo conserva su agrupación (arriba). También `establecimiento`
+(`est-*`): el RUC más el número de establecimiento, con su estado, sus fechas y si está abierto según `ruc.ts`.
+
+**Diferencias.** `dif.lab.salario_del_mes`: el salario del último mes en que el mecanizado y los aportes ven el
+mismo empleo. Manda la fuente de la que salió el empleo actual (`lab.empleo_actual.fuente`) y la otra cede; sale
+`revisar` si difieren en un dólar o más (el 2026-09-24 coincidían en 272 de 272). `dif.ruc.estado`: RUC activo por
+fechas sin ningún establecimiento abierto.
+
+##### `fuentesIngreso` (la parte que va en el segundo PR)
+
+Fuente única, `analizarFuentesIngreso()`; su versión es `FUENTES_INGRESO_VERSION` (`fuentes-v11`).
+
+| Campo | Qué lee | Regla |
+|---|---|---|
+| `corteIessUsado`, `corteDesactualizado` | `tiess`, `contexto.corteIess` | el corte pasado; si el cliente trae un mes posterior, el del cliente |
+| `apareceEnUltimoCorte`, `cortesDesdeLaDesvinculacion` | `tiess` | último mes del cliente contra el corte |
+| `fuentes[]` | `tiess` del corte, `jubilados`, ISSFAC/ISSPOL, pensión percibida, RUC, nómina | una por aporte vigente (naturaleza por el código de `tipEmp`; **cuenta propia si el patrono es ella**), más jubilación, servicio activo o pensión del régimen especial, pensión percibida, actividad propia (RUC activo sin aporte propio) y actividad empresarial (nómina mayor que lo reportado). Cada una con su `evidencia`: `reportada_por_tercero`, `autodeclarada_en_minimo`, `autodeclarada_sobre_minimo` o `indirecta` |
+| `pisoIngresoMensualReportado` | las anteriores | suma de los montos con naturaleza |
+| `senalesDeEscala[]` | nómina, RUC, establecimientos | «nómina que paga» (mes más reciente), «obligado a llevar contabilidad» (**sólo «SI»**), «establecimientos activos» |
+| `segmento`, `estadoSegmento`, `motivoSegmento` | todo lo anterior | árbol de 9 ramas; el motivo es texto |
+| `paraConfirmar[]` | segmento y fuentes | texto |
+| `detalle.aportesPorMes`, `mesesConAporteUltimos12/24`, `promedioUltimos6/12`, `totalHace12Meses` | `tiess` de los 24 meses al corte | suma por mes, `montoValido` (> 0), promedios a centavos |
+| `detalle.vinculos[]` | `tiess` | un empleador por fecha de ingreso (`rucEmp ?? nomEmp|fecIng`) |
+| `detalle.continuidadLaboral` | `tiess`, RUC | empleos con `reglaDeTrabajo()`, huecos tolerados de 2 meses, meses que el proveedor no publicó |
+| `detalle.actividadesEconomicas[]` | **todas** las listas de `establecimientoActEconomica` | única por actividad y nombre comercial |
+| `detalle.impuestoRentaPorAnio[]` | `sriImpuestoRenta` | año, formulario, causado y en relación de dependencia |
+
+Lo que `ingresos.ts` tiene que decir por primera vez: el aporte de un empleador es `confirmado_por_tercero` y el de
+quien es su propio patrono o aporta por cuenta propia es `declarado` (es la regla de `evidencia` de cada fuente); el
+monto de un RUC viene de lo que la persona declaró al SRI (`declarado`); y cada `fuentes[]` cita las filas de las que
+sale. Sus textos (`motivoSegmento`, `paraConfirmar`, `detalle` de cada fuente) no se reescriben: la paridad los
+compara tal cual, y por eso se hace aparte.
+
+##### `tributario` (grupo posterior; sólo lo que toca a este)
+
+`pagaISD`, `montoMaximoISD`, `fechaMasRecienteISD`, `generaImpuestoRenta`, `montoMaximoImpuestoRenta` y
+`fechaMasRecienteImpuestoRenta` salen de `sriImpuestoRenta` y quedan para el archivo `tributario.ts`.
+`esAfiliadoUnipersonal` (algún registro de RUC cuyo número empieza con la cédula) lee el RUC como `ruc.ts` y se
+mapea con `actividad-con-ruc.ts` cuando se haga ese grupo: hoy no está en ninguno de los dos PR.
+
+##### Reglas que mezclan (cada una necesita un caso en que aplica y uno en que no)
+
+`emp.actual@1` (mecanizado o aportes), `emp.union@1` (una entidad por empleador y fecha de ingreso), `emp.historial@1`
+(empleadores distintos entre las tres fuentes), `emp.salario_mas_alto@1`, `emp.vigente@1` (el historial sólo si el RUC
+es el de un empleo actual), `emp.antiguedad@1` (sin cruzar fuentes) y `ruc.referencia@1`.
+
+##### Etapa A, primer PR: hecha (2026-11-20)
+
+`grupos/empleo.ts` y `grupos/actividad-con-ruc.ts`: los 33 campos de `laboral`, con sus 35 hechos
+(los 33 más `lab.empleo_actual.fuente` y `ruc.referencia.numero`), las dos diferencias (`dif.lab.salario_del_mes` y
+`dif.ruc.estado`), las entidades `empleo` y `establecimiento` y los ayudantes de fecha de `process.ts` copiados a
+`reloj.ts` con `ahoraDe(contexto)` como «hoy». `process.ts`, `fuentes-ingreso.ts` y el perfil no cambian.
+
+- **Paridad (2026-11-20, 3.766 personas reales, el último perfil de cada una, con el reloj en su captura):**
+  124.278 campos de `laboral` iguales de 124.278 (el seco los cuenta dos veces, 248.556 de 248.556, porque el perfil
+  de los dos archivos es el mismo grupo); 0 campos sin procedencia; 605.663 registros citados, 0 que no resuelven;
+  150.882 recuentos independientes, 0 que no cuadran. Sobre el respaldo del 2026-10-03 (2.567 personas), lo mismo:
+  169.422 de 169.422. Contra `origin/main` (estructura-v26) 0 personas con un campo distinto: no hay versión nueva
+  de la estructura ni recálculo.
+- **Presupuesto.** El documento completo de hechos (todos los grupos): p99 7,6 KB en gzip y 3,86 ms por persona,
+  contra 16 KB y 50 ms. Desde la etapa B del grupo 1 `process.ts` llama a `derivarHechos` en cada perfil, así que
+  estos archivos corren ya en producción; la prueba de Deno corre una entrada con campos de tipo raro y no se cae, y
+  un error en un grupo en etapa A no rompe el armado (abajo).
+- **Lo que quedó dicho por primera vez** (respaldo, 2.567 personas): el empleo actual sale del mecanizado en 1.730,
+  de ninguna fuente en 836 y de los aportes en 0 (con un corte del IESS de ese día los aportes sólo toman su lugar
+  si el mecanizado es viejo o anterior al corte); 1 persona no tuvo respuesta del mecanizado. El empleo actual es
+  `declarado` en 500 de esas 1.730 (el patrono es ella o aporta por cuenta propia). Hay 12.585 entidades `empleo`
+  (2.198 vistas por las tres fuentes, 5.447 por dos) y 1.120 personas con algún empleo propio. El salario más alto
+  lo sostienen el mecanizado y los aportes juntos en 1.709, el historial solo en 345 y las tres fuentes en 309.
+- **Las diferencias.** `dif.lab.salario_del_mes` da 0 en 2.567: los aportes y el mecanizado coinciden en el mes
+  que ven los dos (como el 272 de 272 del 2026-09-24). `dif.ruc.estado` sale 104 veces: 101 con un establecimiento
+  abierto y el RUC cesado (el registro sin actualizar de la v7, `esperada`) y 3 con el RUC vigente y todos los
+  establecimientos cerrados (`revisar`). Ninguna cambia un campo.
+- **El resguardo de la etapa A.** `derivarHechos` envuelve en `try/catch` a cada grupo que todavía no alimenta el
+  perfil (todos menos `GRUPOS_EN_ETAPA_B` de `indice.ts`: hoy el 1; el 3 se suma al fusionarse su etapa B): si falla,
+  ese grupo no emite nada (`emisor.marca()` deshace lo que alcanzó a emitir, claves incluidas), el error queda en
+  `console.error` con el grupo y el mensaje, sin datos de la persona, y el resto sigue. Un grupo en etapa B falla
+  como hoy, porque el perfil depende de él. Con `{ estricto: true }` fallan todos: lo usan `comparar-hechos.mjs` y
+  `probar-crudos-sinteticos.mjs`, para que un grupo caído no pase en silencio en un seco. Un grupo nuevo en etapa B se
+  suma a `GRUPOS_EN_ETAPA_B` junto con su entrada en `GRUPOS_CON_SIN_DATO`.
+- **Decisiones de esta etapa, revisables.** La nómina que paga la persona y su tipo de empleador son `declarado`;
+  el cumplimiento patronal y el RUC, `confirmado_por_tercero`; el estado del RUC y las antigüedades, `calculado`.
+  Los códigos de empleador 3, 8, 24, 30, 31, 32, 34 y 35 son afiliación propia (una prueba los compara con
+  `fuentes-ingreso.ts`). La unión por RUC une un registro sin RUC con el empleador de igual nombre comparable
+  (la regla de `empleadoresDistintos`).
+- **Lo que no se hizo.** `ingresos.ts` (segundo PR), `tributario.ts` y `esAfiliadoUnipersonal`. El campo
+  `lab.empleo_actual.fuente` todavía no llega a ninguna parte: no hay campo del perfil y el cargo vigente sigue
+  saliendo de la regla de `process.ts`. La etapa B de este grupo espera a que `ingresos.ts` use los mismos hechos.
+
 ### 4.5 Los demás grupos
 
 Identidad, contacto, familia, tributario, seguridad social, patrimonio, tránsito, penal y

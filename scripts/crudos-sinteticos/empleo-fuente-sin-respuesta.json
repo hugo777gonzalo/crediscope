@@ -1,0 +1,101 @@
+{
+  "descripcion": "Grupo 4: el mecanizado y el RUC no contestaron y los aportes sí: el empleo actual y el estado del RUC no tienen valor y dicen por qué, con el parcial de lo que sí llegó (lo que el perfil escribe hoy)",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          }
+        ]
+      }
+    },
+    "trabajoHistoricosMecanizado": {
+      "status": "error",
+      "data": null
+    },
+    "trabajoHistoricos": {
+      "status": "ok",
+      "data": {
+        "trabajosHistoricos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "administraciones": {
+      "status": "ok",
+      "data": {
+        "administraciones": []
+      }
+    },
+    "cumplimientoPatronal": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "contribuyente": {
+      "status": "error",
+      "data": null
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {},
+  "hechos": {
+    "lab.empleos_actuales": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": [
+        {
+          "empleador": "EMPRESA FICTICIA S.A.",
+          "cargo": "ANALISTA",
+          "salarioAprox": 800
+        }
+      ]
+    },
+    "ruc.activo": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": false
+    },
+    "ruc.actividad.estado": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": "sin_ruc"
+    },
+    "lab.empleados.cantidad": {
+      "valor": 0
+    }
+  }
+}
