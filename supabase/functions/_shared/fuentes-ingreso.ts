@@ -38,6 +38,7 @@ import { sePuedeAfirmarQueNoAporta } from "./calidad-de-la-consulta.ts";
 import { diaDeFecha, establecimientoAbierto, esRegistroDeRuc, fechasDelRuc, rucActivo as rucActivoSegunSri } from "./ruc.ts";
 import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
+import { mismoNombre } from "./mismo-nombre.ts";
 
 // v3: la guarda de "no sé si aporta" pasa a mirar basesInternas, la
 // fuente que realmente trae los aportes, en vez del bloque `bancos`
@@ -364,12 +365,6 @@ function naturalezaDelAporte(a: AnyRecord, esPropio: EsPropio): { naturaleza: Na
   const porCodigo: Naturaleza = (codigo ? NATURALEZA_POR_CODIGO[codigo] : undefined) ?? "otro";
   const comoPatrono = porCodigo !== "cuenta_propia" && porCodigo !== "hogar" && esPropio(a);
   return { naturaleza: comoPatrono ? "cuenta_propia" : porCodigo, comoPatrono };
-}
-
-function mismoNombre(a: unknown, b: unknown): boolean {
-  const norm = (s: unknown) => String(s ?? "").toUpperCase().trim().split(/\s+/).filter(Boolean).sort().join(" ");
-  const na = norm(a);
-  return na !== "" && na === norm(b);
 }
 
 // El IESS y el SRI mandan fechas "dd/mm/yyyy". Se reescriben a ISO sin

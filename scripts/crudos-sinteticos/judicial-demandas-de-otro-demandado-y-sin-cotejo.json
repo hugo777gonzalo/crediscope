@@ -1,0 +1,145 @@
+{
+  "descripcion": "Grupo 3 de la capa de hechos: cinco demandas contra la persona. La de cobro de otra persona y la de extorsión de otra persona no cuentan (v24 y v20); la civil sin demandado cuenta como sin cotejo; la de lavado de activos es suya y bloquea. Cada hecho cita las que usó y descarta las otras con su motivo",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "demandas": {
+      "status": "ok",
+      "data": {
+        "demandas": [
+          {
+            "demanda": {
+              "numeroProceso": "P-0001",
+              "delito": "COBRO DE DINERO",
+              "demandado": "PRUEBA FICTICIO MARTA",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          },
+          {
+            "demanda": {
+              "numeroProceso": "P-0002",
+              "delito": "COBRO DE DINERO",
+              "demandado": "INVENTADO ALFA BETA OMEGA",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          },
+          {
+            "demanda": {
+              "numeroProceso": "P-0003",
+              "delito": "DIVORCIO",
+              "demandado": "",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          },
+          {
+            "demanda": {
+              "numeroProceso": "P-0004",
+              "delito": "EXTORSION",
+              "demandado": "INVENTADO GAMA DELTA",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          },
+          {
+            "demanda": {
+              "numeroProceso": "P-0005",
+              "delito": "LAVADO DE ACTIVOS",
+              "demandado": "PRUEBA FICTICIO MARTA",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          }
+        ]
+      }
+    },
+    "denuncias": {
+      "status": "ok",
+      "data": {
+        "denuncias": []
+      }
+    },
+    "antecedentesPenales": {
+      "status": "ok",
+      "data": {
+        "antecedentes": {
+          "descripcion": "NO"
+        }
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "jud.atribucion@1": "aplica",
+    "seg.delito@1": "aplica"
+  },
+  "hechos": {
+    "jud.cobro.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#0"
+      ],
+      "descartados": [
+        "demandas.demandas#1:demandado_es_otra_persona"
+      ]
+    },
+    "jud.cobro.de_otro_demandado.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#1"
+      ]
+    },
+    "jud.cobro.sin_cotejo.cantidad": {
+      "valor": 0
+    },
+    "jud.civil.cantidad": {
+      "valor": 2,
+      "registros": [
+        "demandas.demandas#2",
+        "demandas.demandas#4"
+      ],
+      "descartados": [
+        "demandas.demandas#3:demandado_es_otra_persona"
+      ]
+    },
+    "jud.civil.sin_cotejo.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#2"
+      ]
+    },
+    "jud.civil.de_otro_demandado.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#3"
+      ]
+    },
+    "seg.delito.categorias": {
+      "valor": [
+        "Lavado de activos"
+      ],
+      "registros": [
+        "demandas.demandas#4"
+      ],
+      "descartados": [
+        "demandas.demandas#3:demandado_es_otra_persona"
+      ]
+    },
+    "seg.demandas.posible_homonimo.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#3"
+      ]
+    }
+  }
+}

@@ -31,7 +31,10 @@ export function perfilDesdeHechos(doc: HechosDeLaPersona, grupoDelPerfil: string
       salida[campo] = null;
       sinDato[campo] = h.parcial ?? c.enElPerfilSinValor ?? null;
     } else {
-      salida[campo] = h.valor ?? c.enElPerfilSinValor ?? null;
+      // Un grupo en etapa A reproduce lo que escribe process.ts: con una fuente caída,
+      // lo que dicen las filas que llegaron (el `parcial`); si el hecho no aplica o la
+      // fuente no lo informa, lo que el perfil escribe en ese caso.
+      salida[campo] = h.valor ?? (h.parcial !== undefined ? h.parcial : c.enElPerfilSinValor) ?? null;
     }
   }
   if (Object.keys(sinDato).length) salida[CLAVE_SIN_DATO] = sinDato;

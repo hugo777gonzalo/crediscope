@@ -1,0 +1,71 @@
+{
+  "descripcion": "Grupo 3: la fuente de demandas y una de las dos de pensiones fallaron: los hechos no tienen valor y dicen por qué, con el parcial de lo que sí llegó; el antecedente por extorsión sigue bloqueando",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "demandas": {
+      "status": "error",
+      "data": null
+    },
+    "pensionAlimenticia": {
+      "status": "error",
+      "data": null
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": [
+          {
+            "numeroProceso": "S-1",
+            "obligadoPrincipal": "PRUEBA FICTICIO MARTA",
+            "valorMensual": 20,
+            "totalDeuda": 300
+          }
+        ]
+      }
+    },
+    "antecedentesPenales": {
+      "status": "ok",
+      "data": {
+        "antecedentes": {
+          "descripcion": "EXTORSION"
+        }
+      }
+    },
+    "denuncias": {
+      "status": "ok",
+      "data": {
+        "denuncias": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {},
+  "hechos": {
+    "jud.cobro.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    },
+    "jud.pension.deuda": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 300
+    },
+    "seg.delito.categorias": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": [
+        "Extorsión"
+      ]
+    }
+  }
+}

@@ -20,6 +20,11 @@
 //      igual campo por campo; sin ellos, la única diferencia admitida es la de
 //      DIFERENCIAS_ESPERADAS del grupo (`cuando: "sin_dato"`: el campo está en
 //      camposSinDato). --contra=no la salta.
+// 8. Con el grupo riesgoJudicial (o --bloqueo), el hallazgo de seguridad ciudadana del
+//    control de bloqueo: `controlesDesdeHechos()` contra `evaluarControlesBloqueo()` sobre
+//    el mismo crudo, hallazgo por hallazgo (código, texto, si bloquea). Nada llama todavía
+//    a `controlesDesdeHechos()`: es la medida de que dan lo mismo antes de cambiar la
+//    llamada. --bloqueo=no la salta.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
@@ -42,6 +47,7 @@
 // Uso:
 //   node scripts/comparar-hechos.mjs [--grupo=comportamientoBancario,cooperativas] [--medir]
 //     [--carpeta=research/proveedor-info-1-raw-2026-10-03] [--deposito] [--limite=N] [--contra=origin/main|no]
+//     [--bloqueo=no]
 //
 // AVISO: este archivo no pasa por lint ni build. Después de tocarlo, correrlo
 // con --limite=5 antes de confiar en los números.
@@ -76,6 +82,8 @@ const { derivarHechos, GRUPOS } = await importar("supabase/functions/_shared/hec
 const { perfilDesdeHechos, gruposDelPerfil } = await importar("supabase/functions/_shared/hechos/perfil-desde-hechos.ts");
 const { buildStandardProfile } = await importar("supabase/functions/_shared/process.ts");
 const { conLosValoresDeAntes } = await importar("supabase/functions/_shared/campos-sin-dato.ts");
+const { controlesDesdeHechos, CODIGOS_DE_SEGURIDAD } = await importar("supabase/functions/_shared/hechos/controles.ts");
+const { evaluarControlesBloqueo } = await importar("supabase/functions/_shared/controles-bloqueo.ts");
 
 // 7. El process.ts de otra versión, sacado de git a una carpeta temporal (sólo
 // el código de _shared, sin las pruebas): se importa como cualquier otro.
@@ -118,6 +126,7 @@ const esperada = (ruta, grupoNuevo) =>
     const campo = ruta.split(".").slice(1).join(".");
     return !!grupoNuevo?.camposSinDato && campo in grupoNuevo.camposSinDato;
   });
+const BLOQUEO = args.bloqueo === "no" ? false : args.bloqueo === true || ELEGIDOS.includes("riesgoJudicial");
 // Los campos que un grupo declara pendientes, con su porqué: se informan aparte.
 const PENDIENTES = new Map(ELEGIDOS.flatMap((g) => (GRUPOS[g].CAMPOS_PENDIENTES ?? []).map((p) => [p.campo, p.motivo])));
 const pendientesVistos = new Set();
@@ -216,8 +225,9 @@ function estadistica(valores) {
 // ---- La corrida ----
 
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0, hechos: 0, conValor: 0, registros: 0, recuentos: 0 };
-const fallas = { paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
+const fallas = { bloqueo: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
 // 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
+const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0 };
 const cambio = { personas: 0, personasSinDato: 0, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
 const porCampo = {};
 const medidas = { documentoJson: [], documentoGzip: [], ms: [], hechos: [], entidades: [], diferencias: [] };
@@ -326,6 +336,18 @@ for (let i = 0; i < candidatos.length; i += 50) {
       if (parcialConDato) cambio.personasConParcialConDato++;
     }
 
+    // 8. El hallazgo de seguridad ciudadana del bloqueo, de las dos maneras.
+    if (BLOQUEO) {
+      const forma = (hs) => hs.filter((x) => CODIGOS_DE_SEGURIDAD.includes(x.code)).map((x) => ({ code: x.code, message: x.message, bloqueante: x.bloqueante, salidaMaxima: x.salidaMaxima ?? null }));
+      const hoy = forma(evaluarControlesBloqueo(raw, crudo.cedula).hallazgos);
+      const desdeHechos = forma(controlesDesdeHechos(doc));
+      bloqueo.personas++;
+      if (hoy.some((x) => x.code === "delito_seguridad_ciudadana")) bloqueo.conDelito++;
+      if (hoy.some((x) => x.code === "posible_homonimo_en_demanda_penal")) bloqueo.conAviso++;
+      if (canonico(hoy) === canonico(desdeHechos)) bloqueo.iguales++;
+      else fallas.bloqueo.push({ ref, hoy, desdeHechos });
+    }
+
     // 4 y 5. Procedencia y recuento.
     const citas = [];
     for (const h of doc.hechos) {
@@ -368,6 +390,10 @@ console.log(`Hechos: ${n(cuenta.hechos)} (${n(cuenta.conValor)} con valor); regi
 for (const d of fallas.noResuelve.slice(0, 5)) console.log(`  ${d.ref} ${d.quien}: ${d.registro.fuente}.${d.registro.lista}#${d.registro.indice}.${d.registro.campo}`);
 console.log(`Recuentos independientes: ${n(cuenta.recuentos)}, ${fallas.recuento.length} que no cuadran.`);
 for (const d of fallas.recuento.slice(0, 5)) console.log(`  ${d.ref} ${d.codigo}`);
+if (BLOQUEO) {
+  console.log(`Bloqueo (seguridad ciudadana): ${n(bloqueo.iguales)} de ${n(bloqueo.personas)} personas con los mismos hallazgos de las dos maneras; ${fallas.bloqueo.length} distintas. Con delito propio (bloquea): ${n(bloqueo.conDelito)}; con aviso de posible homónimo: ${n(bloqueo.conAviso)}.`);
+  for (const d of fallas.bloqueo.slice(0, 8)) console.log(`  DISTINTO ${d.ref}: hoy ${d.hoy.map((x) => x.code).join(",") || "nada"}; desde hechos ${d.desdeHechos.map((x) => x.code).join(",") || "nada"}`);
+}
 if (args.deposito) console.log(`Contra lo guardado (informativo): ${fallas.contraLoGuardado.length} perfiles con algún campo del grupo distinto del rearmado.`);
 if (construirAntes) {
   console.log(`Contra ${CONTRA} (${selloContra}): ${n(cambio.personas)} personas con algún campo distinto, ${n(cambio.campos)} campos declarados como «sin dato»; ${fallas.contraAntes.length} sin declarar.`);
@@ -407,8 +433,8 @@ const destino = path.join(PRINCIPAL, "research", "comparar-hechos");
 fs.mkdirSync(destino, { recursive: true });
 const sello = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
 const archivo = path.join(destino, `comparar-${ELEGIDOS.join("+")}-${sello}.json`);
-fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
+fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, bloqueo: BLOQUEO ? bloqueo : null, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
 console.log(`Detalle (con montos, fuera de git): ${path.relative(PRINCIPAL, archivo)}`);
 
-const malo = fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fueraDelPresupuesto;
+const malo = fallas.bloqueo.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fueraDelPresupuesto;
 process.exit(malo ? 1 : 0);

@@ -442,12 +442,16 @@ export interface DemandasAtribuidas {
   deOtroDemandado: AnyRecord[];
   // Un subconjunto de `cuentan`: contadas sin poder confirmar que son suyas.
   sinCotejo: AnyRecord[];
+  // El cotejo de cada demanda, calculado una sola vez: la capa de hechos lo cita
+  // como la atribución de la demanda (hechos/grupos/riesgo-judicial.ts).
+  cotejos: Map<AnyRecord, CotejoDelDemandado>;
 }
 
 export function atribuirDemandas(demandas: AnyRecord[], nombreDeLaPersona: unknown): DemandasAtribuidas {
-  const atribuidas: DemandasAtribuidas = { cuentan: [], deOtroDemandado: [], sinCotejo: [] };
+  const atribuidas: DemandasAtribuidas = { cuentan: [], deOtroDemandado: [], sinCotejo: [], cotejos: new Map() };
   for (const d of demandas) {
     const cotejo = cotejarDemandado(((d.demanda ?? {}) as AnyRecord).demandado, nombreDeLaPersona);
+    atribuidas.cotejos.set(d, cotejo);
     if (cotejo === "otra_persona" || cotejo === "apellidos_invertidos") {
       atribuidas.deOtroDemandado.push(d);
       continue;
