@@ -1,0 +1,44 @@
+{
+  "descripcion": "La fuente contestó y la persona no tiene operaciones con la institución: no es cliente (un valor, con la respuesta como registro) y lo demás no aplica",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": []
+      }
+    }
+  },
+  "esperado": {},
+  "hechos": {
+    "inst.es_cliente": {
+      "valor": false,
+      "registros": [
+        "basesInternas.personasIncumplimientos"
+      ]
+    },
+    "inst.operacion.saldo": {
+      "valor": null,
+      "motivo": "no_aplica"
+    },
+    "inst.operaciones.cantidad": {
+      "valor": 0,
+      "registros": [
+        "basesInternas.personasIncumplimientos"
+      ]
+    },
+    "inst.mora.dias_max_entre_todas": {
+      "valor": null,
+      "motivo": "no_aplica"
+    }
+  }
+}

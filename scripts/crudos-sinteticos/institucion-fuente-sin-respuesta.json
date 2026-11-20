@@ -1,0 +1,34 @@
+{
+  "descripcion": "La fuente de la base interna falló: los hechos no tienen valor y dicen por qué (el perfil escribe lo de hoy)",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "error",
+      "data": null
+    }
+  },
+  "esperado": {},
+  "hechos": {
+    "inst.es_cliente": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    },
+    "inst.operacion.saldo": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    },
+    "inst.operaciones.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    }
+  }
+}
