@@ -146,7 +146,9 @@ export const GRUPOS_CONFIG = {
   },
   laboral: {
     mensajeVacio: "Sin empleo, RUC ni establecimiento activo registrados.",
-    presencia: (p) => Boolean(p.laboral?.empleosActuales?.length) || p.laboral?.tieneRucActivo || p.laboral?.tieneEstablecimientoActivo,
+    // Con una fuente que no contestó la tarjeta muestra su fila «sin dato», nunca «sin empleo»: decirlo de alguien a
+    // quien no se pudo mirar era una afirmación falsa (estructura-v30).
+    presencia: (p) => camposSinDato(p, "laboral").length > 0 || Boolean(p.laboral?.empleosActuales?.length) || p.laboral?.tieneRucActivo || p.laboral?.tieneEstablecimientoActivo,
     campos: [
       // Todos los empleos vigentes. Un tercio de la cartera tiene más
       // de uno y antes se veía uno solo.
@@ -415,6 +417,42 @@ const FUENTE_DEL_CAMPO = {
     numeroPensionesVigentes: "Pensiones alimenticias",
     valorMensualPensiones: "Pensiones alimenticias",
     numeroPensionesEnMora: "Pensiones alimenticias",
+  },
+  // Desde estructura-v30 (grupo laboral): cada campo dice de qué fuente sale.
+  laboral: {
+    empleosActuales: "Empleo y aportes del IESS",
+    empleadorConApellidoDelCliente: "Empleo y aportes del IESS",
+    clienteEsSuPropioEmpleador: "Empleo y aportes del IESS",
+    numeroEmpleadoresUltimos24Meses: "Empleo y aportes del IESS",
+    ingresoPromedioUltimos6Meses: "Empleo y aportes del IESS",
+    historialEmpleosRegistrados: "Empleo y aportes del IESS",
+    salarioMasAltoRegistrado: "Empleo y aportes del IESS",
+    cargoVigente: "Empleo y aportes del IESS",
+    empleadorVigenteSituacionLegal: "Empleo y aportes del IESS",
+    empleadorVigenteTipoCompania: "Empleo y aportes del IESS",
+    empleadorVigenteAntiguedadAnios: "Empleo y aportes del IESS",
+    empleadoresJuridicos: "Empleo y aportes del IESS",
+    antiguedadEmpleoActualMeses: "Empleo y aportes del IESS",
+    duracionEmpleoMasLargoMeses: "Empleo y aportes del IESS",
+    esEmpleadorOAdministrador: "Nómina de empleados",
+    numeroEmpleadosRegistrados: "Nómina de empleados",
+    tipoEmpleador: "Nómina de empleados",
+    obligacionesPatronalesEnMora: "Cumplimiento patronal",
+    tieneRucActivo: "RUC y establecimientos (SRI)",
+    tieneEstablecimientoActivo: "RUC y establecimientos (SRI)",
+    esIndependiente: "RUC y establecimientos (SRI)",
+    fechaInicioActividadesRuc: "RUC y establecimientos (SRI)",
+    fechaCeseActividadesRuc: "RUC y establecimientos (SRI)",
+    fechaReinicioActividadesRuc: "RUC y establecimientos (SRI)",
+    numeroEstablecimientosActivos: "RUC y establecimientos (SRI)",
+    numeroEstablecimientosInactivos: "RUC y establecimientos (SRI)",
+    tieneEstablecimientosRegistrados: "RUC y establecimientos (SRI)",
+    estadoActividadEconomica: "RUC y establecimientos (SRI)",
+    antiguedadUltimaEtapaActivaMeses: "RUC y establecimientos (SRI)",
+    mesesInactivoActividadEconomica: "RUC y establecimientos (SRI)",
+    tipoUltimoCeseRuc: "RUC y establecimientos (SRI)",
+    rucDepuradoPorElSri: "RUC y establecimientos (SRI)",
+    obligadoALlevarContabilidadRuc: "RUC y establecimientos (SRI)",
   },
   // Desde estructura-v28 (grupos penal y de cumplimiento): cada campo dice de qué fuente sale.
   riesgoPenal: {

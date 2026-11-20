@@ -977,6 +977,47 @@ archivo y borra la llamada de `process.ts`. `process.ts` y `fuentes-ingreso.ts` 
 - **Lo que no se hizo.** Mover las reglas (etapa B), `tributario.ts` y `esAfiliadoUnipersonal`. Los textos del segmento
   (`motivoSegmento`, `paraConfirmar`) siguen siendo de `fuentes-ingreso.ts`.
 
+##### Etapa B, parte laboral: hecha en estructura-v30 (2026-11-20, E7)
+
+`process.ts` arma `laboral` (los 33 campos) con `perfilDesdeHechos` y perdió sus copias: el empleo actual, la antigüedad,
+el historial, el RUC de referencia y el estado de la actividad viven en `empleo.ts` y `actividad-con-ruc.ts`, una sola
+implementación. La capa de hechos se deriva ahora antes de `identidad` (la parte laboral es la primera en usarla). Los grupos
+`empleo` y `actividadConRuc` entran a `GRUPOS_EN_ETAPA_B` y `laboral` a `GRUPOS_CON_SIN_DATO`. **`fuentesIngreso` NO entra en
+este PR**: sigue saliendo de `analizarFuentesIngreso()` en `process.ts` y la etapa B de `ingresos.ts` es el siguiente PR.
+
+- **La decisión de `ingresos.ts`.** Las reglas de `fuentes-ingreso.ts` (1.386 líneas, con su versión y los textos que lee el
+  analista) **no se mudan**: se mantiene `analizarFuentesIngreso()` como la única implementación y el grupo `ingresos` la
+  llama (nunca una copia). Lo que sí hace la etapa B es que `process.ts` deje de llamarla por su cuenta y tome `fuentesIngreso`
+  de los hechos, para que no corra dos veces (hoy corre dos: una en `process.ts` y otra, dentro del resguardo de la etapa A,
+  en `ingresos.ts`). Ese cambio va en el PR de `fuentesIngreso`, no en éste: sus lectores son otros (la bandeja, Monitoreo y
+  Fuentes de ingreso leen `fuentes_ingreso` del resumen, y las pantallas leen `fuentesIngreso.fuentes` como lista).
+- **El «sin dato».** Con una fuente que no contestó el campo es null y el grupo lo lista en `camposSinDato` con lo que
+  escribía la v29. Hasta la v29 el perfil decía «sin empleo», 0 empleadores o «sin RUC» de alguien a quien no se pudo
+  mirar. La tarjeta muestra una fila por fuente («Empleo y aportes del IESS», «Nómina de empleados», «RUC y
+  establecimientos (SRI)», «Cumplimiento patronal») con «sin dato (la fuente no contestó)». El RUC de referencia lee
+  las dos fuentes (`contribuyente` y `establecimientoActEconomica`: `rucActivo()` mira los establecimientos): con una de las
+  dos caída, los 15 campos del RUC quedan sin dato.
+- **Quién lee qué.** Todo lo que lee `laboral` del perfil guardado lo lee con los valores de antes
+  (`conLosValoresDeAntes()`): el modelo, la capacidad de pago, **el predictor de ingresos** (`vectorDeNivel1()` y
+  `vectorDeNivel2()`), el perfil laboral (`clasificarPerfilLaboral()`, y con él la columna `perfil_laboral`), los eventos entre
+  consultas, `tamanoDelNegocio()`, `quienDeclara()` y las pantallas de ingresos y el expediente. **El resumen por persona
+  también** (migración 153): `refrescar_resumen_por_persona()` hacía `jsonb_array_length(coalesce(sp -> 'laboral' ->
+  'empleosActuales', '[]'))`, que con un null de JSON falla («cannot get array length of a scalar») y deja sin refrescar a
+  toda la sentencia y a la reconstrucción de la noche. `valor_de_antes()` es la copia en SQL de `conLosValoresDeAntes()`.
+- **El reloj no cambia.** Los hechos miden con la fecha de la consulta (`fechaDeLaConsulta`), que `process.ts` toma de la
+  hora del armado: es la misma que usaba el perfil. Los recálculos fijan la hora del perfil en su captura y los dos se mueven
+  juntos. Ninguna edad ni antigüedad cambia respecto de hoy; no hay cambio de regla.
+- **El seco (2026-11-20, 3.766 personas reales, contra estructura-v28).** Paridad 249.912 de 249.912 campos (el seco cuenta
+  dos veces los 33 por persona, uno por archivo); 0 sin procedencia, 0 registros que no resuelven, 0 recuentos que no
+  cuadran. Cambian **678 personas**, todas por el «sin dato» (6.766 campos declarados, **0 sin declarar**); con los valores de
+  antes, **0 campos distintos**. **El predictor de ingresos, nivel 1: 3.766 de 3.766 con las mismas variables y avisos**
+  (`comparar-hechos.mjs --predictor`). `recalcular-grupos.mjs --grupos=laboral --bloqueo --seco`: el crudo reproduce los
+  3.766 perfiles, 678 cambian y el bloqueo da 0 y 0. En 31 de las 678 el parcial no es 0, false ni vacío: la v29 mostraba algo
+  y ahora la tarjeta dice «sin dato».
+- **El orden.** Primero se **migra** la 153 (`node scripts/migrar-clientes.mjs --seco`, después `--aplicar`), después se
+  **despliega** (`--funciones`) y después se **recalcula**. Con la función vieja de la base, un perfil con
+  `empleosActuales` en null rompe el refresco del resumen. La 153 sola no cambia nada (ningún perfil tiene la marca laboral).
+
 ### 4.5 Los demás grupos
 
 Identidad, contacto, familia, tributario, seguridad social, patrimonio y tránsito son de una o dos

@@ -3,6 +3,7 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, DOCUMENTOS_DE_CONFIRMACION, textoIngresoReportado } from "../lib/fuentesIngresoConsolidado.js";
 import { duracionLegible } from "../lib/ingresosCampos.js";
 import { plural, humanizarTexto } from "../lib/formatos.js";
+import { conLosValoresDeAntes } from "../../supabase/functions/_shared/campos-sin-dato.ts";
 
 // Lo que sigue estando disponible cuando el modelo no responde.
 //
@@ -34,7 +35,7 @@ export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
   const f = sp?.fuentesIngreso ?? null;
   if (!sp) return null;
 
-  const laboral = sp.laboral ?? {};
+  const laboral = conLosValoresDeAntes(sp).laboral ?? {}; // un campo sin dato (v30) vuelve a su valor de antes
   const cumplimiento = sp.cumplimiento ?? {};
 
   return (

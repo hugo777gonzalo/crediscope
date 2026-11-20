@@ -78,7 +78,12 @@ Deno.test("un establecimiento sin estado está abierto salvo una fecha de cierre
 });
 
 const crudo = (datosContribuyente: unknown[]) =>
-  ({ contribuyente: { status: 200, data: { estado: { codigo: "OK" }, datosContribuyente } } }) as unknown as RespuestaProveedorInfo1;
+  ({
+    contribuyente: { status: "ok", data: { estado: { codigo: "OK" }, datosContribuyente } },
+    // Desde estructura-v30, el RUC de referencia lee las dos fuentes (rucActivo mira los establecimientos):
+    // sin la de establecimientos el campo queda sin dato.
+    establecimientoActEconomica: { status: "ok", data: { datosEstablecimientoActEco: [] } },
+  }) as unknown as RespuestaProveedorInfo1;
 
 Deno.test("el perfil lleva el obligado en laboral, del mismo RUC que las fechas", () => {
   const { profile } = buildStandardProfile(crudo([registro("S")]), "0000000000", "2026-08");

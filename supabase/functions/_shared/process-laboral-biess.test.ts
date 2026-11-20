@@ -6,6 +6,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { buildStandardProfile } from "./process.ts";
+import { camposSinDato, conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 const CEDULA = "0000000000";
@@ -106,6 +107,8 @@ Deno.test("el cargo vigente es el del empleo actual y no el de la pasantía viej
 Deno.test("sin empleo actual no hay cargo vigente", () => {
   const l = perfilDe({
     trabajoHistoricos: FUENTES_LABORALES.trabajoHistoricos,
+    // El mecanizado contesta vacío: sin él, desde estructura-v30, el empleo actual queda sin dato.
+    trabajoHistoricosMecanizado: fuente({ mecanizadoEmpleados: [] }),
     basesInternas: fuente({ tiess: [aporte(RUC_OTRA, "OTRA EMPRESA CIA. LTDA.", 800, 2019, 5)] }),
   }).laboral;
   assertEquals(l.empleosActuales, []);
@@ -153,8 +156,12 @@ Deno.test("los datos del empleador salen del historial sólo si es el de un empl
   assertEquals(l.empleadoresJuridicos, 1);
 });
 
-Deno.test("sin ninguna fuente laboral el perfil se arma con los campos en vacío", () => {
-  const l = perfilDe({}).laboral;
+Deno.test("sin ninguna fuente laboral el perfil queda sin dato, y lo que lee el modelo es lo de siempre: campos en vacío", () => {
+  const p = perfilDe({});
+  // Desde estructura-v30 una fuente que no contestó deja el campo en null y lo marca.
+  assertEquals(p.laboral.historialEmpleosRegistrados, null);
+  assertEquals(camposSinDato(p.laboral).includes("historialEmpleosRegistrados"), true);
+  const l = conLosValoresDeAntes(p).laboral;
   assertEquals(l.historialEmpleosRegistrados, 0);
   assertEquals(l.salarioMasAltoRegistrado, null);
   assertEquals(l.cargoVigente, null);

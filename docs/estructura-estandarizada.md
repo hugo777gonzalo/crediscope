@@ -966,6 +966,19 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
 >   con el sí del negocio.
 
+> **estructura-v30 (E7, 2026-11-20: etapa B del grupo 4 de la capa de hechos, parte laboral)**
+> - `laboral` (33 campos) sale de la capa de hechos (`hechos/grupos/empleo.ts` y `actividad-con-ruc.ts`,
+>   `docs/capa-de-hechos.md`, 4.4): misma regla, una sola implementación. `fuentesIngreso` **no** cambia en esta versión.
+> - Con una fuente que no contestó (o apagada), el campo es `null` y el grupo lo lista en `camposSinDato` con lo que
+>   escribía la v29. Antes: «sin empleo», 0 empleadores o «sin RUC» de alguien a quien no se pudo mirar. El RUC lee las
+>   dos fuentes (`contribuyente` y `establecimientoActEconomica`): con una caída, los 15 campos del RUC quedan sin dato.
+> - El modelo, la capacidad de pago, **el predictor de ingresos**, el perfil laboral y los eventos entre consultas leen
+>   el valor de antes (`_shared/campos-sin-dato.ts`); el resumen por persona, también (migración 153, `valor_de_antes()`).
+> - Medido en seco sobre las 3.766 personas reales: cambian 678 (todas sin dato, 0 sin declarar); con los valores de
+>   antes, 0 campos distintos; el predictor (nivel 1) da las mismas variables en las 3.766; el bloqueo da 0 y 0.
+> - **Sin aplicar:** se **migra la 153**, después se despliega (`--funciones`) y después se recalcula
+>   (`recalcular-grupos.mjs --grupos=laboral --bloqueo`), con el sí del negocio.
+
 > **estructura-v28 (E7, 2026-11-20: etapa B de los grupos penal y de cumplimiento de la capa de hechos)**
 > - `riesgoPenal` y `cumplimiento` salen de la capa de hechos (`hechos/grupos/penal.ts` y `cumplimiento.ts`,
 >   `docs/capa-de-hechos.md`, 4.5): misma regla, una sola implementación. El control de bloqueo toma de los

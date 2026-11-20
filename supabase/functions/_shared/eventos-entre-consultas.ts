@@ -27,6 +27,7 @@
 
 import { categoriaDeDemanda, CATEGORIA_COBRO } from "./demandas.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import { fechasDelRuc } from "./ruc.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import type { RespuestaProveedorInfo1 } from "./types.ts";
@@ -427,8 +428,9 @@ export function eventosEntreConsultas(t0: Consulta, t1: Consulta, opciones: Opci
 
   // El negocio cerró: el RUC estaba activo y ya no (regla de ruc.ts por
   // medio del perfil). La fecha es el cese que trae el SRI.
-  const ruc0 = (t0.perfil.laboral as AnyRecord | undefined)?.tieneRucActivo === true;
-  const ruc1 = (t1.perfil.laboral as AnyRecord | undefined)?.tieneRucActivo === true;
+  // Con los valores de antes: un campo sin dato no es un RUC que cerró (campos-sin-dato.ts).
+  const ruc0 = (conLosValoresDeAntes(t0.perfil).laboral as AnyRecord | undefined)?.tieneRucActivo === true;
+  const ruc1 = (conLosValoresDeAntes(t1.perfil).laboral as AnyRecord | undefined)?.tieneRucActivo === true;
   if (sePuede("cierre_negocio") && ruc0 && !ruc1) {
     const ceses = arr(t1.raw, "contribuyente", "datosContribuyente")
       .filter((c) => texto(c.ruc).startsWith(opciones.cedula))

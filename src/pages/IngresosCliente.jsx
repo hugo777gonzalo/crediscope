@@ -16,6 +16,7 @@ import DetalleIngresos from "../components/ingresos/DetalleIngresos.jsx";
 import IndiciosIngreso from "../components/ingresos/IndiciosIngreso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import Cargando from "../components/ui/Cargando.jsx";
+import { conLosValoresDeAntes } from "../../supabase/functions/_shared/campos-sin-dato.ts";
 
 // "Fuentes de ingreso" — cuarta pestaña del cliente, con la misma gramática
 // que el reporte de Aval: arriba lo que decide (de qué vive, qué tan firme
@@ -72,7 +73,8 @@ export default function IngresosCliente() {
     }
   }
 
-  const perfil = fila?.standard_profile ?? null;
+  // Esta pantalla lee los valores de antes: un campo sin dato de la fuente que no contestó (v30) no cambia lo que muestra.
+  const perfil = conLosValoresDeAntes(fila?.standard_profile ?? null);
   const f = perfil?.fuentesIngreso ?? null;
 
   const acciones = !cargando ? (

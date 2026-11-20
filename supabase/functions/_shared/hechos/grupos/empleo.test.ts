@@ -65,7 +65,7 @@ Deno.test("cero campos sin procedencia: todo campo de laboral tiene su código e
   const texto = Deno.readTextFileSync(new URL("../../types.ts", import.meta.url));
   const desde = texto.indexOf("  laboral: {");
   const hasta = texto.indexOf("\n  };", desde);
-  const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]);
+  const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]).filter((c) => c !== "camposSinDato"); // la marca no es un campo
   assertEquals(campos.length, 33);
   const conCodigo = new Set([...CATALOGO, ...CATALOGO_RUC].flatMap((c) => (c.campoDelPerfil ? [c.campoDelPerfil] : [])));
   assertEquals(campos.filter((c) => !conCodigo.has(`laboral.${c}`)), []);
@@ -177,8 +177,10 @@ Deno.test("una fuente caída deja el hecho sin valor, con el parcial que el perf
   const h = hecho(doc, "lab.empleos_actuales");
   assertEquals([h.valor, h.motivo, h.calidad], [null, "fuente_sin_respuesta", "no_disponible"]);
   assertEquals(h.parcial, [{ empleador: "EMPRESA FICTICIA S.A.", cargo: "ANALISTA", salarioAprox: 800 }]);
-  // Y el perfil armado desde los hechos de una etapa A escribe ese parcial, como hoy.
-  assertEquals((perfilDesdeHechos(doc, "laboral").empleosActuales as unknown[]).length, 1);
+  // Y el perfil armado desde los hechos (etapa B, estructura-v30) escribe null y deja el parcial en camposSinDato.
+  const perfil = perfilDesdeHechos(doc, "laboral");
+  assertEquals(perfil.empleosActuales, null);
+  assertEquals(((perfil.camposSinDato as Record<string, unknown>).empleosActuales as unknown[]).length, 1);
   // Lo que no lee el mecanizado no se ve afectado.
   assertEquals(hecho(doc, "lab.empleadores.ultimos_24_meses").valor, 1);
 });

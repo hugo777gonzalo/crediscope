@@ -87,7 +87,9 @@
       }
     }
   },
-  "esperado": {},
+  "esperado": {
+    "dato-laboral-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
   "reglas": {
     "emp.actual@1": "no-aplica",
     "emp.antiguedad@1": "no-aplica"

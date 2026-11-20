@@ -44,6 +44,7 @@
 // sintaxis que se pueda borrar (nada de enum, namespace ni propiedades de
 // parámetro).
 
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import { leerCrudoDeLaConsulta } from "./crudo-equifax-migrado.ts";
 import { fechaEnEcuador } from "./equifax-estructura.ts";
 import { derivarTablas, rolDeEquifax, type Rol, type TablasEquifax } from "./equifax-tablas.ts";
@@ -496,7 +497,9 @@ function cargarLasOperaciones(v: VectorDeIngreso, operaciones: OperacionParaIngr
 // ---------------------------------------------------------------------------
 // Las puertas
 // ---------------------------------------------------------------------------
-export function vectorDeNivel1(perfil: PerfilParaIngreso, o: OpcionesDelNivel1): VectorDeIngreso {
+export function vectorDeNivel1(perfilGuardado: PerfilParaIngreso, o: OpcionesDelNivel1): VectorDeIngreso {
+  // El predictor lee el perfil como lo escribía la v29: un campo sin dato (campos-sin-dato.ts) vuelve a su valor de antes, así que no cambia en nadie.
+  const perfil = conLosValoresDeAntes(perfilGuardado);
   const ahora = aFecha(o.ahora);
   const v = nuevoVector(1, VARIABLES_DEL_NIVEL_1);
   cargarLaPersona(v, perfil, o, ahora);
@@ -505,7 +508,8 @@ export function vectorDeNivel1(perfil: PerfilParaIngreso, o: OpcionesDelNivel1):
 }
 
 /** El nivel 2 desde la respuesta cruda de Equifax (el `response_json` de AWS o `consultas_equifax.respuesta_cruda`): lo mismo al entrenar y al servir. */
-export function vectorDeNivel2(perfil: PerfilParaIngreso, respuestaCruda: unknown, o: OpcionesDelNivel2): VectorDeIngreso {
+export function vectorDeNivel2(perfilGuardado: PerfilParaIngreso, respuestaCruda: unknown, o: OpcionesDelNivel2): VectorDeIngreso {
+  const perfil = conLosValoresDeAntes(perfilGuardado); // ver vectorDeNivel1
   const ahora = aFecha(o.ahora);
   const v = nuevoVector(2, VARIABLES_DEL_NIVEL_2);
   const { tablas } = derivarTablas(respuestaCruda);
