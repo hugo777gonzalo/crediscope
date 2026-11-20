@@ -100,6 +100,8 @@ export const CATALOGO: CodigoDelCatalogo[] = [
   codigo("ret.deuda.vencida", "usd", "Deuda vencida con casas comerciales, a su corte", "valorVencidoRetail", 0, "suma"),
   codigo("ret.corte", "fecha", "Corte más antiguo de las casas comerciales", "fechaCorteRetail", null),
   codigo("ret.corte.mas_reciente", "fecha", "Corte más reciente de las casas comerciales", null, null),
+  codigo("ban.operaciones.unidas.cantidad", "cantidad", "Operaciones de Diners que son la misma de Super y se cuentan una vez", null, null, "conteo"),
+  codigo("dif.ban.posible_repetida", "usd", "Deuda de una operación que vino en Super y en Diners, según cada lista", null, null),
   codigo("dif.biess.saldo", "usd", "Saldo de un préstamo del IESS/BIESS según cada fuente", null, null),
   codigo("dif.biess.fecha_de_concesion", "fecha", "Concesión de un préstamo del IESS/BIESS según cada fuente", null, null),
 ];
@@ -107,6 +109,7 @@ export const CATALOGO: CodigoDelCatalogo[] = [
 // Las que unen, eligen o descartan registros: cada una con un crudo inventado
 // en que aplica y uno en que no (scripts/crudos-sinteticos/, campo `reglas`).
 export const REGLAS_QUE_MEZCLAN: string[] = [
+  "ban.union@1", // una fila de Diners que es la misma operación que una de Super se cuenta una vez
   "ban.propias@1", // descarta las filas de garante o codeudor
   "ban.calificacion@1", // elige UNA operación; «AL» no cuenta salvo que sea la única
   "ban.vencido@1", // elige `saldomora` o `mora` por fila
@@ -125,6 +128,17 @@ export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
     aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v25",
     motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial o 0",
     cuando: "sin_dato",
+  },
+  // estructura-v26 (D6 del negocio, 2026-11-18): una operación que viene en
+  // Super y en Diners se cuenta una vez. Sólo vale en quien tiene una entidad
+  // unida por ban.union@1; en las 3.766 personas del 2026-11-20, nadie.
+  {
+    campo: "comportamientoBancario.*",
+    detector: "operacion-en-super-y-diners",
+    aprobadaEl: "2026-11-18 (D6 del negocio: unir)",
+    motivo: "la operación que viene en Super y en Diners deja de contarse dos veces",
+    cuando: "union",
+    regla: "ban.union@1",
   },
 ];
 
@@ -159,6 +173,47 @@ const vencido = (r: AnyRecord) => {
 const enAtraso = (r: AnyRecord) => vencido(r) + (num(r.noDevengaInteres) ?? 0) + (num(r.judicial) ?? 0) + (num(r.castigo) ?? 0);
 const deudaDe = (r: AnyRecord) => (num(r.saldoVigente) ?? 0) + enAtraso(r);
 const esGarantia = (r: AnyRecord) => r.riesgo === "G" || r.riesgo === "C";
+
+// ---- Super y Diners (ban.union@1, estructura-v26) ----
+//
+// D6 del negocio (2026-11-18): una operación que viene en la lista de la
+// Superintendencia y en la de Diners se cuenta una vez. Se recomendaba medir
+// primero, y la medición del 2026-11-20 (las 3.766 personas reales) dio que hoy
+// no pasa: Diners trae sólo a BP Diners (código 4624), que Super no trae nunca,
+// y entre entidades distintas la misma deuda sale tanto como con el Super de
+// otra persona (23 contra 26 pares a 1%). La unión queda puesta por si la
+// fuente cambia, y su detector (operacion-en-super-y-diners) la vigila.
+//
+// Por qué un criterio tan estricto: con el mismo corte, la misma operación tiene
+// la misma deuda en las dos listas, y una tarjeta de otra entidad con la deuda
+// parecida es otra operación (el par de USD 660,90 contra 661,88 del
+// 2026-11-20 era eso). Una deuda en cero no prueba nada: no se une.
+const TOLERANCIA_DE_LA_UNION_USD = 1;
+const entidadDe = (r: AnyRecord) => {
+  const codigo = sinCeros(r.codEntidad);
+  return codigo !== "" ? `cod:${codigo}` : textoDe(r.entnombre) ? `nom:${String(r.entnombre).trim().toUpperCase().replace(/\s+/g, " ")}` : "";
+};
+const esLaMismaOperacion = (s: AnyRecord, d: AnyRecord) =>
+  entidadDe(s) !== "" && entidadDe(s) === entidadDe(d) &&
+  String(s.riesgo ?? "") === String(d.riesgo ?? "") &&
+  String(s.calificacion ?? "").trim() === String(d.calificacion ?? "").trim() &&
+  String(s.fecha ?? "").trim() !== "" && String(s.fecha ?? "").trim() === String(d.fecha ?? "").trim() &&
+  deudaDe(d) > 0 && Math.abs(deudaDe(s) - deudaDe(d)) <= TOLERANCIA_DE_LA_UNION_USD;
+
+// Cada fila de Diners que es la misma operación que una de Super, con esa fila.
+// Manda Super: es la lista de la Superintendencia y trae a todas las entidades.
+// Una fila de Super se une con una sola de Diners.
+function unirSuperYDiners(deSuper: Fila[], deDiners: Fila[]): Map<Fila, Fila> {
+  const unidas = new Map<Fila, Fila>();
+  const tomadas = new Set<Fila>();
+  for (const d of deDiners) {
+    const s = deSuper.find((x) => !tomadas.has(x) && esLaMismaOperacion(x.r, d.r));
+    if (!s) continue;
+    tomadas.add(s);
+    unidas.set(d, s);
+  }
+  return unidas;
+}
 
 // «31/07/2025» a días desde 1970. No valida la fecha (el 31/02 pasa al 3 de
 // marzo): es la lectura con que se midió la unión del BIESS (estructura-v21).
@@ -342,12 +397,22 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
 
   // ---- Bancos y Diners ----
   const BANCOS = ["buroCreditoSuper", "buroCreditoDiners"];
-  const filasBanco = [...filasDe(crudo, "buroCreditoSuper", "datosSuper"), ...filasDe(crudo, "buroCreditoDiners", "datosSuper")];
+  const deSuper = filasDe(crudo, "buroCreditoSuper", "datosSuper");
+  const deDiners = filasDe(crudo, "buroCreditoDiners", "datosSuper");
+  // La fila de Diners unida a una de Super no se cuenta: la operación ya está.
+  const unidas = unirSuperYDiners(deSuper, deDiners);
+  const filasBanco = [...deSuper, ...deDiners.filter((f) => !unidas.has(f))];
   const propias = filasBanco.filter((f) => !esGarantia(f.r));
   const garantias = filasBanco.filter((f) => esGarantia(f.r));
   const respuestasBanco = BANCOS.map((f) => respuesta(f, "datosSuper"));
   const descartadasPorRol: Descarte[] = garantias.map((f) => ({ registro: refDeFila(consulta, f, "riesgo"), motivo: "rol_garante_o_codeudor" }));
+  const descartadasPorUnion = (garantia: boolean): Descarte[] =>
+    [...unidas.keys()].filter((f) => esGarantia(f.r) === garantia).map((f) => ({ registro: refDeFila(consulta, f), motivo: "misma_operacion_que_super" }));
+  const unidasPropias = descartadasPorUnion(false);
+  const unidasGarantias = descartadasPorUnion(true);
   const sinBancos = faltaUna(BANCOS);
+  // La vista de Diners de cada fila de Super unida.
+  const dinersDe = new Map([...unidas].map(([d, s]) => [s, d]));
 
   for (const f of filasBanco) {
     const atributos = operacion({
@@ -365,12 +430,30 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
       calificacion: textoDe(f.r.calificacion),
     });
     // Sin número de operación ni fecha de concesión: la identifica su posición (1.3).
+    // Unida, la posición es la de Super, que manda.
+    const clave = emisor.clave("op", `${f.fuente}#${f.indice}`);
+    const d = dinersDe.get(f);
+    const vistas = [vista(consulta, crudo, f, atributos)];
+    if (d) {
+      vistas.push(vista(consulta, crudo, d, { sistema: "tarjeta_diners", saldoPorVencer: num(d.r.saldoVigente), saldoVencido: vencido(d.r), calificacion: textoDe(d.r.calificacion) }));
+      // La diferencia se guarda aunque sea de centavos: lo que no se guarda no se mide.
+      const absoluta = redondear(Math.abs(deudaDe(f.r) - deudaDe(d.r)));
+      emisor.diferencia({
+        codigo: "dif.ban.posible_repetida",
+        regla: "ban.union@1",
+        sobre: `${clave}.deuda`,
+        manda: { fuente: "buroCreditoSuper", valor: redondear(deudaDe(f.r)), registro: refDeFila(consulta, f) },
+        cede: [{ fuente: "buroCreditoDiners", valor: redondear(deudaDe(d.r)), registro: refDeFila(consulta, d) }],
+        magnitud: { absoluta, relativa: deudaDe(f.r) ? Math.round((absoluta / deudaDe(f.r)) * 10_000) / 10_000 : null },
+        lectura: "esperada",
+      });
+    }
     emisor.entidad({
-      clave: emisor.clave("op", `${f.fuente}#${f.indice}`),
+      clave,
       tipo: "operacion",
       atributos,
-      vistas: [vista(consulta, crudo, f, atributos)],
-      union: null,
+      vistas,
+      union: d ? { regla: "ban.union@1", criterio: "monto_y_fecha" } : null,
       atribucion: ATRIBUCION_POR_IDENTIFICACION,
     });
   }
@@ -400,24 +483,25 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
       emitirBanco(cod, "ban.calificacion@1", e.valor, [refDeFila(consulta, e.fila, "calificacion")], descartados);
     };
 
-    conteo("ban.operaciones.cantidad", "ban.propias@1", propias, undefined, descartadasPorRol);
+    conteo("ban.operaciones.cantidad", "ban.propias@1", propias, undefined, [...descartadasPorRol, ...unidasPropias]);
+    conteo("ban.operaciones.unidas.cantidad", "ban.union@1", [...unidas.keys()]);
     conteo("ban.operaciones.sin_rol.cantidad", "ban.propias@1", propias.filter((f) => f.r.riesgo !== "T"), "riesgo");
     calificacion("ban.calificacion.peor", propias, "peor", descartadasPorRol);
     calificacion("ban.calificacion.mejor", propias, "mejor");
     alguna("ban.operaciones.con_demanda", "ban.con_demanda@1", "judicial");
     alguna("ban.operaciones.castigadas", "ban.castigadas@1", "castigo");
     const sumaDe = (filas: Fila[], campo: string) => redondear(filas.reduce((s, f) => s + (num(f.r[campo]) ?? 0), 0));
-    suma("ban.saldo.en_demanda", "ban.suma@1", propias, sumaDe(propias, "judicial"), [() => "judicial"]);
-    suma("ban.saldo.castigado", "ban.suma@1", propias, sumaDe(propias, "castigo"), [() => "castigo"]);
-    suma("ban.saldo.por_vencer", "ban.suma@1", propias, sumaDe(propias, "saldoVigente"), [() => "saldoVigente"]);
-    suma("ban.saldo.vencido", "ban.vencido@1", propias, redondear(propias.reduce((s, f) => s + vencido(f.r), 0)), [(f) => campoVencido(f.r)]);
-    suma("ban.saldo.no_devenga", "ban.suma@1", propias, sumaDe(propias, "noDevengaInteres"), [() => "noDevengaInteres"]);
+    suma("ban.saldo.en_demanda", "ban.suma@1", propias, sumaDe(propias, "judicial"), [() => "judicial"], unidasPropias);
+    suma("ban.saldo.castigado", "ban.suma@1", propias, sumaDe(propias, "castigo"), [() => "castigo"], unidasPropias);
+    suma("ban.saldo.por_vencer", "ban.suma@1", propias, sumaDe(propias, "saldoVigente"), [() => "saldoVigente"], unidasPropias);
+    suma("ban.saldo.vencido", "ban.vencido@1", propias, redondear(propias.reduce((s, f) => s + vencido(f.r), 0)), [(f) => campoVencido(f.r)], unidasPropias);
+    suma("ban.saldo.no_devenga", "ban.suma@1", propias, sumaDe(propias, "noDevengaInteres"), [() => "noDevengaInteres"], unidasPropias);
     const camposDeAtraso = [(f: Fila) => campoVencido(f.r), () => "noDevengaInteres", () => "judicial", () => "castigo"];
-    suma("ban.saldo.en_atraso", "ban.en_atraso@1", propias, redondear(propias.reduce((s, f) => s + enAtraso(f.r), 0)), camposDeAtraso, descartadasPorRol);
+    suma("ban.saldo.en_atraso", "ban.en_atraso@1", propias, redondear(propias.reduce((s, f) => s + enAtraso(f.r), 0)), camposDeAtraso, [...descartadasPorRol, ...unidasPropias]);
     const sinMonto = propias.filter((f) => CALIFICACIONES_EN_ATRASO.has(String(f.r.calificacion)) && deudaDe(f.r) === 0);
     conteo("ban.operaciones.en_atraso_sin_monto", "ban.sin_monto@1", sinMonto, "calificacion");
-    conteo("ban.garante.operaciones.cantidad", "ban.garantias@1", garantias, "riesgo");
-    suma("ban.garante.deuda", "ban.suma@1", garantias, redondear(garantias.reduce((s, f) => s + deudaDe(f.r), 0)), [() => "saldoVigente", ...camposDeAtraso]);
+    conteo("ban.garante.operaciones.cantidad", "ban.garantias@1", garantias, "riesgo", unidasGarantias);
+    suma("ban.garante.deuda", "ban.suma@1", garantias, redondear(garantias.reduce((s, f) => s + deudaDe(f.r), 0)), [() => "saldoVigente", ...camposDeAtraso], unidasGarantias);
     calificacion("ban.garante.calificacion.peor", garantias, "peor");
   }
 

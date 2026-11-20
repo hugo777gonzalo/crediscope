@@ -466,7 +466,8 @@ Fuentes: `buroCreditoSuper` y `buroCreditoDiners` (`datosSuper`), `retails`, `de
 
 **Entidades.** Una `OperacionDeCredito` por fila de cada fuente. Las del IESS/BIESS se
 unen entre los dos caminos con la regla de hoy (`biess.union`, sección 6): la entidad
-unida tiene dos vistas. Las de bancos y Diners no se unen entre sí (sección 6, punto 1).
+unida tiene dos vistas. Desde estructura-v26 (D6), una fila de Diners que es la misma operación
+que una de Super se une a ella (`ban.union@1`, sección 6, punto 1).
 
 **Campo por campo.** «Propias» son las filas de Super y Diners con `riesgo` distinto de G
 y C; «garantías», las de G o C.
@@ -521,8 +522,8 @@ que ya están en `scripts/crudos-sinteticos/`): una operación como garante, una
 atraso sólo en `noDevengaInteres`, una con `saldomora` en 0 y `mora` con monto, una «AL»
 sola, una misma operación en Super y en Diners, y un retail con dos cortes.
 
-**Riesgos del grupo.** (1) Super y Diners se concatenan sin unir y nadie midió si una
-operación viene en las dos: se mide antes de decidir (sección 6). (2)
+**Riesgos del grupo.** (1) Super y Diners se concatenaban sin unir; medido el 2026-11-20, ninguna
+operación viene en las dos, y desde la v26 se unen si llegara a pasar (sección 6, punto 1). (2)
 `numeroCreditosFormales` y `tieneCreditoIessBiess` no cuadran entre sí por construcción:
 la paridad los reproduce tal cual y la diferencia queda como hecho. (3) Con un buró, la
 mitad de estos campos deja de llegar al modelo (`CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1`):
@@ -804,7 +805,7 @@ cambio, va aparte y con medición.
 
 | # | Punto | Manda | Diferencia que se guarda | Estado |
 |---|---|---|---|---|
-| 1 | Bancos: Super y Diners concatenadas | ninguna: son listas distintas y no se unen | `dif.ban.posible_repetida`: misma entidad acreedora y mismo saldo en las dos | paridad. **Sin medir** si una operación viene en las dos: detector `operacion-en-super-y-diners` antes de proponer una unión |
+| 1 | Bancos: Super y Diners | Super; la fila de Diners que es la misma operación se une a ella (`ban.union@1`: misma entidad, rol, calificación y corte, la deuda a un dólar y mayor que cero) | `dif.ban.posible_repetida`: la deuda según cada lista | estructura-v26 (D6). Medido el 2026-11-20 sobre las 3.766: 0 operaciones en las dos (Diners trae sólo a BP Diners, código 4624, que Super no trae); la misma deuda entre entidades distintas sale como al azar (a 1%, 23 pares contra 26 con el Super de otra persona). Detector `operacion-en-super-y-diners`, con la entidad por código o nombre y la deuda a 1% |
 | 2 | Préstamos del IESS/BIESS por dos caminos | la fuente de préstamos (trae `fechaCorte` y el saldo de hoy); los días de mora, el mayor de las dos; la base interna sólo suma las operaciones que la otra no ve y que no están terminadas | `dif.biess.saldo` y `dif.biess.fecha_de_concesion` por operación unida; `dif.biess.cantidad` | paridad con estructura-v21, medida el 2026-11-09 (177 hipotecarios en 174 personas; 1.600 terminados) |
 | 3 | Operaciones con la institución y deuda de bancos | no se suman ni se restan (negocio, 2026-11-09) | `dif.inst.posible_en_bancos`, sólo informativa | paridad. Sin medir |
 | 4 | Empleo actual: mecanizado o aportes | el mecanizado si tiene 3 meses o menos y no es anterior al corte del IESS; si no, los aportes del corte | `lab.empleo_actual.fuente` (hecho) y `dif.lab.salario_del_mes` cuando las dos traen el mismo empleador y mes | paridad con estructura-v19 |
@@ -1009,7 +1010,7 @@ adaptador ni se diseña acá.
 | 4 | **Los umbrales de los atenuantes y de «atraso corto»**: cuántos días es corto, cuánto tiene que bajar la deuda y contra qué consulta, cuánto tiene que subir el ingreso. | Atraso corto hasta 30 días; deuda 10% menor que en una consulta de 90 días o más atrás; ingreso por encima de la variación del SBU. Son propuestas sin medir: fijarlas contra el banco de casos de oro. **Decisión del negocio (2026-11-18):** R4, **abierta**: el negocio pide una propuesta parecida a la de R2 (umbrales de monto y de tiempo; un mal comportamiento pierde relevancia si el vigente lo superó; atenuantes y agravantes ordenados por importancia). Estos umbrales quedan sin decidir hasta esa propuesta. |
 | 5 | **Bancos sin buró**: si una calificación en atraso se lee como días. | No: se mantiene la regla de hoy y la lectura dice «en atraso, sin días informados». **Decisión del negocio (2026-11-18):** D4, decidido con alcance acotado: cuando el modelo responde, nombra el atraso como «en atraso», sin los días de cada operación (lo recomendado). El negocio dijo que «los días son importantes» (25 días no es 300), pero no pidió leer la calificación como un rango de días; se mantiene la regla de hoy. |
 | 6 | **Las demás operaciones con la institución**: hoy se reporta una. Con hechos se ven todas (cuántas, cuántas vigentes, la peor mora entre todas). | Mostrarlas en pantalla como procedencia desde el grupo 2; al modelo, recién con la versión mayor del marco y sin sumar ningún saldo. **Decisión del negocio (2026-11-18):** D5, decidido distinto: seguir con **una sola operación** con la institución (no mostrar todas desde el grupo 2). |
-| 7 | **Super y Diners**: unir una operación que venga en las dos. | No decidir todavía: medir primero. Mientras tanto queda como diferencia. **Decisión del negocio (2026-11-18):** D6, decidido distinto: **unir** una operación que venga en las dos (la recomendación era medir primero). |
+| 7 | **Super y Diners**: unir una operación que venga en las dos. | No decidir todavía: medir primero. Mientras tanto queda como diferencia. **Decisión del negocio (2026-11-18):** D6, decidido distinto: **unir** una operación que venga en las dos (la recomendación era medir primero). **Hecho en estructura-v26 (E8, 2026-11-20)**, con la medición: hoy no le pasa a nadie de las 3.766 y ningún perfil cambia; la unión queda puesta por si la fuente cambia. |
 
 ## 9. Orden de trabajo
 

@@ -160,5 +160,8 @@ export interface DiferenciaEsperada {
   motivo: string;
   // "sin_dato": sólo vale para un campo que el perfil nuevo marca en
   // camposSinDato (estructura-v25); en cualquier otro, la diferencia es un error.
-  cuando?: "sin_dato";
+  // "union": sólo vale en quien tiene una entidad unida por `regla`
+  // (estructura-v26, Super y Diners); en cualquier otro, la diferencia es un error.
+  cuando?: "sin_dato" | "union";
+  regla?: string; // con cuando "union": la regla de la unión ("ban.union@1")
 }

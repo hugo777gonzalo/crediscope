@@ -1,0 +1,114 @@
+{
+  "descripcion": "Dos parecidas que no son la misma operación: la misma entidad y el mismo corte con la deuda 5% distinta, y la misma deuda en dos entidades distintas. No se unen y el detector no las marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": {
+          "codigo": "OK",
+          "mensaje": ""
+        },
+        "datosSuper": [
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2002",
+            "entnombre": "TARJETA FICTICIA DOS",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "1200.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          },
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "3003",
+            "entnombre": "BANCO FICTICIO TRES",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "800.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          }
+        ]
+      }
+    },
+    "buroCreditoDiners": {
+      "status": "ok",
+      "data": {
+        "estado": {
+          "codigo": "OK",
+          "mensaje": ""
+        },
+        "datosSuper": [
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2002",
+            "entnombre": "TARJETA FICTICIA DOS",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "1260.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          },
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2002",
+            "entnombre": "TARJETA FICTICIA DOS",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "800.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {
+    "operacion-en-super-y-diners": "no-dispara"
+  },
+  "reglas": {
+    "ban.union@1": "no-aplica"
+  },
+  "hechos": {
+    "ban.operaciones.cantidad": {
+      "valor": 4
+    },
+    "ban.operaciones.unidas.cantidad": {
+      "valor": 0,
+      "registros": [
+        "buroCreditoSuper.datosSuper",
+        "buroCreditoDiners.datosSuper"
+      ]
+    },
+    "ban.saldo.por_vencer": {
+      "valor": 4060
+    }
+  }
+}
