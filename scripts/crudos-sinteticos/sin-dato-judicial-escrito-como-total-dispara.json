@@ -1,0 +1,102 @@
+{
+  "descripcion": "La fuente de demandas no contestó y el perfil de estructura-v26 escribió 0 demandas y «sin delito», como si la persona no tuviera nada: el detector judicial lo marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO CINCO"
+        }
+      }
+    },
+    "demandas": {
+      "status": "error",
+      "data": null
+    },
+    "demandasOfendido": {
+      "status": "ok",
+      "data": {
+        "demandas": []
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "denuncias": {
+      "status": "ok",
+      "data": {
+        "denuncias": []
+      }
+    },
+    "antecedentesPenales": {
+      "status": "ok",
+      "data": {
+        "antecedentes": {
+          "descripcion": "NO"
+        }
+      }
+    }
+  },
+  "guardado": {
+    "perfil": {
+      "riesgoJudicialCrediticio": {
+        "numeroDemandasComoDemandado": 0,
+        "tiposDemandasComoDemandado": [],
+        "demandasDeCobro": [],
+        "numeroDemandasDeOtroDemandado": 0,
+        "numeroDemandasSinCotejo": 0,
+        "camposSinDato": null
+      },
+      "riesgoJudicialCivil": {
+        "numeroDemandasComoDemandado": 0,
+        "tiposDemandasComoDemandado": [],
+        "demandasPorCategoria": [],
+        "numeroDemandasDeOtroDemandado": 0,
+        "numeroDemandasSinCotejo": 0,
+        "camposSinDato": null
+      },
+      "riesgoSeguridadCiudadana": {
+        "tieneDelitoSeguridadCiudadana": false,
+        "categoriasDelitoSeguridadCiudadana": [],
+        "camposSinDato": null
+      }
+    }
+  },
+  "esperado": {
+    "dato-judicial-de-fuente-sin-respuesta-escrito-como-total": "dispara"
+  },
+  "hechos": {
+    "jud.cobro.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    },
+    "jud.civil.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    },
+    "seg.delito.existe": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": false
+    },
+    "jud.ofendido.cantidad": {
+      "valor": 0,
+      "registros": [
+        "demandasOfendido.demandas"
+      ]
+    }
+  }
+}

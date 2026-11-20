@@ -1,25 +1,37 @@
 // Los hallazgos del control de bloqueo, armados desde los hechos (docs/capa-de-hechos.md,
-// secciones 3.1 y 6, punto 14). Hoy `evaluarControlesBloqueo()` (controles-bloqueo.ts) lee
-// el crudo otra vez: son dos lecturas de lo mismo que coinciden por disciplina.
+// secciones 3.1 y 6, punto 14). Hasta estructura-v26 `evaluarControlesBloqueo()`
+// (controles-bloqueo.ts) leía el crudo otra vez: dos lecturas de lo mismo que coincidían por
+// disciplina.
 //
-// ETAPA A del grupo 3: acá sólo el hallazgo de seguridad ciudadana (`delito_seguridad_ciudadana`
-// y `posible_homonimo_en_demanda_penal`), y nada lo llama todavía. `comparar-hechos.mjs`
-// compara en seco, sobre las 3.766 personas, que den lo mismo que `evaluarControlesBloqueo`;
-// cuando da cero, `evaluarControlesBloqueo` pasa a llamar esto y deja de leer el crudo para
-// esos dos hallazgos. Los demás (fallecido, listas, homónimos, PEP) esperan al grupo de
-// cumplimiento.
+// ETAPA B del grupo 3 (estructura-v27): `evaluarControlesBloqueo()` toma de acá el hallazgo de
+// seguridad ciudadana (`delito_seguridad_ciudadana` y `posible_homonimo_en_demanda_penal`) y ya
+// no lee demandas, denuncias ni antecedentes. Medido en seco el 2026-11-20 (etapa A, #189):
+// las 3.766 personas dan los mismos hallazgos de las dos maneras (24 bloquean, 16 llevan el
+// aviso de homónimo). Los demás hallazgos (fallecido, listas, homónimos, PEP) siguen leyendo el
+// crudo: esperan al grupo de cumplimiento.
 //
-// Los textos los arma delitos-seguridad.ts, los mismos que usa el control de hoy: lo que se
-// compara es qué hallazgos salen y con qué categorías, no dos copias de la frase.
+// Los textos los arma delitos-seguridad.ts: lo que se compara es qué hallazgos salen y con qué
+// categorías, no dos copias de la frase.
 //
-// Un hecho sin valor porque una fuente no contestó se lee por su `parcial`: es lo que el
-// control hace hoy con las filas que llegaron. Una fuente caída no puede desbloquear a
-// quien tiene un delito en otra.
+// UNA FUENTE CAÍDA NO DESBLOQUEA NI BLOQUEA A NADIE. Un hecho sin valor porque una fuente no
+// contestó se lee por su `parcial`: lo que dicen las fuentes que sí contestaron, que es lo que el
+// control hizo siempre con las filas que llegaron.
+//   - Con un delito en una fuente que contestó (una demanda propia, una denuncia en que es la
+//     acusada, un antecedente), bloquea aunque otra fuente esté caída: la caída no lo borra.
+//   - Con la fuente de denuncias o la de demandas caída y ningún delito en las otras, no sale
+//     hallazgo: no se bloquea por lo que no se pudo mirar. Esa persona no queda «limpia»: la
+//     consulta queda incompleta (`demandas`, `denuncias` y `antecedentesPenales` son obligatorias,
+//     calidad-de-la-consulta.ts), el modelo no corre, y si luego un hallazgo bloquea se niega por
+//     control sin modelo. Reconsultar la fuente es lo que lo resuelve.
+//   - El hallazgo sale idéntico al de siempre (sin la lista `derivaDe`): el análisis guarda y el
+//     modelo lee estos hallazgos, y cambiarlos es cambiar el mensaje al modelo.
 
 import type { HallazgoControlBloqueo } from "../types.ts";
 import { type DemandaPenalSinCotejo, mensajeDelDelitoDeSeguridad, mensajeDelPosibleHomonimo } from "../delitos-seguridad.ts";
 import type { HechosDeLaPersona } from "./tipos.ts";
-import type { RegistroJudicial } from "./grupos/riesgo-judicial.ts";
+import { CATALOGO as CATALOGO_JUDICIAL, emitir as emitirJudicial, type RegistroJudicial } from "./grupos/riesgo-judicial.ts";
+import { crearEmisor } from "./emisor.ts";
+import { HECHOS_VERSION } from "./indice.ts";
 
 // El hallazgo y los códigos de los que sale: lo que el control de hoy no dice.
 export interface HallazgoDesdeHechos extends HallazgoControlBloqueo {
@@ -51,4 +63,26 @@ export function controlesDesdeHechos(doc: HechosDeLaPersona): HallazgoDesdeHecho
     hallazgos.push({ code: "posible_homonimo_en_demanda_penal", message: mensajeDelPosibleHomonimo(sinCotejo), bloqueante: false, derivaDe: ["seg.demandas.posible_homonimo.cantidad"] });
   }
   return hallazgos;
+}
+
+// Los hechos del grupo judicial solos, para el control de bloqueo: derivar los dieciséis grupos
+// para leer dos hallazgos costaría lo que no hace falta. Es el mismo `emitir()` que arma el
+// perfil (process.ts), con el nombre que lee de `general` y la cédula consultada.
+export function hechosJudicialesDelCrudo(crudo: unknown, cedula: string, fechaDeLaConsulta: string): HechosDeLaPersona {
+  const contexto = {
+    cedula,
+    consulta: "control",
+    // El grupo no lee el reloj: la marca la pone quien llama (hechos/ no usa el reloj).
+    fechaDeLaConsulta,
+    corteIess: "",
+    persona: { nombre: null, fechaDeNacimiento: null },
+  };
+  const emisor = crearEmisor(contexto, CATALOGO_JUDICIAL);
+  emitirJudicial(crudo, contexto, emisor);
+  return { version: HECHOS_VERSION, contexto, ...emisor.resultado() };
+}
+
+// El hallazgo de seguridad ciudadana tal como lo entrega el control: sin `derivaDe`.
+export function hallazgosDeSeguridadCiudadana(crudo: unknown, cedula: string, fechaDeLaConsulta: string): HallazgoControlBloqueo[] {
+  return controlesDesdeHechos(hechosJudicialesDelCrudo(crudo, cedula, fechaDeLaConsulta)).map(({ derivaDe: _derivaDe, ...hallazgo }) => hallazgo);
 }

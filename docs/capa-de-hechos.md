@@ -647,20 +647,53 @@ diferencia que la inversión admite, el **«sin dato»**:
     (la copia de `fuentes-ingreso.ts` se sacó; la de process.ts sale en la etapa B).
   - **Fuente caída.** Un hecho cuyas fuentes no contestaron todas no tiene valor y lleva el `parcial` (lo que
     dicen las filas que llegaron). En etapa A `perfilDesdeHechos()` escribe ese parcial, que es lo que process.ts
-    escribe hoy; el «sin dato» llega con la etapa B (hechos-v3 lo deja listo). `antecedentesPenales` dice
+    escribía en la etapa A; el «sin dato» llegó con la etapa B (abajo). `antecedentesPenales` dice
     «no hay» con `faltante`: no es una falla.
   - **El bloqueo.** `controlesDesdeHechos()` arma los dos hallazgos de seguridad ciudadana
     (`delito_seguridad_ciudadana` y `posible_homonimo_en_demanda_penal`) desde `seg.delito.categorias` y las
     entidades, cada uno con sus códigos en `derivaDe`; los textos los arman los mismos
-    `mensajeDelDelitoDeSeguridad()` y `mensajeDelPosibleHomonimo()` (delitos-seguridad.ts). **Nada lo llama
-    todavía.** Una fuente caída no desbloquea a quien tiene un delito en otra: se lee el parcial.
+    `mensajeDelDelitoDeSeguridad()` y `mensajeDelPosibleHomonimo()` (delitos-seguridad.ts). **Desde la etapa B
+    lo llama `evaluarControlesBloqueo()`.** Una fuente caída no desbloquea a quien tiene un delito en otra: se lee el parcial.
   - **El seco (2026-11-20, 3.766 personas reales).** Paridad 75.320 de 75.320 campos; 0 campos sin procedencia;
     434.008 registros citados, 0 que no resuelven; 129.416 recuentos, 0 que no cuadran. Bloqueo: **las 3.766
     dan los mismos hallazgos de las dos maneras** (24 con delito propio, que bloquean, y 16 con aviso de posible
     homónimo). Contra lo guardado: 0 perfiles distintos. Peso y tiempo (todos los grupos): p99 5,3 KB en gzip y
     3,4 ms por persona; la que más tiene, 212 entidades, 11,8 KB en gzip y 11 ms.
-  - **Falta (etapa B).** Cambiar la llamada: que `evaluarControlesBloqueo()` use `controlesDesdeHechos()` para
-    esos dos hallazgos, y que process.ts arme los tres grupos con `perfilDesdeHechos`, con su `camposSinDato`.
+  - **Etapa B, hecha en estructura-v27 (2026-11-20, E6).** `process.ts` arma `riesgoJudicialCrediticio`,
+    `riesgoJudicialCivil` y `riesgoSeguridadCiudadana` con `perfilDesdeHechos` y perdió sus copias del crudo
+    (también la de `mismoNombre()` y `esClienteObligadoSupa()`). `evaluarControlesBloqueo()` toma de
+    `controlesDesdeHechos()` el hallazgo de seguridad ciudadana y el aviso de homónimo
+    (`hallazgosDeSeguridadCiudadana()`, sin `derivaDe`, para que el hallazgo que guarda el análisis y lee el
+    modelo sea el mismo de siempre): ya no hay dos lecturas del mismo crudo. Los tres grupos entran a
+    `GRUPOS_CON_SIN_DATO`: con una fuente caída el campo es `null` y el grupo lo lista en `camposSinDato` con
+    el parcial; el modelo y la capacidad de pago leen lo de antes (`conLosValoresDeAntes()`).
+  - **Qué pasa con el control cuando una fuente judicial no contestó (decisión de la etapa B).** Una fuente
+    caída no desbloquea a nadie ni bloquea a alguien: el control lee el `parcial` de `seg.delito.categorias`
+    y el aviso de homónimo, que es lo que hacía con las filas que llegaban.
+    - Con un delito en una fuente que contestó (una demanda propia, una denuncia en que es la acusada, un
+      antecedente), **bloquea** aunque otra fuente esté caída: la caída no lo borra.
+    - Sin delito en las que contestaron y con demandas o denuncias caídas, **no sale hallazgo**: no se
+      bloquea por lo que no se pudo mirar, y tampoco queda «limpia». `demandas`, `denuncias` y
+      `antecedentesPenales` son obligatorias (`calidad-de-la-consulta.ts`), así que la consulta queda
+      incompleta, el modelo no corre y, si luego otro hallazgo bloquea, se niega por control sin modelo.
+      Reconsultar la fuente es lo que lo resuelve.
+    - La pantalla no esconde un delito parcial tras el «sin dato»: muestra «Categorías (según las fuentes que
+      contestaron)». Por eso, con la denuncia caída y un antecedente por extorsión, el analista ve el
+      «sin dato» y la categoría que sí consta.
+    - Qué fuente marca qué: `demandas` marca los cinco campos de cobro, los cinco de demandas civiles y los
+      dos de seguridad; `demandasOfendido`, `numeroDemandasComoOfendido`; cualquiera de las dos de pensiones,
+      los siete campos de pensión; `denuncias`, los dos de seguridad. `antecedentesPenales` dice «no hay» con
+      `faltante` y no es una falla.
+  - **El seco de la etapa B (2026-11-20, 3.766 personas reales, contra estructura-v26).** Paridad de los
+    hechos contra el perfil nuevo: 221.218 de 221.218 campos (todos los grupos con códigos); 0 campos sin
+    procedencia; 441.540 registros citados, 0 que no resuelven; 133.182 recuentos, 0 que no cuadran.
+    **Bloqueo:** el resultado entero del control (hallazgos, si bloquea y el tope de la salida) de ahora contra
+    el de origin/main da lo mismo en 3.766 de 3.766 (24 bloquean y 16 llevan el aviso de homónimo): 0 y 0.
+    **El «sin dato»:** cambian 782 personas y 12.945 campos, todos declarados como «sin dato»; 0 sin declarar;
+    con los valores de antes, 0 campos distintos (lo que leen el modelo y la capacidad). Por campo: seguridad
+    ciudadana 745 personas, pensiones 705, demandas que presentó 663, demandas (cobro y civiles) 656.
+    `deudaPensionAlimenticia` ya era `null` sin pensiones: cambia en 2 y se marca en 705. En 2 personas el parcial
+    trae algo (la pensión que dice la otra fuente); en ninguna es un delito: el bloqueo no se mueve.
 - **Riesgos.** El cotejo por nombre tiene falsos negativos (apellidos invertidos, nombres
   abreviados): lo que no se puede atribuir va como `sin_cotejo`, nunca como «no es de
   ella». Hay personas con hasta 205 registros entre demandas y denuncias: la respuesta a
@@ -818,7 +851,7 @@ cambio, va aparte y con medición.
 | 11 | Seguridad ciudadana, tres fuentes con tres criterios | cada una con el suyo (nombre, identificación y rol, texto) | no aplica: cada categoría cita su fuente y su método | paridad |
 | 12 | Multas de tránsito, tres entidades | se suman, sin unir | `dif.tra.posible_repetida` | paridad. Sin medir si una multa viene en dos |
 | 13 | Nivel de educación: registro civil y títulos | ninguna: hoy conviven | `dif.ide.nivel_de_educacion` cuando se contradicen | paridad. Propuesta: que mande el título registrado |
-| 14 | El bloqueo relee el crudo | los hechos: `controlesDesdeHechos()` | no aplica | propuesta (grupos 3 y cumplimiento) |
+| 14 | El bloqueo relee el crudo | los hechos: `controlesDesdeHechos()` | no aplica | hecho para seguridad ciudadana en estructura-v27 (24 y 16 en las 3.766, sin diferencias); falta el grupo de cumplimiento |
 | 15 | Edades y antigüedades con el reloj del armado | la fecha de la consulta | no aplica | propuesta: cambia el valor de un perfil recalculado otro día; se declara como diferencia esperada |
 | 16 | Proveedor_Info_1 y el buró de la institución | el buró para bancos, Diners y cooperativas; el retail se suma al sector comercial (negocio, 2026-10-16); el BIESS queda en Proveedor_Info_1 y no se suma | `dif.end.bancos`: la deuda de bancos según cada uno | paridad con `perfil-del-modelo.ts` (sección 7) |
 
@@ -1018,7 +1051,7 @@ adaptador ni se diseña acá.
 2. Grupo 1, etapa A: `comportamiento-bancario.ts` y `cooperativas.ts`, con sus casos.
    Comparación en seco sobre las 3.766.
 3. Grupo 1, etapa B: la inversión.
-4. Grupos 2 y 3, en paralelo (archivos distintos).
+4. Grupos 2 y 3, en paralelo (archivos distintos). El grupo 3, etapa B: estructura-v27.
 5. Grupo 4, con el diseño de la escalera del ingreso cerrado.
 6. Las correcciones de la sección 6 que el negocio apruebe, cada una con su versión de la
    estructura.

@@ -943,6 +943,28 @@ interface StandardClientProfile {
 >   puesta por si la fuente cambia, con su detector (`operacion-en-super-y-diners`).
 > - No hace falta recalcular: el perfil de cada persona es el mismo de la v25.
 
+> **estructura-v27 (E6, 2026-11-20: etapa B del grupo 3 de la capa de hechos y el «sin dato» judicial)**
+> - `riesgoJudicialCrediticio`, `riesgoJudicialCivil` y `riesgoSeguridadCiudadana` salen de la
+>   capa de hechos (`hechos/grupos/riesgo-judicial.ts`, `docs/capa-de-hechos.md`, 4.3): misma
+>   regla (la atribución de la v24, D2), una sola implementación. El control de bloqueo toma de
+>   los mismos hechos su hallazgo de seguridad ciudadana y el aviso de homónimo.
+> - Con una fuente que no contestó (o apagada), el campo es `null` y el grupo lo lista en
+>   `camposSinDato` con lo que dicen las que sí contestaron, como en la v25. `demandas` marca los
+>   campos de demandas y de seguridad; `demandasOfendido`, las demandas que presentó; las dos
+>   fuentes de pensiones, los siete campos de pensión; `denuncias`, los de seguridad.
+> - **Una fuente caída no desbloquea a nadie ni bloquea a alguien.** El control lee el parcial: un
+>   delito en una fuente que contestó sigue bloqueando; sin delito y con la fuente caída no sale
+>   hallazgo y la consulta queda incompleta (esas fuentes son obligatorias).
+> - El modelo y la capacidad de pago leen el valor de antes (`_shared/campos-sin-dato.ts`) hasta
+>   la versión mayor del marco; la pantalla muestra «sin dato» por fuente y no esconde un delito
+>   que consta en otra.
+> - Medido en seco sobre las 3.766 personas reales: cambian 782 (12.945 campos, todos sin dato,
+>   0 sin declarar); el bloqueo da lo mismo que el de la v26 en las 3.766 (24 bloquean, 16 con el
+>   aviso de homónimo).
+> - **Sin aplicar:** se despliega primero y se recalcula después
+>   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
+>   con el sí del negocio.
+
 > **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
 > aprobadas por el negocio el 2026-11-08)**
 > - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la

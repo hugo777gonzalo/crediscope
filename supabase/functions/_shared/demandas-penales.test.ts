@@ -9,6 +9,7 @@ import { cotejarDemandado } from "./demandas.ts";
 import { delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import { buildStandardProfile } from "./process.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 const PERSONA = "PEREZ LOPEZ JUAN CARLOS";
@@ -141,11 +142,23 @@ Deno.test("bloqueo: sin el nombre de la persona no se bloquea por una demanda", 
   assertStringIncludes(r.hallazgos[0].message, "no se pudo leer el nombre de la persona");
 });
 
+// Este crudo trae sólo la fuente de demandas: las de denuncias y antecedentes no contestaron, y
+// desde estructura-v27 el campo queda null con lo que dijo la de demandas en `camposSinDato`.
+// Lo que leen el modelo y el bloqueo es ese parcial (conLosValoresDeAntes).
 Deno.test("perfil: riesgoSeguridadCiudadana cuenta sólo las demandas de la persona", () => {
-  const otra = buildStandardProfile(crudo(PERSONA, [demanda("ESTUPEFACIENTES", "GOMEZ RUIZ PEDRO")]), "0000000000").profile;
-  assertEquals(otra.riesgoSeguridadCiudadana, { tieneDelitoSeguridadCiudadana: false, categoriasDelitoSeguridadCiudadana: [] });
-  const suya = buildStandardProfile(crudo(PERSONA, [demanda("ESTUPEFACIENTES", "PEREZ LOPEZ JUAN CARLOS")]), "0000000000").profile;
-  assertEquals(suya.riesgoSeguridadCiudadana, {
+  const leido = (demandas: unknown[]) => conLosValoresDeAntes(buildStandardProfile(crudo(PERSONA, demandas), "0000000000").profile).riesgoSeguridadCiudadana;
+  assertEquals(leido([demanda("ESTUPEFACIENTES", "GOMEZ RUIZ PEDRO")]), { tieneDelitoSeguridadCiudadana: false, categoriasDelitoSeguridadCiudadana: [] });
+  assertEquals(leido([demanda("ESTUPEFACIENTES", "PEREZ LOPEZ JUAN CARLOS")]), {
+    tieneDelitoSeguridadCiudadana: true,
+    categoriasDelitoSeguridadCiudadana: ["Narcotráfico / tráfico de sustancias"],
+  });
+});
+
+Deno.test("perfil: sin la fuente de denuncias ni la de antecedentes, el campo es null y el delito de la demanda queda en el parcial", () => {
+  const p = buildStandardProfile(crudo(PERSONA, [demanda("ESTUPEFACIENTES", "PEREZ LOPEZ JUAN CARLOS")]), "0000000000").profile;
+  assertEquals(p.riesgoSeguridadCiudadana.tieneDelitoSeguridadCiudadana, null);
+  assertEquals(p.riesgoSeguridadCiudadana.categoriasDelitoSeguridadCiudadana, null);
+  assertEquals(p.riesgoSeguridadCiudadana.camposSinDato, {
     tieneDelitoSeguridadCiudadana: true,
     categoriasDelitoSeguridadCiudadana: ["Narcotráfico / tráfico de sustancias"],
   });

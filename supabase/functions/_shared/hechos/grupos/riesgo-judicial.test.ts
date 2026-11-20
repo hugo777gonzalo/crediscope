@@ -51,7 +51,7 @@ Deno.test("cero campos sin procedencia: todo campo de los tres grupos judiciales
   for (const [grupo, cantidad] of Object.entries(esperados)) {
     const desde = texto.indexOf(`  ${grupo}: {`);
     const hasta = texto.indexOf("\n  };", desde);
-    const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]);
+    const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]).filter((c) => c !== "camposSinDato");
     assertEquals(campos.length, cantidad, grupo);
     assertEquals(campos.filter((c) => !conCodigo.has(`${grupo}.${c}`)), [], grupo);
   }

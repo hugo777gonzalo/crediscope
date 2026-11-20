@@ -5,12 +5,13 @@
 // grupos del perfil: `riesgoJudicialCrediticio` (las demandas de cobro),
 // `riesgoJudicialCivil` (las demás, y las pensiones) y `riesgoSeguridadCiudadana`.
 //
-// ETAPA A. process.ts sigue armando los tres grupos; las reglas de abajo son una copia
-// hasta la etapa B y `comparar-hechos.mjs` compara campo por campo contra el perfil. Lo
-// que SÍ es una sola implementación: el cotejo del demandado (`atribuirDemandas()`,
-// demandas.ts), la regla de cobro y las categorías (demandas.ts), el papel en una
-// denuncia (denuncias.ts), los delitos de seguridad y los textos del bloqueo
-// (delitos-seguridad.ts) y `mismoNombre()` (mismo-nombre.ts).
+// ETAPA B (estructura-v27). process.ts arma los tres grupos con `perfilDesdeHechos()` y las
+// reglas de abajo son la única implementación: ya no hay copia en process.ts. El cotejo del
+// demandado (`atribuirDemandas()`, demandas.ts), la regla de cobro y las categorías
+// (demandas.ts), el papel en una denuncia (denuncias.ts), los delitos de seguridad y los
+// textos del bloqueo (delitos-seguridad.ts) y `mismoNombre()` (mismo-nombre.ts) viven en su
+// archivo. `evaluarControlesBloqueo()` toma de estos mismos hechos su hallazgo de seguridad
+// ciudadana (hechos/controles.ts).
 //
 // La regla que se reproduce es la de estructura-v24 (D2, 2026-11-19): una demanda de cobro
 // o civil de OTRA persona no cuenta, y los apellidos invertidos también son otra persona.
@@ -18,8 +19,8 @@
 // atribución, calculada UNA vez por `atribuirDemandas()`; todo hecho filtra por ella.
 //
 // Cuando falta una fuente de las que lee un hecho, el hecho no tiene valor y lleva el
-// `parcial`: lo que dice la regla con las filas que sí llegaron, que es lo que el perfil
-// escribe hoy (hechos-v2). La identidad (`general`) sólo aporta el nombre del cotejo: su
+// `parcial`: lo que dice la regla con las filas que sí llegaron (hechos-v2). El perfil
+// escribe null y lista el campo en `camposSinDato` con ese parcial; el bloqueo lee el parcial. La identidad (`general`) sólo aporta el nombre del cotejo: su
 // caída la frena la consulta incompleta, no cambia estos hechos.
 
 import { ayudanteDelGrupo, type Emisor } from "../emisor.ts";
@@ -102,7 +103,17 @@ export const REGLAS_QUE_MEZCLAN: string[] = [
   "seg.delito@1", // descarta las demandas sin cotejo y las denuncias en que no es la acusada
 ];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
+// Contra estructura-v26, la única diferencia es el «sin dato» (E6, etapa B): con una fuente que
+// no contestó, el campo pasa del parcial o de 0 a null, marcado en camposSinDato. El bloqueo no
+// cambia (controles.ts lee el parcial). comparar-hechos.mjs --contra la cuenta y corta con
+// cualquier otra.
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = ["riesgoJudicialCrediticio", "riesgoJudicialCivil", "riesgoSeguridadCiudadana"].map((grupo) => ({
+  campo: `${grupo}.*`,
+  detector: "dato-de-fuente-sin-respuesta-escrito-como-total",
+  aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v27",
+  motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial o 0",
+  cuando: "sin_dato" as const,
+}));
 
 // ---- Lo que cuenta de cada registro, para quien lo abre desde la entidad ----
 

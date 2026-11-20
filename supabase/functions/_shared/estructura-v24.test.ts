@@ -44,7 +44,7 @@ Deno.test("D2: la de otro demandado y la de apellidos invertidos dejan de contar
   assertEquals(a.sinCotejo.length, 1);
   const c = perfilDe(delPerfil).riesgoJudicialCrediticio;
   assertEquals(c.numeroDemandasComoDemandado, 2);
-  assertEquals(c.demandasDeCobro.length, 2);
+  assertEquals(c.demandasDeCobro?.length, 2);
   assertEquals(c.numeroDemandasDeOtroDemandado, 3);
   assertEquals(c.numeroDemandasSinCotejo, 1);
 });

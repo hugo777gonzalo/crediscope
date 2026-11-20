@@ -22,9 +22,10 @@
 //      camposSinDato). --contra=no la salta.
 // 8. Con el grupo riesgoJudicial (o --bloqueo), el hallazgo de seguridad ciudadana del
 //    control de bloqueo: `controlesDesdeHechos()` contra `evaluarControlesBloqueo()` sobre
-//    el mismo crudo, hallazgo por hallazgo (código, texto, si bloquea). Nada llama todavía
-//    a `controlesDesdeHechos()`: es la medida de que dan lo mismo antes de cambiar la
-//    llamada. --bloqueo=no la salta.
+//    el mismo crudo, hallazgo por hallazgo (código, texto, si bloquea). Desde la etapa B del
+//    grupo 3 (estructura-v27) `evaluarControlesBloqueo()` llama a `controlesDesdeHechos()`: con
+//    --contra, "hoy" es el control de esa versión (origin/main), que todavía leía el crudo; sin
+//    --contra (--contra=no) los dos son lo mismo y el paso es trivial. --bloqueo=no la salta.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
@@ -89,6 +90,7 @@ const { evaluarControlesBloqueo } = await importar("supabase/functions/_shared/c
 // el código de _shared, sin las pruebas): se importa como cualquier otro.
 const CONTRA = args.contra === "no" ? null : typeof args.contra === "string" ? args.contra : "origin/main";
 let construirAntes = null;
+let controlDeAntes = null;
 let selloContra = null;
 if (CONTRA) {
   const git = (...a) => execFileSync("git", ["-C", RAIZ, ...a], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -102,6 +104,7 @@ if (CONTRA) {
   }
   const viejo = await import(pathToFileURL(path.join(destino, "supabase/functions/_shared/process.ts")).href);
   construirAntes = viejo.buildStandardProfile;
+  controlDeAntes = (await import(pathToFileURL(path.join(destino, "supabase/functions/_shared/controles-bloqueo.ts")).href)).evaluarControlesBloqueo;
   console.log(`Contra ${CONTRA} (${selloContra}, ${viejo.PROCESS_VERSION}).`);
 }
 
@@ -230,9 +233,9 @@ function estadistica(valores) {
 // ---- La corrida ----
 
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0, hechos: 0, conValor: 0, registros: 0, recuentos: 0 };
-const fallas = { bloqueo: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
+const fallas = { bloqueo: [], bloqueoCompleto: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
 // 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
-const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0 };
+const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0, completosComparados: 0, completosIguales: 0 };
 const cambio = { personas: 0, personasSinDato: 0, personasConUnion: 0, unionesPorRegla: {}, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
 const porCampo = {};
 const medidas = { documentoJson: [], documentoGzip: [], ms: [], hechos: [], entidades: [], diferencias: [] };
@@ -355,9 +358,16 @@ for (let i = 0; i < candidatos.length; i += 50) {
     // 8. El hallazgo de seguridad ciudadana del bloqueo, de las dos maneras.
     if (BLOQUEO) {
       const forma = (hs) => hs.filter((x) => CODIGOS_DE_SEGURIDAD.includes(x.code)).map((x) => ({ code: x.code, message: x.message, bloqueante: x.bloqueante, salidaMaxima: x.salidaMaxima ?? null }));
-      const hoy = forma(evaluarControlesBloqueo(raw, crudo.cedula).hallazgos);
+      const hoy = forma((controlDeAntes ?? evaluarControlesBloqueo)(raw, crudo.cedula).hallazgos);
       const desdeHechos = forma(controlesDesdeHechos(doc));
       bloqueo.personas++;
+      // Con --contra, además, el resultado entero del control (todos los hallazgos, si bloquea y
+      // el tope de la salida) de ahora contra el de esa versión: es lo que decide el bloqueo.
+      if (controlDeAntes) {
+        bloqueo.completosComparados++;
+        if (canonico(evaluarControlesBloqueo(raw, crudo.cedula)) === canonico(controlDeAntes(raw, crudo.cedula))) bloqueo.completosIguales++;
+        else fallas.bloqueoCompleto.push({ ref });
+      }
       if (hoy.some((x) => x.code === "delito_seguridad_ciudadana")) bloqueo.conDelito++;
       if (hoy.some((x) => x.code === "posible_homonimo_en_demanda_penal")) bloqueo.conAviso++;
       if (canonico(hoy) === canonico(desdeHechos)) bloqueo.iguales++;
@@ -408,6 +418,8 @@ console.log(`Recuentos independientes: ${n(cuenta.recuentos)}, ${fallas.recuento
 for (const d of fallas.recuento.slice(0, 5)) console.log(`  ${d.ref} ${d.codigo}`);
 if (BLOQUEO) {
   console.log(`Bloqueo (seguridad ciudadana): ${n(bloqueo.iguales)} de ${n(bloqueo.personas)} personas con los mismos hallazgos de las dos maneras; ${fallas.bloqueo.length} distintas. Con delito propio (bloquea): ${n(bloqueo.conDelito)}; con aviso de posible homónimo: ${n(bloqueo.conAviso)}.`);
+  if (bloqueo.completosComparados) console.log(`  El resultado entero del control (hallazgos, si bloquea, tope de la salida) contra ${CONTRA}: ${n(bloqueo.completosIguales)} de ${n(bloqueo.completosComparados)} iguales; ${fallas.bloqueoCompleto.length} distintos.`);
+  for (const d of fallas.bloqueoCompleto.slice(0, 8)) console.log(`  DISTINTO el control entero ${d.ref}`);
   for (const d of fallas.bloqueo.slice(0, 8)) console.log(`  DISTINTO ${d.ref}: hoy ${d.hoy.map((x) => x.code).join(",") || "nada"}; desde hechos ${d.desdeHechos.map((x) => x.code).join(",") || "nada"}`);
 }
 if (args.deposito) console.log(`Contra lo guardado (informativo): ${fallas.contraLoGuardado.length} perfiles con algún campo del grupo distinto del rearmado.`);
@@ -453,5 +465,5 @@ const archivo = path.join(destino, `comparar-${ELEGIDOS.join("+")}-${sello}.json
 fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, bloqueo: BLOQUEO ? bloqueo : null, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
 console.log(`Detalle (con montos, fuera de git): ${path.relative(PRINCIPAL, archivo)}`);
 
-const malo = fallas.bloqueo.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fueraDelPresupuesto;
+const malo = fallas.bloqueo.length || fallas.bloqueoCompleto.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fueraDelPresupuesto;
 process.exit(malo ? 1 : 0);
