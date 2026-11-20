@@ -36,8 +36,8 @@ function crudo(cambios: Record<string, unknown> = {}): RespuestaProveedorInfo1 {
 }
 const perfilDe = (raw: RespuestaProveedorInfo1) => buildStandardProfile(raw, CEDULA).profile;
 
-Deno.test("la versión de la estructura es la v28", () => {
-  assertEquals(PROCESS_VERSION, "estructura-v28");
+Deno.test("la versión de la estructura es la v28 o posterior", () => {
+  assertEquals(Number(PROCESS_VERSION.replace("estructura-v", "")) >= 28, true, PROCESS_VERSION);
 });
 
 Deno.test("sin fuentes caídas el perfil penal y el de cumplimiento no llevan la marca, y el orden de las claves es el de siempre", () => {

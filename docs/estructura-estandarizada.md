@@ -966,6 +966,20 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
 >   con el sí del negocio.
 
+> **estructura-v29 (E7, 2026-11-20: etapa B del grupo 2 de la capa de hechos, el historial con la institución)**
+> - `comportamientoInterno` sale de la capa de hechos (`hechos/grupos/historial-con-la-institucion.ts`,
+>   `docs/capa-de-hechos.md`, 4.2): misma regla (una operación, la vigente de mayor saldo o la cancelada de
+>   mayor cuota por plazo; D5), una sola implementación. Las cantidades de operaciones no llegan al perfil.
+> - Con la base interna sin respuesta (o apagada), los siete campos son `null` y el grupo los lista en
+>   `camposSinDato`. Hasta la v28 se escribía `esClienteInterno: false`, igual que para alguien que la
+>   institución no tiene como cliente. Con la fuente contestando y sin operaciones, `false` sigue siendo el valor.
+> - El modelo y la capacidad de pago leen lo de antes (`_shared/campos-sin-dato.ts`) hasta la versión mayor del
+>   marco; la tarjeta de «Comportamiento Interno» muestra «Base interna: sin dato (la fuente no contestó)».
+> - Medido en seco sobre las 3.766 personas reales: cambian 648 (sólo `esClienteInterno`, todas sin dato, 0 sin
+>   declarar); el bloqueo da 0 y 0.
+> - **Sin aplicar:** se despliega primero y se recalcula después
+>   (`recalcular-grupos.mjs --grupos=comportamientoInterno --bloqueo`), con el sí del negocio.
+
 > **estructura-v28 (E7, 2026-11-20: etapa B de los grupos penal y de cumplimiento de la capa de hechos)**
 > - `riesgoPenal` y `cumplimiento` salen de la capa de hechos (`hechos/grupos/penal.ts` y `cumplimiento.ts`,
 >   `docs/capa-de-hechos.md`, 4.5): misma regla, una sola implementación. El control de bloqueo toma de los

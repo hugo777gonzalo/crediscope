@@ -1,5 +1,5 @@
 {
-  "descripcion": "La fuente de la base interna falló: los hechos no tienen valor y dicen por qué (el perfil escribe lo de hoy)",
+  "descripcion": "La base interna falló: los hechos no tienen valor y dicen por qué; con estructura-v29 el perfil escribe null y lo marca en camposSinDato (esClienteInterno vuelve a false para el modelo), y el detector no marca nada",
   "cedula": "0000000000",
   "capturadoEl": "2026-10-01T12:00:00-05:00",
   "raw": {
@@ -16,7 +16,9 @@
       "data": null
     }
   },
-  "esperado": {},
+  "esperado": {
+    "dato-de-la-institucion-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
   "hechos": {
     "inst.es_cliente": {
       "valor": null,
