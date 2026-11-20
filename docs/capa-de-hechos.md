@@ -681,19 +681,26 @@ diferencia que la inversión admite, el **«sin dato»**:
       contestaron)». Por eso, con la denuncia caída y un antecedente por extorsión, el analista ve el
       «sin dato» y la categoría que sí consta.
     - Qué fuente marca qué: `demandas` marca los cinco campos de cobro, los cinco de demandas civiles y los
-      dos de seguridad; `demandasOfendido`, `numeroDemandasComoOfendido`; cualquiera de las dos de pensiones,
-      los siete campos de pensión; `denuncias`, los dos de seguridad. `antecedentesPenales` dice «no hay» con
-      `faltante` y no es una falla.
+      dos de seguridad; `demandasOfendido`, `numeroDemandasComoOfendido`; `pensionAlimenticiaProveedorInfo1`, los
+      siete campos de pensión; `denuncias`, los dos de seguridad. `antecedentesPenales` dice «no hay» con
+      `faltante` y no es una falla. **Una fuente cuyos registros nunca cuentan no deja un campo sin dato:**
+      `pensionAlimenticia` (pn_supa) no trae al obligado y `esClienteObligadoSupa()` sólo cuenta un registro con
+      `obligadoPrincipal`; en las 3.766 personas reales trae 668 registros en 488 personas, **ninguno con
+      obligado**, así que ninguno cuenta. Que caiga no cambia lo que se sabe: sus registros se siguen leyendo
+      y descartando con su motivo (`FUENTES_QUE_NUNCA_CUENTAN`, `riesgo-judicial.ts`), pero las pensiones
+      quedan «sin dato» sólo si cae `pensionAlimenticiaProveedorInfo1` (o las dos). Si algún día pn_supa trae
+      `obligadoPrincipal`, sale de esa lista.
   - **El seco de la etapa B (2026-11-20, 3.766 personas reales, contra estructura-v26).** Paridad de los
-    hechos contra el perfil nuevo: 221.218 de 221.218 campos (todos los grupos con códigos); 0 campos sin
-    procedencia; 441.540 registros citados, 0 que no resuelven; 133.182 recuentos, 0 que no cuadran.
+    hechos contra el perfil nuevo: 221.204 de 221.204 campos (todos los grupos con códigos); 0 campos sin
+    procedencia; 441.999 registros citados, 0 que no resuelven; 133.332 recuentos, 0 que no cuadran.
     **Bloqueo:** el resultado entero del control (hallazgos, si bloquea y el tope de la salida) de ahora contra
     el de origin/main da lo mismo en 3.766 de 3.766 (24 bloquean y 16 llevan el aviso de homónimo): 0 y 0.
-    **El «sin dato»:** cambian 782 personas y 12.945 campos, todos declarados como «sin dato»; 0 sin declarar;
+    **El «sin dato»:** cambian 768 personas y 12.721 campos, todos declarados como «sin dato»; 0 sin declarar;
     con los valores de antes, 0 campos distintos (lo que leen el modelo y la capacidad). Por campo: seguridad
-    ciudadana 745 personas, pensiones 705, demandas que presentó 663, demandas (cobro y civiles) 656.
-    `deudaPensionAlimenticia` ya era `null` sin pensiones: cambia en 2 y se marca en 705. En 2 personas el parcial
-    trae algo (la pensión que dice la otra fuente); en ninguna es un delito: el bloqueo no se mueve.
+    ciudadana 745 personas, pensiones **668** (705 antes de la regla de pn_supa: 37 personas sólo tenían caída
+    esa fuente), demandas que presentó 663, demandas (cobro y civiles) 656. `deudaPensionAlimenticia` ya era
+    `null` sin pensiones: se marca en 668 y no cambia en ninguna. El parcial judicial no trae nada en ninguna
+    persona (el único que traía algo era la pensión de pn_supa): el bloqueo no se mueve.
 - **Riesgos.** El cotejo por nombre tiene falsos negativos (apellidos invertidos, nombres
   abreviados): lo que no se puede atribuir va como `sin_cotejo`, nunca como «no es de
   ella». Hay personas con hasta 205 registros entre demandas y denuncias: la respuesta a
@@ -915,7 +922,7 @@ es el de un empleo actual), `emp.antiguedad@1` (sin cruzar fuentes) y `ruc.refer
   abierto y el RUC cesado (el registro sin actualizar de la v7, `esperada`) y 3 con el RUC vigente y todos los
   establecimientos cerrados (`revisar`). Ninguna cambia un campo.
 - **El resguardo de la etapa A.** `derivarHechos` envuelve en `try/catch` a cada grupo que todavía no alimenta el
-  perfil (todos menos `GRUPOS_EN_ETAPA_B` de `indice.ts`: hoy el 1; el 3 se suma al fusionarse su etapa B): si falla,
+  perfil (todos menos `GRUPOS_EN_ETAPA_B` de `indice.ts`: hoy el 1 y el 3 (estructura-v27)): si falla,
   ese grupo no emite nada (`emisor.marca()` deshace lo que alcanzó a emitir, claves incluidas), el error queda en
   `console.error` con el grupo y el mensaje, sin datos de la persona, y el resto sigue. Un grupo en etapa B falla
   como hoy, porque el perfil depende de él. Con `{ estricto: true }` fallan todos: lo usan `comparar-hechos.mjs` y

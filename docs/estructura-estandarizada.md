@@ -950,15 +950,16 @@ interface StandardClientProfile {
 >   los mismos hechos su hallazgo de seguridad ciudadana y el aviso de homónimo.
 > - Con una fuente que no contestó (o apagada), el campo es `null` y el grupo lo lista en
 >   `camposSinDato` con lo que dicen las que sí contestaron, como en la v25. `demandas` marca los
->   campos de demandas y de seguridad; `demandasOfendido`, las demandas que presentó; las dos
->   fuentes de pensiones, los siete campos de pensión; `denuncias`, los de seguridad.
+>   campos de demandas y de seguridad; `demandasOfendido`, las demandas que presentó;
+>   `pensionAlimenticiaProveedorInfo1`, los siete campos de pensión (pn_supa no los marca: no trae
+>   al obligado y ninguno de sus registros cuenta); `denuncias`, los de seguridad.
 > - **Una fuente caída no desbloquea a nadie ni bloquea a alguien.** El control lee el parcial: un
 >   delito en una fuente que contestó sigue bloqueando; sin delito y con la fuente caída no sale
 >   hallazgo y la consulta queda incompleta (esas fuentes son obligatorias).
 > - El modelo y la capacidad de pago leen el valor de antes (`_shared/campos-sin-dato.ts`) hasta
 >   la versión mayor del marco; la pantalla muestra «sin dato» por fuente y no esconde un delito
 >   que consta en otra.
-> - Medido en seco sobre las 3.766 personas reales: cambian 782 (12.945 campos, todos sin dato,
+> - Medido en seco sobre las 3.766 personas reales: cambian 768 (12.721 campos, todos sin dato,
 >   0 sin declarar); el bloqueo da lo mismo que el de la v26 en las 3.766 (24 bloquean, 16 con el
 >   aviso de homónimo).
 > - **Sin aplicar:** se despliega primero y se recalcula después
