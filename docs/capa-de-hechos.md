@@ -1055,6 +1055,10 @@ resto de `controles-bloqueo.ts`.
   SERCOP 604; impedimento 568. Marcados sin dato y ya `null` antes (cambian de «no hay» a «no se pudo»): antecedentes
   572 (una fuente en `error`), causal 568 y detalle del PEP 651. En 0 personas el parcial trae un valor distinto de 0,
   false o vacío: el bloqueo no se mueve. Entre ellas, c-dfeb4f7c, el caso que motivó el grupo.
+- **`recalcular-grupos.mjs --grupos=riesgoPenal,cumplimiento --bloqueo --seco`** (3.766 candidatos, 0 que el crudo no
+  reproduce): cambian 753 personas, todas con un campo sin dato y ninguna con otro cambio; **bloqueo: se desbloquean 0,
+  se bloquean 0, difieren en otro hallazgo 0**. Campos: denuncias 724 (los dos), lista negra 663, listas de control,
+  homónimo, PEP y providencia 651, SERCOP 604, impedimento 568.
 - **Peso y tiempo** (todos los grupos): p99 10,3 KB en gzip y 6,6 ms por persona; la que más tiene, 219 entidades y
   15,6 KB en gzip.
 
