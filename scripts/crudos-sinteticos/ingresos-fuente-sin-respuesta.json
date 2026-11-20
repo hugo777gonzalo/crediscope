@@ -1,0 +1,92 @@
+{
+  "descripcion": "Grupo 4, ingresos: los aportes al IESS no contestaron: el segmento no se puede afirmar («sin datos») y los hechos no tienen valor y dicen por qué, con el parcial que el perfil escribe hoy",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "jubilados": {
+      "status": "ok",
+      "data": {
+        "trabajos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    },
+    "afiliacionIssfacCertMedico": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "afiliacionSiisspol": {
+      "status": "ok",
+      "data": {
+        "afiliacionSiisspol": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "sriImpuestoRenta": {
+      "status": "ok",
+      "data": {
+        "data": []
+      }
+    },
+    "basesInternas": {
+      "status": "error",
+      "data": null
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {},
+  "hechos": {
+    "ing.segmento.codigo": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": "sin_datos"
+    },
+    "ing.reportado.mensual": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": null
+    },
+    "ing.aportes.meses_24": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    }
+  }
+}

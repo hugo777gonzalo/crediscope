@@ -21,6 +21,7 @@
 
 import { ayudanteDelGrupo, type Emisor } from "../emisor.ts";
 import { type AnyRecord, type Fila, filasDe, num, parseFecha, refDeFila, refDeRespuesta, respuestaDe, textoDe } from "../lectura-del-crudo.ts";
+import { CODIGOS_DE_AFILIACION_PROPIA, codigoDeTipoDeEmpleador, mesClave } from "../lectura-del-iess.ts";
 import { ahoraDe, aniosDesdeMs, mesesEntreFechas, parseFechaDDMMYYYY } from "../reloj.ts";
 import type { Calidad, CodigoDelCatalogo, Contexto, Descarte, Diferencia, DiferenciaEsperada, ElementoDeLista, Entidad, Hecho, MotivoDeNoDisponible, RefDeRegistro } from "../tipos.ts";
 import { CORTE_IESS_CONOCIDO, reglaDeTrabajo } from "../../fuentes-ingreso.ts";
@@ -157,15 +158,6 @@ function primeraDeCada<T>(xs: T[], clave: (x: T) => unknown): T[] {
   });
 }
 
-// Valida el rango a propósito (mesClave de fuentes-ingreso.ts): un mes 99 construía «2026-99».
-function mesClave(anio: unknown, mes: unknown): string | null {
-  const a = Number(anio);
-  const m = Number(mes);
-  if (!Number.isInteger(a) || a < 1950 || a > 2100) return null;
-  if (!Number.isInteger(m) || m < 1 || m > 12) return null;
-  return `${a}-${String(m).padStart(2, "0")}`;
-}
-
 // El corte que usa analizarFuentesIngreso(): el pasado, o el último mes del propio
 // cliente si es posterior. Lee los aportes como ese archivo (`basesInternas.data.data`
 // si existe): son dos lectores del mismo crudo y la paridad los reproduce a los dos.
@@ -180,12 +172,6 @@ export function corteIessUsado(crudo: AnyRecord, corteConocido: string): string 
   }
   return ultimo && ultimo > corteConocido ? ultimo : corteConocido;
 }
-
-// Los códigos de tipo de empleador con que fuentes-ingreso.ts lee un aporte como propio
-// (cuenta propia: 3, 8, 24, 30, 31, 32 y 34) o del hogar (35). Una prueba de empleo.test.ts
-// los compara con la clasificación de ese archivo.
-export const CODIGOS_DE_AFILIACION_PROPIA = new Set(["3", "8", "24", "30", "31", "32", "34", "35"]);
-const codigoDeTipoDeEmpleador = (tipEmp: unknown): string | null => (String(tipEmp ?? "").match(/^\s*(\d+)\s*-/) ?? [])[1] ?? null;
 
 const baseDateTs = (r: AnyRecord): number => parseFecha(r.baseDate ? `${r.baseDate}-01` : null)?.getTime() ?? 0;
 

@@ -12,7 +12,8 @@ import { perfilDesdeHechos } from "../perfil-desde-hechos.ts";
 import type { Contexto } from "../tipos.ts";
 import { analizarFuentesIngreso } from "../../fuentes-ingreso.ts";
 import type { RespuestaProveedorInfo1 } from "../../types.ts";
-import { agruparEmpleadores, CATALOGO, CODIGOS_DE_AFILIACION_PROPIA, corteIessUsado, nombreComparable, rucComparable } from "./empleo.ts";
+import { agruparEmpleadores, CATALOGO, corteIessUsado, nombreComparable, rucComparable } from "./empleo.ts";
+import { CODIGOS_DE_AFILIACION_PROPIA } from "../lectura-del-iess.ts";
 import { CATALOGO as CATALOGO_RUC } from "./actividad-con-ruc.ts";
 
 const contexto: Contexto = {

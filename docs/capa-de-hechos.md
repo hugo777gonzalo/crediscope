@@ -743,7 +743,7 @@ El riesgo (1) está cerrado: abajo está cada campo de `laboral`, de `fuentesIng
 leyendo `process.ts` (532 a 1022) y `fuentes-ingreso.ts` línea por línea, sin medir nada nuevo.
 
 **Cómo se parte.** El grupo no entra en un solo PR razonable: `laboral` son 33 campos y
-`fuentesIngreso` otros 12 más nueve del `detalle`, con 1.386 líneas de reglas y textos que
+`fuentesIngreso` otros 12 más diez del `detalle`, con 1.386 líneas de reglas y textos que
 arman un segmento. Etapa A en dos PR, en este orden:
 
 1. **Empleo y actividad con RUC** (`empleo.ts` y `actividad-con-ruc.ts`): los 33 campos de
@@ -856,7 +856,7 @@ mismo empleo. Manda la fuente de la que salió el empleo actual (`lab.empleo_act
 `revisar` si difieren en un dólar o más (el 2026-09-24 coincidían en 272 de 272). `dif.ruc.estado`: RUC activo por
 fechas sin ningún establecimiento abierto.
 
-##### `fuentesIngreso` (la parte que va en el segundo PR)
+##### `fuentesIngreso` (el segundo PR)
 
 Fuente única, `analizarFuentesIngreso()`; su versión es `FUENTES_INGRESO_VERSION` (`fuentes-v11`).
 
@@ -936,6 +936,44 @@ es el de un empleo actual), `emp.antiguedad@1` (sin cruzar fuentes) y `ruc.refer
 - **Lo que no se hizo.** `ingresos.ts` (segundo PR), `tributario.ts` y `esAfiliadoUnipersonal`. El campo
   `lab.empleo_actual.fuente` todavía no llega a ninguna parte: no hay campo del perfil y el cargo vigente sigue
   saliendo de la regla de `process.ts`. La etapa B de este grupo espera a que `ingresos.ts` use los mismos hechos.
+
+##### Etapa A, segundo PR: hecha (2026-11-20)
+
+`grupos/ingresos.ts`: `fuentesIngreso` y su `detalle` (hechos-v4). **Los valores salen de
+`analizarFuentesIngreso()`, la misma función que usa `process.ts`, llamada desde el grupo: no se copia** (son 1.386
+líneas de reglas y de textos que leen el analista y el modelo). Lo que el grupo agrega es lo que esa función no dice: qué
+filas del crudo sostienen cada cifra, de quién es el aporte y dos lecturas nuevas. La etapa B mueve las reglas a este
+archivo y borra la llamada de `process.ts`. `process.ts` y `fuentes-ingreso.ts` no cambian.
+
+- **Los hechos.** 25 códigos: los 12 campos de `fuentesIngreso` y los 10 del `detalle` (la continuidad laboral es un
+  hecho de unidad `objeto`: es lo que sube `HECHOS_VERSION` a `hechos-v4`, y `perfilDesdeHechos` arma el `detalle`
+  anidado desde códigos con punto), más tres nuevos: `ing.reportado.por_tercero`, `ing.reportado.autodeclarado` y
+  `dif.ing.obligado`.
+- **La calidad.** El aporte de un empleador es `confirmado_por_tercero`; el de quien es su propio patrono o aporta por
+  cuenta propia, `declarado`; el impuesto a la renta, `declarado` (lo declaró al SRI); el segmento, el estado, el motivo
+  y una actividad propia deducida del RUC, `calculado`. Un hecho que junta de las dos clases toma la más débil.
+  `ing.reportado.mensual` cita los aportes del corte que suman (`salario`) y deja en `descartados` los que llegaron sin
+  monto; `ing.reportado.por_tercero` y `.autodeclarado` lo parten según la evidencia de cada fuente.
+- **Una diferencia que ya existía y no se veía.** `dif.ing.obligado`: el registro del RUC con «S» es obligado a
+  contabilidad para `ruc.ts` y no para `fuentes-ingreso.ts` (que compara sólo «SI»). Se reproduce tal cual (riesgo 3: va con
+  la versión mayor del marco, F16) y ahora se cuenta.
+- **Paridad (2026-11-20, 3.766 personas reales, reloj en su captura).** 48.958 campos iguales de 48.958 (13 por persona,
+  con `detalle` como uno); 0 sin procedencia; 1.054.503 registros citados, 0 que no resuelven; 159.241 recuentos
+  independientes, 0 que no cuadran; contra `origin/main` (estructura-v27) 0 cambios. Con otros cortes del IESS (2026-05,
+  2026-08, 2026-10, 2026-12 y vacío, sobre 700 personas, con 468 cortes desactualizados en el primero): 0 diferencias.
+  El seco también compara contra lo guardado (informativo, no decide nada): los 3.766 perfiles difieren de lo rearmado,
+  por el corte con que se armó cada uno (1.763) y porque los reclasificados llevan `detalle.recalculo` (293 de los 300
+  perfiles más recientes).
+- **Presupuesto.** El documento completo de hechos (todos los grupos, con éste): p99 9,6 KB en gzip y 4,28 ms por
+  persona, contra 16 KB y 50 ms; el máximo, 15,2 KB y 15,75 ms. Con el grupo anterior eran 7,6 KB y 3,86 ms: este grupo
+  suma unos 2 KB al p99 porque cita las filas de los 24 meses del detalle.
+- **Lo que mostró (respaldo del 2026-10-03, 2.567 personas).** Segmentos: dependiente privado 952, independiente 1.010,
+  público 280, jubilado 94 y con ingreso adicional 141, informal o sin actividad 46, ingresos mixtos 22 y el resto 22.
+  498 personas tienen algo autodeclarado (469 sólo eso) y 1.253 algo que paga un empleador. `dif.ing.obligado` sale en 4
+  personas. Ninguna tiene los aportes con la forma `basesInternas.data.data` (0 en las 3.766): si apareciera, el grupo cita la
+  respuesta entera en vez de las filas.
+- **Lo que no se hizo.** Mover las reglas (etapa B), `tributario.ts` y `esAfiliadoUnipersonal`. Los textos del segmento
+  (`motivoSegmento`, `paraConfirmar`) siguen siendo de `fuentes-ingreso.ts`.
 
 ### 4.5 Los demás grupos
 

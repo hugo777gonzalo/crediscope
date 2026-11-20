@@ -1,0 +1,121 @@
+{
+  "descripcion": "Grupo 4, ingresos: un solo empleador y un RUC activo con «SI» en obligado (los dos lectores coinciden): el segmento es dependiente y no hay nada autodeclarado ni diferencia",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "jubilados": {
+      "status": "ok",
+      "data": {
+        "trabajos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    },
+    "afiliacionIssfacCertMedico": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "afiliacionSiisspol": {
+      "status": "ok",
+      "data": {
+        "afiliacionSiisspol": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "sriImpuestoRenta": {
+      "status": "ok",
+      "data": {
+        "data": []
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "900",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          }
+        ]
+      }
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": [
+          {
+            "ruc": "0000000000001",
+            "fecha_inscripcion_ruc": "2024/05/01",
+            "fecha_inicio_actividades": "2024/05/01",
+            "obligado": "SI"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "ing.segmento@1": "no-aplica",
+    "ing.obligado@1": "no-aplica"
+  },
+  "hechos": {
+    "ing.segmento.codigo": {
+      "valor": "dependiente_privado"
+    },
+    "ing.reportado.mensual": {
+      "valor": 900,
+      "registros": [
+        "basesInternas.tiess#0"
+      ]
+    },
+    "ing.reportado.autodeclarado": {
+      "valor": 0,
+      "registros": [
+        "basesInternas.tiess"
+      ]
+    },
+    "ing.aparece_en_ultimo_corte": {
+      "valor": true
+    }
+  }
+}
