@@ -145,6 +145,8 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 
 **Capa de hechos, E8: Super y Diners (estructura-v26, D6; 2026-11-20, PR abierto):** la operación que viene en las dos listas se cuenta una vez (`ban.union@1`). Medido sobre las 3.766: ninguna viene en las dos (Diners trae sólo a BP Diners, que Super no trae), así que ningún perfil cambia y no hace falta recalcular. Espera el sí a fusionar y desplegar (`--funciones`), junto con la v25 o después.
 
+**Capa de hechos, E9: la conciliación entre fuentes (2026-11-20, PR abierto):** los 16 puntos de la sección 6 de `docs/capa-de-hechos.md`, con su estado en la sección 10. Se sumaron seis diferencias sin cambiar ningún valor (`dif.inst.posible_en_bancos`, `dif.biess.cantidad`, `dif.cum.pep.repetido`, `dif.tra.posible_repetida`, `dif.ide.nivel_de_educacion` y `dif.end.bancos`); seco sobre las 3.766: el perfil entero igual a estructura-v27, sin versión nueva ni recálculo. Lo que más pesa: la operación con la institución ya figura en la deuda de bancos en 1.606 de 2.529 personas con una vigente. Esperan decisión del negocio las ocho de la sección 10.5 (las que cambian un valor: el obligado, 19 personas; el nivel de educación, 227; el reloj de la consulta, 3.232 perfiles si se rearman hoy). No hay fuente directa del SRI: queda listo para el frente D (10.4). Espera el sí a fusionar; no hace falta desplegar para medir, pero el código va con el próximo `--funciones`.
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales

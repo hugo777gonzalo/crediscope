@@ -1,0 +1,24 @@
+{
+  "descripcion": "E9, punto 10: el mismo cargo público con la misma fecha en la lista de control y en la base interna. Queda dif.cum.pep.repetido; el otro registro de la base tiene otro cargo y no es el mismo. El perfil sigue diciendo que es PEP, con el detalle del más reciente",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO DOS" } } },
+    "listasControl": {
+      "status": "ok",
+      "data": { "personaPublicasOpr": [{ "cargo": "CONCEJAL INVENTADO", "empresa": "MUNICIPIO FICTICIO", "sueldo": "1000", "fecha": "2020-05-01" }] }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [],
+        "tpeps": [
+          { "cargo": "Concejal  Inventado", "empresaSector": "MUNICIPIO FICTICIO", "sueldo": "1000", "fecha": "2020-05-01" },
+          { "cargo": "ASESOR FICTICIO", "empresaSector": "MINISTERIO FICTICIO", "sueldo": "900", "fecha": "2018-01-01" }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "diferencias": { "dif.cum.pep.repetido": 1, "dif.tra.posible_repetida": 0, "dif.ide.nivel_de_educacion": 0 }
+}

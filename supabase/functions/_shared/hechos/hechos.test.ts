@@ -44,8 +44,9 @@ Deno.test("ningún archivo de hechos/ usa el reloj, escribe en la base ni llama 
   assertEquals(faltas, []);
 });
 
-Deno.test("están los dieciséis grupos y cada uno exporta lo que el índice espera", () => {
-  assertEquals(Object.keys(GRUPOS).length, 16);
+// Los dieciséis del diseño y, desde E9, la conciliación (las diferencias cuyo grupo no existe todavía).
+Deno.test("están los dieciséis grupos y la conciliación, y cada uno exporta lo que el índice espera", () => {
+  assertEquals(Object.keys(GRUPOS).length, 17);
   for (const g of Object.values(GRUPOS)) {
     assertEquals(Array.isArray(g.CATALOGO), true);
     assertEquals(Array.isArray(g.REGLAS_QUE_MEZCLAN), true);

@@ -23,6 +23,9 @@
     "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } }
   },
   "esperado": { "prestamo-biess-contado-dos-veces": "no-dispara" },
+  "diferencias": {
+    "dif.biess.cantidad": 0
+  },
   "reglas": { "biess.mora@1": "no-aplica" },
   "hechos": {
     "biess.operaciones.cantidad": { "valor": 1, "registros": ["creditoQuirografario.prestamos#0"] },

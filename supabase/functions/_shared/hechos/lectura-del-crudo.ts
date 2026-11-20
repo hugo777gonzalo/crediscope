@@ -127,6 +127,19 @@ export function aportesDe(consulta: string, filas: Fila[], campoDe: (f: Fila) =>
   return salida;
 }
 
+// La deuda de una fila de bancos o de Diners (buroCreditoSuper y buroCreditoDiners,
+// lista datosSuper). Vivían en comportamiento-bancario.ts; desde E9 las lee también el
+// historial con la institución, para decir qué operación de bancos puede ser la suya.
+// Una sola implementación: dos lecturas de la misma deuda es como aparecen las
+// diferencias silenciosas. El vencido es `saldomora` si trae algo, si no `mora`.
+export const vencido = (r: AnyRecord): number => {
+  const saldomora = num(r.saldomora) ?? 0;
+  return saldomora > 0 ? saldomora : num(r.mora) ?? 0;
+};
+export const enAtraso = (r: AnyRecord): number => vencido(r) + (num(r.noDevengaInteres) ?? 0) + (num(r.judicial) ?? 0) + (num(r.castigo) ?? 0);
+export const deudaDe = (r: AnyRecord): number => (num(r.saldoVigente) ?? 0) + enAtraso(r);
+export const esGarantia = (r: AnyRecord): boolean => r.riesgo === "G" || r.riesgo === "C";
+
 // El campo con el corte de cada fuente que lo trae. Medido sobre el respaldo
 // del 03/10 (2.567 personas): bancos y Diners traen `fecha` en todas las filas,
 // con un solo valor por persona en las 2.427 que tienen filas; cooperativas,
