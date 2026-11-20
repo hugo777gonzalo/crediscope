@@ -1,0 +1,120 @@
+{
+  "descripcion": "Grupo 4: dos registros de RUC, el primero cesado en 2020 y el segundo sin cese; sin establecimientos informados el RUC activo es el segundo, que es el de referencia, y el primero queda descartado; las fechas dicen activo y los establecimientos no dicen nada",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": []
+      }
+    },
+    "trabajoHistoricosMecanizado": {
+      "status": "ok",
+      "data": {
+        "mecanizadoEmpleados": []
+      }
+    },
+    "trabajoHistoricos": {
+      "status": "ok",
+      "data": {
+        "trabajosHistoricos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "administraciones": {
+      "status": "ok",
+      "data": {
+        "administraciones": []
+      }
+    },
+    "cumplimientoPatronal": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": [
+          {
+            "ruc": "0000000000001",
+            "fecha_inscripcion_ruc": "2024/05/01",
+            "fecha_inicio_actividades": "2024/05/01",
+            "obligado": "NO",
+            "fecha_cancelacion": "2020/06/30"
+          },
+          {
+            "ruc": "0000000000002",
+            "fecha_inscripcion_ruc": "2024/05/01",
+            "fecha_inicio_actividades": "2021/02/01",
+            "obligado": "S"
+          }
+        ]
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "ruc.referencia@1": "aplica"
+  },
+  "hechos": {
+    "ruc.referencia.numero": {
+      "valor": "0000000000002",
+      "registros": [
+        "contribuyente.datosContribuyente#1"
+      ],
+      "descartados": [
+        "contribuyente.datosContribuyente#0:no_es_el_ruc_de_referencia"
+      ]
+    },
+    "ruc.activo": {
+      "valor": true,
+      "registros": [
+        "contribuyente.datosContribuyente#1"
+      ]
+    },
+    "ruc.establecimientos.activos": {
+      "valor": 0,
+      "registros": [
+        "contribuyente.datosContribuyente",
+        "establecimientoActEconomica.datosEstablecimientoActEco"
+      ],
+      "diferencias": [
+        "dif.ruc.estado"
+      ]
+    },
+    "ruc.establecimientos.registrados": {
+      "valor": false
+    },
+    "ruc.obligado_contabilidad": {
+      "valor": true,
+      "registros": [
+        "contribuyente.datosContribuyente#1"
+      ]
+    },
+    "ruc.fecha.inicio_actividades": {
+      "valor": "2021-02-01"
+    }
+  }
+}
