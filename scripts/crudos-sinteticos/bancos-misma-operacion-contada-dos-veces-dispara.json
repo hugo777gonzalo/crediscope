@@ -1,0 +1,120 @@
+{
+  "descripcion": "El mismo crudo de la operación en Super y en Diners, con el perfil que dejaba estructura-v25: contaba las dos filas (3 propias, USD 2.400,50 por vencer) y el detector lo marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": {
+          "codigo": "OK",
+          "mensaje": ""
+        },
+        "datosSuper": [
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2001",
+            "entnombre": "TARJETA FICTICIA",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "1200.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          },
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "1001",
+            "entnombre": "BANCO FICTICIO UNO",
+            "riesgo": "T",
+            "calificacion": "C1",
+            "saldoVigente": "0",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          },
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2001",
+            "entnombre": "TARJETA FICTICIA",
+            "riesgo": "G",
+            "calificacion": "A1",
+            "saldoVigente": "500.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          }
+        ]
+      }
+    },
+    "buroCreditoDiners": {
+      "status": "ok",
+      "data": {
+        "estado": {
+          "codigo": "OK",
+          "mensaje": ""
+        },
+        "datosSuper": [
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2001",
+            "entnombre": "TARJETA FICTICIA",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "1200.50",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          },
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2001",
+            "entnombre": "TARJETA FICTICIA",
+            "riesgo": "G",
+            "calificacion": "A1",
+            "saldoVigente": "500.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          }
+        ]
+      }
+    }
+  },
+  "guardado": {
+    "perfil": {
+      "comportamientoBancario": {
+        "numeroOperacionesBuroCredito": 3,
+        "saldoTotalVigente": 2400.5,
+        "numeroOperacionesComoGaranteOCodeudor": 2,
+        "deudaComoGaranteOCodeudor": 1000
+      }
+    }
+  },
+  "esperado": {
+    "operacion-en-super-y-diners": "dispara"
+  }
+}

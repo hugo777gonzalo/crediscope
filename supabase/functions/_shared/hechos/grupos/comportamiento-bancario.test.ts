@@ -132,3 +132,39 @@ Deno.test("«la fuente dice que no hay» es un valor con la respuesta como regis
   assertEquals(doc.hechos.find((x) => x.codigo === "coop.mora.dias_max")?.motivo, "no_aplica");
   assertEquals(perfilDesdeHechos(doc, "comportamientoCooperativas").diasMoraMaxima, null);
 });
+
+// estructura-v26 (D6 del negocio): la operación que viene en Super y en Diners
+// se cuenta una vez. Medido el 2026-11-20, hoy no le pasa a nadie: esto prueba
+// que, si la fuente empieza a mandarla repetida, la deuda no se duplica en el
+// perfil ni en la capacidad de pago.
+Deno.test("ban.union@1: la misma operación en Super y en Diners cuenta una vez, en el perfil y en la capacidad", async () => {
+  const { datosDeCapacidad } = await import("../../capacidad-de-pago.ts");
+  const tarjeta = (saldoVigente: string, extra: Record<string, string> = {}) => fila("A1", { codEntidad: "2001", entnombre: "TARJETA FICTICIA", saldoVigente, ...extra });
+  const crudoCon = (diners: Record<string, string>[]) => ({
+    buroCreditoSuper: { status: "ok", data: { datosSuper: [tarjeta("1200.00")] } },
+    buroCreditoDiners: { status: "ok", data: { datosSuper: diners } },
+  });
+  const unida = derivarHechos(crudoCon([tarjeta("1200.40")]), contexto("2026-10-01T12:00:00-05:00"));
+  const banco = perfilDesdeHechos(unida, "comportamientoBancario");
+  assertEquals([banco.numeroOperacionesBuroCredito, banco.saldoTotalVigente], [1, 1200]);
+  const entidad = unida.entidades.find((e) => e.union?.regla === "ban.union@1")!;
+  assertEquals([entidad.vistas.map((v) => v.registro.fuente), entidad.union?.criterio], [["buroCreditoSuper", "buroCreditoDiners"], "monto_y_fecha"]);
+  const dif = unida.diferencias.find((d) => d.codigo === "dif.ban.posible_repetida")!;
+  assertEquals([dif.manda.valor, dif.cede[0].valor, dif.magnitud.absoluta], [1200, 1200.4, 0.4]);
+  const saldoBancos = (perfil: Record<string, unknown>) =>
+    datosDeCapacidad({ comportamientoBancario: perfil }, null).deudasSinCuota.find((d) => d.concepto === "Bancos")?.saldo;
+  assertEquals(saldoBancos(banco), 1200);
+
+  // Otro corte, otra calificación o la deuda a más de un dólar: otra operación.
+  for (const diners of [tarjeta("1200.00", { fecha: "2026/07/31" }), tarjeta("1200.00", { calificacion: "A2" }), tarjeta("1201.50")]) {
+    const doc = derivarHechos(crudoCon([diners]), contexto("2026-10-01T12:00:00-05:00"));
+    assertEquals(perfilDesdeHechos(doc, "comportamientoBancario").numeroOperacionesBuroCredito, 2, JSON.stringify(diners));
+    assertEquals(doc.entidades.some((e) => e.union !== null && e.union.regla === "ban.union@1"), false);
+  }
+  // Una deuda en cero no prueba que sea la misma: no se une.
+  const enCero = derivarHechos(
+    { buroCreditoSuper: { status: "ok", data: { datosSuper: [tarjeta("0")] } }, buroCreditoDiners: { status: "ok", data: { datosSuper: [tarjeta("0")] } } },
+    contexto("2026-10-01T12:00:00-05:00"),
+  );
+  assertEquals(perfilDesdeHechos(enCero, "comportamientoBancario").numeroOperacionesBuroCredito, 2);
+});

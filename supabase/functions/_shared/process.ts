@@ -411,7 +411,13 @@ export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): Any
 // el campo es null y el grupo lo lista en camposSinDato con lo que trajeron las
 // demás (campos-sin-dato.ts): hasta la v24 se escribía ese parcial, o 0, como
 // si fuera el total. El modelo lee lo de antes hasta la versión mayor del marco.
-export const PROCESS_VERSION = "estructura-v25"; // ver docs/estructura-estandarizada.md
+// estructura-v26 (D6 del negocio, 2026-11-18; E8 de la capa de hechos): una
+// operación que viene en la lista de Super y en la de Diners (misma entidad,
+// rol, calificación y corte, y la deuda a un dólar) se cuenta una vez
+// (ban.union@1, hechos/grupos/comportamiento-bancario.ts). Medido el
+// 2026-11-20 sobre las 3.766 personas: hoy no le pasa a nadie, porque Diners
+// trae sólo a BP Diners y Super no la trae; ningún perfil cambia.
+export const PROCESS_VERSION = "estructura-v26"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en

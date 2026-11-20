@@ -109,12 +109,17 @@ const CATALOGO = new Map(Object.values(GRUPOS).flatMap((g) => g.CATALOGO.map((c)
 const PERFIL_DE = Object.fromEntries(ELEGIDOS.map((g) => [g, gruposDelPerfil(GRUPOS[g].CATALOGO)]));
 const DECLARADAS = ELEGIDOS.flatMap((g) => GRUPOS[g].DIFERENCIAS_ESPERADAS ?? []);
 // ¿La diferencia de este campo contra la otra versión está declarada? Con
-// `cuando: "sin_dato"`, sólo si el perfil nuevo lo marca en camposSinDato.
-const esperada = (ruta, grupoNuevo) =>
+// `cuando: "sin_dato"`, sólo si el perfil nuevo lo marca en camposSinDato; con
+// `cuando: "union"` (estructura-v26), sólo si los hechos de la persona tienen
+// una entidad unida por esa regla. `cuandos` limita qué declaraciones valen:
+// con los valores de antes, sólo la unión (el «sin dato» ahí tiene que dar igual).
+const unidaPor = (doc, regla) => !!doc?.entidades?.some((e) => e.union?.regla === regla);
+const esperada = (ruta, grupoNuevo, doc, cuandos = [undefined, "sin_dato", "union"]) =>
   DECLARADAS.some((d) => {
     const coincide = d.campo === ruta || (d.campo.endsWith(".*") && ruta.startsWith(d.campo.slice(0, -1)));
-    if (!coincide) return false;
-    if (d.cuando !== "sin_dato") return true;
+    if (!coincide || !cuandos.includes(d.cuando)) return false;
+    if (d.cuando === undefined) return true;
+    if (d.cuando === "union") return unidaPor(doc, d.regla);
     const campo = ruta.split(".").slice(1).join(".");
     return !!grupoNuevo?.camposSinDato && campo in grupoNuevo.camposSinDato;
   });
@@ -218,7 +223,7 @@ function estadistica(valores) {
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0, hechos: 0, conValor: 0, registros: 0, recuentos: 0 };
 const fallas = { paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
 // 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
-const cambio = { personas: 0, personasSinDato: 0, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
+const cambio = { personas: 0, personasSinDato: 0, personasConUnion: 0, unionesPorRegla: {}, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
 const porCampo = {};
 const medidas = { documentoJson: [], documentoGzip: [], ms: [], hechos: [], entidades: [], diferencias: [] };
 // Sin la base no se sabe el id de la persona: se cita el perfil (p-xxxxxxxx).
@@ -291,6 +296,11 @@ for (let i = 0; i < candidatos.length; i += 50) {
     if (construirAntes) {
       const antes = armarEnFecha(crudo.capturadoEl, () => construirAntes(raw, crudo.cedula, undefined).profile);
       const devuelto = conLosValoresDeAntes(perfil);
+      // Lo que leen el modelo y la capacidad, en las dos versiones: contra la v24
+      // no cambiaba nada (no tenía camposSinDato), y desde la v25 la anterior
+      // también lo tiene. Sin esto, la v26 contra la v25 daba 5.326 campos
+      // «distintos» que eran sólo la marca de un lado (2026-11-20).
+      const devueltoAntes = conLosValoresDeAntes(antes);
       let cambiaAlgo = false;
       let tieneSinDato = false;
       let parcialConDato = false;
@@ -299,8 +309,9 @@ for (let i = 0; i < candidatos.length; i += 50) {
         const viejo = antes[gp] ?? {};
         const marca = nuevo.camposSinDato ?? {};
         if (Object.keys(marca).length) tieneSinDato = true;
-        for (const campo of new Set([...Object.keys(viejo), ...Object.keys(devuelto[gp] ?? {})])) {
-          if (canonico(devuelto[gp]?.[campo]) !== canonico(viejo[campo])) fallas.conLosDeAntes.push({ ref, campo: `${gp}.${campo}`, antes: viejo[campo], ahora: devuelto[gp]?.[campo] });
+        const leiaAntes = devueltoAntes[gp] ?? {};
+        for (const campo of new Set([...Object.keys(leiaAntes), ...Object.keys(devuelto[gp] ?? {})])) {
+          if (canonico(devuelto[gp]?.[campo]) !== canonico(leiaAntes[campo]) && !esperada(`${gp}.${campo}`, nuevo, doc, ["union"])) fallas.conLosDeAntes.push({ ref, campo: `${gp}.${campo}`, antes: leiaAntes[campo], ahora: devuelto[gp]?.[campo] });
         }
         for (const campo of new Set([...Object.keys(viejo), ...Object.keys(nuevo)])) {
           if (campo === "camposSinDato") continue;
@@ -312,7 +323,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
           }
           if (canonico(nuevo[campo]) === canonico(viejo[campo])) continue;
           cambiaAlgo = true;
-          if (esperada(ruta, nuevo)) {
+          if (esperada(ruta, nuevo, doc)) {
             cambio.campos++;
             cambio.porCampo[ruta] = (cambio.porCampo[ruta] ?? 0) + 1;
           } else fallas.contraAntes.push({ ref, campo: ruta, antes: viejo[campo], ahora: nuevo[campo] });
@@ -324,6 +335,11 @@ for (let i = 0; i < candidatos.length; i += 50) {
         if (cambio.refs.length < 12) cambio.refs.push(ref);
       }
       if (parcialConDato) cambio.personasConParcialConDato++;
+      // Las uniones de una regla declarada en DIFERENCIAS_ESPERADAS (estructura-v26).
+      const reglasDeUnion = new Set(DECLARADAS.filter((d) => d.cuando === "union").map((d) => d.regla));
+      const deUnion = doc.entidades.filter((e) => reglasDeUnion.has(e.union?.regla));
+      if (deUnion.length) cambio.personasConUnion++;
+      for (const e of deUnion) cambio.unionesPorRegla[e.union.regla] = (cambio.unionesPorRegla[e.union.regla] ?? 0) + 1;
     }
 
     // 4 y 5. Procedencia y recuento.
@@ -370,7 +386,8 @@ console.log(`Recuentos independientes: ${n(cuenta.recuentos)}, ${fallas.recuento
 for (const d of fallas.recuento.slice(0, 5)) console.log(`  ${d.ref} ${d.codigo}`);
 if (args.deposito) console.log(`Contra lo guardado (informativo): ${fallas.contraLoGuardado.length} perfiles con algún campo del grupo distinto del rearmado.`);
 if (construirAntes) {
-  console.log(`Contra ${CONTRA} (${selloContra}): ${n(cambio.personas)} personas con algún campo distinto, ${n(cambio.campos)} campos declarados como «sin dato»; ${fallas.contraAntes.length} sin declarar.`);
+  console.log(`Contra ${CONTRA} (${selloContra}): ${n(cambio.personas)} personas con algún campo distinto, ${n(cambio.campos)} campos declarados (sin dato o unión); ${fallas.contraAntes.length} sin declarar.`);
+  console.log(`  Personas con alguna entidad unida por una regla declarada: ${n(cambio.personasConUnion)}${Object.keys(cambio.unionesPorRegla).length ? ` (${Object.entries(cambio.unionesPorRegla).map(([r, k]) => `${r}: ${n(k)} entidades`).join(", ")})` : ""}.`);
   console.log(`  Personas con algún campo sin dato: ${n(cambio.personasSinDato)}; en ${n(cambio.personasConParcialConDato)} el parcial no es 0, false ni vacío (la versión anterior mostraba algo).`);
   for (const [ruta, k] of Object.entries(cambio.porCampo).sort((a, b) => b[1] - a[1])) console.log(`    ${ruta}: cambia en ${k}, marcado sin dato en ${cambio.marcados[ruta] ?? 0}`);
   const soloMarcados = Object.keys(cambio.marcados).filter((r) => !cambio.porCampo[r]);

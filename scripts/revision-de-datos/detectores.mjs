@@ -607,6 +607,51 @@ export const DETECTORES_DEL_CRUDO = [
       return conValor.length ? { campos: [...new Set(conValor)] } : null;
     },
   },
+  {
+    id: "operacion-en-super-y-diners",
+    capa: "estructura",
+    tipo: "revisar",
+    titulo: "Una operación de Diners con la misma entidad y la misma deuda que una de Super, contadas las dos en el perfil",
+    caso: "D6 del negocio, 2026-11-18 (unir) y E8 de la capa de hechos: medido el 2026-11-20 sobre las 3.766 personas, 0 pares con la misma entidad (Diners trae sólo a BP Diners, código 4624, y Super no la trae)",
+    conocido: "desde estructura-v26 ban.union@1 (hechos/grupos/comportamiento-bancario.ts) une la misma entidad, rol, calificación y corte con la deuda a un dólar; un caso acá es un par que esa regla no unió: revisarlo a mano",
+    // Criterio DISTINTO del de la regla: la entidad por código O por nombre, la
+    // deuda a 1% (o a un dólar), sin mirar el rol, la calificación ni el corte.
+    // Si el perfil cuenta todas las filas de las dos listas y hay un par así, una
+    // operación pudo contarse dos veces. Con la unión hecha, el perfil cuenta una
+    // fila menos por par y no dispara. Sin dato en bancos no se mide.
+    aplica: ({ raw, perfil }) =>
+      Array.isArray(raw.buroCreditoSuper?.data?.datosSuper) &&
+      Array.isArray(raw.buroCreditoDiners?.data?.datosSuper) &&
+      raw.buroCreditoSuper.data.datosSuper.length > 0 &&
+      raw.buroCreditoDiners.data.datosSuper.length > 0 &&
+      typeof perfil?.comportamientoBancario?.numeroOperacionesBuroCredito === "number" &&
+      typeof perfil?.comportamientoBancario?.numeroOperacionesComoGaranteOCodeudor === "number",
+    detectar: ({ raw, perfil }) => {
+      const n = (v) => Number(v) || 0;
+      const deuda = (r) => n(r.saldoVigente) + (n(r.saldomora) > 0 ? n(r.saldomora) : n(r.mora)) + n(r.noDevengaInteres) + n(r.judicial) + n(r.castigo);
+      const nombre = (r) => String(r.entnombre ?? "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+      const codigo = (r) => String(r.codEntidad ?? "").trim().replace(/^0+/, "");
+      const mismaEntidad = (a, b) => (codigo(a) !== "" && codigo(a) === codigo(b)) || (nombre(a) !== "" && nombre(a) === nombre(b));
+      const parecida = (a, b) => deuda(a) > 0 && Math.abs(deuda(a) - deuda(b)) <= Math.max(1, 0.01 * Math.max(deuda(a), deuda(b)));
+      const deSuper = raw.buroCreditoSuper.data.datosSuper;
+      const deDiners = raw.buroCreditoDiners.data.datosSuper;
+      const usadas = new Set();
+      const pares = [];
+      for (const d of deDiners) {
+        const i = deSuper.findIndex((s, j) => !usadas.has(j) && mismaEntidad(s, d) && parecida(s, d));
+        if (i < 0) continue;
+        usadas.add(i);
+        pares.push({ deudaSuper: Math.round(deuda(deSuper[i]) * 100) / 100, deudaDiners: Math.round(deuda(d) * 100) / 100, mismoCorte: deSuper[i].fecha === d.fecha, mismaCalificacion: deSuper[i].calificacion === d.calificacion });
+      }
+      if (!pares.length) return null;
+      const b = perfil.comportamientoBancario;
+      const contadas = b.numeroOperacionesBuroCredito + b.numeroOperacionesComoGaranteOCodeudor;
+      const unidas = deSuper.length + deDiners.length - contadas;
+      const deMas = pares.length - Math.max(0, unidas);
+      if (deMas <= 0) return null;
+      return { pares, contadas, enLasListas: deSuper.length + deDiners.length, deMas, deudaDeMas: Math.round(pares.slice(0, deMas).reduce((s, p) => s + Math.min(p.deudaSuper, p.deudaDiners), 0)) };
+    },
+  },
 ];
 
 // Las fuentes del grupo 1 de la capa de hechos y los campos del perfil que

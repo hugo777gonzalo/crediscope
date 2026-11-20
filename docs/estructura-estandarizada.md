@@ -929,6 +929,20 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=comportamientoBancario,comportamientoCooperativas`), con
 >   el sí del negocio.
 
+> **estructura-v26 (D6 del negocio, 2026-11-18; E8 de la capa de hechos, 2026-11-20)**
+> - Una operación que viene en la lista de la Superintendencia y en la de Diners se cuenta
+>   una vez (`ban.union@1`, `hechos/grupos/comportamiento-bancario.ts`): misma entidad (por
+>   código; sin código, por nombre), mismo rol, misma calificación, mismo corte y la deuda a
+>   un dólar, mayor que cero. Manda Super; la operación es una entidad con las dos vistas y
+>   la diferencia de deuda queda en `dif.ban.posible_repetida`. Hecho nuevo
+>   `ban.operaciones.unidas.cantidad`, que no llega al modelo.
+> - Medido el 2026-11-20 sobre las 3.766 personas reales (sólo lectura): **ninguna operación
+>   viene en las dos listas**. Diners trae una sola entidad, BP Diners (código 4624), y Super
+>   no la trae nunca; entre entidades distintas, la misma deuda sale tanto como contra el
+>   Super de otra persona (a 1%: 23 pares contra 26). Ningún perfil cambia: la unión queda
+>   puesta por si la fuente cambia, con su detector (`operacion-en-super-y-diners`).
+> - No hace falta recalcular: el perfil de cada persona es el mismo de la v25.
+
 > **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
 > aprobadas por el negocio el 2026-11-08)**
 > - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la
