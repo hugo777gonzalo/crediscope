@@ -551,7 +551,8 @@ diferencia que la inversión admite, el **«sin dato»**:
   del Laboratorio (095) y el promedio del Reporte Gerencial (070) lo cuentan como dato
   faltante y no como 0. Las marcas de la bandeja leen bancos y cooperativas, que en el seco
   no faltaron a nadie: no cambian.
-- **El seco (2026-11-19, 3.766 personas reales, contra estructura-v23 con el mismo reloj).**
+- **El seco (2026-11-19, 3.766 personas reales, contra estructura-v24 con el mismo reloj;
+  contra la v23 dio lo mismo).**
   Paridad 117.418 de 117.418 campos; 0 registros que no resuelven; 75.414 recuentos, 0 que no
   cuadran. Cambian **672 personas y 4.654 campos**, todos «sin dato» declarados (0 sin
   declarar); con los valores de antes, 0 campos distintos. Por fuente: el BIESS en 672
