@@ -141,6 +141,8 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 
 **Capa de hechos, grupo 1, etapa B (estructura-v25, E4; 2026-11-19, PR abierto):** process.ts arma bancos, retail, el registro de deudores, el BIESS y cooperativas desde los hechos, y una fuente caída deja el campo en null con `camposSinDato`. Seco: 672 de 3.766 personas cambian, todas por el «sin dato» (`docs/capa-de-hechos.md`, 4.1). Espera el sí a fusionar, desplegar (`--funciones`) y recalcular (`recalcular-grupos.mjs --grupos=comportamientoBancario,comportamientoCooperativas`). Para la versión mayor del marco (v37): que el modelo lea el null y la marca (sacar `conLosValoresDeAntes()` de `armarPerfilDelModelo()`, con su texto en el marco) y decidir si la capacidad de pago avisa también una fuente `faltante`.
 
+**Capa de hechos, E8: Super y Diners (estructura-v26, D6; 2026-11-20, PR abierto):** la operación que viene en las dos listas se cuenta una vez (`ban.union@1`). Medido sobre las 3.766: ninguna viene en las dos (Diners trae sólo a BP Diners, que Super no trae), así que ningún perfil cambia y no hace falta recalcular. Espera el sí a fusionar y desplegar (`--funciones`), junto con la v25 o después.
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
