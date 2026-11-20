@@ -60,7 +60,7 @@ export const GRUPOS = {
 // 2026-11-20: 0 diferencias en 26.362 campos de las mismas 3.766 personas. El grupo 3
 // (riesgo judicial), el mismo día: 0 diferencias en 75.320 campos, y el hallazgo de
 // seguridad ciudadana desde hechos da lo mismo que el control de bloqueo en las 3.766.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial"];
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);

@@ -107,7 +107,9 @@ for (const archivo of archivos) {
   const caso = JSON.parse(fs.readFileSync(path.join(CARPETA, archivo), "utf8"));
   const nombre = archivo.replace(/\.json$/, "");
   // El mismo `buildStandardProfile` de producción, con el corte de la consulta.
-  const corte = caso.capturadoEl.slice(0, 10);
+  // Un corte del IESS es un mes («2026-10»), no un día: con un día, el grupo de empleo (que
+  // compara «aaaa-mm» contra el corte) no encontraba nunca los aportes del corte.
+  const corte = caso.capturadoEl.slice(0, 7);
   const vigente = buildStandardProfile(caso.raw, caso.cedula, corte).profile;
   const perfil = { ...vigente };
   for (const [grupo, valores] of Object.entries(caso.guardado?.perfil ?? {})) perfil[grupo] = { ...(vigente[grupo] ?? {}), ...valores };
@@ -120,7 +122,7 @@ for (const archivo of archivos) {
       cedula: caso.cedula,
       consulta: nombre,
       fechaDeLaConsulta: caso.capturadoEl,
-      corteIess: caso.capturadoEl.slice(0, 7),
+      corteIess: corte, // el mismo argumento con que se armó el perfil de arriba
       persona: { nombre: null, fechaDeNacimiento: null },
     });
   } catch (e) {
