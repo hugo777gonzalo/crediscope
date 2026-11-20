@@ -25,18 +25,7 @@
 import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaProveedorInfo1 } from "./types.ts";
 import { rolEnDenuncia } from "./denuncias.ts";
 import { separarProvidencias } from "./providencias.ts";
-import { categoriasDelitoGraveSeguridad, type DemandaPenalSinCotejo, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
-
-const POR_QUE_NO_ES_ELLA: Record<DemandaPenalSinCotejo["cotejo"], string> = {
-  otra_persona: "el demandado tiene otro nombre",
-  apellidos_invertidos: "el demandado lleva sus nombres con los apellidos en otro orden",
-  sin_demandado: "la fuente no dice a quién se demanda",
-  sin_nombre: "no se pudo leer el nombre de la persona para cotejarlo",
-};
-
-function describirDemandaSinCotejo(d: DemandaPenalSinCotejo): string {
-  return `demanda por ${d.categorias.join(", ")}${d.anio ? ` (${d.anio})` : ""}: ${POR_QUE_NO_ES_ELLA[d.cotejo]}`;
-}
+import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas, mensajeDelDelitoDeSeguridad, mensajeDelPosibleHomonimo } from "./delitos-seguridad.ts";
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -189,7 +178,7 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
   if (categoriasEncontradas.size > 0) {
     hallazgos.push({
       code: "delito_seguridad_ciudadana",
-      message: `Registra delito(s) de seguridad ciudadana: ${[...categoriasEncontradas].join(", ")}`,
+      message: mensajeDelDelitoDeSeguridad([...categoriasEncontradas]),
       bloqueante: true,
     });
   }
@@ -198,7 +187,7 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
   if (enDemandas.sinCotejo.length > 0) {
     hallazgos.push({
       code: "posible_homonimo_en_demanda_penal",
-      message: `Posible homónimo: verificar. ${enDemandas.sinCotejo.map(describirDemandaSinCotejo).join("; ")}`,
+      message: mensajeDelPosibleHomonimo(enDemandas.sinCotejo),
       bloqueante: false,
     });
   }

@@ -1,0 +1,77 @@
+{
+  "descripcion": "Grupo 3: el mismo proceso de pensión llega por las dos fuentes con deudas distintas (manda la mayor y queda la diferencia); otra pensión es de otro obligado y una trae a la persona sólo como representante (no cuentan)",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": [
+          {
+            "numeroProceso": "S-1",
+            "obligadoPrincipal": "PRUEBA FICTICIO MARTA",
+            "valorMensual": 50,
+            "totalDeuda": 100
+          }
+        ]
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": [
+          {
+            "numeroProceso": "S-1",
+            "obligadoPrincipal": "PRUEBA FICTICIO MARTA",
+            "valorMensual": 50,
+            "totalDeuda": 300
+          },
+          {
+            "numeroProceso": "S-2",
+            "obligadoPrincipal": "INVENTADO ALFA BETA OMEGA",
+            "totalDeuda": 5000
+          },
+          {
+            "numeroProceso": "S-3",
+            "representanteLegal": "PRUEBA FICTICIO MARTA",
+            "totalDeuda": 7000
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "jud.pension@1": "aplica"
+  },
+  "hechos": {
+    "jud.pension.cantidad": {
+      "valor": 1,
+      "registros": [
+        "pensionAlimenticiaProveedorInfo1.supas#0"
+      ],
+      "descartados": [
+        "pensionAlimenticiaProveedorInfo1.supas#1:la_persona_no_es_el_obligado",
+        "pensionAlimenticiaProveedorInfo1.supas#2:la_fuente_no_trae_al_obligado",
+        "pensionAlimenticia.supas#0:mismo_proceso_de_menor_deuda"
+      ]
+    },
+    "jud.pension.deuda": {
+      "valor": 300,
+      "diferencias": [
+        "dif.jud.pension.deuda"
+      ]
+    },
+    "jud.pension.en_mora.cantidad": {
+      "valor": 1
+    }
+  }
+}

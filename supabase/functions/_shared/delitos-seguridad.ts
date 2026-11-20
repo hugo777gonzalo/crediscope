@@ -98,3 +98,31 @@ export function delitosDeSeguridadEnDemandas(
   }
   return { propias: [...propias], sinCotejo };
 }
+
+// ---- Lo que dice el bloqueo ----
+//
+// Los textos del hallazgo de seguridad ciudadana viven acá para que los arme una sola
+// vez el control de bloqueo (controles-bloqueo.ts) y `controlesDesdeHechos()` (capa de
+// hechos, hechos/controles.ts): la comparación en seco de las dos lecturas del crudo
+// mide los hallazgos, no dos copias del texto.
+
+const POR_QUE_NO_ES_ELLA: Record<DemandaPenalSinCotejo["cotejo"], string> = {
+  otra_persona: "el demandado tiene otro nombre",
+  apellidos_invertidos: "el demandado lleva sus nombres con los apellidos en otro orden",
+  sin_demandado: "la fuente no dice a quién se demanda",
+  sin_nombre: "no se pudo leer el nombre de la persona para cotejarlo",
+};
+
+function describirDemandaSinCotejo(d: DemandaPenalSinCotejo): string {
+  return `demanda por ${d.categorias.join(", ")}${d.anio ? ` (${d.anio})` : ""}: ${POR_QUE_NO_ES_ELLA[d.cotejo]}`;
+}
+
+export function mensajeDelDelitoDeSeguridad(categorias: string[]): string {
+  return `Registra delito(s) de seguridad ciudadana: ${categorias.join(", ")}`;
+}
+
+// Las demás se avisan sin bloquear, con lo que el analista necesita para buscarlas: el
+// delito, el año y por qué no se pudo decir que es ella.
+export function mensajeDelPosibleHomonimo(sinCotejo: DemandaPenalSinCotejo[]): string {
+  return `Posible homónimo: verificar. ${sinCotejo.map(describirDemandaSinCotejo).join("; ")}`;
+}

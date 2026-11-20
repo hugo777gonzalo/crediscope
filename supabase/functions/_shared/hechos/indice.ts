@@ -26,7 +26,11 @@ import * as cumplimiento from "./grupos/cumplimiento.ts";
 // hechos-v2 (estructura-v25): un hecho sin valor porque su fuente no contestó
 // lleva su `parcial`, y un hecho de unidad «lista» puede ser una lista de
 // registros simples (los préstamos del IESS/BIESS de la capacidad de pago).
-export const HECHOS_VERSION = "hechos-v2";
+//
+// hechos-v3 (grupo 3, riesgo judicial): un elemento de una lista puede llevar una lista
+// de textos (los tipos de cada categoría de demanda), y un grupo en etapa A escribe el
+// `parcial` en el perfil cuando una fuente no contestó.
+export const HECHOS_VERSION = "hechos-v3";
 
 // El nombre es el del grupo en la sección 3.1 y el de `--grupo=` de comparar-hechos.mjs.
 export const GRUPOS = {
@@ -53,8 +57,10 @@ export const GRUPOS = {
 // 2026-11-18: 0 diferencias en 112.980 campos de 3.766 personas, salvo 12 de 3
 // personas a las que les faltó una fuente de préstamos del BIESS. Desde su
 // etapa B (estructura-v25) process.ts lo arma desde los hechos. El grupo 2, el
-// 2026-11-20: 0 diferencias en 26.362 campos de las mismas 3.766 personas.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion"];
+// 2026-11-20: 0 diferencias en 26.362 campos de las mismas 3.766 personas. El grupo 3
+// (riesgo judicial), el mismo día: 0 diferencias en 75.320 campos, y el hallazgo de
+// seguridad ciudadana desde hechos da lo mismo que el control de bloqueo en las 3.766.
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);

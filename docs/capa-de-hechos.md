@@ -623,6 +623,44 @@ diferencia que la inversión admite, el **«sin dato»**:
   de haber dos lecturas del mismo crudo que coinciden por disciplina.
 - **Pensiones.** Dos fuentes unidas por número de proceso; `mismoNombre` queda en un solo
   lugar (hoy está en `process.ts` y repetida en `fuentes-ingreso.ts`).
+- **Etapa A hecha (2026-11-20, E6).** `grupos/riesgo-judicial.ts` y `controles.ts`. Reproduce la regla
+  vigente, **estructura-v24 (D2)**, y no la de «las de cobro sin cotejo» que describe el punto de arriba, que
+  ya se corrigió: una demanda de cobro o civil de otro demandado, o con los apellidos invertidos, no cuenta;
+  sin demandado o sin nombre cuenta como «sin cotejo».
+  - **Una atribución por demanda.** `atribuirDemandas()` (demandas.ts) devuelve ahora el cotejo de cada
+    una (`cotejos`) y es lo único que lo calcula: cada demanda es una entidad `dem-*` con `atribucion`
+    (`si`, `no` o `sin_cotejo`, con el cotejo en `detalle`), y las de cobro, las civiles y las de seguridad
+    ciudadana filtran por ella. También son entidades las demandas que presentó la persona (`sin_cotejo`: el
+    perfil las cuenta todas), las denuncias (por identificación: su cédula entre las partes) y las pensiones.
+  - **Códigos.** 22 en `jud.*`, `seg.*` y `dif.jud.pension.deuda`: los 20 campos de los tres grupos del
+    perfil más `seg.demandas.posible_homonimo.cantidad` y la diferencia. Los avisos de la v24
+    (`jud.cobro|civil.de_otro_demandado.cantidad` y `.sin_cotejo.cantidad`) no llegan al modelo. Cada hecho
+    cita las demandas que usó y descarta las otras con su motivo (`demandado_es_otra_persona`,
+    `demandado_con_los_apellidos_invertidos`, `figura_con_otro_papel_que_el_de_acusada`,
+    `su_cedula_no_figura_en_la_denuncia`...).
+  - **Pensiones.** Las dos fuentes se unen por número de proceso y manda el registro de mayor deuda, como en
+    process.ts; el que pierde queda en `descartados` y, si su deuda difiere, en `dif.jud.pension.deuda`
+    (lectura «revisar»: no hay umbral medido). Medido sobre las 2.567 del respaldo: 209 personas con una
+    pensión a su cargo, 190 con alguna que descarta por no ser la obligada, 1 con la misma pensión en las dos
+    fuentes con deudas distintas. `pensionAlimenticia` nunca trae al obligado, así que ninguno de sus
+    registros cuenta (es la regla de hoy). `mismoNombre()` quedó en un solo lugar, `_shared/mismo-nombre.ts`
+    (la copia de `fuentes-ingreso.ts` se sacó; la de process.ts sale en la etapa B).
+  - **Fuente caída.** Un hecho cuyas fuentes no contestaron todas no tiene valor y lleva el `parcial` (lo que
+    dicen las filas que llegaron). En etapa A `perfilDesdeHechos()` escribe ese parcial, que es lo que process.ts
+    escribe hoy; el «sin dato» llega con la etapa B (hechos-v3 lo deja listo). `antecedentesPenales` dice
+    «no hay» con `faltante`: no es una falla.
+  - **El bloqueo.** `controlesDesdeHechos()` arma los dos hallazgos de seguridad ciudadana
+    (`delito_seguridad_ciudadana` y `posible_homonimo_en_demanda_penal`) desde `seg.delito.categorias` y las
+    entidades, cada uno con sus códigos en `derivaDe`; los textos los arman los mismos
+    `mensajeDelDelitoDeSeguridad()` y `mensajeDelPosibleHomonimo()` (delitos-seguridad.ts). **Nada lo llama
+    todavía.** Una fuente caída no desbloquea a quien tiene un delito en otra: se lee el parcial.
+  - **El seco (2026-11-20, 3.766 personas reales).** Paridad 75.320 de 75.320 campos; 0 campos sin procedencia;
+    434.008 registros citados, 0 que no resuelven; 129.416 recuentos, 0 que no cuadran. Bloqueo: **las 3.766
+    dan los mismos hallazgos de las dos maneras** (24 con delito propio, que bloquean, y 16 con aviso de posible
+    homónimo). Contra lo guardado: 0 perfiles distintos. Peso y tiempo (todos los grupos): p99 5,3 KB en gzip y
+    3,4 ms por persona; la que más tiene, 212 entidades, 11,8 KB en gzip y 11 ms.
+  - **Falta (etapa B).** Cambiar la llamada: que `evaluarControlesBloqueo()` use `controlesDesdeHechos()` para
+    esos dos hallazgos, y que process.ts arme los tres grupos con `perfilDesdeHechos`, con su `camposSinDato`.
 - **Riesgos.** El cotejo por nombre tiene falsos negativos (apellidos invertidos, nombres
   abreviados): lo que no se puede atribuir va como `sin_cotejo`, nunca como «no es de
   ella». Hay personas con hasta 205 registros entre demandas y denuncias: la respuesta a

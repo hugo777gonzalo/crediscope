@@ -1,0 +1,84 @@
+{
+  "descripcion": "Grupo 3: una denuncia por trata donde la persona es la denunciante, una por tenencia de armas donde su cédula no figura y una por asociación ilícita donde es la sospechosa: sólo la última cuenta",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "denuncias": {
+      "status": "ok",
+      "data": {
+        "denuncias": [
+          {
+            "nroNoticia": "N-1",
+            "delito": "TRATA DE PERSONAS",
+            "detalleDenuncia": [
+              {
+                "cedula": "0000000000",
+                "estado": "DENUNCIANTE"
+              }
+            ]
+          },
+          {
+            "nroNoticia": "N-2",
+            "delito": "TENENCIA DE ARMAS",
+            "detalleDenuncia": [
+              {
+                "cedula": "1111111111",
+                "estado": "SOSPECHOSO"
+              }
+            ]
+          },
+          {
+            "nroNoticia": "N-3",
+            "delito": "ASOCIACION ILICITA",
+            "detalleDenuncia": [
+              {
+                "cedula": "0000000000",
+                "estado": "SOSPECHOSO"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "demandas": {
+      "status": "ok",
+      "data": {
+        "demandas": []
+      }
+    },
+    "antecedentesPenales": {
+      "status": "ok",
+      "data": {
+        "antecedentes": {
+          "descripcion": "NO"
+        }
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "seg.delito@1": "aplica"
+  },
+  "hechos": {
+    "seg.delito.categorias": {
+      "valor": [
+        "Asociación ilícita"
+      ],
+      "registros": [
+        "denuncias.denuncias#2"
+      ],
+      "descartados": [
+        "denuncias.denuncias#0:figura_con_otro_papel_que_el_de_acusada",
+        "denuncias.denuncias#1:su_cedula_no_figura_en_la_denuncia"
+      ]
+    }
+  }
+}

@@ -38,8 +38,9 @@ interface Base {
 }
 
 // Un elemento de una lista que el perfil guarda tal cual (los préstamos del
-// IESS/BIESS de la capacidad de pago): sólo valores simples.
-export type ElementoDeLista = Record<string, string | number | null>;
+// IESS/BIESS de la capacidad de pago, las demandas de cobro con su año, las demandas
+// civiles por categoría con sus tipos): valores simples o una lista de textos.
+export type ElementoDeLista = Record<string, string | number | null | string[]>;
 
 export interface Hecho<V = string | number | boolean | null | string[] | ElementoDeLista[]> extends Base {
   clase: "hecho";

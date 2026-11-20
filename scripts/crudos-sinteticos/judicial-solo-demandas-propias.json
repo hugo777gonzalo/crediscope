@@ -1,0 +1,107 @@
+{
+  "descripcion": "Grupo 3: todas las demandas son de la persona y ninguna es por un delito de seguridad: la atribución no descarta nada, la pensión es un solo registro y no hay hallazgo de seguridad",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "demandas": {
+      "status": "ok",
+      "data": {
+        "demandas": [
+          {
+            "demanda": {
+              "numeroProceso": "P-0001",
+              "delito": "COBRO DE DINERO",
+              "demandado": "PRUEBA FICTICIO MARTA",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          },
+          {
+            "demanda": {
+              "numeroProceso": "P-0002",
+              "delito": "DESPIDO INTEMPESTIVO",
+              "demandado": "PRUEBA FICTICIO MARTA",
+              "ofendido": "PERSONA INVENTADA",
+              "fecha": 1715317200000
+            }
+          }
+        ]
+      }
+    },
+    "denuncias": {
+      "status": "ok",
+      "data": {
+        "denuncias": []
+      }
+    },
+    "antecedentesPenales": {
+      "status": "ok",
+      "data": {
+        "antecedentes": {
+          "descripcion": "NO"
+        }
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": [
+          {
+            "numeroProceso": "S-1",
+            "obligadoPrincipal": "PRUEBA FICTICIO MARTA",
+            "representanteLegal": "PERSONA INVENTADA UNO",
+            "valorMensual": 50,
+            "totalDeuda": 0
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "jud.atribucion@1": "no-aplica",
+    "jud.pension@1": "no-aplica",
+    "seg.delito@1": "no-aplica"
+  },
+  "hechos": {
+    "jud.cobro.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#0"
+      ],
+      "descartados": []
+    },
+    "jud.civil.cantidad": {
+      "valor": 1,
+      "registros": [
+        "demandas.demandas#1"
+      ],
+      "descartados": []
+    },
+    "jud.pension.cantidad": {
+      "valor": 1,
+      "registros": [
+        "pensionAlimenticiaProveedorInfo1.supas#0"
+      ],
+      "descartados": []
+    },
+    "seg.delito.categorias": {
+      "valor": [],
+      "descartados": []
+    }
+  }
+}
