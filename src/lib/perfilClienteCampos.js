@@ -271,7 +271,7 @@ export const GRUPOS_CONFIG = {
   },
   riesgoJudicialCrediticio: {
     mensajeVacio: "Sin demandas de naturaleza crediticia registradas.",
-    presencia: (p) => (p.riesgoJudicialCrediticio?.numeroDemandasComoDemandado ?? 0) > 0,
+    presencia: (p) => camposSinDato(p, "riesgoJudicialCrediticio").length > 0 || (p.riesgoJudicialCrediticio?.numeroDemandasComoDemandado ?? 0) > 0,
     campos: [
       ["numeroDemandasComoDemandado", "Demandas como demandado", "numero"],
       ["tiposDemandasComoDemandado", "Tipos", "lista"],
@@ -280,6 +280,7 @@ export const GRUPOS_CONFIG = {
   riesgoJudicialCivil: {
     mensajeVacio: "Sin demandas civiles ni pensión alimenticia registradas.",
     presencia: (p) =>
+      camposSinDato(p, "riesgoJudicialCivil").length > 0 ||
       (p.riesgoJudicialCivil?.numeroDemandasComoDemandado ?? 0) > 0 ||
       (p.riesgoJudicialCivil?.numeroDemandasComoOfendido ?? 0) > 0 ||
       (p.riesgoJudicialCivil?.numeroPensionesAlimenticias ?? 0) > 0 ||
@@ -333,7 +334,7 @@ export const GRUPOS_CONFIG = {
   },
   riesgoSeguridadCiudadana: {
     mensajeVacio: "Sin coincidencias en delitos de seguridad ciudadana.",
-    presencia: (p) => Boolean(p.riesgoSeguridadCiudadana?.tieneDelitoSeguridadCiudadana),
+    presencia: (p) => camposSinDato(p, "riesgoSeguridadCiudadana").length > 0 || Boolean(p.riesgoSeguridadCiudadana?.tieneDelitoSeguridadCiudadana),
     campos: [["categoriasDelitoSeguridadCiudadana", "Categorías", "lista"]],
   },
   transitoVehicular: {
@@ -400,8 +401,28 @@ const FUENTE_DEL_CAMPO = {
     operacionesIessBiess: "Préstamos IESS/BIESS",
     numeroCreditosFormales: "Préstamos IESS/BIESS",
   },
+  // Desde estructura-v27 (grupo 3). Las demandas que presentó la persona y las pensiones vienen de
+  // otras fuentes que las demandas en su contra; el resto del grupo, de las demandas.
+  riesgoJudicialCivil: {
+    numeroDemandasComoOfendido: "Demandas que presentó",
+    tienePensionAlimenticia: "Pensiones alimenticias",
+    pensionAlimenticiaEnMora: "Pensiones alimenticias",
+    deudaPensionAlimenticia: "Pensiones alimenticias",
+    numeroPensionesAlimenticias: "Pensiones alimenticias",
+    numeroPensionesVigentes: "Pensiones alimenticias",
+    valorMensualPensiones: "Pensiones alimenticias",
+    numeroPensionesEnMora: "Pensiones alimenticias",
+  },
 };
-const FUENTE_POR_GRUPO = { comportamientoBancario: "Buró de bancos y Diners", comportamientoCooperativas: "Cooperativas" };
+// Seguridad ciudadana sale de tres fuentes (demandas, denuncias y antecedentes) y el perfil no dice
+// cuál no contestó: una sola fila para el grupo.
+const FUENTE_POR_GRUPO = {
+  comportamientoBancario: "Buró de bancos y Diners",
+  comportamientoCooperativas: "Cooperativas",
+  riesgoJudicialCrediticio: "Demandas",
+  riesgoJudicialCivil: "Demandas",
+  riesgoSeguridadCiudadana: "Demandas, denuncias y antecedentes",
+};
 
 export function camposSinDato(profile, grupo) {
   const marca = profile?.[grupo]?.camposSinDato;
@@ -427,7 +448,14 @@ export function filasVisibles(profile, grupo) {
     })
     .filter(Boolean);
   const avisos = fuentesSinDato(profile, grupo).map((fuente) => ({ etiqueta: fuente, texto: "sin dato (la fuente no contestó)", sinDato: true }));
-  return [...avisos, ...filas];
+  // Un delito que dicen las fuentes que SÍ contestaron no se esconde tras el «sin dato»: la fuente caída
+  // no lo borra, y el bloqueo lo lee igual (hechos/controles.ts).
+  const categoriasParciales = profile?.riesgoSeguridadCiudadana?.camposSinDato?.categoriasDelitoSeguridadCiudadana;
+  const parcial =
+    grupo === "riesgoSeguridadCiudadana" && Array.isArray(categoriasParciales) && categoriasParciales.length > 0
+      ? [{ etiqueta: "Categorías (según las fuentes que contestaron)", texto: categoriasParciales.join(", ") }]
+      : [];
+  return [...avisos, ...parcial, ...filas];
 }
 
 // Mismo orden/etiquetas que ORDEN_GRUPOS/ETIQUETAS_GRUPO en

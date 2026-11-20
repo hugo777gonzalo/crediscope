@@ -21,8 +21,6 @@ import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // se reexporta para scripts/corregir-empleo-actual.mjs.
 export { relacionConEmpleador };
 import { rolEnDenuncia } from "./denuncias.ts";
-import { anioDeLaDemanda, atribuirDemandas, demandasPorCategoria, esDemandaDeCobro, quienDemanda, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
-import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 // Los ayudantes de lectura del crudo viven en la capa de hechos desde la tarea
@@ -150,43 +148,6 @@ const DESCRIPCION_SERVICIO: Record<string, string> = {
 
 // La regla de cobro vive en demandas.ts desde estructura-v11, junto con
 // las categorías de las demás demandas.
-
-// pn_supa y su variante del proveedor (pensión alimenticia): el nombre completo
-// viene en 2 órdenes de palabras distintos según la fuente
-// (pn_inf_basica: "Apellido1 Apellido2 Nombre1 Nombre2"; pn_supa:
-// "Nombre1 Nombre2 Apellido1 Apellido2") — se compara por conjunto de
-// palabras, no por igualdad textual.
-function mismoNombre(a: unknown, b: unknown): boolean {
-  const normalizar = (s: unknown) =>
-    String(s ?? "").toUpperCase().trim().split(/\s+/).filter(Boolean).sort().join(" ");
-  const na = normalizar(a);
-  const nb = normalizar(b);
-  return na !== "" && na === nb;
-}
-
-// La variante del proveedor de pn_supa trae representanteLegal (representa a quien RECIBE
-// la pensión) y obligadoPrincipal (quien DEBE pagarla) como 2 personas
-// DISTINTAS. BUG real encontrado auditando el reporte del usuario
-// (cédula c-18fa16ee): el código anterior marcaba pensionAlimenticiaEnMora
-// para CUALQUIER registro de pn_supa donde apareciera el cliente, sin
-// mirar su rol — ahí representanteLegal="MONICA JANETH PICHUCHO PEREZ"
-// (la cliente) y obligadoPrincipal="ENRIQUE XAVIER CORNEJO ALBAN" (otra
-// persona), con totalDeuda=$2866.63: la deuda es de Cornejo Alban, no
-// de la cliente, que en este caso es a quien LE DEBEN. Auditando los 40
-// clientes de la muestra: 6 de 12 casos con pensionAlimenticiaEnMora=true
-// eran en realidad este mismo error (cliente = representanteLegal, no
-// obligado) — no es un caso aislado.
-// pn_supa (sin /proveedor-info-1) NO trae obligadoPrincipal, solo
-// representanteLegal — si el cliente coincide con ese campo, por
-// eliminación NO es el obligado (son los únicos 2 roles del registro);
-// si no coincide con ninguno de los 2 campos conocidos, no se penaliza
-// por datos faltantes (mismo criterio que numeroDenunciasComoSospechoso
-// en riesgoPenal).
-function esClienteObligadoSupa(p: AnyRecord, nombreCliente: string | null): boolean {
-  if (p.obligadoPrincipal) return mismoNombre(p.obligadoPrincipal, nombreCliente);
-  if (mismoNombre(p.representanteLegal, nombreCliente)) return false;
-  return false;
-}
 
 // Los delitos de seguridad ciudadana (control de bloqueo duro) viven en
 // delitos-seguridad.ts, la misma lista que usa controles-bloqueo.ts. Hasta
@@ -417,7 +378,13 @@ export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): Any
 // (ban.union@1, hechos/grupos/comportamiento-bancario.ts). Medido el
 // 2026-11-20 sobre las 3.766 personas: hoy no le pasa a nadie, porque Diners
 // trae sólo a BP Diners y Super no la trae; ningún perfil cambia.
-export const PROCESS_VERSION = "estructura-v26"; // ver docs/estructura-estandarizada.md
+// estructura-v27 (E6, etapa B del grupo 3 de la capa de hechos): riesgoJudicialCrediticio,
+// riesgoJudicialCivil y riesgoSeguridadCiudadana salen de hechos/grupos/riesgo-judicial.ts,
+// y el control de bloqueo toma de los mismos hechos su hallazgo de seguridad ciudadana
+// (hechos/controles.ts). Con una fuente que no contestó el campo es null y el grupo lo lista
+// en camposSinDato con el parcial (lo que escribía la v26 como si fuera el total). El modelo y
+// la capacidad de pago leen lo de antes hasta la versión mayor del marco.
+export const PROCESS_VERSION = "estructura-v27"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1227,96 +1194,41 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   };
 
   // ---- riesgoJudicialCrediticio / riesgoJudicialCivil ----
+  // Desde estructura-v27 salen de la capa de hechos (etapa B del grupo 3,
+  // docs/capa-de-hechos.md, 3.3), como el grupo 1: la atribución de cada demanda
+  // por su demandado (v24, D2), la regla de cobro, las categorías y la unión de las
+  // dos fuentes de pensiones viven en hechos/grupos/riesgo-judicial.ts. Acá sólo se
+  // copian al perfil, en el orden de siempre (el modelo lee el JSON en orden). Con
+  // una fuente que no contestó el campo es null y el grupo lo lista en camposSinDato.
+  //
   // Separados a pedido del usuario: antes "riesgoJudicialCivil" mezclaba
   // demandas de cobro/pagarés/ejecuciones (señal de comportamiento de
   // pago, alto peso) con demandas civiles genéricas (laboral, familia,
-  // tránsito, propiedad — contexto, bajo peso). demandaProblemaCrediticio
-  // (booleano) se reemplaza por este split — ya no existe como campo.
-  const demandas = arr(fuentes, "demandas", "demandas");
-  const demandasOfendido = arr(fuentes, "demandasOfendido", "demandas");
-  const pensionAliment = [...arr(fuentes, "pensionAlimenticia", "supas"), ...arr(fuentes, "pensionAlimenticiaProveedorInfo1", "supas")];
-  // Solo cuenta como deuda/mora DEL CLIENTE la que le corresponde como
-  // obligado — ver esClienteObligadoSupa arriba (bug real: cédula
-  // c-18fa16ee aparecía en mora por una deuda de otra persona).
-  const pensionAlimentComoObligado = pensionAliment.filter((p) => esClienteObligadoSupa(p, identidad.nombreCompleto));
-  // Un proceso una sola vez: la fuente los repite (c-2a50c228 tiene 3
-  // procesos en 12 registros). Sin número de proceso, cada registro vale
-  // por uno.
-  // Si el mismo proceso viene dos veces con deudas distintas, vale la
-  // mayor: no se sabe cuál es la última y la otra subestima.
-  const pensionesPorProceso = new Map<string, AnyRecord>();
-  pensionAlimentComoObligado.forEach((p, i) => {
-    const clave = String(p.numeroProceso ?? `sin-proceso-${i}`);
-    const previa = pensionesPorProceso.get(clave);
-    if (!previa || (num(p.totalDeuda) ?? 0) > (num(previa.totalDeuda) ?? 0)) pensionesPorProceso.set(clave, p);
-  });
-  const pensiones = [...pensionesPorProceso.values()];
-  const pensionesVigentes = pensiones.filter((p) => (num(p.valorMensual) ?? 0) > 0);
-  // tipoDemanda.descripcion es el ROL ("DEMANDADO", constante) — el tipo
-  // de caso real vive en demanda.delito.
-  const delitoDe = (d: AnyRecord): string | undefined => (d.demanda as AnyRecord | undefined)?.delito as string | undefined;
-  // En las demandas CONTRA la persona, "ofendido" es quien la presentó.
-  // Desde estructura-v12 decide cuando el tipo no dice el tema (demandas.ts).
-  const demandanteDe = (d: AnyRecord): unknown => (d.demanda as AnyRecord | undefined)?.ofendido;
-  const esCobro = (d: AnyRecord) => esDemandaDeCobro(delitoDe(d), demandanteDe(d));
-  // Sólo cuentan las demandas cuyo demandado es la persona o no se puede
-  // descartar (estructura-v24, D2): la fuente las busca por el nombre y de 1.148
-  // de cobro 91 eran de otra persona (demandas.ts, atribuirDemandas).
-  const atribuidas = atribuirDemandas(demandas, identidad.nombreCompleto);
-  const demandasCrediticias = atribuidas.cuentan.filter(esCobro);
-  const demandasCivilesResto = atribuidas.cuentan.filter((d) => !esCobro(d));
-  // Los tipos, legibles (demandas.ts, desde estructura-v11): sin el número
-  // de artículo ni las tildes rotas que manda la fuente.
-  const tiposUnicos = (ds: AnyRecord[], legible: (d: AnyRecord) => string | null) =>
-    [...new Set(ds.map(legible).filter((x): x is string => Boolean(x)))];
-  const riesgoJudicialCrediticio: StandardClientProfile["riesgoJudicialCrediticio"] = {
-    numeroDemandasComoDemandado: demandasCrediticias.length,
-    tiposDemandasComoDemandado: tiposUnicos(demandasCrediticias, (d) => tipoDeCobroLegible(delitoDe(d), demandanteDe(d))),
-    // Desde estructura-v21 (p5 de la revisión del análisis): una demanda de
-    // cobro de 2009 de un particular no pesa como una de un banco del año
-    // pasado, y el perfil no decía ni el año ni quién demanda.
-    demandasDeCobro: demandasCrediticias
-      .map((d) => ({ anio: anioDeLaDemanda((d.demanda as AnyRecord | undefined)?.fecha), quienDemanda: quienDemanda(demandanteDe(d)) }))
-      .sort((a, b) => (b.anio ?? 0) - (a.anio ?? 0)),
-    // Desde estructura-v24 (D2): las de cobro que NO se cuentan porque el
-    // demandado es otra persona («posible homónimo»), y las que se cuentan sin
-    // poder confirmar que son suyas. No llegan al modelo (perfil-del-modelo.ts).
-    numeroDemandasDeOtroDemandado: atribuidas.deOtroDemandado.filter(esCobro).length,
-    numeroDemandasSinCotejo: atribuidas.sinCotejo.filter(esCobro).length,
-  };
-  const riesgoJudicialCivil: StandardClientProfile["riesgoJudicialCivil"] = {
-    numeroDemandasComoDemandado: demandasCivilesResto.length,
-    tiposDemandasComoDemandado: tiposUnicos(demandasCivilesResto, (d) => tipoDeDemandaLegible(delitoDe(d))),
-    // Desde estructura-v11: cuántas hay de cada categoría (demandas.ts). Es
-    // lo que distingue un juicio de una investigación penal archivada o de
-    // un trámite, que hasta v10 contaban igual como "demanda civil".
-    demandasPorCategoria: demandasPorCategoria(demandasCivilesResto, delitoDe, demandanteDe),
-    // Desde estructura-v24 (D2): lo mismo que en riesgoJudicialCrediticio, de
-    // las que no son de cobro.
-    numeroDemandasDeOtroDemandado: atribuidas.deOtroDemandado.filter((d) => !esCobro(d)).length,
-    numeroDemandasSinCotejo: atribuidas.sinCotejo.filter((d) => !esCobro(d)).length,
-    numeroDemandasComoOfendido: demandasOfendido.length,
-    // Distingue "no tiene pensión alimenticia" de "tiene y está al
-    // día": con solo pensionAlimenticiaEnMora=false los dos casos se
-    // ven idénticos, y el modelo leyó el segundo donde había el
-    // primero. Caso real reportado por el usuario sobre su propia
-    // cédula (c-64955685, sin un solo registro en pn_supa): el análisis
-    // decía "no se conoce el monto de la pensión comprometida, solo que
-    // está al día". Mismo tipo de error que numeroEmpleadoresUltimos24Meses
-    // en v9 — un valor que significa dos cosas opuestas.
-    tienePensionAlimenticia: pensiones.length > 0,
-    pensionAlimenticiaEnMora: pensiones.some((p) => (num(p.totalDeuda) ?? 0) > 0),
-    // La suma, no el máximo (hasta estructura-v7): 13 personas con más de
-    // una pensión en mora quedaban con la deuda subestimada.
-    deudaPensionAlimenticia: pensiones.length ? redondear(pensiones.reduce((s, p) => s + (num(p.totalDeuda) ?? 0), 0)) : null,
-    // Cuántas y cuánto por mes. "Vigente" = con pago mensual: las al día
-    // con $0 mensual (85 personas tienen al menos una) ya no son un
-    // gasto (decisión del negocio, 2026-09-27).
-    numeroPensionesAlimenticias: pensiones.length,
-    numeroPensionesVigentes: pensionesVigentes.length,
-    valorMensualPensiones: redondear(pensionesVigentes.reduce((s, p) => s + (num(p.valorMensual) ?? 0), 0)),
-    numeroPensionesEnMora: pensiones.filter((p) => (num(p.totalDeuda) ?? 0) > 0).length,
-  };
+  // tránsito, propiedad — contexto, bajo peso).
+  const jc = perfilDesdeHechos(hechos, "riesgoJudicialCrediticio") as AnyRecord;
+  const jv = perfilDesdeHechos(hechos, "riesgoJudicialCivil") as AnyRecord;
+  const riesgoJudicialCrediticio = conSinDato({
+    numeroDemandasComoDemandado: jc.numeroDemandasComoDemandado,
+    tiposDemandasComoDemandado: jc.tiposDemandasComoDemandado,
+    demandasDeCobro: jc.demandasDeCobro,
+    numeroDemandasDeOtroDemandado: jc.numeroDemandasDeOtroDemandado,
+    numeroDemandasSinCotejo: jc.numeroDemandasSinCotejo,
+  } as StandardClientProfile["riesgoJudicialCrediticio"], jc);
+  const riesgoJudicialCivil = conSinDato({
+    numeroDemandasComoDemandado: jv.numeroDemandasComoDemandado,
+    tiposDemandasComoDemandado: jv.tiposDemandasComoDemandado,
+    demandasPorCategoria: jv.demandasPorCategoria,
+    numeroDemandasDeOtroDemandado: jv.numeroDemandasDeOtroDemandado,
+    numeroDemandasSinCotejo: jv.numeroDemandasSinCotejo,
+    numeroDemandasComoOfendido: jv.numeroDemandasComoOfendido,
+    tienePensionAlimenticia: jv.tienePensionAlimenticia,
+    pensionAlimenticiaEnMora: jv.pensionAlimenticiaEnMora,
+    deudaPensionAlimenticia: jv.deudaPensionAlimenticia,
+    numeroPensionesAlimenticias: jv.numeroPensionesAlimenticias,
+    numeroPensionesVigentes: jv.numeroPensionesVigentes,
+    valorMensualPensiones: jv.valorMensualPensiones,
+    numeroPensionesEnMora: jv.numeroPensionesEnMora,
+  } as StandardClientProfile["riesgoJudicialCivil"], jv);
 
   // ---- riesgoPenal ----
   const antecedentes = obj(fuentes, "antecedentesPenales", "antecedentes");
@@ -1387,29 +1299,17 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   };
 
   // ---- riesgoSeguridadCiudadana (grupo propio, control de bloqueo duro) ----
-  // Se revisan demandas (funcion_judicial), denuncias y la descripción
-  // de antecedentes penales — ver controles-bloqueo.ts, donde esto
-  // además fuerza el score a 1 (control de bloqueo duro, mismo trato
-  // que listas de sanciones). Ver nota "SIN VALIDAR CONTRA CASOS
-  // REALES" arriba.
-  // Las denuncias, sólo aquellas en las que la persona es la acusada
-  // (denuncias.ts): hasta estructura-v8 entraban todas, y 42 de 59
-  // personas figuraban con un delito de seguridad ciudadana por haberlo
-  // denunciado o sufrido. Las demandas, sólo si el demandado es la persona
-  // (delitosDeSeguridadEnDemandas, estructura-v20): hasta v19 se suponía que
-  // la fuente traía sólo las suyas (lo medido el 2026-09-28 contaba el
-  // nombre en cualquier lugar del texto), y en 8 de 33 bloqueadas por una
-  // demanda el demandado era otro. Las que no son de ella llegan sólo como
-  // aviso en el bloqueo, no acá.
-  const categoriasSeguridad = new Set([
-    ...delitosDeSeguridadEnDemandas(demandas, identidad.nombreCompleto).propias,
-    ...denuncias.filter((_, i) => rolesEnDenuncias[i] === "acusada").flatMap((d) => categoriasDelitoGraveSeguridad(d.delito)),
-    ...categoriasDelitoGraveSeguridad(antecedentes?.descripcion),
-  ]);
-  const riesgoSeguridadCiudadana: StandardClientProfile["riesgoSeguridadCiudadana"] = {
-    tieneDelitoSeguridadCiudadana: categoriasSeguridad.size > 0,
-    categoriasDelitoSeguridadCiudadana: [...categoriasSeguridad],
-  };
+  // Desde estructura-v27 sale de la capa de hechos, con los mismos hechos de los que
+  // el control de bloqueo arma su hallazgo (hechos/controles.ts): hasta la v26 eran
+  // dos lecturas del mismo crudo que coincidían por disciplina. Las denuncias cuentan
+  // sólo si la persona es la acusada (denuncias.ts); las demandas, sólo si el demandado
+  // es ella (v20); los antecedentes, por su descripción. Con una de las tres fuentes
+  // caída el campo es null y camposSinDato lleva lo que dicen las otras.
+  const sc = perfilDesdeHechos(hechos, "riesgoSeguridadCiudadana") as AnyRecord;
+  const riesgoSeguridadCiudadana = conSinDato({
+    tieneDelitoSeguridadCiudadana: sc.tieneDelitoSeguridadCiudadana,
+    categoriasDelitoSeguridadCiudadana: sc.categoriasDelitoSeguridadCiudadana,
+  } as StandardClientProfile["riesgoSeguridadCiudadana"], sc);
 
   // El detalle fuente por fuente, en los tres estados de
   // docs/declaracion-de-disponibilidad.md. La distinción que importa no

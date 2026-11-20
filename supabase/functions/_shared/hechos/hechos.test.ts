@@ -121,6 +121,8 @@ Deno.test("un grupo en etapa A que lanza un error no emite nada y el resto sigue
     assertEquals(JSON.stringify(sinEmpleo.entidades.map((e) => e.clave)), JSON.stringify(normal.entidades.filter((e) => e.tipo !== "empleo").map((e) => e.clave)));
     // Un grupo en etapa B no lleva el resguardo: el perfil depende de él.
     assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("comportamientoBancario") }), Error, "fallo de prueba");
+    // El riesgo judicial (grupo 3) pasó a etapa B con estructura-v27: el perfil y el bloqueo dependen de él.
+    assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("riesgoJudicial") }), Error, "fallo de prueba");
     // Con `estricto` (guiones y pruebas) el de etapa A también falla.
     assertThrows(() => derivarHechos(crudo, contexto, { estricto: true, grupos: seCaeAlFinal("empleo") }), Error, "fallo de prueba");
     assertEquals(registro.length, 1);

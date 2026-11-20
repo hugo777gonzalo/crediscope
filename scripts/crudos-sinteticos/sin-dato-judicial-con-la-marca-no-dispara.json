@@ -1,0 +1,75 @@
+{
+  "descripcion": "Demandas caída, denuncias apagada y una de las dos fuentes de pensiones caída: con estructura-v27 esos campos quedan en null, marcados en camposSinDato con lo que trajeron las demás (el antecedente por extorsión queda en el parcial y sigue bloqueando), y el detector judicial no marca nada",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO CINCO"
+        }
+      }
+    },
+    "demandas": {
+      "status": "error",
+      "data": null
+    },
+    "demandasOfendido": {
+      "status": "ok",
+      "data": {
+        "demandas": []
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "error",
+      "data": null
+    },
+    "denuncias": {
+      "status": "deshabilitado",
+      "data": null
+    },
+    "antecedentesPenales": {
+      "status": "ok",
+      "data": {
+        "antecedentes": {
+          "descripcion": "EXTORSION"
+        }
+      }
+    }
+  },
+  "esperado": {
+    "dato-judicial-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
+  "hechos": {
+    "jud.cobro.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    },
+    "jud.pension.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    },
+    "jud.ofendido.cantidad": {
+      "valor": 0,
+      "registros": [
+        "demandasOfendido.demandas"
+      ]
+    },
+    "seg.delito.categorias": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": [
+        "Extorsión"
+      ]
+    }
+  }
+}

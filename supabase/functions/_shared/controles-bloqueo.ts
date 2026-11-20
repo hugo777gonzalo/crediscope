@@ -23,9 +23,8 @@
 // SÍ queda a criterio del LLM — ver llm-scoring.ts.
 
 import type { HallazgoControlBloqueo, ResultadoControlBloqueo, RespuestaProveedorInfo1 } from "./types.ts";
-import { rolEnDenuncia } from "./denuncias.ts";
 import { separarProvidencias } from "./providencias.ts";
-import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas, mensajeDelDelitoDeSeguridad, mensajeDelPosibleHomonimo } from "./delitos-seguridad.ts";
+import { hallazgosDeSeguridadCiudadana } from "./hechos/controles.ts";
 
 function esFallecido(persona?: { fechaDefuncion?: string | null; informacionAdicional?: string | null } | null): boolean {
   if (!persona) return false;
@@ -149,48 +148,15 @@ export function evaluarControlesBloqueo(raw: RespuestaProveedorInfo1, requestedC
     });
   }
 
-  // Delitos de seguridad ciudadana: control de bloqueo duro, decisión
-  // explícita del usuario. La lista de delitos vive en
-  // delitos-seguridad.ts, la misma que usa el perfil (estructura-v11: hasta
-  // v10 había una copia acá y otra en process.ts).
-  const demandas = (raw.demandas?.data as Record<string, unknown> | undefined)?.demandas as Record<string, unknown>[] | undefined;
-  const denuncias = (raw.denuncias?.data as Record<string, unknown> | undefined)?.denuncias as Record<string, unknown>[] | undefined;
-  const antecedentesDescripcion = (raw.antecedentesPenales?.data as Record<string, unknown> | undefined)?.antecedentes as
-    | Record<string, unknown>
-    | undefined;
-  const categoriasEnTexto = categoriasDelitoGraveSeguridad;
-  // Las denuncias cuentan sólo si la persona es la ACUSADA (sospechosa,
-  // procesada o aprehendida, con su cédula): ver denuncias.ts. Hasta
-  // estructura-v8 entraban todas, y 42 de las 59 personas bloqueadas por
-  // este control eran quienes habían denunciado o sufrido el delito (31
-  // extorsiones), testigos, un policía y un abogado defensor.
-  // Las demandas, sólo si el demandado es la persona (estructura-v20,
-  // delitosDeSeguridadEnDemandas): la fuente las busca por el nombre, y en 8
-  // de 33 personas bloqueadas por una demanda el demandado era otro.
-  const enDemandas = delitosDeSeguridadEnDemandas(demandas ?? [], persona?.nombre);
-  const categoriasEncontradas = new Set([
-    ...enDemandas.propias,
-    ...(denuncias ?? [])
-      .filter((d) => rolEnDenuncia(d, requestedCedula) === "acusada")
-      .flatMap((d) => categoriasEnTexto(d.delito)),
-    ...categoriasEnTexto(antecedentesDescripcion?.descripcion),
-  ]);
-  if (categoriasEncontradas.size > 0) {
-    hallazgos.push({
-      code: "delito_seguridad_ciudadana",
-      message: mensajeDelDelitoDeSeguridad([...categoriasEncontradas]),
-      bloqueante: true,
-    });
-  }
-  // Las demás se avisan sin bloquear, con lo que el analista necesita para
-  // buscarlas: el delito, el año y por qué no se pudo decir que es ella.
-  if (enDemandas.sinCotejo.length > 0) {
-    hallazgos.push({
-      code: "posible_homonimo_en_demanda_penal",
-      message: mensajeDelPosibleHomonimo(enDemandas.sinCotejo),
-      bloqueante: false,
-    });
-  }
+  // Delitos de seguridad ciudadana: control de bloqueo duro, decisión explícita del
+  // usuario. Desde estructura-v27 el hallazgo sale de los mismos hechos con que el perfil
+  // arma riesgoSeguridadCiudadana (hechos/controles.ts): hasta la v26 este control leía las
+  // demandas, las denuncias y los antecedentes por su cuenta, dos lecturas de lo mismo. Las
+  // reglas (qué delitos, qué papel en la denuncia, qué demandas son de ella) viven en
+  // hechos/grupos/riesgo-judicial.ts, demandas.ts, denuncias.ts y delitos-seguridad.ts.
+  // Con una fuente caída, el hallazgo sale de lo que dicen las que contestaron: no
+  // desbloquea a quien tiene un delito en otra ni bloquea sin evidencia (controles.ts).
+  hallazgos.push(...hallazgosDeSeguridadCiudadana(raw, requestedCedula, new Date().toISOString()));
 
   const bloqueado = hallazgos.some((h) => h.bloqueante);
   // Un bloqueo manda sobre cualquier tope: el tope sólo se anota si no hay bloqueo.

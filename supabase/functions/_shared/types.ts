@@ -507,35 +507,39 @@ export interface StandardClientProfile {
   // pedido del usuario; antes era el booleano demandaProblemaCrediticio
   // dentro de ese grupo). La regla vive en demandas.ts (esDemandaDeCobro).
   riesgoJudicialCrediticio: {
-    numeroDemandasComoDemandado: number;
+    numeroDemandasComoDemandado: number | null;
     // Legibles desde estructura-v11: sin número de artículo ni tildes rotas.
     // Desde v12, la que es de cobro sólo por quién la presentó lo dice:
     // "Otros (demanda de una institución financiera)".
-    tiposDemandasComoDemandado: string[];
+    tiposDemandasComoDemandado: string[] | null;
     // Desde estructura-v21 (p5): de cada demanda de cobro, el año y quién
     // demanda, de la más reciente a la más vieja (demandas.ts).
-    demandasDeCobro: { anio: number | null; quienDemanda: QuienDemanda | null }[];
+    demandasDeCobro: { anio: number | null; quienDemanda: QuienDemanda | null }[] | null;
     // Desde estructura-v24 (D2): las de cobro que no se cuentan porque el
     // demandado es otra persona («posible homónimo»), y las que se cuentan sin
     // poder confirmar que son suyas. Un perfil anterior no los trae.
-    numeroDemandasDeOtroDemandado?: number;
-    numeroDemandasSinCotejo?: number;
+    numeroDemandasDeOtroDemandado?: number | null;
+    numeroDemandasSinCotejo?: number | null;
+    // Desde estructura-v27: los campos de arriba cuya fuente no contestó. Ese
+    // campo es null y acá va lo que dicen las fuentes que sí contestaron (lo que
+    // el perfil escribía como si fuera el total hasta la v26; campos-sin-dato.ts).
+    camposSinDato?: Record<string, unknown>;
   };
 
   // Demandas civiles NO crediticias (laboral, familia, tránsito,
   // propiedad, etc.) — contexto, no comportamiento de pago directo.
   riesgoJudicialCivil: {
-    numeroDemandasComoDemandado: number;
-    tiposDemandasComoDemandado: string[]; // demanda.delito, NO tipoDemanda.descripcion (ver nota en process.ts)
+    numeroDemandasComoDemandado: number | null;
+    tiposDemandasComoDemandado: string[] | null; // demanda.delito, NO tipoDemanda.descripcion (ver nota en process.ts)
     // Desde estructura-v11: cuántas hay de cada categoría del catálogo de
     // demandas.ts, con sus tipos legibles. Distingue un juicio de una
     // investigación penal archivada, de un trámite o de tránsito.
-    demandasPorCategoria?: Array<{ categoria: string; cantidad: number; tipos: string[] }>;
+    demandasPorCategoria?: Array<{ categoria: string; cantidad: number; tipos: string[] }> | null;
     // Desde estructura-v24 (D2): lo mismo que en riesgoJudicialCrediticio, de
     // las que no son de cobro.
-    numeroDemandasDeOtroDemandado?: number;
-    numeroDemandasSinCotejo?: number;
-    numeroDemandasComoOfendido: number;
+    numeroDemandasDeOtroDemandado?: number | null;
+    numeroDemandasSinCotejo?: number | null;
+    numeroDemandasComoOfendido: number | null;
     // Solo cuenta la deuda/mora del registro pn_supa donde el CLIENTE es
     // el obligado a pagar (ver esClienteObligadoSupa en process.ts) — un
     // registro donde el cliente es representanteLegal significa que a
@@ -546,8 +550,8 @@ export interface StandardClientProfile {
     // false => no tiene ninguna pensión alimenticia a su cargo. Sin
     // este campo, pensionAlimenticiaEnMora=false significaba a la vez
     // "no tiene" y "tiene y está al día" (ver process.ts).
-    tienePensionAlimenticia: boolean;
-    pensionAlimenticiaEnMora: boolean;
+    tienePensionAlimenticia: boolean | null;
+    pensionAlimenticiaEnMora: boolean | null;
     // Desde estructura-v8 es la SUMA de las deudas de cada proceso (antes
     // el máximo: 13 personas con más de una pensión en mora quedaban con
     // la deuda subestimada).
@@ -555,10 +559,13 @@ export interface StandardClientProfile {
     // Desde estructura-v8, contando cada proceso una vez (la fuente los
     // repite). "Vigente" = con pago mensual: las al día con $0 mensual ya
     // no son un gasto (decisión del negocio, 2026-09-27).
-    numeroPensionesAlimenticias?: number;
-    numeroPensionesVigentes?: number;
-    valorMensualPensiones?: number;
-    numeroPensionesEnMora?: number;
+    numeroPensionesAlimenticias?: number | null;
+    numeroPensionesVigentes?: number | null;
+    valorMensualPensiones?: number | null;
+    numeroPensionesEnMora?: number | null;
+    // Desde estructura-v27: los campos cuya fuente no contestó, como en
+    // riesgoJudicialCrediticio.
+    camposSinDato?: Record<string, unknown>;
   };
 
   riesgoPenal: {
@@ -621,8 +628,13 @@ export interface StandardClientProfile {
   // trata de personas siguen sin caso real, palabras clave por
   // conocimiento general del COIP (ver nota en process.ts).
   riesgoSeguridadCiudadana: {
-    tieneDelitoSeguridadCiudadana: boolean;
-    categoriasDelitoSeguridadCiudadana: string[]; // ej. ["Extorsión", "Delincuencia organizada"]
+    tieneDelitoSeguridadCiudadana: boolean | null;
+    categoriasDelitoSeguridadCiudadana: string[] | null; // ej. ["Extorsión", "Delincuencia organizada"]
+    // Desde estructura-v27: si la fuente de demandas, la de denuncias o la de
+    // antecedentes no contestó, el campo es null y acá va lo que dicen las que sí
+    // (campos-sin-dato.ts). El bloqueo lee ese parcial: una fuente caída no
+    // desbloquea a quien tiene un delito en otra.
+    camposSinDato?: Record<string, unknown>;
   };
 
   // De qué vive el cliente y qué tan evidenciado está (ver

@@ -19,9 +19,15 @@ type Registro = Record<string, unknown>;
 
 export const CLAVE_SIN_DATO = "camposSinDato";
 
-// Los grupos del perfil que pueden traer `camposSinDato` (los del grupo 1 de la
+// Los grupos del perfil que pueden traer `camposSinDato` (los grupos 1 y 3 de la
 // capa de hechos). Un grupo nuevo en etapa B se suma acá.
-export const GRUPOS_CON_SIN_DATO = ["comportamientoBancario", "comportamientoCooperativas"] as const;
+export const GRUPOS_CON_SIN_DATO = [
+  "comportamientoBancario",
+  "comportamientoCooperativas",
+  "riesgoJudicialCrediticio",
+  "riesgoJudicialCivil",
+  "riesgoSeguridadCiudadana",
+] as const;
 
 // Los campos de un grupo que quedaron sin dato, o una lista vacía.
 export function camposSinDato(grupo: unknown): string[] {

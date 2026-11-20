@@ -608,6 +608,30 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
+    id: "dato-judicial-de-fuente-sin-respuesta-escrito-como-total",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Un campo de demandas, pensiones alimenticias o seguridad ciudadana tiene valor (o no está marcado sin dato) aunque su fuente no contestó",
+    caso: "E6 de la reestructuración del núcleo, 2026-11-20: con la fuente de demandas o la de denuncias caída, el perfil escribía 0 demandas, «no tiene pensión» o «sin delito», como si fuera el total",
+    conocido: "hasta estructura-v26 se escribía el parcial o 0: se corrige con el recálculo de estructura-v27 (recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo)",
+    // Criterio DISTINTO del de la regla (que mira el `status`, respuestaDe en hechos/lectura-del-crudo.ts):
+    // acá se mira el contenido. Una fuente judicial que contestó trae su lista, aunque sea vacía.
+    // `antecedentesPenales` no entra: su «no hay» es un status `faltante` sin contenido, y por contenido
+    // no se distingue de una caída. `pensionAlimenticia` tampoco: sus registros nunca cuentan.
+    aplica: ({ raw, perfil }) => !!perfil?.riesgoJudicialCivil && fuentesJudicialesSinRespuesta(raw).length > 0,
+    detectar: ({ raw, perfil }) => {
+      const conValor = [];
+      for (const [fuente, , grupo, campos] of fuentesJudicialesSinRespuesta(raw)) {
+        const g = perfil?.[grupo] ?? {};
+        const marcados = g.camposSinDato && typeof g.camposSinDato === "object" ? g.camposSinDato : {};
+        for (const campo of campos) {
+          if ((g[campo] !== null && g[campo] !== undefined) || !(campo in marcados)) conValor.push(`${fuente}: ${grupo}.${campo}`);
+        }
+      }
+      return conValor.length ? { campos: [...new Set(conValor)] } : null;
+    },
+  },
+  {
     id: "operacion-en-super-y-diners",
     capa: "estructura",
     tipo: "revisar",
@@ -684,6 +708,34 @@ function fuentesDelGrupo1SinRespuesta(raw) {
     const data = raw?.[fuente]?.data;
     if (!data || typeof data !== "object") return true;
     return lista !== null && !Array.isArray(data[lista]);
+  });
+}
+
+// Las fuentes del grupo 3 (riesgo judicial) y los campos del perfil que salen de cada una
+// (estructura-v27). Si la fuente no contestó, esos campos son null y van en camposSinDato de su grupo.
+const DEMANDAS_CREDITICIO = ["numeroDemandasComoDemandado", "tiposDemandasComoDemandado", "demandasDeCobro", "numeroDemandasDeOtroDemandado", "numeroDemandasSinCotejo"];
+const DEMANDAS_CIVIL = ["numeroDemandasComoDemandado", "tiposDemandasComoDemandado", "demandasPorCategoria", "numeroDemandasDeOtroDemandado", "numeroDemandasSinCotejo"];
+const PENSIONES_DEL_PERFIL = [
+  "tienePensionAlimenticia", "pensionAlimenticiaEnMora", "deudaPensionAlimenticia", "numeroPensionesAlimenticias",
+  "numeroPensionesVigentes", "valorMensualPensiones", "numeroPensionesEnMora",
+];
+const SEGURIDAD_DEL_PERFIL = ["tieneDelitoSeguridadCiudadana", "categoriasDelitoSeguridadCiudadana"];
+const FUENTES_JUDICIALES = [
+  // [fuente, la lista que trae al contestar, grupo, campos]
+  ["demandas", "demandas", "riesgoJudicialCrediticio", DEMANDAS_CREDITICIO],
+  ["demandas", "demandas", "riesgoJudicialCivil", DEMANDAS_CIVIL],
+  ["demandas", "demandas", "riesgoSeguridadCiudadana", SEGURIDAD_DEL_PERFIL],
+  ["demandasOfendido", "demandas", "riesgoJudicialCivil", ["numeroDemandasComoOfendido"]],
+  // `pensionAlimenticia` (pn_supa) no está: sus registros nunca cuentan (no trae al obligado), y su caída
+  // no deja las pensiones sin dato (hechos/grupos/riesgo-judicial.ts, FUENTES_QUE_NUNCA_CUENTAN).
+  ["pensionAlimenticiaProveedorInfo1", "supas", "riesgoJudicialCivil", PENSIONES_DEL_PERFIL],
+  ["denuncias", "denuncias", "riesgoSeguridadCiudadana", SEGURIDAD_DEL_PERFIL],
+];
+function fuentesJudicialesSinRespuesta(raw) {
+  return FUENTES_JUDICIALES.filter(([fuente, lista]) => {
+    const data = raw?.[fuente]?.data;
+    if (!data || typeof data !== "object") return true;
+    return !Array.isArray(data[lista]);
   });
 }
 

@@ -352,7 +352,15 @@ su guía: `docs/equifax.md`.
   de 3.766 personas. Quien todavía tiene que leer como antes (el modelo, hasta la
   versión mayor del marco, y la capacidad de pago) pasa por `conLosValoresDeAntes()`
   (`_shared/campos-sin-dato.ts`); un grupo nuevo en etapa B se suma a
-  `GRUPOS_CON_SIN_DATO`.
+  `GRUPOS_CON_SIN_DATO` (desde la v27 también los tres judiciales).
+- **El bloqueo de seguridad ciudadana sale de los mismos hechos que el perfil** (estructura-v27):
+  `evaluarControlesBloqueo()` toma de `controlesDesdeHechos()` (`hechos/controles.ts`) el
+  hallazgo de seguridad ciudadana y el aviso de homónimo; ya no lee demandas, denuncias ni
+  antecedentes por su cuenta. Una fuente caída no desbloquea ni bloquea: el control lee el
+  parcial (lo que dicen las fuentes que contestaron). Un delito en otra fuente sigue
+  bloqueando; sin delito y con la fuente caída no sale hallazgo, y la persona queda en
+  consulta incompleta (demandas, denuncias y antecedentes son obligatorias). El hallazgo
+  sale sin `derivaDe`: lo guarda el análisis y lo lee el modelo.
 - El crudo de Proveedor_Info_1 se guarda desde la 090 en el depósito privado
   `crudo-proveedor-info-1` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo

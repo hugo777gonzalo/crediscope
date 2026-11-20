@@ -51,7 +51,7 @@ Deno.test("cero campos sin procedencia: todo campo de los tres grupos judiciales
   for (const [grupo, cantidad] of Object.entries(esperados)) {
     const desde = texto.indexOf(`  ${grupo}: {`);
     const hasta = texto.indexOf("\n  };", desde);
-    const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]);
+    const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]).filter((c) => c !== "camposSinDato");
     assertEquals(campos.length, cantidad, grupo);
     assertEquals(campos.filter((c) => !conCodigo.has(`${grupo}.${c}`)), [], grupo);
   }
@@ -267,9 +267,10 @@ Deno.test("una fuente caída: sin valor, con el parcial de las filas que llegaro
   assertEquals([cobro.valor, cobro.calidad, cobro.motivo, cobro.parcial], [null, "no_disponible", "fuente_sin_respuesta", 0]);
   assertEquals(hecho(doc, "jud.cobro.tipos").parcial, []);
   assertEquals(hecho(doc, "jud.ofendido.cantidad").valor, 1);
-  // Una pensión de dos fuentes con una caída: lo que trajo la otra es el parcial.
+  // `pensionAlimenticia` (pn_supa) cayó pero sus registros nunca cuentan (no trae al obligado): la
+  // pensión depende sólo de la otra fuente y tiene valor.
   const deuda = hecho(doc, "jud.pension.deuda");
-  assertEquals([deuda.valor, deuda.motivo, deuda.parcial], [null, "fuente_sin_respuesta", 300]);
+  assertEquals([deuda.valor, deuda.motivo, deuda.parcial], [300, undefined, undefined]);
   const perfil = buildStandardProfile(ultimoCrudo as never, CEDULA).profile;
   assertEquals(perfilDesdeHechos(doc, "riesgoJudicialCivil"), perfil.riesgoJudicialCivil);
   assertEquals(perfilDesdeHechos(doc, "riesgoJudicialCrediticio"), perfil.riesgoJudicialCrediticio);

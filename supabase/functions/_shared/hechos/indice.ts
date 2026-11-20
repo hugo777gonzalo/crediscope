@@ -69,7 +69,7 @@ export function catalogoCompleto(): CodigoDelCatalogo[] {
 // Los grupos de los que depende el perfil: process.ts los arma con `perfilDesdeHechos`
 // (etapa B). Si uno falla, el perfil no se puede armar, y tiene que fallar como hoy. Un grupo
 // nuevo se suma acá cuando su bloque de process.ts pasa a armarse desde los hechos.
-export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas"];
+export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas", "riesgoJudicial"];
 
 export interface OpcionesDeDerivacion {
   // Con `estricto`, el error de cualquier grupo se propaga. Lo usan los guiones y las

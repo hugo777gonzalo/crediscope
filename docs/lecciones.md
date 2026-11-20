@@ -383,6 +383,9 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   de hechos, que separa «sin respuesta» de «no hay» en cada hecho. Desde la v25 el campo
   es `null`, marcado en `camposSinDato`; el modelo sigue leyendo el valor de antes hasta la
   versión mayor del marco.
+  La v27 hizo lo mismo con el riesgo judicial (demandas, pensiones alimenticias y seguridad
+  ciudadana), y el bloqueo de seguridad ciudadana dejó de leer el crudo por su cuenta:
+  desde ahí es una sola lectura, la de los hechos.
 
 ### IESS, ingresos y fuentes de ingreso
 
