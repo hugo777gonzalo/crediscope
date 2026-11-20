@@ -10,9 +10,17 @@ import { quienDemanda } from "./demandas.ts";
 import type { RespuestaProveedorInfo1 } from "./types.ts";
 
 const fuente = (data: Record<string, unknown>) => ({ status: "ok", data });
+// Las tres fuentes del IESS/BIESS contestan vacío salvo que el caso traiga la
+// suya: desde estructura-v25, una que no contestó deja el campo sin dato.
 const perfilDe = (fuentes: Record<string, unknown>) =>
   buildStandardProfile(
-    { general: fuente({ personaNatural: { nombre: "ZZPRUEBA ZZINVENTADA ANA" } }), ...fuentes } as unknown as RespuestaProveedorInfo1,
+    {
+      general: fuente({ personaNatural: { nombre: "ZZPRUEBA ZZINVENTADA ANA" } }),
+      basesInternas: fuente({}),
+      creditoQuirografario: fuente({ prestamos: [] }),
+      creditoHipotecario: fuente({ prestamos: [] }),
+      ...fuentes,
+    } as unknown as RespuestaProveedorInfo1,
     "0000000000",
   ).profile;
 

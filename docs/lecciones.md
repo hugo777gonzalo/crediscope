@@ -373,6 +373,16 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   (`Uint8Array`) y los del 03/10 se subieron desde `research/`. **Una
   función que no lanza a propósito se verifica mirando el efecto en la base
   después de desplegar**, no la respuesta.
+- **Una fuente caída se escribía como «no tiene».** `arr()` devuelve una lista vacía
+  tanto si la fuente dijo «no hay» como si no contestó, y el perfil sumaba sobre eso: 0
+  préstamos del BIESS, 0 deudas con casas comerciales, «no figura» en el registro de
+  deudores. Con el proveedor rechazando 41 de 52 fuentes (2026-11-18), el seco de
+  estructura-v25 (2026-11-19) lo encontró en 672 de 3.766 personas: el BIESS en 672 y el
+  retail y el registro de deudores en 658. Nadie lo veía porque un 0 es un valor
+  verosímil y la disponibilidad por tema lo decía en otro bloque. Lo hizo visible la capa
+  de hechos, que separa «sin respuesta» de «no hay» en cada hecho. Desde la v25 el campo
+  es `null`, marcado en `camposSinDato`; el modelo sigue leyendo el valor de antes hasta la
+  versión mayor del marco.
 
 ### IESS, ingresos y fuentes de ingreso
 

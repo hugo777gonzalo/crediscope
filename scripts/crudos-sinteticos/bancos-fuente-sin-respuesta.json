@@ -1,5 +1,5 @@
 {
-  "descripcion": "Diners no contestó y el registro de deudores falló: el perfil escribe lo de Super como si fuera todo (y «no figura»), y los hechos dicen que no se sabe",
+  "descripcion": "Diners no contestó y el registro de deudores falló: hasta estructura-v24 el perfil escribía lo de Super como si fuera todo (y «no figura»); desde la v25 los hechos dicen que no se sabe, el campo queda en null y lo de Super va como parcial",
   "cedula": "0000000000",
   "capturadoEl": "2026-10-01T12:00:00-05:00",
   "raw": {
@@ -16,10 +16,11 @@
     "buroCreditoDiners": { "status": "error", "data": null },
     "deudores": { "status": "faltante", "data": null }
   },
-  "esperado": {},
+  "esperado": { "dato-de-fuente-sin-respuesta-escrito-como-total": "no-dispara" },
   "hechos": {
-    "ban.operaciones.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta" },
-    "ban.saldo.por_vencer": { "valor": null, "motivo": "fuente_sin_respuesta" },
-    "ban.registro_deudores.figura": { "valor": null, "motivo": "fuente_sin_respuesta" }
+    "ban.operaciones.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 1 },
+    "ban.saldo.por_vencer": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 900 },
+    "ban.calificacion.peor": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": "A1" },
+    "ban.registro_deudores.figura": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": false }
   }
 }

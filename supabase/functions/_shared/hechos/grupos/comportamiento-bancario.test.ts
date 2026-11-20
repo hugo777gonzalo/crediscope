@@ -27,7 +27,8 @@ function camposDeTypes(grupo: string): string[] {
   const texto = Deno.readTextFileSync(new URL("../../types.ts", import.meta.url));
   const desde = texto.indexOf(`  ${grupo}: {`);
   const hasta = texto.indexOf("\n  };", desde);
-  return [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]);
+  // camposSinDato es la marca del «sin dato» (estructura-v25), no un campo.
+  return [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]).filter((c) => c !== "camposSinDato");
 }
 
 Deno.test("cero campos sin procedencia: todo campo de los dos grupos tiene su código", () => {
@@ -89,7 +90,9 @@ Deno.test("D4: una operación de bancos en atraso no tiene días; la calificaci�
   assertEquals(doc.hechos.find((h) => h.codigo === "ban.saldo.vencido")?.fechaDelDato, "2026-08-31");
 });
 
-Deno.test("una fuente que no contestó: el hecho no tiene valor y el perfil escribe lo de hoy", () => {
+// estructura-v25: con Diners caída, los 900 de Super no son el total. Hasta la
+// v24 el perfil los escribía como si lo fueran, y 0 en cooperativas.
+Deno.test("una fuente que no contestó: el hecho no tiene valor, el campo queda sin dato y el parcial es lo de antes", () => {
   const crudo = {
     buroCreditoSuper: { status: "ok", data: { datosSuper: [fila("A1", { saldoVigente: "900.00" })] } },
     buroCreditoDiners: { status: "error", data: null },
@@ -97,9 +100,24 @@ Deno.test("una fuente que no contestó: el hecho no tiene valor y el perfil escr
   };
   const doc = derivarHechos(crudo, contexto("2026-10-01T12:00:00-05:00"));
   const h = doc.hechos.find((x) => x.codigo === "ban.saldo.por_vencer")!;
-  assertEquals([h.valor, h.calidad, h.motivo], [null, "no_disponible", "fuente_sin_respuesta"]);
-  assertEquals(perfilDesdeHechos(doc, "comportamientoCooperativas").numeroOperaciones, 0);
-  assertEquals(perfilDesdeHechos(doc, "comportamientoBancario").tieneCreditoIessBiess, false);
+  assertEquals([h.valor, h.calidad, h.motivo, h.parcial, h.registros], [null, "no_disponible", "fuente_sin_respuesta", 900, []]);
+  const coop = perfilDesdeHechos(doc, "comportamientoCooperativas");
+  assertEquals([coop.numeroOperaciones, coop.diasMoraMaxima], [null, null]);
+  assertEquals((coop.camposSinDato as Record<string, unknown>).numeroOperaciones, 0);
+  const banco = perfilDesdeHechos(doc, "comportamientoBancario");
+  assertEquals([banco.saldoTotalVigente, banco.peorCalificacionRiesgo, banco.tieneCreditoIessBiess], [null, null, null]);
+  const antes = banco.camposSinDato as Record<string, unknown>;
+  assertEquals([antes.saldoTotalVigente, antes.peorCalificacionRiesgo, antes.numeroOperacionesBuroCredito, antes.tieneCreditoIessBiess], [900, "A1", 1, false]);
+});
+
+Deno.test("sin fuentes caídas el grupo no lleva camposSinDato", () => {
+  const crudo = {
+    ...vacio("buroCreditoSuper", "datosSuper"), ...vacio("buroCreditoDiners", "datosSuper"), ...vacio("deudores", "deudores"),
+    ...vacio("retails", "retails"), ...vacio("buroCreditoCoop", "datosSuper"), ...vacio("creditoQuirografario", "prestamos"),
+    ...vacio("creditoHipotecario", "prestamos"), basesInternas: { status: "ok", data: {} },
+  };
+  const doc = derivarHechos(crudo, contexto("2026-10-01T12:00:00-05:00"));
+  for (const g of ["comportamientoBancario", "comportamientoCooperativas"]) assertEquals("camposSinDato" in perfilDesdeHechos(doc, g), false, g);
 });
 
 Deno.test("«la fuente dice que no hay» es un valor con la respuesta como registro", () => {

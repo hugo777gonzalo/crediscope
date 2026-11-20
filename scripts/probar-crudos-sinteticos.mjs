@@ -30,10 +30,11 @@
 // La capa de hechos (docs/capa-de-hechos.md, 5.3), en todos los casos:
 //   - deriva los hechos y comprueba que todo registro citado existe en el crudo;
 //   - paridad de los grupos de GRUPOS_EN_PARIDAD contra el perfil armado con el
-//     reloj en `capturadoEl`. Donde una fuente del hecho no contestó, el perfil
-//     escribe 0 o false y el hecho «no disponible»: eso se informa, no corta;
-//   - `hechos` (opcional): por código, el `valor`, el `motivo` si no tiene
-//     valor, los `registros` que tiene que citar («fuente.lista#indice», o
+//     reloj en `capturadoEl`. Desde la etapa B (estructura-v25) process.ts arma
+//     esos grupos desde los hechos: la paridad prueba que copia cada campo, y
+//     una fuente que no contestó ya no explica ninguna diferencia;
+//   - `hechos` (opcional): por código, el `valor`, el `motivo` y el `parcial`
+//     si no tiene valor, los `registros` que tiene que citar («fuente.lista#indice», o
 //     «fuente.lista» para la respuesta entera), los `descartados`
 //     («fuente.lista#indice:motivo») y las `diferencias` que tienen que salir;
 //   - `reglas` (opcional): { "id@version": "aplica" | "no-aplica" }. Cada regla de
@@ -91,7 +92,6 @@ const cubiertasLasReglas = new Map([...reglasQueMezclan].map((r) => [r, { aplica
 const enParidad = GRUPOS_EN_PARIDAD.flatMap((g) => gruposDelPerfil(GRUPOS[g].CATALOGO));
 // Los campos que un grupo declara pendientes, con su porqué, no entran en la paridad.
 const pendientes = new Set(Object.values(GRUPOS).flatMap((g) => (g.CAMPOS_PENDIENTES ?? []).map((p) => p.campo)));
-let paridadExplicada = 0;
 
 let fallas = 0;
 function control(nombre, ok, detalle = "") {
@@ -142,9 +142,7 @@ for (const archivo of archivos) {
       for (const campo of new Set([...Object.keys(desdeHechos), ...(conReloj[gp] ? Object.keys(conReloj[gp]) : [])])) {
         if (pendientes.has(`${gp}.${campo}`) || canonico(desdeHechos[campo]) === canonico(conReloj[gp]?.[campo])) continue;
         const codigo = Object.values(GRUPOS).flatMap((g) => g.CATALOGO).find((c) => c.campoDelPerfil === `${gp}.${campo}`)?.codigo;
-        const motivo = porCodigo.get(codigo)?.motivo ?? "";
-        if (/fuente_sin_respuesta|fuente_deshabilitada/.test(motivo)) paridadExplicada++;
-        else control(`${nombre}: paridad de ${gp}.${campo}`, false, `perfil ${canonico(conReloj[gp]?.[campo])}, hechos ${canonico(desdeHechos[campo])}`);
+        control(`${nombre}: paridad de ${gp}.${campo}`, false, `perfil ${canonico(conReloj[gp]?.[campo])}, hechos ${canonico(desdeHechos[campo])}`);
       }
     }
 
@@ -154,6 +152,7 @@ for (const archivo of archivos) {
       const problemas = [];
       if ("valor" in esperado && canonico(h.valor) !== canonico(esperado.valor)) problemas.push(`valor ${canonico(h.valor)}, se esperaba ${canonico(esperado.valor)}`);
       if (esperado.motivo && h.motivo !== esperado.motivo) problemas.push(`motivo ${h.motivo}`);
+      if ("parcial" in esperado && canonico(h.parcial ?? null) !== canonico(esperado.parcial)) problemas.push(`parcial ${canonico(h.parcial ?? null)}, se esperaba ${canonico(esperado.parcial)}`);
       const distintas = (a, b) => canonico([...new Set(a)].sort()) !== canonico([...new Set(b)].sort());
       if (esperado.registros && distintas(h.registros.map(textoDeRef), esperado.registros)) problemas.push(`cita ${[...new Set(h.registros.map(textoDeRef))].join(", ")}`);
       if (esperado.descartados && distintas((h.descartados ?? []).map((d) => `${textoDeRef(d.registro)}:${d.motivo}`), esperado.descartados)) {
@@ -199,7 +198,7 @@ for (const [regla, c] of cubiertasLasReglas) {
   control(`${regla}: tiene un caso en que aplica y uno en que no`, c.aplica > 0 && c["no-aplica"] > 0, `${c.aplica} y ${c["no-aplica"]}`);
 }
 
-console.log(`\n${archivos.length} casos, ${DETECTORES_DEL_CRUDO.length} detectores del crudo, ${cubiertasLasReglas.size} reglas que mezclan; grupos en paridad: ${GRUPOS_EN_PARIDAD.join(", ") || "ninguno"} (${paridadExplicada} campos distintos por una fuente sin respuesta, informados).`);
+console.log(`\n${archivos.length} casos, ${DETECTORES_DEL_CRUDO.length} detectores del crudo, ${cubiertasLasReglas.size} reglas que mezclan; grupos en paridad: ${GRUPOS_EN_PARIDAD.join(", ") || "ninguno"}.`);
 if (fallas) {
   console.log(`${fallas} ${fallas === 1 ? "falla" : "fallas"}.`);
   process.exit(1);

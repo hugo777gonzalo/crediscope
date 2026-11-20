@@ -95,7 +95,10 @@ Deno.test("buroEquifax va donde estaba el buró de bancos, y el resto en su orde
 });
 
 Deno.test("todo campo de comportamientoBancario está decidido: queda o se va con el buró", () => {
+  // camposSinDato (estructura-v25) no es un campo y no llega: el modelo lee el
+  // valor de antes (campos-sin-dato.ts).
   const campos = Object.keys(buildStandardProfile({} as never, "0000000000", "2026-08").profile.comportamientoBancario)
+    .filter((c) => c !== "camposSinDato")
     .map((c) => (c === "numeroCreditosFormales" ? "numeroPrestamosIessBiess" : c));
   const decididos = new Set<string>([...QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO, ...CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1]);
   for (const c of campos) assert(decididos.has(c), `${c}: sumarlo a QUEDAN_DE_PROVEEDOR_INFO_1_CON_BURO o a CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1`);

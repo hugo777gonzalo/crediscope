@@ -915,6 +915,20 @@ interface StandardClientProfile {
 >   65 bloqueados dejan de bloquear.
 > - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
 
+> **estructura-v25 (E4, 2026-11-19: etapa B del grupo 1 de la capa de hechos y el «sin dato»)**
+> - `comportamientoBancario` y `comportamientoCooperativas` salen de la capa de hechos
+>   (`hechos/grupos/`, `docs/capa-de-hechos.md`, 4.1): misma regla, una sola implementación.
+> - Con una fuente que no contestó (o apagada), el campo es `null` y el grupo lo lista en
+>   `camposSinDato` con lo que trajeron las demás fuentes. Hasta la v24 se escribía ese
+>   parcial, o 0, como si fuera el total. Sin fuentes caídas, la clave no está.
+> - El modelo y la capacidad de pago leen el valor de antes (`_shared/campos-sin-dato.ts`)
+>   hasta la versión mayor del marco; la pantalla muestra «sin dato» por fuente.
+> - Medido en seco sobre las 3.766 personas reales: cambian 672 (4.654 campos, todos sin
+>   dato): el BIESS en 672 y el retail y el registro de deudores en 658.
+> - **Sin aplicar:** se despliega primero y se recalcula después
+>   (`recalcular-grupos.mjs --grupos=comportamientoBancario,comportamientoCooperativas`), con
+>   el sí del negocio.
+
 > **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
 > aprobadas por el negocio el 2026-11-08)**
 > - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la

@@ -1,17 +1,15 @@
 // Grupo 1 de la capa de hechos: bancos y Diners, casas comerciales, el registro
 // de deudores y los préstamos del IESS/BIESS (docs/capa-de-hechos.md, 4.1).
 //
-// ETAPA A. process.ts sigue armando `comportamientoBancario` como hasta acá, y
-// este archivo deriva lo mismo en paralelo, con cada registro que usó y cada uno
-// que dejó afuera. Las reglas escritas dentro de buildStandardProfile (las sumas
-// de bancos, la peor calificación, el corte del retail) quedan escritas dos veces
-// hasta la etapa B: por eso `comparar-hechos.mjs` compara campo por campo contra
-// el perfil y `probar-crudos-sinteticos.mjs` repite la paridad en cada PR.
+// ETAPA B (estructura-v25). process.ts arma `comportamientoBancario` desde estos
+// hechos (perfilDesdeHechos): las reglas de bancos, retail, el registro de
+// deudores y la unión del BIESS viven sólo acá. La etapa A dio paridad sobre las
+// 3.766 personas (PR 178) y la v25 la mide otra vez contra la v24.
 //
-// La unión del BIESS (`operacionesIessBiess`) el diseño la MUEVE acá, y no se
-// movió: el PR 173 (abierto) la cambia en process.ts para sumar la fecha de fin
-// de cada préstamo. Moverla ahora pisaba ese cambio; la regla de abajo es la de
-// estructura-v21 con sus registros, y la mudanza va con la etapa B.
+// Lo único que cambia el perfil es el «sin dato»: con una fuente que no
+// contestó, el hecho queda sin valor y su `parcial` dice lo que trajeron las
+// demás. Hasta la v24 el perfil escribía ese parcial, o 0, como si fuera el
+// total; desde la v25 el campo es null y el grupo lo lista en `camposSinDato`.
 
 import { ayudanteDelGrupo, type Emisor } from "../emisor.ts";
 import {
@@ -85,6 +83,17 @@ export const CATALOGO: CodigoDelCatalogo[] = [
   codigo("biess.tiene", "si_no", "Tiene préstamos del IESS/BIESS", "tieneCreditoIessBiess", false),
   codigo("biess.mora.dias_max", "dias", "Días de mora máximos en préstamos del IESS/BIESS", "diasMoraCreditoIessBiess", null, "maximo"),
   codigo("biess.saldo", "usd", "Saldo de los préstamos del IESS/BIESS", "saldoPrestamosIessBiess", null, "suma"),
+  // No llega al modelo (CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN en perfil-del-modelo.ts),
+  // aunque tenga campo del perfil: por eso no pasa por codigo().
+  {
+    codigo: "biess.operaciones.detalle",
+    unidad: "lista",
+    descripcion: "Cada préstamo del IESS/BIESS con su tipo, saldo y fecha de fin, para la capacidad de pago",
+    campoDelPerfil: P + "operacionesIessBiess",
+    llegaAlModelo: false,
+    esIdentificador: false,
+    enElPerfilSinValor: null,
+  },
   codigo("ret.deudas.cantidad", "cantidad", "Deudas con casas comerciales", "numeroDeudasRetail", 0, "conteo"),
   codigo("ret.mora.dias_max", "dias", "Días de mora máximos con casas comerciales, a su corte", "diasMoraMaximaRetail", null, "maximo"),
   codigo("ret.deuda.total", "usd", "Deuda total con casas comerciales, a su corte", "totalDeudaRetail", 0, "suma"),
@@ -106,30 +115,33 @@ export const REGLAS_QUE_MEZCLAN: string[] = [
   "ret.corte@1", // elige la fila del corte más antiguo
 ];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
-
-// Campos del perfil que todavía no salen de un hecho, cada uno con su porqué.
-// Es la única excepción a «cero campos sin procedencia», y se informa en cada
-// comparación: no se esconde.
-export const CAMPOS_PENDIENTES: Array<{ campo: string; motivo: string }> = [
+// Contra estructura-v24, la única diferencia es el «sin dato» (E4): con una
+// fuente que no contestó, el campo pasa del parcial o de 0 a null, marcado en
+// camposSinDato. comparar-hechos.mjs --contra la cuenta y corta con cualquier otra.
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
   {
-    // estructura-v22 (PR 173) suma el tipo y la fecha de fin de cada préstamo a
-    // operacionesIessBiess de process.ts. Copiarlo acá dejaba la regla escrita
-    // dos veces mientras ese PR se asentaba; entra cuando la unión del BIESS se
-    // mude a hechos/ (etapa B), una sola vez y con su registro de la fecha.
-    campo: "comportamientoBancario.operacionesIessBiess",
-    motivo: "estructura-v22 (PR 173): el tipo y la fecha de fin entran con la mudanza de la unión del BIESS a hechos/, en la etapa B",
+    campo: "comportamientoBancario.*",
+    detector: "dato-de-fuente-sin-respuesta-escrito-como-total",
+    aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v25",
+    motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial o 0",
+    cuando: "sin_dato",
   },
 ];
 
-// ---- Reglas copiadas de process.ts (etapa A) ----
+// Campos del perfil que todavía no salen de un hecho, cada uno con su porqué.
+// Es la única excepción a «cero campos sin procedencia», y se informa en cada
+// comparación: no se esconde. Desde la etapa B, ninguno.
+export const CAMPOS_PENDIENTES: Array<{ campo: string; motivo: string }> = [];
 
-// La escala de calificaciones del buró, de mejor a peor (process.ts).
+// ---- Las reglas del grupo (vivían en buildStandardProfile hasta estructura-v24) ----
+
+// La escala de calificaciones del buró, de mejor a peor.
 const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
 const CALIFICACIONES_EN_ATRASO = new Set(["A2", "A3", "B1", "B2", "C1", "C2", "D", "E"]);
 
-// extremoDeCalificacion() de process.ts, devolviendo además la fila: la que se
-// cita es la primera con esa calificación.
+// La peor o la mejor calificación, con la fila que la trae: la que se cita es
+// la primera con esa calificación. «AL» está fuera de la escala: nunca es la
+// peor, y si es la única se nombra (estructura-v8).
 function extremo(filas: Fila[], cual: "peor" | "mejor"): { valor: string; fila: Fila } | null {
   const conCalificacion = filas.filter((f) => String(f.r.calificacion ?? "").trim());
   const todas = conCalificacion.map((f) => String(f.r.calificacion ?? "").trim());
@@ -148,15 +160,15 @@ const enAtraso = (r: AnyRecord) => vencido(r) + (num(r.noDevengaInteres) ?? 0) +
 const deudaDe = (r: AnyRecord) => (num(r.saldoVigente) ?? 0) + enAtraso(r);
 const esGarantia = (r: AnyRecord) => r.riesgo === "G" || r.riesgo === "C";
 
-// diaDeFechaDDMMYYYY() de process.ts: no valida la fecha (el 31/02 pasa al 3 de
-// marzo), y así tiene que quedar mientras la regla viva en los dos lados.
+// «31/07/2025» a días desde 1970. No valida la fecha (el 31/02 pasa al 3 de
+// marzo): es la lectura con que se midió la unión del BIESS (estructura-v21).
 function diaDeFechaDDMMYYYY(v: unknown): number | null {
   const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   return m ? Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86_400_000) : null;
 }
 
-// fechaDeCorte() de process.ts acepta sólo día/mes/año; fechaIsoDe acepta
-// además año/mes/día, que en el retail no se vio nunca pero cambiaría el campo.
+// El corte del retail se lee sólo como día/mes/año (con el año de dos o cuatro
+// cifras): fechaIsoDe acepta además año/mes/día, que en el retail no se vio nunca.
 const corteRetail = (v: unknown) => (/^\d{1,2}\/\d{1,2}\/(\d{2}|\d{4})$/.test(String(v ?? "").trim()) ? fechaIsoDe(v) : null);
 
 const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
@@ -165,20 +177,82 @@ const sinCeros = (v: unknown) => String(v ?? "").trim().replace(/^0+/, "");
 // o el `sr...` de la hipotecaria.
 const leido = (r: AnyRecord, a: string, b: string) => (r[a] !== null && r[a] !== undefined ? a : b);
 
+// Concesión («dd/mm/yyyy») más el plazo en meses, a días desde 1970 (F12,
+// estructura-v22): la fecha de fin de un préstamo de la fuente de préstamos,
+// que no la trae.
+function finDeLaConcesion(concesion: unknown, plazoMeses: unknown): number | null {
+  const m = String(concesion ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const plazo = num(plazoMeses);
+  if (!m || plazo === null || plazo <= 0) return null;
+  return Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1 + Math.round(plazo), Number(m[1])) / 86_400_000);
+}
+
+// «yyyy-mm-dd» desde los días desde 1970; null sin fecha.
+function fechaDeDia(dia: number | null): string | null {
+  return dia === null ? null : new Date(dia * 86_400_000).toISOString().slice(0, 10);
+}
+
+// El tipo sale de la lista: ninguna de las dos fuentes lo dice en la fila.
+const tipoDeLaLista = (f: Fila): "quirografario" | "hipotecario" =>
+  f.fuente === "creditoHipotecario" || f.lista === "tcredHipotecarios" ? "hipotecario" : "quirografario";
+
 interface OperacionIess {
   numero: string;
   dia: number | null;
   monto: number | null;
   saldo: number;
   diasMora: number;
+  tipo: "quirografario" | "hipotecario";
+  fin: number | null;
   manda: Fila;
   camposDeSaldo: string[];
   moraDe: { fila: Fila; campo: string };
   base: Array<{ fila: Fila; saldo: number; campoDeSaldo: string; dia: number | null; criterio: "numero" | "monto_y_fecha" }>;
 }
 
-// operacionesIessBiess() de process.ts (estructura-v21) con sus registros. El
-// reloj es la fecha de la consulta, no la hora en que corre.
+// Los préstamos del IESS/BIESS vienen por dos caminos con identificadores
+// distintos: los de la base interna (tcredQuirografarios/tcredHipotecarios) y
+// los de creditoQuirografario/creditoHipotecario (data.prestamos). Cada uno
+// trae operaciones que el otro no ve: medido sobre 560 personas con las dos
+// fuentes, 1.428 operaciones de la base contra 1.396 de los préstamos y ninguna
+// con el mismo número de operación ni la misma fecha y monto. Hasta
+// estructura-v15 sólo se leía la base interna y en c-82cc2afc, con 9 préstamos
+// vigentes, el perfil decía que no tenía crédito del IESS/BIESS (308 de 918
+// personas con créditos formales quedaban así).
+//
+// Una operación que esté en las dos se cuenta una vez: por su número, o por el
+// mismo monto (a un dólar) con la concesión a 31 días o menos. Desde
+// estructura-v21 (p6 de la revisión del análisis, aprobada por el negocio el
+// 2026-11-08); hasta v20 se pedían la fecha y el monto exactos, y la base
+// interna y la fuente de préstamos anotan el mismo hipotecario con otro número
+// y la fecha corrida: en c-b9fc9a82 a 2 días. Medido el 2026-11-09 sobre las
+// 3.766 personas reales: 177 hipotecarios contados dos veces en 174 personas
+// (145 a 3 días o menos, 173 a 7, 176 a 15), USD 6,6 millones de saldo de más.
+//
+// Manda la de la fuente de préstamos, con los días de mora más altos de las
+// dos: trae `fechaCorte` y su saldo es el de hoy, y la base interna es una foto
+// vieja (en c-3cec8b5f, 18.831 contra 14.816 del mismo hipotecario).
+//
+// Y de la base interna no se cuentan los préstamos terminados: los que siguen
+// «VIGENTE» con el plazo ya cumplido y sin mora, que la fuente de préstamos ya
+// no trae. Eran 1.600 operaciones en 651 personas, terminadas hace 3 años y
+// medio en la mediana, con USD 3,6 millones de saldo que ya no se debe
+// (c-40d771e1). Los que la base marca «VENCIDO» o «MORA» se cuentan: deben.
+// La fuente de préstamos trae sólo lo vigente (PV), vencido (VC) o en
+// novación (ND): en el respaldo del 03/10, ningún cancelado.
+//
+// Desde estructura-v22 (F12, 2026-11-17) cada operación lleva también su tipo y
+// el día en que termina, porque la capacidad de pago estima la cuota con la
+// anualidad del plazo que queda (capacidad-de-pago.ts): el buró de bancos de
+// Proveedor_Info_1 no trae al BIESS (0 de 1.025 personas con préstamo), así que
+// su cuota no está en ningún otro lado. La base interna dice cuándo termina
+// (fechaFinCredito / srFecfincredito); la fuente de préstamos no, y ahí el fin
+// es la concesión más el plazo original en meses.
+//
+// La unión de los préstamos del IESS/BIESS de las dos fuentes (estructura-v21,
+// con el tipo y la fecha de fin de la v22). Desde la etapa B es la única: hasta
+// ahí process.ts tenía la suya, operacionesIessBiess(). El reloj es la fecha
+// de la consulta; process.ts la pasa con la hora del armado, como antes.
 function unirIessBiess(deLaBase: Fila[], deLosPrestamos: Fila[], hoy: number) {
   const prestamos: OperacionIess[] = deLosPrestamos.map((f) => ({
     numero: sinCeros(f.r.nroOperacion),
@@ -186,6 +260,8 @@ function unirIessBiess(deLaBase: Fila[], deLosPrestamos: Fila[], hoy: number) {
     monto: num(f.r.valorPrestamo),
     saldo: (num(f.r.valorPorVencer) ?? 0) + (num(f.r.valorVencido) ?? 0),
     diasMora: num(f.r.diasMora) ?? 0,
+    tipo: tipoDeLaLista(f),
+    fin: finDeLaConcesion(f.r.fechaConcesion, f.r.plazoOriginal),
     manda: f,
     camposDeSaldo: ["valorPorVencer", "valorVencido"],
     moraDe: { fila: f, campo: "diasMora" },
@@ -208,17 +284,21 @@ function unirIessBiess(deLaBase: Fila[], deLosPrestamos: Fila[], hoy: number) {
       monto: num(r.montoTransferido ?? r.srMontofinanciado),
       saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
       diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
+      tipo: tipoDeLaLista(f),
+      fin: diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito),
     };
     const repetida = prestamos.find((p) => esLaMisma(p, o));
     if (repetida) {
       if (o.diasMora > repetida.diasMora) repetida.moraDe = { fila: f, campo: campoDeMora };
       repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
+      // La fecha de fin de la base interna es la pactada: vale más que la derivada.
+      repetida.fin = o.fin ?? repetida.fin;
       const porNumero = repetida.numero !== "" && repetida.numero === o.numero;
       repetida.base.push({ fila: f, saldo: o.saldo, campoDeSaldo, dia: o.dia, criterio: porNumero ? "numero" : "monto_y_fecha" });
       continue;
     }
     const estado = String(r.estadoOperacion ?? r.srEstadocredito ?? "").trim().toUpperCase();
-    const fin = diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito);
+    const fin = o.fin;
     const terminado = estado === "VIGENTE" && fin !== null && fin < hoy && o.diasMora === 0;
     if (terminado) terminados.push(f);
     else salida.push({ ...o, manda: f, camposDeSaldo: [campoDeSaldo], moraDe: { fila: f, campo: campoDeMora }, base: [] });
@@ -295,28 +375,29 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     });
   }
 
-  if (sinBancos) {
-    for (const c of CATALOGO) if (c.codigo.startsWith("ban.") && c.codigo !== "ban.registro_deudores.figura") h.sinValor(c.codigo, "ban.propias@1", BANCOS, sinBancos);
-  } else {
+  // Con Super o Diners sin contestar, cada hecho de bancos queda sin dato y
+  // lleva como `parcial` lo que dice la otra (estructura-v25). Hasta la v24 el
+  // perfil escribía ese parcial, o 0, como si fuera el total.
+  {
+    const emitirBanco = (cod: string, regla: string, valor: number | boolean | string, registros: RefDeRegistro[], descartados?: Descarte[]) => {
+      if (sinBancos) h.sinValor(cod, regla, BANCOS, sinBancos, valor);
+      else h.confirmado(cod, regla, BANCOS, valor, registros, corteMasAntiguo(crudo, registros), { descartados });
+    };
     const conteo = (cod: string, regla: string, filas: Fila[], campo?: string, descartados?: Descarte[]) => {
-      const registros = filas.length ? filasRef(filas, campo) : respuestasBanco;
-      h.confirmado(cod, regla, BANCOS, filas.length, registros, corteMasAntiguo(crudo, registros), { descartados });
+      emitirBanco(cod, regla, filas.length, filas.length ? filasRef(filas, campo) : respuestasBanco, descartados);
     };
     const suma = (cod: string, regla: string, filas: Fila[], valor: number, campos: Array<(f: Fila) => string>, descartados?: Descarte[]) => {
       const aportaron = campos.flatMap((campoDe) => aportesDe(consulta, filas, campoDe));
-      const registros = citar(aportaron, filasRef(filas), respuestasBanco);
-      h.confirmado(cod, regla, BANCOS, valor, registros, corteMasAntiguo(crudo, registros), { descartados });
+      emitirBanco(cod, regla, valor, citar(aportaron, filasRef(filas), respuestasBanco), descartados);
     };
     const alguna = (cod: string, regla: string, campo: string) => {
       const con = propias.filter((f) => (num(f.r[campo]) ?? 0) > 0);
-      const registros = citar(filasRef(con, campo), filasRef(propias), respuestasBanco);
-      h.confirmado(cod, regla, BANCOS, con.length > 0, registros, corteMasAntiguo(crudo, registros));
+      emitirBanco(cod, regla, con.length > 0, citar(filasRef(con, campo), filasRef(propias), respuestasBanco));
     };
     const calificacion = (cod: string, filas: Fila[], cual: "peor" | "mejor", descartados?: Descarte[]) => {
       const e = extremo(filas, cual);
-      if (!e) return h.sinValor(cod, "ban.calificacion@1", BANCOS, filas.length ? "la_fuente_no_lo_informa" : "no_aplica");
-      const registros = [refDeFila(consulta, e.fila, "calificacion")];
-      h.confirmado(cod, "ban.calificacion@1", BANCOS, e.valor, registros, corteMasAntiguo(crudo, registros), { descartados });
+      if (!e) return h.sinValor(cod, "ban.calificacion@1", BANCOS, sinBancos ?? (filas.length ? "la_fuente_no_lo_informa" : "no_aplica"), sinBancos ? null : undefined);
+      emitirBanco(cod, "ban.calificacion@1", e.valor, [refDeFila(consulta, e.fila, "calificacion")], descartados);
     };
 
     conteo("ban.operaciones.cantidad", "ban.propias@1", propias, undefined, descartadasPorRol);
@@ -342,9 +423,10 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
 
   // ---- Registro de deudores ----
   const sinDeudores = faltaUna(["deudores"]);
-  if (sinDeudores) h.sinValor("ban.registro_deudores.figura", "deu.figura@1", ["deudores"], sinDeudores);
+  const filasDeudores = filasDe(crudo, "deudores", "deudores");
+  if (sinDeudores) h.sinValor("ban.registro_deudores.figura", "deu.figura@1", ["deudores"], sinDeudores, filasDeudores.length > 0);
   else {
-    const filas = filasDe(crudo, "deudores", "deudores");
+    const filas = filasDeudores;
     h.confirmado("ban.registro_deudores.figura", "deu.figura@1", ["deudores"], filas.length > 0, filas.length ? filasRef(filas) : [respuesta("deudores", "deudores")], null);
   }
 
@@ -365,29 +447,34 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     });
     emisor.entidad({ clave: emisor.clave("op", `retails#${f.indice}`), tipo: "operacion", atributos, vistas: [vista(consulta, crudo, f, atributos)], union: null, atribucion: ATRIBUCION_POR_IDENTIFICACION });
   }
-  if (sinRetail) {
-    for (const c of CATALOGO) if (c.codigo.startsWith("ret.")) h.sinValor(c.codigo, "ret.conteo@1", RET, sinRetail);
-  } else {
+  {
+    // Sin respuesta del retail, cada hecho queda sin dato con su parcial (lo que
+    // trajeran las filas igual), como en bancos.
+    const emitirRetail = (cod: string, regla: string, valor: number | string, registros: RefDeRegistro[], fechaDelDato: string | null) => {
+      if (sinRetail) h.sinValor(cod, regla, RET, sinRetail, valor);
+      else h.confirmado(cod, regla, RET, valor, registros, fechaDelDato);
+    };
+    const vacio = (cod: string, regla: string, motivo: MotivoDeNoDisponible) => h.sinValor(cod, regla, RET, sinRetail ?? motivo, sinRetail ? null : undefined);
     const registrosConteo = retails.length ? filasRef(retails) : respuestaRetail;
-    h.confirmado("ret.deudas.cantidad", "ret.conteo@1", RET, retails.length, registrosConteo, corteMasAntiguo(crudo, registrosConteo));
-    if (!retails.length) h.sinValor("ret.mora.dias_max", "ret.max@1", RET, "no_aplica");
+    emitirRetail("ret.deudas.cantidad", "ret.conteo@1", retails.length, registrosConteo, corteMasAntiguo(crudo, registrosConteo));
+    if (!retails.length) vacio("ret.mora.dias_max", "ret.max@1", "no_aplica");
     else {
       const valor = Math.max(...retails.map((f) => num(f.r.diasMora) ?? 0));
       const fila = retails.find((f) => (num(f.r.diasMora) ?? 0) === valor)!;
       const registros = [refDeFila(consulta, fila, "diasMora")];
-      h.confirmado("ret.mora.dias_max", "ret.max@1", RET, valor, registros, corteMasAntiguo(crudo, registros));
+      emitirRetail("ret.mora.dias_max", "ret.max@1", valor, registros, corteMasAntiguo(crudo, registros));
     }
     for (const [cod, campo] of [["ret.deuda.total", "totalDeuda"], ["ret.deuda.vencida", "valorVencido"]]) {
       const valor = redondear(retails.reduce((s, f) => s + (num(f.r[campo]) ?? 0), 0));
       const registros = citar(aportesDe(consulta, retails, () => campo), filasRef(retails), respuestaRetail);
-      h.confirmado(cod, "ret.suma@1", RET, valor, registros, corteMasAntiguo(crudo, registros));
+      emitirRetail(cod, "ret.suma@1", valor, registros, corteMasAntiguo(crudo, registros));
     }
     const conCorte = retails.map((f) => ({ f, corte: corteRetail(f.r.fecha) })).filter((x): x is { f: Fila; corte: string } => x.corte !== null);
     const motivoSinCorte: MotivoDeNoDisponible = retails.length ? "la_fuente_no_lo_informa" : "no_aplica";
     const ordenados = [...conCorte].sort((a, b) => (a.corte < b.corte ? -1 : a.corte > b.corte ? 1 : 0));
     for (const [cod, x] of [["ret.corte", ordenados[0]], ["ret.corte.mas_reciente", ordenados.at(-1)]] as const) {
-      if (!x) h.sinValor(cod, "ret.corte@1", RET, motivoSinCorte);
-      else h.confirmado(cod, "ret.corte@1", RET, x.corte, [refDeFila(consulta, x.f, "fecha")], x.corte);
+      if (!x) vacio(cod, "ret.corte@1", motivoSinCorte);
+      else emitirRetail(cod, "ret.corte@1", x.corte, [refDeFila(consulta, x.f, "fecha")], x.corte);
     }
   }
 
@@ -400,9 +487,8 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
   const respuestasIess = [...respuestasPrestamos, respuesta("basesInternas", "tcredQuirografarios"), respuesta("basesInternas", "tcredHipotecarios")];
 
   const sinPrestamos = faltaUna(PRESTAMOS);
-  if (sinPrestamos) h.sinValor("biess.prestamos.en_la_fuente.cantidad", "biess.en_la_fuente@1", PRESTAMOS, sinPrestamos);
+  if (sinPrestamos) h.sinValor("biess.prestamos.en_la_fuente.cantidad", "biess.en_la_fuente@1", PRESTAMOS, sinPrestamos, deLosPrestamos.length);
   else {
-    // process.ts cuenta hipotecarios más quirografarios: el mismo total.
     const registros = deLosPrestamos.length ? filasRef(deLosPrestamos) : respuestasPrestamos;
     h.confirmado("biess.prestamos.en_la_fuente.cantidad", "biess.en_la_fuente@1", PRESTAMOS, deLosPrestamos.length, registros, corteMasAntiguo(crudo, registros));
   }
@@ -467,8 +553,19 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     }
   }
 
+  // Cada préstamo con su tipo, saldo y fecha de fin, para la cuota estimada de
+  // la capacidad de pago (estructura-v22). No llega al modelo.
+  const detalle = operaciones.map((o) => ({ tipo: o.tipo, saldo: redondear(o.saldo), fechaFin: fechaDeDia(o.fin) }));
   if (sinIess) {
-    for (const cod of ["biess.operaciones.cantidad", "biess.tiene", "biess.mora.dias_max", "biess.saldo"]) h.sinValor(cod, "biess.union@2", IESS, sinIess);
+    // Sin una de las tres fuentes, la unión con las otras dos es el parcial.
+    const parcial: Record<string, number | boolean | null | typeof detalle> = {
+      "biess.operaciones.cantidad": operaciones.length,
+      "biess.tiene": operaciones.length > 0,
+      "biess.mora.dias_max": operaciones.length ? Math.max(...operaciones.map((o) => o.diasMora)) : null,
+      "biess.saldo": operaciones.length ? redondear(operaciones.reduce((s, o) => s + o.saldo, 0)) : null,
+      "biess.operaciones.detalle": detalle,
+    };
+    for (const [cod, valor] of Object.entries(parcial)) h.sinValor(cod, "biess.union@2", IESS, sinIess, valor);
     return;
   }
   const terminadosDescartados: Descarte[] = terminados.map((f) => ({ registro: refDeFila(consulta, f, "fechaFinCredito" in f.r ? "fechaFinCredito" : "srFecfincredito"), motivo: "terminado_en_la_base_interna" }));
@@ -478,6 +575,7 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
   const descartadosIess = [...terminadosDescartados, ...unidasDescartadas];
   h.confirmado("biess.operaciones.cantidad", "biess.union@2", IESS, operaciones.length, deCadaOperacion, corteMasAntiguo(crudo, deCadaOperacion), { descartados: descartadosIess, entidades: claves });
   h.confirmado("biess.tiene", "biess.union@2", IESS, operaciones.length > 0, deCadaOperacion, corteMasAntiguo(crudo, deCadaOperacion), { descartados: descartadosIess, entidades: claves });
+  h.confirmado("biess.operaciones.detalle", "biess.union@2", IESS, detalle, deCadaOperacion, corteMasAntiguo(crudo, deCadaOperacion), { entidades: claves });
   if (!operaciones.length) {
     h.sinValor("biess.mora.dias_max", "biess.mora@1", IESS, "no_aplica");
     h.sinValor("biess.saldo", "biess.saldo@1", IESS, "no_aplica");

@@ -160,6 +160,11 @@ Deno.test("sin ninguna fuente laboral el perfil se arma con los campos en vacío
   assertEquals(l.cargoVigente, null);
 });
 
+// Las tres fuentes del IESS/BIESS contestan vacío salvo que el caso traiga la
+// suya: desde estructura-v25, una que no contestó deja el campo sin dato.
+const perfilConIess = (fuentes: Record<string, unknown>) =>
+  perfilDe({ basesInternas: fuente({}), creditoQuirografario: fuente({ prestamos: [] }), creditoHipotecario: fuente({ prestamos: [] }), ...fuentes });
+
 const prestamo = (nro: string, saldo: number, vencido = 0, diasMora = 0, concesion = "04/02/2025", monto = 524) => ({
   nroOperacion: nro,
   estado: "PV",
@@ -171,7 +176,7 @@ const prestamo = (nro: string, saldo: number, vencido = 0, diasMora = 0, concesi
 });
 
 Deno.test("los préstamos de creditoQuirografario cuentan como crédito del IESS/BIESS, con su saldo", () => {
-  const b = perfilDe({
+  const b = perfilConIess({
     creditoQuirografario: fuente({ prestamos: [prestamo("1654354400", 300.48), prestamo("1654354401", 120.02, 10, 35, "05/03/2025", 800)] }),
   }).comportamientoBancario;
   assertEquals(b.tieneCreditoIessBiess, true);
@@ -188,7 +193,7 @@ Deno.test("una operación que está en las dos fuentes se cuenta una vez, por su
     saldoTotalCredito: saldo,
     diasMoraAfi: mora,
   });
-  const b = perfilDe({
+  const b = perfilConIess({
     basesInternas: fuente({
       tcredQuirografarios: [deLaBase("0000123", "1000", "10/01/2024", "3000"), deLaBase("999", "500", "11/02/2024", "1500")],
     }),
@@ -209,7 +214,7 @@ Deno.test("una operación que está en las dos fuentes se cuenta una vez, por su
 });
 
 Deno.test("el hipotecario de la base lleva su mora en srDiasmoraafi", () => {
-  const b = perfilDe({
+  const b = perfilConIess({
     basesInternas: fuente({
       tcredHipotecarios: [{ srNrooperaciongaf: "259681", srFecprimerdesembolso: "19/04/2013", srMontofinanciado: "48000", srSaldototalcredito: "23847.28", srDiasmoraafi: "45" }],
     }),
@@ -219,15 +224,38 @@ Deno.test("el hipotecario de la base lleva su mora en srDiasmoraafi", () => {
 });
 
 Deno.test("sin préstamos del IESS/BIESS no hay crédito, mora ni saldo", () => {
-  const b = perfilDe({}).comportamientoBancario;
+  const b = perfilConIess({}).comportamientoBancario;
   assertEquals(b.tieneCreditoIessBiess, false);
   assertEquals(b.diasMoraCreditoIessBiess, null);
   assertEquals(b.saldoPrestamosIessBiess, null);
+  assertEquals(b.operacionesIessBiess, []);
+  // Bancos, retail y cooperativas no vienen en el caso: sólo el BIESS contestó.
+  assertEquals(Object.keys(b.camposSinDato ?? {}).filter((c) => /Iess|Formales/.test(c)), []);
+});
+
+// estructura-v25: sin la base interna, lo de la fuente de préstamos no es el
+// total. Hasta la v24 el perfil decía 430,50 de saldo como si lo fuera.
+Deno.test("con una fuente del IESS/BIESS sin respuesta los campos quedan sin dato, con lo que trajeron las otras", () => {
+  const b = perfilDe({
+    creditoQuirografario: fuente({ prestamos: [prestamo("1654354400", 300.48), prestamo("1654354401", 120.02, 10, 35, "05/03/2025", 800)] }),
+    creditoHipotecario: fuente({ prestamos: [] }),
+    basesInternas: { status: "error", data: null },
+  }).comportamientoBancario;
+  assertEquals(b.tieneCreditoIessBiess, null);
+  assertEquals(b.saldoPrestamosIessBiess, null);
+  assertEquals(b.diasMoraCreditoIessBiess, null);
+  assertEquals(b.operacionesIessBiess, null);
+  // Las dos fuentes de préstamos contestaron: su conteo sí es el dato.
+  assertEquals(b.numeroCreditosFormales, 2);
+  const sinDato = b.camposSinDato as Record<string, unknown>;
+  assertEquals(Object.keys(sinDato).filter((c) => /Iess|Formales/.test(c)).sort(), ["diasMoraCreditoIessBiess", "operacionesIessBiess", "saldoPrestamosIessBiess", "tieneCreditoIessBiess"]);
+  assertEquals(sinDato.saldoPrestamosIessBiess, 430.5);
+  assertEquals(sinDato.tieneCreditoIessBiess, true);
 });
 
 Deno.test("el retail guarda el corte de sus deudas, no el día de la consulta", () => {
   const retail = (fecha: string) => ({ institucion: "CASA INVENTADA", totalDeuda: 100, valorVencido: 0, diasMora: 0, fecha, fechaActualizacion: "2026-10-28" });
-  const una = perfilDe({ retails: fuente({ retails: [retail("31/07/25")] }) }).comportamientoBancario;
+  const una = perfilConIess({ retails: fuente({ retails: [retail("31/07/25")] }) }).comportamientoBancario;
   assertEquals(una.fechaCorteRetail, "2025-07-31");
   // Con cortes distintos, el más antiguo: la deuda no es más reciente que eso.
   const dos = perfilDe({ retails: fuente({ retails: [retail("31/07/2025"), retail("30/04/25")] }) }).comportamientoBancario;

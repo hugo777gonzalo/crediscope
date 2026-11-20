@@ -346,6 +346,13 @@ su guía: `docs/equifax.md`.
   control sobre la base la ve: así pasaron el bloqueo por la demanda de otro, el
   BIESS contado dos veces y la primera operación de la institución (2026-11-06,
   `docs/lecciones.md`).
+- **Una fuente que no contestó no es una fuente que dice «no hay»**: el campo queda
+  `null` y su grupo lo lista en `camposSinDato` (estructura-v25, grupo 1 de la capa de
+  hechos). Hasta la v24 el perfil escribía el parcial, o 0, como si fuera el total: 672
+  de 3.766 personas. Quien todavía tiene que leer como antes (el modelo, hasta la
+  versión mayor del marco, y la capacidad de pago) pasa por `conLosValoresDeAntes()`
+  (`_shared/campos-sin-dato.ts`); un grupo nuevo en etapa B se suma a
+  `GRUPOS_CON_SIN_DATO`.
 - El crudo de Proveedor_Info_1 se guarda desde la 090 en el depósito privado
   `crudo-proveedor-info-1` de Storage (gzip, ~8 KB), con la ruta en
   `client_profiles.crudo_ruta` (null = no se guardó). Lo escribe sólo

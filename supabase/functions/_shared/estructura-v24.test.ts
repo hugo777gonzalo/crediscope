@@ -24,8 +24,9 @@ const perfilDe = (demandas: unknown[], nombre: string | null = PERSONA) =>
     "0000000000",
   ).profile;
 
-Deno.test("la versión de la estructura es la v24", () => {
-  assertEquals(PROCESS_VERSION, "estructura-v24");
+// v24 o una posterior: la v25 (E4) trae D2 tal cual.
+Deno.test("la versión de la estructura es la v24 o posterior", () => {
+  assertEquals(Number(PROCESS_VERSION.replace("estructura-v", "")) >= 24, true, PROCESS_VERSION);
 });
 
 Deno.test("D2: la de otro demandado y la de apellidos invertidos dejan de contar; vacío y de la persona siguen", () => {

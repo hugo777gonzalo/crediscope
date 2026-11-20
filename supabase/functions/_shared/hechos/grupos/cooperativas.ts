@@ -1,9 +1,9 @@
 // Grupo 1 de la capa de hechos, la parte de cooperativas (docs/capa-de-hechos.md,
 // 4.1): una sola fuente (`buroCreditoCoop`), sumas y máximos, sin unión.
 //
-// ETAPA A: process.ts sigue armando `comportamientoCooperativas`; las sumas de
-// abajo son una copia de las suyas hasta la etapa B, y `comparar-hechos.mjs`
-// las compara campo por campo.
+// ETAPA B (estructura-v25): process.ts arma `comportamientoCooperativas` desde
+// estos hechos. Sin respuesta de la fuente, cada hecho queda sin dato con su
+// `parcial` (lo que trajeran las filas igual), como en bancos.
 
 import { ayudanteDelGrupo, type Emisor } from "../emisor.ts";
 import { aportesDe, type AnyRecord, citar, corteMasAntiguo, type Fila, filasDe, num, redondear, refDeFila, refDeRespuesta, respuestaDe, textoDe } from "../lectura-del-crudo.ts";
@@ -37,9 +37,21 @@ export const CATALOGO: CodigoDelCatalogo[] = [
 // Ninguna regla de cooperativas une, elige ni descarta registros.
 export const REGLAS_QUE_MEZCLAN: string[] = [];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
+// Contra estructura-v24, la única diferencia es el «sin dato» (E4): con una
+// fuente que no contestó, el campo pasa del parcial o de 0 a null, marcado en
+// camposSinDato. comparar-hechos.mjs --contra la cuenta y corta con cualquier otra.
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
+  {
+    campo: "comportamientoCooperativas.*",
+    detector: "dato-de-fuente-sin-respuesta-escrito-como-total",
+    aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v25",
+    motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial o 0",
+    cuando: "sin_dato",
+  },
+];
 
-// val_venc_1..11: lo vencido por tramo de antigüedad (process.ts).
+// val_venc_1..11: lo vencido por tramo de antigüedad (no el saldo total), visto
+// en un caso real con dos cooperativas (estructura-v8).
 const CAMPOS_VENCIDO_COOP = Array.from({ length: 11 }, (_, i) => `val_venc_${i + 1}`);
 const FUENTES = ["buroCreditoCoop"];
 
@@ -80,19 +92,18 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     });
   }
 
-  const sinCoop = respuestaDe(crudo, "buroCreditoCoop");
-  if (sinCoop !== "contesto") {
-    for (const c of CATALOGO) h.sinValor(c.codigo, "coop.suma@1", FUENTES, sinCoop);
-    return;
-  }
+  const respuesta = respuestaDe(crudo, "buroCreditoCoop");
+  const sinCoop = respuesta === "contesto" ? null : respuesta;
   const respuestas = [refDeRespuesta(crudo, consulta, "buroCreditoCoop", "datosSuper")];
   const filasRef = (filas: Fila[], campo?: string) => filas.map((f) => refDeFila(consulta, f, campo));
-  const confirmado = (cod: string, regla: string, valor: number | boolean, registros: ReturnType<typeof filasRef>) =>
-    h.confirmado(cod, regla, FUENTES, valor, registros, corteMasAntiguo(crudo, registros));
+  const confirmado = (cod: string, regla: string, valor: number | boolean, registros: ReturnType<typeof filasRef>) => {
+    if (sinCoop) h.sinValor(cod, regla, FUENTES, sinCoop, valor);
+    else h.confirmado(cod, regla, FUENTES, valor, registros, corteMasAntiguo(crudo, registros));
+  };
 
   confirmado("coop.operaciones.cantidad", "coop.conteo@1", coop.length, coop.length ? filasRef(coop) : respuestas);
 
-  if (!coop.length) h.sinValor("coop.mora.dias_max", "coop.max@1", FUENTES, "no_aplica");
+  if (!coop.length) h.sinValor("coop.mora.dias_max", "coop.max@1", FUENTES, sinCoop ?? "no_aplica", sinCoop ? null : undefined);
   else {
     const valor = Math.max(...coop.map((c) => num(c.r.num_dias_morosidad) ?? 0));
     confirmado("coop.mora.dias_max", "coop.max@1", valor, [refDeFila(consulta, coop.find((c) => (num(c.r.num_dias_morosidad) ?? 0) === valor)!, "num_dias_morosidad")]);

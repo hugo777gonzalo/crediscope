@@ -528,6 +528,54 @@ la paridad los reproduce tal cual y la diferencia queda como hecho. (3) Con un b
 mitad de estos campos deja de llegar al modelo (`CAMPOS_DEL_BURO_DE_PROVEEDOR_INFO_1`):
 los hechos se emiten igual, y lo que llega lo decide el catálogo (sección 7).
 
+**Etapa B, hecha en estructura-v25 (2026-11-19, E4).** `process.ts` arma
+`comportamientoBancario` y `comportamientoCooperativas` con `perfilDesdeHechos`; la unión del
+BIESS (con el tipo y la fecha de fin de la v22) se mudó a `grupos/comportamiento-bancario.ts`
+como `biess.operaciones.detalle`, y `process.ts` perdió sus copias. Con eso entró la única
+diferencia que la inversión admite, el **«sin dato»**:
+
+- **El hallazgo.** Con una fuente caída, el perfil escribía lo que trajeron las demás, o 0,
+  como si fuera el total («0 operaciones en bancos» de alguien cuyo buró no respondió). Con
+  el proveedor rechazando 41 de 52 fuentes, 740 de 3.766 personas estaban en consulta
+  incompleta (2026-11-18).
+- **La forma.** Un hecho cuya fuente no contestó (o está apagada) no tiene valor y lleva
+  `parcial`: lo que dice la regla con las fuentes que sí contestaron (hechos-v2). En el perfil,
+  el campo es `null` y el grupo lo lista en `camposSinDato` con ese parcial; sin fuentes
+  caídas, la clave no está y el perfil es el mismo de la v24.
+- **Quién lee qué.** El modelo y la capacidad de pago leen el valor de antes
+  (`conLosValoresDeAntes()`, `_shared/campos-sin-dato.ts`): el mensaje al modelo es el mismo
+  byte a byte hasta la versión mayor del marco. La pantalla muestra una fila por fuente sin
+  respuesta. El predictor de ingresos no lee el grupo 1. Lo que lee el perfil en SQL lee el
+  `null`: en la bandeja y Monitoreo (`refrescar_resumen_por_persona()`, 152) la marca de mora
+  pasa por `coalesce` y queda en falso, y la de calificación baja queda en null; las variables
+  del Laboratorio (095) y el promedio del Reporte Gerencial (070) lo cuentan como dato
+  faltante y no como 0. Las marcas de la bandeja leen bancos y cooperativas, que en el seco
+  no faltaron a nadie: no cambian.
+- **El seco (2026-11-19, 3.766 personas reales, contra estructura-v24 con el mismo reloj;
+  contra la v23 dio lo mismo).**
+  Paridad 117.418 de 117.418 campos; 0 registros que no resuelven; 75.414 recuentos, 0 que no
+  cuadran. Cambian **672 personas y 4.654 campos**, todos «sin dato» declarados (0 sin
+  declarar); con los valores de antes, 0 campos distintos. Por fuente: el BIESS en 672
+  (`numeroCreditosFormales`, `tieneCreditoIessBiess`, `operacionesIessBiess`; saldo y mora en
+  3: antes ya eran null en las demás), el retail y el registro de
+  deudores en 658; bancos, Diners y cooperativas, en nadie. En 3 personas el parcial traía un
+  valor (préstamos del BIESS de una fuente, sin la otra); en las demás era 0, false o vacío.
+  `recalcular-grupos.mjs --seco` da lo mismo: 3.766 reproducidos, 672 con cambios, todos sin
+  dato. Y el detector, con su criterio (el contenido de la fuente), encuentra a las mismas
+  672 personas en los perfiles guardados: el `status` y el contenido coinciden en todas.
+  Hasta el recálculo, `revisar-crudo.mjs` lo informa como regresión que volvió. Presupuesto:
+  p99 2,4 KB en gzip y 1,03 ms.
+- **Para la versión mayor del marco.** Que el modelo lea el `null` y la marca en vez del
+  valor de antes (sacar la llamada de `armarPerfilDelModelo()`), con su texto en el marco:
+  «no se pudo obtener», nunca «no tiene». Y decidir si la capacidad de pago avisa también
+  una fuente `faltante` (hoy `fuentesSinConsultar` sólo cuenta `error` y `deshabilitado`).
+- **Cómo se mide.** `comparar-hechos.mjs --contra=origin/main` arma cada perfil con el
+  `process.ts` anterior y con el de ahora, con el mismo reloj: con los valores de antes
+  tiene que dar igual, y sin ellos la única diferencia admitida es la declarada en
+  `DIFERENCIAS_ESPERADAS` (`cuando: "sin_dato"`). El detector del crudo
+  `dato-de-fuente-sin-respuesta-escrito-como-total` mira el contenido de la fuente (si trae su
+  lista), no su `status` como la regla.
+
 ### 4.2 Grupo 2: historial con la institución (resumen)
 
 - **Qué es.** Los 7 campos de `comportamientoInterno`, de `basesInternas.personasIncumplimientos`,

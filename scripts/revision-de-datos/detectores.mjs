@@ -587,7 +587,60 @@ export const DETECTORES_DEL_CRUDO = [
       return { vehiculos: vehiculos.length, colateral: Math.round(colateral), referencia: Math.round(referencia), razon: Math.round((colateral / referencia) * 100) / 100, campoMasAlto: deDonde };
     },
   },
+  {
+    id: "dato-de-fuente-sin-respuesta-escrito-como-total",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Un campo de bancos, retail, el registro de deudores, el BIESS o cooperativas tiene valor (o no está marcado sin dato) aunque su fuente no contestó",
+    caso: "E4 de la reestructuración del núcleo, 2026-11-18: con el proveedor rechazando 41 de 52 fuentes, el perfil escribía 0, o lo de las fuentes que sí contestaron, como si fuera el total",
+    conocido: "hasta estructura-v24 se escribía el parcial o 0: se corrige con el recálculo de estructura-v25 (recalcular-grupos.mjs --grupos=comportamientoBancario,comportamientoCooperativas)",
+    aplica: ({ raw, perfil }) => !!perfil?.comportamientoBancario && fuentesDelGrupo1SinRespuesta(raw).length > 0,
+    detectar: ({ raw, perfil }) => {
+      const conValor = [];
+      for (const [fuente, , grupo, campos] of fuentesDelGrupo1SinRespuesta(raw)) {
+        const g = perfil?.[grupo] ?? {};
+        const marcados = g.camposSinDato && typeof g.camposSinDato === "object" ? g.camposSinDato : {};
+        for (const campo of campos) {
+          if ((g[campo] !== null && g[campo] !== undefined) || !(campo in marcados)) conValor.push(`${fuente}: ${grupo}.${campo}`);
+        }
+      }
+      return conValor.length ? { campos: [...new Set(conValor)] } : null;
+    },
+  },
 ];
+
+// Las fuentes del grupo 1 de la capa de hechos y los campos del perfil que
+// salen de cada una (estructura-v25). Si la fuente no contestó, esos campos son
+// null y van en camposSinDato de su grupo.
+const BANCOS_DEL_PERFIL = [
+  "numeroOperacionesBuroCredito", "peorCalificacionRiesgo", "mejorCalificacionRiesgo", "tieneOperacionConDemanda",
+  "tieneOperacionCastigada", "saldoTotalVigente", "saldoEnMoraBuroCredito", "saldoNoDevengaIntereses", "deudaEnAtraso",
+  "operacionesEnAtrasoSinMonto", "numeroOperacionesComoGaranteOCodeudor", "deudaComoGaranteOCodeudor", "peorCalificacionComoGaranteOCodeudor",
+];
+const BIESS_DEL_PERFIL = ["tieneCreditoIessBiess", "diasMoraCreditoIessBiess", "saldoPrestamosIessBiess", "operacionesIessBiess"];
+const FUENTES_DEL_GRUPO_1 = [
+  // [fuente, la lista que trae al contestar (null: basta el objeto data), grupo, campos]
+  ["buroCreditoSuper", "datosSuper", "comportamientoBancario", BANCOS_DEL_PERFIL],
+  ["buroCreditoDiners", "datosSuper", "comportamientoBancario", BANCOS_DEL_PERFIL],
+  ["deudores", "deudores", "comportamientoBancario", ["figuraEnRegistroDeudores"]],
+  ["retails", "retails", "comportamientoBancario", ["numeroDeudasRetail", "diasMoraMaximaRetail", "totalDeudaRetail", "valorVencidoRetail", "fechaCorteRetail"]],
+  ["creditoQuirografario", "prestamos", "comportamientoBancario", ["numeroCreditosFormales", ...BIESS_DEL_PERFIL]],
+  ["creditoHipotecario", "prestamos", "comportamientoBancario", ["numeroCreditosFormales", ...BIESS_DEL_PERFIL]],
+  ["basesInternas", null, "comportamientoBancario", BIESS_DEL_PERFIL],
+  ["buroCreditoCoop", "datosSuper", "comportamientoCooperativas", ["numeroOperaciones", "diasMoraMaxima", "saldoTotal", "saldoEnMora", "tieneOperacionConDemanda", "tieneOperacionCastigada", "cuotaMensualTotal"]],
+];
+// Con un criterio distinto del de la regla, que mira el `status` de la fuente
+// (respuestaDe, hechos/lectura-del-crudo.ts): acá se mira el contenido. Una
+// fuente del grupo 1 que contestó trae su lista, aunque sea vacía («no hay»);
+// la base interna trae su objeto. En el respaldo del 03/10, las ocho fuentes
+// en «ok» traían la lista en las 2.567 personas.
+function fuentesDelGrupo1SinRespuesta(raw) {
+  return FUENTES_DEL_GRUPO_1.filter(([fuente, lista]) => {
+    const data = raw?.[fuente]?.data;
+    if (!data || typeof data !== "object") return true;
+    return lista !== null && !Array.isArray(data[lista]);
+  });
+}
 
 // Los préstamos del IESS/BIESS como los traen las dos fuentes, para medir
 // (la regla que los une es operacionesIessBiess, en process.ts). Fechas

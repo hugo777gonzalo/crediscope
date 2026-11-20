@@ -37,12 +37,22 @@ interface Base {
   fechaDeLaConsulta: string; // ISO; el reloj de toda regla (nunca `new Date()`)
 }
 
-export interface Hecho<V = string | number | boolean | null | string[]> extends Base {
+// Un elemento de una lista que el perfil guarda tal cual (los préstamos del
+// IESS/BIESS de la capacidad de pago): sólo valores simples.
+export type ElementoDeLista = Record<string, string | number | null>;
+
+export interface Hecho<V = string | number | boolean | null | string[] | ElementoDeLista[]> extends Base {
   clase: "hecho";
   valor: V | null; // null sólo con calidad "no_disponible"
   unidad: "usd" | "dias" | "meses" | "anios" | "cantidad" | "fecha" | "si_no" | "texto" | "lista";
   calidad: Calidad;
   motivo?: MotivoDeNoDisponible;
+  // Sólo con una fuente que no contestó (hechos-v2, estructura-v25): lo que dice
+  // la regla con las fuentes que sí contestaron. Es lo que el perfil escribía
+  // como si fuera el total hasta estructura-v24, y lo que el modelo sigue leyendo
+  // hasta la versión mayor del marco (campos-sin-dato.ts). No es el valor: no
+  // cita registros ni se recuenta.
+  parcial?: V | null;
   fuentes: string[];
   fechaDelDato: string | null;
   registros: RefDeRegistro[];
@@ -143,8 +153,11 @@ export interface CodigoDelCatalogo {
 
 // Una diferencia contra el perfil que el negocio aprobó (5.2, punto 3).
 export interface DiferenciaEsperada {
-  campo: string; // "comportamientoBancario.figuraEnRegistroDeudores"
+  campo: string; // "comportamientoBancario.figuraEnRegistroDeudores", o "comportamientoBancario.*" para todo el grupo
   detector: string; // el id del detector del crudo que la cuenta
   aprobadaEl: string; // fecha de la aprobación del negocio
   motivo: string;
+  // "sin_dato": sólo vale para un campo que el perfil nuevo marca en
+  // camposSinDato (estructura-v25); en cualquier otro, la diferencia es un error.
+  cuando?: "sin_dato";
 }
