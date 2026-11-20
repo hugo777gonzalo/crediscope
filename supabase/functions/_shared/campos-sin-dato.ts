@@ -20,9 +20,10 @@ type Registro = Record<string, unknown>;
 export const CLAVE_SIN_DATO = "camposSinDato";
 
 // Los grupos del perfil que pueden traer `camposSinDato` (los grupos 1 y 3 de la
-// capa de hechos, más el penal y el de cumplimiento desde la v28). Un grupo nuevo en
-// etapa B se suma acá.
+// capa de hechos, más el penal y el de cumplimiento desde la v28, y el comportamiento
+// interno —el grupo 2— desde la v29). Un grupo nuevo en etapa B se suma acá.
 export const GRUPOS_CON_SIN_DATO = [
+  "comportamientoInterno",
   "comportamientoBancario",
   "comportamientoCooperativas",
   "riesgoJudicialCrediticio",

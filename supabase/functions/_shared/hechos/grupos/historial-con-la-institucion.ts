@@ -2,10 +2,12 @@
 // pide el crédito (docs/capa-de-hechos.md, 4.2). Fuente: `basesInternas`, lista
 // `personasIncumplimientos`, una fila por OPERACIÓN.
 //
-// ETAPA A. process.ts sigue armando `comportamientoInterno` con
-// `operacionDelComportamientoInterno`; la regla de elección de abajo es una copia
-// de ésa hasta la etapa B, y `comparar-hechos.mjs` compara campo por campo contra
-// el perfil.
+// ETAPA B (estructura-v29). process.ts arma `comportamientoInterno` con `perfilDesdeHechos()`
+// y la regla de elección de abajo (`elegirOperacion`) es la única implementación: la copia
+// `operacionDelComportamientoInterno` de process.ts se sacó. Con la base interna sin respuesta
+// el campo es null y el grupo lo lista en `camposSinDato` (campos-sin-dato.ts); hasta la v28
+// el perfil escribía «no es cliente» y el resto en null, como si la fuente hubiera dicho que no
+// hay operaciones. Con la fuente contestando y sin operaciones, «no es cliente» sí es un valor.
 //
 // Decisión del negocio (D5, 2026-11-18): se sigue reportando UNA sola operación,
 // la elegida. Las demás son historia de pago, no deuda. Por eso:
@@ -65,7 +67,15 @@ export const REGLAS_QUE_MEZCLAN: string[] = [
   "inst.operacion@1", // elige UNA operación y descarta las demás
 ];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
+  {
+    campo: "comportamientoInterno.*",
+    detector: "dato-de-la-institucion-de-fuente-sin-respuesta-escrito-como-total",
+    aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v29",
+    motivo: "con la base interna sin respuesta el campo queda sin dato: hasta la v28 esClienteInterno decía false, como si la institución no tuviera operaciones de la persona",
+    cuando: "sin_dato",
+  },
+];
 
 const FUENTES = ["basesInternas"];
 const LISTA = "personasIncumplimientos";
@@ -76,10 +86,11 @@ const esCancelada = (r: AnyRecord) => String(r.estadoOperacion ?? "").trim().toU
 const tamano = (r: AnyRecord) => (esCancelada(r) ? (num(r.cuotaNova) ?? 0) * (num(r.plazoCuotas) ?? 0) : num(r.saldoCapital) ?? 0);
 const numeroDe = (r: AnyRecord) => num(r.operacion) ?? 0;
 
-// operacionDelComportamientoInterno() de process.ts (estructura-v21): una vigente
-// antes que una cancelada; entre vigentes, la de mayor saldo; entre canceladas, la
-// de mayor cuota por plazo; empate, el número de operación más alto. El orden es
-// estable: con todo igual queda la primera de la lista, como en process.ts.
+// La regla de la p3 de la revisión del análisis (estructura-v21; hasta la v28, la función
+// operacionDelComportamientoInterno de process.ts): una vigente antes que una cancelada;
+// entre vigentes, la de mayor saldo; entre canceladas, la de mayor cuota por plazo; empate,
+// el número de operación más alto. El orden es estable: con todo igual queda la primera de
+// la lista, como siempre.
 export function elegirOperacion(filas: Fila[]): Fila | null {
   return (
     [...filas].sort(

@@ -241,30 +241,9 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
   return claves.size;
 }
 
-// ---- La operación del comportamiento interno ----
-//
-// personasIncumplimientos trae una fila por OPERACIÓN de la persona con la
-// institución, no una por persona, y hasta estructura-v20 se leía la primera.
-// Medido el 2026-11-09 sobre las 3.766 personas reales: 782 de las 2.602 con
-// operaciones tienen más de una, y en 464 la primera era una cancelada que
-// escondía la vigente (c-5dfb1e00: decía saldo 0 con dos vigentes).
-//
-// Decisión del negocio (2026-11-09, p3 de la revisión del análisis): estas
-// operaciones son historia de pago, no deuda. Se reporta UNA, sin sumar nada:
-// una vigente antes que una cancelada; entre vigentes, la de mayor saldo; entre
-// canceladas, la de mayor cuota por plazo (la fuente no trae el valor
-// financiado, y es lo más cercano al tamaño del crédito). Empate: la de número
-// de operación más alto, que es la más reciente.
-export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): AnyRecord | null {
-  const cancelada = (o: AnyRecord) => String(o.estadoOperacion ?? "").trim().toUpperCase() === "CANCELADA";
-  const tamano = (o: AnyRecord) => (cancelada(o) ? (num(o.cuotaNova) ?? 0) * (num(o.plazoCuotas) ?? 0) : num(o.saldoCapital) ?? 0);
-  const numero = (o: AnyRecord) => num(o.operacion) ?? 0;
-  return (
-    [...operaciones].sort(
-      (a, b) => Number(cancelada(a)) - Number(cancelada(b)) || tamano(b) - tamano(a) || numero(b) - numero(a),
-    )[0] ?? null
-  );
-}
+// La operación del comportamiento interno (una fila por OPERACIÓN de la persona
+// con la institución, p3 de la revisión del análisis, 2026-11-09) se elige desde
+// estructura-v29 en hechos/grupos/historial-con-la-institucion.ts (elegirOperacion).
 
 // v3: metaConsulta pasa de contar nueve bloques a nombrar las 52
 // fuentes. Los campos del perfil no cambian; lo que cambia es qué tan
@@ -389,7 +368,13 @@ export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): Any
 // camposSinDato con el parcial (lo que escribía la v27 como si fuera el total, y que la tarjeta
 // «Riesgo Penal / Fiscalía» leía como «sin antecedentes ni denuncias»). El modelo y la capacidad de
 // pago leen lo de antes hasta la versión mayor del marco. El bloqueo no cambia.
-export const PROCESS_VERSION = "estructura-v28"; // ver docs/estructura-estandarizada.md
+// estructura-v29 (E7, etapa B del grupo 2 de la capa de hechos): comportamientoInterno sale de
+// hechos/grupos/historial-con-la-institucion.ts (la regla de la operación elegida vive ahí, una sola
+// implementación). Se sigue reportando UNA operación (D5): los hechos de cantidad y de operaciones
+// vigentes no llegan al perfil. Con la base interna sin respuesta el campo es null y el grupo lo lista en
+// camposSinDato (hasta la v28 se escribía «no es cliente» y todo en null, como si la fuente hubiera dicho
+// que no hay operaciones). El modelo y la capacidad de pago leen lo de antes hasta la versión mayor del marco.
+export const PROCESS_VERSION = "estructura-v29"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -406,9 +391,6 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
 
   const basesInternas = obj(fuentes, "basesInternas", "__never__") ?? ((fuentes?.basesInternas as AnyRecord | undefined)?.data as AnyRecord | undefined) ?? null;
   const biWrap = { x: { data: basesInternas } } as unknown as AnyRecord;
-  // Las operaciones de la persona con la institución, una fila por
-  // operación (ver operacionDelComportamientoInterno).
-  const operacionesInstitucion = arr(biWrap, "x", "personasIncumplimientos");
   const tiess = arr(biWrap, "x", "tiess");
 
   // ---- identidad ----
@@ -1145,21 +1127,28 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   } as StandardClientProfile["comportamientoCooperativas"], c);
 
   // ---- comportamientoInterno (grupo nuevo — scoring propio Proveedor_Info_1) ----
-  // Lo que la institución sabe del hábito de pago de la persona, de UNA de sus
-  // operaciones (operacionDelComportamientoInterno). Es información, no deuda:
-  // ningún saldo de acá se suma ni entra en un cálculo (negocio, 2026-11-09).
-  const operacionInterna = operacionDelComportamientoInterno(operacionesInstitucion);
-  const comportamientoInterno: StandardClientProfile["comportamientoInterno"] = {
-    proveedorInfo1ResultadoHabitoPago: (operacionInterna?.resultadoHabitoPago as string) ?? null,
-    proveedorInfo1PerfilInterno: (operacionInterna?.perfilInterno as string) ?? null,
-    proveedorInfo1DiasMoraMaxima: num(operacionInterna?.diasMoraMax),
-    proveedorInfo1DiasMoraVigente: num(operacionInterna?.diasMoraVigentes),
-    proveedorInfo1SaldoCapitalVigente: num(operacionInterna?.saldoCapital),
-    esClienteInterno: Boolean(operacionInterna?.identificacion),
+  // Desde estructura-v29 sale de la capa de hechos (etapa B del grupo 2,
+  // hechos/grupos/historial-con-la-institucion.ts): la regla que elige la
+  // operación vive allá, con la procedencia de cada valor y las operaciones
+  // descartadas. Lo que la institución sabe del hábito de pago de la persona, de
+  // UNA de sus operaciones: la vigente de mayor saldo, o la cancelada de mayor
+  // cuota por plazo. Es información, no deuda: ningún saldo de acá se suma ni
+  // entra en un cálculo (negocio, 2026-11-09), y las demás operaciones y sus
+  // cantidades no llegan al perfil (D5, 2026-11-18). Acá sólo se copian, en el
+  // orden de siempre (el modelo lee el JSON en orden). Con la base interna sin
+  // respuesta el campo es null y el grupo lo lista en camposSinDato.
+  const ci = perfilDesdeHechos(hechos, "comportamientoInterno") as AnyRecord;
+  const comportamientoInterno = conSinDato({
+    proveedorInfo1ResultadoHabitoPago: ci.proveedorInfo1ResultadoHabitoPago,
+    proveedorInfo1PerfilInterno: ci.proveedorInfo1PerfilInterno,
+    proveedorInfo1DiasMoraMaxima: ci.proveedorInfo1DiasMoraMaxima,
+    proveedorInfo1DiasMoraVigente: ci.proveedorInfo1DiasMoraVigente,
+    proveedorInfo1SaldoCapitalVigente: ci.proveedorInfo1SaldoCapitalVigente,
+    esClienteInterno: ci.esClienteInterno,
     // Desde estructura-v21: si la operación está vigente o cancelada. Sin él,
     // el saldo 0 de una cancelada se lee como una vigente pagada.
-    proveedorInfo1EstadoOperacion: textoDe(operacionInterna?.estadoOperacion),
-  };
+    proveedorInfo1EstadoOperacion: ci.proveedorInfo1EstadoOperacion,
+  } as StandardClientProfile["comportamientoInterno"], ci);
 
   // ---- transitoVehicular ----
   const licencia = (arr(fuentes, "licenciaConducir", "licencia")[0] as AnyRecord | undefined) ?? null;
