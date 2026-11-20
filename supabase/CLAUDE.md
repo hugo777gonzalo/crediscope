@@ -456,6 +456,12 @@ su guía: `docs/equifax.md`.
 - Demandas por categoría (`_shared/demandas.ts`): normalizar tildes
   rotas, espacios y artículos; archivo o trámite no penaliza; si el tipo
   no dice el tema, decide quién demanda (institución financiera = cobro).
+- **Una demanda cuenta sólo si el demandado no es otra persona** (D2, estructura-v24):
+  la fuente las busca por el nombre. `atribuirDemandas()` (`demandas.ts`, con el cotejo de
+  v20) saca de las cuentas a las de «otra persona» y a las de apellidos en otro orden (el negocio,
+  2026-11-19); sin demandado o sin nombre cuentan y se avisan (`numeroDemandasSinCotejo`),
+  nunca como «no es de ella». Los avisos (`numeroDemandasDeOtroDemandado` y `...SinCotejo`, en los dos grupos
+  judiciales) no llegan al modelo. Detector: `demanda-de-cobro-o-civil-de-otro-demandado`.
 - Palabras clave como palabras completas (MORAL contiene MORA); los
   plurales se agregan a mano, sin S opcional.
 

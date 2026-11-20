@@ -21,7 +21,7 @@ import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
 // se reexporta para scripts/corregir-empleo-actual.mjs.
 export { relacionConEmpleador };
 import { rolEnDenuncia } from "./denuncias.ts";
-import { anioDeLaDemanda, demandasPorCategoria, esDemandaDeCobro, quienDemanda, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
+import { anioDeLaDemanda, atribuirDemandas, demandasPorCategoria, esDemandaDeCobro, quienDemanda, tipoDeCobroLegible, tipoDeDemandaLegible } from "./demandas.ts";
 import { categoriasDelitoGraveSeguridad, delitosDeSeguridadEnDemandas } from "./delitos-seguridad.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
@@ -547,7 +547,13 @@ function fechaDeCorte(v: unknown): string | null {
 // certificación (un pedido de información) ya no cuenta como `enListaControl`:
 // queda en `tieneProvidenciaDeCertificacion` y no bloquea (providencias.ts).
 // La v22 es la del PR 173 (capacidad de pago).
-export const PROCESS_VERSION = "estructura-v23"; // ver docs/estructura-estandarizada.md
+// estructura-v24 (D2 del negocio, 2026-11-18, confirmada el 2026-11-19): una
+// demanda de cobro o civil en la que el demandado es otra persona deja de
+// contar, como en v20 con las penales, y también la de apellidos en otro orden
+// (demandas.ts, atribuirDemandas). Lo que no se puede atribuir (sin demandado,
+// sin nombre) sigue contando y se avisa: numeroDemandasDeOtroDemandado y
+// numeroDemandasSinCotejo en riesgoJudicialCrediticio y riesgoJudicialCivil.
+export const PROCESS_VERSION = "estructura-v24"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -1439,8 +1445,12 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // Desde estructura-v12 decide cuando el tipo no dice el tema (demandas.ts).
   const demandanteDe = (d: AnyRecord): unknown => (d.demanda as AnyRecord | undefined)?.ofendido;
   const esCobro = (d: AnyRecord) => esDemandaDeCobro(delitoDe(d), demandanteDe(d));
-  const demandasCrediticias = demandas.filter(esCobro);
-  const demandasCivilesResto = demandas.filter((d) => !esCobro(d));
+  // Sólo cuentan las demandas cuyo demandado es la persona o no se puede
+  // descartar (estructura-v24, D2): la fuente las busca por el nombre y de 1.148
+  // de cobro 91 eran de otra persona (demandas.ts, atribuirDemandas).
+  const atribuidas = atribuirDemandas(demandas, identidad.nombreCompleto);
+  const demandasCrediticias = atribuidas.cuentan.filter(esCobro);
+  const demandasCivilesResto = atribuidas.cuentan.filter((d) => !esCobro(d));
   // Los tipos, legibles (demandas.ts, desde estructura-v11): sin el número
   // de artículo ni las tildes rotas que manda la fuente.
   const tiposUnicos = (ds: AnyRecord[], legible: (d: AnyRecord) => string | null) =>
@@ -1454,6 +1464,11 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     demandasDeCobro: demandasCrediticias
       .map((d) => ({ anio: anioDeLaDemanda((d.demanda as AnyRecord | undefined)?.fecha), quienDemanda: quienDemanda(demandanteDe(d)) }))
       .sort((a, b) => (b.anio ?? 0) - (a.anio ?? 0)),
+    // Desde estructura-v24 (D2): las de cobro que NO se cuentan porque el
+    // demandado es otra persona («posible homónimo»), y las que se cuentan sin
+    // poder confirmar que son suyas. No llegan al modelo (perfil-del-modelo.ts).
+    numeroDemandasDeOtroDemandado: atribuidas.deOtroDemandado.filter(esCobro).length,
+    numeroDemandasSinCotejo: atribuidas.sinCotejo.filter(esCobro).length,
   };
   const riesgoJudicialCivil: StandardClientProfile["riesgoJudicialCivil"] = {
     numeroDemandasComoDemandado: demandasCivilesResto.length,
@@ -1462,6 +1477,10 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     // lo que distingue un juicio de una investigación penal archivada o de
     // un trámite, que hasta v10 contaban igual como "demanda civil".
     demandasPorCategoria: demandasPorCategoria(demandasCivilesResto, delitoDe, demandanteDe),
+    // Desde estructura-v24 (D2): lo mismo que en riesgoJudicialCrediticio, de
+    // las que no son de cobro.
+    numeroDemandasDeOtroDemandado: atribuidas.deOtroDemandado.filter((d) => !esCobro(d)).length,
+    numeroDemandasSinCotejo: atribuidas.sinCotejo.filter((d) => !esCobro(d)).length,
     numeroDemandasComoOfendido: demandasOfendido.length,
     // Distingue "no tiene pensión alimenticia" de "tiene y está al
     // día": con solo pensionAlimenticiaEnMora=false los dos casos se

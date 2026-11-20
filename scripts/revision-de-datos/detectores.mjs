@@ -454,6 +454,48 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
+    id: "demanda-de-cobro-o-civil-de-otro-demandado",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "El perfil cuenta más demandas de cobro o civiles que las que traen en el demandado alguna palabra del nombre de la persona",
+    caso: "D2 del negocio, 2026-11-18: de 1.148 demandas de cobro, 91 eran de otra persona, 27 traían los apellidos en otro orden y 67 no decían a quién se demandaba (estructura-v24)",
+    conocido: "se corrige con el recálculo de estructura-v24 (recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil)",
+    // Criterio DISTINTO del de la regla (cotejarDemandado pide los dos apellidos y
+    // el primer nombre juntos): éste sólo exige que el demandado comparta ALGUNA
+    // palabra con el nombre. Una demanda sin ninguna palabra en común es de otra
+    // persona sin discusión; si el perfil cuenta más demandas que las restantes,
+    // contó una de otra. El cotejo de la regla es más estricto, así que después
+    // del recálculo este detector da 0. Un demandado vacío no se descarta (sin
+    // cotejo), y sin el nombre de la persona no se mide.
+    aplica: ({ raw, perfil }) =>
+      Array.isArray(raw.demandas?.data?.demandas) &&
+      raw.demandas.data.demandas.length > 0 &&
+      (perfil?.riesgoJudicialCrediticio?.numeroDemandasComoDemandado ?? 0) + (perfil?.riesgoJudicialCivil?.numeroDemandasComoDemandado ?? 0) > 0,
+    detectar: ({ raw, perfil }) => {
+      const palabras = (t) =>
+        new Set(
+          String(t ?? "")
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[̀-ͯ]/g, "")
+            .split(/[^A-Z]+/)
+            .filter((p) => p.length >= 3 && !["DEL", "LAS", "LOS", "VAN", "VON", "SAN"].includes(p)),
+        );
+      const delaPersona = palabras(raw.general?.data?.personaNatural?.nombre);
+      if (delaPersona.size < 2) return null;
+      const demandas = raw.demandas.data.demandas;
+      const sinPalabraEnComun = demandas.filter((d) => {
+        const demandado = palabras(d?.demanda?.demandado);
+        return demandado.size > 0 && ![...demandado].some((p) => delaPersona.has(p));
+      }).length;
+      const contadas =
+        (perfil.riesgoJudicialCrediticio?.numeroDemandasComoDemandado ?? 0) + (perfil.riesgoJudicialCivil?.numeroDemandasComoDemandado ?? 0);
+      const quedan = demandas.length - sinPalabraEnComun;
+      if (contadas <= quedan) return null;
+      return { contadas, enLaFuente: demandas.length, sinPalabraEnComun, deMas: contadas - quedan };
+    },
+  },
+  {
     id: "prestamo-biess-contado-dos-veces",
     capa: "estructura",
     tipo: "revisar",

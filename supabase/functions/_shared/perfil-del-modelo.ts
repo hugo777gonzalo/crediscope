@@ -168,7 +168,17 @@ export const CAMPOS_DE_LA_CAPACIDAD_QUE_NO_LLEGAN = ["comportamientoBancario.ope
 // La providencia de certificación (estructura-v23, E12) la resuelve el código:
 // no bloquea y topa la salida en Revisar (`salidaMaxima`). El mensaje sigue
 // siendo el de marco-v36 byte a byte; avisárselo al modelo es versión del marco.
-export const CAMPOS_DE_CONTROLES_QUE_NO_LLEGAN = ["cumplimiento.tieneProvidenciaDeCertificacion"];
+//
+// Lo mismo con las demandas de otro demandado (estructura-v24, D2): el código ya
+// las dejó fuera de las cuentas, y el aviso de «posible homónimo» es para el
+// analista. Lo que cambia para el modelo son los números de las demandas.
+export const CAMPOS_DE_CONTROLES_QUE_NO_LLEGAN = [
+  "cumplimiento.tieneProvidenciaDeCertificacion",
+  "riesgoJudicialCrediticio.numeroDemandasDeOtroDemandado",
+  "riesgoJudicialCrediticio.numeroDemandasSinCotejo",
+  "riesgoJudicialCivil.numeroDemandasDeOtroDemandado",
+  "riesgoJudicialCivil.numeroDemandasSinCotejo",
+];
 
 export const RUTAS_QUE_NO_LLEGAN: string[] = [
   ...IDENTIFICADORES_QUE_NO_LLEGAN,
