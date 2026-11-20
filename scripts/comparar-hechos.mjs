@@ -27,6 +27,10 @@
 //    `evaluarControlesBloqueo()` llama a `controlesDesdeHechos()`: con --contra, "hoy" es el control
 //    de esa versión (origin/main), que todavía leía el crudo; sin --contra (--contra=no) los dos son
 //    lo mismo y el paso es trivial. --bloqueo=no la salta.
+// 9. Las diferencias entre fuentes (`dif.*`, sección 6; E9): por código, cuántas y en cuántas
+//    personas, y cuántas «revisar». Con --contra, además, el perfil ENTERO (todos los grupos, no
+//    sólo los elegidos) contra el de esa versión: un PR que sólo suma diferencias tiene que dar
+//    cero personas distintas.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
@@ -240,6 +244,8 @@ const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0,
 const fallas = { bloqueo: [], bloqueoCompleto: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
 // 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
 const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0, completosComparados: 0, completosIguales: 0, bloquean: 0, bloqueanAntes: 0, porHallazgo: {} };
+const porDiferencia = {};
+const perfilEntero = { comparados: 0, distintos: 0, refs: [] };
 const cambio = { personas: 0, personasSinDato: 0, personasConUnion: 0, unionesPorRegla: {}, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
 const porCampo = {};
 const medidas = { documentoJson: [], documentoGzip: [], ms: [], hechos: [], entidades: [], diferencias: [] };
@@ -354,6 +360,12 @@ for (let i = 0; i < candidatos.length; i += 50) {
         if (cambio.refs.length < 12) cambio.refs.push(ref);
       }
       if (parcialConDato) cambio.personasConParcialConDato++;
+      // 9. El perfil entero, sin elegir grupos.
+      perfilEntero.comparados++;
+      if (canonico(perfil) !== canonico(antes)) {
+        perfilEntero.distintos++;
+        if (perfilEntero.refs.length < 12) perfilEntero.refs.push(ref);
+      }
       // Las uniones de una regla declarada en DIFERENCIAS_ESPERADAS (estructura-v26).
       const reglasDeUnion = new Set(DECLARADAS.filter((d) => d.cuando === "union").map((d) => d.regla));
       const deUnion = doc.entidades.filter((e) => reglasDeUnion.has(e.union?.regla));
@@ -400,6 +412,18 @@ for (let i = 0; i < candidatos.length; i += 50) {
       }
     }
     for (const d of doc.diferencias) citas.push([d.codigo, d.manda.registro], ...d.cede.map((x) => [d.codigo, x.registro]));
+    // 9. Las diferencias, por código.
+    const vistas = new Set();
+    for (const d of doc.diferencias) {
+      const c = (porDiferencia[d.codigo] ??= { total: 0, personas: 0, revisar: 0, refs: [] });
+      c.total++;
+      if (d.lectura === "revisar") c.revisar++;
+      if (!vistas.has(d.codigo)) {
+        vistas.add(d.codigo);
+        c.personas++;
+        if (c.refs.length < 5) c.refs.push(ref);
+      }
+    }
     for (const e of doc.entidades) citas.push(...e.vistas.map((v) => [e.clave, v.registro]));
     for (const [quien, r] of citas) {
       cuenta.registros++;
@@ -446,6 +470,11 @@ if (construirAntes) {
   for (const d of fallas.contraAntes.slice(0, 8)) console.log(`  SIN DECLARAR ${d.ref} ${d.campo}`);
   console.log(`  Con los valores de antes (lo que leen el modelo y la capacidad): ${fallas.conLosDeAntes.length} campos distintos de ${CONTRA}.`);
   for (const d of fallas.conLosDeAntes.slice(0, 8)) console.log(`  DISTINTO ${d.ref} ${d.campo}`);
+  console.log(`  El perfil entero (todos los grupos): ${n(perfilEntero.distintos)} de ${n(perfilEntero.comparados)} personas distintas de ${CONTRA}${perfilEntero.refs.length ? ` (${perfilEntero.refs.join(", ")})` : ""}.`);
+}
+console.log(`Diferencias entre fuentes (dif.*): ${Object.keys(porDiferencia).length ? "" : "ninguna."}`);
+for (const [codigo, c] of Object.entries(porDiferencia).sort(([a], [b]) => (a < b ? -1 : 1))) {
+  console.log(`  ${codigo}: ${n(c.total)} en ${n(c.personas)} personas; ${n(c.revisar)} para revisar (${c.refs.join(", ")})`);
 }
 
 let fueraDelPresupuesto = false;
@@ -474,8 +503,8 @@ const destino = path.join(PRINCIPAL, "research", "comparar-hechos");
 fs.mkdirSync(destino, { recursive: true });
 const sello = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
 const archivo = path.join(destino, `comparar-${ELEGIDOS.join("+")}-${sello}.json`);
-fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, bloqueo: BLOQUEO ? bloqueo : null, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
+fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, bloqueo: BLOQUEO ? bloqueo : null, perfilEntero, porDiferencia, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
 console.log(`Detalle (con montos, fuera de git): ${path.relative(PRINCIPAL, archivo)}`);
 
-const malo = fallas.bloqueo.length || fallas.bloqueoCompleto.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fueraDelPresupuesto;
+const malo = fallas.bloqueo.length || fallas.bloqueoCompleto.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || perfilEntero.distintos || fueraDelPresupuesto;
 process.exit(malo ? 1 : 0);

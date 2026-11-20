@@ -1,0 +1,25 @@
+{
+  "descripcion": "E9, punto 13: el registro civil dice bachillerato y hay un título registrado de cuarto nivel. Queda dif.ide.nivel_de_educacion como esperada (el registro civil no se entera del título); el perfil sigue mostrando los dos niveles",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": { "nombre": "PRUEBA FICTICIO CUATRO" },
+        "nivelEducacion": { "nivelEducacion": { "idNivelEducacion": 7, "descripcion": "BACHILLERATO", "nivel": 6 } }
+      }
+    },
+    "titulos": {
+      "status": "ok",
+      "data": {
+        "titulos": [
+          { "titulo": { "descripcion": "LICENCIATURA INVENTADA", "nivelEducacion": { "descripcion": "TERCER_NIVEL", "nivel": 8 } }, "establecimientoEducativo": { "descripcion": "UNIVERSIDAD FICTICIA" } },
+          { "titulo": { "descripcion": "MAESTRIA INVENTADA", "nivelEducacion": { "descripcion": "CUARTO_NIVEL", "nivel": 9 } }, "establecimientoEducativo": { "descripcion": "UNIVERSIDAD FICTICIA" } }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "diferencias": { "dif.ide.nivel_de_educacion": 1 }
+}

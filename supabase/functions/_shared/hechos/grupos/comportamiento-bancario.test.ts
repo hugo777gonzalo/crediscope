@@ -168,3 +168,14 @@ Deno.test("ban.union@1: la misma operación en Super y en Diners cuenta una vez,
   );
   assertEquals(perfilDesdeHechos(enCero, "comportamientoBancario").numeroOperacionesBuroCredito, 2);
 });
+
+Deno.test("dif.biess.cantidad (E9): cuántos préstamos ve cada camino, por tipo, sin cambiar la cuenta unida", () => {
+  const doc = derivarHechos(conBiessTerminadoEn("15/09/2026"), contexto("2026-10-01T12:00:00-05:00"));
+  const difs = doc.diferencias.filter((d) => d.codigo === "dif.biess.cantidad");
+  assertEquals(difs.map((d) => [d.sobre, d.manda.valor, d.cede[0].valor, d.cede[0].registro.lista, d.lectura]), [["biess.operaciones.cantidad.quirografario", 0, 1, "tcredQuirografarios", "esperada"]]);
+  // La cuenta unida no cambia: el terminado se descarta igual.
+  assertEquals(valor(doc, "biess.operaciones.cantidad"), 0);
+  // Con una de las tres fuentes caída no se compara.
+  const caida = { ...conBiessTerminadoEn("15/09/2026"), creditoHipotecario: { status: "error", data: null } };
+  assertEquals(derivarHechos(caida, contexto("2026-10-01T12:00:00-05:00")).diferencias.filter((d) => d.codigo === "dif.biess.cantidad"), []);
+});

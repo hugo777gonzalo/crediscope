@@ -22,6 +22,8 @@ import * as patrimonio from "./grupos/patrimonio.ts";
 import * as transito from "./grupos/transito.ts";
 import * as penal from "./grupos/penal.ts";
 import * as cumplimiento from "./grupos/cumplimiento.ts";
+// E9: las diferencias entre fuentes cuyo grupo todavía no existe (se mudan a su grupo al llenarlo).
+import * as conciliacion from "./grupos/conciliacion.ts";
 
 // hechos-v2 (estructura-v25): un hecho sin valor porque su fuente no contestó
 // lleva su `parcial`, y un hecho de unidad «lista» puede ser una lista de
@@ -53,6 +55,7 @@ export const GRUPOS = {
   transito,
   penal,
   cumplimiento,
+  conciliacion,
 };
 
 // Los grupos cuya etapa A dio paridad sobre el crudo real (sección 5.3): la

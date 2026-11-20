@@ -17,6 +17,9 @@ import {
   type AnyRecord,
   citar,
   corteMasAntiguo,
+  deudaDe,
+  enAtraso,
+  esGarantia,
   fechaIsoDe,
   type Fila,
   filasDe,
@@ -26,6 +29,7 @@ import {
   refDeRespuesta,
   respuestaDe,
   textoDe,
+  vencido,
 } from "../lectura-del-crudo.ts";
 import { diaDeLaConsulta } from "../reloj.ts";
 import type {
@@ -104,6 +108,8 @@ export const CATALOGO: CodigoDelCatalogo[] = [
   codigo("dif.ban.posible_repetida", "usd", "Deuda de una operación que vino en Super y en Diners, según cada lista", null, null),
   codigo("dif.biess.saldo", "usd", "Saldo de un préstamo del IESS/BIESS según cada fuente", null, null),
   codigo("dif.biess.fecha_de_concesion", "fecha", "Concesión de un préstamo del IESS/BIESS según cada fuente", null, null),
+  // E9: la prometía la sección 6 desde el diseño y no estaba.
+  codigo("dif.biess.cantidad", "cantidad", "Préstamos del IESS/BIESS de un tipo según la fuente de préstamos y según la base interna", null, null),
 ];
 
 // Las que unen, eligen o descartan registros: cada una con un crudo inventado
@@ -165,14 +171,9 @@ function extremo(filas: Fila[], cual: "peor" | "mejor"): { valor: string; fila: 
   return { valor, fila: conCalificacion.find((f) => String(f.r.calificacion ?? "").trim() === valor)! };
 }
 
+// vencido, enAtraso, deudaDe y esGarantia viven en lectura-del-crudo.ts desde E9: el
+// historial con la institución lee la misma deuda de bancos para su diferencia.
 const campoVencido = (r: AnyRecord) => ((num(r.saldomora) ?? 0) > 0 ? "saldomora" : "mora");
-const vencido = (r: AnyRecord) => {
-  const saldomora = num(r.saldomora) ?? 0;
-  return saldomora > 0 ? saldomora : num(r.mora) ?? 0;
-};
-const enAtraso = (r: AnyRecord) => vencido(r) + (num(r.noDevengaInteres) ?? 0) + (num(r.judicial) ?? 0) + (num(r.castigo) ?? 0);
-const deudaDe = (r: AnyRecord) => (num(r.saldoVigente) ?? 0) + enAtraso(r);
-const esGarantia = (r: AnyRecord) => r.riesgo === "G" || r.riesgo === "C";
 
 // ---- Super y Diners (ban.union@1, estructura-v26) ----
 //
@@ -634,6 +635,27 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
           lectura: "esperada",
         });
       }
+    }
+  }
+
+  // Cuántos préstamos ve cada camino, por tipo (E9, punto 2 de la sección 6): la base interna
+  // es una foto vieja y trae los terminados, así que la diferencia es esperada. No cambia
+  // ningún valor: la unión de arriba es la que cuenta.
+  if (!sinIess) {
+    for (const [tipo, lista, deLaBaseLista] of [["quirografario", "creditoQuirografario", "tcredQuirografarios"], ["hipotecario", "creditoHipotecario", "tcredHipotecarios"]] as const) {
+      const enLaFuente = deLosPrestamos.filter((f) => f.fuente === lista).length;
+      const enLaBase = deLaBase.filter((f) => f.lista === deLaBaseLista).length;
+      if (enLaFuente === enLaBase) continue;
+      const absoluta = Math.abs(enLaFuente - enLaBase);
+      emisor.diferencia({
+        codigo: "dif.biess.cantidad",
+        regla: "biess.union@2",
+        sobre: `biess.operaciones.cantidad.${tipo}`,
+        manda: { fuente: lista, valor: enLaFuente, registro: respuesta(lista, "prestamos") },
+        cede: [{ fuente: "basesInternas", valor: enLaBase, registro: respuesta("basesInternas", deLaBaseLista) }],
+        magnitud: { absoluta, relativa: enLaFuente ? Math.round((absoluta / enLaFuente) * 10_000) / 10_000 : null },
+        lectura: "esperada",
+      });
     }
   }
 

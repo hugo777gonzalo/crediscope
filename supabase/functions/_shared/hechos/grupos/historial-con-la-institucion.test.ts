@@ -42,7 +42,8 @@ Deno.test("cero campos sin procedencia: todo campo de comportamientoInterno tien
 });
 
 Deno.test("D5: lo nuevo no tiene campo del perfil ni llega al modelo, y ninguna señal ni diferencia lo toma", () => {
-  const nuevos = CATALOGO.filter((c) => !c.campoDelPerfil);
+  // Las diferencias (E9) tampoco tienen campo del perfil; se prueban aparte, abajo.
+  const nuevos = CATALOGO.filter((c) => !c.campoDelPerfil && !c.codigo.startsWith("dif."));
   assertEquals(nuevos.map((c) => c.codigo), ["inst.operaciones.cantidad", "inst.operaciones.vigentes", "inst.mora.dias_max_entre_todas"]);
   assertEquals(nuevos.every((c) => !c.llegaAlModelo && !c.esIdentificador), true);
   const doc = derivarHechos(crudoCon([op(1, "VIGENTE", { saldoCapital: 100 }), op(2, "VIGENTE", { saldoCapital: 200 })]), contexto);
@@ -50,7 +51,7 @@ Deno.test("D5: lo nuevo no tiene campo del perfil ni llega al modelo, y ninguna 
   assertEquals(Object.keys(perfilDesdeHechos(doc, "comportamientoInterno")).length, 7);
   // El saldo del perfil es el de UNA operación: nada suma las dos.
   assertEquals(perfilDesdeHechos(doc, "comportamientoInterno").proveedorInfo1SaldoCapitalVigente, 200);
-  assertEquals(catalogoCompleto().filter((c) => c.codigo.startsWith("inst.")).length, CATALOGO.length);
+  assertEquals(catalogoCompleto().filter((c) => c.codigo.startsWith("inst.")).length, CATALOGO.filter((c) => !c.codigo.startsWith("dif.")).length);
 });
 
 Deno.test("dos vigentes: gana la de mayor saldo y la otra queda descartada", () => {
@@ -150,4 +151,48 @@ Deno.test("el corte del dato es el `fechaCorte` de la operación citada", () => 
   assertEquals(hecho(doc, "inst.operacion.saldo").fechaDelDato, "2026-08-31");
   // Lo contado sobre las dos no es más reciente que la más antigua.
   assertEquals(hecho(doc, "inst.operaciones.cantidad").fechaDelDato, "2026-08-31");
+});
+
+// ---- E9, punto 3: la operación con la institución que también reporta un banco ----
+
+const filaDeBanco = (saldoVigente: number, extra: Record<string, unknown> = {}) => ({
+  fecha: "2026/08/31", entnombre: "BANCO INVENTADO", codEntidad: "9999", riesgo: "T", calificacion: "A1",
+  saldoVigente, noDevengaInteres: 0, judicial: 0, castigo: 0, mora: 0, saldomora: 0, ...extra,
+});
+const conBancos = (operaciones: unknown[], filas: unknown[]) => ({
+  ...crudoCon(operaciones),
+  buroCreditoSuper: { status: "ok", data: { datosSuper: filas } },
+});
+const diferencias = (doc: ReturnType<typeof derivarHechos>) => doc.diferencias.filter((d) => d.codigo === "dif.inst.posible_en_bancos");
+
+Deno.test("dif.inst.posible_en_bancos: la fila de bancos con el saldo más una cuota es la misma deuda, y no cambia nada", () => {
+  // La lista de bancos es de un mes antes: debe una cuota más.
+  const crudo = conBancos([op(1, "VIGENTE", { saldoCapital: 5000, cuotaNova: 200 })], [filaDeBanco(3000), filaDeBanco(5150)]);
+  const doc = derivarHechos(crudo, contexto);
+  const [d] = diferencias(doc);
+  assertEquals([diferencias(doc).length, d.lectura, d.manda.valor, d.cede.map((c) => c.valor), d.magnitud.absoluta], [1, "esperada", 5000, [5150], 150]);
+  assertEquals([d.manda.registro.lista, d.manda.registro.indice, d.cede[0].registro.fuente, d.cede[0].registro.indice], ["personasIncumplimientos", 0, "buroCreditoSuper", 1]);
+  assertEquals(d.sobre.endsWith(".saldoCapital") && d.sobre.startsWith("op-"), true);
+  // El perfil no cambia: el saldo de la institución es el suyo y no se suma ni se resta.
+  const sinBancos = derivarHechos(crudoCon([op(1, "VIGENTE", { saldoCapital: 5000, cuotaNova: 200 })]), contexto);
+  assertEquals(perfilDesdeHechos(doc, "comportamientoInterno"), perfilDesdeHechos(sinBancos, "comportamientoInterno"));
+});
+
+Deno.test("dif.inst.posible_en_bancos: fuera de la ventana, de garante, cancelada o sin deuda, no hay diferencia", () => {
+  const casos: Array<[unknown[], unknown[]]> = [
+    [[op(1, "VIGENTE", { saldoCapital: 5000, cuotaNova: 200 })], [filaDeBanco(5300)]], // más que el saldo y una cuota
+    [[op(1, "VIGENTE", { saldoCapital: 5000, cuotaNova: 200 })], [filaDeBanco(4900)]], // menos que el saldo
+    [[op(1, "VIGENTE", { saldoCapital: 5000, cuotaNova: 200 })], [filaDeBanco(5100, { riesgo: "G" })]], // como garante
+    [[op(1, "CANCELADA", { saldoCapital: 5000, cuotaNova: 200 })], [filaDeBanco(5100)]],
+    [[op(1, "VIGENTE", { saldoCapital: 0, cuotaNova: 200 })], [filaDeBanco(0)]],
+  ];
+  for (const [ops, filas] of casos) assertEquals(diferencias(derivarHechos(conBancos(ops, filas), contexto)), []);
+});
+
+Deno.test("dif.inst.posible_en_bancos: dos vigentes en una sola fila se miran por la suma; dos filas candidatas, a revisar", () => {
+  const suma = derivarHechos(conBancos([op(1, "VIGENTE", { saldoCapital: 3000, cuotaNova: 100 }), op(2, "VIGENTE", { saldoCapital: 2000, cuotaNova: 100 })], [filaDeBanco(5150)]), contexto);
+  assertEquals(diferencias(suma).map((d) => [d.sobre, d.manda.valor, d.manda.registro.indice, d.lectura]), [["inst.operaciones.vigentes", 5000, undefined, "esperada"]]);
+  const dos = derivarHechos(conBancos([op(1, "VIGENTE", { saldoCapital: 5000, cuotaNova: 200 })], [filaDeBanco(5180), filaDeBanco(5010)]), contexto);
+  // La más cercana va primero y da la magnitud.
+  assertEquals(diferencias(dos).map((d) => [d.lectura, d.cede.map((c) => c.valor), d.magnitud.absoluta]), [["revisar", [5010, 5180], 10]]);
 });

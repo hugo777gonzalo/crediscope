@@ -16,6 +16,9 @@
     "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } }
   },
   "esperado": { "prestamo-biess-terminado-contado": "no-dispara" },
+  "diferencias": {
+    "dif.biess.cantidad": 1
+  },
   "reglas": { "biess.union@2": "no-aplica" },
   "hechos": {
     "biess.operaciones.cantidad": { "valor": 1, "registros": ["basesInternas.tcredQuirografarios#0"] },

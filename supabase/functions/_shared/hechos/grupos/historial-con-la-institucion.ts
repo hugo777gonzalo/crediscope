@@ -20,7 +20,7 @@
 // 746 más de una (371 con dos vigentes o más, 278 con dos canceladas o más).
 
 import { ayudanteDelGrupo, type Emisor } from "../emisor.ts";
-import { type AnyRecord, fechaIsoDe, type Fila, filasDe, num, refDeFila, refDeRespuesta, respuestaDe, textoDe } from "../lectura-del-crudo.ts";
+import { type AnyRecord, deudaDe, esGarantia, fechaIsoDe, type Fila, filasDe, num, redondear, refDeFila, refDeRespuesta, respuestaDe, textoDe } from "../lectura-del-crudo.ts";
 import type { CodigoDelCatalogo, Contexto, Descarte, DiferenciaEsperada, Entidad, OperacionDeCredito, RefDeRegistro } from "../tipos.ts";
 
 const P = "comportamientoInterno.";
@@ -55,6 +55,8 @@ export const CATALOGO: CodigoDelCatalogo[] = [
   codigo("inst.operaciones.cantidad", "cantidad", "Operaciones de la persona con la institución, todas", null, null, "conteo"),
   codigo("inst.operaciones.vigentes", "cantidad", "Operaciones de la persona con la institución que no están canceladas", null, null, "conteo"),
   codigo("inst.mora.dias_max_entre_todas", "dias", "Días de mora máximos entre todas las operaciones con la institución", null, null, "maximo"),
+  // E9, punto 3: informativa, no cambia ningún valor (ver diferenciasConBancos).
+  codigo("dif.inst.posible_en_bancos", "usd", "Saldo de una operación con la institución contra la deuda de una fila de bancos que puede ser la misma", null, null),
 ];
 
 // Las que eligen o descartan registros: cada una con un crudo inventado en que
@@ -224,5 +226,64 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     const valor = Math.max(...conDias.map((f) => num(f.r.diasMoraMax)!));
     const conMax = conDias.find((f) => num(f.r.diasMoraMax) === valor)!;
     h.confirmado("inst.mora.dias_max_entre_todas", "inst.max@1", FUENTES, valor, [refDeFila(consulta, conMax, "diasMoraMax")], corteDeLaFila(conMax), { entidades: [claves.get(conMax)!] });
+  }
+
+  diferenciasConBancos(crudo, consulta, vigentes, claves, emisor);
+}
+
+// ---- La operación con la institución que también reporta un banco (E9, punto 3) ----
+//
+// La institución reporta sus créditos a la Superintendencia por medio de un banco, y la
+// deuda de bancos del perfil ya los incluye. Medido el 2026-11-20 sobre las 3.766 personas
+// (2.529 con una operación vigente con saldo): 1.606 tienen una fila de bancos en la
+// ventana de abajo, 1.570 de ellas de una misma entidad bancaria; con la lista de
+// bancos de OTRA persona, la misma regla da 91 (scripts/medir-conciliacion.mjs). La regla del
+// negocio (2026-11-09) es no sumar ni restar: esto no cambia ningún valor, sólo deja
+// dicho qué fila de bancos puede ser la misma deuda, para que nadie la sume después.
+//
+// La ventana: la lista de bancos tiene el corte de un mes antes que la institución
+// (agosto contra septiembre), así que debe entre el saldo de hoy y el saldo más una
+// cuota; con el mismo corte, el saldo a un dólar. La fila de bancos es por entidad y
+// calificación, no por operación: con dos vigentes, una sola fila puede traer las dos
+// (236 personas), y por eso se mira también la suma. Una fila que junta la operación con
+// otro crédito del mismo banco no se ve: no se inventa la parte de cada uno.
+//
+// La lectura es «esperada» con una sola fila candidata y «revisar» con más de una: no se
+// sabe cuál es.
+const TOLERANCIA_EN_BANCOS_USD = 1;
+
+function diferenciasConBancos(crudo: AnyRecord, consulta: string, vigentes: Fila[], claves: Map<Fila, Entidad["clave"]>, emisor: Emisor): void {
+  const conSaldo = vigentes.filter((f) => (num(f.r.saldoCapital) ?? 0) > 0);
+  if (!conSaldo.length) return;
+  const bancos = [...filasDe(crudo, "buroCreditoSuper", "datosSuper"), ...filasDe(crudo, "buroCreditoDiners", "datosSuper")].filter((f) => !esGarantia(f.r));
+  const enLaVentana = (saldo: number, cuota: number) =>
+    bancos
+      .filter((b) => deudaDe(b.r) > 0 && deudaDe(b.r) >= saldo - TOLERANCIA_EN_BANCOS_USD && deudaDe(b.r) <= saldo + cuota + TOLERANCIA_EN_BANCOS_USD)
+      .sort((a, b) => Math.abs(deudaDe(a.r) - saldo) - Math.abs(deudaDe(b.r) - saldo));
+  const emitirSi = (sobre: string, saldo: number, manda: RefDeRegistro, candidatas: Fila[]) => {
+    if (!candidatas.length) return;
+    const absoluta = redondear(Math.abs(deudaDe(candidatas[0].r) - saldo));
+    emisor.diferencia({
+      codigo: "dif.inst.posible_en_bancos",
+      regla: "inst.en_bancos@1",
+      sobre,
+      // «Manda» la institución sólo porque es lo que se compara: ninguna de las dos reemplaza a la otra.
+      manda: { fuente: "basesInternas", valor: redondear(saldo), registro: manda },
+      cede: candidatas.map((b) => ({ fuente: b.fuente, valor: redondear(deudaDe(b.r)), registro: refDeFila(consulta, b) })),
+      magnitud: { absoluta, relativa: Math.round((absoluta / saldo) * 10_000) / 10_000 },
+      lectura: candidatas.length === 1 ? "esperada" : "revisar",
+    });
+  };
+  const sueltas = conSaldo.filter((f) => {
+    const saldo = num(f.r.saldoCapital)!;
+    const candidatas = enLaVentana(saldo, num(f.r.cuotaNova) ?? 0);
+    emitirSi(`${claves.get(f)}.saldoCapital`, saldo, refDeFila(consulta, f, "saldoCapital"), candidatas);
+    return candidatas.length === 0;
+  });
+  // Con dos vigentes o más y alguna sin fila propia, la suma de todas contra una fila.
+  if (conSaldo.length > 1 && sueltas.length > 0) {
+    const saldo = conSaldo.reduce((s, f) => s + num(f.r.saldoCapital)!, 0);
+    const cuota = conSaldo.reduce((s, f) => s + (num(f.r.cuotaNova) ?? 0), 0);
+    emitirSi("inst.operaciones.vigentes", saldo, refDeRespuesta(crudo, consulta, "basesInternas", LISTA), enLaVentana(saldo, cuota));
   }
 }

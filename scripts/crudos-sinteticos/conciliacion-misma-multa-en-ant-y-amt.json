@@ -1,0 +1,59 @@
+{
+  "descripcion": "E9, punto 12: la misma multa (placa y día de emisión) en la ANT y en la AMT, con el monto distinto porque la AMT suma intereses. Queda dif.tra.posible_repetida para revisar y el perfil la sigue contando en las dos; la otra multa de la ANT es de otro día",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO TRES"
+        }
+      }
+    },
+    "deudasAnt": {
+      "status": "ok",
+      "data": {
+        "deudaAnts": [
+          {
+            "fechaEmision": "2025-07-11 10:00:00.0",
+            "placa": "AAA0001",
+            "total": "100",
+            "entidad": "AUTORIDAD FICTICIA DE TRANSITO"
+          },
+          {
+            "fechaEmision": "2025-08-02 10:00:00.0",
+            "placa": "AAA0001",
+            "total": "50",
+            "entidad": "AUTORIDAD FICTICIA DE TRANSITO"
+          }
+        ]
+      }
+    },
+    "deudasAmt": {
+      "status": "ok",
+      "data": {
+        "deudaAmt": [
+          {
+            "numero": "INVENTADO-1",
+            "placa": "AAA0001",
+            "fechaEmision": "11/07/2025",
+            "valor": 100,
+            "multa": 1.5,
+            "total": 101.5
+          }
+        ]
+      }
+    },
+    "deudasEmov": {
+      "status": "ok",
+      "data": {
+        "deudaEmov": []
+      }
+    }
+  },
+  "esperado": {},
+  "diferencias": {
+    "dif.tra.posible_repetida": 1
+  }
+}

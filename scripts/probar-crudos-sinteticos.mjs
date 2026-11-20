@@ -37,6 +37,9 @@
 //     si no tiene valor, los `registros` que tiene que citar («fuente.lista#indice», o
 //     «fuente.lista» para la respuesta entera), los `descartados`
 //     («fuente.lista#indice:motivo») y las `diferencias` que tienen que salir;
+//   - `diferencias` (opcional): { "dif.codigo": cantidad }, cuántas diferencias de ese
+//     código tienen que salir (0 = ninguna). Es como se prueban las de E9, que no tienen
+//     un hecho al que colgarse (sección 6);
 //   - `reglas` (opcional): { "id@version": "aplica" | "no-aplica" }. Cada regla de
 //     REGLAS_QUE_MEZCLAN necesita un caso de cada uno, y un caso que declara una
 //     regla trae `hechos` que lo demuestran;
@@ -163,6 +166,10 @@ for (const archivo of archivos) {
       for (const dif of esperado.diferencias ?? []) if (!hechos.diferencias.some((d) => d.codigo === dif)) problemas.push(`falta la diferencia ${dif}`);
       control(`${nombre} · ${codigo}`, problemas.length === 0, problemas.join("; "));
     }
+  }
+  for (const [codigo, cantidad] of Object.entries(caso.diferencias ?? {})) {
+    const salieron = hechos ? hechos.diferencias.filter((d) => d.codigo === codigo).length : null;
+    control(`${nombre} · ${codigo}: ${cantidad} ${cantidad === 1 ? "diferencia" : "diferencias"}`, salieron === cantidad, `salieron ${salieron}`);
   }
   for (const [regla, como] of Object.entries(caso.reglas ?? {})) {
     if (!cubiertasLasReglas.has(regla)) { control(`${nombre}: la regla «${regla}» está en REGLAS_QUE_MEZCLAN`, false); continue; }

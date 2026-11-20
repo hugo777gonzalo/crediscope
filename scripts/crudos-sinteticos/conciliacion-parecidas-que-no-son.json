@@ -1,0 +1,114 @@
+{
+  "descripcion": "E9: casi iguales pero no lo mismo. La fila de bancos debe más que el saldo de la institución más una cuota; la multa de la AMT es de otra placa; el título es del mismo nivel que el registro civil. No sale ninguna diferencia de la conciliación (el PEP repetido lo prueban los casos de cumplimiento)",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO CINCO"
+        },
+        "nivelEducacion": {
+          "nivelEducacion": {
+            "idNivelEducacion": 9,
+            "descripcion": "TERCER_NIVEL",
+            "nivel": 8
+          }
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 8,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 200,
+            "plazoCuotas": 36,
+            "saldoCapital": 5000,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          }
+        ]
+      }
+    },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "datosSuper": [
+          {
+            "fecha": "2026/08/31",
+            "entnombre": "BANCO INVENTADO",
+            "codEntidad": "9999",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": 5300,
+            "noDevengaInteres": 0,
+            "judicial": 0,
+            "castigo": 0,
+            "mora": 0,
+            "saldomora": 0
+          }
+        ]
+      }
+    },
+    "buroCreditoDiners": {
+      "status": "ok",
+      "data": {
+        "datosSuper": []
+      }
+    },
+    "deudasAnt": {
+      "status": "ok",
+      "data": {
+        "deudaAnts": [
+          {
+            "fechaEmision": "2025-07-11 10:00:00.0",
+            "placa": "AAA0001",
+            "total": "100"
+          }
+        ]
+      }
+    },
+    "deudasAmt": {
+      "status": "ok",
+      "data": {
+        "deudaAmt": [
+          {
+            "placa": "BBB0002",
+            "fechaEmision": "11/07/2025",
+            "total": 100
+          }
+        ]
+      }
+    },
+    "titulos": {
+      "status": "ok",
+      "data": {
+        "titulos": [
+          {
+            "titulo": {
+              "descripcion": "LICENCIATURA INVENTADA",
+              "nivelEducacion": {
+                "descripcion": "TERCER_NIVEL",
+                "nivel": 8
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "diferencias": {
+    "dif.inst.posible_en_bancos": 0,
+    "dif.tra.posible_repetida": 0,
+    "dif.ide.nivel_de_educacion": 0
+  }
+}

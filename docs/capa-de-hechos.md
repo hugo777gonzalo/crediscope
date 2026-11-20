@@ -373,6 +373,8 @@ supabase/functions/_shared/hechos/
     ingresos.ts                 ing                                          (grupo 4)
     identidad.ts, contacto.ts, familia.ts, tributario.ts, seguridad-social.ts,
     patrimonio.ts, transito.ts, penal.ts, cumplimiento.ts                   (después)
+    conciliacion.ts             dif.* cuyo grupo todavía no existe (E9; se mudan al llenarlo)
+  conciliacion-con-el-buro.ts   dif.end.bancos: necesita el buró, que derivarHechos no recibe (E9)
   senales/
     endeudamiento.ts            end.*: junta ban, coop, ret, biess y buro
     atenuantes.ts               los cuatro
@@ -1191,6 +1193,9 @@ Dos reglas valen para todas:
   del de la regla** (`supabase/CLAUDE.md`, «Crudo de Proveedor_Info_1»). La capa de hechos
   no reemplaza esa regla: la hace más barata de cumplir.
 
+La tabla es la del diseño. Cómo quedó cada punto al cerrar la conciliación (E9, 2026-11-20),
+con lo medido sobre las 3.766 personas y lo que queda para el negocio, está en la sección 10.
+
 ### 6.1 El perfil incompleto
 
 Lo que encontró el mapa: un perfil incompleto vuelve a pedir las 52 fuentes y guarda una
@@ -1387,3 +1392,132 @@ adaptador ni se diseña acá.
 
 Ningún paso despliega nada por sí solo hasta la etapa B del grupo 1, y `main` sigue con la
 restricción de `docs/pendientes.md`: no se despliega hasta que marco-v36 esté lista.
+
+## 10. La conciliación entre fuentes, cerrada (E9, 2026-11-20)
+
+Cierra la sección 6 antes de la versión mayor del marco. **Ningún valor del perfil cambió**: se
+sumaron diferencias (`dif.*`), que no tienen campo del perfil ni llegan al modelo. Lo que cambia un
+valor quedó medido y espera una decisión del negocio (10.5).
+
+Medido el 2026-11-20 sobre las 3.766 personas reales, cada una con el crudo de su último perfil y
+el reloj en la fecha de su consulta, sólo leyendo:
+
+- `node scripts/comparar-hechos.mjs --deposito --contra=origin/main --medir`: 569.102 de 569.102
+  campos iguales, **el perfil entero y el control de bloqueo iguales en las 3.766** contra
+  `origin/main` (estructura-v28), 0 registros citados que no resuelven y 0 recuentos que no cuadran. El documento de hechos queda en
+  p99 10,4 KB en gzip (máximo 15,8) y entre 4,4 y 9,0 ms por persona en el p99 (tres corridas): dentro del presupuesto (2.3). La
+  comparación ahora cuenta las `dif.*` por código y compara el perfil entero, no sólo los grupos
+  elegidos.
+- `node scripts/medir-conciliacion.mjs --deposito`: cada diferencia nueva con un criterio distinto
+  del de su regla, y cuántas personas cambiarían con cada propuesta.
+
+### 10.1 Inventario de los 16 puntos
+
+«Personas» es de las 3.766. «Revisar» es la lectura de la diferencia cuando pasa el umbral de su
+regla; las demás son «esperada».
+
+| # | Punto | Estado hoy | Dónde vive | Diferencia que se guarda | Personas |
+|---|---|---|---|---|---|
+| 1 | Bancos: Super y Diners | hecho (estructura-v26, D6) | `grupos/comportamiento-bancario.ts` | `dif.ban.posible_repetida` | 0 |
+| 2 | Préstamos del IESS/BIESS por dos caminos | hecho (paridad con v21); `dif.biess.cantidad` se sumó acá | `grupos/comportamiento-bancario.ts` | `dif.biess.saldo`, `dif.biess.fecha_de_concesion`, `dif.biess.cantidad` | 186, 173 y 882 |
+| 3 | Operaciones con la institución y deuda de bancos | hecho acá, informativa | `grupos/historial-con-la-institucion.ts` | `dif.inst.posible_en_bancos` | 1.606 de 2.529 con una vigente con saldo (26 revisar) |
+| 4 | Empleo actual: mecanizado o aportes | hecho (paridad con v19) | `grupos/empleo.ts` | `lab.empleo_actual.fuente` (hecho) y `dif.lab.salario_del_mes` | 0 (ver 10.6) |
+| 5 | Empleadores y salario más alto, de tres fuentes | hecho (paridad con v16) | `grupos/empleo.ts` | `dif.lab.salario_del_mes` | 0 |
+| 6 | Datos del empleador vigente | hecho (paridad) | `grupos/empleo.ts` | no aplica | — |
+| 7 | RUC activo, y «obligado a llevar contabilidad» | hecho (paridad); unificar `obligado`, **propuesta medida** | `grupos/actividad-con-ruc.ts`, `grupos/ingresos.ts` | `dif.ruc.estado`, `dif.ing.obligado` | 139 (11 revisar) y 19 |
+| 8 | Pensión alimenticia, dos fuentes | hecho (paridad); «el más reciente», **propuesta medida: no aplica** | `grupos/riesgo-judicial.ts` | `dif.jud.pension.deuda` | 1 |
+| 9 | Demandas atribuidas por nombre | hecho: penales en v20, cobro y civiles en v24 (D2) | `grupos/riesgo-judicial.ts`, `demandas.ts` | no aplica (la atribución va en la entidad) | — |
+| 10 | PEP, dos fuentes | hecho (estructura-v28, grupo de cumplimiento); «la fecha como fecha», **propuesta medida: no cambia a nadie** | `grupos/cumplimiento.ts` | `dif.cum.pep.repetido` | 29 de 46 con PEP |
+| 11 | Seguridad ciudadana, tres fuentes | hecho (paridad) | `grupos/riesgo-judicial.ts` | no aplica | — |
+| 12 | Multas de tránsito, tres entidades | hecho acá | `grupos/conciliacion.ts` | `dif.tra.posible_repetida` | 0 (2 personas tienen ANT y AMT) |
+| 13 | Nivel de educación: registro civil y títulos | hecho acá; «manda el título», **propuesta medida** | `grupos/conciliacion.ts` | `dif.ide.nivel_de_educacion` | 327 de 1.256 con título |
+| 14 | El bloqueo relee el crudo | hecho: seguridad ciudadana en v27, todo lo demás en v28 | `hechos/controles.ts` | no aplica | — |
+| 15 | Edades y antigüedades con el reloj del armado | **propuesta medida** | `process.ts` (los grupos de hechos ya usan la fecha de la consulta) | no aplica | 3.232 cambiarían |
+| 16 | Proveedor_Info_1 y el buró de la institución | hecho acá, fuera de `derivarHechos()` | `hechos/conciliacion-con-el-buro.ts` | `dif.end.bancos` | 110 con buró y perfil |
+
+`grupos/conciliacion.ts` es un grupo nuevo (el 17.º de `indice.ts`) para las diferencias cuyo grupo
+todavía no existe: tránsito e identidad. El PEP empezó acá y se mudó a `cumplimiento.ts` cuando ese
+grupo se llenó (estructura-v28), con el mismo código y una sola implementación. Cuando ese grupo se
+llena, la diferencia se muda a su archivo con el mismo código (un código no puede estar en dos
+catálogos: el emisor lo rechaza y `conciliacion.test.ts` lo prueba).
+
+### 10.2 Lo que se sumó, regla por regla
+
+- **`dif.inst.posible_en_bancos` (`inst.en_bancos@1`).** Una operación vigente con la institución
+  y una fila de bancos o Diners (como titular) cuya deuda está entre el saldo y el saldo más una
+  cuota, con un dólar de tolerancia: la lista de bancos es de un mes antes (agosto contra
+  septiembre). La fila de bancos es por entidad y calificación, no por operación: con dos vigentes
+  o más, se mira también la suma (236 personas). Con una sola candidata, «esperada»; con más, «revisar».
+  Las funciones de la deuda de bancos (`vencido`, `enAtraso`, `deudaDe`, `esGarantia`) se movieron
+  a `lectura-del-crudo.ts`: una sola implementación para los dos grupos.
+- **`dif.biess.cantidad` (`biess.union@2`).** Cuántos préstamos de cada tipo ve la fuente de
+  préstamos y cuántos la base interna, cuando no coinciden. La base interna trae los terminados: es esperada.
+- **`dif.cum.pep.repetido` (`cum.pep@1`, en `cumplimiento.ts`).** El mismo cargo con la misma fecha
+  en `listasControl.personaPublicasOpr` y `basesInternas.tpeps`. Comparar el cargo sin mayúsculas ni
+  espacios da las mismas 29 personas: no hace falta normalizarlo.
+- **`dif.tra.posible_repetida` (`tra.repetida@1`).** La misma placa y el mismo día de emisión en la
+  ANT y la AMT, sin mirar el monto (la AMT suma intereses). Si pasa, el perfil la cuenta dos veces: «revisar».
+- **`dif.ide.nivel_de_educacion` (`ide.nivel_de_educacion@1`).** El nivel del registro civil contra el
+  del título registrado más alto, cuando son distintos (las dos fuentes usan la misma escala).
+- **`dif.end.bancos` (`end.bancos@1`).** La deuda propia en bancos según el buró
+  (`deudaActualTitular.bancos.saldoDeudaUsd`) contra la de Proveedor_Info_1 (por vencer más en
+  atraso). Manda el buró, como en `perfil-del-modelo.ts`. «Revisar» si una dice cero y la otra no.
+  No va dentro de `derivarHechos()`: el buró es otra consulta, con otra fecha; la llama quien
+  tiene los dos (hoy sólo la medición) y pasa a salir de `buro.*` con el contrato de la sección 7.
+
+Cada una tiene su prueba de Deno y su crudo inventado (`scripts/crudos-sinteticos/conciliacion-*.json`
+y dos casos del BIESS), y `probar-crudos-sinteticos.mjs` acepta ahora `diferencias: { "dif.x": n }`.
+Ninguna es una regla que mezcla: no unen, eligen ni descartan registros para un valor.
+
+### 10.3 Cada diferencia nueva, con un criterio distinto del de su regla
+
+| Diferencia | La regla | Otro criterio | Qué dice |
+|---|---|---|---|
+| `dif.inst.posible_en_bancos` | 1.606 personas; la fila más cercana es de una misma entidad en 1.570 | la misma regla con la lista de bancos de OTRA persona: 91; a 5% del saldo, sin la cuota: 1.389 (53 que la regla no toma, 270 que toma y a 5% no, casi todas por la suma) | no es azar: la institución reporta a la Superintendencia sus créditos por medio de un banco, y la deuda de bancos del perfil ya los incluye |
+| `dif.cum.pep.repetido` | 29 | por empresa y sueldo: 12 | las 46 personas con PEP lo tienen en las dos listas; la empresa no siempre se escribe igual |
+| `dif.tra.posible_repetida` | 0 | por placa y monto a 5%: 0; EMOV con la placa y el monto de una de la ANT: 0 | hoy no se repite ninguna |
+| `dif.ide.nivel_de_educacion` | 327 | — (es una comparación directa del mismo campo) | ver 10.5, decisión 4 |
+| `dif.end.bancos` | 110 comparadas | las 25 a 31 días o menos del perfil: mediana 5,2%, 12 a 5% o menos, 3 a más de 50%, ninguna con una en cero | con más de un mes entre las dos fotos, la diferencia no dice nada de las fuentes |
+
+### 10.4 El RUC del SRI
+
+**No hay una fuente directa del SRI**, ni en el crudo ni en la base (medido el 2026-11-20). El
+contribuyente, los establecimientos y el impuesto a la renta llegan por Proveedor_Info_1
+(`contribuyente`, `establecimientoActEconomica` y `sriImpuestoRenta` en `proveedor-info-1-client.ts`).
+La base no tiene una tabla del SRI y sus proveedores son Proveedor_Info_1, Equifax y Aval.
+
+Queda listo para cuando la traiga el frente D (fuentes directas, sin evadir barreras contra robots):
+
+- entra como una fuente más del crudo, con su clave y su respuesta, y `ruc.ts` sigue siendo la
+  única regla del RUC activo;
+- manda la fuente directa para el estado, las fechas y los establecimientos: es la del SRI, y la
+  de Proveedor_Info_1 es su copia con su propio retraso;
+- lo que dicen distinto se guarda como `dif.ruc.*` con el mismo molde de `dif.ruc.estado`
+  (`grupos/actividad-con-ruc.ts`), «esperada» si la copia está atrasada y «revisar» si una dice
+  activo y la otra no;
+- se mide antes de entrar, sobre las mismas personas y con `medir-conciliacion.mjs`.
+
+No se inventó ningún código para esa fuente: se nombra cuando exista.
+
+### 10.5 Decisiones para el negocio
+
+| # | Punto | Decisión | Medido | Recomendación |
+|---|---|---|---|---|
+| 1 | 3 | La operación con la institución ya figura en la deuda de bancos (por medio de un mismo banco) en 1.606 de 2.529 personas con una vigente. ¿Se le dice al modelo? | el modelo lee hoy las dos (`comportamientoInterno` y la deuda de bancos) y puede leerlas como dos deudas; la capacidad de pago no lee la de la institución | Mantener la regla (no sumar ni restar) y, en la versión mayor del marco, que el modelo lea que esa operación ya está dentro de la deuda de bancos cuando hay la diferencia. Confirmar que la institución reporta por medio de ese banco |
+| 2 | 7 | Unificar «obligado a llevar contabilidad» en `ruc.ts` (que «S» cuente como obligado también en `fuentes-ingreso.ts`) | 19 personas pasarían a leerse como obligadas en `fuentesIngreso` | Sí: una sola implementación. Va con versión de `fuentes-ingreso.ts` y el recálculo de esas 19 |
+| 3 | 8 | Que mande el registro de pensión más reciente | 0 de 1.312 registros traen una fecha: no se puede aplicar | Cerrar la propuesta: se sigue con la deuda mayor del mismo proceso, y la diferencia queda (1 persona) |
+| 4 | 13 | Qué nivel de educación manda | 327 de 1.256 personas con título: en 227 el título es más alto (136 tercer a cuarto nivel, 74 bachillerato a tercer nivel), en 100 el registro civil (66 son «tercer nivel» contra «técnico superior», que en la LOES es tercer nivel técnico) | Un campo nuevo, «el nivel más alto conocido», con el mayor de los dos y su fuente (227 personas suben), sin reescribir el del registro civil. Sin apuro: va con una versión de la estructura |
+| 5 | 10 | Comparar la fecha del PEP como fecha | las dos fuentes traen «aaaa-mm-dd»: el más reciente no cambia en ninguna de las 46 | Cerrar la propuesta; la diferencia queda |
+| 6 | 15 | Que las edades y antigüedades se calculen con la fecha de la consulta y no con la del armado | un armado hecho hoy con el mismo crudo cambia 3.232 de 3.766 perfiles: la antigüedad de la etapa activa en 2.552, los meses inactivo con RUC en 590, la edad en 386, la del cónyuge en 187 y los años de casado en 184 | Sí: el perfil describe a la persona el día que se la consultó, como ya hacen los grupos de hechos; un recálculo no debería mover una edad. Va con su versión de la estructura y su recálculo |
+| 7 | 16 | Cuándo se usa `dif.end.bancos` | 110 personas con buró y perfil; 25 a un mes o menos | Nada que decidir ahora: entra con el contrato del buró (sección 7) y se mira otra vez con más consultas |
+| 8 | 12 | EMOV trae sus multas sin fecha (38 personas, 44 multas) | ninguna se pudo comparar por día | Nada por ahora: no se repite ninguna por placa y monto. Si Proveedor_Info_1 puede traer la fecha, se compara |
+
+### 10.6 Lo que no se midió
+
+- `dif.lab.salario_del_mes` da 0 en las 3.766: cuando el mecanizado y los aportes traen el mismo
+  empleo y mes, el salario coincide al centavo. No se contó cuántos pares compara.
+- `dif.end.bancos` sólo alcanza a quien tiene las dos consultas: 110 personas. Las 3.428 consultas
+  de AWS con fila son en su mayoría de personas sin perfil de Proveedor_Info_1.
+- Si una fila de bancos junta la operación con la institución y otro crédito del mismo banco, la
+  regla no la ve: no se inventa la parte de cada uno. Entre las personas con una fila de esa
+  entidad, cuántas son así no se midió.

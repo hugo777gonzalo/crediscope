@@ -1,0 +1,32 @@
+{
+  "descripcion": "E9, punto 3: la operación vigente con la institución aparece en la lista de bancos de un mes antes (debe una cuota más). Queda la diferencia dif.inst.posible_en_bancos y nada se suma ni se resta: el saldo de la institución y la deuda de bancos quedan como estaban. Otra fila de bancos, fuera de la ventana, no es candidata",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO UNO" } } },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          { "identificacion": "0000000000", "fechaCorte": "2026-09-30", "operacion": 7, "estadoOperacion": "VIGENTE", "cuotaNova": 200, "plazoCuotas": 36, "saldoCapital": 5000, "diasMoraVigentes": 0, "diasMoraMax": 0, "perfilInterno": "A", "resultadoHabitoPago": "BUENO" }
+        ]
+      }
+    },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "datosSuper": [
+          { "fecha": "2026/08/31", "entnombre": "BANCO INVENTADO", "codEntidad": "9999", "riesgo": "T", "calificacion": "A1", "saldoVigente": 5150, "noDevengaInteres": 0, "judicial": 0, "castigo": 0, "mora": 0, "saldomora": 0 },
+          { "fecha": "2026/08/31", "entnombre": "OTRO BANCO INVENTADO", "codEntidad": "9998", "riesgo": "T", "calificacion": "A1", "saldoVigente": 9000, "noDevengaInteres": 0, "judicial": 0, "castigo": 0, "mora": 0, "saldomora": 0 }
+        ]
+      }
+    },
+    "buroCreditoDiners": { "status": "ok", "data": { "datosSuper": [] } }
+  },
+  "esperado": {},
+  "diferencias": { "dif.inst.posible_en_bancos": 1 },
+  "hechos": {
+    "inst.operacion.saldo": { "valor": 5000 },
+    "ban.saldo.por_vencer": { "valor": 14150 }
+  }
+}
