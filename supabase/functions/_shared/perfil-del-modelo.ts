@@ -63,6 +63,7 @@ import { ETIQUETA_ESTADO, ETIQUETA_SEGMENTO, quienDeclara } from "./nombres-ingr
 import { relacionConEmpleador } from "./patrono.ts";
 import { tipoDeDemandaLegible } from "./demandas.ts";
 import { fechaEnEcuador } from "./equifax-estructura.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -714,7 +715,10 @@ export function armarPerfilDelModelo(
   // La fecha del análisis, para los años de cada demanda de cobro (marco-v36).
   ahora: Date | null = null,
 ): AnyRecord {
-  const copia = JSON.parse(JSON.stringify(perfil ?? {})) as Record<string, unknown>;
+  // Un campo sin dato (estructura-v25) llega con el valor de antes, y la marca
+  // no llega: hasta la versión mayor del marco, el modelo lee lo mismo que con
+  // la v24. Leer el null y la marca es esa versión (docs/capa-de-hechos.md).
+  const copia = JSON.parse(JSON.stringify(conLosValoresDeAntes(perfil ?? {}))) as Record<string, unknown>;
   copia.fuentesIngreso = ingresosDelPerfilDelModelo(perfil);
   const ocultar = (destino: Record<string, unknown>) => {
     for (const clave of camposDeshabilitados) {

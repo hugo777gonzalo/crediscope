@@ -387,81 +387,89 @@ export interface StandardClientProfile {
   // garantiza o codeuda va aparte: sumado, 319 personas cargaban $73,8 M
   // ajenos, y en 125 la peor calificación era de otra persona.
   comportamientoBancario: {
-    numeroOperacionesBuroCredito: number;
+    numeroOperacionesBuroCredito: number | null;
     peorCalificacionRiesgo: string | null;
     mejorCalificacionRiesgo: string | null;
     // De pn_deudores. Solo la presencia: el recurso vino vacío en las 16
     // personas con las que se inspeccionó, así que no se conoce la
     // estructura de un registro. Figurar es una señal; no figurar, que
     // es el caso de todos hasta ahora, también.
-    figuraEnRegistroDeudores: boolean;
-    tieneOperacionConDemanda: boolean;
-    tieneOperacionCastigada: boolean;
-    saldoTotalVigente: number;
+    figuraEnRegistroDeudores: boolean | null;
+    tieneOperacionConDemanda: boolean | null;
+    tieneOperacionCastigada: boolean | null;
+    saldoTotalVigente: number | null;
     // Monto total en mora (campos mora/saldomora por operación) — antes
     // no se extraía, dejando a saldoTotalVigente como único indicador de
     // deuda aunque no refleja atrasos. Sin caso real en la muestra
     // actual con valor >0 (calificaciones vistas: A1-B2, ninguna con
     // mora) — se extrae de forma proactiva para cerrar el hueco del
     // schema, a confirmar la forma exacta cuando aparezca un caso real.
-    saldoEnMoraBuroCredito: number;
+    saldoEnMoraBuroCredito: number | null;
     // Desde estructura-v8. La cartera que no devenga intereses: la parte
     // de una operación en atraso que el banco dejó de contar como
     // productiva. No se leía, y 56 personas con $626.743 así figuraban
     // con $0 en mora (una E de Produbanco con $28.252 en c-3293f7eb).
-    saldoNoDevengaIntereses?: number;
+    saldoNoDevengaIntereses?: number | null;
     // Vencido + no devenga + demanda judicial + castigo: todo lo propio
     // que está en atraso.
-    deudaEnAtraso?: number;
+    deudaEnAtraso?: number | null;
     // Operaciones propias calificadas B1..E sin monto en vigente, mora,
     // no devenga, demanda ni castigo (9 personas en la cartera: 2 sin
     // ningún valor y las que sólo traen los tramos, que no son montos
     // confiables). La calificación está, el monto no se informó.
-    operacionesEnAtrasoSinMonto?: number;
-    numeroOperacionesComoGaranteOCodeudor?: number;
-    deudaComoGaranteOCodeudor?: number;
+    operacionesEnAtrasoSinMonto?: number | null;
+    numeroOperacionesComoGaranteOCodeudor?: number | null;
+    deudaComoGaranteOCodeudor?: number | null;
     peorCalificacionComoGaranteOCodeudor?: string | null;
     // Préstamos quirografarios e hipotecarios del IESS/BIESS, no
     // operaciones del buró (en el perfil del modelo se llama
     // numeroPrestamosIessBiess).
-    numeroCreditosFormales: number;
+    numeroCreditosFormales: number | null;
     // Retail: casas comerciales, OTRA fuente que el buró.
-    numeroDeudasRetail: number;
+    numeroDeudasRetail: number | null;
     diasMoraMaximaRetail: number | null;
-    totalDeudaRetail: number;
+    totalDeudaRetail: number | null;
     // Desde estructura-v8: lo vencido de la deuda retail. 85 personas
     // tienen retail vencido y el total solo se leía como "vigente".
-    valorVencidoRetail?: number;
+    valorVencidoRetail?: number | null;
     // Corte de las deudas retail (la `fecha` de cada fila, la más antigua de
     // ellas, YYYY-MM-DD). No es el día de la consulta. Desde estructura-v16;
     // null sin deudas retail.
     fechaCorteRetail?: string | null;
-    tieneCreditoIessBiess: boolean;
+    tieneCreditoIessBiess: boolean | null;
     diasMoraCreditoIessBiess: number | null;
     // Desde estructura-v16: saldo (por vencer y vencido) de los préstamos
     // del IESS/BIESS de las dos fuentes; null si no hay ninguno.
     saldoPrestamosIessBiess?: number | null;
     // Desde estructura-v22: cada préstamo con su tipo, saldo y fecha de fin
     // (yyyy-mm-dd; null si la fuente no la trae). No llega al modelo.
-    operacionesIessBiess?: Array<{ tipo: "quirografario" | "hipotecario" | null; saldo: number; fechaFin: string | null }>;
+    operacionesIessBiess?: Array<{ tipo: "quirografario" | "hipotecario" | null; saldo: number; fechaFin: string | null }> | null;
+    // Desde estructura-v25: los campos de arriba cuya fuente no contestó (o
+    // está apagada). Ese campo es null, y acá va lo que dicen las fuentes que
+    // sí contestaron: lo que el perfil escribía como si fuera el total hasta la
+    // v24, y lo que el modelo sigue leyendo hasta la versión mayor del marco
+    // (campos-sin-dato.ts). Sin fuentes caídas, la clave no está.
+    camposSinDato?: Record<string, unknown>;
   };
 
   // "Comportamiento Cooperativas" (grupo 9)
   comportamientoCooperativas: {
-    numeroOperaciones: number;
+    numeroOperaciones: number | null;
     // El atraso A LA FECHA DEL CORTE de la operación más atrasada, no uno
     // histórico: el modelo lo leyó como histórico ("actualmente sin
     // mora") en un caso con 10 días de atraso vigente.
     diasMoraMaxima: number | null;
-    saldoTotal: number;
+    saldoTotal: number | null;
     // Ver nota de saldoEnMoraBuroCredito en comportamientoBancario —
     // mismo hueco, misma decisión.
-    saldoEnMora: number;
-    tieneOperacionConDemanda: boolean;
-    tieneOperacionCastigada: boolean;
+    saldoEnMora: number | null;
+    tieneOperacionConDemanda: boolean | null;
+    tieneOperacionCastigada: boolean | null;
     // Desde estructura-v8: la suma de las cuotas mensuales que informa
     // cada operación (693 de 747 la traen). Los bancos no la informan.
-    cuotaMensualTotal?: number;
+    cuotaMensualTotal?: number | null;
+    // Desde estructura-v25, como en comportamientoBancario.
+    camposSinDato?: Record<string, unknown>;
   };
 
   // "Comportamiento Interno" (grupo 14, NUEVO) — el scoring propio de

@@ -28,6 +28,9 @@ import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 // Los ayudantes de lectura del crudo viven en la capa de hechos desde la tarea
 // E4: el perfil y los hechos leen el mismo registro con el mismo código.
 import { arr, estadoRecurso, num, obj, parseFecha, redondear, textoDe } from "./hechos/lectura-del-crudo.ts";
+import { derivarHechos } from "./hechos/indice.ts";
+import { perfilDesdeHechos } from "./hechos/perfil-desde-hechos.ts";
+import { CLAVE_SIN_DATO } from "./campos-sin-dato.ts";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -132,26 +135,6 @@ function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" |
   // Si el cese vigente no es ni la suspensión definitiva ni la
   // cancelación, es la solicitud de suspensión: un cese temporal.
   return cancelacion && cancelacion.getTime() === cese.getTime() ? "cancelacion" : "suspension_temporal";
-}
-
-// La escala de calificaciones del buró, de mejor a peor. En consumo sale de
-// los días de atraso; en el comercial, no sólo de ellos.
-const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
-// A1 es la única sin atraso (estructura-v17, negocio, 2026-10-31). Sumar A2 y A3
-// no cambia a nadie hoy: de sus 647 operaciones propias, ninguna viene sin deuda.
-const CALIFICACIONES_EN_ATRASO = new Set(["A2", "A3", "B1", "B2", "C1", "C2", "D", "E"]);
-
-// La peor o la mejor calificación de un conjunto de operaciones. Hasta
-// estructura-v7 se ordenaban alfabéticamente, y "AL" -- fuera de la
-// escala -- quedaba entre A3 y B1. Las 62 operaciones AL de la cartera
-// están al día (sólo saldo por vencer, cero en toda columna de atraso):
-// se leen como sin atraso y nunca son la peor. Si no hay ninguna
-// calificación de la escala, se nombra la que haya.
-function extremoDeCalificacion(operaciones: AnyRecord[], cual: "peor" | "mejor"): string | null {
-  const todas = operaciones.map((r) => String(r.calificacion ?? "").trim()).filter(Boolean);
-  const enEscala = todas.filter((c) => ESCALA_CALIFICACION.includes(c)).sort((a, b) => ESCALA_CALIFICACION.indexOf(a) - ESCALA_CALIFICACION.indexOf(b));
-  if (enEscala.length) return cual === "peor" ? enEscala.at(-1)! : enEscala[0];
-  return todas[0] ?? null;
 }
 
 // seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
@@ -299,126 +282,6 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
   return claves.size;
 }
 
-// Los préstamos del IESS/BIESS vienen por dos caminos con identificadores
-// distintos: los de la base interna (tcredQuirografarios/tcredHipotecarios) y
-// los de creditoQuirografario/creditoHipotecario (data.prestamos). Cada uno
-// trae operaciones que el otro no ve: medido sobre 560 personas con las dos
-// fuentes, 1.428 operaciones de la base contra 1.396 de los préstamos y ninguna
-// con el mismo número de operación ni la misma fecha y monto. Hasta
-// estructura-v15 sólo se leía la base interna y en c-82cc2afc, con 9 préstamos
-// vigentes, el perfil decía que no tenía crédito del IESS/BIESS (308 de 918
-// personas con créditos formales quedaban así).
-//
-// Una operación que esté en las dos se cuenta una vez: por su número, o por el
-// mismo monto (a un dólar) con la concesión a 31 días o menos. Desde
-// estructura-v21 (p6 de la revisión del análisis, aprobada por el negocio el
-// 2026-11-08); hasta v20 se pedían la fecha y el monto exactos, y la base
-// interna y la fuente de préstamos anotan el mismo hipotecario con otro número
-// y la fecha corrida: en c-b9fc9a82 a 2 días. Medido el 2026-11-09 sobre las
-// 3.766 personas reales: 177 hipotecarios contados dos veces en 174 personas
-// (145 a 3 días o menos, 173 a 7, 176 a 15), USD 6,6 millones de saldo de más.
-//
-// Manda la de la fuente de préstamos, con los días de mora más altos de las
-// dos: trae `fechaCorte` y su saldo es el de hoy, y la base interna es una foto
-// vieja (en c-3cec8b5f, 18.831 contra 14.816 del mismo hipotecario).
-//
-// Y de la base interna no se cuentan los préstamos terminados: los que siguen
-// «VIGENTE» con el plazo ya cumplido y sin mora, que la fuente de préstamos ya
-// no trae. Eran 1.600 operaciones en 651 personas, terminadas hace 3 años y
-// medio en la mediana, con USD 3,6 millones de saldo que ya no se debe
-// (c-40d771e1). Los que la base marca «VENCIDO» o «MORA» se cuentan: deben.
-// La fuente de préstamos trae sólo lo vigente (PV), vencido (VC) o en
-// novación (ND): en el respaldo del 03/10, ningún cancelado.
-//
-// Desde estructura-v22 (F12, 2026-11-17) cada operación lleva también su tipo y
-// el día en que termina, porque la capacidad de pago estima la cuota con la
-// anualidad del plazo que queda (capacidad-de-pago.ts): el buró de bancos de
-// Proveedor_Info_1 no trae al BIESS (0 de 1.025 personas con préstamo), así que
-// su cuota no está en ningún otro lado. La base interna dice cuándo termina
-// (fechaFinCredito / srFecfincredito); la fuente de préstamos no, y ahí el fin
-// es la concesión más el plazo original en meses.
-export type OperacionIess = {
-  numero: string;
-  dia: number | null;
-  monto: number | null;
-  saldo: number;
-  diasMora: number;
-  tipo: "quirografario" | "hipotecario" | null;
-  fin: number | null;
-};
-
-// Marca de qué lista salió un registro de la fuente de préstamos, que no dice su tipo.
-const TIPO_DE_LA_FILA = "__tipoIess";
-export function conTipoIess(filas: AnyRecord[], tipo: "quirografario" | "hipotecario"): AnyRecord[] {
-  return filas.map((r) => ({ ...r, [TIPO_DE_LA_FILA]: tipo }));
-}
-
-// «yyyy-mm-dd» desde los días desde 1970; null sin fecha.
-export function fechaDeDia(dia: number | null): string | null {
-  return dia === null ? null : new Date(dia * 86_400_000).toISOString().slice(0, 10);
-}
-
-const DIAS_DE_TOLERANCIA_EN_LA_CONCESION = 31;
-
-// «31/07/2025» a días desde 1970; null si no es una fecha.
-function diaDeFechaDDMMYYYY(v: unknown): number | null {
-  const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  return m ? Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) / 86_400_000) : null;
-}
-
-// Concesión («dd/mm/yyyy») más el plazo en meses, a días desde 1970.
-function finDeLaConcesion(concesion: unknown, plazoMeses: unknown): number | null {
-  const m = String(concesion ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  const plazo = num(plazoMeses);
-  if (!m || plazo === null || plazo <= 0) return null;
-  return Math.floor(Date.UTC(Number(m[3]), Number(m[2]) - 1 + Math.round(plazo), Number(m[1])) / 86_400_000);
-}
-
-export function operacionesIessBiess(deLaBase: AnyRecord[], deLosPrestamos: AnyRecord[]): OperacionIess[] {
-  const sinCeros = (v: unknown) => String(v ?? "").trim().replace(/^0+/, "");
-  const hoy = Math.floor(Date.now() / 86_400_000);
-  const prestamos: OperacionIess[] = deLosPrestamos.map((r) => ({
-    numero: sinCeros(r.nroOperacion),
-    dia: diaDeFechaDDMMYYYY(r.fechaConcesion),
-    monto: num(r.valorPrestamo),
-    saldo: (num(r.valorPorVencer) ?? 0) + (num(r.valorVencido) ?? 0),
-    diasMora: num(r.diasMora) ?? 0,
-    tipo: (r[TIPO_DE_LA_FILA] as OperacionIess["tipo"] | undefined) ?? null,
-    fin: finDeLaConcesion(r.fechaConcesion, r.plazoOriginal),
-  }));
-  const esLaMisma = (a: OperacionIess, b: OperacionIess) =>
-    (a.numero !== "" && a.numero === b.numero) ||
-    (a.monto !== null && b.monto !== null && Math.abs(a.monto - b.monto) <= 1 &&
-      a.dia !== null && b.dia !== null && Math.abs(a.dia - b.dia) <= DIAS_DE_TOLERANCIA_EN_LA_CONCESION);
-  const salida = [...prestamos];
-  for (const r of deLaBase) {
-    const o: OperacionIess = {
-      // Los hipotecarios llevan otros nombres de campo (sr...), y su mora no se
-      // leía: diasMoraAfi no existe en ellos.
-      numero: sinCeros(r.numeroOperacion ?? r.srNrooperaciongaf),
-      dia: diaDeFechaDDMMYYYY(r.fechaConsesion ?? r.srFecprimerdesembolso),
-      monto: num(r.montoTransferido ?? r.srMontofinanciado),
-      saldo: num(r.saldoTotalCredito ?? r.srSaldototalcredito) ?? 0,
-      diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
-      tipo: (r[TIPO_DE_LA_FILA] as OperacionIess["tipo"] | undefined) ?? (r.srNrooperaciongaf !== undefined ? "hipotecario" : null),
-      fin: diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito),
-    };
-    const repetida = prestamos.find((p) => esLaMisma(p, o));
-    if (repetida) {
-      repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
-      // La fecha de fin de la base interna es la pactada: vale más que la derivada.
-      repetida.fin = o.fin ?? repetida.fin;
-      repetida.tipo = repetida.tipo ?? o.tipo;
-      continue;
-    }
-    const estado = String(r.estadoOperacion ?? r.srEstadocredito ?? "").trim().toUpperCase();
-    const fin = o.fin;
-    const terminado = estado === "VIGENTE" && fin !== null && fin < hoy && o.diasMora === 0;
-    if (!terminado) salida.push(o);
-  }
-  return salida;
-}
-
 // ---- La operación del comportamiento interno ----
 //
 // personasIncumplimientos trae una fila por OPERACIÓN de la persona con la
@@ -442,17 +305,6 @@ export function operacionDelComportamientoInterno(operaciones: AnyRecord[]): Any
       (a, b) => Number(cancelada(a)) - Number(cancelada(b)) || tamano(b) - tamano(a) || numero(b) - numero(a),
     )[0] ?? null
   );
-}
-
-// «31/07/25» o «31/07/2025» a «2025-07-31». Proveedor_Info_1 escribe el corte del
-// retail con el año de dos cifras.
-function fechaDeCorte(v: unknown): string | null {
-  const m = String(v ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
-  if (!m) return null;
-  const anio = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
-  const d = new Date(Date.UTC(anio, Number(m[2]) - 1, Number(m[1])));
-  if (d.getUTCFullYear() !== anio || d.getUTCMonth() !== Number(m[2]) - 1 || d.getUTCDate() !== Number(m[1])) return null;
-  return d.toISOString().slice(0, 10);
 }
 
 // v3: metaConsulta pasa de contar nueve bloques a nombrar las 52
@@ -553,7 +405,13 @@ function fechaDeCorte(v: unknown): string | null {
 // (demandas.ts, atribuirDemandas). Lo que no se puede atribuir (sin demandado,
 // sin nombre) sigue contando y se avisa: numeroDemandasDeOtroDemandado y
 // numeroDemandasSinCotejo en riesgoJudicialCrediticio y riesgoJudicialCivil.
-export const PROCESS_VERSION = "estructura-v24"; // ver docs/estructura-estandarizada.md
+// estructura-v25 (E4, etapa B del grupo 1 de la capa de hechos): bancos y
+// Diners, el retail, el registro de deudores, el BIESS y las cooperativas salen
+// de hechos/grupos/, la única implementación. Con una fuente que no contestó,
+// el campo es null y el grupo lo lista en camposSinDato con lo que trajeron las
+// demás (campos-sin-dato.ts): hasta la v24 se escribía ese parcial, o 0, como
+// si fuera el total. El modelo lee lo de antes hasta la versión mayor del marco.
+export const PROCESS_VERSION = "estructura-v25"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -574,8 +432,6 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // operación (ver operacionDelComportamientoInterno).
   const operacionesInstitucion = arr(biWrap, "x", "personasIncumplimientos");
   const tiess = arr(biWrap, "x", "tiess");
-  const tcredQ = arr(biWrap, "x", "tcredQuirografarios");
-  const tcredH = arr(biWrap, "x", "tcredHipotecarios");
 
   // ---- identidad ----
   const nacionalidad0 = (g?.nacionalidades as AnyRecord[] | undefined)?.[0]?.pais as AnyRecord | undefined;
@@ -1250,113 +1106,65 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     valorColateralVehiculos: redondear(vehiculos.reduce((s, v) => s + valorDeColateral(v), 0)),
   };
 
-  // ---- comportamientoBancario ----
-  // buró de crédito (antes "central de riesgos") — fuente Super/Diners.
-  // peorCalificacionRiesgo/mejorCalificacionRiesgo: un cliente con 2+
-  // operaciones puede tener calificaciones distintas (A1 mejor .. E
-  // peor) — se exponen ambos extremos (ver nota en types.ts). El sort()
-  // lexicográfico funciona porque el orden alfabético de las
-  // calificaciones (A1,A2,A3,B1,B2,C1,C2,D,E) coincide con el orden de
-  // severidad real.
+  // ---- comportamientoBancario y comportamientoCooperativas ----
+  // Desde estructura-v25 salen de la capa de hechos (etapa B del grupo 1,
+  // docs/capa-de-hechos.md, 3.3): las reglas de bancos y Diners, el retail, el
+  // registro de deudores, la unión del BIESS y las cooperativas viven en
+  // hechos/grupos/, con el registro del crudo que sostiene cada valor. Acá sólo
+  // se copian al perfil, en el orden de siempre (el modelo lee el JSON en
+  // orden). Con una fuente que no contestó, el campo es null y el grupo lo
+  // lista en camposSinDato (campos-sin-dato.ts).
   //
-  // estructura-v8, de la revisión de los primeros análisis con marco-v23
-  // (medido sobre el crudo de 2.567 clientes):
-  //  - La columna `riesgo` dice el ROL: T titular, G garante, C codeudor.
-  //    Se sumaba todo como propio: 319 personas cargaban $73,8 M ajenos, y
-  //    en 125 la peor calificación era de una operación que garantizan (18
-  //    de ellas D o E). Ahora lo propio y lo garantizado van por separado,
-  //    como ya se decidió para Aval (migración 080).
-  //  - Una operación en atraso puede tener su monto en `noDevengaInteres`
-  //    (la cartera que el banco dejó de contar como productiva), que no se
-  //    leía: 56 personas con $626.743 figuraban con $0 en mora.
-  //  - `saldomora ?? mora` no caía a `mora` cuando saldomora venía en 0
-  //    (0 no es null).
-  //  - Los tramos saldo0_1..mas_36 NO se suman: en las filas en mora suman
-  //    exactamente 1,00 (parecen una marca, no un monto) y no coinciden
-  //    con el saldo en mora. No se sabe qué son.
-  //  - "AL" es una calificación fuera de la escala: 62 operaciones, todas
-  //    con saldo sólo por vencer y cero en cualquier columna de atraso. Se
-  //    lee como sin atraso: nunca es la peor; si es la única, se nombra.
-  const buroCredito = [...arr(fuentes, "buroCreditoSuper", "datosSuper"), ...arr(fuentes, "buroCreditoDiners", "datosSuper")];
-  // Sin la columna, titular: es el caso de casi todas las filas y el
-  // registro no deja otra lectura.
-  const esGarantia = (r: AnyRecord) => r.riesgo === "G" || r.riesgo === "C";
-  const propias = buroCredito.filter((r) => !esGarantia(r));
-  const garantias = buroCredito.filter(esGarantia);
-  const retails = arr(fuentes, "retails", "retails");
-  // Los préstamos del IESS/BIESS de las dos fuentes, sin contar dos veces una
-  // operación que esté en ambas (estructura-v16, ver operacionesIessBiess).
-  const creditosIess = operacionesIessBiess(
-    [...conTipoIess(tcredQ, "quirografario"), ...conTipoIess(tcredH, "hipotecario")],
-    [
-      ...conTipoIess(arr(fuentes, "creditoQuirografario", "prestamos"), "quirografario"),
-      ...conTipoIess(arr(fuentes, "creditoHipotecario", "prestamos"), "hipotecario"),
-    ],
-  );
-  // La fecha de `retails` es el corte de la casa comercial, no del día de la
-  // consulta (fechaActualizacion): las 63 filas de las 91 personas con
-  // Equifax traen julio de 2025, y la pantalla presentaba esa deuda como
-  // actual. Si las filas traen cortes distintos, el perfil guarda el más
-  // antiguo: la deuda no es más reciente que eso.
-  const cortesRetail = retails.map((r) => fechaDeCorte(r.fecha)).filter((f): f is string => f !== null).sort();
-  const vencido = (r: AnyRecord) => {
-    const saldomora = num(r.saldomora) ?? 0;
-    return saldomora > 0 ? saldomora : num(r.mora) ?? 0;
-  };
-  const enAtraso = (r: AnyRecord) =>
-    vencido(r) + (num(r.noDevengaInteres) ?? 0) + (num(r.judicial) ?? 0) + (num(r.castigo) ?? 0);
-  const deudaDe = (r: AnyRecord) => (num(r.saldoVigente) ?? 0) + enAtraso(r);
-  const comportamientoBancario: StandardClientProfile["comportamientoBancario"] = {
-    figuraEnRegistroDeudores: arr(fuentes, "deudores", "deudores").length > 0,
-    numeroOperacionesBuroCredito: propias.length,
-    peorCalificacionRiesgo: extremoDeCalificacion(propias, "peor"),
-    mejorCalificacionRiesgo: extremoDeCalificacion(propias, "mejor"),
-    tieneOperacionConDemanda: propias.some((r) => (num(r.judicial) ?? 0) > 0),
-    tieneOperacionCastigada: propias.some((r) => (num(r.castigo) ?? 0) > 0),
-    // saldoVigente es lo POR VENCER: lo que está en atraso va en
-    // saldoEnMoraBuroCredito y saldoNoDevengaIntereses.
-    saldoTotalVigente: redondear(propias.reduce((s, r) => s + (num(r.saldoVigente) ?? 0), 0)),
-    saldoEnMoraBuroCredito: redondear(propias.reduce((s, r) => s + vencido(r), 0)),
-    saldoNoDevengaIntereses: redondear(propias.reduce((s, r) => s + (num(r.noDevengaInteres) ?? 0), 0)),
-    deudaEnAtraso: redondear(propias.reduce((s, r) => s + enAtraso(r), 0)),
-    operacionesEnAtrasoSinMonto: propias.filter((r) => CALIFICACIONES_EN_ATRASO.has(String(r.calificacion)) && deudaDe(r) === 0).length,
-    numeroOperacionesComoGaranteOCodeudor: garantias.length,
-    deudaComoGaranteOCodeudor: redondear(garantias.reduce((s, r) => s + deudaDe(r), 0)),
-    peorCalificacionComoGaranteOCodeudor: extremoDeCalificacion(garantias, "peor"),
-    numeroCreditosFormales: arr(fuentes, "creditoHipotecario", "prestamos").length + arr(fuentes, "creditoQuirografario", "prestamos").length,
-    numeroDeudasRetail: retails.length,
-    diasMoraMaximaRetail: retails.length ? Math.max(...retails.map((r) => num(r.diasMora) ?? 0)) : null,
-    totalDeudaRetail: redondear(retails.reduce((s, r) => s + (num(r.totalDeuda) ?? 0), 0)),
-    valorVencidoRetail: redondear(retails.reduce((s, r) => s + (num(r.valorVencido) ?? 0), 0)),
-    fechaCorteRetail: cortesRetail[0] ?? null,
-    tieneCreditoIessBiess: creditosIess.length > 0,
-    diasMoraCreditoIessBiess: creditosIess.length ? Math.max(...creditosIess.map((c) => c.diasMora)) : null,
-    saldoPrestamosIessBiess: creditosIess.length ? redondear(creditosIess.reduce((s, c) => s + c.saldo, 0)) : null,
+  // El reloj de los hechos es la hora del armado, como el de la unión del
+  // BIESS hasta la v24: un préstamo «terminado» se decide el día que se arma.
+  const hechos = derivarHechos(raw, {
+    cedula,
+    consulta: "perfil",
+    fechaDeLaConsulta: new Date().toISOString(),
+    corteIess: corteIess ?? "",
+    persona: { nombre: textoDe(persona?.nombre), fechaDeNacimiento: null },
+  });
+  const b = perfilDesdeHechos(hechos, "comportamientoBancario") as AnyRecord;
+  const c = perfilDesdeHechos(hechos, "comportamientoCooperativas") as AnyRecord;
+  const conSinDato = <T extends object>(grupo: T, desde: AnyRecord): T =>
+    (desde[CLAVE_SIN_DATO] ? { ...grupo, [CLAVE_SIN_DATO]: desde[CLAVE_SIN_DATO] } : grupo);
+  const comportamientoBancario = conSinDato({
+    figuraEnRegistroDeudores: b.figuraEnRegistroDeudores,
+    numeroOperacionesBuroCredito: b.numeroOperacionesBuroCredito,
+    peorCalificacionRiesgo: b.peorCalificacionRiesgo,
+    mejorCalificacionRiesgo: b.mejorCalificacionRiesgo,
+    tieneOperacionConDemanda: b.tieneOperacionConDemanda,
+    tieneOperacionCastigada: b.tieneOperacionCastigada,
+    saldoTotalVigente: b.saldoTotalVigente,
+    saldoEnMoraBuroCredito: b.saldoEnMoraBuroCredito,
+    saldoNoDevengaIntereses: b.saldoNoDevengaIntereses,
+    deudaEnAtraso: b.deudaEnAtraso,
+    operacionesEnAtrasoSinMonto: b.operacionesEnAtrasoSinMonto,
+    numeroOperacionesComoGaranteOCodeudor: b.numeroOperacionesComoGaranteOCodeudor,
+    deudaComoGaranteOCodeudor: b.deudaComoGaranteOCodeudor,
+    peorCalificacionComoGaranteOCodeudor: b.peorCalificacionComoGaranteOCodeudor,
+    numeroCreditosFormales: b.numeroCreditosFormales,
+    numeroDeudasRetail: b.numeroDeudasRetail,
+    diasMoraMaximaRetail: b.diasMoraMaximaRetail,
+    totalDeudaRetail: b.totalDeudaRetail,
+    valorVencidoRetail: b.valorVencidoRetail,
+    fechaCorteRetail: b.fechaCorteRetail,
+    tieneCreditoIessBiess: b.tieneCreditoIessBiess,
+    diasMoraCreditoIessBiess: b.diasMoraCreditoIessBiess,
+    saldoPrestamosIessBiess: b.saldoPrestamosIessBiess,
     // Desde estructura-v22: una fila por operación, para estimar la cuota en la
     // capacidad de pago. No llega al modelo (RUTAS_QUE_NO_LLEGAN).
-    operacionesIessBiess: creditosIess.map((c) => ({ tipo: c.tipo, saldo: redondear(c.saldo), fechaFin: fechaDeDia(c.fin) })),
-  };
-
-  // ---- comportamientoCooperativas ----
-  const coop = arr(fuentes, "buroCreditoCoop", "datosSuper");
-  // val_venc_1..11: buckets de antigüedad de lo vencido (a diferencia de
-  // val_saldo_total, que es el saldo total sin distinguir cuánto está
-  // realmente atrasado) — confirmado con caso real (cédula c-c861d3f1,
-  // 2 operaciones en cooperativas distintas con $928.39+$1353.12 en
-  // buckets vencidos de un saldo total de $14,732.18).
-  const CAMPOS_VENCIDO_COOP = Array.from({ length: 11 }, (_, i) => `val_venc_${i + 1}`);
-  const comportamientoCooperativas: StandardClientProfile["comportamientoCooperativas"] = {
-    numeroOperaciones: coop.length,
-    diasMoraMaxima: coop.length ? Math.max(...coop.map((c) => num(c.num_dias_morosidad) ?? 0)) : null,
-    saldoTotal: redondear(coop.reduce((s, c) => s + (num(c.val_saldo_total) ?? 0), 0)),
-    saldoEnMora: redondear(coop.reduce((s, c) => s + CAMPOS_VENCIDO_COOP.reduce((s2, campo) => s2 + (num(c[campo]) ?? 0), 0), 0)),
-    tieneOperacionConDemanda: coop.some((c) => (num(c.val_dem_judicial) ?? 0) > 0),
-    tieneOperacionCastigada: coop.some((c) => (num(c.val_cart_castigada) ?? 0) > 0),
-    // estructura-v8: 693 de 747 operaciones informan la cuota y no se
-    // leía. En c-2a50c228 son $2.294 al mes contra $1.000 declarados. Es
-    // la única cuota conocida: los bancos no la informan.
-    cuotaMensualTotal: redondear(coop.reduce((s, c) => s + (num(c.val_cuota_credito) ?? 0), 0)),
-  };
+    operacionesIessBiess: b.operacionesIessBiess,
+  } as StandardClientProfile["comportamientoBancario"], b);
+  const comportamientoCooperativas = conSinDato({
+    numeroOperaciones: c.numeroOperaciones,
+    diasMoraMaxima: c.diasMoraMaxima,
+    saldoTotal: c.saldoTotal,
+    saldoEnMora: c.saldoEnMora,
+    tieneOperacionConDemanda: c.tieneOperacionConDemanda,
+    tieneOperacionCastigada: c.tieneOperacionCastigada,
+    cuotaMensualTotal: c.cuotaMensualTotal,
+  } as StandardClientProfile["comportamientoCooperativas"], c);
 
   // ---- comportamientoInterno (grupo nuevo — scoring propio Proveedor_Info_1) ----
   // Lo que la institución sabe del hábito de pago de la persona, de UNA de sus

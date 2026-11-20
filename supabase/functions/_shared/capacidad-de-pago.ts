@@ -30,6 +30,7 @@
 //   pagaban más que su ingreso neto (medido el 2026-10-17).
 
 import { esIngresoMinimoSbu } from "./fuentes-ingreso.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 
 // v2 (2026-10-17): el Ingreso declarado. v3 (2026-10-18): el veredicto se
 // decide en centavos enteros y las entradas inválidas se dicen o se rechazan.
@@ -393,7 +394,11 @@ export function elBuroTraeDetalle(estructuraEquifax: AnyRecord | null): boolean 
 // del titular); lo de codeudor o garante no se cuenta, porque no la paga él
 // mientras el deudor pague. Las casas comerciales de Proveedor_Info_1 son otras
 // empresas (medido el 2026-10-13) y no informan la cuota.
-export function datosDeCapacidad(perfil: AnyRecord | null, estructuraEquifax: AnyRecord | null, hoy: Date = new Date()): DatosDeCapacidad {
+export function datosDeCapacidad(perfilGuardado: AnyRecord | null, estructuraEquifax: AnyRecord | null, hoy: Date = new Date()): DatosDeCapacidad {
+  // Con un campo sin dato (estructura-v25) la capacidad calcula como con la
+  // v24: con lo que trajeron las fuentes que contestaron. Las que no, ya las
+  // avisa fuentesSinConsultar si fallaron o están apagadas.
+  const perfil = conLosValoresDeAntes(perfilGuardado);
   const fuentesIngreso = comoObjeto(perfil?.fuentesIngreso);
   const corteIess = typeof fuentesIngreso?.corteIessUsado === "string" ? fuentesIngreso.corteIessUsado : null;
   const ingresos: IngresoMensual[] = [];

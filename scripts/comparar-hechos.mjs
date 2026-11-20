@@ -12,13 +12,21 @@
 //      máximo se vuelve a calcular desde los registros citados, leyendo el crudo
 //      con este código y no con el de la regla;
 //   6. con --deposito, además, el grupo guardado en la base contra el del paso 1
-//      (informativo: un perfil que quedó sin recalcular no decide nada).
+//      (informativo: un perfil que quedó sin recalcular no decide nada);
+//   7. con --contra=<ref> (por omisión origin/main), el perfil que arma el
+//      process.ts de esa versión, con el mismo reloj, contra el de ahora. Es la
+//      medida de una versión de la estructura sobre el crudo: lo que cambia y
+//      en quién. Con los valores de antes (campos-sin-dato.ts) tiene que dar
+//      igual campo por campo; sin ellos, la única diferencia admitida es la de
+//      DIFERENCIAS_ESPERADAS del grupo (`cuando: "sin_dato"`: el campo está en
+//      camposSinDato). --contra=no la salta.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
-// Una diferencia de paridad donde alguna fuente del hecho no contestó se cuenta
-// aparte: hoy el perfil escribe 0 o false cuando la fuente falla, y el hecho dice
-// «no disponible». Ésa es una diferencia explicada, no un error de la regla.
+// Desde la etapa B del grupo 1 (estructura-v25) process.ts arma esos grupos
+// desde los hechos: la paridad del paso 3 prueba que los copia enteros, y una
+// fuente que no contestó ya no explica ninguna diferencia. Lo que mide el
+// cambio de versión es el paso 7.
 //
 // SOLO LEE. Sin --deposito, sólo el respaldo local del crudo. Con --deposito, el
 // último perfil de cada persona real (client_profiles por PostgREST, sólo
@@ -33,12 +41,14 @@
 //
 // Uso:
 //   node scripts/comparar-hechos.mjs [--grupo=comportamientoBancario,cooperativas] [--medir]
-//     [--carpeta=research/proveedor-info-1-raw-2026-10-03] [--deposito] [--limite=N]
+//     [--carpeta=research/proveedor-info-1-raw-2026-10-03] [--deposito] [--limite=N] [--contra=origin/main|no]
 //
 // AVISO: este archivo no pasa por lint ni build. Después de tocarlo, correrlo
 // con --limite=5 antes de confiar en los números.
 
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { performance } from "node:perf_hooks";
@@ -65,6 +75,27 @@ const importar = (ruta) => import(pathToFileURL(path.join(RAIZ, ruta)).href);
 const { derivarHechos, GRUPOS } = await importar("supabase/functions/_shared/hechos/indice.ts");
 const { perfilDesdeHechos, gruposDelPerfil } = await importar("supabase/functions/_shared/hechos/perfil-desde-hechos.ts");
 const { buildStandardProfile } = await importar("supabase/functions/_shared/process.ts");
+const { conLosValoresDeAntes } = await importar("supabase/functions/_shared/campos-sin-dato.ts");
+
+// 7. El process.ts de otra versión, sacado de git a una carpeta temporal (sólo
+// el código de _shared, sin las pruebas): se importa como cualquier otro.
+const CONTRA = args.contra === "no" ? null : typeof args.contra === "string" ? args.contra : "origin/main";
+let construirAntes = null;
+let selloContra = null;
+if (CONTRA) {
+  const git = (...a) => execFileSync("git", ["-C", RAIZ, ...a], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  selloContra = git("rev-parse", "--short=12", CONTRA).trim();
+  const destino = path.join(os.tmpdir(), `comparar-hechos-${selloContra}`);
+  for (const archivo of git("ls-tree", "-r", "--name-only", CONTRA, "supabase/functions/_shared").split("\n").filter((a) => a && !a.endsWith(".test.ts"))) {
+    const salida = path.join(destino, archivo);
+    if (fs.existsSync(salida)) continue;
+    fs.mkdirSync(path.dirname(salida), { recursive: true });
+    fs.writeFileSync(salida, execFileSync("git", ["-C", RAIZ, "show", `${CONTRA}:${archivo}`], { maxBuffer: 64 * 1024 * 1024 }));
+  }
+  const viejo = await import(pathToFileURL(path.join(destino, "supabase/functions/_shared/process.ts")).href);
+  construirAntes = viejo.buildStandardProfile;
+  console.log(`Contra ${CONTRA} (${selloContra}, ${viejo.PROCESS_VERSION}).`);
+}
 
 const conCodigos = Object.keys(GRUPOS).filter((g) => GRUPOS[g].CATALOGO.length > 0);
 const ELEGIDOS = typeof args.grupo === "string" ? args.grupo.split(",") : conCodigos;
@@ -76,7 +107,17 @@ for (const g of ELEGIDOS) {
 }
 const CATALOGO = new Map(Object.values(GRUPOS).flatMap((g) => g.CATALOGO.map((c) => [c.codigo, c])));
 const PERFIL_DE = Object.fromEntries(ELEGIDOS.map((g) => [g, gruposDelPerfil(GRUPOS[g].CATALOGO)]));
-const ESPERADAS = new Set(ELEGIDOS.flatMap((g) => (GRUPOS[g].DIFERENCIAS_ESPERADAS ?? []).map((d) => d.campo)));
+const DECLARADAS = ELEGIDOS.flatMap((g) => GRUPOS[g].DIFERENCIAS_ESPERADAS ?? []);
+// ¿La diferencia de este campo contra la otra versión está declarada? Con
+// `cuando: "sin_dato"`, sólo si el perfil nuevo lo marca en camposSinDato.
+const esperada = (ruta, grupoNuevo) =>
+  DECLARADAS.some((d) => {
+    const coincide = d.campo === ruta || (d.campo.endsWith(".*") && ruta.startsWith(d.campo.slice(0, -1)));
+    if (!coincide) return false;
+    if (d.cuando !== "sin_dato") return true;
+    const campo = ruta.split(".").slice(1).join(".");
+    return !!grupoNuevo?.camposSinDato && campo in grupoNuevo.camposSinDato;
+  });
 // Los campos que un grupo declara pendientes, con su porqué: se informan aparte.
 const PENDIENTES = new Map(ELEGIDOS.flatMap((g) => (GRUPOS[g].CAMPOS_PENDIENTES ?? []).map((p) => [p.campo, p.motivo])));
 const pendientesVistos = new Set();
@@ -175,7 +216,9 @@ function estadistica(valores) {
 // ---- La corrida ----
 
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0, hechos: 0, conValor: 0, registros: 0, recuentos: 0 };
-const fallas = { paridad: [], explicadas: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [] };
+const fallas = { paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
+// 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
+const cambio = { personas: 0, personasSinDato: 0, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
 const porCampo = {};
 const medidas = { documentoJson: [], documentoGzip: [], ms: [], hechos: [], entidades: [], diferencias: [] };
 // Sin la base no se sabe el id de la persona: se cita el perfil (p-xxxxxxxx).
@@ -232,16 +275,8 @@ for (let i = 0; i < candidatos.length; i += 50) {
             continue;
           }
           const codigo = [...CATALOGO.values()].find((x) => x.campoDelPerfil === ruta)?.codigo;
-          const hecho = porCodigo.get(codigo);
-          const sinRespuesta = hecho?.calidad === "no_disponible" && /fuente_sin_respuesta|fuente_deshabilitada/.test(hecho.motivo ?? "");
-          const detalle = { ref, campo: ruta, perfil: delPerfil[campo], hechos: valor, motivo: hecho?.motivo ?? null };
-          if (sinRespuesta || ESPERADAS.has(ruta)) {
-            porCampo[ruta].explicados++;
-            fallas.explicadas.push(detalle);
-          } else {
-            porCampo[ruta].distintos++;
-            fallas.paridad.push(detalle);
-          }
+          porCampo[ruta].distintos++;
+          fallas.paridad.push({ ref, campo: ruta, perfil: delPerfil[campo], hechos: valor, motivo: porCodigo.get(codigo)?.motivo ?? null });
         }
         // 6. Contra lo guardado, informativo.
         const guardado = guardados.get(c.perfilId)?.[gp];
@@ -250,6 +285,45 @@ for (let i = 0; i < candidatos.length; i += 50) {
           if (distintos.length) fallas.contraLoGuardado.push({ ref, grupo: gp, campos: distintos });
         }
       }
+    }
+
+    // 7. Contra la otra versión, con el mismo reloj.
+    if (construirAntes) {
+      const antes = armarEnFecha(crudo.capturadoEl, () => construirAntes(raw, crudo.cedula, undefined).profile);
+      const devuelto = conLosValoresDeAntes(perfil);
+      let cambiaAlgo = false;
+      let tieneSinDato = false;
+      let parcialConDato = false;
+      for (const gp of ELEGIDOS.flatMap((g) => PERFIL_DE[g])) {
+        const nuevo = perfil[gp] ?? {};
+        const viejo = antes[gp] ?? {};
+        const marca = nuevo.camposSinDato ?? {};
+        if (Object.keys(marca).length) tieneSinDato = true;
+        for (const campo of new Set([...Object.keys(viejo), ...Object.keys(devuelto[gp] ?? {})])) {
+          if (canonico(devuelto[gp]?.[campo]) !== canonico(viejo[campo])) fallas.conLosDeAntes.push({ ref, campo: `${gp}.${campo}`, antes: viejo[campo], ahora: devuelto[gp]?.[campo] });
+        }
+        for (const campo of new Set([...Object.keys(viejo), ...Object.keys(nuevo)])) {
+          if (campo === "camposSinDato") continue;
+          const ruta = `${gp}.${campo}`;
+          if (campo in marca) {
+            cambio.marcados[ruta] = (cambio.marcados[ruta] ?? 0) + 1;
+            const v = marca[campo];
+            if (v !== null && v !== 0 && v !== false && !(Array.isArray(v) && v.length === 0)) parcialConDato = true;
+          }
+          if (canonico(nuevo[campo]) === canonico(viejo[campo])) continue;
+          cambiaAlgo = true;
+          if (esperada(ruta, nuevo)) {
+            cambio.campos++;
+            cambio.porCampo[ruta] = (cambio.porCampo[ruta] ?? 0) + 1;
+          } else fallas.contraAntes.push({ ref, campo: ruta, antes: viejo[campo], ahora: nuevo[campo] });
+        }
+      }
+      if (cambiaAlgo) cambio.personas++;
+      if (tieneSinDato) {
+        cambio.personasSinDato++;
+        if (cambio.refs.length < 12) cambio.refs.push(ref);
+      }
+      if (parcialConDato) cambio.personasConParcialConDato++;
     }
 
     // 4 y 5. Procedencia y recuento.
@@ -285,9 +359,9 @@ if (!cuenta.personas) {
 const n = (x) => x.toLocaleString("es-EC");
 console.log(`Grupos: ${ELEGIDOS.join(", ")} (perfil: ${ELEGIDOS.flatMap((g) => PERFIL_DE[g]).join(", ")}).`);
 console.log(`Personas comparadas: ${n(cuenta.personas)} (sin crudo: ${cuenta.sinCrudo}, no leídas o de otro perfil: ${cuenta.noLeidas}).`);
-console.log(`Paridad: ${n(cuenta.paridadOk)} de ${n(cuenta.campos)} campos iguales; ${fallas.paridad.length} distintos sin explicar; ${fallas.explicadas.length} explicados (fuente sin respuesta o diferencia esperada).`);
-for (const [ruta, c] of Object.entries(porCampo)) if (c.distintos || c.explicados) console.log(`  ${ruta}: ${c.distintos} distintos, ${c.explicados} explicados`);
-for (const d of [...fallas.paridad, ...fallas.explicadas].slice(0, 12)) console.log(`  ${d.ref} ${d.campo}${d.motivo ? ` (${d.motivo})` : ""}`);
+console.log(`Paridad: ${n(cuenta.paridadOk)} de ${n(cuenta.campos)} campos iguales; ${fallas.paridad.length} distintos.`);
+for (const [ruta, c] of Object.entries(porCampo)) if (c.distintos) console.log(`  ${ruta}: ${c.distintos} distintos`);
+for (const d of fallas.paridad.slice(0, 12)) console.log(`  ${d.ref} ${d.campo}${d.motivo ? ` (${d.motivo})` : ""}`);
 console.log(`Campos sin procedencia: ${fallas.sinProcedencia.size}${fallas.sinProcedencia.size ? ` (${[...fallas.sinProcedencia].join(", ")})` : ""}.`);
 for (const campo of pendientesVistos) console.log(`  Pendiente declarado: ${campo} (${PENDIENTES.get(campo)}).`);
 console.log(`Hechos: ${n(cuenta.hechos)} (${n(cuenta.conValor)} con valor); registros citados: ${n(cuenta.registros)}, ${fallas.noResuelve.length} que no resuelven.`);
@@ -295,6 +369,17 @@ for (const d of fallas.noResuelve.slice(0, 5)) console.log(`  ${d.ref} ${d.quien
 console.log(`Recuentos independientes: ${n(cuenta.recuentos)}, ${fallas.recuento.length} que no cuadran.`);
 for (const d of fallas.recuento.slice(0, 5)) console.log(`  ${d.ref} ${d.codigo}`);
 if (args.deposito) console.log(`Contra lo guardado (informativo): ${fallas.contraLoGuardado.length} perfiles con algún campo del grupo distinto del rearmado.`);
+if (construirAntes) {
+  console.log(`Contra ${CONTRA} (${selloContra}): ${n(cambio.personas)} personas con algún campo distinto, ${n(cambio.campos)} campos declarados como «sin dato»; ${fallas.contraAntes.length} sin declarar.`);
+  console.log(`  Personas con algún campo sin dato: ${n(cambio.personasSinDato)}; en ${n(cambio.personasConParcialConDato)} el parcial no es 0, false ni vacío (la versión anterior mostraba algo).`);
+  for (const [ruta, k] of Object.entries(cambio.porCampo).sort((a, b) => b[1] - a[1])) console.log(`    ${ruta}: cambia en ${k}, marcado sin dato en ${cambio.marcados[ruta] ?? 0}`);
+  const soloMarcados = Object.keys(cambio.marcados).filter((r) => !cambio.porCampo[r]);
+  if (soloMarcados.length) console.log(`    Marcados sin dato y ya null antes: ${soloMarcados.map((r) => `${r} ${cambio.marcados[r]}`).join(", ")}`);
+  if (cambio.refs.length) console.log(`    Algunos: ${cambio.refs.join(", ")}`);
+  for (const d of fallas.contraAntes.slice(0, 8)) console.log(`  SIN DECLARAR ${d.ref} ${d.campo}`);
+  console.log(`  Con los valores de antes (lo que leen el modelo y la capacidad): ${fallas.conLosDeAntes.length} campos distintos de ${CONTRA}.`);
+  for (const d of fallas.conLosDeAntes.slice(0, 8)) console.log(`  DISTINTO ${d.ref} ${d.campo}`);
+}
 
 let fueraDelPresupuesto = false;
 if (args.medir) {
@@ -322,8 +407,8 @@ const destino = path.join(PRINCIPAL, "research", "comparar-hechos");
 fs.mkdirSync(destino, { recursive: true });
 const sello = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
 const archivo = path.join(destino, `comparar-${ELEGIDOS.join("+")}-${sello}.json`);
-fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
+fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
 console.log(`Detalle (con montos, fuera de git): ${path.relative(PRINCIPAL, archivo)}`);
 
-const malo = fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fueraDelPresupuesto;
+const malo = fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fueraDelPresupuesto;
 process.exit(malo ? 1 : 0);

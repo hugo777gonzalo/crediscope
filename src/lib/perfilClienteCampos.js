@@ -221,6 +221,7 @@ export const GRUPOS_CONFIG = {
   comportamientoBancario: {
     mensajeVacio: "Sin operaciones registradas en el buró de crédito.",
     presencia: (p) =>
+      camposSinDato(p, "comportamientoBancario").length > 0 ||
       (p.comportamientoBancario?.numeroOperacionesBuroCredito ?? 0) > 0 ||
       (p.comportamientoBancario?.numeroOperacionesComoGaranteOCodeudor ?? 0) > 0 ||
       p.comportamientoBancario?.tieneCreditoIessBiess ||
@@ -257,7 +258,7 @@ export const GRUPOS_CONFIG = {
   },
   comportamientoCooperativas: {
     mensajeVacio: "Sin operaciones registradas en cooperativas.",
-    presencia: (p) => (p.comportamientoCooperativas?.numeroOperaciones ?? 0) > 0,
+    presencia: (p) => camposSinDato(p, "comportamientoCooperativas").length > 0 || (p.comportamientoCooperativas?.numeroOperaciones ?? 0) > 0,
     campos: [
       ["numeroOperaciones", "Operaciones", "numero"],
       ["saldoTotal", "Saldo total", "moneda"],
@@ -380,16 +381,53 @@ export function nombreCorto(nombreCompleto) {
   return partes.map(capitalizar).join(" ");
 }
 
+// Desde estructura-v25, un campo cuya fuente no contestó llega en null y su
+// grupo lo lista en `camposSinDato` (supabase/functions/_shared/campos-sin-dato.ts).
+// Hasta la v24 llegaba en 0 y la tarjeta decía «Sin operaciones registradas»
+// de alguien cuyo buró no respondió. Se muestra una fila por fuente, no una
+// por campo: con bancos caído eran 13 «sin dato» seguidos.
+const FUENTE_DEL_CAMPO = {
+  comportamientoBancario: {
+    figuraEnRegistroDeudores: "Registro de deudores",
+    numeroDeudasRetail: "Casas comerciales",
+    totalDeudaRetail: "Casas comerciales",
+    valorVencidoRetail: "Casas comerciales",
+    fechaCorteRetail: "Casas comerciales",
+    diasMoraMaximaRetail: "Casas comerciales",
+    tieneCreditoIessBiess: "Préstamos IESS/BIESS",
+    saldoPrestamosIessBiess: "Préstamos IESS/BIESS",
+    diasMoraCreditoIessBiess: "Préstamos IESS/BIESS",
+    operacionesIessBiess: "Préstamos IESS/BIESS",
+    numeroCreditosFormales: "Préstamos IESS/BIESS",
+  },
+};
+const FUENTE_POR_GRUPO = { comportamientoBancario: "Buró de bancos y Diners", comportamientoCooperativas: "Cooperativas" };
+
+export function camposSinDato(profile, grupo) {
+  const marca = profile?.[grupo]?.camposSinDato;
+  return marca && typeof marca === "object" && !Array.isArray(marca) ? Object.keys(marca) : [];
+}
+
+// Las fuentes del grupo que no contestaron, en el orden de sus campos.
+export function fuentesSinDato(profile, grupo) {
+  const nombres = camposSinDato(profile, grupo).map((c) => FUENTE_DEL_CAMPO[grupo]?.[c] ?? FUENTE_POR_GRUPO[grupo] ?? c);
+  return [...new Set(nombres)];
+}
+
 export function filasVisibles(profile, grupo) {
   const config = GRUPOS_CONFIG[grupo];
   if (!config) return [];
-  return config.campos
+  const sinDato = new Set(camposSinDato(profile, grupo));
+  const filas = config.campos
     .map(([campo, etiqueta, tipo]) => {
+      if (sinDato.has(campo)) return null;
       const valor = valorVisible(profile[grupo] ?? {}, campo, tipo);
       if (valor === null) return null;
       return { etiqueta, texto: formatValor(valor, tipo) };
     })
     .filter(Boolean);
+  const avisos = fuentesSinDato(profile, grupo).map((fuente) => ({ etiqueta: fuente, texto: "sin dato (la fuente no contestó)", sinDato: true }));
+  return [...avisos, ...filas];
 }
 
 // Mismo orden/etiquetas que ORDEN_GRUPOS/ETIQUETAS_GRUPO en

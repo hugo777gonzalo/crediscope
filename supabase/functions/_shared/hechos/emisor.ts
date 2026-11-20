@@ -6,6 +6,12 @@
 
 import type { CodigoDelCatalogo, Contexto, Descarte, Diferencia, Entidad, Hecho, MotivoDeNoDisponible, RefDeRegistro, Senal } from "./tipos.ts";
 
+// Los motivos de «sin dato»: la fuente existe y no contestó, o la apagó la
+// configuración. Los demás (no aplica, la fuente no lo informa) sí son el dato.
+export function esFuenteQueNoContesto(motivo: MotivoDeNoDisponible | undefined): boolean {
+  return motivo === "fuente_sin_respuesta" || motivo === "fuente_deshabilitada";
+}
+
 export const FORMA_DE_UN_CODIGO = /^[a-z]{2,5}(\.[a-z0-9_]+){1,3}$/;
 
 export interface Emisor {
@@ -44,8 +50,12 @@ export function ayudanteDelGrupo(emisor: Emisor, catalogo: CodigoDelCatalogo[]) 
       if (extra.entidades?.length) h.entidades = extra.entidades;
       emisor.hecho(h);
     },
-    sinValor(codigo: string, regla: string, fuentes: string[], motivo: MotivoDeNoDisponible) {
-      emisor.hecho({ codigo, regla, unidad: unidad(codigo), valor: null, calidad: "no_disponible", motivo, fuentes, fechaDelDato: null, registros: [] });
+    // `parcial`: con una fuente que no contestó, lo que dice la regla con las
+    // que sí (tipos.ts). Se omite en los demás motivos.
+    sinValor(codigo: string, regla: string, fuentes: string[], motivo: MotivoDeNoDisponible, parcial?: Hecho["parcial"]) {
+      const h: Omit<Hecho, "clase" | "fechaDeLaConsulta"> = { codigo, regla, unidad: unidad(codigo), valor: null, calidad: "no_disponible", motivo, fuentes, fechaDelDato: null, registros: [] };
+      if (parcial !== undefined) h.parcial = parcial;
+      emisor.hecho(h);
     },
   };
 }
@@ -82,6 +92,7 @@ export function crearEmisor(contexto: Contexto, catalogo: CodigoDelCatalogo[]): 
       if (h.valor !== null && h.registros.length === 0) throw new Error(`Hecho con valor y sin registros: ${h.codigo}`);
       if (h.valor === null && !h.motivo) throw new Error(`Hecho sin valor y sin motivo: ${h.codigo}`);
       if (h.valor === null && h.calidad !== "no_disponible") throw new Error(`Hecho sin valor con calidad ${h.calidad}: ${h.codigo}`);
+      if (h.parcial !== undefined && !esFuenteQueNoContesto(h.motivo)) throw new Error(`Hecho con parcial sin una fuente que no contestó: ${h.codigo}`);
       hechos.push({ ...h, clase: "hecho", fechaDeLaConsulta: fecha });
     },
     entidad(e) {

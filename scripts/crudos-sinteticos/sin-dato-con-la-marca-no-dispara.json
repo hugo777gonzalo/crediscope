@@ -1,0 +1,32 @@
+{
+  "descripcion": "La base interna del BIESS y el retail no contestaron y la cooperativa está apagada: con estructura-v25 esos campos quedan en null, marcados en camposSinDato con lo que trajeron las demás fuentes, y el detector no marca nada",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO TRES" } } },
+    "buroCreditoSuper": { "status": "ok", "data": { "datosSuper": [] } },
+    "buroCreditoDiners": { "status": "ok", "data": { "datosSuper": [] } },
+    "deudores": { "status": "ok", "data": { "deudores": [] } },
+    "retails": { "status": "error", "data": null },
+    "creditoQuirografario": {
+      "status": "ok",
+      "data": {
+        "prestamos": [
+          { "nroOperacion": "900001", "estado": "PV", "diasMora": 0, "valorPorVencer": 1200, "valorVencido": 0, "valorPrestamo": 3000, "fechaConcesion": "10/01/2025", "plazoOriginal": 36, "fechaCorte": "31/08/2026" }
+        ]
+      }
+    },
+    "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } },
+    "basesInternas": { "status": "error", "data": null },
+    "buroCreditoCoop": { "status": "deshabilitado", "data": null }
+  },
+  "esperado": { "dato-de-fuente-sin-respuesta-escrito-como-total": "no-dispara" },
+  "hechos": {
+    "biess.prestamos.en_la_fuente.cantidad": { "valor": 1, "registros": ["creditoQuirografario.prestamos#0"] },
+    "biess.saldo": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 1200 },
+    "biess.tiene": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": true },
+    "ret.deudas.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "ret.corte": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null },
+    "coop.saldo.total": { "valor": null, "motivo": "fuente_deshabilitada", "parcial": 0 }
+  }
+}

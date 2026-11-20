@@ -1,0 +1,36 @@
+{
+  "descripcion": "La cooperativa no contestó y el perfil de estructura-v24 escribió 0 operaciones y 0 de cuota, como si la persona no tuviera nada en cooperativas: el detector lo marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO DOS" } } },
+    "buroCreditoSuper": { "status": "ok", "data": { "datosSuper": [] } },
+    "buroCreditoDiners": { "status": "ok", "data": { "datosSuper": [] } },
+    "deudores": { "status": "ok", "data": { "deudores": [] } },
+    "retails": { "status": "ok", "data": { "retails": [] } },
+    "creditoQuirografario": { "status": "ok", "data": { "prestamos": [] } },
+    "creditoHipotecario": { "status": "ok", "data": { "prestamos": [] } },
+    "basesInternas": { "status": "ok", "data": { "tcredQuirografarios": [], "tcredHipotecarios": [] } },
+    "buroCreditoCoop": { "status": "faltante", "data": null }
+  },
+  "guardado": {
+    "perfil": {
+      "comportamientoCooperativas": {
+        "numeroOperaciones": 0,
+        "diasMoraMaxima": null,
+        "saldoTotal": 0,
+        "saldoEnMora": 0,
+        "tieneOperacionConDemanda": false,
+        "tieneOperacionCastigada": false,
+        "cuotaMensualTotal": 0,
+        "camposSinDato": null
+      }
+    }
+  },
+  "esperado": { "dato-de-fuente-sin-respuesta-escrito-como-total": "dispara" },
+  "hechos": {
+    "coop.operaciones.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "coop.cuota.mensual": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "ban.operaciones.cantidad": { "valor": 0, "registros": ["buroCreditoSuper.datosSuper", "buroCreditoDiners.datosSuper"] }
+  }
+}

@@ -157,6 +157,8 @@ const mesMenos = (m) => { const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(
 const escrituras = [];
 const noReproducen = [];
 let conCambios = 0;
+let conSinDato = 0;
+let conOtroCambio = 0;
 const camposQueCambian = {};
 let yaEnVersion = 0;
 for (let i = 0; i < candidatos.length; i += 50) {
@@ -189,6 +191,14 @@ for (let i = 0; i < candidatos.length; i += 50) {
     if (cambiadas.length) {
       conCambios++;
       for (const r of new Set(cambiadas.map((x) => x.split(".").slice(0, 3).join(".")))) camposQueCambian[r] = (camposQueCambian[r] ?? 0) + 1;
+      // estructura-v25: un campo que su fuente no contestó pasa a null y va en
+      // camposSinDato. Lo que cambia fuera de eso se cuenta aparte.
+      const porSinDato = (r) => {
+        const [, g, campo] = r.split(".");
+        return campo === "camposSinDato" || (nuevo[g]?.camposSinDato && campo in nuevo[g].camposSinDato);
+      };
+      if (cambiadas.some(porSinDato)) conSinDato++;
+      if (cambiadas.some((r) => !porSinDato(r))) conOtroCambio++;
     }
     const escritura = { id: perfilId, standard_profile: perfil };
     if (BLOQUEO) {
@@ -223,6 +233,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
 console.log(`candidatos: ${candidatos.length} (carpeta ${deDonde.enLaCarpeta}, depósito ${deDonde.delDeposito}, sin crudo ${deDonde.sinCrudo}) | a escribir: ${escrituras.length} | ya en ${PROCESS_VERSION}: ${yaEnVersion} | el crudo no reproduce el perfil: ${noReproducen.length}`);
 if (noReproducen.length) console.log("no reproducen (no se tocan):", noReproducen.slice(0, 10));
 console.log(`cambia algo de ${GRUPOS.join(", ")} en ${conCambios}; el resto sólo sube de versión.`);
+console.log(`  de esos, con un campo sin dato (camposSinDato, estructura-v25): ${conSinDato}; con algún otro cambio: ${conOtroCambio}.`);
 for (const [campo, n] of Object.entries(camposQueCambian).sort((a, b) => b[1] - a[1])) console.log(`  ${campo}: ${n}`);
 if (BLOQUEO) {
   console.log(`bloqueo: se desbloquean ${cambiosDeBloqueo.desbloqueados.length} · se bloquean ${cambiosDeBloqueo.bloqueados.length} · difieren en otro hallazgo ${cambiosDeBloqueo.otroMotivo} · sin bloqueo guardado ${cambiosDeBloqueo.sinBloqueoGuardado}`);
