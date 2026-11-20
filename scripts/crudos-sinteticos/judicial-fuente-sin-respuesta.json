@@ -1,5 +1,5 @@
 {
-  "descripcion": "Grupo 3: la fuente de demandas y una de las dos de pensiones fallaron: los hechos no tienen valor y dicen por qué, con el parcial de lo que sí llegó; el antecedente por extorsión sigue bloqueando",
+  "descripcion": "Grupo 3: la fuente de demandas y la de pensiones que no cuenta (pn_supa) fallaron: los hechos de demandas no tienen valor y dicen por qué, con el parcial de lo que sí llegó; la pensión sí tiene valor, porque la que cayó nunca cuenta; el antecedente por extorsión sigue bloqueando",
   "cedula": "0000000000",
   "capturadoEl": "2026-10-01T12:00:00-05:00",
   "raw": {
@@ -56,9 +56,10 @@
       "parcial": 0
     },
     "jud.pension.deuda": {
-      "valor": null,
-      "motivo": "fuente_sin_respuesta",
-      "parcial": 300
+      "valor": 300,
+      "registros": [
+        "pensionAlimenticiaProveedorInfo1.supas#0"
+      ]
     },
     "seg.delito.categorias": {
       "valor": null,

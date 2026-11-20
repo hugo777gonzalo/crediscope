@@ -77,18 +77,42 @@ Deno.test("sin la fuente de demandas: demandas y seguridad en null, con el parci
   assertEquals(p.riesgoSeguridadCiudadana.tieneDelitoSeguridadCiudadana, null);
 });
 
-Deno.test("sin una de las dos fuentes de pensiones: los campos de pensión son null, con el parcial de la otra", () => {
+// pn_supa (`pensionAlimenticia`) no trae al obligado y ninguno de sus registros cuenta: su caída no
+// cambia lo que se sabe de las pensiones, así que no deja nada sin dato. Sólo la fuente que cuenta
+// (`pensionAlimenticiaProveedorInfo1`) lo hace.
+Deno.test("pensiones: la caída de pn_supa no deja nada sin dato", () => {
   const p = perfilDe(crudo({
     pensionAlimenticia: caida,
     pensionAlimenticiaProveedorInfo1: { status: "ok", data: { supas: [{ numeroProceso: "S-9", obligadoPrincipal: NOMBRE, valorMensual: 120, totalDeuda: 40 }] } },
   }));
   const civil = p.riesgoJudicialCivil;
+  assertEquals("camposSinDato" in civil, false);
+  assertEquals(civil.valorMensualPensiones, 120);
+  assertEquals(civil.tienePensionAlimenticia, true);
+  assertEquals(civil.deudaPensionAlimenticia, 40);
+});
+
+Deno.test("pensiones: sin la fuente que cuenta, los 7 campos son null, aunque pn_supa conteste", () => {
+  const p = perfilDe(crudo({
+    pensionAlimenticiaProveedorInfo1: caida,
+    // Un registro de pn_supa sin obligado: nunca cuenta, tampoco como parcial.
+    pensionAlimenticia: { status: "ok", data: { supas: [{ numeroProceso: "S-1", representanteLegal: NOMBRE, valorMensual: 99, totalDeuda: 500 }] } },
+  }));
+  const civil = p.riesgoJudicialCivil;
+  assertEquals(
+    ["tienePensionAlimenticia", "pensionAlimenticiaEnMora", "deudaPensionAlimenticia", "numeroPensionesAlimenticias", "numeroPensionesVigentes", "valorMensualPensiones", "numeroPensionesEnMora"]
+      .map((c) => [c, (civil as unknown as Record<string, unknown>)[c]]),
+    ["tienePensionAlimenticia", "pensionAlimenticiaEnMora", "deudaPensionAlimenticia", "numeroPensionesAlimenticias", "numeroPensionesVigentes", "valorMensualPensiones", "numeroPensionesEnMora"].map((c) => [c, null]),
+  );
+  assertEquals(civil.camposSinDato?.valorMensualPensiones, 0);
+  assertEquals(civil.camposSinDato?.tienePensionAlimenticia, false);
+  assertEquals(civil.numeroDemandasComoDemandado, 0); // las demandas contestaron
+});
+
+Deno.test("pensiones: si caen las dos, también", () => {
+  const civil = perfilDe(crudo({ pensionAlimenticia: caida, pensionAlimenticiaProveedorInfo1: caida })).riesgoJudicialCivil;
   assertEquals(civil.valorMensualPensiones, null);
   assertEquals(civil.tienePensionAlimenticia, null);
-  assertEquals(civil.camposSinDato?.valorMensualPensiones, 120);
-  assertEquals(civil.camposSinDato?.tienePensionAlimenticia, true);
-  assertEquals(civil.camposSinDato?.deudaPensionAlimenticia, 40);
-  assertEquals(civil.numeroDemandasComoDemandado, 0); // las demandas contestaron
 });
 
 Deno.test("el modelo y la capacidad de pago leen los valores de antes, byte a byte", () => {
@@ -97,6 +121,7 @@ Deno.test("el modelo y la capacidad de pago leen los valores de antes, byte a by
     pensionAlimenticiaProveedorInfo1: { status: "ok", data: { supas: [{ numeroProceso: "S-9", obligadoPrincipal: NOMBRE, valorMensual: 120, totalDeuda: 40 }] } },
     pensionAlimenticia: caida,
   });
+  // Con demandas caídas y pn_supa caída: las pensiones siguen con valor (la que cayó no cuenta).
   const p = perfilDe(raw);
   const leido = conLosValoresDeAntes(p);
   assertEquals(leido.riesgoJudicialCrediticio, { numeroDemandasComoDemandado: 0, tiposDemandasComoDemandado: [], demandasDeCobro: [], numeroDemandasDeOtroDemandado: 0, numeroDemandasSinCotejo: 0 });

@@ -157,6 +157,14 @@ const FUENTE_OFENDIDO = "demandasOfendido";
 const FUENTE_DENUNCIAS = "denuncias";
 const FUENTE_ANTECEDENTES = "antecedentesPenales";
 const FUENTES_PENSION = ["pensionAlimenticia", "pensionAlimenticiaProveedorInfo1"];
+// Una fuente cuyos registros nunca cuentan no puede dejar un hecho sin dato: que no conteste
+// no cambia lo que se sabe. `pensionAlimenticia` (pn_supa) no trae al obligado, y
+// `esClienteObligadoSupa()` sólo cuenta un registro con `obligadoPrincipal`: en las 3.766
+// personas reales (2026-11-20) trae 668 registros en 488 personas y ninguno con obligado, así que
+// ninguno cuenta. Sus registros se siguen leyendo y descartando con su motivo, pero su caída no
+// marca sin dato: las pensiones dependen sólo de `pensionAlimenticiaProveedorInfo1`. Si un día
+// trae `obligadoPrincipal`, sale de esta lista (y la prueba de hechos lo dice).
+const FUENTES_QUE_NUNCA_CUENTAN = new Set(["pensionAlimenticia"]);
 
 const demandaDe = (r: AnyRecord) => (r.demanda ?? {}) as AnyRecord;
 const delitoDe = (r: AnyRecord): string | undefined => demandaDe(r).delito as string | undefined;
@@ -197,7 +205,7 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     registros: RefDeRegistro[],
     extra: { descartados?: Descarte[]; entidades?: string[] } = {},
   ) {
-    const caidas = fuentes.filter((f) => f !== "general" && contesto(f) !== "contesto");
+    const caidas = fuentes.filter((f) => f !== "general" && !FUENTES_QUE_NUNCA_CUENTAN.has(f) && contesto(f) !== "contesto");
     if (caidas.length) {
       h.sinValor(cod, regla, fuentes, caidas.some((f) => contesto(f) === "fuente_sin_respuesta") ? "fuente_sin_respuesta" : "fuente_deshabilitada", valor);
       return;

@@ -617,7 +617,7 @@ export const DETECTORES_DEL_CRUDO = [
     // Criterio DISTINTO del de la regla (que mira el `status`, respuestaDe en hechos/lectura-del-crudo.ts):
     // acá se mira el contenido. Una fuente judicial que contestó trae su lista, aunque sea vacía.
     // `antecedentesPenales` no entra: su «no hay» es un status `faltante` sin contenido, y por contenido
-    // no se distingue de una caída.
+    // no se distingue de una caída. `pensionAlimenticia` tampoco: sus registros nunca cuentan.
     aplica: ({ raw, perfil }) => !!perfil?.riesgoJudicialCivil && fuentesJudicialesSinRespuesta(raw).length > 0,
     detectar: ({ raw, perfil }) => {
       const conValor = [];
@@ -726,7 +726,8 @@ const FUENTES_JUDICIALES = [
   ["demandas", "demandas", "riesgoJudicialCivil", DEMANDAS_CIVIL],
   ["demandas", "demandas", "riesgoSeguridadCiudadana", SEGURIDAD_DEL_PERFIL],
   ["demandasOfendido", "demandas", "riesgoJudicialCivil", ["numeroDemandasComoOfendido"]],
-  ["pensionAlimenticia", "supas", "riesgoJudicialCivil", PENSIONES_DEL_PERFIL],
+  // `pensionAlimenticia` (pn_supa) no está: sus registros nunca cuentan (no trae al obligado), y su caída
+  // no deja las pensiones sin dato (hechos/grupos/riesgo-judicial.ts, FUENTES_QUE_NUNCA_CUENTAN).
   ["pensionAlimenticiaProveedorInfo1", "supas", "riesgoJudicialCivil", PENSIONES_DEL_PERFIL],
   ["denuncias", "denuncias", "riesgoSeguridadCiudadana", SEGURIDAD_DEL_PERFIL],
 ];
