@@ -296,6 +296,11 @@ for (let i = 0; i < candidatos.length; i += 50) {
     if (construirAntes) {
       const antes = armarEnFecha(crudo.capturadoEl, () => construirAntes(raw, crudo.cedula, undefined).profile);
       const devuelto = conLosValoresDeAntes(perfil);
+      // Lo que leen el modelo y la capacidad, en las dos versiones: contra la v24
+      // no cambiaba nada (no tenía camposSinDato), y desde la v25 la anterior
+      // también lo tiene. Sin esto, la v26 contra la v25 daba 5.326 campos
+      // «distintos» que eran sólo la marca de un lado (2026-11-20).
+      const devueltoAntes = conLosValoresDeAntes(antes);
       let cambiaAlgo = false;
       let tieneSinDato = false;
       let parcialConDato = false;
@@ -304,8 +309,9 @@ for (let i = 0; i < candidatos.length; i += 50) {
         const viejo = antes[gp] ?? {};
         const marca = nuevo.camposSinDato ?? {};
         if (Object.keys(marca).length) tieneSinDato = true;
-        for (const campo of new Set([...Object.keys(viejo), ...Object.keys(devuelto[gp] ?? {})])) {
-          if (canonico(devuelto[gp]?.[campo]) !== canonico(viejo[campo]) && !esperada(`${gp}.${campo}`, nuevo, doc, ["union"])) fallas.conLosDeAntes.push({ ref, campo: `${gp}.${campo}`, antes: viejo[campo], ahora: devuelto[gp]?.[campo] });
+        const leiaAntes = devueltoAntes[gp] ?? {};
+        for (const campo of new Set([...Object.keys(leiaAntes), ...Object.keys(devuelto[gp] ?? {})])) {
+          if (canonico(devuelto[gp]?.[campo]) !== canonico(leiaAntes[campo]) && !esperada(`${gp}.${campo}`, nuevo, doc, ["union"])) fallas.conLosDeAntes.push({ ref, campo: `${gp}.${campo}`, antes: leiaAntes[campo], ahora: devuelto[gp]?.[campo] });
         }
         for (const campo of new Set([...Object.keys(viejo), ...Object.keys(nuevo)])) {
           if (campo === "camposSinDato") continue;
