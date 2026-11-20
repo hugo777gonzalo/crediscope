@@ -875,13 +875,13 @@ interface StandardClientProfile {
 > las penales. La fuente las busca por el nombre y `esDemandaDeCobro` y
 > `demandasPorCategoria` daban por propia toda la que traía.
 > - **Una sola atribución** (`atribuirDemandas()`, `demandas.ts`, con el `cotejarDemandado()`
->   de v20): sólo «otra persona» sale de las cuentas de `riesgoJudicialCrediticio` y
->   `riesgoJudicialCivil`. Sin demandado, sin el nombre de la persona y con los apellidos
->   en otro orden **siguen contando** y se avisan: lo que no se puede atribuir va como «sin
->   cotejo», nunca como «no es de ella» (para un bloqueo el orden invertido no alcanza; para
->   contar una deuda sí, y el aviso le dice al analista que la mire).
+>   de v20): «otra persona» y los apellidos en otro orden salen de las cuentas de
+>   `riesgoJudicialCrediticio` y `riesgoJudicialCivil` (el negocio, 2026-11-19: el orden
+>   invertido es otra filiación, como en v20). Sin demandado y sin el nombre de la persona
+>   **siguen contando** y se avisan: lo que no se puede atribuir va como «sin cotejo»,
+>   nunca como «no es de ella».
 > - **Campos nuevos**, en los dos grupos: `numeroDemandasDeOtroDemandado` (las que no se
->   cuentan: «posible homónimo») y `numeroDemandasSinCotejo` (las que se cuentan sin
+>   cuentan, con los apellidos invertidos: «posible homónimo») y `numeroDemandasSinCotejo` (las que se cuentan sin
 >   confirmar). Son para el aviso en pantalla y **no llegan al modelo**
 >   (`CAMPOS_DE_CONTROLES_QUE_NO_LLEGAN`); al modelo sólo le cambian los números de las
 >   demandas. El catalogador de procesos (R1, PR 184) no lee demandas: no comparte esta lectura.

@@ -28,7 +28,7 @@ Deno.test("la versión de la estructura es la v24", () => {
   assertEquals(PROCESS_VERSION, "estructura-v24");
 });
 
-Deno.test("D2: sólo la de otro demandado deja de contar; invertidos, vacío y de la persona siguen", () => {
+Deno.test("D2: la de otro demandado y la de apellidos invertidos dejan de contar; vacío y de la persona siguen", () => {
   const delPerfil = [
     demanda("COBRO DE DINERO", PERSONA),
     demanda("COBRO DE DINERO", "ZZINVENTADA ZZPRUEBA ANA"),
@@ -37,15 +37,15 @@ Deno.test("D2: sólo la de otro demandado deja de contar; invertidos, vacío y d
     demanda("COBRO DE DINERO", "ZZPRUEBA ZZOTRO ANA"),
   ];
   const a = atribuirDemandas(delPerfil, PERSONA);
-  assertEquals(a.cuentan.length, 3);
-  assertEquals(a.deOtroDemandado.length, 2);
-  // Las contadas sin poder confirmarlas: apellidos invertidos y sin demandado.
-  assertEquals(a.sinCotejo.length, 2);
+  assertEquals(a.cuentan.length, 2);
+  assertEquals(a.deOtroDemandado.length, 3);
+  // La contada sin poder confirmarla: sin demandado.
+  assertEquals(a.sinCotejo.length, 1);
   const c = perfilDe(delPerfil).riesgoJudicialCrediticio;
-  assertEquals(c.numeroDemandasComoDemandado, 3);
-  assertEquals(c.demandasDeCobro.length, 3);
-  assertEquals(c.numeroDemandasDeOtroDemandado, 2);
-  assertEquals(c.numeroDemandasSinCotejo, 2);
+  assertEquals(c.numeroDemandasComoDemandado, 2);
+  assertEquals(c.demandasDeCobro.length, 2);
+  assertEquals(c.numeroDemandasDeOtroDemandado, 3);
+  assertEquals(c.numeroDemandasSinCotejo, 1);
 });
 
 Deno.test("D2: las civiles también, y cada una se cuenta en su grupo", () => {

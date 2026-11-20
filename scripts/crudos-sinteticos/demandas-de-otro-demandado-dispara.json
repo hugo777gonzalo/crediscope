@@ -1,5 +1,5 @@
 {
-  "descripcion": "D2: perfil de estructura-v23 que contó una demanda de cobro y una civil de otro demandado (más una con los apellidos invertidos y una sin demandado, que siguen contando): el detector marca las dos de más",
+  "descripcion": "D2: perfil de estructura-v23 que contó una demanda de cobro y una civil de otro demandado (más una con los apellidos invertidos, que tampoco cuenta, y una sin demandado, que sí): el detector marca las dos de más",
   "cedula": "0000000000",
   "capturadoEl": "2026-11-10T12:00:00-05:00",
   "raw": {

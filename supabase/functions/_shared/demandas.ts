@@ -426,20 +426,19 @@ export function cotejarDemandado(demandado: unknown, nombreDeLaPersona: unknown)
 // NOMBRE: en la cartera, de 1.148 demandas de cobro 185 no eran de la persona
 // (91 de otra persona, 27 con los apellidos en otro orden y 67 sin demandado).
 //
-// Sólo la «otra persona» deja de contar. Lo que el cotejo no puede atribuir con
-// seguridad cuenta como hasta ahora y se avisa aparte («sin cotejo»), nunca
-// como «no es de ella»:
+// Dejan de contar la «otra persona» y los apellidos en otro orden (el negocio,
+// el 2026-11-19: en Ecuador el orden es paterno y materno, y el orden invertido
+// es otra filiación; lo más probable es otra persona, igual que en v20). Lo que
+// el cotejo no puede atribuir cuenta como hasta ahora y se avisa aparte («sin
+// cotejo»), nunca como «no es de ella»:
 //   - sin_demandado: la fuente no dice a quién se demanda;
 //   - sin_nombre: no se pudo leer el nombre de la persona (la consulta ya queda
-//     incompleta por la identidad);
-//   - apellidos_invertidos: mismos nombres con los apellidos en otro orden. Para
-//     un bloqueo (delitos-seguridad.ts) no alcanza; para contar una demanda de
-//     cobro sí, porque dejar de contar una deuda por un error de tipeo del
-//     juzgado subestima el riesgo, y el aviso le dice al analista que la mire.
+//     incompleta por la identidad).
 export interface DemandasAtribuidas {
   // Las que siguen contando: las de la persona y las que no se pueden atribuir.
   cuentan: AnyRecord[];
-  // Las que dejan de contar: el demandado es otra persona.
+  // Las que dejan de contar: el demandado es otra persona o lleva sus nombres
+  // con los apellidos en otro orden («posible homónimo»).
   deOtroDemandado: AnyRecord[];
   // Un subconjunto de `cuentan`: contadas sin poder confirmar que son suyas.
   sinCotejo: AnyRecord[];
@@ -449,7 +448,7 @@ export function atribuirDemandas(demandas: AnyRecord[], nombreDeLaPersona: unkno
   const atribuidas: DemandasAtribuidas = { cuentan: [], deOtroDemandado: [], sinCotejo: [] };
   for (const d of demandas) {
     const cotejo = cotejarDemandado(((d.demanda ?? {}) as AnyRecord).demandado, nombreDeLaPersona);
-    if (cotejo === "otra_persona") {
+    if (cotejo === "otra_persona" || cotejo === "apellidos_invertidos") {
       atribuidas.deOtroDemandado.push(d);
       continue;
     }

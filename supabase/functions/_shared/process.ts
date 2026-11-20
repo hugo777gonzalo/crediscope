@@ -549,9 +549,9 @@ function fechaDeCorte(v: unknown): string | null {
 // La v22 es la del PR 173 (capacidad de pago).
 // estructura-v24 (D2 del negocio, 2026-11-18, confirmada el 2026-11-19): una
 // demanda de cobro o civil en la que el demandado es otra persona deja de
-// contar, como en v20 con las penales (demandas.ts, atribuirDemandas). Lo que
-// no se puede atribuir (sin demandado, sin nombre, apellidos en otro orden)
-// sigue contando y se avisa: numeroDemandasDeOtroDemandado y
+// contar, como en v20 con las penales, y también la de apellidos en otro orden
+// (demandas.ts, atribuirDemandas). Lo que no se puede atribuir (sin demandado,
+// sin nombre) sigue contando y se avisa: numeroDemandasDeOtroDemandado y
 // numeroDemandasSinCotejo en riesgoJudicialCrediticio y riesgoJudicialCivil.
 export const PROCESS_VERSION = "estructura-v24"; // ver docs/estructura-estandarizada.md
 
