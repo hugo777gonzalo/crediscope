@@ -540,6 +540,12 @@ los hechos se emiten igual, y lo que llega lo decide el catálogo (sección 7).
   `inst.habito_de_pago`, `inst.perfil_interno`, `inst.es_cliente`.
 - **Hechos nuevos que salen solos:** `inst.operaciones.cantidad`, `inst.operaciones.vigentes`,
   `inst.mora.dias_max_entre_todas`.
+- **Etapa A hecha (2026-11-20).** `grupos/historial-con-la-institucion.ts`: los 7 campos citan la
+  operación elegida y llevan las otras en `descartados` (`cancelada_con_una_vigente`,
+  `vigente_de_menor_saldo`, `cancelada_de_menor_tamano`, `empate_gana_el_numero_de_operacion_mas_alto`,
+  `empate_total_gana_la_primera`). **D5 (negocio, 2026-11-18): se sigue con UNA sola operación.** Los tres
+  hechos nuevos existen, pero no tienen campo del perfil, no llegan al modelo ni a pantalla, y nada los suma.
+  Paridad completa contra el perfil sobre las 3.766 personas (26.362 campos, 0 diferencias).
 - **Riesgos.** El negocio decidió el 2026-11-09 que estas operaciones son historia de pago
   y no deuda, y que se reporta una sola: los hechos nuevos no se suman a nada y no llegan
   al modelo sin su decisión (sección 8). 782 de 2.602 personas tienen más de una

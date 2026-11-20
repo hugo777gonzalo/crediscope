@@ -1,0 +1,81 @@
+{
+  "descripcion": "Dos operaciones canceladas: se reporta la de mayor cuota por plazo (la primera, 1.200 contra 600) y la otra queda descartada",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 1,
+            "estadoOperacion": "CANCELADA",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 0,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          },
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 2,
+            "estadoOperacion": "CANCELADA",
+            "cuotaNova": 50,
+            "plazoCuotas": 12,
+            "saldoCapital": 0,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "C",
+            "resultadoHabitoPago": "MALO"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "inst.operacion@1": "aplica"
+  },
+  "hechos": {
+    "inst.operacion.estado": {
+      "valor": "CANCELADA",
+      "registros": [
+        "basesInternas.personasIncumplimientos#0"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#1:cancelada_de_menor_tamano"
+      ]
+    },
+    "inst.perfil_interno": {
+      "valor": "A",
+      "registros": [
+        "basesInternas.personasIncumplimientos#0"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#1:cancelada_de_menor_tamano"
+      ]
+    },
+    "inst.operaciones.cantidad": {
+      "valor": 2
+    },
+    "inst.operaciones.vigentes": {
+      "valor": 0,
+      "registros": [
+        "basesInternas.personasIncumplimientos"
+      ]
+    }
+  }
+}
