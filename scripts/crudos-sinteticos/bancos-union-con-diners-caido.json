@@ -1,0 +1,64 @@
+{
+  "descripcion": "Diners no contestó: no hay con qué unir. Los hechos de bancos quedan sin dato, con lo de Super como parcial (ninguna operación unida)",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "buroCreditoSuper": {
+      "status": "ok",
+      "data": {
+        "estado": {
+          "codigo": "OK",
+          "mensaje": ""
+        },
+        "datosSuper": [
+          {
+            "tipo": "C",
+            "fecha": "2026/08/31",
+            "codEntidad": "2002",
+            "entnombre": "TARJETA FICTICIA DOS",
+            "riesgo": "T",
+            "calificacion": "A1",
+            "saldoVigente": "1200.00",
+            "noDevengaInteres": "0",
+            "judicial": "0",
+            "castigo": "0",
+            "mora": "0",
+            "saldomora": "0"
+          }
+        ]
+      }
+    },
+    "buroCreditoDiners": {
+      "status": "error",
+      "data": null
+    }
+  },
+  "reglas": {
+    "ban.union@1": "no-aplica"
+  },
+  "hechos": {
+    "ban.operaciones.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 1
+    },
+    "ban.operaciones.unidas.cantidad": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 0
+    },
+    "ban.saldo.por_vencer": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta",
+      "parcial": 1200
+    }
+  }
+}
