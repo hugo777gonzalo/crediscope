@@ -1,0 +1,54 @@
+{
+  "descripcion": "Una sola operación con la institución: no hay nada que elegir ni que descartar",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 7,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 1500,
+            "diasMoraVigentes": 2,
+            "diasMoraMax": 2,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "inst.operacion@1": "no-aplica"
+  },
+  "hechos": {
+    "inst.operacion.saldo": {
+      "valor": 1500,
+      "registros": [
+        "basesInternas.personasIncumplimientos#0"
+      ],
+      "descartados": []
+    },
+    "inst.es_cliente": {
+      "valor": true
+    },
+    "inst.operaciones.cantidad": {
+      "valor": 1
+    }
+  }
+}

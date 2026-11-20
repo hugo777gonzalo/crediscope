@@ -1,0 +1,122 @@
+{
+  "descripcion": "Dos operaciones vigentes con la institución: se reporta la de mayor saldo (la segunda de la lista) y la otra queda descartada; los hechos nuevos cuentan las dos pero no llegan al perfil",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 1,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 1000,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 40,
+            "perfilInterno": "B",
+            "resultadoHabitoPago": "REGULAR"
+          },
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 2,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 3000,
+            "diasMoraVigentes": 5,
+            "diasMoraMax": 10,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "inst.operacion@1": "aplica"
+  },
+  "hechos": {
+    "inst.operacion.saldo": {
+      "valor": 3000,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#0:vigente_de_menor_saldo"
+      ]
+    },
+    "inst.operacion.estado": {
+      "valor": "VIGENTE",
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#0:vigente_de_menor_saldo"
+      ]
+    },
+    "inst.mora.dias_max": {
+      "valor": 10,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.mora.dias_vigente": {
+      "valor": 5,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.habito_de_pago": {
+      "valor": "BUENO",
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.perfil_interno": {
+      "valor": "A",
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.es_cliente": {
+      "valor": true,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.operaciones.cantidad": {
+      "valor": 2,
+      "registros": [
+        "basesInternas.personasIncumplimientos#0",
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.operaciones.vigentes": {
+      "valor": 2,
+      "registros": [
+        "basesInternas.personasIncumplimientos#0",
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.mora.dias_max_entre_todas": {
+      "valor": 40,
+      "registros": [
+        "basesInternas.personasIncumplimientos#0"
+      ]
+    }
+  }
+}

@@ -52,8 +52,9 @@ export const GRUPOS = {
 // prueba de los crudos inventados repite su paridad en cada PR. El grupo 1, el
 // 2026-11-18: 0 diferencias en 112.980 campos de 3.766 personas, salvo 12 de 3
 // personas a las que les faltó una fuente de préstamos del BIESS. Desde su
-// etapa B (estructura-v25) process.ts lo arma desde los hechos.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas"];
+// etapa B (estructura-v25) process.ts lo arma desde los hechos. El grupo 2, el
+// 2026-11-20: 0 diferencias en 26.362 campos de las mismas 3.766 personas.
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);

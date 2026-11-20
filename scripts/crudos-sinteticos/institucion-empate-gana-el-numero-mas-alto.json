@@ -1,0 +1,72 @@
+{
+  "descripcion": "Dos operaciones vigentes con el mismo saldo: gana el número de operación más alto (la segunda de la lista, la 9) y la otra queda descartada por el empate",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 5,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 2000,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "B",
+            "resultadoHabitoPago": "BUENO"
+          },
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 9,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 2000,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "inst.operacion@1": "aplica"
+  },
+  "hechos": {
+    "inst.perfil_interno": {
+      "valor": "A",
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#0:empate_gana_el_numero_de_operacion_mas_alto"
+      ]
+    },
+    "inst.operacion.saldo": {
+      "valor": 2000,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#0:empate_gana_el_numero_de_operacion_mas_alto"
+      ]
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "descripcion": "Una cancelada, una vigente y otra cancelada: la vigente gana aunque no sea la primera, y las dos canceladas quedan descartadas",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO UNO"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "personasIncumplimientos": [
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 1,
+            "estadoOperacion": "CANCELADA",
+            "cuotaNova": 300,
+            "plazoCuotas": 36,
+            "saldoCapital": 0,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          },
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 2,
+            "estadoOperacion": "VIGENTE",
+            "cuotaNova": 100,
+            "plazoCuotas": 12,
+            "saldoCapital": 800,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 3,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          },
+          {
+            "identificacion": "0000000000",
+            "fechaCorte": "2026-09-30",
+            "operacion": 3,
+            "estadoOperacion": "CANCELADA",
+            "cuotaNova": 10,
+            "plazoCuotas": 6,
+            "saldoCapital": 0,
+            "diasMoraVigentes": 0,
+            "diasMoraMax": 0,
+            "perfilInterno": "A",
+            "resultadoHabitoPago": "BUENO"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "inst.operacion@1": "aplica"
+  },
+  "hechos": {
+    "inst.operacion.estado": {
+      "valor": "VIGENTE",
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ],
+      "descartados": [
+        "basesInternas.personasIncumplimientos#0:cancelada_con_una_vigente",
+        "basesInternas.personasIncumplimientos#2:cancelada_con_una_vigente"
+      ]
+    },
+    "inst.operaciones.vigentes": {
+      "valor": 1,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    },
+    "inst.mora.dias_max_entre_todas": {
+      "valor": 3,
+      "registros": [
+        "basesInternas.personasIncumplimientos#1"
+      ]
+    }
+  }
+}
