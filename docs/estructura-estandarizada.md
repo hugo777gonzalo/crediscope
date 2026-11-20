@@ -891,15 +891,15 @@ interface StandardClientProfile {
 >   Casos sintéticos: `demandas-de-otro-demandado-dispara.json` y `...-no-dispara.json`.
 > - **Seco del 2026-11-19** (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil
 >   --bloqueo --seco`, crudo del 2026-10-03 y depósito): 3.766 perfiles, ninguno deja de
->   reproducirse; cambian los conteos de 137 personas (43 por demandas de cobro, 124 por
->   civiles). Sobre el crudo de esas personas: de 1.406 demandas de cobro, 119 son de otra
->   persona (dejan de contar), 28 traen los apellidos en otro orden y 90 no se pueden
->   cotejar (85 sin demandado, 5 sin el nombre), y siguen contando; de 4.422 civiles, 594 de
->   otra persona, 40 con los apellidos invertidos y 353 sin cotejo (334 y 19). 26 personas
->   quedan sin ninguna demanda de cobro y 29 sin ninguna civil. 298 personas llevan al menos
->   un aviso de «sin cotejo». Bloqueo: 0 se desbloquean y 0 se bloquean (D2 no lo toca).
->   Cambia de salida: no se midió; depende del modelo (no se usó). De las 137, 25 tienen un
->   análisis guardado (20 Revisar, 2 Aprobar, 2 Negar, 1 sin recomendación).
+>   reproducirse; cambian los conteos de 151 personas (53 por demandas de cobro, 134 por
+>   civiles). Sobre el crudo: de 1.406 demandas de cobro, 147 dejan de contar (119 de otra
+>   persona y 28 con los apellidos en otro orden) y 90 no se pueden cotejar (85 sin
+>   demandado, 5 sin el nombre) y siguen contando; de 4.422 civiles, dejan de contar 634
+>   (594 y 40) y 353 son sin cotejo (334 y 19). 34 personas quedan sin ninguna demanda de
+>   cobro y 34 sin ninguna civil. 284 personas llevan al menos un aviso de «sin cotejo».
+>   Bloqueo: 0 se desbloquean y 0 se bloquean (D2 no lo toca). Cambia de salida: no se
+>   midió; depende del modelo (no se usó). De las 151, 30 tienen un análisis guardado (24
+>   Revisar, 2 Aprobar, 3 Negar, 1 sin recomendación).
 > - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio.
 
 > **estructura-v23 (E12, R5 del negocio, 2026-11-18; la v22 es la del PR 173)**
