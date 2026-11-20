@@ -20,12 +20,13 @@
 //      igual campo por campo; sin ellos, la única diferencia admitida es la de
 //      DIFERENCIAS_ESPERADAS del grupo (`cuando: "sin_dato"`: el campo está en
 //      camposSinDato). --contra=no la salta.
-// 8. Con el grupo riesgoJudicial (o --bloqueo), el hallazgo de seguridad ciudadana del
-//    control de bloqueo: `controlesDesdeHechos()` contra `evaluarControlesBloqueo()` sobre
-//    el mismo crudo, hallazgo por hallazgo (código, texto, si bloquea). Desde la etapa B del
-//    grupo 3 (estructura-v27) `evaluarControlesBloqueo()` llama a `controlesDesdeHechos()`: con
-//    --contra, "hoy" es el control de esa versión (origin/main), que todavía leía el crudo; sin
-//    --contra (--contra=no) los dos son lo mismo y el paso es trivial. --bloqueo=no la salta.
+// 8. Con el grupo riesgoJudicial o cumplimiento (o --bloqueo), el control de bloqueo:
+//    `controlesDesdeHechos()` contra `evaluarControlesBloqueo()` sobre el mismo crudo, hallazgo por
+//    hallazgo (código, texto, si bloquea, en el mismo orden). Con riesgoJudicial solo, sólo los dos
+//    hallazgos de seguridad ciudadana; con cumplimiento (estructura-v28), todos. Desde la etapa B
+//    `evaluarControlesBloqueo()` llama a `controlesDesdeHechos()`: con --contra, "hoy" es el control
+//    de esa versión (origin/main), que todavía leía el crudo; sin --contra (--contra=no) los dos son
+//    lo mismo y el paso es trivial. --bloqueo=no la salta.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
@@ -135,7 +136,9 @@ const esperada = (ruta, grupoNuevo, doc, cuandos = [undefined, "sin_dato", "unio
     const campo = ruta.split(".").slice(1).join(".");
     return !!grupoNuevo?.camposSinDato && campo in grupoNuevo.camposSinDato;
   });
-const BLOQUEO = args.bloqueo === "no" ? false : args.bloqueo === true || ELEGIDOS.includes("riesgoJudicial");
+const BLOQUEO = args.bloqueo === "no" ? false : args.bloqueo === true || ELEGIDOS.includes("riesgoJudicial") || ELEGIDOS.includes("cumplimiento");
+// Con el grupo de cumplimiento el control entero sale de hechos; sin él, sólo seguridad ciudadana.
+const TODOS_LOS_HALLAZGOS = ELEGIDOS.includes("cumplimiento");
 // Los campos que un grupo declara pendientes, con su porqué: se informan aparte.
 const PENDIENTES = new Map(ELEGIDOS.flatMap((g) => (GRUPOS[g].CAMPOS_PENDIENTES ?? []).map((p) => [p.campo, p.motivo])));
 const pendientesVistos = new Set();
@@ -236,7 +239,7 @@ function estadistica(valores) {
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0, hechos: 0, conValor: 0, registros: 0, recuentos: 0 };
 const fallas = { bloqueo: [], bloqueoCompleto: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
 // 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
-const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0, completosComparados: 0, completosIguales: 0 };
+const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0, completosComparados: 0, completosIguales: 0, bloquean: 0, bloqueanAntes: 0, porHallazgo: {} };
 const cambio = { personas: 0, personasSinDato: 0, personasConUnion: 0, unionesPorRegla: {}, campos: 0, porCampo: {}, marcados: {}, personasConParcialConDato: 0, refs: [] };
 const porCampo = {};
 const medidas = { documentoJson: [], documentoGzip: [], ms: [], hechos: [], entidades: [], diferencias: [] };
@@ -360,15 +363,20 @@ for (let i = 0; i < candidatos.length; i += 50) {
 
     // 8. El hallazgo de seguridad ciudadana del bloqueo, de las dos maneras.
     if (BLOQUEO) {
-      const forma = (hs) => hs.filter((x) => CODIGOS_DE_SEGURIDAD.includes(x.code)).map((x) => ({ code: x.code, message: x.message, bloqueante: x.bloqueante, salidaMaxima: x.salidaMaxima ?? null }));
+      const forma = (hs) => hs.filter((x) => TODOS_LOS_HALLAZGOS || CODIGOS_DE_SEGURIDAD.includes(x.code)).map((x) => ({ code: x.code, message: x.message, bloqueante: x.bloqueante, salidaMaxima: x.salidaMaxima ?? null }));
       const hoy = forma((controlDeAntes ?? evaluarControlesBloqueo)(raw, crudo.cedula).hallazgos);
       const desdeHechos = forma(controlesDesdeHechos(doc));
       bloqueo.personas++;
+      const ahora = evaluarControlesBloqueo(raw, crudo.cedula);
+      if (ahora.bloqueado) bloqueo.bloquean++;
+      for (const x of ahora.hallazgos) bloqueo.porHallazgo[x.code] = (bloqueo.porHallazgo[x.code] ?? 0) + 1;
       // Con --contra, además, el resultado entero del control (todos los hallazgos, si bloquea y
       // el tope de la salida) de ahora contra el de esa versión: es lo que decide el bloqueo.
       if (controlDeAntes) {
         bloqueo.completosComparados++;
-        if (canonico(evaluarControlesBloqueo(raw, crudo.cedula)) === canonico(controlDeAntes(raw, crudo.cedula))) bloqueo.completosIguales++;
+        const antesDelControl = controlDeAntes(raw, crudo.cedula);
+        if (antesDelControl.bloqueado) bloqueo.bloqueanAntes++;
+        if (canonico(ahora) === canonico(antesDelControl)) bloqueo.completosIguales++;
         else fallas.bloqueoCompleto.push({ ref });
       }
       if (hoy.some((x) => x.code === "delito_seguridad_ciudadana")) bloqueo.conDelito++;
@@ -420,7 +428,8 @@ for (const d of fallas.noResuelve.slice(0, 5)) console.log(`  ${d.ref} ${d.quien
 console.log(`Recuentos independientes: ${n(cuenta.recuentos)}, ${fallas.recuento.length} que no cuadran.`);
 for (const d of fallas.recuento.slice(0, 5)) console.log(`  ${d.ref} ${d.codigo}`);
 if (BLOQUEO) {
-  console.log(`Bloqueo (seguridad ciudadana): ${n(bloqueo.iguales)} de ${n(bloqueo.personas)} personas con los mismos hallazgos de las dos maneras; ${fallas.bloqueo.length} distintas. Con delito propio (bloquea): ${n(bloqueo.conDelito)}; con aviso de posible homónimo: ${n(bloqueo.conAviso)}.`);
+  console.log(`Bloqueo (${TODOS_LOS_HALLAZGOS ? "todos los hallazgos" : "seguridad ciudadana"}): ${n(bloqueo.iguales)} de ${n(bloqueo.personas)} personas con los mismos hallazgos de las dos maneras; ${fallas.bloqueo.length} distintas. Con delito propio (bloquea): ${n(bloqueo.conDelito)}; con aviso de posible homónimo: ${n(bloqueo.conAviso)}.`);
+  console.log(`  Personas bloqueadas ahora: ${n(bloqueo.bloquean)}${bloqueo.completosComparados ? `, antes: ${n(bloqueo.bloqueanAntes)}` : ""}. Personas por hallazgo: ${Object.entries(bloqueo.porHallazgo).map(([c, k]) => `${c} ${n(k)}`).join(", ") || "ninguno"}.`);
   if (bloqueo.completosComparados) console.log(`  El resultado entero del control (hallazgos, si bloquea, tope de la salida) contra ${CONTRA}: ${n(bloqueo.completosIguales)} de ${n(bloqueo.completosComparados)} iguales; ${fallas.bloqueoCompleto.length} distintos.`);
   for (const d of fallas.bloqueoCompleto.slice(0, 8)) console.log(`  DISTINTO el control entero ${d.ref}`);
   for (const d of fallas.bloqueo.slice(0, 8)) console.log(`  DISTINTO ${d.ref}: hoy ${d.hoy.map((x) => x.code).join(",") || "nada"}; desde hechos ${d.desdeHechos.map((x) => x.code).join(",") || "nada"}`);

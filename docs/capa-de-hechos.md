@@ -977,10 +977,91 @@ archivo y borra la llamada de `process.ts`. `process.ts` y `fuentes-ingreso.ts` 
 
 ### 4.5 Los demás grupos
 
-Identidad, contacto, familia, tributario, seguridad social, patrimonio, tránsito, penal y
-cumplimiento son de una o dos fuentes y casi sin mezcla. Van después de los cuatro, en
-cualquier orden y en paralelo. Cumplimiento arrastra el resto de `controles-bloqueo.ts`
-(fallecido, listas de control, homónimos, PEP).
+Identidad, contacto, familia, tributario, seguridad social, patrimonio y tránsito son de una o dos
+fuentes y casi sin mezcla. Van después de los cuatro, en cualquier orden y en paralelo. Penal y
+cumplimiento se hicieron primero (E7, 2026-11-20), por un caso real y porque cumplimiento arrastra el
+resto de `controles-bloqueo.ts`.
+
+#### Grupo penal (`riesgoPenal`, etapas A y B, estructura-v28)
+
+- **Qué es.** Los 4 campos de `riesgoPenal`: `tieneAntecedentesPenales` y `descripcionAntecedentes`
+  (`antecedentesPenales`), `numeroDenunciasComoSospechoso` y `numeroDenunciasComoVictima` (`denuncias`).
+  Códigos `pen.antecedentes.existe`, `pen.antecedentes.descripcion`, `pen.denuncias.como_acusada.cantidad` y
+  `pen.denuncias.con_otro_papel.cantidad`.
+- **Por qué ahora.** El 2026-11-20 a una persona (c-dfeb4f7c) no le contestó la fuente de denuncias
+  (`faltante`). La tarjeta de seguridad ciudadana ya decía «sin dato (la fuente no contestó)» y la de
+  «Riesgo Penal / Fiscalía», «Sin antecedentes penales ni denuncias registradas»: afirmaba que no hay lo que
+  no se pudo mirar, y la pantalla se contradecía.
+- **La regla.** El papel en cada denuncia es el de `denuncias.ts` (`rolEnDenuncia()`, la misma del bloqueo de
+  seguridad ciudadana): una denuncia sin su cédula entre las partes no cuenta (`su_cedula_no_figura_en_la_denuncia`)
+  y cada hecho descarta las que cuenta el otro (`figura_como_acusada_y_se_cuenta_aparte`). Las denuncias ya son
+  entidades `dem-*` del grupo judicial: este grupo no las repite (dos grupos no emiten la misma entidad, 3.2).
+- **Fuente caída.** Con `denuncias` caída, los dos campos de denuncias son `null` y el grupo los lista en
+  `camposSinDato` con el parcial (0). `antecedentesPenales` es la excepción: dice «no hay» con `faltante`
+  (FUENTES) y sólo un `error` o `deshabilitado` la deja sin dato; con `faltante` el campo queda null, como siempre.
+- **La pantalla.** La tarjeta de Riesgo Penal muestra la fila «Denuncias: sin dato (la fuente no contestó)» y no
+  el mensaje de vacío (`perfilClienteCampos.js`, `presencia` y `FUENTE_DEL_CAMPO`).
+
+#### Grupo de cumplimiento (`cumplimiento` y el resto del control de bloqueo, etapas A y B, estructura-v28)
+
+- **Qué es.** Los 9 campos de `cumplimiento` (listas de control, providencia de certificación, homónimos, lista
+  negra, impedimento y su causal, SERCOP y Contraloría, PEP y su detalle), con 17 códigos `cum.*` y
+  `dif.cum.pep.repetido`, más lo que el control de bloqueo leía por su cuenta y el perfil no guarda: el fallecido
+  (`cum.fallecido.registrado`), la cédula que dice la fuente de identidad
+  (`cum.identidad.cedula_de_la_fuente`) y los registros de las listas internas (`cum.listas_internas.registros.cantidad`:
+  `tofac`, `tofac2`, `tconsepvinculados` y las providencias internas, que el perfil nunca contó).
+- **D7: se sigue bloqueando por todas las listas del proveedor** (negocio, 2026-11-18). `cum.listas.registros.cantidad`
+  cuenta `ofacsOpr` y las providencias que no son de certificación; los homónimos
+  (`homonimo_de_otra_persona`) y las providencias de certificación (`providencia_de_certificacion`, R5) quedan como
+  descartados. Reglas que mezclan: `cum.listas@1` (cuenta lo que bloquea, descarta lo demás) y `cum.pep@1`.
+- **PEP de dos fuentes (6, punto 10).** `personaPublicasOpr` y `tpeps` se **suman sin unir**; el detalle sale del
+  registro de fecha más reciente (la fecha como texto, el orden de siempre). Si el mismo cargo y la misma fecha vienen
+  en las dos, el hecho no cambia y queda `dif.cum.pep.repetido` (lectura «esperada»).
+- **El control, desde hechos (6, punto 14).** `controlesDesdeHechos()` arma todos los hallazgos, en el orden de siempre
+  (fallecido, cédula inconsistente, lista de control, lista negra, homónimo, listas internas, providencia de
+  certificación, PEP, seguridad ciudadana), con el mismo texto; `evaluarControlesBloqueo()` sólo suma el tope de la
+  salida. Ningún hallazgo relee el crudo. Si el control necesita un hecho que no se emitió, corta con un error: no lo lee
+  como «no hay».
+- **Qué pasa con cada hallazgo cuando su fuente no contestó.** Una fuente caída no desbloquea a nadie ni bloquea a
+  alguien: el control lee el `parcial`, lo que dicen las fuentes que contestaron. Un hallazgo con la evidencia en una
+  fuente que contestó sale igual (bloquea si es de los que bloquean); uno cuya única evidencia está en la caída no sale, y
+  la persona no queda «limpia»: la fuente es obligatoria, la consulta queda incompleta y el modelo no corre.
+
+  | Hallazgo | Fuente | Caída | Con la fuente caída |
+  |---|---|---|---|
+  | `fallecido`, `cedula_inconsistente` | `general` | obligatoria | no salen |
+  | `lista_control` | `listasControl` | obligatoria | no sale; un registro de las listas internas (`basesInternas`) o la lista negra siguen bloqueando |
+  | `lista_negra` | `listaNegra` | obligatoria | no sale (hay personas con `faltante` persistente: 5 en el 2026-09-25) |
+  | `homonimo_en_lista_control` | `listasControl` y `basesInternas` | obligatorias | sale con lo de la que contestó |
+  | `listas_control_interno` | `basesInternas` | obligatoria | no sale; un `ofacsOpr` sigue bloqueando |
+  | `providencia_certificacion` | `listasControl` y `basesInternas` | obligatorias | sale con lo de la que contestó |
+  | `pep` | `listasControl` y `basesInternas` | obligatorias | sale con lo de la que contestó (informativo) |
+  | impedimento y SERCOP (sólo perfil) | `impedimentoCargosPublicos`, `sercop` | `faltante` es su «no hay» | sólo un `error` los deja sin dato; no bloquean |
+
+- **La pantalla.** Cada fila «sin dato» de cumplimiento dice su fuente (Listas de control, Lista negra, Persona expuesta
+  políticamente, Impedimento para cargos públicos, SERCOP y Contraloría).
+
+#### El seco de los grupos penal y de cumplimiento (2026-11-20, 3.766 personas reales, contra estructura-v27)
+
+- **Paridad** de los hechos contra el perfil nuevo: 50.384 de 50.384 campos; 0 campos sin procedencia; 1.141.773 registros
+  citados, 0 que no resuelven; 177.785 recuentos, 0 que no cuadran.
+- **Bloqueo: 0 y 0.** El resultado entero del control (hallazgos, si bloquea y el tope de la salida) de ahora contra el de
+  origin/main da lo mismo en 3.766 de 3.766. Bloquean 79 personas antes y 79 ahora. Personas por hallazgo: pep 46,
+  homónimo en lista de control 68, lista de control 10, lista negra 46, providencia de certificación 5, delito de seguridad
+  ciudadana 24, posible homónimo en demanda penal 16, listas internas 1, fallecido 2.
+- **El «sin dato»** (la única diferencia, declarada en `DIFERENCIAS_ESPERADAS`): cambian **753 personas y 5.887 campos**, 0 sin
+  declarar; con los valores de antes (lo que leen el modelo y la capacidad), 0 campos distintos. Por campo: denuncias (los
+  dos campos) 724 personas; lista negra 663; listas de control, providencia de certificación, homónimo y PEP 651 cada uno;
+  SERCOP 604; impedimento 568. Marcados sin dato y ya `null` antes (cambian de «no hay» a «no se pudo»): antecedentes
+  572 (una fuente en `error`), causal 568 y detalle del PEP 651. En 0 personas el parcial trae un valor distinto de 0,
+  false o vacío: el bloqueo no se mueve. Entre ellas, c-dfeb4f7c, el caso que motivó el grupo.
+- **`recalcular-grupos.mjs --grupos=riesgoPenal,cumplimiento --bloqueo --seco`** (3.766 candidatos, 0 que el crudo no
+  reproduce): cambian 753 personas, todas con un campo sin dato y ninguna con otro cambio; **bloqueo: se desbloquean 0,
+  se bloquean 0, difieren en otro hallazgo 0**. Campos: denuncias 724 (los dos), lista negra 663, listas de control,
+  homónimo, PEP y providencia 651, SERCOP 604, impedimento 568.
+- **Peso y tiempo** (todos los grupos): p99 10,3 KB en gzip y 6,6 ms por persona; la que más tiene, 219 entidades y
+  15,6 KB en gzip.
+
 
 ## 5. La comparación en seco y qué es «listo»
 
@@ -1093,11 +1174,11 @@ cambio, va aparte y con medición.
 | 7 | RUC activo: contribuyente y establecimientos | `ruc.ts`, la única implementación | `dif.ruc.estado`: el RUC activo sin establecimiento abierto, o al revés | paridad. Unificar `obligado` es una propuesta, con medición |
 | 8 | Pensión alimenticia, dos fuentes | por proceso, el registro de mayor deuda (hoy) | `dif.jud.pension.deuda` | paridad. Propuesta: que mande el registro más reciente si la fuente trae una fecha. Sin medir |
 | 9 | Demandas atribuidas por nombre | el cotejo del demandado, uno solo para todas | no aplica: la atribución va en la entidad | paridad para las penales (v20). Para las de cobro y las civiles, **propuesta**: decisión del negocio |
-| 10 | PEP y homónimos, dos fuentes | se suman, sin unir | `dif.cum.pep.repetido` si el mismo cargo y fecha vienen en las dos | paridad. Propuesta: comparar la fecha como fecha y no como texto |
+| 10 | PEP y homónimos, dos fuentes | se suman, sin unir | `dif.cum.pep.repetido` si el mismo cargo y fecha vienen en las dos | paridad, hecha en estructura-v28 (`cum.pep@1`, 4.5). Propuesta: comparar la fecha como fecha y no como texto |
 | 11 | Seguridad ciudadana, tres fuentes con tres criterios | cada una con el suyo (nombre, identificación y rol, texto) | no aplica: cada categoría cita su fuente y su método | paridad |
 | 12 | Multas de tránsito, tres entidades | se suman, sin unir | `dif.tra.posible_repetida` | paridad. Sin medir si una multa viene en dos |
 | 13 | Nivel de educación: registro civil y títulos | ninguna: hoy conviven | `dif.ide.nivel_de_educacion` cuando se contradicen | paridad. Propuesta: que mande el título registrado |
-| 14 | El bloqueo relee el crudo | los hechos: `controlesDesdeHechos()` | no aplica | hecho para seguridad ciudadana en estructura-v27 (24 y 16 en las 3.766, sin diferencias); falta el grupo de cumplimiento |
+| 14 | El bloqueo relee el crudo | los hechos: `controlesDesdeHechos()` | no aplica | hecho: seguridad ciudadana en estructura-v27 (24 y 16 en las 3.766, sin diferencias) y todo lo demás en estructura-v28 (grupo de cumplimiento: fallecido, listas, homónimos, PEP) |
 | 15 | Edades y antigüedades con el reloj del armado | la fecha de la consulta | no aplica | propuesta: cambia el valor de un perfil recalculado otro día; se declara como diferencia esperada |
 | 16 | Proveedor_Info_1 y el buró de la institución | el buró para bancos, Diners y cooperativas; el retail se suma al sector comercial (negocio, 2026-10-16); el BIESS queda en Proveedor_Info_1 y no se suma | `dif.end.bancos`: la deuda de bancos según cada uno | paridad con `perfil-del-modelo.ts` (sección 7) |
 

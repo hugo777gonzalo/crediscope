@@ -966,6 +966,28 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
 >   con el sí del negocio.
 
+> **estructura-v28 (E7, 2026-11-20: etapa B de los grupos penal y de cumplimiento de la capa de hechos)**
+> - `riesgoPenal` y `cumplimiento` salen de la capa de hechos (`hechos/grupos/penal.ts` y `cumplimiento.ts`,
+>   `docs/capa-de-hechos.md`, 4.5): misma regla, una sola implementación. El control de bloqueo toma de los
+>   mismos hechos **todos** sus hallazgos (fallecido, cédula inconsistente, listas de control, lista negra,
+>   homónimos, listas internas, providencias de certificación, PEP y seguridad ciudadana) y ya no lee el crudo.
+>   Las listas siguen bloqueando por todas las listas del proveedor (D7).
+> - Con una fuente que no contestó (o apagada), el campo es `null` y el grupo lo lista en `camposSinDato` con lo
+>   que dicen las que sí contestaron. `denuncias` marca los dos campos de denuncias; `antecedentesPenales`, los de
+>   antecedentes (sólo con `error` o `deshabilitado`: su `faltante` es su «no hay»); `listasControl` y
+>   `basesInternas`, las listas, las providencias, los homónimos y el PEP; `listaNegra`, la lista negra;
+>   `impedimentoCargosPublicos` y `sercop`, los suyos (sólo con `error`).
+> - **Arregla la tarjeta de «Riesgo Penal / Fiscalía»:** con la fuente de denuncias caída decía «Sin antecedentes
+>   penales ni denuncias registradas» (c-dfeb4f7c); ahora dice «Denuncias: sin dato (la fuente no contestó)».
+> - **Una fuente caída no desbloquea a nadie ni bloquea a alguien.** El control lee el parcial. Si el hallazgo
+>   sólo tenía su evidencia en la fuente caída, no sale, y la consulta queda incompleta (son fuentes obligatorias).
+> - El modelo y la capacidad de pago leen el valor de antes (`_shared/campos-sin-dato.ts`) hasta la versión mayor del
+>   marco.
+> - Medido en seco sobre las 3.766 personas reales: cambian 753 (5.887 campos, todos sin dato, 0 sin declarar); el
+>   control entero da lo mismo que el de la v27 en las 3.766 (79 bloquean antes y ahora).
+> - **Sin aplicar:** se despliega primero y se recalcula después
+>   (`recalcular-grupos.mjs --grupos=riesgoPenal,cumplimiento --bloqueo`), con el sí del negocio.
+
 > **estructura-v21 (2026-11-09, p6, p3 y p5 de la revisión del análisis,
 > aprobadas por el negocio el 2026-11-08)**
 > - **p6, préstamos del IESS/BIESS** (`operacionesIessBiess()`): una operación de la

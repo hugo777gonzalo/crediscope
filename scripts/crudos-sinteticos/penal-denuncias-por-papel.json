@@ -1,0 +1,46 @@
+{
+  "descripcion": "Grupo penal: cuatro denuncias, una como sospechosa, una como denunciante, una donde su cédula no figura y una como víctima: sólo cuentan las que la nombran con su cédula, repartidas por papel",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO ONCE", "identificacion": "0000000000" } } },
+    "listasControl": { "status": "ok", "data": { "ofacsOpr": [], "providenciasOpr": [], "homonimosOpr": [], "personaPublicasOpr": [] } },
+    "basesInternas": { "status": "ok", "data": { "tofac": [], "tprovidencias": [], "tconsephomonimos": [], "tpeps": [] } },
+    "listaNegra": { "status": "ok", "data": { "listaNegra": null } },
+    "demandas": { "status": "ok", "data": { "demandas": [] } },
+    "denuncias": {
+      "status": "ok",
+      "data": {
+        "denuncias": [
+          { "nroNoticia": "N-1", "delito": "ROBO", "detalleDenuncia": [{ "cedula": "0000000000", "estado": "SOSPECHOSO" }] },
+          { "nroNoticia": "N-2", "delito": "ROBO", "detalleDenuncia": [{ "cedula": "0000000000", "estado": "DENUNCIANTE" }] },
+          { "nroNoticia": "N-3", "delito": "ROBO", "detalleDenuncia": [{ "cedula": "1111111111", "estado": "SOSPECHOSO" }] },
+          { "nroNoticia": "N-4", "delito": "ROBO", "detalleDenuncia": [{ "cedula": "0000000000", "estado": "VICTIMA" }] }
+        ]
+      }
+    },
+    "antecedentesPenales": { "status": "ok", "data": { "antecedentes": { "descripcion": "ESTAFA" } } }
+  },
+  "esperado": {},
+  "reglas": {
+    "pen.denuncias@1": "aplica"
+  },
+  "hechos": {
+    "pen.denuncias.como_acusada.cantidad": {
+      "valor": 1,
+      "registros": ["denuncias.denuncias#0"],
+      "descartados": [
+        "denuncias.denuncias#1:figura_con_otro_papel_y_se_cuenta_aparte",
+        "denuncias.denuncias#2:su_cedula_no_figura_en_la_denuncia",
+        "denuncias.denuncias#3:figura_con_otro_papel_y_se_cuenta_aparte"
+      ]
+    },
+    "pen.denuncias.con_otro_papel.cantidad": {
+      "valor": 2,
+      "registros": ["denuncias.denuncias#1", "denuncias.denuncias#3"],
+      "descartados": ["denuncias.denuncias#0:figura_como_acusada_y_se_cuenta_aparte", "denuncias.denuncias#2:su_cedula_no_figura_en_la_denuncia"]
+    },
+    "pen.antecedentes.existe": { "valor": true },
+    "pen.antecedentes.descripcion": { "valor": "ESTAFA" }
+  }
+}

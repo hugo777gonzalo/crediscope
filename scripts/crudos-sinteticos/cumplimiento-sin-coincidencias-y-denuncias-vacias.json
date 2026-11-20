@@ -1,0 +1,35 @@
+{
+  "descripcion": "Grupos penal y de cumplimiento sin nada que decir: listas y PEP vacíos, sin denuncias, y los «no hay» de las fuentes que lo dicen con faltante (impedimento, SERCOP, antecedentes) no son una falla",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO DIEZ", "identificacion": "0000000000" } } },
+    "listasControl": { "status": "ok", "data": { "ofacsOpr": [], "providenciasOpr": [], "homonimosOpr": [], "personaPublicasOpr": [] } },
+    "basesInternas": { "status": "ok", "data": { "tofac": [], "tprovidencias": [], "tconsephomonimos": [], "tpeps": [] } },
+    "listaNegra": { "status": "ok", "data": { "listaNegra": null } },
+    "impedimentoCargosPublicos": { "status": "faltante", "data": null },
+    "sercop": { "status": "faltante", "data": null },
+    "demandas": { "status": "ok", "data": { "demandas": [] } },
+    "denuncias": { "status": "ok", "data": { "denuncias": [] } },
+    "antecedentesPenales": { "status": "faltante", "data": null }
+  },
+  "esperado": {
+    "dato-penal-o-de-cumplimiento-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
+  "reglas": {
+    "cum.listas@1": "no-aplica",
+    "cum.pep@1": "no-aplica",
+    "pen.denuncias@1": "no-aplica"
+  },
+  "hechos": {
+    "cum.listas.registros.cantidad": { "valor": 0 },
+    "cum.listas_internas.registros.cantidad": { "valor": 0 },
+    "cum.pep.cantidad": { "valor": 0 },
+    "cum.pep.detalle": { "valor": null, "motivo": "no_aplica" },
+    "cum.impedimento.existe": { "valor": false },
+    "cum.sercop.registra": { "valor": false },
+    "pen.denuncias.como_acusada.cantidad": { "valor": 0 },
+    "pen.denuncias.con_otro_papel.cantidad": { "valor": 0 },
+    "pen.antecedentes.existe": { "valor": null, "motivo": "no_aplica" }
+  }
+}

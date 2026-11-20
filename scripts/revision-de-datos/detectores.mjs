@@ -632,6 +632,31 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
+    id: "dato-penal-o-de-cumplimiento-de-fuente-sin-respuesta-escrito-como-total",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Un campo de riesgo penal o de cumplimiento (denuncias, listas de control, lista negra, homónimos, PEP) tiene valor (o no está marcado sin dato) aunque su fuente no contestó",
+    caso: "E7 de la reestructuración del núcleo, 2026-11-20: a una persona (c-dfeb4f7c) no le contestó la fuente de denuncias (status faltante) y la tarjeta de «Riesgo Penal / Fiscalía» decía «Sin antecedentes penales ni denuncias registradas», una afirmación sobre lo que no se pudo mirar, mientras la de seguridad ciudadana ya decía «sin dato»",
+    conocido: "hasta estructura-v27 se escribía 0 denuncias o false en la lista, como si fuera el total: se corrige con el recálculo de estructura-v28 (recalcular-grupos.mjs --grupos=riesgoPenal,cumplimiento --bloqueo)",
+    // Criterio DISTINTO del de la regla (que mira el `status`, respuestaDe en hechos/lectura-del-crudo.ts):
+    // acá se mira el contenido. Una fuente que contestó trae su lista (aunque sea vacía) o su clave.
+    // `antecedentesPenales`, `impedimentoCargosPublicos` y `sercop` no entran: su «no hay» es un status
+    // `faltante` sin contenido, y por contenido no se distingue de una caída. `general` tampoco: lo que lee
+    // el control (fallecido, cédula) no es un campo del perfil de cumplimiento.
+    aplica: ({ raw, perfil }) => !!perfil?.cumplimiento && fuentesPenalesYDeCumplimientoSinRespuesta(raw).length > 0,
+    detectar: ({ raw, perfil }) => {
+      const conValor = [];
+      for (const [fuente, , grupo, campos] of fuentesPenalesYDeCumplimientoSinRespuesta(raw)) {
+        const g = perfil?.[grupo] ?? {};
+        const marcados = g.camposSinDato && typeof g.camposSinDato === "object" ? g.camposSinDato : {};
+        for (const campo of campos) {
+          if ((g[campo] !== null && g[campo] !== undefined) || !(campo in marcados)) conValor.push(`${fuente}: ${grupo}.${campo}`);
+        }
+      }
+      return conValor.length ? { campos: [...new Set(conValor)] } : null;
+    },
+  },
+  {
     id: "operacion-en-super-y-diners",
     capa: "estructura",
     tipo: "revisar",
@@ -736,6 +761,24 @@ function fuentesJudicialesSinRespuesta(raw) {
     const data = raw?.[fuente]?.data;
     if (!data || typeof data !== "object") return true;
     return !Array.isArray(data[lista]);
+  });
+}
+
+// Las fuentes de los grupos penal y de cumplimiento (estructura-v28) y los campos del perfil que salen de
+// cada una. Contestó si trae su contenido: la lista de denuncias, las listas de control, la clave de la lista
+// negra, el objeto de la base interna.
+const PEP_DEL_PERFIL = ["esPersonaExpuestaPoliticamente", "detallePep"];
+const FUENTES_PENALES_Y_DE_CUMPLIMIENTO = [
+  // [fuente, ¿trae su contenido?, grupo, campos]
+  ["denuncias", (d) => Array.isArray(d.denuncias), "riesgoPenal", ["numeroDenunciasComoSospechoso", "numeroDenunciasComoVictima"]],
+  ["listasControl", (d) => Array.isArray(d.ofacsOpr), "cumplimiento", ["enListaControl", "tieneProvidenciaDeCertificacion", "tieneHomonimoEnListaControl", ...PEP_DEL_PERFIL]],
+  ["basesInternas", () => true, "cumplimiento", ["tieneProvidenciaDeCertificacion", "tieneHomonimoEnListaControl", ...PEP_DEL_PERFIL]],
+  ["listaNegra", (d) => "listaNegra" in d, "cumplimiento", ["enListaNegra"]],
+];
+function fuentesPenalesYDeCumplimientoSinRespuesta(raw) {
+  return FUENTES_PENALES_Y_DE_CUMPLIMIENTO.filter(([fuente, trae]) => {
+    const data = raw?.[fuente]?.data;
+    return !data || typeof data !== "object" || !trae(data);
   });
 }
 

@@ -1,0 +1,33 @@
+{
+  "descripcion": "Grupos penal y de cumplimiento: denuncias en faltante y las listas de control caídas; la base interna sí contestó y trae un PEP y un registro de lista interna. Con estructura-v28 los campos de esas fuentes quedan en null marcados en camposSinDato con el parcial (el PEP de la base interna queda en el parcial, y el registro de la lista interna sigue bloqueando), y el detector no marca nada",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO OCHO", "identificacion": "0000000000" } } },
+    "listasControl": { "status": "error", "data": null },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tofac": [{ "nombre": "INVENTADO UNO" }],
+        "tprovidencias": [],
+        "tconsephomonimos": [],
+        "tpeps": [{ "cargo": "CONCEJAL INVENTADO", "empresa": "CONCEJO INVENTADO", "fecha": "2022-05-05" }]
+      }
+    },
+    "listaNegra": { "status": "ok", "data": { "listaNegra": null } },
+    "demandas": { "status": "ok", "data": { "demandas": [] } },
+    "denuncias": { "status": "faltante", "data": null },
+    "antecedentesPenales": { "status": "ok", "data": { "antecedentes": { "descripcion": "NO" } } }
+  },
+  "esperado": {
+    "dato-penal-o-de-cumplimiento-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
+  "hechos": {
+    "pen.denuncias.como_acusada.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "cum.listas.en_lista_control": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": false },
+    "cum.listas.registros.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "cum.pep.existe": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": true },
+    "cum.listas_internas.registros.cantidad": { "valor": 1, "registros": ["basesInternas.tofac#0"] },
+    "cum.lista_negra.existe": { "valor": false }
+  }
+}

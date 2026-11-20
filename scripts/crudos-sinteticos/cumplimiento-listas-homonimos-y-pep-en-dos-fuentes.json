@@ -1,0 +1,67 @@
+{
+  "descripcion": "Grupo de cumplimiento: un OFAC y una providencia de retención bloquean, una providencia de certificación y un homónimo se descartan; la base interna trae una lista interna, una providencia de retención y otra de certificación; el mismo PEP viene en las dos fuentes (se suman sin unir, queda la diferencia) y uno más reciente sólo en la base interna",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO NUEVE", "identificacion": "0000000000" } } },
+    "listasControl": {
+      "status": "ok",
+      "data": {
+        "ofacsOpr": [{ "nombre": "INVENTADO UNO" }],
+        "providenciasOpr": [
+          { "notificacion": "ORDEN DE RETENCION", "enteEmisor": "JUZGADO INVENTADO" },
+          { "notificacion": "CERTIFICACION", "enteEmisor": "FISCALIA INVENTADA" }
+        ],
+        "homonimosOpr": [{ "nombre": "INVENTADO DOS", "identificacion": "0100000001" }],
+        "personaPublicasOpr": [{ "cargo": "ALCALDE INVENTADO", "empresa": "MUNICIPIO INVENTADO", "sueldo": 3000, "fecha": "2020-01-01" }]
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tofac": [{ "nombre": "INVENTADO TRES" }],
+        "tprovidencias": [
+          { "notificacion": "ORDEN DE RETENCION", "enteEmisor": "JUZGADO INVENTADO" },
+          { "notificacion": "CERTIFICACION", "enteEmisor": "FISCALIA INVENTADA" }
+        ],
+        "tconsephomonimos": [],
+        "tpeps": [
+          { "cargo": "ALCALDE INVENTADO", "empresaSector": "MUNICIPIO INVENTADO", "sueldo": 3000, "fecha": "2020-01-01" },
+          { "cargo": "CONCEJAL INVENTADO", "empresa": "CONCEJO INVENTADO", "fecha": "2022-05-05" }
+        ]
+      }
+    },
+    "listaNegra": { "status": "ok", "data": { "listaNegra": null } },
+    "demandas": { "status": "ok", "data": { "demandas": [] } },
+    "denuncias": { "status": "ok", "data": { "denuncias": [] } },
+    "antecedentesPenales": { "status": "ok", "data": { "antecedentes": { "descripcion": "NO" } } }
+  },
+  "esperado": {},
+  "reglas": {
+    "cum.listas@1": "aplica",
+    "cum.pep@1": "aplica"
+  },
+  "hechos": {
+    "cum.listas.registros.cantidad": {
+      "valor": 2,
+      "registros": ["listasControl.ofacsOpr#0", "listasControl.providenciasOpr#0"],
+      "descartados": ["listasControl.providenciasOpr#1:providencia_de_certificacion", "listasControl.homonimosOpr#0:homonimo_de_otra_persona"]
+    },
+    "cum.listas_internas.registros.cantidad": {
+      "valor": 2,
+      "registros": ["basesInternas.tofac#0", "basesInternas.tprovidencias#0"],
+      "descartados": ["basesInternas.tprovidencias#1:providencia_de_certificacion"]
+    },
+    "cum.providencias.certificacion.cantidad": { "valor": 2 },
+    "cum.homonimos.cantidad": { "valor": 1 },
+    "cum.pep.cantidad": {
+      "valor": 3,
+      "registros": ["listasControl.personaPublicasOpr#0", "basesInternas.tpeps#0", "basesInternas.tpeps#1"],
+      "diferencias": ["dif.cum.pep.repetido"]
+    },
+    "cum.pep.detalle": {
+      "valor": { "cargo": "CONCEJAL INVENTADO", "empresa": "CONCEJO INVENTADO", "sueldo": null, "fecha": "2022-05-05" },
+      "registros": ["basesInternas.tpeps#1"]
+    }
+  }
+}
