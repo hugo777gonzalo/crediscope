@@ -15,6 +15,18 @@ import { esFuenteQueNoContesto } from "./emisor.ts";
 import { catalogoCompleto } from "./indice.ts";
 import type { HechosDeLaPersona } from "./tipos.ts";
 
+// Un campo con punto es de un objeto anidado del grupo (`detalle.aportesPorMes` de
+// fuentesIngreso): se arma el objeto en el orden en que vienen los códigos.
+function asignar(salida: Record<string, unknown>, campo: string, valor: unknown): void {
+  const partes = campo.split(".");
+  let destino = salida;
+  for (const p of partes.slice(0, -1)) {
+    destino[p] = (destino[p] as Record<string, unknown> | undefined) ?? {};
+    destino = destino[p] as Record<string, unknown>;
+  }
+  destino[partes[partes.length - 1]] = valor;
+}
+
 export function perfilDesdeHechos(doc: HechosDeLaPersona, grupoDelPerfil: string): Record<string, unknown> {
   const porCodigo = new Map(doc.hechos.map((h) => [h.codigo, h]));
   const salida: Record<string, unknown> = {};
@@ -34,7 +46,7 @@ export function perfilDesdeHechos(doc: HechosDeLaPersona, grupoDelPerfil: string
       // Un grupo en etapa A reproduce lo que escribe process.ts: con una fuente caída,
       // lo que dicen las filas que llegaron (el `parcial`); si el hecho no aplica o la
       // fuente no lo informa, lo que el perfil escribe en ese caso.
-      salida[campo] = h.valor ?? (h.parcial !== undefined ? h.parcial : c.enElPerfilSinValor) ?? null;
+      asignar(salida, campo, h.valor ?? (h.parcial !== undefined ? h.parcial : c.enElPerfilSinValor) ?? null);
     }
   }
   if (Object.keys(sinDato).length) salida[CLAVE_SIN_DATO] = sinDato;

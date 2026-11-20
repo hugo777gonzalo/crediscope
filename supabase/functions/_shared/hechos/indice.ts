@@ -30,7 +30,10 @@ import * as cumplimiento from "./grupos/cumplimiento.ts";
 // hechos-v3 (grupo 3, riesgo judicial): un elemento de una lista puede llevar una lista
 // de textos (los tipos de cada categoría de demanda), y un grupo en etapa A escribe el
 // `parcial` en el perfil cuando una fuente no contestó.
-export const HECHOS_VERSION = "hechos-v3";
+//
+// hechos-v4 (grupo 4, ingresos): un hecho puede valer un objeto de valores simples (la
+// continuidad laboral, unidad «objeto»), y un elemento puede llevar booleanos.
+export const HECHOS_VERSION = "hechos-v4";
 
 // El nombre es el del grupo en la sección 3.1 y el de `--grupo=` de comparar-hechos.mjs.
 export const GRUPOS = {
@@ -60,7 +63,7 @@ export const GRUPOS = {
 // 2026-11-20: 0 diferencias en 26.362 campos de las mismas 3.766 personas. El grupo 3
 // (riesgo judicial), el mismo día: 0 diferencias en 75.320 campos, y el hallazgo de
 // seguridad ciudadana desde hechos da lo mismo que el control de bloqueo en las 3.766.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc"];
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);

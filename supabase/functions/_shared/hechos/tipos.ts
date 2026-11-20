@@ -40,12 +40,13 @@ interface Base {
 // Un elemento de una lista que el perfil guarda tal cual (los préstamos del
 // IESS/BIESS de la capacidad de pago, las demandas de cobro con su año, las demandas
 // civiles por categoría con sus tipos): valores simples o una lista de textos.
-export type ElementoDeLista = Record<string, string | number | null | string[]>;
+export type ElementoDeLista = Record<string, string | number | boolean | null | string[]>;
 
-export interface Hecho<V = string | number | boolean | null | string[] | ElementoDeLista[]> extends Base {
+// `ElementoDeLista` solo es un objeto de valores simples (la continuidad laboral, hechos-v4).
+export interface Hecho<V = string | number | boolean | null | string[] | ElementoDeLista[] | ElementoDeLista> extends Base {
   clase: "hecho";
   valor: V | null; // null sólo con calidad "no_disponible"
-  unidad: "usd" | "dias" | "meses" | "anios" | "cantidad" | "fecha" | "si_no" | "texto" | "lista";
+  unidad: "usd" | "dias" | "meses" | "anios" | "cantidad" | "fecha" | "si_no" | "texto" | "lista" | "objeto";
   calidad: Calidad;
   motivo?: MotivoDeNoDisponible;
   // Sólo con una fuente que no contestó (hechos-v2, estructura-v25): lo que dice

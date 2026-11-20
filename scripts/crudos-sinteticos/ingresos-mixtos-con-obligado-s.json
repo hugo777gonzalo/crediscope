@@ -1,0 +1,199 @@
+{
+  "descripcion": "Grupo 4, ingresos: un empleador que paga 800 y un aporte voluntario sobre una base de 700 que elige la propia persona: ninguna fuente llega a dos tercios, así que el segmento es de ingresos mixtos; lo reportado se parte entre lo que confirma un tercero y lo que declara ella, y el registro del RUC dice «S» (ruc.ts lo lee obligado y fuentes-ingreso.ts no); el impuesto a la renta es lo que declaró al SRI",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "jubilados": {
+      "status": "ok",
+      "data": {
+        "trabajos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    },
+    "afiliacionIssfacCertMedico": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "afiliacionSiisspol": {
+      "status": "ok",
+      "data": {
+        "afiliacionSiisspol": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "sriImpuestoRenta": {
+      "status": "ok",
+      "data": {
+        "data": [
+          {
+            "impuestosRenta": [
+              {
+                "periodoFiscal": 2025,
+                "formulario": "102",
+                "rentaCausadoRetenido": 1200,
+                "rentaCausadoRetenidoRelacionDependencia": 800
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 8
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 9
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          },
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000009",
+            "tipEmp": "3-AFILIADO VOLUNTARIO",
+            "nomEmp": "PRUEBA OTRO",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "700",
+            "fecIng": "10/01/2021",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          }
+        ]
+      }
+    },
+    "contribuyente": {
+      "status": "ok",
+      "data": {
+        "datosContribuyente": [
+          {
+            "ruc": "0000000000001",
+            "fecha_inscripcion_ruc": "2024/05/01",
+            "fecha_inicio_actividades": "2024/05/01",
+            "obligado": "S"
+          }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "ing.segmento@1": "aplica",
+    "ing.obligado@1": "aplica"
+  },
+  "hechos": {
+    "ing.segmento.codigo": {
+      "valor": "ingresos_mixtos",
+      "registros": [
+        "basesInternas.tiess#2",
+        "basesInternas.tiess#3"
+      ]
+    },
+    "ing.reportado.mensual": {
+      "valor": 1500,
+      "registros": [
+        "basesInternas.tiess#2",
+        "basesInternas.tiess#3"
+      ],
+      "descartados": []
+    },
+    "ing.reportado.por_tercero": {
+      "valor": 800,
+      "registros": [
+        "basesInternas.tiess#2"
+      ]
+    },
+    "ing.reportado.autodeclarado": {
+      "valor": 700,
+      "registros": [
+        "basesInternas.tiess#3"
+      ],
+      "diferencias": [
+        "dif.ing.obligado"
+      ]
+    },
+    "ing.aportes.meses_24": {
+      "valor": 3
+    },
+    "ing.impuesto_renta.por_anio": {
+      "valor": [
+        {
+          "anio": 2025,
+          "formulario": "102",
+          "causado": 1200,
+          "enRelacionDeDependencia": 800
+        }
+      ],
+      "registros": [
+        "sriImpuestoRenta.data#0"
+      ]
+    }
+  }
+}
