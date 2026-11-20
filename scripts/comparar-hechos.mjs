@@ -263,7 +263,7 @@ for (let i = 0; i < candidatos.length; i += 50) {
       persona: { nombre: null, fechaDeNacimiento: null },
     };
     const t0 = performance.now();
-    const doc = derivarHechos(raw, contexto);
+    const doc = derivarHechos(raw, contexto, { estricto: true }); // un grupo que se cae no pasa en silencio
     const json = JSON.stringify(doc);
     medidas.ms.push(performance.now() - t0);
     medidas.documentoJson.push(Buffer.byteLength(json));

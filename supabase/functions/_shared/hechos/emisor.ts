@@ -23,6 +23,10 @@ export interface Emisor {
   // entidades distintas caen en la misma huella, la segunda se resume con un
   // contador. La lleva el emisor porque dos grupos emiten operaciones.
   clave(prefijo: "op" | "emp" | "dem" | "est", identidad: string): Entidad["clave"];
+  // Una marca de lo emitido hasta ahora: llamarla devuelve el emisor a ese punto (hechos,
+  // entidades, diferencias, señales y claves). Es lo que usa derivarHechos para que un grupo
+  // en etapa A que falla no deje a medias lo que alcanzó a emitir.
+  marca(): () => void;
   resultado(): { hechos: Hecho[]; entidades: Entidad[]; diferencias: Diferencia[]; senales: Senal[] };
 }
 
@@ -113,6 +117,18 @@ export function crearEmisor(contexto: Contexto, catalogo: CodigoDelCatalogo[]): 
       exigirCodigo(s.codigo);
       if (s.derivaDe.length === 0) throw new Error(`Señal sin derivaDe: ${s.codigo}`);
       senales.push({ ...s, clase: "senal", fechaDeLaConsulta: fecha });
+    },
+    marca() {
+      const largos = [hechos.length, entidades.length, diferencias.length, senales.length];
+      const claves = new Set(usadas);
+      return () => {
+        hechos.length = largos[0];
+        entidades.length = largos[1];
+        diferencias.length = largos[2];
+        senales.length = largos[3];
+        usadas.clear();
+        for (const c of claves) usadas.add(c);
+      };
     },
     resultado: () => ({ hechos, entidades, diferencias, senales }),
   };

@@ -869,7 +869,8 @@ es el de un empleo actual), `emp.antiguedad@1` (sin cruzar fuentes) y `ruc.refer
   de la estructura ni recálculo.
 - **Presupuesto.** El documento completo de hechos (todos los grupos): p99 7,6 KB en gzip y 3,86 ms por persona,
   contra 16 KB y 50 ms. Desde la etapa B del grupo 1 `process.ts` llama a `derivarHechos` en cada perfil, así que
-  estos archivos corren ya en producción; la prueba de Deno corre una entrada con campos de tipo raro y no se cae.
+  estos archivos corren ya en producción; la prueba de Deno corre una entrada con campos de tipo raro y no se cae, y
+  un error en un grupo en etapa A no rompe el armado (abajo).
 - **Lo que quedó dicho por primera vez** (respaldo, 2.567 personas): el empleo actual sale del mecanizado en 1.730,
   de ninguna fuente en 836 y de los aportes en 0 (con un corte del IESS de ese día los aportes sólo toman su lugar
   si el mecanizado es viejo o anterior al corte); 1 persona no tuvo respuesta del mecanizado. El empleo actual es
@@ -880,6 +881,13 @@ es el de un empleo actual), `emp.antiguedad@1` (sin cruzar fuentes) y `ruc.refer
   que ven los dos (como el 272 de 272 del 2026-09-24). `dif.ruc.estado` sale 104 veces: 101 con un establecimiento
   abierto y el RUC cesado (el registro sin actualizar de la v7, `esperada`) y 3 con el RUC vigente y todos los
   establecimientos cerrados (`revisar`). Ninguna cambia un campo.
+- **El resguardo de la etapa A.** `derivarHechos` envuelve en `try/catch` a cada grupo que todavía no alimenta el
+  perfil (todos menos `GRUPOS_EN_ETAPA_B` de `indice.ts`: hoy el 1; el 3 se suma al fusionarse su etapa B): si falla,
+  ese grupo no emite nada (`emisor.marca()` deshace lo que alcanzó a emitir, claves incluidas), el error queda en
+  `console.error` con el grupo y el mensaje, sin datos de la persona, y el resto sigue. Un grupo en etapa B falla
+  como hoy, porque el perfil depende de él. Con `{ estricto: true }` fallan todos: lo usan `comparar-hechos.mjs` y
+  `probar-crudos-sinteticos.mjs`, para que un grupo caído no pase en silencio en un seco. Un grupo nuevo en etapa B se
+  suma a `GRUPOS_EN_ETAPA_B` junto con su entrada en `GRUPOS_CON_SIN_DATO`.
 - **Decisiones de esta etapa, revisables.** La nómina que paga la persona y su tipo de empleador son `declarado`;
   el cumplimiento patronal y el RUC, `confirmado_por_tercero`; el estado del RUC y las antigüedades, `calculado`.
   Los códigos de empleador 3, 8, 24, 30, 31, 32, 34 y 35 son afiliación propia (una prueba los compara con

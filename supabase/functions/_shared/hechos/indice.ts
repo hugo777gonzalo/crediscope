@@ -4,7 +4,7 @@
 //
 // Función pura: ni reloj, ni base, ni fuentes. El reloj es `contexto.fechaDeLaConsulta`.
 
-import { crearEmisor } from "./emisor.ts";
+import { crearEmisor, type Emisor } from "./emisor.ts";
 import type { CodigoDelCatalogo, Contexto, HechosDeLaPersona } from "./tipos.ts";
 import * as comportamientoBancario from "./grupos/comportamiento-bancario.ts";
 import * as cooperativas from "./grupos/cooperativas.ts";
@@ -66,8 +66,38 @@ export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);
 }
 
-export function derivarHechos(crudo: unknown, contexto: Contexto): HechosDeLaPersona {
+// Los grupos de los que depende el perfil: process.ts los arma con `perfilDesdeHechos`
+// (etapa B). Si uno falla, el perfil no se puede armar, y tiene que fallar como hoy. Un grupo
+// nuevo se suma acá cuando su bloque de process.ts pasa a armarse desde los hechos.
+export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas"];
+
+export interface OpcionesDeDerivacion {
+  // Con `estricto`, el error de cualquier grupo se propaga. Lo usan los guiones y las
+  // pruebas: un grupo en etapa A que se cae no puede pasar en silencio en un seco.
+  estricto?: boolean;
+  // Los grupos que corren, por nombre; por omisión GRUPOS. Sólo para las pruebas, que
+  // reemplazan uno por otro que lanza un error. Los códigos del catálogo son los de GRUPOS.
+  grupos?: Record<string, { emitir: (crudo: unknown, contexto: Contexto, emisor: Emisor) => void }>;
+}
+
+// Producción llama a derivarHechos en cada perfil (process.ts), y eso incluye a los grupos en
+// etapa A, que todavía no alimentan nada. Un error en uno de ésos no debe romper el armado
+// del perfil: ese grupo no emite nada (se deshace lo que alcanzó a emitir), el error queda
+// en el registro con el grupo y el mensaje, sin datos de la persona, y el resto sigue.
+export function derivarHechos(crudo: unknown, contexto: Contexto, opciones: OpcionesDeDerivacion = {}): HechosDeLaPersona {
   const emisor = crearEmisor(contexto, catalogoCompleto());
-  for (const grupo of Object.values(GRUPOS)) grupo.emitir(crudo, contexto, emisor);
+  for (const [nombre, grupo] of Object.entries(opciones.grupos ?? GRUPOS)) {
+    if (opciones.estricto || GRUPOS_EN_ETAPA_B.includes(nombre)) {
+      grupo.emitir(crudo, contexto, emisor);
+      continue;
+    }
+    const deshacer = emisor.marca();
+    try {
+      grupo.emitir(crudo, contexto, emisor);
+    } catch (e) {
+      deshacer();
+      console.error(`hechos: el grupo ${nombre} falló y no emitió nada: ${e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 200) : "error que no es un Error"}`);
+    }
+  }
   return { version: HECHOS_VERSION, contexto, ...emisor.resultado() };
 }

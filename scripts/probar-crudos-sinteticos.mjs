@@ -124,7 +124,7 @@ for (const archivo of archivos) {
       fechaDeLaConsulta: caso.capturadoEl,
       corteIess: corte, // el mismo argumento con que se armó el perfil de arriba
       persona: { nombre: null, fechaDeNacimiento: null },
-    });
+    }, { estricto: true }); // un grupo en etapa A que se cae no puede pasar en silencio
   } catch (e) {
     control(`${nombre}: se derivan los hechos`, false, e.message);
   }
