@@ -222,26 +222,27 @@ la sección 8.
 
 ### 1.4 Señales y lecturas
 
-Todas viven en `hechos/senales/` y ninguna lee el crudo. Se diseñan primero para la
+Todas viven en `hechos/senales/` y ninguna lee el crudo. Las 27 primeras lecturas, sacadas de
+marco-v36, están en `hechos/senales/lecturas.ts` (E11, sección 11). Se diseñan primero para la
 institución sin buró: lo que sin buró no se puede medir sale `no_se_puede_medir`, nunca
 `no_se_cumple`.
 
 | Código | Qué dice | Sin buró, de dónde sale | Estado |
 |---|---|---|---|
 | `sen.recencia.atraso` | meses desde el último atraso conocido | la fecha del dato de cada hecho en atraso | propuesta |
-| `sen.recencia.demanda_de_cobro` | años desde la demanda de cobro más reciente | `dem-*.fecha` de las demandas de cobro de la persona | propuesta; hoy 116 de 166 personas con mal comportamiento lo son sólo por una demanda de cobro, sin distinguir su antigüedad |
+| `sen.recencia.demanda_de_cobro` | años desde la demanda de cobro más reciente | `dem-*.fecha` de las demandas de cobro de la persona | hecha como `lec.jud.cobro.mas_reciente`, por año (E11); hoy 116 de 166 personas con mal comportamiento lo son sólo por una demanda de cobro, sin distinguir su antigüedad |
 | `sen.tendencia.endeudamiento` | deuda de hoy contra la de la consulta anterior de la persona | `end.deuda.total` de esta consulta y de la anterior (se deriva de su crudo) | propuesta; sin consulta anterior, no se puede medir |
 | `sen.razon.atraso_sobre_deuda` | deuda en atraso sobre deuda total | `end.deuda.en_atraso`, `end.deuda.total` | propuesta |
-| `sen.razon.cuota_sobre_ingreso` | cuota conocida sobre ingreso reportado | `end.cuota.conocida`, `ing.reportado.mensual` | propuesta; sin buró la cuota es sólo la de cooperativas |
+| `sen.razon.cuota_sobre_ingreso` | cuota conocida sobre ingreso reportado | `end.cuota.conocida`, `ing.reportado.mensual` | hecha como `lec.end.cuota_sobre_ingreso` (E11); sin buró la cuota es sólo la de cooperativas |
 | `sen.estabilidad.meses` | meses seguidos con trabajo | la continuidad laboral y la antigüedad del RUC activo | propuesta (grupo 4) |
 | `sen.atenuante.hoy_al_dia` | hoy no tiene nada en atraso | `ban.saldo.en_atraso` = 0, `ban.operaciones.en_atraso_sin_monto` = 0, `coop.mora.dias_max` = 0, `biess.mora.dias_max` = 0, `inst.mora.dias_vigente` = 0; el retail sólo si su corte tiene 90 días o menos | propuesta |
 | `sen.atenuante.endeudamiento_a_la_baja` | debe menos que antes | `sen.tendencia.endeudamiento` por debajo del umbral | propuesta; umbral a decidir |
 | `sen.atenuante.estabilidad_12_meses` | 12 meses o más de estabilidad | `sen.estabilidad.meses` ≥ 12 | propuesta |
 | `sen.atenuante.ingreso_al_alza` | el ingreso reportado sube más que el SBU | promedio de los últimos 6 meses de aportes contra los 6 anteriores, descontada la variación del SBU | propuesta; umbral a decidir |
-| `lec.atraso.corto` | «atraso corto» | días de mora de hoy entre 1 y el umbral, donde la fuente los informa (cooperativas, retail, BIESS, institución) | propuesta; en bancos sin buró no se puede medir |
-| `lec.atraso.sin_dias` | «en atraso, sin días informados» | operaciones de bancos con calificación en atraso | propuesta |
-| `lec.deuda_vencida_sin_monto` | «deuda vencida sin monto informado» | `ban.operaciones.en_atraso_sin_monto` > 0 | paridad con el campo de hoy |
-| `lec.deuda_sin_cuota_informada` | «deuda sin cuota informada» | operaciones con saldo y `cuotaMensual` null | propuesta; 282 de los 322 «revisar» la mencionan |
+| `lec.atraso.corto` | «atraso corto» | días de mora de hoy entre 1 y el umbral, donde la fuente los informa (cooperativas, retail, BIESS, institución) | propuesta; en bancos sin buró no se puede medir. El «atraso corto» de bancos (A2 y A3) ya es `lec.ban.calificacion.tramo` (E11, sección 11) |
+| `lec.atraso.sin_dias` | «en atraso, sin días informados» | operaciones de bancos con calificación en atraso | hecha como `lec.ban.calificacion.tramo` (E11) |
+| `lec.deuda_vencida_sin_monto` | «deuda vencida sin monto informado» | `ban.operaciones.en_atraso_sin_monto` > 0 | hecha como `lec.ban.atraso_sin_monto` (E11) |
+| `lec.deuda_sin_cuota_informada` | «deuda sin cuota informada» | operaciones con saldo y `cuotaMensual` null | hecha como `lec.end.cuota_incompleta`, por sistema (E11); 282 de los 322 «revisar» la mencionan |
 
 ### 1.5 Cómo cita el modelo y cómo se verifica
 
@@ -375,10 +376,12 @@ supabase/functions/_shared/hechos/
     patrimonio.ts, transito.ts, penal.ts, cumplimiento.ts                   (después)
     conciliacion.ts             dif.* cuyo grupo todavía no existe (E9; se mudan al llenarlo)
   conciliacion-con-el-buro.ts   dif.end.bancos: necesita el buró, que derivarHechos no recibe (E9)
+  calificacion.ts               la escala del buró de bancos: la leen el grupo 1 y las lecturas (E11)
   senales/
     endeudamiento.ts            end.*: junta ban, coop, ret, biess y buro
     atenuantes.ts               los cuatro
-    lecturas.ts                 lec.*
+    lecturas.ts                 lec.*: las 27 de marco-v36 (E11, sección 11)
+    marco-v37.ts                los tramos de marco-v36 que la v37 sacaría, con sus marcas (E11)
     recencia-y-tendencia.ts
   buro/
     contrato.ts                 BuroNeutro (sección 7)
@@ -1542,3 +1545,329 @@ No se inventó ningún código para esa fuente: se nombra cuando exista.
 - Si una fila de bancos junta la operación con la institución y otro crédito del mismo banco, la
   regla no la ve: no se inventa la parte de cada uno. Entre las personas con una fila de esa
   entidad, cuántas son así no se midió.
+
+## 11. Las lecturas, fuera del marco (E11, 2026-11-20)
+
+marco-v36 le explica al modelo, en unos 17.000 tokens (40.209 caracteres a 2,37 por token, la
+calibración de `medir-bloque-equifax.mjs`; con los 3,2 de antes de esa calibración salían unos
+12.600), cómo leer cada campo del perfil y cómo pesarlo. Lo
+primero es determinista y pasa a código: son las **lecturas** de 1.4. Lo segundo es criterio y
+se queda en el marco o pasa al estándar de la institución. **El marco no cambió y el mensaje al
+modelo tampoco**: las lecturas no llegan al modelo hasta la versión mayor (v37).
+
+- `hechos/senales/lecturas.ts`: 27 lecturas (`lec.*`, `lecturas-v1`), funciones puras sobre los
+  hechos. Cada una declara los códigos que lee (`lee`, que es su `derivaDe`), y leer uno que no
+  declara corta. Una fuente que no contestó, o un hecho que no se emitió, la deja en
+  `no_se_puede_medir`, nunca en `no_se_cumple`. El reloj es la fecha de la consulta. `derivarLecturas(doc)`
+  las devuelve todas, siempre, en el orden del catálogo, como señales de tipo `lectura` con su
+  valor, su estado y un texto sin cifras de la persona. Las usan el verificador y, en la v37, el
+  perfil del modelo.
+- Las reglas que ya existían se importan, no se copian: `esIngresoMinimoSbu`,
+  `indiciosDeIngresoMayor`, `dejoDeAparecerEnElIess` y los tipos de pensión y de servicio activo
+  (`fuentes-ingreso.ts`); las categorías que no son demandas (`demandas.ts`, ahora exportadas); y
+  la escala del buró, que se mudó de `grupos/comportamiento-bancario.ts` a `hechos/calificacion.ts`
+  porque una lectura no importa un grupo (3.2).
+- `hechos/senales/marco-v37.ts`: los 20 tramos de marco-v36 que la v37 sacaría, marcados como en
+  `marco-con-buro` (desde, hasta). Una prueba exige que cada marca esté una vez y que los tramos no
+  se pisen: si alguien edita el marco, la lista falla en vez de quedar vieja.
+- `scripts/medir-lecturas.mjs`: la medición en seco (11.4).
+- `Senal.valor` acepta una lista de textos (los sistemas sin cuota, los indicios). No cambia ningún
+  documento: hasta ahora no se emitía ninguna señal.
+
+### 11.1 Inventario de marco-v36
+
+Cada regla del marco sin el buró, en su orden. **Tipo**: *lectura* (determinista, se calcula por
+persona desde los hechos), *definición* (qué significa un campo, igual para todos: va en la
+descripción del catálogo o en el nombre del campo), *estructura* (qué suma o qué no llega: lo
+resuelve la forma del perfil del modelo), *criterio* (cuánto pesa, qué recomendar: queda en el
+marco o pasa al estándar) y *redacción* (cómo escribir: queda). Una regla que mezcla se parte y
+lo dice. «Ya en código» es que la regla existe hoy en una función, aunque el marco la repita.
+
+| # | Cita corta | Campos que lee | Tipo | Dónde va en código | ¿Existe? |
+|---|---|---|---|---|---|
+| P01 | «Ya se resolvieron de forma determinística» | `hallazgosControlBloqueo` | ya en código + redacción («decilo como un analista») | `hechos/controles.ts` | sí |
+| P02 | «PEP … no una señal de riesgo crediticio» | `cum.pep.existe`, `cum.pep.detalle` | criterio (no pesa) + definición | estándar (política) | el hallazgo no bloquea |
+| P03 | «Homónimo … es OTRA persona» | `cum.homonimos.existe` | definición + criterio | catálogo; hallazgo no bloqueante | sí |
+| P04 | «Posible homónimo en una demanda penal» | hallazgo, `seg.demandas.posible_homonimo.cantidad` | ya en código + criterio (va a acciones) | `hechos/controles.ts` | sí |
+| P05 | «van en orden de importancia» | todos los grupos | criterio | estándar (pesos) | no |
+| P06 | «registraSercopContraloria … penaliza fuerte» | `cum.sercop.registra` | criterio | estándar | no |
+| P07 | «mirá siempre causalImpedimento» | `cum.impedimento.existe`, `cum.impedimento.causal` | **mezcla**: la causa es lectura; «revisar, no negar sola» es criterio | `lec.cum.impedimento.causa` | **nueva** |
+| P08 | «tieneDelitoSeguridadCiudadana es un control» | `seg.delito.*` | ya en código + criterio (narrativa) | `hechos/controles.ts` | sí |
+| P09 | «peorCalificacionRiesgo … es la señal más importante» | `ban.calificacion.peor`, `.mejor` | criterio (peso) | marco | no |
+| P10 | «A1 es la única de la escala sin atraso» | `ban.calificacion.peor`, `ban.saldo.en_atraso` | lectura | `lec.ban.calificacion.tramo`, `lec.ban.atraso_sin_monto` | **nueva** |
+| P11 | «La calificación no se traduce a días» | `ban.calificacion.peor` | lectura (la lectura no lleva días; el texto lo dice) | `lec.ban.calificacion.tramo` | **nueva** |
+| P12 | «tieneOperacionConDemanda y … Castigada: muy graves» | `ban.operaciones.con_demanda`, `.castigadas` | criterio | estándar (mal comportamiento, 2.3) | no |
+| P13 | «saldoTotalVigente es lo por vencer» … «Una E con saldoTotalVigente=0» | `ban.saldo.*` | definición + lectura | catálogo; `lec.ban.deuda.toda_en_atraso` | **nueva** |
+| P14 | «operacionesEnAtrasoSinMonto mayor que 0» | `ban.operaciones.en_atraso_sin_monto` | lectura | `lec.ban.atraso_sin_monto` | el hecho sí; la lectura, nueva |
+| P15 | «Deuda como codeudor o garante … riesgo contingente» | `ban.garante.*` | lectura + redacción («nunca "no pagó"») | `lec.ban.garante.contingente` | **nueva** |
+| P16 | «préstamos del IESS/BIESS … no los sumes» | `biess.*` | estructura | perfil del modelo (`endeudamiento` dice qué suma) | sí (no se suman) |
+| P17 | «Retail … si es igual al total, toda … vencida» | `ret.deuda.total`, `.vencida` | definición + lectura | `lec.ret.deuda.toda_vencida` | **nueva** |
+| P18 | «fechaCorteRetail es la fecha de corte de esas deudas» | `ret.corte`, `ret.deudas.cantidad` | lectura + redacción («decila a esa fecha») | `lec.ret.a_su_corte` | **nueva** |
+| P19 | «cooperativas … algo menos determinante» | `coop.*` | criterio | estándar | no |
+| P20 | «diasMoraMaxima es el atraso a la fecha del corte» | `coop.mora.dias_max` | lectura | `lec.coop.atraso_de_hoy` | **nueva** |
+| P21 | «cuotaMensualTotal es lo que paga por mes» | `coop.cuota.mensual` | definición | catálogo | sí |
+| P22 | «Para decir cuánto debe, usá deudaPropiaTotal» … «si pesa en la suma aclaralo» | `endeudamiento` | estructura + **mezcla** (cuánto pesa el retail: criterio) | perfil del modelo | sí (el bloque) |
+| P23 | «La cuota conocida es sólo la de cooperativas» | `coop.cuota.mensual`, `ban.saldo.*`, `ret.deuda.total`, `ing.reportado.mensual` | lectura | `lec.end.cuota_incompleta`, `lec.end.cuota_sobre_ingreso` | **nueva** |
+| P24 | «numeroDemandasComoDemandado mayor que 0 pesa fuerte» | `jud.cobro.cantidad` | criterio | estándar (2.3) | no |
+| P25 | «demandasDeCobro trae cada una con su año» … «más de 2 años pesa menos» | `jud.cobro.detalle` | **mezcla**: la antigüedad y quién demanda son lectura; el peso, criterio | `lec.jud.cobro.mas_reciente`, `lec.jud.cobro.de_institucion_financiera` | `aniosAtras` sí; las lecturas, nuevas |
+| P26 | «cada una pesa distinto» (categorías civiles) | `jud.civil.por_categoria` | criterio + definición («Laboral: la persona es el empleador») | estándar; catálogo | no |
+| P27 | «"Investigación penal cerrada sin cargos" … no se cuentan como demandas» | `jud.civil.cantidad`, `jud.civil.por_categoria` | lectura | `lec.jud.civil.cuentan` | **nueva** (la categoría ya existía) |
+| P28 | «Nombralas por categoría» | — | redacción | marco | — |
+| P29 | «En perfiles anteriores (sin demandasPorCategoria)» | `jud.civil.tipos` | estructura (perfiles viejos) | se saca: los hechos siempre traen la categoría | — |
+| P30 | «numeroDemandasComoOfendido es sólo contexto» | `jud.ofendido.cantidad` | criterio | marco | no |
+| P31 | «Pensión alimenticia: mirá primero tienePensionAlimenticia» | `jud.pension.existe`, `.con_mora` | **mezcla**: el estado es lectura; «pesa como una demanda de cobro», criterio | `lec.jud.pension.estado` | **nueva** |
+| P32 | «Las vigentes son un gasto fijo» | `jud.pension.vigentes`, `.valor_mensual` | lectura | `lec.jud.pension.gasto_mensual` | **nueva** |
+| P33 | «riesgoPenal … un delito patrimonial … muy relevante» | `pen.*` | criterio + definición; clasificar la descripción sería una regla nueva | marco | no |
+| P34 | «fuentesIngreso, laboral y tributario (mismo peso)» | — | criterio | estándar | no |
+| P35 | «Todo monto es lo reportado al IESS» … «Ingreso Mínimo SBU» | `ing.reportado.mensual`, `ing.corte.usado` | definición + redacción; el SBU es lectura | `lec.ing.minimo_sbu` | `esIngresoMinimoSbu()` sí |
+| P36 | «No supongas un ingreso mayor» | `ing.senales_de_escala`, `ing.impuesto_renta.por_anio` | **mezcla**: los indicios son lectura; no especular, redacción | `lec.ing.indicios_de_ingreso_mayor` | `indiciosDeIngresoMayor()` sí |
+| P37 | «Cómo leer cada indicio, sin estirarlo» | indicios | definición | el texto de cada indicio | sí |
+| P38 | «Jubilados … que no aporte al IESS es lo esperable» | `ing.fuentes` | lectura | `lec.ing.huecos_12_meses`, `lec.ing.dejo_de_aportar` | `dejoDeAparecerEnElIess()` sí |
+| P39 | «Militares y policías no aportan al IESS» | `ing.fuentes` | **mezcla**: el tipo es lectura; «tratalos como dependiente público», criterio | `lec.ing.regimen_especial` | los tipos sí |
+| P40 | «estado: "Confirmado por un tercero" …» | `ing.segmento.estado` | definición + criterio («no bajes el score») | `ETIQUETA_ESTADO`; el peldaño es del estándar (3.1) | sí |
+| P41 | «El segmento "Sin datos" no dice nada» | `ing.segmento.*` | definición + criterio | catálogo | sí |
+| P42 | «aportes[].declaradoPor» | `ing.fuentes` | definición | `quienDeclara()` | sí |
+| P43 | «"Empresa propia" en el Ingreso Mínimo SBU sin indicios es neutro» | P35, P36, P42 | **mezcla**: la condición sale de lecturas; «neutro», criterio | marco | — |
+| P44 | «perfilLaboral separa dos preguntas» | `perfilLaboral` | definición | `perfil-laboral.ts` | sí |
+| P45 | «tamanoDelNegocio … es la escala, no el ingreso» | `tamanoDelNegocio` | definición | perfil del modelo | sí |
+| P46 | «estabilidad.continuidadLaboral mide desde cuándo» … «huecos reales» … «caída» | `ing.continuidad`, `ing.aportes.meses_12`, `ing.total.hace_12_meses` | **mezcla**: lecturas; «mejor señal que la antigüedad», criterio | `lec.ing.continuidad`, `lec.ing.huecos_12_meses`, `lec.ing.variacion_anual` | la variación sí (perfil del modelo) |
+| P47 | «sinInformacionActualEnElIess=true» | `ing.aparece_en_ultimo_corte` | lectura + criterio («pesa en capacidad») | `lec.ing.dejo_de_aportar` | sí |
+| P48 | «Qué monto usar» | `ing.reportado.mensual`, `lab.ingreso.promedio_6_meses` | redacción | marco | — |
+| P49 | «documentosDeConfirmacion … coherentes» | `ing.para_confirmar` | criterio + redacción | marco | la lista sí |
+| P50 | «Si la lista viene vacía … no hay un registro del IESS confiable» | `lab.empleos_actuales` | lectura + criterio («más de un empleo, más estabilidad») | `lec.lab.sin_empleo_registrado` | **nueva** |
+| P51 | «esSuPropioPatrono … null es que no se pudo saber» | empleos | definición | perfil del modelo | sí |
+| P52 | «empleadorVigente… en null … no se sabe» | `lab.empleador_vigente.*` | definición | catálogo | — |
+| P53 | «empleadorConApellidoDelCliente … falso positivo» | `lab.empleador_con_apellido_del_cliente` | **mezcla**: la marca por empleo ya es código; pedir respaldo, criterio | perfil del modelo; desde hechos necesita el nombre (grupo de identidad vacío) | sí (por empleo) |
+| P54 | «clienteEsSuPropioEmpleador … no lo cuentes como … más de un empleo» | `lab.cliente_es_su_propio_empleador` | lectura | pendiente: contar los empleos con terceros necesita el nombre | sí (por empleo) |
+| P55 | «antiguedadEmpleoActualMeses … null significa» | `lab.antiguedad.empleo_actual_meses` | definición + criterio | catálogo | — |
+| P56 | «duracionEmpleoMasLargoMeses: trayectoria» | `lab.duracion.*` | criterio | marco | no |
+| P57 | «estadoActividadEconomica … no reemplazan» | `ruc.actividad.*` | definición + criterio | catálogo | — |
+| P58 | «tipoUltimoCeseRuc … sin peso propio» | `ruc.cese.tipo` | definición + criterio | catálogo | — |
+| P59 | «rucDepuradoPorElSri=true … No es una señal negativa» | `ruc.depurado_por_el_sri` | ya en código + criterio | `ruc.ts` | sí |
+| P60 | «afiliadoIessActivo=null (distinto de false)» | seguridad social | definición | pendiente: el grupo de seguridad social está vacío | — |
+| P61 | «usá valorColateralVehiculos, no valorAvaluoVehiculos» … «No tener patrimonio no es negativo» | patrimonio | estructura + criterio | pendiente: el grupo de patrimonio está vacío | — |
+| P62 | «familia … No lo uses para penalizar» | familia | criterio (política) | estándar | — |
+| P63 | «identidad … nivelEducacion … atenuante leve» | identidad | **mezcla**: tercer o cuarto nivel es lectura; atenuante, criterio | pendiente: grupo de identidad vacío (y `dif.ide.nivel_de_educacion`) | — |
+| P64 | «contacto … tránsito: la señal más débil» | contacto, tránsito | criterio | marco | — |
+| P65 | «comportamientoInterno … llega una sola operación» … «Si no llega … no lo menciones» | `inst.*` | definición + estructura | perfil del modelo | sí |
+| P66 | «Esa operación, si está vigente, ya consta en el buró» | `dif.inst.posible_en_bancos` | lectura | `lec.inst.ya_en_bancos` (espera la decisión 1 de 10.5) | **nueva** |
+| P67 | «Resaltalo siempre» … «tensión a verificar» … «cuánta historia hay detrás» | `inst.habito_de_pago`, `inst.*` | **mezcla**: el contraste necesita el catálogo de hábitos de pago y la historia la fecha de la operación, que los hechos no traen; resaltar, redacción | pendiente | no |
+| P68 | «No es deuda para este análisis» | `inst.operacion.saldo` | estructura | perfil del modelo (no se suma) | sí |
+| P69 | «temasConsultados: … también cuando es un cero» | `disponibilidad` | ya en código + definición | `disponibilidadPorTema()`; `camposSinDato` (estructura-v25) | sí |
+| P70 | «temasSinRespuesta: … No es evidencia de ausencia» | `disponibilidad` | ya en código + redacción | ídem | sí |
+| P71 | «Un tema consultado nunca va a missingInfo» | — | redacción | marco | — |
+| P72 | «Si varios temas clave … acercá el score al centro» | `disponibilidad` | **mezcla**: la completitud ya es código (`FUENTES`: sin una obligatoria el modelo no corre); el centro, criterio | `calidad-de-la-consulta.ts` | sí |
+| P73 | «Un campo null … No lo confundas con 0» | todos | definición | `camposSinDato` en los grupos en etapa B | en parte |
+| P74 | «Si disponibilidad es null (un perfil viejo)» | — | estructura (perfiles viejos) | se saca | — |
+| P75 | «Si notás contradicciones entre grupos» | — | criterio; lo determinista son las diferencias de E9 | `dif.*` | sí |
+| P76 | «No se informan cuando vienen en false o 0» (lista de campos) | doce campos | redacción; determinista por campo | propuesta v37: no mandarlos en false o 0 (sí sin dato) | no |
+| P77 | «Sí son puntos a favor … sin mora vigente» | `ban.*`, `coop.*`, `biess.*` | lectura (la mora) + redacción | `lec.end.sin_mora_vigente` | **nueva** |
+| P78 | «compará la cuota con el ingreso del mes, o la deuda total con … un año» | endeudamiento, ingreso | **mezcla**: las razones son lectura; «nunca N veces su ingreso mensual», redacción | `lec.end.cuota_sobre_ingreso`, `lec.end.deuda_sobre_ingreso_anual` | **nueva** |
+| P79 | «No escribas el nombre técnico de un campo» y el resto de CÓMO ESCRIBIR | — | redacción | marco | — |
+| P80 | RECOMENDACIÓN | — | criterio | estándar (matriz) | — |
+| P81 | accionesSugeridas | — | redacción + criterio | marco | — |
+| P82 | «"sin historial" es para quien no registra operaciones» | `ban.operaciones.cantidad`, `coop.*`, `ret.*`, `biess.tiene` | lectura | `lec.end.sin_historial` | **nueva** |
+| P83 | QUÉ VA EN CADA CAMPO | — | redacción | marco | — |
+
+**La sección del buró** (`GRUPOS_DEL_BURO_EQUIFAX`, marco con Equifax) tiene sus propias lecturas y
+no lee hechos: el buró todavía no entra a `derivarHechos()` (sección 7). Quedan inventariadas
+para cuando exista el contrato neutro (`buro/`), sin implementar:
+
+| # | Cita corta | Tipo | Dónde iría |
+|---|---|---|---|
+| B01 | «el atraso se lee en días de mora … 1 a 30 … 31 a 90 … más de 90» | lectura (tramo por días) | `buro/`, `lec.buro.mora.tramo` |
+| B02 | «No escribas una calificación que Equifax no da» | redacción | marco |
+| B03 | «Un saldo en demanda judicial o castigado mayor que 0 es muy grave» | criterio | estándar |
+| B04 | «conciliaConElResumen "no"» | ya en código (`equifax-estructura.ts`) + redacción | — |
+| B05 | «Deuda como codeudor o garante (deudaCodeudorGarante)» | lectura | como `lec.ban.garante.contingente` |
+| B06 | «vencidoPorTramo … menos de un mes … más de 3 meses» | **mezcla**: tramo lectura, peso criterio | `buro/` |
+| B07 | «conductaDePago … mesesConMoraDeMasDe90Dias … casi dos años» | **mezcla**: recencia lectura (`sen.recencia.atraso`), peso criterio | `senales/` |
+| B08 | «estadoDeCartera es un cálculo de Equifax» | definición | catálogo del buró |
+| B09 | «scoreEquifax … contexto, no decide» | criterio | marco |
+| B10 | «tarjetas … por encima del 90%» | lectura | `buro/` |
+| B11 | «consultasRecibidas … "al menos N"» | lectura + redacción | `buro/` |
+| B12 | «creditosOtorgados: los reestructurados …» | **mezcla** | `buro/` |
+| B13 | «tieneInhabilitacionBancaria» | lectura + criterio | `buro/` |
+| B14 | «Un grupo en null es información que Equifax no trajo» | definición | `buro/sin-buro.ts` |
+| B15 | El retail y el BIESS con el buró | estructura (repite P16 a P18) | las mismas lecturas |
+
+Lo que quedó **pendiente** y por qué: P53, P54 y P63 necesitan el nombre de la persona (el grupo de
+identidad está vacío y el contexto de las pruebas no lo lleva); P60 y P61, sus grupos (seguridad
+social y patrimonio) vacíos; P67, el catálogo de los hábitos de pago de la institución y la fecha
+de la operación, que los hechos no traen. Ninguno se inventó.
+
+### 11.2 Las 27 lecturas
+
+Todas en `hechos/senales/lecturas.ts`, con su prueba en `lecturas.test.ts`. «Se cumple» es que la
+lectura aplica a la persona (en las de tramo, que hay algo que clasificar).
+
+| Código | Qué dice | Lee | Párrafos |
+|---|---|---|---|
+| `lec.ban.calificacion.tramo` | sin atraso (A1, AL), atraso corto (A2, A3) o en atraso (B1 a E); nunca en días | `ban.calificacion.peor`, `ban.operaciones.cantidad` | P10, P11 |
+| `lec.ban.atraso_sin_monto` | operaciones calificadas en atraso sin monto: la deuda en atraso en 0 no dice que no haya atraso | `ban.operaciones.en_atraso_sin_monto` | P10, P14 |
+| `lec.ban.deuda.toda_en_atraso` | sin saldo por vencer y con atraso: es una deuda vencida, no una contradicción | `ban.saldo.por_vencer`, `ban.saldo.en_atraso` | P13 |
+| `lec.ban.garante.contingente` | respalda deudas de otra persona: riesgo contingente, nunca «no pagó» | `ban.garante.*` | P15 |
+| `lec.ret.a_su_corte` | las deudas con casas comerciales son de su corte (el valor: meses hasta la consulta); sin filas, no prueba que hoy no deba | `ret.deudas.cantidad`, `ret.corte` | P18 |
+| `lec.ret.deuda.toda_vencida` | la deuda con casas comerciales está toda vencida | `ret.deuda.total`, `ret.deuda.vencida` | P17 |
+| `lec.coop.atraso_de_hoy` | los días de mora con cooperativas son de hoy, no históricos | `coop.operaciones.cantidad`, `coop.mora.dias_max` | P20 |
+| `lec.end.cuota_incompleta` | los sistemas con deuda que no informan cuota (bancos, casas comerciales) | `coop.cuota.mensual`, `ban.saldo.*`, `ret.deuda.total` | P23 |
+| `lec.end.sin_mora_vigente` | con alguna operación, sin mora vigente en bancos, cooperativas ni el IESS/BIESS (sin las casas comerciales: su corte tiene meses) | 9 códigos | P77 |
+| `lec.end.sin_historial` | no registra operaciones de crédito propias | `ban.operaciones.cantidad`, `coop.operaciones.cantidad`, `ret.deudas.cantidad`, `biess.tiene` | P82 |
+| `lec.end.cuota_sobre_ingreso` | la cuota conocida sobre el ingreso reportado del mes, en % | `coop.cuota.mensual`, `ing.reportado.mensual` | P23, P78 |
+| `lec.end.deuda_sobre_ingreso_anual` | la deuda propia total sobre 12 meses de ingreso, en % | 5 códigos | P78 |
+| `lec.jud.cobro.mas_reciente` | años desde la demanda de cobro más reciente, con el año de Ecuador de la consulta | `jud.cobro.cantidad`, `jud.cobro.detalle` | P25 |
+| `lec.jud.cobro.de_institucion_financiera` | cuántas demandas de cobro son de una institución financiera | ídem | P25 |
+| `lec.jud.civil.cuentan` | los procesos civiles que son demandas, sin archivadas ni trámites | `jud.civil.cantidad`, `jud.civil.por_categoria` | P27 |
+| `lec.jud.pension.estado` | sin pensión (no se menciona), al día o en mora | `jud.pension.existe`, `.con_mora` | P31 |
+| `lec.jud.pension.gasto_mensual` | las pensiones vigentes como gasto fijo mensual | `jud.pension.existe`, `.vigentes`, `.valor_mensual` | P32 |
+| `lec.cum.impedimento.causa` | deuda o mora con el Estado, u otra causa que no dice cómo paga | `cum.impedimento.existe`, `.causal` | P07 |
+| `lec.ing.minimo_sbu` | lo reportado es el Ingreso Mínimo SBU | `ing.reportado.mensual`, `ing.corte.usado` | P35 |
+| `lec.ing.indicios_de_ingreso_mayor` | los indicios (nómina, contabilidad, renta); sin ellos no se supone un ingreso mayor | 5 códigos de `ing.*` | P36 |
+| `lec.ing.dejo_de_aportar` | dejó de aparecer en el IESS sin una jubilación que lo explique | `ing.aparece_en_ultimo_corte`, `ing.fuentes`, `ing.cortes_desde_la_desvinculacion` | P38, P47 |
+| `lec.ing.regimen_especial` | militar o policía: empleo o pensión sin monto, nunca sin ingreso | `ing.fuentes` | P39 |
+| `lec.ing.continuidad` | trabaja hoy sin cortes de más de 2 meses (el valor: los meses) | `ing.continuidad` | P46 |
+| `lec.ing.huecos_12_meses` | meses sin aporte en los últimos 12, salvo una pensión | `ing.fuentes`, `ing.aportes.meses_12`, `.meses_24` | P38, P46 |
+| `lec.ing.variacion_anual` | lo reportado cayó contra hace un año (el valor: la variación en %) | `ing.reportado.mensual`, `ing.total.hace_12_meses` | P46 |
+| `lec.lab.sin_empleo_registrado` | sin un registro del IESS confiable de 3 meses: incertidumbre, no desempleo | `lab.empleos_actuales` | P50 |
+| `lec.inst.ya_en_bancos` | la operación con la institución ya figura en la deuda de bancos | `dif.inst.posible_en_bancos` | P66 |
+
+De la tabla de 1.4: `lec.deuda_vencida_sin_monto` es `lec.ban.atraso_sin_monto`;
+`lec.deuda_sin_cuota_informada` es `lec.end.cuota_incompleta` (por sistema, no por operación: los
+bancos no dan la cuota de ninguna); `lec.atraso.sin_dias` es el tramo de `lec.ban.calificacion.tramo`.
+`lec.atraso.corto` por días necesita un umbral del estándar y queda como estaba.
+`sen.recencia.demanda_de_cobro` y `sen.razon.cuota_sobre_ingreso` salieron como lecturas
+(`lec.jud.cobro.mas_reciente`, `lec.end.cuota_sobre_ingreso`): son lo que el marco ya pide leer,
+sin un umbral nuevo. Los atenuantes de 1.4 siguen siendo propuesta: tienen umbrales a decidir.
+
+**Dos decisiones abiertas** que las lecturas dejan a la vista, sin cambiar nada:
+
+1. **El reloj de las demandas de cobro.** El modelo cuenta `aniosAtras` con el día del análisis
+   (marco-v36) y la lectura, con el de la consulta (como toda la capa). Con una consulta de
+   diciembre analizada en enero, difieren en un año. Para la v37 se propone el de la consulta, igual
+   que la decisión 6 de 10.5.
+2. **Las casas comerciales en «sin mora vigente».** Su corte tiene meses (julio de 2025). La
+   lectura las deja afuera; cuántos meses de corte cuentan como hoy es el umbral pendiente del
+   atenuante `sen.atenuante.hoy_al_dia`.
+
+### 11.3 Lo que la v37 sacaría del marco
+
+Los 20 tramos de `TRAMOS_QUE_SACA_LA_V37` (`hechos/senales/marco-v37.ts`), de marco-v36 sin el
+buró. «Perfil» es que lo resuelve la forma del perfil del modelo y no una lectura. «Queda» es el
+criterio que el tramo mezclaba: la v37 lo conserva en una línea.
+
+| Tramo | Párrafos | Empieza en | Caracteres | Lo reemplaza | Queda |
+|---|---|---|---|---|---|
+| V01 | P10, P11 | «A1 es la única de la escala sin atraso» | 799 | `lec.ban.calificacion.tramo`, `lec.ban.atraso_sin_monto` | — |
+| V02 | P13, P14 | «saldoTotalVigente es lo por vencer.» | 588 | `lec.ban.deuda.toda_en_atraso`, `lec.ban.atraso_sin_monto`, perfil | — |
+| V03 | P15 | «Deuda como codeudor o garante:» | 439 | `lec.ban.garante.contingente` | — |
+| V04 | P16 | «numeroPrestamosIessBiess y diasMoraCreditoIessBiess» | 338 | perfil (el bloque `endeudamiento` dice que no los suma) | — |
+| V05 | P17, P18 | «Retail (numeroDeudasRetail» hasta el grupo 4, con el corte del retail | 762 | `lec.ret.deuda.toda_vencida`, `lec.ret.a_su_corte`, perfil | — |
+| V06 | P20, P21 | «; misma nota» hasta `endeudamiento` | 277 | `lec.coop.atraso_de_hoy`, perfil | — |
+| V07 | P23 | «La cuota conocida es sólo la de cooperativas» | 206 | `lec.end.cuota_incompleta`, `lec.end.cuota_sobre_ingreso` | — |
+| V08 | P25 | «demandasDeCobro trae cada una con su año» | 201 | `lec.jud.cobro.mas_reciente`, `lec.jud.cobro.de_institucion_financiera` | — |
+| V09 | P25 | «Sin demandasDeCobro (perfiles anteriores)» | 109 | `lec.jud.cobro.mas_reciente` | — |
+| V10 | P27 | «"Investigación penal cerrada sin cargos"» | 310 | `lec.jud.civil.cuentan` | — |
+| V11 | P29 | «En perfiles anteriores (sin demandasPorCategoria)» | 156 | perfil | — |
+| V12 | P31, P32 | «Pensión alimenticia: mirá primero» | 1.084 | `lec.jud.pension.estado`, `lec.jud.pension.gasto_mensual` | «Una pensión en mora pesa como una demanda de cobro; al día no es negativo.» |
+| V13 | P07 | «impedimentoCargosPublicos: mirá siempre causalImpedimento» | 695 | `lec.cum.impedimento.causa` | «Por deuda con el Estado es "revisar" con una acción para verificarla, y pesa para negar sólo junto con problemas de pago; otra causa no es un negativo.» |
+| V14 | P38 | «Jubilados: si perfilLaboral.registraJubilacion» | 297 | `lec.ing.huecos_12_meses`, `lec.ing.dejo_de_aportar` | — |
+| V15 | P39 | «Militares y policías no aportan» | 447 | `lec.ing.regimen_especial` | — |
+| V16 | P46, P47 | «estabilidad.continuidadLaboral mide desde cuándo» | 847 | `lec.ing.continuidad`, `lec.ing.huecos_12_meses`, `lec.ing.variacion_anual`, `lec.ing.dejo_de_aportar` | «La continuidad laboral es mejor señal de estabilidad que la antigüedad en el empleo actual para quien cambió de trabajo sin parar.» |
+| V17 | P50 | «Si la lista viene vacía» | 149 | `lec.lab.sin_empleo_registrado` | — |
+| V18 | P66 | «Esa operación, si está vigente, ya consta en el buró» | 91 | `lec.inst.ya_en_bancos` (espera la decisión 1 de 10.5) | — |
+| V19 | P74 | «Si disponibilidad es null (un perfil viejo)» | 114 | perfil | — |
+| V20 | P82 | «"sin historial" es para quien» | 107 | `lec.end.sin_historial` | — |
+
+**El ahorro, estimado** (11.4 dice cómo se midió): se sacan 8.016 caracteres del marco (~3.380
+tokens, el 20% del marco sin el buró) y vuelven 373 de criterio (~160). Al mensaje se suman las
+lecturas que se cumplen o no se pueden medir de cada persona, con su código, su valor y su texto:
+10 de media (mediana 8, p90 21), ~810 tokens de media (mediana ~670, p90 ~1.600). **El neto, ~2.400
+tokens menos por análisis de media** (mediana ~2.550, p90 ~1.630: el p90 es quien tuvo una fuente caída
+y lleva muchas «no se puede medir»). Si la v37 deja el texto de cada lectura una sola vez en el marco
+y el perfil manda sólo el código y el valor, el costo por persona baja más; no se midió. Lo que más ahorraría después, y no entra en E11 porque es criterio y no lectura: los
+pesos de cada grupo (P05, P09, P12, P19, P24, P26) pasan al estándar con la matriz (sección 4 de
+`docs/estandar-de-la-institucion.md`), y P76 (las ausencias que no se informan) se resuelve no
+mandando esos campos en false o 0.
+
+Lo que la v37 tiene que hacer además, para que la lista valga:
+
+- que el perfil del modelo mande las lecturas (`llegaAlModelo: true`) con su código y su texto, y
+  la cifra con el formato de siempre (1.5);
+- que las que no se cumplen no viajen, salvo las que el marco pide nombrar en su ausencia (sin
+  pensión: no se menciona; sin historial: no es un mal historial);
+- pasar el banco de casos de oro antes de desplegar, con el costo que el negocio autorice.
+
+### 11.4 Lo medido (2026-11-20)
+
+Sobre las 3.766 personas reales, cada una con el crudo de su último perfil y el reloj en la
+fecha de su consulta, sólo leyendo, sin modelo ni fuentes:
+
+- `node scripts/comparar-hechos.mjs --deposito --contra=origin/main --medir`: 569.102 de 569.102
+  campos iguales, **el perfil entero y el control de bloqueo iguales en las 3.766** contra
+  `origin/main` (estructura-v28), 0 registros que no resuelven y 0 recuentos que no cuadran. La
+  escala del buró que se mudó a `calificacion.ts` no cambió nada.
+- `node scripts/medir-lecturas.mjs --deposito`: **el mensaje al modelo igual byte a byte en las
+  3.766**, y el texto del marco (sin y con buró) igual. Las nueve lecturas que repiten algo que el
+  modelo ya recibe dicen lo mismo en todas las personas que se pueden medir (Ingreso Mínimo SBU
+  3.118, dejar de aparecer en el IESS 3.072, indicios 3.094, continuidad 3.118, caída anual 1.848,
+  operaciones en atraso sin monto 3.766, cuota sobre ingreso 1.973, deuda sobre ingreso 1.963,
+  años de la demanda de cobro 3.110). En la cuota y la deuda sobre el ingreso la lectura usa los
+  montos exactos y el mensaje los lleva enteros (v29): la paridad acepta sólo lo que explica ese
+  redondeo de medio dólar (la primera corrida, sin aceptarlo en la cuota, dio 1 persona distinta, con
+  la cuota justo en un ,5%).
+- Derivar las 27 lecturas: 0,24 ms por persona de media, p99 1,04 ms, máximo 3,07 ms (sin contar
+  los hechos, que ya se derivan: p99 5,13 ms).
+
+Personas por lectura (se cumple / no se cumple / no se puede medir). «No se puede medir» es casi
+siempre una fuente caída (las ~650 a 700 de cada grupo); en las razones sobre el ingreso suma a
+quien no tiene ingreso reportado al IESS.
+
+| Lectura | Se cumple | No | Sin medir | Por valor |
+|---|---|---|---|---|
+| `lec.ban.calificacion.tramo` | 3.532 | 234 | 0 | sin atraso 2.814, atraso corto 365, en atraso 353, sin operaciones 234 |
+| `lec.ban.atraso_sin_monto` | 36 | 3.730 | 0 | |
+| `lec.ban.deuda.toda_en_atraso` | 61 | 3.705 | 0 | |
+| `lec.ban.garante.contingente` | 485 | 3.281 | 0 | |
+| `lec.ret.a_su_corte` | 490 | 2.618 | 658 | |
+| `lec.ret.deuda.toda_vencida` | 32 | 3.076 | 658 | |
+| `lec.coop.atraso_de_hoy` | 220 | 3.546 | 0 | |
+| `lec.end.cuota_incompleta` | 2.967 | 141 | 658 | |
+| `lec.end.sin_mora_vigente` | 2.383 | 912 | 471 | |
+| `lec.end.sin_historial` | 64 | 3.645 | 57 | |
+| `lec.end.cuota_sobre_ingreso` | 442 | 1.531 | 1.793 | |
+| `lec.end.deuda_sobre_ingreso_anual` | 1.918 | 45 | 1.803 | |
+| `lec.jud.cobro.mas_reciente` | 554 | 2.556 | 656 | |
+| `lec.jud.cobro.de_institucion_financiera` | 293 | 2.817 | 656 | |
+| `lec.jud.civil.cuentan` | 387 | 2.723 | 656 | |
+| `lec.jud.pension.estado` | 255 | 2.843 | 668 | al día 123, en mora 132 |
+| `lec.jud.pension.gasto_mensual` | 160 | 2.938 | 668 | |
+| `lec.cum.impedimento.causa` | 133 | 3.065 | 568 | deuda con el Estado 131, otra causa 2 |
+| `lec.ing.minimo_sbu` | 544 | 2.574 | 648 | |
+| `lec.ing.indicios_de_ingreso_mayor` | 567 | 2.527 | 672 | |
+| `lec.ing.dejo_de_aportar` | 429 | 2.643 | 694 | |
+| `lec.ing.regimen_especial` | 58 | 3.014 | 694 | |
+| `lec.ing.continuidad` | 1.929 | 1.189 | 648 | |
+| `lec.ing.huecos_12_meses` | 351 | 2.721 | 694 | |
+| `lec.ing.variacion_anual` | 205 | 1.643 | 1.918 | |
+| `lec.lab.sin_empleo_registrado` | 1.123 | 1.970 | 673 | |
+| `lec.inst.ya_en_bancos` | 1.606 | 2.160 | 0 | esperada 1.580, revisar 26 |
+
+Lo que dicen los números, para la v37:
+
+- **365 personas tienen una A2 o A3 como peor calificación** y 36 operaciones en atraso sin monto:
+  es lo que el marco tiene que explicar en prosa para que el modelo no escriba «al día».
+- **387 personas tienen investigaciones archivadas o trámites contados entre sus demandas civiles**
+  (`numeroDemandasComoDemandado`): hoy el modelo tiene que descontarlas leyendo las categorías.
+- **La cuota conocida está incompleta en 2.967 de las 3.108 que se pueden medir**: casi todas tienen
+  deuda con bancos, que no informa la cuota. Es el «deuda sin cuota» de 282 de los 322 «revisar».
+- **131 de los 133 impedimentos para cargos públicos son por deuda con el Estado.**
+- `lec.inst.ya_en_bancos` da las mismas 1.606 personas que la diferencia de E9 (10.1, punto 3).
+
+Lo que no se midió:
+
+- Los tokens son una estimación con la calibración del 2026-10-16 (2,37 caracteres por token para
+  el texto y 1,63 para el JSON): no se mandó nada al contador de tokens.
+- Con el buró, el mensaje no se armó por persona (hace falta la consulta de Equifax de cada una):
+  se comprobó que el texto del marco con buró es el mismo y que `perfil-del-modelo.ts` no cambió.
+- Si las lecturas mejoran el análisis no se puede saber sin el modelo: es la prueba del banco de
+  casos de oro de la v37, con el costo que el negocio autorice.

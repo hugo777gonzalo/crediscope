@@ -12,6 +12,7 @@
 // total; desde la v25 el campo es null y el grupo lo lista en `camposSinDato`.
 
 import { ayudanteDelGrupo, type Emisor } from "../emisor.ts";
+import { CALIFICACIONES_EN_ATRASO, ESCALA_CALIFICACION } from "../calificacion.ts";
 import {
   aportesDe,
   type AnyRecord,
@@ -155,9 +156,8 @@ export const CAMPOS_PENDIENTES: Array<{ campo: string; motivo: string }> = [];
 
 // ---- Las reglas del grupo (vivían en buildStandardProfile hasta estructura-v24) ----
 
-// La escala de calificaciones del buró, de mejor a peor.
-const ESCALA_CALIFICACION = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"];
-const CALIFICACIONES_EN_ATRASO = new Set(["A2", "A3", "B1", "B2", "C1", "C2", "D", "E"]);
+// La escala de calificaciones del buró, de mejor a peor: vive en `calificacion.ts`
+// desde E11, porque la leen también las lecturas.
 
 // La peor o la mejor calificación, con la fila que la trae: la que se cita es
 // la primera con esa calificación. «AL» está fuera de la escala: nunca es la
