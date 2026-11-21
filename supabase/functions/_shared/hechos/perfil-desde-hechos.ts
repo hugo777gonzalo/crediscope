@@ -40,7 +40,7 @@ export function perfilDesdeHechos(doc: HechosDeLaPersona, grupoDelPerfil: string
     const h = porCodigo.get(c.codigo);
     if (!h) throw new Error(`El código ${c.codigo} no se emitió: el campo ${c.campoDelPerfil} quedaría sin procedencia`);
     if (marcaSinDato && h.valor === null && esFuenteQueNoContesto(h.motivo)) {
-      salida[campo] = null;
+      asignar(salida, campo, null);
       sinDato[campo] = h.parcial ?? c.enElPerfilSinValor ?? null;
     } else {
       // Un grupo en etapa A reproduce lo que escribe process.ts: con una fuente caída,

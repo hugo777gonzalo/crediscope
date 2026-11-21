@@ -1,0 +1,94 @@
+{
+  "descripcion": "Ingresos: los aportes (basesInternas) y el contribuyente no contestaron y el perfil de estructura-v30 escribió el segmento «sin_datos» y sus cifras vacías como si fueran el total: el detector lo marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "jubilados": {
+      "status": "ok",
+      "data": {
+        "trabajos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    },
+    "afiliacionIssfacCertMedico": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "afiliacionSiisspol": {
+      "status": "ok",
+      "data": {
+        "afiliacionSiisspol": []
+      }
+    },
+    "pensionAlimenticiaProveedorInfo1": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "pensionAlimenticia": {
+      "status": "ok",
+      "data": {
+        "supas": []
+      }
+    },
+    "sriImpuestoRenta": {
+      "status": "ok",
+      "data": {
+        "data": []
+      }
+    },
+    "basesInternas": {
+      "status": "error",
+      "data": null
+    },
+    "contribuyente": {
+      "status": "error",
+      "data": null
+    }
+  },
+  "guardado": {
+    "perfil": {
+      "fuentesIngreso": {
+        "segmento": "sin_datos",
+        "estadoSegmento": "indeterminado",
+        "fuentes": [],
+        "camposSinDato": null
+      }
+    }
+  },
+  "esperado": {
+    "dato-de-ingresos-de-fuente-sin-respuesta-escrito-como-total": "dispara"
+  },
+  "hechos": {
+    "ing.segmento.codigo": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    },
+    "ing.reportado.mensual": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    }
+  }
+}

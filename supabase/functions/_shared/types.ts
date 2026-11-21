@@ -646,7 +646,8 @@ export interface StandardClientProfile {
   // De qué vive el cliente y qué tan evidenciado está (ver
   // fuentes-ingreso.ts). Módulo aparte porque sus reglas cambian a otro
   // ritmo que el resto del perfil.
-  fuentesIngreso: AnalisisFuentesIngreso;
+  // Desde estructura-v31 puede traer `camposSinDato` (campos-sin-dato.ts): un campo cuya fuente no contestó es null.
+  fuentesIngreso: AnalisisFuentesIngreso & { camposSinDato?: Record<string, unknown> };
 
   // Qué se pudo medir en esta consulta, fuente por fuente, en los tres
   // estados de docs/declaracion-de-disponibilidad.md. `sinDatos` es

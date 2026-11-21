@@ -1,5 +1,5 @@
 {
-  "descripcion": "Grupo 4, ingresos: los aportes al IESS no contestaron: el segmento no se puede afirmar («sin datos») y los hechos no tienen valor y dicen por qué, con el parcial que el perfil escribe hoy",
+  "descripcion": "Grupo 4, ingresos: los aportes al IESS no contestaron: el segmento no se puede afirmar («sin datos») y los hechos no tienen valor y dicen por qué, con el parcial que el perfil escribe hoy. Con estructura-v31 el perfil escribe null y lo marca en camposSinDato, y el detector no marca nada",
   "cedula": "0000000000",
   "capturadoEl": "2026-10-01T12:00:00-05:00",
   "raw": {
@@ -70,7 +70,9 @@
       }
     }
   },
-  "esperado": {},
+  "esperado": {
+    "dato-de-ingresos-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
   "reglas": {},
   "hechos": {
     "ing.segmento.codigo": {

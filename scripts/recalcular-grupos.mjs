@@ -182,6 +182,14 @@ for (let i = 0; i < candidatos.length; i += 50) {
     const nuevo = armarEnFecha(capturadoEl, () => buildStandardProfile(raw, cedula, corte).profile);
     const otras = rutasDistintas(guardado, nuevo).filter((r) => !ESPERADAS.some((e) => r === e || r.startsWith(`${e}.`)));
     if (otras.length) { noReproducen.push(`p-${perfilId.slice(0, 8)}: ${otras.slice(0, 3).join(", ")}`); continue; }
+    // Las marcas de recálculos anteriores viven en el perfil guardado, no en el crudo: todos los perfiles de la cartera
+    // llevan `fuentesIngreso.detalle.recalculo` (con qué versión y en qué segmento estaban; recalcular-fuentes-ingreso.mjs).
+    // Reemplazar el grupo sin conservarlas las borraba en 3.766 de 3.766 (seco de estructura-v31, 2026-11-20).
+    if (GRUPOS.includes("fuentesIngreso") && guardado.fuentesIngreso) {
+      const g = guardado.fuentesIngreso;
+      if (g.detalle?.recalculo && nuevo.fuentesIngreso?.detalle) nuevo.fuentesIngreso.detalle.recalculo = g.detalle.recalculo;
+      if (g.correccion !== undefined) nuevo.fuentesIngreso.correccion = g.correccion;
+    }
     const perfil = { ...guardado };
     for (const g of GRUPOS) perfil[g] = nuevo[g];
     // Qué cambia de verdad dentro de los grupos: «a escribir» cuenta también a
@@ -195,7 +203,8 @@ for (let i = 0; i < candidatos.length; i += 50) {
       // camposSinDato. Lo que cambia fuera de eso se cuenta aparte.
       const porSinDato = (r) => {
         const [, g, campo] = r.split(".");
-        return campo === "camposSinDato" || (nuevo[g]?.camposSinDato && campo in nuevo[g].camposSinDato);
+        // Un campo con punto de la marca («detalle.aportesPorMes») es de un objeto anidado (`detalle`, fuentesIngreso).
+        return campo === "camposSinDato" || (nuevo[g]?.camposSinDato && Object.keys(nuevo[g].camposSinDato).some((k) => k === campo || k.startsWith(`${campo}.`)));
       };
       if (cambiadas.some(porSinDato)) conSinDato++;
       if (cambiadas.some((r) => !porSinDato(r))) conOtroCambio++;

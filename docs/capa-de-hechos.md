@@ -1042,6 +1042,49 @@ este PR**: sigue saliendo de `analizarFuentesIngreso()` en `process.ts` y la eta
   **despliega** (`--funciones`) y después se **recalcula**. Con la función vieja de la base, un perfil con
   `empleosActuales` en null rompe el refresco del resumen. La 153 sola no cambia nada (ningún perfil tiene la marca laboral).
 
+##### Etapa B, los ingresos: hecha en estructura-v31 (2026-11-20, E7)
+
+`process.ts` arma `fuentesIngreso` (los 12 campos y el `detalle`) con `perfilDesdeHechos` y **dejó de llamar a
+`analizarFuentesIngreso()`**: ahora la llama una sola vez el grupo `ingresos`, que entra a `GRUPOS_EN_ETAPA_B`; `fuentesIngreso` entra
+a `GRUPOS_CON_SIN_DATO`. Con esto el grupo 4 queda entero en etapa B.
+
+- **La decisión (2026-11-20): las reglas NO se mudan a `ingresos.ts`.** `fuentes-ingreso.ts` (1.386 líneas, con su versión
+  `FUENTES_INGRESO_VERSION` y los textos que lee el analista, el modelo y `recalcular-fuentes-ingreso.mjs`) sigue siendo la
+  única implementación, y el grupo la llama; moverla habría sumado una copia que revisar sin cambiar un valor. La etapa B
+  resuelve lo que importaba: la función corre **una sola vez** por perfil (hasta la v30 corría en `process.ts` y otra vez en el
+  grupo, dentro del resguardo de la etapa A). Una prueba lee `process.ts` y comprueba que ya no la llama.
+- **El «sin dato».** Con una fuente que no contestó el campo es null y el grupo lo lista en `camposSinDato` con lo que
+  escribía la v30. Los campos del `detalle` van anidados en el perfil y con su nombre con punto en la marca
+  (`detalle.aportesPorMes`): `perfilDesdeHechos()` y `conLosValoresDeAntes()` aprendieron a armar y a deshacer una ruta. El
+  segmento lee nueve fuentes (`FUENTES_DEL_SEGMENTO`): con una caída, el segmento, su estado, su motivo, las fuentes y lo que hay
+  que confirmar quedan sin dato; los aportes caídos dejan sin dato además el corte, los totales y el detalle.
+- **Quién lee qué** (todos con `conLosValoresDeAntes()`): el modelo y la capacidad de pago (ya lo hacían), `columnasDelPerfil()`
+  (`fuente_segmento`, `fuente_estado`, `fuente_corte`, `fuente_piso_ingreso` y el perfil laboral: son lo que filtran la bandeja y
+  Monitoreo), el selector del predictor de ingresos (`decidirEstimacion()`, que lee el segmento), los eventos entre consultas,
+  el sandbox y las pantallas (`IngresosCliente`, `Expediente`, `LoQueSiHay`, `FuentesClientes` y la exportación a Excel). **El
+  resumen por persona**, también (migración 154): `refrescar_resumen_por_persona()` copia el grupo entero a
+  `resumen_por_persona.fuentes_ingreso`, de donde lo leen la bandeja, Monitoreo y Fuentes de ingreso; `grupo_de_antes()` es la
+  copia en SQL de `conLosValoresDeAntes()` para un grupo entero. `corte_iess_vigente()` (y su índice parcial) lee
+  `fuentesIngreso ->> 'apareceEnUltimoCorte' = 'true'`: no cambia, porque ese campo sólo queda sin dato cuando faltan los
+  aportes, y entonces valía null. Ninguna otra función ni vista de la base lee `fuentesIngreso` (se buscó en `pg_proc.prosrc`,
+  `pg_views` y `pg_matviews`). Lo único que cambia sin protección es el resultado informativo del paso «perfil» de las
+  evaluaciones (`segmento`) cuando una persona se niega por control con una obligatoria caída: sale null en vez de «sin_datos».
+- **El reloj no cambia** (la misma fecha de la consulta de la parte laboral): las reglas no leen reloj, su corte es un
+  parámetro. `client_profiles.duracion_fuentes_ms` pasa a medir la capa de hechos entera (antes, sólo
+  `analizarFuentesIngreso()`).
+- **El seco (2026-11-20, 3.766 personas reales, contra estructura-v30).** Paridad 49.652 de 49.652 campos; 0 sin procedencia, 0
+  registros que no resuelven, 0 recuentos que no cuadran. Cambian **694 personas**, todas por el «sin dato» (6.719 campos
+  declarados, **0 sin declarar**): 648 por los aportes caídos y 46 por otra fuente del segmento. Con los valores de antes,
+  **0 campos distintos**. **El predictor de ingresos** (variables del nivel 1, selector del nivel y columnas del perfil): 3.766 de
+  3.766 iguales; el nivel 2 sale de la respuesta cruda de Equifax y del mismo `cargarLaPersona()`, sin leer `fuentesIngreso`.
+- **Una trampa del recálculo.** Todos los perfiles guardados llevan `fuentesIngreso.detalle.recalculo` (con qué versión y en qué
+  segmento estaban; lo escribe `recalcular-fuentes-ingreso.mjs`) y `recalcular-grupos.mjs` reemplazaba el grupo entero sin
+  conservarlo: el seco decía «3.766 con algún otro cambio». Ahora lo conserva (y `correccion`), y cuenta como «sin dato» los
+  campos con punto del `detalle`.
+- **El orden.** Primero se **migra** la 154, después se **despliega** (`--funciones`) y después se **recalcula**
+  (`recalcular-grupos.mjs --grupos=fuentesIngreso --bloqueo`). Con la función vieja de la base, el resumen copiaría el segmento
+  null. La 154 sola no cambia nada (ningún perfil tiene la marca de ingresos).
+
 ### 4.5 Los demás grupos
 
 Identidad, contacto, familia, tributario, seguridad social, patrimonio y tránsito son de una o dos

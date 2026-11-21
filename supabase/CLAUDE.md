@@ -353,12 +353,13 @@ su guía: `docs/equifax.md`.
   versión mayor del marco, y la capacidad de pago) pasa por `conLosValoresDeAntes()`
   (`_shared/campos-sin-dato.ts`); un grupo nuevo en etapa B se suma a
   `GRUPOS_CON_SIN_DATO` (desde la v27 también los tres judiciales, desde la v28 `riesgoPenal` y
-  `cumplimiento`, desde la v29 `comportamientoInterno` (la base interna caída ya no es «no es cliente») y desde la v30
-  `laboral`). **Una función de SQL que lee un campo de un grupo con
+  `cumplimiento`, desde la v29 `comportamientoInterno` (la base interna caída ya no es «no es cliente»), desde la v30
+  `laboral` y desde la v31 `fuentesIngreso`, con los campos del `detalle` con nombre con punto). **Una función de SQL que lee un campo de un grupo con
   «sin dato» lo lee con `valor_de_antes(perfil, grupo, campo)` (153)**, la copia en SQL de `conLosValoresDeAntes()`:
   con un null de JSON, `coalesce` no lo ve y `jsonb_array_length` falla. Pasó con `empleosActuales` en
   `refrescar_resumen_por_persona()`. Antes de pasar un grupo a «sin dato», buscar a sus lectores en
-  `supabase/migrations` y en la base viva (`pg_proc.prosrc`), no sólo en el código.
+  `supabase/migrations` y en la base viva (`pg_proc.prosrc`), no sólo en el código. Para un grupo entero (el resumen copia
+  `fuentesIngreso`) está `grupo_de_antes(grupo)` (154).
 - **El control de bloqueo sale de los mismos hechos que el perfil** (estructura-v27 para seguridad
   ciudadana, v28 para todo lo demás): `evaluarControlesBloqueo()` toma de `controlesDesdeHechos()`
   (`hechos/controles.ts`) todos sus hallazgos (fallecido, cédula inconsistente, listas de control, lista

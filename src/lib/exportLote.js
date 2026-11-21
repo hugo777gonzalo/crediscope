@@ -4,6 +4,7 @@ import { ETIQUETA_SEGMENTO, ETIQUETA_ESTADO, quienDeclara } from "./fuentesIngre
 import { esIngresoMinimoSbu } from "./ingresosCampos.js";
 import { clasificarPerfilLaboral } from "../../supabase/functions/_shared/perfil-laboral.ts";
 import { indiciosDeIngresoMayor } from "../../supabase/functions/_shared/fuentes-ingreso.ts";
+import { conLosValoresDeAntes } from "../../supabase/functions/_shared/campos-sin-dato.ts";
 
 // El resultado de un lote, en un solo archivo con varias hojas.
 //
@@ -75,7 +76,8 @@ function hojaResumenProceso(lote, items) {
 }
 
 function filaResumenIngresos(perfil) {
-  const sp = perfil.standard_profile ?? {};
+  // El Excel sale con los valores de antes: un campo sin dato (v30 y v31) no cambia lo que se exporta.
+  const sp = conLosValoresDeAntes(perfil.standard_profile ?? {});
   const f = sp.fuentesIngreso ?? {};
   const fuentes = f.fuentes ?? [];
   const vigentes = fuentes.filter((x) => x.vigenteAlCorte);
@@ -104,7 +106,8 @@ function filaResumenIngresos(perfil) {
 }
 
 function filasDetalleIngresos(perfil) {
-  const sp = perfil.standard_profile ?? {};
+  // El Excel sale con los valores de antes: un campo sin dato (v30 y v31) no cambia lo que se exporta.
+  const sp = conLosValoresDeAntes(perfil.standard_profile ?? {});
   const f = sp.fuentesIngreso ?? {};
   const cedula = perfil.clients?.cedula ?? sp.cedula ?? "";
   const fuentes = f.fuentes ?? [];

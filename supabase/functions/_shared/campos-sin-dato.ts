@@ -21,7 +21,7 @@ export const CLAVE_SIN_DATO = "camposSinDato";
 
 // Los grupos del perfil que pueden traer `camposSinDato` (los grupos 1 y 3 de la
 // capa de hechos, más el penal y el de cumplimiento desde la v28, el comportamiento interno —el grupo 2—
-// desde la v29 y `laboral` desde la v30). Un grupo nuevo en etapa B se suma acá.
+// desde la v29, `laboral` desde la v30 y `fuentesIngreso` desde la v31). Un grupo nuevo en etapa B se suma acá.
 export const GRUPOS_CON_SIN_DATO = [
   "comportamientoInterno",
   "comportamientoBancario",
@@ -32,6 +32,7 @@ export const GRUPOS_CON_SIN_DATO = [
   "riesgoPenal",
   "cumplimiento",
   "laboral",
+  "fuentesIngreso",
 ] as const;
 
 // Los campos de un grupo que quedaron sin dato, o una lista vacía.
@@ -42,7 +43,19 @@ export function camposSinDato(grupo: unknown): string[] {
 
 // Una copia del perfil con cada campo sin dato devuelto al valor que escribía
 // estructura-v24, y sin `camposSinDato`. Un perfil sin la marca vuelve igual.
-// El campo conserva su posición en el grupo: el modelo lee el JSON en orden.
+// El campo conserva su posición en el grupo: el modelo lee el JSON en orden. Un campo con punto
+// («detalle.aportesPorMes», de fuentesIngreso) es de un objeto anidado del grupo.
+function ponerEnLaRuta(g: Registro, campo: string, valor: unknown): void {
+  const partes = campo.split(".");
+  let destino = g;
+  for (const p of partes.slice(0, -1)) {
+    const siguiente = destino[p];
+    destino[p] = siguiente && typeof siguiente === "object" && !Array.isArray(siguiente) ? { ...(siguiente as Registro) } : {};
+    destino = destino[p] as Registro;
+  }
+  destino[partes[partes.length - 1]] = valor;
+}
+
 export function conLosValoresDeAntes<T>(perfil: T): T {
   if (!perfil || typeof perfil !== "object") return perfil;
   let copia: Registro | null = null;
@@ -54,7 +67,7 @@ export function conLosValoresDeAntes<T>(perfil: T): T {
     const antes = g[CLAVE_SIN_DATO];
     delete g[CLAVE_SIN_DATO];
     if (antes && typeof antes === "object" && !Array.isArray(antes)) {
-      for (const [campo, valor] of Object.entries(antes as Registro)) g[campo] = valor;
+      for (const [campo, valor] of Object.entries(antes as Registro)) ponerEnLaRuta(g, campo, valor);
     }
     copia[nombre] = g;
   }

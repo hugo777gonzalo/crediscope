@@ -288,8 +288,9 @@ function aportesPorMes(raw: AnyRecord): Map<string, Map<string, AnyRecord>> {
   }
   return porMes;
 }
+// Con los valores de antes: un corte sin dato no es «sin corte» (campos-sin-dato.ts).
 const corteDe = (perfil: AnyRecord): string | null =>
-  ((perfil.fuentesIngreso as AnyRecord | undefined)?.corteIessUsado as string | undefined) ?? null;
+  ((conLosValoresDeAntes(perfil).fuentesIngreso as AnyRecord | undefined)?.corteIessUsado as string | undefined) ?? null;
 const mesSiguiente = (mes: string): string => {
   const [a, m] = mes.split("-").map(Number);
   return m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, "0")}`;

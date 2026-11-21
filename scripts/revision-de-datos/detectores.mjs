@@ -695,6 +695,30 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
+    id: "dato-de-ingresos-de-fuente-sin-respuesta-escrito-como-total",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Un campo de las fuentes de ingreso (segmento, aportes, señales de escala, actividades) tiene valor (o no está marcado sin dato) aunque su fuente no contestó",
+    caso: "E7 de la reestructuración del núcleo, 2026-11-20: con los aportes, el RUC, la nómina o la jubilación sin contestar, el perfil escribía un segmento (o «sin_datos») y sus cifras como si fueran el total",
+    conocido: "hasta estructura-v30 se escribía el parcial: se corrige con el recálculo de estructura-v31 (recalcular-grupos.mjs --grupos=fuentesIngreso)",
+    // Criterio DISTINTO del de la regla (que mira el `status`, respuestaDe en hechos/lectura-del-crudo.ts):
+    // acá se mira el contenido. La renta no entra: su «no hay» es un status `faltante` sin contenido, y por
+    // contenido no se distingue de una caída.
+    aplica: ({ raw, perfil }) => !!perfil?.fuentesIngreso && fuentesDeIngresoSinRespuesta(raw).length > 0,
+    detectar: ({ raw, perfil }) => {
+      const conValor = [];
+      const g = perfil?.fuentesIngreso ?? {};
+      const marcados = g.camposSinDato && typeof g.camposSinDato === "object" ? g.camposSinDato : {};
+      for (const [fuente, , campos] of fuentesDeIngresoSinRespuesta(raw)) {
+        for (const campo of campos) {
+          const valor = campo.split(".").reduce((x, k) => (x && typeof x === "object" ? x[k] : undefined), g);
+          if ((valor !== null && valor !== undefined) || !(campo in marcados)) conValor.push(`${fuente}: fuentesIngreso.${campo}`);
+        }
+      }
+      return conValor.length ? { campos: [...new Set(conValor)] } : null;
+    },
+  },
+  {
     id: "operacion-en-super-y-diners",
     capa: "estructura",
     tipo: "revisar",
@@ -898,6 +922,32 @@ const FUENTES_LABORALES = [
 ];
 function fuentesLaboralesSinRespuesta(raw) {
   return FUENTES_LABORALES.filter(([fuente, lista]) => {
+    const data = raw?.[fuente]?.data;
+    if (!data || typeof data !== "object") return true;
+    return lista !== null && !Array.isArray(data[lista]);
+  });
+}
+// Las fuentes de los ingresos (estructura-v31) y los campos del perfil que dependen de cada una (los del `detalle`, con
+// el nombre con punto de camposSinDato). Contestó si trae su lista; la renta no está: su «no hay» es un `faltante`.
+const INGRESOS_SEGMENTO = ["fuentes", "segmento", "estadoSegmento", "motivoSegmento", "paraConfirmar"];
+const INGRESOS_DE_LOS_APORTES = [
+  "corteIessUsado", "corteDesactualizado", "apareceEnUltimoCorte", "cortesDesdeLaDesvinculacion", "pisoIngresoMensualReportado",
+  "detalle.aportesPorMes", "detalle.vinculos", "detalle.mesesConAporteUltimos12", "detalle.mesesConAporteUltimos24",
+  "detalle.promedioUltimos6", "detalle.promedioUltimos12", "detalle.totalHace12Meses",
+];
+const FUENTES_DE_INGRESO = [
+  // [fuente, la lista que trae al contestar (null: basta el objeto `data`), campos]
+  ["basesInternas", null, [...INGRESOS_SEGMENTO, ...INGRESOS_DE_LOS_APORTES, "detalle.continuidadLaboral"]],
+  ["contribuyente", "datosContribuyente", [...INGRESOS_SEGMENTO, "senalesDeEscala", "detalle.continuidadLaboral"]],
+  ["establecimientoActEconomica", null, [...INGRESOS_SEGMENTO, "senalesDeEscala", "detalle.continuidadLaboral", "detalle.actividadesEconomicas"]],
+  ["empleados", "empleados", [...INGRESOS_SEGMENTO, "senalesDeEscala"]],
+  ["jubilados", "trabajos", INGRESOS_SEGMENTO],
+  ["afiliacionIssfacCertMedico", "afiliaciones", INGRESOS_SEGMENTO],
+  ["afiliacionSiisspol", "afiliacionSiisspol", INGRESOS_SEGMENTO],
+  ["pensionAlimenticiaProveedorInfo1", "supas", INGRESOS_SEGMENTO],
+];
+function fuentesDeIngresoSinRespuesta(raw) {
+  return FUENTES_DE_INGRESO.filter(([fuente, lista]) => {
     const data = raw?.[fuente]?.data;
     if (!data || typeof data !== "object") return true;
     return lista !== null && !Array.isArray(data[lista]);

@@ -225,7 +225,7 @@ export default function Expediente() {
   // Lo laboral se lee con los valores de antes: un campo sin dato (v30) no cambia el resumen del expediente.
   // La tarjeta del perfil (SegmentosPerfil) sí recibe el perfil tal cual, para marcar el «sin dato».
   const spLeido = conLosValoresDeAntes(sp);
-  const f = sp?.fuentesIngreso ?? null;
+  const f = spLeido?.fuentesIngreso ?? null;
   const hallazgos = perfil?.control_bloqueo?.hallazgos ?? [];
   const nombre = nombreCorto(sp?.identidad?.nombreCompleto) ?? "Sin nombre en la fuente";
   // Entiende las dos épocas: los perfiles anteriores a estructura-v3

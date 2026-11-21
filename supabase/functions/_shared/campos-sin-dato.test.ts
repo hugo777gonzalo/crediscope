@@ -54,3 +54,17 @@ Deno.test("la capacidad de pago calcula igual con la marca que con los valores d
   const hoy = new Date("2026-11-19T12:00:00-05:00");
   assertEquals(datosDeCapacidad(conSinDato(antes), null, hoy), datosDeCapacidad(antes, null, hoy));
 });
+
+Deno.test("un campo con punto de la marca vuelve a su lugar dentro del objeto anidado, sin tocar al resto ni al original", () => {
+  const perfil: Record<string, unknown> = {
+    fuentesIngreso: {
+      segmento: null,
+      detalle: { aportesPorMes: null, mesesConAporteUltimos12: 3 },
+      camposSinDato: { segmento: "sin_datos", "detalle.aportesPorMes": [{ mes: "2026-10", total: 800 }] },
+    },
+  };
+  const antes = JSON.stringify(perfil);
+  const vuelto = conLosValoresDeAntes(perfil);
+  assertEquals(vuelto.fuentesIngreso, { segmento: "sin_datos", detalle: { aportesPorMes: [{ mes: "2026-10", total: 800 }], mesesConAporteUltimos12: 3 } });
+  assertEquals(JSON.stringify(perfil), antes);
+});

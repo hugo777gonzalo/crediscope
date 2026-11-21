@@ -966,6 +966,19 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
 >   con el sí del negocio.
 
+> **estructura-v31 (E7, 2026-11-20: etapa B del grupo 4 de la capa de hechos, los ingresos)**
+> - `fuentesIngreso` sale de la capa de hechos (`hechos/grupos/ingresos.ts`, `docs/capa-de-hechos.md`, 4.4): `process.ts` dejó de
+>   llamar a `analizarFuentesIngreso()`; la llama el grupo, una sola vez, y `fuentes-ingreso.ts` sigue siendo la única
+>   implementación de las reglas y de los textos (no se mudaron).
+> - Con una fuente que no contestó (o apagada), el campo es `null` y el grupo lo lista en `camposSinDato` con lo que
+>   escribía la v30 (los del `detalle`, con el nombre con punto: `detalle.aportesPorMes`). El segmento lee nueve fuentes.
+> - El modelo, la capacidad de pago, el selector del predictor de ingresos, las columnas del perfil, las pantallas de ingresos y
+>   el resumen por persona (migración 154, `grupo_de_antes()`) leen el valor de antes.
+> - Medido en seco sobre las 3.766 personas reales: cambian 694 (todas sin dato, 0 sin declarar); con los valores de antes, 0
+>   campos distintos; el predictor (variables, selector y columnas) da lo mismo en las 3.766; el bloqueo da 0 y 0.
+> - **Sin aplicar:** se **migra la 154**, después se despliega (`--funciones`) y después se recalcula
+>   (`recalcular-grupos.mjs --grupos=fuentesIngreso --bloqueo`), con el sí del negocio.
+
 > **estructura-v30 (E7, 2026-11-20: etapa B del grupo 4 de la capa de hechos, parte laboral)**
 > - `laboral` (33 campos) sale de la capa de hechos (`hechos/grupos/empleo.ts` y `actividad-con-ruc.ts`,
 >   `docs/capa-de-hechos.md`, 4.4): misma regla, una sola implementación. `fuentesIngreso` **no** cambia en esta versión.

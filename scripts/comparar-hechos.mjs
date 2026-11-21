@@ -31,8 +31,9 @@
 //    personas, y cuántas «revisar». Con --contra, además, el perfil ENTERO (todos los grupos, no
 //    sólo los elegidos) contra el de esa versión: un PR que sólo suma diferencias tiene que dar
 //    cero personas distintas.
-// 10. Con --predictor (y --contra), las variables del predictor de ingresos, nivel 1 (`vectorDeNivel1()`), del perfil de
-//    ahora contra las del perfil de esa versión, con el reloj en la captura: no pueden cambiar en ninguna persona.
+// 10. Con --predictor (y --contra), las variables del predictor de ingresos, nivel 1 (`vectorDeNivel1()`), su selector
+//    (`decidirEstimacion()`) y las columnas del perfil (`columnasDelPerfil()`) del perfil de ahora contra los del perfil de
+//    esa versión, con el reloj en la captura: no pueden cambiar en ninguna persona.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
@@ -94,6 +95,9 @@ const { CORTE_IESS_CONOCIDO } = await importar("supabase/functions/_shared/fuent
 const { controlesDesdeHechos, CODIGOS_DE_SEGURIDAD } = await importar("supabase/functions/_shared/hechos/controles.ts");
 const { evaluarControlesBloqueo } = await importar("supabase/functions/_shared/controles-bloqueo.ts");
 const { vectorDeNivel1 } = await importar("supabase/functions/_shared/variables-de-ingreso.ts");
+const { decidirEstimacion } = await importar("supabase/functions/_shared/estimacion-de-ingreso.ts");
+const { estadoPorFuente } = await importar("supabase/functions/_shared/calidad-de-la-consulta.ts");
+const { columnasDelPerfil } = await importar("supabase/functions/_shared/columnas-del-perfil.ts");
 
 // 7. El process.ts de otra versión, sacado de git a una carpeta temporal (sólo
 // el código de _shared, sin las pruebas): se importa como cualquier otro.
@@ -134,6 +138,9 @@ const DECLARADAS = ELEGIDOS.flatMap((g) => GRUPOS[g].DIFERENCIAS_ESPERADAS ?? []
 // una entidad unida por esa regla. `cuandos` limita qué declaraciones valen:
 // con los valores de antes, sólo la unión (el «sin dato» ahí tiene que dar igual).
 const unidaPor = (doc, regla) => !!doc?.entidades?.some((e) => e.union?.regla === regla);
+// Las claves de camposSinDato de un campo: él mismo o, si es un objeto anidado (el `detalle` de fuentesIngreso, estructura-v31),
+// sus campos con punto («detalle.aportesPorMes»).
+const clavesMarcadas = (marca, campo) => Object.keys(marca).filter((k) => k === campo || k.startsWith(`${campo}.`));
 const esperada = (ruta, grupoNuevo, doc, cuandos = [undefined, "sin_dato", "union"]) =>
   DECLARADAS.some((d) => {
     const coincide = d.campo === ruta || (d.campo.endsWith(".*") && ruta.startsWith(d.campo.slice(0, -1)));
@@ -141,7 +148,7 @@ const esperada = (ruta, grupoNuevo, doc, cuandos = [undefined, "sin_dato", "unio
     if (d.cuando === undefined) return true;
     if (d.cuando === "union") return unidaPor(doc, d.regla);
     const campo = ruta.split(".").slice(1).join(".");
-    return !!grupoNuevo?.camposSinDato && campo in grupoNuevo.camposSinDato;
+    return !!grupoNuevo?.camposSinDato && clavesMarcadas(grupoNuevo.camposSinDato, campo).length > 0;
   });
 const BLOQUEO = args.bloqueo === "no" ? false : args.bloqueo === true || ELEGIDOS.includes("riesgoJudicial") || ELEGIDOS.includes("cumplimiento");
 // Con el grupo de cumplimiento el control entero sale de hechos; sin él, sólo seguridad ciudadana.
@@ -336,8 +343,14 @@ for (let i = 0; i < candidatos.length; i += 50) {
         const vector = (p) => vectorDeNivel1(p, { ahora: crudo.capturadoEl });
         const ahoraV = vector(perfil), antesV = vector(antes);
         predictor.comparadas++;
-        if (canonico(ahoraV.variables) === canonico(antesV.variables) && canonico(ahoraV.avisos) === canonico(antesV.avisos)) predictor.iguales++;
-        else fallas.predictor.push({ ref, ahora: ahoraV.variables, antes: antesV.variables });
+        // El selector del predictor (el nivel y el motivo, que lee el segmento) y las columnas del perfil que copian
+        // el segmento y el perfil laboral: con los mismos datos en las dos versiones.
+        const estado = estadoPorFuente(raw);
+        const nivelAhora = decidirEstimacion(perfil, estado), nivelAntes = decidirEstimacion(antes, estado);
+        const iguales = canonico(ahoraV.variables) === canonico(antesV.variables) && canonico(ahoraV.avisos) === canonico(antesV.avisos)
+          && canonico(nivelAhora) === canonico(nivelAntes) && canonico(columnasDelPerfil(perfil)) === canonico(columnasDelPerfil(antes));
+        if (iguales) predictor.iguales++;
+        else fallas.predictor.push({ ref, ahora: ahoraV.variables, antes: antesV.variables, nivelAhora, nivelAntes });
       }
       let cambiaAlgo = false;
       let tieneSinDato = false;
@@ -354,10 +367,13 @@ for (let i = 0; i < candidatos.length; i += 50) {
         for (const campo of new Set([...Object.keys(viejo), ...Object.keys(nuevo)])) {
           if (campo === "camposSinDato") continue;
           const ruta = `${gp}.${campo}`;
-          if (campo in marca) {
+          const claves = clavesMarcadas(marca, campo);
+          if (claves.length) {
             cambio.marcados[ruta] = (cambio.marcados[ruta] ?? 0) + 1;
-            const v = marca[campo];
-            if (v !== null && v !== 0 && v !== false && !(Array.isArray(v) && v.length === 0)) parcialConDato = true;
+            for (const clave of claves) {
+              const v = marca[clave];
+              if (v !== null && v !== 0 && v !== false && !(Array.isArray(v) && v.length === 0)) parcialConDato = true;
+            }
           }
           if (canonico(nuevo[campo]) === canonico(viejo[campo])) continue;
           cambiaAlgo = true;
@@ -482,7 +498,7 @@ if (construirAntes) {
   if (cambio.refs.length) console.log(`    Algunos: ${cambio.refs.join(", ")}`);
   for (const d of fallas.contraAntes.slice(0, 8)) console.log(`  SIN DECLARAR ${d.ref} ${d.campo}`);
   console.log(`  Con los valores de antes (lo que leen el modelo y la capacidad): ${fallas.conLosDeAntes.length} campos distintos de ${CONTRA}.`);
-  if (args.predictor) console.log(`  Predictor de ingresos, nivel 1 (vectorDeNivel1): ${n(predictor.iguales)} de ${n(predictor.comparadas)} personas con las mismas variables y avisos; ${fallas.predictor.length} distintas.`);
+  if (args.predictor) console.log(`  Predictor de ingresos (variables del nivel 1, selector del nivel y columnas del perfil): ${n(predictor.iguales)} de ${n(predictor.comparadas)} personas iguales; ${fallas.predictor.length} distintas.`);
   for (const d of fallas.predictor.slice(0, 5)) console.log(`  DISTINTO el predictor ${d.ref}`);
   for (const d of fallas.conLosDeAntes.slice(0, 8)) console.log(`  DISTINTO ${d.ref} ${d.campo}`);
   console.log(`  El perfil entero (todos los grupos): ${n(perfilEntero.distintos)} de ${n(perfilEntero.comparados)} personas distintas de ${CONTRA}${perfilEntero.refs.length ? ` (${perfilEntero.refs.join(", ")})` : ""}.`);
