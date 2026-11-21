@@ -4,7 +4,7 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { catalogoCompleto } from "../indice.ts";
 import type { Diferencia, Hecho, HechosDeLaPersona, Senal } from "../tipos.ts";
 import { MARCO_INTERPRETATIVO } from "../../marco-interpretativo.ts";
-import { aplicarLectura, CATALOGO_DE_LECTURAS, derivarLecturas, erroresDelCatalogoDeLecturas, type LecturaDelCatalogo } from "./lecturas.ts";
+import { aplicarLectura, CATALOGO_DE_LECTURAS, derivarLecturas, erroresDelCatalogoDeLecturas, type LecturaDelCatalogo, type OpcionesDeLectura } from "./lecturas.ts";
 import { TRAMOS_QUE_SACA_LA_V37, ubicarTramos } from "./marco-v37.ts";
 
 const SIN_DATO = Symbol("sin dato");
@@ -30,13 +30,15 @@ function documento(valores: Record<string, Entrada> = {}, fecha = "2026-11-20T15
   };
 }
 
-function lectura(codigo: string, doc: HechosDeLaPersona): Senal {
-  const s = derivarLecturas(doc).find((x) => x.codigo === codigo);
+// Por omisión, el análisis es el mismo día de la consulta.
+function lectura(codigo: string, doc: HechosDeLaPersona, opciones: OpcionesDeLectura = { fechaDelAnalisis: doc.contexto.fechaDeLaConsulta }): Senal {
+  const s = derivarLecturas(doc, opciones).find((x) => x.codigo === codigo);
   if (!s) throw new Error(`no salió ${codigo}`);
   return s;
 }
-const estadoYValor = (codigo: string, valores: Record<string, Entrada>, fecha?: string) => {
-  const s = lectura(codigo, documento(valores, fecha));
+const estadoYValor = (codigo: string, valores: Record<string, Entrada>, fecha?: string, opciones?: OpcionesDeLectura) => {
+  const doc = documento(valores, fecha);
+  const s = lectura(codigo, doc, opciones);
   return [s.estado, s.valor];
 };
 
@@ -131,20 +133,31 @@ Deno.test("sin mora vigente: hace falta alguna operación, y A2 ya es mora", () 
   assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "ban.calificacion.peor": "A2" }), ["no_se_cumple", false]);
   assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "coop.operaciones.cantidad": 1, "coop.mora.dias_max": 5 }), ["no_se_cumple", false]);
   assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "biess.tiene": true, "biess.mora.dias_max": 30 }), ["no_se_cumple", false]);
-  // Las casas comerciales no entran: su corte tiene meses.
-  assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "ret.deudas.cantidad": 1, "ret.deuda.vencida": 50 }), ["se_cumple", true]);
+  // Las casas comerciales cuentan, a su corte (negocio, 2026-11-20): lo vencido o en mora es mora.
+  assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "ret.deudas.cantidad": 1, "ret.deuda.vencida": 50 }), ["no_se_cumple", false]);
+  assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "ret.deudas.cantidad": 1, "ret.mora.dias_max": 15 }), ["no_se_cumple", false]);
+  const soloRetail = lectura("lec.end.sin_mora_vigente", documento({ "ret.deudas.cantidad": 1, "ret.deuda.total": 100, "ret.deuda.vencida": 0, "ret.mora.dias_max": 0 }));
+  assertEquals([soloRetail.estado, soloRetail.valor], ["se_cumple", true]);
+  assertEquals(soloRetail.texto!.includes("a su fecha de corte"), true);
+  assertEquals(estadoYValor("lec.end.sin_mora_vigente", { ...al, "ret.deudas.cantidad": SIN_DATO })[0], "no_se_puede_medir");
   assertEquals(estadoYValor("lec.end.sin_mora_vigente", {}), ["no_se_cumple", false]);
   assertEquals(estadoYValor("lec.end.sin_historial", {}), ["se_cumple", true]);
   assertEquals(estadoYValor("lec.end.sin_historial", { "ret.deudas.cantidad": 1 }), ["no_se_cumple", false]);
   assertEquals(estadoYValor("lec.end.sin_historial", { "biess.tiene": true }), ["no_se_cumple", false]);
 });
 
-Deno.test("demandas de cobro: años con el año de Ecuador de la consulta, y cuántas son de una institución financiera", () => {
+Deno.test("demandas de cobro: años con el año de Ecuador del día del análisis, y cuántas son de una institución financiera", () => {
   const detalle = [{ anio: 2009, quienDemanda: "persona" }, { anio: 2024, quienDemanda: "institucion_financiera" }];
-  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", { "jud.cobro.cantidad": 2, "jud.cobro.detalle": detalle }), ["se_cumple", 2]);
+  const valores = { "jud.cobro.cantidad": 2, "jud.cobro.detalle": detalle };
+  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", valores), ["se_cumple", 2]);
+  // Manda el día del análisis, no el de la consulta (negocio, 2026-11-20): una consulta de
+  // noviembre analizada en enero cuenta un año más.
+  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", valores, "2026-11-20T15:00:00.000Z", { fechaDelAnalisis: "2027-01-15T15:00:00.000Z" }), ["se_cumple", 3]);
   // El 1 de enero a las 03:00 UTC todavía es 31 de diciembre en Ecuador.
-  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", { "jud.cobro.cantidad": 2, "jud.cobro.detalle": detalle }, "2027-01-01T03:00:00.000Z"), ["se_cumple", 2]);
-  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", { "jud.cobro.cantidad": 2, "jud.cobro.detalle": detalle }, "2027-01-01T06:00:00.000Z"), ["se_cumple", 3]);
+  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", valores, undefined, { fechaDelAnalisis: "2027-01-01T03:00:00.000Z" }), ["se_cumple", 2]);
+  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", valores, undefined, { fechaDelAnalisis: "2027-01-01T06:00:00.000Z" }), ["se_cumple", 3]);
+  // Sin la fecha del análisis no se cuenta con la de la consulta: no se puede medir.
+  assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", valores, undefined, {})[0], "no_se_puede_medir");
   assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", { "jud.cobro.cantidad": 1, "jud.cobro.detalle": [{ anio: null, quienDemanda: "empresa" }] })[0], "no_se_puede_medir");
   assertEquals(estadoYValor("lec.jud.cobro.mas_reciente", { "jud.cobro.cantidad": 0 })[0], "no_se_cumple");
   assertEquals(estadoYValor("lec.jud.cobro.de_institucion_financiera", { "jud.cobro.cantidad": 2, "jud.cobro.detalle": detalle }), ["se_cumple", 1]);

@@ -1776,9 +1776,19 @@ para cuando exista el contrato neutro (`buro/`), sin implementar:
 | B15 | El retail y el BIESS con el buró | estructura (repite P16 a P18) | las mismas lecturas |
 
 Lo que quedó **pendiente** y por qué: P53, P54 y P63 necesitan el nombre de la persona (el grupo de
-identidad está vacío y el contexto de las pruebas no lo lleva); P60 y P61, sus grupos (seguridad
-social y patrimonio) vacíos; P67, el catálogo de los hábitos de pago de la institución y la fecha
-de la operación, que los hechos no traen. Ninguno se inventó.
+identidad está vacío y el contexto de las pruebas no lo lleva; lo toma una sesión aparte); P60 y
+P61, sus grupos (seguridad social y patrimonio) vacíos; P67, que el negocio diga qué categoría de la
+institución es buena y cuál mala. Ninguno se inventó.
+
+**P67, medido el 2026-11-20** (sólo lectura, 3.766 personas reales, 4.042 operaciones con la
+institución en 2.600 personas). La fuente trae cinco hábitos de pago: Excelente Pagador 2.602,
+Cumple con poco retraso 935, Cumple con retraso 347, Mal pagador 80 y Pagador Irregular 76 (2 sin
+dato); y tres perfiles internos: NUEVO 2.473, BUENO 1.446 y MALO 121. No trae la fecha de concesión
+ni las cuotas pagadas: sólo el corte, la cuota, el plazo, el saldo y los días de mora. Para «cuánta
+historia hay detrás» sirve el perfil interno: NUEVO es poca historia (1.999 «Excelente Pagador» son
+NUEVO). Con la clasificación del negocio (qué hábito es bueno y cuál malo), las dos lecturas
+(`lec.inst.contraste_con_el_buro` y `lec.inst.poca_historia`) son reglas simples sobre hechos que ya
+existen (`inst.habito_de_pago`, `inst.perfil_interno`).
 
 ### 11.2 Las 27 lecturas
 
@@ -1795,11 +1805,11 @@ lectura aplica a la persona (en las de tramo, que hay algo que clasificar).
 | `lec.ret.deuda.toda_vencida` | la deuda con casas comerciales está toda vencida | `ret.deuda.total`, `ret.deuda.vencida` | P17 |
 | `lec.coop.atraso_de_hoy` | los días de mora con cooperativas son de hoy, no históricos | `coop.operaciones.cantidad`, `coop.mora.dias_max` | P20 |
 | `lec.end.cuota_incompleta` | los sistemas con deuda que no informan cuota (bancos, casas comerciales) | `coop.cuota.mensual`, `ban.saldo.*`, `ret.deuda.total` | P23 |
-| `lec.end.sin_mora_vigente` | con alguna operación, sin mora vigente en bancos, cooperativas ni el IESS/BIESS (sin las casas comerciales: su corte tiene meses) | 9 códigos | P77 |
+| `lec.end.sin_mora_vigente` | con alguna operación, sin mora vigente en bancos, cooperativas, casas comerciales (a su corte) ni el IESS/BIESS (versión 2) | 12 códigos | P77 |
 | `lec.end.sin_historial` | no registra operaciones de crédito propias | `ban.operaciones.cantidad`, `coop.operaciones.cantidad`, `ret.deudas.cantidad`, `biess.tiene` | P82 |
 | `lec.end.cuota_sobre_ingreso` | la cuota conocida sobre el ingreso reportado del mes, en % | `coop.cuota.mensual`, `ing.reportado.mensual` | P23, P78 |
 | `lec.end.deuda_sobre_ingreso_anual` | la deuda propia total sobre 12 meses de ingreso, en % | 5 códigos | P78 |
-| `lec.jud.cobro.mas_reciente` | años desde la demanda de cobro más reciente, con el año de Ecuador de la consulta | `jud.cobro.cantidad`, `jud.cobro.detalle` | P25 |
+| `lec.jud.cobro.mas_reciente` | años desde la demanda de cobro más reciente, con el año de Ecuador del día del análisis (versión 2) | `jud.cobro.cantidad`, `jud.cobro.detalle` | P25 |
 | `lec.jud.cobro.de_institucion_financiera` | cuántas demandas de cobro son de una institución financiera | ídem | P25 |
 | `lec.jud.civil.cuentan` | los procesos civiles que son demandas, sin archivadas ni trámites | `jud.civil.cantidad`, `jud.civil.por_categoria` | P27 |
 | `lec.jud.pension.estado` | sin pensión (no se menciona), al día o en mora | `jud.pension.existe`, `.con_mora` | P31 |
@@ -1823,15 +1833,17 @@ bancos no dan la cuota de ninguna); `lec.atraso.sin_dias` es el tramo de `lec.ba
 (`lec.jud.cobro.mas_reciente`, `lec.end.cuota_sobre_ingreso`): son lo que el marco ya pide leer,
 sin un umbral nuevo. Los atenuantes de 1.4 siguen siendo propuesta: tienen umbrales a decidir.
 
-**Dos decisiones abiertas** que las lecturas dejan a la vista, sin cambiar nada:
+**Dos decisiones del negocio (2026-11-20)**, en `lecturas-v2`:
 
-1. **El reloj de las demandas de cobro.** El modelo cuenta `aniosAtras` con el día del análisis
-   (marco-v36) y la lectura, con el de la consulta (como toda la capa). Con una consulta de
-   diciembre analizada en enero, difieren en un año. Para la v37 se propone el de la consulta, igual
-   que la decisión 6 de 10.5.
-2. **Las casas comerciales en «sin mora vigente».** Su corte tiene meses (julio de 2025). La
-   lectura las deja afuera; cuántos meses de corte cuentan como hoy es el umbral pendiente del
-   atenuante `sen.atenuante.hoy_al_dia`.
+1. **Los años de una demanda de cobro se cuentan con el día del análisis**, como `aniosAtras` del
+   perfil del modelo: la demanda envejece aunque la consulta sea la misma. Es la única lectura que
+   no usa el reloj de la capa: la fecha del análisis la pasa quien analiza
+   (`derivarLecturas(doc, { fechaDelAnalisis })`), y sin ella la lectura no se puede medir (no cae a
+   la de la consulta). En lecturas-v1 se contaba con la consulta.
+2. **Las casas comerciales cuentan para «sin mora vigente»**, a su corte: lo vencido o con días de
+   mora es mora, y el texto dice que esa parte es a su fecha. Con eso, 2.321 personas sin mora
+   vigente (eran 2.383) y 667 que no se pueden medir (eran 471: la fuente de casas comerciales cayó
+   en 658). El umbral del atenuante `sen.atenuante.hoy_al_dia` (1.4) sigue siendo propuesta.
 
 ### 11.3 Lo que la v37 sacaría del marco
 
@@ -1916,7 +1928,7 @@ quien no tiene ingreso reportado al IESS.
 | `lec.ret.deuda.toda_vencida` | 32 | 3.076 | 658 | |
 | `lec.coop.atraso_de_hoy` | 220 | 3.546 | 0 | |
 | `lec.end.cuota_incompleta` | 2.967 | 141 | 658 | |
-| `lec.end.sin_mora_vigente` | 2.383 | 912 | 471 | |
+| `lec.end.sin_mora_vigente` | 2.321 | 778 | 667 | con las casas comerciales (lecturas-v2); con v1 eran 2.383, 912 y 471 |
 | `lec.end.sin_historial` | 64 | 3.645 | 57 | |
 | `lec.end.cuota_sobre_ingreso` | 442 | 1.531 | 1.793 | |
 | `lec.end.deuda_sobre_ingreso_anual` | 1.918 | 45 | 1.803 | |

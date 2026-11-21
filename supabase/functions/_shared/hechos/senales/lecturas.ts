@@ -36,7 +36,17 @@ import { CATEGORIA_INVESTIGACION_CERRADA, CATEGORIA_TRAMITE } from "../../demand
 import { dejoDeAparecerEnElIess, esIngresoMinimoSbu, indiciosDeIngresoMayor, TIPOS_DE_PENSION, TIPOS_DE_SERVICIO_ACTIVO } from "../../fuentes-ingreso.ts";
 
 // lecturas-v1 (E11, 2026-11-20): las 27 primeras, sacadas de marco-v36.
-export const LECTURAS_VERSION = "lecturas-v1";
+// lecturas-v2 (2026-11-20, decisiones del negocio sobre E11): los años de una demanda de
+// cobro se cuentan con el día del ANÁLISIS, y las casas comerciales cuentan para «sin mora
+// vigente» (las dos reglas suben a su versión 2).
+export const LECTURAS_VERSION = "lecturas-v2";
+
+export interface OpcionesDeLectura {
+  // El día del análisis, ISO. Lo usa sólo `lec.jud.cobro.mas_reciente` (negocio, 2026-11-20):
+  // sin él, esa lectura no se puede medir. No es el reloj de la capa (la fecha de la consulta):
+  // lo pasa quien analiza, como el `ahora` de armarPerfilDelModelo().
+  fechaDelAnalisis?: string;
+}
 
 type Valor = Senal["valor"];
 
@@ -71,10 +81,12 @@ const SIN_VALOR_EN_EL_PERFIL = new Map(catalogoCompleto().map((c) => [c.codigo, 
 export class Lector {
   readonly leidos = new Set<string>();
   readonly doc: HechosDeLaPersona;
+  readonly opciones: OpcionesDeLectura;
   private readonly porCodigo: Map<string, Hecho>;
   // Sin propiedades en los parámetros: Node, que corre los guiones, sólo quita los tipos.
-  constructor(doc: HechosDeLaPersona) {
+  constructor(doc: HechosDeLaPersona, opciones: OpcionesDeLectura = {}) {
     this.doc = doc;
+    this.opciones = opciones;
     this.porCodigo = new Map(doc.hechos.map((h) => [h.codigo, h]));
   }
 
@@ -109,9 +121,11 @@ export class Lector {
     return this.doc.diferencias.filter((d) => d.codigo === codigo);
   }
 
-  // El año de Ecuador (UTC-5, sin horario de verano) del día de la consulta.
-  anioDeLaConsulta(): number {
-    return new Date(ahoraDe(this.doc.contexto).getTime() - 5 * 3600 * 1000).getUTCFullYear();
+  // El año de Ecuador (UTC-5, sin horario de verano) del día del análisis; null sin esa fecha.
+  // Es la cuenta de `aniosAtras` en perfil-del-modelo.ts (fechaEnEcuador).
+  anioDelAnalisis(): number | null {
+    const ms = Date.parse(this.opciones.fechaDelAnalisis ?? "");
+    return Number.isNaN(ms) ? null : new Date(ms - 5 * 3600 * 1000).getUTCFullYear();
   }
 }
 
@@ -213,13 +227,14 @@ function cuotaIncompleta(l: Lector): Resultado {
     : no("La cuota conocida cubre toda su deuda propia informada.", []);
 }
 
-// Sólo bancos, cooperativas y el IESS/BIESS: hoy. Las casas comerciales no entran: su
-// corte tiene meses (julio de 2025 en las 490 personas que lo traen el 2026-11-20), y
-// cuántos meses de corte cuentan como hoy es una decisión pendiente del atenuante
-// `sen.atenuante.hoy_al_dia` (1.4). Sin ninguna operación no es un punto a favor.
+// Bancos, cooperativas, el IESS/BIESS y las casas comerciales. Las casas comerciales
+// cuentan aunque su corte tenga meses (julio de 2025 en las 490 personas que lo traen):
+// lo decidió el negocio el 2026-11-20. Lo vencido a su corte es mora, y el texto dice que
+// esa parte es a su fecha. Sin ninguna operación no es un punto a favor.
 function sinMoraVigente(l: Lector): Resultado {
-  const tiene = l.cero("ban.operaciones.cantidad") > 0 || l.cero("coop.operaciones.cantidad") > 0 || l.valor("biess.tiene") === true;
-  if (!tiene) return no("No tiene operaciones de crédito en bancos, cooperativas ni el IESS/BIESS: no hay mora que decir.", false);
+  const conRetail = l.cero("ret.deudas.cantidad") > 0;
+  const tiene = l.cero("ban.operaciones.cantidad") > 0 || l.cero("coop.operaciones.cantidad") > 0 || l.valor("biess.tiene") === true || conRetail;
+  if (!tiene) return no("No tiene operaciones de crédito en bancos, cooperativas, casas comerciales ni el IESS/BIESS: no hay mora que decir.", false);
   const peor = l.valor("ban.calificacion.peor");
   const alDia =
     (peor === null || CALIFICACIONES_SIN_ATRASO.has(String(peor))) &&
@@ -227,10 +242,13 @@ function sinMoraVigente(l: Lector): Resultado {
     l.cero("ban.operaciones.en_atraso_sin_monto") === 0 &&
     l.cero("coop.mora.dias_max") <= 0 &&
     l.cero("coop.saldo.en_mora") === 0 &&
-    l.cero("biess.mora.dias_max") <= 0;
+    l.cero("biess.mora.dias_max") <= 0 &&
+    l.cero("ret.deuda.vencida") === 0 &&
+    l.cero("ret.mora.dias_max") <= 0;
+  const aSuCorte = conRetail ? " Lo de casas comerciales es a su fecha de corte." : "";
   return alDia
-    ? si("Sin mora vigente en bancos, cooperativas ni el IESS/BIESS: es una ausencia que distingue y va a favor.", true)
-    : no("Tiene mora vigente en bancos, cooperativas o el IESS/BIESS.", false);
+    ? si(`Sin mora vigente en bancos, cooperativas, casas comerciales ni el IESS/BIESS: es una ausencia que distingue y va a favor.${aSuCorte}`, true)
+    : no(`Tiene mora vigente en bancos, cooperativas, casas comerciales o el IESS/BIESS.${aSuCorte}`, false);
 }
 
 function sinHistorial(l: Lector): Resultado {
@@ -265,14 +283,17 @@ function deudaSobreIngresoAnual(l: Lector): Resultado {
     : no("No tiene deuda propia que comparar con el ingreso.", 0);
 }
 
-// Los años se cuentan con el año de Ecuador del día de la CONSULTA. El perfil del modelo
-// de marco-v36 los cuenta con el día del análisis (`aniosAtras`): con una consulta de
-// diciembre analizada en enero, difieren en uno. Cuál manda se decide en la v37.
+// Los años se cuentan con el año de Ecuador del día del ANÁLISIS, como `aniosAtras` del
+// perfil del modelo (negocio, 2026-11-20): la demanda envejece aunque la consulta sea la
+// misma. En lecturas-v1 se contaban con el de la consulta, y con una consulta de
+// diciembre analizada en enero los dos daban un año distinto.
 function cobroMasReciente(l: Lector): Resultado {
   if (l.cero("jud.cobro.cantidad") === 0) return no("No tiene demandas de cobro en su contra.", null);
   const anios = l.lista("jud.cobro.detalle").map((d) => d.anio).filter((a): a is number => typeof a === "number");
   if (!anios.length) return sinMedir("Las demandas de cobro no traen su año: no se sabe si son recientes o viejas.", null);
-  const atras = l.anioDeLaConsulta() - Math.max(...anios);
+  const anioDelAnalisis = l.anioDelAnalisis();
+  if (anioDelAnalisis === null) return sinMedir("Falta la fecha del análisis para contar los años de la demanda de cobro.", null);
+  const atras = anioDelAnalisis - Math.max(...anios);
   if (atras > 2) return si("La demanda de cobro más reciente tiene más de 2 años: es historia, y pesa menos cuanto más vieja.", atras);
   return si(atras <= 1 ? "La demanda de cobro más reciente es del último año: es situación actual." : "La demanda de cobro más reciente tiene 2 años.", atras);
 }
@@ -428,7 +449,8 @@ const lectura = (
   lee: string[],
   parrafos: string[],
   calcular: LecturaDelCatalogo["calcular"],
-): LecturaDelCatalogo => ({ codigo, version: 1, descripcion, unidad, lee, parrafos, llegaAlModelo: false, calcular });
+  version = 1,
+): LecturaDelCatalogo => ({ codigo, version, descripcion, unidad, lee, parrafos, llegaAlModelo: false, calcular });
 
 export const CATALOGO_DE_LECTURAS: LecturaDelCatalogo[] = [
   // Bancos, casas comerciales y cooperativas (grupos 3 y 4 del marco)
@@ -441,15 +463,16 @@ export const CATALOGO_DE_LECTURAS: LecturaDelCatalogo[] = [
   lectura("lec.coop.atraso_de_hoy", "dias", "Días de atraso de hoy con cooperativas", ["coop.operaciones.cantidad", "coop.mora.dias_max"], ["P20"], atrasoDeHoyEnCooperativas),
   // Endeudamiento (grupo 4, ausencias, cómo escribir e indicadores)
   lectura("lec.end.cuota_incompleta", "lista", "Sistemas con deuda que no informan su cuota", ["coop.cuota.mensual", "ban.saldo.por_vencer", "ban.saldo.en_atraso", "ret.deuda.total"], ["P23"], cuotaIncompleta),
-  lectura("lec.end.sin_mora_vigente", "si_no", "Sin mora vigente en bancos, cooperativas ni el IESS/BIESS", [
+  lectura("lec.end.sin_mora_vigente", "si_no", "Sin mora vigente en bancos, cooperativas, casas comerciales ni el IESS/BIESS", [
     "ban.operaciones.cantidad", "coop.operaciones.cantidad", "biess.tiene", "ban.calificacion.peor", "ban.saldo.en_atraso",
     "ban.operaciones.en_atraso_sin_monto", "coop.mora.dias_max", "coop.saldo.en_mora", "biess.mora.dias_max",
-  ], ["P77"], sinMoraVigente),
+    "ret.deudas.cantidad", "ret.deuda.vencida", "ret.mora.dias_max",
+  ], ["P77"], sinMoraVigente, 2),
   lectura("lec.end.sin_historial", "si_no", "No registra operaciones de crédito propias", ["ban.operaciones.cantidad", "coop.operaciones.cantidad", "ret.deudas.cantidad", "biess.tiene"], ["P82"], sinHistorial),
   lectura("lec.end.cuota_sobre_ingreso", "porcentaje", "Cuota conocida sobre el ingreso reportado al IESS del mes", ["coop.cuota.mensual", "ing.reportado.mensual"], ["P23", "P78"], cuotaSobreIngreso),
   lectura("lec.end.deuda_sobre_ingreso_anual", "porcentaje", "Deuda propia total sobre el ingreso reportado de un año", ["ban.saldo.por_vencer", "ban.saldo.en_atraso", "coop.saldo.total", "ret.deuda.total", "ing.reportado.mensual"], ["P78"], deudaSobreIngresoAnual),
   // Riesgo judicial y cumplimiento (grupos 1, 5 y 6)
-  lectura("lec.jud.cobro.mas_reciente", "anios", "Años desde la demanda de cobro más reciente", ["jud.cobro.cantidad", "jud.cobro.detalle"], ["P25"], cobroMasReciente),
+  lectura("lec.jud.cobro.mas_reciente", "anios", "Años desde la demanda de cobro más reciente", ["jud.cobro.cantidad", "jud.cobro.detalle"], ["P25"], cobroMasReciente, 2),
   lectura("lec.jud.cobro.de_institucion_financiera", "cantidad", "Demandas de cobro de una institución financiera", ["jud.cobro.cantidad", "jud.cobro.detalle"], ["P25"], cobroDeInstitucionFinanciera),
   lectura("lec.jud.civil.cuentan", "cantidad", "Procesos civiles que son demandas (sin archivadas ni trámites)", ["jud.civil.cantidad", "jud.civil.por_categoria"], ["P27"], civilesQueCuentan),
   lectura("lec.jud.pension.estado", "texto", "Pensión alimenticia: sin pensión, al día o en mora", ["jud.pension.existe", "jud.pension.con_mora"], ["P31"], pensionEstado),
@@ -471,8 +494,8 @@ export const CATALOGO_DE_LECTURAS: LecturaDelCatalogo[] = [
 // ---- La derivación ----
 
 // Función pura: los mismos hechos dan las mismas lecturas.
-export function aplicarLectura(c: LecturaDelCatalogo, doc: HechosDeLaPersona): Senal {
-  const l = new Lector(doc);
+export function aplicarLectura(c: LecturaDelCatalogo, doc: HechosDeLaPersona, opciones: OpcionesDeLectura = {}): Senal {
+  const l = new Lector(doc, opciones);
   let r: Resultado;
   try {
     r = c.calcular(l);
@@ -495,8 +518,8 @@ export function aplicarLectura(c: LecturaDelCatalogo, doc: HechosDeLaPersona): S
   };
 }
 
-export function derivarLecturas(doc: HechosDeLaPersona): Senal[] {
-  return CATALOGO_DE_LECTURAS.map((c) => aplicarLectura(c, doc));
+export function derivarLecturas(doc: HechosDeLaPersona, opciones: OpcionesDeLectura = {}): Senal[] {
+  return CATALOGO_DE_LECTURAS.map((c) => aplicarLectura(c, doc, opciones));
 }
 
 // Lo que el diseño exige de un código de lectura (1.1): la forma, el dominio `lec`, que no

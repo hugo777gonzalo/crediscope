@@ -179,7 +179,7 @@ const PARIDADES = {
     const deuda = m.endeudamiento?.deudaPropiaTotal ?? 0;
     return ing > 0 ? (deuda > 0 ? dentroDelRedondeo(s.valor, deuda, ing, 12, false) : s.valor === 0) : s.valor === null;
   },
-  // El modelo cuenta los años con el día del análisis; acá, el mensaje se arma con el día de la consulta.
+  // El modelo y la lectura cuentan los años con el día del análisis (lecturas-v2); en seco, el de la consulta.
   "lec.jud.cobro.mas_reciente": (s, m) => {
     const anios = (m.riesgoJudicialCrediticio?.demandasDeCobro ?? []).map((d) => d.aniosAtras).filter((a) => typeof a === "number");
     return s.estado === "no_se_cumple" ? anios.length === 0 : s.valor === (anios.length ? Math.min(...anios) : null);
@@ -227,7 +227,8 @@ for (let i = 0; i < candidatos.length; i += 50) {
       persona: { nombre: null, fechaDeNacimiento: null },
     }, { estricto: true });
     const t0 = performance.now();
-    const lecturas = derivarLecturas(doc);
+    // En seco el análisis es el día de la consulta: el mismo `ahora` con que se armó el mensaje.
+    const lecturas = derivarLecturas(doc, { fechaDelAnalisis: capturadoEl });
     medidas.ms.push(performance.now() - t0);
 
     const perfilDelModelo = JSON.parse(m1).perfilDelModelo;
