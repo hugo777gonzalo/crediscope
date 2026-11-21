@@ -18,7 +18,9 @@
       }
     }
   },
-  "esperado": {},
+  "esperado": {
+    "dato-de-la-institucion-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
   "hechos": {
     "inst.es_cliente": {
       "valor": false,

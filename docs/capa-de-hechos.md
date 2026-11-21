@@ -600,6 +600,27 @@ diferencia que la inversión admite, el **«sin dato»**:
   `empate_total_gana_la_primera`). **D5 (negocio, 2026-11-18): se sigue con UNA sola operación.** Los tres
   hechos nuevos existen, pero no tienen campo del perfil, no llegan al modelo ni a pantalla, y nada los suma.
   Paridad completa contra el perfil sobre las 3.766 personas (26.362 campos, 0 diferencias).
+- **Etapa B, hecha en estructura-v29 (2026-11-20, E7).** `process.ts` arma `comportamientoInterno` con
+  `perfilDesdeHechos` y perdió su copia de `operacionDelComportamientoInterno`: la regla de la operación elegida
+  es `elegirOperacion()` de este grupo, la única implementación. Se sigue con UNA operación (D5): los hechos de
+  cantidad y de vigentes no llegan al perfil. El grupo entra a `GRUPOS_EN_ETAPA_B` y a `GRUPOS_CON_SIN_DATO`.
+  - **El «sin dato».** Con `basesInternas` caída el perfil escribía `esClienteInterno: false` y el resto en
+    null, igual que para alguien que la institución no tiene como cliente, y la tarjeta decía «No es cliente
+    interno». Ahora los siete campos son null y el grupo los lista en `camposSinDato` (`esClienteInterno` con
+    `false` de parcial); la tarjeta muestra «Base interna: sin dato (la fuente no contestó)». Con la fuente
+    contestando y sin operaciones, «no es cliente» sigue siendo un valor.
+  - **Quién lee qué.** El modelo y la capacidad de pago leen lo de antes (`conLosValoresDeAntes()`), y el modelo
+    sigue sin ver el grupo de quien no es cliente (`perfil-del-modelo.ts`): con la marca, esa persona queda
+    igual que antes.
+  - **El detector del crudo** (`dato-de-la-institucion-de-fuente-sin-respuesta-escrito-como-total`) mira el
+    contenido de la fuente y no su `status`; el de la regla de la operación
+    (`comportamiento-interno-de-otra-operacion`) dejó de importar la función de `process.ts` y trae su propia
+    puntuación.
+  - **El seco (3.766 personas reales, contra estructura-v28).** Paridad 27.010 de 27.010 campos; 0 campos sin
+    procedencia, 0 registros que no resuelven y 0 recuentos que no cuadran. Cambian 648 personas, todas por el
+    «sin dato» (sólo `esClienteInterno`: los otros seis campos ya eran null), 0 sin declarar; con los valores de
+    antes, 0 campos distintos. `recalcular-grupos.mjs --grupos=comportamientoInterno --bloqueo --seco`: 648
+    cambian, el crudo reproduce los 3.766 perfiles, el bloqueo da 0 y 0.
 - **Riesgos.** El negocio decidió el 2026-11-09 que estas operaciones son historia de pago
   y no deuda, y que se reporta una sola: los hechos nuevos no se suman a nada y no llegan
   al modelo sin su decisión (sección 8). 782 de 2.602 personas tienen más de una

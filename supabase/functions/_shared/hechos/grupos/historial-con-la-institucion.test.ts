@@ -35,7 +35,7 @@ Deno.test("cero campos sin procedencia: todo campo de comportamientoInterno tien
   const texto = Deno.readTextFileSync(new URL("../../types.ts", import.meta.url));
   const desde = texto.indexOf("  comportamientoInterno: {");
   const hasta = texto.indexOf("\n  };", desde);
-  const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]);
+  const campos = [...texto.slice(desde, hasta).matchAll(/^ {4}(\w+)\??:/gm)].map((m) => m[1]).filter((c) => c !== "camposSinDato"); // la marca no es un campo
   assertEquals(campos.length, 7);
   const conCodigo = new Set(CATALOGO.flatMap((c) => (c.campoDelPerfil ? [c.campoDelPerfil] : [])));
   assertEquals(campos.filter((c) => !conCodigo.has(`comportamientoInterno.${c}`)), []);
@@ -123,9 +123,11 @@ Deno.test("una fuente que no contestó no es «no es cliente»", () => {
   const doc = derivarHechos({ basesInternas: { status: "error", data: null } }, contexto);
   const h = hecho(doc, "inst.es_cliente");
   assertEquals([h.valor, h.calidad, h.motivo], [null, "no_disponible", "fuente_sin_respuesta"]);
-  // El perfil escribe lo de hoy: false y nulos.
+  // El perfil (etapa B, estructura-v29) escribe null y lo marca sin dato; lo de antes, false y nulos.
   const perfil = perfilDesdeHechos(doc, "comportamientoInterno");
-  assertEquals([perfil.esClienteInterno, perfil.proveedorInfo1SaldoCapitalVigente, perfil.proveedorInfo1EstadoOperacion], [false, null, null]);
+  assertEquals([perfil.esClienteInterno, perfil.proveedorInfo1SaldoCapitalVigente, perfil.proveedorInfo1EstadoOperacion], [null, null, null]);
+  assertEquals(Object.keys(perfil.camposSinDato as object).length, 7);
+  assertEquals((perfil.camposSinDato as Record<string, unknown>).esClienteInterno, false);
 });
 
 Deno.test("sin operaciones: «no es cliente» es un valor con la respuesta como registro; el resto no aplica", () => {
