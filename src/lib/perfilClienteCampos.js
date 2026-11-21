@@ -359,7 +359,9 @@ export const GRUPOS_CONFIG = {
   },
   comportamientoInterno: {
     mensajeVacio: "No es cliente interno de la fuente externa.",
-    presencia: (p) => Boolean(p.comportamientoInterno?.esClienteInterno),
+    // Con la base interna sin respuesta la tarjeta muestra su fila «sin dato», nunca «no es cliente»:
+    // decirlo de alguien a quien no se pudo mirar era una afirmación falsa (estructura-v29).
+    presencia: (p) => camposSinDato(p, "comportamientoInterno").length > 0 || Boolean(p.comportamientoInterno?.esClienteInterno),
     campos: [
       ["proveedorInfo1ResultadoHabitoPago", "Hábito de pago (fuente externa)", "texto"],
       ["proveedorInfo1PerfilInterno", "Perfil interno (fuente externa)", "texto"],
@@ -483,6 +485,8 @@ const FUENTE_POR_GRUPO = {
   riesgoSeguridadCiudadana: "Demandas, denuncias y antecedentes",
   riesgoPenal: "Antecedentes y denuncias",
   cumplimiento: "Listas de control",
+  // Desde estructura-v29: todos sus campos salen de la misma fuente, la base interna.
+  comportamientoInterno: "Base interna",
 };
 
 export function camposSinDato(profile, grupo) {

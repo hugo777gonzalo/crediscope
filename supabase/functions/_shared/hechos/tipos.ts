@@ -112,7 +112,8 @@ export interface Diferencia extends Base {
 export interface Senal extends Base {
   clase: "senal";
   tipo: "recencia" | "tendencia" | "razon" | "estabilidad" | "atenuante" | "lectura";
-  valor: number | boolean | string | null;
+  // Una lista de textos desde las lecturas (E11): los sistemas sin cuota, los indicios.
+  valor: number | boolean | string | string[] | null;
   estado: "se_cumple" | "no_se_cumple" | "no_se_puede_medir";
   derivaDe: string[];
   ventana?: { desde: string; hasta: string };

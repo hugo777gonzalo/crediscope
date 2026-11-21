@@ -38,7 +38,6 @@ import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta
 import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
 import { evaluarControlesBloqueo } from "../../supabase/functions/_shared/controles-bloqueo.ts";
 import { delitosDeSeguridadEnDemandas } from "../../supabase/functions/_shared/delitos-seguridad.ts";
-import { operacionDelComportamientoInterno } from "../../supabase/functions/_shared/process.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -548,7 +547,7 @@ export const DETECTORES_DEL_CRUDO = [
     aplica: ({ raw }) => operacionesDeLaInstitucion(raw).length > 1,
     detectar: ({ raw, perfil }) => {
       const ops = operacionesDeLaInstitucion(raw);
-      const elegida = operacionDelComportamientoInterno(ops);
+      const elegida = operacionQueManda(ops);
       const guardado = perfil?.comportamientoInterno ?? {};
       const comoNumero = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
       const igual =
@@ -654,6 +653,23 @@ export const DETECTORES_DEL_CRUDO = [
         }
       }
       return conValor.length ? { campos: [...new Set(conValor)] } : null;
+    },
+  },
+  {
+    id: "dato-de-la-institucion-de-fuente-sin-respuesta-escrito-como-total",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "El comportamiento interno dice «no es cliente» (o tiene valor, o no está marcado sin dato) aunque la base interna no contestó",
+    caso: "E7 de la reestructuración del núcleo, 2026-11-20: con la base interna caída el perfil escribía esClienteInterno en false y el resto en null, igual que para alguien que la institución no tiene como cliente",
+    conocido: "hasta estructura-v28 se escribía «no es cliente» con la fuente caída: se corrige con el recálculo de estructura-v29 (recalcular-grupos.mjs --grupos=comportamientoInterno --bloqueo)",
+    // Criterio DISTINTO del de la regla (que mira el `status`, respuestaDe en hechos/lectura-del-crudo.ts):
+    // acá se mira el contenido. La base interna que contestó trae su objeto `data`, con o sin operaciones.
+    aplica: ({ raw, perfil }) => !!perfil?.comportamientoInterno && !baseInternaTraeContenido(raw),
+    detectar: ({ perfil }) => {
+      const g = perfil?.comportamientoInterno ?? {};
+      const marcados = g.camposSinDato && typeof g.camposSinDato === "object" ? g.camposSinDato : {};
+      const conValor = CAMPOS_DE_LA_INSTITUCION.filter((campo) => (g[campo] !== null && g[campo] !== undefined) || !(campo in marcados));
+      return conValor.length ? { campos: conValor.map((c) => `basesInternas: comportamientoInterno.${c}`) } : null;
     },
   },
   {
@@ -833,6 +849,30 @@ function opsDeLosPrestamos(raw) {
       monto: Number(r.valorPrestamo) || 0, saldo: (Number(r.valorPorVencer) || 0) + (Number(r.valorVencido) || 0), estado: String(r.estado ?? ""),
     }));
   return [...de("creditoQuirografario", "quirografario"), ...de("creditoHipotecario", "hipotecario")];
+}
+// Los campos del perfil que salen de la base interna (estructura-v29) y si ésta trajo su contenido.
+const CAMPOS_DE_LA_INSTITUCION = [
+  "proveedorInfo1ResultadoHabitoPago", "proveedorInfo1PerfilInterno", "proveedorInfo1DiasMoraMaxima", "proveedorInfo1DiasMoraVigente",
+  "proveedorInfo1SaldoCapitalVigente", "esClienteInterno", "proveedorInfo1EstadoOperacion",
+];
+const baseInternaTraeContenido = (raw) => {
+  const data = raw?.basesInternas?.data;
+  return !!data && typeof data === "object";
+};
+// La operación que manda según la regla del negocio (p3, 2026-11-09), escrita aparte de la de
+// hechos/grupos/historial-con-la-institucion.ts (elegirOperacion): un detector con la misma
+// regla no vería su error. Puntúa cada operación y se queda con la mayor, la primera en un empate.
+function operacionQueManda(ops) {
+  const vigente = (o) => String(o.estadoOperacion ?? "").trim().toUpperCase() !== "CANCELADA";
+  const nro = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const tamano = (o) => (vigente(o) ? nro(o.saldoCapital) : nro(o.cuotaNova) * nro(o.plazoCuotas));
+  let mejor = null;
+  for (const o of ops) {
+    if (!mejor) { mejor = o; continue; }
+    const [a, b] = [[vigente(o), tamano(o), nro(o.operacion)], [vigente(mejor), tamano(mejor), nro(mejor.operacion)]];
+    if (a[0] !== b[0] ? a[0] : a[1] !== b[1] ? a[1] > b[1] : a[2] > b[2]) mejor = o;
+  }
+  return mejor;
 }
 // Las fuentes del grupo laboral (estructura-v30) y los campos del perfil que dependen de cada una. Contestó si
 // trae su lista: los aportes, el mecanizado, el historial, la nómina, las administraciones, las afiliaciones

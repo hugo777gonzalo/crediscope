@@ -486,9 +486,12 @@ export interface StandardClientProfile {
     proveedorInfo1SaldoCapitalVigente: number | null;
     esClienteInterno: boolean;
     // Desde estructura-v21 (p3): todos los campos de arriba salen de UNA
-    // operación (operacionDelComportamientoInterno, process.ts), y éste dice si
+    // operación (elegirOperacion, hechos/grupos/historial-con-la-institucion.ts), y éste dice si
     // está vigente o cancelada. Es historia de pago: nada de acá se suma.
     proveedorInfo1EstadoOperacion: string | null;
+    // Desde estructura-v29: con la base interna sin respuesta, los campos son null (esClienteInterno
+    // también) y acá va lo que escribía la v28 (campos-sin-dato.ts).
+    camposSinDato?: Record<string, unknown>;
   };
 
   transitoVehicular: {
