@@ -31,7 +31,11 @@
 //      por la clave foránea de analysis_results.rules_version.
 // 147: las filas de marco-v34 y marco-v35 (el RUC depurado para todas y el buró encendido).
 // 150: la fila de marco-v36 (estructura-v21 explicada al modelo).
-export const ESQUEMA_MINIMO = 150;
+// 153: valor_de_antes() y el resumen por persona que lo usa. Desde estructura-v30 un perfil nuevo puede traer
+//      `laboral.empleosActuales` en null (la fuente no contestó), y con la función vieja de la base
+//      `refrescar_resumen_por_persona()` falla con «cannot get array length of a scalar». El número se toma al
+//      aplicarla (regla 1 de CLAUDE.md): si cambia, se cambia acá.
+export const ESQUEMA_MINIMO = 153;
 
 let verificada: number | null = null;
 

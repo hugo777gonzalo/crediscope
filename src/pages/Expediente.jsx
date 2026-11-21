@@ -45,6 +45,7 @@ import ListaControlPanel from "../components/ListaControlPanel.jsx";
 import Aviso from "../components/ui/Aviso.jsx";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
 import { entero, plural, segundos, humanizarTexto } from "../lib/formatos.js";
+import { conLosValoresDeAntes } from "../../supabase/functions/_shared/campos-sin-dato.ts";
 
 // El expediente: todo lo que se sabe de una persona, en una pantalla.
 //
@@ -221,6 +222,9 @@ export default function Expediente() {
 
   const { cabecera, perfil, analisis, consultas, analisisPrevios, auditoria } = datos;
   const sp = perfil?.standard_profile ?? null;
+  // Lo laboral se lee con los valores de antes: un campo sin dato (v30) no cambia el resumen del expediente.
+  // La tarjeta del perfil (SegmentosPerfil) sí recibe el perfil tal cual, para marcar el «sin dato».
+  const spLeido = conLosValoresDeAntes(sp);
   const f = sp?.fuentesIngreso ?? null;
   const hallazgos = perfil?.control_bloqueo?.hallazgos ?? [];
   const nombre = nombreCorto(sp?.identidad?.nombreCompleto) ?? "Sin nombre en la fuente";
@@ -340,8 +344,8 @@ export default function Expediente() {
               />
               <Veredicto
                 rot="Empleos vigentes"
-                valor={(sp?.laboral?.empleosActuales?.length ?? (sp?.laboral?.empleoActual ? 1 : 0)) || "Ninguno"}
-                pie={sp?.laboral?.antiguedadEmpleoActualMeses ? `${plural(sp.laboral.antiguedadEmpleoActualMeses, "mes", "meses")} de antigüedad` : null}
+                valor={(spLeido?.laboral?.empleosActuales?.length ?? (spLeido?.laboral?.empleoActual ? 1 : 0)) || "Ninguno"}
+                pie={spLeido?.laboral?.antiguedadEmpleoActualMeses ? `${plural(spLeido.laboral.antiguedadEmpleoActualMeses, "mes", "meses")} de antigüedad` : null}
               />
               <Veredicto rot="Veces consultada" valor={consultas.length} pie={plural(analisisPrevios.length, "análisis hecho", "análisis hechos")} />
             </div>
@@ -391,7 +395,7 @@ export default function Expediente() {
           {/* ---------- FUENTES DE INGRESO ---------- */}
           <section id="ingresos" className="crediscope-exp-seccion" ref={observarSeccion} style={{ marginTop: 28 }}>
             <h3 className="crediscope-exp-titulo">Con qué paga</h3>
-            <SeccionIngresos f={f} laboral={sp?.laboral} />
+            <SeccionIngresos f={f} laboral={spLeido?.laboral} />
           </section>
 
           {/* ---------- PERFIL ---------- */}

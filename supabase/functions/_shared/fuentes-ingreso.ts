@@ -39,6 +39,7 @@ import { diaDeFecha, establecimientoAbierto, esRegistroDeRuc, fechasDelRuc, rucA
 import { aporteDeSuPropioPatrono, esElPropioAfiliado } from "./patrono.ts";
 import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 import { mismoNombre } from "./mismo-nombre.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 
 // v3: la guarda de "no sé si aporta" pasa a mirar basesInternas, la
 // fuente que realmente trae los aportes, en vez del bloque `bancos`
@@ -1351,7 +1352,8 @@ export interface TamanoDelNegocio {
 export function tamanoDelNegocio(perfil: Record<string, unknown> | null | undefined): TamanoDelNegocio | null {
   const f = perfil?.fuentesIngreso as Record<string, unknown> | undefined;
   if (!f) return null;
-  const laboral = (perfil?.laboral ?? {}) as Record<string, unknown>;
+  // Con los valores de antes: un campo sin dato no es «sin RUC» (campos-sin-dato.ts).
+  const laboral = (conLosValoresDeAntes(perfil)?.laboral ?? {}) as Record<string, unknown>;
   const senales = (Array.isArray(f.senalesDeEscala) ? f.senalesDeEscala : []) as SenalEscala[];
   const nomina = senales.find((s) => s.senal === "nómina que paga") ?? null;
   const v8 = numeroDeVersion(f) >= 8;

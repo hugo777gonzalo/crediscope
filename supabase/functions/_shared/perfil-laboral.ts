@@ -32,6 +32,7 @@
 // 2026-09-25).
 
 import { esLaMismaPersona } from "./patrono.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import { TIPOS_DE_PENSION, TIPOS_DE_SERVICIO_ACTIVO } from "./fuentes-ingreso.ts";
 
 // v2 (2026-09-26): un aporte cuyo patrono es la propia persona no es
@@ -101,7 +102,9 @@ type AnyRecord = Record<string, unknown>;
 
 const NATURALEZAS_DEPENDENCIA = new Set(["publico", "privado", "domestico", "diplomatico", "agricola", "otro"]);
 
-export function clasificarPerfilLaboral(perfil: AnyRecord | null | undefined): PerfilLaboral | null {
+export function clasificarPerfilLaboral(perfilGuardado: AnyRecord | null | undefined): PerfilLaboral | null {
+  // Un campo sin dato (campos-sin-dato.ts) vuelve a su valor de antes: el perfil laboral no cambia por una fuente caída.
+  const perfil = conLosValoresDeAntes(perfilGuardado);
   const f = perfil?.fuentesIngreso as AnyRecord | undefined;
   if (!f) return null;
   const laboral = (perfil?.laboral ?? {}) as AnyRecord;

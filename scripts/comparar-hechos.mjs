@@ -31,6 +31,8 @@
 //    personas, y cuántas «revisar». Con --contra, además, el perfil ENTERO (todos los grupos, no
 //    sólo los elegidos) contra el de esa versión: un PR que sólo suma diferencias tiene que dar
 //    cero personas distintas.
+// 10. Con --predictor (y --contra), las variables del predictor de ingresos, nivel 1 (`vectorDeNivel1()`), del perfil de
+//    ahora contra las del perfil de esa versión, con el reloj en la captura: no pueden cambiar en ninguna persona.
 // Con --medir agrega los bytes en JSON y en gzip y el tiempo de derivar, contra
 // el presupuesto del diseño (2.3): p99 por debajo de 16 KB en gzip y de 50 ms.
 //
@@ -53,7 +55,7 @@
 // Uso:
 //   node scripts/comparar-hechos.mjs [--grupo=comportamientoBancario,cooperativas] [--medir]
 //     [--carpeta=research/proveedor-info-1-raw-2026-10-03] [--deposito] [--limite=N] [--contra=origin/main|no]
-//     [--bloqueo=no]
+//     [--bloqueo=no] [--predictor]
 //
 // AVISO: este archivo no pasa por lint ni build. Después de tocarlo, correrlo
 // con --limite=5 antes de confiar en los números.
@@ -91,6 +93,7 @@ const { conLosValoresDeAntes } = await importar("supabase/functions/_shared/camp
 const { CORTE_IESS_CONOCIDO } = await importar("supabase/functions/_shared/fuentes-ingreso.ts");
 const { controlesDesdeHechos, CODIGOS_DE_SEGURIDAD } = await importar("supabase/functions/_shared/hechos/controles.ts");
 const { evaluarControlesBloqueo } = await importar("supabase/functions/_shared/controles-bloqueo.ts");
+const { vectorDeNivel1 } = await importar("supabase/functions/_shared/variables-de-ingreso.ts");
 
 // 7. El process.ts de otra versión, sacado de git a una carpeta temporal (sólo
 // el código de _shared, sin las pruebas): se importa como cualquier otro.
@@ -241,7 +244,10 @@ function estadistica(valores) {
 // ---- La corrida ----
 
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, campos: 0, paridadOk: 0, hechos: 0, conValor: 0, registros: 0, recuentos: 0 };
-const fallas = { bloqueo: [], bloqueoCompleto: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [] };
+const fallas = { bloqueo: [], bloqueoCompleto: [], paridad: [], sinProcedencia: new Set(), noResuelve: [], recuento: [], contraLoGuardado: [], contraAntes: [], conLosDeAntes: [], predictor: [] };
+// 10. El predictor de ingresos (nivel 1): las variables que arma `vectorDeNivel1()` del perfil de ahora contra las del
+// perfil de --contra, con el reloj en la captura. El predictor no puede cambiar en ninguna persona por un campo sin dato.
+const predictor = { comparadas: 0, iguales: 0, personasConVariableNula: 0 };
 // 7. Lo que cambia contra la otra versión: por campo, y en cuántas personas.
 const bloqueo = { personas: 0, conDelito: 0, conAviso: 0, bloqueadasSoloPorSeguridad: 0, iguales: 0, completosComparados: 0, completosIguales: 0, bloquean: 0, bloqueanAntes: 0, porHallazgo: {} };
 const porDiferencia = {};
@@ -326,6 +332,13 @@ for (let i = 0; i < candidatos.length; i += 50) {
       // también lo tiene. Sin esto, la v26 contra la v25 daba 5.326 campos
       // «distintos» que eran sólo la marca de un lado (2026-11-20).
       const devueltoAntes = conLosValoresDeAntes(antes);
+      if (args.predictor) {
+        const vector = (p) => vectorDeNivel1(p, { ahora: crudo.capturadoEl });
+        const ahoraV = vector(perfil), antesV = vector(antes);
+        predictor.comparadas++;
+        if (canonico(ahoraV.variables) === canonico(antesV.variables) && canonico(ahoraV.avisos) === canonico(antesV.avisos)) predictor.iguales++;
+        else fallas.predictor.push({ ref, ahora: ahoraV.variables, antes: antesV.variables });
+      }
       let cambiaAlgo = false;
       let tieneSinDato = false;
       let parcialConDato = false;
@@ -469,6 +482,8 @@ if (construirAntes) {
   if (cambio.refs.length) console.log(`    Algunos: ${cambio.refs.join(", ")}`);
   for (const d of fallas.contraAntes.slice(0, 8)) console.log(`  SIN DECLARAR ${d.ref} ${d.campo}`);
   console.log(`  Con los valores de antes (lo que leen el modelo y la capacidad): ${fallas.conLosDeAntes.length} campos distintos de ${CONTRA}.`);
+  if (args.predictor) console.log(`  Predictor de ingresos, nivel 1 (vectorDeNivel1): ${n(predictor.iguales)} de ${n(predictor.comparadas)} personas con las mismas variables y avisos; ${fallas.predictor.length} distintas.`);
+  for (const d of fallas.predictor.slice(0, 5)) console.log(`  DISTINTO el predictor ${d.ref}`);
   for (const d of fallas.conLosDeAntes.slice(0, 8)) console.log(`  DISTINTO ${d.ref} ${d.campo}`);
   console.log(`  El perfil entero (todos los grupos): ${n(perfilEntero.distintos)} de ${n(perfilEntero.comparados)} personas distintas de ${CONTRA}${perfilEntero.refs.length ? ` (${perfilEntero.refs.join(", ")})` : ""}.`);
 }
@@ -506,5 +521,5 @@ const archivo = path.join(destino, `comparar-${ELEGIDOS.join("+")}-${sello}.json
 fs.writeFileSync(archivo, JSON.stringify({ grupos: ELEGIDOS, contra: CONTRA && { ref: CONTRA, sello: selloContra, ...cambio }, bloqueo: BLOQUEO ? bloqueo : null, perfilEntero, porDiferencia, cuenta, porCampo, fallas: { ...fallas, sinProcedencia: [...fallas.sinProcedencia] } }, null, 1));
 console.log(`Detalle (con montos, fuera de git): ${path.relative(PRINCIPAL, archivo)}`);
 
-const malo = fallas.bloqueo.length || fallas.bloqueoCompleto.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || perfilEntero.distintos || fueraDelPresupuesto;
+const malo = fallas.bloqueo.length || fallas.bloqueoCompleto.length || fallas.paridad.length || fallas.sinProcedencia.size || fallas.noResuelve.length || fallas.recuento.length || fallas.contraAntes.length || fallas.conLosDeAntes.length || fallas.predictor.length || perfilEntero.distintos || fueraDelPresupuesto;
 process.exit(malo ? 1 : 0);

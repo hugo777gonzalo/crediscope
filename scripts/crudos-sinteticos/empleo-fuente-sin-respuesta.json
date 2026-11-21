@@ -1,5 +1,5 @@
 {
-  "descripcion": "Grupo 4: el mecanizado y el RUC no contestaron y los aportes sí: el empleo actual y el estado del RUC no tienen valor y dicen por qué, con el parcial de lo que sí llegó (lo que el perfil escribe hoy)",
+  "descripcion": "Grupo 4: el mecanizado y el RUC no contestaron y los aportes sí: el empleo actual y el estado del RUC no tienen valor y dicen por qué, con el parcial de lo que sí llegó. Con estructura-v30 el perfil escribe null y lo marca en camposSinDato, y el detector no marca nada",
   "cedula": "0000000000",
   "capturadoEl": "2026-10-01T12:00:00-05:00",
   "raw": {
@@ -70,7 +70,9 @@
       }
     }
   },
-  "esperado": {},
+  "esperado": {
+    "dato-laboral-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
   "reglas": {},
   "hechos": {
     "lab.empleos_actuales": {

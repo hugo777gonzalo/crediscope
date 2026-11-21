@@ -69,7 +69,8 @@ export const GRUPOS = {
 // grupos penal y cumplimiento (E7, 2026-11-20): paridad en las mismas 3.766 personas, y desde
 // su etapa B (estructura-v28) process.ts los arma desde los hechos y el control de bloqueo toma
 // de ellos todos sus hallazgos. El grupo 2 (historial con la institución), desde su etapa B
-// (estructura-v29), también lo arma process.ts desde los hechos.
+// (estructura-v29), también lo arma process.ts desde los hechos, y el grupo 4 en su parte laboral (empleo y
+// actividad con RUC, `laboral`) desde la estructura-v30; `ingresos` sigue en etapa A.
 export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos", "penal", "cumplimiento"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
@@ -79,7 +80,7 @@ export function catalogoCompleto(): CodigoDelCatalogo[] {
 // Los grupos de los que depende el perfil: process.ts los arma con `perfilDesdeHechos`
 // (etapa B). Si uno falla, el perfil no se puede armar, y tiene que fallar como hoy. Un grupo
 // nuevo se suma acá cuando su bloque de process.ts pasa a armarse desde los hechos.
-export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "penal", "cumplimiento"];
+export const GRUPOS_EN_ETAPA_B: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "penal", "cumplimiento", "empleo", "actividadConRuc"];
 
 export interface OpcionesDeDerivacion {
   // Con `estricto`, el error de cualquier grupo se propaga. Lo usan los guiones y las

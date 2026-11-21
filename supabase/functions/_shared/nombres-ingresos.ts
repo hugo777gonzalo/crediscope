@@ -7,6 +7,8 @@
 // pantalla y el análisis dice "aporte autodeclarado", son dos idiomas para
 // el mismo dato. Una sola implementación, nunca una copia.
 
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
+
 type AnyRecord = Record<string, unknown>;
 
 export const ETIQUETA_SEGMENTO: Record<string, string> = {
@@ -76,7 +78,7 @@ export function quienDeclara(fuente: AnyRecord, perfil: AnyRecord | null | undef
     return EMPLEADOR_POR_NATURALEZA[String(fuente.naturaleza)] ?? "Otros empleadores";
   }
   if (fuente.evidencia === "indirecta") return ETIQUETA_EVIDENCIA.indirecta;
-  const laboral = (perfil?.laboral ?? {}) as AnyRecord;
+  const laboral = (conLosValoresDeAntes(perfil)?.laboral ?? {}) as AnyRecord; // un campo sin dato vuelve a su valor de antes
   const conNegocio = fuente.tipo === "aporte como patrono de su propio negocio" || laboral.tieneRucActivo === true;
   return conNegocio ? "Empresa propia" : "Afiliación voluntaria";
 }

@@ -12,10 +12,9 @@
 // entrada real del LLM (ver marco-interpretativo.ts).
 
 import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
-import { analizarFuentesIngreso, reglaDeTrabajo } from "./fuentes-ingreso.ts";
+import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
-import { diaDeFecha, establecimientoAbierto, fechasDelRuc, obligadoALlevarContabilidad, rucActivo, rucDepuradoPorElSri } from "./ruc.ts";
-import { esElPropioAfiliado, relacionConEmpleador } from "./patrono.ts";
+import { relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
 export { relacionConEmpleador };
@@ -29,10 +28,6 @@ import { perfilDesdeHechos } from "./hechos/perfil-desde-hechos.ts";
 import { CLAVE_SIN_DATO } from "./campos-sin-dato.ts";
 
 type AnyRecord = Record<string, unknown>;
-
-function formatFechaISO(d: Date | null): string | null {
-  return d ? d.toISOString().slice(0, 10) : null;
-}
 
 function edadDesde(fecha: unknown): number | null {
   const d = parseFecha(fecha);
@@ -66,71 +61,9 @@ function mesesDesde(fecha: unknown): number | null {
   return mesesEntreFechas(d, new Date());
 }
 
-// tiess (fecIng/fecSal) viene en DD/MM/YYYY — confirmado con un valor
-// real inequívoco ("13/12/2024", día 13 no puede ser mes). parseFecha
-// (arriba) asume ISO/YYYY-MM-DD y usa new Date() directo, que interpreta
-// slashes como MM/DD/YYYY (americano): "03/02/2025" (3 de febrero)
-// pasaba a leerse como 2 de marzo, y "13/12/2024" directamente daba
-// Invalid Date. Mismo problema que ya se había detectado (y evitado a
-// propósito) en establecimientoActEconomica — ver nota ahí. NO usar
-// parseFecha/mesesDesde con estos 2 campos.
-function parseFechaDDMMYYYY(v: unknown): Date | null {
-  const m = typeof v === "string" ? v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/) : null;
-  if (!m) return null;
-  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function mesesDesdeDDMMYYYY(v: unknown): number | null {
-  const d = parseFechaDDMMYYYY(v);
-  return d ? mesesEntreFechas(d, new Date()) : null;
-}
-
 function dentroUltimos12Meses(fecha: unknown): boolean {
   const meses = mesesDesde(fecha);
   return meses !== null && meses >= 0 && meses <= 12;
-}
-
-function dentroUltimos3Meses(fecha: unknown): boolean {
-  const meses = mesesDesde(fecha);
-  return meses !== null && meses >= 0 && meses <= 3;
-}
-
-// contribuyente/get_contribuyente_inf: un registro cuenta como "tuvo RUC"
-// solo si trae .ruc Y .fecha_inscripcion_ruc (Proveedor_Info_1 a veces devuelve
-// un registro "cascarón" con estado.codigo=OK pero todos los campos
-// null cuando la persona nunca tuvo RUC — ver c-636cb156).
-// ACTIVO si no tiene fecha_cancelacion NI fecha_suspension_definitiva, o
-// si fecha_reinicio_actividades es posterior a la más reciente de esas dos.
-// Cuál es el cese vigente lo decide ruc.ts (cancelación, suspensión
-// definitiva o solicitud de suspensión -- el cese temporal --, la más
-// reciente). Acá se parsea la fecha ORIGINAL de ese campo, igual que las
-// demás del SRI: "yyyy/mm/dd" y "yyyy-mm-dd" dan instantes distintos con
-// `new Date`, y la comparación de tipoUltimoCese es por igualdad exacta.
-function ceseMasReciente(c: AnyRecord): Date | null {
-  const cese = fechasDelRuc(c).cese;
-  if (!cese) return null;
-  const original = [c.fecha_cancelacion, c.fecha_suspension_definitiva, c.fecha_solicitud_suspension].find((v) => diaDeFecha(v) === cese);
-  return parseFecha(original);
-}
-
-// Tipo del cese más reciente — SRI distingue "cancelación" (puede ser
-// un trámite ordinario, ej. cambio de régimen) de "suspensión
-// definitiva" (case real: cédula c-18fa16ee, fecha_cancelacion Y
-// fecha_suspension_definitiva coinciden en 2021/09/30 con
-// observ_solicitud_suspension="CESE DE ACTIVIDADES") — se prioriza la
-// etiqueta "suspension_definitiva" cuando esa fecha coincide con el
-// cese resuelto (incluye el caso de empate). Informativo para
-// marco-interpretativo.ts, no cambia estadoActividadEconomica.
-function tipoUltimoCese(c: AnyRecord): "cancelacion" | "suspension_definitiva" | "suspension_temporal" | null {
-  const cese = ceseMasReciente(c);
-  if (!cese) return null;
-  const suspension = parseFecha(c.fecha_suspension_definitiva);
-  if (suspension && suspension.getTime() === cese.getTime()) return "suspension_definitiva";
-  const cancelacion = parseFecha(c.fecha_cancelacion);
-  // Si el cese vigente no es ni la suspensión definitiva ni la
-  // cancelación, es la solicitud de suspensión: un cese temporal.
-  return cancelacion && cancelacion.getTime() === cese.getTime() ? "cancelacion" : "suspension_temporal";
 }
 
 // seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
@@ -172,74 +105,8 @@ const DESCRIPCION_SERVICIO: Record<string, string> = {
 // cuenta lo que hay. Contar es lo único afirmable sin inventar una
 // estructura que nadie vio.
 
-const ANTES_DE_1950 = new Date("1950-01-01").getTime();
-
-function aniosDesdeMs(v: unknown): number | null {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < ANTES_DE_1950) return null;
-  const anios = (Date.now() - n) / (365.25 * 24 * 3600 * 1000);
-  return anios >= 0 && anios < 200 ? Math.floor(anios) : null;
-}
-
-// ---- Empleadores y préstamos del IESS que vienen de más de una fuente ----
-//
-// estructura-v16 (2026-10-31). Los campos del historial de empleos salían de
-// trabajoHistoricos, que trae como mucho un registro y casi siempre viejo:
-// en c-82cc2afc, un solo empleo de 2018 mientras el mecanizado y los aportes
-// traen 6 empleadores y un sueldo máximo casi nueve veces mayor; en
-// c-5ee429cc, una pasantía de 2019 con la salida en 1900-01-01 (la fecha
-// centinela de «sigue empleado») que figuraba como cargo vigente, y de ahí el
-// «constituido hace 56 años» y un sueldo que chocaba con el ingreso reportado.
-// El modelo lo leyó como una contradicción y pidió revisar. Medido sobre 3.765
-// personas, el salario más alto quedaba por debajo de un sueldo ya reportado
-// en 1.068 de 1.682 y el cargo vigente no era el de ningún empleo actual en
-// 1.356 de 1.857.
-
-// El RUC como se compara: sólo dígitos, y la cédula de un patrono persona
-// natural es su RUC sin el 001 (trabajoHistoricos la trae a veces así y el
-// IESS con el 001). Cualquier otra longitud no es un RUC.
-function rucComparable(v: unknown): string | null {
-  const d = String(v ?? "").replace(/\D/g, "");
-  if (d.length === 10) return `${d}001`;
-  return d.length === 13 ? d : null;
-}
-
-// Siglas de la forma societaria que cada fuente escribe a su manera
-// («S. A.», «S.A.», «SA», «CIA. LTDA.»).
-const SIGLAS_SOCIETARIAS = new Set(["S", "A", "SA", "CIA", "LTDA", "CA", "C", "L"]);
-
-function nombreComparable(v: unknown): string {
-  return String(v ?? "")
-    .toUpperCase()
-    .replace(/Ã‘/g, "N")
-    .replace(/[?�]/g, "N")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^A-Z0-9]+/g, " ")
-    .split(" ")
-    .filter((p) => p !== "" && !SIGLAS_SOCIETARIAS.has(p))
-    .join(" ");
-}
-
-// Cuántos empleadores distintos hay entre los registros de varias fuentes. El
-// RUC manda; un registro sin RUC se une al empleador de igual nombre que sí lo
-// trae, y si no hay ninguno cuenta por su nombre. Un mismo empleador llega con
-// grafías distintas según la fuente, y por eso no se cuenta por el texto.
-function empleadoresDistintos(registros: { ruc: string | null; nombre: string | null }[]): number {
-  const rucPorNombre = new Map<string, string>();
-  for (const r of registros) {
-    const nombre = nombreComparable(r.nombre);
-    if (r.ruc && nombre && !rucPorNombre.has(nombre)) rucPorNombre.set(nombre, r.ruc);
-  }
-  const claves = new Set<string>();
-  for (const r of registros) {
-    const nombre = nombreComparable(r.nombre);
-    const ruc = r.ruc ?? (nombre ? rucPorNombre.get(nombre) ?? null : null);
-    if (ruc) claves.add(`r:${ruc}`);
-    else if (nombre) claves.add(`n:${nombre}`);
-  }
-  return claves.size;
-}
+// El historial de empleos, el salario más alto y el resto de lo laboral salen de la capa de hechos desde
+// estructura-v30 (hechos/grupos/empleo.ts y actividad-con-ruc.ts), con la historia de cada regla.
 
 // La operación del comportamiento interno (una fila por OPERACIÓN de la persona
 // con la institución, p3 de la revisión del análisis, 2026-11-09) se elige desde
@@ -374,7 +241,13 @@ function empleadoresDistintos(registros: { ruc: string | null; nombre: string | 
 // vigentes no llegan al perfil. Con la base interna sin respuesta el campo es null y el grupo lo lista en
 // camposSinDato (hasta la v28 se escribía «no es cliente» y todo en null, como si la fuente hubiera dicho
 // que no hay operaciones). El modelo y la capacidad de pago leen lo de antes hasta la versión mayor del marco.
-export const PROCESS_VERSION = "estructura-v29"; // ver docs/estructura-estandarizada.md
+// estructura-v30 (E7, etapa B del grupo 4 de la capa de hechos, parte laboral): `laboral` sale de
+// hechos/grupos/empleo.ts y actividad-con-ruc.ts (las reglas del empleo actual, la antigüedad, el historial,
+// el RUC de referencia y el estado de la actividad viven ahí, una sola implementación) y process.ts perdió
+// sus copias. Con una fuente que no contestó el campo es null y el grupo lo lista en camposSinDato con el
+// parcial (lo que escribía la v28). El modelo, la capacidad de pago, el predictor de ingresos y las columnas
+// del perfil leen lo de antes. `fuentesIngreso` sigue de analizarFuentesIngreso() hasta su propio PR.
+export const PROCESS_VERSION = "estructura-v30"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -391,7 +264,20 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
 
   const basesInternas = obj(fuentes, "basesInternas", "__never__") ?? ((fuentes?.basesInternas as AnyRecord | undefined)?.data as AnyRecord | undefined) ?? null;
   const biWrap = { x: { data: basesInternas } } as unknown as AnyRecord;
-  const tiess = arr(biWrap, "x", "tiess");
+  // ---- los hechos ----
+  // Un solo armado de la capa de hechos para todos los grupos que salen de ella (docs/capa-de-hechos.md,
+  // 3.3). Va antes de `identidad` porque `laboral`, que se arma enseguida, ya sale de ahí.
+  // El reloj de los hechos es la hora del armado, como el de la unión del
+  // BIESS hasta la v24: un préstamo «terminado» se decide el día que se arma.
+  const hechos = derivarHechos(raw, {
+    cedula,
+    consulta: "perfil",
+    fechaDeLaConsulta: new Date().toISOString(),
+    corteIess: corteIess ?? "",
+    persona: { nombre: textoDe(persona?.nombre), fechaDeNacimiento: null },
+  });
+  const conSinDato = <T extends object>(grupo: T, desde: AnyRecord): T =>
+    (desde[CLAVE_SIN_DATO] ? { ...grupo, [CLAVE_SIN_DATO]: desde[CLAVE_SIN_DATO] } : grupo);
 
   // ---- identidad ----
   const nacionalidad0 = (g?.nacionalidades as AnyRecord[] | undefined)?.[0]?.pais as AnyRecord | undefined;
@@ -484,463 +370,59 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   };
 
   // ---- laboral ----
-  // La nómina que paga, sin la propia persona: el patrono persona natural se
-  // afilia en su propia nómina (ver patrono.ts).
-  const nominaCompleta = arr(fuentes, "empleados", "empleados");
-  const empleados = nominaCompleta.filter((e) => !esElPropioAfiliado(e, cedula, (persona?.nombre as string) ?? null));
-  const empleadosIdsUnicos = new Set(empleados.map((e) => e.ci).filter(Boolean));
-  const contribuyenteRegistros = arr(fuentes, "contribuyente", "datosContribuyente");
-  // establecimientoActEconomica: SÍ trae detalle por establecimiento
-  // (num_establecimiento, estado_establecimiento ABIERTO/CERRADO) — una
-  // persona puede tener el RUC activo con un establecimiento abierto y
-  // otro cerrado. Ojo: sus fechas (fech_inscripcion, fech_cierre, etc.)
-  // vienen en formato DD/MM/YYYY — "08/03/2016" con `new Date(...)` se
-  // interpreta como MM/DD (ambiguo), NO se usan acá por eso, solo el
-  // conteo por estado_establecimiento.
-  const establecimientos = arr(fuentes, "establecimientoActEconomica", "datosEstablecimientoActEco");
-  // tieneEstablecimientoActivo: la regla vive en ruc.ts y es la misma que
-  // usa fuentes-ingreso.ts -- las fechas del RUC (cese definitivo o
-  // temporal, reinicio) y, si hay establecimientos, al menos uno abierto.
-  // Hasta estructura-v6 había una copia acá y otra allá, y no coincidían.
-  const rucActivoHoy = (c: AnyRecord) => rucActivo(c, establecimientos);
-  const tieneEstablecimientoActivo = contribuyenteRegistros.some(rucActivoHoy);
-  // Con el RUC suspendido o cancelado, los establecimientos activos son 0
-  // aunque el SRI siga mostrando alguno ABIERTO: es un registro que no se
-  // actualizó, y decir "RUC inactivo" y "2 establecimientos activos" a la vez
-  // no se puede leer (pedido del negocio, 2026-09-26, estructura-v7).
-  const abiertos = establecimientos.filter(establecimientoAbierto).length;
-  const numeroEstablecimientosActivos = tieneEstablecimientoActivo ? abiertos : 0;
-  const numeroEstablecimientosInactivos = establecimientos.length - numeroEstablecimientosActivos;
-  // Registro RUC de referencia para las fechas expuestas: el activo si
-  // hay uno, si no el primero disponible (persona natural normalmente
-  // tiene un solo registro, pero Proveedor_Info_1 devuelve un array).
-  const rucReferencia = (contribuyenteRegistros.find(rucActivoHoy) as AnyRecord | undefined) ?? (contribuyenteRegistros[0] as AnyRecord | undefined) ?? null;
-  // Estado y antigüedad de la actividad económica: Proveedor_Info_1/SRI solo
-  // guardan la fecha del cese MÁS RECIENTE y la del reinicio MÁS
-  // RECIENTE, no un historial completo de ciclos — por eso "16 años
-  // desde el inicio" puede ser engañoso si la persona reinició y volvió
-  // a cesar (caso real: cédula c-ba4c16f0, inicio 2009, reinicio 2014,
-  // cese 2018 — el reinicio es ANTERIOR al cese más reciente, o sea
-  // hoy está INACTIVA hace ~8 años, no "activa hace 16"). 5 casos:
-  //   1. Sin RUC -> "sin_ruc".
-  //   2. Sin cese registrado -> activa desde el inicio.
-  //   3. Cese sin reinicio nunca -> inactiva, nunca reactivada; la
-  //      etapa activa (única) duró inicio..cese.
-  //   4. Cese + reinicio POSTERIOR al cese -> activa (reactivada); solo
-  //      podemos medir la antigüedad de la racha actual (reinicio..hoy)
-  //      — no existe dato de cuánto duró la etapa activa anterior al
-  //      cese, no se debe inventar.
-  //   5. Cese + reinicio ANTERIOR o igual al cese (el caso real de
-  //      arriba) -> inactiva tras una reactivación; la última etapa
-  //      activa duró reinicio..cese.
-  const inicioActividad = parseFecha(rucReferencia?.fecha_inicio_actividades);
-  const ceseActividad = rucReferencia ? ceseMasReciente(rucReferencia) : null;
-  const reinicioActividad = parseFecha(rucReferencia?.fecha_reinicio_actividades);
-  const ahoraActividad = new Date();
-  let estadoActividadEconomica: StandardClientProfile["laboral"]["estadoActividadEconomica"] = null;
-  let antiguedadUltimaEtapaActivaMeses: number | null = null;
-  let mesesInactivoActividadEconomica: number | null = null;
-  if (!rucReferencia?.ruc) {
-    estadoActividadEconomica = "sin_ruc";
-  } else if (!ceseActividad) {
-    estadoActividadEconomica = "activa_sin_interrupciones";
-    antiguedadUltimaEtapaActivaMeses = inicioActividad ? mesesEntreFechas(inicioActividad, ahoraActividad) : null;
-  } else if (reinicioActividad && reinicioActividad > ceseActividad) {
-    estadoActividadEconomica = "activa_reactivada";
-    antiguedadUltimaEtapaActivaMeses = mesesEntreFechas(reinicioActividad, ahoraActividad);
-  } else {
-    const inicioUltimaEtapa = reinicioActividad ?? inicioActividad;
-    estadoActividadEconomica = reinicioActividad ? "inactiva_tras_reactivacion" : "inactiva_nunca_reactivada";
-    antiguedadUltimaEtapaActivaMeses = inicioUltimaEtapa ? mesesEntreFechas(inicioUltimaEtapa, ceseActividad) : null;
-    mesesInactivoActividadEconomica = mesesEntreFechas(ceseActividad, ahoraActividad);
-  }
-  const cumplimientoAfiliaciones = arr(fuentes, "cumplimientoPatronal", "afiliaciones");
-  const obligacionesEnMora = cumplimientoAfiliaciones.some((a) => {
-    const t = String(a.obligaciones ?? "").toUpperCase();
-    if (!t) return false;
-    return !(t.includes("NO REGISTRA") || t.startsWith("NO "));
-  });
-  // empleoActual: fuente correcta es trabajoHistoricosMecanizado (trae
-  // baseDate "YYYY-MM", la fecha real de actualización del registro
-  // mensual de IESS) — basesInternas.tiess NO tiene baseDate. Se
-  // descarta si el registro más reciente disponible tiene más de 3
-  // meses (frecuencia máxima de actualización de estos datos).
-  const baseDateTs = (r: AnyRecord): number => parseFecha(r.baseDate ? `${r.baseDate}-01` : null)?.getTime() ?? 0;
-  const mecanizado = arr(fuentes, "trabajoHistoricosMecanizado", "mecanizadoEmpleados");
-  const mecanizadoOrdenado = [...mecanizado].sort((a, b) => baseDateTs(b) - baseDateTs(a));
-  const ultimoMecanizado = (mecanizadoOrdenado[0] as AnyRecord | undefined) ?? null;
-  // Desde estructura-v19 (2026-11-05), además, el mes del mecanizado no puede
-  // ser anterior al corte del IESS con que fuentes-ingreso.ts decide si la
-  // persona sigue aportando. Con los tres meses solos, quien dejó de aportar un
-  // corte antes seguía con «empleo actual» y cargo vigente mientras sus
-  // ingresos decían «no aparece en el corte»: 17 personas de la cartera
-  // (detector cargo-vigente-sin-aporte-vigente, scripts/revisar-datos.mjs), con
-  // el mecanizado y los aportes de acuerdo en el último mes.
-  const empleoActualConfiable =
-    Boolean(ultimoMecanizado) &&
-    dentroUltimos3Meses(ultimoMecanizado?.baseDate ? `${ultimoMecanizado.baseDate}-01` : null) &&
-    String(ultimoMecanizado?.baseDate ?? "") >= fuentesIngreso.corteIessUsado;
-
-  // TODOS los empleos del último corte, no solo el primero.
+  // Desde estructura-v30 sale de la capa de hechos (etapa B del grupo 4, empleo y actividad con
+  // RUC; docs/capa-de-hechos.md, 4.4): las reglas del empleo actual, la antigüedad, el historial,
+  // el RUC de referencia y el estado de la actividad viven en hechos/grupos/empleo.ts y
+  // actividad-con-ruc.ts, con el registro del crudo que sostiene cada valor. Acá sólo se copian
+  // al perfil, en el orden de siempre (el modelo lee el JSON en orden). Con una fuente que no
+  // contestó el campo es null y el grupo lo lista en camposSinDato.
   //
-  // Quien tiene dos trabajos a la vez tiene DOS registros con el mismo
-  // baseDate. Tomar el primero de la lista ordenada nombraba a uno y
-  // escondía al otro: medido sobre la cartera, 834 de 2.564 personas
-  // (el 33%) tienen más de una fuente vigente. El ingreso ya sumaba
-  // bien -- se corrigió en marco-v19 -- pero el perfil seguía diciendo
-  // que trabajan en un solo lado.
-  //
-  // Esconder al segundo empleador no es un detalle de presentación:
-  // dos empleos son más estabilidad que uno, y un segundo empleador que
-  // resulta ser un familiar es exactamente la señal que el módulo de
-  // control busca.
-  const nombreEmpleador = (r: AnyRecord | undefined): string | null =>
-    ((r?.personaPatrono as AnyRecord | undefined)?.nombreComercial as string) ??
-    ((r?.personaPatrono as AnyRecord | undefined)?.nombre as string) ??
-    null;
-
-  const corteMasReciente = ultimoMecanizado?.baseDate ?? null;
-  const registrosDelCorte = empleoActualConfiable
-    ? mecanizadoOrdenado.filter((r) => (r as AnyRecord).baseDate === corteMasReciente)
-    : [];
-
-  // Cuando el mecanizado no trae un registro reciente, el empleo actual
-  // sale de los aportes vigentes al corte: los mismos (tiess, mismo
-  // corte) con que fuentes-ingreso.ts clasifica. Antes eran dos lecturas
-  // del IESS con reglas de vigencia distintas, y en 359 perfiles la
-  // clasificación veía un aporte vigente mientras el perfil decía "sin
-  // empleo actual" (medido el 2026-09-24). Donde las dos fuentes traen
-  // dato coinciden en el sueldo en 272 de 272 casos, así que la de los
-  // aportes es un reemplazo fiel.
-  const aportesDelCorte =
-    registrosDelCorte.length === 0
-      ? tiess.filter((t) => {
-          const anio = num(t.anio);
-          const mes = num(t.mes);
-          return anio !== null && mes !== null && `${anio}-${String(mes).padStart(2, "0")}` === fuentesIngreso.corteIessUsado;
-        })
-      : [];
-
-  const empleosActuales =
-    registrosDelCorte.length > 0
-      ? registrosDelCorte.map((r) => ({
-          empleador: nombreEmpleador(r as AnyRecord),
-          cargo: (((r as AnyRecord).cargo as AnyRecord | undefined)?.nombre as string) ?? null,
-          salarioAprox: num(((r as AnyRecord).personaIngreso as AnyRecord | undefined)?.valor),
-        }))
-      : aportesDelCorte.map((t) => {
-          const salario = num(t.salario);
-          return {
-            empleador: textoDe(t.nomEmp),
-            cargo: textoDe(t.ocupacion),
-            salarioAprox: salario !== null && salario > 0 ? salario : null,
-          };
-        });
-  const hayEmpleoActual = empleosActuales.length > 0;
-  // El RUC del patrono de cada empleo actual, en el mismo orden. No entra
-  // en empleosActuales (el modelo no lo necesita): sólo decide si el
-  // patrono es la propia persona.
-  const rucesDelEmpleoActual =
-    registrosDelCorte.length > 0
-      ? registrosDelCorte.map((r) => (r as AnyRecord).rucEmpresa ?? ((r as AnyRecord).personaPatrono as AnyRecord | undefined)?.identificacion ?? null)
-      : aportesDelCorte.map((t) => t.rucEmp ?? null);
-
-  // Las señales de vínculo familiar miran a TODOS los empleadores
-  // vigentes: alcanza con que UNO sea un familiar o el propio cliente
-  // para que el caso merezca revisión. Antes solo se evaluaba el
-  // primero, así que un segundo empleo con el suegro pasaba
-  // desapercibido.
-  const relaciones = empleosActuales.map((e, i) =>
-    relacionConEmpleador(e.empleador, (persona?.nombre as string) ?? null, rucesDelEmpleoActual[i], cedula)
-  );
-  const relacionEmpleador = hayEmpleoActual
-    ? {
-        comparteApellido: relaciones.some((x) => x?.comparteApellido === true)
-          ? true
-          : relaciones.some((x) => x?.comparteApellido === false)
-            ? false
-            : null,
-        esElMismoCliente: relaciones.some((x) => x?.esElMismoCliente === true)
-          ? true
-          : relaciones.some((x) => x?.esElMismoCliente === false)
-            ? false
-            : null,
-      }
-    : null;
-  // Antigüedad laboral: fuente es tiess (trae fecIng/fecSal), NO
-  // trabajoHistoricosMecanizado (fuente de empleoActual arriba) — son
-  // 2 recursos independientes que pueden diferir levemente en el
-  // nombre del empleador (ej. "S. A." vs "S.A."), por diseño no se
-  // cruzan entre sí. "Actual" = fecSal vacío, tomando el snapshot con
-  // (anio,mes) más reciente. Solo se reporta la antigüedad si hay al
-  // menos 3 snapshots mensuales confirmados para ese fecIng — un
-  // empleo que recién aparece (1-2 meses) puede no ser estable
-  // todavía, mejor no reportar un número que dé falsa confianza.
-  //
-  // "Último snapshot confirmado" por registro/grupo — tiess trae un
-  // snapshot MENSUAL, no un rango; fecSal vacío solo dice "Proveedor_Info_1
-  // nunca vio una salida registrada", NO "sigue activo hoy" (mismo
-  // hueco de dato que afiliacionIess/estadoAfiliacionIess más abajo).
-  // BUG real corregido acá (cédula c-18fa16ee, validado contra el
-  // mecanizado del IESS): el único empleo de esta persona tiene su
-  // último snapshot en 2021-11 (~4 años atrás) con fecSal vacío --
-  // numeroEmpleadoresUltimos24Meses/antiguedadEmpleoActualMeses/
-  // duracionEmpleoMasLargoMeses usaban `ahoraActividad` (hoy) como fin
-  // en ese caso, dando antigüedad "actual" de 6 años 5 meses para un
-  // empleo que en realidad no hay evidencia de que continúe desde
-  // hace años. Se usa el (anio,mes) del snapshot en vez de "hoy" como
-  // referencia de "hasta cuándo hay evidencia real" en los 3 campos.
-  const anioMesA0 = (t: AnyRecord): number | null => {
-    const anio = num(t.anio);
-    const mes = num(t.mes);
-    return anio !== null && mes !== null ? anio * 12 + (mes - 1) : null;
-  };
-  const fechaDeAnioMesA0 = (anioMesA0Val: number): Date => new Date(Math.floor(anioMesA0Val / 12), anioMesA0Val % 12, 1);
-  const mesesDesdeUltimaEvidenciaActiva = (t: AnyRecord): number | null => {
-    const fecSal = String(t.fecSal ?? "").trim();
-    if (fecSal) return mesesDesdeDDMMYYYY(fecSal);
-    const a0 = anioMesA0(t);
-    return a0 !== null ? mesesEntreFechas(fechaDeAnioMesA0(a0), ahoraActividad) : null;
-  };
-  // Un empleo = un empleador con una fecha de ingreso. Sólo los que no
-  // registran salida.
-  const empleosSinSalida = new Map<string, { fecIng: unknown; ultimo: number; snapshots: number; ultimaFila: AnyRecord }>();
-  for (const t of tiess) {
-    if (String(t.fecSal ?? "").trim()) continue;
-    const a0 = anioMesA0(t);
-    if (a0 === null) continue;
-    const clave = `${t.nomEmp}|${t.fecIng}`;
-    const e = empleosSinSalida.get(clave);
-    if (!e) {
-      empleosSinSalida.set(clave, { fecIng: t.fecIng, ultimo: a0, snapshots: 1, ultimaFila: t });
-    } else {
-      e.snapshots++;
-      if (a0 > e.ultimo) {
-        e.ultimo = a0;
-        e.ultimaFila = t;
-      }
-    }
-  }
-  // Los vigentes son los que aportan en el mes más reciente. Con dos
-  // empleos a la vez, la antigüedad es la del MÁS LARGO (decisión del
-  // negocio, 2026-09-25). Antes se tomaba el primero de un orden por mes,
-  // que entre dos empleos del mismo mes es cualquiera: en c-fd1139cb salía
-  // 2 meses -- un contrato nuevo -- teniendo otro empleo vigente de 46.
-  //
-  // Cada candidato exige lo mismo que antes: 3 meses de aportes en ese
-  // empleo (uno que recién aparece puede no ser estable) y evidencia de
-  // los últimos 3 meses (si el último dato es de hace años, no se puede
-  // afirmar que siga). La antigüedad va hasta el último aporte, no hasta
-  // hoy: la misma referencia que duracionEmpleoMasLargoMeses abajo, así
-  // nunca sale mayor que el empleo más largo, que la incluye.
-  //
-  // Desde estructura-v14 un empleo es lo que la continuidad cuenta como
-  // trabajo (reglaDeTrabajo, fuentes-ingreso.ts): el aporte por cuenta
-  // propia sin RUC activo, el del hogar y un código de empleador
-  // desconocido no son un empleo actual, y el aporte propio empieza, como
-  // muy temprano, cuando abrió el RUC. Con la regla anterior la antigüedad
-  // salía más larga que la continuidad en 35 de 1.644 personas: 21 que
-  // aportaban por su cuenta antes de abrir o reabrir el RUC y 14 cuyo
-  // «empleo actual» era una afiliación que no es trabajo. El mes más
-  // reciente se toma entre los empleos: una afiliación voluntaria que
-  // siguió un mes más no deja afuera al trabajo con un tercero.
-  const esTrabajo = reglaDeTrabajo(raw, cedula, (persona?.nombre as string) ?? null);
-  const empleosDeTrabajo = [...empleosSinSalida.values()]
-    .map((e) => ({ ...e, trabajo: esTrabajo(e.ultimaFila) }))
-    .filter((e) => e.trabajo !== null);
-  const ultimoMesConEmpleo = Math.max(-Infinity, ...empleosDeTrabajo.map((e) => e.ultimo));
-  const antiguedadesVigentes = empleosDeTrabajo
-    .filter((e) => e.ultimo === ultimoMesConEmpleo && e.snapshots >= 3 && (mesesDesdeUltimaEvidenciaActiva(e.ultimaFila) ?? Infinity) <= 3)
-    .map((e) => {
-      const ingreso = parseFechaDDMMYYYY(e.fecIng);
-      if (!ingreso) return null;
-      const [anioPiso, mesPiso] = (e.trabajo?.pisoInicio ?? "1950-01").split("-").map(Number);
-      const piso = new Date(anioPiso, mesPiso - 1, 1);
-      return mesesEntreFechas(ingreso < piso ? piso : ingreso, fechaDeAnioMesA0(e.ultimo));
-    })
-    .filter((m): m is number => m !== null);
-  const antiguedadEmpleoActualMeses = antiguedadesVigentes.length ? Math.max(...antiguedadesVigentes) : null;
-  // Empleo más largo registrado (histórico, incluye el actual si es el
-  // más largo) — señal de estabilidad aparte de la antigüedad actual:
-  // alguien con un empleo corto hoy pero años de tenencias largas es
-  // más estable que alguien que salta de trabajo en trabajo.
-  const empleosUnicos = new Map<string, { fecIng: unknown; fecSal: unknown; ultimoAnioMesA0: number | null }>();
-  for (const t of tiess) {
-    const clave = `${t.nomEmp}|${t.fecIng}|${t.fecSal}`;
-    const a0 = anioMesA0(t);
-    const existente = empleosUnicos.get(clave);
-    if (!existente) {
-      empleosUnicos.set(clave, { fecIng: t.fecIng, fecSal: t.fecSal, ultimoAnioMesA0: a0 });
-    } else if (a0 !== null && (existente.ultimoAnioMesA0 === null || a0 > existente.ultimoAnioMesA0)) {
-      existente.ultimoAnioMesA0 = a0;
-    }
-  }
-  const duracionEmpleoMasLargoMeses = [...empleosUnicos.values()].reduce((maxMeses: number | null, e) => {
-    const inicio = parseFechaDDMMYYYY(e.fecIng);
-    if (!inicio) return maxMeses;
-    const finStr = String(e.fecSal ?? "").trim();
-    // Sin fecha de salida: el fin es el ÚLTIMO snapshot confirmado de
-    // ese empleo, no "hoy" — ver nota arriba (si el empleo sigue
-    // activo de verdad, ese último snapshot ES el mes actual o uno muy
-    // reciente, así que no pierde precisión en ese caso).
-    const fin = finStr ? parseFechaDDMMYYYY(finStr) : e.ultimoAnioMesA0 !== null ? fechaDeAnioMesA0(e.ultimoAnioMesA0) : null;
-    if (!fin) return maxMeses;
-    const duracion = mesesEntreFechas(inicio, fin);
-    return maxMeses === null || duracion > maxMeses ? duracion : maxMeses;
-  }, null);
-  const laboral: StandardClientProfile["laboral"] = {
-    // Lista, no un solo empleo. Sale del mecanizado si trae un registro
-    // de los últimos 3 meses, y si no de los aportes vigentes al corte
-    // (estructura-v4). Vacía = ninguna de las dos fuentes del IESS ve un
-    // empleo vigente.
-    empleosActuales: empleosActuales,
-    // Solo tiene sentido si HAY empleo actual confiable: si no, se
-    // estaría describiendo a un empleador que ya no existe (la primera
-    // versión lo marcaba igual y daba 4 falsos positivos sobre 41).
-    empleadorConApellidoDelCliente: hayEmpleoActual ? (relacionEmpleador?.comparteApellido ?? null) : null,
-    clienteEsSuPropioEmpleador: hayEmpleoActual ? (relacionEmpleador?.esElMismoCliente ?? null) : null,
-    // Empleadores con evidencia de actividad en algún momento de los
-    // últimos 24 meses — NO "empleadores que iniciaron en los últimos
-    // 24 meses" (bug de semántica de una versión muy anterior: un
-    // empleo estable de años daba 0, igual que un cliente sin empleo
-    // hace 2 años). fecSal vacío YA NO se trata como "sigue activo
-    // hoy" sin más (bug real corregido junto con antiguedadEmpleoActualMeses
-    // arriba, mismo caso c-18fa16ee) — se usa mesesDesdeUltimaEvidenciaActiva,
-    // que para fecSal vacío mira el (anio,mes) real del snapshot.
-    numeroEmpleadoresUltimos24Meses: new Set(
-      tiess
-        .filter((t) => {
-          const m = mesesDesdeUltimaEvidenciaActiva(t);
-          return m !== null && m <= 24;
-        })
-        .map((t) => t.nomEmp)
-    ).size,
-    // Se suma POR MES y recién después se promedian los meses. Antes se
-    // tomaban los 6 registros más recientes y se promediaban sin más —
-    // pero quien tiene 2 empleos simultáneos tiene 2 registros por mes,
-    // así que esos 6 registros eran 3 meses y el promedio daba la MITAD
-    // de su ingreso real. Bug confirmado sobre la muestra: 4 personas
-    // afectadas, 2 de ellas con el ingreso reportado exactamente a la
-    // mitad (cédulas c-fd502ae7 y c-7db248d4).
-    ingresoPromedioUltimos6Meses: (() => {
-      const porMes = new Map<string, number>();
-      for (const t of mecanizadoOrdenado) {
-        const mes = String((t as AnyRecord).baseDate ?? "");
-        const valor = num((t.personaIngreso as AnyRecord | undefined)?.valor);
-        if (!mes || valor === null) continue;
-        porMes.set(mes, (porMes.get(mes) ?? 0) + valor);
-      }
-      const ultimos6 = [...porMes.entries()]
-        .sort((a, b) => b[0].localeCompare(a[0]))
-        .slice(0, 6)
-        .map(([, total]) => total);
-      return ultimos6.length ? Math.round((ultimos6.reduce((a, b) => a + b, 0) / ultimos6.length) * 100) / 100 : null;
-    })(),
-    esEmpleadorOAdministrador: empleados.length > 0 || arr(fuentes, "administraciones", "administraciones").length > 0,
-    // tieneRucActivo antes leía .obligado ("obligado a llevar
-    // contabilidad" — NO tiene relación con el estado del RUC, casi
-    // siempre "NO" para personas naturales de régimen general, así que
-    // este campo daba false casi siempre). Corregido para usar la misma
-    // fuente/lógica que tieneEstablecimientoActivo (ruc.ts) —
-    // validado contra SRI real, cédulas c-f059ebe9 (activo) y
-    // c-64955685 (suspendido).
-    tieneRucActivo: tieneEstablecimientoActivo,
-    tieneEstablecimientoActivo,
-    esIndependiente: tieneEstablecimientoActivo,
-    numeroEmpleadosRegistrados: empleadosIdsUnicos.size,
-    // El sector con que está registrado como patrono, aunque el único
-    // afiliado sea él mismo.
-    tipoEmpleador: (nominaCompleta[0]?.tipEmp as string) ?? null,
-    obligacionesPatronalesEnMora: cumplimientoAfiliaciones.length > 0 ? obligacionesEnMora : null,
-    ...(() => {
-      // pn_trabajo_historicos trae algo que el mecanizado del IESS no:
-      // QUIÉN es el empleador. Su RUC, su situación legal, su tipo de
-      // compañía y desde cuándo existe.
-      //
-      // Para un dependiente eso no es información de contexto: el
-      // riesgo de que deje de cobrar es en buena medida el riesgo de
-      // quien le paga. Un empleador constituido hace treinta años y
-      // ACTIVA no es lo mismo que uno de situación INDEFINIDA, y hasta
-      // hoy el análisis no veía ninguna de las dos cosas.
-      //
-      // Desde estructura-v16 sólo se usa cuando es el empleador de un empleo
-      // actual (mismo RUC): la fuente trae como mucho un registro, casi
-      // siempre viejo, y leerlo como «el vigente» daba el cargo, la
-      // antigüedad del empleador y el sueldo de un empleo de hace años (ver
-      // la nota de empleadoresDistintos, arriba).
-      const historial = arr(fuentes, "trabajoHistoricos", "trabajosHistoricos");
-      const registros = historial.map((h) => {
-        const t = (h.personaTrabajo as AnyRecord | undefined) ?? {};
-        const patrono = (t.personaPatrono as AnyRecord | undefined) ?? {};
-        return {
-          ingreso: Number(t.fechaIngreso ?? 0),
-          salario: num((t.personaIngreso as AnyRecord | undefined)?.valor),
-          esJuridica: String(patrono.tipoPersona ?? "").toUpperCase() === "JURIDICA",
-          situacion: textoDe((patrono.situacionLegal as AnyRecord | undefined)?.nombre),
-          tipoCompania: textoDe((patrono.tipoCompania as AnyRecord | undefined)?.nombre),
-          antiguedadEmpleador: aniosDesdeMs(patrono.fechaConstitucion),
-          ruc: rucComparable(patrono.identificacion),
-          nombre: textoDe(patrono.nombre) ?? textoDe(patrono.nombreComercial),
-        };
-      });
-
-      // Las tres fuentes del IESS: el historial, el mecanizado (un registro
-      // por mes y empleo) y los aportes. El techo de lo que ganó y los
-      // empleadores que tuvo salen de las tres juntas.
-      const delMecanizado = mecanizado.map((r) => {
-        const patrono = (r.personaPatrono as AnyRecord | undefined) ?? {};
-        return {
-          ruc: rucComparable(r.rucEmpresa ?? patrono.identificacion),
-          nombre: textoDe(r.nombreEmpresa) ?? textoDe(patrono.nombre) ?? textoDe(patrono.nombreComercial),
-          salario: num((r.personaIngreso as AnyRecord | undefined)?.valor),
-        };
-      });
-      const delosAportes = tiess.map((t) => ({ ruc: rucComparable(t.rucEmp), nombre: textoDe(t.nomEmp), salario: num(t.salario) }));
-      const salarios = [...registros, ...delMecanizado, ...delosAportes]
-        .map((r) => r.salario)
-        .filter((v): v is number => typeof v === "number" && v > 0);
-
-      // El cargo es el del empleo actual (el del mecanizado o, sin él, el de
-      // los aportes del corte). Con dos empleos, el mejor pagado. Sin empleo
-      // actual no hay cargo vigente: antes salía de un registro histórico.
-      const cargoVigente =
-        [...empleosActuales]
-          .filter((e) => textoDe(e.cargo) !== null)
-          .sort((a, b) => (b.salarioAprox ?? -1) - (a.salarioAprox ?? -1))[0]?.cargo ?? null;
-
-      // El empleador del historial sirve sólo si es el de un empleo actual,
-      // comparado por RUC.
-      const rucsActuales = new Set(rucesDelEmpleoActual.map(rucComparable).filter((r): r is string => r !== null));
-      const delEmpleoActual = registros.filter((r) => r.ruc !== null && rucsActuales.has(r.ruc));
-      const vigente = [...delEmpleoActual].sort((a, b) => b.ingreso - a.ingreso)[0] ?? null;
-
-      return {
-        historialEmpleosRegistrados: empleadoresDistintos([...registros, ...delMecanizado, ...delosAportes]),
-        salarioMasAltoRegistrado: salarios.length > 0 ? Math.max(...salarios) : null,
-        cargoVigente: textoDe(cargoVigente),
-        empleadorVigenteSituacionLegal: vigente?.situacion ?? null,
-        empleadorVigenteTipoCompania: vigente?.tipoCompania ?? null,
-        empleadorVigenteAntiguedadAnios: vigente?.antiguedadEmpleador ?? null,
-        empleadoresJuridicos: delEmpleoActual.length > 0 ? new Set(delEmpleoActual.filter((r) => r.esJuridica).map((r) => r.ruc)).size : null,
-      };
-    })(),
-    fechaInicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_inicio_actividades)),
-    fechaCeseActividadesRuc: rucReferencia ? formatFechaISO(ceseMasReciente(rucReferencia)) : null,
-    fechaReinicioActividadesRuc: formatFechaISO(parseFecha(rucReferencia?.fecha_reinicio_actividades)),
-    numeroEstablecimientosActivos,
-    numeroEstablecimientosInactivos,
-    tieneEstablecimientosRegistrados: establecimientos.length > 0,
-    estadoActividadEconomica,
-    antiguedadUltimaEtapaActivaMeses,
-    mesesInactivoActividadEconomica,
-    tipoUltimoCeseRuc: rucReferencia ? tipoUltimoCese(rucReferencia) : null,
-    rucDepuradoPorElSri: rucDepuradoPorElSri(rucReferencia),
-    obligadoALlevarContabilidadRuc: obligadoALlevarContabilidad(rucReferencia),
-    antiguedadEmpleoActualMeses,
-    duracionEmpleoMasLargoMeses,
-  };
+  // El reloj es el mismo de siempre: hasta la v29 las edades y las antigüedades de este grupo se
+  // medían con la hora de este módulo, y los hechos usan la fecha de la consulta
+  // (`fechaDeLaConsulta`), que es esa misma hora. Los guiones de recálculo fijan la hora del perfil
+  // en su captura y los dos relojes se mueven juntos.
+  const lb = perfilDesdeHechos(hechos, "laboral") as AnyRecord;
+  const laboral = conSinDato({
+    // Lista, no un solo empleo. Sale del mecanizado si trae un registro de los últimos 3 meses,
+    // y si no de los aportes vigentes al corte (estructura-v4). Vacía = ninguna de las dos
+    // fuentes del IESS ve un empleo vigente.
+    empleosActuales: lb.empleosActuales,
+    empleadorConApellidoDelCliente: lb.empleadorConApellidoDelCliente,
+    clienteEsSuPropioEmpleador: lb.clienteEsSuPropioEmpleador,
+    numeroEmpleadoresUltimos24Meses: lb.numeroEmpleadoresUltimos24Meses,
+    ingresoPromedioUltimos6Meses: lb.ingresoPromedioUltimos6Meses,
+    esEmpleadorOAdministrador: lb.esEmpleadorOAdministrador,
+    tieneRucActivo: lb.tieneRucActivo,
+    tieneEstablecimientoActivo: lb.tieneEstablecimientoActivo,
+    esIndependiente: lb.esIndependiente,
+    numeroEmpleadosRegistrados: lb.numeroEmpleadosRegistrados,
+    tipoEmpleador: lb.tipoEmpleador,
+    obligacionesPatronalesEnMora: lb.obligacionesPatronalesEnMora,
+    historialEmpleosRegistrados: lb.historialEmpleosRegistrados,
+    salarioMasAltoRegistrado: lb.salarioMasAltoRegistrado,
+    cargoVigente: lb.cargoVigente,
+    empleadorVigenteSituacionLegal: lb.empleadorVigenteSituacionLegal,
+    empleadorVigenteTipoCompania: lb.empleadorVigenteTipoCompania,
+    empleadorVigenteAntiguedadAnios: lb.empleadorVigenteAntiguedadAnios,
+    empleadoresJuridicos: lb.empleadoresJuridicos,
+    fechaInicioActividadesRuc: lb.fechaInicioActividadesRuc,
+    fechaCeseActividadesRuc: lb.fechaCeseActividadesRuc,
+    fechaReinicioActividadesRuc: lb.fechaReinicioActividadesRuc,
+    numeroEstablecimientosActivos: lb.numeroEstablecimientosActivos,
+    numeroEstablecimientosInactivos: lb.numeroEstablecimientosInactivos,
+    tieneEstablecimientosRegistrados: lb.tieneEstablecimientosRegistrados,
+    estadoActividadEconomica: lb.estadoActividadEconomica,
+    antiguedadUltimaEtapaActivaMeses: lb.antiguedadUltimaEtapaActivaMeses,
+    mesesInactivoActividadEconomica: lb.mesesInactivoActividadEconomica,
+    tipoUltimoCeseRuc: lb.tipoUltimoCeseRuc,
+    rucDepuradoPorElSri: lb.rucDepuradoPorElSri,
+    obligadoALlevarContabilidadRuc: lb.obligadoALlevarContabilidadRuc,
+    antiguedadEmpleoActualMeses: lb.antiguedadEmpleoActualMeses,
+    duracionEmpleoMasLargoMeses: lb.duracionEmpleoMasLargoMeses,
+  } as StandardClientProfile["laboral"], lb);
 
   // ---- tributario (SRI) ----
+  const contribuyenteRegistros = arr(fuentes, "contribuyente", "datosContribuyente");
   const sriDataRaw = arr(fuentes, "sriImpuestoRenta", "data");
   const sriData = (sriDataRaw[0] as AnyRecord | undefined) ?? null;
   const impuestosISD = (sriData?.impuestosISD as AnyRecord[] | undefined) ?? [];
@@ -1075,19 +557,8 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   // orden). Con una fuente que no contestó, el campo es null y el grupo lo
   // lista en camposSinDato (campos-sin-dato.ts).
   //
-  // El reloj de los hechos es la hora del armado, como el de la unión del
-  // BIESS hasta la v24: un préstamo «terminado» se decide el día que se arma.
-  const hechos = derivarHechos(raw, {
-    cedula,
-    consulta: "perfil",
-    fechaDeLaConsulta: new Date().toISOString(),
-    corteIess: corteIess ?? "",
-    persona: { nombre: textoDe(persona?.nombre), fechaDeNacimiento: null },
-  });
   const b = perfilDesdeHechos(hechos, "comportamientoBancario") as AnyRecord;
   const c = perfilDesdeHechos(hechos, "comportamientoCooperativas") as AnyRecord;
-  const conSinDato = <T extends object>(grupo: T, desde: AnyRecord): T =>
-    (desde[CLAVE_SIN_DATO] ? { ...grupo, [CLAVE_SIN_DATO]: desde[CLAVE_SIN_DATO] } : grupo);
   const comportamientoBancario = conSinDato({
     figuraEnRegistroDeudores: b.figuraEnRegistroDeudores,
     numeroOperacionesBuroCredito: b.numeroOperacionesBuroCredito,

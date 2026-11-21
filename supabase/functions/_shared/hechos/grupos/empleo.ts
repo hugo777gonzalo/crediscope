@@ -87,7 +87,15 @@ export const REGLAS_QUE_MEZCLAN: string[] = [
   "emp.antiguedad@1", // sólo los aportes, sin cruzar con el mecanizado: a propósito
 ];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
+  {
+    campo: "laboral.*",
+    detector: "dato-laboral-de-fuente-sin-respuesta-escrito-como-total",
+    aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v30",
+    motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial, 0 o «sin RUC»",
+    cuando: "sin_dato",
+  },
+];
 
 const MECANIZADO: [string, string] = ["trabajoHistoricosMecanizado", "mecanizadoEmpleados"];
 const TIESS: [string, string] = ["basesInternas", "tiess"];

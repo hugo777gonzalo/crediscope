@@ -106,27 +106,38 @@ Deno.test("un grupo en etapa A que lanza un error no emite nada y el resto sigue
   const original = console.error;
   console.error = (...a: unknown[]) => void registro.push(a.join(" "));
   try {
-    // Un grupo en etapa A (el empleo, el grupo 4): sus hechos y entidades no están, los demás sí.
-    const sinEmpleo = derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("empleo") });
-    const deEmpleo = (h: { codigo: string }) => h.codigo.startsWith("lab.") && h.codigo !== "lab.es_independiente";
-    assertEquals(normal.hechos.some(deEmpleo), true);
-    assertEquals(sinEmpleo.hechos.some(deEmpleo), false);
-    assertEquals(sinEmpleo.hechos.length, normal.hechos.filter((h) => !deEmpleo(h)).length);
-    assertEquals(normal.entidades.filter((e) => e.tipo === "empleo").length, 1);
-    assertEquals(sinEmpleo.entidades.filter((e) => e.tipo === "empleo").length, 0);
+    // Un grupo en etapa A (los ingresos, el grupo 4): sus hechos no están, los demás sí.
+    const sinIngresos = derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("ingresos") });
+    const deIngresos = (h: { codigo: string }) => h.codigo.startsWith("ing.") || h.codigo.startsWith("dif.ing.");
+    assertEquals(normal.hechos.some(deIngresos), true);
+    assertEquals(sinIngresos.hechos.some(deIngresos), false);
+    assertEquals(sinIngresos.hechos.length, normal.hechos.filter((h) => !deIngresos(h)).length);
     assertEquals(registro.length, 1);
-    assertEquals(registro[0].includes("empleo") && registro[0].includes("fallo de prueba"), true);
+    assertEquals(registro[0].includes("ingresos") && registro[0].includes("fallo de prueba"), true);
     // Sin datos de la persona en lo que se registra.
     assertEquals(registro[0].includes("PRUEBA FICTICIO"), false);
     // Las claves que el grupo reservó se devuelven: otro grupo puede volver a usarlas.
-    assertEquals(JSON.stringify(sinEmpleo.entidades.map((e) => e.clave)), JSON.stringify(normal.entidades.filter((e) => e.tipo !== "empleo").map((e) => e.clave)));
+    const claves: string[] = [];
+    derivarHechos(crudo, contexto, {
+      grupos: {
+        ...GRUPOS,
+        ingresos: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); throw new Error("fallo de prueba"); } },
+        identidad: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); } },
+      },
+    });
+    assertEquals(claves.length, 2);
+    assertEquals(claves[0], claves[1]);
+    assertEquals(registro.length, 2);
     // Un grupo en etapa B no lleva el resguardo: el perfil depende de él.
     assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("comportamientoBancario") }), Error, "fallo de prueba");
     // El riesgo judicial (grupo 3) pasó a etapa B con estructura-v27: el perfil y el bloqueo dependen de él.
     assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("riesgoJudicial") }), Error, "fallo de prueba");
+    // El empleo y la actividad con RUC (`laboral`) pasaron a etapa B con estructura-v30.
+    assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("empleo") }), Error, "fallo de prueba");
+    assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("actividadConRuc") }), Error, "fallo de prueba");
     // Con `estricto` (guiones y pruebas) el de etapa A también falla.
-    assertThrows(() => derivarHechos(crudo, contexto, { estricto: true, grupos: seCaeAlFinal("empleo") }), Error, "fallo de prueba");
-    assertEquals(registro.length, 1);
+    assertThrows(() => derivarHechos(crudo, contexto, { estricto: true, grupos: seCaeAlFinal("ingresos") }), Error, "fallo de prueba");
+    assertEquals(registro.length, 2);
   } finally {
     console.error = original;
   }

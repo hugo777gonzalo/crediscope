@@ -673,6 +673,28 @@ export const DETECTORES_DEL_CRUDO = [
     },
   },
   {
+    id: "dato-laboral-de-fuente-sin-respuesta-escrito-como-total",
+    capa: "estructura",
+    tipo: "regresion",
+    titulo: "Un campo de lo laboral (empleo actual, aportes, historial, nómina, RUC y establecimientos) tiene valor (o no está marcado sin dato) aunque su fuente no contestó",
+    caso: "E7 de la reestructuración del núcleo, 2026-11-20: con el mecanizado, los aportes, la nómina o el SRI sin contestar, el perfil escribía «sin empleo», 0 empleadores o «sin RUC» como si fuera el total, y la tarjeta de Laboral decía «Sin empleo, RUC ni establecimiento activo registrados»",
+    conocido: "hasta estructura-v29 se escribía el parcial, 0 o «sin RUC»: se corrige con el recálculo de estructura-v30 (recalcular-grupos.mjs --grupos=laboral)",
+    // Criterio DISTINTO del de la regla (que mira el `status`, respuestaDe en hechos/lectura-del-crudo.ts):
+    // acá se mira el contenido. Una fuente laboral que contestó trae su lista, aunque sea vacía («no hay»).
+    aplica: ({ raw, perfil }) => !!perfil?.laboral && fuentesLaboralesSinRespuesta(raw).length > 0,
+    detectar: ({ raw, perfil }) => {
+      const conValor = [];
+      const g = perfil?.laboral ?? {};
+      const marcados = g.camposSinDato && typeof g.camposSinDato === "object" ? g.camposSinDato : {};
+      for (const [fuente, , campos] of fuentesLaboralesSinRespuesta(raw)) {
+        for (const campo of campos) {
+          if ((g[campo] !== null && g[campo] !== undefined) || !(campo in marcados)) conValor.push(`${fuente}: laboral.${campo}`);
+        }
+      }
+      return conValor.length ? { campos: [...new Set(conValor)] } : null;
+    },
+  },
+  {
     id: "operacion-en-super-y-diners",
     capa: "estructura",
     tipo: "revisar",
@@ -851,6 +873,35 @@ function operacionQueManda(ops) {
     if (a[0] !== b[0] ? a[0] : a[1] !== b[1] ? a[1] > b[1] : a[2] > b[2]) mejor = o;
   }
   return mejor;
+}
+// Las fuentes del grupo laboral (estructura-v30) y los campos del perfil que dependen de cada una. Contestó si
+// trae su lista: los aportes, el mecanizado, el historial, la nómina, las administraciones, las afiliaciones
+// patronales, los registros del RUC y los establecimientos.
+const EMPLEO_ACTUAL_DEL_PERFIL = ["empleosActuales", "empleadorConApellidoDelCliente", "clienteEsSuPropioEmpleador", "cargoVigente"];
+const EMPLEADOR_VIGENTE_DEL_PERFIL = ["empleadorVigenteSituacionLegal", "empleadorVigenteTipoCompania", "empleadorVigenteAntiguedadAnios", "empleadoresJuridicos"];
+const IESS_EN_EL_HISTORIAL = ["historialEmpleosRegistrados", "salarioMasAltoRegistrado"];
+const RUC_DEL_PERFIL = [
+  "tieneRucActivo", "tieneEstablecimientoActivo", "esIndependiente", "fechaInicioActividadesRuc", "fechaCeseActividadesRuc", "fechaReinicioActividadesRuc",
+  "numeroEstablecimientosActivos", "numeroEstablecimientosInactivos", "tieneEstablecimientosRegistrados", "estadoActividadEconomica",
+  "antiguedadUltimaEtapaActivaMeses", "mesesInactivoActividadEconomica", "tipoUltimoCeseRuc", "rucDepuradoPorElSri", "obligadoALlevarContabilidadRuc",
+];
+const FUENTES_LABORALES = [
+  // [fuente, la lista que trae al contestar (null: basta el objeto `data`: la base interna trae otras listas), campos]
+  ["basesInternas", null, [...EMPLEO_ACTUAL_DEL_PERFIL, ...EMPLEADOR_VIGENTE_DEL_PERFIL, ...IESS_EN_EL_HISTORIAL, "numeroEmpleadoresUltimos24Meses", "antiguedadEmpleoActualMeses", "duracionEmpleoMasLargoMeses"]],
+  ["trabajoHistoricosMecanizado", "mecanizadoEmpleados", [...EMPLEO_ACTUAL_DEL_PERFIL, ...EMPLEADOR_VIGENTE_DEL_PERFIL, ...IESS_EN_EL_HISTORIAL, "ingresoPromedioUltimos6Meses"]],
+  ["trabajoHistoricos", "trabajosHistoricos", [...EMPLEADOR_VIGENTE_DEL_PERFIL, ...IESS_EN_EL_HISTORIAL]],
+  ["empleados", "empleados", ["esEmpleadorOAdministrador", "numeroEmpleadosRegistrados", "tipoEmpleador"]],
+  ["administraciones", "administraciones", ["esEmpleadorOAdministrador"]],
+  ["cumplimientoPatronal", "afiliaciones", ["obligacionesPatronalesEnMora"]],
+  ["contribuyente", "datosContribuyente", RUC_DEL_PERFIL],
+  ["establecimientoActEconomica", "datosEstablecimientoActEco", RUC_DEL_PERFIL],
+];
+function fuentesLaboralesSinRespuesta(raw) {
+  return FUENTES_LABORALES.filter(([fuente, lista]) => {
+    const data = raw?.[fuente]?.data;
+    if (!data || typeof data !== "object") return true;
+    return lista !== null && !Array.isArray(data[lista]);
+  });
 }
 const operacionesDeLaInstitucion = (raw) => {
   const v = raw.basesInternas?.data?.personasIncumplimientos;

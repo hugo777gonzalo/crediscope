@@ -1,0 +1,96 @@
+{
+  "descripcion": "Grupo laboral: el mecanizado y el contribuyente no contestaron y el perfil de estructura-v29 escribió «sin empleo actual», 0 y «sin RUC» como si fuera el total; la tarjeta de Laboral decía «Sin empleo, RUC ni establecimiento activo registrados»: el detector lo marca",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO MARTA"
+        }
+      }
+    },
+    "basesInternas": {
+      "status": "ok",
+      "data": {
+        "tiess": [
+          {
+            "ci": "0000000000",
+            "rucEmp": "1790000000001",
+            "tipEmp": "2-EMPRESA PRIVADA",
+            "nomEmp": "EMPRESA FICTICIA S.A.",
+            "nomAfi": "PRUEBA FICTICIO MARTA",
+            "salario": "800",
+            "fecIng": "01/03/2020",
+            "fecSal": "",
+            "ocupacion": "ANALISTA",
+            "anio": 2026,
+            "mes": 10
+          }
+        ]
+      }
+    },
+    "trabajoHistoricos": {
+      "status": "ok",
+      "data": {
+        "trabajosHistoricos": []
+      }
+    },
+    "empleados": {
+      "status": "ok",
+      "data": {
+        "empleados": []
+      }
+    },
+    "administraciones": {
+      "status": "ok",
+      "data": {
+        "administraciones": []
+      }
+    },
+    "cumplimientoPatronal": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": []
+      }
+    },
+    "establecimientoActEconomica": {
+      "status": "ok",
+      "data": {
+        "datosEstablecimientoActEco": []
+      }
+    },
+    "trabajoHistoricosMecanizado": {
+      "status": "error",
+      "data": null
+    },
+    "contribuyente": {
+      "status": "error",
+      "data": null
+    }
+  },
+  "guardado": {
+    "perfil": {
+      "laboral": {
+        "empleosActuales": [],
+        "tieneRucActivo": false,
+        "estadoActividadEconomica": "sin_ruc",
+        "camposSinDato": null
+      }
+    }
+  },
+  "esperado": {
+    "dato-laboral-de-fuente-sin-respuesta-escrito-como-total": "dispara"
+  },
+  "hechos": {
+    "lab.empleos_actuales": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    },
+    "ruc.activo": {
+      "valor": null,
+      "motivo": "fuente_sin_respuesta"
+    }
+  }
+}

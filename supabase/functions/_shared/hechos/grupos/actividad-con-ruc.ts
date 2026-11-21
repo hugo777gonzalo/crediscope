@@ -67,7 +67,15 @@ export const REGLAS_QUE_MEZCLAN: string[] = [
   "ruc.referencia@1", // elige un registro de RUC entre varios y descarta los demás
 ];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
+  {
+    campo: "laboral.*",
+    detector: "dato-laboral-de-fuente-sin-respuesta-escrito-como-total",
+    aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v30",
+    motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial, 0 o «sin RUC»",
+    cuando: "sin_dato",
+  },
+];
 
 const CONTRIBUYENTE: [string, string] = ["contribuyente", "datosContribuyente"];
 const ESTABLECIMIENTOS: [string, string] = ["establecimientoActEconomica", "datosEstablecimientoActEco"];

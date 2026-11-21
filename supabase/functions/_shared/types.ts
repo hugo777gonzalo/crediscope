@@ -310,6 +310,9 @@ export interface StandardClientProfile {
     // de arriba — evita inflar la duración de un empleo abandonado que
     // nunca se cerró formalmente en el dato).
     duracionEmpleoMasLargoMeses: number | null;
+    // Desde estructura-v30: los campos que la fuente que los alimenta no contestó van null y acá, con
+    // lo que escribía la v29 (campos-sin-dato.ts).
+    camposSinDato?: Record<string, unknown>;
   };
 
   tributario: {
