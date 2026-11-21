@@ -32,10 +32,12 @@ function Dato({ etiqueta, valor, detalle }) {
 
 export default function LoQueSiHay({ perfil, cedula, hallazgos = [] }) {
   const sp = perfil?.standard_profile ?? null;
-  const f = sp?.fuentesIngreso ?? null;
   if (!sp) return null;
 
-  const laboral = conLosValoresDeAntes(sp).laboral ?? {}; // un campo sin dato (v30) vuelve a su valor de antes
+  // Se lee con los valores de antes: un campo sin dato (v30 y v31) vuelve a su valor.
+  const leido = conLosValoresDeAntes(sp);
+  const f = leido.fuentesIngreso ?? null;
+  const laboral = leido.laboral ?? {};
   const cumplimiento = sp.cumplimiento ?? {};
 
   return (

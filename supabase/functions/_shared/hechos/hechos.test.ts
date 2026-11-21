@@ -106,28 +106,24 @@ Deno.test("un grupo en etapa A que lanza un error no emite nada y el resto sigue
   const original = console.error;
   console.error = (...a: unknown[]) => void registro.push(a.join(" "));
   try {
-    // Un grupo en etapa A (los ingresos, el grupo 4): sus hechos no están, los demás sí.
-    const sinIngresos = derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("ingresos") });
-    const deIngresos = (h: { codigo: string }) => h.codigo.startsWith("ing.") || h.codigo.startsWith("dif.ing.");
-    assertEquals(normal.hechos.some(deIngresos), true);
-    assertEquals(sinIngresos.hechos.some(deIngresos), false);
-    assertEquals(sinIngresos.hechos.length, normal.hechos.filter((h) => !deIngresos(h)).length);
-    assertEquals(registro.length, 1);
-    assertEquals(registro[0].includes("ingresos") && registro[0].includes("fallo de prueba"), true);
-    // Sin datos de la persona en lo que se registra.
-    assertEquals(registro[0].includes("PRUEBA FICTICIO"), false);
-    // Las claves que el grupo reservó se devuelven: otro grupo puede volver a usarlas.
+    // Un grupo en etapa A (hoy los que todavía no alimentan el perfil, como `identidad`): lo que alcanzó a emitir
+    // se deshace, el error queda registrado y los demás grupos siguen. Emite una entidad y recién después se cae.
     const claves: string[] = [];
-    derivarHechos(crudo, contexto, {
+    const sinIdentidad = derivarHechos(crudo, contexto, {
       grupos: {
         ...GRUPOS,
-        ingresos: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); throw new Error("fallo de prueba"); } },
-        identidad: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); } },
+        identidad: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); throw new Error("fallo de prueba"); } },
+        // Las claves que el grupo reservó se devuelven: otro grupo puede volver a usarlas.
+        contacto: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); } },
       },
     });
+    assertEquals(sinIdentidad.hechos.length, normal.hechos.length);
     assertEquals(claves.length, 2);
     assertEquals(claves[0], claves[1]);
-    assertEquals(registro.length, 2);
+    assertEquals(registro.length, 1);
+    assertEquals(registro[0].includes("identidad") && registro[0].includes("fallo de prueba"), true);
+    // Sin datos de la persona en lo que se registra.
+    assertEquals(registro[0].includes("PRUEBA FICTICIO"), false);
     // Un grupo en etapa B no lleva el resguardo: el perfil depende de él.
     assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("comportamientoBancario") }), Error, "fallo de prueba");
     // El riesgo judicial (grupo 3) pasó a etapa B con estructura-v27: el perfil y el bloqueo dependen de él.
@@ -135,9 +131,11 @@ Deno.test("un grupo en etapa A que lanza un error no emite nada y el resto sigue
     // El empleo y la actividad con RUC (`laboral`) pasaron a etapa B con estructura-v30.
     assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("empleo") }), Error, "fallo de prueba");
     assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("actividadConRuc") }), Error, "fallo de prueba");
+    // Los ingresos (`fuentesIngreso`) pasaron a etapa B con estructura-v31.
+    assertThrows(() => derivarHechos(crudo, contexto, { grupos: seCaeAlFinal("ingresos") }), Error, "fallo de prueba");
     // Con `estricto` (guiones y pruebas) el de etapa A también falla.
-    assertThrows(() => derivarHechos(crudo, contexto, { estricto: true, grupos: seCaeAlFinal("ingresos") }), Error, "fallo de prueba");
-    assertEquals(registro.length, 2);
+    assertThrows(() => derivarHechos(crudo, contexto, { estricto: true, grupos: seCaeAlFinal("identidad") }), Error, "fallo de prueba");
+    assertEquals(registro.length, 1);
   } finally {
     console.error = original;
   }

@@ -23,6 +23,7 @@
 // Lo verificado y lo estimado nunca se suman (especificación, 2.2): cada uno va en su bloque.
 
 import { obligatoriasSinRespuesta } from "./calidad-de-la-consulta.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import { datosDeCapacidad, PARAMETROS_CAPACIDAD } from "./capacidad-de-pago.ts";
 import { fechaEnEcuador } from "./equifax-estructura.ts";
 import { type Calibracion, estimarIngreso, leerModeloComprimido, type MinimoDeIngreso, type ModeloDeIngreso, type Tramo } from "./predictor-ingresos.ts";
@@ -145,7 +146,9 @@ export function ingresoVerificado(perfil: Record<string, unknown>): IngresoVerif
  * El selector de la especificación (3.2): toma el primer caso que aplica. `estado` es
  * `client_profiles.estado_por_fuente` de la misma consulta.
  */
-export function decidirEstimacion(perfil: Record<string, unknown>, estado?: Record<string, string> | null): DecisionDeLaEstimacion {
+export function decidirEstimacion(perfilGuardado: Record<string, unknown>, estado?: Record<string, string> | null): DecisionDeLaEstimacion {
+  // El selector lee los valores de antes: un campo sin dato (campos-sin-dato.ts) no cambia el nivel de nadie.
+  const perfil = conLosValoresDeAntes(perfilGuardado);
   const caidas = fuentesDelPredictorSinRespuesta(estado);
   // Sin los aportes, el segmento sale de su ausencia y no se sabe si hay un sueldo verificado.
   if (caidas.includes("basesInternas")) return { nivel: null, motivo: "consulta_incompleta", verificado: null };

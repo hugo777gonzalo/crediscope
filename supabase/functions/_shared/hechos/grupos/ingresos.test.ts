@@ -125,7 +125,13 @@ Deno.test("una fuente caída deja el hecho sin valor, con el parcial que el perf
   const doc = derivarHechos(crudoCon({ basesInternas: { status: "error", data: null } }), contexto);
   const h = hecho(doc, "ing.segmento.codigo");
   assertEquals([h.valor, h.motivo, h.parcial, h.calidad], [null, "fuente_sin_respuesta", "sin_datos", "no_disponible"]);
-  assertEquals(perfilDesdeHechos(doc, "fuentesIngreso").segmento, "sin_datos");
+  // Etapa B (estructura-v31): el perfil escribe null y deja el parcial en camposSinDato.
+  const perfil = perfilDesdeHechos(doc, "fuentesIngreso");
+  assertEquals(perfil.segmento, null);
+  assertEquals((perfil.camposSinDato as Record<string, unknown>).segmento, "sin_datos");
+  assertEquals((perfil.detalle as Record<string, unknown>).aportesPorMes, null);
+  assertEquals(Object.hasOwn(perfil, "detalle.aportesPorMes"), false); // un campo del detalle va anidado, no con el punto en el nombre
+  assertEquals(Object.hasOwn(perfil.camposSinDato as object, "detalle.aportesPorMes"), true);
   // La renta dice «no hay» con `faltante`: no es una falla.
   const sinRenta = derivarHechos(crudoCon({ sriImpuestoRenta: { status: "faltante", data: null }, basesInternas: ok({ tiess: [aporte(10)] }) }), contexto);
   assertEquals(hecho(sinRenta, "ing.segmento.codigo").valor, "dependiente_privado");

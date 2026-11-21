@@ -35,7 +35,10 @@
 //      `laboral.empleosActuales` en null (la fuente no contestó), y con la función vieja de la base
 //      `refrescar_resumen_por_persona()` falla con «cannot get array length of a scalar». El número se toma al
 //      aplicarla (regla 1 de CLAUDE.md): si cambia, se cambia acá.
-export const ESQUEMA_MINIMO = 153;
+// 154: grupo_de_antes() y el resumen por persona que lo usa. Desde estructura-v31 un perfil nuevo puede traer
+//      `fuentesIngreso` con campos en null (la fuente no contestó), y con la función vieja de la base el resumen
+//      (bandeja, Monitoreo y Fuentes de ingreso) mostraría el segmento null. El número se toma al aplicarla.
+export const ESQUEMA_MINIMO = 154;
 
 let verificada: number | null = null;
 

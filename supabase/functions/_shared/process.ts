@@ -12,7 +12,6 @@
 // entrada real del LLM (ver marco-interpretativo.ts).
 
 import type { RespuestaProveedorInfo1, StandardClientProfile } from "./types.ts";
-import { analizarFuentesIngreso } from "./fuentes-ingreso.ts";
 import { estadoPorFuente } from "./calidad-de-la-consulta.ts";
 import { relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
@@ -247,7 +246,13 @@ const DESCRIPCION_SERVICIO: Record<string, string> = {
 // sus copias. Con una fuente que no contestó el campo es null y el grupo lo lista en camposSinDato con el
 // parcial (lo que escribía la v28). El modelo, la capacidad de pago, el predictor de ingresos y las columnas
 // del perfil leen lo de antes. `fuentesIngreso` sigue de analizarFuentesIngreso() hasta su propio PR.
-export const PROCESS_VERSION = "estructura-v30"; // ver docs/estructura-estandarizada.md
+// estructura-v31 (E7, etapa B del grupo 4, los ingresos): `fuentesIngreso` sale de hechos/grupos/ingresos.ts, que llama a
+// analizarFuentesIngreso() (la única implementación de las reglas y de los textos, fuentes-ingreso.ts) una sola vez por
+// perfil, y process.ts dejó de llamarla. Con una fuente que no contestó el campo es null y el grupo lo lista en
+// camposSinDato con el parcial (lo que escribía la v30; los del detalle, con el nombre con punto). El modelo, la
+// capacidad de pago, el predictor de ingresos, las columnas del perfil, el resumen por persona y las pantallas de
+// ingresos leen lo de antes. duracion_fuentes_ms mide ahora la capa de hechos entera.
+export const PROCESS_VERSION = "estructura-v31"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en
@@ -266,9 +271,14 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
   const biWrap = { x: { data: basesInternas } } as unknown as AnyRecord;
   // ---- los hechos ----
   // Un solo armado de la capa de hechos para todos los grupos que salen de ella (docs/capa-de-hechos.md,
-  // 3.3). Va antes de `identidad` porque `laboral`, que se arma enseguida, ya sale de ahí.
+  // 3.3). Va antes de `identidad` porque `laboral` y `fuentesIngreso`, que se arman enseguida, ya salen de ahí.
   // El reloj de los hechos es la hora del armado, como el de la unión del
   // BIESS hasta la v24: un préstamo «terminado» se decide el día que se arma.
+  //
+  // Se mide aparte de la duración total del perfil: duracion_ms está dominada por la ingesta (~27s) y
+  // taparía cualquier degradación de este módulo, que corre en milisegundos. Hasta la v30 era sólo
+  // analizarFuentesIngreso(); desde la v31 es la capa de hechos entera, de la que sale fuentesIngreso.
+  const inicioFuentes = Date.now();
   const hechos = derivarHechos(raw, {
     cedula,
     consulta: "perfil",
@@ -276,20 +286,50 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
     corteIess: corteIess ?? "",
     persona: { nombre: textoDe(persona?.nombre), fechaDeNacimiento: null },
   });
+  const duracionFuentesMs = Date.now() - inicioFuentes;
   const conSinDato = <T extends object>(grupo: T, desde: AnyRecord): T =>
     (desde[CLAVE_SIN_DATO] ? { ...grupo, [CLAVE_SIN_DATO]: desde[CLAVE_SIN_DATO] } : grupo);
+
+  // ---- fuentesIngreso (de qué vive la persona) ----
+  // Desde estructura-v31 sale de la capa de hechos (etapa B del grupo 4, parte de los ingresos): el grupo `ingresos`
+  // llama a analizarFuentesIngreso() (fuentes-ingreso.ts), que sigue siendo la única implementación de las reglas y de
+  // los textos, UNA sola vez por perfil (hasta la v30 corría acá y otra vez en el grupo), y agrega la procedencia de cada
+  // cifra. Acá sólo se copia al perfil, en el orden de siempre. Con una fuente que no contestó el campo es null y el
+  // grupo lo lista en camposSinDato (con el nombre con punto para los del `detalle`).
+  const fi = perfilDesdeHechos(hechos, "fuentesIngreso") as AnyRecord;
+  const fiDetalle = fi.detalle as AnyRecord;
+  const fuentesIngreso = conSinDato({
+    version: fi.version,
+    corteIessUsado: fi.corteIessUsado,
+    corteDesactualizado: fi.corteDesactualizado,
+    segmento: fi.segmento,
+    estadoSegmento: fi.estadoSegmento,
+    motivoSegmento: fi.motivoSegmento,
+    apareceEnUltimoCorte: fi.apareceEnUltimoCorte,
+    cortesDesdeLaDesvinculacion: fi.cortesDesdeLaDesvinculacion,
+    fuentes: fi.fuentes,
+    pisoIngresoMensualReportado: fi.pisoIngresoMensualReportado,
+    senalesDeEscala: fi.senalesDeEscala,
+    paraConfirmar: fi.paraConfirmar,
+    detalle: {
+      aportesPorMes: fiDetalle.aportesPorMes,
+      vinculos: fiDetalle.vinculos,
+      mesesConAporteUltimos12: fiDetalle.mesesConAporteUltimos12,
+      mesesConAporteUltimos24: fiDetalle.mesesConAporteUltimos24,
+      promedioUltimos6: fiDetalle.promedioUltimos6,
+      promedioUltimos12: fiDetalle.promedioUltimos12,
+      totalHace12Meses: fiDetalle.totalHace12Meses,
+      continuidadLaboral: fiDetalle.continuidadLaboral,
+      actividadesEconomicas: fiDetalle.actividadesEconomicas,
+      impuestoRentaPorAnio: fiDetalle.impuestoRentaPorAnio,
+    },
+  } as unknown as StandardClientProfile["fuentesIngreso"], fi);
 
   // ---- identidad ----
   const nacionalidad0 = (g?.nacionalidades as AnyRecord[] | undefined)?.[0]?.pais as AnyRecord | undefined;
   const conyuge = g?.personaNaturalConyuge as AnyRecord | undefined;
   const conyugePersona = conyuge?.personaConyuge as AnyRecord | undefined;
   const tieneConyugeActual = Boolean(conyugePersona?.nombre);
-  // Se mide aparte de la duración total del perfil: duracion_ms está
-  // dominada por la ingesta (~27s) y taparía cualquier degradación de
-  // este módulo, que corre en milisegundos.
-  const inicioFuentes = Date.now();
-  const fuentesIngreso = analizarFuentesIngreso(raw, (persona?.nombre as string) ?? null, corteIess, cedula);
-  const duracionFuentesMs = Date.now() - inicioFuentes;
 
   const identidad: StandardClientProfile["identidad"] = {
     nombreCompleto: (persona?.nombre as string) ?? null,

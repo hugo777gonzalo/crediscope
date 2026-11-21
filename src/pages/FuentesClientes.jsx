@@ -12,6 +12,7 @@ import {
   textoIngresoReportado,
 } from "../lib/fuentesIngresoConsolidado.js";
 import AvisoDeError from "../components/ui/AvisoDeError.jsx";
+import { conLosValoresDeAntes } from "../../supabase/functions/_shared/campos-sin-dato.ts";
 import { humanizarTexto, plural, entero } from "../lib/formatos.js";
 
 // El listado detrás de los números del panorama. Sin esto el módulo
@@ -51,7 +52,7 @@ export default function FuentesClientes() {
   const filas = useMemo(() => {
     if (!datos) return [];
     return (datos.filas || [])
-      .map((p) => ({ fila: p, f: p.standard_profile?.fuentesIngreso }))
+      .map((p) => ({ fila: p, f: conLosValoresDeAntes(p.standard_profile)?.fuentesIngreso })) // los valores de antes: un campo sin dato no cambia el listado
       .filter((x) => x.f?.segmento);
   }, [datos]);
 

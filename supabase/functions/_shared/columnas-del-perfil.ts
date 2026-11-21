@@ -13,8 +13,12 @@
 import type { StandardClientProfile } from "./types.ts";
 import { indiciosDeIngresoMayor } from "./fuentes-ingreso.ts";
 import { clasificarPerfilLaboral } from "./perfil-laboral.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 
-export function columnasDelPerfil(perfil: StandardClientProfile) {
+export function columnasDelPerfil(perfilGuardado: StandardClientProfile) {
+  // Las columnas copian los valores de antes: un campo sin dato (campos-sin-dato.ts) no cambia el segmento ni el
+  // perfil laboral de la columna, que filtran la bandeja y Monitoreo.
+  const perfil = conLosValoresDeAntes(perfilGuardado);
   const f = perfil.fuentesIngreso;
   return {
     fuente_segmento: f?.segmento ?? null,

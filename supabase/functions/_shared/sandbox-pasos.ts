@@ -12,6 +12,7 @@
 
 import { buildStandardProfile, PROCESS_VERSION } from "./process.ts";
 import { CORTE_IESS_CONOCIDO } from "./fuentes-ingreso.ts";
+import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import { decisionDeLaConsulta, estadoPorFuente, porQueNoSePuedeAnalizar, temasSinRespuesta } from "./calidad-de-la-consulta.ts";
 import { evaluarControlesBloqueo } from "./controles-bloqueo.ts";
 import { leerLaConsulta } from "./consulta-de-perfil.ts";
@@ -73,7 +74,7 @@ function pasoPerfil(s: Fila, ahora: Date): ResultadoDelPaso {
   if (decisionDeLaConsulta(sim.estado_por_fuente, sim.control_bloqueo) === "frenar") {
     return { ok: false, fallo: { detalle: porQueNoSePuedeAnalizar(sim.estado_por_fuente), codigo: "fuentes_no_disponibles", esperarMs: 0, temas: temasSinRespuesta(sim.estado_por_fuente), noReintentar: true } };
   }
-  const f = perfil.fuentesIngreso;
+  const f = conLosValoresDeAntes(perfil).fuentesIngreso;
   return {
     ok: true,
     cambios: {},

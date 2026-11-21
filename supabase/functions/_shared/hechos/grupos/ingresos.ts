@@ -1,14 +1,19 @@
 // Grupo 4 de la capa de hechos, parte 2: los ingresos (docs/capa-de-hechos.md, 4.4 y 4.4.1).
 // `fuentesIngreso` y su `detalle`: de qué vive la persona, con el segmento que se le asigna.
 //
-// ETAPA A. process.ts sigue armando `fuentesIngreso` con `analizarFuentesIngreso()`. Este
-// grupo llama a esa MISMA función (no la copia: son 1.386 líneas de reglas y de textos que el
-// analista y el modelo leen) y emite cada campo de su resultado como un hecho; lo que agrega
-// es lo que la función no dice: qué filas del crudo sostienen cada cifra, de quién es el
-// aporte (calidad) y las lecturas que hoy no se ven. La paridad con el perfil es exacta por
-// construcción, y lo que se mide en `comparar-hechos.mjs` es la procedencia: que cada fila
-// citada exista y que las sumas y los recuentos de lo citado den el valor. La etapa B mueve
-// las reglas a este archivo y borra `fuentes-ingreso.ts` de process.ts.
+// ETAPA B (estructura-v31). process.ts arma `fuentesIngreso` con `perfilDesdeHechos()` y este grupo es
+// quien llama a `analizarFuentesIngreso()`, UNA sola vez por perfil (hasta la v30 corría también en
+// process.ts). Las reglas NO se mudaron a este archivo, a propósito: son 1.386 líneas de reglas y de
+// textos que el analista y el modelo leen, con su propia versión (`FUENTES_INGRESO_VERSION`), y moverlas
+// sólo habría agregado una copia que revisar sin cambiar un valor. `fuentes-ingreso.ts` sigue siendo la
+// única implementación y este grupo la llama, nunca la copia. Lo que el grupo agrega es lo que la función
+// no dice: qué filas del crudo sostienen cada cifra, de quién es el aporte (calidad) y las lecturas que
+// hoy no se ven. `comparar-hechos.mjs` mide la procedencia: que cada fila citada exista y que las sumas y
+// los recuentos de lo citado den el valor.
+//
+// Con una fuente que no contestó el campo es null y el grupo lo lista en `camposSinDato` con el parcial
+// (lo que dice la función con las fuentes que sí contestaron, que es lo que escribía el perfil hasta la
+// v30). Los campos del `detalle` van con su nombre con punto («detalle.aportesPorMes»).
 //
 // La calidad (docs, 4.4.1): el aporte de un empleador es `confirmado_por_tercero`; el de quien
 // es su propio patrono o aporta por cuenta propia, `declarado`; el impuesto a la renta es lo que
@@ -90,7 +95,15 @@ export const REGLAS_QUE_MEZCLAN: string[] = [
   "ing.obligado@1", // dos lectores del mismo campo del RUC que no coinciden con «S»
 ];
 
-export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [];
+export const DIFERENCIAS_ESPERADAS: DiferenciaEsperada[] = [
+  {
+    campo: "fuentesIngreso.*",
+    detector: "dato-de-ingresos-de-fuente-sin-respuesta-escrito-como-total",
+    aprobadaEl: "pendiente: la aprueba el negocio con el PR de estructura-v31",
+    motivo: "una fuente que no contestó deja el campo sin dato en vez del parcial (hasta la v30, el segmento «sin_datos» o el que daban las otras fuentes)",
+    cuando: "sin_dato",
+  },
+];
 
 const TIESS: [string, string] = ["basesInternas", "tiess"];
 const EMPLEADOS: [string, string] = ["empleados", "empleados"];

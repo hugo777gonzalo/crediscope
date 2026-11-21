@@ -93,7 +93,9 @@
       }
     }
   },
-  "esperado": {},
+  "esperado": {
+    "dato-de-ingresos-de-fuente-sin-respuesta-escrito-como-total": "no-dispara"
+  },
   "reglas": {
     "ing.segmento@1": "no-aplica",
     "ing.obligado@1": "no-aplica"
