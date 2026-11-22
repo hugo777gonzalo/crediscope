@@ -1940,8 +1940,13 @@ para cuando exista el contrato neutro (`buro/`), sin implementar:
 
 Lo que quedó **pendiente** y por qué: P53, P54 y P63 se resolvieron en `lecturas-v3` (11.5); P60, la etapa B
 de su grupo (seguridad social, en etapa A desde el 2026-11-22: 4.5); P61, la v37 (su grupo pasó la etapa A
-el 2026-11-22 y la propuesta está en 4.5); P67, que el negocio diga qué categoría de la
-institución es buena y cuál mala. Ninguno se inventó.
+el 2026-11-22 y la propuesta está en 4.5). Ninguno se inventó.
+
+**P67 se cierra sin código** (negocio, 2026-11-22). El hábito de pago y el perfil interno de la
+operación con la institución son sólo información para el modelo: un punto adicional que sale de un
+modelo interno de hábito de pago de la institución. No se reproduce cómo se calcula, no entra en
+ningún cálculo (ni el score, ni la capacidad, ni una lectura) y sus categorías no se clasifican en
+buenas y malas. El marco sigue pidiéndole al modelo que lo resalte como referencia (P65 a P68).
 
 **P67, medido el 2026-11-20** (sólo lectura, 3.766 personas reales, 4.042 operaciones con la
 institución en 2.600 personas). La fuente trae cinco hábitos de pago: Excelente Pagador 2.602,
@@ -1949,9 +1954,8 @@ Cumple con poco retraso 935, Cumple con retraso 347, Mal pagador 80 y Pagador Ir
 dato); y tres perfiles internos: NUEVO 2.473, BUENO 1.446 y MALO 121. No trae la fecha de concesión
 ni las cuotas pagadas: sólo el corte, la cuota, el plazo, el saldo y los días de mora. Para «cuánta
 historia hay detrás» sirve el perfil interno: NUEVO es poca historia (1.999 «Excelente Pagador» son
-NUEVO). Con la clasificación del negocio (qué hábito es bueno y cuál malo), las dos lecturas
-(`lec.inst.contraste_con_el_buro` y `lec.inst.poca_historia`) son reglas simples sobre hechos que ya
-existen (`inst.habito_de_pago`, `inst.perfil_interno`).
+NUEVO). Queda como descripción de la fuente: por la decisión de arriba, no se construyen lecturas
+sobre estas categorías.
 
 ### 11.2 Las lecturas (27 de E11 y 3 de lecturas-v3)
 
