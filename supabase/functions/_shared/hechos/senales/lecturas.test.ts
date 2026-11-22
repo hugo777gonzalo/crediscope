@@ -220,6 +220,63 @@ Deno.test("ingresos: continuidad, huecos (salvo una pensión), caída y dejar de
   assertEquals(estadoYValor("lec.lab.sin_empleo_registrado", { "lab.empleos_actuales": [{ cargo: "ANALISTA" }] }), ["no_se_cumple", 1]);
 });
 
+// lecturas-v3: P53 y P54. Cada empleo con su relación, en el mismo orden, y su aporte cruzado por el
+// nombre del empleador (inventado).
+Deno.test("de quién es cada empleo: pariente posible, su propio negocio y un empleador público", () => {
+  const relacion = (esElMismoCliente: boolean | null, comparteApellido: boolean | null) => ({ esElMismoCliente, comparteApellido });
+  const caso = (empleos: string[], relaciones: ReturnType<typeof relacion>[], fuentes: Record<string, unknown>[] = [], conApellido = false) => ({
+    "lab.empleos_actuales": empleos.map((empleador) => ({ empleador, cargo: "ANALISTA", salarioAprox: 800 })),
+    "lab.empleos_actuales.relacion": relaciones,
+    "ing.fuentes": fuentes as Hecho["valor"],
+    "lab.empleador_con_apellido_del_cliente": conApellido,
+  });
+  const privado = (empleador: string) => ({ empleador, evidencia: "reportada_por_tercero", naturaleza: "privado", tipo: "aporte de un empleador" });
+  const publico = (empleador: string) => ({ empleador, evidencia: "reportada_por_tercero", naturaleza: "publico", tipo: "aporte de un empleador" });
+  const propio = (empleador: string) => ({ empleador, evidencia: "autodeclarada_sobre_minimo", naturaleza: "cuenta_propia", tipo: "aporte como patrono de su propio negocio" });
+
+  // Dos empleos, uno con su apellido: uno puede ser de un pariente y los dos son con terceros.
+  const dos = caso(["COMERCIAL FICTICIA PEREZ", "EMPRESA INVENTADA S.A."], [relacion(false, true), relacion(false, false)], [privado("COMERCIAL FICTICIA PEREZ"), privado("EMPRESA INVENTADA S.A.")], true);
+  assertEquals(estadoYValor("lec.lab.posible_negocio_familiar", dos), ["se_cumple", 1]);
+  assertEquals(estadoYValor("lec.lab.empleos_con_terceros", dos), ["no_se_cumple", 2]);
+
+  // P53: el apellido en un GAD es una coincidencia. La marca de la persona está y la lectura dice que no se menciona.
+  const gad = caso(["GAD MUNICIPAL DE PEREZ"], [relacion(false, true)], [publico("GAD MUNICIPAL DE PEREZ")], true);
+  const s = lectura("lec.lab.posible_negocio_familiar", documento(gad));
+  assertEquals([s.estado, s.valor, (s.texto ?? "").includes("no se menciona")], ["no_se_cumple", 0, true]);
+
+  // P54: su propio negocio, por el RUC o por su aporte como patrono, no cuenta como empleo con un tercero.
+  const porRuc = caso(["PRUEBA FICTICIO", "EMPRESA INVENTADA S.A."], [relacion(true, false), relacion(false, false)], [privado("EMPRESA INVENTADA S.A.")]);
+  assertEquals(estadoYValor("lec.lab.empleos_con_terceros", porRuc), ["se_cumple", 1]);
+  assertEquals(estadoYValor("lec.lab.posible_negocio_familiar", porRuc), ["no_se_cumple", 0]);
+  // Con un RUC ajeno y su apellido (un pariente), su aporte como patrono propio igual dice que es ella: no es un pariente.
+  const porAporte = caso(["NEGOCIO FICTICIO PEREZ"], [relacion(false, true)], [propio("NEGOCIO FICTICIO PEREZ")], true);
+  assertEquals(estadoYValor("lec.lab.empleos_con_terceros", porAporte), ["se_cumple", 0]);
+  assertEquals(estadoYValor("lec.lab.posible_negocio_familiar", porAporte), ["no_se_cumple", 0]);
+
+  // Sin nombres que comparar no se sabe: el empleo cuenta como con un tercero y no como de un pariente.
+  const sinSaber = caso(["EMPRESA INVENTADA S.A."], [relacion(null, null)]);
+  assertEquals(estadoYValor("lec.lab.empleos_con_terceros", sinSaber), ["no_se_cumple", 1]);
+  assertEquals(estadoYValor("lec.lab.posible_negocio_familiar", sinSaber), ["no_se_cumple", 0]);
+  // Sin empleos, nada que leer.
+  assertEquals(estadoYValor("lec.lab.empleos_con_terceros", caso([], [])), ["no_se_cumple", 0]);
+  // Una fuente que no contestó, o una relación que no acompaña a los empleos: no se puede medir.
+  assertEquals(estadoYValor("lec.lab.empleos_con_terceros", { ...dos, "lab.empleos_actuales": SIN_DATO })[0], "no_se_puede_medir");
+  assertEquals(estadoYValor("lec.lab.posible_negocio_familiar", { ...dos, "lab.empleos_actuales.relacion": [relacion(false, true)] })[0], "no_se_puede_medir");
+});
+
+// lecturas-v3: P63, con el nivel más alto conocido. El técnico superior (7) cuenta como tercer nivel.
+Deno.test("tercer o cuarto nivel: el más alto entre el registro civil y los títulos", () => {
+  const nivel = (n: number, fuente: string) => ({ "ide.nivel_educacion.mas_alto": { nivel: n, descripcion: `NIVEL_${n}`, fuente } });
+  assertEquals(estadoYValor("lec.ide.tercer_o_cuarto_nivel", nivel(9, "titulos")), ["se_cumple", "cuarto_nivel"]);
+  assertEquals(estadoYValor("lec.ide.tercer_o_cuarto_nivel", nivel(8, "general")), ["se_cumple", "tercer_nivel"]);
+  assertEquals(estadoYValor("lec.ide.tercer_o_cuarto_nivel", nivel(7, "titulos")), ["se_cumple", "tercer_nivel"]);
+  assertEquals(estadoYValor("lec.ide.tercer_o_cuarto_nivel", nivel(6, "general")), ["no_se_cumple", "sin_tercer_nivel"]);
+  assertEquals((lectura("lec.ide.tercer_o_cuarto_nivel", documento(nivel(9, "titulos"))).texto ?? "").includes("título"), true);
+  // Sin ningún nivel no es negativo; con una fuente que no contestó, no se puede medir.
+  assertEquals(estadoYValor("lec.ide.tercer_o_cuarto_nivel", {}), ["no_se_cumple", null]);
+  assertEquals(estadoYValor("lec.ide.tercer_o_cuarto_nivel", { "ide.nivel_educacion.mas_alto": SIN_DATO })[0], "no_se_puede_medir");
+});
+
 Deno.test("la operación con la institución que ya figura en bancos sale de la diferencia de E9", () => {
   const dif: Diferencia = {
     clase: "diferencia", codigo: "dif.inst.posible_en_bancos", regla: "inst.en_bancos@1", fechaDeLaConsulta: "2026-11-20T15:00:00.000Z",

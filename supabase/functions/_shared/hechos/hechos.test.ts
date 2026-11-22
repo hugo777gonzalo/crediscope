@@ -106,22 +106,22 @@ Deno.test("un grupo en etapa A que lanza un error no emite nada y el resto sigue
   const original = console.error;
   console.error = (...a: unknown[]) => void registro.push(a.join(" "));
   try {
-    // Un grupo en etapa A (hoy los que todavía no alimentan el perfil, como `identidad`): lo que alcanzó a emitir
+    // Un grupo en etapa A (hoy los que todavía no alimentan el perfil, como `familia`): lo que alcanzó a emitir
     // se deshace, el error queda registrado y los demás grupos siguen. Emite una entidad y recién después se cae.
     const claves: string[] = [];
-    const sinIdentidad = derivarHechos(crudo, contexto, {
+    const sinFamilia = derivarHechos(crudo, contexto, {
       grupos: {
         ...GRUPOS,
-        identidad: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); throw new Error("fallo de prueba"); } },
+        familia: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); throw new Error("fallo de prueba"); } },
         // Las claves que el grupo reservó se devuelven: otro grupo puede volver a usarlas.
-        contacto: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); } },
+        tributario: { emitir: (_c: unknown, _x: Contexto, e: Parameters<typeof GRUPOS.empleo.emitir>[2]) => { claves.push(e.clave("emp", "prueba")); } },
       },
     });
-    assertEquals(sinIdentidad.hechos.length, normal.hechos.length);
+    assertEquals(sinFamilia.hechos.length, normal.hechos.length);
     assertEquals(claves.length, 2);
     assertEquals(claves[0], claves[1]);
     assertEquals(registro.length, 1);
-    assertEquals(registro[0].includes("identidad") && registro[0].includes("fallo de prueba"), true);
+    assertEquals(registro[0].includes("familia") && registro[0].includes("fallo de prueba"), true);
     // Sin datos de la persona en lo que se registra.
     assertEquals(registro[0].includes("PRUEBA FICTICIO"), false);
     // Un grupo en etapa B no lleva el resguardo: el perfil depende de él.

@@ -54,6 +54,8 @@ export const CATALOGO: CodigoDelCatalogo[] = [
   codigo("lab.empleo_actual.fuente", "texto", "De qué fuente salió el empleo actual: el mecanizado, los aportes del corte o ninguna", null),
   codigo("lab.empleador_con_apellido_del_cliente", "si_no", "Algún empleador actual lleva un apellido de la persona", en("empleadorConApellidoDelCliente", null)),
   codigo("lab.cliente_es_su_propio_empleador", "si_no", "El patrono de algún empleo actual es la propia persona", en("clienteEsSuPropioEmpleador", null)),
+  // P53 y P54 (lecturas-v3): las mismas dos marcas, pero de cada empleo, sin el nombre del empleador.
+  codigo("lab.empleos_actuales.relacion", "lista", "De quién es cada empleo vigente, en el orden de lab.empleos_actuales: si el patrono es la propia persona o lleva uno de sus apellidos", null),
   codigo("lab.cargo.vigente", "texto", "Cargo del empleo actual de mayor salario", en("cargoVigente", null)),
   // El historial
   codigo("lab.empleadores.ultimos_24_meses", "cantidad", "Empleadores con evidencia de actividad en los últimos 24 meses", en("numeroEmpleadoresUltimos24Meses", 0), { recuento: "conteo" }),
@@ -497,6 +499,14 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
     emitirHecho(cod, "emp.actual@1", deLaFuenteActual, hayEmpleoActual ? algunoEs(clave) : null, filasActuales.map((f) => refDeFila(consulta, f)), { calidad: "calculado", entidades: clavesDe(filasActuales), sinValor: sinRelacion });
   porRelacion("lab.empleador_con_apellido_del_cliente", "comparteApellido");
   porRelacion("lab.cliente_es_su_propio_empleador", "esElMismoCliente");
+  // Las mismas marcas de cada empleo, en su orden, para las lecturas de P53 y P54: con dos
+  // empleos, la marca de la persona no dice cuál es el del pariente ni cuál es su negocio. Se
+  // calculan acá, con el RUC, porque el nombre de la persona no es un hecho: es la misma regla
+  // de las dos marcas de arriba, de a un empleo. null es que no se pudo saber (sin nombres que
+  // comparar y sin un RUC que diga que es la propia persona).
+  emitirHecho("lab.empleos_actuales.relacion", "emp.actual@1", deLaFuenteActual,
+    relaciones.map((x) => ({ esElMismoCliente: x?.esElMismoCliente ?? null, comparteApellido: x?.comparteApellido ?? null })),
+    filasActuales.map((f) => refDeFila(consulta, f)), { calidad: "calculado", entidades: clavesDe(filasActuales) });
 
   // El cargo es el del empleo actual de mayor salario, entre los que tienen cargo.
   const conCargo = [...actuales].filter((e) => textoDe(e.cargo) !== null).sort((a, b) => (b.salarioAprox ?? -1) - (a.salarioAprox ?? -1));
