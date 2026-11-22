@@ -1,0 +1,26 @@
+{
+  "descripcion": "Grupo de seguridad social con sus fuentes caídas: la afiliación al IESS en faltante (el hueco de la regla P60 del marco), la salud y el seguro militar con error y el SIISSPOL con un policía retirado. Cada hecho queda sin valor; la afiliación y la cobertura, sin parcial (el perfil ya escribe null); los demás, con lo que dicen las filas que llegaron, que es lo que el perfil escribe en la etapa A",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO CATORCE", "identificacion": "0000000000" } } },
+    "afiliacionIess": { "status": "faltante", "data": null },
+    "pensionista": { "status": "ok", "data": { "pensionista": [] } },
+    "jubilados": { "status": "ok", "data": { "trabajos": [] } },
+    "afiliacionSalud": { "status": "error", "data": null },
+    "afiliacionIssfacCertMedico": { "status": "error", "data": null },
+    "afiliacionIssfacFuerzaArmada": { "status": "faltante", "data": null },
+    "afiliacionSiisspol": { "status": "ok", "data": { "afiliacionSiisspol": [{ "cedula": "0000000000", "afiliaciones": [{ "servicio": "RETIRO" }] }] } }
+  },
+  "esperado": {},
+  "hechos": {
+    "ss.iess.afiliado_activo": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null },
+    "ss.iess.estado_afiliacion": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null },
+    "ss.salud.tiene_cobertura": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null },
+    "ss.salud.entidades": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": [] },
+    "ss.militar.titular": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": false },
+    "ss.policia.titular": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": true },
+    "ss.servicio.militar_o_policial": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": "policía en servicio pasivo (retirado)" },
+    "ss.pensionista.es": { "valor": false, "registros": ["pensionista.pensionista"] }
+  }
+}
