@@ -5,7 +5,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { baseImponibleDesdeRenta, impuestoDeLaBase } from "./base-imponible-desde-renta.ts";
 import { datosDeCapacidad, evaluarEscalera } from "./capacidad-de-pago.ts";
-import { armarIngresoDelPerfil, type OpcionesDelIngreso } from "./escalera-del-ingreso.ts";
+import { armarIngresoDelPerfil, type OpcionesDelIngreso, ROTULO_DE_LA_CORROBORACION } from "./escalera-del-ingreso.ts";
 import { armarEstimacion, decidirEstimacion, type ModeloVigente, type RespuestaDeEstimacion } from "./estimacion-de-ingreso.ts";
 import { FORMATO_DE_ARBOLES, type ModeloExportado, prepararModelo } from "./predictor-ingresos.ts";
 import { VARIABLES_DEL_NIVEL_1 } from "./variables-de-ingreso.ts";
@@ -238,6 +238,39 @@ Deno.test("para un dependiente, la base de la renta no se suma al sueldo: si lo 
   assert(ingreso.diferencias.some((d) => d.clave === "cota_supera_lo_verificado"));
   // Sostiene el 1 si alcanza; el 3 se mide por separado, nunca como sueldo más renta.
   assert(resultado.ingreso.escalera.filter((c) => !c.hipotetico).every((c) => (c.ingresoAceptado ?? 0) <= Math.max(814.95, b.mensualDesde) + 0.005));
+});
+
+// ---------------------------------------------------------------- el rótulo de la renta del dependiente (negocio, 2026-11-22)
+
+const conCuotasDeCooperativas = (p: Perfil, cuota: number, diasMora = 0): Perfil => ({
+  ...p,
+  comportamientoCooperativas: { ...(p.comportamientoCooperativas as Record<string, unknown>), numeroOperaciones: 1, cuotaMensualTotal: cuota, diasMoraMaxima: diasMora, saldoEnMora: diasMora > 0 ? 100 : 0 },
+});
+
+Deno.test("la renta que supera al sueldo neto: corroborada si las cuotas también lo superan, sin corroborar en cualquier otro caso", () => {
+  const base = perfil("dependiente_privado", [sueldo(900)], { renta: [renta(2025, 3000)] });
+  const rotulo = (p: Perfil) => evaluar(p).ingreso.peldanos[2].corroboracionDeLaRenta;
+  // El sueldo neto es 814,95 y la renta prueba más. La cota por cuotas es cuota / 0,75.
+  assertEquals(rotulo(conCuotasDeCooperativas(base, 700)), "corroborada_por_sus_cuotas"); // 933,33 > 814,95
+  assertEquals(rotulo(conCuotasDeCooperativas(base, 300)), "sin_corroborar"); // cota armada pero por debajo: 400
+  assertEquals(rotulo(base), "sin_corroborar"); // sin cuotas
+  assertEquals(rotulo(conCuotasDeCooperativas(base, 700, 30)), "sin_corroborar"); // con mora no se arma la cota
+  assertEquals(ROTULO_DE_LA_CORROBORACION.corroborada_por_sus_cuotas, "Corroborada por sus cuotas");
+  assertEquals(ROTULO_DE_LA_CORROBORACION.sin_corroborar, "Sin corroborar");
+});
+
+Deno.test("sin renta mayor que el sueldo neto no hay rótulo, y el rótulo no cambia el cálculo", () => {
+  // Una renta chica bajo un sueldo grande: la renta no prueba más que el sueldo, no se rotula.
+  const chica = perfil("dependiente_privado", [sueldo(3000)], { renta: [renta(2025, 150)] });
+  assertEquals(evaluar(chica).ingreso.peldanos[2].corroboracionDeLaRenta, undefined);
+  // Sin sueldo reportado no hay con qué comparar.
+  assertEquals(evaluar(perfil("independiente", [], { ruc: true, renta: [renta(2025, 3000)] })).ingreso.peldanos[2].corroboracionDeLaRenta, undefined);
+  // El rótulo es sólo eso: quitado del peldaño, la escalera mide exactamente lo mismo (la renta sigue sosteniendo igual).
+  const { datos, ingreso, resultado } = evaluar(conCuotasDeCooperativas(perfil("dependiente_privado", [sueldo(900)], { renta: [renta(2025, 3000)] }), 700));
+  assertEquals(ingreso.peldanos[2].corroboracionDeLaRenta, "corroborada_por_sus_cuotas");
+  const sinRotulo = { ...ingreso, peldanos: ingreso.peldanos.map(({ corroboracionDeLaRenta: _quitado, ...resto }) => resto) as typeof ingreso.peldanos };
+  const otra = evaluarEscalera({ datos, ingreso: sinRotulo, condiciones: CONDICIONES });
+  assertEquals([otra.veredicto, otra.ingreso.sostieneElCalculo, otra.ingreso.escalera, otra.ingreso.oferta], [resultado.veredicto, resultado.ingreso.sostieneElCalculo, resultado.ingreso.escalera, resultado.ingreso.oferta]);
 });
 
 Deno.test("renta y aporte propio se combinan por máximo en el 3", () => {
