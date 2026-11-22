@@ -70,8 +70,9 @@ export const GRUPOS = {
 // su etapa B (estructura-v28) process.ts los arma desde los hechos y el control de bloqueo toma
 // de ellos todos sus hallazgos. El grupo 2 (historial con la institución), desde su etapa B
 // (estructura-v29), también lo arma process.ts desde los hechos, y el grupo 4 en su parte laboral (empleo y
-// actividad con RUC, `laboral`) desde la estructura-v30; `ingresos` sigue en etapa A.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos", "penal", "cumplimiento"];
+// actividad con RUC, `laboral`) desde la estructura-v30; `ingresos` sigue en etapa A. El de
+// patrimonio, en etapa A (2026-11-22): 0 diferencias en 45.192 campos de las 3.766 personas.
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos", "penal", "cumplimiento", "patrimonio"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);
