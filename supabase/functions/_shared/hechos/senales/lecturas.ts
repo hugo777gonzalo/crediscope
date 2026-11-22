@@ -34,12 +34,18 @@ import { ahoraDe, mesesEntreFechas } from "../reloj.ts";
 import type { Diferencia, ElementoDeLista, Hecho, HechosDeLaPersona, Senal } from "../tipos.ts";
 import { CATEGORIA_INVESTIGACION_CERRADA, CATEGORIA_TRAMITE } from "../../demandas.ts";
 import { dejoDeAparecerEnElIess, esIngresoMinimoSbu, indiciosDeIngresoMayor, TIPOS_DE_PENSION, TIPOS_DE_SERVICIO_ACTIVO } from "../../fuentes-ingreso.ts";
+import { quienDeclara } from "../../nombres-ingresos.ts";
+import { NIVEL_CUARTO, NIVEL_TERCERO_DESDE } from "../grupos/identidad.ts";
 
 // lecturas-v1 (E11, 2026-11-20): las 27 primeras, sacadas de marco-v36.
 // lecturas-v2 (2026-11-20, decisiones del negocio sobre E11): los años de una demanda de
 // cobro se cuentan con el día del ANÁLISIS, y las casas comerciales cuentan para «sin mora
 // vigente» (las dos reglas suben a su versión 2).
-export const LECTURAS_VERSION = "lecturas-v2";
+// lecturas-v3 (2026-11-22): las tres que E11 dejó pendientes, con el sí del negocio. P53 y P54
+// (de quién es cada empleo vigente) leen la relación de cada empleo que ahora emite el grupo de
+// empleo; P63 (tercer o cuarto nivel) lee el nivel más alto entre el registro civil y los
+// títulos, del grupo de identidad, y el técnico superior cuenta como tercer nivel.
+export const LECTURAS_VERSION = "lecturas-v3";
 
 export interface OpcionesDeLectura {
   // El día del análisis, ISO. Lo usa sólo `lec.jud.cobro.mas_reciente` (negocio, 2026-11-20):
@@ -429,6 +435,95 @@ function sinEmpleoRegistrado(l: Lector): Resultado {
     : no("Tiene empleos vigentes registrados.", empleos.length);
 }
 
+// ---- De quién es cada empleo vigente (P53 y P54, lecturas-v3) ----
+//
+// La regla de `quienEsElEmpleador()` de perfil-del-modelo.ts, que es la que el modelo recibe
+// en cada empleo desde marco-v30, con una diferencia: la relación con el patrono sale del grupo
+// de empleo (`lab.empleos_actuales.relacion`), que la calcula con el RUC del patrono, igual
+// que las dos marcas de la persona. El perfil del modelo no tiene el RUC y reconoce a la
+// propia persona sólo por el nombre: con un padre homónimo, por el nombre es «su propio
+// patrono» y por el RUC «comparte apellido» (patrono.ts, estructura-v7).
+//
+// El tipo de cada empleo sale de su aporte en `ing.fuentes`, cruzado por el nombre del
+// empleador como en `tipoDeCadaEmpleo()`: un Empleador público nunca es un negocio familiar
+// (el apellido en «GAD MUNICIPAL DE ...» es una coincidencia), y un aporte como patrono de su
+// propio negocio es la propia persona. Los nombres se leen para cruzar y no salen de acá.
+interface DeQuienEsElEmpleo {
+  esSuPropioPatrono: boolean | null;
+  posibleNegocioFamiliar: boolean | null;
+}
+
+const APORTE_COMO_PATRONO_PROPIO = "aporte como patrono de su propio negocio";
+
+function deQuienEsCadaEmpleo(l: Lector): DeQuienEsElEmpleo[] {
+  const empleos = l.lista("lab.empleos_actuales");
+  const relaciones = l.lista("lab.empleos_actuales.relacion");
+  // Las dos salen de la misma regla y en el mismo orden (empleo.ts). Si no se acompañan, la relación
+  // de cada empleo no se sabe: no se puede medir, nunca «no es de un pariente».
+  if (relaciones.length !== empleos.length) throw new SinDato("lab.empleos_actuales.relacion no acompaña a lab.empleos_actuales");
+  const aportePorEmpleador = new Map<string, ElementoDeLista>();
+  for (const f of l.lista("ing.fuentes")) {
+    if (f.evidencia === "indirecta" || !f.empleador) continue;
+    const clave = nombreDelEmpleador(f.empleador);
+    if (!aportePorEmpleador.has(clave)) aportePorEmpleador.set(clave, f);
+  }
+  return empleos.map((e, i) => {
+    const r = relaciones[i];
+    const conocida = r.esElMismoCliente !== null || r.comparteApellido !== null;
+    const aporte = aportePorEmpleador.get(nombreDelEmpleador(e.empleador));
+    const publico = aporte !== undefined && quienDeclara(aporte, null) === "Empleador público";
+    const propio = aporte?.tipo === APORTE_COMO_PATRONO_PROPIO || r.esElMismoCliente === true;
+    return {
+      esSuPropioPatrono: propio ? true : conocida ? false : null,
+      posibleNegocioFamiliar: propio || publico ? false : conocida ? r.comparteApellido === true : null,
+    };
+  });
+}
+
+// Como `nombreNormalizado` de perfil-del-modelo.ts: el mismo cruce.
+const nombreDelEmpleador = (v: unknown): string => String(v ?? "").trim().toUpperCase();
+
+// P53. Lo que es lectura: cuántos empleos vigentes pueden ser de un pariente. Lo que es criterio
+// (no es negativo por sí solo, un rol firmado por un pariente se verifica distinto, pedir
+// respaldo del ingreso) se queda en el marco.
+function posibleNegocioFamiliar(l: Lector): Resultado {
+  const empleos = deQuienEsCadaEmpleo(l);
+  const n = empleos.filter((e) => e.posibleNegocioFamiliar === true).length;
+  if (n > 0) {
+    return si("Algún empleo vigente puede ser de un pariente: el empleador lleva uno de sus apellidos. Es algo a verificar, no un hecho. El valor son esos empleos.", n);
+  }
+  return l.valor("lab.empleador_con_apellido_del_cliente") === true
+    ? no("Un empleador lleva uno de sus apellidos, pero ningún empleo vigente puede ser de un pariente (es un empleador público o su propio negocio): no se menciona.", 0)
+    : no("Ningún empleo vigente puede ser de un pariente.", 0);
+}
+
+// P54. Su propio negocio no es un empleo con un tercero: no cuenta como estabilidad de un
+// empleo ni como «más de un empleo». El valor son los empleos con terceros, los que cuentan.
+function empleosConTerceros(l: Lector): Resultado {
+  const empleos = deQuienEsCadaEmpleo(l);
+  const propios = empleos.filter((e) => e.esSuPropioPatrono === true).length;
+  const conTerceros = empleos.length - propios;
+  return propios > 0
+    ? si("Uno de sus empleos vigentes es su propio negocio: no es un empleo con un tercero ni suma como «más de un empleo». El valor son los empleos con terceros.", conTerceros)
+    : no("Ningún empleo vigente es su propio negocio.", conTerceros);
+}
+
+// P63. Lo que es lectura: tiene tercer o cuarto nivel. Lo que es criterio (un atenuante leve de
+// capacidad, nunca una regla dura; no tenerlo no es negativo) se queda en el marco.
+// Con el nivel más alto entre el registro civil y los títulos (decisión 4 de la sección 10.5,
+// 2026-11-22): el registro civil no se entera del título, y en 227 de 1.256 personas con título
+// el título es más alto. El técnico superior cuenta como tercer nivel (la LOES lo llama tercer
+// nivel técnico; negocio, el mismo día).
+function tercerOCuartoNivel(l: Lector): Resultado {
+  const v = l.valor("ide.nivel_educacion.mas_alto") as ElementoDeLista | null;
+  const nivel = typeof v?.nivel === "number" ? v.nivel : null;
+  if (nivel === null) return no("No hay un nivel de educación registrado: no tenerlo no es negativo.", null);
+  const deDonde = v?.fuente === "titulos" ? "según su título registrado" : "según el registro civil";
+  if (nivel >= NIVEL_CUARTO) return si(`Tiene cuarto nivel, ${deDonde}.`, "cuarto_nivel");
+  if (nivel >= NIVEL_TERCERO_DESDE) return si(`Tiene tercer nivel (el técnico superior cuenta), ${deDonde}.`, "tercer_nivel");
+  return no("No tiene tercer ni cuarto nivel registrado: no es negativo.", "sin_tercer_nivel");
+}
+
 // Decisión 1 de la sección 10.5, pendiente: si el modelo lo lee así.
 // La diferencia sólo existe con una operación vigente con saldo (`inst.en_bancos@1`).
 function institucionYaEnBancos(l: Lector): Resultado {
@@ -487,6 +582,10 @@ export const CATALOGO_DE_LECTURAS: LecturaDelCatalogo[] = [
   lectura("lec.ing.huecos_12_meses", "meses", "Meses sin aporte en los últimos 12, salvo una pensión", ["ing.fuentes", "ing.aportes.meses_12", "ing.aportes.meses_24"], ["P38", "P46"], huecosDe12Meses),
   lectura("lec.ing.variacion_anual", "porcentaje", "Caída de lo reportado al IESS contra hace un año", ["ing.reportado.mensual", "ing.total.hace_12_meses"], ["P46"], variacionAnual),
   lectura("lec.lab.sin_empleo_registrado", "cantidad", "Sin un empleo vigente registrado en los últimos 3 meses", ["lab.empleos_actuales"], ["P50"], sinEmpleoRegistrado),
+  lectura("lec.lab.posible_negocio_familiar", "cantidad", "Empleos vigentes que pueden ser de un pariente (el empleador lleva uno de sus apellidos)", ["lab.empleos_actuales", "lab.empleos_actuales.relacion", "ing.fuentes", "lab.empleador_con_apellido_del_cliente"], ["P53"], posibleNegocioFamiliar),
+  lectura("lec.lab.empleos_con_terceros", "cantidad", "Empleos vigentes con un tercero, sin contar su propio negocio", ["lab.empleos_actuales", "lab.empleos_actuales.relacion", "ing.fuentes"], ["P54"], empleosConTerceros),
+  // Identidad (grupo 12)
+  lectura("lec.ide.tercer_o_cuarto_nivel", "texto", "Tiene tercer o cuarto nivel de educación, con el más alto entre el registro civil y los títulos", ["ide.nivel_educacion.mas_alto"], ["P63"], tercerOCuartoNivel),
   // Comportamiento Interno (grupo 15)
   lectura("lec.inst.ya_en_bancos", "texto", "La operación con la institución ya figura en la deuda de bancos", ["dif.inst.posible_en_bancos"], ["P66"], institucionYaEnBancos),
 ];

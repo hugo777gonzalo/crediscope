@@ -185,6 +185,31 @@ export const TRAMOS_QUE_SACA_LA_V37: TramoDelMarco[] = [
     reemplazo: ["lec.end.sin_historial"],
     queda: null,
   },
+  // lecturas-v3 (2026-11-22): las tres que E11 dejó pendientes.
+  {
+    id: "V21",
+    parrafos: ["P53"],
+    desde: "   - empleadorConApellidoDelCliente:",
+    hasta: "   - clienteEsSuPropioEmpleador:",
+    reemplazo: ["lec.lab.posible_negocio_familiar"],
+    queda: "Un posible negocio familiar no es negativo por sí solo: un rol de pagos que firma un pariente se verifica distinto, así que si el caso depende de ese ingreso se pide respaldo adicional, y se presenta como algo a verificar, nunca como un hecho.",
+  },
+  {
+    id: "V22",
+    parrafos: ["P54"],
+    desde: "   - clienteEsSuPropioEmpleador:",
+    hasta: "   - antiguedadEmpleoActualMeses es señal",
+    reemplazo: ["lec.lab.empleos_con_terceros"],
+    queda: "Ser su propio patrono es trabajo por cuenta propia formalizado, no un empleo familiar: se lee junto con el RUC activo y la actividad independiente.",
+  },
+  {
+    id: "V23",
+    parrafos: ["P63"],
+    desde: "\n    nivelEducacion es la única excepción parcial",
+    hasta: "\n\n13. contacto",
+    reemplazo: ["lec.ide.tercer_o_cuarto_nivel"],
+    queda: "Un tercer o cuarto nivel es un atenuante leve de capacidad, nunca una regla dura, y no tenerlo no es negativo.",
+  },
 ];
 
 // Dónde empieza y termina cada tramo en un texto. Corta si una marca no está o está más de

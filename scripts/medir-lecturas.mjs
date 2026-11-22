@@ -10,7 +10,9 @@
 //      Ingreso Mínimo SBU, dejar de aparecer en el IESS, los indicios, la continuidad, la caída
 //      anual, las operaciones en atraso sin monto, la cuota y la deuda sobre el ingreso): la
 //      lectura tiene que decir lo mismo que el perfil del modelo de hoy, salvo donde una fuente
-//      no contestó (ahí el modelo lee el parcial y la lectura no se puede medir);
+//      no contestó (ahí el modelo lee el parcial y la lectura no se puede medir). P53 y P54 (lecturas-v3) se
+//      comparan con las marcas de cada empleo: una diferencia que explica el RUC del patrono se cuenta aparte
+//      y no corta (EXPLICADAS);
 //   4. el tiempo de derivar las lecturas y lo que pesarían en el mensaje de la v37 (las que se
 //      cumplen y las que no se pueden medir, con código, valor y texto), en caracteres y en tokens
 //      estimados con la calibración de medir-bloque-equifax.mjs.
@@ -162,6 +164,8 @@ const dentroDelRedondeo = (valor, monto, ingreso, meses, montoRedondeado) => {
   const m = montoRedondeado ? 0.5 : 0;
   return valor >= pct(monto - m, meses * (ingreso + 0.5)) && valor <= pct(monto + m, meses * Math.max(ingreso - 0.5, 0.01));
 };
+// Los empleos vigentes como los lee el modelo: la lista, o el objeto de los perfiles anteriores a marco-v20.
+const empleosDelModelo = (m) => (Array.isArray(m.laboral?.empleosActuales) ? m.laboral.empleosActuales : m.laboral?.empleoActual ? [m.laboral.empleoActual] : []);
 const PARIDADES = {
   "lec.ing.minimo_sbu": (s, m) => (s.estado === "se_cumple") === (m.fuentesIngreso?.esIngresoMinimoSbu === true),
   "lec.ing.dejo_de_aportar": (s, m) => (s.estado === "se_cumple") === (m.fuentesIngreso?.sinInformacionActualEnElIess === true),
@@ -179,6 +183,14 @@ const PARIDADES = {
     const deuda = m.endeudamiento?.deudaPropiaTotal ?? 0;
     return ing > 0 ? (deuda > 0 ? dentroDelRedondeo(s.valor, deuda, ing, 12, false) : s.valor === 0) : s.valor === null;
   },
+  // lecturas-v3, P53 y P54: lo que el modelo recibe en cada empleo (quienEsElEmpleador, desde marco-v30). La
+  // lectura reconoce a la propia persona por el RUC y el perfil del modelo sólo por el nombre: una diferencia
+  // ahí sale en la lista, con su referencia, para mirarla.
+  "lec.lab.posible_negocio_familiar": (s, m) => s.valor === empleosDelModelo(m).filter((e) => e.posibleNegocioFamiliar === true).length,
+  "lec.lab.empleos_con_terceros": (s, m) => {
+    const empleos = empleosDelModelo(m);
+    return s.valor === empleos.length - empleos.filter((e) => e.esSuPropioPatrono === true).length;
+  },
   // El modelo y la lectura cuentan los años con el día del análisis (lecturas-v2); en seco, el de la consulta.
   "lec.jud.cobro.mas_reciente": (s, m) => {
     const anios = (m.riesgoJudicialCrediticio?.demandasDeCobro ?? []).map((d) => d.aniosAtras).filter((a) => typeof a === "number");
@@ -186,14 +198,28 @@ const PARIDADES = {
   },
 };
 
+// Las diferencias que no son de la lectura: el perfil del modelo no tiene el RUC del patrono y reconoce a la
+// propia persona sólo por el nombre (quienEsElEmpleador). Si la marca de la persona, que sí usa el RUC, dice que
+// es su propio patrono y ningún empleo del modelo lo dice, la lectura acierta y el mensaje de hoy no. Medido el
+// 2026-11-22: 2 personas, las dos con el RUC del patrono igual a su cédula más 001, a las que el mensaje les dice
+// «posible negocio familiar».
+const rucQueElNombreNoVe = (m) => m.laboral?.clienteEsSuPropioEmpleador === true && !empleosDelModelo(m).some((e) => e.esSuPropioPatrono === true);
+const EXPLICADAS = {
+  "lec.lab.posible_negocio_familiar": rucQueElNombreNoVe,
+  "lec.lab.empleos_con_terceros": rucQueElNombreNoVe,
+};
+
 // ---- La corrida ----
 
 const cuenta = { personas: 0, sinCrudo: 0, noLeidas: 0, mensajesIguales: 0, mensajesDistintos: 0 };
 const distintos = [];
 const porLectura = Object.fromEntries(CATALOGO_DE_LECTURAS.map((c) => [c.codigo, { se_cumple: 0, no_se_cumple: 0, no_se_puede_medir: 0, porValor: {} }]));
-const paridad = Object.fromEntries(Object.keys(PARIDADES).map((k) => [k, { comparadas: 0, iguales: 0, refs: [] }]));
+const paridad = Object.fromEntries(Object.keys(PARIDADES).map((k) => [k, { comparadas: 0, iguales: 0, refs: [], explicadas: 0, refsExplicadas: [] }]));
 const medidas = { ms: [], caracteres: [], tokens: [], activas: [] };
-const TRAMO = new Set(["lec.ban.calificacion.tramo", "lec.jud.pension.estado", "lec.cum.impedimento.causa", "lec.inst.ya_en_bancos"]);
+const TRAMO = new Set(["lec.ban.calificacion.tramo", "lec.jud.pension.estado", "lec.cum.impedimento.causa", "lec.inst.ya_en_bancos", "lec.ide.tercer_o_cuarto_nivel"]);
+// P63 (lecturas-v3): de qué fuente sale el nivel. Las que se cumplen por el título son las que la lectura suma
+// contra leer sólo el registro civil, que es el nivel que el modelo lee hoy.
+const nivelPorFuente = {};
 
 for (let i = 0; i < candidatos.length; i += 50) {
   const lote = candidatos.slice(i, i + 50);
@@ -239,6 +265,11 @@ for (let i = 0; i < candidatos.length; i += 50) {
       const p = porLectura[s.codigo];
       p[s.estado]++;
       if (TRAMO.has(s.codigo)) p.porValor[String(s.valor)] = (p.porValor[String(s.valor)] ?? 0) + 1;
+      if (s.codigo === "lec.ide.tercer_o_cuarto_nivel") {
+        const masAlto = doc.hechos.find((h) => h.codigo === "ide.nivel_educacion.mas_alto")?.valor;
+        const clave = `${s.valor}/${masAlto?.fuente ?? "ninguna"}/${masAlto?.nivel ?? "-"} ${masAlto?.descripcion ?? ""}`.trim();
+        nivelPorFuente[clave] = (nivelPorFuente[clave] ?? 0) + 1;
+      }
       // 4. Lo que llegaría al modelo en la v37: las que se cumplen y las que no se pueden medir.
       if (s.estado !== "no_se_cumple") {
         activas++;
@@ -252,7 +283,10 @@ for (let i = 0; i < candidatos.length; i += 50) {
         const q = paridad[s.codigo];
         q.comparadas++;
         if (regla(s, perfilDelModelo)) q.iguales++;
-        else if (q.refs.length < 5) q.refs.push(ref);
+        else if (EXPLICADAS[s.codigo]?.(perfilDelModelo)) {
+          q.explicadas++;
+          if (q.refsExplicadas.length < 5) q.refsExplicadas.push(ref);
+        } else if (q.refs.length < 5) q.refs.push(ref);
       }
     }
     medidas.caracteres.push(caracteres);
@@ -272,10 +306,14 @@ for (const [codigo, p] of Object.entries(porLectura)) {
   console.log(`  ${codigo.padEnd(40)} ${String(p.se_cumple).padStart(5)} ${String(p.no_se_cumple).padStart(5)} ${String(p.no_se_puede_medir).padStart(5)}${valores}`);
 }
 
+console.log("  P63, lectura/fuente/nivel:");
+for (const [v, n] of Object.entries(nivelPorFuente).sort((a, b) => b[1] - a[1])) console.log(`    ${v.padEnd(60)} ${n}`);
+
 console.log("\n3. Paridad con lo que el modelo recibe hoy (sin las que no se pueden medir):");
 for (const [codigo, q] of Object.entries(paridad)) {
-  console.log(`  ${codigo.padEnd(40)} ${q.iguales} de ${q.comparadas}${q.refs.length ? `  distintas: ${q.refs.join(", ")}` : ""}`);
-  if (q.iguales !== q.comparadas) fallo = true;
+  const explicadas = q.explicadas ? `; ${q.explicadas} explicadas por el RUC: ${q.refsExplicadas.join(", ")}` : "";
+  console.log(`  ${codigo.padEnd(40)} ${q.iguales} de ${q.comparadas}${explicadas}${q.refs.length ? `  distintas: ${q.refs.join(", ")}` : ""}`);
+  if (q.iguales + q.explicadas !== q.comparadas) fallo = true;
 }
 
 const marco = ahora.marco.MARCO_INTERPRETATIVO;

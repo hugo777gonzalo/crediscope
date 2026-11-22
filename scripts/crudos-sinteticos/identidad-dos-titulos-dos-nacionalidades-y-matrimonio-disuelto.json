@@ -1,0 +1,64 @@
+{
+  "descripcion": "Grupo de identidad: dos títulos (técnico superior y cuarto nivel) con bachillerato en el registro civil, dos nacionalidades y un matrimonio sin cónyuge actual. Manda el título de mayor nivel y el otro se descarta; manda la primera nacionalidad; sin cónyuge actual no hay años de casada; el nivel más alto conocido es el del título, y el registro civil cede",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO ANA",
+          "fechaNacimiento": "1980-05-15",
+          "genero": { "descripcion": "MUJER" }
+        },
+        "estadoCivil": { "estadoCivil": { "descripcion": "DIVORCIADO" } },
+        "nivelEducacion": { "nivelEducacion": { "descripcion": "BACHILLERATO", "nivel": 6 } },
+        "profesiones": [{ "profesion": { "descripcion": "PROFESION INVENTADA" } }],
+        "nacionalidades": [
+          { "pais": { "nombre": "Ecuador", "codigoIso3": "ECU", "codigoIso": 218 } },
+          { "pais": { "nombre": "Pais Ficticio", "codigoIso3": "PFI", "codigoIso": 999 } }
+        ],
+        "personaNaturalConyuge": { "fechaMatrimonio": "2005-02-10", "personaConyuge": {} }
+      }
+    },
+    "titulos": {
+      "status": "ok",
+      "data": {
+        "titulos": [
+          { "titulo": { "descripcion": "TECNOLOGIA INVENTADA", "nivelEducacion": { "descripcion": "TECNICO_SUPERIOR", "nivel": 7 } }, "establecimientoEducativo": { "descripcion": "INSTITUTO FICTICIO" } },
+          { "titulo": { "descripcion": "MAESTRIA INVENTADA", "nivelEducacion": { "descripcion": "CUARTO_NIVEL", "nivel": 9 } }, "establecimientoEducativo": { "descripcion": "UNIVERSIDAD FICTICIA" } }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "ide.titulo_mas_alto@1": "aplica",
+    "ide.origen@1": "aplica",
+    "ide.conyuge@1": "aplica",
+    "ide.nivel_mas_alto@1": "aplica"
+  },
+  "hechos": {
+    "ide.titulos.cantidad": { "valor": 2, "registros": ["titulos.titulos#0", "titulos.titulos#1"] },
+    "ide.titulo_mas_alto.descripcion": {
+      "valor": "MAESTRIA INVENTADA",
+      "registros": ["titulos.titulos#1"],
+      "descartados": ["titulos.titulos#0:titulo_de_menor_nivel"]
+    },
+    "ide.origen.pais": {
+      "valor": "Ecuador",
+      "registros": ["general.nacionalidades#0"],
+      "descartados": ["general.nacionalidades#1:no_es_la_primera_nacionalidad"]
+    },
+    "ide.origen.es_extranjero": { "valor": false },
+    "ide.conyuge.tiene": { "valor": false },
+    "ide.conyuge.anios_casado": { "valor": null, "motivo": "no_aplica" },
+    "ide.conyuge.edad": { "valor": null, "motivo": "no_aplica" },
+    "ide.nivel_educacion.mas_alto": {
+      "valor": { "nivel": 9, "descripcion": "CUARTO_NIVEL", "fuente": "titulos" },
+      "registros": ["titulos.titulos#1"],
+      "diferencias": ["dif.ide.nivel_de_educacion"]
+    }
+  },
+  "diferencias": { "dif.ide.nivel_de_educacion": 1 }
+}

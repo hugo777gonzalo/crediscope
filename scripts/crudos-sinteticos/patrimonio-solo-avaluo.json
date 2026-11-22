@@ -1,0 +1,24 @@
+{
+  "descripcion": "Grupo de patrimonio: un solo auto sin ningún precio de mercado (sólo el avalúo y el precio de lista, que no cuenta): el colateral es el avalúo y no descarta nada. Los inmuebles no contestaron (`faltante` es una caída para esa fuente): sin valor, con el parcial 0",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO TRECE" } } },
+    "vehiculos": {
+      "status": "ok",
+      "data": { "personaVehiculo": [{ "tipoComercial": "autos", "valorAvaluo": 4500, "precioVenta": 29990 }] }
+    },
+    "bienesInmueble": { "status": "faltante", "data": null },
+    "inversiones": { "status": "ok", "data": { "inversiones": [{}] } }
+  },
+  "esperado": {},
+  "reglas": {
+    "pat.colateral@2": "no-aplica"
+  },
+  "hechos": {
+    "pat.vehiculos.colateral.total": { "valor": 4500, "registros": ["vehiculos.personaVehiculo#0"], "descartados": [] },
+    "pat.vehiculos.avaluo.total": { "valor": 4500 },
+    "pat.inmuebles.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "pat.inversiones.cantidad": { "valor": 1 }
+  }
+}
