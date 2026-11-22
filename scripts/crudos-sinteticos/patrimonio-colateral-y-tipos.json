@@ -1,0 +1,51 @@
+{
+  "descripcion": "Grupo de patrimonio: un auto con precio promedio y avalúo, una moto sólo con avalúo, un pesado con precio de venta promedio y un vehículo de otro tipo con avalúo negativo; dos inmuebles. El colateral cita el precio de mercado de cada uno y descarta el avalúo de los que lo traen (P61); los tipos descartan los vehículos de otro tipo",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO DOCE" } } },
+    "vehiculos": {
+      "status": "ok",
+      "data": {
+        "personaVehiculo": [
+          { "tipoComercial": "autos", "valorAvaluo": 12000, "precioPromedio": 10000, "precioComercial": 11000 },
+          { "tipoComercial": "motos", "valorAvaluo": 82 },
+          { "tipoComercial": "pesados", "valorAvaluo": 39594, "precioVentaPromedio": 17484, "precioVentaPublico": 18000 },
+          { "tipoComercial": "otros", "valorAvaluo": -3 }
+        ]
+      }
+    },
+    "bienesInmueble": { "status": "ok", "data": { "bienesInmueble": [{}, {}] } },
+    "inversiones": { "status": "ok", "data": { "inversiones": [] } }
+  },
+  "esperado": {},
+  "reglas": {
+    "pat.colateral@2": "aplica",
+    "pat.vehiculos.por_tipo@1": "aplica"
+  },
+  "hechos": {
+    "pat.vehiculos.colateral.total": {
+      "valor": 27566,
+      "registros": ["vehiculos.personaVehiculo#0", "vehiculos.personaVehiculo#1", "vehiculos.personaVehiculo#2"],
+      "descartados": [
+        "vehiculos.personaVehiculo#0:trae_precio_de_mercado_y_el_avaluo_no_se_usa",
+        "vehiculos.personaVehiculo#2:trae_precio_de_mercado_y_el_avaluo_no_se_usa"
+      ]
+    },
+    "pat.vehiculos.avaluo.total": { "valor": 51673 },
+    "pat.vehiculos.cantidad": { "valor": 4 },
+    "pat.vehiculos.autos.cantidad": {
+      "valor": 1,
+      "registros": ["vehiculos.personaVehiculo#0"],
+      "descartados": [
+        "vehiculos.personaVehiculo#1:es_de_otro_tipo_comercial",
+        "vehiculos.personaVehiculo#2:es_de_otro_tipo_comercial",
+        "vehiculos.personaVehiculo#3:es_de_otro_tipo_comercial"
+      ]
+    },
+    "pat.vehiculos.pesados.cantidad": { "valor": 1, "registros": ["vehiculos.personaVehiculo#2"] },
+    "pat.vehiculos.motos.cantidad": { "valor": 1, "registros": ["vehiculos.personaVehiculo#1"] },
+    "pat.inmuebles.cantidad": { "valor": 2, "registros": ["bienesInmueble.bienesInmueble#0", "bienesInmueble.bienesInmueble#1"] },
+    "pat.inversiones.cantidad": { "valor": 0, "registros": ["inversiones.inversiones"] }
+  }
+}
