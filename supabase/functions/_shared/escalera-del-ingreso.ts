@@ -30,7 +30,9 @@
 
 import { camposSinDato, conLosValoresDeAntes } from "./campos-sin-dato.ts";
 import { type DatosDeCapacidad, PARAMETROS_CAPACIDAD, textoUsd } from "./capacidad-de-pago.ts";
-import { esIngresoMinimoSbu, sbuDelAnio } from "./fuentes-ingreso.ts";
+import { baseImponibleDesdeRenta } from "./base-imponible-desde-renta.ts";
+import { MINIMO_PARA_ROTULAR_COMO_ESTIMADO, type RespuestaDeEstimacion } from "./estimacion-de-ingreso.ts";
+import { esIngresoMinimoSbu, IMPUESTO_MINIMO_PARA_INDICIO, sbuDelAnio } from "./fuentes-ingreso.ts";
 
 // v1 (F10, 2026-11-22): peldaños 1, 3a, 3c y 5; el 2, el 4 y el 6 quedan sin medir hasta F11 y los
 // pasos 6 y 8 del diseño.
@@ -43,11 +45,25 @@ export interface ParametrosDeLaEscalera {
   cargaParaLaCotaPorCuotas: number;
   /** El declarado es coherente si no pasa de tantas veces el mayor monto de los peldaños 1 a 4. */
   declaradoCoherenteHastaVeces: number;
+  /** 3b: el impuesto a la renta causado tiene que pasar de esto (USD) para dar una cota; debajo está la cuota fija del negocio popular. Propuesta sin medir (D9). */
+  impuestoMinimoParaLaCota: number;
+  /** 3b: años fiscales hacia atrás desde el año del corte del IESS (D9). */
+  aniosFiscalesDeAntiguedad: number;
+  /**
+   * 3b con un contribuyente RIMPE (sólo con buró, que trae la clase). `true` (propuesta): se despeja con la tabla general y la base
+   * queda POR DEBAJO del ingreso, así que sigue siendo cota (el impuesto del emprendedor es 1% a 2% del bruto, menor que el de la
+   * tabla general para el mismo ingreso; la cuota fija del negocio popular, USD 60 o menos, no pasa el umbral). `false`: el RIMPE no da cota,
+   * como dice `baseImponibleDesdeRenta()`.
+   */
+  rentaDelRimpeEsCota: boolean;
 }
 
 export const PARAMETROS_DE_LA_ESCALERA: ParametrosDeLaEscalera = {
   cargaParaLaCotaPorCuotas: 0.75,
   declaradoCoherenteHastaVeces: 1.5,
+  impuestoMinimoParaLaCota: IMPUESTO_MINIMO_PARA_INDICIO,
+  aniosFiscalesDeAntiguedad: 2,
+  rentaDelRimpeEsCota: true,
 };
 
 // ---------------------------------------------------------------- tipos (sección 2 del diseño)
@@ -238,6 +254,11 @@ const dolares = (c: number) => c / 100;
 export interface OpcionesDelIngreso {
   /** El Ingreso declarado de la solicitud, sin verificar. null o sin decir: la persona no declaró nada. */
   ingresoDeclarado?: number | null;
+  /**
+   * La respuesta de `armarEstimacion()` de la persona (F11): de ahí sale el peldaño 4 (el mínimo certificado) o, si no pasa de USD 1.000,
+   * el 6. Sin decirla, el 4 queda `no_medido` («predictor sin conectar»).
+   */
+  estimacion?: RespuestaDeEstimacion | null;
   /** La estructura de Equifax vigente: con ella se separan semiformal y poco formal. */
   estructuraEquifax?: AnyRecord | null;
   parametros?: Partial<ParametrosDeLaEscalera>;
@@ -421,6 +442,42 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
       });
     }
   }
+  // 3b. Impuesto a la renta causado: la base imponible que lo produjo, dividida en 12. Es una cota del ingreso total y crea espacio.
+  if (!aportesSinRespuesta) {
+    const detalle = comoObjeto(fuentes?.detalle);
+    const filas = (Array.isArray(detalle?.impuestoRentaPorAnio) ? detalle!.impuestoRentaPorAnio : []) as AnyRecord[];
+    const anioCorte = Number(String(datos.corteIess ?? "").slice(0, 4));
+    // Un año puede traer varios formularios (la declaración propia, el 107 del empleador): se toma el mayor, no la suma, porque pueden repetir la misma renta.
+    const porAnio = new Map<number, number>();
+    for (const r of filas) {
+      const anio = Number(r.anio);
+      const valor = Math.max(numero(r.causado) ?? 0, numero(r.enRelacionDeDependencia) ?? 0);
+      if (Number.isInteger(anio) && valor > (porAnio.get(anio) ?? 0)) porAnio.set(anio, valor);
+    }
+    const [anio, impuesto] = Number.isFinite(anioCorte)
+      ? ([...porAnio.entries()].filter(([a, v]) => v > parametros.impuestoMinimoParaLaCota && a >= anioCorte - parametros.aniosFiscalesDeAntiguedad).sort((x, y) => y[0] - x[0])[0] ?? [])
+      : [];
+    if (anio !== undefined && impuesto !== undefined) {
+      const clase = conBuro ? comoObjeto(opciones.estructuraEquifax?.actividadEconomica)?.claseDeContribuyente : null;
+      const esRimpe = typeof clase === "string" && clase.trim().toUpperCase() === "RIMPE";
+      const regimen = conBuro && !esRimpe ? "general" : esRimpe && !parametros.rentaDelRimpeEsCota ? "rimpe" : undefined;
+      const b = baseImponibleDesdeRenta(impuesto, anio, regimen);
+      if (b.estado === "ok" && b.mensualDesde > 0) {
+        const avisos: string[] = [];
+        if (!b.regimenVerificado) avisos.push(esRimpe ? "regimen_rimpe_base_por_debajo_del_ingreso" : "regimen_sin_verificar");
+        if (b.tramoAbierto) avisos.push("tramo_abierto");
+        componentes3.push({
+          clave: "impuesto_a_la_renta",
+          montoMensual: b.mensualDesde,
+          regla: "base_imponible_del_impuesto/12",
+          creaEspacio: true,
+          aFecha: String(anio),
+          hechos: hecho("ing.impuesto_renta.por_anio"),
+          avisos,
+        });
+      } else if (b.estado === "no_aplica") avisos3.push("renta_del_rimpe_no_es_cota");
+    }
+  }
   let p3: PeldanoDelIngreso;
   if (componentes3.length > 0) {
     const maximo = Math.max(...componentes3.map((c) => centavos(c.montoMensual)));
@@ -437,10 +494,7 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
   }
 
   // ---- 4. Mínimo certificado: el predictor (F11) ----
-  const p4 = peldanoVacio(4, "minimo_certificado", "no_medido", "predictor_sin_conectar", true);
-
-  // ---- 6. Referencia del tipo de persona: la tabla se construye en el paso 6 del diseño ----
-  const p6 = peldanoVacio(6, "referencia_del_tipo_de_persona", "no_medido", "tabla_de_referencia_sin_construir");
+  const { p4, p6 } = peldanosDelPredictor(opciones.estimacion);
 
   // ---- 5. Declarado: coherente si no pasa de 1,5 veces el mayor monto de los peldaños 1 a 4 ----
   const declarado = numero(opciones.ingresoDeclarado);
@@ -474,15 +528,19 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
   // ---- diferencias ----
   const diferencias: DiferenciaDelIngreso[] = [];
   const usd = textoUsd;
-  const cotaPorCuotas = componentes3.find((c) => c.clave === "cuotas_al_dia")?.montoMensual ?? null;
+  // Las cotas que prueban más ingreso que lo verificado: las cuotas al día y la renta (el aporte propio es lo verificado del 3, no una cota contra ella).
+  const cotas = componentes3.filter((c) => c.clave === "cuotas_al_dia" || c.clave === "impuesto_a_la_renta");
+  const mayorCota = cotas.reduce<ComponenteDelPeldano | null>((a, c) => (a === null || c.montoMensual > a.montoMensual ? c : a), null);
+  const cotaPorCuotas = mayorCota?.montoMensual ?? null;
+  const queProbaba = mayorCota?.clave === "impuesto_a_la_renta" ? "El impuesto a la renta prueba una base de al menos" : "Las cuotas al día prueban un ingreso de al menos";
   const aportePropio = componentes3.find((c) => c.clave === "aporte_propio")?.montoMensual ?? null;
   const verificadoNeto = p1.estado === "con_monto" ? (p1.ingresoNeto as number) : null;
   const masFuerteQueLaCota = Math.max(verificadoNeto ?? 0, aportePropio ?? 0);
   if (cotaPorCuotas !== null && cotaPorCuotas > masFuerteQueLaCota && masFuerteQueLaCota > 0) {
     diferencias.push({
       clave: "cota_supera_lo_verificado",
-      detalle: `Las cuotas al día prueban un ingreso de al menos ${usd(cotaPorCuotas)}, más que lo verificado (${usd(masFuerteQueLaCota)}).`,
-      montos: { cotaPorCuotas, [verificadoNeto !== null && verificadoNeto >= (aportePropio ?? 0) ? "sueldoNeto" : "aportePropio"]: masFuerteQueLaCota },
+      detalle: `${queProbaba} ${usd(cotaPorCuotas)}, más que lo verificado (${usd(masFuerteQueLaCota)}).`,
+      montos: { [mayorCota?.clave === "impuesto_a_la_renta" ? "baseDeLaRenta" : "cotaPorCuotas"]: cotaPorCuotas, [verificadoNeto !== null && verificadoNeto >= (aportePropio ?? 0) ? "sueldoNeto" : "aportePropio"]: masFuerteQueLaCota },
     });
   }
   if (p5.estado === "con_monto") {
@@ -520,5 +578,61 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
     peldanos: [p1, p2, p3, p4, p5, p6],
     mayorCuotaAlDia: null,
     diferencias,
+  };
+}
+
+// ---------------------------------------------------------------- el predictor (F11): peldaños 4 y 6
+
+const ESTADO_SIN_ESTIMACION: Record<string, EstadoDelPeldano> = {
+  ingreso_verificado: "no_aplica", // un dependiente con sueldo: lo verificado manda y no se estima
+  jubilado: "no_aplica", // sin la tabla de pensiones no se estima
+  dependiente_sin_monto: "no_aplica",
+  sin_datos: "no_medido", // la fuente no contestó: no es un juicio sobre la persona
+  consulta_incompleta: "no_medido",
+};
+
+/**
+ * El mínimo certificado como peldaño 4 y, si no distingue a la persona de los solicitantes (USD 1.000 o menos,
+ * `MINIMO_PARA_ROTULAR_COMO_ESTIMADO`), como referencia en el 6, que nunca entra a la capacidad ni a la coherencia.
+ * `undefined` es «el predictor no se pidió» (F10); `null`, «no hay estimación guardada».
+ */
+function peldanosDelPredictor(estimacion: RespuestaDeEstimacion | null | undefined): { p4: PeldanoDelIngreso; p6: PeldanoDelIngreso } {
+  const p6Vacio = peldanoVacio(6, "referencia_del_tipo_de_persona", "no_medido", "tabla_de_referencia_sin_construir");
+  if (estimacion === undefined) return { p4: peldanoVacio(4, "minimo_certificado", "no_medido", "predictor_sin_conectar", true), p6: p6Vacio };
+  if (estimacion === null) return { p4: peldanoVacio(4, "minimo_certificado", "no_medido", "sin_estimacion", true), p6: p6Vacio };
+  if (!estimacion.estimado.aplica) {
+    const motivo = estimacion.estimado.motivo;
+    return { p4: peldanoVacio(4, "minimo_certificado", ESTADO_SIN_ESTIMACION[motivo] ?? "no_medido", motivo, true), p6: p6Vacio };
+  }
+  const monto = estimacion.estimado.minimoCertificado.monto;
+  const aFecha = estimacion.consultadoEl.slice(0, 10);
+  if (monto > MINIMO_PARA_ROTULAR_COMO_ESTIMADO) {
+    return {
+      p4: {
+        ...peldanoVacio(4, "minimo_certificado", "con_monto", null, true),
+        montoMensual: monto,
+        montoQueCreaEspacio: monto,
+        ingresoNeto: monto,
+        componentes: [{
+          clave: "predictor",
+          montoMensual: monto,
+          regla: "minimo_certificado_al_90",
+          creaEspacio: true, // si lo acepta el estándar: sin buró 0%, no sostiene (D6)
+          aFecha,
+          hechos: [],
+          avisos: ["estimado", "sin_verificar"],
+        }],
+      },
+      p6: p6Vacio,
+    };
+  }
+  // No pasa de USD 1.000: no distingue a la persona de los solicitantes. Baja al 6 como referencia.
+  return {
+    p4: peldanoVacio(4, "minimo_certificado", "sin_monto", "minimo_no_pasa_de_1000", true),
+    p6: {
+      ...peldanoVacio(6, "referencia_del_tipo_de_persona", "con_monto", null),
+      montoMensual: monto,
+      componentes: [{ clave: "referencia", montoMensual: monto, regla: "minimo_del_predictor_no_pasa_de_1000", creaEspacio: false, aFecha, hechos: [], avisos: ["referencia_de_solicitantes"] }],
+    },
   };
 }
