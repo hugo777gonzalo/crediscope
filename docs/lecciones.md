@@ -15,6 +15,10 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   controles tienen que ser de ese commit); el 2026-10-20 se borró la rama
   del #65 sin confirmar MERGED y el PR quedó cerrado. Confirmar el estado
   del PR antes de borrar la rama.
+- **Un PR apilado se cierra cuando se fusiona su base con `--delete-branch`.** El 2026-11-22 el #205 (F10) se fusionó
+  y se borró su rama; el #206 (F11), que la tenía de base, quedó cerrado sin fusionar y GitHub no deja reabrirlo ni
+  cambiarle la base: hubo que abrir el #207 desde la misma rama. Reapuntar el PR de arriba a `main` antes de
+  fusionar su base.
 - **Con squash, una rama fusionada nunca es ancestro de `main`, así que eso no dice si quedó
   trabajo afuera.** El 2026-10-28 había más de 60 ramas locales y 34 remotas, todas «sin fusionar» para
   git. Contra la cabeza de su PR (`git fetch origin refs/pull/N/head`, `merge-base --is-ancestor`)

@@ -1224,7 +1224,7 @@ const FRACCION_BASICA_RENTA: Record<number, number> = {
 const TARIFA_MAXIMA_RENTA = 0.37;
 // Debajo de esto no se lee: el régimen de negocios populares (RIMPE) paga
 // una cuota fija de $60 al año sin importar el ingreso.
-const IMPUESTO_MINIMO_PARA_INDICIO = 100;
+export const IMPUESTO_MINIMO_PARA_INDICIO = 100;
 
 const DOLARES = new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
