@@ -144,18 +144,29 @@ Deno.test("el mínimo certificado, aunque no sostenga, cuenta para la coherencia
   assertEquals(con.resultado.ingreso.escalera.find((c) => c.numero === 5)?.ingresoAceptado, 1190);
 });
 
-Deno.test("la capacidad máxima suma la estimación del predictor (el mínimo certificado) y no cambia el veredicto", () => {
+Deno.test("la capacidad máxima usa la estimación central del predictor (negocio, 2026-11-22) y no cambia el veredicto ni el peldaño 4", () => {
   const p = perfil("independiente", [aportePropio(500)], { ruc: true });
   const sin = evaluar(p);
-  const con = evaluar(p, { estimacion: estimar(p, 2000) });
+  const e = estimar(p, 2000);
+  assert(e.estimado.aplica);
+  const central = e.estimado.valorCentral;
+  const minimo = e.estimado.minimoCertificado.monto;
+  assert(central > minimo, "la central queda sobre el mínimo");
+  const con = evaluar(p, { estimacion: e });
   assertEquals(con.resultado.veredicto, sin.resultado.veredicto);
+  // El peldaño 4 sigue siendo el mínimo certificado: la central no entra a la escalera, sólo al escenario informativo.
+  assertEquals(con.ingreso.peldanos[3].montoMensual, minimo);
+  assertEquals(con.ingreso.estimacionCentral, central);
   const cm = con.resultado.ingreso.capacidadMaxima!;
-  assertEquals([cm.peldano, cm.componente, cm.ingreso], ["minimo_certificado", "predictor", 2000]);
+  assertEquals([cm.peldano, cm.componente, cm.ingreso], ["minimo_certificado", "predictor", central]);
   assert(cm.avisos.includes("El mayor ingreso no está verificado."));
+  assert(cm.avisos.includes("Con la estimación central del predictor."));
   assert((cm.montoMaximoAlPlazo ?? 0) > (sin.resultado.ingreso.capacidadMaxima?.montoMaximoAlPlazo ?? 0));
   assert((cm.mejoraDelMontoMaximo ?? 0) > 0);
-  // El peldaño 2 hipotético con el mínimo certificado como si se documentara.
+  // El peldaño 2 hipotético sigue con el mínimo certificado como si se documentara.
   assertEquals(con.resultado.ingreso.mejora?.evidencia, "declaracion_de_iva");
+  // Si el mínimo no pasa de USD 1.000 baja al 6 y la central no entra.
+  assertEquals(evaluar(p, { estimacion: estimar(p, 500) }).ingreso.estimacionCentral, null);
 });
 
 // ---------------------------------------------------------------- la renta: 3b

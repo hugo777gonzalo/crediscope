@@ -159,6 +159,11 @@ export interface IngresoDelPerfil {
   /** Para el reemplazo de cuota del estándar. Queda null: el perfil no guarda la cuota de cada operación. */
   mayorCuotaAlDia: number | null;
   diferencias: DiferenciaDelIngreso[];
+  /**
+   * La estimación central del predictor (USD por mes), sólo cuando el 4 tiene monto (el mínimo pasa de USD 1.000). Es lo que usa la
+   * capacidad máxima informativa (negocio, 2026-11-22); el peldaño 4 sigue siendo el mínimo certificado y la central nunca sostiene.
+   */
+  estimacionCentral: number | null;
 }
 
 export type VeredictoDelPeldano = "alcanza" | "justo" | "extendida" | "no_alcanza" | "no_sostiene";
@@ -495,6 +500,7 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
 
   // ---- 4. Mínimo certificado: el predictor (F11) ----
   const { p4, p6 } = peldanosDelPredictor(opciones.estimacion);
+  const estimacionCentral = p4.estado === "con_monto" && opciones.estimacion?.estimado.aplica ? opciones.estimacion.estimado.valorCentral : null;
 
   // ---- 5. Declarado: coherente si no pasa de 1,5 veces el mayor monto de los peldaños 1 a 4 ----
   const declarado = numero(opciones.ingresoDeclarado);
@@ -578,6 +584,7 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
     peldanos: [p1, p2, p3, p4, p5, p6],
     mayorCuotaAlDia: null,
     diferencias,
+    estimacionCentral,
   };
 }
 

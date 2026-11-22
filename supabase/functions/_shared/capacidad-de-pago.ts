@@ -743,7 +743,9 @@ export function evaluarEscalera(e: EntradaDeEscalera): ResultadoDeEscalera {
     for (const p of ingreso.peldanos) {
       if (p.numero === 6 || p.estado !== "con_monto") continue;
       // El 3 cuenta por lo que prueba, aunque la cota por cuotas no cree espacio; el 1, por el neto; el resto, por su monto.
-      const monto = p.numero === 1 ? p.ingresoNeto : p.montoMensual;
+      // El 4 cuenta por la estimación central (negocio, 2026-11-22): es un escenario informativo, el peldaño sigue siendo el mínimo certificado.
+      let monto = p.numero === 1 ? p.ingresoNeto : p.montoMensual;
+      if (p.numero === 4 && ingreso.estimacionCentral !== null && ingreso.estimacionCentral > (monto ?? 0)) monto = ingreso.estimacionCentral;
       if (monto === null || monto <= 0) continue;
       const componente = p.componentes.reduce((a, x) => (x.montoMensual > a.montoMensual ? x : a), p.componentes[0]);
       candidatos.push({ n: p.numero, p, clave: componente?.clave ?? "declarado", montoC: centavos(monto) });
@@ -754,6 +756,7 @@ export function evaluarEscalera(e: EntradaDeEscalera): ResultadoDeEscalera {
       const monto = alPlazo(m.capacidad.cuotaMaximaAdmisible);
       const avisos = ["Informativa: no sostiene el cálculo ni cambia el veredicto."];
       if (mayor.n >= 4) avisos.push("El mayor ingreso no está verificado.");
+      if (mayor.n === 4 && ingreso.estimacionCentral !== null) avisos.push("Con la estimación central del predictor.");
       capacidadMaxima = {
         informativa: true,
         peldano: mayor.p.peldano,

@@ -20,7 +20,7 @@
 // F11 (pasos 4 y 5): la renta como 3b y el predictor como peldaño 4 (y 6 si el mínimo no pasa de USD 1.000), con el modelo vigente
 // del nivel 1 (sólo lee: se baja del depósito privado). Además: cuántas personas tienen renta reciente, que el predictor da lo mismo
 // que en origin/main (el código no se toca: se compara armarEstimacion() de los dos lados, persona por persona), que el 4 no cambia
-// ninguna capacidad con su fracción en 0%, y la capacidad máxima con el mínimo certificado y, como sensibilidad, con la estimación central.
+// ninguna capacidad con su fracción en 0%, y la capacidad máxima con la estimación central y, de comparación, con el mínimo certificado.
 //
 // Uso: node scripts/medir-escalera.mjs [--limite=N] [--contra=origin/main]
 //
@@ -124,7 +124,7 @@ const predictor = {
   conModelo: 0, estados: {}, motivos: {}, porTipo: {}, pasaDe1000: 0, bajaAl6: 0, iguales: 0, distintos: 0, filasIguales: 0, filasDistintas: 0,
   invarianzaRota: 0, invarianzaComparadas: 0, declaradoCambia: 0,
   capMin: { personas: 0, sube: 0, mejoras: [], mejorasRelativas: [], deNoAlcanzaAAlcanza: 0, mejoraInforma: 0 },
-  capCentral: { personas: 0, sube: 0, mejoras: [], deNoAlcanzaAAlcanza: 0 },
+  capCentral: { personas: 0, conCentral: 0, sube: 0, mejoras: [], mejorasRelativas: [], deNoAlcanzaAAlcanza: 0 },
 };
 const mixtos = { personas: 0, bajaElIngreso: 0, bajas: [], cambianDeVeredicto: 0 };
 const cobertura = { dependientesConCota: 0, cotaCubierta: 0, conMoraOSinMedir: 0, dependientesConSueldo: 0 };
@@ -189,8 +189,8 @@ for (let i = 0; i < elegidos.length; i += 50) {
           if (!mismo) predictor.invarianzaRota++;
         } else if (rp.veredicto !== r.veredicto) predictor.declaradoCambia++;
 
-        // La capacidad máxima con el mínimo certificado y, de sensibilidad, con la estimación central.
-        const cmMin = rp.ingreso.capacidadMaxima;
+        // La capacidad máxima con el mínimo certificado (la comparación) y, más abajo, con la estimación central (la oficial).
+        const cmMin = evaluarEscalera({ datos: datosIess, ingreso: { ...conPredictor, estimacionCentral: null }, condiciones }).ingreso.capacidadMaxima;
         if (cmMin) {
           predictor.capMin.personas++;
           const mejora = cmMin.mejoraDelMontoMaximo ?? 0;
@@ -202,17 +202,19 @@ for (let i = 0; i < elegidos.length; i += 50) {
           }
           if (!["alcanza", "justo", "extendida"].includes(rp.veredicto) && ["alcanza", "justo"].includes(cmMin.veredicto)) predictor.capMin.deNoAlcanzaAAlcanza++;
         }
-        if (respuesta.estimado.aplica) {
-          const central = { ...respuesta, estimado: { ...respuesta.estimado, minimoCertificado: { ...respuesta.estimado.minimoCertificado, monto: respuesta.estimado.valorCentral } } };
-          const conCentral = armarIngresoDelPerfil(perfil, datosIess, { ingresoDeclarado: declarado, estimacion: central });
-          const rc = evaluarEscalera({ datos: datosIess, ingreso: conCentral, condiciones });
-          const cmC = rc.ingreso.capacidadMaxima;
-          if (cmC) {
-            predictor.capCentral.personas++;
-            const mejora = cmC.mejoraDelMontoMaximo ?? 0;
-            if (mejora > 0) { predictor.capCentral.sube++; predictor.capCentral.mejoras.push(mejora); }
-            if (!["alcanza", "justo", "extendida"].includes(rc.veredicto) && ["alcanza", "justo"].includes(cmC.veredicto)) predictor.capCentral.deNoAlcanzaAAlcanza++;
+        // La capacidad máxima oficial (negocio, 2026-11-22) usa la estimación central; cmMin es la comparación con el mínimo certificado.
+        const cmC = rp.ingreso.capacidadMaxima;
+        if (cmC) {
+          predictor.capCentral.personas++;
+          if (conPredictor.estimacionCentral !== null) predictor.capCentral.conCentral++;
+          const mejora = cmC.mejoraDelMontoMaximo ?? 0;
+          if (mejora > 0) {
+            predictor.capCentral.sube++;
+            predictor.capCentral.mejoras.push(mejora);
+            const base = rp.ingreso.oferta?.montoMaximoAlPlazo ?? 0;
+            if (base > 0) predictor.capCentral.mejorasRelativas.push(mejora / base);
           }
+          if (!["alcanza", "justo", "extendida"].includes(rp.veredicto) && ["alcanza", "justo"].includes(cmC.veredicto)) predictor.capCentral.deNoAlcanzaAAlcanza++;
         }
       }
 
@@ -327,8 +329,8 @@ else {
   for (const [tipo, t] of Object.entries(predictor.porTipo)) console.log(`    ${tipo}: ${Object.entries(t).map(([k, v]) => `${k} ${miles(v)}`).join(", ")}`);
   console.log(`  El predictor da lo mismo que ${CONTRA}: respuesta igual en ${miles(predictor.iguales)} de ${miles(predictor.conModelo)} (distinta en ${miles(predictor.distintos)}); fila igual en ${miles(predictor.filasIguales)} (distinta en ${miles(predictor.filasDistintas)})`);
   console.log(`  El 4 con fracción 0% no cambia nada: de ${miles(predictor.invarianzaComparadas)} personas sin declarado, ${miles(predictor.invarianzaRota)} cambian de veredicto, de quien sostiene o de oferta; con declarado, cambian de veredicto ${miles(predictor.declaradoCambia)} (sólo por la coherencia)`);
-  const c = predictor.capMin;
-  console.log(`  Capacidad máxima con el MÍNIMO certificado: ${miles(c.personas)} personas; el monto máximo sube en ${miles(c.sube)} (mejora mediana USD ${miles(mediana(c.mejoras) ?? 0)}, p90 USD ${miles(percentil(c.mejoras, 0.9) ?? 0)}; relativa mediana ${pct(mediana(c.mejorasRelativas) ?? 0, 1)}); pasarían de no alcanzar a alcanzar: ${miles(c.deNoAlcanzaAAlcanza)}`);
   const z = predictor.capCentral;
-  console.log(`  Sensibilidad con la estimación CENTRAL: ${miles(z.personas)} personas; el monto máximo sube en ${miles(z.sube)} (mejora mediana USD ${miles(mediana(z.mejoras) ?? 0)}, p90 USD ${miles(percentil(z.mejoras, 0.9) ?? 0)}); pasarían de no alcanzar a alcanzar: ${miles(z.deNoAlcanzaAAlcanza)}`);
+  console.log(`  Capacidad máxima (con la estimación CENTRAL, decisión del negocio del 2026-11-22): ${miles(z.personas)} personas (con central: ${miles(z.conCentral)}); el monto máximo sube en ${miles(z.sube)} (mejora mediana USD ${miles(mediana(z.mejoras) ?? 0)}, p90 USD ${miles(percentil(z.mejoras, 0.9) ?? 0)}; relativa mediana ${pct(mediana(z.mejorasRelativas) ?? 0, 1)}); pasarían de no alcanzar a alcanzar: ${miles(z.deNoAlcanzaAAlcanza)}`);
+  const c = predictor.capMin;
+  console.log(`  Comparación con el MÍNIMO certificado: ${miles(c.personas)} personas; sube en ${miles(c.sube)} (mejora mediana USD ${miles(mediana(c.mejoras) ?? 0)}, p90 USD ${miles(percentil(c.mejoras, 0.9) ?? 0)}); pasarían de no alcanzar a alcanzar: ${miles(c.deNoAlcanzaAAlcanza)}`);
 }
