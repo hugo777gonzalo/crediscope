@@ -1172,6 +1172,135 @@ resto de `controles-bloqueo.ts`.
 - **Peso y tiempo** (todos los grupos): p99 10,3 KB en gzip y 6,6 ms por persona; la que más tiene, 219 entidades y
   15,6 KB en gzip.
 
+#### Grupo de patrimonio (`patrimonio`, etapa A, 2026-11-22)
+
+- **Qué es.** Los 12 campos de `patrimonio`, de tres fuentes que no se mezclan entre sí: `vehiculos` (lista
+  `personaVehiculo`: la cantidad, si tiene, autos, pesados y motos, el avalúo, tres sumas de precios y el colateral),
+  `bienesInmueble` e `inversiones` (sólo se cuentan: nunca se vio un registro que diga cuánto vale). 12 códigos
+  `pat.*`, en el orden de `types.ts`. Pólizas y siniestros no son de este grupo: están en `transitoVehicular` (grupo de
+  tránsito).
+- **Por qué.** P61 del marco (11.1): marco-v36 le pide al modelo, en prosa, que para el valor de los vehículos use
+  `valorColateralVehiculos` y no `valorAvaluoVehiculos`. Con el grupo en hechos, cada vehículo cita el precio que sostiene
+  su colateral y deja a la vista el avalúo que no se usó, y la v37 puede resolverlo en el perfil (abajo).
+- **Las reglas que eligen** (`REGLAS_QUE_MEZCLAN`):
+  - `pat.colateral@2` (estructura-v21, p10, negocio 2026-11-09): por vehículo, el primer precio de mercado mayor que 0
+    (`precioPromedio`, `precioComercial`, `precioVentaPromedio`, `precioVentaPublico`, en ese orden) y el avalúo sólo sin
+    ninguno; un avalúo negativo vale 0. Con un precio de mercado, el avalúo de ese vehículo queda descartado
+    (`trae_precio_de_mercado_y_el_avaluo_no_se_usa`). La @1 (hasta v20) era el máximo de siete precios.
+  - `pat.vehiculos.por_tipo@1`: autos, pesados y motos por `tipoComercial` tal como viene; cada cantidad descarta los
+    vehículos de otro tipo (`es_de_otro_tipo_comercial`). Uno de otro tipo o sin tipo cuenta sólo en el total.
+  - Las sumas (`pat.vehiculos.suma@1`) y los conteos no eligen nada. Las cinco sumas y los cinco conteos se recuentan
+    desde lo citado (5.1, punto 5): cada vehículo cita el campo que aporta, así que sumar lo citado da el colateral.
+- **Fuente caída.** `vehiculos` dice «no hay» con `faltante` (FUENTES, calidad-de-la-consulta.ts): se lee como sin
+  vehículos y confirmado, como hoy. `bienesInmueble` e `inversiones` dicen «no hay» con la lista vacía: un `faltante` o un
+  `error` los deja sin valor con el `parcial`. En la etapa A el perfil escribe el parcial (casi siempre 0), como hoy.
+- **Una copia, mientras dure la etapa A.** La regla del colateral vive dentro de `buildStandardProfile` y queda escrita dos
+  veces (3.3): la paridad sobre las 3.766 personas y sobre los crudos inventados corre en cada PR. Se exporta
+  `precioDeColateral()` para que la etapa B la use desde acá y `process.ts` pierda la suya.
+- **Crudos inventados**: `patrimonio-colateral-y-tipos.json` (las dos reglas aplican), `patrimonio-solo-avaluo.json` (el
+  colateral es el avalúo y no descarta nada; los inmuebles no contestaron) y `patrimonio-sin-vehiculos.json` (`faltante`
+  de vehículos: ninguna aplica).
+
+#### El seco del grupo de patrimonio (2026-11-22, 3.766 personas reales, contra estructura-v31)
+
+`node scripts/comparar-hechos.mjs --deposito --contra=origin/main --grupo=patrimonio --medir`, sólo lectura:
+
+- **Paridad**: 45.192 de 45.192 campos iguales (12 por persona); 0 campos sin procedencia; 1.205.971 registros citados
+  (todos los grupos), 0 que no resuelven; 211.865 recuentos, 0 que no cuadran.
+- **Contra origin/main**: 0 personas con algún campo distinto, y el perfil entero igual en las 3.766 (la etapa A no
+  toca `process.ts`). Contra lo guardado en la base, 0 perfiles distintos.
+- **Peso y tiempo** (todos los grupos): p99 10,7 KB en gzip y 5,95 ms por persona; 160 hechos de media.
+- Con esto el grupo entra a `GRUPOS_EN_PARIDAD`: `probar-crudos-sinteticos.mjs` repite su paridad en los 62 crudos
+  inventados en cada PR. Falta la etapa B (5.2, punto 8): `process.ts` arma `patrimonio` desde los hechos, con su versión
+  de la estructura, el «sin dato» de una fuente caída y su recálculo, en un PR aparte y con el sí del
+  negocio.
+- **Lo que movería la etapa B** (estado de cada fuente en el último perfil, `estado_por_fuente`): tendrían algún campo
+  sin dato **1.515 personas**. Vehículos en `error` 575 (su `faltante`, 994, es «no hay»); inmuebles 660 (580 `error` y
+  80 `faltante`); inversiones 1.511 (572 `error` y **939 `faltante`**). 853 de las 1.515 sólo por inversiones, y 573
+  tienen las tres caídas a la vez. Contestan con registros 43 personas de inmuebles y 537 de inversiones, todas con `ok`.
+  **Para decidir antes de la B**: si el `faltante` de inversiones es su «no hay» (como el de vehículos) o una caída, como
+  dice hoy `FUENTES`; contesta vacío en 1.718 personas y `faltante` en 939. Con lo que dice `FUENTES`, esas 939 pasarían
+  de «0 inversiones» a «sin dato».
+
+#### P61 en la v37: al modelo, sólo el colateral
+
+**La propuesta.** Que el perfil del modelo no lleve `valorAvaluoVehiculos` (una ruta más en `RUTAS_QUE_NO_LLEGAN` de
+`perfil-del-modelo.ts`, o `llegaAlModelo: false` en `pat.vehiculos.avaluo.total` cuando el perfil del modelo salga del
+catálogo) y que el marco pierda la oración «Para el valor de los vehículos usá valorColateralVehiculos, no
+valorAvaluoVehiculos: es el más cercano al precio de mercado, porque el avalúo usa depreciación fiscal lineal…» (264
+caracteres, ~110 tokens a 2,37 por token). El avalúo sigue en el perfil guardado, en la pantalla y en los hechos, con su descripción. Queda en el marco
+el criterio de P61: «No tener patrimonio no es negativo» y que un vehículo o inmueble es un atenuante concreto.
+
+**Lo medido** (2026-11-22, el último perfil de cada una de las 3.766 personas reales, sólo lectura):
+
+- Tienen vehículos 2.196. En **1.464 el avalúo y el colateral difieren** (más de un dólar); en las otras 732 son iguales,
+  porque ningún vehículo trae precio de mercado y el colateral es el avalúo.
+- El avalúo es **menor** en 1.327 (menos de la mitad del colateral en 938) y **mayor** en 137 (más de 25% arriba en 46:
+  vehículos nuevos, como el camión de c-0ec2827c). Difieren en más de 25% en 1.206.
+- Sumados: USD 40,9 M de avalúo contra 67,1 M de colateral; la mediana del avalúo es el 68% del colateral.
+- **El modelo ya sigue la regla en prosa**: de los 460 últimos análisis terminados de personas reales (marcos hasta
+  v30), 412 hablan del colateral y 2 mencionan el avalúo. Sacar el avalúo no corrige un error que se vea: ahorra la regla y
+  evita que un marco nuevo, o un modelo nuevo, vuelva a tomar el número que el negocio descartó.
+
+**Para decidir con la v37** (no se cambió nada):
+
+1. Si también dejan de llegar las tres sumas de precios (`valorComercialTotalVehiculos`, `valorVentaTotalVehiculos`,
+   `valorPromedioTotalVehiculos`): suman un campo distinto de cada vehículo, sólo de los que lo traen, y ninguna es el
+   valor del patrimonio. El colateral ya elige entre ellas vehículo por vehículo.
+2. Pasar el banco de casos de oro antes de desplegar, con el costo que el negocio autorice (como toda la v37, 11.3).
+
+#### Grupo de seguridad social (`seguridadSocial`, etapa A, 2026-11-22)
+
+- **Qué es.** Los 10 campos de `seguridadSocial`, con 10 códigos `ss.*` (`hechos/grupos/seguridad-social.ts`). Salen de
+  siete fuentes:
+
+  | Campo | Código | Fuente | Regla | Con la fuente caída, hoy |
+  |---|---|---|---|---|
+  | `afiliadoIessActivo` | `ss.iess.afiliado_activo` | `afiliacionIess` | el estado del primer registro empieza con «ACTIVO» | null (sin parcial) |
+  | `estadoAfiliacionIess` | `ss.iess.estado_afiliacion` | `afiliacionIess` | el estado del primer registro, tal cual | lo que traigan las filas (null) |
+  | `esPensionista` | `ss.pensionista.es` | `pensionista` | algún registro con `estado` verdadero | el parcial |
+  | `esJubilado` | `ss.jubilado.es` | `jubilados` | algún registro | el parcial (false) |
+  | `tieneCoberturaSalud` | `ss.salud.tiene_cobertura` | `afiliacionSalud` | alguna entidad con `registraCobertura` | null (sin parcial) |
+  | `entidadesSaludConCobertura` | `ss.salud.entidades` | `afiliacionSalud` | las entidades con cobertura | el parcial ([]) |
+  | `tipoSeguroSalud` | `ss.salud.tipo_seguro` | `afiliacionSalud` | el tipo de la primera con cobertura | el parcial |
+  | `afiliadoSeguridadMilitar` | `ss.militar.titular` | ISSFAC (dos) y SIISSPOL | la lectura que decide es ISSFAC y no es montepío | el parcial |
+  | `afiliadoSeguridadPolicial` | `ss.policia.titular` | ISSFAC (dos) y SIISSPOL | la lectura que decide es ISSPOL y no es montepío | el parcial |
+  | `servicioMilitarOPolicial` | `ss.servicio.militar_o_policial` | ISSFAC (dos) y SIISSPOL | la lectura que decide, en palabras | el parcial |
+
+- **Militares y policías, sin copia.** `fuerzas-armadas-policia.ts` expone `lecturasMilitaresOPoliciales()` (cada registro
+  leído con su posición, y si es un familiar, de otra persona o sin servicio) y `lecturaQueDecide()`;
+  `servicioMilitarOPolicial()` las usa y devuelve lo mismo que antes, y la descripción en palabras
+  (`descripcionDelServicio()`) se mudó ahí desde `process.ts`. El perfil, la clasificación de ingresos y el grupo leen lo
+  mismo.
+- **Reglas que mezclan** (cada una con un crudo inventado en que aplica y uno en que no): `ss.iess@1` (con dos registros
+  de afiliación lee el primero: 2 personas de 2.567 en el respaldo del 2026-10-03), `ss.pensionista@1` (sólo los
+  registros con estado verdadero: 35 de 36 son `false`), `ss.salud@1` (sólo las entidades con cobertura; la fuente
+  contesta por las tres a la vez) y `ss.militar_policial@1` (descarta familiares, registros de otra persona y, si hay
+  varios servicios, el que pesa menos).
+- **Qué cuenta como caída.** Cada fuente con su `respuestaDe()`, salvo dos:
+  - `afiliacionIssfacFuerzaArmada` no cuenta (da `faltante` en 2.567 de 2.567 y es secundaria), igual que en el grupo de
+    ingresos; el seguro militar y el policial cuentan por sus dos obligatorias.
+  - **`afiliacionIess` en `faltante` es «sin respuesta»** (`fuente_sin_respuesta`), como el perfil la lee desde la
+    auditoría de c-ba4c16f0 y c-18fa16ee, y como lo dice P60. Contesta `faltante` en 2.431 de 2.567 personas.
+    `FUENTES` (`calidad-de-la-consulta.ts`) la toma al revés: su «no hay» es `faltante`, así que la consulta no la
+    lista como no consultada. **Decisión para la etapa B**: con el perfil, el 95% de las personas tendría
+    `afiliadoIessActivo` marcado sin dato; con `FUENTES`, sería `false` («no afiliado»), que es lo que la auditoría
+    sacó porque contradecía empleos confirmados.
+- **P60 y la etapa B.** En la etapa B `seguridadSocial` entra a `GRUPOS_CON_SIN_DATO`: el campo queda null con la marca
+  en `camposSinDato`, y la pantalla puede decir «sin dato (la fuente no contestó)». El modelo sigue leyendo con
+  `conLosValoresDeAntes()` hasta la versión mayor del marco (para él, el mismo null de hoy), así que P60 sale del marco
+  con la v37, no con la etapa B. Lo que cambia en la B, además de `afiliadoIessActivo`: con su fuente caída,
+  `esPensionista`, `esJubilado` y los tres militares dejan de escribir el parcial (`false`) como si fuera el total.
+- **El seco** (`comparar-hechos.mjs --deposito --contra=origin/main --grupo=seguridadSocial --medir`, 3.766 personas
+  reales, contra estructura-v31): **paridad, 37.660 de 37.660 campos**; 0 campos sin procedencia; 1.173.001 registros
+  citados, 0 que no resuelven; 0 perfiles guardados distintos del rearmado; **el perfil entero, igual en 3.766 de 3.766**
+  (el traslado de `descripcionDelServicio()` no cambió nada). Peso y tiempo, todos los grupos: p99 10,7 KB en gzip y
+  5,9 ms por persona.
+- **Falta la etapa B**: `process.ts` arma el grupo con `perfilDesdeHechos()`, `seguridadSocial` entra a
+  `GRUPOS_CON_SIN_DATO` y `GRUPOS_EN_ETAPA_B`, con su versión de la estructura, su `DIFERENCIAS_ESPERADAS`, un detector del
+  crudo con su caso que dispara y uno que no, la decisión sobre `afiliacionIess` de arriba y la búsqueda de los lectores
+  del grupo en SQL (`valor_de_antes()`). Va en un PR aparte, con el sí del negocio y su recálculo.
+
 
 #### Grupo de identidad (`identidad`, etapa A, 2026-11-22)
 
@@ -1762,8 +1891,8 @@ lo dice. «Ya en código» es que la regla existe hoy en una función, aunque el
 | P57 | «estadoActividadEconomica … no reemplazan» | `ruc.actividad.*` | definición + criterio | catálogo | — |
 | P58 | «tipoUltimoCeseRuc … sin peso propio» | `ruc.cese.tipo` | definición + criterio | catálogo | — |
 | P59 | «rucDepuradoPorElSri=true … No es una señal negativa» | `ruc.depurado_por_el_sri` | ya en código + criterio | `ruc.ts` | sí |
-| P60 | «afiliadoIessActivo=null (distinto de false)» | seguridad social | definición | pendiente: el grupo de seguridad social está vacío | — |
-| P61 | «usá valorColateralVehiculos, no valorAvaluoVehiculos» … «No tener patrimonio no es negativo» | patrimonio | estructura + criterio | pendiente: el grupo de patrimonio está vacío | — |
+| P60 | «afiliadoIessActivo=null (distinto de false)» | `ss.iess.afiliado_activo` | definición | etapa A (2026-11-22, 4.5): el hecho ya dice `fuente_sin_respuesta`; la marca en el perfil, con la etapa B | — |
+| P61 | «usá valorColateralVehiculos, no valorAvaluoVehiculos» … «No tener patrimonio no es negativo» | `pat.vehiculos.colateral.total`, `pat.vehiculos.avaluo.total` | estructura + criterio | perfil del modelo: que no llegue el avalúo (propuesta y medida en 4.5); el criterio queda | la regla del colateral sí (`pat.colateral@2`); no llegar, v37 |
 | P62 | «familia … No lo uses para penalizar» | familia | criterio (política) | estándar | — |
 | P63 | «identidad … nivelEducacion … atenuante leve» | `ide.nivel_educacion.mas_alto` | **mezcla**: tercer o cuarto nivel es lectura; atenuante, criterio | `lec.ide.tercer_o_cuarto_nivel` (lecturas-v3), con el grupo de identidad en etapa A | — |
 | P64 | «contacto … tránsito: la señal más débil» | contacto, tránsito | criterio | marco | — |
@@ -1809,7 +1938,9 @@ para cuando exista el contrato neutro (`buro/`), sin implementar:
 | B14 | «Un grupo en null es información que Equifax no trajo» | definición | `buro/sin-buro.ts` |
 | B15 | El retail y el BIESS con el buró | estructura (repite P16 a P18) | las mismas lecturas |
 
-Lo que quedó **pendiente** y por qué: P60 y P61, sus grupos (seguridad social y patrimonio) vacíos; P67, que el negocio diga qué categoría de la
+Lo que quedó **pendiente** y por qué: P53, P54 y P63 se resolvieron en `lecturas-v3` (11.5); P60, la etapa B
+de su grupo (seguridad social, en etapa A desde el 2026-11-22: 4.5); P61, la v37 (su grupo pasó la etapa A
+el 2026-11-22 y la propuesta está en 4.5); P67, que el negocio diga qué categoría de la
 institución es buena y cuál mala. Ninguno se inventó.
 
 **P67, medido el 2026-11-20** (sólo lectura, 3.766 personas reales, 4.042 operaciones con la

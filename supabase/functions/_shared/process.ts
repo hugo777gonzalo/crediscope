@@ -17,7 +17,7 @@ import { relacionConEmpleador } from "./patrono.ts";
 // Vive en patrono.ts desde marco-v30 (la usa también el perfil del modelo);
 // se reexporta para scripts/corregir-empleo-actual.mjs.
 export { relacionConEmpleador };
-import { servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
+import { descripcionDelServicio, servicioMilitarOPolicial } from "./fuerzas-armadas-policia.ts";
 
 // Los ayudantes de lectura del crudo viven en la capa de hechos desde la tarea
 // E4: el perfil y los hechos leen el mismo registro con el mismo código.
@@ -64,17 +64,6 @@ function dentroUltimos12Meses(fecha: unknown): boolean {
   const meses = mesesDesde(fecha);
   return meses !== null && meses >= 0 && meses <= 12;
 }
-
-// seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
-// modelo tal cual.
-const DESCRIPCION_SERVICIO: Record<string, string> = {
-  "ISSFAC:activo": "militar en servicio activo",
-  "ISSFAC:pasivo": "militar en servicio pasivo (retirado)",
-  "ISSFAC:montepio": "beneficiario de montepío militar",
-  "ISSPOL:activo": "policía en servicio activo",
-  "ISSPOL:pasivo": "policía en servicio pasivo (retirado)",
-  "ISSPOL:montepio": "beneficiario de montepío policial",
-};
 
 // La regla de cobro vive en demandas.ts desde estructura-v11, junto con
 // las categorías de las demás demandas.
@@ -544,7 +533,7 @@ export function buildStandardProfile(raw: RespuestaProveedorInfo1, cedula: strin
           return {
             afiliadoSeguridadPolicial: titular && servicio?.institucion === "ISSPOL",
             afiliadoSeguridadMilitar: titular && servicio?.institucion === "ISSFAC",
-            servicioMilitarOPolicial: servicio ? DESCRIPCION_SERVICIO[`${servicio.institucion}:${servicio.situacion}`] ?? null : null,
+            servicioMilitarOPolicial: descripcionDelServicio(servicio),
           };
         })(),
       };

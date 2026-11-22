@@ -368,11 +368,12 @@ export interface StandardClientProfile {
     valorComercialTotalVehiculos: number;
     valorVentaTotalVehiculos: number;
     valorPromedioTotalVehiculos: number;
-    // Suma, por vehículo, del máximo entre valorAvaluo/precioPromedio/
-    // precioMinimo/precioMaximo/precioComercial/precioVentaPublico/
-    // precioVentaPromedio (NO incluye precioVenta — ver process.ts). El
-    // valor a usar para colaterales: más cercano a mercado actual que
-    // valorAvaluo (depreciación lineal castiga fuerte vehículos viejos).
+    // Suma, por vehículo, del primer precio de mercado que trae la fuente
+    // (precioPromedio, precioComercial, precioVentaPromedio,
+    // precioVentaPublico) y, sin ninguno, del avalúo (estructura-v21; hasta
+    // v20 era el máximo de siete precios). El valor a usar para colaterales:
+    // valorAvaluo usa depreciación fiscal lineal y castiga a los vehículos
+    // viejos. La regla, `pat.colateral@2` (hechos/grupos/patrimonio.ts).
     valorColateralVehiculos: number;
   };
 

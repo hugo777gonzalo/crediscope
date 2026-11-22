@@ -1,0 +1,22 @@
+{
+  "descripcion": "Grupo de patrimonio: la fuente de vehículos contesta `faltante`, que es su «no hay» (calidad-de-la-consulta.ts): sin vehículos y confirmado, sin nada que repartir por tipo ni que elegir para el colateral",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO CATORCE" } } },
+    "vehiculos": { "status": "faltante", "data": null },
+    "bienesInmueble": { "status": "ok", "data": { "bienesInmueble": [] } },
+    "inversiones": { "status": "ok", "data": { "inversiones": [] } }
+  },
+  "esperado": {},
+  "reglas": {
+    "pat.colateral@2": "no-aplica",
+    "pat.vehiculos.por_tipo@1": "no-aplica"
+  },
+  "hechos": {
+    "pat.vehiculos.cantidad": { "valor": 0 },
+    "pat.vehiculos.existe": { "valor": false },
+    "pat.vehiculos.autos.cantidad": { "valor": 0, "descartados": [] },
+    "pat.vehiculos.colateral.total": { "valor": 0, "descartados": [] }
+  }
+}

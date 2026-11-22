@@ -36,38 +36,88 @@ function normalizar(v: unknown): string {
 
 const PRIORIDAD: SituacionMilitarPolicial[] = ["activo", "pasivo", "montepio"];
 
-export function servicioMilitarOPolicial(raw: unknown, cedula: string | null | undefined): ServicioMilitarPolicial | null {
+// Lo que se leyó de cada registro, con su posición en el crudo: la capa de hechos
+// (hechos/grupos/seguridad-social.ts) cita el que decide y descarta los demás con
+// su motivo. `servicio` es null si el registro no dice que la persona sea militar
+// o policía (un familiar cubierto, un certificado sin servicio) o si es de otra
+// persona (`deOtraPersona`). Un certificado del SIISSPOL con varias afiliaciones
+// que cuentan da una lectura por cada una, con la misma posición.
+export interface LecturaMilitarPolicial {
+  fuente: "afiliacionIssfacCertMedico" | "afiliacionIssfacFuerzaArmada" | "afiliacionSiisspol";
+  lista: "afiliaciones" | "afiliacionSiisspol";
+  indice: number;
+  servicio: ServicioMilitarPolicial | null;
+  deOtraPersona: boolean;
+}
+
+export function lecturasMilitaresOPoliciales(raw: unknown, cedula: string | null | undefined): LecturaMilitarPolicial[] {
   const r = (raw ?? {}) as AnyRecord;
   const esDeOtraPersona = (c: unknown) => Boolean(cedula && c && String(c) !== cedula);
-  const encontrados: ServicioMilitarPolicial[] = [];
+  const lecturas: LecturaMilitarPolicial[] = [];
 
   // ISSFAC: la categoría dice quién es ("Militar en Servicio Activo",
   // "Militar en Servicio Pasivo", "Montepío", "Esposa de...").
-  for (const fuente of ["afiliacionIssfacCertMedico", "afiliacionIssfacFuerzaArmada"]) {
-    for (const a of lista(r, fuente, "afiliaciones")) {
-      if (esDeOtraPersona(a.cedula)) continue;
+  for (const fuente of ["afiliacionIssfacCertMedico", "afiliacionIssfacFuerzaArmada"] as const) {
+    lista(r, fuente, "afiliaciones").forEach((a, indice) => {
+      const leida = (servicio: ServicioMilitarPolicial | null, deOtraPersona = false) => lecturas.push({ fuente, lista: "afiliaciones", indice, servicio, deOtraPersona });
+      if (esDeOtraPersona(a.cedula)) return void leida(null, true);
       const categoria = normalizar(a.categoria);
-      if (categoria.startsWith("MILITAR EN SERVICIO ACTIVO")) encontrados.push({ institucion: "ISSFAC", situacion: "activo" });
-      else if (categoria.startsWith("MILITAR EN SERVICIO PASIVO")) encontrados.push({ institucion: "ISSFAC", situacion: "pasivo" });
-      else if (categoria.startsWith("MONTEPIO")) encontrados.push({ institucion: "ISSFAC", situacion: "montepio" });
-    }
+      if (categoria.startsWith("MILITAR EN SERVICIO ACTIVO")) leida({ institucion: "ISSFAC", situacion: "activo" });
+      else if (categoria.startsWith("MILITAR EN SERVICIO PASIVO")) leida({ institucion: "ISSFAC", situacion: "pasivo" });
+      else if (categoria.startsWith("MONTEPIO")) leida({ institucion: "ISSFAC", situacion: "montepio" });
+      else leida(null);
+    });
   }
 
   // ISSPOL: el certificado del SIISSPOL dice el servicio (ACTIVO o RETIRO).
   // Los registros sin servicio (cesantes, dependientes, certificados de
   // otro tipo) no alcanzan para decir que la persona es policía.
-  for (const certificado of lista(r, "afiliacionSiisspol", "afiliacionSiisspol")) {
-    if (esDeOtraPersona(certificado.cedula)) continue;
+  lista(r, "afiliacionSiisspol", "afiliacionSiisspol").forEach((certificado, indice) => {
+    const leida = (servicio: ServicioMilitarPolicial | null, deOtraPersona = false) => lecturas.push({ fuente: "afiliacionSiisspol", lista: "afiliacionSiisspol", indice, servicio, deOtraPersona });
+    if (esDeOtraPersona(certificado.cedula)) return void leida(null, true);
     const afiliaciones = Array.isArray(certificado.afiliaciones) ? (certificado.afiliaciones as AnyRecord[]) : [];
+    let cuenta = 0;
     for (const a of afiliaciones) {
       const servicio = normalizar(a.servicio);
-      if (servicio === "ACTIVO") encontrados.push({ institucion: "ISSPOL", situacion: "activo" });
-      else if (servicio === "RETIRO") encontrados.push({ institucion: "ISSPOL", situacion: "pasivo" });
+      if (servicio === "ACTIVO") leida({ institucion: "ISSPOL", situacion: "activo" });
+      else if (servicio === "RETIRO") leida({ institucion: "ISSPOL", situacion: "pasivo" });
+      else continue;
+      cuenta++;
     }
-  }
+    if (cuenta === 0) leida(null);
+  });
+  return lecturas;
+}
 
-  // Si hay más de uno, pesa el servicio activo: es un sueldo, y el retiro o
-  // el montepío pasan a ser un ingreso adicional.
-  encontrados.sort((a, b) => PRIORIDAD.indexOf(a.situacion) - PRIORIDAD.indexOf(b.situacion));
-  return encontrados[0] ?? null;
+// La lectura que decide: si hay más de una, pesa el servicio activo (es un
+// sueldo, y el retiro o el montepío pasan a ser un ingreso adicional); a igual
+// situación, la primera en el orden de lectura (ISSFAC antes que ISSPOL). null
+// si ninguna dice que la persona sea militar o policía.
+export function lecturaQueDecide(lecturas: LecturaMilitarPolicial[]): LecturaMilitarPolicial | null {
+  let ganadora: LecturaMilitarPolicial | null = null;
+  for (const l of lecturas) {
+    if (!l.servicio) continue;
+    if (!ganadora || PRIORIDAD.indexOf(l.servicio.situacion) < PRIORIDAD.indexOf(ganadora.servicio!.situacion)) ganadora = l;
+  }
+  return ganadora;
+}
+
+export function servicioMilitarOPolicial(raw: unknown, cedula: string | null | undefined): ServicioMilitarPolicial | null {
+  return lecturaQueDecide(lecturasMilitaresOPoliciales(raw, cedula))?.servicio ?? null;
+}
+
+// seguridadSocial.servicioMilitarOPolicial: en palabras, porque lo lee el
+// modelo tal cual. Vivía en process.ts; desde que la capa de hechos arma el
+// mismo campo (hechos/grupos/seguridad-social.ts) vive acá, una sola vez.
+const DESCRIPCION_SERVICIO: Record<string, string> = {
+  "ISSFAC:activo": "militar en servicio activo",
+  "ISSFAC:pasivo": "militar en servicio pasivo (retirado)",
+  "ISSFAC:montepio": "beneficiario de montepío militar",
+  "ISSPOL:activo": "policía en servicio activo",
+  "ISSPOL:pasivo": "policía en servicio pasivo (retirado)",
+  "ISSPOL:montepio": "beneficiario de montepío policial",
+};
+
+export function descripcionDelServicio(servicio: ServicioMilitarPolicial | null): string | null {
+  return servicio ? DESCRIPCION_SERVICIO[`${servicio.institucion}:${servicio.situacion}`] ?? null : null;
 }
