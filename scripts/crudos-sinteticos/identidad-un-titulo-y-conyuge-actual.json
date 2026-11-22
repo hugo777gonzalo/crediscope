@@ -1,0 +1,49 @@
+{
+  "descripcion": "Grupo de identidad: un solo título, del mismo nivel que el registro civil, una sola nacionalidad y un cónyuge actual. Ninguna regla elige ni descarta: los años de casada y la edad del cónyuge salen, y el nivel más alto conocido es el del registro civil",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": {
+      "status": "ok",
+      "data": {
+        "personaNatural": {
+          "nombre": "PRUEBA FICTICIO LUIS",
+          "fechaNacimiento": "1975-01-20",
+          "genero": { "descripcion": "HOMBRE" },
+          "lugarNacimiento": { "parroquia": { "canton": { "nombre": "CANTON FICTICIO", "provincia": { "nombre": "PROVINCIA FICTICIA" } } } }
+        },
+        "estadoCivil": { "estadoCivil": { "descripcion": "CASADO" } },
+        "nivelEducacion": { "nivelEducacion": { "descripcion": "TERCER NIVEL", "nivel": 8 } },
+        "nacionalidades": [{ "pais": { "nombre": "Ecuador", "codigoIso3": "ECU", "codigoIso": 218 } }],
+        "personaNaturalConyuge": { "fechaMatrimonio": "2000-03-15", "personaConyuge": { "nombre": "PRUEBA CONYUGE FICTICIA", "fechaNacimiento": "1978-07-01" } }
+      }
+    },
+    "titulos": {
+      "status": "ok",
+      "data": {
+        "titulos": [
+          { "titulo": { "descripcion": "INGENIERIA INVENTADA", "nivelEducacion": { "descripcion": "TERCER_NIVEL", "nivel": 8 } }, "establecimientoEducativo": { "descripcion": "UNIVERSIDAD FICTICIA" } }
+        ]
+      }
+    }
+  },
+  "esperado": {},
+  "reglas": {
+    "ide.titulo_mas_alto@1": "no-aplica",
+    "ide.origen@1": "no-aplica",
+    "ide.conyuge@1": "no-aplica",
+    "ide.nivel_mas_alto@1": "no-aplica"
+  },
+  "hechos": {
+    "ide.titulo_mas_alto.descripcion": { "valor": "INGENIERIA INVENTADA", "registros": ["titulos.titulos#0"], "descartados": [] },
+    "ide.origen.pais": { "valor": "Ecuador", "registros": ["general.nacionalidades#0"], "descartados": [] },
+    "ide.conyuge.tiene": { "valor": true },
+    "ide.conyuge.anios_casado": { "valor": 26 },
+    "ide.conyuge.edad": { "valor": 48 },
+    "ide.nivel_educacion.mas_alto": {
+      "valor": { "nivel": 8, "descripcion": "TERCER NIVEL", "fuente": "general" },
+      "descartados": ["titulos.titulos#0:el_registro_civil_no_es_mas_bajo"]
+    }
+  },
+  "diferencias": { "dif.ide.nivel_de_educacion": 0 }
+}

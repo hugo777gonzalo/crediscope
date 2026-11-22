@@ -1,0 +1,75 @@
+{
+  "descripcion": "Grupo de seguridad social: dos registros de afiliación al IESS (se lee el primero), una pensión vencida y una vigente, tres entidades de salud con dos coberturas, y en el seguro militar un retiro, un familiar y un registro de otra persona, más un policía en servicio activo: cada regla cita lo que usó y descarta lo demás con su motivo",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO DOCE", "identificacion": "0000000000" } } },
+    "afiliacionIess": { "status": "ok", "data": { "afiliacionIess": [{ "cedula": "0000000000", "estado": "ACTIVO/A" }, { "cedula": "0000000000", "estado": "CESANTE" }] } },
+    "pensionista": { "status": "ok", "data": { "pensionista": [{ "cedula": "0000000000", "estado": false }, { "cedula": "0000000000", "estado": true }] } },
+    "jubilados": { "status": "ok", "data": { "trabajos": [{ "cargo": "INVENTADO", "fechaIngreso": "2000-01-01" }] } },
+    "afiliacionSalud": {
+      "status": "ok",
+      "data": {
+        "afiliacionSalud": [
+          { "entidad": "IESS", "registraCobertura": true, "tipoSeguro": "seguro general tiempo completo" },
+          { "entidad": "ISSFA", "registraCobertura": false, "tipoSeguro": null },
+          { "entidad": "ISSPOL", "registraCobertura": true, "tipoSeguro": "seguro inventado" }
+        ]
+      }
+    },
+    "afiliacionIssfacCertMedico": {
+      "status": "ok",
+      "data": {
+        "afiliaciones": [
+          { "cedula": "0000000000", "categoria": "Militar en Servicio Pasivo" },
+          { "cedula": "0000000000", "categoria": "Esposa de Militar en Servicio Activo" },
+          { "cedula": "1111111111", "categoria": "Militar en Servicio Activo" }
+        ]
+      }
+    },
+    "afiliacionIssfacFuerzaArmada": { "status": "faltante", "data": null },
+    "afiliacionSiisspol": { "status": "ok", "data": { "afiliacionSiisspol": [{ "cedula": "0000000000", "afiliaciones": [{ "servicio": "ACTIVO" }] }] } }
+  },
+  "esperado": {},
+  "reglas": {
+    "ss.iess@1": "aplica",
+    "ss.pensionista@1": "aplica",
+    "ss.salud@1": "aplica",
+    "ss.militar_policial@1": "aplica"
+  },
+  "hechos": {
+    "ss.iess.afiliado_activo": {
+      "valor": true,
+      "registros": ["afiliacionIess.afiliacionIess#0"],
+      "descartados": ["afiliacionIess.afiliacionIess#1:se_lee_el_primer_registro_de_afiliacion"]
+    },
+    "ss.iess.estado_afiliacion": { "valor": "ACTIVO/A" },
+    "ss.pensionista.es": {
+      "valor": true,
+      "registros": ["pensionista.pensionista#1"],
+      "descartados": ["pensionista.pensionista#0:su_estado_no_es_verdadero"]
+    },
+    "ss.jubilado.es": { "valor": true, "registros": ["jubilados.trabajos#0"] },
+    "ss.salud.tiene_cobertura": { "valor": true, "registros": ["afiliacionSalud.afiliacionSalud#0", "afiliacionSalud.afiliacionSalud#2"] },
+    "ss.salud.entidades": {
+      "valor": ["IESS", "ISSPOL"],
+      "descartados": ["afiliacionSalud.afiliacionSalud#1:no_registra_cobertura"]
+    },
+    "ss.salud.tipo_seguro": {
+      "valor": "seguro general tiempo completo",
+      "registros": ["afiliacionSalud.afiliacionSalud#0"],
+      "descartados": ["afiliacionSalud.afiliacionSalud#1:no_registra_cobertura", "afiliacionSalud.afiliacionSalud#2:se_lee_la_primera_entidad_con_cobertura"]
+    },
+    "ss.servicio.militar_o_policial": {
+      "valor": "policía en servicio activo",
+      "registros": ["afiliacionSiisspol.afiliacionSiisspol#0"],
+      "descartados": [
+        "afiliacionIssfacCertMedico.afiliaciones#0:pesa_otro_servicio_de_la_persona",
+        "afiliacionIssfacCertMedico.afiliaciones#1:familiar_cubierto_o_sin_servicio",
+        "afiliacionIssfacCertMedico.afiliaciones#2:registro_de_otra_persona"
+      ]
+    },
+    "ss.policia.titular": { "valor": true },
+    "ss.militar.titular": { "valor": false }
+  }
+}
