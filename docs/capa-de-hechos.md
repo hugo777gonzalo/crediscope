@@ -1172,6 +1172,58 @@ resto de `controles-bloqueo.ts`.
 - **Peso y tiempo** (todos los grupos): p99 10,3 KB en gzip y 6,6 ms por persona; la que más tiene, 219 entidades y
   15,6 KB en gzip.
 
+#### Grupo de seguridad social (`seguridadSocial`, etapa A, 2026-11-22)
+
+- **Qué es.** Los 10 campos de `seguridadSocial`, con 10 códigos `ss.*` (`hechos/grupos/seguridad-social.ts`). Salen de
+  siete fuentes:
+
+  | Campo | Código | Fuente | Regla | Con la fuente caída, hoy |
+  |---|---|---|---|---|
+  | `afiliadoIessActivo` | `ss.iess.afiliado_activo` | `afiliacionIess` | el estado del primer registro empieza con «ACTIVO» | null (sin parcial) |
+  | `estadoAfiliacionIess` | `ss.iess.estado_afiliacion` | `afiliacionIess` | el estado del primer registro, tal cual | lo que traigan las filas (null) |
+  | `esPensionista` | `ss.pensionista.es` | `pensionista` | algún registro con `estado` verdadero | el parcial |
+  | `esJubilado` | `ss.jubilado.es` | `jubilados` | algún registro | el parcial (false) |
+  | `tieneCoberturaSalud` | `ss.salud.tiene_cobertura` | `afiliacionSalud` | alguna entidad con `registraCobertura` | null (sin parcial) |
+  | `entidadesSaludConCobertura` | `ss.salud.entidades` | `afiliacionSalud` | las entidades con cobertura | el parcial ([]) |
+  | `tipoSeguroSalud` | `ss.salud.tipo_seguro` | `afiliacionSalud` | el tipo de la primera con cobertura | el parcial |
+  | `afiliadoSeguridadMilitar` | `ss.militar.titular` | ISSFAC (dos) y SIISSPOL | la lectura que decide es ISSFAC y no es montepío | el parcial |
+  | `afiliadoSeguridadPolicial` | `ss.policia.titular` | ISSFAC (dos) y SIISSPOL | la lectura que decide es ISSPOL y no es montepío | el parcial |
+  | `servicioMilitarOPolicial` | `ss.servicio.militar_o_policial` | ISSFAC (dos) y SIISSPOL | la lectura que decide, en palabras | el parcial |
+
+- **Militares y policías, sin copia.** `fuerzas-armadas-policia.ts` expone `lecturasMilitaresOPoliciales()` (cada registro
+  leído con su posición, y si es un familiar, de otra persona o sin servicio) y `lecturaQueDecide()`;
+  `servicioMilitarOPolicial()` las usa y devuelve lo mismo que antes, y la descripción en palabras
+  (`descripcionDelServicio()`) se mudó ahí desde `process.ts`. El perfil, la clasificación de ingresos y el grupo leen lo
+  mismo.
+- **Reglas que mezclan** (cada una con un crudo inventado en que aplica y uno en que no): `ss.iess@1` (con dos registros
+  de afiliación lee el primero: 2 personas de 2.567 en el respaldo del 2026-10-03), `ss.pensionista@1` (sólo los
+  registros con estado verdadero: 35 de 36 son `false`), `ss.salud@1` (sólo las entidades con cobertura; la fuente
+  contesta por las tres a la vez) y `ss.militar_policial@1` (descarta familiares, registros de otra persona y, si hay
+  varios servicios, el que pesa menos).
+- **Qué cuenta como caída.** Cada fuente con su `respuestaDe()`, salvo dos:
+  - `afiliacionIssfacFuerzaArmada` no cuenta (da `faltante` en 2.567 de 2.567 y es secundaria), igual que en el grupo de
+    ingresos; el seguro militar y el policial cuentan por sus dos obligatorias.
+  - **`afiliacionIess` en `faltante` es «sin respuesta»** (`fuente_sin_respuesta`), como el perfil la lee desde la
+    auditoría de c-ba4c16f0 y c-18fa16ee, y como lo dice P60. Contesta `faltante` en 2.431 de 2.567 personas.
+    `FUENTES` (`calidad-de-la-consulta.ts`) la toma al revés: su «no hay» es `faltante`, así que la consulta no la
+    lista como no consultada. **Decisión para la etapa B**: con el perfil, el 95% de las personas tendría
+    `afiliadoIessActivo` marcado sin dato; con `FUENTES`, sería `false` («no afiliado»), que es lo que la auditoría
+    sacó porque contradecía empleos confirmados.
+- **P60 y la etapa B.** En la etapa B `seguridadSocial` entra a `GRUPOS_CON_SIN_DATO`: el campo queda null con la marca
+  en `camposSinDato`, y la pantalla puede decir «sin dato (la fuente no contestó)». El modelo sigue leyendo con
+  `conLosValoresDeAntes()` hasta la versión mayor del marco (para él, el mismo null de hoy), así que P60 sale del marco
+  con la v37, no con la etapa B. Lo que cambia en la B, además de `afiliadoIessActivo`: con su fuente caída,
+  `esPensionista`, `esJubilado` y los tres militares dejan de escribir el parcial (`false`) como si fuera el total.
+- **El seco** (`comparar-hechos.mjs --deposito --contra=origin/main --grupo=seguridadSocial --medir`, 3.766 personas
+  reales, contra estructura-v31): **paridad, 37.660 de 37.660 campos**; 0 campos sin procedencia; 1.173.001 registros
+  citados, 0 que no resuelven; 0 perfiles guardados distintos del rearmado; **el perfil entero, igual en 3.766 de 3.766**
+  (el traslado de `descripcionDelServicio()` no cambió nada). Peso y tiempo, todos los grupos: p99 10,7 KB en gzip y
+  5,9 ms por persona.
+- **Falta la etapa B**: `process.ts` arma el grupo con `perfilDesdeHechos()`, `seguridadSocial` entra a
+  `GRUPOS_CON_SIN_DATO` y `GRUPOS_EN_ETAPA_B`, con su versión de la estructura, su `DIFERENCIAS_ESPERADAS`, un detector del
+  crudo con su caso que dispara y uno que no, la decisión sobre `afiliacionIess` de arriba y la búsqueda de los lectores
+  del grupo en SQL (`valor_de_antes()`). Va en un PR aparte, con el sí del negocio y su recálculo.
+
 
 ## 5. La comparación en seco y qué es «listo»
 
@@ -1728,7 +1780,7 @@ lo dice. «Ya en código» es que la regla existe hoy en una función, aunque el
 | P57 | «estadoActividadEconomica … no reemplazan» | `ruc.actividad.*` | definición + criterio | catálogo | — |
 | P58 | «tipoUltimoCeseRuc … sin peso propio» | `ruc.cese.tipo` | definición + criterio | catálogo | — |
 | P59 | «rucDepuradoPorElSri=true … No es una señal negativa» | `ruc.depurado_por_el_sri` | ya en código + criterio | `ruc.ts` | sí |
-| P60 | «afiliadoIessActivo=null (distinto de false)» | seguridad social | definición | pendiente: el grupo de seguridad social está vacío | — |
+| P60 | «afiliadoIessActivo=null (distinto de false)» | `ss.iess.afiliado_activo` | definición | etapa A (2026-11-22, 4.5): el hecho ya dice `fuente_sin_respuesta`; la marca en el perfil, con la etapa B | — |
 | P61 | «usá valorColateralVehiculos, no valorAvaluoVehiculos» … «No tener patrimonio no es negativo» | patrimonio | estructura + criterio | pendiente: el grupo de patrimonio está vacío | — |
 | P62 | «familia … No lo uses para penalizar» | familia | criterio (política) | estándar | — |
 | P63 | «identidad … nivelEducacion … atenuante leve» | identidad | **mezcla**: tercer o cuarto nivel es lectura; atenuante, criterio | pendiente: grupo de identidad vacío (y `dif.ide.nivel_de_educacion`) | — |
@@ -1776,8 +1828,8 @@ para cuando exista el contrato neutro (`buro/`), sin implementar:
 | B15 | El retail y el BIESS con el buró | estructura (repite P16 a P18) | las mismas lecturas |
 
 Lo que quedó **pendiente** y por qué: P53, P54 y P63 necesitan el nombre de la persona (el grupo de
-identidad está vacío y el contexto de las pruebas no lo lleva; lo toma una sesión aparte); P60 y
-P61, sus grupos (seguridad social y patrimonio) vacíos; P67, que el negocio diga qué categoría de la
+identidad está vacío y el contexto de las pruebas no lo lleva; lo toma una sesión aparte); P60, la etapa B
+de su grupo (seguridad social, en etapa A desde el 2026-11-22: 4.5); P61, su grupo (patrimonio) vacío; P67, que el negocio diga qué categoría de la
 institución es buena y cuál mala. Ninguno se inventó.
 
 **P67, medido el 2026-11-20** (sólo lectura, 3.766 personas reales, 4.042 operaciones con la

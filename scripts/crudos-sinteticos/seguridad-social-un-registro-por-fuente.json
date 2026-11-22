@@ -1,0 +1,32 @@
+{
+  "descripcion": "Grupo de seguridad social: un solo registro en cada fuente y nada que elegir ni descartar (afiliación cesante, pensión vigente, una entidad de salud con cobertura, un militar en servicio activo y ningún certificado del SIISSPOL)",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "ok", "data": { "personaNatural": { "nombre": "PRUEBA FICTICIO TRECE", "identificacion": "0000000000" } } },
+    "afiliacionIess": { "status": "ok", "data": { "afiliacionIess": [{ "cedula": "0000000000", "estado": "CESANTE" }] } },
+    "pensionista": { "status": "ok", "data": { "pensionista": [{ "cedula": "0000000000", "estado": true }] } },
+    "jubilados": { "status": "ok", "data": { "trabajos": [] } },
+    "afiliacionSalud": { "status": "ok", "data": { "afiliacionSalud": [{ "entidad": "ISSFA", "registraCobertura": true, "tipoSeguro": null }] } },
+    "afiliacionIssfacCertMedico": { "status": "ok", "data": { "afiliaciones": [{ "cedula": "0000000000", "categoria": "Militar en Servicio Activo" }] } },
+    "afiliacionIssfacFuerzaArmada": { "status": "faltante", "data": null },
+    "afiliacionSiisspol": { "status": "ok", "data": { "afiliacionSiisspol": [] } }
+  },
+  "esperado": {},
+  "reglas": {
+    "ss.iess@1": "no-aplica",
+    "ss.pensionista@1": "no-aplica",
+    "ss.salud@1": "no-aplica",
+    "ss.militar_policial@1": "no-aplica"
+  },
+  "hechos": {
+    "ss.iess.afiliado_activo": { "valor": false, "registros": ["afiliacionIess.afiliacionIess#0"], "descartados": [] },
+    "ss.iess.estado_afiliacion": { "valor": "CESANTE" },
+    "ss.pensionista.es": { "valor": true, "registros": ["pensionista.pensionista#0"], "descartados": [] },
+    "ss.jubilado.es": { "valor": false, "registros": ["jubilados.trabajos"] },
+    "ss.salud.entidades": { "valor": ["ISSFA"], "registros": ["afiliacionSalud.afiliacionSalud#0"], "descartados": [] },
+    "ss.salud.tipo_seguro": { "valor": null, "motivo": "la_fuente_no_lo_informa" },
+    "ss.militar.titular": { "valor": true, "registros": ["afiliacionIssfacCertMedico.afiliaciones#0"], "descartados": [] },
+    "ss.servicio.militar_o_policial": { "valor": "militar en servicio activo", "descartados": [] }
+  }
+}
