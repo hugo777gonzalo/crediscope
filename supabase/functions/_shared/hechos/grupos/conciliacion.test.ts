@@ -1,6 +1,7 @@
 // La prueba de las diferencias de E9 cuyo grupo todavía no existe (docs/capa-de-hechos.md,
-// sección 6, puntos 12 y 13): cada una sale cuando las dos fuentes dicen lo mismo de lo
-// mismo (o se contradicen, la educación), no sale cuando no, y ninguna cambia un valor del perfil.
+// sección 6, punto 12): sale cuando las dos fuentes dicen lo mismo de lo mismo, no sale cuando no,
+// y no cambia un valor del perfil. La del punto 13 (la educación) se mudó con su grupo:
+// identidad.test.ts.
 //
 // deno test --allow-env --allow-read=supabase/functions supabase/functions/
 
@@ -46,21 +47,4 @@ Deno.test("dif.tra.posible_repetida: la misma placa y día de emisión en la ANT
 
 Deno.test("diaDeEmision lee las dos formas, y nada más", () => {
   assertEquals([diaDeEmision("2024-12-29 12:47:47.0"), diaDeEmision("1/7/2025"), diaDeEmision("2025"), diaDeEmision(null)], ["2024-12-29", "2025-07-01", null, null]);
-});
-
-// ---- Punto 13 ----
-
-const conEducacion = (nivel: number | null, titulos: number[]) => ({
-  general: ok({ nivelEducacion: nivel === null ? null : { nivelEducacion: { nivel, descripcion: `NIVEL_${nivel}` } } }),
-  titulos: ok({ titulos: titulos.map((n) => ({ titulo: { descripcion: `TITULO ${n}`, nivelEducacion: { nivel: n, descripcion: `NIVEL_${n}` } } })) }),
-});
-
-Deno.test("dif.ide.nivel_de_educacion: el título más alto contra el registro civil; iguales, sin títulos o sin nivel, no", () => {
-  const sube = de(derivarHechos(conEducacion(6, [8, 9]), contexto), "dif.ide.nivel_de_educacion");
-  assertEquals(sube.map((d) => [d.manda.valor, d.cede[0].valor, d.cede[0].registro.indice, d.magnitud.absoluta, d.lectura]), [["NIVEL_6", "NIVEL_9", 1, 3, "esperada"]]);
-  // El registro civil más alto que el título: con signo negativo.
-  assertEquals(de(derivarHechos(conEducacion(8, [7]), contexto), "dif.ide.nivel_de_educacion").map((d) => d.magnitud.absoluta), [-1]);
-  for (const raw of [conEducacion(8, [8, 6]), conEducacion(8, []), conEducacion(null, [9])]) {
-    assertEquals(de(derivarHechos(raw, contexto), "dif.ide.nivel_de_educacion"), []);
-  }
 });

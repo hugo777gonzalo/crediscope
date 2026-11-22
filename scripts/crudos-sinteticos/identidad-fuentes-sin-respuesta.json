@@ -1,0 +1,18 @@
+{
+  "descripcion": "Grupo de identidad: la fuente de identidad no contestó (error) y la de títulos tampoco (faltante). Cada campo queda sin dato con lo que el perfil escribe como parcial (null, false, 0 o la lista vacía), nunca como «no tiene títulos» o «no es extranjera»",
+  "cedula": "0000000000",
+  "capturadoEl": "2026-10-01T12:00:00-05:00",
+  "raw": {
+    "general": { "status": "error", "data": null },
+    "titulos": { "status": "faltante", "data": null }
+  },
+  "esperado": {},
+  "hechos": {
+    "ide.nombre": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null },
+    "ide.fallecido": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": false },
+    "ide.profesiones": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": [] },
+    "ide.origen.es_extranjero": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null },
+    "ide.titulos.cantidad": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": 0 },
+    "ide.nivel_educacion.mas_alto": { "valor": null, "motivo": "fuente_sin_respuesta", "parcial": null }
+  }
+}

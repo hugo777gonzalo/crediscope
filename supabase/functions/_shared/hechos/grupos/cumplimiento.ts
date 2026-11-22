@@ -109,6 +109,13 @@ const FUENTE_NEGRA = "listaNegra";
 const FUENTE_IMPEDIMENTO = "impedimentoCargosPublicos";
 const FUENTE_SERCOP = "sercop";
 const FUENTE_IDENTIDAD = "general";
+
+// La fuente de identidad registra a la persona como fallecida: con fecha de defunción, o con
+// «fallec» en la información adicional. Lo lee también el grupo de identidad (el campo
+// `identidad.fallecido` del perfil): una sola regla.
+export function registraFallecido(persona: AnyRecord | null | undefined): boolean {
+  return Boolean(persona?.fechaDefuncion) || String(persona?.informacionAdicional ?? "").toUpperCase().includes("FALLEC");
+}
 // `faltante` es su «no hay» (calidad-de-la-consulta.ts, FUENTES): sólo un `error` o `deshabilitado` es una caída.
 const DICEN_NO_HAY_CON_FALTANTE = new Set([FUENTE_IMPEDIMENTO, FUENTE_SERCOP]);
 
@@ -149,7 +156,7 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
   // ---- Identidad: el fallecido y la cédula que dice la fuente ----
   const persona = obj(crudo, FUENTE_IDENTIDAD, "personaNatural");
   const refIdentidad = [ref(consulta, FUENTE_IDENTIDAD)];
-  const fallecido = Boolean(persona?.fechaDefuncion) || String(persona?.informacionAdicional ?? "").toUpperCase().includes("FALLEC");
+  const fallecido = registraFallecido(persona);
   emitirHecho("cum.fallecido.registrado", "cum.simple@1", [FUENTE_IDENTIDAD], fallecido, refIdentidad);
   const cedulaDeLaFuente = (persona?.identificacion ? persona.identificacion : null) as string | null;
   emitirHecho("cum.identidad.cedula_de_la_fuente", "cum.simple@1", [FUENTE_IDENTIDAD], cedulaDeLaFuente, refIdentidad);
