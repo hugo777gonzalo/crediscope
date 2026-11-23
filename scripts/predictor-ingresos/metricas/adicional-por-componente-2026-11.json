@@ -1,0 +1,561 @@
+{
+  "que_es": "docs/propuesta-adicional-del-dependiente.md, sesión 1: datos y etiquetas, sin modelo. Sólo agregados.",
+  "reproduccion_de_la_seccion_2": {
+    "obtenido": {
+      "personas": 39017,
+      "material": 9106,
+      "cuentas o IVA": 1357,
+      "cuentas o IVA con archivo": 393,
+      "declarado": 5881,
+      "IESS escrito": 1170,
+      "predictor": 477,
+      "arriendo": 152,
+      "jubilación": 69,
+      "ruc_activo": 3874,
+      "ruc_activo_material": 1523
+    },
+    "esperado": {
+      "personas": 39017,
+      "material": 9106,
+      "cuentas o IVA": 1356,
+      "cuentas o IVA con archivo": 393,
+      "declarado": 5881,
+      "IESS escrito": 1171,
+      "predictor": 477,
+      "arriendo": 152,
+      "jubilación": 69,
+      "ruc_activo": 3874,
+      "ruc_activo_material": 1523
+    },
+    "diferencias": {
+      "cuentas o IVA": 1,
+      "IESS escrito": -1
+    },
+    "empates_entre_cuentas_o_iva_e_iess_escrito": 1,
+    "el_total_cuadra_con_sueldo_mas_items_con_check_pct": 99.99,
+    "personas_con_algun_item_sin_check_pct": 15.4,
+    "personas_con_ruc_activo_con_algun_item_sin_check_pct": 41.4
+  },
+  "origenes": {
+    "todos": {
+      "personas": 39017,
+      "material": 9106,
+      "material_pct": 23.3,
+      "por_origen": {
+        "declarado": {
+          "n": 5881,
+          "con_archivo_del_origen_pct": 3.4,
+          "mediana": 600.0
+        },
+        "cuentas o IVA": {
+          "n": 1357,
+          "con_archivo_del_origen_pct": 29.0,
+          "mediana": 674.0
+        },
+        "IESS escrito": {
+          "n": 1170,
+          "con_archivo_del_origen_pct": 6.3,
+          "mediana": 1000.0
+        },
+        "predictor": {
+          "n": 477,
+          "con_archivo_del_origen_pct": 5.9,
+          "mediana": 900.0
+        },
+        "arriendo": {
+          "n": 152,
+          "con_archivo_del_origen_pct": 0.7,
+          "mediana": 600.0
+        },
+        "jubilación": {
+          "n": 69,
+          "con_archivo_del_origen_pct": 8.7,
+          "mediana": 1400.0
+        }
+      }
+    },
+    "OK FACTURAR y condicionado": {
+      "personas": 11366,
+      "material": 2332,
+      "material_pct": 20.5,
+      "por_origen": {
+        "declarado": {
+          "n": 979,
+          "con_archivo_del_origen_pct": 7.0,
+          "mediana": 865.0
+        },
+        "cuentas o IVA": {
+          "n": 495,
+          "con_archivo_del_origen_pct": 31.7,
+          "mediana": 800.0
+        },
+        "IESS escrito": {
+          "n": 441,
+          "con_archivo_del_origen_pct": 9.1,
+          "mediana": 1076.0
+        },
+        "predictor": {
+          "n": 353,
+          "con_archivo_del_origen_pct": 6.2,
+          "mediana": 1000.0
+        },
+        "arriendo": {
+          "n": 46,
+          "con_archivo_del_origen_pct": 0.0,
+          "mediana": null
+        },
+        "jubilación": {
+          "n": 18,
+          "con_archivo_del_origen_pct": 22.2,
+          "mediana": null
+        }
+      }
+    },
+    "con el bloque del SRI": {
+      "personas": 12986,
+      "material": 3487,
+      "material_pct": 26.9,
+      "por_origen": {
+        "declarado": {
+          "n": 2334,
+          "con_archivo_del_origen_pct": 3.7,
+          "mediana": 600.0
+        },
+        "IESS escrito": {
+          "n": 490,
+          "con_archivo_del_origen_pct": 5.3,
+          "mediana": 955.0
+        },
+        "cuentas o IVA": {
+          "n": 395,
+          "con_archivo_del_origen_pct": 46.8,
+          "mediana": 600.0
+        },
+        "predictor": {
+          "n": 237,
+          "con_archivo_del_origen_pct": 3.4,
+          "mediana": 811.0
+        },
+        "arriendo": {
+          "n": 21,
+          "con_archivo_del_origen_pct": 4.8,
+          "mediana": null
+        },
+        "jubilación": {
+          "n": 10,
+          "con_archivo_del_origen_pct": 0.0,
+          "mediana": null
+        }
+      }
+    },
+    "con RUC activo": {
+      "personas": 3874,
+      "material": 1523,
+      "material_pct": 39.3,
+      "por_origen": {
+        "declarado": {
+          "n": 1051,
+          "con_archivo_del_origen_pct": 4.9,
+          "mediana": 700.0
+        },
+        "cuentas o IVA": {
+          "n": 262,
+          "con_archivo_del_origen_pct": 53.4,
+          "mediana": 599.0
+        },
+        "IESS escrito": {
+          "n": 119,
+          "con_archivo_del_origen_pct": 5.9,
+          "mediana": 1431.0
+        },
+        "predictor": {
+          "n": 84,
+          "con_archivo_del_origen_pct": 3.6,
+          "mediana": 964.0
+        },
+        "jubilación": {
+          "n": 4,
+          "con_archivo_del_origen_pct": 0.0,
+          "mediana": null
+        },
+        "arriendo": {
+          "n": 3,
+          "con_archivo_del_origen_pct": 0.0,
+          "mediana": null
+        }
+      }
+    },
+    "con RUC activo, OK FACTURAR": {
+      "personas": 1235,
+      "material": 409,
+      "material_pct": 33.1,
+      "por_origen": {
+        "declarado": {
+          "n": 173,
+          "con_archivo_del_origen_pct": 8.7,
+          "mediana": 800.0
+        },
+        "cuentas o IVA": {
+          "n": 95,
+          "con_archivo_del_origen_pct": 51.6,
+          "mediana": 874.0
+        },
+        "IESS escrito": {
+          "n": 74,
+          "con_archivo_del_origen_pct": 5.4,
+          "mediana": 1607.0
+        },
+        "predictor": {
+          "n": 67,
+          "con_archivo_del_origen_pct": 4.5,
+          "mediana": 967.0
+        }
+      }
+    }
+  },
+  "grados": {
+    "por_grado": {
+      "A": {
+        "n": 393,
+        "con_ruc_activo": 140,
+        "en_la_prueba_desde_julio_2026": 71,
+        "en_la_prueba_con_ruc_activo": 59,
+        "ok_pct": 39.9,
+        "por_anio": {
+          "2024": 42,
+          "2025": 167,
+          "2026": 184
+        },
+        "mediana_del_adicional": 596.0
+      },
+      "B": {
+        "n": 964,
+        "con_ruc_activo": 122,
+        "en_la_prueba_desde_julio_2026": 72,
+        "en_la_prueba_con_ruc_activo": 43,
+        "ok_pct": 35.1,
+        "por_anio": {
+          "2023": 246,
+          "2024": 284,
+          "2025": 224,
+          "2026": 210
+        },
+        "mediana_del_adicional": 700.0
+      },
+      "B?": {
+        "n": 1170,
+        "con_ruc_activo": 119,
+        "en_la_prueba_desde_julio_2026": 280,
+        "en_la_prueba_con_ruc_activo": 65,
+        "ok_pct": 37.7,
+        "por_anio": {
+          "2023": 32,
+          "2024": 310,
+          "2025": 339,
+          "2026": 489
+        },
+        "mediana_del_adicional": 1000.0
+      },
+      "C": {
+        "n": 6102,
+        "con_ruc_activo": 1058,
+        "en_la_prueba_desde_julio_2026": 988,
+        "en_la_prueba_con_ruc_activo": 463,
+        "ok_pct": 17.1,
+        "por_anio": {
+          "2023": 195,
+          "2024": 1549,
+          "2025": 1995,
+          "2026": 2363
+        },
+        "mediana_del_adicional": 600.0
+      },
+      "fuera": {
+        "n": 477,
+        "con_ruc_activo": 84,
+        "en_la_prueba_desde_julio_2026": 132,
+        "en_la_prueba_con_ruc_activo": 44,
+        "ok_pct": 74.0,
+        "por_anio": {
+          "2024": 8,
+          "2025": 233,
+          "2026": 236
+        },
+        "mediana_del_adicional": 900.0
+      },
+      "negativo: adicional no material": {
+        "n": 672,
+        "con_ruc_activo": 83,
+        "en_la_prueba_desde_julio_2026": 72,
+        "en_la_prueba_con_ruc_activo": 34,
+        "ok_pct": 24.6,
+        "por_anio": {
+          "2023": 91,
+          "2024": 224,
+          "2025": 176,
+          "2026": 181
+        },
+        "mediana_del_adicional": 1.0
+      },
+      "negativo: ningún ítem adicional": {
+        "n": 29239,
+        "con_ruc_activo": 2268,
+        "en_la_prueba_desde_julio_2026": 4012,
+        "en_la_prueba_con_ruc_activo": 1032,
+        "ok_pct": 30.3,
+        "por_anio": {
+          "2021": 1,
+          "2023": 3345,
+          "2024": 7970,
+          "2025": 8616,
+          "2026": 9307
+        },
+        "mediana_del_adicional": null
+      }
+    },
+    "material_con_mas_de_un_componente_pct": 1.6,
+    "a_y_b_peso_de_cuentas_o_iva_en_el_adicional": {
+      "mediana": 1.0,
+      "todo_pct": 98.5
+    },
+    "personas_con_cuentas_o_iva_que_no_es_el_origen": 128,
+    "archivo_registrado_por_anio_cuentas_o_iva": {
+      "2021": {
+        "cuentas_o_iva": 0,
+        "con_archivo": 0
+      },
+      "2023": {
+        "cuentas_o_iva": 246,
+        "con_archivo": 0
+      },
+      "2024": {
+        "cuentas_o_iva": 326,
+        "con_archivo": 42
+      },
+      "2025": {
+        "cuentas_o_iva": 391,
+        "con_archivo": 167
+      },
+      "2026": {
+        "cuentas_o_iva": 394,
+        "con_archivo": 184
+      }
+    },
+    "prueba_desde": "2026-07-01",
+    "personas_en_la_prueba": 5627,
+    "con_ruc_activo_en_la_prueba": 1740
+  },
+  "iess_escrito_a_mano": {
+    "items": 1256,
+    "personas": 1241,
+    "personas_con_origen_iess_escrito": 1170,
+    "actividad_del_item": {
+      "SECUNDARIA": 648,
+      "PRINCIPAL": 608
+    },
+    "actividad_del_recuperado_de_la_misma_persona": {
+      "PRINCIPAL": 623,
+      "SECUNDARIA": 615,
+      "PRINCIPAL+SECUNDARIA": 18
+    },
+    "relacion_del_item": {
+      "DEPENDIENTE": 1191,
+      "PUBLICO": 53,
+      "INDEPENDIENTE": 12
+    },
+    "observacion": {
+      "(VACIA)": 647,
+      "OTRA": 403,
+      "INGRESADO POR INTEGRACIÓN CON CONCESIONARIOS": 157,
+      "PENDIENTE JUSTIFICAR": 31,
+      "COMISIONES": 16,
+      "RESTADO IESS": 1
+    },
+    "multiplo_de_100_pct": 43.9,
+    "con_montos_por_tipo_pct": 1.0,
+    "razon_contra": {
+      "el sueldo recuperado (ver_f)": {
+        "n": 1256,
+        "mediana": 1.0,
+        "a_5pct_pct": 9.3
+      },
+      "el IESS del último mes (todos los empleadores)": {
+        "n": 1182,
+        "mediana": 0.801,
+        "a_5pct_pct": 5.7
+      },
+      "el promedio del proveedor": {
+        "n": 1183,
+        "mediana": 0.9,
+        "a_5pct_pct": 4.4
+      }
+    },
+    "razon_contra_el_otro_empleo_del_ultimo_mes": {
+      "n": 471,
+      "a_10pct_pct": 2.8
+    },
+    "sueldo_mas_escrito_sobre_iess_del_ultimo_mes_mediana": 1.64,
+    "mas_de_un_empleo_en_el_iess_pct": 22.8,
+    "mas_de_un_empleo_en_el_iess_el_resto_pct": 24.0,
+    "sin_historial_del_iess_pct": 5.6,
+    "respuesta": {
+      "OK FACTURAR": 406,
+      "RECHAZADO": 274,
+      "APROBADO CONDICIONADO": 156,
+      "OK FACTURAR CONDICIONADO": 64,
+      "APROBADO": 44,
+      "PENDIENTE": 41
+    },
+    "con_algun_archivo_de_ingresos_pct": 57.8,
+    "archivo_mas_comun_pct": {
+      "mecanizado": 53.2,
+      "mov_bancarios": 10.7,
+      "inversiones_societarias": 10.4,
+      "roles": 6.8,
+      "certificado_bancario": 4.7
+    },
+    "con_historial_desde_2026_03_08": {
+      "items": 454,
+      "primera_version_manual_pct": 99.6,
+      "monto_cambiado_pct": 30.6
+    }
+  },
+  "items_sin_el_check": {
+    "items": 6310,
+    "items_de_consultas_desde_2026_03_08_pct": 99.6,
+    "items_antes_de_2026_03_08": 25,
+    "items_con_historial_pct": 100.0,
+    "con_historial_empezaron_con_el_check_pct": 100.0,
+    "por_clase": {
+      "IESS escrito": {
+        "n": 5701,
+        "duplica_uno_con_check_pct": 92.5,
+        "lo_apago_un_autor_automatico_pct": 88.8
+      },
+      "arriendo": {
+        "n": 3,
+        "duplica_uno_con_check_pct": 0.0,
+        "lo_apago_un_autor_automatico_pct": 0.0
+      },
+      "cuentas o IVA": {
+        "n": 28,
+        "duplica_uno_con_check_pct": 3.6,
+        "lo_apago_un_autor_automatico_pct": 0.0
+      },
+      "declarado": {
+        "n": 556,
+        "duplica_uno_con_check_pct": 5.6,
+        "lo_apago_un_autor_automatico_pct": 0.0
+      },
+      "predictor": {
+        "n": 22,
+        "duplica_uno_con_check_pct": 31.8,
+        "lo_apago_un_autor_automatico_pct": 0.0
+      }
+    },
+    "los_duplicados_copian_a": {
+      "sueldo recuperado": 5265,
+      "declarado": 24,
+      "predictor": 10,
+      "IESS escrito": 7,
+      "cuentas o IVA": 5,
+      "arriendo": 2
+    },
+    "flujos_iess_secundarios": {
+      "n": 8023,
+      "con_check_pct": 48.1,
+      "recuperados_con_check_pct": 96.6,
+      "escritos_con_check_pct": 15.9
+    },
+    "personas_con_algun_item_sin_check_pct": {
+      "todas": 15.4,
+      "desde_2026_03_08": 57.0,
+      "antes": 0.1
+    },
+    "sin_los_duplicados_pct": {
+      "todas": 2.4,
+      "desde_2026_03_08": 8.9,
+      "con_ruc_activo_desde_2026_03_08": 8.7
+    },
+    "rechazados_sin_duplicados_por_clase": {
+      "declarado": 525,
+      "IESS escrito": 427,
+      "cuentas o IVA": 27,
+      "predictor": 15,
+      "arriendo": 3
+    }
+  },
+  "paridad_del_sueldo": {
+    "con_el_iess_de_aws": {
+      "personas_con_salario_del_ultimo_mes": 30885,
+      "ver_f_sobre_el_bruto_del_ultimo_mes_menos_aporte_mediana": 0.994,
+      "a_2pct_pct": 44.3,
+      "a_10pct_pct": 56.0,
+      "aws_mayor_en_mas_de_10pct_pct": 4.2,
+      "aws_menor_en_mas_de_10pct_pct": 19.0,
+      "el_ultimo_mes_de_la_persona_es_anterior_al_corte_pct": 0.2,
+      "nota": "El IESS de AWS es la copia de Proveedor_Info_1 que guardó la originación; el último mes es el de la persona, no el corte."
+    },
+    "con_el_codigo_de_produccion": {
+      "dependientes_con_crudo_en_la_cartera": 786,
+      "fallas": 0,
+      "estado_del_peldaño_1": {
+        "con_monto": 771,
+        "no_aplica": 15
+      },
+      "motivo_sin_monto": {
+        "sin_sueldo_vigente": 15
+      },
+      "con_monto": 771,
+      "ver_f_sobre_el_peldaño_1_mediana": 0.994,
+      "a_2pct_pct": 65.6,
+      "a_10pct_pct": 79.4,
+      "aws_mayor_en_mas_de_10pct_pct": 10.1,
+      "aws_menor_en_mas_de_10pct_pct": 10.5,
+      "con_mas_de_un_sueldo": 39,
+      "a_10pct_con_un_solo_sueldo_pct": 80.1,
+      "a_10pct_con_dos_o_mas_sueldos_pct": 66.7,
+      "por_anio_a_10pct_pct": {
+        "2024": {
+          "n": 2,
+          "a_10pct": 100.0
+        },
+        "2025": {
+          "n": 25,
+          "a_10pct": 92.0
+        },
+        "2026": {
+          "n": 744,
+          "a_10pct": 78.9
+        }
+      },
+      "el_iess_de_aws_menos_aporte_contra_el_peldaño_1": {
+        "n": 771,
+        "mediana": 1.0,
+        "a_2pct_pct": 53.4,
+        "a_10pct_pct": 56.9
+      }
+    }
+  },
+  "entradas": {
+    "ingresos_por_actividad.csv": "e0e93c4fbda81fa5bd9f849b4eeda511e31989eb72092ce22b913844323a5e10",
+    "documentos_por_persona.csv": "b90be3cc3405a2c8dbd1b7390f56bc9356dedda93051d2acc576c3883709983c",
+    "flujos_historial.csv": "a5a0c7a98c68754bd2310d7bb7b609c9c080ed3c6017bb6c43197d4729bea2a4",
+    "iess_mismo_mes.csv": "d43f349c51da4715dc46a96d9674f3f64db1425290fa4af8eb8bda331a03aa97"
+  },
+  "versiones": {
+    "lightgbm": "4.7.0",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "scipy": "1.18.1",
+    "pyarrow": "26.0.0",
+    "duckdb": "2.0.0.dev2610162032",
+    "python": "3.15.0"
+  },
+  "tabla": {
+    "archivo": "adicional-por-componente.parquet",
+    "filas": 39017,
+    "sha256": "1eb5e5a5cadbdd9c3ede394031da3569b2db0042d128488dd1bc97873d44db6a"
+  }
+}

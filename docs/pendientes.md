@@ -554,10 +554,17 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     (`docs/propuesta-adicional-del-dependiente.md`). En AWS, el total validado es el sueldo más los ítems con el check (99,99%), y
     cada ítem dice su origen. De 9.106 adicionales materiales, 5.881 son declarados, 1.356 de cuentas o IVA (393 con archivo) y 477
     del predictor. El modelo con la etiqueta vieja ya falló (12.36). **Lo que sigue, en sesiones limpias:**
-    1. datos y etiquetas, sin modelo;
+    1. datos y etiquetas, sin modelo: **hecha el 2026-11-23** (propuesta, sección 6; `adicional_por_componente.py`);
     2. el modelo, con las reglas fijadas en la propuesta;
     3. conectarlo, sólo si pasa.
-    Nada empezado.
+
+    Lo que dejó la sesión 1:
+    - Los ítems sin el check son casi todos copias automáticas del sueldo y sólo existen desde el 2026-03-08: los rechazos de verdad son el 2,4%
+      de las personas, no el 15,4%.
+    - El IESS escrito a mano lo escribe el analista con el mecanizado a la vista, y no es el otro empleador del IESS.
+    - `ver_f` coincide con el peldaño 1 de producción a ±10% en el 79,4% (771 con crudo en la cartera).
+    - La prueba de la etiqueta A tiene 71 casos.
+    - **La sesión 2 espera las cinco preguntas al negocio de 6.6.**
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
