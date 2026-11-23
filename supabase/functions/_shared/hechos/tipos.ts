@@ -98,6 +98,8 @@ export interface OperacionDeCredito {
   diasDeMora: number | null;
   calificacion: string | null;
   cuotaMensual: number | null;
+  /** Lo que se debe en total con esta operación: sólo donde la fuente lo da entero (cooperativas, `val_saldo_total`); null en las demás. */
+  saldoTotal: number | null;
 }
 
 export interface Diferencia extends Base {

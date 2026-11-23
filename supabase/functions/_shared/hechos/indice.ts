@@ -35,7 +35,10 @@ import * as conciliacion from "./grupos/conciliacion.ts";
 //
 // hechos-v4 (grupo 4, ingresos): un hecho puede valer un objeto de valores simples (la
 // continuidad laboral, unidad «objeto»), y un elemento puede llevar booleanos.
-export const HECHOS_VERSION = "hechos-v4";
+//
+// hechos-v5 (E10, 2026-11-23): una operación de cooperativa lleva su `saldoTotal` (`val_saldo_total`); las demás, null. Sólo lo lee el veredicto
+// de riesgo: el perfil no cambia (sigue estructura-v31) y la capa se deriva en cada lectura, así que no hay nada que recalcular.
+export const HECHOS_VERSION = "hechos-v5";
 
 // El nombre es el del grupo en la sección 3.1 y el de `--grupo=` de comparar-hechos.mjs.
 export const GRUPOS = {
