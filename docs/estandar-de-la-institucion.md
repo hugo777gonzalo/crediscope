@@ -111,6 +111,19 @@ faltan, no dudas de criterio.
 - El código valida el estándar al cargarlo y se niega a calcular con uno
   inválido (una fracción escrita como 40 en vez de 0,40 aprobaba todo en
   `capacidad-de-pago.ts`; la misma lección vale acá).
+- **Construido (F14, 2026-11-22; sin conectar).** El código está en
+  `supabase/functions/_shared/estandar/`: `estandar.ts` (la forma y las listas
+  cerradas), `plantillas.ts` (las tres de la sección 5), `validar-estandar.ts` (el
+  validador: devuelve todos los errores juntos y registra el estándar que pasa; la escalera
+  se niega a leer uno que no pasó), `configurar-estandar.ts` (una institución nueva es una
+  plantilla más cambios en datos, y su huella sha256 canónica) y
+  `lectura-de-la-escalera.ts` (lo que lee `evaluarEscalera()`). La tabla es
+  `estandares_de_institucion` (migración 155, escrita y probada, **sin aplicar**): una fila
+  por versión que sólo se inserta (un disparador impide modificarla o borrarla), RLS de
+  lectura para analistas y administradores, y **la vigente no es una marca**: es la de mayor
+  `vigente_desde` que ya empezó (`estandar_vigente()`), porque una marca obligaría a
+  modificar la fila anterior. Nada la lee todavía; falta que cada análisis guarde la versión y
+  la huella (se hace con la versión mayor del marco).
 
 ### 1.2 Las subsecciones y qué puede mover la institución
 
@@ -336,6 +349,34 @@ fracciones van como fracción (0,40 es 40%) y los montos en dólares.
   }
 }
 ```
+
+**La forma que quedó en código** (`_shared/estandar/estandar.ts`) cambia el ejemplo en
+esto (F14):
+
+- Los peldaños de `ingreso.aceptadoPorPeldano` llevan los nombres de la escalera en el código
+  (`verificado_por_un_tercero`, `verificado_con_documento`, `cota_por_credito_otorgado`,
+  `minimo_certificado`, `declarado_coherente`, `declarado_sin_respaldo`).
+- `capacidad.cargaMaximaPorRiesgo` (C2): 60, 50 y 40% para riesgo bajo, con observaciones y
+  deteriorado (el mal comportamiento no tiene carga), sobre el neto disponible. **Propuesta sin
+  medir** (el negocio pidió validar los porcentajes) y **no la lee nada**: la escalera sigue con
+  `cargaMaxima` (40%). La carga extendida queda apagada en las tres plantillas (C2 la reemplaza)
+  para no cambiar lo que mide la escalera de hoy.
+- `capacidad.cuotaEstimadaDeDeudaSinCuota` es el factor por tramo de saldo de C1 (2,5 a 6,5%) y
+  el del hipotecario sin plazo, no el 3,5% parejo. Las tres plantillas lo comparten. Queda
+  abierto qué es la prueba de la Aprobación Directa «al 5%», que con esos tramos ya no es un
+  estrés (`fraccionParaLaAprobacionDirecta`).
+- `riesgo.moraVigente` reemplaza a los días de cooperativas e IESS: los umbrales en
+  dólares de R2 por sector (`sbs`, `seps`, `comercial`), con `revisionDeLosUmbrales` (cada
+  enero; `proximaRevision` tiene que caer en enero). IESS y BIESS siguen por días mientras el
+  perfil no traiga lo vencido (decisión 7 de R2 a R4).
+- `productos`: el catálogo (monto, plazo, tasas, desgravamen, `pideGarante`, y `colateral`:
+  `no_lo_pide`, `lo_pide_siempre` o `lo_pide_segun_la_celda`), por C4.
+- `siSeSuperaElMontoSinColateral`: lo que se hace por encima del límite sin colateral de la
+  celda (`cambio_de_condiciones` o `condicionado`), que elige cada institución (3.3).
+- `aprobacionDirecta.habilitada` (C3) y `historialesAdmitidos` en vez de `exigeHistorial`: la
+  expansiva la abre también en el historial corto. Una celda sólo llega a la Aprobación
+  Directa si la institución la habilita.
+- Un control más, `limita_a_revisar` (R5: la providencia de certificación).
 
 Notas del ejemplo:
 
@@ -799,6 +840,13 @@ Cambian estos parámetros (todos **propuesta sin medir**):
 | Monto sin colateral (celda núcleo) | USD 10.000 | USD 15.000 | USD 20.000 |
 | Margen de la IA | Sólo hacia abajo | Un escalón, en las dos direcciones | Un escalón, en las dos direcciones |
 | Bandas del score | Las mismas | Las mismas | Las mismas |
+
+En código (F14, `_shared/estandar/plantillas.ts`) la tabla quedó así: los umbrales en dólares
+y los bancos sin buró por la letra son los de la tabla de R2 (los demás valores de mora de esta tabla,
+los días de cooperativas, los reemplaza R2); la carga máxima por riesgo es C2 (60, 50 y 40% en la por
+defecto; 50, 45 y 35% en la conservadora; 60, 55 y 45% en la expansiva, propuesta sin medir); la carga
+extendida queda apagada en las tres, y la cuota estimada de una deuda sin cuota es la de C1 en las tres
+(la fila de 5%, 3,5% y 3% quedó vieja).
 
 Qué cambia en la práctica:
 
