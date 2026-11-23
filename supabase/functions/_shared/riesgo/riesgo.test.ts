@@ -23,7 +23,7 @@ function op(p: Partial<OperacionDeRiesgo> & Pick<OperacionDeRiesgo, "sistema">):
   const sector = p.sistema === "cooperativas" ? "seps" : p.sistema === "comercial" ? "comercial" : "sbs";
   return {
     clave: `op-${String(++n).padStart(6, "0")}`, sector, rol: "titular", calificacion: null, diasDeMora: null, saldoVencido: null, saldoNoDevenga: null,
-    saldoEnDemanda: null, saldoCastigado: null, saldoVigente: null, cuotaMensual: null, fechaDelDato: "2026-11-22", ...p,
+    saldoEnDemanda: null, saldoCastigado: null, saldoVigente: null, cuotaMensual: null, saldoTotal: null, fechaDelDato: "2026-11-22", ...p,
   };
 }
 // Un banco al día con una deuda formal (para «superado» y los atenuantes).
@@ -437,6 +437,33 @@ Deno.test("la pensión alimenticia hasta la tolerancia es un agravante de un mal
   assertEquals(v.agravantes?.find((x) => x.id === "pension_alimenticia_en_mora_dentro_de_la_tolerancia")?.estado, "se_cumple");
 });
 
+// ---------------------------------------------------------------- la deuda al día en una cooperativa (negocio, 2026-11-23)
+
+Deno.test("la deuda al día en una cooperativa suma el saldo de las operaciones a 0 días y pide USD 500, como en bancos", () => {
+  const atenuante = (e: EntradaDeRiesgo) => {
+    const mora = moraVigente(e, DEFECTO);
+    return evaluarAtenuantes(e, DEFECTO, { mora, historial: historialDeLaPersona(e, DEFECTO, mora) }).find((x) => x.id === "deuda_al_dia_en_cooperativa")!;
+  };
+  // El caso c-56ba2e4e: una operación en saldo 0 a 0 días y dos en mora. Antes alcanzaba con una fila a 0 días.
+  const lasTres = entrada([coop(0, 0, { saldoTotal: 0 }), coop(45, 300, { saldoTotal: 2000 }), coop(90, 800, { saldoTotal: 3000 })]);
+  assertEquals(atenuante(lasTres).estado, "no_se_cumple");
+  // Sólo cuenta lo de las operaciones a 0 días: la que está en mora no suma aunque tenga saldo.
+  assertEquals(atenuante(entrada([coop(0, 0, { saldoTotal: 400 }), coop(45, 300, { saldoTotal: 9000 })])).estado, "no_se_cumple");
+  // Dos operaciones al día suman: 300 + 250 llegan a 500.
+  const suman = atenuante(entrada([coop(0, 0, { saldoTotal: 300 }), coop(0, 0, { saldoTotal: 250 }), coop(45, 300, { saldoTotal: 9000 })]));
+  assertEquals([suman.estado, suman.derivaDe.length], ["se_cumple", 2]);
+  // El umbral es el de bancos (deudaVigenteAlDia.desdeUsd): 500 justo cumple, 499 no.
+  assertEquals(atenuante(entrada([coop(0, 0, { saldoTotal: 500 })])).estado, "se_cumple");
+  assertEquals(atenuante(entrada([coop(0, 0, { saldoTotal: 499 })])).estado, "no_se_cumple");
+  const otro = estandarCon({ malComportamiento: { atenuantes: { deudaVigenteAlDia: { desdeUsd: 1000 } } } });
+  const e1000 = entrada([coop(0, 0, { saldoTotal: 800 })]);
+  const m1000 = moraVigente(e1000, otro);
+  assertEquals(evaluarAtenuantes(e1000, otro, { mora: m1000, historial: historialDeLaPersona(e1000, otro, m1000) }).find((x) => x.id === "deuda_al_dia_en_cooperativa")?.estado, "no_se_cumple");
+  // Sin saldo en la fila (null) no se supone una deuda: no cumple. Y con la fuente caída sigue «no medido».
+  assertEquals(atenuante(entrada([coop(0, 0)])).estado, "no_se_cumple");
+  assertEquals(atenuante(entrada([], { fuentesSinRespuesta: ["cooperativas"] })).estado, "no_medido");
+});
+
 Deno.test("las señales: recencia, tendencia, razones y estabilidad, con «no se puede medir» donde falta lo que hace falta", () => {
   const e = entrada([bancoAlDia(4000), coop(0, 0, { cuotaMensual: 100 })], {
     saldoTotalCooperativas: 1000, ingresoReportado: { promedioUltimos6: 1000, promedioUltimos12: 1000, ingresoMensual: 1000 }, demandasDeCobro: [{ anio: 2024, quienDemanda: "empresa" }], estabilidadMeses: 18,
@@ -466,7 +493,7 @@ Deno.test("las señales: recencia, tendencia, razones y estabilidad, con «no se
 Deno.test("el adaptador arma la entrada desde la capa de hechos: sectores, garante, demandas y fuentes caídas", () => {
   const ent = (clave: string, atributos: Record<string, unknown>, fecha: string | null): Entidad => ({
     clave: clave as Entidad["clave"], tipo: "operacion",
-    atributos: { sistema: "bancos", acreedor: null, rol: "titular", estado: null, fechaDeConcesion: null, montoOriginal: null, saldoPorVencer: null, saldoVencido: null, saldoNoDevenga: null, saldoEnDemanda: null, saldoCastigado: null, diasDeMora: null, calificacion: null, cuotaMensual: null, ...atributos },
+    atributos: { sistema: "bancos", acreedor: null, rol: "titular", estado: null, fechaDeConcesion: null, montoOriginal: null, saldoPorVencer: null, saldoVencido: null, saldoNoDevenga: null, saldoEnDemanda: null, saldoCastigado: null, diasDeMora: null, calificacion: null, cuotaMensual: null, saldoTotal: null, ...atributos },
     vistas: [{ registro: { consulta: "c", fuente: "f" }, fechaDelDato: fecha, atributos: {} }], union: null, atribucion: { deLaPersona: "si", metodo: "la_fuente_busca_por_identificacion" },
   });
   const hecho = (codigo: string, valor: unknown, extra: Record<string, unknown> = {}) => ({
@@ -474,7 +501,7 @@ Deno.test("el adaptador arma la entrada desde la capa de hechos: sectores, garan
     fuentes: [], fechaDelDato: null, registros: [], ...(valor === null ? { motivo: "fuente_sin_respuesta" as const } : {}), ...extra,
   });
   const h: HechosDeLaPersona = {
-    version: "hechos-v4",
+    version: "hechos-v5",
     contexto: { cedula: "0000000000", consulta: "c", fechaDeLaConsulta: CONSULTA, corteIess: "2026-08", persona: { nombre: null, fechaDeNacimiento: null } },
     hechos: [
       hecho("jud.cobro.detalle", [{ anio: 2024, quienDemanda: "empresa" }]),
@@ -485,7 +512,7 @@ Deno.test("el adaptador arma la entrada desde la capa de hechos: sectores, garan
     entidades: [
       ent("op-aaaaaa", { sistema: "bancos", calificacion: "B2", rol: "garante" }, "2026-11-20"),
       ent("op-bbbbbb", { sistema: "iess_biess", diasMora: 5, diasDeMora: 5 }, "2026-11-20"),
-      ent("op-cccccc", { sistema: "cooperativas", diasDeMora: 40, saldoVencido: 70 }, "2026-11-20"),
+      ent("op-cccccc", { sistema: "cooperativas", diasDeMora: 40, saldoVencido: 70, saldoTotal: 350 }, "2026-11-20"),
       ent("op-dddddd", { sistema: "comercial", diasDeMora: 100, saldoVencido: 200 }, "2025-07-15"),
       ent("op-eeeeee", { sistema: "institucion", diasDeMora: 60 }, "2026-11-20"),
     ],
@@ -495,6 +522,7 @@ Deno.test("el adaptador arma la entrada desde la capa de hechos: sectores, garan
   assertEquals(e.operaciones.map((o) => [o.clave, o.sector]), [["op-aaaaaa", "sbs"], ["op-bbbbbb", "sbs"], ["op-cccccc", "seps"], ["op-dddddd", "comercial"]]); // la de la institución no cuenta dos veces
   assertEquals(e.operaciones[0].rol, "garante");
   assertEquals(e.operaciones[3].fechaDelDato, "2025-07-15");
+  assertEquals([e.operaciones[2].saldoTotal, e.operaciones[0].saldoTotal], [350, null]); // el saldo de la operación pasa; donde la fuente no lo da, null
   assertEquals(e.demandasDeCobro, [{ anio: 2024, quienDemanda: "empresa" }]);
   assertEquals(e.pensionAlimenticia, { enMora: true, deudaUsd: 120 });
   assertEquals(e.impedimentoParaCargosPublicos, true);

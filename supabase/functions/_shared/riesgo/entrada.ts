@@ -38,6 +38,8 @@ export interface OperacionDeRiesgo {
   /** Lo que se debe y está al día (por vencer): null donde la fuente no lo interpreta (cooperativas). */
   saldoVigente: number | null;
   cuotaMensual: number | null;
+  /** Lo que se debe en total con la operación: sólo cooperativas (`val_saldo_total`); null en las demás. */
+  saldoTotal: number | null;
   /** El corte del dato (el de la fuente): en el retail del proveedor es julio de 2025. */
   fechaDelDato: string | null;
 }
@@ -128,6 +130,7 @@ export function entradaDeRiesgoDesdeHechos(h: HechosDeLaPersona, opciones: { con
       saldoCastigado: a.saldoCastigado,
       saldoVigente: a.saldoPorVencer,
       cuotaMensual: a.cuotaMensual,
+      saldoTotal: a.saldoTotal ?? null,
       fechaDelDato: e.vistas[0]?.fechaDelDato ?? null,
     });
   }
