@@ -610,10 +610,10 @@ medido no cuenta ni a favor ni en contra.
 (`cum.lista_negra.existe`); una operación en atraso sin monto informado cuenta como Revisar y nunca como Aceptar; con la Conservadora la IA
 no sube nada aunque su lista de salidas diga Revisar (el margen hacia arriba es cero); y las multas de tránsito, que no están en la capa de
 hechos, salen «sin medir». **Decidido el 2026-11-23:** «hoy al día» es no tener días de mora vigentes en ninguna operación; un castigo o un cobro judicial sin días de mora es
-mora histórica (`moraVigente()`, `hoyAlDia`) y lo histórico no desmiente «hoy al día». **Siguen abiertas tres** (están como datos o como comportamiento y se pueden cambiar): una demanda de cobro sin
-año cuenta como reciente, y la de un demandante que no se pudo clasificar, como de una empresa; en
-cooperativas el saldo vigente lo da el saldo total, porque las operaciones no lo interpretan; y el retail con menos de USD 50 vencidos no es
-evento (regla de 2.2), mientras que sin el monto sí lo es.
+mora histórica (`moraVigente()`, `hoyAlDia`) y lo histórico no desmiente «hoy al día». Y en cooperativas el saldo al día lo da el saldo total
+(`coop.saldo.total`), porque las operaciones no interpretan el saldo vigente. **Siguen abiertas dos**, con casos reales medidos en la cartera
+(informe del seguimiento, fuera de git): una demanda de cobro sin demandante (85 de 1.259, en 73 personas; nunca hubo una sin año) se lee
+como de una empresa, y el retail con menos de USD 50 vencidos no es evento (regla de 2.2), mientras que sin el monto sí lo es.
 
 ---
 
