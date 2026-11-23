@@ -22,7 +22,7 @@
 create table estandares_de_institucion (
   id            uuid primary key default gen_random_uuid(),
   version       text not null unique check (version ~ '^estandar-v[0-9]+$'),
-  plantilla     text not null check (plantilla in ('por_defecto', 'conservadora', 'expansiva')),
+  plantilla     text not null check (plantilla in ('base', 'conservadora', 'optimista')),
   -- El estándar completo, ya con la plantilla mezclada (nunca «la plantilla más los cambios»: si
   -- una plantilla cambia después, el mismo caso con el mismo estándar tiene que dar la misma salida).
   contenido     jsonb not null

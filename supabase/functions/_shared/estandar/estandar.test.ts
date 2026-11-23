@@ -12,7 +12,7 @@ import { aplicarCambios } from "./cambios.ts";
 import { armarFilaDelEstandar, configurarEstandar, huellaDelEstandar, jsonCanonico, plantillaCompleta } from "./configurar-estandar.ts";
 import { CLAVES_DE_CELDA, PLANTILLAS } from "./estandar.ts";
 import { cargaMaximaSegunElRiesgo, lecturaDeLaEscalera } from "./lectura-de-la-escalera.ts";
-import { PLANTILLA_POR_DEFECTO, plantillaSinValidar } from "./plantillas.ts";
+import { PLANTILLA_BASE, plantillaSinValidar } from "./plantillas.ts";
 import { cargarEstandar, esEstandarValidado, EstandarInvalido, exigirEstandarValido, umbralesPorRevisar, validarEstandar } from "./validar-estandar.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -32,8 +32,8 @@ Deno.test("las tres plantillas pasan el validador y salen congeladas y registrad
   }
 });
 
-Deno.test("la plantilla por defecto trae los valores decididos por el negocio", () => {
-  const e = plantillaCompleta("por_defecto");
+Deno.test("la plantilla Base trae los valores decididos por el negocio", () => {
+  const e = plantillaCompleta("base");
   // R2 (2026-11-18): los umbrales en dólares por sector.
   assertEquals(e.riesgo.moraVigente.sectores, { sbs: { aceptarHastaUsd: 30, revisarHastaUsd: 150 }, seps: { aceptarHastaUsd: 30, revisarHastaUsd: 200 }, comercial: { aceptarHastaUsd: 100, revisarHastaUsd: 300 } });
   // Decisión 8 (2026-11-22): dólares, revisados cada enero.
@@ -60,10 +60,10 @@ Deno.test("la plantilla por defecto trae los valores decididos por el negocio", 
   assertEquals(e.productos.consumo.pideGarante, false);
 });
 
-Deno.test("la conservadora y la expansiva cambian lo que dice la sección 5, y nada más", () => {
-  const d = plantillaCompleta("por_defecto");
+Deno.test("la conservadora y la optimista cambian lo que dice la sección 5, y nada más", () => {
+  const d = plantillaCompleta("base");
   const c = plantillaCompleta("conservadora");
-  const x = plantillaCompleta("expansiva");
+  const x = plantillaCompleta("optimista");
   // Conservadora: más estricta, la IA no sube, la Aprobación Directa apagada.
   assertEquals(c.capacidad.cargaMaxima, 0.35);
   assertEquals(c.capacidad.cargaExtendida.habilitada, false);
@@ -79,7 +79,7 @@ Deno.test("la conservadora y la expansiva cambian lo que dice la sección 5, y n
   assertEquals(c.riesgo.moraVigente.masDeNoventaDiasConMontoTolerable, "negar");
   assertEquals(c.capacidad.historialProbado.deudaAlDiaDesdeUsd, 8000);
   assertEquals(c.ingreso.aceptadoPorPeldano.declarado_coherente, 0.5);
-  // Expansiva: más carga, más declarado, la Aprobación Directa más abierta; el mal comportamiento grave no se relaja.
+  // Optimista: más carga, más declarado, la Aprobación Directa más abierta; el mal comportamiento grave no se relaja.
   assertEquals(x.capacidad.cargaMaxima, 0.45);
   assertEquals(x.capacidad.cargaExtendida.hasta, 0.6);
   assertEquals(x.ingreso.aceptadoPorPeldano.declarado_coherente, 0.85);
@@ -92,15 +92,23 @@ Deno.test("la conservadora y la expansiva cambian lo que dice la sección 5, y n
   // Las bandas del score no cambian entre variantes: el score tiene que querer decir lo mismo en todas las instituciones.
   assertEquals(c.riesgo.bandasDelScore, d.riesgo.bandasDelScore);
   assertEquals(x.riesgo.bandasDelScore, d.riesgo.bandasDelScore);
-  // Una variante no inventa claves: tiene la misma forma que la por defecto.
+  // Una variante no inventa claves: tiene la misma forma que la Base.
   assertEquals(Object.keys(c).sort(), Object.keys(d).sort());
   assertEquals(Object.keys(x.capacidad).sort(), Object.keys(d.capacidad).sort());
 });
 
 // ---------------------------------------------------------------- paridad con lo que el código tiene hoy
 
-Deno.test("la plantilla por defecto copia las constantes de hoy: ningún valor cambia", () => {
-  const e = plantillaCompleta("por_defecto");
+Deno.test("la prueba de estrés de la Aprobación Directa es el tramo más alto de C1 y no puede ser menor", () => {
+  const e = plantillaCompleta("base");
+  assertEquals(e.capacidad.cuotaEstimadaDeDeudaSinCuota.fraccionParaLaAprobacionDirecta, 0.065);
+  assertEquals(Math.max(...TRAMOS_FACTOR_CUOTA.map((t) => t.factor)), 0.065);
+  assertEquals(e.capacidad.cuotaEstimadaDeDeudaSinCuota.hipotecarioSinPlazo, FACTOR_CUOTA_HIPOTECARIO);
+  rechaza({ capacidad: { cuotaEstimadaDeDeudaSinCuota: { fraccionParaLaAprobacionDirecta: 0.05 } } }, "no puede ser menor que el tramo más alto de la estimación (0,065); se escribió 0,05");
+});
+
+Deno.test("la plantilla Base copia las constantes de hoy: ningún valor cambia", () => {
+  const e = plantillaCompleta("base");
   const l = lecturaDeLaEscalera(e);
   assertEquals(l.parametros, PARAMETROS_CAPACIDAD);
   assertEquals(l.fracciones, FRACCIONES_ACEPTADAS);
@@ -142,9 +150,9 @@ function perfilLimpio(fuentes: Array<Record<string, unknown>>, cuotaCoop: number
 const sueldo = (monto: number) => ({ evidencia: "reportada_por_tercero", naturaleza: "privado", montoMensualReportado: monto, vigenteAlCorte: true });
 const aportePropio = (monto: number) => ({ evidencia: "autodeclarada_sobre_minimo", naturaleza: "cuenta_propia", montoMensualReportado: monto, vigenteAlCorte: true });
 
-// Una grilla de personas y créditos: con y sin el estándar por defecto, la escalera tiene que dar lo mismo, campo por campo.
-Deno.test("paridad: evaluarEscalera() con la plantilla por defecto da lo mismo que sin estándar, en toda la grilla", () => {
-  const e = plantillaCompleta("por_defecto");
+// Una grilla de personas y créditos: con y sin el estándar Base, la escalera tiene que dar lo mismo, campo por campo.
+Deno.test("paridad: evaluarEscalera() con la plantilla Base da lo mismo que sin estándar, en toda la grilla", () => {
+  const e = plantillaCompleta("base");
   let casos = 0;
   const veredictos = new Set<string>();
   for (const fuentes of [[sueldo(400)], [sueldo(800)], [sueldo(1200)], [sueldo(2500)], [aportePropio(482)], [sueldo(900), aportePropio(600)], []]) {
@@ -178,24 +186,24 @@ Deno.test("una plantilla distinta sí cambia la escalera: con 45% de carga máxi
   const ingreso = armarIngresoDelPerfil(perfil, datos, {});
   // Neto 905,50. Con la cuota de 150 y una nueva de unos 120, la carga queda cerca de 30%: se sube el crédito hasta pasar el 40%.
   const condiciones = { monto: 5000, plazoMeses: 24 };
-  const defecto = evaluarEscalera({ datos, ingreso, condiciones, estandar: plantillaCompleta("por_defecto") });
+  const defecto = evaluarEscalera({ datos, ingreso, condiciones, estandar: plantillaCompleta("base") });
   const conservadora = evaluarEscalera({ datos, ingreso, condiciones, estandar: plantillaCompleta("conservadora") });
-  const expansiva = evaluarEscalera({ datos, ingreso, condiciones, estandar: plantillaCompleta("expansiva") });
-  const cargas = [defecto, conservadora, expansiva].map((r) => r.ingreso.escalera.find((c) => c.numero === 1)?.cargaConElCredito);
+  const optimista = evaluarEscalera({ datos, ingreso, condiciones, estandar: plantillaCompleta("optimista") });
+  const cargas = [defecto, conservadora, optimista].map((r) => r.ingreso.escalera.find((c) => c.numero === 1)?.cargaConElCredito);
   assertEquals(cargas[0], cargas[1]);
   assertEquals(cargas[1], cargas[2]);
   const carga = cargas[0] as number;
   assert(carga > 0.4 && carga < 0.45, `la carga de la prueba (${carga}) tiene que estar entre 40% y 45%`);
   assertEquals(defecto.veredicto, "no_alcanza");
   assertEquals(conservadora.veredicto, "no_alcanza");
-  assertEquals(expansiva.veredicto, "justo");
+  assertEquals(optimista.veredicto, "justo");
 });
 
 Deno.test("la escalera se niega a calcular con un estándar que no pasó por el validador", () => {
   const perfil = perfilLimpio([sueldo(1000)], 0);
   const datos = datosDeCapacidad(perfil, null);
   const ingreso = armarIngresoDelPerfil(perfil, datos, {});
-  const armadoAMano = structuredClone(PLANTILLA_POR_DEFECTO);
+  const armadoAMano = structuredClone(PLANTILLA_BASE);
   assertThrows(() => evaluarEscalera({ datos, ingreso, condiciones: { monto: 3000, plazoMeses: 24 }, estandar: armadoAMano }), EstandarInvalido, "no pasó por validarEstandar");
   assertThrows(() => exigirEstandarValido(armadoAMano), EstandarInvalido);
   assertThrows(() => lecturaDeLaEscalera(armadoAMano), EstandarInvalido);
@@ -205,7 +213,7 @@ Deno.test("la escalera se niega a calcular con un estándar que no pasó por el 
 
 Deno.test("una institución nueva se configura con una plantilla y datos: los cambios se ven y lo demás queda", () => {
   const r = configurarEstandar({
-    plantilla: "por_defecto",
+    plantilla: "base",
     cambios: {
       capacidad: { cargaMaxima: 0.38, cargaMaximaPorRiesgo: { porNivel: { bajo: 0.55, con_observaciones: 0.45, deteriorado: 0.38 } } },
       riesgo: { moraVigente: { sectores: { sbs: { aceptarHastaUsd: 40, revisarHastaUsd: 180 } } } },
@@ -224,7 +232,7 @@ Deno.test("una institución nueva se configura con una plantilla y datos: los ca
   assertEquals(r.estandar.capacidad.cargaMaxima, 0.38);
   assertEquals(r.estandar.riesgo.moraVigente.sectores.sbs, { aceptarHastaUsd: 40, revisarHastaUsd: 180 });
   // Lo que no se tocó es lo de la plantilla.
-  assertEquals(r.estandar.riesgo.moraVigente.sectores.seps, PLANTILLA_POR_DEFECTO.riesgo.moraVigente.sectores.seps);
+  assertEquals(r.estandar.riesgo.moraVigente.sectores.seps, PLANTILLA_BASE.riesgo.moraVigente.sectores.seps);
   assertEquals(Object.keys(r.estandar.productos).sort(), ["automotriz", "consumo"]);
   assertEquals(r.estandar.productos.automotriz.colateral, "lo_pide_siempre");
   // Y la escalera lo lee.
@@ -232,39 +240,39 @@ Deno.test("una institución nueva se configura con una plantilla y datos: los ca
 });
 
 Deno.test("la fecha de revisión de enero: pasada la fecha, los umbrales piden revisión", () => {
-  const e = plantillaCompleta("por_defecto");
+  const e = plantillaCompleta("base");
   assertEquals(umbralesPorRevisar(e, "2026-12-31"), false);
   assertEquals(umbralesPorRevisar(e, e.riesgo.moraVigente.revisionDeLosUmbrales.proximaRevision), false);
   assertEquals(umbralesPorRevisar(e, "2027-02-01"), true);
 });
 
 Deno.test("la huella es la misma para el mismo contenido en otro orden, y cambia con cualquier valor", async () => {
-  const e = plantillaCompleta("por_defecto");
+  const e = plantillaCompleta("base");
   const h = await huellaDelEstandar(e);
   assert(/^[0-9a-f]{64}$/.test(h));
   const al_reves = JSON.parse(JSON.stringify(e, (_k, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).reverse()) : v)));
   assertEquals(jsonCanonico(al_reves), jsonCanonico(e));
   assertEquals(await huellaDelEstandar(cargarEstandar(al_reves)), h);
-  const r = configurarEstandar({ plantilla: "por_defecto", cambios: { capacidad: { margenJusto: 0.04 } } });
+  const r = configurarEstandar({ plantilla: "base", cambios: { capacidad: { margenJusto: 0.04 } } });
   assert(r.ok);
   if (r.ok) assertNotEquals(await huellaDelEstandar(r.estandar), h);
   assertNotEquals(await huellaDelEstandar(plantillaCompleta("conservadora")), h);
 });
 
 Deno.test("la fila de una versión lleva la huella y se niega a armarse con un estándar inválido", async () => {
-  const fila = await armarFilaDelEstandar(plantillaSinValidar("expansiva"), { version: "estandar-v1", vigenteDesde: "2026-12-01", pedidoPor: "u-1", aplicadoPor: "u-2" });
-  assertEquals(fila.plantilla, "expansiva");
-  assertEquals(fila.huella, await huellaDelEstandar(plantillaCompleta("expansiva")));
-  await assertRejects(() => armarFilaDelEstandar({ ...plantillaSinValidar("expansiva"), matriz: undefined }, { version: "estandar-v2", vigenteDesde: "2026-12-01", pedidoPor: "a", aplicadoPor: "b" }), Error, "no se puede cargar");
-  await assertRejects(() => armarFilaDelEstandar(plantillaSinValidar("expansiva"), { version: "v2", vigenteDesde: "2026-12-01", pedidoPor: "a", aplicadoPor: "b" }), Error, "estandar-vN");
-  await assertRejects(() => armarFilaDelEstandar(plantillaSinValidar("expansiva"), { version: "estandar-v2", vigenteDesde: "1/12/2026", pedidoPor: "a", aplicadoPor: "b" }), Error, "aaaa-mm-dd");
+  const fila = await armarFilaDelEstandar(plantillaSinValidar("optimista"), { version: "estandar-v1", vigenteDesde: "2026-12-01", pedidoPor: "u-1", aplicadoPor: "u-2" });
+  assertEquals(fila.plantilla, "optimista");
+  assertEquals(fila.huella, await huellaDelEstandar(plantillaCompleta("optimista")));
+  await assertRejects(() => armarFilaDelEstandar({ ...plantillaSinValidar("optimista"), matriz: undefined }, { version: "estandar-v2", vigenteDesde: "2026-12-01", pedidoPor: "a", aplicadoPor: "b" }), Error, "no se puede cargar");
+  await assertRejects(() => armarFilaDelEstandar(plantillaSinValidar("optimista"), { version: "v2", vigenteDesde: "2026-12-01", pedidoPor: "a", aplicadoPor: "b" }), Error, "estandar-vN");
+  await assertRejects(() => armarFilaDelEstandar(plantillaSinValidar("optimista"), { version: "estandar-v2", vigenteDesde: "1/12/2026", pedidoPor: "a", aplicadoPor: "b" }), Error, "aaaa-mm-dd");
 });
 
 // ---------------------------------------------------------------- lo que no se puede cargar
 
-// Un cambio a la plantilla por defecto que tiene que ser rechazado, con el fragmento del mensaje que lo explica.
+// Un cambio a la plantilla Base que tiene que ser rechazado, con el fragmento del mensaje que lo explica.
 function rechaza(cambios: Record<string, unknown>, fragmento: string) {
-  const r = configurarEstandar({ plantilla: "por_defecto", cambios });
+  const r = configurarEstandar({ plantilla: "base", cambios });
   assert(!r.ok, `se cargó un estándar que no se puede cargar: ${JSON.stringify(cambios)}`);
   if (!r.ok) assert(r.errores.some((e) => e.includes(fragmento)), `ningún error dice «${fragmento}»:\n${r.errores.join("\n")}`);
 }
@@ -301,8 +309,8 @@ Deno.test("la revisión de los umbrales es en enero", () => {
 });
 
 Deno.test("una plantilla incompleta no se carga y dice qué falta", () => {
-  for (const clave of Object.keys(PLANTILLA_POR_DEFECTO).filter((k) => !["forma", "plantilla", "conBuroDeLaInstitucion", "siSeSuperaElMontoSinColateral"].includes(k))) {
-    const incompleta: Record<string, unknown> = structuredClone(PLANTILLA_POR_DEFECTO) as unknown as Record<string, unknown>;
+  for (const clave of Object.keys(PLANTILLA_BASE).filter((k) => !["forma", "plantilla", "conBuroDeLaInstitucion", "siSeSuperaElMontoSinColateral"].includes(k))) {
+    const incompleta: Record<string, unknown> = structuredClone(PLANTILLA_BASE) as unknown as Record<string, unknown>;
     delete incompleta[clave];
     const r = validarEstandar(incompleta);
     assert(!r.ok, `se cargó sin ${clave}`);
@@ -311,7 +319,7 @@ Deno.test("una plantilla incompleta no se carga y dice qué falta", () => {
   // Dentro de una subsección: una celda, una fila de la matriz, un requisito fijo, un tramo de mora.
   rechaza({ celdas: { "verificado/probado": null } }, "faltan la clave verificado/probado");
   rechaza({ matriz: { bajo: null } }, "faltan la clave bajo");
-  rechaza({ requisitos: { sustento_de_ingreso: null } }, "faltan los requisitos que usa la matriz por defecto: sustento_de_ingreso");
+  rechaza({ requisitos: { sustento_de_ingreso: null } }, "faltan los requisitos que usa la matriz Base: sustento_de_ingreso");
   rechaza({ riesgo: { moraVigente: { sectores: { comercial: null } } } }, "faltan la clave comercial");
   rechaza({ productos: { consumo: null } }, "el catálogo tiene que tener entre 1 y 20 productos");
   // No es un objeto, ni un JSON.
@@ -323,7 +331,7 @@ Deno.test("una plantilla incompleta no se carga y dice qué falta", () => {
 Deno.test("una clave que no se conoce no se carga: un error de tipeo no pasa en silencio", () => {
   rechaza({ capacidad: { cargaMaximaa: 0.4 } }, "no se conoce la clave cargaMaximaa");
   rechaza({ ingresos: { aceptadoPorPeldano: {} } }, "no se conoce la clave ingresos");
-  rechaza({ riesgo: { moraVigente: { sectores: { sbs: { aceptarHastaUsd: 30 } } } }, plantilla: "intermedia" }, "plantilla: tiene que ser uno de por_defecto, conservadora, expansiva");
+  rechaza({ riesgo: { moraVigente: { sectores: { sbs: { aceptarHastaUsd: 30 } } } }, plantilla: "intermedia" }, "plantilla: tiene que ser uno de base, conservadora, optimista");
   const r = configurarEstandar({ plantilla: "inventada" as never });
   assert(!r.ok);
   if (!r.ok) assert(r.errores[0].includes("no se conoce"));
@@ -377,7 +385,7 @@ Deno.test("más riesgo no puede dar una salida mejor para la misma capacidad", (
 
 Deno.test("el catálogo de productos: monto, plazo, tasa y lo que pide cada institución (C4)", () => {
   const producto = { nombre: "Microcrédito", montoMinimo: 500, montoMaximo: 20000, plazoMinimoMeses: 3, plazoMaximoMeses: 48, tasaNominalMinimaPorcentaje: 10, tasaNominalMaximaPorcentaje: 20, desgravamenAnualPorcentaje: 0.5, pideGarante: true, colateral: "no_lo_pide" };
-  const r = configurarEstandar({ plantilla: "por_defecto", cambios: { productos: { microcredito: producto } } });
+  const r = configurarEstandar({ plantilla: "base", cambios: { productos: { microcredito: producto } } });
   assert(r.ok, r.ok ? "" : r.errores.join("\n"));
   if (r.ok) assertEquals(r.estandar.productos.microcredito.pideGarante, true);
   rechaza({ productos: { micro: { ...producto, montoMaximo: 100 } } }, "el monto máximo (USD 100) no puede ser menor que el mínimo (USD 500)");
@@ -390,7 +398,7 @@ Deno.test("el catálogo de productos: monto, plazo, tasa y lo que pide cada inst
 });
 
 Deno.test("los errores vienen todos juntos y cargarEstandar() los lanza", () => {
-  const roto = aplicarCambios(PLANTILLA_POR_DEFECTO, { capacidad: { cargaMaxima: 40, margenJusto: -1 }, riesgo: { moraVigente: { sectores: { sbs: { aceptarHastaUsd: 500 } } } } });
+  const roto = aplicarCambios(PLANTILLA_BASE, { capacidad: { cargaMaxima: 40, margenJusto: -1 }, riesgo: { moraVigente: { sectores: { sbs: { aceptarHastaUsd: 500 } } } } });
   const r = validarEstandar(roto);
   assert(!r.ok);
   if (!r.ok) assert(r.errores.length >= 3, r.errores.join("\n"));
@@ -400,7 +408,7 @@ Deno.test("los errores vienen todos juntos y cargarEstandar() los lanza", () => 
 });
 
 Deno.test("el estándar que pasa es una copia: cambiar el original no lo toca", () => {
-  const original = structuredClone(PLANTILLA_POR_DEFECTO);
+  const original = structuredClone(PLANTILLA_BASE);
   const e = cargarEstandar(original);
   original.capacidad.cargaMaxima = 0.5;
   assertEquals(e.capacidad.cargaMaxima, 0.4);
@@ -425,4 +433,27 @@ Deno.test("la migración 155 crea la tabla de estándares: una vigente, sin modi
   assert(!/^\s*(begin|commit)\s*;/m.test(sql.replace(/--.*$/gm, "")),"una migración nueva no abre su propia transacción");
   // Una migración con marcadores sin valor no se aplica: ésta no los necesita.
   assert(!sql.includes("<<"), "no lleva marcadores");
+});
+
+// ---------------------------------------------------------------- lo que sumaron las 14 decisiones de R2 a R4 (E10)
+
+Deno.test("las decisiones de R2 a R4 en el estándar: el decaimiento, el orden y la regla de subir se validan", () => {
+  const e = plantillaCompleta("base");
+  assertEquals(e.riesgo.historial.decaimientoEnMeses, [6, 12, 24]);
+  assertEquals(plantillaCompleta("conservadora").riesgo.historial.decaimientoEnMeses, [12, 24, 48]);
+  assertEquals(e.riesgo.historial.superado, { deudaFormalAlDiaDesdeUsd: 500, mesesSinMoraConBuro: 6 });
+  assertEquals(e.malComportamiento.paraSubirHaceFaltaUnoDeLosPrimeros, 3);
+  assertEquals(e.malComportamiento.conMoraDeHoyLaIAPuedeSubirHasta, "revisar");
+  assertEquals(e.malComportamiento.atenuantesEnOrden[0], "deuda_al_dia_en_banco_o_biess");
+  assertEquals(e.malComportamiento.atenuantesEnOrden[7], "al_dia_con_una_casa_comercial");
+  rechaza({ riesgo: { historial: { decaimientoEnMeses: [12, 6, 24] } } }, "los cortes tienen que crecer");
+  rechaza({ riesgo: { historial: { decaimientoEnMeses: [6, 12] } } }, "tres cortes en meses");
+  rechaza({ riesgo: { historial: { superado: { deudaFormalAlDiaDesdeUsd: 499.5 } } } }, "número entero");
+  rechaza({ malComportamiento: { atenuantesEnOrden: ["estabilidad", "estabilidad"] } }, "está repetido estabilidad");
+  rechaza({ malComportamiento: { atenuantesEnOrden: ["estabilidad"] } }, "faltan deuda_al_dia_en_banco_o_biess");
+  rechaza({ malComportamiento: { agravantesEnOrden: ["reincidencia", "inventado"] } }, "no se conoce «inventado»");
+  rechaza({ malComportamiento: { paraSubirHaceFaltaUnoDeLosPrimeros: 9 } }, "fuera de rango");
+  rechaza({ malComportamiento: { conMoraDeHoyLaIAPuedeSubirHasta: "negar" } }, "tiene que ser uno de revisar, aprobar");
+  rechaza({ riesgo: { moraVigente: { montoQueSeCompara: "todo" } } }, "montoQueSeCompara");
+  rechaza({ riesgo: { moraVigente: { variosSectores: "promedio" } } }, "variosSectores");
 });

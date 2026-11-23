@@ -5,10 +5,10 @@
 //
 // Qué vale en cada valor:
 // - DECIDIDO por el negocio: las fracciones y topes de hoy (carga máxima 40%, 2026-10-17), C1, C2, C3,
-//   C4, S1, S3, S5, R2 (los umbrales en dólares de la por defecto), R5, R6 y las 14 decisiones de R2, R3
+//   C4, S1, S3, S5, R2 (los umbrales en dólares de la Base), R5, R6 y las 14 decisiones de R2, R3
 //   y R4 del 2026-11-22.
 // - PROPUESTA sin medir: lo demás, y todo lo de las dos variantes (ellas se miden con el seco de la
-//   sección 7). «Los valores de la por defecto son los del negocio; las otras dos, propuesta sin medir».
+//   sección 7). «Los valores de la Base son los del negocio; las otras dos, propuesta sin medir».
 // - Lo que ya vive en código (el producto de consumo, los tramos de la cuota estimada, las
 //   fracciones de los peldaños, el aporte personal) se copia acá y la prueba de paridad
 //   (estandar.test.ts) exige que sea igual: el estándar no cambia ningún resultado de hoy.
@@ -16,9 +16,9 @@
 import { aplicarCambios, type Cambios } from "./cambios.ts";
 import { FORMA_DEL_ESTANDAR, type EstandarDeLaInstitucion, type NombreDePlantilla } from "./estandar.ts";
 
-export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
+export const PLANTILLA_BASE: EstandarDeLaInstitucion = {
   forma: FORMA_DEL_ESTANDAR,
-  plantilla: "por_defecto",
+  plantilla: "base",
   conBuroDeLaInstitucion: false,
 
   controles: {
@@ -82,6 +82,16 @@ export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
       tramoRevisarConCapacidadQueAlcanza: "condicionado",
       comoGaranteBajaUnTramo: true,
       revisionDeLosUmbrales: { cadaAnioEn: "enero", proximaRevision: "2027-01-31" },
+      montoQueSeCompara: "vencido_de_las_operaciones_con_mas_de_dias",
+      bancosSinBuro: "por_la_letra",
+      variosSectores: "manda_el_peor",
+      retailDelProveedor: "historial",
+    },
+    historial: {
+      decaimientoEnMeses: [6, 12, 24],
+      superado: { deudaFormalAlDiaDesdeUsd: 500, mesesSinMoraConBuro: 6 },
+      demandaDeCobroSuperadoBajaUnTramo: true,
+      atrasoLargoDesdeDias: 90,
     },
   },
 
@@ -98,8 +108,24 @@ export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
       hoyAlDia: { calificacionAdmitida: ["A1"], diasDeMoraAdmitidos: 0 },
       endeudamientoALaBaja: { bajaMinima: 0.1, enMeses: 12, sinBuro: "no_medido" },
       estabilidad: { mesesMinimos: 12 },
-      ingresoAlAlza: { alzaMinima: 0.05, compara: "ultimos_6_meses_contra_los_6_anteriores" },
+      ingresoAlAlza: { compara: "ultimos_6_meses_contra_los_6_anteriores", descontandoLaVariacionDelSbu: true },
+      deudaVigenteAlDia: { desdeUsd: 500 },
+      mesesAlDiaDesdeElUltimoAtraso: { mesesMinimos: 12, sinBuro: "no_medido" },
     },
+    // Decisión 13 (2026-11-22): el orden de la propuesta, con el ejemplo del negocio (una deuda vigente sin atrasos en un banco pesa más que
+    // estar al día en un crédito comercial menor) en los puestos 1 y 8.
+    atenuantesEnOrden: [
+      "deuda_al_dia_en_banco_o_biess", "deuda_al_dia_en_cooperativa", "doce_meses_al_dia_desde_el_ultimo_atraso", "atraso_pasado_chico",
+      "estabilidad", "endeudamiento_a_la_baja", "ingreso_al_alza", "al_dia_con_una_casa_comercial",
+    ],
+    agravantesEnOrden: [
+      "reincidencia", "atraso_pasado_de_mas_de_90_dias", "vencido_de_entonces_sobre_la_tolerancia_de_negar", "atraso_en_los_ultimos_6_meses",
+      "garante_de_una_operacion_en_atraso", "mora_en_mas_de_un_sector", "pension_alimenticia_en_mora_dentro_de_la_tolerancia", "casa_comercial_en_mora_a_su_corte",
+    ],
+    // Decisión 14: no es un número mínimo sino de qué peso: sin esto, estar al día en una casa comercial sostendría subir.
+    paraSubirHaceFaltaUnoDeLosPrimeros: 3,
+    // Decisión 9 (cierra el punto 3 del estándar): aprobar a quien hoy no paga es difícil de sostener ante la institución.
+    conMoraDeHoyLaIAPuedeSubirHasta: "revisar",
     minimoDeAtenuantes: 0,
     salidasQueLaIAPuedeRecomendar: ["negar", "revisar", "aprobar"],
     bandaDelScoreSiLaIASube: [250, 599],
@@ -136,7 +162,9 @@ export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
         { hastaSaldoPorOperacion: null, factor: 0.025 },
       ],
       hipotecarioSinPlazo: 0.0107,
-      fraccionParaLaAprobacionDirecta: 0.05,
+      // Negocio, 2026-11-23: la prueba de estrés de la Aprobación Directa usa el tramo más alto de C1 (6,5% del saldo) para lo que no es
+      // hipotecario; el hipotecario sigue con su factor propio (`hipotecarioSinPlazo`, 1,07%).
+      fraccionParaLaAprobacionDirecta: 0.065,
     },
     creditoDeReferencia: { monto: 5000, plazoMeses: 36 },
     historialProbado: { deudaAlDiaDesdeUsd: 5000, operacionesAlDiaDesde: 2 },
@@ -222,7 +250,7 @@ export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
 };
 
 // La conservadora (sección 5, con la tabla de R2): el corte de mal comportamiento se adelanta, la IA no sube
-// nada, la Aprobación Directa se apaga y lo que la por defecto resuelve con un requisito vuelve a Revisar.
+// nada, la Aprobación Directa se apaga y lo que la Base resuelve con un requisito vuelve a Revisar.
 const CAMBIOS_DE_LA_CONSERVADORA: Cambios = {
   plantilla: "conservadora",
   riesgo: {
@@ -239,6 +267,8 @@ const CAMBIOS_DE_LA_CONSERVADORA: Cambios = {
       masDeNoventaDiasConMontoTolerable: "negar",
       tramoRevisarConCapacidadQueAlcanza: "revisar",
     },
+    // Decisión 11: en la conservadora la tabla de decaimiento dura el doble.
+    historial: { decaimientoEnMeses: [12, 24, 48] },
   },
   malComportamiento: {
     demandaDeCobro: { ventanaAnios: 3, pesaMenosHastaAnios: 7, deUnaPersonaNatural: "mal_comportamiento" },
@@ -264,10 +294,10 @@ const CAMBIOS_DE_LA_CONSERVADORA: Cambios = {
   margenDeLaIA: { escalonesHaciaArriba: 0 },
 };
 
-// La expansiva: el mismo corte de mal comportamiento (no se relaja lo grave), pero el atraso leve pesa
+// La optimista: el mismo corte de mal comportamiento (no se relaja lo grave), pero el atraso leve pesa
 // menos, la capacidad admite más carga y más ingreso declarado, y la Aprobación Directa se abre.
-const CAMBIOS_DE_LA_EXPANSIVA: Cambios = {
-  plantilla: "expansiva",
+const CAMBIOS_DE_LA_OPTIMISTA: Cambios = {
+  plantilla: "optimista",
   riesgo: {
     senales: {
       // B1 y B2 pasan a con observaciones; C1 y C2 quedan en deteriorado.
@@ -304,13 +334,13 @@ const CAMBIOS_DE_LA_EXPANSIVA: Cambios = {
   aprobacionDirecta: { historialesAdmitidos: ["probado", "corto"], montoMaximo: 10000, plazoMaximoMeses: 48 },
 };
 
-export const CAMBIOS_DE_LAS_PLANTILLAS: Record<Exclude<NombreDePlantilla, "por_defecto">, Cambios> = {
+export const CAMBIOS_DE_LAS_PLANTILLAS: Record<Exclude<NombreDePlantilla, "base">, Cambios> = {
   conservadora: CAMBIOS_DE_LA_CONSERVADORA,
-  expansiva: CAMBIOS_DE_LA_EXPANSIVA,
+  optimista: CAMBIOS_DE_LA_OPTIMISTA,
 };
 
 /** La plantilla completa, sin validar (la valida `plantillaCompleta()`). */
 export function plantillaSinValidar(nombre: NombreDePlantilla): EstandarDeLaInstitucion {
-  if (nombre === "por_defecto") return structuredClone(PLANTILLA_POR_DEFECTO);
-  return aplicarCambios(PLANTILLA_POR_DEFECTO, CAMBIOS_DE_LAS_PLANTILLAS[nombre]) as EstandarDeLaInstitucion;
+  if (nombre === "base") return structuredClone(PLANTILLA_BASE);
+  return aplicarCambios(PLANTILLA_BASE, CAMBIOS_DE_LAS_PLANTILLAS[nombre]) as EstandarDeLaInstitucion;
 }
