@@ -136,8 +136,22 @@ export interface PeldanoDelIngreso {
   ingresoNeto: number | null;
   /** Sólo en el 5: si lo declarado se puede comparar con la evidencia más fuerte (0,7 con el estándar) o queda sin respaldo. */
   coherencia?: "coherente" | "sin_respaldo";
+  /**
+   * Sólo en el 3, y sólo cuando la renta (3b) prueba más que el sueldo neto del IESS (peldaño 1): si las cuotas al día (3a) también lo superan,
+   * la renta está corroborada; en cualquier otro caso (cota por debajo, sin cuotas, con mora o sin buró) queda sin corroborar. Es un rótulo:
+   * no cambia el cálculo, la renta sigue sosteniendo (negocio, 2026-11-22). «Sin corroborar» no quiere decir dudoso.
+   */
+  corroboracionDeLaRenta?: CorroboracionDeLaRenta;
   componentes: ComponenteDelPeldano[];
 }
+
+export type CorroboracionDeLaRenta = "corroborada_por_sus_cuotas" | "sin_corroborar";
+
+/** Lo que se lee en pantalla (negocio, 2026-11-22): sólo el rótulo, sin nota ni ayuda. */
+export const ROTULO_DE_LA_CORROBORACION: Record<CorroboracionDeLaRenta, string> = {
+  corroborada_por_sus_cuotas: "Corroborada por sus cuotas",
+  sin_corroborar: "Sin corroborar",
+};
 
 export interface DiferenciaDelIngreso {
   clave:
@@ -496,6 +510,12 @@ export function armarIngresoDelPerfil(perfilGuardado: AnyRecord | null, datos: D
     };
   } else {
     p3 = peldanoVacio(3, "cota_por_credito_otorgado", aportesSinRespuesta ? "no_medido" : "sin_monto", aportesSinRespuesta ? "aportes_sin_respuesta" : (avisos3[0] ?? "sin_cuotas_ni_aporte_propio"), true);
+  }
+  // La renta que prueba más que el sueldo neto del IESS: corroborada si las cuotas al día también lo superan; si no, sin corroborar.
+  const renta3 = componentes3.find((c) => c.clave === "impuesto_a_la_renta");
+  if (renta3 && p1.estado === "con_monto" && p1.ingresoNeto !== null && renta3.montoMensual > p1.ingresoNeto) {
+    const cuotas3 = componentes3.find((c) => c.clave === "cuotas_al_dia");
+    p3.corroboracionDeLaRenta = cuotas3 && cuotas3.montoMensual > p1.ingresoNeto ? "corroborada_por_sus_cuotas" : "sin_corroborar";
   }
 
   // ---- 4. Mínimo certificado: el predictor (F11) ----
