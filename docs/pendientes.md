@@ -161,6 +161,35 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 
 **Capa de hechos, grupo de seguridad social, etapa A (2026-11-22, PR abierto):** `hechos/grupos/seguridad-social.ts` emite los 10 campos de `seguridadSocial` con su procedencia (`docs/capa-de-hechos.md`, 4.5); militares y policías salen de `fuerzas-armadas-policia.ts`, sin copia. Seco sobre las 3.766: paridad 37.660 de 37.660 campos, 0 registros que no resuelven, el perfil entero igual a estructura-v31. Sin versión nueva ni recálculo. **Falta la etapa B** (PR aparte, con el sí del negocio): `process.ts` lo arma desde los hechos y una fuente caída deja el campo en null con `camposSinDato`. Antes hay que decidir qué es `faltante` en `afiliacionIess` (2.431 de 2.567 en el respaldo del 2026-10-03): el perfil lo lee como «no se pudo» (null, P60) y `FUENTES` como «no hay». Con el perfil, ~95% de las personas tendría `afiliadoIessActivo` sin dato. P60 sale del marco con la v37, cuando el modelo lea la marca.
 
+**Decisiones del negocio del 2026-11-22 y 23 (R2, R3, R4, E9, «faltante» y P63):** las anotan la pestaña «Decisiones
+pendientes» del doc de la propuesta y `docs/capa-de-hechos.md` (10.5 y 4.5). **Destraban F14 y E10.** Todas siguen lo
+recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
+- **Mora vigente (R2 y R3):**
+  - se compara sólo lo vencido de más de 30 días;
+  - sin buró, en bancos manda la letra (B1 a C2 Revisar, D y E Negar);
+  - entre sectores manda el peor, sin sumar;
+  - el IESS y el BIESS van en SBS, por días;
+  - los umbrales van en dólares, revisados cada enero;
+  - el tramo Revisar sale Aprobado con Requisitos con el certificado de estar al día, si la capacidad alcanza;
+  - con mora de hoy en Negar, la IA sube como mucho hasta Revisar.
+  - **R2-5 (más de 90 días con monto chico) quedó sin preferencia**: se construye con la recomendada (mínimo Revisar)
+    como provisional.
+- **Historial (R4):**
+  - el retail de julio de 2025 es historial;
+  - está superado si hoy está al día en todo y tiene una deuda formal al día de USD 500 o más;
+  - el decaimiento es a 6, 12 y 24 meses;
+  - la demanda de cobro baja un tramo si la mora está superada, después de R1;
+  - el orden propuesto de los atenuantes y agravantes;
+  - para subir hace falta citar uno de los tres primeros atenuantes.
+- **E9:** la 1, la 2 y la 6 se aceptaron; la 3 y la 5 se cerraron.
+- **Inversiones:** tres estados, con el capital aportado en cada compañía y el total.
+- **Regla general de `faltante` para todas las fuentes:** es «no hay» sólo si la fuente nunca contesta vacío y llega
+  sin mensaje de error. Seguimiento: guardar el mensaje para separar los casos mezclados de SERCOP y de renta.
+- **P63:** «se cumple» en los 116 con el Registro Civil en tercer o cuarto nivel.
+- **Afiliación al IESS, distinto de lo recomendado:** el negocio pidió validarla con la fuente directa
+  coberturasalud.msp.gob.ec, que va al frente D, sin evadir barreras contra robots. Mientras tanto su `faltante` es
+  «la fuente no respondió».
+
 ## 1. Lo que Claude puede hacer ya
 
 1. **Laboratorio, paso 1: registrar el Universo.** Falta registrarlo como solicitudes reales
