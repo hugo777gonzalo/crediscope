@@ -16,7 +16,9 @@
 //
 // SOLO LEE. No llama a Proveedor_Info_1, a Equifax ni al modelo, y no escribe en la base. Por consola, sólo conteos y referencias c-xxxxxxxx.
 //
-// Uso: node scripts/medir-riesgo.mjs [--carpeta=research/...] [--limite=N] [--sin-base]
+// Uso: node scripts/medir-riesgo.mjs [--carpeta=research/...] [--limite=N] [--sin-base] [--solo-analizadas]
+// (`--solo-analizadas`: sólo las personas con una recomendación del modelo, unas 444; tarda un minuto en vez de media hora, porque casi todo el crudo
+// de las demás está en el depósito.)
 //
 // AVISO: este archivo no pasa por lint ni build. Después de tocarlo, correrlo con --limite=20 antes de confiar en los números.
 
@@ -99,6 +101,7 @@ if (!args["sin-base"]) {
 } else {
   candidatos = fs.readdirSync(CARPETA).filter((a) => a.endsWith(".json")).map((a) => ({ archivo: path.join(CARPETA, a), leer: () => leerCrudo({ archivo: path.join(CARPETA, a) }) }));
 }
+if (args["solo-analizadas"] && !args["sin-base"]) candidatos = candidatos.filter((c) => recomendacionDe.get(c.cita));
 candidatos = candidatos.slice(0, LIMITE);
 
 // ---- los casos de oro reales ----
@@ -114,6 +117,7 @@ const T = Object.fromEntries(PLANTILLAS.map((p) => [p, {
   eventos: 0, conEventos: 0, superado: {}, efecto: {}, demanda: {}, ia: {}, atenuantes: {}, agravantes: {}, sinMedir: {}, cruce: {}, bloqueos: {},
 }]));
 const gold = [];
+const paraMirar = [];
 const fallos = [];
 let sinCrudo = 0;
 let calculadas = 0;
@@ -162,6 +166,14 @@ for (const c of candidatos) {
     if (v.atenuantes && v.atenuantes.some((a) => a.estado === "se_cumple" && a.valor === null && a.porque === "sin_buro")) fallos.push(`${c.cita ?? "persona"}: un atenuante sin buró sale «se cumple»`);
   }
   calculadas++;
+  {
+    const v = porPlantilla.por_defecto;
+    const motivos = v.motivos.filter((m) => m.nivel === v.nivel).map((m) => m.codigo).join("+") || "ninguno";
+    // Contra lo que recomendó el modelo: negar con riesgo bajo o con observaciones, y aprobar con deteriorado o mal comportamiento.
+    if ((hoy === "negar" && ["bajo", "con_observaciones"].includes(v.nivel)) || (hoy === "aprobar" && ["deteriorado", "mal_comportamiento"].includes(v.nivel))) {
+      paraMirar.push(`${c.cita ?? "persona"}: hoy ${hoy}, riesgo ${v.nivel} (${motivos}${v.malComportamientoVigente ? ", vigente" : ""})${bloqueada ? ", con un bloqueo" : ""}${v.sinMedir.length ? `, sin medir: ${[...new Set(v.sinMedir)].join(" y ")}` : ""}`);
+    }
+  }
   if (c.cita && casosDeOro.has(c.cita)) gold.push({ cita: c.cita, ...casosDeOro.get(c.cita), niveles: Object.fromEntries(PLANTILLAS.map((p) => [p, porPlantilla[p].nivel])), motivos: porPlantilla.por_defecto.motivos.filter((m) => m.nivel === porPlantilla.por_defecto.nivel).map((m) => m.codigo), vigente: porPlantilla.por_defecto.malComportamientoVigente });
 }
 
@@ -189,6 +201,9 @@ console.log("\n=== Casos de oro reales (nivel con las tres plantillas; hoy = lo 
 for (const g of gold.sort((a, b) => a.cita.localeCompare(b.cita))) {
   console.log(`${g.cita}: ${PLANTILLAS.map((p) => g.niveles[p]).join(" / ")} · hoy ${g.hoy} · v. mayor ${g.version_mayor} · motivos ${g.motivos.join("+") || "ninguno"}${g.vigente ? " (vigente)" : ""}`);
 }
+console.log("\n=== Contra lo que recomendó el modelo (plantilla por defecto): negar con riesgo bajo o con observaciones, aprobar con deteriorado o mal comportamiento ===");
+for (const l of paraMirar.sort()) console.log(l);
+console.log(`${paraMirar.length} casos.`);
 console.log(`Casos de oro reales con crudo: ${gold.length} de ${casosDeOro.size}.`);
 
 if (fallos.length) {
