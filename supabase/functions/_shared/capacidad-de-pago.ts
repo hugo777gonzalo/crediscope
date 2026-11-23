@@ -35,6 +35,8 @@ import type {
   CapacidadDelPeldano, CapacidadMaximaInformativa, ClaveDeComponente, IngresoDeLaRespuesta, IngresoDelPerfil, OfertaDeLaEscalera,
   PeldanoDelIngreso, SensibilidadDelIngreso, TipoDePersona, VeredictoDelPeldano,
 } from "./escalera-del-ingreso.ts";
+import { lecturaDeLaEscalera } from "./estandar/lectura-de-la-escalera.ts";
+import type { EstandarDeLaInstitucion } from "./estandar/estandar.ts";
 import { type LimitesDelCredito, montoMaximoParaCuota, type PedidoDeSimulacion, PRODUCTO_CONSUMO, simularCredito } from "./simulador-credito.ts";
 
 // v2 (2026-10-17): el Ingreso declarado. v3 (2026-10-18): el veredicto se
@@ -576,6 +578,12 @@ export interface EntradaDeEscalera {
   condiciones: PedidoDeSimulacion;
   parametros?: Partial<ParametrosCapacidad>;
   fracciones?: Partial<FraccionesAceptadas>;
+  /**
+   * El estándar de la institución (F14): de ahí salen la carga, el margen, el aporte personal, la carga extendida y lo que se
+   * acepta de cada peldaño. Tiene que haber pasado por `validarEstandar()`: con uno que no pasó, lanza. Lo que se pase suelto
+   * en `parametros`, `fracciones` y `cargaExtendida` manda sobre el estándar. Sin estándar, las constantes de siempre.
+   */
+  estandar?: EstandarDeLaInstitucion;
   /** La carga extendida del estándar: sólo con evidencia verificada (peldaños 1 y 2) y si la institución la habilita. */
   cargaExtendida?: { habilitada: boolean; hasta: number };
   limites?: LimitesDelCredito;
@@ -610,10 +618,13 @@ const DOCUMENTO_POR_TIPO: Record<TipoDePersona, { evidencia: string; texto: stri
 };
 
 export function evaluarEscalera(e: EntradaDeEscalera): ResultadoDeEscalera {
-  const parametros = parametrosValidos(e.parametros);
-  const fracciones = { ...FRACCIONES_ACEPTADAS, ...e.fracciones };
+  const lectura = e.estandar ? lecturaDeLaEscalera(e.estandar) : null;
+  // Con estándar, `medir()` y `ingresoNecesario` usan sus parámetros; sin él, los que vengan o los de siempre.
+  const parametrosDeLaMedicion = lectura ? { ...lectura.parametros, ...e.parametros } : e.parametros;
+  const parametros = parametrosValidos(parametrosDeLaMedicion);
+  const fracciones = { ...FRACCIONES_ACEPTADAS, ...lectura?.fracciones, ...e.fracciones };
   const limites = e.limites ?? PRODUCTO_CONSUMO.limites;
-  const extendida = e.cargaExtendida ?? { habilitada: false, hasta: 0.5 };
+  const extendida = e.cargaExtendida ?? lectura?.cargaExtendida ?? { habilitada: false, hasta: 0.5 };
   const simulacion = simularCredito(e.condiciones, limites);
   if (!simulacion.ok) throw new RangeError(`Las condiciones del crédito no son válidas: ${simulacion.errores.join(" ")}`);
   const cuotaNueva = simulacion.simulacion.cuotaPrimerMes;
@@ -629,7 +640,7 @@ export function evaluarEscalera(e: EntradaDeEscalera): ResultadoDeEscalera {
       deudasSinCuota: e.datos.deudasSinCuota,
       fuentesSinConsultar: e.datos.fuentesSinConsultar,
       cuotaNueva,
-      parametros: e.parametros,
+      parametros: parametrosDeLaMedicion,
     });
     let veredicto: VeredictoDelPeldano = c.veredicto === "sin_ingreso" ? "no_sostiene" : c.veredicto;
     if (veredicto === "no_alcanza" && puedeSerExtendida && extendida.habilitada) {
