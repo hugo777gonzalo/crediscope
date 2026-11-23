@@ -298,6 +298,8 @@ for (const tabla of [
   "solicitudes",
   // El predictor de ingresos (141).
   "modelos_de_ingreso", "estimaciones_de_ingreso",
+  // El estándar de la institución por versión (155): sin datos de personas, pero tampoco para el rol anónimo.
+  "estandares_de_institucion",
 ]) {
   const r = await pedir(`${URL_SUPABASE}/rest/v1/${tabla}?select=*&limit=1`, { headers: h });
   const filasLeidas = Array.isArray(r.cuerpo) ? r.cuerpo.length : 0;
