@@ -51,7 +51,7 @@ decide el negocio.
   adicional vuelve verificables. El monto máximo sube en 124 personas (mediana USD 7.219).
 - **Política.** El adicional es el contenido del requisito `sustento_de_ingreso` del Aprobado con
   Requisitos: monto, origen y documento, en vez de un «sustentar el ingreso» genérico.
-- **14 decisiones** para el negocio (sección 6): A1 a A13 aceptadas como se recomendaron el 2026-11-22; A14 abierta. 9 tareas de construcción (sección 7).
+- **14 decisiones** para el negocio (sección 6): A1 a A13 aceptadas como se recomendaron el 2026-11-22; A14 decidida el 2026-11-23 (6.1). 9 tareas de construcción (sección 7).
 
 ---
 
@@ -552,7 +552,40 @@ dos esté validada.
 | A11 | La forma del documento anotado (D8) | (a) La tabla de 2.5: la institución anota las cifras, el código calcula, se guarda la huella y nunca el archivo; (b) un monto mensual y el tipo, en la solicitud | **(a)**: el monto sale igual en toda institución y una fracción nueva se aplica a todo **Decisión del negocio (2026-11-22):** aceptada la recomendación. |
 | A12 | «Corroborada por sus cuotas» | (a) Las cuotas al día prueban más que lo validado (medido: 19 de 146, la cifra de la decisión); (b) las cuotas llegan a la mitad de la base de la renta (13 de 146) | **(a)**: es la regla con que se midió la decisión y no depende de un segundo umbral **Decisión del negocio (2026-11-22):** aceptada la recomendación. |
 | A13 | Los nombres de pantalla | «Validado», «Por corroborar», «Fuerte», «Media», «Débil», «Sin respaldo» (3.3) u otros | Los decide el negocio; la recomendación es la propuesta, que no choca con «Estimado» ni con «Referencia de solicitudes» **Decisión del negocio (2026-11-22):** aceptada la recomendación. |
-| A14 | El predictor sobre un sueldo | (a) Como hoy: no estima a quien tiene sueldo verificado; (b) estimar también a los dependientes con ingreso extra, para el adicional | **(a) por ahora**: el predictor se entrenó con el ingreso total de aprobados y, sobre un sueldo, estimaría el sueldo otra vez. (b) pide medirlo antes en esa población (especificación del predictor) **Abierta (2026-11-22):** el negocio pide medir el predictor sobre dependientes con ingreso extra antes de decidir. |
+| A14 | El predictor sobre un sueldo | (a) Como hoy: no estima a quien tiene sueldo verificado; (b) estimar también a los dependientes con ingreso extra, para el adicional | **(a) por ahora**: el predictor se entrenó con el ingreso total de aprobados y, sobre un sueldo, estimaría el sueldo otra vez. (b) pide medirlo antes en esa población (especificación del predictor) **Abierta (2026-11-22):** el negocio pide medir el predictor sobre dependientes con ingreso extra antes de decidir. **Decisión del negocio (2026-11-23):** (a), medido (6.1). No se estima al dependiente con sueldo verificado (`SEGMENTOS_QUE_SE_ESTIMAN` no cambia) y se suma una señal sin monto, «tiene RUC activo: puede tener ingresos que no constan»; el monto lo ponen la renta, el IVA y las cuotas. |
+
+### 6.1 A14 medida (2026-11-23)
+
+Medición en seco sobre la originación de AWS ya bajada: sin el modelo de lenguaje, sin consultar fuentes ni escribir en la base. Se corrió `ingreso-v2`
+(niveles 1 y 2, calibrados como se sirven) sobre 12.986 dependientes y públicos con sueldo recuperado del IESS y el bloque del SRI de Equifax. El
+modelo se entrenó sólo con independientes, así que ninguno estuvo en el entrenamiento. Con RUC activo hay 3.874 (1.235 en OK FACTURAR y
+condicionado); el control son 4.271 sin RUC. «Adicional material» es el que supera los USD 100 y el 10% del sueldo.
+
+| Con RUC activo, todas las respuestas | Nivel 1 | Nivel 2 |
+|---|---|---|
+| El mínimo certificado cae entre el sueldo y lo validado (le sirve al adicional) | 12,9% | 19,4% |
+| El mínimo sobrepasa lo validado | 35,4% | 32,5% |
+| Lo validado alcanza al mínimo (la promesa es 90%) | 64,6% | 67,5% |
+| La estimación central queda dentro de ±20% de lo validado | 20,6% | 29,6% |
+
+- **El sueldo solo le gana al predictor**: queda dentro de ±20% de lo validado en el 65,0%. En OK FACTURAR el mínimo cubre 81,7% y 83,4%,
+  también bajo la meta.
+- **El nivel 1 casi es un número fijo** (mediana USD 1.274) y no separa a quien tiene adicional material (AUC 0,498). Su acierto sale de los
+  sueldos bajos, que el mínimo pasa siempre.
+- **Lo que separa el nivel 2 es el buró**: AUC 0,549 (0,655 en OK), pero la cuota, la deuda y el crédito mayor solos dan 0,619 (0,786 en OK), y
+  juntos no suman nada. Es la cota por cuotas, que ya es el peldaño 3.
+- **Sumar el mínimo al sueldo** sobrepasa lo validado en el 91,7% al 94,7%: se descarta.
+- **La cifra de Equifax tampoco le gana al sueldo.** Queda dentro de ±20% en el 35,5% (sueldo solo, 63,3%; el mayor de los dos, 46,6%) y
+  sobreestima en más de 20% al 40,4% (2.802 casos, sin el tramo del 16 de enero al 12 de abril de 2026, que el negocio descartó).
+- **La señal sin monto existe**: con RUC activo, el 39,3% tiene un adicional material, contra el 20,8% sin RUC (33,2% y 20,5% en OK). Lo validado
+  supera al sueldo en el 41,5% (mediana USD 653, cuartiles 400 a 1.100).
+
+Límites:
+- Lo validado es lo que documentó el analista: en el 58,5% de los dependientes con RUC activo es exactamente el sueldo, así que «sobrepasa» es un
+  techo del riesgo.
+- La población es de crédito automotriz y de 2026: el bloque del SRI casi no existe antes.
+
+Para volver a pedir (b) hace falta un modelo propio del adicional del dependiente, con el sueldo como entrada, y documentos anotados (D8).
 
 ---
 
@@ -586,7 +619,8 @@ sigue sin conectar: C3 tampoco cambia lo que hoy ve la institución hasta que el
 - **Las fracciones de los documentos** (70% del IVA, 50% del negocio en la cuenta, 50% del
   certificado) son elecciones, no mediciones.
 - **Lo declarado está casi sin medir** (1 persona con Ingreso declarado en la base).
-- **El predictor sobre un sueldo** no existe (A14): el ejemplo literal del negocio no tiene hoy de
-  dónde salir.
+- **El predictor sobre un sueldo** no existe, y medido no conviene (A14, 6.1): el ejemplo literal del
+  negocio no tiene hoy de dónde salir. Haría falta un modelo propio del adicional del dependiente, con el
+  sueldo como entrada, y documentos anotados (D8) para tener con qué entrenarlo.
 - **Con buró no se midió** (sección 4).
 - **El ingreso del hogar** sigue fuera, como en la escalera.

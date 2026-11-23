@@ -538,6 +538,18 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
     con los resultados del predictor.
+    **Decidido el 2026-11-23 (A14, `docs/ingreso-adicional-por-corroborar.md`, 6.1):** el predictor sigue sin estimar al
+    dependiente con sueldo verificado (`SEGMENTOS_QUE_SE_ESTIMAN` no cambia), y se suma la señal sin monto «tiene RUC activo:
+    puede tener ingresos que no constan»; el monto lo ponen la renta, el IVA y las cuotas. Medido en seco sobre 3.874
+    dependientes y públicos de AWS con RUC activo:
+    - el mínimo de `ingreso-v2` cubre 64,6% y 67,5% (niveles 1 y 2) contra la meta de 90%;
+    - la estimación central queda dentro de ±20% en 20,6% y 29,6%, contra 65,0% del sueldo solo;
+    - el nivel 1 no separa a quien tiene adicional (AUC 0,498), y lo que separa el nivel 2 lo da el buró solo;
+    - la cifra de Equifax tampoco le gana al sueldo (35,5% contra 63,3% dentro de ±20%);
+    - con RUC activo el adicional material es del 39,3%, contra 20,8% sin RUC.
+    **El negocio confirmó el mismo día que la cifra de Equifax nunca es variable del predictor** (`comun.PROHIBIDAS` ya lo impide). Bajar
+    más historia de AWS no se recomienda: las extracciones ya llegan a 2021, el SRI no existe antes de fines de 2025 y la curva de
+    aprendizaje está plana (12.32). Lo que falta es calidad de la etiqueta: los documentos anotados (D8).
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
