@@ -598,7 +598,7 @@ Un atraso de más de 90 días empieza una fila más arriba. Un mal comportamient
 persona hoy al día, la IA puede llegar hasta lo más alto que el estándar le deja recomendar.
 
 **Los atenuantes, de mayor a menor peso:** deuda vigente al día en un banco o el BIESS (USD 500 o más); deuda vigente al día en una
-cooperativa; 12 meses o más al día desde el último atraso (con buró; sin él, no medido); el atraso pasado fue chico (dentro de la
+cooperativa (USD 500 o más, sumando las operaciones a 0 días); 12 meses o más al día desde el último atraso (con buró; sin él, no medido); el atraso pasado fue chico (dentro de la
 tolerancia de Revisar de su sector); estabilidad de 12 meses; endeudamiento a la baja de 10% en 12 meses (con buró; sin él, no
 medido); ingreso al alza (más que el SBU del año); al día con una casa comercial. **Los agravantes:** reincidencia (dos o más episodios
 de más de 30 días en 24 meses, o tres o más demandas de cobro en 5 años); un atraso pasado de más de 90 días; lo vencido de entonces
@@ -611,9 +611,12 @@ medido no cuenta ni a favor ni en contra.
 no sube nada aunque su lista de salidas diga Revisar (el margen hacia arriba es cero); y las multas de tránsito, que no están en la capa de
 hechos, salen «sin medir». **Decidido el 2026-11-23:** «hoy al día» es no tener días de mora vigentes en ninguna operación; un castigo o un cobro judicial sin días de mora es
 mora histórica (`moraVigente()`, `hoyAlDia`) y lo histórico no desmiente «hoy al día». Y en cooperativas el saldo al día lo da el saldo total
-(`coop.saldo.total`), porque las operaciones no interpretan el saldo vigente. **Siguen abiertas dos**, con casos reales medidos en la cartera
-(informe del seguimiento, fuera de git): una demanda de cobro sin demandante (85 de 1.259, en 73 personas; nunca hubo una sin año) se lee
-como de una empresa, y el retail con menos de USD 50 vencidos no es evento (regla de 2.2), mientras que sin el monto sí lo es.
+(`coop.saldo.total`), porque las operaciones no interpretan el saldo vigente. **Decidido también el 2026-11-23, con los casos reales medidos** (informe del
+seguimiento, fuera de git): el retail con menos de USD 50 vencidos **no es evento** (regla de 2.2; sin ella, 6 de 12 personas con retail a más de 30 días
+pasaban de «bajo» a «con observaciones» por una deuda que Equifax ya no ve), y **el atenuante de la deuda al día en una cooperativa pide USD 500, igual que el
+de bancos**: se suman los saldos de las operaciones a 0 días (`OperacionDeCredito.saldoTotal`, de `val_saldo_total`), no el total de la cooperativa. El caso
+que lo motivó (c-56ba2e4e) tenía una operación en saldo 0 a 0 días y dos en mora, y la regla anterior la daba por «al día». **Sigue abierta una**: una demanda de
+cobro sin demandante (85 de 1.259, en 73 personas; nunca hubo una sin año) se lee como de una empresa o de una persona natural.
 
 ---
 

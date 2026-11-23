@@ -65,8 +65,11 @@ export function evaluarAtenuantes(entrada: EntradaDeRiesgo, estandar: EstandarDe
         return { ...base, estado: "no_se_cumple", valor: false, porque: null };
       }
       case "deuda_al_dia_en_cooperativa": {
-        const si = ops.filter((o) => o.sistema === "cooperativas" && o.rol === "titular" && (o.diasDeMora ?? 0) === 0);
-        if (si.length) return { ...base, estado: "se_cumple", valor: true, porque: null, derivaDe: si.map((o) => o.clave) };
+        // Negocio, 2026-11-23: igual que en bancos, USD 500 al día. Se suma el saldo de las operaciones a 0 días, no el total de la cooperativa:
+        // c-56ba2e4e tenía una operación en saldo 0 a 0 días y dos en mora, y la regla anterior la daba por «al día».
+        const alDia = ops.filter((o) => o.sistema === "cooperativas" && o.rol === "titular" && (o.diasDeMora ?? 0) === 0);
+        const saldoAlDia = alDia.reduce((t, o) => t + (o.saldoTotal ?? 0), 0);
+        if (alDia.length && saldoAlDia >= a.deudaVigenteAlDia.desdeUsd) return { ...base, estado: "se_cumple", valor: true, porque: null, derivaDe: alDia.map((o) => o.clave) };
         if (sinFuente(entrada, "cooperativas")) return { ...base, estado: "no_medido", valor: null, porque: "fuente_sin_respuesta" };
         return { ...base, estado: "no_se_cumple", valor: false, porque: null };
       }
