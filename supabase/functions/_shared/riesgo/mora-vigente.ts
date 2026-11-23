@@ -211,8 +211,10 @@ export function moraVigente(entrada: EntradaDeRiesgo, estandar: EstandarDeLaInst
   const fuentesDeCredito = ["bancos", "cooperativas", "biess"] as const;
   const faltaUna = fuentesDeCredito.some((f) => entrada.fuentesSinRespuesta.includes(f));
   const hayAtraso = entrada.operaciones.some((o) => o.sector !== "comercial" && enAtraso(o));
-  // «Hoy al día» no se afirma con una fuente que no contestó, salvo que ya se vea un atraso.
-  const hoyAlDia = hayAtraso || castigoOCobroJudicial ? false : faltaUna ? null : true;
+  // «Hoy al día» es no tener días de mora vigentes en ninguna operación (negocio, 2026-11-23): un castigo o un cobro judicial de antes con la
+  // operación sin días de mora es mora histórica y no la desmiente (antes sí: la persona no podía quedar «hoy al día» ni «superada»).
+  // No se afirma con una fuente que no contestó, salvo que ya se vea un atraso.
+  const hoyAlDia = hayAtraso ? false : faltaUna ? null : true;
 
   return { tramo, sectores, mandaElSector: manda, sectoresConMora, castigoOCobroJudicial, garanteDeUnaOperacionEnAtraso, hoyAlDia };
 }

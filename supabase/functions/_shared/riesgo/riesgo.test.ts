@@ -247,6 +247,24 @@ Deno.test("decisión 10: superado es hoy al día y una deuda formal al día de U
   assertEquals(sup(hace8).mesesSinMora, 8);
 });
 
+Deno.test("«hoy al día» es no tener días de mora vigentes: un castigo o un cobro judicial sin días de mora es mora histórica (negocio, 2026-11-23)", () => {
+  const sup = (e: EntradaDeRiesgo) => {
+    const mora = moraVigente(e, DEFECTO);
+    return { mora, superado: estaSuperado(e, DEFECTO, mora, eventosHistoricos(e, DEFECTO)) };
+  };
+  // Una operación castigada con 0 días de mora: hoy al día (antes no lo era), y con una deuda formal al día queda superada.
+  const castigada = sup(entrada([bancoAlDia(), op({ sistema: "cooperativas", diasDeMora: 0, saldoCastigado: 400 })], { saldoTotalCooperativas: 0 }));
+  assertEquals(castigada.mora.hoyAlDia, true);
+  assertEquals(castigada.mora.castigoOCobroJudicial, true); // el castigo sigue contando para el nivel: sólo deja de desmentir «hoy al día»
+  assertEquals(castigada.superado.superado, true);
+  // Lo mismo con una operación en cobro judicial.
+  assertEquals(sup(entrada([bancoAlDia(), op({ sistema: "bancos", calificacion: "A1", diasDeMora: 0, saldoEnDemanda: 900 })])).mora.hoyAlDia, true);
+  // Con un día de mora vigente en cualquier operación, no.
+  assertEquals(sup(entrada([bancoAlDia(), coop(1, 5)])).mora.hoyAlDia, false);
+  // Un banco sin días con la letra en atraso sigue siendo atraso de hoy.
+  assertEquals(sup(entrada([bancoAlDia(), op({ sistema: "bancos", calificacion: "B1" })])).mora.hoyAlDia, false);
+});
+
 // ---------------------------------------------------------------- decisión 11
 
 Deno.test("decisión 11: el decaimiento es de 6, 12 y 24 meses; en la conservadora, 12, 24 y 48", () => {

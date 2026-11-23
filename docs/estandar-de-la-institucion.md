@@ -527,7 +527,7 @@ evalúa todo y recomienda negar, revisar o aprobar.
 
 | Atenuante | Cómo se calcula | Lo medido sobre los 166 |
 |---|---|---|
-| **Hoy al día** | Todas las operaciones en A1, 0 días en cooperativas e IESS, sin operación castigada ni en cobro judicial | 103 |
+| **Hoy al día** | Sin días de mora vigentes en ninguna operación (A1 en bancos sin días; 0 días en cooperativas e IESS). **Una operación castigada o en cobro judicial, sin días de mora, es mora histórica y no la desmiente** (negocio, 2026-11-23; antes sí) | 103 |
 | **Endeudamiento a la baja** | Con buró: el saldo total baja 10% o más en 12 meses sin operaciones nuevas. **Sin buró: no medido** | No se mide sin buró |
 | **Estabilidad** | 12 meses o más de continuidad: en el empleo (dependiente) o con RUC activo (por cuenta propia), con las reglas vigentes de `continuidadLaboral` | 103 |
 | **Ingreso al alza** | El ingreso reportado al IESS de los últimos 6 meses supera en 5% o más al de los 6 anteriores | 27 de 104 medibles |
@@ -609,9 +609,9 @@ medido no cuenta ni a favor ni en contra.
 **Lo que propuse al construirlo.** El negocio aceptó el 2026-11-23 cuatro: la lista de mal pagador es la lista negra interna del proveedor
 (`cum.lista_negra.existe`); una operación en atraso sin monto informado cuenta como Revisar y nunca como Aceptar; con la Conservadora la IA
 no sube nada aunque su lista de salidas diga Revisar (el margen hacia arriba es cero); y las multas de tránsito, que no están en la capa de
-hechos, salen «sin medir». **Siguen abiertas cuatro** (están como datos o como comportamiento y se pueden cambiar): una demanda de cobro sin
-año cuenta como reciente, y la de un demandante que no se pudo clasificar, como de una empresa; «sin demanda» en «hoy al día» se leyó como sin
-operación en demanda judicial o castigada (no como sin demandas de cobro: la decisión 12 las deja existir con la persona superada); en
+hechos, salen «sin medir». **Decidido el 2026-11-23:** «hoy al día» es no tener días de mora vigentes en ninguna operación; un castigo o un cobro judicial sin días de mora es
+mora histórica (`moraVigente()`, `hoyAlDia`) y lo histórico no desmiente «hoy al día». **Siguen abiertas tres** (están como datos o como comportamiento y se pueden cambiar): una demanda de cobro sin
+año cuenta como reciente, y la de un demandante que no se pudo clasificar, como de una empresa; en
 cooperativas el saldo vigente lo da el saldo total, porque las operaciones no lo interpretan; y el retail con menos de USD 50 vencidos no es
 evento (regla de 2.2), mientras que sin el monto sí lo es.
 
