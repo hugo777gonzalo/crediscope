@@ -73,6 +73,11 @@ su guía: `docs/equifax.md`.
   `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
   El **Ingreso declarado** (lo que dice recibir quien pide el crédito) reemplaza
   al del IESS en el cálculo y se rotula «sin verificar» (`conIngresoDeclarado()`).
+- `escalera-del-ingreso.ts` y `evaluarEscalera()` (`capacidad-de-pago.ts`, `capacidad-v6`; F10, 2026-11-22) — la escalera de
+  evidencia del ingreso (`docs/escalera-del-ingreso.md`): `armarIngresoDelPerfil()` arma los peldaños 1, 3a, 3c y 5 desde
+  `datosDeCapacidad()` y `evaluarEscalera()` mide la capacidad con cada uno por separado, nunca sumados (sostiene el más
+  fuerte con el que alcanza), con oferta, sensibilidad al 10% y 20% y la capacidad máxima informativa. **No está conectada**:
+  el simulador, la solicitud y el perfil del modelo siguen con `capacidad-v5`. Se mide con `node scripts/medir-escalera.mjs`. Desde F11 la renta entra al peldaño 3 (3b) y el mínimo certificado del predictor es el peldaño 4 (fracción 0%: no sostiene; si no pasa de USD 1.000 baja al 6).
 - `modalidades.ts` y la función `evaluar-solicitud` (133) — la solicitud de
   crédito (tabla `solicitudes`) y su evaluación en Básico, Pro o Plus. Corre UN
   paso por llamada (Proveedor_Info_1 y el modelo juntos pasan los 150 s) y llama a las

@@ -73,8 +73,9 @@ export const GRUPOS = {
 // actividad con RUC, `laboral`) desde la estructura-v30; `ingresos` sigue en etapa A. El de
 // patrimonio, en etapa A (2026-11-22): 0 diferencias en 45.192 campos de las 3.766 personas. El de
 // seguridad social (`seguridadSocial`), en etapa A desde el mismo día: 0 diferencias en 37.660 campos
-// de las mismas 3.766 personas.
-export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos", "penal", "cumplimiento", "patrimonio", "seguridadSocial"];
+// de las mismas 3.766 personas. El de identidad, en etapa A desde el mismo día (P63): 0 diferencias en
+// 75.320 campos.
+export const GRUPOS_EN_PARIDAD: string[] = ["comportamientoBancario", "cooperativas", "historialConLaInstitucion", "riesgoJudicial", "empleo", "actividadConRuc", "ingresos", "penal", "cumplimiento", "patrimonio", "seguridadSocial", "identidad"];
 
 export function catalogoCompleto(): CodigoDelCatalogo[] {
   return Object.values(GRUPOS).flatMap((g) => g.CATALOGO);
