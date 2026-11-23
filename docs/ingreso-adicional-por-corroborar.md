@@ -585,7 +585,9 @@ Límites:
   techo del riesgo.
 - La población es de crédito automotriz y de 2026: el bloque del SRI casi no existe antes.
 
-Para volver a pedir (b) hace falta un modelo propio del adicional del dependiente, con el sueldo como entrada, y documentos anotados (D8).
+Un modelo propio del extra del dependiente, con el sueldo como entrada, ya se probó con la etiqueta «total menos sueldo» y no pasó (12.14 y 12.36:
+AUC 0,687, R² 0,01). **El 2026-11-23 el negocio pidió intentarlo con la etiqueta por componente** (el check de AWS y el origen de cada ítem):
+`docs/propuesta-adicional-del-dependiente.md`, con sus reglas y sus sesiones. Hasta que pase, rige (a).
 
 ---
 
@@ -620,7 +622,7 @@ sigue sin conectar: C3 tampoco cambia lo que hoy ve la institución hasta que el
   certificado) son elecciones, no mediciones.
 - **Lo declarado está casi sin medir** (1 persona con Ingreso declarado en la base).
 - **El predictor sobre un sueldo** no existe, y medido no conviene (A14, 6.1): el ejemplo literal del
-  negocio no tiene hoy de dónde salir. Haría falta un modelo propio del adicional del dependiente, con el
-  sueldo como entrada, y documentos anotados (D8) para tener con qué entrenarlo.
+  negocio no tiene hoy de dónde salir. El intento con la etiqueta por componente está en
+  `docs/propuesta-adicional-del-dependiente.md`; si no pasa, hacen falta documentos anotados (D8).
 - **Con buró no se midió** (sección 4).
 - **El ingreso del hogar** sigue fuera, como en la escalera.

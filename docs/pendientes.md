@@ -550,6 +550,14 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     **El negocio confirmó el mismo día que la cifra de Equifax nunca es variable del predictor** (`comun.PROHIBIDAS` ya lo impide). Bajar
     más historia de AWS no se recomienda: las extracciones ya llegan a 2021, el SRI no existe antes de fines de 2025 y la curva de
     aprendizaje está plana (12.32). Lo que falta es calidad de la etiqueta: los documentos anotados (D8).
+    **Pedido el 2026-11-23: intentar el adicional del dependiente con la etiqueta por componente**
+    (`docs/propuesta-adicional-del-dependiente.md`). En AWS, el total validado es el sueldo más los ítems con el check (99,99%), y
+    cada ítem dice su origen. De 9.106 adicionales materiales, 5.881 son declarados, 1.356 de cuentas o IVA (393 con archivo) y 477
+    del predictor. El modelo con la etiqueta vieja ya falló (12.36). **Lo que sigue, en sesiones limpias:**
+    1. datos y etiquetas, sin modelo;
+    2. el modelo, con las reglas fijadas en la propuesta;
+    3. conectarlo, sólo si pasa.
+    Nada empezado.
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
