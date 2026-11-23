@@ -3,7 +3,7 @@
 // Por persona real (sin las sintéticas), con el último perfil guardado y su crudo, con el reloj fijado en la fecha de su consulta y SIN
 // buró (el escenario que se diseña primero):
 //   1. deriva la capa de hechos (`derivarHechos`) y arma la entrada de riesgo (`entradaDeRiesgoDesdeHechos`);
-//   2. calcula el veredicto de riesgo con cada una de las tres plantillas (por defecto, conservadora y expansiva);
+//   2. calcula el veredicto de riesgo con cada una de las tres plantillas (Base, Conservadora y Optimista);
 //   3. cuenta cuántas personas quedan en cada nivel, por qué (los motivos que deciden el nivel), el tramo de mora por sector, el historial
 //      (eventos, superado, fila del decaimiento), los atenuantes y agravantes, y hasta dónde puede subir la IA;
 //   4. cruza el nivel con lo que recomendó el modelo (aprobar, revisar, negar o sin análisis) y cuenta lo que cambia de lectura;
@@ -11,7 +11,7 @@
 //      recomendación de hoy y la salida de la versión mayor que fijó el negocio.
 //
 // Condiciones que corta con 1 (7.3): ninguna persona con un bloqueo vigente sale de Negar (no es de este cálculo: se cuenta cuántas
-// tienen bloqueo), ninguna con mal comportamiento vigente puede subir a Aprobar con la plantilla por defecto, y todo estado de un factor
+// tienen bloqueo), ninguna con mal comportamiento vigente puede subir a Aprobar con la plantilla Base, y todo estado de un factor
 // no medido sale «no_medido».
 //
 // SOLO LEE. No llama a Proveedor_Info_1, a Equifax ni al modelo, y no escribe en la base. Por consola, sólo conteos y referencias c-xxxxxxxx.
@@ -49,7 +49,7 @@ const { plantillaCompleta } = await importar("estandar/configurar-estandar.ts");
 const { CORTE_IESS_CONOCIDO } = await importar("fuentes-ingreso.ts");
 const { evaluarControlesBloqueo } = await importar("controles-bloqueo.ts");
 
-const PLANTILLAS = ["por_defecto", "conservadora", "expansiva"];
+const PLANTILLAS = ["base", "conservadora", "optimista"];
 const ESTANDARES = Object.fromEntries(PLANTILLAS.map((p) => [p, plantillaCompleta(p)]));
 const NIVELES = ["bajo", "con_observaciones", "deteriorado", "mal_comportamiento"];
 
@@ -161,20 +161,20 @@ for (const c of candidatos) {
     if (!r.cruce[v.nivel]) r.cruce[v.nivel] = {};
     suma(r.cruce[v.nivel], hoy);
     if (bloqueada) suma(r.bloqueos, v.nivel);
-    // La condición de 7.3: con mal comportamiento de hoy la IA no sube a Aprobar (por defecto).
-    if (p === "por_defecto" && v.malComportamientoVigente && v.ia?.techo === "aprobar") fallos.push(`${c.cita ?? "persona"}: mal comportamiento vigente con techo Aprobar`);
+    // La condición de 7.3: con mal comportamiento de hoy la IA no sube a Aprobar (Base).
+    if (p === "base" && v.malComportamientoVigente && v.ia?.techo === "aprobar") fallos.push(`${c.cita ?? "persona"}: mal comportamiento vigente con techo Aprobar`);
     if (v.atenuantes && v.atenuantes.some((a) => a.estado === "se_cumple" && a.valor === null && a.porque === "sin_buro")) fallos.push(`${c.cita ?? "persona"}: un atenuante sin buró sale «se cumple»`);
   }
   calculadas++;
   {
-    const v = porPlantilla.por_defecto;
+    const v = porPlantilla.base;
     const motivos = v.motivos.filter((m) => m.nivel === v.nivel).map((m) => m.codigo).join("+") || "ninguno";
     // Contra lo que recomendó el modelo: negar con riesgo bajo o con observaciones, y aprobar con deteriorado o mal comportamiento.
     if ((hoy === "negar" && ["bajo", "con_observaciones"].includes(v.nivel)) || (hoy === "aprobar" && ["deteriorado", "mal_comportamiento"].includes(v.nivel))) {
       paraMirar.push(`${c.cita ?? "persona"}: hoy ${hoy}, riesgo ${v.nivel} (${motivos}${v.malComportamientoVigente ? ", vigente" : ""})${bloqueada ? ", con un bloqueo" : ""}${v.sinMedir.length ? `, sin medir: ${[...new Set(v.sinMedir)].join(" y ")}` : ""}`);
     }
   }
-  if (c.cita && casosDeOro.has(c.cita)) gold.push({ cita: c.cita, ...casosDeOro.get(c.cita), niveles: Object.fromEntries(PLANTILLAS.map((p) => [p, porPlantilla[p].nivel])), motivos: porPlantilla.por_defecto.motivos.filter((m) => m.nivel === porPlantilla.por_defecto.nivel).map((m) => m.codigo), vigente: porPlantilla.por_defecto.malComportamientoVigente });
+  if (c.cita && casosDeOro.has(c.cita)) gold.push({ cita: c.cita, ...casosDeOro.get(c.cita), niveles: Object.fromEntries(PLANTILLAS.map((p) => [p, porPlantilla[p].nivel])), motivos: porPlantilla.base.motivos.filter((m) => m.nivel === porPlantilla.base.nivel).map((m) => m.codigo), vigente: porPlantilla.base.malComportamientoVigente });
 }
 
 console.log(`\nSeco del veredicto de riesgo: ${calculadas} personas (sin crudo: ${sinCrudo}), sin buró, con el reloj en la fecha de cada consulta. Tiempo medio: ${(ms / Math.max(1, calculadas * PLANTILLAS.length)).toFixed(3)} ms por veredicto.`);
@@ -201,7 +201,7 @@ console.log("\n=== Casos de oro reales (nivel con las tres plantillas; hoy = lo 
 for (const g of gold.sort((a, b) => a.cita.localeCompare(b.cita))) {
   console.log(`${g.cita}: ${PLANTILLAS.map((p) => g.niveles[p]).join(" / ")} · hoy ${g.hoy} · v. mayor ${g.version_mayor} · motivos ${g.motivos.join("+") || "ninguno"}${g.vigente ? " (vigente)" : ""}`);
 }
-console.log("\n=== Contra lo que recomendó el modelo (plantilla por defecto): negar con riesgo bajo o con observaciones, aprobar con deteriorado o mal comportamiento ===");
+console.log("\n=== Contra lo que recomendó el modelo (plantilla Base): negar con riesgo bajo o con observaciones, aprobar con deteriorado o mal comportamiento ===");
 for (const l of paraMirar.sort()) console.log(l);
 console.log(`${paraMirar.length} casos.`);
 console.log(`Casos de oro reales con crudo: ${gold.length} de ${casosDeOro.size}.`);

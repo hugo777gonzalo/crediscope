@@ -15,7 +15,7 @@ import { moraVigente, salidaPorLaMora } from "./mora-vigente.ts";
 import { calcularVeredictoDeRiesgo } from "./veredicto-de-riesgo.ts";
 
 const CONSULTA = "2026-11-22T15:00:00Z";
-const DEFECTO = plantillaCompleta("por_defecto");
+const DEFECTO = plantillaCompleta("base");
 const CONSERVADORA = plantillaCompleta("conservadora");
 
 let n = 0;
@@ -40,7 +40,7 @@ function entrada(operaciones: OperacionDeRiesgo[], extra: Partial<EntradaDeRiesg
   };
 }
 function estandarCon(cambios: Record<string, unknown>): EstandarDeLaInstitucion {
-  const r = configurarEstandar({ plantilla: "por_defecto", cambios });
+  const r = configurarEstandar({ plantilla: "base", cambios });
   assert(r.ok, r.ok ? "" : r.errores.join("\n"));
   return (r as { ok: true; estandar: EstandarDeLaInstitucion }).estandar;
 }
@@ -79,8 +79,8 @@ Deno.test("decisión 2: bancos sin buró manda la letra; con buró, los dólares
   const r = moraVigente(entrada([op({ sistema: "bancos", calificacion: "C1" })], { conBuro: true }), porDolares);
   assertEquals(r.sectores.sbs.tramo, "no_cuenta");
   assert(r.sectores.sbs.sinMedir.includes("banco_sin_dias_ni_vencido"));
-  // La expansiva acepta las B1 y B2.
-  assertEquals(moraVigente(entrada([op({ sistema: "bancos", calificacion: "B1" })]), plantillaCompleta("expansiva")).sectores.sbs.tramo, "aceptar");
+  // La optimista acepta las B1 y B2.
+  assertEquals(moraVigente(entrada([op({ sistema: "bancos", calificacion: "B1" })]), plantillaCompleta("optimista")).sectores.sbs.tramo, "aceptar");
 });
 
 // ---------------------------------------------------------------- decisión 3
@@ -195,9 +195,9 @@ Deno.test("decisión 8: umbrales en dólares, revisados cada enero", () => {
   assertEquals(DEFECTO.riesgo.moraVigente.revisionDeLosUmbrales.cadaAnioEn, "enero");
   assertEquals(umbralesPorRevisar(DEFECTO, "2027-01-15"), false);
   assertEquals(umbralesPorRevisar(DEFECTO, "2027-02-01"), true);
-  // La conservadora y la expansiva cambian los dólares.
+  // La conservadora y la optimista cambian los dólares.
   assertEquals(moraVigente(entrada([coop(45, 20)]), CONSERVADORA).sectores.seps.tramo, "revisar");
-  assertEquals(moraVigente(entrada([coop(45, 40)]), plantillaCompleta("expansiva")).sectores.seps.tramo, "aceptar");
+  assertEquals(moraVigente(entrada([coop(45, 40)]), plantillaCompleta("optimista")).sectores.seps.tramo, "aceptar");
 });
 
 // ---------------------------------------------------------------- decisión 9

@@ -148,7 +148,7 @@ function validar(raiz: unknown): string[] {
       }
     }
     const faltan = REQUISITOS_FIJOS.filter((c) => !codigosDeRequisitos.has(c));
-    if (faltan.length) error("requisitos", `faltan los requisitos que usa la matriz por defecto: ${faltan.join(", ")}.`);
+    if (faltan.length) error("requisitos", `faltan los requisitos que usa la matriz Base: ${faltan.join(", ")}.`);
   } else error("requisitos", "tiene que ser un objeto con el catálogo de requisitos.");
 
   // ---- controles ----
@@ -473,7 +473,12 @@ function validar(raiz: unknown): string[] {
         }
       }
       fraccion("capacidad.cuotaEstimadaDeDeudaSinCuota.hipotecarioSinPlazo", ce.hipotecarioSinPlazo, 0.001, 0.25);
-      fraccion("capacidad.cuotaEstimadaDeDeudaSinCuota.fraccionParaLaAprobacionDirecta", ce.fraccionParaLaAprobacionDirecta, 0.001, 0.25);
+      const estres = fraccion("capacidad.cuotaEstimadaDeDeudaSinCuota.fraccionParaLaAprobacionDirecta", ce.fraccionParaLaAprobacionDirecta, 0.001, 0.25);
+      // La prueba de estrés de la Aprobación Directa no puede ser más benigna que la estimación de todos los días: sería un alivio y no un estrés.
+      if (estres !== null && Array.isArray(ce.tramosDeSaldo)) {
+        const mayor = Math.max(0, ...ce.tramosDeSaldo.map((t) => (esObjeto(t) && typeof t.factor === "number" ? t.factor : 0)));
+        if (estres < mayor) error("capacidad.cuotaEstimadaDeDeudaSinCuota.fraccionParaLaAprobacionDirecta", `la prueba de estrés no puede ser menor que el tramo más alto de la estimación (${coma(mayor)}); se escribió ${coma(estres)}.`);
+      }
     }
     const ref = objeto("capacidad.creditoDeReferencia", cap.creditoDeReferencia, ["monto", "plazoMeses"]);
     if (ref) {

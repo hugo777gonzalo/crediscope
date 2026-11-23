@@ -16,7 +16,7 @@
 // contenido guardado de una versión anterior se sigue leyendo con la forma con que se guardó.
 export const FORMA_DEL_ESTANDAR = "estandar-forma-v1";
 
-export const PLANTILLAS = ["por_defecto", "conservadora", "expansiva"] as const;
+export const PLANTILLAS = ["base", "conservadora", "optimista"] as const;
 export type NombreDePlantilla = (typeof PLANTILLAS)[number];
 
 export const NIVELES_DE_RIESGO = ["bajo", "con_observaciones", "deteriorado", "mal_comportamiento"] as const;
@@ -64,7 +64,7 @@ export type ControlConfigurable = (typeof CONTROLES_CONFIGURABLES)[number];
 export const EFECTOS_DE_UN_CONTROL = ["bloquea", "verificar_identidad", "advertencia", "limita_a_revisar", "informa", "dato_de_comportamiento"] as const;
 export type EfectoDeUnControl = (typeof EFECTOS_DE_UN_CONTROL)[number];
 
-// El catálogo de requisitos (4.1, 6): los códigos que usa la matriz por defecto no se quitan.
+// El catálogo de requisitos (4.1, 6): los códigos que usa la matriz Base no se quitan.
 export const REQUISITOS_FIJOS = [
   "sustento_de_ingreso",
   "detalle_de_la_deuda_sin_cuota",
@@ -243,11 +243,16 @@ export interface CapacidadDelEstandar {
   cargaExtendida: { habilitada: boolean; hasta: number; exigeRiesgo: NivelDeRiesgo; exigeHistorial: HistorialDeLaCelda; exigeEvidencia: EvidenciaDeLaCelda };
   /**
    * C2 (negocio, 2026-11-18): la carga máxima va del 40 al 60% según el riesgo (más riesgo, menos capacidad), sobre el
-   * neto disponible. «mal_comportamiento» no tiene carga: la base es Negar. Los porcentajes por nivel son PROPUESTA sin
-   * medir (el negocio pidió validarlos). NO la lee nada todavía: la escalera mide con `cargaMaxima` y `cargaExtendida`.
+   * neto disponible. «mal_comportamiento» no tiene carga: la base es Negar. Los porcentajes por nivel los aceptó el
+   * negocio el 2026-11-23 (Base 60/50/40, Conservadora 50/45/35, Optimista 60/55/45). NO la lee nada todavía: la escalera mide con `cargaMaxima` y `cargaExtendida`.
    */
   cargaMaximaPorRiesgo: { baseDeLaCarga: "neto_disponible"; porNivel: Record<Exclude<NivelDeRiesgo, "mal_comportamiento">, number> };
   /** C1 (2026-11-18): la cuota de una deuda sin cuota se estima por tramo de saldo; el hipotecario sin plazo, con un factor propio. */
+  /**
+   * `fraccionParaLaAprobacionDirecta` es el factor de la prueba de estrés de la Aprobación Directa (4.4, criterio 6): la capacidad sigue alcanzando si
+   * cada deuda sin cuota que no es hipotecaria se estima con él. Es el tramo más alto de C1 (6,5%; negocio, 2026-11-23): nunca puede ser menor que
+   * un factor de los tramos, o no sería un estrés. El hipotecario sin plazo usa su propio factor.
+   */
   cuotaEstimadaDeDeudaSinCuota: { tramosDeSaldo: TramoDeFactor[]; hipotecarioSinPlazo: number; fraccionParaLaAprobacionDirecta: number };
   creditoDeReferencia: { monto: number; plazoMeses: number };
   /** Historial probado (3.2): deuda vigente al día desde este monto, o dos o más operaciones vigentes al día. */
@@ -275,7 +280,7 @@ export interface AprobacionDirectaDelEstandar {
   aniosSinDemandaDeCobro: number;
   exigeCapacidad: VeredictoDeCapacidad;
   exigePeldano: PeldanoAceptado;
-  /** Los historiales con los que se otorga; la expansiva la abre también en el corto. */
+  /** Los historiales con los que se otorga; la optimista la abre también en el corto. */
   historialesAdmitidos: HistorialDeLaCelda[];
   mesesMinimosDeEstabilidad: number;
   montoMaximo: number;

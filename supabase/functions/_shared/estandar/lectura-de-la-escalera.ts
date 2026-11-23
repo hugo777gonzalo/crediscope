@@ -1,7 +1,7 @@
 // Lo que la escalera del ingreso y la capacidad de pago leen del estándar de la institución: la carga
 // máxima, el margen, la carga extendida, el aporte personal, lo que se acepta de cada peldaño y los
 // dos parámetros de la escalera. Antes eran constantes del código (`PARAMETROS_CAPACIDAD`,
-// `FRACCIONES_ACEPTADAS`, `PARAMETROS_DE_LA_ESCALERA`); con la plantilla por defecto dan exactamente
+// `FRACCIONES_ACEPTADAS`, `PARAMETROS_DE_LA_ESCALERA`); con la plantilla Base dan exactamente
 // los mismos números, y `estandar.test.ts` lo prueba contra las constantes y contra `evaluarEscalera()`.
 //
 // Sólo tipos de `capacidad-de-pago.ts` y de `escalera-del-ingreso.ts` (`import type`): esos módulos

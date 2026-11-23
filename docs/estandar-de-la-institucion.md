@@ -8,7 +8,7 @@ capacidad de pago y controles); **el estándar de la institución** los combina
 en una recomendación base; la IA pondera el caso completo dentro del margen que
 el estándar le da y lo explica; y decide una persona de la institución. Este
 documento define el estándar: qué forma tiene como dato, cómo se calculan los
-veredictos que combina, la matriz por defecto, sus variantes, qué hace con cada
+veredictos que combina, la matriz Base, sus variantes, qué hace con cada
 caso conocido y cómo se mide antes de encenderlo.
 
 Cómo leer los valores:
@@ -138,9 +138,9 @@ faltan, no dudas de criterio.
 | `matriz` | Riesgo por capacidad → salida base | Cada casilla, dentro de las salidas que su fila admite | La fila de mal comportamiento (Negar) y el efecto de un bloqueo |
 | `aprobacionDirecta` | Los criterios exactos | Apagarla, o endurecer o aflojar cada criterio dentro de un rango | Que la IA no la otorga |
 | `margenDeLaIA` | Cuánto puede mover la IA la base | Reducirlo (hasta cero) | Un escalón como máximo fuera del mal comportamiento; nunca sobre un bloqueo |
-| `requisitos` | El catálogo de lo que se puede pedir | Qué documentos acepta para cada requisito, y agregar los suyos | Los códigos que usa la matriz por defecto |
+| `requisitos` | El catálogo de lo que se puede pedir | Qué documentos acepta para cada requisito, y agregar los suyos | Los códigos que usa la matriz Base |
 
-### 1.3 Esquema de ejemplo (plantilla por defecto, institución sin buró)
+### 1.3 Esquema de ejemplo (plantilla Base, institución sin buró)
 
 Es un ejemplo de la forma, con los valores propuestos en este documento. Las
 fracciones van como fracción (0,40 es 40%) y los montos en dólares.
@@ -148,7 +148,7 @@ fracciones van como fracción (0,40 es 40%) y los montos en dólares.
 ```json
 {
   "version": "estandar-v1",
-  "plantilla": "por_defecto",
+  "plantilla": "base",
   "vigenteDesde": "2026-12-01",
   "conBuroDeLaInstitucion": false,
 
@@ -356,15 +356,17 @@ esto (F14):
 - Los peldaños de `ingreso.aceptadoPorPeldano` llevan los nombres de la escalera en el código
   (`verificado_por_un_tercero`, `verificado_con_documento`, `cota_por_credito_otorgado`,
   `minimo_certificado`, `declarado_coherente`, `declarado_sin_respaldo`).
-- `capacidad.cargaMaximaPorRiesgo` (C2): 60, 50 y 40% para riesgo bajo, con observaciones y
+- `capacidad.cargaMaximaPorRiesgo` (C2; **aceptada por el negocio el 2026-11-23**: 60/50/40 en la Base, 50/45/35 en la Conservadora y 60/55/45 en la Optimista): 60, 50 y 40% para riesgo bajo, con observaciones y
   deteriorado (el mal comportamiento no tiene carga), sobre el neto disponible. **Propuesta sin
   medir** (el negocio pidió validar los porcentajes) y **no la lee nada**: la escalera sigue con
   `cargaMaxima` (40%). La carga extendida queda apagada en las tres plantillas (C2 la reemplaza)
   para no cambiar lo que mide la escalera de hoy.
 - `capacidad.cuotaEstimadaDeDeudaSinCuota` es el factor por tramo de saldo de C1 (2,5 a 6,5%) y
-  el del hipotecario sin plazo, no el 3,5% parejo. Las tres plantillas lo comparten. Queda
-  abierto qué es la prueba de la Aprobación Directa «al 5%», que con esos tramos ya no es un
-  estrés (`fraccionParaLaAprobacionDirecta`).
+  el del hipotecario sin plazo, no el 3,5% parejo. Las tres plantillas lo comparten. **La prueba de
+  estrés de la Aprobación Directa** (`fraccionParaLaAprobacionDirecta`) es el tramo más alto de C1, 6,5% del
+  saldo, para lo que no es hipotecario (negocio, 2026-11-23); el hipotecario usa su factor propio de 1,07%.
+  El validador exige que no sea menor que ningún tramo. El negocio pidió para el hipotecario un factor de 1% a
+  1,5% por su plazo largo: el 1,07% ya cae ahí.
 - `riesgo.moraVigente` reemplaza a los días de cooperativas e IESS: los umbrales en
   dólares de R2 por sector (`sbs`, `seps`, `comercial`), con `revisionDeLosUmbrales` (cada
   enero; `proximaRevision` tiene que caer en enero). IESS y BIESS siguen por días mientras el
@@ -374,7 +376,7 @@ esto (F14):
 - `siSeSuperaElMontoSinColateral`: lo que se hace por encima del límite sin colateral de la
   celda (`cambio_de_condiciones` o `condicionado`), que elige cada institución (3.3).
 - `aprobacionDirecta.habilitada` (C3) y `historialesAdmitidos` en vez de `exigeHistorial`: la
-  expansiva la abre también en el historial corto. Una celda sólo llega a la Aprobación
+  Optimista la abre también en el historial corto. Una celda sólo llega a la Aprobación
   Directa si la institución la habilita.
 - Un control más, `limita_a_revisar` (R5: la providencia de certificación).
 - **Lo que sumaron las 14 decisiones de R2, R3 y R4 (E10, 2026-11-22)**, en `riesgo.moraVigente` (`montoQueSeCompara`,
@@ -458,7 +460,7 @@ Dos reglas de lectura que el cálculo aplica siempre:
   vencido de menos de USD 50 en retail no sube de nivel. Propuesta sin medir;
   hay que ver cuántas personas mueve.
 
-### 2.3 Qué es «mal comportamiento de pago»: la definición por defecto
+### 2.3 Qué es «mal comportamiento de pago»: la definición de la plantilla Base
 
 Lo medido marca los dos extremos: con la definición amplia, 166 de 435
 personas (38%), de las cuales 116 sólo por una demanda de cobro sin mirar su
@@ -492,13 +494,13 @@ Por qué D y 90 días y no antes: es el corte que Monitoreo ya usa para
 `calificacion_baja` (más de 90 días; D empieza a los 91), y es el corte
 habitual de incumplimiento. Entre B1 y C2 hay un atraso que todavía se puede
 regularizar, y el diseño lo trata con un requisito (ponerse al día) en vez de
-negar. Una institución conservadora lo adelanta a C1 y 60 días (sección 5).
+negar. Una institución Conservadora lo adelanta a C1 y 60 días (sección 5).
 **Propuesta sin medir.**
 
 **La antigüedad de la demanda de cobro es un parámetro** con tres tramos
 (decidido que después de 2 años pesa menos; los cortes exactos son propuesta):
 
-| Antigüedad | Efecto por defecto | Parámetro |
+| Antigüedad | Efecto en la Base | Parámetro |
 |---|---|---|
 | Hasta 2 años | Mal comportamiento | `ventanaAnios: 2` |
 | Más de 2 y hasta 5 años | Pesa menos: nivel Deteriorado, y se pide el certificado del juicio | `pesaMenosHastaAnios: 5` |
@@ -572,7 +574,7 @@ prueba por decisión en `riesgo.test.ts`).
 | 8 | Umbrales en dólares, revisados cada enero | `moraVigente.sectores`, `revisionDeLosUmbrales` | `umbralesPorRevisar()` |
 | 9 | Con un tramo Negar (mora de hoy), la IA sube como mucho hasta Revisar | `malComportamiento.conMoraDeHoyLaIAPuedeSubirHasta` | `techoDeLaIA()` |
 | 10 | Superado = hoy al día y una deuda formal (SBS o SEPS) al día de USD 500 o más; con buró, 6 meses sin mora de más de 30 días | `historial.superado` | `estaSuperado()` |
-| 11 | Decaimiento de 6, 12 y 24 meses (la conservadora, 12, 24 y 48) | `historial.decaimientoEnMeses` | `filaDelDecaimiento()` |
+| 11 | Decaimiento de 6, 12 y 24 meses (la Conservadora, 12, 24 y 48) | `historial.decaimientoEnMeses` | `filaDelDecaimiento()` |
 | 12 | Demanda de cobro: superado, baja un tramo de R1, salvo reincidencia | `historial.demandaDeCobroSuperadoBajaUnTramo` | `demandaDeCobro()` |
 | 13 | El orden de los atenuantes y los agravantes es el de la propuesta | `malComportamiento.atenuantesEnOrden`, `agravantesEnOrden` | `evaluarAtenuantes()`, `evaluarAgravantes()` |
 | 14 | Para que la IA suba hace falta un atenuante de los tres primeros | `malComportamiento.paraSubirHaceFaltaUnoDeLosPrimeros` | `puedeSubirLaIA()` |
@@ -585,7 +587,7 @@ Revisar. Un garante baja un tramo. De 1 a 30 días no es tramo de R2: es atraso 
 **El historial (R4).** Un evento es un mes con más de 30 días de mora y lo vencido por encima de la tolerancia de Aceptar (con buró),
 o el retail con más de 30 días a su corte (si lo vencido llega a USD 50). Según los meses desde el último mes malo:
 
-| Desde el último mes con mora (por defecto) | Superado | No superado |
+| Desde el último mes con mora (Base) | Superado | No superado |
 |---|---|---|
 | 0 a 6 meses | Revisar | el tramo de R2 con lo vencido de entonces (puede ser Negar) |
 | 7 a 12 | Aceptar | Revisar |
@@ -604,12 +606,14 @@ por encima de la tolerancia de Negar; un atraso en los últimos 6 meses aunque h
 en más de un sector; pensión alimenticia en mora hasta USD 300 (R6; por encima, Revisar); retail en mora a su corte. Un atenuante no
 medido no cuenta ni a favor ni en contra.
 
-**Propuestas mías al construirlo, que el negocio no decidió** (están como datos o como comportamiento y se pueden cambiar):
-una operación en atraso sin monto informado cuenta como Revisar y nunca como Aceptar; una demanda sin año cuenta como reciente; una
-demanda de cobro de un demandante que no se pudo clasificar cuenta como de una empresa; «la lista de mal pagador» es
-`cum.lista_negra.existe` (la lista negra interna del proveedor), a confirmar; las multas de tránsito no están en la capa de hechos y salen
-«sin medir»; con la conservadora la IA no sube nada aunque su lista de salidas diga Revisar (el margen hacia arriba es cero); en
-cooperativas el saldo vigente lo da el saldo total, porque las operaciones no lo interpretan.
+**Lo que propuse al construirlo.** El negocio aceptó el 2026-11-23 cuatro: la lista de mal pagador es la lista negra interna del proveedor
+(`cum.lista_negra.existe`); una operación en atraso sin monto informado cuenta como Revisar y nunca como Aceptar; con la Conservadora la IA
+no sube nada aunque su lista de salidas diga Revisar (el margen hacia arriba es cero); y las multas de tránsito, que no están en la capa de
+hechos, salen «sin medir». **Siguen abiertas cuatro** (están como datos o como comportamiento y se pueden cambiar): una demanda de cobro sin
+año cuenta como reciente, y la de un demandante que no se pudo clasificar, como de una empresa; «sin demanda» en «hoy al día» se leyó como sin
+operación en demanda judicial o castigada (no como sin demandas de cobro: la decisión 12 las deja existir con la persona superada); en
+cooperativas el saldo vigente lo da el saldo total, porque las operaciones no lo interpretan; y el retail con menos de USD 50 vencidos no es
+evento (regla de 2.2), mientras que sin el monto sí lo es.
 
 ---
 
@@ -696,7 +700,7 @@ Cómo actúan los límites de una celda:
 
 ---
 
-## 4. La matriz por defecto
+## 4. La matriz Base
 
 ### 4.1 El veredicto de capacidad que entra a la matriz
 
@@ -704,7 +708,7 @@ Extiende el de hoy (`alcanza`, `justo`, `no_alcanza`, `sin_ingreso` de
 `capacidad-de-pago.ts`) con lo que hace falta para las seis salidas. La carga
 es la suma de las cuotas actuales y la nueva sobre el ingreso aceptado.
 
-| Veredicto | Cuándo | Por defecto |
+| Veredicto | Cuándo | Base |
 |---|---|---|
 | **Alcanza** | La carga con lo pedido no pasa de la carga máxima menos el margen | Hasta 35% |
 | **Justo** | Pasa de ahí y no supera la carga máxima | 35% a 40% |
@@ -755,7 +759,7 @@ porcentaje corresponde a cada nivel de riesgo (sin medir contra la cartera).
 
 **Sin solicitud de crédito** (una consulta de la persona, sin monto ni plazo)
 no hay cuota. El veredicto se calcula con el **crédito de referencia** de la
-institución (por defecto USD 5.000 a 36 meses con la Tasa máxima) y se rotula
+institución (en la Base, USD 5.000 a 36 meses con la Tasa máxima) y se rotula
 así. Es también lo que permite medir el estándar sobre las 444 personas, que
 no tienen solicitud.
 
@@ -840,8 +844,8 @@ La otorga sólo el código, cuando se cumplen **todos**. La IA puede quitarla
    meses o más de estabilidad. No vale un aporte propio ni un Ingreso declarado.
 5. **Historial**: probado.
 6. **Capacidad**: alcanza (carga de 35% o menos con lo pedido), **y sigue
-   alcanzando** si cada deuda sin cuota informada se estima en 5% del saldo en
-   vez de 3,5%. Sin buró la cuota de los bancos no consta: la Aprobación
+   alcanzando** si cada deuda sin cuota informada que no es hipotecaria se estima en 6,5% del
+   saldo (el tramo más alto de C1; negocio, 2026-11-23) en vez de su tramo; el hipotecario, con su factor propio. Sin buró la cuota de los bancos no consta: la Aprobación
    Directa sólo sale donde esa incertidumbre no cambia el resultado.
 7. **Monto y plazo**: hasta USD 5.000 o 6 ingresos (lo menor) y hasta 36 meses.
 8. **Fuentes**: ninguna diferencia entre fuentes que toque el ingreso, el
@@ -882,12 +886,14 @@ En todos los casos:
 
 ---
 
-## 5. La plantilla por defecto y dos variantes de apetito
+## 5. La plantilla Base y dos variantes de apetito
+
+**Nombres decididos por el negocio (2026-11-23):** la plantilla «por defecto» se llama **Base**, la «expansiva» se llama **Optimista** y la «Conservadora» se queda. Las claves de código son `base`, `conservadora` y `optimista`.
 
 Las tres comparten la forma, las reglas fijas y el catálogo de requisitos.
 Cambian estos parámetros (todos **propuesta sin medir**):
 
-| Parámetro | Conservadora | Por defecto | Expansiva |
+| Parámetro | Conservadora | Base | Optimista |
 |---|---|---|---|
 | Mal comportamiento en bancos, desde | C1 | D | D |
 | Mal comportamiento en cooperativas e IESS, desde | Más de 60 días | Más de 90 días | Más de 90 días |
@@ -895,7 +901,7 @@ Cambian estos parámetros (todos **propuesta sin medir**):
 | Demanda de cobro: ventana de mal comportamiento | 3 años | 2 años | 2 años |
 | Demanda de cobro: pesa menos hasta | 7 años | 5 años | 3 años |
 | Demanda puesta por una persona natural | Cuenta como las demás | Deteriorado | Con observaciones |
-| Pensión alimenticia en mora | Mal comportamiento | Tolerancia USD 300; por encima, Revisar; agravante menor (R6, 2026-11-18) | Igual que la de por defecto |
+| Pensión alimenticia en mora | Mal comportamiento | Tolerancia USD 300; por encima, Revisar; agravante menor (R6, 2026-11-18) | Igual que la Base |
 | Con mal comportamiento, la IA puede recomendar | Negar o Revisar | Negar, Revisar o Aprobar | Negar, Revisar o Aprobar |
 | Carga máxima | 35% | 40% | 45% |
 | Carga extendida | No hay | Hasta 50% | Hasta 60% |
@@ -914,22 +920,21 @@ Cambian estos parámetros (todos **propuesta sin medir**):
 
 En código (F14, `_shared/estandar/plantillas.ts`) la tabla quedó así: los umbrales en dólares
 y los bancos sin buró por la letra son los de la tabla de R2 (los demás valores de mora de esta tabla,
-los días de cooperativas, los reemplaza R2); la carga máxima por riesgo es C2 (60, 50 y 40% en la por
-defecto; 50, 45 y 35% en la conservadora; 60, 55 y 45% en la expansiva, propuesta sin medir); la carga
+los días de cooperativas, los reemplaza R2); la carga máxima por riesgo es C2 (60, 50 y 40% en la Base; 50, 45 y 35% en la Conservadora; 60, 55 y 45% en la Optimista; aceptados por el negocio el 2026-11-23); la carga
 extendida queda apagada en las tres, y la cuota estimada de una deuda sin cuota es la de C1 en las tres
 (la fila de 5%, 3,5% y 3% quedó vieja).
 
-Las variantes de R2 a R4 (2026-11-22): la tabla de decaimiento de la conservadora dura el doble (12, 24 y 48 meses; la por defecto y
-la expansiva, 6, 12 y 24); más de 90 días con un monto tolerable es Revisar en la por defecto y la expansiva y Negar en la conservadora;
+Las variantes de R2 a R4 (2026-11-22): la tabla de decaimiento de la Conservadora dura el doble (12, 24 y 48 meses; la Base y
+la Optimista, 6, 12 y 24); más de 90 días con un monto tolerable es Revisar en la Base y la Optimista y Negar en la Conservadora;
 el resto de los valores de R2 de las tres están en `plantillas.ts`.
 
 Qué cambia en la práctica:
 
 - **Conservadora**: más gente en mal comportamiento (el corte se adelanta y la
   ventana de la demanda se alarga), la IA no sube nada, y lo que la plantilla
-  por defecto resuelve con un requisito (deteriorado que alcanza, sin
+  Base resuelve con un requisito (deteriorado que alcanza, sin
   evidencia) vuelve a Revisar. Se espera más Negar y más Revisar.
-- **Expansiva**: mismo corte de mal comportamiento (no se relaja lo grave),
+- **Optimista**: mismo corte de mal comportamiento (no se relaja lo grave),
   pero el atraso leve pesa menos, la capacidad admite más carga y más ingreso
   declarado, y la Aprobación Directa se abre. Se espera más Aprobar y menos
   Revisar, con más riesgo en capacidad: es la variante que más necesita el
@@ -942,7 +947,7 @@ Qué cambia en la práctica:
 
 ## 6. Inventario de casos
 
-Salida base con la plantilla por defecto. «Menciones» son las de los 322
+Salida base con la plantilla Base. «Menciones» son las de los 322
 «revisar» (cotas por palabras clave, 2026-11-12 y 13); una persona puede estar
 en varias filas, y entonces manda la salida más restrictiva.
 
@@ -1050,7 +1055,7 @@ cuesta, y cada etapa tiene una condición para pasar a la siguiente.
 - Las personas que salen con Aprobación Directa se revisan todas a mano: se
   esperan pocas, y es la única salida que nadie más mira.
 - Revisar queda por debajo del 72,5% de hoy en las tres plantillas, y por
-  debajo de 50% en la de por defecto. **El 50% es una propuesta de umbral, sin
+  debajo de 50% en la Base. **El 50% es una propuesta de umbral, sin
   medir**: si no se llega, se mira qué motivo retiene más casos y se discute
   ese parámetro, no se fuerza la cifra.
 - Cada salida Aprobado con Requisitos tiene al menos un requisito del catálogo, y cada
@@ -1117,8 +1122,8 @@ escalera del ingreso están en sus propios documentos).
    se menciona, salvo tres o más en 5 años. **Recomendación: sí**, y medir con
    la fecha completa del crudo, no con el año.
 2. **El corte del mal comportamiento vigente**: D o más de 90 días, contra C1
-   o más de 60. **Recomendación: D y 90 días** en la plantilla por defecto,
-   que es el corte de Monitoreo; C1 y 60 queda para la conservadora.
+   o más de 60. **Recomendación: D y 90 días** en la plantilla Base,
+   que es el corte de Monitoreo; C1 y 60 queda para la Conservadora.
 3. **Con un mal comportamiento que sigue vigente, ¿la IA puede llegar a
    Aprobar?** Lo decidido dice que puede recomendar negar, revisar o aprobar, y
    así está la plantilla. **Recomendación: que con la mora todavía vigente lo
@@ -1135,7 +1140,7 @@ escalera del ingreso están en sus propios documentos).
    medido dice que el 40% parejo deja afuera a gente que paga.
 6. **Aprobación Directa sin buró**: permitirla o no. **Recomendación:
    permitirla angosta** (los diez criterios de 4.4, hasta USD 5.000 y 36
-   meses) y abrirla con datos; apagada en la conservadora.
+   meses) y abrirla con datos; apagada en la Conservadora.
 7. **Providencias**: hoy bloquean todas. **Recomendación: la de certificación
    (un pedido de información) pasa a advertencia con la salida en Revisar como
    máximo; la de retención sigue bloqueando.** Pide distinguirlas por el texto
@@ -1143,7 +1148,7 @@ escalera del ingreso están en sus propios documentos).
 8. **Pensión alimenticia en mora**: Deteriorado (se aprueba al presentar el
    certificado al día) o mal comportamiento. **Recomendación: Deteriorado**: es
    una obligación familiar con su propio apremio, no un crédito impago; la
-   conservadora la sube.
+   Conservadora la sube.
 9. **Quién cambia el estándar de una institución.** **Recomendación: en la
    primera versión lo cambia CrediScope a pedido escrito de la institución**,
    con versión nueva y la comparación en seco de ese cambio como constancia;
