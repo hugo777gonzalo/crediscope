@@ -82,6 +82,16 @@ export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
       tramoRevisarConCapacidadQueAlcanza: "condicionado",
       comoGaranteBajaUnTramo: true,
       revisionDeLosUmbrales: { cadaAnioEn: "enero", proximaRevision: "2027-01-31" },
+      montoQueSeCompara: "vencido_de_las_operaciones_con_mas_de_dias",
+      bancosSinBuro: "por_la_letra",
+      variosSectores: "manda_el_peor",
+      retailDelProveedor: "historial",
+    },
+    historial: {
+      decaimientoEnMeses: [6, 12, 24],
+      superado: { deudaFormalAlDiaDesdeUsd: 500, mesesSinMoraConBuro: 6 },
+      demandaDeCobroSuperadoBajaUnTramo: true,
+      atrasoLargoDesdeDias: 90,
     },
   },
 
@@ -98,8 +108,24 @@ export const PLANTILLA_POR_DEFECTO: EstandarDeLaInstitucion = {
       hoyAlDia: { calificacionAdmitida: ["A1"], diasDeMoraAdmitidos: 0 },
       endeudamientoALaBaja: { bajaMinima: 0.1, enMeses: 12, sinBuro: "no_medido" },
       estabilidad: { mesesMinimos: 12 },
-      ingresoAlAlza: { alzaMinima: 0.05, compara: "ultimos_6_meses_contra_los_6_anteriores" },
+      ingresoAlAlza: { compara: "ultimos_6_meses_contra_los_6_anteriores", descontandoLaVariacionDelSbu: true },
+      deudaVigenteAlDia: { desdeUsd: 500 },
+      mesesAlDiaDesdeElUltimoAtraso: { mesesMinimos: 12, sinBuro: "no_medido" },
     },
+    // Decisión 13 (2026-11-22): el orden de la propuesta, con el ejemplo del negocio (una deuda vigente sin atrasos en un banco pesa más que
+    // estar al día en un crédito comercial menor) en los puestos 1 y 8.
+    atenuantesEnOrden: [
+      "deuda_al_dia_en_banco_o_biess", "deuda_al_dia_en_cooperativa", "doce_meses_al_dia_desde_el_ultimo_atraso", "atraso_pasado_chico",
+      "estabilidad", "endeudamiento_a_la_baja", "ingreso_al_alza", "al_dia_con_una_casa_comercial",
+    ],
+    agravantesEnOrden: [
+      "reincidencia", "atraso_pasado_de_mas_de_90_dias", "vencido_de_entonces_sobre_la_tolerancia_de_negar", "atraso_en_los_ultimos_6_meses",
+      "garante_de_una_operacion_en_atraso", "mora_en_mas_de_un_sector", "pension_alimenticia_en_mora_dentro_de_la_tolerancia", "casa_comercial_en_mora_a_su_corte",
+    ],
+    // Decisión 14: no es un número mínimo sino de qué peso: sin esto, estar al día en una casa comercial sostendría subir.
+    paraSubirHaceFaltaUnoDeLosPrimeros: 3,
+    // Decisión 9 (cierra el punto 3 del estándar): aprobar a quien hoy no paga es difícil de sostener ante la institución.
+    conMoraDeHoyLaIAPuedeSubirHasta: "revisar",
     minimoDeAtenuantes: 0,
     salidasQueLaIAPuedeRecomendar: ["negar", "revisar", "aprobar"],
     bandaDelScoreSiLaIASube: [250, 599],
@@ -239,6 +265,8 @@ const CAMBIOS_DE_LA_CONSERVADORA: Cambios = {
       masDeNoventaDiasConMontoTolerable: "negar",
       tramoRevisarConCapacidadQueAlcanza: "revisar",
     },
+    // Decisión 11: en la conservadora la tabla de decaimiento dura el doble.
+    historial: { decaimientoEnMeses: [12, 24, 48] },
   },
   malComportamiento: {
     demandaDeCobro: { ventanaAnios: 3, pesaMenosHastaAnios: 7, deUnaPersonaNatural: "mal_comportamiento" },

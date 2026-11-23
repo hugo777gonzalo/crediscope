@@ -426,3 +426,26 @@ Deno.test("la migración 155 crea la tabla de estándares: una vigente, sin modi
   // Una migración con marcadores sin valor no se aplica: ésta no los necesita.
   assert(!sql.includes("<<"), "no lleva marcadores");
 });
+
+// ---------------------------------------------------------------- lo que sumaron las 14 decisiones de R2 a R4 (E10)
+
+Deno.test("las decisiones de R2 a R4 en el estándar: el decaimiento, el orden y la regla de subir se validan", () => {
+  const e = plantillaCompleta("por_defecto");
+  assertEquals(e.riesgo.historial.decaimientoEnMeses, [6, 12, 24]);
+  assertEquals(plantillaCompleta("conservadora").riesgo.historial.decaimientoEnMeses, [12, 24, 48]);
+  assertEquals(e.riesgo.historial.superado, { deudaFormalAlDiaDesdeUsd: 500, mesesSinMoraConBuro: 6 });
+  assertEquals(e.malComportamiento.paraSubirHaceFaltaUnoDeLosPrimeros, 3);
+  assertEquals(e.malComportamiento.conMoraDeHoyLaIAPuedeSubirHasta, "revisar");
+  assertEquals(e.malComportamiento.atenuantesEnOrden[0], "deuda_al_dia_en_banco_o_biess");
+  assertEquals(e.malComportamiento.atenuantesEnOrden[7], "al_dia_con_una_casa_comercial");
+  rechaza({ riesgo: { historial: { decaimientoEnMeses: [12, 6, 24] } } }, "los cortes tienen que crecer");
+  rechaza({ riesgo: { historial: { decaimientoEnMeses: [6, 12] } } }, "tres cortes en meses");
+  rechaza({ riesgo: { historial: { superado: { deudaFormalAlDiaDesdeUsd: 499.5 } } } }, "número entero");
+  rechaza({ malComportamiento: { atenuantesEnOrden: ["estabilidad", "estabilidad"] } }, "está repetido estabilidad");
+  rechaza({ malComportamiento: { atenuantesEnOrden: ["estabilidad"] } }, "faltan deuda_al_dia_en_banco_o_biess");
+  rechaza({ malComportamiento: { agravantesEnOrden: ["reincidencia", "inventado"] } }, "no se conoce «inventado»");
+  rechaza({ malComportamiento: { paraSubirHaceFaltaUnoDeLosPrimeros: 9 } }, "fuera de rango");
+  rechaza({ malComportamiento: { conMoraDeHoyLaIAPuedeSubirHasta: "negar" } }, "tiene que ser uno de revisar, aprobar");
+  rechaza({ riesgo: { moraVigente: { montoQueSeCompara: "todo" } } }, "montoQueSeCompara");
+  rechaza({ riesgo: { moraVigente: { variosSectores: "promedio" } } }, "variosSectores");
+});

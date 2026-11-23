@@ -8,7 +8,7 @@
 // quienes lo calculan (`exigirEstandarValido()`): un objeto armado a mano no pasa de contrabando.
 
 import {
-  CALIFICACIONES_DE_BANCOS, CLAVES_DE_CELDA, CONTROLES_CONFIGURABLES, CONTROLES_FIJOS, EFECTOS_DE_UN_CONTROL, EVIDENCIAS_DE_LA_CELDA,
+  AGRAVANTES, ATENUANTES, CALIFICACIONES_DE_BANCOS, CLAVES_DE_CELDA, CONTROLES_CONFIGURABLES, CONTROLES_FIJOS, EFECTOS_DE_UN_CONTROL, EVIDENCIAS_DE_LA_CELDA,
   FORMA_DEL_ESTANDAR, HISTORIALES_DE_LA_CELDA, MOMENTOS_DE_UN_REQUISITO, NIVELES_DE_RIESGO, PELDANOS_ACEPTADOS, PLANTILLAS, REQUISITOS_FIJOS,
   SALIDAS, VEREDICTOS_DE_CAPACIDAD, type EstandarDeLaInstitucion, type NivelDeRiesgo, type Salida,
 } from "./estandar.ts";
@@ -196,7 +196,7 @@ function validar(raiz: unknown): string[] {
   }
 
   // ---- riesgo ----
-  const r = objeto("riesgo", e.riesgo, ["bandasDelScore", "scoreMaximoSinHistorial", "senales", "moraVigente"]);
+  const r = objeto("riesgo", e.riesgo, ["bandasDelScore", "scoreMaximoSinHistorial", "senales", "moraVigente", "historial"]);
   let bandaBajoDesde = 750;
   let bandaDeterioradoHasta = 599;
   if (r) {
@@ -270,6 +270,7 @@ function validar(raiz: unknown): string[] {
 
     const m = objeto("riesgo.moraVigente", r.moraVigente, [
       "masDeDias", "atrasoCortoNivel", "sectores", "masDeNoventaDiasConMontoTolerable", "tramoRevisarConCapacidadQueAlcanza", "comoGaranteBajaUnTramo", "revisionDeLosUmbrales",
+      "montoQueSeCompara", "bancosSinBuro", "variosSectores", "retailDelProveedor",
     ]);
     if (m) {
       numero("riesgo.moraVigente.masDeDias", m.masDeDias, 1, 90, { entero: true });
@@ -290,6 +291,10 @@ function validar(raiz: unknown): string[] {
       de("riesgo.moraVigente.masDeNoventaDiasConMontoTolerable", m.masDeNoventaDiasConMontoTolerable, ["revisar", "negar"] as const);
       de("riesgo.moraVigente.tramoRevisarConCapacidadQueAlcanza", m.tramoRevisarConCapacidadQueAlcanza, ["condicionado", "revisar"] as const);
       booleano("riesgo.moraVigente.comoGaranteBajaUnTramo", m.comoGaranteBajaUnTramo);
+      de("riesgo.moraVigente.montoQueSeCompara", m.montoQueSeCompara, ["vencido_de_las_operaciones_con_mas_de_dias", "saldo_en_atraso"] as const);
+      de("riesgo.moraVigente.bancosSinBuro", m.bancosSinBuro, ["por_la_letra", "por_los_dolares"] as const);
+      de("riesgo.moraVigente.variosSectores", m.variosSectores, ["manda_el_peor", "suma_los_montos"] as const);
+      de("riesgo.moraVigente.retailDelProveedor", m.retailDelProveedor, ["historial", "mora_de_hoy"] as const);
       const rev = objeto("riesgo.moraVigente.revisionDeLosUmbrales", m.revisionDeLosUmbrales, ["cadaAnioEn", "proximaRevision"]);
       if (rev) {
         if (rev.cadaAnioEn !== "enero") error("riesgo.moraVigente.revisionDeLosUmbrales.cadaAnioEn", `los umbrales en dólares se revisan cada enero (decisión del negocio, 2026-11-22); se escribió ${mostrar(rev.cadaAnioEn)}.`);
@@ -303,8 +308,30 @@ function validar(raiz: unknown): string[] {
     }
   }
 
+  // ---- riesgo.historial (R4) ----
+  const h = r ? objeto("riesgo.historial", r.historial, ["decaimientoEnMeses", "superado", "demandaDeCobroSuperadoBajaUnTramo", "atrasoLargoDesdeDias"]) : null;
+  if (h) {
+    // Decisión 11: cuatro filas separadas por tres cortes que crecen (6, 12 y 24 meses; la conservadora, 12, 24 y 48).
+    if (!Array.isArray(h.decaimientoEnMeses) || h.decaimientoEnMeses.length !== 3) {
+      error("riesgo.historial.decaimientoEnMeses", `tiene que ser una lista de tres cortes en meses, de menor a mayor (6, 12, 24); se escribió ${mostrar(h.decaimientoEnMeses)}.`);
+    } else {
+      const cortes = h.decaimientoEnMeses.map((x, i) => numero(`riesgo.historial.decaimientoEnMeses[${i}]`, x, 1, 120, { entero: true }));
+      if (cortes.every((c) => c !== null) && !(cortes[0]! < cortes[1]! && cortes[1]! < cortes[2]!)) error("riesgo.historial.decaimientoEnMeses", `los cortes tienen que crecer; se escribió ${cortes.join(", ")}.`);
+    }
+    const su = objeto("riesgo.historial.superado", h.superado, ["deudaFormalAlDiaDesdeUsd", "mesesSinMoraConBuro"]);
+    if (su) {
+      usd("riesgo.historial.superado.deudaFormalAlDiaDesdeUsd", su.deudaFormalAlDiaDesdeUsd, 1, 1_000_000);
+      numero("riesgo.historial.superado.mesesSinMoraConBuro", su.mesesSinMoraConBuro, 1, 36, { entero: true });
+    }
+    booleano("riesgo.historial.demandaDeCobroSuperadoBajaUnTramo", h.demandaDeCobroSuperadoBajaUnTramo);
+    numero("riesgo.historial.atrasoLargoDesdeDias", h.atrasoLargoDesdeDias, 31, 365, { entero: true });
+  }
+
   // ---- malComportamiento ----
-  const mc = objeto("malComportamiento", e.malComportamiento, ["demandaDeCobro", "atenuantes", "minimoDeAtenuantes", "salidasQueLaIAPuedeRecomendar", "bandaDelScoreSiLaIASube"]);
+  const mc = objeto("malComportamiento", e.malComportamiento, [
+    "demandaDeCobro", "atenuantes", "atenuantesEnOrden", "agravantesEnOrden", "paraSubirHaceFaltaUnoDeLosPrimeros", "conMoraDeHoyLaIAPuedeSubirHasta",
+    "minimoDeAtenuantes", "salidasQueLaIAPuedeRecomendar", "bandaDelScoreSiLaIASube",
+  ]);
   let salidasDeLaIA: string[] | null = null;
   if (mc) {
     const dc = objeto("malComportamiento.demandaDeCobro", mc.demandaDeCobro, ["ventanaAnios", "pesaMenosHastaAnios", "nivelMientrasPesaMenos", "cuentaSiDemanda", "deUnaPersonaNatural", "reiteradas"]);
@@ -321,7 +348,7 @@ function validar(raiz: unknown): string[] {
         numero("malComportamiento.demandaDeCobro.reiteradas.enAnios", re.enAnios, 1, 10, { entero: true });
       }
     }
-    const at = objeto("malComportamiento.atenuantes", mc.atenuantes, ["hoyAlDia", "endeudamientoALaBaja", "estabilidad", "ingresoAlAlza"]);
+    const at = objeto("malComportamiento.atenuantes", mc.atenuantes, ["hoyAlDia", "endeudamientoALaBaja", "estabilidad", "ingresoAlAlza", "deudaVigenteAlDia", "mesesAlDiaDesdeElUltimoAtraso"]);
     if (at) {
       const h = objeto("malComportamiento.atenuantes.hoyAlDia", at.hoyAlDia, ["calificacionAdmitida", "diasDeMoraAdmitidos"]);
       if (h) {
@@ -336,12 +363,37 @@ function validar(raiz: unknown): string[] {
       }
       const es = objeto("malComportamiento.atenuantes.estabilidad", at.estabilidad, ["mesesMinimos"]);
       if (es) numero("malComportamiento.atenuantes.estabilidad.mesesMinimos", es.mesesMinimos, 1, 60, { entero: true });
-      const ia = objeto("malComportamiento.atenuantes.ingresoAlAlza", at.ingresoAlAlza, ["alzaMinima", "compara"]);
+      const ia = objeto("malComportamiento.atenuantes.ingresoAlAlza", at.ingresoAlAlza, ["compara", "descontandoLaVariacionDelSbu"]);
       if (ia) {
-        fraccion("malComportamiento.atenuantes.ingresoAlAlza.alzaMinima", ia.alzaMinima, 0.01, 1);
+        if (ia.descontandoLaVariacionDelSbu !== true) error("malComportamiento.atenuantes.ingresoAlAlza.descontandoLaVariacionDelSbu", "el alza se mide contra la variación del Salario Básico Unificado (R4): tiene que ser verdadero.");
         if (ia.compara !== "ultimos_6_meses_contra_los_6_anteriores") error("malComportamiento.atenuantes.ingresoAlAlza.compara", "tiene que ser «ultimos_6_meses_contra_los_6_anteriores».");
       }
     }
+    const at2 = esObjeto(mc.atenuantes) ? mc.atenuantes : null;
+    if (at2) {
+      const dv = objeto("malComportamiento.atenuantes.deudaVigenteAlDia", at2.deudaVigenteAlDia, ["desdeUsd"]);
+      if (dv) usd("malComportamiento.atenuantes.deudaVigenteAlDia.desdeUsd", dv.desdeUsd, 1, 1_000_000);
+      const ma = objeto("malComportamiento.atenuantes.mesesAlDiaDesdeElUltimoAtraso", at2.mesesAlDiaDesdeElUltimoAtraso, ["mesesMinimos", "sinBuro"]);
+      if (ma) {
+        numero("malComportamiento.atenuantes.mesesAlDiaDesdeElUltimoAtraso.mesesMinimos", ma.mesesMinimos, 1, 36, { entero: true });
+        if (ma.sinBuro !== "no_medido") error("malComportamiento.atenuantes.mesesAlDiaDesdeElUltimoAtraso.sinBuro", "sin buró los meses al día no se miden: tiene que ser «no_medido».");
+      }
+    }
+    // Decisión 13: el orden es una permutación de la lista completa (ninguno falta, ninguno se repite, ninguno se inventa).
+    const permutacion = (ruta: string, x: unknown, lista: readonly string[]) => {
+      if (!Array.isArray(x)) return error(ruta, `tiene que ser la lista completa en orden de mayor a menor peso (${lista.join(", ")}).`);
+      const sobran = x.filter((v) => !lista.includes(v as string));
+      const faltan = lista.filter((v) => !x.includes(v));
+      const repetidos = x.filter((v, i) => x.indexOf(v) !== i);
+      if (sobran.length) error(ruta, `no se conoce ${sobran.map((v) => mostrar(v)).join(", ")}.`);
+      if (faltan.length) error(ruta, `faltan ${faltan.join(", ")}: cada uno tiene que estar una vez.`);
+      if (repetidos.length) error(ruta, `está repetido ${repetidos.join(", ")}.`);
+    };
+    permutacion("malComportamiento.atenuantesEnOrden", mc.atenuantesEnOrden, ATENUANTES);
+    permutacion("malComportamiento.agravantesEnOrden", mc.agravantesEnOrden, AGRAVANTES);
+    // Decisión 14: 3 (hace falta uno de los tres primeros) o 0 (cualquiera alcanza, sin mínimo: la opción b).
+    numero("malComportamiento.paraSubirHaceFaltaUnoDeLosPrimeros", mc.paraSubirHaceFaltaUnoDeLosPrimeros, 0, ATENUANTES.length, { entero: true });
+    de("malComportamiento.conMoraDeHoyLaIAPuedeSubirHasta", mc.conMoraDeHoyLaIAPuedeSubirHasta, ["revisar", "aprobar"] as const);
     if (mc.minimoDeAtenuantes !== 0) error("malComportamiento.minimoDeAtenuantes", `no hay número mínimo de atenuantes (decidido): tiene que ser 0; se escribió ${mostrar(mc.minimoDeAtenuantes)}.`);
     const sr = listaDe("malComportamiento.salidasQueLaIAPuedeRecomendar", mc.salidasQueLaIAPuedeRecomendar, ["negar", "revisar", "aprobar"] as const);
     if (sr) {

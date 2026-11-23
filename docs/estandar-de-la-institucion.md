@@ -377,6 +377,14 @@ esto (F14):
   expansiva la abre también en el historial corto. Una celda sólo llega a la Aprobación
   Directa si la institución la habilita.
 - Un control más, `limita_a_revisar` (R5: la providencia de certificación).
+- **Lo que sumaron las 14 decisiones de R2, R3 y R4 (E10, 2026-11-22)**, en `riesgo.moraVigente` (`montoQueSeCompara`,
+  `bancosSinBuro`, `variosSectores`, `retailDelProveedor`), en `riesgo.historial` (`decaimientoEnMeses`, `superado`,
+  `demandaDeCobroSuperadoBajaUnTramo`, `atrasoLargoDesdeDias`) y en `malComportamiento` (`atenuantesEnOrden`,
+  `agravantesEnOrden`, `paraSubirHaceFaltaUnoDeLosPrimeros`, `conMoraDeHoyLaIAPuedeSubirHasta`, y los atenuantes
+  `deudaVigenteAlDia` y `mesesAlDiaDesdeElUltimoAtraso`; `ingresoAlAlza` ya no lleva el 5%: se mide contra el SBU). Las
+  claves `diasDeMoraEnCooperativas` y `diasDeMoraCreditoIessBiess` del ejemplo quedaron en `diasDeMoraIessBiess` (las
+  cooperativas van por dólares). Las dos opciones de cada decisión son valores del estándar: la recomendada es la de las
+  plantillas y la otra se elige por institución. La sección 2.6 dice qué hace cada una.
 
 Notas del ejemplo:
 
@@ -426,6 +434,9 @@ otro, pero la obligación es suya si el otro no paga.
 | **Con observaciones** | 600 a 749 | A2 o A3 en bancos; 1 a 30 días en cooperativas o en el IESS; multas de tránsito por más de un Salario Básico Unificado; impedimento para cargos públicos sin problema de pago; RUC suspendido que no es una depuración del SRI |
 | **Deteriorado** | 400 a 599 | B1 a C2 en bancos; 31 a 90 días en cooperativas o en el IESS; retail con 31 a 90 días a su corte; demanda de cobro de entre 2 y 5 años; demanda de cobro reciente puesta por una persona natural; pensión alimenticia en mora; una D o E como garante |
 | **Mal comportamiento** | 1 a 399 | La definición de 2.3 |
+
+**Desde el 2026-11-22 los umbrales de atraso de 2.2 y 2.3 son los de R2 y R3 (sección 2.6):** por sector (SBS, SEPS,
+comercial), en dólares sobre lo vencido de las operaciones con más de 30 días, y sin buró los bancos por la letra.
 
 Por qué esas bandas: hoy «aprobar» empieza en 745 y «revisar» llega a 800; los
 scores se pisan (O-1). Con la banda atada al nivel dejan de pisarse, y 750
@@ -505,6 +516,9 @@ comercial o un conflicto entre particulares. Propuesta sin medir.
 
 ### 2.4 Los atenuantes
 
+**Desde el 2026-11-22 los atenuantes llevan un orden de peso y la IA sólo sube con uno de los tres primeros: ver 2.6.**
+La lista de esta sección (los cuatro de 2026-11-11) queda como la recomendación previa.
+
 Se calculan sólo cuando hay mal comportamiento, y se entregan a la IA como
 evidencia con su valor y su estado. **No hay número mínimo** (decidido): la IA
 evalúa todo y recomienda negar, revisar o aprobar.
@@ -539,6 +553,63 @@ estimada de 4.2), el mal comportamiento histórico se puede medir con la mora
 máxima de los últimos 24 meses, y el endeudamiento a la baja pasa a medirse. El
 score de Equifax entra como contraste, no como señal que mande. Los niveles,
 las bandas y la matriz son los mismos.
+
+### 2.6 Las 14 decisiones de R2, R3 y R4 (negocio, 2026-11-22: todas como se recomendaron)
+
+Construido en `supabase/functions/_shared/riesgo/` (E10; sin conectar): funciones puras sobre la capa de hechos
+(`entradaDeRiesgoDesdeHechos()`) y el estándar. La tabla dice dónde vive cada decisión como dato y cómo se prueba (una
+prueba por decisión en `riesgo.test.ts`).
+
+| # | Decisión | Dato del estándar | Código |
+|---|---|---|---|
+| 1 | Se compara lo vencido de las operaciones con más de 30 días, no el saldo en atraso | `moraVigente.montoQueSeCompara` | `mora-vigente.ts` |
+| 2 | Bancos sin buró: manda la letra (A2 y A3 Aceptar, B1 a C2 Revisar, D y E Negar); con buró, los dólares | `moraVigente.bancosSinBuro`, `senales.calificacionEnBancos` | `mora-vigente.ts` |
+| 3 | Tramo Revisar = Aprobado con Requisitos con `certificado_de_estar_al_dia` si la capacidad alcanza; si no, Revisar | `moraVigente.tramoRevisarConCapacidadQueAlcanza` | `salidaPorLaMora()` |
+| 4 | Manda el peor sector, sin sumar; la mora en varios sectores es un agravante | `moraVigente.variosSectores` | `mora-vigente.ts`, `atenuantes.ts` |
+| 5 | Más de 90 días, o D o E, con un monto chico: tramo mínimo Revisar | `moraVigente.masDeNoventaDiasConMontoTolerable`, `historial.atrasoLargoDesdeDias` | `mora-vigente.ts` |
+| 6 | El retail del proveedor (corte de julio de 2025) es historial, no mora de hoy | `moraVigente.retailDelProveedor` | `historial.ts` |
+| 7 | IESS y BIESS en el sector SBS, por días mientras el perfil no traiga lo vencido | `senales.diasDeMoraIessBiess` | `mora-vigente.ts` |
+| 8 | Umbrales en dólares, revisados cada enero | `moraVigente.sectores`, `revisionDeLosUmbrales` | `umbralesPorRevisar()` |
+| 9 | Con un tramo Negar (mora de hoy), la IA sube como mucho hasta Revisar | `malComportamiento.conMoraDeHoyLaIAPuedeSubirHasta` | `techoDeLaIA()` |
+| 10 | Superado = hoy al día y una deuda formal (SBS o SEPS) al día de USD 500 o más; con buró, 6 meses sin mora de más de 30 días | `historial.superado` | `estaSuperado()` |
+| 11 | Decaimiento de 6, 12 y 24 meses (la conservadora, 12, 24 y 48) | `historial.decaimientoEnMeses` | `filaDelDecaimiento()` |
+| 12 | Demanda de cobro: superado, baja un tramo de R1, salvo reincidencia | `historial.demandaDeCobroSuperadoBajaUnTramo` | `demandaDeCobro()` |
+| 13 | El orden de los atenuantes y los agravantes es el de la propuesta | `malComportamiento.atenuantesEnOrden`, `agravantesEnOrden` | `evaluarAtenuantes()`, `evaluarAgravantes()` |
+| 14 | Para que la IA suba hace falta un atenuante de los tres primeros | `malComportamiento.paraSubirHaceFaltaUnoDeLosPrimeros` | `puedeSubirLaIA()` |
+
+**De los tramos al nivel (R3).** Cada sector da un tramo: no cuenta, Aceptar, Revisar o Negar; manda el peor. Aceptar aporta el nivel
+con observaciones (llega a Aprobar, sin Aprobación Directa); Revisar, deteriorado (Aprobado con Requisitos con el certificado de estar al
+día si la capacidad alcanza; si no, Revisar); Negar, mal comportamiento **vigente**: la base es Negar y la IA sube como mucho hasta
+Revisar. Un garante baja un tramo. De 1 a 30 días no es tramo de R2: es atraso corto, con observaciones.
+
+**El historial (R4).** Un evento es un mes con más de 30 días de mora y lo vencido por encima de la tolerancia de Aceptar (con buró),
+o el retail con más de 30 días a su corte (si lo vencido llega a USD 50). Según los meses desde el último mes malo:
+
+| Desde el último mes con mora (por defecto) | Superado | No superado |
+|---|---|---|
+| 0 a 6 meses | Revisar | el tramo de R2 con lo vencido de entonces (puede ser Negar) |
+| 7 a 12 | Aceptar | Revisar |
+| 13 a 24 | antecedente: se menciona, no limita | Aceptar |
+| más de 24 | no se menciona | antecedente |
+
+Un atraso de más de 90 días empieza una fila más arriba. Un mal comportamiento que sólo viene del historial es **histórico**: con la
+persona hoy al día, la IA puede llegar hasta lo más alto que el estándar le deja recomendar.
+
+**Los atenuantes, de mayor a menor peso:** deuda vigente al día en un banco o el BIESS (USD 500 o más); deuda vigente al día en una
+cooperativa; 12 meses o más al día desde el último atraso (con buró; sin él, no medido); el atraso pasado fue chico (dentro de la
+tolerancia de Revisar de su sector); estabilidad de 12 meses; endeudamiento a la baja de 10% en 12 meses (con buró; sin él, no
+medido); ingreso al alza (más que el SBU del año); al día con una casa comercial. **Los agravantes:** reincidencia (dos o más episodios
+de más de 30 días en 24 meses, o tres o más demandas de cobro en 5 años); un atraso pasado de más de 90 días; lo vencido de entonces
+por encima de la tolerancia de Negar; un atraso en los últimos 6 meses aunque hoy esté al día; garante de una operación en atraso; mora
+en más de un sector; pensión alimenticia en mora hasta USD 300 (R6; por encima, Revisar); retail en mora a su corte. Un atenuante no
+medido no cuenta ni a favor ni en contra.
+
+**Propuestas mías al construirlo, que el negocio no decidió** (están como datos o como comportamiento y se pueden cambiar):
+una operación en atraso sin monto informado cuenta como Revisar y nunca como Aceptar; una demanda sin año cuenta como reciente; una
+demanda de cobro de un demandante que no se pudo clasificar cuenta como de una empresa; «la lista de mal pagador» es
+`cum.lista_negra.existe` (la lista negra interna del proveedor), a confirmar; las multas de tránsito no están en la capa de hechos y salen
+«sin medir»; con la conservadora la IA no sube nada aunque su lista de salidas diga Revisar (el margen hacia arriba es cero); en
+cooperativas el saldo vigente lo da el saldo total, porque las operaciones no lo interpretan.
 
 ---
 
@@ -848,6 +919,10 @@ defecto; 50, 45 y 35% en la conservadora; 60, 55 y 45% en la expansiva, propuest
 extendida queda apagada en las tres, y la cuota estimada de una deuda sin cuota es la de C1 en las tres
 (la fila de 5%, 3,5% y 3% quedó vieja).
 
+Las variantes de R2 a R4 (2026-11-22): la tabla de decaimiento de la conservadora dura el doble (12, 24 y 48 meses; la por defecto y
+la expansiva, 6, 12 y 24); más de 90 días con un monto tolerable es Revisar en la por defecto y la expansiva y Negar en la conservadora;
+el resto de los valores de R2 de las tres están en `plantillas.ts`.
+
 Qué cambia en la práctica:
 
 - **Conservadora**: más gente en mal comportamiento (el corte se adelanta y la
@@ -1073,6 +1148,13 @@ escalera del ingreso están en sus propios documentos).
    primera versión lo cambia CrediScope a pedido escrito de la institución**,
    con versión nueva y la comparación en seco de ese cambio como constancia;
    la pantalla para que la institución lo edite, después.
+
+### Lo que decidió el negocio (2026-11-22): R2, R3 y R4
+
+Aceptó como se recomendaron las 14 decisiones de la propuesta «R2, R3 y R4» (sección 2.6). **Cierra el punto 3 de esta lista**: con un tramo
+Negar (mora de hoy), la IA sube como mucho hasta Revisar, nunca a Aprobar; Aprobar queda para el mal comportamiento histórico con la persona
+hoy al día. Cierra también R2, R3 y R4 de «Abiertas». Queda abierto de R4 lo que no se midió: los días de bancos sin buró y lo vencido de
+una B o C (el proveedor no los trae), lo vencido de los préstamos del IESS y el BIESS, el tiempo al día sin buró y más de 24 meses de historia.
 
 ### Lo que decidió el negocio (2026-11-18)
 

@@ -81,6 +81,31 @@ export const REQUISITOS_FIJOS = [
 ] as const;
 export const MOMENTOS_DE_UN_REQUISITO = ["antes_de_aprobar", "antes_de_desembolsar"] as const;
 
+// R4 (decisión 13, 2026-11-22): los atenuantes y los agravantes, y su orden de mayor a menor peso. El orden es un dato del
+// estándar, no un texto: el modelo los recibe así, cada uno con su estado (medido o no medido).
+export const ATENUANTES = [
+  "deuda_al_dia_en_banco_o_biess",
+  "deuda_al_dia_en_cooperativa",
+  "doce_meses_al_dia_desde_el_ultimo_atraso",
+  "atraso_pasado_chico",
+  "estabilidad",
+  "endeudamiento_a_la_baja",
+  "ingreso_al_alza",
+  "al_dia_con_una_casa_comercial",
+] as const;
+export type Atenuante = (typeof ATENUANTES)[number];
+export const AGRAVANTES = [
+  "reincidencia",
+  "atraso_pasado_de_mas_de_90_dias",
+  "vencido_de_entonces_sobre_la_tolerancia_de_negar",
+  "atraso_en_los_ultimos_6_meses",
+  "garante_de_una_operacion_en_atraso",
+  "mora_en_mas_de_un_sector",
+  "pension_alimenticia_en_mora_dentro_de_la_tolerancia",
+  "casa_comercial_en_mora_a_su_corte",
+] as const;
+export type Agravante = (typeof AGRAVANTES)[number];
+
 export const CALIFICACIONES_DE_BANCOS = ["A1", "A2", "A3", "B1", "B2", "C1", "C2", "D", "E"] as const;
 
 // ---------------------------------------------------------------- las subsecciones
@@ -114,6 +139,30 @@ export interface MoraVigente {
   comoGaranteBajaUnTramo: boolean;
   /** Los umbrales en dólares se revisan cada enero (decisión 8): el SBU sube solo y los dólares no. */
   revisionDeLosUmbrales: { cadaAnioEn: "enero"; proximaRevision: string };
+  /** Decisión 1: se compara lo vencido de las operaciones con más de `masDeDias` días, no todo el saldo en atraso (vencido, no devenga, demanda y castigo). */
+  montoQueSeCompara: "vencido_de_las_operaciones_con_mas_de_dias" | "saldo_en_atraso";
+  /** Decisión 2: sin buró de la institución, los bancos van por la letra (B1 a C2 Revisar, D y E Negar); con buró, los dólares. */
+  bancosSinBuro: "por_la_letra" | "por_los_dolares";
+  /** Decisión 4: manda el peor sector, sin sumar; la mora en varios sectores es un agravante. */
+  variosSectores: "manda_el_peor" | "suma_los_montos";
+  /** Decisión 6: el retail del proveedor (corte de julio de 2025) es historial (R4) hasta tener buró, no mora de hoy. */
+  retailDelProveedor: "historial" | "mora_de_hoy";
+}
+
+// R4 (2026-11-22): el historial de mal comportamiento y cómo pierde peso.
+export interface HistorialDelEstandar {
+  /** Decisión 11: los meses desde el último mes con mora que separan las cuatro filas de la tabla de decaimiento (6, 12 y 24; la conservadora, el doble). */
+  decaimientoEnMeses: [number, number, number];
+  superado: {
+    /** Decisión 10: «superado» es hoy al día en todo y con una deuda formal (SBS o SEPS) al día de este saldo o más. */
+    deudaFormalAlDiaDesdeUsd: number;
+    /** Con buró, además, meses seguidos sin mora de más de `masDeDias` desde el evento. */
+    mesesSinMoraConBuro: number;
+  };
+  /** Decisión 12: superado, la demanda de cobro baja un tramo de R1, salvo reincidencia. */
+  demandaDeCobroSuperadoBajaUnTramo: boolean;
+  /** Un atraso de más de este número de días empieza una fila más arriba de la tabla (pesa como uno más reciente). */
+  atrasoLargoDesdeDias: number;
 }
 
 export interface RiesgoDelEstandar {
@@ -135,6 +184,7 @@ export interface RiesgoDelEstandar {
     rucSuspendidoNoDepurado: NivelDeRiesgo;
   };
   moraVigente: MoraVigente;
+  historial: HistorialDelEstandar;
 }
 
 export interface MalComportamientoDelEstandar {
@@ -150,8 +200,20 @@ export interface MalComportamientoDelEstandar {
     hoyAlDia: { calificacionAdmitida: string[]; diasDeMoraAdmitidos: number };
     endeudamientoALaBaja: { bajaMinima: number; enMeses: number; sinBuro: "no_medido" };
     estabilidad: { mesesMinimos: number };
-    ingresoAlAlza: { alzaMinima: number; compara: "ultimos_6_meses_contra_los_6_anteriores" };
+    /** R4: el ingreso reportado al IESS sube más que el Salario Básico Unificado del año (el alza se mide contra la del SBU, no contra un 5% fijo). */
+    ingresoAlAlza: { compara: "ultimos_6_meses_contra_los_6_anteriores"; descontandoLaVariacionDelSbu: true };
+    /** Decisión 13: una deuda vigente al día con este saldo o más pesa como atenuante en un banco o el BIESS. */
+    deudaVigenteAlDia: { desdeUsd: number };
+    /** El tercer atenuante: meses al día desde el último atraso (con buró; sin él, no medido). */
+    mesesAlDiaDesdeElUltimoAtraso: { mesesMinimos: number; sinBuro: "no_medido" };
   };
+  /** Decisión 13: de mayor a menor peso. Tiene que ser una permutación de la lista completa. */
+  atenuantesEnOrden: Atenuante[];
+  agravantesEnOrden: Agravante[];
+  /** Decisión 14: para que la IA suba hace falta un atenuante de los primeros N (3). Con 0 no hace falta ninguno (la opción b: cualquiera alcanza, sin mínimo). */
+  paraSubirHaceFaltaUnoDeLosPrimeros: number;
+  /** Decisión 9: con mora de hoy (tramo Negar) la IA sube como mucho hasta acá, nunca a Aprobar. */
+  conMoraDeHoyLaIAPuedeSubirHasta: "revisar" | "aprobar";
   /** Decidido: no hay número mínimo de atenuantes. No es un parámetro que una plantilla cambie. */
   minimoDeAtenuantes: 0;
   salidasQueLaIAPuedeRecomendar: Salida[];
