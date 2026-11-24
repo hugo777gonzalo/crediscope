@@ -966,6 +966,38 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
 >   con el sí del negocio.
 
+> **estructura-v32 (negocio, 2026-11-24: `quienDemanda()` deja de leer como persona natural a una entidad; E10)**
+> - La revisión con casos reales de E10 (23/11) halló entidades leídas como «persona»; el negocio aprobó el 24/11 mejorar el
+>   clasificador. R1 pesa menos la demanda de cobro de una persona natural, así que cada una bajaba el peso de una demanda que no
+>   era de un particular. Nuevas marcas en `demandas.ts`, todas con un caso medido en la cartera y una prueba
+>   (`demandas-quien-demanda.test.ts`, con apellidos que contienen las letras y no cambian: «Fondón», «Banquero», «Cooper»):
+>   - **Institución financiera:** el banco pegado a otra palabra («FILANBANCO», «PRODUBANCO», «AUSTROBANK OVERSEAS (LTD)»), «BCO.», y
+>     «COOP.» con «ahorro» o «crédito» (antes sólo «COOPERATIVA»). «Banco Pichincha Ca», como lo escribe e-SATJE, ya lo era; queda con prueba.
+>   - **Empresa (entidad no financiera):** la S.A. o la C.A. pegada a otra palabra («TECNICENTRO DEL AUSTRO S.A.TEDASA»), S.C., S.C.C., S.R.L.,
+>     LTD, INC, CORP, CORPORATION, LLC; fondo, comité, agencia, centro, fideicomiso, titularización, ejército, «Estado ecuatoriano», edificio y
+>     las siglas de cooperativa («COOPMEGO», «COOPCCP»; no «COOPER»).
+>   - **Lo que NO es marca:** «representante legal de» (también representa a un menor: «madre y representante legal de <niño>») y «procurador judicial
+>     de» (lo es de una persona igual que de una entidad): el que representa es de entidad por lo que el nombre de quien representa lleve («<nombre> ...
+>     REPRESENTANTE LEGAL DE LA COOP. LUZ DEL VALLE» sale por «COOP.»). Tampoco «fiscal» ni «fiscalía»: el que figura es el fiscal, no el acreedor; 8
+>     demandas de cobro de 5 personas (cheques sin fondos, uso doloso de documentos) siguen como «persona» y, leídas como entidad, no cambia el nivel de ninguna
+>     con ninguna plantilla. **Pendiente del negocio.** «D'CARNES COOL» y «ESPOIR» (un representante o procurador de quien no dice la forma) tampoco se distinguen.
+> - **Medido** (3.766 personas reales, respaldo del 2026-10-03 y depósito, sólo lectura; 5.828 demandas y 4.132 demandantes distintos): de los 374 demandantes de
+>   cobro que se leían «persona», **29 dejan de serlo** (ninguno de los 107 demandantes de toda la cartera que cambian de clase es una persona: todos revisados a ojo; la
+>   lista está en `research/e10-seguimiento/`, fuera de git). **48 demandas de cobro cambian de clase en 36 personas** (30 persona→empresa, 4 persona→institución
+>   financiera y 14 empresa→institución financiera: las cooperativas escritas «COOP. DE AHORRO Y CRÉDITO» y «PRODUBANCO S.A.», que el marco ya leía distinto de una empresa), y **3
+>   demandas entran al cobro** (un banco escrito «ABN AMRO BANK», «BCO. CONTINENTAL» y «PRODUBANCO ...» con un tipo sin tema) en 3 personas: 39 perfiles cambian en total,
+>   sólo `riesgoJudicialCrediticio` (`demandasDeCobro[].quienDemanda`, y en 3 `numeroDemandasComoDemandado`, `tiposDemandasComoDemandado`) y `riesgoJudicialCivil`.
+> - **El nivel de riesgo** (E10, `medir-riesgo.mjs`, sin buró, antes y después; 3.766 personas): **Base, 1 persona cambia** (deteriorado → mal comportamiento: una demanda de una entidad dentro de
+>   los 2 años); **Optimista, 1** (la misma: con observaciones → mal comportamiento); **Conservadora, 3** (deteriorado → bajo). En la Conservadora una persona natural cuenta como mal
+>   comportamiento hasta los 7 años y una entidad de 3 a 7 años sólo como deteriorado, así que leerla como entidad la baja un tramo: es lo que dice la plantilla, no un error de esta regla (**decisión del negocio:
+>   ¿una persona natural debe pesar más que una entidad en la Conservadora?**). El caso de oro c-b9fc9a82 es uno de los 3 (con la Conservadora pasa de deteriorado a bajo; con las otras dos ya era bajo).
+>   De los 4 distintos, 2 tienen un análisis del modelo (ambos «revisar»).
+> - **Qué versión sube:** la estructura (v32): cambia el perfil guardado. No sube `hechos` (`hechos-v5`: la forma de la capa no cambia, sólo el valor de `quienDemanda` y el
+>   conteo de cobro en 3 personas; se deriva en cada lectura) ni el marco (el texto de `demandasDeCobro` no cambia; la huella del pedido de las 39 personas cambia sola en el próximo análisis).
+> - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil`, sólo
+>   las 39 cambian de contenido). Se apila sobre la v31: lo que esté sin desplegar de la v22 a la v31 sale con ella (el estado vigente de `docs/pendientes.md`
+>   dice qué hay en producción). El veredicto de riesgo (E10, sin conectar) no necesita el recálculo: deriva los hechos del crudo en cada lectura.
+
 > **estructura-v31 (E7, 2026-11-20: etapa B del grupo 4 de la capa de hechos, los ingresos)**
 > - `fuentesIngreso` sale de la capa de hechos (`hechos/grupos/ingresos.ts`, `docs/capa-de-hechos.md`, 4.4): `process.ts` dejó de
 >   llamar a `analizarFuentesIngreso()`; la llama el grupo, una sola vez, y `fuentes-ingreso.ts` sigue siendo la única

@@ -515,6 +515,12 @@ traerla; hasta entonces la ventana real es más larga que la nominal, y se dice.
 Una demanda puesta por una **persona natural** (no una institución ni una
 empresa) cuenta como Deteriorado aunque sea reciente: puede ser una deuda
 comercial o un conflicto entre particulares. Propuesta sin medir.
+**Quién es la persona natural lo decide `quienDemanda()`** (`demandas.ts`) por el nombre del demandante, y desde el
+2026-11-24 (estructura-v32) un fondo, una cooperativa escrita «COOP.», un comité, una agencia pública, una sociedad con
+la S.A. pegada a otra palabra o un banco escrito «FILANBANCO» o «BCO.» ya no se leen como persona. Sin buró, con el
+cambio 1 persona cambia de nivel con la Base (deteriorado → mal comportamiento), 1 con la Optimista y 3 con la
+Conservadora (deteriorado → bajo: ahí la persona natural pesa más que una entidad de 3 a 7 años). Un fiscal que figura como
+demandante sigue como persona (8 demandas de 5 personas): no cambia ningún nivel y el negocio no lo decidió.
 
 ### 2.4 Los atenuantes
 

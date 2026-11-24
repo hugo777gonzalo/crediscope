@@ -491,6 +491,13 @@ su guía: `docs/equifax.md`.
 - Demandas por categoría (`_shared/demandas.ts`): normalizar tildes
   rotas, espacios y artículos; archivo o trámite no penaliza; si el tipo
   no dice el tema, decide quién demanda (institución financiera = cobro).
+  **`quienDemanda()` no lee como persona natural a una entidad** (estructura-v32, 2026-11-24): marcas
+  de palabra completa («FONDO», «COMITE», «AGENCIA», «COOP.», la S.A. o la C.A. pegada, el banco
+  pegado a otra palabra...), nunca una contenida en un apellido («Fondón», «Banquero», «Cooper»).
+  «Representante legal de» y «procurador judicial de» NO son marca: lo es el nombre de a quien
+  representan. Una marca nueva lleva su caso medido y su prueba (`demandas-quien-demanda.test.ts`), y
+  se mide sobre todos los demandantes de la cartera antes de entrar: en el primer intento «representante
+  legal de» convertía en empresa a la madre de un menor.
 - **Una demanda cuenta sólo si el demandado no es otra persona** (D2, estructura-v24):
   la fuente las busca por el nombre. `atribuirDemandas()` (`demandas.ts`, con el cotejo de
   v20) saca de las cuentas a las de «otra persona» y a las de apellidos en otro orden (el negocio,
