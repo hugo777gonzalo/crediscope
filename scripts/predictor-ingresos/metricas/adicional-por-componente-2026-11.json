@@ -7,7 +7,7 @@
       "cuentas o IVA": 1357,
       "cuentas o IVA con archivo": 393,
       "declarado": 5881,
-      "IESS escrito": 1170,
+      "IESS no recuperado": 1170,
       "predictor": 477,
       "arriendo": 152,
       "jubilación": 69,
@@ -20,7 +20,7 @@
       "cuentas o IVA": 1356,
       "cuentas o IVA con archivo": 393,
       "declarado": 5881,
-      "IESS escrito": 1171,
+      "IESS no recuperado": 1171,
       "predictor": 477,
       "arriendo": 152,
       "jubilación": 69,
@@ -29,9 +29,9 @@
     },
     "diferencias": {
       "cuentas o IVA": 1,
-      "IESS escrito": -1
+      "IESS no recuperado": -1
     },
-    "empates_entre_cuentas_o_iva_e_iess_escrito": 1,
+    "empates_entre_cuentas_o_iva_e_iess_no_recuperado": 1,
     "el_total_cuadra_con_sueldo_mas_items_con_check_pct": 99.99,
     "personas_con_algun_item_sin_check_pct": 15.4,
     "personas_con_ruc_activo_con_algun_item_sin_check_pct": 41.4
@@ -52,7 +52,7 @@
           "con_archivo_del_origen_pct": 29.0,
           "mediana": 674.0
         },
-        "IESS escrito": {
+        "IESS no recuperado": {
           "n": 1170,
           "con_archivo_del_origen_pct": 6.3,
           "mediana": 1000.0
@@ -89,7 +89,7 @@
           "con_archivo_del_origen_pct": 31.7,
           "mediana": 800.0
         },
-        "IESS escrito": {
+        "IESS no recuperado": {
           "n": 441,
           "con_archivo_del_origen_pct": 9.1,
           "mediana": 1076.0
@@ -121,7 +121,7 @@
           "con_archivo_del_origen_pct": 3.7,
           "mediana": 600.0
         },
-        "IESS escrito": {
+        "IESS no recuperado": {
           "n": 490,
           "con_archivo_del_origen_pct": 5.3,
           "mediana": 955.0
@@ -163,7 +163,7 @@
           "con_archivo_del_origen_pct": 53.4,
           "mediana": 599.0
         },
-        "IESS escrito": {
+        "IESS no recuperado": {
           "n": 119,
           "con_archivo_del_origen_pct": 5.9,
           "mediana": 1431.0
@@ -200,7 +200,7 @@
           "con_archivo_del_origen_pct": 51.6,
           "mediana": 874.0
         },
-        "IESS escrito": {
+        "IESS no recuperado": {
           "n": 74,
           "con_archivo_del_origen_pct": 5.4,
           "mediana": 1607.0
@@ -242,7 +242,35 @@
         },
         "mediana_del_adicional": 700.0
       },
-      "B?": {
+      "C": {
+        "n": 5881,
+        "con_ruc_activo": 1051,
+        "en_la_prueba_desde_julio_2026": 979,
+        "en_la_prueba_con_ruc_activo": 463,
+        "ok_pct": 16.6,
+        "por_anio": {
+          "2023": 139,
+          "2024": 1483,
+          "2025": 1927,
+          "2026": 2332
+        },
+        "mediana_del_adicional": 600.0
+      },
+      "arriendo o jubilación": {
+        "n": 221,
+        "con_ruc_activo": 7,
+        "en_la_prueba_desde_julio_2026": 9,
+        "en_la_prueba_con_ruc_activo": 0,
+        "ok_pct": 29.0,
+        "por_anio": {
+          "2023": 56,
+          "2024": 66,
+          "2025": 68,
+          "2026": 31
+        },
+        "mediana_del_adicional": 800.0
+      },
+      "fuera: IESS no recuperado": {
         "n": 1170,
         "con_ruc_activo": 119,
         "en_la_prueba_desde_julio_2026": 280,
@@ -256,21 +284,7 @@
         },
         "mediana_del_adicional": 1000.0
       },
-      "C": {
-        "n": 6102,
-        "con_ruc_activo": 1058,
-        "en_la_prueba_desde_julio_2026": 988,
-        "en_la_prueba_con_ruc_activo": 463,
-        "ok_pct": 17.1,
-        "por_anio": {
-          "2023": 195,
-          "2024": 1549,
-          "2025": 1995,
-          "2026": 2363
-        },
-        "mediana_del_adicional": 600.0
-      },
-      "fuera": {
+      "fuera: predictor": {
         "n": 477,
         "con_ruc_activo": 84,
         "en_la_prueba_desde_julio_2026": 132,
@@ -345,10 +359,10 @@
     "personas_en_la_prueba": 5627,
     "con_ruc_activo_en_la_prueba": 1740
   },
-  "iess_escrito_a_mano": {
+  "iess_no_recuperado": {
     "items": 1256,
     "personas": 1241,
-    "personas_con_origen_iess_escrito": 1170,
+    "personas_con_origen_iess_no_recuperado": 1170,
     "actividad_del_item": {
       "SECUNDARIA": 648,
       "PRINCIPAL": 608
@@ -394,7 +408,7 @@
       "n": 471,
       "a_10pct_pct": 2.8
     },
-    "sueldo_mas_escrito_sobre_iess_del_ultimo_mes_mediana": 1.64,
+    "sueldo_mas_no_recuperado_sobre_iess_del_ultimo_mes_mediana": 1.64,
     "mas_de_un_empleo_en_el_iess_pct": 22.8,
     "mas_de_un_empleo_en_el_iess_el_resto_pct": 24.0,
     "sin_historial_del_iess_pct": 5.6,
@@ -427,7 +441,7 @@
     "items_con_historial_pct": 100.0,
     "con_historial_empezaron_con_el_check_pct": 100.0,
     "por_clase": {
-      "IESS escrito": {
+      "IESS no recuperado": {
         "n": 5701,
         "duplica_uno_con_check_pct": 92.5,
         "lo_apago_un_autor_automatico_pct": 88.8
@@ -457,7 +471,7 @@
       "sueldo recuperado": 5265,
       "declarado": 24,
       "predictor": 10,
-      "IESS escrito": 7,
+      "IESS no recuperado": 7,
       "cuentas o IVA": 5,
       "arriendo": 2
     },
@@ -465,7 +479,7 @@
       "n": 8023,
       "con_check_pct": 48.1,
       "recuperados_con_check_pct": 96.6,
-      "escritos_con_check_pct": 15.9
+      "no_recuperados_con_check_pct": 15.9
     },
     "personas_con_algun_item_sin_check_pct": {
       "todas": 15.4,
@@ -479,10 +493,69 @@
     },
     "rechazados_sin_duplicados_por_clase": {
       "declarado": 525,
-      "IESS escrito": 427,
+      "IESS no recuperado": 427,
       "cuentas o IVA": 27,
       "predictor": 15,
       "arriendo": 3
+    }
+  },
+  "anclaje_a_la_cifra_de_equifax": {
+    "personas_con_la_cifra": 38886,
+    "por_origen": {
+      "IESS no recuperado": {
+        "n": 1169,
+        "a_1pct_pct": 20.4,
+        "a_5pct_pct": 26.9,
+        "mediana_total_sobre_cifra": 1.0
+      },
+      "arriendo": {
+        "n": 152,
+        "a_1pct_pct": 2.6,
+        "a_5pct_pct": 6.6,
+        "mediana_total_sobre_cifra": 0.88
+      },
+      "cuentas o IVA": {
+        "n": 1354,
+        "a_1pct_pct": 7.0,
+        "a_5pct_pct": 15.7,
+        "mediana_total_sobre_cifra": 1.0
+      },
+      "declarado": {
+        "n": 5863,
+        "a_1pct_pct": 9.6,
+        "a_5pct_pct": 17.8,
+        "mediana_total_sobre_cifra": 1.0
+      },
+      "jubilación": {
+        "n": 68,
+        "a_1pct_pct": 1.5,
+        "a_5pct_pct": 8.8,
+        "mediana_total_sobre_cifra": 1.13
+      },
+      "predictor": {
+        "n": 477,
+        "a_1pct_pct": 48.4,
+        "a_5pct_pct": 57.2,
+        "mediana_total_sobre_cifra": 1.0
+      },
+      "sin adicional material": {
+        "n": 29803,
+        "a_1pct_pct": 1.5,
+        "a_5pct_pct": 6.9,
+        "mediana_total_sobre_cifra": 0.78
+      }
+    },
+    "a_y_b_sin_los_casos_a_1pct": {
+      "A": {
+        "todos": 374,
+        "en_la_prueba": 69,
+        "en_la_prueba_con_ruc_activo": 58
+      },
+      "B": {
+        "todos": 888,
+        "en_la_prueba": 60,
+        "en_la_prueba_con_ruc_activo": 34
+      }
     }
   },
   "paridad_del_sueldo": {
@@ -556,6 +629,6 @@
   "tabla": {
     "archivo": "adicional-por-componente.parquet",
     "filas": 39017,
-    "sha256": "1eb5e5a5cadbdd9c3ede394031da3569b2db0042d128488dd1bc97873d44db6a"
+    "sha256": "bc767e4e2f921bb30322919f975b570ee8f5c18ea491080fc3c2595f890b1188"
   }
 }

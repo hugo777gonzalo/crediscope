@@ -33,7 +33,7 @@ supera los USD 100 y el 10% del sueldo. El origen es el componente de mayor mont
 |---|---|---|---|---|
 | Declarado (RUC, otros, giros) | 5.881 | 600 | 3,4% | 1.051 |
 | Cuentas o IVA (estados de cuenta, declaraciones) | 1.356 | 670 | 29,0% | 262 |
-| IESS escrito a mano (no recuperado del proveedor) | 1.171 | 1.000 | 6,3% | 119 |
+| IESS no recuperado (fuente IESS, sin la observación RECUPERADO) | 1.171 | 1.000 | 6,3% | 119 |
 | Predictor | 477 | 900 | 5,9% | 84 |
 | Arriendo | 152 | 600 | 0,7% | 3 |
 | Jubilación | 69 | 1.400 | 8,7% | 4 |
@@ -42,8 +42,8 @@ supera los USD 100 y el 10% del sueldo. El origen es el componente de mayor mont
 - **Dos de cada tres adicionales son declarados**, casi nunca con archivo. Lo que se puede tomar por comprobado (cuentas o IVA) es el 15%.
 - **Con archivo hay 393 en cinco años** (los documentos se registran desde 2024: 42 en 2024, 167 en 2025 y 184 en 2026). Es la etiqueta más limpia
   que existe para el extra del dependiente, y es chica.
-- **«IESS escrito a mano»** no es un segundo empleo visible: sólo el 22% tiene más de un empleo en el IESS, igual que el resto (24%). Qué es,
-  en 6.2.
+- **El «IESS no recuperado»** no es un segundo empleo visible: sólo el 22% tiene más de un empleo en el IESS, igual que el resto (24%). Es un
+  ajuste hacia la cifra de Equifax (6.2): queda fuera de la etiqueta.
 - **El 15,4% tiene ítems sin el check** (el 41% con RUC activo). **Corregido en la sesión 1 (6.3)**: casi todos son copias automáticas del sueldo
   recuperado, no ingresos que el analista vio y no aceptó; los rechazos de verdad son el 2,4% de las personas.
 
@@ -57,22 +57,29 @@ en las notas de la sesión de A14.
 - su mínimo, si el modelo pasa las reglas.
 Nunca se suma al sueldo como validado. Si no pasa, queda la señal sin monto que ya decidió A14.
 
-**La etiqueta, por calidad** (sólo los ítems con el check). Corregida en la sesión 1 (6.5); la columna «En la prueba» es desde julio de 2026, y entre
-paréntesis, con RUC activo:
+**La etiqueta, por calidad** (sólo los ítems con el check). Corregida en la sesión 1 y con las respuestas del negocio del 2026-11-24 (6.5 y 6.6). La
+columna «En la prueba» es desde julio de 2026, y entre paréntesis, con RUC activo:
 
 | Grado | Qué es | Cuántos | Con RUC activo | En la prueba | Uso |
 |---|---|---|---|---|---|
 | A | Cuentas o IVA, con el archivo del origen | 393 | 140 | 71 (59) | Medir (la prueba) |
 | B | Cuentas o IVA sin archivo registrado | 964 | 122 | 72 (43) | Entrenar |
-| B? | IESS escrito a mano | 1.170 | 119 | 280 (65) | Fuera hasta que el negocio diga qué es (6.6, pregunta 1) |
-| C | Declarado, arriendo o jubilación con el check | 6.102 | 1.058 | 988 (463) | Sólo como «dijo tener», nunca como monto |
-| — | Predictor con el check | 477 | 84 | 132 (44) | Fuera: es una predicción |
+| Arriendo o jubilación | Ingresos extra que la persona puede percibir | 221 | 7 | 9 (0) | Entrenar como adicional, en una columna aparte: se mide con y sin ellos |
+| C | Declarado con el check (RUC, otros, giros) | 5.881 | 1.051 | 979 (463) | Sólo como «dijo tener», nunca como monto |
+| Fuera | IESS no recuperado | 1.170 | 119 | 280 (65) | Fuera: ajuste hacia la cifra de Equifax |
+| Fuera | Predictor con el check | 477 | 84 | 132 (44) | Fuera: es una predicción |
 | Negativo | Ningún ítem adicional con el check (29.239) o uno que no llega a material (672) | 29.911 | 2.351 | 4.084 (1.066) | «Sin adicional documentado», no «sin adicional» |
 | Rechazado | Ítem sin el check que no copia a uno con el check | 8,9% de las personas desde el 2026-03-08 | | | Marca aparte, no grado; no existe antes de esa fecha (6.3) |
+
+**Toda la etiqueta está anclada a la cifra de Equifax** (6.2): el total validado queda a ±1% de ella en el 7,0% de los A y B. La sesión 2 mide también
+con A y B sin esos casos (`med_total_a_1pct_de_la_cifra`: 374 A y 888 B; en la prueba, 69 A y 60 B).
 
 **El modelo, en dos partes**:
 1. **Si tiene un adicional comprobable** (A o B contra el negativo).
 2. **Cuánto**, como cuantiles del logaritmo del adicional, sólo con A y B.
+
+Cada parte se mide con y sin arriendo o jubilación como adicional (`adicional_arriendo_o_jubilacion`), y con y sin los A y B cuyo total queda a ±1%
+de la cifra de Equifax (6.6, respuestas 1 y 3).
 
 Entradas:
 - el sueldo y la carga de cuotas sobre el sueldo;
@@ -80,7 +87,7 @@ Entradas:
 - edad, sexo y fecha;
 - el SRI, en la variante que lo tiene.
 
-Nunca entran la cifra de Equifax (decisión del negocio del 2026-11-23) ni una variable que en producción llega vacía (`NO_SERVIBLES`). El sueldo de
+Nunca entran la cifra de Equifax (decisión del negocio del 2026-11-23, reafirmada el 2026-11-24: no hay variante con ella) ni una variable que en producción llega vacía (`NO_SERVIBLES`). El sueldo de
 AWS es lo recuperado, a veces ya neto del aporte (12.15). Medida la paridad con el peldaño 1 (6.4): queda a ±10% en el 79,4%, y es mejor que rearmarlo
 con el IESS de AWS.
 
@@ -94,6 +101,8 @@ con el IESS de AWS.
 **Reglas fijadas antes de medir** (si una falla, se cierra la opción (b) de A14 hasta tener documentos anotados, D8):
 - **Si tiene un adicional comprobable:** AUC de 0,75 o más con RUC activo. 12.36 dio 0,624 con la etiqueta vieja.
 - **El mínimo del adicional:** cubre al 90% o más de los A de la prueba, y su mediana es al menos la mitad del adicional real.
+  - Decide la cifra central (negocio, 2026-11-24): la prueba tiene 71 A.
+  - Si pasa sólo por ella (el intervalo baja de 80%), queda «sigue», pero no se conecta hasta juntar más casos A (entran unos 15 a 17 por mes).
 - **Lo que vería el analista:** de los adicionales que se mostrarían, el 70% o más tiene uno comprobable.
   La tasa base con RUC activo es 6,8% (262 de 3.874 con cuentas o IVA).
 
@@ -110,11 +119,12 @@ Cada una arranca limpia desde `main`, lee este documento y el punto 18 de `docs/
 
 1. **Datos y etiquetas** (sin modelo). **Hecha el 2026-11-23**: lo medido y las preguntas al negocio, en la sección 6.
    - armar la tabla por persona del adicional por componente: un guion nuevo en `scripts/predictor-ingresos/` que use `preparar.armar_consultas()`;
-   - aclarar qué es «IESS escrito a mano» y qué son los ítems sin el check, con lo que dejó la sesión que extrajo AWS (`docs/base-aws-originacion.md`) o
+   - aclarar qué es el «IESS no recuperado» y qué son los ítems sin el check, con lo que dejó la sesión que extrajo AWS (`docs/base-aws-originacion.md`) o
      preguntándole al negocio;
    - medir la paridad del sueldo de AWS con el peldaño 1.
    - Sale con la tabla de grados de 3 confirmada o corregida, y con las preguntas al negocio.
-2. **El modelo**, con las reglas de 3 tal cual. Sale con la decisión «sigue» o «se cierra», medida.
+2. **El modelo**, con las reglas de 3 tal cual. Sale con la decisión «sigue» o «se cierra», medida. **Lista para arrancar**: el negocio respondió
+   las cinco preguntas el 2026-11-24 (6.6). Lee la tabla de `adicional_por_componente.py` (columna `grado`).
 3. **Conectarlo** (sólo si pasa): el adicional estimado en la escalera y en el ingreso adicional por corroborar, con las decisiones del negocio sobre
    cómo se muestra.
 
@@ -136,15 +146,28 @@ del crudo de Proveedor_Info_1 de la cartera: no consultó AWS, Equifax ni Provee
 
 - 39.017 personas, 9.106 con adicional material, 1.523 de 3.874 con RUC activo, 393 de cuentas o IVA con archivo, 5.881 declarados, 477 del predictor,
   152 de arriendo y 69 de jubilación: iguales.
-- **Una diferencia**: una persona tiene el mismo monto en cuentas o IVA y en IESS escrito. `componentes.py` la contaba como IESS escrito por el orden
+- **Una diferencia**: una persona tiene el mismo monto en cuentas o IVA y en IESS no recuperado. `componentes.py` la contaba como IESS no recuperado por el orden
   alfabético de las columnas, y el guion nuevo la cuenta como cuentas o IVA. Quedan 1.357 y 1.170 en vez de 1.356 y 1.171.
 - El total validado es el sueldo recuperado más los ítems con el check en el 99,99%.
 - **El monto de A y B es el adicional entero**: el componente de cuentas o IVA pesa el 100% del adicional en el 98,5% de ellos. Sólo el 1,6% de los
   adicionales materiales mezcla más de un componente.
 
-### 6.2 Qué es el «IESS escrito a mano»
+### 6.2 Qué es el «IESS no recuperado»
 
-Son 1.256 ítems con el check, de 1.241 personas (en 1.170 es el origen del adicional). Un ítem de fuente IESS que no es el recuperado del proveedor.
+Es un ítem de fuente IESS cuya observación no es «RECUPERADO» del proveedor. Hasta el 2026-11-24 se llamó «IESS escrito a mano»: el nombre lo puso
+`componentes.py` y no viene de AWS. Son 1.256 ítems con el check, de 1.241 personas (en 1.170 es el origen del adicional).
+
+**Es un ajuste hacia la cifra de Equifax** (negocio, 2026-11-24):
+- El negocio abrió en AWS los requerimientos 349207, 354014 y 346660.
+- En los tres, el analista partió en dos el ingreso del IESS, y entre los dos suman más o menos la cifra de Equifax: «el analista trató de llegar al
+  income_predictor».
+- Medido con `anclaje_a_la_cifra()`: el total validado queda a ±1% de la cifra en el 20,4% de los que tienen este origen. Con el predictor es el 48,4%,
+  con lo declarado el 9,6%, con cuentas o IVA el 7,0% y sin adicional material el 1,5%. A ±5%: 26,9%, 57,2%, 17,8%, 15,7% y 6,9%.
+- La mediana del total sobre la cifra es 1,00 en los cuatro orígenes que más pesan (0,78 sin adicional). **Toda la etiqueta está anclada a la cifra
+  (12.15), no sólo este grado.**
+- **Decisión:** queda fuera de la etiqueta, como el predictor. La sesión 2 mide también con A y B sin los casos a ±1% de la cifra.
+
+Lo que se había medido antes de la respuesta, y que es coherente con ella.
 
 **Lo escribe una persona, con un documento:**
 - De los 454 con historial (desde el 2026-03-08), el 99,6% lo creó un autor manual, y el 30,6% cambió de monto después.
@@ -156,15 +179,13 @@ Son 1.256 ítems con el check, de 1.241 personas (en 1.170 es el origen del adic
 **No es lo que el IESS de AWS ya muestra:**
 - No es el otro empleador del último mes: coincide a ±10% con el sueldo de los demás empleadores en el 2,8% (471 con dos o más).
 - No es más común con varios empleos: el 22,8% tiene más de uno en el IESS, contra el 24,0% del resto. Sólo el 5,6% no tiene historial del IESS.
-- No es una copia del sueldo: queda a ±5% del recuperado en el 9,3% (la mediana de la razón es 1,00, pero dispersa). El sueldo más el escrito
-  es, en mediana, 1,64 veces todo el IESS del último mes.
+- No es una copia del sueldo: queda a ±5% del recuperado en el 9,3% (la mediana de la razón es 1,00, pero dispersa). El sueldo más el IESS no
+  recuperado es, en mediana, 1,64 veces todo el IESS del último mes.
 - En la mitad, el analista lo pone como actividad principal y deja el recuperado como secundaria (608 principales; el recuperado es secundario
   en 615).
 - Respuesta: 406 OK FACTURAR, 64 condicionados, 274 rechazados.
 
-**Lo más coherente con los datos** es un ingreso en relación de dependencia que el analista ve en el mecanizado y el proveedor todavía no trae
-(un empleo nuevo, que llega con uno o dos meses de retraso). No se puede confirmar sin el texto de la observación, y no se baja más de AWS:
-**pregunta 1** (6.6). Hasta la respuesta, B? queda fuera del entrenamiento, como decía la propuesta.
+La hipótesis de la sesión 1 (un empleo nuevo que el proveedor todavía no trae) no se sostiene con lo que vio el negocio.
 
 ### 6.3 Qué son los ítems sin el check
 
@@ -173,17 +194,17 @@ Son 6.310 ítems sin el check (sin contar el recuperado).
 **Sólo existen desde el 2026-03-08**, cuando empieza el historial del flujo:
 - El 99,6% es de consultas desde esa fecha. Antes hay 25 en todo el extracto.
 - Los que tienen historial (todos) empezaron con el check y se lo quitaron después.
-- Antes de esa fecha el sistema los borraba o no los creaba: **pregunta 2**.
+- Antes de esa fecha el sistema los borraba o no los creaba: queda como no medible (6.6, respuesta 2).
 
-**El 92,5% de los IESS escritos sin el check son copias automáticas del sueldo recuperado:**
+**El 92,5% de los IESS no recuperados sin el check son copias automáticas del sueldo recuperado:**
 - Son 5.701. El 92,5% tiene el mismo monto (a USD 1) que un ítem con el check de la misma persona; 5.265 copian al recuperado.
 - Al 88,8% lo apagó un autor automático.
 - El sistema crea un ítem por empleador y lo apaga cuando entra el recuperado. No es un ingreso que el analista vio y no aceptó.
-- Eso es «la mitad de los flujos IESS secundarios sin el check»: de 8.023, el recuperado lleva el check en el 96,6% y el escrito en el 15,9%.
+- Eso es «la mitad de los flujos IESS secundarios sin el check»: de 8.023, el recuperado lleva el check en el 96,6% y el no recuperado en el 15,9%.
 
 **Sin las copias, los rechazos de verdad son pocos:**
 - Afectan al 2,4% de todas las personas y al 8,9% desde el 2026-03-08 (8,7% con RUC activo).
-- Por clase: 525 declarados, 427 IESS escritos, 27 de cuentas o IVA, 15 del predictor y 3 arriendos.
+- Por clase: 525 declarados, 427 IESS no recuperados, 27 de cuentas o IVA, 15 del predictor y 3 arriendos.
 - **El 15,4% de la sección 2 (41% con RUC activo) es un artefacto**: el RUC activo sólo existe en 2026, que es cuando hay copias.
 
 ### 6.4 La paridad del sueldo de AWS con el peldaño 1
@@ -205,36 +226,34 @@ Son 6.310 ítems sin el check (sin contar el recuperado).
 - Contra el IESS de AWS en las 30.885 que lo traen (todos los años, sin el código de producción), `ver_f` queda a ±10% del bruto del último mes menos
   el aporte en el 56,0%, y es menor en más de 10% en el 19,0%. Es lo que dice 12.15: AWS toma el 90% del promedio del proveedor, no el último mes.
 - **Lo que no se midió**: la paridad antes de 2026 (27 casos) y en quien no está en la cartera.
-- **Para la sesión 2:** entrenar con `ver_f` y medir cuánto cambia la probabilidad y el mínimo con el sueldo movido ±10% en la prueba.
+- **Para la sesión 2:** entrenar con `ver_f` (decidido, 6.6) y medir cuánto cambia la probabilidad y el mínimo con el sueldo movido ±10% en la prueba.
 
 ### 6.5 La tabla de grados: qué cambió
 
 La tabla de la sección 3 queda corregida así:
-- **C suma arriendo (152) y jubilación (69)**, que no tenían grado. El monto de la jubilación en AWS es declarado (12.15), y el arriendo tiene contrato en
-  el 0,7%: **pregunta 3**.
+- **El IESS no recuperado (1.170) sale de la etiqueta**: es un ajuste hacia la cifra de Equifax (6.2).
+- **Arriendo (152) y jubilación (69) tienen grado propio**, que no tenían. Son ingresos extra que la persona puede percibir (respuesta 3): cuentan como
+  adicional para entrenar, en una columna aparte, y se mide con y sin ellos. El arriendo tiene contrato en el 0,7%. Con RUC activo son 7, y en la prueba
+  9, ninguno con RUC: casi no mueven la medida principal.
 - **El negativo se separa**: 29.239 sin ningún ítem adicional con el check y 672 con uno que no llega a material. Los dos son «sin adicional
   documentado».
 - **El rechazado** es sólo lo que el analista apagó y no copia a otro ítem, y existe desde el 2026-03-08. No sirve como etiqueta de años anteriores.
 - **B es «sin archivo registrado»**: los documentos se registran desde 2024. Los 246 de cuentas o IVA de 2023 pueden haber tenido el archivo.
 - **La prueba es chica.** Desde julio de 2026 hay 71 A (59 con RUC activo) y 143 A o B (102 con RUC activo), contra 1.066 negativos con RUC activo.
   - Con 71, la cobertura del mínimo se mide con unos ±7 puntos: un 90% verdadero puede salir 83%.
-  - La regla se aplica tal cual (lo decide la cifra central) y la sesión 2 informa el intervalo: **pregunta 4**.
+  - La regla se aplica tal cual: decide la cifra central, y la sesión 2 informa el intervalo (respuesta 4).
+- **Sin los casos a ±1% de la cifra de Equifax** quedan 374 A y 888 B; en la prueba, 69 A (58 con RUC activo) y 60 B (34).
 
-### 6.6 Preguntas al negocio
+### 6.6 Preguntas al negocio, respondidas el 2026-11-24
 
-1. **El ingreso del IESS escrito a mano** (1.170 personas). El analista lo escribe con el mecanizado a la vista; no es el otro empleador del IESS ni
-   una copia del sueldo, y la mitad de las veces lo pone como actividad principal. ¿Qué es?
-   - (a) un empleo nuevo que el proveedor todavía no trae;
-   - (b) un ingreso de un empleador que no aporta al IESS, o de ISSFA o ISSPOL;
-   - (c) el ingreso del cónyuge escrito en el del titular;
-   - (d) comisiones, horas extra o décimos;
-   - (e) otra cosa.
-
-   Si es (a) o (b) con el documento, pasa a B. Si no, queda fuera.
-2. **Los ítems apagados.** Desde el 2026-03-08 el sistema crea un ítem del IESS por empleador y lo apaga cuando entra el recuperado. ¿Es así?
-   ¿Y antes de esa fecha, los ítems que el analista no aceptaba se borraban? En el extracto no hay ninguno.
-3. **Arriendo y jubilación** (221 personas con ese origen): ¿cuentan como declarado (C), aunque alguno tenga el contrato o la consulta de jubilación?
-4. **La prueba de la etiqueta A** tiene 71 casos desde julio de 2026. ¿Se aplica la regla del mínimo con la cifra central, como está, sabiendo que el
-   intervalo es de unos ±7 puntos? ¿O el negocio prefiere otra cosa antes de medir (por ejemplo, exigir que el intervalo entero quede sobre 90%)?
-5. **El sueldo de entrada.** `ver_f` coincide con el peldaño 1 a ±10% en el 79,4%. ¿Se entrena con él, midiendo en la sesión 2 cuánto cambia la
-   respuesta con el sueldo movido un 10%?
+1. **El IESS no recuperado** (antes «IESS escrito a mano», 1.170 personas): es un ajuste hacia la cifra de Equifax. El negocio lo vio en los
+   requerimientos 349207, 354014 y 346660: «son casos atípicos que se están ajustando al income_predictor». **Queda fuera de la etiqueta, como el
+   predictor**, y la sesión 2 mide también con A y B sin los casos a ±1% de la cifra (6.2).
+2. **Los ítems apagados**: las copias automáticas y los rechazos se explicaron, y el negocio respondió «ok entendido». Lo de antes del 2026-03-08
+   queda como no medible.
+3. **Arriendo y jubilación**: «No, son ingresos extras que podría percibir una persona». **Salen de C** y cuentan como adicional para entrenar, en una
+   columna aparte, midiendo con y sin ellos.
+4. **La prueba de 71 A**: decide la cifra central. Si la regla del mínimo pasa sólo por ella (el intervalo baja de 80%), queda «sigue», pero no se
+   conecta hasta juntar más casos A (entran unos 15 a 17 por mes).
+5. **El sueldo de entrada**: «sí, entrenar con ver_f». El negocio reafirmó, además, que la cifra de Equifax no es un insumo del predictor: «no quiero
+   que el income_predictor sea un insumo de nuestro modelo de predictor de ingresos». No hay variante con ella.

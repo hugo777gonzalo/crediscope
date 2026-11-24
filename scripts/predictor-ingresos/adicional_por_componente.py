@@ -3,8 +3,8 @@
 # Por qué existe: el extra del dependiente ya falló como etiqueta «total validado menos sueldo» (12.14 y 12.36: AUC 0,687, R² 0,01). En AWS cada
 # ítem de ingreso del titular dice de dónde sale (fuente, montos por tipo, observación) y `estado`, el check con que el analista elige qué
 # ítems cuentan para el total. Separando por componente queda una etiqueta más chica y más limpia. Este guion arma esa etiqueta, una fila por
-# persona con su grado (A, B, B?, C, fuera, negativo), y mide lo que la propuesta dejó abierto:
-#   - qué es el «IESS escrito a mano» (un ítem de fuente IESS que no es el recuperado del proveedor);
+# persona con su grado (A, B, C, arriendo o jubilación, fuera, negativo), y mide lo que la propuesta dejó abierto:
+#   - qué es el «IESS no recuperado» (un ítem de fuente IESS que no es el recuperado del proveedor);
 #   - qué son los ítems sin el check;
 #   - la paridad del sueldo de AWS (`ver_f`) con el peldaño 1 de producción (el sueldo reportado al IESS menos el aporte personal).
 #
@@ -44,9 +44,9 @@ MIN_GRUPO = 50  # un grupo más chico no lleva medianas de montos en el agregado
 INICIO_AUDITORIA = pd.Timestamp("2026-03-08")
 # Las cifras de la sección 2 de la propuesta (componentes.py de la sesión de A14): este guion tiene que dar lo mismo.
 ESPERADO = {"personas": 39017, "material": 9106, "cuentas o IVA": 1356, "cuentas o IVA con archivo": 393, "declarado": 5881,
-            "IESS escrito": 1171, "predictor": 477, "arriendo": 152, "jubilación": 69, "ruc_activo": 3874, "ruc_activo_material": 1523}
+            "IESS no recuperado": 1171, "predictor": 477, "arriendo": 152, "jubilación": 69, "ruc_activo": 3874, "ruc_activo_material": 1523}
 
-CLASES = ["cuentas o IVA", "IESS escrito", "declarado", "predictor", "arriendo", "jubilación"]
+CLASES = ["cuentas o IVA", "IESS no recuperado", "declarado", "predictor", "arriendo", "jubilación"]
 
 
 def pct(x):
@@ -82,7 +82,7 @@ def flujos(con, ids):
     # El orden decide: lo recuperado y lo marcado predictor primero, después lo que trae montos de cuentas o IVA (aunque la fuente diga otra cosa).
     fl["clase"] = np.select(
         [fl.recuperado, fl.pred, (fl.m_banco > 0) | (fl.m_iva > 0) | fl.fuente.isin(["CUENTAS", "IVAS"]), fl.fuente == "IESS", fl.fuente == "JUBILACION", fl.fuente == "ARRIENDOS"],
-        ["sueldo recuperado", "predictor", "cuentas o IVA", "IESS escrito", "jubilación", "arriendo"], default="declarado")
+        ["sueldo recuperado", "predictor", "cuentas o IVA", "IESS no recuperado", "jubilación", "arriendo"], default="declarado")
     fl["sel"] = fl.estado.fillna(False).astype(bool)
     # Un ítem apagado con el mismo monto (a USD 1) que un ítem con el check de la misma persona es el mismo ingreso escrito dos veces.
     con_check = set(zip(fl[fl.sel].ipr, fl[fl.sel].ingreso.round(0)))
@@ -114,33 +114,60 @@ def por_persona(d, fl, doc):
     t["n_componentes"] = (t[CLASES] > 0).sum(axis=1)
     a0 = lambda col: t[col].fillna(0) > 0
     # El archivo que respalda cada origen (componentes.py): cuentas o IVA, los estados de cuenta o la declaración; arriendo, el contrato;
-    # el IESS escrito, los roles; lo demás, la renta, el certificado de ingresos o los estados de cuenta.
+    # el IESS no recuperado, los roles; lo demás, la renta, el certificado de ingresos o los estados de cuenta.
     t["archivo_del_origen"] = np.select(
-        [t.origen == "cuentas o IVA", t.origen == "arriendo", t.origen == "IESS escrito"],
+        [t.origen == "cuentas o IVA", t.origen == "arriendo", t.origen == "IESS no recuperado"],
         [a0("arch_mov_bancarios") | a0("arch_declaraciones_iva"), a0("arch_contratos_arriendo"), a0("arch_roles")],
         default=a0("arch_impuesto_renta") | a0("arch_cert_ingresos") | a0("arch_mov_bancarios"))
     t["cuadra"] = np.abs(t.ver_f + t.adicional - t.med_ivt) <= np.maximum(1, 0.01 * t.med_ivt)
-    # El grado de la etiqueta (sección 3 de la propuesta, con las correcciones de la sesión 1).
+    # Arriendo y jubilación son ingresos extra que la persona puede percibir (negocio, 2026-11-24): cuentan como adicional para entrenar, pero en
+    # una columna aparte, para medir con y sin ellos (el arriendo trae el contrato en el 0,7%).
+    t["adicional_arriendo_o_jubilacion"] = t["arriendo"] + t["jubilación"]
+    # El grado de la etiqueta (sección 3 de la propuesta, con las respuestas del negocio del 2026-11-24, 6.6). El IESS no recuperado queda
+    # fuera como el predictor: en los casos que abrió el negocio, el analista partió el ingreso del IESS en dos para llegar a la cifra de Equifax.
     t["grado"] = np.select(
-        [(t.origen == "cuentas o IVA") & t.archivo_del_origen, t.origen == "cuentas o IVA", t.origen == "IESS escrito", t.origen.isin(["declarado", "arriendo", "jubilación"]), t.origen == "predictor",
-         t.adicional > 0],
-        ["A", "B", "B?", "C", "fuera", "negativo: adicional no material"], default="negativo: ningún ítem adicional")
+        [(t.origen == "cuentas o IVA") & t.archivo_del_origen, t.origen == "cuentas o IVA", t.origen.isin(["arriendo", "jubilación"]), t.origen == "declarado",
+         t.origen == "predictor", t.origen == "IESS no recuperado", t.adicional > 0],
+        ["A", "B", "arriendo o jubilación", "C", "fuera: predictor", "fuera: IESS no recuperado", "negativo: adicional no material"],
+        default="negativo: ningún ítem adicional")
     return t
+
+
+def anclaje_a_la_cifra(con, t):
+    """Cuántas veces el total validado queda cerca de la cifra de Equifax, por origen del adicional (12.15: el analista la veía al validar).
+    La cifra se lee sólo para medir y para marcar `med_total_a_1pct_de_la_cifra`; nunca es una entrada (decisión del negocio del 2026-11-23,
+    reafirmada el 2026-11-24, y `comun.PROHIBIDAS` la corta por el prefijo `med_`)."""
+    cifra = con.execute(f"select try_cast(id_consulta_equifax as bigint) id_consulta_equifax, try_cast(income_predictor_equifax as double) cifra "
+                        f"from {p.leer('predictor_equifax_por_consulta')}").df().drop_duplicates("id_consulta_equifax").set_index("id_consulta_equifax").cifra
+    x = t.id_consulta_equifax.astype("int64").map(cifra)
+    razon = t.med_ivt / x.where(x > 0)
+    t["med_total_a_1pct_de_la_cifra"] = (razon - 1).abs() <= 0.01
+    con_cifra = razon.notna()
+    out = {"personas_con_la_cifra": int(con_cifra.sum()), "por_origen": {}}
+    for k, g in t[con_cifra].groupby("origen"):
+        r = razon[g.index]
+        out["por_origen"][k] = {"n": len(g), "a_1pct_pct": pct(((r - 1).abs() <= 0.01).mean()), "a_5pct_pct": pct(((r - 1).abs() <= 0.05).mean()),
+                                "mediana_total_sobre_cifra": round(float(r.median()), 2)}
+    prueba = t.t >= c.CORTE_FECHA
+    sin_ancla = ~t.med_total_a_1pct_de_la_cifra
+    out["a_y_b_sin_los_casos_a_1pct"] = {g: {"todos": int(((t.grado == g) & sin_ancla).sum()), "en_la_prueba": int(((t.grado == g) & sin_ancla & prueba).sum()),
+                                             "en_la_prueba_con_ruc_activo": int(((t.grado == g) & sin_ancla & prueba & t.ruc_activo).sum())} for g in ["A", "B"]}
+    return out
 
 
 def reproducir(t):
     m = t[t.material]
     obtenido = {"personas": len(t), "material": len(m), "cuentas o IVA": int((m.origen == "cuentas o IVA").sum()),
                 "cuentas o IVA con archivo": int(((m.origen == "cuentas o IVA") & m.archivo_del_origen).sum()),
-                "declarado": int(m.origen.eq("declarado").sum()), "IESS escrito": int(m.origen.eq("IESS escrito").sum()),
+                "declarado": int(m.origen.eq("declarado").sum()), "IESS no recuperado": int(m.origen.eq("IESS no recuperado").sum()),
                 "predictor": int(m.origen.eq("predictor").sum()), "arriendo": int(m.origen.eq("arriendo").sum()),
                 "jubilación": int(m.origen.eq("jubilación").sum()), "ruc_activo": int(t.ruc_activo.sum()),
                 "ruc_activo_material": int((t.ruc_activo & t.material).sum())}
-    # Una persona tiene el mismo monto en cuentas o IVA y en IESS escrito: componentes.py desempataba por el orden alfabético de las
+    # Una persona tiene el mismo monto en cuentas o IVA y en IESS no recuperado: componentes.py desempataba por el orden alfabético de las
     # columnas (IESS primero) y acá gana lo que trae un movimiento bancario o de IVA. Es la única diferencia.
-    empates = int((t.material & (t["cuentas o IVA"] > 0) & (t["cuentas o IVA"] == t["IESS escrito"]) & (t["cuentas o IVA"] == t[CLASES].max(axis=1))).sum())
+    empates = int((t.material & (t["cuentas o IVA"] > 0) & (t["cuentas o IVA"] == t["IESS no recuperado"]) & (t["cuentas o IVA"] == t[CLASES].max(axis=1))).sum())
     return {"obtenido": obtenido, "esperado": ESPERADO, "diferencias": {k: obtenido[k] - v for k, v in ESPERADO.items() if obtenido[k] != v},
-            "empates_entre_cuentas_o_iva_e_iess_escrito": empates,
+            "empates_entre_cuentas_o_iva_e_iess_no_recuperado": empates,
             "el_total_cuadra_con_sueldo_mas_items_con_check_pct": round(100 * float(t.cuadra.mean()), 2),
             "personas_con_algun_item_sin_check_pct": pct((t.sin_check > 0).mean()),
             "personas_con_ruc_activo_con_algun_item_sin_check_pct": pct((t[t.ruc_activo].sin_check > 0).mean())}
@@ -157,9 +184,9 @@ def tabla_de_origenes(t):
     return out
 
 
-def iess_escrito(t, fl, doc_cols):
+def iess_no_recuperado(t, fl, doc_cols):
     """Qué es el ítem de fuente IESS con el check que no es el recuperado del proveedor."""
-    e = fl[fl.sel & (fl.clase == "IESS escrito")].merge(
+    e = fl[fl.sel & (fl.clase == "IESS no recuperado")].merge(
         t[["id_persona_requerimiento", "ver_f", "aporte", "n_empleos", "med_resp", "t", "origen"]], left_on="ipr", right_on="id_persona_requerimiento")
     iess = pd.read_csv(c.ENTRADAS / "iess_mismo_mes.csv", encoding="utf-8-sig").drop_duplicates("id_persona_requerimiento")
     e = e.merge(iess[["id_persona_requerimiento", "iess_promedio_novadata", "iess_salario_total_ultimo_mes", "iess_meses_disponibles"]],
@@ -179,7 +206,7 @@ def iess_escrito(t, fl, doc_cols):
     r_otro = e.ingreso / otro_empleo.where(otro_empleo > 50)
     resto = t[~t.id_persona_requerimiento.isin(set(e.ipr))]
     return {
-        "items": len(e), "personas": int(e.ipr.nunique()), "personas_con_origen_iess_escrito": int((t.origen == "IESS escrito").sum()),
+        "items": len(e), "personas": int(e.ipr.nunique()), "personas_con_origen_iess_no_recuperado": int((t.origen == "IESS no recuperado").sum()),
         "actividad_del_item": {k: int(v) for k, v in e.actividad.value_counts().items()},
         "actividad_del_recuperado_de_la_misma_persona": {k: int(v) for k, v in e.ipr.map(act_rec).value_counts().items()},
         "relacion_del_item": {k: int(v) for k, v in e.relacion.value_counts().items()},
@@ -189,7 +216,7 @@ def iess_escrito(t, fl, doc_cols):
         "razon_contra": {"el sueldo recuperado (ver_f)": razon(e.ver_f), "el IESS del último mes (todos los empleadores)": razon(e.iess_salario_total_ultimo_mes),
                          "el promedio del proveedor": razon(e.iess_promedio_novadata)},
         "razon_contra_el_otro_empleo_del_ultimo_mes": {"n": int(r_otro.notna().sum()), "a_10pct_pct": pct(((r_otro - 1).abs() <= 0.10).mean())},
-        "sueldo_mas_escrito_sobre_iess_del_ultimo_mes_mediana": round(float(((e.ver_f + e.ingreso) / e.iess_salario_total_ultimo_mes.where(e.iess_salario_total_ultimo_mes > 0)).median()), 2),
+        "sueldo_mas_no_recuperado_sobre_iess_del_ultimo_mes_mediana": round(float(((e.ver_f + e.ingreso) / e.iess_salario_total_ultimo_mes.where(e.iess_salario_total_ultimo_mes > 0)).median()), 2),
         "mas_de_un_empleo_en_el_iess_pct": pct((personas.n_empleos > 1).mean()),
         "mas_de_un_empleo_en_el_iess_el_resto_pct": pct((resto.n_empleos > 1).mean()),
         "sin_historial_del_iess_pct": pct((personas.iess_meses_disponibles.fillna(0) == 0).mean()),
@@ -221,7 +248,7 @@ def sin_check(t, fl):
                       for k, g in ap.groupby("clase")},
         "los_duplicados_copian_a": {k: int(v) for k, v in dup_de.clase_con_check.value_counts().items()},
         "flujos_iess_secundarios": {"n": len(sec), "con_check_pct": pct(sec.sel.mean()),
-                                    "recuperados_con_check_pct": pct(sec[sec.recuperado].sel.mean()), "escritos_con_check_pct": pct(sec[~sec.recuperado].sel.mean())},
+                                    "recuperados_con_check_pct": pct(sec[sec.recuperado].sel.mean()), "no_recuperados_con_check_pct": pct(sec[~sec.recuperado].sel.mean())},
         "personas_con_algun_item_sin_check_pct": {"todas": pct((t.sin_check > 0).mean()), "desde_2026_03_08": pct((aud.sin_check > 0).mean()),
                                                   "antes": pct((t[~t.auditado].sin_check > 0).mean())},
         "sin_los_duplicados_pct": {"todas": pct((t.sin_check_sin_duplicados > 0).mean()), "desde_2026_03_08": pct((aud.sin_check_sin_duplicados > 0).mean()),
@@ -338,13 +365,14 @@ def main():
 
     r = {"que_es": "docs/propuesta-adicional-del-dependiente.md, sesión 1: datos y etiquetas, sin modelo. Sólo agregados.",
          "reproduccion_de_la_seccion_2": reproducir(t), "origenes": tabla_de_origenes(t), "grados": grados(t),
-         "iess_escrito_a_mano": iess_escrito(t, fl, doc_cols), "items_sin_el_check": sin_check(t, fl)}
+         "iess_no_recuperado": iess_no_recuperado(t, fl, doc_cols), "items_sin_el_check": sin_check(t, fl),
+         "anclaje_a_la_cifra_de_equifax": anclaje_a_la_cifra(con, t)}
     r["paridad_del_sueldo"], t["peldano_1_neto"] = paridad(t, con_node=not sin_paridad)
     r["entradas"] = {n: c.huella(c.ENTRADAS / n) for n in ["ingresos_por_actividad.csv", "documentos_por_persona.csv", "flujos_historial.csv", "iess_mismo_mes.csv"]}
     r["versiones"] = c.versiones()
 
     columnas = ["id_consulta_equifax", "id_persona_requerimiento", "t", "rel", "med_resp", "ok", "ruc_activo", "sri_bloque", "ver_f", "med_ivt", "peldano_1_neto",
-                *CLASES, "adicional", "material", "origen", "n_componentes", "archivo_del_origen", "grado", "sin_check", "sin_check_sin_duplicados", "auditado"]
+                *CLASES, "adicional", "material", "origen", "n_componentes", "archivo_del_origen", "grado", "adicional_arriendo_o_jubilacion", "med_total_a_1pct_de_la_cifra", "sin_check", "sin_check_sin_duplicados", "auditado"]
     c.RESULTADOS.mkdir(parents=True, exist_ok=True)
     t[columnas].to_parquet(TABLA, index=False)
     r["tabla"] = {"archivo": TABLA.name, "filas": len(t), "sha256": c.huella(TABLA)}

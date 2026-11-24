@@ -555,16 +555,21 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     cada ítem dice su origen. De 9.106 adicionales materiales, 5.881 son declarados, 1.356 de cuentas o IVA (393 con archivo) y 477
     del predictor. El modelo con la etiqueta vieja ya falló (12.36). **Lo que sigue, en sesiones limpias:**
     1. datos y etiquetas, sin modelo: **hecha el 2026-11-23** (propuesta, sección 6; `adicional_por_componente.py`);
-    2. el modelo, con las reglas fijadas en la propuesta;
+    2. el modelo, con las reglas fijadas en la propuesta: **lista para arrancar** (el negocio respondió las cinco preguntas de 6.6 el 2026-11-24);
     3. conectarlo, sólo si pasa.
 
-    Lo que dejó la sesión 1:
+    Lo que dejó la sesión 1, con las respuestas del negocio:
     - Los ítems sin el check son casi todos copias automáticas del sueldo y sólo existen desde el 2026-03-08: los rechazos de verdad son el 2,4%
-      de las personas, no el 15,4%.
-    - El IESS escrito a mano lo escribe el analista con el mecanizado a la vista, y no es el otro empleador del IESS.
-    - `ver_f` coincide con el peldaño 1 de producción a ±10% en el 79,4% (771 con crudo en la cartera).
-    - La prueba de la etiqueta A tiene 71 casos.
-    - **La sesión 2 espera las cinco preguntas al negocio de 6.6.**
+      de las personas, no el 15,4%. Lo de antes de esa fecha no se puede medir.
+    - El «IESS no recuperado» (antes «IESS escrito a mano»; fuente IESS sin la observación RECUPERADO) es un ajuste hacia la cifra de Equifax
+      (requerimientos 349207, 354014 y 346660 de AWS) y queda fuera de la etiqueta, como el predictor.
+    - **Toda la etiqueta está anclada a la cifra**: el total queda a ±1% de ella en el 20,4% del IESS no recuperado, el 48,4% del predictor y el 7,0%
+      de cuentas o IVA. La sesión 2 mide también sin esos casos (374 A y 888 B).
+    - Arriendo y jubilación son adicional para entrenar, en una columna aparte, con y sin ellos.
+    - Se entrena con `ver_f`, que coincide con el peldaño 1 de producción a ±10% en el 79,4% (771 con crudo en la cartera). La cifra de Equifax nunca
+      es insumo (reafirmado el 2026-11-24).
+    - La prueba de la etiqueta A tiene 71 casos y decide la cifra central. Si la regla del mínimo pasa sólo por ella (el intervalo baja de 80%), queda
+      «sigue» sin conectar hasta juntar más A (unos 15 a 17 por mes).
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en
