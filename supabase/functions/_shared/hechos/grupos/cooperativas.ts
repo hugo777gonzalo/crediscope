@@ -79,6 +79,8 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
       diasDeMora: num(f.r.num_dias_morosidad),
       calificacion: null,
       cuotaMensual: num(f.r.val_cuota_credito),
+      // El saldo total sí viene entero (`val_saldo_total`): con él el atenuante de la deuda al día en cooperativa suma sólo lo de las operaciones a 0 días.
+      saldoTotal: num(f.r.val_saldo_total),
     };
     const numero = String(f.r.num_operacion ?? "").trim().replace(/^0+/, "");
     const registro = refDeFila(consulta, f);

@@ -31,6 +31,13 @@
 
 import { esIngresoMinimoSbu } from "./fuentes-ingreso.ts";
 import { conLosValoresDeAntes } from "./campos-sin-dato.ts";
+import type {
+  CapacidadDelPeldano, CapacidadMaximaInformativa, ClaveDeComponente, IngresoDeLaRespuesta, IngresoDelPerfil, OfertaDeLaEscalera,
+  PeldanoDelIngreso, SensibilidadDelIngreso, TipoDePersona, VeredictoDelPeldano,
+} from "./escalera-del-ingreso.ts";
+import { lecturaDeLaEscalera } from "./estandar/lectura-de-la-escalera.ts";
+import type { EstandarDeLaInstitucion } from "./estandar/estandar.ts";
+import { type LimitesDelCredito, montoMaximoParaCuota, type PedidoDeSimulacion, PRODUCTO_CONSUMO, simularCredito } from "./simulador-credito.ts";
 
 // v2 (2026-10-17): el Ingreso declarado. v3 (2026-10-18): el veredicto se
 // decide en centavos enteros y las entradas inválidas se dicen o se rechazan.
@@ -526,5 +533,300 @@ export function conIngresoDeclarado(datos: DatosDeCapacidad, montoMensual: numbe
   return {
     ...datos,
     ingresos: [{ concepto: "Ingreso declarado", montoMensual: monto, tipo: "declarado", origen: "La persona" }],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// La capacidad por peldaño de la escalera del ingreso (F10, docs/escalera-del-ingreso.md, 3)
+// ---------------------------------------------------------------------------
+//
+// capacidad-v6: la capacidad se calcula con cada peldaño por separado (evaluarCapacidad() una vez por
+// peldaño), nunca sumados, y el veredicto sale del más fuerte con el que alcanza. NADA LA USA TODAVÍA: la
+// pantalla, la función `capacidad-de-pago`, la solicitud y la API siguen con `CAPACIDAD_VERSION` (v5); la
+// escalera queda al lado hasta que el negocio decida encenderla. Por eso la versión de la escalera es otra
+// constante y no pisa a la de la capacidad de hoy.
+
+export const CAPACIDAD_CON_ESCALERA_VERSION = "capacidad-v6";
+
+/** 1234567 → "1.234.567": el locale `es` no agrupa los de cuatro cifras. */
+const conMiles = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+/** USD con puntos de miles y sin decimales, para las frases. */
+export const textoUsd = (n: number) => `USD ${conMiles(n)}`;
+
+/** Lo que el estándar de la institución acepta de cada peldaño (PROPUESTA sin medir: docs/estandar-de-la-institucion.md, 3.1). */
+export interface FraccionesAceptadas {
+  verificado_por_un_tercero: number;
+  verificado_con_documento: number;
+  cota_por_credito_otorgado: number;
+  /** Sin buró el estándar acepta 0%: no sostiene (D6). */
+  minimo_certificado: number;
+  declarado_coherente: number;
+  declarado_sin_respaldo: number;
+}
+export const FRACCIONES_ACEPTADAS: FraccionesAceptadas = {
+  verificado_por_un_tercero: 1,
+  verificado_con_documento: 1,
+  cota_por_credito_otorgado: 1,
+  minimo_certificado: 0,
+  declarado_coherente: 0.7,
+  declarado_sin_respaldo: 0,
+};
+
+export interface EntradaDeEscalera {
+  datos: Pick<DatosDeCapacidad, "obligaciones" | "deudasSinCuota" | "fuentesSinConsultar">;
+  ingreso: IngresoDelPerfil;
+  condiciones: PedidoDeSimulacion;
+  parametros?: Partial<ParametrosCapacidad>;
+  fracciones?: Partial<FraccionesAceptadas>;
+  /**
+   * El estándar de la institución (F14): de ahí salen la carga, el margen, el aporte personal, la carga extendida y lo que se
+   * acepta de cada peldaño. Tiene que haber pasado por `validarEstandar()`: con uno que no pasó, lanza. Lo que se pase suelto
+   * en `parametros`, `fracciones` y `cargaExtendida` manda sobre el estándar. Sin estándar, las constantes de siempre.
+   */
+  estandar?: EstandarDeLaInstitucion;
+  /** La carga extendida del estándar: sólo con evidencia verificada (peldaños 1 y 2) y si la institución la habilita. */
+  cargaExtendida?: { habilitada: boolean; hasta: number };
+  limites?: LimitesDelCredito;
+  /** Cuánto menos ingreso probar. Por omisión 10% y 20%. */
+  sensibilidades?: number[];
+}
+
+export interface ResultadoDeEscalera {
+  version: typeof CAPACIDAD_CON_ESCALERA_VERSION;
+  /** alcanza/justo/extendida/no_alcanza, o `sin_medir` si ningún peldaño habilitado tiene monto. */
+  veredicto: "alcanza" | "justo" | "extendida" | "no_alcanza" | "sin_medir";
+  /** Como `Capacidad.cumple`: null sin medir, que no es un rechazo. */
+  cumple: boolean | null;
+  cuotaNueva: number;
+  obligacionesActuales: number;
+  obligacionesIncompletas: boolean;
+  ingreso: IngresoDeLaRespuesta;
+}
+
+// El documento que prueba el ingreso, por tipo de persona (sección 3.2; los nombres de pantalla los decide el negocio).
+const DOCUMENTO_POR_TIPO: Record<TipoDePersona, { evidencia: string; texto: string }> = {
+  dependiente: { evidencia: "rol_de_pagos", texto: "el rol de pagos" },
+  dependiente_con_ingreso_extra: { evidencia: "declaracion_de_renta_o_de_iva", texto: "la declaración de renta o de IVA" },
+  independiente_formal: { evidencia: "declaracion_de_renta_o_estados_financieros", texto: "la declaración de renta o los estados financieros" },
+  independiente_semiformal: { evidencia: "declaracion_de_iva", texto: "la declaración de IVA" },
+  independiente_poco_formal: { evidencia: "declaracion_de_iva", texto: "la declaración de IVA" },
+  independiente_ruc_activo_no_obligado: { evidencia: "declaracion_de_iva", texto: "la declaración de IVA" },
+  rentista: { evidencia: "declaracion_de_renta", texto: "la declaración de renta" },
+  pensionista: { evidencia: "comprobante_de_pension", texto: "el comprobante de pensión" },
+  informal: { evidencia: "certificado_de_ingresos", texto: "un certificado de ingresos" },
+  sin_clasificar: { evidencia: "certificado_de_ingresos", texto: "un certificado de ingresos" },
+};
+
+export function evaluarEscalera(e: EntradaDeEscalera): ResultadoDeEscalera {
+  const lectura = e.estandar ? lecturaDeLaEscalera(e.estandar) : null;
+  // Con estándar, `medir()` y `ingresoNecesario` usan sus parámetros; sin él, los que vengan o los de siempre.
+  const parametrosDeLaMedicion = lectura ? { ...lectura.parametros, ...e.parametros } : e.parametros;
+  const parametros = parametrosValidos(parametrosDeLaMedicion);
+  const fracciones = { ...FRACCIONES_ACEPTADAS, ...lectura?.fracciones, ...e.fracciones };
+  const limites = e.limites ?? PRODUCTO_CONSUMO.limites;
+  const extendida = e.cargaExtendida ?? lectura?.cargaExtendida ?? { habilitada: false, hasta: 0.5 };
+  const simulacion = simularCredito(e.condiciones, limites);
+  if (!simulacion.ok) throw new RangeError(`Las condiciones del crédito no son válidas: ${simulacion.errores.join(" ")}`);
+  const cuotaNueva = simulacion.simulacion.cuotaPrimerMes;
+  const { monto: _monto, ...sinMonto } = e.condiciones;
+  const alPlazo = (cuotaMaxima: number) => montoMaximoParaCuota(cuotaMaxima, sinMonto, limites);
+  const ingreso = e.ingreso;
+
+  // La capacidad de hoy con UN ingreso, en centavos y sin descontar nada: el neto ya viene hecho.
+  const medir = (ingresoC: number, concepto: string, puedeSerExtendida: boolean) => {
+    const c = evaluarCapacidad({
+      ingresos: ingresoC > 0 ? [{ concepto, montoMensual: dolares(ingresoC), tipo: "aporte_propio", origen: "Escalera" }] : [],
+      obligaciones: e.datos.obligaciones,
+      deudasSinCuota: e.datos.deudasSinCuota,
+      fuentesSinConsultar: e.datos.fuentesSinConsultar,
+      cuotaNueva,
+      parametros: parametrosDeLaMedicion,
+    });
+    let veredicto: VeredictoDelPeldano = c.veredicto === "sin_ingreso" ? "no_sostiene" : c.veredicto;
+    if (veredicto === "no_alcanza" && puedeSerExtendida && extendida.habilitada) {
+      const totalC = centavos(c.obligacionesActuales) + centavos(c.cuotaNueva);
+      if (totalC <= Math.floor((centavos(c.ingresoNeto) * Math.round(extendida.hasta * 1e9)) / 1e9 + 1e-6)) veredicto = "extendida";
+    }
+    return { capacidad: c, veredicto };
+  };
+
+  const peldano = (n: number): PeldanoDelIngreso => ingreso.peldanos[n - 1];
+  const hayVerificado = peldano(1).estado === "con_monto" || peldano(2).estado === "con_monto";
+
+  // Cada peldaño con monto, con su fracción y el ingreso con que se mide.
+  const filas: Array<{ p: PeldanoDelIngreso; fraccion: number; habilitado: boolean; ingresoAceptadoC: number | null; res: ReturnType<typeof medir> | null }> = [];
+  for (const p of ingreso.peldanos) {
+    if (p.numero === 6 || p.estado !== "con_monto") continue;
+    const fraccion = p.numero === 5
+      ? (p.coherencia === "coherente" ? fracciones.declarado_coherente : fracciones.declarado_sin_respaldo)
+      : fracciones[p.peldano as keyof FraccionesAceptadas];
+    // En el 3 es el máximo de las cotas que crean espacio: null si sólo hay la cota por cuotas.
+    const base = p.ingresoNeto;
+    const ingresoAceptadoC = base === null ? null : Math.round(centavos(base) * fraccion);
+    // 1, 2 y 3 siempre; el 4 si el estándar le acepta más que 0; el 5 sólo sin un verificado.
+    const habilitado = ingresoAceptadoC !== null && ingresoAceptadoC > 0 && (p.numero !== 5 || !hayVerificado);
+    filas.push({ p, fraccion, habilitado, ingresoAceptadoC, res: ingresoAceptadoC === null ? null : medir(ingresoAceptadoC, p.peldano, p.numero <= 2) });
+  }
+
+  const escalera: CapacidadDelPeldano[] = filas.map((f) => {
+    const sostiene = f.habilitado && f.res !== null;
+    return {
+      numero: f.p.numero as CapacidadDelPeldano["numero"],
+      peldano: f.p.peldano,
+      fraccionAceptada: f.fraccion,
+      ingresoAceptado: f.ingresoAceptadoC === null ? null : dolares(f.ingresoAceptadoC),
+      veredicto: sostiene ? f.res!.veredicto : "no_sostiene",
+      cargaConElCredito: sostiene ? f.res!.capacidad.cargaConElCredito : null,
+      cuotaMaximaAdmisible: sostiene ? f.res!.capacidad.cuotaMaximaAdmisible : null,
+      montoMaximoAlPlazo: sostiene ? alPlazo(f.res!.capacidad.cuotaMaximaAdmisible) : null,
+      hipotetico: false,
+    };
+  });
+
+  const habilitadas = filas.filter((f) => f.habilitado && f.res !== null);
+  const quienSostiene = habilitadas.find((f) => ["alcanza", "justo", "extendida"].includes(f.res!.veredicto)) ?? null;
+  const quienDecide = quienSostiene ?? habilitadas[0] ?? null;
+  const veredicto: ResultadoDeEscalera["veredicto"] = quienSostiene
+    ? (quienSostiene.res!.veredicto as "alcanza" | "justo" | "extendida")
+    : quienDecide ? "no_alcanza" : "sin_medir";
+
+  // Obligaciones y cuota, iguales para todos los peldaños.
+  const obligacionesC = centavos(evaluarCapacidad({ ingresos: [], obligaciones: e.datos.obligaciones, deudasSinCuota: [], cuotaNueva: 0 }).obligacionesActuales);
+  const cuotaC = centavos(cuotaNueva);
+  const ingresoNecesario = parametros.cargaMaxima > 0 ? Math.ceil((obligacionesC + cuotaC) / parametros.cargaMaxima - 1e-6) / 100 : null;
+
+  // ---- la mejora: el 2 hipotético con lo declarado (o el mínimo certificado) como si se documentara ----
+  const documento = DOCUMENTO_POR_TIPO[ingreso.tipoDePersona];
+  const sinDocumento = peldano(2).estado !== "con_monto";
+  const montoSinDocumento = Math.max(
+    peldano(5).estado === "con_monto" ? centavos(peldano(5).montoMensual as number) : 0,
+    peldano(4).estado === "con_monto" ? centavos(peldano(4).montoMensual as number) : 0,
+  );
+  const ingresoDeReferenciaC = quienDecide?.ingresoAceptadoC ?? 0;
+  let mejora: IngresoDeLaRespuesta["mejora"] = null;
+  if (sinDocumento && montoSinDocumento > ingresoDeReferenciaC) {
+    const h = medir(montoSinDocumento, "verificado_con_documento", true);
+    const monto = alPlazo(h.capacidad.cuotaMaximaAdmisible);
+    escalera.push({
+      numero: 2, peldano: "verificado_con_documento", fraccionAceptada: fracciones.verificado_con_documento, ingresoAceptado: dolares(montoSinDocumento),
+      veredicto: h.veredicto, cargaConElCredito: h.capacidad.cargaConElCredito, cuotaMaximaAdmisible: h.capacidad.cuotaMaximaAdmisible, montoMaximoAlPlazo: monto, hipotetico: true,
+    });
+    mejora = { peldano: "verificado_con_documento", evidencia: documento.evidencia, montoMaximoAlPlazo: monto };
+  }
+
+  // ---- la oferta y la sensibilidad, sobre el peldaño que sostiene o, si ninguno, el más fuerte ----
+  let oferta: OfertaDeLaEscalera | null = null;
+  const sensibilidad: SensibilidadDelIngreso[] = [];
+  if (quienDecide) {
+    const c = quienDecide.res!.capacidad;
+    const topeC = centavos(c.cuotaMaximaAdmisible);
+    // El plazo más corto con que el monto PEDIDO cabe en la cuota tope: la cuota baja al alargar el plazo.
+    const cabe = (plazo: number) => {
+      const r = simularCredito({ ...e.condiciones, plazoMeses: plazo }, limites);
+      return r.ok && centavos(r.simulacion.cuotaPrimerMes) <= topeC;
+    };
+    let plazoMinimoMeses: number | null = null;
+    if (topeC > 0 && cabe(limites.plazoMaximoMeses)) {
+      let bajo = limites.plazoMinimoMeses - 1;
+      let alto = limites.plazoMaximoMeses;
+      while (alto - bajo > 1) {
+        const medio = Math.floor((bajo + alto) / 2);
+        if (cabe(medio)) alto = medio;
+        else bajo = medio;
+      }
+      plazoMinimoMeses = alto;
+    }
+    oferta = { peldano: quienDecide.p.peldano, ingresoAceptado: dolares(quienDecide.ingresoAceptadoC as number), cuotaTope: c.cuotaMaximaAdmisible, montoMaximoAlPlazo: alPlazo(c.cuotaMaximaAdmisible), plazoMinimoMeses };
+    for (const menos of e.sensibilidades ?? [0.1, 0.2]) {
+      const ingresoC = Math.round((quienDecide.ingresoAceptadoC as number) * (1 - menos));
+      const m = medir(ingresoC, quienDecide.p.peldano, quienDecide.p.numero <= 2);
+      sensibilidad.push({
+        menosIngreso: menos, ingresoAceptado: dolares(ingresoC), veredicto: m.veredicto, cargaConElCredito: m.capacidad.cargaConElCredito,
+        cuotaMaximaAdmisible: m.capacidad.cuotaMaximaAdmisible, montoMaximoAlPlazo: alPlazo(m.capacidad.cuotaMaximaAdmisible),
+      });
+    }
+  }
+
+  // ---- la capacidad máxima (negocio, 2026-11-22): el mayor ingreso entre los peldaños con monto, informativa ----
+  let capacidadMaxima: CapacidadMaximaInformativa | null = null;
+  {
+    const candidatos: Array<{ n: number; p: PeldanoDelIngreso; clave: ClaveDeComponente; montoC: number }> = [];
+    for (const p of ingreso.peldanos) {
+      if (p.numero === 6 || p.estado !== "con_monto") continue;
+      // El 3 cuenta por lo que prueba, aunque la cota por cuotas no cree espacio; el 1, por el neto; el resto, por su monto.
+      // El 4 cuenta por la estimación central (negocio, 2026-11-22): es un escenario informativo, el peldaño sigue siendo el mínimo certificado.
+      let monto = p.numero === 1 ? p.ingresoNeto : p.montoMensual;
+      if (p.numero === 4 && ingreso.estimacionCentral !== null && ingreso.estimacionCentral > (monto ?? 0)) monto = ingreso.estimacionCentral;
+      if (monto === null || monto <= 0) continue;
+      const componente = p.componentes.reduce((a, x) => (x.montoMensual > a.montoMensual ? x : a), p.componentes[0]);
+      candidatos.push({ n: p.numero, p, clave: componente?.clave ?? "declarado", montoC: centavos(monto) });
+    }
+    const mayor = candidatos.reduce<typeof candidatos[number] | null>((a, x) => (a === null || x.montoC > a.montoC ? x : a), null);
+    if (mayor) {
+      const m = medir(mayor.montoC, mayor.p.peldano, false);
+      const monto = alPlazo(m.capacidad.cuotaMaximaAdmisible);
+      const avisos = ["Informativa: no sostiene el cálculo ni cambia el veredicto."];
+      if (mayor.n >= 4) avisos.push("El mayor ingreso no está verificado.");
+      if (mayor.n === 4 && ingreso.estimacionCentral !== null) avisos.push("Con la estimación central del predictor.");
+      capacidadMaxima = {
+        informativa: true,
+        peldano: mayor.p.peldano,
+        componente: mayor.clave,
+        ingreso: dolares(mayor.montoC),
+        veredicto: m.capacidad.veredicto === "sin_ingreso" ? "no_alcanza" : m.capacidad.veredicto,
+        cargaConElCredito: m.capacidad.cargaConElCredito,
+        cuotaMaximaAdmisible: m.capacidad.cuotaMaximaAdmisible,
+        montoMaximoAlPlazo: monto,
+        mejoraDelMontoMaximo: monto === null ? null : monto - (oferta?.montoMaximoAlPlazo ?? 0),
+        avisos,
+      };
+    }
+  }
+
+  // ---- la frase (propuesta, sección 3.2) ----
+  const conMejora = mejora ? ` Con ${documento.texto} validado alcanzaría hasta ${textoUsd(mejora.montoMaximoAlPlazo ?? 0)}.` : "";
+  const necesario = ingresoNecesario === null ? "" : ` Para lo pedido hace falta un ingreso neto de ${textoUsd(ingresoNecesario)}.`;
+  let explicacion: string;
+  if (quienSostiene) {
+    const ing = dolares(quienSostiene.ingresoAceptadoC as number);
+    const n = quienSostiene.p.numero;
+    const ext = veredicto === "extendida" ? " Con la carga extendida." : "";
+    if (n === 1) explicacion = `Alcanza con el sueldo reportado al IESS (${textoUsd(quienSostiene.p.ingresoNeto as number)} netos).${ext}`;
+    else if (n === 2) explicacion = `Alcanza con el documento validado (${textoUsd(ing)}).${ext}`;
+    else if (n === 3) explicacion = `Alcanza con el aporte propio al IESS (${textoUsd(ing)}).${ext}`;
+    else if (n === 4) explicacion = `Alcanza con el mínimo certificado (${textoUsd(ing)}, estimado).${ext}${conMejora}`;
+    else explicacion = `Alcanza con el ingreso declarado (${textoUsd(quienSostiene.p.montoMensual as number)}; se toma el ${Math.round(quienSostiene.fraccion * 100)}%).${ext}${conMejora}`;
+  } else if (peldano(1).motivo === "pension_sin_monto" && !quienDecide) {
+    explicacion = "Cobra una pensión del IESS; la fuente no da el monto. Con el comprobante de pensión se calcula.";
+  } else if (quienDecide) {
+    explicacion = `No alcanza.${necesario}${mejora ? ` Con ${documento.texto} que pruebe lo declarado alcanzaría hasta ${textoUsd(mejora.montoMaximoAlPlazo ?? 0)}.` : ""}`;
+  } else {
+    explicacion = `Sin ingreso con qué medir.${necesario}`;
+  }
+
+  return {
+    version: CAPACIDAD_CON_ESCALERA_VERSION,
+    veredicto,
+    cumple: veredicto === "sin_medir" ? null : veredicto !== "no_alcanza",
+    cuotaNueva: dolares(cuotaC),
+    obligacionesActuales: dolares(obligacionesC),
+    obligacionesIncompletas: e.datos.deudasSinCuota.some((x) => !(typeof x?.cuotaEstimada === "number" && x.cuotaEstimada > 0)) || (e.datos.fuentesSinConsultar ?? []).length > 0,
+    ingreso: {
+      version: ingreso.version,
+      tipoDePersona: ingreso.tipoDePersona,
+      conBuro: ingreso.conBuro,
+      sostieneElCalculo: quienSostiene
+        ? { numero: quienSostiene.p.numero as 1 | 2 | 3 | 4 | 5, peldano: quienSostiene.p.peldano, ingresoAceptado: dolares(quienSostiene.ingresoAceptadoC as number), veredicto: veredicto as "alcanza" | "justo" | "extendida" }
+        : null,
+      escalera,
+      ingresoNecesario,
+      mejora,
+      explicacion,
+      referencia: null,
+      diferencias: ingreso.diferencias,
+      oferta,
+      sensibilidad,
+      capacidadMaxima,
+    },
   };
 }
