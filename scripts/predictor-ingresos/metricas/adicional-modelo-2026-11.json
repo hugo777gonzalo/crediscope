@@ -1,0 +1,2722 @@
+{
+  "que_es": "docs/propuesta-adicional-del-dependiente.md, sesión 2: el modelo del adicional del dependiente, hacia adelante. Sólo agregados.",
+  "corte": "2026-07-01",
+  "remuestreos": 1000,
+  "variables": {
+    "todos los años, sin SRI": [
+      "edad",
+      "genero",
+      "anio_mes",
+      "sueldo",
+      "carga_cuotas",
+      "cred_mayor",
+      "cred_12m",
+      "cred_24m",
+      "deuda_total",
+      "n_inst",
+      "n_creditos",
+      "valor_creditos",
+      "saldos_vig",
+      "deuda_actual",
+      "deuda_3m",
+      "max_mora",
+      "saldo",
+      "n_oper",
+      "cuota_fin",
+      "h12",
+      "h6",
+      "hact",
+      "g6",
+      "g12",
+      "c_consumo",
+      "c_tarjeta",
+      "c_micro",
+      "c_vivienda",
+      "c_comercial",
+      "c_educativo",
+      "s_consumo",
+      "s_tarjeta",
+      "s_micro",
+      "s_vivienda",
+      "n_consumo",
+      "n_tarjeta",
+      "n_micro",
+      "n_vivienda",
+      "c_codeudor",
+      "max_dias_t"
+    ],
+    "2026, con SRI": [
+      "edad",
+      "genero",
+      "anio_mes",
+      "sueldo",
+      "carga_cuotas",
+      "cred_mayor",
+      "cred_12m",
+      "cred_24m",
+      "deuda_total",
+      "n_inst",
+      "n_creditos",
+      "valor_creditos",
+      "saldos_vig",
+      "deuda_actual",
+      "deuda_3m",
+      "max_mora",
+      "saldo",
+      "n_oper",
+      "cuota_fin",
+      "h12",
+      "h6",
+      "hact",
+      "g6",
+      "g12",
+      "c_consumo",
+      "c_tarjeta",
+      "c_micro",
+      "c_vivienda",
+      "c_comercial",
+      "c_educativo",
+      "s_consumo",
+      "s_tarjeta",
+      "s_micro",
+      "s_vivienda",
+      "n_consumo",
+      "n_tarjeta",
+      "n_micro",
+      "n_vivienda",
+      "c_codeudor",
+      "max_dias_t",
+      "sri_ruc",
+      "sri_estado",
+      "sri_obligado",
+      "sri_antig",
+      "sri_susp",
+      "sri_clase",
+      "sri_ciiu_secc",
+      "sri_ciiu_div"
+    ]
+  },
+  "resultados": {
+    "todos los años, sin SRI": {
+      "principal: A o B": {
+        "entrenamiento": {
+          "personas": 33390,
+          "entrenan_el_clasificador": 27041,
+          "comprobables": 1214,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 25227,
+            "C": 4902,
+            "B": 892,
+            "fuera: IESS no recuperado": 890,
+            "negativo: adicional no material": 600,
+            "fuera: predictor": 345,
+            "A": 322,
+            "arriendo o jubilación": 212
+          }
+        },
+        "prueba": {
+          "personas": 5627,
+          "con_ruc_activo": 1740,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "B": 72,
+            "negativo: adicional no material": 72,
+            "A": 71,
+            "arriendo o jubilación": 9
+          },
+          "A": 71,
+          "A_con_ruc_activo": 59
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.725,
+          "comprobable contra el negativo, con RUC activo": 0.695,
+          "A contra el negativo, todos": 0.665
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.631,
+            "ic_bajo": 0.57,
+            "ic_alto": 0.699,
+            "positivos": 59,
+            "personas": 1125
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.651,
+            "ic_bajo": 0.589,
+            "ic_alto": 0.707,
+            "positivos": 71,
+            "personas": 4155
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.653,
+            "ic_bajo": 0.604,
+            "ic_alto": 0.705,
+            "positivos": 102,
+            "personas": 1168
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.654,
+            "ic_bajo": 0.612,
+            "ic_alto": 0.696,
+            "positivos": 143,
+            "personas": 4227
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.6,
+            "ic_bajo": 0.551,
+            "ic_alto": 0.65,
+            "positivos": 102,
+            "personas": 1740
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.614,
+            "ic_bajo": 0.572,
+            "ic_alto": 0.66,
+            "positivos": 143,
+            "personas": 5627
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 20.8,
+          "personas_con_ruc_activo_en_la_prueba": 1740,
+          "tasa_base_en_la_prueba_pct": 5.9,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 5.9,
+              "comprobables_alcanzados_pct": 1.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 8.6,
+              "comprobables_alcanzados_pct": 2.9
+            },
+            "5%": {
+              "mostrados": 87,
+              "acierto_pct": 8.0,
+              "comprobables_alcanzados_pct": 6.9
+            },
+            "10%": {
+              "mostrados": 174,
+              "acierto_pct": 8.0,
+              "comprobables_alcanzados_pct": 13.7
+            },
+            "20%": {
+              "mostrados": 348,
+              "acierto_pct": 8.0,
+              "comprobables_alcanzados_pct": 27.5
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 87.324,
+                "ic_bajo": 78.873,
+                "ic_alto": 94.366
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.591,
+                "ic_bajo": 0.52,
+                "ic_alto": 0.674
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.534,
+              "r2_del_central_en_logaritmo": 0.35,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 287.0
+            },
+            "sin_variables": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.099,
+                "ic_bajo": 74.648,
+                "ic_alto": 90.176
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.477,
+                "ic_bajo": 0.381,
+                "ic_alto": 0.578
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.477,
+              "r2_del_central_en_logaritmo": -0.069,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 256.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.441,
+                "ic_bajo": 76.271,
+                "ic_alto": 93.22
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.609,
+                "ic_bajo": 0.558,
+                "ic_alto": 0.753
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.581,
+              "r2_del_central_en_logaritmo": 0.374,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 291.0
+            },
+            "sin_variables": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 79.661,
+                "ic_bajo": 69.492,
+                "ic_alto": 88.178
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.511,
+                "ic_bajo": 0.385,
+                "ic_alto": 0.625
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.511,
+              "r2_del_central_en_logaritmo": -0.094,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 256.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.333,
+                "ic_bajo": 73.611,
+                "ic_alto": 91.667
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.536,
+                "ic_bajo": 0.408,
+                "ic_alto": 0.635
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.58,
+              "r2_del_central_en_logaritmo": 0.392,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 348.0
+            },
+            "sin_variables": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 94.444,
+                "ic_bajo": 88.889,
+                "ic_alto": 98.611
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.427,
+                "ic_bajo": 0.273,
+                "ic_alto": 0.513
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.427,
+              "r2_del_central_en_logaritmo": -0.001,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 256.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 143,
+              "cobertura_del_minimo_pct": {
+                "valor": 85.315,
+                "ic_bajo": 79.72,
+                "ic_alto": 90.909
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.564,
+                "ic_bajo": 0.503,
+                "ic_alto": 0.635
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.515,
+              "r2_del_central_en_logaritmo": 0.385,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 309.0
+            },
+            "sin_variables": {
+              "n": 143,
+              "cobertura_del_minimo_pct": {
+                "valor": 88.811,
+                "ic_bajo": 83.916,
+                "ic_alto": 93.706
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.427,
+                "ic_bajo": 0.38,
+                "ic_alto": 0.513
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.427,
+              "r2_del_central_en_logaritmo": -0.013,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 256.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.5,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.86,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.628,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 87.3
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.41,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.44,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.645,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.006,
+            "cobertura_del_minimo_en_A_pct": 87.3
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 17.6,
+          "sueldo": 8.9,
+          "anio_mes": 5.8,
+          "cred_12m": 5.5,
+          "s_consumo": 4.4,
+          "s_tarjeta": 4.2,
+          "cuota_fin": 4.1,
+          "c_tarjeta": 3.9,
+          "valor_creditos": 3.3,
+          "cred_24m": 3.3
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.631,
+            "ic": [
+              0.57,
+              0.699
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 87.324,
+            "cobertura_ic": [
+              78.873,
+              94.366
+            ],
+            "minimo_sobre_real": 0.591,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      },
+      "sin los anclados a la cifra": {
+        "entrenamiento": {
+          "personas": 33309,
+          "entrenan_el_clasificador": 26960,
+          "comprobables": 1133,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 25227,
+            "C": 4902,
+            "fuera: IESS no recuperado": 890,
+            "B": 828,
+            "negativo: adicional no material": 600,
+            "fuera: predictor": 345,
+            "A": 305,
+            "arriendo o jubilación": 212
+          }
+        },
+        "prueba": {
+          "personas": 5613,
+          "con_ruc_activo": 1730,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "negativo: adicional no material": 72,
+            "A": 69,
+            "B": 60,
+            "arriendo o jubilación": 9
+          },
+          "A": 69,
+          "A_con_ruc_activo": 58
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.728,
+          "comprobable contra el negativo, con RUC activo": 0.696,
+          "A contra el negativo, todos": 0.666
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.643,
+            "ic_bajo": 0.58,
+            "ic_alto": 0.705,
+            "positivos": 58,
+            "personas": 1124
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.672,
+            "ic_bajo": 0.61,
+            "ic_alto": 0.729,
+            "positivos": 69,
+            "personas": 4153
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.65,
+            "ic_bajo": 0.598,
+            "ic_alto": 0.698,
+            "positivos": 92,
+            "personas": 1158
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.662,
+            "ic_bajo": 0.617,
+            "ic_alto": 0.707,
+            "positivos": 129,
+            "personas": 4213
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.601,
+            "ic_bajo": 0.545,
+            "ic_alto": 0.653,
+            "positivos": 92,
+            "personas": 1730
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.624,
+            "ic_bajo": 0.58,
+            "ic_alto": 0.672,
+            "positivos": 129,
+            "personas": 5613
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 12.5,
+          "personas_con_ruc_activo_en_la_prueba": 1730,
+          "tasa_base_en_la_prueba_pct": 5.3,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 0.0,
+              "comprobables_alcanzados_pct": 0.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 5.7,
+              "comprobables_alcanzados_pct": 2.2
+            },
+            "5%": {
+              "mostrados": 86,
+              "acierto_pct": 8.1,
+              "comprobables_alcanzados_pct": 7.6
+            },
+            "10%": {
+              "mostrados": 173,
+              "acierto_pct": 6.4,
+              "comprobables_alcanzados_pct": 12.0
+            },
+            "20%": {
+              "mostrados": 346,
+              "acierto_pct": 6.1,
+              "comprobables_alcanzados_pct": 22.8
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.957,
+                "ic_bajo": 78.261,
+                "ic_alto": 94.203
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.612,
+                "ic_bajo": 0.496,
+                "ic_alto": 0.705
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.536,
+              "r2_del_central_en_logaritmo": 0.353,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 284.0
+            },
+            "sin_variables": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 82.609,
+                "ic_bajo": 72.464,
+                "ic_alto": 91.304
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.485,
+                "ic_bajo": 0.386,
+                "ic_alto": 0.58
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.485,
+              "r2_del_central_en_logaritmo": -0.085,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 257.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.207,
+                "ic_bajo": 77.586,
+                "ic_alto": 94.828
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.628,
+                "ic_bajo": 0.553,
+                "ic_alto": 0.743
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.578,
+              "r2_del_central_en_logaritmo": 0.38,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 288.0
+            },
+            "sin_variables": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 79.31,
+                "ic_bajo": 67.241,
+                "ic_alto": 89.655
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.517,
+                "ic_bajo": 0.398,
+                "ic_alto": 0.643
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.517,
+              "r2_del_central_en_logaritmo": -0.107,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 257.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 85.0,
+                "ic_bajo": 75.0,
+                "ic_alto": 93.333
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.568,
+                "ic_bajo": 0.474,
+                "ic_alto": 0.698
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.553,
+              "r2_del_central_en_logaritmo": 0.44,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 332.0
+            },
+            "sin_variables": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 95.0,
+                "ic_bajo": 88.333,
+                "ic_alto": 100.0
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.429,
+                "ic_bajo": 0.321,
+                "ic_alto": 0.514
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.429,
+              "r2_del_central_en_logaritmo": -0.0,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 257.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 129,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.047,
+                "ic_bajo": 79.845,
+                "ic_alto": 91.473
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.594,
+                "ic_bajo": 0.507,
+                "ic_alto": 0.659
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.578,
+              "r2_del_central_en_logaritmo": 0.407,
+              "mediana_del_adicional_real": 546.0,
+              "mediana_del_minimo": 316.0
+            },
+            "sin_variables": {
+              "n": 129,
+              "cobertura_del_minimo_pct": {
+                "valor": 88.372,
+                "ic_bajo": 82.946,
+                "ic_alto": 93.798
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.471,
+                "ic_bajo": 0.386,
+                "ic_alto": 0.522
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.471,
+              "r2_del_central_en_logaritmo": -0.025,
+              "mediana_del_adicional_real": 546.0,
+              "mediana_del_minimo": 257.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.46,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.72,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.665,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 88.4
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.35,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.53,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.655,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.011,
+            "cobertura_del_minimo_en_A_pct": 87.0
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 16.4,
+          "sueldo": 8.6,
+          "anio_mes": 6.7,
+          "cred_12m": 4.5,
+          "s_consumo": 4.5,
+          "s_tarjeta": 4.1,
+          "cred_24m": 3.7,
+          "cred_mayor": 3.5,
+          "c_tarjeta": 3.4,
+          "c_consumo": 3.3
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.643,
+            "ic": [
+              0.58,
+              0.705
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 86.957,
+            "cobertura_ic": [
+              78.261,
+              94.203
+            ],
+            "minimo_sobre_real": 0.612,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      },
+      "con arriendo o jubilación": {
+        "entrenamiento": {
+          "personas": 33390,
+          "entrenan_el_clasificador": 27253,
+          "comprobables": 1426,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 25227,
+            "C": 4902,
+            "B": 892,
+            "fuera: IESS no recuperado": 890,
+            "negativo: adicional no material": 600,
+            "fuera: predictor": 345,
+            "A": 322,
+            "arriendo o jubilación": 212
+          }
+        },
+        "prueba": {
+          "personas": 5627,
+          "con_ruc_activo": 1740,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "B": 72,
+            "negativo: adicional no material": 72,
+            "A": 71,
+            "arriendo o jubilación": 9
+          },
+          "A": 71,
+          "A_con_ruc_activo": 59
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.734,
+          "comprobable contra el negativo, con RUC activo": 0.708,
+          "A contra el negativo, todos": 0.654
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.641,
+            "ic_bajo": 0.577,
+            "ic_alto": 0.703,
+            "positivos": 59,
+            "personas": 1125
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.662,
+            "ic_bajo": 0.602,
+            "ic_alto": 0.72,
+            "positivos": 71,
+            "personas": 4155
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.651,
+            "ic_bajo": 0.602,
+            "ic_alto": 0.698,
+            "positivos": 102,
+            "personas": 1168
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.659,
+            "ic_bajo": 0.62,
+            "ic_alto": 0.7,
+            "positivos": 152,
+            "personas": 4236
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.596,
+            "ic_bajo": 0.548,
+            "ic_alto": 0.641,
+            "positivos": 102,
+            "personas": 1740
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.618,
+            "ic_bajo": 0.579,
+            "ic_alto": 0.66,
+            "positivos": 152,
+            "personas": 5627
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 21.4,
+          "personas_con_ruc_activo_en_la_prueba": 1740,
+          "tasa_base_en_la_prueba_pct": 5.9,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 5.9,
+              "comprobables_alcanzados_pct": 1.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 2.9,
+              "comprobables_alcanzados_pct": 1.0
+            },
+            "5%": {
+              "mostrados": 87,
+              "acierto_pct": 8.0,
+              "comprobables_alcanzados_pct": 6.9
+            },
+            "10%": {
+              "mostrados": 174,
+              "acierto_pct": 7.5,
+              "comprobables_alcanzados_pct": 12.7
+            },
+            "20%": {
+              "mostrados": 348,
+              "acierto_pct": 8.3,
+              "comprobables_alcanzados_pct": 28.4
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 85.915,
+                "ic_bajo": 77.465,
+                "ic_alto": 92.958
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.577,
+                "ic_bajo": 0.506,
+                "ic_alto": 0.708
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.53,
+              "r2_del_central_en_logaritmo": 0.352,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 285.0
+            },
+            "sin_variables": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 81.69,
+                "ic_bajo": 73.239,
+                "ic_alto": 90.141
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.5,
+                "ic_bajo": 0.399,
+                "ic_alto": 0.606
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.5,
+              "r2_del_central_en_logaritmo": -0.087,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 269.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.746,
+                "ic_bajo": 74.576,
+                "ic_alto": 93.22
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.66,
+                "ic_bajo": 0.537,
+                "ic_alto": 0.729
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.593,
+              "r2_del_central_en_logaritmo": 0.367,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 298.0
+            },
+            "sin_variables": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 77.966,
+                "ic_bajo": 66.102,
+                "ic_alto": 88.136
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.536,
+                "ic_bajo": 0.404,
+                "ic_alto": 0.655
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.536,
+              "r2_del_central_en_logaritmo": -0.114,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 269.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.111,
+                "ic_bajo": 77.778,
+                "ic_alto": 93.056
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.522,
+                "ic_bajo": 0.435,
+                "ic_alto": 0.608
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.549,
+              "r2_del_central_en_logaritmo": 0.409,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 329.0
+            },
+            "sin_variables": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 93.056,
+                "ic_bajo": 86.111,
+                "ic_alto": 98.611
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.448,
+                "ic_bajo": 0.286,
+                "ic_alto": 0.538
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.448,
+              "r2_del_central_en_logaritmo": -0.0,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 269.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 152,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.184,
+                "ic_bajo": 80.921,
+                "ic_alto": 91.447
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.541,
+                "ic_bajo": 0.5,
+                "ic_alto": 0.625
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.528,
+              "r2_del_central_en_logaritmo": 0.404,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 317.0
+            },
+            "sin_variables": {
+              "n": 152,
+              "cobertura_del_minimo_pct": {
+                "valor": 88.158,
+                "ic_bajo": 82.895,
+                "ic_alto": 92.763
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.448,
+                "ic_bajo": 0.389,
+                "ic_alto": 0.538
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.448,
+              "r2_del_central_en_logaritmo": -0.012,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 269.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.54,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.94,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.638,
+            "minimo_nuevo_sobre_el_anterior_mediana": 0.996,
+            "cobertura_del_minimo_en_A_pct": 85.9
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.38,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.26,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.651,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.007,
+            "cobertura_del_minimo_en_A_pct": 84.5
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 18.0,
+          "sueldo": 9.4,
+          "anio_mes": 6.8,
+          "cred_12m": 4.8,
+          "s_consumo": 4.5,
+          "edad": 4.3,
+          "s_tarjeta": 4.0,
+          "cred_24m": 3.4,
+          "valor_creditos": 3.4,
+          "c_tarjeta": 3.4
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.641,
+            "ic": [
+              0.577,
+              0.703
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 85.915,
+            "cobertura_ic": [
+              77.465,
+              92.958
+            ],
+            "minimo_sobre_real": 0.577,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      },
+      "con arriendo o jubilación, sin los anclados": {
+        "entrenamiento": {
+          "personas": 33304,
+          "entrenan_el_clasificador": 27167,
+          "comprobables": 1340,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 25227,
+            "C": 4902,
+            "fuera: IESS no recuperado": 890,
+            "B": 828,
+            "negativo: adicional no material": 600,
+            "fuera: predictor": 345,
+            "A": 305,
+            "arriendo o jubilación": 207
+          }
+        },
+        "prueba": {
+          "personas": 5613,
+          "con_ruc_activo": 1730,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "negativo: adicional no material": 72,
+            "A": 69,
+            "B": 60,
+            "arriendo o jubilación": 9
+          },
+          "A": 69,
+          "A_con_ruc_activo": 58
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.734,
+          "comprobable contra el negativo, con RUC activo": 0.686,
+          "A contra el negativo, todos": 0.655
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.628,
+            "ic_bajo": 0.561,
+            "ic_alto": 0.691,
+            "positivos": 58,
+            "personas": 1124
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.647,
+            "ic_bajo": 0.588,
+            "ic_alto": 0.704,
+            "positivos": 69,
+            "personas": 4153
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.647,
+            "ic_bajo": 0.598,
+            "ic_alto": 0.698,
+            "positivos": 92,
+            "personas": 1158
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.663,
+            "ic_bajo": 0.622,
+            "ic_alto": 0.703,
+            "positivos": 138,
+            "personas": 4222
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.592,
+            "ic_bajo": 0.54,
+            "ic_alto": 0.646,
+            "positivos": 92,
+            "personas": 1730
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.623,
+            "ic_bajo": 0.583,
+            "ic_alto": 0.665,
+            "positivos": 138,
+            "personas": 5613
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 13.3,
+          "personas_con_ruc_activo_en_la_prueba": 1730,
+          "tasa_base_en_la_prueba_pct": 5.3,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 0.0,
+              "comprobables_alcanzados_pct": 0.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 11.4,
+              "comprobables_alcanzados_pct": 4.3
+            },
+            "5%": {
+              "mostrados": 86,
+              "acierto_pct": 8.1,
+              "comprobables_alcanzados_pct": 7.6
+            },
+            "10%": {
+              "mostrados": 173,
+              "acierto_pct": 6.9,
+              "comprobables_alcanzados_pct": 13.0
+            },
+            "20%": {
+              "mostrados": 346,
+              "acierto_pct": 6.6,
+              "comprobables_alcanzados_pct": 25.0
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.058,
+                "ic_bajo": 75.362,
+                "ic_alto": 92.754
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.568,
+                "ic_bajo": 0.51,
+                "ic_alto": 0.705
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.545,
+              "r2_del_central_en_logaritmo": 0.331,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 289.0
+            },
+            "sin_variables": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 81.159,
+                "ic_bajo": 72.464,
+                "ic_alto": 89.855
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.509,
+                "ic_bajo": 0.405,
+                "ic_alto": 0.608
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.509,
+              "r2_del_central_en_logaritmo": -0.096,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 270.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 82.759,
+                "ic_bajo": 72.414,
+                "ic_alto": 91.379
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.601,
+                "ic_bajo": 0.535,
+                "ic_alto": 0.713
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.589,
+              "r2_del_central_en_logaritmo": 0.351,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 293.0
+            },
+            "sin_variables": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 77.586,
+                "ic_bajo": 65.517,
+                "ic_alto": 87.931
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.543,
+                "ic_bajo": 0.418,
+                "ic_alto": 0.674
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.543,
+              "r2_del_central_en_logaritmo": -0.119,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 270.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 88.333,
+                "ic_bajo": 80.0,
+                "ic_alto": 95.0
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.557,
+                "ic_bajo": 0.48,
+                "ic_alto": 0.662
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.514,
+              "r2_del_central_en_logaritmo": 0.422,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 309.0
+            },
+            "sin_variables": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 93.333,
+                "ic_bajo": 86.667,
+                "ic_alto": 98.333
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.45,
+                "ic_bajo": 0.337,
+                "ic_alto": 0.54
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.45,
+              "r2_del_central_en_logaritmo": -0.001,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 270.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 138,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.957,
+                "ic_bajo": 81.159,
+                "ic_alto": 92.047
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.56,
+                "ic_bajo": 0.508,
+                "ic_alto": 0.625
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.52,
+              "r2_del_central_en_logaritmo": 0.4,
+              "mediana_del_adicional_real": 586.0,
+              "mediana_del_minimo": 304.0
+            },
+            "sin_variables": {
+              "n": 138,
+              "cobertura_del_minimo_pct": {
+                "valor": 87.681,
+                "ic_bajo": 81.884,
+                "ic_alto": 92.754
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.461,
+                "ic_bajo": 0.402,
+                "ic_alto": 0.54
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.46,
+              "r2_del_central_en_logaritmo": -0.019,
+              "mediana_del_adicional_real": 586.0,
+              "mediana_del_minimo": 270.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.46,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 2.69,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.63,
+            "minimo_nuevo_sobre_el_anterior_mediana": 0.999,
+            "cobertura_del_minimo_en_A_pct": 84.1
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.35,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 1.96,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.644,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.005,
+            "cobertura_del_minimo_en_A_pct": 84.1
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 17.4,
+          "sueldo": 9.2,
+          "anio_mes": 7.0,
+          "cred_12m": 4.8,
+          "edad": 4.4,
+          "s_consumo": 4.2,
+          "cuota_fin": 3.7,
+          "s_tarjeta": 3.6,
+          "cred_mayor": 3.4,
+          "c_tarjeta": 3.2
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.628,
+            "ic": [
+              0.561,
+              0.691
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 84.058,
+            "cobertura_ic": [
+              75.362,
+              92.754
+            ],
+            "minimo_sobre_real": 0.568,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      }
+    },
+    "2026, con SRI": {
+      "principal: A o B": {
+        "entrenamiento": {
+          "personas": 7342,
+          "entrenan_el_clasificador": 5654,
+          "comprobables": 251,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 5294,
+            "C": 1353,
+            "fuera: IESS no recuperado": 209,
+            "B": 138,
+            "A": 113,
+            "negativo: adicional no material": 109,
+            "fuera: predictor": 104,
+            "arriendo o jubilación": 22
+          }
+        },
+        "prueba": {
+          "personas": 5627,
+          "con_ruc_activo": 1740,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "B": 72,
+            "negativo: adicional no material": 72,
+            "A": 71,
+            "arriendo o jubilación": 9
+          },
+          "A": 71,
+          "A_con_ruc_activo": 59
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.775,
+          "comprobable contra el negativo, con RUC activo": 0.67,
+          "A contra el negativo, todos": 0.787
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.619,
+            "ic_bajo": 0.56,
+            "ic_alto": 0.683,
+            "positivos": 59,
+            "personas": 1125
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.801,
+            "ic_bajo": 0.754,
+            "ic_alto": 0.84,
+            "positivos": 71,
+            "personas": 4155
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.612,
+            "ic_bajo": 0.564,
+            "ic_alto": 0.66,
+            "positivos": 102,
+            "personas": 1168
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.749,
+            "ic_bajo": 0.71,
+            "ic_alto": 0.786,
+            "positivos": 143,
+            "personas": 4227
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.566,
+            "ic_bajo": 0.517,
+            "ic_alto": 0.616,
+            "positivos": 102,
+            "personas": 1740
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.711,
+            "ic_bajo": 0.671,
+            "ic_alto": 0.751,
+            "positivos": 143,
+            "personas": 5627
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 20.0,
+          "personas_con_ruc_activo_en_la_prueba": 1740,
+          "tasa_base_en_la_prueba_pct": 5.9,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 0.0,
+              "comprobables_alcanzados_pct": 0.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 2.9,
+              "comprobables_alcanzados_pct": 1.0
+            },
+            "5%": {
+              "mostrados": 87,
+              "acierto_pct": 1.1,
+              "comprobables_alcanzados_pct": 1.0
+            },
+            "10%": {
+              "mostrados": 174,
+              "acierto_pct": 4.6,
+              "comprobables_alcanzados_pct": 7.8
+            },
+            "20%": {
+              "mostrados": 348,
+              "acierto_pct": 6.0,
+              "comprobables_alcanzados_pct": 20.6
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.507,
+                "ic_bajo": 76.056,
+                "ic_alto": 91.549
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.591,
+                "ic_bajo": 0.547,
+                "ic_alto": 0.695
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.523,
+              "r2_del_central_en_logaritmo": 0.287,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 281.0
+            },
+            "sin_variables": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 88.732,
+                "ic_bajo": 81.69,
+                "ic_alto": 95.775
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.426,
+                "ic_bajo": 0.34,
+                "ic_alto": 0.516
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.426,
+              "r2_del_central_en_logaritmo": -0.008,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 229.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.051,
+                "ic_bajo": 72.881,
+                "ic_alto": 91.525
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.674,
+                "ic_bajo": 0.571,
+                "ic_alto": 0.777
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.625,
+              "r2_del_central_en_logaritmo": 0.332,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 313.0
+            },
+            "sin_variables": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.441,
+                "ic_bajo": 77.966,
+                "ic_alto": 94.915
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.456,
+                "ic_bajo": 0.344,
+                "ic_alto": 0.557
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.456,
+              "r2_del_central_en_logaritmo": -0.019,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 229.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.333,
+                "ic_bajo": 73.611,
+                "ic_alto": 91.667
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.518,
+                "ic_bajo": 0.415,
+                "ic_alto": 0.582
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.525,
+              "r2_del_central_en_logaritmo": 0.282,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 315.0
+            },
+            "sin_variables": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 94.444,
+                "ic_bajo": 88.889,
+                "ic_alto": 98.611
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.381,
+                "ic_bajo": 0.243,
+                "ic_alto": 0.458
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.381,
+              "r2_del_central_en_logaritmo": -0.043,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 229.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 143,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.916,
+                "ic_bajo": 77.622,
+                "ic_alto": 89.51
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.553,
+                "ic_bajo": 0.483,
+                "ic_alto": 0.595
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.522,
+              "r2_del_central_en_logaritmo": 0.3,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 313.0
+            },
+            "sin_variables": {
+              "n": 143,
+              "cobertura_del_minimo_pct": {
+                "valor": 91.608,
+                "ic_bajo": 86.713,
+                "ic_alto": 95.804
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.381,
+                "ic_bajo": 0.339,
+                "ic_alto": 0.458
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.381,
+              "r2_del_central_en_logaritmo": -0.004,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 229.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.81,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.99,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.612,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 84.5
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.73,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.03,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.632,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 84.5
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 8.8,
+          "sri_estado": 7.5,
+          "sueldo": 6.4,
+          "sri_antig": 5.1,
+          "g6": 4.7,
+          "cred_12m": 4.5,
+          "s_tarjeta": 3.8,
+          "cred_mayor": 3.6,
+          "cred_24m": 3.5,
+          "c_consumo": 3.4
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.619,
+            "ic": [
+              0.56,
+              0.683
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 84.507,
+            "cobertura_ic": [
+              76.056,
+              91.549
+            ],
+            "minimo_sobre_real": 0.591,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      },
+      "sin los anclados a la cifra": {
+        "entrenamiento": {
+          "personas": 7321,
+          "entrenan_el_clasificador": 5633,
+          "comprobables": 230,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 5294,
+            "C": 1353,
+            "fuera: IESS no recuperado": 209,
+            "B": 121,
+            "negativo: adicional no material": 109,
+            "A": 109,
+            "fuera: predictor": 104,
+            "arriendo o jubilación": 22
+          }
+        },
+        "prueba": {
+          "personas": 5613,
+          "con_ruc_activo": 1730,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "negativo: adicional no material": 72,
+            "A": 69,
+            "B": 60,
+            "arriendo o jubilación": 9
+          },
+          "A": 69,
+          "A_con_ruc_activo": 58
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.783,
+          "comprobable contra el negativo, con RUC activo": 0.662,
+          "A contra el negativo, todos": 0.794
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.683,
+            "ic_bajo": 0.623,
+            "ic_alto": 0.74,
+            "positivos": 58,
+            "personas": 1124
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.843,
+            "ic_bajo": 0.805,
+            "ic_alto": 0.877,
+            "positivos": 69,
+            "personas": 4153
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.652,
+            "ic_bajo": 0.606,
+            "ic_alto": 0.699,
+            "positivos": 92,
+            "personas": 1158
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.774,
+            "ic_bajo": 0.735,
+            "ic_alto": 0.808,
+            "positivos": 129,
+            "personas": 4213
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.603,
+            "ic_bajo": 0.547,
+            "ic_alto": 0.653,
+            "positivos": 92,
+            "personas": 1730
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.737,
+            "ic_bajo": 0.7,
+            "ic_alto": 0.773,
+            "positivos": 129,
+            "personas": 5613
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 30.0,
+          "personas_con_ruc_activo_en_la_prueba": 1730,
+          "tasa_base_en_la_prueba_pct": 5.3,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 0.0,
+              "comprobables_alcanzados_pct": 0.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 5.7,
+              "comprobables_alcanzados_pct": 2.2
+            },
+            "5%": {
+              "mostrados": 86,
+              "acierto_pct": 4.7,
+              "comprobables_alcanzados_pct": 4.3
+            },
+            "10%": {
+              "mostrados": 173,
+              "acierto_pct": 5.2,
+              "comprobables_alcanzados_pct": 9.8
+            },
+            "20%": {
+              "mostrados": 346,
+              "acierto_pct": 7.8,
+              "comprobables_alcanzados_pct": 29.3
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.058,
+                "ic_bajo": 73.913,
+                "ic_alto": 92.754
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.61,
+                "ic_bajo": 0.507,
+                "ic_alto": 0.686
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.515,
+              "r2_del_central_en_logaritmo": 0.335,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 273.0
+            },
+            "sin_variables": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.957,
+                "ic_bajo": 78.261,
+                "ic_alto": 94.203
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.446,
+                "ic_bajo": 0.355,
+                "ic_alto": 0.533
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.446,
+              "r2_del_central_en_logaritmo": -0.001,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 236.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 82.759,
+                "ic_bajo": 72.414,
+                "ic_alto": 91.379
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.623,
+                "ic_bajo": 0.577,
+                "ic_alto": 0.741
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.556,
+              "r2_del_central_en_logaritmo": 0.376,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 277.0
+            },
+            "sin_variables": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.483,
+                "ic_bajo": 74.138,
+                "ic_alto": 93.103
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.475,
+                "ic_bajo": 0.366,
+                "ic_alto": 0.591
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.475,
+              "r2_del_central_en_logaritmo": -0.005,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 236.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 85.0,
+                "ic_bajo": 75.0,
+                "ic_alto": 93.333
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.493,
+                "ic_bajo": 0.418,
+                "ic_alto": 0.575
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.501,
+              "r2_del_central_en_logaritmo": 0.327,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 300.0
+            },
+            "sin_variables": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 95.0,
+                "ic_bajo": 88.333,
+                "ic_alto": 100.0
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.394,
+                "ic_bajo": 0.295,
+                "ic_alto": 0.472
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.394,
+              "r2_del_central_en_logaritmo": -0.061,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 236.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 129,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.496,
+                "ic_bajo": 77.519,
+                "ic_alto": 90.698
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.548,
+                "ic_bajo": 0.486,
+                "ic_alto": 0.62
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.524,
+              "r2_del_central_en_logaritmo": 0.344,
+              "mediana_del_adicional_real": 546.0,
+              "mediana_del_minimo": 286.0
+            },
+            "sin_variables": {
+              "n": 129,
+              "cobertura_del_minimo_pct": {
+                "valor": 90.698,
+                "ic_bajo": 85.271,
+                "ic_alto": 95.349
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.433,
+                "ic_bajo": 0.355,
+                "ic_alto": 0.479
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.433,
+              "r2_del_central_en_logaritmo": -0.011,
+              "mediana_del_adicional_real": 546.0,
+              "mediana_del_minimo": 236.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.92,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 6.02,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.693,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 84.1
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.75,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.53,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.69,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 84.1
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 8.7,
+          "sri_estado": 8.0,
+          "sueldo": 7.7,
+          "sri_antig": 4.8,
+          "g6": 4.7,
+          "cred_12m": 4.6,
+          "cred_24m": 3.5,
+          "g12": 3.5,
+          "c_tarjeta": 3.3,
+          "edad": 3.0
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.683,
+            "ic": [
+              0.623,
+              0.74
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 84.058,
+            "cobertura_ic": [
+              73.913,
+              92.754
+            ],
+            "minimo_sobre_real": 0.61,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      },
+      "con arriendo o jubilación": {
+        "entrenamiento": {
+          "personas": 7342,
+          "entrenan_el_clasificador": 5676,
+          "comprobables": 273,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 5294,
+            "C": 1353,
+            "fuera: IESS no recuperado": 209,
+            "B": 138,
+            "A": 113,
+            "negativo: adicional no material": 109,
+            "fuera: predictor": 104,
+            "arriendo o jubilación": 22
+          }
+        },
+        "prueba": {
+          "personas": 5627,
+          "con_ruc_activo": 1740,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "B": 72,
+            "negativo: adicional no material": 72,
+            "A": 71,
+            "arriendo o jubilación": 9
+          },
+          "A": 71,
+          "A_con_ruc_activo": 59
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.777,
+          "comprobable contra el negativo, con RUC activo": 0.651,
+          "A contra el negativo, todos": 0.784
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.648,
+            "ic_bajo": 0.588,
+            "ic_alto": 0.706,
+            "positivos": 59,
+            "personas": 1125
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.814,
+            "ic_bajo": 0.772,
+            "ic_alto": 0.851,
+            "positivos": 71,
+            "personas": 4155
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.626,
+            "ic_bajo": 0.582,
+            "ic_alto": 0.672,
+            "positivos": 102,
+            "personas": 1168
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.742,
+            "ic_bajo": 0.706,
+            "ic_alto": 0.779,
+            "positivos": 152,
+            "personas": 4236
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.574,
+            "ic_bajo": 0.525,
+            "ic_alto": 0.622,
+            "positivos": 102,
+            "personas": 1740
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.701,
+            "ic_bajo": 0.664,
+            "ic_alto": 0.739,
+            "positivos": 152,
+            "personas": 5627
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 13.6,
+          "personas_con_ruc_activo_en_la_prueba": 1740,
+          "tasa_base_en_la_prueba_pct": 5.9,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 5.9,
+              "comprobables_alcanzados_pct": 1.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 5.7,
+              "comprobables_alcanzados_pct": 2.0
+            },
+            "5%": {
+              "mostrados": 87,
+              "acierto_pct": 8.0,
+              "comprobables_alcanzados_pct": 6.9
+            },
+            "10%": {
+              "mostrados": 174,
+              "acierto_pct": 7.5,
+              "comprobables_alcanzados_pct": 12.7
+            },
+            "20%": {
+              "mostrados": 348,
+              "acierto_pct": 6.3,
+              "comprobables_alcanzados_pct": 21.6
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.507,
+                "ic_bajo": 76.056,
+                "ic_alto": 91.549
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.594,
+                "ic_bajo": 0.531,
+                "ic_alto": 0.7
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.532,
+              "r2_del_central_en_logaritmo": 0.304,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 286.0
+            },
+            "sin_variables": {
+              "n": 71,
+              "cobertura_del_minimo_pct": {
+                "valor": 88.732,
+                "ic_bajo": 81.69,
+                "ic_alto": 95.775
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.429,
+                "ic_bajo": 0.342,
+                "ic_alto": 0.519
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.429,
+              "r2_del_central_en_logaritmo": -0.025,
+              "mediana_del_adicional_real": 537.0,
+              "mediana_del_minimo": 230.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.051,
+                "ic_bajo": 72.881,
+                "ic_alto": 91.525
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.645,
+                "ic_bajo": 0.577,
+                "ic_alto": 0.756
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.597,
+              "r2_del_central_en_logaritmo": 0.353,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 299.0
+            },
+            "sin_variables": {
+              "n": 59,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.441,
+                "ic_bajo": 77.966,
+                "ic_alto": 94.915
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.459,
+                "ic_bajo": 0.346,
+                "ic_alto": 0.561
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.459,
+              "r2_del_central_en_logaritmo": -0.042,
+              "mediana_del_adicional_real": 502.0,
+              "mediana_del_minimo": 230.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.333,
+                "ic_bajo": 73.611,
+                "ic_alto": 91.667
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.485,
+                "ic_bajo": 0.417,
+                "ic_alto": 0.586
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.537,
+              "r2_del_central_en_logaritmo": 0.336,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 322.0
+            },
+            "sin_variables": {
+              "n": 72,
+              "cobertura_del_minimo_pct": {
+                "valor": 94.444,
+                "ic_bajo": 88.889,
+                "ic_alto": 98.611
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.384,
+                "ic_bajo": 0.245,
+                "ic_alto": 0.461
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.384,
+              "r2_del_central_en_logaritmo": -0.02,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 230.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 152,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.868,
+                "ic_bajo": 78.947,
+                "ic_alto": 90.132
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.552,
+                "ic_bajo": 0.489,
+                "ic_alto": 0.603
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.542,
+              "r2_del_central_en_logaritmo": 0.331,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 325.0
+            },
+            "sin_variables": {
+              "n": 152,
+              "cobertura_del_minimo_pct": {
+                "valor": 92.105,
+                "ic_bajo": 87.5,
+                "ic_alto": 96.053
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.384,
+                "ic_bajo": 0.333,
+                "ic_alto": 0.461
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.384,
+              "r2_del_central_en_logaritmo": -0.001,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 230.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.8,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.15,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.661,
+            "minimo_nuevo_sobre_el_anterior_mediana": 0.999,
+            "cobertura_del_minimo_en_A_pct": 84.5
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.69,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.16,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.659,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 84.5
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 8.7,
+          "sueldo": 6.8,
+          "sri_estado": 6.8,
+          "sri_antig": 5.0,
+          "cred_12m": 4.3,
+          "g6": 4.3,
+          "cred_mayor": 3.8,
+          "valor_creditos": 3.6,
+          "h6": 3.4,
+          "g12": 3.2
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.648,
+            "ic": [
+              0.588,
+              0.706
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 84.507,
+            "cobertura_ic": [
+              76.056,
+              91.549
+            ],
+            "minimo_sobre_real": 0.594,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      },
+      "con arriendo o jubilación, sin los anclados": {
+        "entrenamiento": {
+          "personas": 7321,
+          "entrenan_el_clasificador": 5655,
+          "comprobables": 252,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 5294,
+            "C": 1353,
+            "fuera: IESS no recuperado": 209,
+            "B": 121,
+            "negativo: adicional no material": 109,
+            "A": 109,
+            "fuera: predictor": 104,
+            "arriendo o jubilación": 22
+          }
+        },
+        "prueba": {
+          "personas": 5613,
+          "con_ruc_activo": 1730,
+          "por_grado": {
+            "negativo: ningún ítem adicional": 4012,
+            "C": 979,
+            "fuera: IESS no recuperado": 280,
+            "fuera: predictor": 132,
+            "negativo: adicional no material": 72,
+            "A": 69,
+            "B": 60,
+            "arriendo o jubilación": 9
+          },
+          "A": 69,
+          "A_con_ruc_activo": 58
+        },
+        "auc_fuera_de_muestra_en_el_entrenamiento": {
+          "comprobable contra el negativo, todos": 0.766,
+          "comprobable contra el negativo, con RUC activo": 0.647,
+          "A contra el negativo, todos": 0.763
+        },
+        "si_tiene_un_adicional_comprobable_auc": {
+          "A contra el negativo, con RUC activo": {
+            "valor": 0.636,
+            "ic_bajo": 0.578,
+            "ic_alto": 0.697,
+            "positivos": 58,
+            "personas": 1124
+          },
+          "A contra el negativo, todos": {
+            "valor": 0.813,
+            "ic_bajo": 0.77,
+            "ic_alto": 0.852,
+            "positivos": 69,
+            "personas": 4153
+          },
+          "comprobable contra el negativo, con RUC activo": {
+            "valor": 0.617,
+            "ic_bajo": 0.57,
+            "ic_alto": 0.664,
+            "positivos": 92,
+            "personas": 1158
+          },
+          "comprobable contra el negativo, todos": {
+            "valor": 0.75,
+            "ic_bajo": 0.715,
+            "ic_alto": 0.785,
+            "positivos": 138,
+            "personas": 4222
+          },
+          "comprobable contra todos los demás, con RUC activo": {
+            "valor": 0.563,
+            "ic_bajo": 0.511,
+            "ic_alto": 0.617,
+            "positivos": 92,
+            "personas": 1730
+          },
+          "comprobable contra todos los demás, todos": {
+            "valor": 0.706,
+            "ic_bajo": 0.669,
+            "ic_alto": 0.743,
+            "positivos": 138,
+            "personas": 5613
+          }
+        },
+        "lo_que_se_mostraria": {
+          "umbral_elegido_en_el_entrenamiento": null,
+          "acierto_maximo_en_el_entrenamiento_con_10_o_mas_pct": 10.5,
+          "personas_con_ruc_activo_en_la_prueba": 1730,
+          "tasa_base_en_la_prueba_pct": 5.3,
+          "por_fraccion_mostrada": {
+            "1%": {
+              "mostrados": 17,
+              "acierto_pct": 0.0,
+              "comprobables_alcanzados_pct": 0.0
+            },
+            "2%": {
+              "mostrados": 35,
+              "acierto_pct": 2.9,
+              "comprobables_alcanzados_pct": 1.1
+            },
+            "5%": {
+              "mostrados": 86,
+              "acierto_pct": 4.7,
+              "comprobables_alcanzados_pct": 4.3
+            },
+            "10%": {
+              "mostrados": 173,
+              "acierto_pct": 6.4,
+              "comprobables_alcanzados_pct": 12.0
+            },
+            "20%": {
+              "mostrados": 346,
+              "acierto_pct": 6.1,
+              "comprobables_alcanzados_pct": 22.8
+            }
+          }
+        },
+        "cuanto": {
+          "A": {
+            "modelo": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 85.507,
+                "ic_bajo": 76.812,
+                "ic_alto": 92.754
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.626,
+                "ic_bajo": 0.526,
+                "ic_alto": 0.697
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.54,
+              "r2_del_central_en_logaritmo": 0.333,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 286.0
+            },
+            "sin_variables": {
+              "n": 69,
+              "cobertura_del_minimo_pct": {
+                "valor": 86.957,
+                "ic_bajo": 78.261,
+                "ic_alto": 94.203
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.45,
+                "ic_bajo": 0.358,
+                "ic_alto": 0.537
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.45,
+              "r2_del_central_en_logaritmo": -0.019,
+              "mediana_del_adicional_real": 530.0,
+              "mediana_del_minimo": 238.0
+            }
+          },
+          "A con RUC activo": {
+            "modelo": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.483,
+                "ic_bajo": 74.138,
+                "ic_alto": 93.103
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.645,
+                "ic_bajo": 0.61,
+                "ic_alto": 0.733
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.581,
+              "r2_del_central_en_logaritmo": 0.379,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 289.0
+            },
+            "sin_variables": {
+              "n": 58,
+              "cobertura_del_minimo_pct": {
+                "valor": 84.483,
+                "ic_bajo": 74.138,
+                "ic_alto": 93.103
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.479,
+                "ic_bajo": 0.369,
+                "ic_alto": 0.596
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.479,
+              "r2_del_central_en_logaritmo": -0.032,
+              "mediana_del_adicional_real": 497.0,
+              "mediana_del_minimo": 238.0
+            }
+          },
+          "B": {
+            "modelo": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 83.333,
+                "ic_bajo": 73.333,
+                "ic_alto": 91.667
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.52,
+                "ic_bajo": 0.438,
+                "ic_alto": 0.588
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.512,
+              "r2_del_central_en_logaritmo": 0.368,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 307.0
+            },
+            "sin_variables": {
+              "n": 60,
+              "cobertura_del_minimo_pct": {
+                "valor": 95.0,
+                "ic_bajo": 88.333,
+                "ic_alto": 100.0
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.397,
+                "ic_bajo": 0.298,
+                "ic_alto": 0.477
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.397,
+              "r2_del_central_en_logaritmo": -0.018,
+              "mediana_del_adicional_real": 600.0,
+              "mediana_del_minimo": 238.0
+            }
+          },
+          "comprobables": {
+            "modelo": {
+              "n": 138,
+              "cobertura_del_minimo_pct": {
+                "valor": 85.507,
+                "ic_bajo": 78.986,
+                "ic_alto": 91.304
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.574,
+                "ic_bajo": 0.495,
+                "ic_alto": 0.626
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.523,
+              "r2_del_central_en_logaritmo": 0.354,
+              "mediana_del_adicional_real": 586.0,
+              "mediana_del_minimo": 307.0
+            },
+            "sin_variables": {
+              "n": 138,
+              "cobertura_del_minimo_pct": {
+                "valor": 91.304,
+                "ic_bajo": 86.232,
+                "ic_alto": 95.652
+              },
+              "minimo_sobre_real_mediana": {
+                "valor": 0.407,
+                "ic_bajo": 0.355,
+                "ic_alto": 0.477
+              },
+              "mediana_del_minimo_sobre_mediana_del_real": 0.407,
+              "r2_del_central_en_logaritmo": -0.001,
+              "mediana_del_adicional_real": 586.0,
+              "mediana_del_minimo": 238.0
+            }
+          }
+        },
+        "sueldo_movido": {
+          "-10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.8,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.81,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.645,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 85.5
+          },
+          "+10%": {
+            "probabilidad_cambio_absoluto_mediano_en_puntos": 0.76,
+            "probabilidad_cambio_absoluto_p90_en_puntos": 5.32,
+            "auc_A_contra_el_negativo_con_ruc_activo": 0.651,
+            "minimo_nuevo_sobre_el_anterior_mediana": 1.0,
+            "cobertura_del_minimo_en_A_pct": 85.5
+          }
+        },
+        "variables_que_mas_pesan": {
+          "carga_cuotas": 9.1,
+          "sueldo": 7.4,
+          "sri_estado": 6.8,
+          "sri_antig": 6.4,
+          "g6": 4.9,
+          "cred_12m": 4.6,
+          "deuda_total": 3.4,
+          "cred_mayor": 3.4,
+          "c_consumo": 3.4,
+          "s_tarjeta": 3.4
+        },
+        "reglas": {
+          "R1_auc_ruc_activo_075": {
+            "valor": 0.636,
+            "ic": [
+              0.578,
+              0.697
+            ],
+            "pasa": false
+          },
+          "R2_minimo_cubre_90_y_mediana_05": {
+            "cobertura": 85.507,
+            "cobertura_ic": [
+              76.812,
+              92.754
+            ],
+            "minimo_sobre_real": 0.626,
+            "pasa": false,
+            "pasa_solo_por_la_cifra_central": false
+          },
+          "R3_mostrado_70_comprobable": {
+            "umbral": null,
+            "acierto": null,
+            "mostrados": 0,
+            "pasa": false
+          },
+          "pasa": false
+        }
+      }
+    }
+  },
+  "conteos_de_la_propuesta": {
+    "esperado": {
+      "A": 71,
+      "A_con_ruc_activo": 59,
+      "A_sin_anclados": 69,
+      "B_sin_anclados": 60
+    },
+    "obtenido": {
+      "A": 71,
+      "A_con_ruc_activo": 59,
+      "A_sin_anclados": 69,
+      "B_sin_anclados": 60
+    },
+    "iguales": true
+  },
+  "decision": {
+    "resultado": "se cierra",
+    "variantes_que_pasan": [],
+    "se_puede_conectar": false,
+    "por_variante": {
+      "todos los años, sin SRI": {
+        "R1_auc_ruc_activo_075": {
+          "valor": 0.631,
+          "ic": [
+            0.57,
+            0.699
+          ],
+          "pasa": false
+        },
+        "R2_minimo_cubre_90_y_mediana_05": {
+          "cobertura": 87.324,
+          "cobertura_ic": [
+            78.873,
+            94.366
+          ],
+          "minimo_sobre_real": 0.591,
+          "pasa": false,
+          "pasa_solo_por_la_cifra_central": false
+        },
+        "R3_mostrado_70_comprobable": {
+          "umbral": null,
+          "acierto": null,
+          "mostrados": 0,
+          "pasa": false
+        },
+        "pasa": false
+      },
+      "2026, con SRI": {
+        "R1_auc_ruc_activo_075": {
+          "valor": 0.619,
+          "ic": [
+            0.56,
+            0.683
+          ],
+          "pasa": false
+        },
+        "R2_minimo_cubre_90_y_mediana_05": {
+          "cobertura": 84.507,
+          "cobertura_ic": [
+            76.056,
+            91.549
+          ],
+          "minimo_sobre_real": 0.591,
+          "pasa": false,
+          "pasa_solo_por_la_cifra_central": false
+        },
+        "R3_mostrado_70_comprobable": {
+          "umbral": null,
+          "acierto": null,
+          "mostrados": 0,
+          "pasa": false
+        },
+        "pasa": false
+      }
+    }
+  },
+  "entradas": {
+    "tabla_de_la_sesion_1_sha256": "bc767e4e2f921bb30322919f975b570ee8f5c18ea491080fc3c2595f890b1188"
+  },
+  "versiones": {
+    "lightgbm": "4.7.0",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "scipy": "1.18.1",
+    "pyarrow": "26.0.0",
+    "duckdb": "2.0.0.dev2610162032",
+    "python": "3.15.0"
+  }
+}
