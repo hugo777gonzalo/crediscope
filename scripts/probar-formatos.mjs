@@ -23,6 +23,7 @@ const F = await cargar("src/lib/formatos.js");
 const { describirError } = await cargar("src/lib/mensajesDeError.js");
 const { ubicacion, seccionesVisibles, hijosVisibles } = await cargar("src/lib/navegacion.js");
 const D = await cargar("src/lib/destinoDeIngreso.js");
+const DC = await cargar("src/lib/documentosDeConfirmacion.js");
 
 let fallas = 0;
 function igual(nombre, obtenido, esperado) {
@@ -224,6 +225,21 @@ igual("destino: al ingresar se vuelve a recordar", (D.olvidarSalidaAProposito(),
   igual("costo equifax: el gasto seguro no suma lo dudoso", Math.round(meses[0].gastoUsd * 100), 80);
   igual("costo equifax: el máximo sí", Math.round(meses[0].gastoMaximoUsd * 100), 120);
   igual("costo equifax: el ambiente de prueba no se cobra como producción", [meses[1].dePrueba, Math.round(meses[1].gastoUsd * 100)], [1, 40]);
+}
+
+// ---- Documentos de confirmación según el régimen (F15)
+{
+  const lista = [
+    "Movimientos bancarios de los últimos 6 meses, para contrastar los depósitos.",
+    "Declaraciones de IVA de los últimos 6 meses o facturación emitida, para dimensionar la actividad registrada en el SRI.",
+  ];
+  igual("documentos: sin régimen, la lista de siempre", DC.documentosSegunRegimen(lista, undefined), lista);
+  igual("documentos: emprendedor declara IVA, sigue", DC.documentosSegunRegimen(lista, DC.REGIMEN.EMPRENDEDOR), lista);
+  igual("documentos: general declara IVA, sigue", DC.documentosSegunRegimen(lista, DC.REGIMEN.GENERAL), lista);
+  const popular = DC.documentosSegunRegimen(lista, DC.REGIMEN.NEGOCIO_POPULAR);
+  igual("documentos: negocio popular no recibe la declaración de IVA", popular.some((d) => /IVA/.test(d)), false);
+  igual("documentos: negocio popular conserva los demás", [popular.length, popular[0]], [2, lista[0]]);
+  igual("documentos: lo que no es lista, vacío", DC.documentosSegunRegimen(null, DC.REGIMEN.NEGOCIO_POPULAR), []);
 }
 
 console.log(fallas ? `\n${fallas} FALLAS` : "\nTodo cuadra.");
