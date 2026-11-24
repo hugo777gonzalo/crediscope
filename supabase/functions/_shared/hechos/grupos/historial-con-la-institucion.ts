@@ -164,6 +164,7 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
       diasDeMora: num(f.r.diasMoraVigentes),
       calificacion: null,
       cuotaMensual: num(f.r.cuotaNova),
+      saldoTotal: null,
     };
     emisor.entidad({
       clave,

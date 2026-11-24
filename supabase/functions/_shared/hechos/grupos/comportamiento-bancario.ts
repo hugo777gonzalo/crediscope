@@ -372,7 +372,7 @@ function vista(consulta: string, crudo: AnyRecord, f: Fila, atributos: Partial<O
 function operacion(o: Partial<OperacionDeCredito> & Pick<OperacionDeCredito, "sistema" | "rol">): OperacionDeCredito {
   return {
     acreedor: null, estado: null, fechaDeConcesion: null, montoOriginal: null, saldoPorVencer: null, saldoVencido: null,
-    saldoNoDevenga: null, saldoEnDemanda: null, saldoCastigado: null, diasDeMora: null, calificacion: null, cuotaMensual: null,
+    saldoNoDevenga: null, saldoEnDemanda: null, saldoCastigado: null, diasDeMora: null, calificacion: null, cuotaMensual: null, saldoTotal: null,
     ...o,
   };
 }

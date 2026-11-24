@@ -122,7 +122,13 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 - Distinto de lo recomendado: S5 («Aprobado con Requisitos», no «Condicionado»; la clave `condicionado` no cambia); S3 (en la v1 Cambio de Condiciones equivale a aprobar; el contrato y `COMPATIBLES_CON_HOY` ya lo reflejan, ningún caso del banco cambia); C3 (Aprobación Directa sin buró, activable por institución); C4 (garante y colateral son requisitos de cada institución; el modelo sólo menciona el patrimonio); C2 (carga del 40 al 60% según el riesgo, sobre el neto disponible del negocio); R6 (pensión alimenticia: tolerancia USD 300, por encima Revisar, agravante menor); D2 (b, validar con R1); D3 (b); D5 (una sola operación con la institución); D6 (unir Super y Diners); D7 (seguir bloqueando por todas las listas del proveedor); D8 (la lista de la ONU se puede usar: **el negocio lo confirmó el 18/11 y el documento escrito lo tiene el negocio**; guardarlo en `docs/cumplimiento/`, fuera de git, cuando lo entregue; **el cotejo del PR 168 hay que corregirlo aparte**, porque su texto decía que el uso no se permite).
 - D4 (bancos sin buró): decidido con alcance acotado, el modelo nombra el atraso como «en atraso», sin días de cada operación. Nada en la capa de hechos ni en `api/openapi.yaml` da días al modelo cuando la fuente no los informa; no se cambió nada.
 - **Abierto, pide propuesta:** R1 (demanda de cobro: antigüedad más proceso terminado, ¿sale del crudo o de la Función Judicial?); R2 y R3 (umbrales de mora por sector, parametrizados por institución: tarea adicional por institución); R4 (atenuantes y agravantes ordenados, con umbrales de monto y de tiempo); I5 (c de la cota por cuotas: c = 0,75 provisional; el negocio pidió una explicación más larga y quedó en la pestaña «Explicación de c = 0,75» del documento de la propuesta, a la espera de su respuesta). **Confirmado el 19/11:** la lectura de I2 como la opción (b) (ver `docs/escalera-del-ingreso.md`).
-- **Ingreso adicional por corroborar** (pedido del 22/11): diseño en `docs/ingreso-adicional-por-corroborar.md`, sobre la escalera, con su seco (`scripts/medir-ingreso-adicional.mjs`: 1.607 de 3.766 con adicional material). Esperan las decisiones A1 a A14; la construcción (C1 a C9) no empieza sin ellas.
+- **Ingreso adicional por corroborar** (pedido del 22/11): diseño en `docs/ingreso-adicional-por-corroborar.md`, sobre la escalera, con su seco (`scripts/medir-ingreso-adicional.mjs`: 1.607 de 3.766 con adicional material). A1 a A13 aceptadas por el negocio el 22/11 como se recomendaron; A14 (el predictor sobre un sueldo) abierta: el negocio pide medir el predictor sobre dependientes con ingreso extra antes de decidir. La construcción (C1 a C9) puede empezar.
+
+**El estándar de la institución como dato (F14, 2026-11-22; PR abierto, sin conectar):** `_shared/estandar/` trae la forma, las tres plantillas (por defecto, conservadora y expansiva), el validador (un valor fuera de rango o una plantilla incompleta no se carga y dice cuál) y la configuración de una institución nueva con datos, sin tocar código. `evaluarEscalera()` puede leer de ahí la carga y las fracciones (`estandar`), con la misma salida de siempre en 252 casos de paridad. La tabla `estandares_de_institucion` es la migración 155: escrita y probada en un Postgres en memoria, **sin aplicar**. Abierto: los porcentajes de C2 por riesgo (60, 50, 40) son propuesta sin medir y no los lee nada, y la prueba de la Aprobación Directa «al 5%» ya no es un estrés con los tramos de C1.
+
+**El estándar de la institución como dato (F14, 2026-11-22; PR abierto, sin conectar):** `_shared/estandar/` trae la forma, las tres plantillas (Base, Conservadora y Optimista), el validador (un valor fuera de rango o una plantilla incompleta no se carga y dice cuál) y la configuración de una institución nueva con datos, sin tocar código. `evaluarEscalera()` puede leer de ahí la carga y las fracciones (`estandar`), con la misma salida de siempre en 252 casos de paridad. La tabla `estandares_de_institucion` es la migración 155: escrita y probada en un Postgres en memoria, **sin aplicar**. El negocio aceptó el 23/11 los porcentajes de C2 por riesgo (nada los lee todavía), la prueba de estrés de la Aprobación Directa al 6,5% del saldo y los nombres de las plantillas: Base, Conservadora y Optimista.
+
+**El veredicto de riesgo y las señales (E10, 2026-11-23; PR abierto, sin conectar):** `_shared/riesgo/` con las 14 decisiones de R2, R3 y R4 (el negocio las aceptó el 22/11, en `docs/estandar-de-la-institucion.md`, 2.6) como funciones puras sobre la capa de hechos y datos del estándar, con una prueba por decisión. El seco sin modelo está en `scripts/medir-riesgo.mjs` y su informe en el PR. Queda abierto lo que el proveedor no trae (días de bancos sin buró, lo vencido de una B o C y del IESS y el BIESS), las propuestas de 2.6 que el negocio no decidió y conectarlo con la versión mayor del marco.
 
 **Lo medido en la ola 1 (2026-11-12 y 13):**
 - El proveedor sigue caído: en una consulta de prueba con una persona autorizada contestaron 7 de 52 fuentes y fallaron 15 de las 21 obligatorias. La consulta se guarda con que conteste una sola fuente, y el resumen de la persona toma el último perfil aunque sea peor que el anterior.
@@ -158,11 +164,40 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 
 **Capa de hechos, grupo de patrimonio, etapa A (2026-11-22, PR abierto):** `hechos/grupos/patrimonio.ts` emite los 12 campos de `patrimonio` (vehículos, inmuebles e inversiones; pólizas y siniestros son de tránsito) con dos reglas que eligen: el colateral de cada vehículo (`pat.colateral@2`, que cita el precio de mercado y descarta el avalúo) y los tipos comerciales. Seco sobre las 3.766: 45.192 de 45.192 campos iguales, 0 registros que no resuelven, 0 recuentos que no cuadran, el perfil entero igual a origin/main. `process.ts` no cambió: sin versión nueva ni recálculo. **Para la etapa B (otro PR, con el sí):** 1.515 personas tendrían algún campo sin dato, 853 sólo por inversiones; antes, decidir si el `faltante` de inversiones (939 personas) es su «no hay» o una caída, como dice hoy `FUENTES` (`docs/capa-de-hechos.md`, 4.5). **Para la v37 (P61):** que al modelo no le llegue `valorAvaluoVehiculos` y el marco pierda su oración (264 caracteres); difieren del colateral en 1.464 de 2.196 personas con vehículos, aunque el modelo ya sigue la regla (2 de 460 análisis mencionan el avalúo). Decidir también si dejan de llegar las tres sumas de precios. Espera el sí a fusionar; no hace falta desplegar.
 
-**Capa de hechos, E11: las lecturas, fuera del marco (2026-11-20, PR abierto):** 27 lecturas deterministas (`lec.*`) en `hechos/senales/lecturas.ts`, funciones puras sobre los hechos que citan lo que leen, con su prueba; el inventario de las 83 reglas de marco-v36 (y 15 de la sección del buró), con lo que es lectura, definición, estructura, criterio o redacción, en `docs/capa-de-hechos.md`, 11.1. **No llegan al modelo**: el marco y el mensaje al modelo dan igual byte a byte en las 3.766 personas (`scripts/medir-lecturas.mjs`), y el perfil entero y el bloqueo, iguales a estructura-v28 (`comparar-hechos.mjs`). Sin versión nueva ni recálculo. Para la versión mayor del marco (v37): los 20 tramos de `hechos/senales/marco-v37.ts` (8.016 de 40.209 caracteres, ~3.380 tokens) salen, vuelven tres líneas de criterio, y entran las lecturas de cada persona (11.3). Fusionado (#197). El negocio decidió el 2026-11-20 (11.2, `lecturas-v2`, PR aparte): los años de una demanda de cobro se cuentan con el día del análisis, y las casas comerciales cuentan para «sin mora vigente». P53, P54 y P63 resueltos en `lecturas-v3` (2026-11-22, PR aparte, abajo); pendientes: P60 (el grupo de seguridad social, en etapa A: ver abajo); P61, el grupo de patrimonio en etapa A (arriba) y la propuesta para la v37; P67 espera que el negocio diga qué hábitos de pago de la institución son buenos y cuáles malos (los cinco valores y los tres perfiles internos, medidos, en 11.1). La sección del buró espera el contrato neutro (sección 7).
+**Capa de hechos, E11: las lecturas, fuera del marco (2026-11-20, PR abierto):** 27 lecturas deterministas (`lec.*`) en `hechos/senales/lecturas.ts`, funciones puras sobre los hechos que citan lo que leen, con su prueba; el inventario de las 83 reglas de marco-v36 (y 15 de la sección del buró), con lo que es lectura, definición, estructura, criterio o redacción, en `docs/capa-de-hechos.md`, 11.1. **No llegan al modelo**: el marco y el mensaje al modelo dan igual byte a byte en las 3.766 personas (`scripts/medir-lecturas.mjs`), y el perfil entero y el bloqueo, iguales a estructura-v28 (`comparar-hechos.mjs`). Sin versión nueva ni recálculo. Para la versión mayor del marco (v37): los 20 tramos de `hechos/senales/marco-v37.ts` (8.016 de 40.209 caracteres, ~3.380 tokens) salen, vuelven tres líneas de criterio, y entran las lecturas de cada persona (11.3). Fusionado (#197). El negocio decidió el 2026-11-20 (11.2, `lecturas-v2`, PR aparte): los años de una demanda de cobro se cuentan con el día del análisis, y las casas comerciales cuentan para «sin mora vigente». P53, P54 y P63 resueltos en `lecturas-v3` (2026-11-22, PR aparte, abajo); pendientes: P60 (el grupo de seguridad social, en etapa A: ver abajo); P61, el grupo de patrimonio en etapa A (arriba) y la propuesta para la v37; P67 se cierra sin código (negocio, 2026-11-22): el comportamiento con la institución es sólo información para el modelo, sale de un modelo interno de la institución, no entra en ningún cálculo y sus categorías no se clasifican (11.1). La sección del buró espera el contrato neutro (sección 7).
 
 **Capa de hechos, grupo de seguridad social, etapa A (2026-11-22, PR abierto):** `hechos/grupos/seguridad-social.ts` emite los 10 campos de `seguridadSocial` con su procedencia (`docs/capa-de-hechos.md`, 4.5); militares y policías salen de `fuerzas-armadas-policia.ts`, sin copia. Seco sobre las 3.766: paridad 37.660 de 37.660 campos, 0 registros que no resuelven, el perfil entero igual a estructura-v31. Sin versión nueva ni recálculo. **Falta la etapa B** (PR aparte, con el sí del negocio): `process.ts` lo arma desde los hechos y una fuente caída deja el campo en null con `camposSinDato`. Antes hay que decidir qué es `faltante` en `afiliacionIess` (2.431 de 2.567 en el respaldo del 2026-10-03): el perfil lo lee como «no se pudo» (null, P60) y `FUENTES` como «no hay». Con el perfil, ~95% de las personas tendría `afiliadoIessActivo` sin dato. P60 sale del marco con la v37, cuando el modelo lea la marca.
 
-**Capa de hechos: P53, P54 y P63 y el grupo de identidad en etapa A (`lecturas-v3`, 2026-11-22, PR abierto):** con el sí del negocio a lo recomendado (el nivel de educación más alto de los dos, y el técnico superior cuenta como tercer nivel). El grupo de empleo emite la relación de cada empleo vigente con su patrono (`lab.empleos_actuales.relacion`); tres lecturas nuevas (`lec.lab.posible_negocio_familiar`, `lec.lab.empleos_con_terceros`, `lec.ide.tercer_o_cuarto_nivel`); el grupo de identidad, lleno en etapa A con `ide.nivel_educacion.mas_alto` (la decisión 4 de 10.5) y `dif.ide.nivel_de_educacion` mudada de `conciliacion.ts`. Seco sobre las 3.766: perfil entero, bloqueo y mensaje al modelo iguales; 2 personas donde el mensaje de hoy dice «posible negocio familiar» de lo que por el RUC es su propio negocio (`docs/capa-de-hechos.md`, 11.5). Sin versión nueva ni recálculo. Queda para decidir: si P63 dice «se cumple» cuando falta el título y el registro civil ya alcanza (116 personas), y la etapa B de identidad (con la decisión 6 de 10.5). Espera el sí a fusionar.
+**Capa de hechos: P53, P54 y P63 y el grupo de identidad en etapa A (`lecturas-v3`, 2026-11-22, PR abierto):** con el sí del negocio a lo recomendado (el nivel de educación más alto de los dos, y el técnico superior cuenta como tercer nivel). El grupo de empleo emite la relación de cada empleo vigente con su patrono (`lab.empleos_actuales.relacion`); tres lecturas nuevas (`lec.lab.posible_negocio_familiar`, `lec.lab.empleos_con_terceros`, `lec.ide.tercer_o_cuarto_nivel`); el grupo de identidad, lleno en etapa A con `ide.nivel_educacion.mas_alto` (la decisión 4 de 10.5) y `dif.ide.nivel_de_educacion` mudada de `conciliacion.ts`. Seco sobre las 3.766: perfil entero, bloqueo y mensaje al modelo iguales; 2 personas donde el mensaje de hoy dice «posible negocio familiar» de lo que por el RUC es su propio negocio (`docs/capa-de-hechos.md`, 11.5). Sin versión nueva ni recálculo. P63 en esas 116 personas lo decidió el negocio («se cumple», abajo); queda la etapa B de identidad (con la decisión 6 de 10.5). Espera el sí a fusionar.
+
+**Decisiones del negocio del 2026-11-22 y 23 (R2, R3, R4, E9, «faltante» y P63):** las anotan la pestaña «Decisiones
+pendientes» del doc de la propuesta y `docs/capa-de-hechos.md` (10.5 y 4.5). **Destraban F14 y E10.** Todas siguen lo
+recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
+- **Mora vigente (R2 y R3):**
+  - se compara sólo lo vencido de más de 30 días;
+  - sin buró, en bancos manda la letra (B1 a C2 Revisar, D y E Negar);
+  - entre sectores manda el peor, sin sumar;
+  - el IESS y el BIESS van en SBS, por días;
+  - los umbrales van en dólares, revisados cada enero;
+  - el tramo Revisar sale Aprobado con Requisitos con el certificado de estar al día, si la capacidad alcanza;
+  - con mora de hoy en Negar, la IA sube como mucho hasta Revisar.
+  - **R2-5 (más de 90 días con monto chico) quedó sin preferencia**: se construye con la recomendada (mínimo Revisar)
+    como provisional.
+- **Historial (R4):**
+  - el retail de julio de 2025 es historial;
+  - está superado si hoy está al día en todo y tiene una deuda formal al día de USD 500 o más;
+  - el decaimiento es a 6, 12 y 24 meses;
+  - la demanda de cobro baja un tramo si la mora está superada, después de R1;
+  - el orden propuesto de los atenuantes y agravantes;
+  - para subir hace falta citar uno de los tres primeros atenuantes.
+- **E9:** la 1, la 2 y la 6 se aceptaron; la 3 y la 5 se cerraron.
+- **Inversiones:** tres estados, con el capital aportado en cada compañía y el total.
+- **Regla general de `faltante` para todas las fuentes:** es «no hay» sólo si la fuente nunca contesta vacío y llega
+  sin mensaje de error. Seguimiento: guardar el mensaje para separar los casos mezclados de SERCOP y de renta.
+- **P63:** «se cumple» en los 116 con el Registro Civil en tercer o cuarto nivel.
+- **Afiliación al IESS, distinto de lo recomendado:** el negocio pidió validarla con la fuente directa
+  coberturasalud.msp.gob.ec, que va al frente D, sin evadir barreras contra robots. Mientras tanto su `faltante` es
+  «la fuente no respondió».
 
 ## 1. Lo que Claude puede hacer ya
 
@@ -503,6 +538,38 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
     fecha de la consulta), sin estado civil, zona ni IESS; el «obligado a llevar contabilidad» se queda y
     va al perfil; completar el lote de paridad queda para después; la próxima versión del marco se hará
     con los resultados del predictor.
+    **Decidido el 2026-11-23 (A14, `docs/ingreso-adicional-por-corroborar.md`, 6.1):** el predictor sigue sin estimar al
+    dependiente con sueldo verificado (`SEGMENTOS_QUE_SE_ESTIMAN` no cambia), y se suma la señal sin monto «tiene RUC activo:
+    puede tener ingresos que no constan»; el monto lo ponen la renta, el IVA y las cuotas. Medido en seco sobre 3.874
+    dependientes y públicos de AWS con RUC activo:
+    - el mínimo de `ingreso-v2` cubre 64,6% y 67,5% (niveles 1 y 2) contra la meta de 90%;
+    - la estimación central queda dentro de ±20% en 20,6% y 29,6%, contra 65,0% del sueldo solo;
+    - el nivel 1 no separa a quien tiene adicional (AUC 0,498), y lo que separa el nivel 2 lo da el buró solo;
+    - la cifra de Equifax tampoco le gana al sueldo (35,5% contra 63,3% dentro de ±20%);
+    - con RUC activo el adicional material es del 39,3%, contra 20,8% sin RUC.
+    **El negocio confirmó el mismo día que la cifra de Equifax nunca es variable del predictor** (`comun.PROHIBIDAS` ya lo impide). Bajar
+    más historia de AWS no se recomienda: las extracciones ya llegan a 2021, el SRI no existe antes de fines de 2025 y la curva de
+    aprendizaje está plana (12.32). Lo que falta es calidad de la etiqueta: los documentos anotados (D8).
+    **Pedido el 2026-11-23: intentar el adicional del dependiente con la etiqueta por componente**
+    (`docs/propuesta-adicional-del-dependiente.md`). En AWS, el total validado es el sueldo más los ítems con el check (99,99%), y
+    cada ítem dice su origen. De 9.106 adicionales materiales, 5.881 son declarados, 1.356 de cuentas o IVA (393 con archivo) y 477
+    del predictor. El modelo con la etiqueta vieja ya falló (12.36). **Lo que sigue, en sesiones limpias:**
+    1. datos y etiquetas, sin modelo: **hecha el 2026-11-23** (propuesta, sección 6; `adicional_por_componente.py`);
+    2. el modelo, con las reglas fijadas en la propuesta: **lista para arrancar** (el negocio respondió las cinco preguntas de 6.6 el 2026-11-24);
+    3. conectarlo, sólo si pasa.
+
+    Lo que dejó la sesión 1, con las respuestas del negocio:
+    - Los ítems sin el check son casi todos copias automáticas del sueldo y sólo existen desde el 2026-03-08: los rechazos de verdad son el 2,4%
+      de las personas, no el 15,4%. Lo de antes de esa fecha no se puede medir.
+    - El «IESS no recuperado» (antes «IESS escrito a mano»; fuente IESS sin la observación RECUPERADO) es un ajuste hacia la cifra de Equifax
+      (requerimientos 349207, 354014 y 346660 de AWS) y queda fuera de la etiqueta, como el predictor.
+    - **Toda la etiqueta está anclada a la cifra**: el total queda a ±1% de ella en el 20,4% del IESS no recuperado, el 48,4% del predictor y el 7,0%
+      de cuentas o IVA. La sesión 2 mide también sin esos casos (374 A y 888 B).
+    - Arriendo y jubilación son adicional para entrenar, en una columna aparte, con y sin ellos.
+    - Se entrena con `ver_f`, que coincide con el peldaño 1 de producción a ±10% en el 79,4% (771 con crudo en la cartera). La cifra de Equifax nunca
+      es insumo (reafirmado el 2026-11-24).
+    - La prueba de la etiqueta A tiene 71 casos y decide la cifra central. Si la regla del mínimo pasa sólo por ella (el intervalo baja de 80%), queda
+      «sigue» sin conectar hasta juntar más A (unos 15 a 17 por mes).
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en

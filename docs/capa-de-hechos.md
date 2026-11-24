@@ -1221,6 +1221,18 @@ resto de `controles-bloqueo.ts`.
   **Para decidir antes de la B**: si el `faltante` de inversiones es su «no hay» (como el de vehículos) o una caída, como
   dice hoy `FUENTES`; contesta vacío en 1.718 personas y `faltante` en 939. Con lo que dice `FUENTES`, esas 939 pasarían
   de «0 inversiones» a «sin dato».
+- **Decidido (negocio, 2026-11-22): tres estados.** Vacío es «no tiene» (1.718). Con datos es «sí tiene», con el
+  capital de cada inversión y el total (537). `faltante` o `error` es «la fuente no respondió» (1.511, que hoy dicen 0).
+  Lo medido en el crudo del 2026-10-03: 296 de los 325 `faltante` de inversiones traen «500 INTERNAL_SERVER_ERROR» y
+  29 vienen sin mensaje. Cada registro es una participación en una compañía (`personaJuridica`, con su RUC) y trae
+  `capital`, el aporte a valor nominal: 1.065 registros, sin ningún cero; por persona, una mediana de USD 470 y un p90
+  de USD 11.391. Es capital aportado, no valor de mercado, y así se rotula. La etapa B suma el capital como campo
+  nuevo, con su versión de la estructura.
+- **La regla general, para todas las fuentes (negocio, 2026-11-22):** un `faltante` es «no hay» sólo si la fuente
+  nunca contesta vacío **y** llega sin mensaje de error (404 o 204). Cumplen: vehículos (762 `faltante` sin mensaje y
+  ningún vacío), impedimento y antecedentes («Consulta sin valor»). No cumplen: inversiones y afiliación al IESS. Hay
+  dos mezcladas: SERCOP (116 de 1.352 con «ERROR EN LA EXTRACCION DE DATOS») y renta (254 de 1.654). Para separarlas
+  hay que guardar el mensaje junto al estado de cada fuente, que hoy no se guarda. Va aparte.
 
 #### P61 en la v37: al modelo, sólo el colateral
 
@@ -1286,6 +1298,13 @@ el criterio de P61: «No tener patrimonio no es negativo» y que un vehículo o 
     lista como no consultada. **Decisión para la etapa B**: con el perfil, el 95% de las personas tendría
     `afiliadoIessActivo` marcado sin dato; con `FUENTES`, sería `false` («no afiliado»), que es lo que la auditoría
     sacó porque contradecía empleos confirmados.
+    **Decidido (negocio, 2026-11-22):** por la regla general (grupo de patrimonio, arriba), su `faltante` es «la fuente
+    no respondió». En el crudo, los 2.431 traen «ERROR DE RESPUESTA DE LA FUENTE, INFORMACION INCONSISTENTE»
+    después de 2 intentos. Cuando la fuente contesta, el «no tiene» llega como dato: «NO REGISTRA AFILIACIÓN» (11)
+    y «No tiene afiliaciones registradas» (7). En la base, 1.852 de las 3.003 personas con `faltante` tienen un empleo
+    vigente. `FUENTES` se corrige en la etapa B. Además, el negocio pidió validarla con una fuente directa
+    (coberturasalud.msp.gob.ec: IESS, ISSFA e ISSPOL), con dos caminos: si uno falla, entra el otro. Es del frente D, y
+    va sin evadir barreras contra robots: la rotación de IP para esquivar bloqueos que se propuso no se anotó.
 - **P60 y la etapa B.** En la etapa B `seguridadSocial` entra a `GRUPOS_CON_SIN_DATO`: el campo queda null con la marca
   en `camposSinDato`, y la pantalla puede decir «sin dato (la fuente no contestó)». El modelo sigue leyendo con
   `conLosValoresDeAntes()` hasta la versión mayor del marco (para él, el mismo null de hoy), así que P60 sale del marco
@@ -1783,6 +1802,19 @@ No se inventó ningún código para esa fuente: se nombra cuando exista.
 | 7 | 16 | Cuándo se usa `dif.end.bancos` | 110 personas con buró y perfil; 25 a un mes o menos | Nada que decidir ahora: entra con el contrato del buró (sección 7) y se mira otra vez con más consultas |
 | 8 | 12 | EMOV trae sus multas sin fecha (38 personas, 44 multas) | ninguna se pudo comparar por día | Nada por ahora: no se repite ninguna por placa y monto. Si Proveedor_Info_1 puede traer la fecha, se compara |
 
+**Decididas por el negocio (2026-11-22 y 23)**, con lo recomendado:
+
+- **1:** no se suma ni se resta. En la versión mayor del marco (v37), el modelo lee que la operación con
+  la institución ya está dentro de la deuda de bancos cuando aparece `dif.inst.posible_en_bancos`. El
+  negocio confirmó que la institución reporta por medio de ese banco.
+- **2:** una sola regla del obligado (`ruc.ts`), con versión de `fuentes-ingreso.ts` y el recálculo de las 19.
+- **3 y 5:** cerradas. Las diferencias quedan.
+- **4:** ver la fila (2026-11-22, PR 203).
+- **6:** las edades y antigüedades se calculan con la fecha de la consulta, con su versión de la
+  estructura y su recálculo (3.232 perfiles si se rearman hoy). No choca con `lecturas-v2`: el perfil es
+  la foto del día de la consulta, y la lectura de la demanda cuenta los años hasta el día del análisis.
+- **7 y 8:** nada que decidir.
+
 ### 10.6 Lo que no se midió
 
 - `dif.lab.salario_del_mes` da 0 en las 3.766: cuando el mecanizado y los aportes traen el mismo
@@ -1940,8 +1972,13 @@ para cuando exista el contrato neutro (`buro/`), sin implementar:
 
 Lo que quedó **pendiente** y por qué: P53, P54 y P63 se resolvieron en `lecturas-v3` (11.5); P60, la etapa B
 de su grupo (seguridad social, en etapa A desde el 2026-11-22: 4.5); P61, la v37 (su grupo pasó la etapa A
-el 2026-11-22 y la propuesta está en 4.5); P67, que el negocio diga qué categoría de la
-institución es buena y cuál mala. Ninguno se inventó.
+el 2026-11-22 y la propuesta está en 4.5). Ninguno se inventó.
+
+**P67 se cierra sin código** (negocio, 2026-11-22). El hábito de pago y el perfil interno de la
+operación con la institución son sólo información para el modelo: un punto adicional que sale de un
+modelo interno de hábito de pago de la institución. No se reproduce cómo se calcula, no entra en
+ningún cálculo (ni el score, ni la capacidad, ni una lectura) y sus categorías no se clasifican en
+buenas y malas. El marco sigue pidiéndole al modelo que lo resalte como referencia (P65 a P68).
 
 **P67, medido el 2026-11-20** (sólo lectura, 3.766 personas reales, 4.042 operaciones con la
 institución en 2.600 personas). La fuente trae cinco hábitos de pago: Excelente Pagador 2.602,
@@ -1949,9 +1986,8 @@ Cumple con poco retraso 935, Cumple con retraso 347, Mal pagador 80 y Pagador Ir
 dato); y tres perfiles internos: NUEVO 2.473, BUENO 1.446 y MALO 121. No trae la fecha de concesión
 ni las cuotas pagadas: sólo el corte, la cuota, el plazo, el saldo y los días de mora. Para «cuánta
 historia hay detrás» sirve el perfil interno: NUEVO es poca historia (1.999 «Excelente Pagador» son
-NUEVO). Con la clasificación del negocio (qué hábito es bueno y cuál malo), las dos lecturas
-(`lec.inst.contraste_con_el_buro` y `lec.inst.poca_historia`) son reglas simples sobre hechos que ya
-existen (`inst.habito_de_pago`, `inst.perfil_interno`).
+NUEVO). Queda como descripción de la fuente: por la decisión de arriba, no se construyen lecturas
+sobre estas categorías.
 
 ### 11.2 Las lecturas (27 de E11 y 3 de lecturas-v3)
 
