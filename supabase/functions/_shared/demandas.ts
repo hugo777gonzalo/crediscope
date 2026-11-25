@@ -160,9 +160,14 @@ const TIPOS_SIN_TEMA = new Set([
 // erratas de la fuente ("COOPERATIVA D AHORRO", "DE HORRO Y CREDITO"). Las
 // de transporte o de producción no son financieras, y las que no dicen
 // "ahorro y crédito" en el nombre (ILALÓ, SANTA ROSA) no se reconocen.
+//
+// El banco también se escribe pegado a otra palabra ("FILANBANCO", "PRODUBANCO",
+// "AUSTROBANK OVERSEAS (LTD)") o abreviado ("BCO. PICHINCHA"), y la cooperativa como "COOP.".
+// Ninguna de las dos es una persona: sólo una palabra que TERMINA en BANCO o BANK (no una que
+// la contenga: no hay apellido que termine así) y COOP seguida de «ahorro» o «crédito».
 const INSTITUCION_FINANCIERA = new RegExp(
   [
-    "\\bBANCO\\b", "\\bCOOPERATIVA\\b[^,;]{0,12}\\b(AHORRO|HORRO|CREDITO)\\b", "\\bCOAC\\b", "\\bMUTUALISTA\\b",
+    "\\b[A-Z]*BANCO\\b", "\\b[A-Z]*BANK\\b", "\\bBCO\\b", "\\bCOOP(?:ERATIVA)?\\b[^,;]{0,12}\\b(AHORRO|HORRO|CREDITO)\\b", "\\bCOAC\\b", "\\bMUTUALISTA\\b",
     "\\bFINANCIERA\\b", "\\bCAJA DE AHORRO", "\\bCMAC\\b", "\\bGMAC\\b", "\\bACCEPTANCE\\b", "\\bCFN\\b", "\\bBIESS\\b",
     "\\bDINERS\\b", "\\bINTERDIN\\b", "\\bPACIFICARD\\b", "\\bAMERICAN EXPRESS\\b", "\\bTARJETAS? DE CREDITO\\b",
   ].join("|"),
@@ -182,11 +187,44 @@ export type QuienDemanda = "institucion_financiera" | "empresa" | "persona";
 const EMPRESA =
   /\bS\.? ?A\.?(?=\s|$|,)|\bC\.? ?A\.?(?=\s|$|,)|\bS\.?A\.?S\b|\bCIA\b|\bLTDA\b|\bCOMPANIA\b|\bCORPORACION\b|\bCOMERCIAL\b|\bCOMERCIALIZADORA\b|\bEMPRESA\b|\bIMPORTADORA\b|\bDISTRIBUIDORA\b|\bINDUSTRIA|\bGRUPO\b|\bSOCIEDAD\b|\bFUNDACION\b|\bASOCIACION\b|\bCOOPERATIVA\b|\bINSTITUTO\b|\bUNIVERSIDAD\b|\bUNIDAD EDUCATIVA\b|\bMUNICIPIO\b|\bGAD\b|\bMINISTERIO\b|\bSERVICIO DE RENTAS\b|\bIESS\b|\bCNEL\b|\bCONAFIPS\b/;
 
+// Las entidades que el clasificador de arriba leía como persona natural (el negocio, 2026-11-24, tras la
+// revisión con casos reales de E10: de 374 demandantes distintos de cobro que se leían «persona», 29 eran
+// entidades; una persona natural pesa menos que una empresa en R1, así que cada una de estas bajaba el peso
+// de una demanda que no era de un particular). Cada marca es la que tenía un caso medido en la cartera
+// (3.766 personas, 4.132 demandantes distintos; ninguno de los que cambian es una persona):
+//  - la forma societaria pegada a lo que sigue ("TECNICENTRO DEL AUSTRO S.A.TEDASA"): la regla de arriba
+//    pide un espacio, una coma o el final después de la S.A. y ésta no lo tenía; acá se pide la sigla con
+//    sus puntos y sin espacio entre las letras. También S.C. y S.C.C. (sociedad civil y en comandita) y las
+//    formas en inglés (LTD, INC, CORP, LLC);
+//  - el fondo de cesantía o de jubilación, el comité, la agencia pública ("AGENCIA NACIONAL DE TRASNITO"),
+//    el centro, el fideicomiso (de titularización), el ejército, el Estado y un edificio (la administración
+//    que cobra las alícuotas);
+//  - "COOP." y las siglas de una cooperativa ("COOPMEGO"), no "COOPER": es un apellido.
+// Son palabras completas: "FONDON" o "BANQUERO" siguen siendo una persona.
+//
+// Un representante o un procurador judicial NO hace de quien representa una entidad: lo hace lo que el
+// nombre de ésta lleve (las marcas de arriba). «REPRESENTANTE LEGAL DE» no sirve de marca: también
+// representa a un menor de edad ("MADRE Y REPRESENTANTE LEGAL DE <niño>", en una nulidad de contrato de
+// la cartera), y un procurador o un apoderado lo es igual de una persona.
+//
+// No son marca «FISCAL» ni «FISCALÍA»: quien aparece como demandante es el fiscal, no el acreedor, y la
+// víctima puede ser una persona o una empresa (en la cartera, 8 demandas de cobro de 5 personas: cheques
+// sin fondos, uso doloso de documentos...). Leídas como entidad no cambia el nivel de ninguna de las 5 con
+// ninguna plantilla (medido el 2026-11-24): queda como estaba hasta que el negocio decida.
+const ENTIDAD_POR_SU_NOMBRE = new RegExp(
+  [
+    "\\bS\\.A\\.", "\\bC\\.A\\.", "\\bS\\.C\\.(?:C\\.)?", "\\bS\\.R\\.L\\.",
+    "\\bLTD\\b", "\\bINC\\b", "\\bCORP\\b", "\\bCORPORATION\\b", "\\bLLC\\b",
+    "\\bFONDO\\b", "\\bCOMITE\\b", "\\bAGENCIA\\b", "\\bCENTRO\\b", "\\bFIDEICOMISO\\b", "\\bTITULARIZACION\\b",
+    "\\bEJERCITO\\b", "\\bESTADO ECUATORIANO\\b", "\\bEDIFICIO\\b", "\\bCOOP(?!ER)[A-Z]*",
+  ].join("|"),
+);
+
 export function quienDemanda(demandante: unknown): QuienDemanda | null {
   const texto = normalizado(demandante);
   if (!texto) return null;
   if (INSTITUCION_FINANCIERA.test(texto)) return "institucion_financiera";
-  return EMPRESA.test(texto) ? "empresa" : "persona";
+  return EMPRESA.test(texto) || ENTIDAD_POR_SU_NOMBRE.test(texto) ? "empresa" : "persona";
 }
 
 // El año de una demanda; la fecha llega en milisegundos a la medianoche de
