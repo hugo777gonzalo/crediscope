@@ -137,7 +137,7 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 - El PR 150 bajaría 92 de 95 aprobaciones a «revisar»: se recomienda cerrarlo y llevar la idea a la versión mayor del marco.
 - Cotas del ingreso contra 28.906 ingresos validados de la originación: la cuota pagada al día sobre una carga de 0,75 cubre el 94,5%; el cupo de tarjetas sirve poco; una de cada diez personas aprobadas y sin mora paga en cuotas más del 61% de su ingreso validado.
 - El lote de paridad no alcanza para mejorar el predictor sin buró: es todo de independientes y su crudo es posterior a los ingresos validados. Depende de la base grande pedida al proveedor.
-- El respaldo crudo de Equifax tiene 23.420 respuestas; 2.760 se bajaron el 2026-11-10, después de la orden de parar del 2026-11-06. Falta confirmarlo con el negocio.
+- El respaldo crudo de Equifax tiene 37.470 respuestas de 32.923 personas (2026-11-24). Las 2.760 dirigidas del 2026-11-10 las confirmó el negocio el 2026-11-13. El estado, en el punto 9 de la sección 1.
 
 **PR abiertos de la ola 1 y qué esperan:**
 - #151, marco-v36 mínimo: revisado; espera marcarse listo y el sí a fusionar. Fusionarlo activa v36 y pide la migración 150 antes de desplegar (la secuencia está en su descripción).
@@ -280,19 +280,16 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
    revisaron una por una: **no se midió cuáles quedaron hechas**. Falta ese recuento y sacar
    de ahí lo que siga abierto. Lo hace Claude leyendo el informe contra el código y la base.
 9. **Respaldo local de las consultas crudas de Equifax de la base de AWS** (pedido del
-   negocio el 2026-10-22; el negocio ya avisó a quien administra la base). **En curso:** el
-   2026-10-26 se bajaron y verificaron **20.000 JSON** (40 lotes de 500, 147 MB comprimidos,
-   cada lote contra su huella). El guion es `extraer_crudo_equifax.mjs`, en
-   `research/ingresos-aws/scripts/` (fuera de git). Medido: `consulta_equifax` tiene unas
-   418.000 filas y 6,1 GB en total; solo ~15% trae `response_json` (unas 62.000), así que
-   faltan ~42.000 JSON, dos o tres tandas más. Cada lote tardó 3 a 6 s, sin errores.
-   Mañana: `node extraer_crudo_equifax.mjs --extraer --formato=json --max=20000` (retoma solo
-   desde el último id) y `--verificar`. Después los XML: la columna se llama `response` (tipo
-   `xml`), así que va `--formato=xml --col-xml=response`; ese modo **no se probó** y las
-   respuestas XML pesan distinto. La salida va a `research/ingresos-aws/crudo-equifax/`
-   (manifiesto, estado por formato, un `.jsonl.gz` por lote). Falta revisar si el contrato con
-   Equifax permite conservar y reutilizar sus respuestas (punto abierto de
-   `docs/base-aws-originacion.md`).
+   negocio el 2026-10-22; el negocio ya avisó a quien administra la base). **En pausa desde
+   el 2026-11-24** con **37.470 consultas JSON de 32.923 personas** en
+   `research/ingresos-aws/crudo-equifax/` (fuera de git). El negocio autorizó ese día bajar
+   30.000 más «de a poco»; quedó en 14.050 porque la base de AWS dejó de contestar dos veces
+   en el mismo punto (id 385.655), y el negocio decidió parar. Faltan 15.950 de esa
+   autorización, que no se retoman sin un sí nuevo. Las tandas, lo que está en Storage y en
+   la base, el ritmo medido y cómo retomar: `docs/base-aws-originacion.md`, sección 4. Las
+   16.910 bajadas desde el 2026-11-09 no entraron en la subida a Storage ni en la migración. Los XML
+   (`--formato=xml --col-xml=response`) siguen sin probar. Equifax autorizó reutilizar sus
+   consultas pagadas (`docs/equifax.md`).
 10. **El marco y el JSON del modelo, en paralelo a la API** (decisión del 2026-10-21: el
     modelo sigue leyendo solo el perfil en la primera entrega de la API). Se lanzó un
     agente con Opus en su propio worktree (`.claude/worktrees/agent-a2c7577caaf0cb832`, rama

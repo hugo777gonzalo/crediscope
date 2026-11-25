@@ -803,6 +803,14 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   El mismo día, un heredoc de 190 líneas con comillas y acentos no llegó a correr
   en Git Bash. Un archivo se cambia con las herramientas de edición, o con un
   guion que abra el archivo con `encoding="utf-8"` y `newline=""`.
+- **Una descarga de horas se cae si la computadora se suspende** (2026-11-24). La descarga del
+  crudo de Equifax desde AWS se detuvo cerca de la medianoche en el lote 73: la computadora se
+  suspendió en la pausa entre lotes y, al despertar tres horas después, la conexión estaba muerta.
+  `pg` lo avisa con un evento `error` del cliente; sin quien lo escuche, Node cierra el proceso. El
+  pedido de la app para mantener despierta la computadora se suelta a los 5 minutos de sesión quieta
+  y no cubre una tarea de fondo. El guion ahora escucha el evento, se reconecta y le pide a Windows
+  `SetThreadExecutionState` mientras corre (en PowerShell 5.1 el parámetro va como `int`: `0x80000001`
+  no entra en `uint`).
 
 ## Equifax
 

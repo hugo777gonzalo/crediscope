@@ -14,6 +14,9 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
   `auditar-seguridad.mjs` no: lee `.env` del directorio donde se corre, así que va desde la carpeta principal.
 - `db query` se arma sólo con `scripts/_comun/consulta-sql.mjs` (CLI 3, 2026-11-04): las lecturas van
   con `--read-only`, y lo que escribe corta antes de empezar sin `SUPABASE_YES` exportada en ese shell.
+- Un guion que corre horas escucha el evento `error` de su cliente de `pg` (si no, una conexión muerta
+  cierra el proceso), se reconecta y mantiene despierta la computadora él mismo: el pedido de la app
+  no cubre una tarea de fondo (2026-11-24, `docs/lecciones.md`).
 
 ## Crudo y recálculo
 
