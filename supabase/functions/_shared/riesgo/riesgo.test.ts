@@ -5,7 +5,7 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { configurarEstandar, plantillaCompleta } from "../estandar/configurar-estandar.ts";
-import type { EstandarDeLaInstitucion } from "../estandar/estandar.ts";
+import { type EstandarDeLaInstitucion, NIVELES_DE_RIESGO } from "../estandar/estandar.ts";
 import { umbralesPorRevisar } from "../estandar/validar-estandar.ts";
 import type { Entidad, HechosDeLaPersona } from "../hechos/tipos.ts";
 import { evaluarAgravantes, evaluarAtenuantes, puedeSubirLaIA, techoDeLaIA } from "./atenuantes.ts";
@@ -17,6 +17,7 @@ import { calcularVeredictoDeRiesgo } from "./veredicto-de-riesgo.ts";
 const CONSULTA = "2026-11-22T15:00:00Z";
 const DEFECTO = plantillaCompleta("base");
 const CONSERVADORA = plantillaCompleta("conservadora");
+const OPTIMISTA = plantillaCompleta("optimista");
 
 let n = 0;
 function op(p: Partial<OperacionDeRiesgo> & Pick<OperacionDeRiesgo, "sistema">): OperacionDeRiesgo {
@@ -323,6 +324,75 @@ Deno.test("decisión 12: la demanda de cobro, superado, baja un tramo de R1, sal
   // La opción (b), las demandas no decaen por el comportamiento.
   const sinBaja = estandarCon({ riesgo: { historial: { demandaDeCobroSuperadoBajaUnTramo: false } } });
   assertEquals(demandaDeCobro(entrada([], { demandasDeCobro: [{ anio: 2025, quienDemanda: "empresa" }] }), sinBaja, true).nivel, "mal_comportamiento");
+});
+
+// ---------------------------------------------------------------- R1: la demanda de una persona natural decae
+
+// La demanda de cobro de una persona natural pierde peso con los años con las mismas ventanas que la de una entidad y un nivel menos
+// (negocio, 2026-11-25). El análisis es de 2026: una demanda de 2026 tiene 0 años, una de 2019 tiene 7.
+Deno.test("R1: la demanda de una persona natural decae con los años, con las ventanas de cada plantilla", () => {
+  const de = (anio: number, quienDemanda: "persona" | "empresa" | "institucion_financiera", estandar: EstandarDeLaInstitucion, superado: boolean | null = false) =>
+    demandaDeCobro(entrada([], { demandasDeCobro: [{ anio, quienDemanda }] }), estandar, superado);
+  const nivelPorEdad = (quien: "persona" | "empresa" | "institucion_financiera", estandar: EstandarDeLaInstitucion, edades: number[]) =>
+    edades.map((edad) => de(2026 - edad, quien, estandar).nivel);
+  // Base (2 y 5 años): deteriorado hasta 2, con observaciones hasta 5, después sólo se menciona.
+  assertEquals(nivelPorEdad("persona", DEFECTO, [0, 1, 2, 3, 5, 6, 12]), ["deteriorado", "deteriorado", "deteriorado", "con_observaciones", "con_observaciones", null, null]);
+  // Conservadora (3 y 7): la misma forma con sus ventanas. Antes era mal comportamiento hasta los 7 años.
+  assertEquals(nivelPorEdad("persona", CONSERVADORA, [0, 3, 4, 7, 8]), ["deteriorado", "deteriorado", "con_observaciones", "con_observaciones", null]);
+  // Optimista (2 y 3): con observaciones hasta 2; a los 3, que en la entidad todavía pesa, sólo se menciona.
+  assertEquals(nivelPorEdad("persona", OPTIMISTA, [0, 2, 3, 4]), ["con_observaciones", "con_observaciones", null, null]);
+  // Lo que se pasa de la ventana se menciona y se dice.
+  assert(de(2019, "persona", DEFECTO).seMenciona);
+  assert(de(2022, "persona", OPTIMISTA).seMenciona);
+  assert(!de(2024, "persona", DEFECTO).seMenciona);
+  // La entidad sigue como estaba, y la persona natural nunca pesa más que ella a la misma edad.
+  assertEquals(nivelPorEdad("empresa", DEFECTO, [0, 2, 3, 5, 6]), ["mal_comportamiento", "mal_comportamiento", "deteriorado", "deteriorado", null]);
+  assertEquals(nivelPorEdad("institucion_financiera", CONSERVADORA, [3, 4, 7, 8]), ["mal_comportamiento", "deteriorado", "deteriorado", null]);
+  assertEquals(nivelPorEdad("empresa", OPTIMISTA, [2, 3, 4]), ["mal_comportamiento", "deteriorado", null]);
+  for (const [estandar, tope] of [[DEFECTO, 8], [CONSERVADORA, 10], [OPTIMISTA, 6]] as const) {
+    for (let edad = 0; edad <= tope; edad++) {
+      const persona = de(2026 - edad, "persona", estandar).nivel ?? "bajo";
+      const entidad = de(2026 - edad, "empresa", estandar).nivel ?? "bajo";
+      assert(NIVELES_DE_RIESGO.indexOf(persona) <= NIVELES_DE_RIESGO.indexOf(entidad), `a los ${edad} años la persona natural (${persona}) pesa más que la entidad (${entidad})`);
+    }
+  }
+});
+
+Deno.test("R1: tres demandas en 5 años siguen siendo mal comportamiento, la ponga quien la ponga; superado baja un tramo igual", () => {
+  const persona = (anios: number[], estandar: EstandarDeLaInstitucion, superado: boolean | null) =>
+    demandaDeCobro(entrada([], { demandasDeCobro: anios.map((anio) => ({ anio, quienDemanda: "persona" as const })) }), estandar, superado);
+  // Tres de personas naturales en 5 años: reincidencia, con cualquier edad dentro de los 5 y aunque cada una pese poco.
+  const tres = persona([2025, 2023, 2021], DEFECTO, false);
+  assertEquals([tres.nivel, tres.reincidente], ["mal_comportamiento", true]);
+  // Y no baja por superado.
+  const sinBajar = persona([2025, 2023, 2021], DEFECTO, true);
+  assertEquals([sinBajar.nivel, sinBajar.reincidente, sinBajar.bajoPorSuperado], ["mal_comportamiento", true, false]);
+  // Dos no son reincidencia: la más reciente pesa deteriorado y la otra, con observaciones.
+  const dos = persona([2025, 2022], DEFECTO, false);
+  assertEquals([dos.nivel, dos.reincidente], ["deteriorado", false]);
+  // Dos dentro de los 5 años y una más vieja: no son tres en 5 años.
+  assertEquals(persona([2025, 2023, 2020], DEFECTO, false).reincidente, false);
+  // Superado baja un tramo: deteriorado pasa a un antecedente y con observaciones también.
+  const reciente = persona([2025], DEFECTO, true);
+  assertEquals([reciente.nivel, reciente.nivelAntesDeSuperado, reciente.bajoPorSuperado, reciente.seMenciona], [null, "deteriorado", true, true]);
+  const mediana = persona([2022], DEFECTO, true);
+  assertEquals([mediana.nivel, mediana.nivelAntesDeSuperado, mediana.bajoPorSuperado, mediana.seMenciona], [null, "con_observaciones", true, true]);
+  // Sin superar, o sin poder decirlo, no baja.
+  assertEquals(persona([2022], DEFECTO, null).nivel, "con_observaciones");
+});
+
+Deno.test("R1: la demanda de una persona natural también sale del veredicto con el nivel que le toca", () => {
+  const veredicto = (anio: number, estandar: EstandarDeLaInstitucion) =>
+    calcularVeredictoDeRiesgo(entrada([], { demandasDeCobro: [{ anio, quienDemanda: "persona" }] }), estandar);
+  // Base: reciente, deteriorado; de 3 a 5 años, con observaciones; de 6, no mueve el nivel.
+  assertEquals(veredicto(2025, DEFECTO).nivel, "deteriorado");
+  assertEquals(veredicto(2022, DEFECTO).nivel, "con_observaciones");
+  assertEquals(veredicto(2019, DEFECTO).nivel, "bajo");
+  // Conservadora: ya no es mal comportamiento.
+  assertEquals(veredicto(2025, CONSERVADORA).nivel, "deteriorado");
+  // Optimista: con observaciones sólo hasta los 2 años.
+  assertEquals(veredicto(2025, OPTIMISTA).nivel, "con_observaciones");
+  assertEquals(veredicto(2023, OPTIMISTA).nivel, "bajo");
 });
 
 // ---------------------------------------------------------------- decisión 13

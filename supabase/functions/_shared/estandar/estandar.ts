@@ -14,6 +14,9 @@
 
 // forma-v1 (F14, 2026-11-22). Una clave nueva o una lista cerrada que cambia sube la forma: el
 // contenido guardado de una versión anterior se sigue leyendo con la forma con que se guardó.
+// Mientras la 155 no esté aplicada no hay nada guardado con la forma v1, y una clave nueva entra sin
+// subirla (el 2026-11-25 entró `deUnaPersonaNaturalMientrasPesaMenos`: su check exige 'estandar-forma-v1').
+// Desde la primera fila guardada, cada clave nueva sube la forma.
 export const FORMA_DEL_ESTANDAR = "estandar-forma-v1";
 
 export const PLANTILLAS = ["base", "conservadora", "optimista"] as const;
@@ -193,7 +196,13 @@ export interface MalComportamientoDelEstandar {
     pesaMenosHastaAnios: number;
     nivelMientrasPesaMenos: NivelDeRiesgo;
     cuentaSiDemanda: string[];
+    /**
+     * Lo que pesa la demanda de una persona natural dentro de `ventanaAnios`. Con los años pierde peso, como la de una entidad pero con
+     * niveles más suaves (negocio, 2026-11-25): pasa a `deUnaPersonaNaturalMientrasPesaMenos` y, después de `pesaMenosHastaAnios`, sólo se menciona.
+     */
     deUnaPersonaNatural: NivelDeRiesgo;
+    /** Entre `ventanaAnios` y `pesaMenosHastaAnios`. «bajo» es que no mueve el nivel y sólo se menciona. Nunca más que `nivelMientrasPesaMenos`. */
+    deUnaPersonaNaturalMientrasPesaMenos: NivelDeRiesgo;
     reiteradas: { cantidad: number; enAnios: number };
   };
   atenuantes: {
