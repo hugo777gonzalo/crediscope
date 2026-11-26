@@ -137,7 +137,7 @@ La propuesta de reestructuración del núcleo (2026-11-10) y su plan de 61 tarea
 - El PR 150 bajaría 92 de 95 aprobaciones a «revisar»: se recomienda cerrarlo y llevar la idea a la versión mayor del marco.
 - Cotas del ingreso contra 28.906 ingresos validados de la originación: la cuota pagada al día sobre una carga de 0,75 cubre el 94,5%; el cupo de tarjetas sirve poco; una de cada diez personas aprobadas y sin mora paga en cuotas más del 61% de su ingreso validado.
 - El lote de paridad no alcanza para mejorar el predictor sin buró: es todo de independientes y su crudo es posterior a los ingresos validados. Depende de la base grande pedida al proveedor.
-- El respaldo crudo de Equifax tiene 37.470 respuestas de 32.923 personas (2026-11-24). Las 2.760 dirigidas del 2026-11-10 las confirmó el negocio el 2026-11-13. El estado, en el punto 9 de la sección 1.
+- El respaldo crudo de Equifax tiene 39.970 respuestas de 35.152 personas (2026-11-25). Las 2.760 dirigidas del 2026-11-10 las confirmó el negocio el 2026-11-13. El estado, en el punto 9 de la sección 1.
 
 **PR abiertos de la ola 1 y qué esperan:**
 - #151, marco-v36 mínimo: revisado; espera marcarse listo y el sí a fusionar. Fusionarlo activa v36 y pide la migración 150 antes de desplegar (la secuencia está en su descripción).
@@ -281,13 +281,13 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
    de ahí lo que siga abierto. Lo hace Claude leyendo el informe contra el código y la base.
 9. **Respaldo local de las consultas crudas de Equifax de la base de AWS** (pedido del
    negocio el 2026-10-22; el negocio ya avisó a quien administra la base). **En pausa desde
-   el 2026-11-24** con **37.470 consultas JSON de 32.923 personas** en
+   el 2026-11-25** con **39.970 consultas JSON de 35.152 personas** en
    `research/ingresos-aws/crudo-equifax/` (fuera de git). El negocio autorizó ese día bajar
    30.000 más «de a poco»; quedó en 14.050 porque la base de AWS dejó de contestar dos veces
-   en el mismo punto (id 385.655), y el negocio decidió parar. Faltan 15.950 de esa
-   autorización, que no se retoman sin un sí nuevo. Las tandas, lo que está en Storage y en
+   en el mismo punto (id 385.655), y el negocio decidió parar. El 2026-11-25 autorizó 2.500 más, que se bajaron sin problema
+   en lotes de 25 cada 2 minutos. Cada tanda nueva, con un sí del negocio. Las tandas, lo que está en Storage y en
    la base, el ritmo medido y cómo retomar: `docs/base-aws-originacion.md`, sección 4. Las
-   16.910 bajadas desde el 2026-11-09 no entraron en la subida a Storage ni en la migración. Los XML
+   19.410 bajadas desde el 2026-11-09 no entraron en la subida a Storage ni en la migración. Los XML
    (`--formato=xml --col-xml=response`) siguen sin probar. Equifax autorizó reutilizar sus
    consultas pagadas (`docs/equifax.md`).
 10. **El marco y el JSON del modelo, en paralelo a la API** (decisión del 2026-10-21: el
