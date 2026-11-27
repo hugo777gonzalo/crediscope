@@ -26,7 +26,7 @@ adelante consta así:
   desde su crudo, sin pagar: al reutilizarla vigente o con «Ordenar la consulta guardada».
 - **El crudo de las migradas vive en Storage** (148, negocio, 2026-11-05: medida temporal por el techo
   de 500 MB del plan Free; hecho el 2026-11-06): depósito `crudo-equifax-migrado`, uno por consulta de AWS bajada (20.616,
-  también las que no se migraron; las bajadas desde el 2026-11-09, 19.410 al 2026-11-25, no se
+  también las que no se migraron; las bajadas desde el 2026-11-09, 22.810 al 2026-11-27, no se
   subieron: ver `docs/base-aws-originacion.md`, sección 4), enlazado por `consultas_equifax.crudo_ruta`. Las 3.542 migradas tienen la fila
   vacía, se verificó objeto contra fila antes de vaciar. Se lee con `leerCrudoDeLaConsulta()`; detalle en
   `supabase/CLAUDE.md`. Las consultas pagadas por nosotros siguen en la fila.
