@@ -985,6 +985,11 @@ interface StandardClientProfile {
 >   sigue siendo una lista), ni el marco, ni la capacidad (ver el PR: la cuota del hipotecario sin buró cambia para unos pocos veredictos).
 > - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio (`recalcular-grupos.mjs --grupos=comportamientoBancario`).
 >   Un perfil anterior sigue funcionando: sin fuente ni corte del saldo, la capacidad toma el saldo como el de hoy.
+> - **Medido en seco** (3.766 personas reales): **se escriben 3.079 perfiles** (suben a v33) y **cambian de contenido 926** (`operacionesIessBiess`;
+>   938 personas tienen préstamos del IESS/BIESS); 687 no se reproducen por lo pendiente de la v31 (`fuentesIngreso.camposSinDato.corteIessUsado`, 648)
+>   y la v32 (`riesgoJudicialCrediticio.demandasDeCobro`), que no es de esta versión: pasan a v33 cuando se apliquen esos recálculos. En la
+>   capacidad con el crédito de referencia (USD 5.000, 36 meses, Tasa máxima), de 270 personas sin buró y con ingreso **cambian de veredicto 10**
+>   (alcanza → justo 5, justo → no alcanza 4, no alcanza → justo 1).
 
 > **estructura-v32 (negocio, 2026-11-24: `quienDemanda()` deja de leer como persona natural a una entidad; E10)**
 > - La revisión con casos reales de E10 (23/11) halló entidades leídas como «persona»; el negocio aprobó el 24/11 mejorar el
