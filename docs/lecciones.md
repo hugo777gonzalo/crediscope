@@ -723,6 +723,14 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Guiones
 
+- **Un grupo que pasa a la capa de hechos deja a los detectores leyendo un null** (2026-11-27).
+  Desde estructura-v31, con una fuente sin contestar, `fuentesIngreso.fuentes` se guarda en null y lo que
+  dijeron las demás va en `camposSinDato`. El modelo y la capacidad lo leen con `conLosValoresDeAntes()`,
+  pero `revisar-datos.mjs` leía el null. La capa de ingresos cortaba entera con «cannot extract elements
+  from a scalar», con 694 perfiles así, y `cargo-vigente-sin-aporte-vigente` «volvió» con 7 personas cuyos
+  empleos vigentes estaban en la marca. El error se vio recién después de un recálculo, porque nadie había
+  corrido la revisión desde la v31. Desde entonces, `BASE` arma `sp` con los valores de antes, con los
+  grupos importados de `campos-sin-dato.ts`.
 - **pandas no relee exacto el decimal que escribió JavaScript** (predictor de ingresos, 2026-11-06).
   La matriz del nivel 2 armada en Node desde el crudo coincidía con el extracto dentro de la tolerancia, pero
   sus cuantiles diferían hasta 0,06 en logaritmo en el nivel 1, que no usa Equifax: `read_csv` dejó la
