@@ -38,6 +38,7 @@ import { FUENTES } from "../../supabase/functions/_shared/calidad-de-la-consulta
 import { FUENTES_DEL_PREDICTOR } from "../../supabase/functions/_shared/estimacion-de-ingreso.ts";
 import { evaluarControlesBloqueo } from "../../supabase/functions/_shared/controles-bloqueo.ts";
 import { delitosDeSeguridadEnDemandas } from "../../supabase/functions/_shared/delitos-seguridad.ts";
+import { CLAVE_SIN_DATO, GRUPOS_CON_SIN_DATO } from "../../supabase/functions/_shared/campos-sin-dato.ts";
 
 export const CAPAS = {
   fuente: "1. Fuente (lo que contestó Proveedor_Info_1 o Equifax)",
@@ -66,6 +67,25 @@ const clavesCaidas = (columna, fuentes = OBLIGATORIAS) =>
 // Las del freno del predictor (estimacion-de-ingreso.ts), con su ficha.
 const DEL_PREDICTOR = OBLIGATORIAS.filter(([f]) => FUENTES_DEL_PREDICTOR.includes(f));
 
+// `sp` es el perfil como lo leen el modelo y la capacidad de pago: conLosValoresDeAntes()
+// (campos-sin-dato.ts), con los grupos importados del código. Desde estructura-v31 un grupo con una
+// fuente sin contestar guarda el campo en null y lo que dijeron las demás en `camposSinDato`, y los
+// detectores leían el null: el 2026-11-27 la capa de ingresos cortaba entera con «cannot extract
+// elements from a scalar» (694 perfiles con `fuentesIngreso.fuentes` en null) y
+// `cargo-vigente-sin-aporte-vigente` marcaba 7 personas cuyos empleos vigentes estaban en
+// `camposSinDato`. Sólo se devuelven los campos de primer nivel: los de nombre con punto
+// («detalle.aportesPorMes») son de un objeto anidado que ningún detector de la base lee; si uno lo
+// lee, hay que expandirlos acá como hace ponerEnLaRuta().
+const GRUPOS_SQL = GRUPOS_CON_SIN_DATO.map((g) => `'${g}'`).join(", ");
+const CON_LOS_VALORES_DE_ANTES = `p.standard_profile || coalesce((
+    select jsonb_object_agg(g.nombre,
+             ((p.standard_profile->g.nombre) - '${CLAVE_SIN_DATO}')
+             || coalesce((select jsonb_object_agg(e.campo, e.valor)
+                            from jsonb_each(p.standard_profile->g.nombre->'${CLAVE_SIN_DATO}') e(campo, valor)
+                           where position('.' in e.campo) = 0), '{}'::jsonb))
+      from unnest(array[${GRUPOS_SQL}]) g(nombre)
+     where jsonb_typeof(p.standard_profile->g.nombre->'${CLAVE_SIN_DATO}') = 'object'), '{}'::jsonb)`;
+
 export const BASE = `
 reales as (select id from clients where not es_sintetico),
 ultimo_id as (
@@ -75,7 +95,7 @@ ultimo_id as (
 ),
 ultimo as (
   select p.id as perfil_id, p.client_id, p.created_at, p.structure_version, p.estado_por_fuente,
-         p.standard_profile as sp
+         ${CON_LOS_VALORES_DE_ANTES} as sp, p.standard_profile as sp_guardado
   from client_profiles p join ultimo_id u on u.id = p.id
 ),
 analisis_id as (

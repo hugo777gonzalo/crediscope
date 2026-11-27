@@ -60,6 +60,9 @@ Laboratorio en `docs/laboratorio-guia.md`, «Cómo está construido».
 - `scripts/revisar-datos.mjs` corre el catálogo de `scripts/revision-de-datos/detectores.mjs`
   (habilidad `revision-de-datos`) en una sola consulta de sólo lectura y sale con 1 si vuelve un
   error corregido. Un error de datos que se encontró a mano entra ahí como detector, con su caso.
+  Su `sp` es el perfil con los valores de antes (`conLosValoresDeAntes()`, con los grupos de
+  `campos-sin-dato.ts`): un detector que necesite el null y la marca lee `sp_guardado`. Hasta el
+  2026-11-27 leía el null de la v31, y la capa de ingresos cortaba entera.
 - `scripts/revisar-crudo.mjs` corre `DETECTORES_DEL_CRUDO` (mismo catálogo) sobre el crudo del último perfil de cada
   persona real (carpeta de `research/` y depósito, ~2 min, sólo lee). Es para lo que no deja rastro en el perfil guardado:
   la demanda penal de otro demandado (p1) o el hipotecario contado dos veces (p6) salieron a mano, persona por persona.
