@@ -310,8 +310,34 @@ const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cub
 //   Vivienda Premier y Miti-Miti van hasta 4,99%.
 // Ningún dato de la fuente dice la tasa de cada préstamo, y la cuota que Equifax
 // informa del BIESS se reproduce con una anualidad (98% dentro de ±15%).
-export const TASA_ANUAL_BIESS = { quirografario: 0.065, hipotecario: 0.0299 } as const;
+// El hipotecario salió de esta lista el 2026-11-27: su cuota ya no usa el 2,99%
+// del Credicasa (23% por debajo de la real, y a 330 personas sin buró), sino la
+// anualidad al 9,0% que calcula Equifax (cuotaHipotecariaComoEquifax(), abajo).
+export const TASA_ANUAL_BIESS = { quirografario: 0.065 } as const;
 export const TASA_BIESS_POR_CONFIRMAR = true;
+
+// La cuota mensual que Equifax informa en `reporteCrediticio`, de donde CrediScope
+// lee la deuda, es una anualidad del saldo del corte con los meses que quedan hasta
+// el vencimiento a una tasa fija de 9,0% (negocio, 2026-11-27: «esa cuota es la que
+// paga el cliente en la realidad», así que es la verdad). Medido sobre 2.394 cuotas
+// de créditos del BIESS en los crudos de AWS: tasa implícita mediana 9,02%, 94% a
+// menos de un punto, y reproducida con el saldo y el vencimiento de Equifax da ±10%
+// en el 99%. El bloque `interconnectResponse` usa 10,45% y no se lee (docs/equifax.md).
+export const TASA_DE_LA_CUOTA_DE_EQUIFAX = 0.09;
+
+// Tasa del contrato de un hipotecario del BIESS cuando la base interna no la dice
+// (los concedidos de 2022 en adelante, y los que sólo trae la fuente de préstamos).
+// POR CONFIRMAR con el BIESS (`TASA_BIESS_POR_CONFIRMAR`): 8,69% hasta 2019 y 6,99%
+// desde 2020 (negocio, 2026-11-25; la amortización observada de 3.357 créditos dio
+// 8,7% hasta 2019, 6,1% de 2020 a 2022 y 7,0% de 2023 a 2025). Sólo sirve para
+// llevar el saldo de Proveedor_Info_1 a hoy, y ahí
+// casi no pesa: una tasa fija de 6,99% o de 8,69%, o la declarada, dan el mismo
+// ±10% (97%) en los 112 pares de la cartera con la cuota de Equifax.
+export const TASA_BIESS_HIPOTECARIO_HASTA_2019 = 0.0869;
+export const TASA_BIESS_HIPOTECARIO_DESDE_2020 = 0.0699;
+export function tasaDelContratoHipotecario(anioDeConcesion: number | null): number {
+  return anioDeConcesion !== null && anioDeConcesion <= 2019 ? TASA_BIESS_HIPOTECARIO_HASTA_2019 : TASA_BIESS_HIPOTECARIO_DESDE_2020;
+}
 
 // Una deuda con saldo y sin cuota informada se estima con un porcentaje del
 // saldo por mes que depende del tramo de saldo por operación. Decisión del
@@ -372,6 +398,91 @@ function mesesHasta(fechaFin: unknown, hoy: Date): number | null {
   if (!m) return null;
   const dias = (Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - hoy.getTime()) / 86_400_000;
   return dias > 0 ? Math.max(1, Math.round(dias / 30.4375)) : null;
+}
+
+const MS_POR_DIA = 86_400_000;
+const DIAS_POR_MES = 30.4375;
+const dia = (iso: unknown): number | null => {
+  const m = typeof iso === "string" ? iso.match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+  return m ? Math.floor(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / MS_POR_DIA) : null;
+};
+const mesesEntreDias = (desde: number, hasta: number) => (hasta - desde) / DIAS_POR_MES;
+/** El último día del mes del día dado (los días son desde 1970). */
+const finDelMes = (d: number) => {
+  const f = new Date(d * MS_POR_DIA);
+  return Math.floor(Date.UTC(f.getUTCFullYear(), f.getUTCMonth() + 1, 0) / MS_POR_DIA);
+};
+
+/** Saldo que queda después de `pagos` cuotas de un saldo `saldo` que se amortiza en `n` cuotas a la tasa nominal anual. */
+export function saldoDespuesDePagos(saldo: number, tasaAnual: number, n: number, pagos: number): number {
+  const i = tasaAnual / 12;
+  if (i === 0) return saldo * (1 - pagos / n);
+  return (saldo * (Math.pow(1 + i, n) - Math.pow(1 + i, pagos))) / (Math.pow(1 + i, n) - 1);
+}
+
+export type CaminoDeLaCuotaHipotecaria = "saldo_llevado_a_hoy" | "cuota_de_la_base_interna" | "plan_del_contrato" | "cuota_del_contrato_vencido";
+
+/**
+ * La cuota de un hipotecario del IESS/BIESS sin buró, como la informaría Equifax (2026-11-27): la anualidad al 9,0% del saldo de
+ * hoy con los meses que quedan. Con lo que trae Proveedor_Info_1 (`operacionesIessBiess`, estructura-v33):
+ *  1. Saldo de la fuente de préstamos: es de UN corte (`fechaCorte`; su saldo es del cierre de ese mes, medido contra el saldo de
+ *     Equifax) y los perfiles son meses posteriores. Se lleva a hoy con el plan del contrato: lo que queda a ese corte se amortiza
+ *     hasta el fin a la tasa del contrato (la de la base interna o la de la tabla). Sin `fechaCorte` (un perfil anterior a la
+ *     v33) se toma el saldo como el de hoy.
+ *  2. Sólo en la base interna: su saldo es una foto vieja y sin fecha (1,22 veces el de préstamos en la mediana), así que se usa
+ *     la cuota estimada de esa base, tal cual (contra Equifax: mediana 1,035, ±10% en 11 de 11 pares) y, sin ella, el plan del
+ *     contrato desde el monto y la concesión.
+ *  3. Fin ya pasado y con saldo: la cuota del contrato (la anualidad del monto original al plazo pactado), sin pasar del saldo.
+ *     El atraso lo mide el riesgo, no la capacidad (negocio, 2026-11-25). Equifax no informa cuota de un crédito pasado de su vencimiento: ninguna de
+ *     las 2.402 cuotas de AWS tenía el vencimiento pasado, así que esta rama no se puede medir.
+ * null sin fecha de fin o sin lo necesario: la cuota sale del factor hipotecario, como antes.
+ *
+ * Medido el 2026-11-27 contra la cuota de Equifax en 112 hipotecarios de la cartera que también están en AWS (la regla se evalúa
+ * a la fecha de cada corte de Equifax con el saldo y los campos de Proveedor_Info_1): ±5% 86%, ±10% 97%, ±15% 98%, mediana
+ * 0,999; sobreestima más de 15% en el 2% y no subestima ninguno. Y sobre 1.845 créditos del BIESS de AWS con el saldo de seis
+ * meses antes como si fuera la foto de Proveedor_Info_1 y sin la tasa declarada: ±10% 98%.
+ */
+export function cuotaHipotecariaComoEquifax(operacion: unknown, hoy: Date): { cuota: number; camino: CaminoDeLaCuotaHipotecaria } | null {
+  const o = comoObjeto(operacion);
+  const saldo = numero(o?.saldo);
+  if (!o || saldo === null || saldo <= 0) return null;
+  const fin = dia(o.fechaFin);
+  if (fin === null) return null;
+  const dHoy = Math.floor(hoy.getTime() / MS_POR_DIA);
+  const concesion = dia(o.fechaConcesion);
+  const monto = numero(o.monto);
+  const tasaDeclarada = numero(o.tasaAnual);
+  const anio = concesion === null ? null : new Date(concesion * MS_POR_DIA).getUTCFullYear();
+  const tasa = tasaDeclarada !== null && tasaDeclarada > 0 ? tasaDeclarada : tasaDelContratoHipotecario(anio);
+  const plazoDelContrato = concesion === null ? null : Math.round(mesesEntreDias(concesion, fin));
+  const mesesQueQuedan = mesesHasta(o.fechaFin, hoy);
+
+  if (mesesQueQuedan === null) {
+    if (monto !== null && monto > 0 && plazoDelContrato !== null && plazoDelContrato > 0) {
+      // Con un tope: nadie paga por mes más de lo que todavía debe. En el seco de la cartera una cuota de contrato de varios
+      // cientos de dólares caía sobre un saldo de una decena (la 47 veces la de antes): el resto del plan ya se pagó.
+      return { cuota: Math.min(cuotaPorAnualidad(monto, tasa, plazoDelContrato), Math.round(saldo * 100) / 100), camino: "cuota_del_contrato_vencido" };
+    }
+    return null;
+  }
+  if (o.fuenteDelSaldo === "base_interna") {
+    const deLaBase = numero(o.cuotaEstimada);
+    if (deLaBase !== null && deLaBase > 0) return { cuota: Math.round(deLaBase * 100) / 100, camino: "cuota_de_la_base_interna" };
+    if (monto !== null && monto > 0 && concesion !== null && plazoDelContrato !== null && plazoDelContrato > 12) {
+      const pagados = Math.min(plazoDelContrato - 1, Math.max(0, Math.round(mesesEntreDias(concesion, dHoy))));
+      return { cuota: cuotaPorAnualidad(saldoDespuesDePagos(monto, tasa, plazoDelContrato, pagados), TASA_DE_LA_CUOTA_DE_EQUIFAX, mesesQueQuedan), camino: "plan_del_contrato" };
+    }
+    return null;
+  }
+  let saldoDeHoy = saldo;
+  const corte = dia(o.fechaCorte);
+  if (corte !== null) {
+    const delSaldo = finDelMes(corte);
+    const cuotasDelSaldo = Math.max(1, Math.round(mesesEntreDias(delSaldo, fin)));
+    const pagos = Math.min(cuotasDelSaldo - 1, Math.max(0, Math.round(mesesEntreDias(delSaldo, dHoy))));
+    saldoDeHoy = saldoDespuesDePagos(saldo, tasa, cuotasDelSaldo, pagos);
+  }
+  return { cuota: cuotaPorAnualidad(saldoDeHoy, TASA_DE_LA_CUOTA_DE_EQUIFAX, mesesQueQuedan), camino: "saldo_llevado_a_hoy" };
 }
 
 export interface DatosDeCapacidad {
@@ -493,12 +604,20 @@ export function datosDeCapacidad(perfilGuardado: AnyRecord | null, estructuraEqu
     let conCuota = 0;
     for (const o of operaciones) {
       const saldo = numero(o.saldo) as number;
-      const tasa = o.tipo === "quirografario" || o.tipo === "hipotecario" ? TASA_ANUAL_BIESS[o.tipo] : null;
-      const meses = mesesHasta(o.fechaFin, hoy);
-      if (tasa === null || meses === null) {
-        if (o.tipo === "hipotecario") saldoHipotecarioSinPlazo += saldo;
-        else saldoSinCuota += saldo;
+      // El hipotecario se estima como lo informa Equifax (el saldo llevado a hoy al 9,0%); sin fecha de fin, o sin lo que
+      // pide la regla, queda con el factor hipotecario como antes.
+      if (o.tipo === "hipotecario") {
+        const h = cuotaHipotecariaComoEquifax(o, hoy);
+        if (h === null) saldoHipotecarioSinPlazo += saldo;
+        else {
+          cuotaEstimada += h.cuota;
+          conCuota++;
+        }
+        continue;
       }
+      const tasa = o.tipo === "quirografario" ? TASA_ANUAL_BIESS.quirografario : null;
+      const meses = mesesHasta(o.fechaFin, hoy);
+      if (tasa === null || meses === null) saldoSinCuota += saldo;
       else {
         cuotaEstimada += cuotaPorAnualidad(saldo, tasa, meses);
         conCuota++;
