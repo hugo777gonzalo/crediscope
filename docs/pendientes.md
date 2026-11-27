@@ -559,8 +559,18 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     cada ítem dice su origen. De 9.106 adicionales materiales, 5.881 son declarados, 1.356 de cuentas o IVA (393 con archivo) y 477
     del predictor. El modelo con la etiqueta vieja ya falló (12.36). **Lo que sigue, en sesiones limpias:**
     1. datos y etiquetas, sin modelo: **hecha el 2026-11-23** (propuesta, sección 6; `adicional_por_componente.py`);
-    2. el modelo, con las reglas fijadas en la propuesta: **lista para arrancar** (el negocio respondió las cinco preguntas de 6.6 el 2026-11-24);
-    3. conectarlo, sólo si pasa.
+    2. el modelo, con las reglas fijadas en la propuesta: **hecha el 2026-11-24, se cierra** (propuesta, sección 7; `adicional_modelo.py`);
+    3. conectarlo: no se hace.
+
+    **Medido el 2026-11-24 (sesión 2): no pasa ninguna regla de las que deciden, en ninguna variante ni escenario.** Hacia adelante (71 A en la prueba):
+    - AUC de A contra el negativo con RUC activo: 0,631 sin SRI y 0,619 con SRI, contra 0,75 (12.36 dio 0,624 con la etiqueta vieja). Sin los
+      anclados a la cifra, 0,683 con SRI (0,623 a 0,740).
+    - De lo que se mostraría con RUC activo, ningún umbral llega al 70% comprobable: el máximo en el entrenamiento es 20,8%, y en la prueba el 20% de
+      puntaje más alto tiene 8,0% contra una tasa base de 5,9%.
+    - El mínimo cubre 87,3% y 84,5% de los A (meta 90%), con la mediana del mínimo en 0,59 del real. El monto es lo único con señal (R² de 0,35 en
+      logaritmo, contra 0,01 en 12.36), pero sin saber quién tiene el adicional no hay a quién mostrárselo.
+    - El sueldo movido ±10% no cambia nada (la probabilidad, menos de un punto en la mediana; el mínimo, igual).
+    **Se cierra la opción (b) de A14 hasta tener documentos anotados (D8)**; sigue la señal sin monto del RUC activo.
 
     Lo que dejó la sesión 1, con las respuestas del negocio:
     - Los ítems sin el check son casi todos copias automáticas del sueldo y sólo existen desde el 2026-03-08: los rechazos de verdad son el 2,4%
@@ -573,7 +583,7 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     - Se entrena con `ver_f`, que coincide con el peldaño 1 de producción a ±10% en el 79,4% (771 con crudo en la cartera). La cifra de Equifax nunca
       es insumo (reafirmado el 2026-11-24).
     - La prueba de la etiqueta A tiene 71 casos y decide la cifra central. Si la regla del mínimo pasa sólo por ella (el intervalo baja de 80%), queda
-      «sigue» sin conectar hasta juntar más A (unos 15 a 17 por mes).
+      «sigue» sin conectar hasta juntar más A (unos 15 a 17 por mes). No hizo falta: el mínimo no pasa ni por la cifra central.
 
     **Hecho** (fusionados al 2026-10-28): PR 85 (la tabla `equifax_analisis_credito`, migración 138, y
     `_shared/variables-de-ingreso.ts`, con la paridad medida), PR 86 (el entrenamiento reproducible en

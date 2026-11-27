@@ -2,7 +2,7 @@
 
 Pedido del negocio del 2026-11-23, después de decidir A14 (`docs/ingreso-adicional-por-corroborar.md`, 6.1): estimar el adicional de los
 dependientes que A14 dejó sin estimar. Hoy la decisión vigente es no estimarlo; esta propuesta es el estudio que podría cambiarla.
-Nada está construido.
+**Medido el 2026-11-24 (sección 7): no pasa, y la decisión de A14 queda como está.** Nada se conecta.
 
 ## 1. Qué ya se probó, y por qué esto es distinto
 
@@ -123,10 +123,9 @@ Cada una arranca limpia desde `main`, lee este documento y el punto 18 de `docs/
      preguntándole al negocio;
    - medir la paridad del sueldo de AWS con el peldaño 1.
    - Sale con la tabla de grados de 3 confirmada o corregida, y con las preguntas al negocio.
-2. **El modelo**, con las reglas de 3 tal cual. Sale con la decisión «sigue» o «se cierra», medida. **Lista para arrancar**: el negocio respondió
-   las cinco preguntas el 2026-11-24 (6.6). Lee la tabla de `adicional_por_componente.py` (columna `grado`).
+2. **El modelo**, con las reglas de 3 tal cual. Sale con la decisión «sigue» o «se cierra», medida. **Hecha el 2026-11-24: se cierra** (sección 7).
 3. **Conectarlo** (sólo si pasa): el adicional estimado en la escalera y en el ingreso adicional por corroborar, con las decisiones del negocio sobre
-   cómo se muestra.
+   cómo se muestra. **No se hace**: el modelo no pasó.
 
 ## 5. Lo que no resuelve
 
@@ -257,3 +256,76 @@ La tabla de la sección 3 queda corregida así:
    conecta hasta juntar más casos A (entran unos 15 a 17 por mes).
 5. **El sueldo de entrada**: «sí, entrenar con ver_f». El negocio reafirmó, además, que la cifra de Equifax no es un insumo del predictor: «no quiero
    que el income_predictor sea un insumo de nuestro modelo de predictor de ingresos». No hay variante con ella.
+
+## 7. Sesión 2: el modelo (2026-11-24). Decisión: se cierra
+
+Guion: `scripts/predictor-ingresos/adicional_modelo.py` (50 s). Lee la tabla de la sesión 1 y cruza las entradas con `preparar.armar_consultas()` por
+la id de consulta (las 39.017 cruzan). Agregados en `scripts/predictor-ingresos/metricas/adicional-modelo-2026-11.json`. No consultó AWS, Equifax ni
+Proveedor_Info_1, no usó el modelo de lenguaje y no escribió en la base.
+
+**Cómo se midió**, con las reglas de la sección 3 tal cual, escritas en el encabezado del guion antes de correrlo:
+- Entradas: el sueldo (`ver_f`), la carga de cuotas sobre el sueldo, el buró (`BURO` y `CUOTA`), edad, sexo y fecha; en la variante con SRI, además el
+  de Proveedor_Info_1 y el de Equifax. Ni la cifra de Equifax ni una de `NO_SERVIBLES`: el guion corta si una llega.
+- Parte 1: un clasificador de A o B contra el negativo. Parte 2: los doce cuantiles del logaritmo del adicional con A y B; el mínimo es el cuantil 10.
+- Entrena con lo anterior a julio de 2026 y prueba con lo posterior. Intervalos del 95% con 1.000 remuestreos.
+- El umbral de «se muestra» (R3) se elige sin mirar la prueba: el puntaje más bajo con el que, fuera de muestra en el entrenamiento con RUC activo, lo
+  mostrado llega al 70% comprobable con 10 personas o más.
+- Los conteos de la prueba son los de la sesión 1: 71 A (59 con RUC activo); sin los anclados a la cifra, 69 A y 60 B.
+
+### 7.1 Las tres reglas, en el escenario principal (A o B)
+
+| Regla | Meta | Todos los años, sin SRI | 2026, con SRI |
+|---|---|---|---|
+| R1: AUC de A contra el negativo, con RUC activo | 0,75 | 0,631 (0,570 a 0,699) | 0,619 (0,560 a 0,683) |
+| R2: el mínimo cubre a los A | 90% | 87,3% (78,9 a 94,4) | 84,5% (76,1 a 91,5) |
+| R2: mediana del mínimo sobre el adicional real | 0,5 | 0,59 | 0,59 |
+| R3: de lo mostrado con RUC activo, comprobable | 70% | ningún umbral llega: el máximo en el entrenamiento es 20,8% | ningún umbral: máximo 20,0% |
+| **Pasa** | | **no** | **no** |
+
+- **R1 falla por lejos**: el intervalo no toca 0,75 en ninguna de las dos. Con la etiqueta vieja, 12.36 dio 0,624: separar por componente no mejoró
+  la separación.
+- **R3 falla por más**: en la prueba con RUC activo, el 1%, 2%, 5%, 10% y 20% de puntaje más alto tiene entre 0% y 8,6% comprobable, contra una tasa
+  base de 5,9% (6,8% en la sección 3, con todos los años). El modelo no encuentra a quién mostrarle un adicional.
+- **R2 falla por poco en la cobertura** y pasa en la agudeza. Es lo único con señal (7.3).
+
+### 7.2 Los otros escenarios y el sueldo movido
+
+AUC de R1 (A contra el negativo, con RUC activo); ninguno pasa ninguna variante, y R3 no tiene umbral en ninguno:
+
+| Escenario | Todos los años, sin SRI | 2026, con SRI | Cobertura del mínimo en A (sin SRI / con SRI) |
+|---|---|---|---|
+| Principal | 0,631 | 0,619 | 87,3% / 84,5% |
+| Sin los anclados a la cifra (69 A, 60 B) | 0,643 | 0,683 (0,623 a 0,740) | 87,0% / 84,1% |
+| Con arriendo o jubilación | 0,641 | 0,648 | 85,9% / 84,5% |
+| Con arriendo o jubilación, sin los anclados | 0,628 | 0,636 | 84,1% / 85,5% |
+
+- **Sacar los anclados a la cifra** es lo que más sube el AUC (a 0,683 con SRI), sin llegar: el intervalo queda debajo de 0,75.
+- **Arriendo o jubilación** no mueve nada: en la prueba son 9, ninguno con RUC activo.
+- **El sueldo movido ±10%** en la prueba casi no cambia nada: la probabilidad se mueve 0,4 a 0,9 puntos en la mediana (2,4 a 6,0 en el percentil 90),
+  el mínimo queda igual (mediana de la razón 1,00), el AUC se mueve ±0,02 y la cobertura no cambia. La paridad de `ver_f` no es lo que falla.
+- **Con SRI, «A contra el negativo» en todos da 0,801** (0,754 a 0,840), pero con RUC activo baja a 0,619: lo que separa es tener RUC activo
+  (`sri_estado` es la segunda variable que más pesa), que es la señal sin monto que A14 ya decidió. Dentro de quienes tienen RUC activo no hay más.
+- El AUC fuera de muestra del entrenamiento (0,695 con RUC activo, sin SRI) es parecido al de la prueba: lo bajo no es el corte en el tiempo, es la
+  etiqueta.
+
+### 7.3 El monto: la única parte con señal
+
+Sabiendo que la persona tiene un adicional comprobable, el monto sí se aprende algo, a diferencia de 12.36 (R² de 0,01):
+- R² del valor central, en logaritmo, en los A: 0,35 sin SRI y 0,29 con SRI. Sin variables, −0,07 y −0,01.
+- La mediana del mínimo sobre el adicional real es 0,59 (sin variables, 0,48 y 0,43): el mínimo es más agudo que el que no usa variables.
+- La cobertura queda en 84% a 87%, debajo del 90%. Sin variables cubre 83% a 89%, con un mínimo más bajo.
+- Una calibración conforme podría llevar la cobertura al 90% (como en `ingreso-v2`), pero no cambia la decisión: sin R1 y R3 no hay a quién
+  mostrarle el monto, porque el modelo no sabe quién tiene el adicional.
+
+### 7.4 Decisión
+
+**Se cierra** la opción (b) de A14, como fijó la sección 3, hasta tener documentos anotados (D8). Sigue la decisión de A14: el dependiente con sueldo
+verificado no se estima, y con RUC activo recibe la señal sin monto «puede tener ingresos que no constan». La sesión 3 (conectarlo) no se hace.
+
+Lo que dejaría abrirlo otra vez:
+- **Más casos A**: entran unos 15 a 17 por mes. Con más A, R2 podría pasar, pero R1 y R3 no dependen del tamaño de la prueba: con 1.214 comprobables
+  en el entrenamiento el AUC fuera de muestra ya es 0,695 con RUC activo.
+- **Una etiqueta que no dependa de si el analista buscó**: «sin adicional documentado» no es «sin adicional» (sección 5). Mientras el negativo mezcle
+  a quien no tiene adicional con quien no lo documentó porque el sueldo alcanzaba, el clasificador aprende cuándo se documenta.
+- **Lo que no se midió**: una calibración del mínimo, porque no cambia la decisión, y la paridad del buró antes de febrero de 2026 en la variante de
+  todos los años (12.35: en diciembre y enero las operaciones no coinciden con producción).
