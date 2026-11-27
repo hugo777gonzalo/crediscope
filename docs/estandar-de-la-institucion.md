@@ -221,6 +221,7 @@ fracciones van como fracción (0,40 es 40%) y los montos en dólares.
       "nivelMientrasPesaMenos": "deteriorado",
       "cuentaSiDemanda": ["institucion_financiera", "empresa"],
       "deUnaPersonaNatural": "deteriorado",
+      "deUnaPersonaNaturalMientrasPesaMenos": "con_observaciones",
       "reiteradas": { "cantidad": 3, "enAnios": 5 }
     },
     "atenuantes": {
@@ -433,8 +434,8 @@ otro, pero la obligación es suya si el otro no paga.
 | Nivel | Banda del score | Entra con cualquiera de estas señales |
 |---|---|---|
 | **Bajo** | 750 a 999 | Ninguna de las de abajo. Todas las operaciones en A1, cooperativas en 0 días, sin demanda de cobro en los últimos 5 años |
-| **Con observaciones** | 600 a 749 | A2 o A3 en bancos; 1 a 30 días en cooperativas o en el IESS; multas de tránsito por más de un Salario Básico Unificado; impedimento para cargos públicos sin problema de pago; RUC suspendido que no es una depuración del SRI |
-| **Deteriorado** | 400 a 599 | B1 a C2 en bancos; 31 a 90 días en cooperativas o en el IESS; retail con 31 a 90 días a su corte; demanda de cobro de entre 2 y 5 años; demanda de cobro reciente puesta por una persona natural; pensión alimenticia en mora; una D o E como garante |
+| **Con observaciones** | 600 a 749 | A2 o A3 en bancos; 1 a 30 días en cooperativas o en el IESS; multas de tránsito por más de un Salario Básico Unificado; impedimento para cargos públicos sin problema de pago; RUC suspendido que no es una depuración del SRI; demanda de cobro de una persona natural de entre 2 y 5 años |
+| **Deteriorado** | 400 a 599 | B1 a C2 en bancos; 31 a 90 días en cooperativas o en el IESS; retail con 31 a 90 días a su corte; demanda de cobro de entre 2 y 5 años; demanda de cobro de hasta 2 años puesta por una persona natural; pensión alimenticia en mora; una D o E como garante |
 | **Mal comportamiento** | 1 a 399 | La definición de 2.3 |
 
 **Desde el 2026-11-22 los umbrales de atraso de 2.2 y 2.3 son los de R2 y R3 (sección 2.6):** por sector (SBS, SEPS,
@@ -513,13 +514,31 @@ es el del análisis menos 2 o posterior. La fecha completa está en el crudo
 traerla; hasta entonces la ventana real es más larga que la nominal, y se dice.
 
 Una demanda puesta por una **persona natural** (no una institución ni una
-empresa) cuenta como Deteriorado aunque sea reciente: puede ser una deuda
-comercial o un conflicto entre particulares. Propuesta sin medir.
+empresa) pesa menos que la de una entidad —puede ser una deuda comercial o un
+conflicto entre particulares— y **también decae con los años** (negocio,
+2026-11-25: «si deben perder peso, con parámetros más suaves que una empresa o
+entidad financiera»). Usa **las mismas ventanas que la entidad en cada plantilla**
+(`ventanaAnios` y `pesaMenosHastaAnios`) y un nivel menos:
+
+| Plantilla | Dentro de `ventanaAnios` (`deUnaPersonaNatural`) | Hasta `pesaMenosHastaAnios` (`deUnaPersonaNaturalMientrasPesaMenos`) | Después |
+|---|---|---|---|
+| Base (2 y 5 años) | Deteriorado | Con observaciones | Sólo se menciona |
+| Conservadora (3 y 7) | Deteriorado | Con observaciones | Sólo se menciona |
+| Optimista (2 y 3) | Con observaciones | Sólo se menciona (`bajo`: no mueve el nivel) | Sólo se menciona |
+
+Hasta el 2026-11-24 valía lo mismo desde la fecha de la demanda hasta `pesaMenosHastaAnios` (Base deteriorado hasta 5
+años, Conservadora mal comportamiento hasta 7, Optimista con observaciones hasta 3): la de una persona natural no decaía
+dentro de su ventana, y en la Conservadora pesaba más que la de una entidad de 3 a 7 años. La validación
+(`validar-estandar.ts`) exige que nunca pese más que la de una entidad de la misma edad y que con los años no suba.
+**Tres o más demandas en 5 años siguen siendo mal comportamiento, la ponga quien la ponga**, y «superado baja un tramo»
+se aplica igual (deteriorado y con observaciones pasan a un antecedente). La clave nueva entró en `estandar-forma-v1`
+sin subir la forma: la migración 155 no está aplicada y no hay nada guardado con esa forma.
 **Quién es la persona natural lo decide `quienDemanda()`** (`demandas.ts`) por el nombre del demandante, y desde el
 2026-11-24 (estructura-v32) un fondo, una cooperativa escrita «COOP.», un comité, una agencia pública, una sociedad con
 la S.A. pegada a otra palabra o un banco escrito «FILANBANCO» o «BCO.» ya no se leen como persona. Sin buró, con el
 cambio 1 persona cambia de nivel con la Base (deteriorado → mal comportamiento), 1 con la Optimista y 3 con la
-Conservadora (deteriorado → bajo: ahí la persona natural pesa más que una entidad de 3 a 7 años). Un fiscal que figura como
+Conservadora (deteriorado → bajo: ahí la persona natural pesaba más que una entidad de 3 a 7 años; con el decaimiento
+de arriba ya no). Un fiscal que figura como
 demandante sigue como persona (8 demandas de 5 personas): no cambia ningún nivel y el negocio no lo decidió.
 
 ### 2.4 Los atenuantes
@@ -909,7 +928,7 @@ Cambian estos parámetros (todos **propuesta sin medir**):
 | Deteriorado en bancos | B1 y B2 | B1 a C2 | C1 y C2 (B1 y B2 pasan a con observaciones) |
 | Demanda de cobro: ventana de mal comportamiento | 3 años | 2 años | 2 años |
 | Demanda de cobro: pesa menos hasta | 7 años | 5 años | 3 años |
-| Demanda puesta por una persona natural | Cuenta como las demás | Deteriorado | Con observaciones |
+| Demanda puesta por una persona natural | Deteriorado hasta 3 años, con observaciones hasta 7 (decaimiento, 2026-11-25) | Deteriorado hasta 2 años, con observaciones hasta 5 (decaimiento, 2026-11-25) | Con observaciones hasta 2 años, hasta 3 sólo se menciona (decaimiento, 2026-11-25) |
 | Pensión alimenticia en mora | Mal comportamiento | Tolerancia USD 300; por encima, Revisar; agravante menor (R6, 2026-11-18) | Igual que la Base |
 | Con mal comportamiento, la IA puede recomendar | Negar o Revisar | Negar, Revisar o Aprobar | Negar, Revisar o Aprobar |
 | Carga máxima | 35% | 40% | 45% |

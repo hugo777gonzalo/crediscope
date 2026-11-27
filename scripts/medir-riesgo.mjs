@@ -117,8 +117,8 @@ const T = Object.fromEntries(PLANTILLAS.map((p) => [p, {
   eventos: 0, conEventos: 0, superado: {}, efecto: {}, demanda: {}, ia: {}, atenuantes: {}, agravantes: {}, sinMedir: {}, cruce: {}, bloqueos: {},
 }]));
 const gold = [];
-// `--salida=archivo.json`: el nivel, el tramo de mora y «superado» de cada persona (por su c-xxxxxxxx) con cada plantilla, para comparar dos corridas
-// (antes y después de cambiar una regla). Sin cédulas: sólo la referencia.
+// `--salida=archivo.json`: el nivel, el tramo de mora y «superado» de cada persona (por su c-xxxxxxxx) con cada plantilla, y lo que recomendó el modelo
+// (`hoy`, sin cambios entre corridas), para comparar dos corridas (antes y después de cambiar una regla) y saber de cuántas hay análisis. Sin cédulas: sólo la referencia.
 const salidaPorPersona = {};
 const paraMirar = [];
 const fallos = [];
@@ -140,7 +140,7 @@ for (const c of candidatos) {
     const v = calcularVeredictoDeRiesgo(entrada, ESTANDARES[p]);
     ms += performance.now() - t0;
     porPlantilla[p] = v;
-    if (args.salida && c.cita) (salidaPorPersona[c.cita] ??= {})[p] = { nivel: v.nivel, tramo: v.mora.tramo, hoyAlDia: v.mora.hoyAlDia, superado: v.historial.superado?.superado ?? null, vigente: v.malComportamientoVigente, ia: v.ia ? `${v.ia.permiso}/${v.ia.techo}` : null };
+    if (args.salida && c.cita) (salidaPorPersona[c.cita] ??= {})[p] = { nivel: v.nivel, tramo: v.mora.tramo, hoyAlDia: v.mora.hoyAlDia, superado: v.historial.superado?.superado ?? null, vigente: v.malComportamientoVigente, ia: v.ia ? `${v.ia.permiso}/${v.ia.techo}` : null, hoy };
     const r = T[p];
     suma(r.niveles, v.nivel);
     for (const m of v.motivos.filter((x) => x.nivel === v.nivel)) suma(r.motivos, m.codigo + (m.detalle && m.codigo === "mora_vigente" ? `:${m.detalle}` : ""));

@@ -334,14 +334,24 @@ function validar(raiz: unknown): string[] {
   ]);
   let salidasDeLaIA: string[] | null = null;
   if (mc) {
-    const dc = objeto("malComportamiento.demandaDeCobro", mc.demandaDeCobro, ["ventanaAnios", "pesaMenosHastaAnios", "nivelMientrasPesaMenos", "cuentaSiDemanda", "deUnaPersonaNatural", "reiteradas"]);
+    const dc = objeto("malComportamiento.demandaDeCobro", mc.demandaDeCobro, [
+      "ventanaAnios", "pesaMenosHastaAnios", "nivelMientrasPesaMenos", "cuentaSiDemanda", "deUnaPersonaNatural", "deUnaPersonaNaturalMientrasPesaMenos", "reiteradas",
+    ]);
     if (dc) {
       const v = numero("malComportamiento.demandaDeCobro.ventanaAnios", dc.ventanaAnios, 1, 10, { entero: true });
       const p = numero("malComportamiento.demandaDeCobro.pesaMenosHastaAnios", dc.pesaMenosHastaAnios, 1, 10, { entero: true });
       if (v !== null && p !== null && p <= v) error("malComportamiento.demandaDeCobro.pesaMenosHastaAnios", `tiene que ser mayor que la ventana de mal comportamiento (${v} años); se escribió ${p}.`);
-      de("malComportamiento.demandaDeCobro.nivelMientrasPesaMenos", dc.nivelMientrasPesaMenos, ["con_observaciones", "deteriorado"] as const);
+      const nivelDeLaEntidad = de("malComportamiento.demandaDeCobro.nivelMientrasPesaMenos", dc.nivelMientrasPesaMenos, ["con_observaciones", "deteriorado"] as const);
       listaDe("malComportamiento.demandaDeCobro.cuentaSiDemanda", dc.cuentaSiDemanda, ["institucion_financiera", "empresa"] as const);
-      de("malComportamiento.demandaDeCobro.deUnaPersonaNatural", dc.deUnaPersonaNatural, NIVELES_DE_RIESGO);
+      const personaEnLaVentana = de("malComportamiento.demandaDeCobro.deUnaPersonaNatural", dc.deUnaPersonaNatural, NIVELES_DE_RIESGO);
+      const personaDespues = de("malComportamiento.demandaDeCobro.deUnaPersonaNaturalMientrasPesaMenos", dc.deUnaPersonaNaturalMientrasPesaMenos, NIVELES_DE_RIESGO);
+      // La demanda de una persona natural es la más suave: nunca pesa más que la de una entidad de la misma edad, y con los años no sube.
+      if (personaDespues !== null && nivelDeLaEntidad !== null && NIVELES_DE_RIESGO.indexOf(personaDespues) > NIVELES_DE_RIESGO.indexOf(nivelDeLaEntidad)) {
+        error("malComportamiento.demandaDeCobro.deUnaPersonaNaturalMientrasPesaMenos", `no puede pesar más que la de una entidad de la misma edad (${nivelDeLaEntidad}); se escribió ${personaDespues}.`);
+      }
+      if (personaEnLaVentana !== null && personaDespues !== null && NIVELES_DE_RIESGO.indexOf(personaDespues) > NIVELES_DE_RIESGO.indexOf(personaEnLaVentana)) {
+        error("malComportamiento.demandaDeCobro.deUnaPersonaNaturalMientrasPesaMenos", `una demanda vieja no puede pesar más que una reciente (${personaEnLaVentana} dentro de la ventana); se escribió ${personaDespues}.`);
+      }
       const re = objeto("malComportamiento.demandaDeCobro.reiteradas", dc.reiteradas, ["cantidad", "enAnios"]);
       if (re) {
         numero("malComportamiento.demandaDeCobro.reiteradas.cantidad", re.cantidad, 2, 20, { entero: true });
