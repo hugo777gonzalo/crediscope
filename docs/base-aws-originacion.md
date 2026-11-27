@@ -233,7 +233,45 @@ consulta_equifax ── analisis_credito_sector_financiero, detalle_deuda_actual
 | `equifax_deuda_por_tipo.csv` | 1,3 millones de filas: cuota, saldo y número de operaciones por consulta, tabla de origen, tipo de crédito y tipo de riesgo (incluye las filas de total, `SIN_DATO`) |
 | `datos_por_persona_requerimiento.csv` | 224.887 personas con ingreso: patrimonio, egresos, ingresos recuperados y declarados, conducta interna |
 | `LEEME-predictor-equifax.md` | Diccionario de columnas, cuidados y lo que no se pudo cerrar |
+| `crudo-equifax/` | El respaldo de las consultas crudas de Equifax (JSON): 43.370 consultas de 38.035 personas al 2026-11-27 (ver abajo) |
 | `scripts/` | Los guiones de lectura que las generaron |
+
+### El respaldo crudo de Equifax (`crudo-equifax/`)
+
+Una fila de `consulta_equifax` por línea (`to_jsonb` de la fila completa, con `response_json`),
+en `json/*.jsonl.gz`, con `manifiesto.jsonl` (ids, filas y huella de cada archivo) y el estado
+para retomar (`estado-json.json`). Sin consultas repetidas. Lo que hay al 2026-11-27:
+
+| Tanda | Consultas | Ids de `consulta_equifax` |
+|---|---|---|
+| Por lotes, del 2026-10-27 al 2026-11-09 | 20.660 | 400.216 a 420.882 |
+| Dirigidas, 2026-11-09 y 10 (OK FACTURAR y condicionado; `extraer_crudo_dirigido.mjs`) | 2.760 | 314.421 a 400.205, salteadas |
+| Por lotes, 2026-11-24 (autorizadas 30.000; quedó en 14.050) | 14.050 | 385.655 a 400.215 |
+| Por lotes, 2026-11-25 (autorizadas 2.500, lotes de 25 cada 2 min) | 2.500 | 383.055 a 385.654 |
+| Por lotes, 2026-11-26 y 27 (pedidas 3.000 personas; 3.400 consultas) | 3.400 | 379.583 a 383.054 |
+| **Total** | **43.370** | |
+
+- **Personas:** 38.035 distintas por `id_persona` de AWS; 37.077 con `reporteCrediticio`. Las fechas
+  de consulta van del 2025-12-30 al 2026-10-26: lo de los lotes es casi todo de septiembre y octubre
+  de 2026, y las dirigidas van de diciembre de 2025 a agosto. Pesa 326 MB comprimido.
+- **En nuestra base y en Storage:** 3.542 consultas (3.440 personas) migradas a `consultas_equifax`
+  y 20.617 objetos en `crudo-equifax-migrado` (la subida del 2026-11-06 y uno del 2026-11-09). Las
+  22.810 bajadas desde el 2026-11-09 no entraron en esa subida ni en la migración (no se comprobó
+  objeto por objeto): están en la carpeta local.
+- **Lo que falta en AWS:** hay 105.070 respuestas JSON (conteo del 2026-10-21), de la id 308.922 a la
+  419.414; las 309.346 XML de 2021 a 2025 no se bajaron. Bajar es por pedido explícito del negocio.
+- **Cómo se baja** (`scripts/extraer_crudo_equifax.mjs`): de la id más nueva a la más vieja,
+  retomando desde el estado, y saltando en la consulta las dirigidas ya bajadas. Desde el 2026-11-24
+  se reconecta solo si la conexión se corta (cinco intentos con espera creciente y después para),
+  mantiene despierta la computadora mientras corre y tiene `--diagnostico`, que mira el tramo
+  siguiente sin bajar respuestas (ids, tamaños y el plan).
+- **El ritmo que aguanta la base:** en octubre, 500 filas tardaban de 3 a 6 s. El 2026-11-24, 100
+  filas tardaban de 10 a 23 s y rozaban el `statement_timeout` de 20 s; 50 filas tardaban de 6 a
+  10 s. A las 18:49 y a las 19:31 (hora de Ecuador) la base dejó de contestar en el mismo punto, con
+  los datos y el plan normales: una consulta de 300 ids tardó 3 s. No se sabe si es carga propia de
+  la base a esa hora o el peso de la descarga; por eso se paró. El 2026-11-25 se retomó en ese mismo punto con lotes de 25 cada 2 minutos: 100 lotes de 3 a 5 s en unas 3 h 20 min, con un solo corte de conexión que se reconectó solo. La tanda del 2026-11-26 fue igual (lotes de 1 a 3 s), pero la computadora se suspendió de las 18:05 a las 8:51 (tapa o botón: el pedido del guion a Windows no lo frena) y siguió sola al despertar. Cada 100 consultas nuevas dan unas 85 a 89 personas nuevas. Para seguir, lotes chicos
+  (`--lote=25 --pausa=120000` o menos) y antes preguntar a quien administra la base si notó carga y
+  a qué hora conviene.
 
 ## 5. Sin confirmar
 
