@@ -10,7 +10,7 @@ import { armarIngresoDelPerfil, PARAMETROS_DE_LA_ESCALERA } from "../escalera-de
 import { PRODUCTO_CONSUMO } from "../simulador-credito.ts";
 import { aplicarCambios } from "./cambios.ts";
 import { armarFilaDelEstandar, configurarEstandar, huellaDelEstandar, jsonCanonico, plantillaCompleta } from "./configurar-estandar.ts";
-import { CLAVES_DE_CELDA, PLANTILLAS } from "./estandar.ts";
+import { CLAVES_DE_CELDA, type NombreDePlantilla, PLANTILLAS } from "./estandar.ts";
 import { cargaMaximaSegunElRiesgo, lecturaDeLaEscalera } from "./lectura-de-la-escalera.ts";
 import { PLANTILLA_BASE, plantillaSinValidar } from "./plantillas.ts";
 import { cargarEstandar, esEstandarValidado, EstandarInvalido, exigirEstandarValido, umbralesPorRevisar, validarEstandar } from "./validar-estandar.ts";
@@ -377,6 +377,29 @@ Deno.test("la coherencia entre secciones: bandas, letras, carga por riesgo, celd
   rechaza({ margenDeLaIA: { escalonesHaciaArriba: 0 } }, "con cero escalones hacia arriba");
   rechaza({ malComportamiento: { demandaDeCobro: { pesaMenosHastaAnios: 2 } } }, "tiene que ser mayor que la ventana");
   rechaza({ malComportamiento: { bandaDelScoreSiLaIASube: [250, 700] } }, "no pasa de la banda de deteriorado");
+});
+
+Deno.test("la demanda de una persona natural decae con los años en las tres plantillas, con un nivel menos que la de una entidad", () => {
+  // Negocio, 2026-11-25: las mismas ventanas que la entidad; dentro de la ventana, un nivel menos que mal comportamiento; hasta «pesa menos», otro menos.
+  const tramos = (p: NombreDePlantilla) => {
+    const d = plantillaCompleta(p).malComportamiento.demandaDeCobro;
+    return [d.ventanaAnios, d.deUnaPersonaNatural, d.pesaMenosHastaAnios, d.deUnaPersonaNaturalMientrasPesaMenos, d.nivelMientrasPesaMenos];
+  };
+  assertEquals(tramos("base"), [2, "deteriorado", 5, "con_observaciones", "deteriorado"]);
+  assertEquals(tramos("conservadora"), [3, "deteriorado", 7, "con_observaciones", "deteriorado"]);
+  assertEquals(tramos("optimista"), [2, "con_observaciones", 3, "bajo", "deteriorado"]);
+  // Falta la clave nueva: no se carga (una plantilla incompleta no pasa).
+  const sinLaClave = JSON.parse(JSON.stringify(plantillaCompleta("base")));
+  delete sinLaClave.malComportamiento.demandaDeCobro.deUnaPersonaNaturalMientrasPesaMenos;
+  const r = validarEstandar(sinLaClave);
+  assert(!r.ok && r.errores.some((e) => e.includes("deUnaPersonaNaturalMientrasPesaMenos")), "se cargó sin la clave nueva");
+  // La de una persona natural nunca pesa más que la de una entidad de la misma edad.
+  rechaza({ malComportamiento: { demandaDeCobro: { nivelMientrasPesaMenos: "con_observaciones", deUnaPersonaNaturalMientrasPesaMenos: "deteriorado" } } }, "no puede pesar más que la de una entidad de la misma edad");
+  // Y con los años no sube.
+  rechaza({ malComportamiento: { demandaDeCobro: { deUnaPersonaNatural: "con_observaciones", deUnaPersonaNaturalMientrasPesaMenos: "deteriorado" } } }, "una demanda vieja no puede pesar más que una reciente");
+  rechaza({ malComportamiento: { demandaDeCobro: { deUnaPersonaNaturalMientrasPesaMenos: "alto" } } }, "deUnaPersonaNaturalMientrasPesaMenos: tiene que ser uno de");
+  // Más suave sí se carga: una institución que no quiere que cuente a partir de la ventana.
+  assert(configurarEstandar({ plantilla: "base", cambios: { malComportamiento: { demandaDeCobro: { deUnaPersonaNaturalMientrasPesaMenos: "bajo" } } } }).ok);
 });
 
 Deno.test("más riesgo no puede dar una salida mejor para la misma capacidad", () => {

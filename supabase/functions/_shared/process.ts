@@ -241,7 +241,13 @@ function dentroUltimos12Meses(fecha: unknown): boolean {
 // camposSinDato con el parcial (lo que escribía la v30; los del detalle, con el nombre con punto). El modelo, la
 // capacidad de pago, el predictor de ingresos, las columnas del perfil, el resumen por persona y las pantallas de
 // ingresos leen lo de antes. duracion_fuentes_ms mide ahora la capa de hechos entera.
-export const PROCESS_VERSION = "estructura-v31"; // ver docs/estructura-estandarizada.md
+// estructura-v32 (negocio, 2026-11-24, E10): `quienDemanda()` deja de leer como persona natural a una entidad
+// (un fondo de cesantía, una cooperativa escrita «COOP.», un comité, una agencia pública, «S.A.» pegada a otra
+// palabra, un banco escrito «FILANBANCO» o «BCO.»): cambia `riesgoJudicialCrediticio.demandasDeCobro[].quienDemanda`
+// y, en un banco que antes no se reconocía, qué demanda es de cobro (`numeroDemandasComoDemandado` y los tipos).
+// Sólo cambian esos dos grupos judiciales y sólo en las personas con una de esas demandas; el modelo (marco-v36) las lee
+// igual, y la capa de hechos no cambia de forma (sigue hechos-v5).
+export const PROCESS_VERSION = "estructura-v32"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en

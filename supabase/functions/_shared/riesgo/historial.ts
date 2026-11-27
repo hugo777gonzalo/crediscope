@@ -190,7 +190,8 @@ const GRAVEDAD: Record<NivelDeRiesgo, number> = { bajo: 0, con_observaciones: 1,
 
 /**
  * Las demandas de cobro como demandado, por antigüedad (R1): hasta 2 años, mal comportamiento; de 2 a 5, pesa menos (deteriorado); más de 5, un
- * antecedente. Una puesta por una persona natural cuenta como deteriorado. Tres o más en 5 años es mal comportamiento. Decisión 12: superado, la
+ * antecedente. Una puesta por una persona natural decae igual, con las mismas ventanas y un nivel menos (Base: deteriorado hasta 2 años, con
+ * observaciones hasta 5, después un antecedente; negocio, 2026-11-25). Tres o más en 5 años es mal comportamiento. Decisión 12: superado, la
  * demanda baja un tramo, salvo reincidencia. El perfil trae sólo el AÑO de la demanda: con el año, «2 años» puede ser casi 3 (se cuenta dentro de
  * la ventana si el año es el del análisis menos 2 o posterior).
  */
@@ -212,8 +213,11 @@ export function demandaDeCobro(entrada: EntradaDeRiesgo, estandar: EstandarDeLaI
     if (d.anio !== null) masReciente = masReciente === null ? d.anio : Math.max(masReciente, d.anio);
     if (edad <= c.reiteradas.enAnios) enLosAniosDeLaReiteracion++;
     let nivel: NivelDeRiesgo | null = null;
-    if (d.quienDemanda === "persona") nivel = edad <= c.pesaMenosHastaAnios ? c.deUnaPersonaNatural : null;
-    else nivel = edad <= c.ventanaAnios ? "mal_comportamiento" : edad <= c.pesaMenosHastaAnios ? c.nivelMientrasPesaMenos : null;
+    if (d.quienDemanda === "persona") {
+      // Con las mismas ventanas que la entidad y un nivel menos; «bajo» no mueve el nivel y sólo se menciona.
+      const deLaPersona = edad <= c.ventanaAnios ? c.deUnaPersonaNatural : edad <= c.pesaMenosHastaAnios ? c.deUnaPersonaNaturalMientrasPesaMenos : "bajo";
+      nivel = deLaPersona === "bajo" ? null : deLaPersona;
+    } else nivel = edad <= c.ventanaAnios ? "mal_comportamiento" : edad <= c.pesaMenosHastaAnios ? c.nivelMientrasPesaMenos : null;
     if (nivel === null) seMenciona = true;
     else if (peor === null || GRAVEDAD[nivel] > GRAVEDAD[peor]) peor = nivel;
   }

@@ -101,7 +101,10 @@ export const PLANTILLA_BASE: EstandarDeLaInstitucion = {
       pesaMenosHastaAnios: 5,
       nivelMientrasPesaMenos: "deteriorado",
       cuentaSiDemanda: ["institucion_financiera", "empresa"],
+      // La de una persona natural decae con los años igual que la de una entidad, con las mismas ventanas y un nivel menos (negocio,
+      // 2026-11-25: «debería mantener niveles más suaves para una demanda de una persona»). Antes valía lo mismo hasta `pesaMenosHastaAnios`.
       deUnaPersonaNatural: "deteriorado",
+      deUnaPersonaNaturalMientrasPesaMenos: "con_observaciones",
       reiteradas: { cantidad: 3, enAnios: 5 },
     },
     atenuantes: {
@@ -271,7 +274,9 @@ const CAMBIOS_DE_LA_CONSERVADORA: Cambios = {
     historial: { decaimientoEnMeses: [12, 24, 48] },
   },
   malComportamiento: {
-    demandaDeCobro: { ventanaAnios: 3, pesaMenosHastaAnios: 7, deUnaPersonaNatural: "mal_comportamiento" },
+    // La de una persona natural ya no es mal comportamiento hasta los 7 años (así pesaba más que la de una entidad de 3 a 7): hereda de la
+    // Base deteriorado dentro de la ventana y con observaciones hasta los 7 (negocio, 2026-11-25).
+    demandaDeCobro: { ventanaAnios: 3, pesaMenosHastaAnios: 7 },
     salidasQueLaIAPuedeRecomendar: ["negar", "revisar"],
   },
   ingreso: {
@@ -312,7 +317,8 @@ const CAMBIOS_DE_LA_OPTIMISTA: Cambios = {
     },
   },
   malComportamiento: {
-    demandaDeCobro: { pesaMenosHastaAnios: 3, deUnaPersonaNatural: "con_observaciones" },
+    // Persona natural: con observaciones dentro de los 2 años y después sólo se menciona (hasta aquí pesaba igual hasta los 3).
+    demandaDeCobro: { pesaMenosHastaAnios: 3, deUnaPersonaNatural: "con_observaciones", deUnaPersonaNaturalMientrasPesaMenos: "bajo" },
   },
   ingreso: {
     aceptadoPorPeldano: { declarado_coherente: 0.85 },
