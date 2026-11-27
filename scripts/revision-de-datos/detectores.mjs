@@ -191,6 +191,28 @@ export const DETECTORES = [
         and coalesce((sp->'comportamientoBancario'->>'tieneCreditoIessBiess')::boolean, false) = false`,
   },
   {
+    id: "hipotecario-biess-vencido-con-saldo",
+    capa: "estructura",
+    tipo: "revisar",
+    // La capacidad de pago cuenta la cuota del contrato (sin pasar del saldo) de un hipotecario del IESS/BIESS con la fecha de fin ya pasada
+    // y con saldo (negocio, 2026-11-25; cuotaHipotecariaComoEquifax()). El saldo de la fuente de préstamos es de un solo corte (el cierre de
+    // febrero de 2026 en toda la cartera): si el fin cayó DESPUÉS de ese corte, lo más probable es que el plan ya se haya pagado y la cuota
+    // sea de una deuda que no existe; si cayó antes, es un vencido con saldo de verdad. Equifax no informa cuota de un crédito pasado de
+    // su vencimiento (0 de 2.402 en AWS), así que esta rama no se puede medir contra su cuota.
+    titulo: "Hipotecario del IESS/BIESS con la fecha de fin pasada y con saldo (la capacidad cuenta la cuota del contrato)",
+    caso: "c-8e0922fb, 2026-11-27: 7 operaciones de 6 personas en el seco de estructura-v33, 3 con el fin después del corte del saldo",
+    conocido: "decidido el 2026-11-25: cuota del contrato sin pasar del saldo; queda abierto si un fin posterior al corte del saldo debe contarse (3 de 7 el 2026-11-27)",
+    poblacion: `select count(*) from ultimo where sp->'comportamientoBancario'->>'tieneCreditoIessBiess' = 'true'`,
+    casos: `
+      select u.client_id, jsonb_build_object('fin', o->>'fechaFin', 'corte', o->>'fechaCorte', 'fuenteDelSaldo', o->>'fuenteDelSaldo',
+             'saldo', (o->>'saldo')::numeric, 'monto', o->>'monto') as detalle
+      from ultimo u,
+           jsonb_array_elements(case when jsonb_typeof(u.sp->'comportamientoBancario'->'operacionesIessBiess') = 'array'
+                                     then u.sp->'comportamientoBancario'->'operacionesIessBiess' else '[]'::jsonb end) o
+      where o->>'tipo' = 'hipotecario' and (o->>'saldo')::numeric > 0
+        and o->>'fechaFin' < to_char((now() at time zone 'America/Guayaquil')::date, 'YYYY-MM-DD')`,
+  },
+  {
     id: "cargo-vigente-sin-aporte-vigente",
     capa: "estructura",
     // Corregido en estructura-v19 (2026-11-05): de los 23 de la primera corrida,

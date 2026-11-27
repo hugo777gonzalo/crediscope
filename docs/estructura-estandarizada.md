@@ -966,6 +966,31 @@ interface StandardClientProfile {
 >   (`recalcular-grupos.mjs --grupos=riesgoJudicialCrediticio,riesgoJudicialCivil,riesgoSeguridadCiudadana --bloqueo`),
 >   con el sí del negocio.
 
+> **estructura-v33 (negocio, 2026-11-27: la cuota de un hipotecario del BIESS como la informa Equifax)**
+> - `comportamientoBancario.operacionesIessBiess`: cada préstamo suma `monto`, `fechaConcesion`, `tasaAnual` (fracción; sólo la
+>   base interna la trae), `cuotaEstimada` (también de la base interna), `fuenteDelSaldo` (`prestamos` o `base_interna`) y
+>   `fechaCorte` (la de la fuente de préstamos; `null` en una operación sólo de la base interna). Lo que ya traía (`tipo`,
+>   `saldo`, `fechaFin`) queda igual. Sólo lo lee la capacidad de pago; no llega al modelo.
+> - **Por qué:** el negocio decidió que la verdad es la cuota que informa Equifax («es la que paga el cliente en la realidad»).
+>   Esa cuota (`reporteCrediticio.cuota_mensual`) es una anualidad del saldo del corte al 9,0% con los meses hasta el vencimiento
+>   (tasa implícita mediana 9,02% en 2.394 cuotas del BIESS de AWS; el bloque `interconnect` usa 10,45% y no se lee). La fuente de
+>   préstamos de Proveedor_Info_1 trae el saldo de UN corte (`fechaCorte`, en toda la cartera el cierre de febrero de 2026, siete
+>   meses antes de los perfiles de octubre: contra Equifax coincide con el saldo del fin de ese mes), así que la capacidad lo lleva a
+>   hoy con el plan del contrato y calcula la anualidad al 9,0% (`cuotaHipotecariaComoEquifax()`, `capacidad-de-pago.ts`). Los
+>   campos nuevos son lo que esa regla necesita.
+> - **Medido** (contra la cuota de Equifax, con los campos de Proveedor_Info_1): ±10% en 97% de 112 hipotecarios de la cartera que
+>   también están en AWS (mediana 0,999; sobreestima más de 15% en 2%, no subestima ninguno) y en 98% de 1.845 créditos del BIESS de
+>   AWS con el saldo de seis meses antes como foto y sin la tasa declarada. Los guiones están en `research/hipotecario-cuota/` (fuera de git, con montos reales).
+> - **Qué versión sube:** la estructura (v33): cambia el perfil guardado. No sube `hechos` (la forma de la capa no cambia: `biess.operaciones.detalle`
+>   sigue siendo una lista), ni el marco, ni la capacidad (ver el PR: la cuota del hipotecario sin buró cambia para unos pocos veredictos).
+> - **Sin aplicar:** se despliega primero y se recalcula después, con el sí del negocio (`recalcular-grupos.mjs --grupos=comportamientoBancario`).
+>   Un perfil anterior sigue funcionando: sin fuente ni corte del saldo, la capacidad toma el saldo como el de hoy.
+> - **Medido en seco** (3.766 personas reales): **se escriben 3.079 perfiles** (suben a v33) y **cambian de contenido 926** (`operacionesIessBiess`;
+>   938 personas tienen préstamos del IESS/BIESS); 687 no se reproducen por lo pendiente de la v31 (`fuentesIngreso.camposSinDato.corteIessUsado`, 648)
+>   y la v32 (`riesgoJudicialCrediticio.demandasDeCobro`), que no es de esta versión: pasan a v33 cuando se apliquen esos recálculos. En la
+>   capacidad con el crédito de referencia (USD 5.000, 36 meses, Tasa máxima), de 270 personas sin buró y con ingreso **cambian de veredicto 10**
+>   (alcanza → justo 5, justo → no alcanza 4, no alcanza → justo 1).
+
 > **estructura-v32 (negocio, 2026-11-24: `quienDemanda()` deja de leer como persona natural a una entidad; E10)**
 > - La revisión con casos reales de E10 (23/11) halló entidades leídas como «persona»; el negocio aprobó el 24/11 mejorar el
 >   clasificador. R1 pesa menos la demanda de cobro de una persona natural, así que cada una bajaba el peso de una demanda que no

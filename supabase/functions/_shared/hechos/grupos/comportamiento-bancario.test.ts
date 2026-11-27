@@ -66,6 +66,61 @@ Deno.test("el reloj es la fecha de la consulta: un préstamo terminado lo es seg
   assertEquals(despues.hechos.find((h) => h.codigo === "biess.tiene")?.descartados?.[0].motivo, "terminado_en_la_base_interna");
 });
 
+// estructura-v33: cada préstamo lleva lo que la capacidad de pago necesita para estimar un hipotecario como lo informa Equifax.
+// Crudo inventado: un hipotecario que está en las dos fuentes (sale con la operación de la fuente de préstamos, con su saldo y
+// su corte, y con la tasa y la cuota estimada de la base interna) y otro que sólo está en la base interna (su saldo es una foto
+// vieja y no tiene corte).
+Deno.test("estructura-v33: operacionesIessBiess lleva monto, concesión, tasa, cuota estimada y la fuente y el corte del saldo", () => {
+  const crudo = {
+    basesInternas: {
+      status: "ok",
+      data: {
+        tcredQuirografarios: [],
+        tcredHipotecarios: [
+          { srNrooperaciongaf: "0000700", srFecprimerdesembolso: "03/05/2019", srMontofinanciado: 80000, srSaldototalcredito: 70000, srDiasmoraafi: 0, srFecfincredito: "03/05/2044", srTasaactual: "8.69", cuotaEstimada: 700.55, srEstadocredito: "VIGENTE" },
+          { srNrooperaciongaf: "0000800", srFecprimerdesembolso: "15/06/2015", srMontofinanciado: 40000, srSaldototalcredito: 30000, srDiasmoraafi: 0, srFecfincredito: "31/05/2035", srTasaactual: "10.27", cuotaEstimada: 410.55, srEstadocredito: "VIGENTE" },
+        ],
+      },
+    },
+    ...vacio("creditoQuirografario", "prestamos"),
+    creditoHipotecario: {
+      status: "ok",
+      data: {
+        prestamos: [
+          { nroOperacion: "0000700", fechaConcesion: "03/05/2019", valorPrestamo: 80000, valorPorVencer: 61000, valorVencido: 500, plazoOriginal: 300, diasMora: 0, estado: "PV", fechaCorte: "01/02/2026" },
+        ],
+      },
+    },
+  };
+  const doc = derivarHechos(crudo, contexto("2026-10-03T12:00:00-05:00"));
+  const ops = perfilDesdeHechos(doc, "comportamientoBancario").operacionesIessBiess as Array<Record<string, unknown>>;
+  assertEquals(ops.length, 2);
+  assertEquals(ops[0], {
+    tipo: "hipotecario", saldo: 61500, fechaFin: "2044-05-03", monto: 80000, fechaConcesion: "2019-05-03", tasaAnual: 0.0869, cuotaEstimada: 700.55,
+    fuenteDelSaldo: "prestamos", fechaCorte: "2026-02-01",
+  });
+  assertEquals(ops[1], {
+    tipo: "hipotecario", saldo: 30000, fechaFin: "2035-05-31", monto: 40000, fechaConcesion: "2015-06-15", tasaAnual: 0.1027, cuotaEstimada: 410.55,
+    fuenteDelSaldo: "base_interna", fechaCorte: null,
+  });
+});
+
+Deno.test("estructura-v33: sin tasa ni cuota estimada (sólo la fuente de préstamos) los campos quedan en null, no en cero", () => {
+  const crudo = {
+    basesInternas: { status: "ok", data: { tcredQuirografarios: [], tcredHipotecarios: [] } },
+    ...vacio("creditoQuirografario", "prestamos"),
+    creditoHipotecario: {
+      status: "ok",
+      data: { prestamos: [{ nroOperacion: "0000900", fechaConcesion: "24/07/2023", valorPrestamo: 90000, valorPorVencer: 84000, valorVencido: 0, plazoOriginal: 300, diasMora: 0, estado: "PV", fechaCorte: "01/02/2026" }] },
+    },
+  };
+  const ops = perfilDesdeHechos(derivarHechos(crudo, contexto("2026-10-03T12:00:00-05:00")), "comportamientoBancario").operacionesIessBiess as Array<Record<string, unknown>>;
+  assertEquals(ops, [{
+    tipo: "hipotecario", saldo: 84000, fechaFin: "2048-07-24", monto: 90000, fechaConcesion: "2023-07-24", tasaAnual: null, cuotaEstimada: null,
+    fuenteDelSaldo: "prestamos", fechaCorte: "2026-02-01",
+  }]);
+});
+
 Deno.test("el mismo crudo da el mismo documento", () => {
   const crudo = conBiessTerminadoEn("15/09/2030");
   const a = JSON.stringify(derivarHechos(crudo, contexto("2026-10-01T12:00:00-05:00")));

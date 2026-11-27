@@ -93,7 +93,7 @@ export const CATALOGO: CodigoDelCatalogo[] = [
   {
     codigo: "biess.operaciones.detalle",
     unidad: "lista",
-    descripcion: "Cada préstamo del IESS/BIESS con su tipo, saldo y fecha de fin, para la capacidad de pago",
+    descripcion: "Cada préstamo del IESS/BIESS con su tipo, saldo, fecha de fin, monto, concesión, tasa, cuota estimada y la fuente y el corte de su saldo, para la capacidad de pago",
     campoDelPerfil: P + "operacionesIessBiess",
     llegaAlModelo: false,
     esIdentificador: false,
@@ -260,6 +260,12 @@ interface OperacionIess {
   diasMora: number;
   tipo: "quirografario" | "hipotecario";
   fin: number | null;
+  // Desde estructura-v33: lo que la capacidad de pago necesita para estimar la cuota de un hipotecario como la
+  // informa Equifax. La tasa (% anual) y la cuota estimada son de la base interna (srTasaactual, cuotaEstimada);
+  // el corte es la `fechaCorte` de la fuente de préstamos, y no existe en una operación sólo de la base interna.
+  tasa: number | null;
+  cuotaEstimada: number | null;
+  corte: number | null;
   manda: Fila;
   camposDeSaldo: string[];
   moraDe: { fila: Fila; campo: string };
@@ -318,6 +324,9 @@ function unirIessBiess(deLaBase: Fila[], deLosPrestamos: Fila[], hoy: number) {
     diasMora: num(f.r.diasMora) ?? 0,
     tipo: tipoDeLaLista(f),
     fin: finDeLaConcesion(f.r.fechaConcesion, f.r.plazoOriginal),
+    tasa: null,
+    cuotaEstimada: null,
+    corte: diaDeFechaDDMMYYYY(f.r.fechaCorte),
     manda: f,
     camposDeSaldo: ["valorPorVencer", "valorVencido"],
     moraDe: { fila: f, campo: "diasMora" },
@@ -342,6 +351,10 @@ function unirIessBiess(deLaBase: Fila[], deLosPrestamos: Fila[], hoy: number) {
       diasMora: num(r.diasMoraAfi ?? r.srDiasmoraafi) ?? 0,
       tipo: tipoDeLaLista(f),
       fin: diaDeFechaDDMMYYYY(r.fechaFinCredito ?? r.srFecfincredito),
+      // Sólo la base interna de hipotecarios las trae (65% de los hipotecarios del BIESS; ninguno concedido de 2022 en adelante).
+      tasa: num(r.srTasaactual),
+      cuotaEstimada: num(r.cuotaEstimada),
+      corte: null,
     };
     const repetida = prestamos.find((p) => esLaMisma(p, o));
     if (repetida) {
@@ -349,6 +362,9 @@ function unirIessBiess(deLaBase: Fila[], deLosPrestamos: Fila[], hoy: number) {
       repetida.diasMora = Math.max(repetida.diasMora, o.diasMora);
       // La fecha de fin de la base interna es la pactada: vale más que la derivada.
       repetida.fin = o.fin ?? repetida.fin;
+      // La tasa y la cuota estimada sólo las trae la base interna: se suman a la operación de la fuente de préstamos.
+      repetida.tasa = o.tasa ?? repetida.tasa;
+      repetida.cuotaEstimada = o.cuotaEstimada ?? repetida.cuotaEstimada;
       const porNumero = repetida.numero !== "" && repetida.numero === o.numero;
       repetida.base.push({ fila: f, saldo: o.saldo, campoDeSaldo, dia: o.dia, criterio: porNumero ? "numero" : "monto_y_fecha" });
       continue;
@@ -661,7 +677,26 @@ export function emitir(crudoSinTipo: unknown, contexto: Contexto, emisor: Emisor
 
   // Cada préstamo con su tipo, saldo y fecha de fin, para la cuota estimada de
   // la capacidad de pago (estructura-v22). No llega al modelo.
-  const detalle = operaciones.map((o) => ({ tipo: o.tipo, saldo: redondear(o.saldo), fechaFin: fechaDeDia(o.fin) }));
+  //
+  // Desde estructura-v33 lleva también lo que hace falta para estimar un hipotecario como la informa Equifax (la
+  // cuota mensual de `reporteCrediticio` es una anualidad del saldo al 9,0% con los meses que quedan; medido el
+  // 2026-11-27 sobre 2.394 cuotas de AWS: tasa implícita mediana 9,02%): el saldo de la fuente de préstamos es de UN
+  // corte (`fechaCorte`; en toda la cartera, el cierre de febrero de 2026, siete meses antes de los perfiles de octubre)
+  // y hay que llevarlo a hoy con el plan del contrato, que pide el monto, la concesión y la tasa. La cuota estimada es
+  // la de la base interna, tal cual. `fuenteDelSaldo` dice de dónde es el saldo: el de la base interna es una foto
+  // vieja y sin fecha (1,22 veces el de préstamos en la mediana).
+  const detalle = operaciones.map((o) => ({
+    tipo: o.tipo,
+    saldo: redondear(o.saldo),
+    fechaFin: fechaDeDia(o.fin),
+    monto: o.monto === null ? null : redondear(o.monto),
+    fechaConcesion: fechaDeDia(o.dia),
+    // Fracción anual (0,0869), no el 8,69 de la fuente.
+    tasaAnual: o.tasa === null ? null : Math.round(o.tasa * 10_000) / 1_000_000,
+    cuotaEstimada: o.cuotaEstimada === null ? null : redondear(o.cuotaEstimada),
+    fuenteDelSaldo: o.manda.lista === "prestamos" ? "prestamos" : "base_interna",
+    fechaCorte: fechaDeDia(o.corte),
+  }));
   if (sinIess) {
     // Sin una de las tres fuentes, la unión con las otras dos es el parcial.
     const parcial: Record<string, number | boolean | null | typeof detalle> = {

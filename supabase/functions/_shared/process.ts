@@ -247,7 +247,11 @@ function dentroUltimos12Meses(fecha: unknown): boolean {
 // y, en un banco que antes no se reconocía, qué demanda es de cobro (`numeroDemandasComoDemandado` y los tipos).
 // Sólo cambian esos dos grupos judiciales y sólo en las personas con una de esas demandas; el modelo (marco-v36) las lee
 // igual, y la capa de hechos no cambia de forma (sigue hechos-v5).
-export const PROCESS_VERSION = "estructura-v32"; // ver docs/estructura-estandarizada.md
+// estructura-v33 (negocio, 2026-11-27): cada préstamo de `comportamientoBancario.operacionesIessBiess` lleva además el monto,
+// la concesión, la tasa anual y la cuota estimada de la base interna, la fuente de su saldo (`fuenteDelSaldo`) y el corte de
+// la fuente de préstamos (`fechaCorte`). La capacidad de pago los usa para estimar la cuota de un hipotecario sin buró como la
+// informa Equifax (anualidad del saldo llevado a hoy, al 9,0%). Ningún otro campo cambia; no llega al modelo.
+export const PROCESS_VERSION = "estructura-v33"; // ver docs/estructura-estandarizada.md
 
 // corteIess: el corte vigente del registro del IESS. Llega de afuera
 // porque se deduce de los datos ya consultados (ver loadCorteIess) en

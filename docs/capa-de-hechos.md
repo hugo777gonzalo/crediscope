@@ -536,7 +536,7 @@ los hechos se emiten igual, y lo que llega lo decide el catálogo (sección 7).
 
 **Etapa B, hecha en estructura-v25 (2026-11-19, E4).** `process.ts` arma
 `comportamientoBancario` y `comportamientoCooperativas` con `perfilDesdeHechos`; la unión del
-BIESS (con el tipo y la fecha de fin de la v22) se mudó a `grupos/comportamiento-bancario.ts`
+BIESS (con el tipo y la fecha de fin de la v22 y, desde la v33, el monto, la concesión, la tasa, la cuota estimada y la fuente y el corte del saldo) se mudó a `grupos/comportamiento-bancario.ts`
 como `biess.operaciones.detalle`, y `process.ts` perdió sus copias. Con eso entró la única
 diferencia que la inversión admite, el **«sin dato»**:
 
