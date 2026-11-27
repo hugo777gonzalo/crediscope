@@ -306,13 +306,12 @@ const FUENTES_DE_CUOTAS: Array<[fuente: string, nombre: string, conBuro: "lo_cub
 // - quirografario: 6,5% «desde», con reajuste semestral (Vistazo, 2026-06-04,
 //   https://www.vistazo.com/actualidad/nacional/2026-06-04-creditos-quirografarios-biess-ecuador-tasas-interes-ED11034527).
 //   Los préstamos tomados antes pueden tener una tasa mayor: la cuota sale baja.
-// - hipotecario: 2,99% del Credicasa, a 25 a 30 años (Primicias y LEXIS, 2026);
-//   Vivienda Premier y Miti-Miti van hasta 4,99%.
 // Ningún dato de la fuente dice la tasa de cada préstamo, y la cuota que Equifax
 // informa del BIESS se reproduce con una anualidad (98% dentro de ±15%).
-// El hipotecario salió de esta lista el 2026-11-27: su cuota ya no usa el 2,99%
-// del Credicasa (23% por debajo de la real, y a 330 personas sin buró), sino la
-// anualidad al 9,0% que calcula Equifax (cuotaHipotecariaComoEquifax(), abajo).
+// El hipotecario salió de esta lista el 2026-11-27: usaba el 2,99% del Credicasa
+// (Primicias y LEXIS, 2026), que deja la cuota 23% por debajo de la real, y a 330
+// personas sin buró. Ahora la cuota es la anualidad al 9,0% que calcula Equifax
+// (cuotaHipotecariaComoEquifax(), abajo).
 export const TASA_ANUAL_BIESS = { quirografario: 0.065 } as const;
 export const TASA_BIESS_POR_CONFIRMAR = true;
 
@@ -459,8 +458,8 @@ export function cuotaHipotecariaComoEquifax(operacion: unknown, hoy: Date): { cu
 
   if (mesesQueQuedan === null) {
     if (monto !== null && monto > 0 && plazoDelContrato !== null && plazoDelContrato > 0) {
-      // Con un tope: nadie paga por mes más de lo que todavía debe. En el seco de la cartera una cuota de contrato de varios
-      // cientos de dólares caía sobre un saldo de una decena (la 47 veces la de antes): el resto del plan ya se pagó.
+      // Con un tope: nadie paga por mes más de lo que todavía debe. Es una salvaguarda para un saldo chico; en el seco de la
+      // cartera no se activó en ninguna de las 6 operaciones (la cuota del contrato quedó entre 4% y 50% del saldo).
       return { cuota: Math.min(cuotaPorAnualidad(monto, tasa, plazoDelContrato), Math.round(saldo * 100) / 100), camino: "cuota_del_contrato_vencido" };
     }
     return null;
