@@ -2,7 +2,9 @@
 
 Pedido del negocio del 2026-11-23, después de decidir A14 (`docs/ingreso-adicional-por-corroborar.md`, 6.1): estimar el adicional de los
 dependientes que A14 dejó sin estimar. Hoy la decisión vigente es no estimarlo; esta propuesta es el estudio que podría cambiarla.
-**Medido el 2026-11-24 (sección 7): no pasa, y la decisión de A14 queda como está.** Nada se conecta.
+**Medido el 2026-11-24 (sección 7): no pasa, y la decisión de A14 queda como está.** Nada se conecta. **El 2026-11-27 (sección 8), ni el negativo
+corregido, ni el RUC reconstruido con el catastro del SRI, ni el entrenamiento sin las personas sin respuesta lo hacen pasar: sigue cerrada. En 8.5,
+lo que pasaría si se suma el mínimo al dependiente con RUC activo, como decidió el negocio el 2026-11-27.**
 
 ## 1. Qué ya se probó, y por qué esto es distinto
 
@@ -329,3 +331,201 @@ Lo que dejaría abrirlo otra vez:
   a quien no tiene adicional con quien no lo documentó porque el sueldo alcanzaba, el clasificador aprende cuándo se documenta.
 - **Lo que no se midió**: una calibración del mínimo, porque no cambia la decisión, y la paridad del buró antes de febrero de 2026 en la variante de
   todos los años (12.35: en diciembre y enero las operaciones no coinciden con producción).
+
+## 8. Sesión 3: el negativo corregido y el RUC del catastro (2026-11-27). Decisión: sigue cerrada
+
+Se probaron dos cambios sobre el modelo de la sesión 2, que no pasó. **Ninguno lo hace pasar**: R3 no encuentra umbral en ningún caso, y R1 no
+llega a 0,75. Las reglas son las de la sección 3, sin cambios. Guiones:
+- `scripts/predictor-ingresos/adicional_negativo.py` (5 min);
+- `scripts/predictor-ingresos/adicional_catastro.py` (2 min la primera vez, que arma el catastro de la muestra).
+
+Los dos reutilizan `adicional_modelo.correr()` y escriben agregados en
+`metricas/adicional-negativo-2026-11.json` y `metricas/adicional-catastro-2026-11.json`. No consultaron AWS, Equifax ni Proveedor_Info_1, no
+usaron el modelo de lenguaje y no escribieron en la base. El control de los dos (la población sin cambios) da lo de la sesión 2: 0,631 y 0,619.
+
+### 8.1 El negativo corregido
+
+**La idea**: que el negativo sea sólo de quien tenía razón para buscar un adicional, porque el sueldo solo no le alcanzaba. Las definiciones se
+fijaron en el encabezado antes de medir, y ninguna usa algo que se conoce después de la consulta:
+- **N1**: sueldo debajo de 1.200, que no alcanza el mínimo de ningún perfil.
+- **N1b**: sueldo debajo de 1.700, que no alcanza el de todos.
+- **N2**: la cuota del buró más la del crédito pedido sobre el sueldo pasa de 0,40.
+
+Por qué así:
+- El mínimo por perfil de `perfil_riesgo_catalogo` no se pudo usar: el perfil es el final, que sale después de la consulta.
+- El límite de carga de la política no está en AWS (`capacidad_pago` no sigue una razón fija del ingreso). El 0,40 es la regla habitual y queda cerca
+  del percentil 90 que se ve en OK FACTURAR.
+- N2 sólo se puede medir en OK FACTURAR, porque `credito_por_requerimiento.csv` sólo trae esos, así que esa población la elige la respuesta.
+
+Decide el alcance «la población»: se reducen los positivos y los negativos. Es lo único aplicable en producción, donde el adicional se mostraría
+sólo cuando el sueldo no alcanza. Reducir sólo el negativo se informa, pero R3 ahí no es honesto: en producción el modelo vería también a los
+negativos que se sacaron.
+
+**Cuántos quedan**:
+
+| Definición | Personas | Negativos | Comprobable con RUC activo | Prueba: A (con RUC activo) | Prueba: negativos con RUC activo |
+|---|---|---|---|---|---|
+| Sin reducir (sesión 2) | 39.017 | 29.911 | 6,8% | 71 (59) | 1.066 |
+| N1: sueldo < 1.200 | 21.341 (54,7%) | 15.818 | 8,0% | 45 (37) | 452 |
+| N1b: sueldo < 1.700 | 28.089 (72,0%) | 21.053 | 7,7% | 57 (47) | 655 |
+| N2: carga > 0,40, sólo OK FACTURAR | 8.742 (22,4%) | 6.480 | 8,8% | 19 (15) | 287 |
+
+**Las reglas** (escenario principal; «máx.» es lo mejor que llega lo mostrado en el entrenamiento, con 10 o más):
+
+| Definición | R1, sin SRI | R1, con SRI | R2: cobertura y razón (sin SRI / con SRI) | R3 |
+|---|---|---|---|---|
+| N1 | 0,466 (0,371 a 0,556) | 0,535 (0,448 a 0,624) | 86,7% y 0,58 / 86,7% y 0,58 | sin umbral (máx. 17,2% / 12,5%) |
+| N1b | 0,559 (0,470 a 0,645) | 0,593 (0,524 a 0,662) | 91,2% y 0,55 / 87,7% y 0,52 | sin umbral (máx. 14,4% / 13,3%) |
+| N2 | 0,642 (0,490 a 0,794) | 0,630 (0,474 a 0,761) | 94,7% y 0,47 / 94,7% y 0,25 | sin umbral (máx. 30,0% / 23,0%) |
+
+Sin los anclados a la cifra da lo mismo (JSON).
+
+- **Reducir la población no limpia el negativo**: lo comprobable con RUC activo sube sólo de 6,8% a entre 7,7% y 8,8%. Aun entre quienes el sueldo no
+  les alcanzaba, el analista documenta un adicional en menos de uno de cada diez. Y el AUC baja (N1 queda en el azar), porque se saca justo la
+  variable que más separaba: el sueldo.
+- R2 pasa sólo en N1b sin SRI (91,2%, de 84,2 a 98,2, con 57 A), y ahí R1 y R3 no.
+- Reducir sólo el negativo sube el AUC de N2 a 0,86, pero es un artefacto: los negativos son todos OK FACTURAR con carga alta y los positivos no,
+  así que el modelo separa poblaciones. R3 tampoco tiene umbral ahí (máx. 33%).
+
+**Un hueco del negativo que no se midió**: el 38% de la tabla (14.854 personas) no tiene respuesta comercial. De ellos, el 77% es negativo y sólo el
+0,4% es comprobable: ahí el análisis probablemente no se completó, y «sin adicional documentado» tampoco dice nada. La respuesta sale después de la
+consulta, así que no sirve para elegir la población en producción, pero sí podría limpiar la etiqueta del entrenamiento. No se probó: no estaba en el
+pedido.
+
+### 8.2 El RUC reconstruido con el catastro del SRI
+
+**La fuente**: «Base de Datos Catastro RUC por provincia - Personas Naturales y Sociedades» (https://www.sri.gob.ec/datasets).
+- Es de acceso libre: sin registro ni captcha, el `robots.txt` no restringe nada y los datos abiertos del SRI son CC BY 4.0.
+- Son 24 ZIP (606 MB) con corte al 2026-11-01, bajados el 2026-11-27 con el sí del usuario. Quedaron en `C:\datos\ingresos\catastro-sri`, fuera de git.
+- El enlace publicado de Cañar da 404: el archivo existe como `SRI_RUC_Cañar.zip`, con eñe.
+- Trae una fila por establecimiento, con estado (ACTIVO, SUSPENDIDO o PASIVO), clase (GEN, RMP o SIM), obligado, tipo de contribuyente, fechas de
+  inicio, suspensión definitiva y reinicio, y el CIIU. Incluye a los suspendidos.
+- Es una foto: de cada RUC se ven sólo la última suspensión y el último reinicio.
+
+El RUC de una persona natural es la cédula más «001». El 74% de la tabla (28.815 de 39.017) tiene uno en el catastro, activo o no.
+
+**La paridad**, contra el bloque SRI de Equifax del mismo día (2026), con los criterios fijados antes de medir:
+- P1: RUC activo con sensibilidad de 90% o más y especificidad de 95% o más.
+- P2: ninguna de las dos cae más de 5 puntos en diciembre y enero.
+
+| | Sensibilidad | Especificidad |
+|---|---|---|
+| Todo 2026 (12.829) | 95,4% | 95,6% |
+| Diciembre y enero (1.045) | 95,7% | 94,5% |
+| Octubre de 2026, el mes más cercano a la foto | 98,1% | 98,2% |
+
+- **La primera corrida falló P2**: en diciembre y enero la especificidad era de 88,6%. 59 de los 103 falsos activos de enero eran bloques de Equifax
+  que se contradicen: estado ACTIVO con «no tiene RUC», que `ruc_activo` cuenta como sin RUC. En todo AWS hay 1.858 así, todos de enero de 2026 (de
+  10.805 bloques de ese mes; ninguno en otro mes). Equifax no dijo qué decía el SRI ese día, así que se sacaron de la referencia. **La corrección es
+  de la referencia, no de la reconstrucción ni de las reglas, y se hizo después de ver el resultado**: el literal queda en el JSON
+  (`paridad_literal`).
+- Con el RUC en las dos fuentes (8.713): el estado coincide en 95,4%, el obligado en 100%, la fecha de inicio en 100%, la sección del CIIU en 95,8% y
+  la clase en 89,7% (696 RIMPE en Equifax figuran como GEN hoy).
+- **La paridad se degrada con la distancia a la foto**: la especificidad baja de 98% en octubre a 95% entre febrero y agosto, y a 94,5% en enero.
+  2023 a 2025 están a uno o tres años, y eso no se puede medir: no hay bloque de Equifax antes de diciembre de 2025.
+  - Los errores son personas suspendidas que el catastro da activas (la suspensión anterior al último reinicio no se ve) y personas sin RUC ese día
+    cuyo inicio en el catastro es anterior. Este último, a una mediana de 10 meses, parece un inicio de actividades con fecha retroactiva.
+
+**El modelo con el RUC reconstruido**: entrena con 2023 a junio de 2026, con el SRI de Equifax donde está y el reconstruido donde no. Prueba con lo
+mismo que la variante «2026, con SRI». Los comprobables del entrenamiento pasan de 251 a 1.213. La parte 1 no mejoró y no se combina.
+
+| Escenario | R1 (meta 0,75) | R2: cobertura y razón | R3 |
+|---|---|---|---|
+| 2026 con SRI (sesión 2) | 0,619 (0,560 a 0,683) | 84,5% y 0,59 | sin umbral (máx. 20,0%) |
+| Con el RUC reconstruido | **0,694 (0,639 a 0,752)** | 84,5% y 0,60 | sin umbral (máx. 37,0%) |
+| Con el RUC reconstruido, sin los anclados | 0,686 (0,630 a 0,739) | 84,1% y 0,59 | sin umbral (máx. 30,8%) |
+
+- **R1 mejora 0,075 y queda cerca**: el intervalo toca 0,75 por arriba. Es la mejora que anticipaba la curva de aprendizaje, aunque con cuatro veces
+  más comprobables llega a 0,69 y no a 0,75. El estado del SRI pasa a ser la variable que más pesa (19%).
+- **R3 sigue lejos**: en la prueba con RUC activo, el 1% de puntaje más alto tiene 11,8% comprobable, el 5% tiene 10,3% y el 20% tiene 8,0%, contra
+  una tasa base de 5,9%. La meta es 70%. El modelo ordena algo mejor, pero no encuentra a nadie a quien mostrarle un adicional con confianza.
+- **R2 no se mueve** (84,5%): la prueba es la misma y el monto ya aprendía lo que podía (R² de 0,35).
+
+### 8.3 Decisión
+
+**Sigue cerrada** la opción (b) de A14. Ninguno de los dos cambios hace pasar R3, que es la regla que más lejos queda: en los alcances que deciden, lo
+mostrado no pasa de 12% comprobable en la prueba, contra 70%. Sigue la señal sin monto «puede tener ingresos que no constan» para el dependiente con RUC activo.
+
+Lo que aprendimos:
+- **El negativo no se limpia con «no le alcanzaba»**: aun ahí, el adicional se documenta en menos de uno de cada diez. Lo que falta no es saber dónde
+  buscó el analista, sino qué hay en los documentos (D8).
+- **El catastro del SRI sirve como fuente**: reconstruye el RUC activo de 2026 al 95%, y mejor cuanto más cerca de la foto. Si algún día el producto
+  necesita el RUC de una persona sin el bloque de Equifax, este es el camino, con una foto nueva cada mes para no degradar. Ese uso no se propone acá.
+- **Más historia con SRI sube R1, pero no R3**: con 1.213 comprobables el AUC queda en 0,69, y lo que separa sigue siendo tener RUC activo y la carga
+  de cuotas.
+
+Lo que dejaría abrirlo otra vez es lo mismo que en 7.4: documentos anotados. Lo nuevo era probar el negativo sin las personas sin respuesta
+comercial (8.1), y se midió en 8.4: tampoco alcanza.
+
+### 8.4 El entrenamiento sin las personas sin respuesta comercial (pedido del 2026-11-27)
+
+Guion: `adicional_sin_respuesta.py` (3 min); agregados en `metricas/adicional-sin-respuesta-2026-11.json`.
+- **La definición** se fijó en el encabezado antes de medir: «sin respuesta» es la consulta sin respuesta comercial vigente en AWS. Cualquier
+  respuesta, también RECHAZADO o PENDIENTE, cuenta como respuesta.
+- **Se sacan sólo del entrenamiento** (anterior a julio de 2026): 12.748 personas, de las que 9.783 son negativas, 2.624 son C y 64 son B. La
+  prueba no cambia (conserva 2.106 sin respuesta), porque en producción la respuesta no se conoce al consultar.
+
+| Variante y escenario | R1, con todos (8.2) | R1, sin los sin respuesta | R2 (cobertura y razón) | R3 |
+|---|---|---|---|---|
+| 2026 con SRI, principal | 0,619 (0,560 a 0,683) | 0,673 (0,613 a 0,732) | 84,5% y 0,60 | sin umbral (máx. 23,2%) |
+| 2026 con SRI, sin los anclados | 0,683 (0,623 a 0,740) | 0,679 (0,620 a 0,737) | 84,1% y 0,59 | sin umbral |
+| RUC reconstruido, principal | 0,694 (0,639 a 0,752) | **0,701 (0,648 a 0,758)** | 85,9% y 0,61 | sin umbral (máx. 30,0%) |
+| RUC reconstruido, sin los anclados | 0,686 (0,630 a 0,739) | **0,718 (0,660 a 0,771)** | 84,1% y 0,67 | sin umbral (máx. 27,5%) |
+
+- **R1 sube otra vez, sin llegar**: el mejor caso es 0,718, con un intervalo que pasa 0,75, pero la cifra central no llega.
+- **R3 no se mueve**: en la prueba, el 1% de puntaje más alto tiene 5,9% comprobable, y en el entrenamiento lo mejor llega a 30%.
+- **No mejora la decisión**: sigue cerrada.
+
+Lo que separa ya no es el ruido del negativo. Sacando a quien no buscaba (8.1) y a quien no terminó el trámite (8.4), lo comprobable sigue siendo raro
+y parecido en todos los puntajes.
+
+### 8.5 Qué pasaría si se suma el adicional al dependiente con RUC activo (pedido del 2026-11-27)
+
+El negocio decidió SUMAR el adicional estimado al ingreso del dependiente con RUC activo; el nombre, «Dependiente con Ingresos Adicionales», queda
+pendiente. Antes de construir nada se midió la consecuencia (`adicional_suma.py`, 2 min; `metricas/adicional-suma-2026-11.json`).
+
+**Cómo se midió**, fijado en el encabezado antes de medir:
+- **Población**: la prueba (desde julio de 2026), dependientes y públicos con RUC activo según Equifax: 1.740 personas.
+  - 102 son A o B.
+  - 1.066 son negativos.
+  - El resto es C, fuera, o arriendo o jubilación.
+- **Modelo**: el del RUC reconstruido (8.2), escenario principal. El mínimo es su cuantil 10 del monto. Se calibró al 90% fuera de muestra en el
+  entrenamiento (factor 0,81). Sin calibrar cubría 82,9%; calibrado, cubre 89,8% de los A de la prueba.
+- **El umbral del clasificador**: R3 no tiene uno, así que se usó el corte con el que se muestra a tantas personas como comprobables hay. Se le suma a
+  204 de 1.740, de los que 18 son comprobables (8,8%). Quedan afuera 84 de los 102 comprobables.
+- **La comparación** es contra el total validado (`med_ivt`, sólo para medir).
+- El entrenamiento sin las personas sin respuesta (8.4) da casi lo mismo y queda en el JSON.
+
+**Qué tan cerca queda del total validado** (sin calibrar; la versión calibrada, abajo):
+
+| Grupo | Versión | Mediana de la razón | A ±10% | A ±20% | Sobrestimado > 10% | Sobrestimado > 20% | Subestimado > 10% |
+|---|---|---|---|---|---|---|---|
+| A o B (102) | el sueldo solo | 0,63 | 1,0% | 11,8% | 0% | 0% | 99,0% |
+| | más el mínimo, a todos | 0,86 | 33,3% | 59,8% | 7,8% | 1,0% | 58,8% |
+| | más el mínimo, sobre el umbral | 0,66 | 7,8% | 21,6% | 2,0% | 1,0% | 90,2% |
+| Negativos (1.066), techo | el sueldo solo | 1,00 | 99,7% | 99,9% | 0% | 0% | 0,3% |
+| | más el mínimo, a todos | 1,25 | 2,9% | 30,0% | **97,1%** | **70,0%** | 0% |
+| | más el mínimo, sobre el umbral | 1,00 | 91,7% | 92,2% | 8,0% | 7,7% | 0,3% |
+| Todos (1.740) | el sueldo solo | 1,00 | 62,0% | 66,8% | 0% | 0% | 38,0% |
+| | más el mínimo, a todos | 1,18 | 12,7% | 39,3% | **61,9%** | **43,3%** | 25,4% |
+| | más el mínimo, sobre el umbral | 1,00 | 58,8% | 64,9% | 5,5% | 4,8% | 35,7% |
+
+Con el mínimo calibrado, sumado a todos: en A o B la mediana es 0,82 y queda a ±20% el 52,9%. En todos, el 31,2% queda sobrestimado en más de 20% (en
+los negativos, el 50,8%).
+
+**Contra el negativo, la sobrestimación es un techo**: «sin adicional documentado» no es «sin adicional». Parte de lo que figura como sobrestimado
+puede ser un adicional real que nadie documentó, y no hay forma de saber cuánto.
+
+**Qué dice**:
+- **El mínimo es el mismo para todos**: unos 335 dólares de mediana, tanto en los comprobables como en los negativos. El modelo de monto sabe cuánto,
+  pero no a quién.
+- **Sumarlo a todos** acerca a los comprobables (de 0,63 a 0,86) a costa de los demás:
+  - sobrestima en más de 20% al 43% de todos los dependientes con RUC activo, y hasta al 70% de los negativos (techo);
+  - lo que queda a ±10% baja de 62% a 13%.
+- **Sumarlo sólo sobre el umbral** casi no cambia nada en ningún sentido: se le suma a 204, y 186 de ellos no tienen un adicional documentado. Los
+  comprobables siguen en 0,66, porque el umbral deja afuera a 84 de 102.
+- No hay una versión que acerque a los comprobables sin sobrestimar a muchos más: es lo mismo que dijo R3, ahora en dólares.
+
+**Para la decisión del negocio**: sumar el mínimo al dependiente con RUC activo eleva el ingreso de cada uno en unos 270 a 335 dólares, y en la
+mayoría de ellos no hay un adicional que lo respalde. La señal sin monto de A14 no tiene ese costo. Si se suma igual, los números de arriba son lo que
+hay que esperar. La versión «a todos» calibrada es la que menos sobrestima de las que suman a todos.

@@ -577,6 +577,30 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
     2. el modelo, con las reglas fijadas en la propuesta: **hecha el 2026-11-24, se cierra** (propuesta, sección 7; `adicional_modelo.py`);
     3. conectarlo: no se hace.
 
+    **Medido el 2026-11-27 (sesión 3, propuesta sección 8): dos cambios, y sigue cerrada.**
+    - **El negativo corregido**, sólo de quien el sueldo no le alcanzaba (`adicional_negativo.py`). Se probaron tres definiciones conocidas al
+      consultar: sueldo debajo de 1.200, debajo de 1.700, y cuota del buró más la pedida sobre el sueldo por encima de 0,40 (sólo OK FACTURAR).
+      - No limpia el negativo: lo comprobable con RUC activo sube de 6,8% a sólo 7,7% a 8,8%.
+      - El AUC con RUC activo queda entre 0,47 y 0,64, contra 0,631 sin cambiar el negativo.
+      - R3 no tiene umbral en ninguna.
+    - **El RUC reconstruido con el catastro del SRI** (`adicional_catastro.py`). Son 24 ZIP de datos abiertos, con corte al 2026-11-01, en
+      `C:\datos\ingresos\catastro-sri`.
+      - Contra el bloque de Equifax de 2026, la sensibilidad es 95,4% y la especificidad 95,6%. Se degrada lejos de la foto: 98% en octubre y 94,5%
+        en enero.
+      - Para medir enero se sacaron 1.858 bloques de Equifax que se contradicen, todos de ese mes.
+      - Con 2023 a 2025 reconstruidos, los comprobables del entrenamiento pasan de 251 a 1.213, y el AUC sube de 0,619 a 0,694 (0,639 a 0,752).
+      - Pero lo mostrado no pasa de 12% comprobable (meta 70%), y el mínimo queda en 84,5% (meta 90%).
+    - **El entrenamiento sin las personas sin respuesta comercial** (8.4, `adicional_sin_respuesta.py`; 12.748 fuera del entrenamiento, la prueba
+      igual): el AUC sube a 0,701, y a 0,718 sin los anclados (0,660 a 0,771). R3 sigue sin umbral: sigue cerrada.
+    - **Decidido por el negocio el 2026-11-27: SUMAR el adicional estimado al dependiente con RUC activo** (nombre pendiente: «Dependiente con
+      Ingresos Adicionales»). Medido antes de construir (8.5, `adicional_suma.py`), en la prueba con RUC activo (1.740) contra el total validado:
+      - sumar el mínimo (unos 335 dólares de mediana, igual para todos) a todos lleva a los A o B de 0,63 a 0,86 de su total;
+      - pero sobrestima en más de 20% al 43% de todos, y al 70% de los negativos (techo: «sin adicional documentado» no es «sin adicional»);
+      - lo que queda a ±10% baja de 62% a 13%;
+      - sumarlo sólo sobre el umbral del clasificador casi no cambia nada (a 204, de los que 18 son comprobables);
+      - calibrado al 90%, el 31% queda sobrestimado en más de 20%.
+      Falta que el negocio confirme la suma con estos números antes de construir.
+
     **Medido el 2026-11-24 (sesión 2): no pasa ninguna regla de las que deciden, en ninguna variante ni escenario.** Hacia adelante (71 A en la prueba):
     - AUC de A contra el negativo con RUC activo: 0,631 sin SRI y 0,619 con SRI, contra 0,75 (12.36 dio 0,624 con la etiqueta vieja). Sin los
       anclados a la cifra, 0,683 con SRI (0,623 a 0,740).
