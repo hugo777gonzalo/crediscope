@@ -447,7 +447,20 @@ export interface StandardClientProfile {
     saldoPrestamosIessBiess?: number | null;
     // Desde estructura-v22: cada préstamo con su tipo, saldo y fecha de fin
     // (yyyy-mm-dd; null si la fuente no la trae). No llega al modelo.
-    operacionesIessBiess?: Array<{ tipo: "quirografario" | "hipotecario" | null; saldo: number; fechaFin: string | null }> | null;
+    // Desde estructura-v33 trae también el monto, la concesión, la tasa anual (fracción) y la cuota estimada de la
+    // base interna, y de dónde es el saldo (`fuenteDelSaldo`) y a qué corte (`fechaCorte`, sólo el de la fuente de
+    // préstamos). Un perfil anterior no los trae.
+    operacionesIessBiess?: Array<{
+      tipo: "quirografario" | "hipotecario" | null;
+      saldo: number;
+      fechaFin: string | null;
+      monto?: number | null;
+      fechaConcesion?: string | null;
+      tasaAnual?: number | null;
+      cuotaEstimada?: number | null;
+      fuenteDelSaldo?: "prestamos" | "base_interna";
+      fechaCorte?: string | null;
+    }> | null;
     // Desde estructura-v25: los campos de arriba cuya fuente no contestó (o
     // está apagada). Ese campo es null, y acá va lo que dicen las fuentes que
     // sí contestaron: lo que el perfil escribía como si fuera el total hasta la

@@ -723,6 +723,14 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Guiones
 
+- **Un grupo que pasa a la capa de hechos deja a los detectores leyendo un null** (2026-11-27).
+  Desde estructura-v31, con una fuente sin contestar, `fuentesIngreso.fuentes` se guarda en null y lo que
+  dijeron las demás va en `camposSinDato`. El modelo y la capacidad lo leen con `conLosValoresDeAntes()`,
+  pero `revisar-datos.mjs` leía el null. La capa de ingresos cortaba entera con «cannot extract elements
+  from a scalar», con 694 perfiles así, y `cargo-vigente-sin-aporte-vigente` «volvió» con 7 personas cuyos
+  empleos vigentes estaban en la marca. El error se vio recién después de un recálculo, porque nadie había
+  corrido la revisión desde la v31. Desde entonces, `BASE` arma `sp` con los valores de antes, con los
+  grupos importados de `campos-sin-dato.ts`.
 - **pandas no relee exacto el decimal que escribió JavaScript** (predictor de ingresos, 2026-11-06).
   La matriz del nivel 2 armada en Node desde el crudo coincidía con el extracto dentro de la tolerancia, pero
   sus cuantiles diferían hasta 0,06 en logaritmo en el nivel 1, que no usa Equifax: `read_csv` dejó la
@@ -806,6 +814,17 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
 
 ## Equifax
 
+- **La cuota de un crédito en Equifax es una anualidad calculada al 9,0%, y la fuente de préstamos trae el saldo de un solo corte**
+  (2026-11-27, estructura-v33). El negocio decidió que la verdad de la cuota es la que informa Equifax. Medido sobre las 2.394
+  cuotas de créditos del BIESS en los crudos de AWS: la tasa implícita de `reporteCrediticio.cuota_mensual` tiene mediana 9,02% y el
+  94% queda a menos de un punto de 9,0% (el bloque `interconnect`, 10,45%); reproducida con el saldo y el vencimiento de Equifax da
+  ±10% en el 99%. Con el saldo de Proveedor_Info_1 y su fecha de fin, la misma fórmula daba 77%: el `fechaCorte` de la fuente de
+  préstamos es el mismo (2026-02-01) en las 384 operaciones de la cartera, su saldo coincide con el de Equifax del fin de febrero
+  (interpolado en 105 créditos: siete meses antes de los perfiles de octubre en todos), y la anualidad de un saldo de siete meses
+  atrás con el plazo de hoy sobreestima. Llevar el saldo a hoy con el plan del contrato lo sube a 97% (112 pares, mediana 0,999). La
+  tasa del contrato casi no pesa (6,99%, 8,69% o la declarada: 97% las tres) y el 1,064 del seguro sobra: la cuota estimada de la base
+  interna (que lo lleva) sólo sirve donde el saldo es una foto vieja y sin fecha. Antes se estimaba con el 2,99% del Credicasa
+  (23% por debajo de la real) y, con el fin cerca, la anualidad del saldo entero (en 13 operaciones la cuota sumaba 7,6 veces la de la regla nueva).
 - **Una respuesta «completed» de Equifax puede no traer reporte de crédito** (2026-10-30). Al pasar
   por nuestro código 20.560 respuestas de AWS, 585 de otro tipo de consulta (`id_tipo_consulta` 2,
   con `personalInformation` y `VariablesOfertaTotal`) daban «alcanza», sin deudas y sin un aviso:

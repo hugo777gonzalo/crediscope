@@ -5,7 +5,10 @@
 // deno test --allow-env supabase/functions/
 
 import { assertEquals, assert, assertAlmostEquals, assertThrows } from "jsr:@std/assert@1";
-import { conIngresoDeclarado, cuotaPorAnualidad, cuotaPorFactorDeSaldo, FACTOR_CUOTA_HIPOTECARIO, TRAMOS_FACTOR_CUOTA, CAPACIDAD_VERSION, datosDeCapacidad, TASA_ANUAL_BIESS, elBuroTraeDetalle, evaluarCapacidad } from "./capacidad-de-pago.ts";
+import {
+  conIngresoDeclarado, cuotaHipotecariaComoEquifax, cuotaPorAnualidad, cuotaPorFactorDeSaldo, FACTOR_CUOTA_HIPOTECARIO, TRAMOS_FACTOR_CUOTA, CAPACIDAD_VERSION,
+  datosDeCapacidad, saldoDespuesDePagos, TASA_ANUAL_BIESS, TASA_DE_LA_CUOTA_DE_EQUIFAX, tasaDelContratoHipotecario, elBuroTraeDetalle, evaluarCapacidad,
+} from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
 
@@ -406,7 +409,8 @@ Deno.test("sin buró: un BIESS sin fecha de fin queda como deuda sin cuota, con 
   assertEquals(viejo.deudasSinCuota.find((x) => x.concepto === "Préstamo del IESS o BIESS")?.saldo, 10000);
 });
 
-Deno.test("sin buró: el hipotecario usa su tasa y una operación sin fecha no esconde a la que sí la tiene", () => {
+Deno.test("sin buró: el hipotecario usa la anualidad al 9,0% de Equifax y una operación sin fecha no esconde a la que sí la tiene", () => {
+  // Un perfil anterior a estructura-v33 no trae la fuente ni el corte del saldo: se toma como el de hoy.
   const d = datosDeCapacidad(
     conBiess([
       { tipo: "hipotecario", saldo: 40000, fechaFin: "2046-11-17" },
@@ -416,8 +420,87 @@ Deno.test("sin buró: el hipotecario usa su tasa y una operación sin fecha no e
     HOY,
   );
   const o = d.obligaciones.find((x) => x.metodoDeEstimacion === "anualidad");
-  assertAlmostEquals(o!.montoMensual, cuotaPorAnualidad(40000, TASA_ANUAL_BIESS.hipotecario, 240), 0.01);
+  assertAlmostEquals(o!.montoMensual, cuotaPorAnualidad(40000, TASA_DE_LA_CUOTA_DE_EQUIFAX, 240), 0.01);
   assertEquals(d.deudasSinCuota.find((x) => x.concepto === "Préstamo del IESS o BIESS")?.saldo, 3000);
+});
+
+// ---- El hipotecario como lo informa Equifax (2026-11-27): el saldo llevado a hoy, al 9,0% ----
+// Los valores esperados salieron de research/hipotecario-cuota/regla-equifax.mjs (la definición que se midió contra
+// la cuota de Equifax) con las mismas entradas, y la fórmula del saldo se repite acá en forma cerrada.
+
+const hipotecario = (extra: Record<string, unknown>) => ({ tipo: "hipotecario", saldo: 84000, fechaFin: "2048-07-24", monto: 90000, fechaConcesion: "2023-07-24", tasaAnual: null, cuotaEstimada: null, fuenteDelSaldo: "prestamos", fechaCorte: "2026-02-01", ...extra });
+
+Deno.test("hipotecario: el saldo de la fuente de préstamos se lleva de su corte a hoy con el plan del contrato y se calcula al 9,0%", () => {
+  const r = cuotaHipotecariaComoEquifax(hipotecario({}), HOY)!;
+  assertEquals(r.camino, "saldo_llevado_a_hoy");
+  assertAlmostEquals(r.cuota, 724.92, 0.02);
+  // En forma cerrada: el saldo de febrero (fin de mes) amortizado en 269 cuotas a 6,99%, 9 pagos después, con 260 meses por delante.
+  const i = 0.0699 / 12;
+  const saldoDeHoy = (84000 * (Math.pow(1 + i, 269) - Math.pow(1 + i, 9))) / (Math.pow(1 + i, 269) - 1);
+  assertAlmostEquals(saldoDespuesDePagos(84000, 0.0699, 269, 9), saldoDeHoy, 0.001);
+  assertAlmostEquals(r.cuota, cuotaPorAnualidad(saldoDeHoy, 0.09, 260), 0.01);
+  // Llevarlo a hoy baja la cuota contra tomar el saldo de febrero como si fuera de hoy.
+  assert(r.cuota < cuotaPorAnualidad(84000, 0.09, 260));
+  // La tasa declarada de la base interna manda sobre la de la tabla, pero pesa poco: 8,69% en vez de 6,99% suma centavos.
+  assertAlmostEquals(cuotaHipotecariaComoEquifax(hipotecario({ tasaAnual: 0.0869 }), HOY)!.cuota, 727.12, 0.02);
+  // Con el saldo del mismo mes del corte no hay nada que llevar.
+  const alCorte = cuotaHipotecariaComoEquifax(hipotecario({}), new Date(Date.UTC(2026, 1, 28)))!;
+  assertAlmostEquals(alCorte.cuota, cuotaPorAnualidad(84000, 0.09, Math.round((Date.UTC(2048, 6, 24) - Date.UTC(2026, 1, 28)) / 86_400_000 / 30.4375)), 0.01);
+});
+
+Deno.test("hipotecario: sólo en la base interna usa su cuota estimada tal cual, sin tocar su saldo viejo", () => {
+  const base = hipotecario({ saldo: 30000, fechaFin: "2035-05-31", monto: 40000, fechaConcesion: "2015-06-01", tasaAnual: 0.1027, cuotaEstimada: 410.55, fuenteDelSaldo: "base_interna", fechaCorte: null });
+  const r = cuotaHipotecariaComoEquifax(base, HOY)!;
+  assertEquals(r.camino, "cuota_de_la_base_interna");
+  assertEquals(r.cuota, 410.55);
+  // Sin la cuota estimada, el plan del contrato desde el monto y la concesión; el saldo de la base (una foto vieja) no entra.
+  const sinCuota = hipotecario({ saldo: 45000, fechaFin: "2037-03-10", monto: 50000, fechaConcesion: "2017-03-10", fuenteDelSaldo: "base_interna", fechaCorte: null });
+  const p = cuotaHipotecariaComoEquifax(sinCuota, HOY)!;
+  assertEquals(p.camino, "plan_del_contrato");
+  assertAlmostEquals(p.cuota, 445.99, 0.02);
+  assertEquals(cuotaHipotecariaComoEquifax({ ...sinCuota, saldo: 90000 }, HOY)!.cuota, p.cuota);
+  // Sin monto ni concesión no hay con qué: el factor hipotecario.
+  assertEquals(cuotaHipotecariaComoEquifax({ ...sinCuota, monto: null, fechaConcesion: null }, HOY), null);
+});
+
+Deno.test("hipotecario: con el fin pasado y saldo, la cuota del contrato; sin fin o sin contrato, el factor hipotecario", () => {
+  const vencido = hipotecario({ saldo: 12000, fechaFin: "2026-05-31", monto: 20000, fechaConcesion: "2016-05-31" });
+  const r = cuotaHipotecariaComoEquifax(vencido, HOY)!;
+  assertEquals(r.camino, "cuota_del_contrato_vencido");
+  assertAlmostEquals(r.cuota, cuotaPorAnualidad(20000, 0.0869, 120), 0.01);
+  assertAlmostEquals(r.cuota, 250.01, 0.02);
+  // Con un tope: un saldo de USD 40 no paga por mes la cuota de un contrato de 250.
+  assertEquals(cuotaHipotecariaComoEquifax({ ...vencido, saldo: 40 }, HOY)!.cuota, 40);
+  assertEquals(cuotaHipotecariaComoEquifax({ ...vencido, monto: null }, HOY), null);
+  assertEquals(cuotaHipotecariaComoEquifax(hipotecario({ fechaFin: null }), HOY), null);
+  assertEquals(cuotaHipotecariaComoEquifax(hipotecario({ saldo: 0 }), HOY), null);
+  const d = datosDeCapacidad(conBiess([hipotecario({ saldo: 60000, fechaFin: null })]), null, HOY);
+  assertEquals(d.obligaciones.find((x) => x.concepto.includes("BIESS"))?.montoMensual, 642);
+});
+
+Deno.test("hipotecario: la tabla de tasas cambia en 2020 y está por confirmar con el BIESS", () => {
+  assertEquals(tasaDelContratoHipotecario(2019), 0.0869);
+  assertEquals(tasaDelContratoHipotecario(2020), 0.0699);
+  assertEquals(tasaDelContratoHipotecario(null), 0.0699);
+  assertEquals(TASA_ANUAL_BIESS, { quirografario: 0.065 });
+});
+
+Deno.test("hipotecario: la línea del BIESS suma todas las operaciones, cada una con su regla, y sin buró es una sola obligación estimada", () => {
+  const d = datosDeCapacidad(
+    conBiess([
+      hipotecario({}),
+      hipotecario({ saldo: 30000, fechaFin: "2035-05-31", monto: 40000, fechaConcesion: "2015-06-01", tasaAnual: 0.1027, cuotaEstimada: 410.55, fuenteDelSaldo: "base_interna", fechaCorte: null }),
+      { tipo: "quirografario", saldo: 10000, fechaFin: "2028-11-17" },
+    ]),
+    null,
+    HOY,
+  );
+  const biess = d.obligaciones.filter((x) => x.concepto.includes("BIESS"));
+  assertEquals(biess.length, 1);
+  assertEquals(biess[0].metodoDeEstimacion, "anualidad");
+  assertAlmostEquals(biess[0].montoMensual, 724.92 + 410.55 + cuotaPorAnualidad(10000, TASA_ANUAL_BIESS.quirografario, 24), 0.05);
+  // Con buró de Equifax el BIESS ya viene dentro de la cuota de bancos: no se agrega.
+  assertEquals(datosDeCapacidad(conBiess([hipotecario({})]), { deudaActualTitular: { bancos: { cuotaMensualUsd: 700 } } }, HOY).obligaciones.some((x) => x.concepto.includes("BIESS")), false);
 });
 
 Deno.test("con Equifax: la línea del BIESS del proveedor no se agrega, ni sin cuota ni estimada", () => {
