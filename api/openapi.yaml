@@ -745,7 +745,7 @@ paths:
                   summary: Respuesta al pedido con los datos de la IFI
                   value:
                     capacidad:
-                      version: capacidad-v5
+                      version: capacidad-v6
                       veredicto: alcanza
                       cumple: true
                       ingresoReportado: 1200
@@ -805,7 +805,7 @@ paths:
                   summary: Respuesta al pedido con una persona y su Ingreso declarado (las cuotas, de Equifax)
                   value:
                     capacidad:
-                      version: capacidad-v5
+                      version: capacidad-v6
                       veredicto: alcanza
                       cumple: true
                       ingresoReportado: 1800
@@ -850,7 +850,7 @@ paths:
                       totalPagado: 6289.37
                     montoMaximo: 8531.14
                     capacidadSoloIess:
-                      version: capacidad-v5
+                      version: capacidad-v6
                       veredicto: no_alcanza
                       cumple: false
                       ingresoReportado: 1200
@@ -3119,7 +3119,7 @@ components:
             hallazgos: []
           capacidadDePago:
             capacidad:
-              version: capacidad-v5
+              version: capacidad-v6
               veredicto: alcanza
               cumple: true
               ingresoReportado: 1200

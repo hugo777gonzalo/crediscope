@@ -44,8 +44,14 @@ import { type LimitesDelCredito, montoMaximoParaCuota, type PedidoDeSimulacion, 
 // v4 (2026-10-21): `cumple`, el sí o no que pide la API para el flujo Plus; el
 // cálculo y el veredicto no cambian. v5 (2026-11-18): una deuda con saldo y sin
 // cuota informada cuenta con una cuota estimada (decisión C1): el veredicto
-// cambia para quien tiene una, y la versión lo dice.
-export const CAPACIDAD_VERSION = "capacidad-v5";
+// cambia para quien tiene una, y la versión lo dice. v6 (2026-11-27, estructura-v33,
+// #223): la cuota del hipotecario del BIESS sin buró sale como la informa Equifax
+// (cuotaHipotecariaComoEquifax()), y no del 2,99% que la dejaba 23% abajo; en el seco
+// cambió el veredicto de 10 de 270 personas. Se desplegó primero sin subir la
+// versión, así que entre el 27/11 y esta versión hubo veredictos de este cálculo
+// rotulados capacidad-v5. La escalera, que llevaba el v6 sin estar conectada,
+// pasó a v7: las versiones siguen el orden en que el cálculo llega a producción.
+export const CAPACIDAD_VERSION = "capacidad-v6";
 
 export interface ParametrosCapacidad {
   /** Fracción: 0.40 quiere decir que las cuotas no pasan del 40% del ingreso neto. */
@@ -658,13 +664,14 @@ export function conIngresoDeclarado(datos: DatosDeCapacidad, montoMensual: numbe
 // La capacidad por peldaño de la escalera del ingreso (F10, docs/escalera-del-ingreso.md, 3)
 // ---------------------------------------------------------------------------
 //
-// capacidad-v6: la capacidad se calcula con cada peldaño por separado (evaluarCapacidad() una vez por
-// peldaño), nunca sumados, y el veredicto sale del más fuerte con el que alcanza. NADA LA USA TODAVÍA: la
-// pantalla, la función `capacidad-de-pago`, la solicitud y la API siguen con `CAPACIDAD_VERSION` (v5); la
-// escalera queda al lado hasta que el negocio decida encenderla. Por eso la versión de la escalera es otra
-// constante y no pisa a la de la capacidad de hoy.
+// capacidad-v7 (era v6 hasta el 2026-11-27, cuando la capacidad de hoy tomó el v6): la capacidad se calcula
+// con cada peldaño por separado (evaluarCapacidad() una vez por peldaño), nunca sumados, y el veredicto sale
+// del más fuerte con el que alcanza. NADA LA USA TODAVÍA: la pantalla, la función `capacidad-de-pago`, la
+// solicitud y la API siguen con `CAPACIDAD_VERSION`; la escalera queda al lado hasta que el negocio decida
+// encenderla. Por eso la versión de la escalera es otra constante y no pisa a la de la capacidad de hoy.
+// Si la de hoy vuelve a subir antes de encenderla, la escalera sube también, por encima.
 
-export const CAPACIDAD_CON_ESCALERA_VERSION = "capacidad-v6";
+export const CAPACIDAD_CON_ESCALERA_VERSION = "capacidad-v7";
 
 /** 1234567 → "1.234.567": el locale `es` no agrupa los de cuatro cifras. */
 const conMiles = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");

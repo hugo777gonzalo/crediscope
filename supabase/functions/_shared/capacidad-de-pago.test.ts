@@ -530,7 +530,7 @@ Deno.test("C1: la cuota estimada sale del tramo de saldo por operación, y sin s
   assertEquals(FACTOR_CUOTA_HIPOTECARIO, 0.0107);
   assertEquals(cuotaPorFactorDeSaldo(null), null);
   assertEquals(cuotaPorFactorDeSaldo(0), null);
-  assertEquals(CAPACIDAD_VERSION, "capacidad-v5");
+  assertEquals(CAPACIDAD_VERSION, "capacidad-v6");
 });
 
 Deno.test("C1: una deuda de bancos sin cuota entra al veredicto como cuota estimada, rotulada, y sigue en la lista", () => {

@@ -289,7 +289,7 @@ for (let i = 0; i < elegidos.length; i += 50) {
 }
 
 // ---- el informe ----
-console.log(`\nMedidas: ${miles(medidas)}; no se pudieron medir: ${fallaron}. Sin buró; la capacidad de hoy es capacidad-v5.`);
+console.log(`\nMedidas: ${miles(medidas)}; no se pudieron medir: ${fallaron}. Sin buró; la capacidad de hoy es capacidad-v6.`);
 console.log("\n1. Por tipo de persona: personas, peldaños con monto (1 a 5) y qué peldaño sostiene el cálculo");
 for (const [tipo, t] of Object.entries(porTipo).sort((a, b) => b[1].personas - a[1].personas)) {
   const peldanos = [1, 2, 3, 4, 5].map((n) => `${n}:${miles(t.peldanos[n] ?? 0)}`).join(" ");
