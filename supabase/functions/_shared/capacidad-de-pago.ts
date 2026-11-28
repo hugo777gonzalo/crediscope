@@ -334,8 +334,8 @@ export const TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO = 0.11;
 
 // Equifax informa la deuda actual con un corte de uno o dos meses antes de la consulta: dos meses en el 71% de 8.327 consultas de AWS, y la cuota
 // que informa es la de ese corte. Con la fecha de la consulta sin rezago, la regla del quirografario daba ±10% en el 90% de los créditos; con dos
-// meses de rezago, en el 98% o el 99%. Hasta el día 21 del mes el rezago es siempre de dos meses; desde el 22 es de uno en 65% a 75% de las
-// consultas, y usar dos como constante da lo mismo que seguir esa regla.
+// meses de rezago, en el 98% o el 99%. Hasta el día 21 del mes el rezago es de dos meses en el 93% de las consultas; desde el 22 es de uno en 65% a
+// 75%, y usar dos como constante da lo mismo que seguir esa regla.
 export const REZAGO_DEL_CORTE_DE_EQUIFAX_EN_MESES = 2;
 
 // La fecha de corte (`fechaCorte`) de la fuente de préstamos del QUIROGRAFARIO es 2025-02-01 en las 1.621 operaciones de la cartera, pero su saldo

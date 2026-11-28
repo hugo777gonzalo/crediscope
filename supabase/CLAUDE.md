@@ -69,7 +69,9 @@ su guía: `docs/equifax.md`.
   estimada con un factor por tramo de saldo (`TRAMOS_FACTOR_CUOTA`, 2,5% a 6,5% del saldo por mes; hipotecario sin plazo, `FACTOR_CUOTA_HIPOTECARIO`; C1, 2026-11-18; capacidad-v5), rotulada
   como estimada igual que el BIESS por anualidad, y sin saldo queda sin contar. **El hipotecario del BIESS sin buró** se estima como lo informa Equifax
   (`cuotaHipotecariaComoEquifax()`, estructura-v33, 2026-11-27): el saldo de la fuente de préstamos llevado a hoy con el plan del contrato y la anualidad al 9,0%
-  (`TASA_DE_LA_CUOTA_DE_EQUIFAX`); sólo en la base interna, su cuota estimada tal cual; vencido con saldo, la cuota del contrato sin pasar del saldo; el quirografario sigue al 6,5%. Una respuesta de Equifax
+  (`TASA_DE_LA_CUOTA_DE_EQUIFAX`); sólo en la base interna, su cuota estimada tal cual; vencido con saldo, la cuota del contrato sin pasar del saldo. **El quirografario del BIESS sin buró** igual (`cuotaQuirografariaComoEquifax()`, 2026-11-28): su saldo
+  de la fuente de préstamos llevado al corte que Equifax informaría hoy (`REZAGO_DEL_CORTE_DE_EQUIFAX_EN_MESES`, dos meses) y la anualidad al 11,0% con meses de calendario
+  (`TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO`); con el fin pasado al corte, 0; la base interna y el que no trae fecha de fin siguen con la anualidad al 6,5% o el factor por tramo. Una respuesta de Equifax
   sin reporte no es «no debe» (`elBuroTraeDetalle()`): Plus corta al terminar el
   paso del buró, antes de pagar el modelo. La usan la pantalla
   `/capacidad/:cedula`, la función `capacidad-de-pago` y `evaluar-solicitud`.
@@ -477,6 +479,10 @@ su guía: `docs/equifax.md`.
 - **La cuota de Equifax es una anualidad del saldo al 9,0% con los meses que quedan, y es la verdad de la cuota** (negocio,
   2026-11-27). El hipotecario del BIESS sin buró la reproduce (`cuotaHipotecariaComoEquifax()`): el saldo de la fuente de préstamos
   es de UN corte (`fechaCorte`) y se lleva a hoy con el plan del contrato; sin tomarle la edad, daba 77%, y con ella, 97% (estructura-v33).
+  **La de un crédito del BIESS que no es de vivienda es al 11,0%** y Equifax cuenta los meses del calendario: la fecha de fin de Proveedor_Info_1 cae en el día de la
+  concesión, no a fin de mes, y contada en días redondeados la regla daba ±10% en el 91%, y en meses de calendario, 99%. Equifax informa con un corte de uno o dos meses
+  atrás (dos, en el 71%): sin ese rezago, 90%. **La `fechaCorte` de la fuente de préstamos del quirografario está un año atrás de su saldo** (2025-02-01 contra el
+  cierre de febrero de 2026; el del hipotecario sí coincide): `CORRIMIENTO_DEL_CORTE_DE_QUIROGRAFARIOS_EN_MESES`, con el detector `corte-de-la-fuente-de-prestamos-distinto`.
 - Buró de Proveedor_Info_1: `riesgo` T/G/C separa lo propio de lo garantizado;
   el atraso puede estar en `noDevengaInteres`; los tramos
   `saldo0_1..mas_36` no son montos; "AL" es al día; no trae días de mora
