@@ -586,6 +586,11 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
       logaritmo, contra 0,01 en 12.36), pero sin saber quién tiene el adicional no hay a quién mostrárselo.
     - El sueldo movido ±10% no cambia nada (la probabilidad, menos de un punto en la mediana; el mínimo, igual).
     **Se cierra la opción (b) de A14 hasta tener documentos anotados (D8)**; sigue la señal sin monto del RUC activo.
+    **2026-11-28, la fuente del monto real** (`docs/fuente-declaraciones-sri.md`, diseño, sin código): no hay convenio ni proveedor que
+    entregue las declaraciones (reserva del art. 99 del Código Tributario y del 101 de la LRTI); la vía es que la persona baje del SRI en
+    línea su 104 y su renta y se los entregue a la institución, que los valida por el QR y los anota en D8 (peldaño 2, `otro_ingreso`).
+    Esperan al negocio once decisiones (D-SRI-1 a 11): la autorización ampliada con la casilla de medición, la cláusula del contrato de
+    encargo, las cartas al SRI, Proveedor_Info_1 y Equifax, y un piloto de 400 dependientes con RUC activo.
 
     Lo que dejó la sesión 1, con las respuestas del negocio:
     - Los ítems sin el check son casi todos copias automáticas del sueldo y sólo existen desde el 2026-03-08: los rechazos de verdad son el 2,4%
