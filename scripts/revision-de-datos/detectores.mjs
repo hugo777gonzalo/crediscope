@@ -191,6 +191,28 @@ export const DETECTORES = [
         and coalesce((sp->'comportamientoBancario'->>'tieneCreditoIessBiess')::boolean, false) = false`,
   },
   {
+    id: "corte-de-la-fuente-de-prestamos-distinto",
+    capa: "fuente",
+    tipo: "revisar",
+    // La capacidad de pago lleva el saldo de la fuente de préstamos del IESS/BIESS a hoy desde su corte (cuotaHipotecariaComoEquifax() y
+    // cuotaQuirografariaComoEquifax()). El `fechaCorte` del hipotecario es 2026-02-01 y coincide con el saldo (cierre de febrero de 2026); el del
+    // quirografario es 2025-02-01 y está un año atrás: se interpoló el saldo en la serie de Equifax de 499 créditos y salió febrero de 2026. La regla suma
+    // 12 meses al del quirografario (CORRIMIENTO_DEL_CORTE_DE_QUIROGRAFARIOS_EN_MESES). Si Proveedor_Info_1 actualiza su carga o corrige la fecha, esa suposición
+    // se rompe sin avisar: este detector lista a quien trae otra fecha, y hay que volver a interpolar el saldo antes de confiar en la regla.
+    titulo: "Préstamo del IESS/BIESS con un corte de la fuente de préstamos distinto del que supone la capacidad de pago (hipotecario 2026-02-01, quirografario 2025-02-01)",
+    caso: "c-8e0922fb, 2026-11-28: el corte del quirografario está un año atrás de su saldo",
+    conocido: "con el corte que supone la regla (2026-02-01 y 2025-02-01) da 0; cualquier otro hay que medirlo",
+    poblacion: `select count(*) from ultimo where sp->'comportamientoBancario'->>'tieneCreditoIessBiess' = 'true'`,
+    casos: `
+      select u.client_id, jsonb_build_object('tipo', o->>'tipo', 'fechaCorte', o->>'fechaCorte') as detalle
+      from ultimo u,
+           jsonb_array_elements(case when jsonb_typeof(u.sp->'comportamientoBancario'->'operacionesIessBiess') = 'array'
+                                     then u.sp->'comportamientoBancario'->'operacionesIessBiess' else '[]'::jsonb end) o
+      where o->>'fuenteDelSaldo' = 'prestamos' and (o->>'saldo')::numeric > 0
+        and ((o->>'tipo' = 'hipotecario' and o->>'fechaCorte' is distinct from '2026-02-01')
+          or (o->>'tipo' = 'quirografario' and o->>'fechaCorte' is distinct from '2025-02-01'))`,
+  },
+  {
     id: "hipotecario-biess-vencido-con-saldo",
     capa: "estructura",
     tipo: "revisar",

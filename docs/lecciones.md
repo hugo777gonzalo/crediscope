@@ -825,6 +825,16 @@ Las de seguridad y de la auditoría externa del 2026-10-09 están acá; el detal
   tasa del contrato casi no pesa (6,99%, 8,69% o la declarada: 97% las tres) y el 1,064 del seguro sobra: la cuota estimada de la base
   interna (que lo lleva) sólo sirve donde el saldo es una foto vieja y sin fecha. Antes se estimaba con el 2,99% del Credicasa
   (23% por debajo de la real) y, con el fin cerca, la anualidad del saldo entero (en 13 operaciones la cuota sumaba 7,6 veces la de la regla nueva).
+- **La cuota de un quirografario del BIESS en Equifax es una anualidad al 11,0% con meses de calendario y un corte de dos meses atrás, y la fecha de corte de su
+  fuente está un año corrida** (2026-11-28). Sobre 22.585 cuotas de créditos al día del BIESS que no son de vivienda (todos «Consumo» en Equifax) la tasa implícita
+  tiene mediana 10,99% (la del hipotecario es 9,0%); con el saldo y el vencimiento de Equifax se reproduce a ±1% en el 99% a 100% con 7 meses o más. Con los datos de
+  Proveedor_Info_1 la primera medida salió mal por tres causas, las tres descubiertas con los pares: (1) el `fechaCorte` de la fuente de préstamos del quirografario dice
+  2025-02-01 en las 1.621 operaciones y se leyó como «el saldo tiene 21 meses»; al interpolar el saldo en la serie de Equifax de 499 créditos salió el cierre de febrero de
+  2026 (483), igual que el del hipotecario: la fecha está un año atrás. Con la fecha tal cual, la regla sub-estimaba un 30%. (2) El fin de Proveedor_Info_1 (la concesión
+  más el plazo) cae en el día de la concesión y el vencimiento de Equifax, a fin de mes: en días redondeados 91% a ±10%, en meses de calendario 99%. (3) Equifax informa con
+  un corte de uno o dos meses antes de la consulta (dos en el 71% de 8.327 consultas de AWS; uno desde el día 22 en 65% a 75%): sin ese rezago, 90%; con él, 98% de los 379
+  créditos que Equifax sigue listando. Lo que la foto de febrero no ve: 52 de 431 con el fin posterior se pagaron antes de tiempo y Equifax ya no los lista (el 12%): con ellos,
+  «exactos» el 88%. En la cartera el código de hoy contaba los 298 quirografarios que ya terminaron y el factor por tramo de los demás (cuota 1,95 veces la de la regla nueva).
 - **Una respuesta «completed» de Equifax puede no traer reporte de crédito** (2026-10-30). Al pasar
   por nuestro código 20.560 respuestas de AWS, 585 de otro tipo de consulta (`id_tipo_consulta` 2,
   con `personalInformation` y `VariablesOfertaTotal`) daban «alcanza», sin deudas y sin un aviso:

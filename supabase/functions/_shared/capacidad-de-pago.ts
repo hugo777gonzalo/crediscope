@@ -324,6 +324,27 @@ export const TASA_BIESS_POR_CONFIRMAR = true;
 // en el 99%. El bloque `interconnectResponse` usa 10,45% y no se lee (docs/equifax.md).
 export const TASA_DE_LA_CUOTA_DE_EQUIFAX = 0.09;
 
+// La misma cuenta para un crédito del BIESS que no es de vivienda (el quirografario): la cuota de `reporteCrediticio` es una anualidad del saldo
+// del corte al 11,0% con los MESES DE CALENDARIO que quedan hasta el vencimiento (negocio, 2026-11-28: la cuota de Equifax es la verdad).
+// Medido sobre 22.585 cuotas de créditos al día del BIESS en los crudos de AWS: tasa implícita mediana 10,99% (P10 10,7% y P90 11,2% con 13 meses
+// o más por delante), y con el saldo y el vencimiento de Equifax se reproduce a ±1% en el 99% a 100% con 7 meses o más. La fecha de fin de
+// Proveedor_Info_1 (la concesión más el plazo) cae en el día de la concesión y el vencimiento de Equifax, a fin de mes: contados en días redondeados los
+// meses que quedan salen distintos y la regla daba ±10% en el 91% de los créditos; contados en meses de calendario, en el 99%.
+export const TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO = 0.11;
+
+// Equifax informa la deuda actual con un corte de uno o dos meses antes de la consulta: dos meses en el 71% de 8.327 consultas de AWS, y la cuota
+// que informa es la de ese corte. Con la fecha de la consulta sin rezago, la regla del quirografario daba ±10% en el 90% de los créditos; con dos
+// meses de rezago, en el 98% o el 99%. Hasta el día 21 del mes el rezago es de dos meses en el 93% de las consultas; desde el 22 es de uno en 65% a
+// 75%, y usar dos como constante da lo mismo que seguir esa regla.
+export const REZAGO_DEL_CORTE_DE_EQUIFAX_EN_MESES = 2;
+
+// La fecha de corte (`fechaCorte`) de la fuente de préstamos del QUIROGRAFARIO es 2025-02-01 en las 1.621 operaciones de la cartera, pero su saldo
+// es del cierre de febrero de 2026: se interpoló el saldo de Proveedor_Info_1 en la serie de Equifax de cada crédito (499 créditos: 483 en febrero de
+// 2026, a 12,9 meses de esa fecha, sin una sola excepción en el centil 10 al 90). El del hipotecario sí coincide (2026-02-01). Se corrige sumando un año
+// mientras el resultado no pase de hoy; si la fuente corrige su fecha, el resultado cae en el futuro y se usa la que trae.
+// El detector `corte-de-la-fuente-de-prestamos-distinto` de revisar-datos avisa si la fecha cambia.
+export const CORRIMIENTO_DEL_CORTE_DE_QUIROGRAFARIOS_EN_MESES = 12;
+
 // Tasa del contrato de un hipotecario del BIESS cuando la base interna no la dice
 // (los concedidos de 2022 en adelante, y los que sólo trae la fuente de préstamos).
 // POR CONFIRMAR con el BIESS (`TASA_BIESS_POR_CONFIRMAR`): 8,69% hasta 2019 y 6,99%
@@ -484,6 +505,56 @@ export function cuotaHipotecariaComoEquifax(operacion: unknown, hoy: Date): { cu
   return { cuota: cuotaPorAnualidad(saldoDeHoy, TASA_DE_LA_CUOTA_DE_EQUIFAX, mesesQueQuedan), camino: "saldo_llevado_a_hoy" };
 }
 
+/** El mes de calendario de un día (desde 1970), como número: la resta de dos meses es la cuenta de meses de Equifax. */
+const mesDeCalendario = (d: number) => {
+  const f = new Date(d * MS_POR_DIA);
+  return f.getUTCFullYear() * 12 + f.getUTCMonth();
+};
+
+export type CaminoDeLaCuotaQuirografaria = "saldo_llevado_a_hoy" | "ya_se_pago";
+
+/**
+ * La cuota de un quirografario del IESS/BIESS sin buró, como la informaría Equifax (2026-11-28): la anualidad al 11,0% del saldo con los meses de
+ * calendario que quedan, a la fecha del corte que Equifax informaría hoy (dos meses antes). Con lo que trae Proveedor_Info_1:
+ *  1. Saldo de la fuente de préstamos (1.621 de 1.641 en la cartera): es de UN corte (el cierre de febrero de 2026; la `fechaCorte` que trae dice
+ *     un año menos, ver CORRIMIENTO_DEL_CORTE_DE_QUIROGRAFARIOS_EN_MESES) y se lleva a ese corte con el plan: lo que queda al corte se amortiza hasta
+ *     el fin a la tasa de TASA_ANUAL_BIESS (6,5%: sólo lleva el saldo, y 6,5%, 8,76% u 11% dan el mismo 99%). Sin `fechaCorte` se toma el saldo como el
+ *     del corte de Equifax.
+ *  2. Fin ya pasado al corte: 0. Equifax no lista como actual un crédito pasado de su vencimiento (40 de 41 de la muestra), y un quirografario dura poco:
+ *     de los 405 de la cartera con el fin pasado, 385 lo tienen en 2026. El atraso lo mide el riesgo, no la capacidad (la misma decisión del hipotecario,
+ *     que allí cuenta la cuota del contrato: no se pudo medir contra Equifax).
+ * null sin fecha de fin y para el saldo de la base interna (20 de 1.641: una foto vieja y sin fecha, sin pares con Equifax para medirla): la cuota sale
+ * como antes, del factor por tramo o de la anualidad al 6,5% con el plazo que queda.
+ *
+ * Medido el 2026-11-28 contra la cuota de Equifax en los quirografarios de la cartera que están también en AWS (597 emparejados de 610; la regla a la
+ * fecha de cada consulta de Equifax posterior a la foto, con el rezago de dos meses): de los 379 que Equifax sigue listando (última observación de
+ * cada crédito), ±5% 97%, ±10% 98%, ±15% 99%, mediana 0,99; de las 542 observaciones, ±10% 99%. Lo que no se ve desde la foto es el crédito que se pagó
+ * antes de tiempo (52 de 431 con el fin posterior, el 12%): Equifax ya no lo lista y la regla lo cuenta; con ellos «exactos» (±10% o los dos en cero)
+ * son 412 de 470, el 88%, y la cuota total estimada es 1,13 veces la de Equifax (el 11% de la estimada es de créditos ya pagados).
+ */
+export function cuotaQuirografariaComoEquifax(operacion: unknown, hoy: Date): { cuota: number; camino: CaminoDeLaCuotaQuirografaria } | null {
+  const o = comoObjeto(operacion);
+  const saldo = numero(o?.saldo);
+  if (!o || saldo === null || saldo <= 0) return null;
+  const fin = dia(o.fechaFin);
+  if (fin === null || o.fuenteDelSaldo === "base_interna") return null;
+  const dHoy = Math.floor(hoy.getTime() / MS_POR_DIA);
+  const delCorte = mesDeCalendario(dHoy) - REZAGO_DEL_CORTE_DE_EQUIFAX_EN_MESES;
+  const mesesQueQuedan = mesDeCalendario(fin) - delCorte;
+  if (mesesQueQuedan < 1) return { cuota: 0, camino: "ya_se_pago" };
+  let saldoAlCorte = saldo;
+  const corte = dia(o.fechaCorte);
+  if (corte !== null) {
+    const f = new Date(corte * MS_POR_DIA);
+    const corregido = Math.floor(Date.UTC(f.getUTCFullYear(), f.getUTCMonth() + CORRIMIENTO_DEL_CORTE_DE_QUIROGRAFARIOS_EN_MESES, 1) / MS_POR_DIA);
+    const delSaldo = finDelMes(finDelMes(corregido) <= dHoy ? corregido : corte);
+    const cuotasDelSaldo = Math.max(1, mesDeCalendario(fin) - mesDeCalendario(delSaldo));
+    const pagos = Math.min(cuotasDelSaldo - 1, Math.max(0, delCorte - mesDeCalendario(delSaldo)));
+    saldoAlCorte = saldoDespuesDePagos(saldo, TASA_ANUAL_BIESS.quirografario, cuotasDelSaldo, pagos);
+  }
+  return { cuota: cuotaPorAnualidad(saldoAlCorte, TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO, mesesQueQuedan), camino: "saldo_llevado_a_hoy" };
+}
+
 export interface DatosDeCapacidad {
   ingresos: IngresoMensual[];
   obligaciones: ObligacionMensual[];
@@ -613,6 +684,18 @@ export function datosDeCapacidad(perfilGuardado: AnyRecord | null, estructuraEqu
           conCuota++;
         }
         continue;
+      }
+      // El quirografario con el saldo de la fuente de préstamos se estima como lo informa Equifax; el de la base interna y el que no trae fecha de fin
+      // siguen como antes (la anualidad al 6,5% con el plazo que queda, o el factor por tramo).
+      if (o.tipo === "quirografario") {
+        const q = cuotaQuirografariaComoEquifax(o, hoy);
+        if (q !== null) {
+          if (q.cuota > 0) {
+            cuotaEstimada += q.cuota;
+            conCuota++;
+          }
+          continue;
+        }
       }
       const tasa = o.tipo === "quirografario" ? TASA_ANUAL_BIESS.quirografario : null;
       const meses = mesesHasta(o.fechaFin, hoy);

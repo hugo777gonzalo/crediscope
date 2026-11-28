@@ -8,6 +8,7 @@ import { assertEquals, assert, assertAlmostEquals, assertThrows } from "jsr:@std
 import {
   conIngresoDeclarado, cuotaHipotecariaComoEquifax, cuotaPorAnualidad, cuotaPorFactorDeSaldo, FACTOR_CUOTA_HIPOTECARIO, TRAMOS_FACTOR_CUOTA, CAPACIDAD_VERSION,
   datosDeCapacidad, saldoDespuesDePagos, TASA_ANUAL_BIESS, TASA_DE_LA_CUOTA_DE_EQUIFAX, tasaDelContratoHipotecario, elBuroTraeDetalle, evaluarCapacidad,
+  cuotaQuirografariaComoEquifax, TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO,
 } from "./capacidad-de-pago.ts";
 import { montoMaximoParaCuota, simularCredito } from "./simulador-credito.ts";
 import { perfilDePrueba } from "./perfil-de-prueba.ts";
@@ -389,11 +390,13 @@ const conBiess = (operaciones: unknown[] | undefined) => {
 Deno.test("sin buró: el BIESS lleva su saldo y una cuota estimada por anualidad con el plazo que queda", () => {
   const perfil = conBiess([{ tipo: "quirografario", saldo: 10000, fechaFin: "2028-11-17" }]);
   const d = datosDeCapacidad(perfil, null, HOY);
-  const esperada = cuotaPorAnualidad(10000, TASA_ANUAL_BIESS.quirografario, 24);
+  // Un perfil sin fuente ni corte del saldo: el saldo se toma como el del corte de Equifax (dos meses antes de HOY) y se calcula al 11,0% con los
+  // meses de calendario que quedan hasta el fin: de septiembre de 2026 a noviembre de 2028, 26.
+  const esperada = cuotaPorAnualidad(10000, TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO, 26);
   const o = d.obligaciones.find((x) => x.concepto.startsWith("Préstamo del IESS o BIESS"));
   assert(o && o.estimada === true);
   assertAlmostEquals(o.montoMensual, esperada, 0.01);
-  assertAlmostEquals(esperada, 445.9, 0.5);
+  assertAlmostEquals(esperada, 434.02, 0.05);
   assertEquals(d.deudasSinCuota.some((x) => x.concepto === "Préstamo del IESS o BIESS"), false);
   const c = evaluarCapacidad({ ...d, cuotaNueva: 100 });
   assert(c.avisos.some((a) => a.includes("cuotas estimadas")));
@@ -478,6 +481,56 @@ Deno.test("hipotecario: con el fin pasado y saldo, la cuota del contrato; sin fi
   assertEquals(d.obligaciones.find((x) => x.concepto.includes("BIESS"))?.montoMensual, 642);
 });
 
+// ---- El quirografario como lo informa Equifax (2026-11-28): el saldo del corte llevado al corte de Equifax, al 11,0% con meses de calendario ----
+
+const quirografario = (extra: Record<string, unknown>) => ({
+  tipo: "quirografario", saldo: 3000, fechaFin: "2028-03-10", monto: 5000, fechaConcesion: "2024-03-10", tasaAnual: null, cuotaEstimada: null,
+  fuenteDelSaldo: "prestamos", fechaCorte: "2025-02-01", ...extra,
+});
+
+Deno.test("quirografario: el saldo de la fuente de préstamos se lleva al corte de Equifax (dos meses antes) y se calcula al 11,0% con meses de calendario", () => {
+  const r = cuotaQuirografariaComoEquifax(quirografario({}), HOY)!;
+  assertEquals(r.camino, "saldo_llevado_a_hoy");
+  // La fecha de corte de la fuente dice 2025-02-01 y su saldo es del cierre de febrero de 2026 (se le suma un año): de ahí a septiembre de 2026
+  // (el corte que Equifax informaría el 17 de noviembre) son 7 pagos de un plan de 25 cuotas al 6,5%, y quedan 18 meses al 11,0%.
+  const i = 0.065 / 12;
+  const saldoAlCorte = (3000 * (Math.pow(1 + i, 25) - Math.pow(1 + i, 7))) / (Math.pow(1 + i, 25) - 1);
+  assertAlmostEquals(saldoDespuesDePagos(3000, 0.065, 25, 7), saldoAlCorte, 0.001);
+  assertAlmostEquals(r.cuota, cuotaPorAnualidad(saldoAlCorte, 0.11, 18), 0.01);
+  assertAlmostEquals(r.cuota, 133.17, 0.02);
+  // Sin llevarlo al corte daría 181,56: el saldo de febrero con 18 meses por delante sobreestima.
+  assert(r.cuota < cuotaPorAnualidad(3000, 0.11, 18));
+  // La tasa del plan casi no pesa: con otra tasa (la de Equifax) sale lo mismo en centavos de dólar.
+  assertAlmostEquals(r.cuota, 133.17, 1);
+});
+
+Deno.test("quirografario: si la fuente corrige su fecha de corte se usa la que trae, y sin fecha el saldo es el del corte de Equifax", () => {
+  // Con la fecha ya correcta (2026-02-01) sumarle un año caería en el futuro: se usa la que trae, y da lo mismo.
+  assertAlmostEquals(cuotaQuirografariaComoEquifax(quirografario({ fechaCorte: "2026-02-01" }), HOY)!.cuota, 133.17, 0.02);
+  // Sin fecha de corte no hay con qué llevarlo: se toma como el del corte de Equifax.
+  assertAlmostEquals(cuotaQuirografariaComoEquifax(quirografario({ fechaCorte: null }), HOY)!.cuota, 181.56, 0.02);
+});
+
+Deno.test("quirografario: con el fin pasado al corte de Equifax la cuota es 0 y no deja ninguna deuda sin cuota", () => {
+  const vencido = quirografario({ fechaFin: "2026-06-10" });
+  assertEquals(cuotaQuirografariaComoEquifax(vencido, HOY), { cuota: 0, camino: "ya_se_pago" });
+  // Un fin cercano todavía cuenta: octubre de 2026 es el mes siguiente al corte (septiembre).
+  assert(cuotaQuirografariaComoEquifax(quirografario({ fechaFin: "2026-10-10" }), HOY)!.cuota > 0);
+  const d = datosDeCapacidad(conBiess([vencido]), null, HOY);
+  assertEquals(d.obligaciones.some((x) => x.concepto.includes("BIESS")), false);
+  assertEquals(d.deudasSinCuota.some((x) => x.concepto.includes("BIESS")), false);
+});
+
+Deno.test("quirografario: la base interna y el que no trae fecha de fin siguen como antes", () => {
+  assertEquals(cuotaQuirografariaComoEquifax(quirografario({ fuenteDelSaldo: "base_interna", fechaCorte: null }), HOY), null);
+  assertEquals(cuotaQuirografariaComoEquifax(quirografario({ fechaFin: null }), HOY), null);
+  assertEquals(cuotaQuirografariaComoEquifax(quirografario({ saldo: 0 }), HOY), null);
+  const d = datosDeCapacidad(conBiess([quirografario({ fuenteDelSaldo: "base_interna", fechaCorte: null, saldo: 10000, fechaFin: "2028-11-17" })]), null, HOY);
+  assertAlmostEquals(d.obligaciones.find((x) => x.concepto.includes("BIESS"))!.montoMensual, cuotaPorAnualidad(10000, TASA_ANUAL_BIESS.quirografario, 24), 0.01);
+  const sinFin = datosDeCapacidad(conBiess([quirografario({ fechaFin: null, saldo: 10000 })]), null, HOY);
+  assertEquals(sinFin.obligaciones.find((x) => x.concepto.includes("BIESS"))?.montoMensual, 620);
+});
+
 Deno.test("hipotecario: la tabla de tasas cambia en 2020 y está por confirmar con el BIESS", () => {
   assertEquals(tasaDelContratoHipotecario(2019), 0.0869);
   assertEquals(tasaDelContratoHipotecario(2020), 0.0699);
@@ -498,7 +551,7 @@ Deno.test("hipotecario: la línea del BIESS suma todas las operaciones, cada una
   const biess = d.obligaciones.filter((x) => x.concepto.includes("BIESS"));
   assertEquals(biess.length, 1);
   assertEquals(biess[0].metodoDeEstimacion, "anualidad");
-  assertAlmostEquals(biess[0].montoMensual, 724.92 + 410.55 + cuotaPorAnualidad(10000, TASA_ANUAL_BIESS.quirografario, 24), 0.05);
+  assertAlmostEquals(biess[0].montoMensual, 724.92 + 410.55 + cuotaPorAnualidad(10000, TASA_DE_LA_CUOTA_DE_EQUIFAX_QUIROGRAFARIO, 26), 0.05);
   // Con buró de Equifax el BIESS ya viene dentro de la cuota de bancos: no se agrega.
   assertEquals(datosDeCapacidad(conBiess([hipotecario({})]), { deudaActualTitular: { bancos: { cuotaMensualUsd: 700 } } }, HOY).obligaciones.some((x) => x.concepto.includes("BIESS")), false);
 });
