@@ -529,3 +529,77 @@ puede ser un adicional real que nadie documentó, y no hay forma de saber cuánt
 **Para la decisión del negocio**: sumar el mínimo al dependiente con RUC activo eleva el ingreso de cada uno en unos 270 a 335 dólares, y en la
 mayoría de ellos no hay un adicional que lo respalde. La señal sin monto de A14 no tiene ese costo. Si se suma igual, los números de arriba son lo que
 hay que esperar. La versión «a todos» calibrada es la que menos sobrestima de las que suman a todos.
+
+## 9. Plan para sumar el adicional (decisión del negocio del 2026-11-28)
+
+**La decisión.** Con los números de 8.5 a la vista, el negocio eligió sumar el adicional estimado a todos los dependientes y públicos con RUC activo.
+Sabe que, sumado a todos, el 31% (calibrado) o el 43% (sin calibrar) queda sobrestimado en más de 20%. El nombre que propuso, «Dependiente con
+Ingresos Adicionales», queda pendiente de confirmar. Cuando lo confirme se registra en `.claude/skills/revision-ux/terminologia.md`.
+
+**Por qué el modelo de monto sirve aunque se haya cerrado la opción (b).** La sesión 2 cerró el clasificador: el modelo no sabe *quién* tiene el
+adicional. La suma a todos no necesita el clasificador, sólo el monto: el mínimo calibrado cubre al 89,8% de los A (8.5) y su mediana está en 0,59 del
+real. Lo que no puede hacer es separar a quien no lo tiene: eso es lo que mide la sobrestimación.
+
+### 9.1 Cómo entra a la escalera sin romper «los peldaños no se suman»
+
+- **Es una lectura del ingreso total en el peldaño 4**, no una suma entre peldaños.
+  - Para el tipo de persona `dependiente_con_ingreso_extra` con RUC activo, el peldaño 4 es el sueldo neto del peldaño 1 más el mínimo calibrado del
+    adicional.
+  - Los dos van como componentes separados: el sueldo, verificado; el adicional, con los avisos `estimado` y `sin_verificar`.
+  - `escalera-del-ingreso.ts` ya prevé componentes dentro de un peldaño (`ComponenteDelPeldano`).
+- **Sostiene sólo cuando el sueldo solo no alcanza.** `evaluarEscalera()` toma el peldaño más fuerte con el que alcanza la cuota. Donde el
+  peldaño 1 alcanza, nada cambia. La sobrestimación de 8.5 pesa sólo donde el sueldo no alcanzaba, que es justo donde se está decidiendo.
+- **Cuánto cuenta lo decide el estándar de cada institución.**
+  - Hoy `aceptadoPorPeldano.minimo_certificado` es 0 en las plantillas (D6). Así, el peldaño 4 se muestra pero no crea espacio.
+  - Se propone una fracción propia para el componente del adicional del dependiente, aparte de la del mínimo del independiente. Así una
+    institución puede aceptar uno sin el otro.
+  - Va a la forma del estándar, a las tres plantillas y al validador, con su prueba.
+  - **Con la fracción en 0 la suma no cambia nada**: para que «sumarlo» tenga efecto, al menos la plantilla Base tiene que aceptarlo.
+- **Sin buró no se estima.** El modelo usa el bloque SRI de Equifax y las variables del buró, así que sin una consulta de Equifax queda en
+  «no medido». Es la misma regla de D6: sin buró, el peldaño 4 no sostiene.
+- **Cuando llegue la declaración del SRI, el estimado se reemplaza.** La sesión de las declaraciones (`docs/fuente-declaraciones-sri.md`, en
+  diseño) le da un peldaño con documento, que manda sobre el 4.
+- **El modelo de lenguaje no lo ve todavía.** El perfil del modelo y el marco se tocan al final, cuando la capacidad esté pulida (regla del
+  repositorio). Hacerlo es una versión nueva del marco.
+- **La escalera todavía no está conectada a la capacidad de hoy.** El simulador, la solicitud y el perfil del modelo siguen con `capacidad-v5`, y
+  conectarla es trabajo del núcleo (F10 y F11). Esta pieza entra a la escalera y llega a producción cuando la escalera se conecte.
+
+### 9.2 Las sesiones
+
+1. **El modelo de producción, `adicional-v1`.**
+   - Entrenamiento final con todo lo que hay, hasta octubre de 2026, incluida la prueba: con el SRI de Equifax donde está y el RUC reconstruido
+     del catastro en 2023 a 2025 (8.2).
+   - Calibración conforme al 90%.
+   - Exportarlo en el formato `crediscope-arboles-1` (`scripts/predictor-ingresos/FORMATO.md`), con la prueba de oro entre Python y Deno.
+   - **Paridad de cada variable con `variables-de-ingreso.ts`**:
+     - el sueldo de entrada contra el peldaño 1 (`ver_f` coincide a ±10% en el 79,4%, sección 6.4);
+     - el SRI de Equifax;
+     - las operaciones del buró del nivel 2.
+   - No se publica: `publicar-modelo-de-ingreso.mjs` escribe en la base y en Storage, y va con el sí del negocio.
+2. **El código** (puede correr junto con la 1: la integración continua usa un modelo chico inventado):
+   - `decidirEstimacion()` deja de contestar `ingreso_verificado` al dependiente con RUC activo y con buró, y pide el adicional;
+   - `armarEstimacion()` devuelve su mínimo;
+   - `armarIngresoDelPerfil()` arma el peldaño 4 compuesto;
+   - la fracción nueva en el estándar;
+   - el componente en `api/openapi.yaml`;
+   - las pruebas.
+   - Sin conectar a la capacidad de hoy.
+3. **La medición en seco sobre la cartera**, después de la 1 y la 2. Con `scripts/medir-escalera.mjs`, sólo lee:
+   - cuántos dependientes con RUC activo hay;
+   - cuánto sube su ingreso;
+   - cuántos pasan de «no alcanza» a «alcanza», con cada plantilla.
+4. **Publicar y desplegar**, con el sí del negocio: el modelo con `publicar-modelo-de-ingreso.mjs` y las funciones con el corredor
+   (`--funciones`), cuando la escalera esté conectada.
+5. **Seguimiento.** Cuando lleguen las declaraciones del SRI, comparar el adicional estimado con el declarado. Es la medida real de la
+   sobrestimación, que hoy es un techo.
+
+### 9.3 Lo que tiene que decidir el negocio
+
+1. **El nombre**: «Dependiente con Ingresos Adicionales» como nombre de pantalla del tipo de persona.
+2. **Calibrado o no**: el calibrado deja sobrestimado en más de 20% al 31% de todos; el sin calibrar, al 43%. Recomendación: el calibrado.
+3. **La fracción del adicional en cada plantilla.** Recomendación:
+   - Conservadora en 0;
+   - Base y Optimista con el valor que el negocio fije.
+   - Con el estimado como un mínimo, el 100% es coherente con cómo se calculó. Un valor menor descuenta la sobrestimación.
+4. **Sin buró**: no estimar, como se recomienda, o armar una variante sin el SRI de Equifax, que separa y estima peor.
+5. **Cómo se le dice al analista y a la institución por la API**: estimado y sin verificar, como el peldaño 4 del independiente.
