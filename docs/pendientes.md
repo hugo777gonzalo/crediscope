@@ -599,7 +599,9 @@ recomendado en la pestaña «Propuesta R2, R3 y R4», salvo dos:
       - lo que queda a ±10% baja de 62% a 13%;
       - sumarlo sólo sobre el umbral del clasificador casi no cambia nada (a 204, de los que 18 son comprobables);
       - calibrado al 90%, el 31% queda sobrestimado en más de 20%.
-      Falta que el negocio confirme la suma con estos números antes de construir.
+      **El negocio lo confirmó el 2026-11-28 con estos números: se suma a todos los dependientes con RUC activo.** El plan para conectarlo, con
+      sus sesiones y las cinco decisiones que faltan, está en la sección 9 de la propuesta. Va como una lectura del total en el peldaño 4 (el
+      sueldo más el mínimo del adicional), no como una suma entre peldaños. Cuánto cuenta lo decide el estándar de cada institución.
 
     **Medido el 2026-11-24 (sesión 2): no pasa ninguna regla de las que deciden, en ninguna variante ni escenario.** Hacia adelante (71 A en la prueba):
     - AUC de A contra el negativo con RUC activo: 0,631 sin SRI y 0,619 con SRI, contra 0,75 (12.36 dio 0,624 con la etiqueta vieja). Sin los
