@@ -17,7 +17,7 @@ cobra** (USD 0,40): no se corre ninguna sin autorización.
   - **Funciones:** sello **`7ba20475a343`**, 13 de 13 (`despliegues`), sobre el esquema 155.
   - **Recálculo:** `recalcular-grupos.mjs --grupos=comportamientoBancario`, sobre 3.766 de 3.766 personas, sin ningún perfil que no se reproduzca. A 941 les cambió el comportamiento bancario: 938 por `operacionesIessBiess`, que ahora guarda el monto, la concesión, la tasa, la cuota estimada y el corte, y 3 por `camposSinDato`.
   - **Controles:** `auditar-seguridad.mjs` dio 82 controles, «todo cerrado»; `revisar-datos.mjs`, 0 regresiones. El detector nuevo `hipotecario-biess-vencido-con-saldo` lista 7 operaciones para revisar.
-  - **La versión de la capacidad no subió** (sigue en capacidad-v5), aunque el cálculo del hipotecario cambió y 10 de 270 personas cambian de veredicto. Hay que subirla para la trazabilidad; tocaría 4 ejemplos de `api/openapi.yaml`.
+  - **La capacidad sube a capacidad-v6** con este cálculo del hipotecario, y la escalera, que no está conectada, pasa de v6 a v7 (#227). Entre el despliegue del #223 y el del #227, los veredictos de este cálculo salieron rotulados capacidad-v5.
   - **El quirografario del BIESS tiene el mismo problema y peor:** su saldo en la fuente de préstamos es del corte de 2025-02-01. Falta medirlo como el hipotecario.
 - **estructura-v32 y hechos-v5 en producción (2026-11-27, #217, #220 y #222).**
   - **Base:** migración 155 aplicada con el corredor (`estandares_de_institucion`, que todavía no lee nada); la base quedó «al día».
