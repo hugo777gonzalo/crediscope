@@ -196,15 +196,27 @@ def con_reconstruido(t):
     return t
 
 
-def main():
-    t0 = time.time()
+def registrar_variante():
+    """La variante que entrena con 2023 a junio de 2026 (SRI de Equifax o reconstruido) y prueba con lo de «2026, con SRI»."""
+    m.VARIANTES[VARIANTE_NUEVA] = {
+        "filtro": lambda d: ((d.sri_bloque & (d.t.dt.year == 2026)) | (~d.sri_bloque & (d.t.dt.year >= 2023) & (d.t < c.CORTE_FECHA))).values,
+        "cols": m.VARIANTES["2026, con SRI"]["cols"]}
+
+
+def datos_con_catastro():
+    """La tabla de la sesión 1 con el SRI reconstruido (columnas `_r`). La identificación no sale de acá."""
     t = m.datos()
     q = identificaciones()
-    k = catastro(set(q.ruc))
-    r = reconstruir(q, k)
+    r = reconstruir(q, catastro(set(q.ruc)))
     t = t.merge(r, on="id_consulta_equifax", how="left", validate="one_to_one")
     t["ruc_activo_r"] = t.ruc_activo_r.eq(True)
     t["anio"] = t.t.dt.year
+    return t
+
+
+def main():
+    t0 = time.time()
+    t = datos_con_catastro()
     print(f"{c.miles(len(t))} personas; en el catastro {c.miles(int(t.en_catastro.eq(True).sum()))}; {time.time() - t0:.0f} s", flush=True)
 
     por_anio = t.groupby("anio").agg(personas=("grado", "size"), ruc_activo_equifax_pct=("ruc_activo", lambda x: 100 * x.mean()),
@@ -227,9 +239,7 @@ def main():
     out["resultados"] = {}
     if sirve:
         tr = con_reconstruido(t)
-        m.VARIANTES[VARIANTE_NUEVA] = {
-            "filtro": lambda d: ((d.sri_bloque & (d.t.dt.year == 2026)) | (~d.sri_bloque & (d.t.dt.year >= 2023) & (d.t < c.CORTE_FECHA))).values,
-            "cols": m.VARIANTES["2026, con SRI"]["cols"]}
+        registrar_variante()
         for variante in ["2026, con SRI", VARIANTE_NUEVA]:
             out["resultados"][variante] = {}
             for escenario in ESCENARIOS:

@@ -136,7 +136,8 @@ def umbral_de_mostrar(puntaje, comprobable):
     return (float(puntaje[orden][validos.max()]) if len(validos) else None), maximo
 
 
-def correr(t, variante, escenario):
+def correr(t, variante, escenario, modelos=None):
+    """`modelos`, si llega un dict, se llena con lo entrenado: `adicional_suma.py` lo usa para sumar el mínimo al sueldo."""
     import lightgbm as lgb
     v, e = VARIANTES[variante], ESCENARIOS[escenario]
     cols = v["cols"]
@@ -268,6 +269,8 @@ def correr(t, variante, escenario):
         "variables_que_mas_pesan": {k: rd(100 * x / imp.sum(), 1) for k, x in imp.sort_values(ascending=False).head(10).items()},
     }
     res["reglas"] = reglas(res)
+    if modelos is not None:
+        modelos.update(clf=clf, qmod=qmod, cols=cols, cat=cat, tr=tr, te=te, ent=ent, oof=oof, p_tr=p_tr, p_te=p_te, pos_tr=pos_tr)
     return res
 
 

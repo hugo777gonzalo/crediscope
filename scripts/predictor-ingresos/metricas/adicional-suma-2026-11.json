@@ -1,0 +1,420 @@
+{
+  "que_es": "docs/propuesta-adicional-del-dependiente.md, 8.5: el sueldo más el mínimo del adicional, contra el total validado, en la prueba con RUC activo. Sólo agregados. Contra el negativo, la sobrestimación es un techo.",
+  "corte": "2026-07-01",
+  "cobertura_de_la_calibracion": 0.9,
+  "resultados": {
+    "con todos (8.2)": {
+      "reglas_del_modelo": {
+        "R1_auc_ruc_activo_075": {
+          "valor": 0.694,
+          "ic": [
+            0.639,
+            0.752
+          ],
+          "pasa": false
+        },
+        "R2_minimo_cubre_90_y_mediana_05": {
+          "cobertura": 84.507,
+          "cobertura_ic": [
+            76.056,
+            91.549
+          ],
+          "minimo_sobre_real": 0.596,
+          "pasa": false,
+          "pasa_solo_por_la_cifra_central": false
+        },
+        "R3_mostrado_70_comprobable": {
+          "umbral": null,
+          "acierto": null,
+          "mostrados": 0,
+          "pasa": false
+        },
+        "pasa": false
+      },
+      "umbral": {
+        "puntaje": 0.2896,
+        "se_muestra_a": 204,
+        "de": 1740,
+        "comprobables_mostrados": 18,
+        "comprobables": 102,
+        "acierto_pct": 8.8
+      },
+      "calibracion": {
+        "cobertura_fuera_de_muestra_sin_calibrar_pct": 82.9,
+        "corrimiento_en_logaritmo": 0.207,
+        "factor_del_minimo": 0.813,
+        "cobertura_en_la_prueba_A_calibrado_pct": 89.8
+      },
+      "sueldo_sobre_total_validado_mediana": {
+        "A o B": 0.628,
+        "negativos (la sobrestimación es un techo)": 1.0,
+        "todos": 1.0
+      },
+      "por_grupo": {
+        "A o B": {
+          "1. el sueldo solo": {
+            "n": 102,
+            "mediana_de_la_razon": 0.628,
+            "a_10pct": 1.0,
+            "a_20pct": 11.8,
+            "sobrestimado_mas_de_10pct": 0.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 99.0
+          },
+          "2. sueldo más el mínimo, a todos": {
+            "n": 102,
+            "mediana_de_la_razon": 0.86,
+            "a_10pct": 33.3,
+            "a_20pct": 59.8,
+            "sobrestimado_mas_de_10pct": 7.8,
+            "sobrestimado_mas_de_20pct": 1.0,
+            "subestimado_mas_de_10pct": 58.8
+          },
+          "3. sueldo más el mínimo, sólo sobre el umbral": {
+            "n": 102,
+            "mediana_de_la_razon": 0.66,
+            "a_10pct": 7.8,
+            "a_20pct": 21.6,
+            "sobrestimado_mas_de_10pct": 2.0,
+            "sobrestimado_mas_de_20pct": 1.0,
+            "subestimado_mas_de_10pct": 90.2
+          },
+          "4. sueldo más el mínimo calibrado, a todos": {
+            "n": 102,
+            "mediana_de_la_razon": 0.815,
+            "a_10pct": 31.4,
+            "a_20pct": 52.9,
+            "sobrestimado_mas_de_10pct": 1.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 67.6
+          },
+          "5. sueldo más el mínimo calibrado, sólo sobre el umbral": {
+            "n": 102,
+            "mediana_de_la_razon": 0.656,
+            "a_10pct": 7.8,
+            "a_20pct": 20.6,
+            "sobrestimado_mas_de_10pct": 1.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 91.2
+          },
+          "mediana_del_minimo_sumado_a_todos": 332.0,
+          "mediana_del_minimo_calibrado": 270.0,
+          "mediana_del_sueldo": 1091.0
+        },
+        "negativos (la sobrestimación es un techo)": {
+          "1. el sueldo solo": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 99.7,
+            "a_20pct": 99.9,
+            "sobrestimado_mas_de_10pct": 0.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 0.3
+          },
+          "2. sueldo más el mínimo, a todos": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.249,
+            "a_10pct": 2.9,
+            "a_20pct": 30.0,
+            "sobrestimado_mas_de_10pct": 97.1,
+            "sobrestimado_mas_de_20pct": 70.0,
+            "subestimado_mas_de_10pct": 0.0
+          },
+          "3. sueldo más el mínimo, sólo sobre el umbral": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 91.7,
+            "a_20pct": 92.2,
+            "sobrestimado_mas_de_10pct": 8.0,
+            "sobrestimado_mas_de_20pct": 7.7,
+            "subestimado_mas_de_10pct": 0.3
+          },
+          "4. sueldo más el mínimo calibrado, a todos": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.202,
+            "a_10pct": 5.3,
+            "a_20pct": 49.2,
+            "sobrestimado_mas_de_10pct": 94.7,
+            "sobrestimado_mas_de_20pct": 50.8,
+            "subestimado_mas_de_10pct": 0.0
+          },
+          "5. sueldo más el mínimo calibrado, sólo sobre el umbral": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 91.7,
+            "a_20pct": 93.3,
+            "sobrestimado_mas_de_10pct": 8.0,
+            "sobrestimado_mas_de_20pct": 6.6,
+            "subestimado_mas_de_10pct": 0.3
+          },
+          "mediana_del_minimo_sumado_a_todos": 335.0,
+          "mediana_del_minimo_calibrado": 272.0,
+          "mediana_del_sueldo": 1435.0
+        },
+        "todos": {
+          "1. el sueldo solo": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 62.0,
+            "a_20pct": 66.8,
+            "sobrestimado_mas_de_10pct": 0.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 38.0
+          },
+          "2. sueldo más el mínimo, a todos": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.176,
+            "a_10pct": 12.7,
+            "a_20pct": 39.3,
+            "sobrestimado_mas_de_10pct": 61.9,
+            "sobrestimado_mas_de_20pct": 43.3,
+            "subestimado_mas_de_10pct": 25.4
+          },
+          "3. sueldo más el mínimo, sólo sobre el umbral": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 58.8,
+            "a_20pct": 64.9,
+            "sobrestimado_mas_de_10pct": 5.5,
+            "sobrestimado_mas_de_20pct": 4.8,
+            "subestimado_mas_de_10pct": 35.7
+          },
+          "4. sueldo más el mínimo calibrado, a todos": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.142,
+            "a_10pct": 12.9,
+            "a_20pct": 47.9,
+            "sobrestimado_mas_de_10pct": 59.0,
+            "sobrestimado_mas_de_20pct": 31.2,
+            "subestimado_mas_de_10pct": 28.1
+          },
+          "5. sueldo más el mínimo calibrado, sólo sobre el umbral": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 58.3,
+            "a_20pct": 65.1,
+            "sobrestimado_mas_de_10pct": 5.2,
+            "sobrestimado_mas_de_20pct": 4.0,
+            "subestimado_mas_de_10pct": 36.6
+          },
+          "mediana_del_minimo_sumado_a_todos": 335.0,
+          "mediana_del_minimo_calibrado": 273.0,
+          "mediana_del_sueldo": 1335.0
+        }
+      }
+    },
+    "sin las personas sin respuesta (8.4)": {
+      "reglas_del_modelo": {
+        "R1_auc_ruc_activo_075": {
+          "valor": 0.701,
+          "ic": [
+            0.648,
+            0.758
+          ],
+          "pasa": false
+        },
+        "R2_minimo_cubre_90_y_mediana_05": {
+          "cobertura": 85.915,
+          "cobertura_ic": [
+            77.465,
+            92.958
+          ],
+          "minimo_sobre_real": 0.607,
+          "pasa": false,
+          "pasa_solo_por_la_cifra_central": false
+        },
+        "R3_mostrado_70_comprobable": {
+          "umbral": null,
+          "acierto": null,
+          "mostrados": 0,
+          "pasa": false
+        },
+        "pasa": false
+      },
+      "umbral": {
+        "puntaje": 0.3703,
+        "se_muestra_a": 218,
+        "de": 1740,
+        "comprobables_mostrados": 14,
+        "comprobables": 102,
+        "acierto_pct": 6.4
+      },
+      "calibracion": {
+        "cobertura_fuera_de_muestra_sin_calibrar_pct": 83.6,
+        "corrimiento_en_logaritmo": 0.241,
+        "factor_del_minimo": 0.786,
+        "cobertura_en_la_prueba_A_calibrado_pct": 89.8
+      },
+      "sueldo_sobre_total_validado_mediana": {
+        "A o B": 0.628,
+        "negativos (la sobrestimación es un techo)": 1.0,
+        "todos": 1.0
+      },
+      "por_grupo": {
+        "A o B": {
+          "1. el sueldo solo": {
+            "n": 102,
+            "mediana_de_la_razon": 0.628,
+            "a_10pct": 1.0,
+            "a_20pct": 11.8,
+            "sobrestimado_mas_de_10pct": 0.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 99.0
+          },
+          "2. sueldo más el mínimo, a todos": {
+            "n": 102,
+            "mediana_de_la_razon": 0.869,
+            "a_10pct": 36.3,
+            "a_20pct": 62.7,
+            "sobrestimado_mas_de_10pct": 7.8,
+            "sobrestimado_mas_de_20pct": 1.0,
+            "subestimado_mas_de_10pct": 55.9
+          },
+          "3. sueldo más el mínimo, sólo sobre el umbral": {
+            "n": 102,
+            "mediana_de_la_razon": 0.658,
+            "a_10pct": 4.9,
+            "a_20pct": 17.6,
+            "sobrestimado_mas_de_10pct": 1.0,
+            "sobrestimado_mas_de_20pct": 1.0,
+            "subestimado_mas_de_10pct": 94.1
+          },
+          "4. sueldo más el mínimo calibrado, a todos": {
+            "n": 102,
+            "mediana_de_la_razon": 0.818,
+            "a_10pct": 27.5,
+            "a_20pct": 52.0,
+            "sobrestimado_mas_de_10pct": 1.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 71.6
+          },
+          "5. sueldo más el mínimo calibrado, sólo sobre el umbral": {
+            "n": 102,
+            "mediana_de_la_razon": 0.647,
+            "a_10pct": 2.0,
+            "a_20pct": 18.6,
+            "sobrestimado_mas_de_10pct": 1.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 97.1
+          },
+          "mediana_del_minimo_sumado_a_todos": 349.0,
+          "mediana_del_minimo_calibrado": 275.0,
+          "mediana_del_sueldo": 1091.0
+        },
+        "negativos (la sobrestimación es un techo)": {
+          "1. el sueldo solo": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 99.7,
+            "a_20pct": 99.9,
+            "sobrestimado_mas_de_10pct": 0.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 0.3
+          },
+          "2. sueldo más el mínimo, a todos": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.249,
+            "a_10pct": 2.7,
+            "a_20pct": 31.7,
+            "sobrestimado_mas_de_10pct": 97.3,
+            "sobrestimado_mas_de_20pct": 68.3,
+            "subestimado_mas_de_10pct": 0.0
+          },
+          "3. sueldo más el mínimo, sólo sobre el umbral": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 89.7,
+            "a_20pct": 90.3,
+            "sobrestimado_mas_de_10pct": 10.0,
+            "sobrestimado_mas_de_20pct": 9.6,
+            "subestimado_mas_de_10pct": 0.3
+          },
+          "4. sueldo más el mínimo calibrado, a todos": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.195,
+            "a_10pct": 6.1,
+            "a_20pct": 52.4,
+            "sobrestimado_mas_de_10pct": 93.9,
+            "sobrestimado_mas_de_20pct": 47.6,
+            "subestimado_mas_de_10pct": 0.0
+          },
+          "5. sueldo más el mínimo calibrado, sólo sobre el umbral": {
+            "n": 1066,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 89.7,
+            "a_20pct": 92.2,
+            "sobrestimado_mas_de_10pct": 10.0,
+            "sobrestimado_mas_de_20pct": 7.7,
+            "subestimado_mas_de_10pct": 0.3
+          },
+          "mediana_del_minimo_sumado_a_todos": 332.0,
+          "mediana_del_minimo_calibrado": 261.0,
+          "mediana_del_sueldo": 1435.0
+        },
+        "todos": {
+          "1. el sueldo solo": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 62.0,
+            "a_20pct": 66.8,
+            "sobrestimado_mas_de_10pct": 0.0,
+            "sobrestimado_mas_de_20pct": 0.0,
+            "subestimado_mas_de_10pct": 38.0
+          },
+          "2. sueldo más el mínimo, a todos": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.174,
+            "a_10pct": 12.5,
+            "a_20pct": 40.3,
+            "sobrestimado_mas_de_10pct": 62.1,
+            "sobrestimado_mas_de_20pct": 42.5,
+            "subestimado_mas_de_10pct": 25.4
+          },
+          "3. sueldo más el mínimo, sólo sobre el umbral": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 57.2,
+            "a_20pct": 63.5,
+            "sobrestimado_mas_de_10pct": 6.5,
+            "sobrestimado_mas_de_20pct": 6.0,
+            "subestimado_mas_de_10pct": 36.3
+          },
+          "4. sueldo más el mínimo calibrado, a todos": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.135,
+            "a_10pct": 13.3,
+            "a_20pct": 49.2,
+            "sobrestimado_mas_de_10pct": 58.4,
+            "sobrestimado_mas_de_20pct": 29.3,
+            "subestimado_mas_de_10pct": 28.3
+          },
+          "5. sueldo más el mínimo calibrado, sólo sobre el umbral": {
+            "n": 1740,
+            "mediana_de_la_razon": 1.0,
+            "a_10pct": 56.7,
+            "a_20pct": 64.1,
+            "sobrestimado_mas_de_10pct": 6.3,
+            "sobrestimado_mas_de_20pct": 4.8,
+            "subestimado_mas_de_10pct": 37.0
+          },
+          "mediana_del_minimo_sumado_a_todos": 335.0,
+          "mediana_del_minimo_calibrado": 264.0,
+          "mediana_del_sueldo": 1335.0
+        }
+      }
+    }
+  },
+  "entradas": {
+    "tabla_de_la_sesion_1_sha256": "bc767e4e2f921bb30322919f975b570ee8f5c18ea491080fc3c2595f890b1188"
+  },
+  "versiones": {
+    "lightgbm": "4.7.0",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "scipy": "1.18.1",
+    "pyarrow": "26.0.0",
+    "duckdb": "2.0.0.dev2610162032",
+    "python": "3.15.0"
+  }
+}
